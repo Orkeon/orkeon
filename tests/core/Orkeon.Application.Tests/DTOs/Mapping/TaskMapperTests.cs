@@ -31,7 +31,10 @@ public class TaskMapperTests
         Assert.Empty(dto.Dependencies);
         Assert.Null(dto.StartedAt);
         Assert.Null(dto.CompletedAt);
-        Assert.True(dto.CreatedAt <= DateTime.UtcNow);
+        // The mapper's contract is that it copies the aggregate's own timestamp; comparing it
+        // to a freshly read DateTime.UtcNow measured the wall clock instead of the mapping,
+        // and flipped under parallel load.
+        Assert.Equal(task.CreatedAt, dto.CreatedAt);
     }
 
     [Fact]

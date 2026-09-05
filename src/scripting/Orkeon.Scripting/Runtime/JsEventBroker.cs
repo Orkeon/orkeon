@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Runtime;
 /// and topics are created lazily by name and shared across all agents in the crew.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of EventBroker in Typings/events.d.ts; that declaration is the contract scripts read.
 public sealed class JsEventBroker
 {
     private readonly Engine _engine;

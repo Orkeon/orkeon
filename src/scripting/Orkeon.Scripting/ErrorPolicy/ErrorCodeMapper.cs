@@ -9,19 +9,45 @@ namespace Orkeon.Scripting.ErrorPolicy;
 /// </summary>
 public static class ErrorCodeMapper
 {
-#pragma warning disable CS1591
+    /// <summary>Provider refused the call for rate limiting (HTTP 429).</summary>
     public const string CodeRateLimit = "rate_limit";
+
+    /// <summary>The call exceeded its deadline without being cancelled by the caller.</summary>
     public const string CodeTimeout = "timeout";
+
+    /// <summary>Transport failure reaching a remote endpoint.</summary>
     public const string CodeNetwork = "network";
+
+    /// <summary>A tool invocation failed inside its own body.</summary>
     public const string CodeToolError = "tool_error";
+
+    /// <summary>The LLM provider returned an error response.</summary>
     public const string CodeLlmError = "llm_error";
+
+    /// <summary>Agent state was mutated outside a <c>state.with(...)</c> block.</summary>
     public const string CodeStateMutation = "state_mutation";
+
+    /// <summary>A named lock could not be acquired within its deadline.</summary>
     public const string CodeLockTimeout = "lock_timeout";
+
+    /// <summary>Arguments handed to the DSL failed validation.</summary>
     public const string CodeValidation = "validation";
+
+    /// <summary>The addressed agent is not a member of the current crew.</summary>
     public const string CodeAgentNotInCrew = "agent_not_in_crew";
+
+    /// <summary>A <c>queue.pop({ timeout })</c> expired before a value arrived.</summary>
     public const string CodeReceiveTimeout = "receive_timeout";
+
+    /// <summary>Fallback for an exception no other code claims.</summary>
     public const string CodeUnknown = "unknown";
 
+    /// <summary>
+    /// Maps <paramref name="ex"/> (unwrapped through its aggregate layers) to the code
+    /// an <c>onError</c> handler observes as <c>err.code</c>.
+    /// </summary>
+    /// <param name="ex">Exception raised by the failing body.</param>
+    /// <returns>One of the <c>Code*</c> constants; <see cref="CodeUnknown"/> when nothing matches.</returns>
     public static string MapToCode(Exception ex)
     {
         ArgumentNullException.ThrowIfNull(ex);
@@ -39,8 +65,6 @@ public static class ErrorCodeMapper
             _ => CodeUnknown,
         };
     }
-
-#pragma warning restore CS1591
 
     private static Exception Unwrap(Exception ex)
     {

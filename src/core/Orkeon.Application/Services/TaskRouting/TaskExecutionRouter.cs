@@ -16,18 +16,28 @@ public partial class TaskExecutionRouter
 {
     private readonly IServiceProvider _serviceProvider;
     private readonly ILogger<TaskExecutionRouter> _logger;
+    private readonly TimeProvider _timeProvider;
 
     /// <summary>
     /// Initializes a new instance of <see cref="TaskExecutionRouter"/>.
     /// </summary>
+    /// <param name="serviceProvider">Resolves the executors.</param>
+    /// <param name="logger">Routing logger.</param>
+    /// <param name="timeProvider">
+    /// Optional clock driving the per-strategy execution pacing and the reported duration.
+    /// Defaults to <see cref="TimeProvider.System"/>; tests inject a controllable provider so
+    /// a routing assertion never has to wait out the strategy's real delay.
+    /// </param>
     public TaskExecutionRouter(
         IServiceProvider serviceProvider,
-        ILogger<TaskExecutionRouter> logger)
+        ILogger<TaskExecutionRouter> logger,
+        TimeProvider? timeProvider = null)
     {
         ArgumentNullException.ThrowIfNull(serviceProvider);
         _serviceProvider = serviceProvider;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
+        _timeProvider = timeProvider ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -138,12 +148,12 @@ public partial class TaskExecutionRouter
     }
 
 #pragma warning disable S1172 // Parameters reserved for uniform execution strategy signature
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteResearchTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteResearchTaskAsync(
         ICrewTask task,
         ExecutionContext<object> _context,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
+        var startTime = _timeProvider.GetTimestamp();
 
         // Simulate research execution with pattern matching on task properties
         var complexity = task.Description?.Value?.Length switch
@@ -161,87 +171,87 @@ public partial class TaskExecutionRouter
             _ => ResilienceDefaults.DefaultRetryInitialDelay
         };
 
-        await System.Threading.Tasks.Task.Delay(duration, cancellationToken).ConfigureAwait(false);
+        await System.Threading.Tasks.Task.Delay(duration, _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Research,
             $"Research completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteAnalysisTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteAnalysisTaskAsync(
         ICrewTask task,
         ExecutionContext<object> _context,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
-        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(3), cancellationToken).ConfigureAwait(false);
+        var startTime = _timeProvider.GetTimestamp();
+        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(3), _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Analysis,
             $"Analysis completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteWritingTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteWritingTaskAsync(
         ICrewTask task,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
-        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(4), cancellationToken).ConfigureAwait(false);
+        var startTime = _timeProvider.GetTimestamp();
+        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(4), _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Writing,
             $"Writing completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteCodingTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteCodingTaskAsync(
         ICrewTask task,
         ExecutionContext<object> _context,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
-        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(6), cancellationToken).ConfigureAwait(false);
+        var startTime = _timeProvider.GetTimestamp();
+        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(6), _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Coding,
             $"Coding completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteReviewTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteReviewTaskAsync(
         ICrewTask task,
         ExecutionContext<object> _context,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
-        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(2), cancellationToken).ConfigureAwait(false);
+        var startTime = _timeProvider.GetTimestamp();
+        await System.Threading.Tasks.Task.Delay(TimeSpan.FromSeconds(2), _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Review,
             $"Review completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 
-    private static async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteGenericTaskAsync(
+    private async System.Threading.Tasks.Task<TaskExecutionResult> ExecuteGenericTaskAsync(
         ICrewTask task,
         ExecutionContext<object> _context,
         CancellationToken cancellationToken)
     {
-        var startTime = DateTime.UtcNow;
-        await System.Threading.Tasks.Task.Delay(ResilienceDefaults.DefaultRetryInitialDelay, cancellationToken).ConfigureAwait(false);
+        var startTime = _timeProvider.GetTimestamp();
+        await System.Threading.Tasks.Task.Delay(ResilienceDefaults.DefaultRetryInitialDelay, _timeProvider, cancellationToken).ConfigureAwait(false);
 
         return TaskExecutionResult.CreateSuccess(
             task.TaskId,
             TaskExecutionStrategy.Generic,
             $"Generic execution completed for: {task.Description?.Value}",
-            DateTime.UtcNow - startTime);
+            _timeProvider.GetElapsedTime(startTime));
     }
 #pragma warning restore S1172
 

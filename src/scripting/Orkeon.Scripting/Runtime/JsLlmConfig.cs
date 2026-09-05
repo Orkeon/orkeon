@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Runtime;
 /// downstream resolution) and exposes <c>with({...})</c> for partial overrides.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of LlmConfig in Typings/llm.d.ts; that declaration is the contract scripts read.
 public sealed class JsLlmConfig
 {
     public string provider { get; }

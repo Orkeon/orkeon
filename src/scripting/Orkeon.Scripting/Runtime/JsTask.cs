@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Runtime;
 /// (assigned agent, JSON-schema expectations, task-scoped tool, dependency tasks).
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of Task in Typings/task.d.ts; that declaration is the contract scripts read.
 public sealed class JsTask
 {
     public string name { get; }

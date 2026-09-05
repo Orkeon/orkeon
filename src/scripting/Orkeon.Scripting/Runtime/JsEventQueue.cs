@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Runtime;
 /// Type-erased in V1 (holds <see cref="JsValue"/> instances directly).
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of EventQueue in Typings/events.d.ts; that declaration is the contract scripts read.
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1711:Identifiers should not have incorrect suffix", Justification = "The type is the JS-surface point-to-point queue exposed to scripts as ctx.events.queue(name); the 'Queue' suffix mirrors the JS API name and accurately describes its FIFO semantics.")]
 public sealed class JsEventQueue
 {

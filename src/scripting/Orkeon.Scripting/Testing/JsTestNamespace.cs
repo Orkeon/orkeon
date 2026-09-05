@@ -10,15 +10,20 @@ namespace Orkeon.Scripting.Testing;
 /// (<c>test.assertLlmCalled</c>, <c>test.assertToolCalled</c>).
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
 public sealed class JsTestNamespace
 {
+    /// <summary>Provider the runtime binds in place of a real one; records every call it serves.</summary>
     public MockLlmProvider Llm { get; }
+
     private readonly Dictionary<string, MockTool> _tools = new(StringComparer.Ordinal);
 
+    /// <summary>Script handle on <see cref="Llm"/>: <c>test.mockLlm.when(matcher).respond(value)</c>.</summary>
     public JsMockLlmHandle mockLlm { get; }
+
+    /// <summary>Script factory returning the handle for a named mock tool, creating it on first use.</summary>
     public Func<string, JsMockToolHandle> mockTool { get; }
 
+    /// <summary>Creates an empty namespace with a fresh mock provider and no registered tools.</summary>
     public JsTestNamespace()
     {
         Llm = new MockLlmProvider();
@@ -34,6 +39,11 @@ public sealed class JsTestNamespace
     /// <summary>Returns the mock tool registered for <paramref name="name"/>.</summary>
     public MockTool? GetMockTool(string name) => _tools.TryGetValue(name, out var t) ? t : null;
 
+    /// <summary>
+    /// Asserts the mock provider was called: <c>{ times }</c> pins an exact count, <c>{ with }</c>
+    /// keeps only calls whose prompt contains that text; with neither, at least one call is required.
+    /// Throws <see cref="AssertionException"/> when the expectation fails.
+    /// </summary>
     public Action<JsValue?> assertLlmCalled => options =>
     {
         var (times, with) = ParseAssertOptions(options);
@@ -46,6 +56,11 @@ public sealed class JsTestNamespace
             throw new AssertionException("assertLlmCalled: expected at least one call but none were observed.");
     };
 
+    /// <summary>
+    /// Asserts the mock tool registered under the given name was called, with the same
+    /// <c>{ times }</c> semantics as <see cref="assertLlmCalled"/>. Throws
+    /// <see cref="AssertionException"/> when the tool is unknown or the count does not match.
+    /// </summary>
     public Action<string, JsValue?> assertToolCalled => (name, options) =>
     {
         if (!_tools.TryGetValue(name, out var tool))
@@ -70,10 +85,18 @@ public sealed class JsTestNamespace
     }
 }
 
+/// <summary>
+/// Script handle exposed as <c>test.mockLlm</c>; opens an expectation on the mock provider.
+/// </summary>
 public sealed class JsMockLlmHandle
 {
     private readonly MockLlmProvider _provider;
     internal JsMockLlmHandle(MockLlmProvider provider) { _provider = provider; }
+
+    /// <summary>
+    /// Starts an expectation for prompts matching <paramref name="matcher"/>: a string to
+    /// look for, or <c>{ prompt: string | RegExp }</c>. Complete it with <c>.respond(...)</c>.
+    /// </summary>
     public JsMockLlmExpectationBuilder when(JsValue matcher) => new(_provider, matcher);
 }
 
@@ -86,6 +109,10 @@ public sealed class JsMockLlmExpectationBuilder
     private readonly JsValue _matcher;
     internal JsMockLlmExpectationBuilder(MockLlmProvider p, JsValue m) { _provider = p; _matcher = m; }
 
+    /// <summary>
+    /// Registers the answer served for the matched prompts: a string, an object carrying a
+    /// <c>content</c> string, or any value (stringified as a last resort).
+    /// </summary>
     public void respond(JsValue response)
     {
         ArgumentNullException.ThrowIfNull(response);
@@ -116,10 +143,18 @@ public sealed class JsMockLlmExpectationBuilder
     }
 }
 
+/// <summary>
+/// Script handle exposed as <c>test.mockTool(name)</c>; configures one mock tool.
+/// </summary>
 public sealed class JsMockToolHandle
 {
     private readonly MockTool _tool;
     internal JsMockToolHandle(MockTool tool) { _tool = tool; }
+
+    /// <summary>
+    /// Starts an expectation for calls whose parameters match <paramref name="matcher"/>
+    /// (an object compared key by key). Complete it with <c>.respond(...)</c>.
+    /// </summary>
     public JsMockToolExpectationBuilder when(JsValue matcher) => new(_tool, matcher);
 
     /// <summary>Configures the default tool response.</summary>
@@ -139,6 +174,7 @@ public sealed class JsMockToolExpectationBuilder
     private readonly JsValue _matcher;
     internal JsMockToolExpectationBuilder(MockTool t, JsValue m) { _tool = t; _matcher = m; }
 
+    /// <summary>Registers the value the tool returns for the matched calls.</summary>
     public void respond(JsValue response)
     {
         ArgumentNullException.ThrowIfNull(response);
@@ -159,13 +195,20 @@ public sealed class JsMockToolExpectationBuilder
     }
 }
 
+/// <summary>
+/// Raised by the <c>test.assert*</c> helpers when an expectation is not met. Surfaces to the
+/// script as a plain error, and to a .NET host as the failure of the scripted assertion.
+/// </summary>
 [Serializable]
 public sealed class AssertionException : Exception
 {
+    /// <summary>Creates an assertion failure carrying <paramref name="message"/>.</summary>
     public AssertionException(string message) : base(message) { }
 
+    /// <summary>Creates an assertion failure with the default message.</summary>
     public AssertionException() { }
 
+    /// <summary>Creates an assertion failure wrapping <paramref name="innerException"/>.</summary>
     public AssertionException(string message, Exception innerException) : base(message, innerException) { }
 
 #pragma warning disable SYSLIB0051 // Required by S3925 ISerializable pattern
@@ -173,5 +216,4 @@ public sealed class AssertionException : Exception
         : base(info, context) { }
 #pragma warning restore SYSLIB0051
 }
-#pragma warning restore CS1591
 #pragma warning restore IDE1006

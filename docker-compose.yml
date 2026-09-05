@@ -14,7 +14,10 @@ services:
       - ./data:/app/data
 
   ollama:
-    image: ollama/ollama:latest
+    # Pinned, not :latest - dependabot's docker ecosystem (declared for / and /deploy)
+    # can only propose an upgrade against a concrete tag, and a local model server that
+    # changes under the developer is a debugging trap.
+    image: ollama/ollama:0.33.3
     ports:
       - "11434:11434"
     volumes:

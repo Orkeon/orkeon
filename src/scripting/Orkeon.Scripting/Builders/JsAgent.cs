@@ -9,7 +9,6 @@ namespace Orkeon.Scripting.Builders;
 /// <c>crew.run</c>; that wiring lands in SCR-04 and SCR-08.
 /// </summary>
 #pragma warning disable IDE1006 // Property names match the JS surface
-#pragma warning disable CS1591
 public sealed class JsAgent
 {
     /// <summary>Human-readable name supplied by the script (<c>agentBuilder().name(...)</c>).</summary>
@@ -46,5 +45,4 @@ public sealed class JsAgent
         Builder = builder;
     }
 }
-#pragma warning restore CS1591
 #pragma warning restore IDE1006

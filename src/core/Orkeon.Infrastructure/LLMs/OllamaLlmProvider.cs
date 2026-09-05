@@ -46,6 +46,15 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
     public override string Name => "ollama";
 
     /// <summary>
+    /// Ollama is a local, unauthenticated endpoint: it has no API key to be missing, and no
+    /// call in this class guards on one. Declaring that here is what keeps
+    /// <see cref="HttpLlmProviderBase.SupportsStreaming"/> honest in BOTH directions — the
+    /// base withholds the capability from a provider with no credentials, and Ollama has none
+    /// to withhold.
+    /// </summary>
+    protected override bool RequiresApiKey => false;
+
+    /// <summary>
     /// Ollama's <c>format</c> field accepts a full JSON Schema and <c>think</c> takes a boolean
     /// or an effort level, both on <c>/api/generate</c>. Vision goes through
     /// <c>/api/chat</c>, which takes a base64 <c>images</c> array rather than OpenAI-style

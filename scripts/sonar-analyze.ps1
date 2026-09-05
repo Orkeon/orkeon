@@ -7,7 +7,7 @@
     Performs a full SonarQube analysis with code coverage, enforces the
     (blocking) Quality Gate and generates a Markdown report of the results.
 
-    Quality Gate (chantier R5.4 - BLOCKING): the script provisions an
+    Quality Gate (R5.4 work package - BLOCKING): the script provisions an
     idempotent "Orkeon Transitional" Quality Gate with transitional thresholds
     (see $QualityGateConditions below and docs/guides/quality-gate.md for the
     hardening trajectory), binds it to the project, runs the analysis with
@@ -38,7 +38,7 @@ $ErrorActionPreference = "Stop"
 # ── Configuration ─────────────────────────────────────────────────────────────
 $SonarHost      = $env:SONAR_HOST_URL ?? "http://localhost:9000"
 # Project key renamed to "Orkeon" (2026-08-17, PUB-01 follow-up — historical
-# pre-rename key retired). This supersedes QCM 2026-06-11 and resets the
+# pre-rename key retired). This supersedes the 2026-06-11 decision and resets the
 # server-side analysis history; set SONAR_PROJECT_KEY to the old key to keep
 # browsing the old project on the self-hosted instance.
 $ProjectKey     = $env:SONAR_PROJECT_KEY ?? "Orkeon"
@@ -55,7 +55,7 @@ $SonarPropsBackup = $null
 $SonarQubeWaitTimeout = 300  # 5 minutes
 $CeTaskWaitTimeout    = 300  # 5 minutes
 
-# ── Quality Gate (R5.4 — « assouplir puis durcir », QCM 2026-06-11) ───────────
+# ── Quality Gate (R5.4 — "loosen then tighten", decision 2026-06-11) ──────────
 # The gate is BLOCKING: the analysis runs with sonar.qualitygate.wait=true and
 # the script exits non-zero when the gate is FAILED.
 # Single source of truth for the thresholds: the table below, mirrored in
@@ -75,7 +75,7 @@ $QualityGateConditions = @(
     @{ Metric = "new_maintainability_rating";     Op = "GT"; Error = "1" }
     # already met (0.56%) — kept (3%)
     @{ Metric = "new_duplicated_lines_density";   Op = "GT"; Error = "3" }
-    # transitional 0 = neutralised, stays visible (final 100) — until the 9 inherited hotspots are reviewed (security remediation, fiche 07)
+    # transitional 0 = neutralised, stays visible (final 100) — until the 9 inherited hotspots are reviewed (security remediation, sheet 07)
     @{ Metric = "new_security_hotspots_reviewed"; Op = "LT"; Error = "0" }
 )
 $script:ScannerEndExitCode = 0
@@ -301,9 +301,9 @@ function Wait-ForCeTask {
     Log-Warn "CE task did not complete within ${CeTaskWaitTimeout}s - report may be incomplete"
 }
 
-# ── Quality Gate provisioning (R5.4 — « assouplir puis durcir ») ──────────────
-# Provisions the transitional Quality Gate decided by the maintainer (QCM
-# 2026-06-11) and binds it to the project. Idempotent: existing conditions are
+# ── Quality Gate provisioning (R5.4 — "loosen then tighten") ──────────────────
+# Provisions the transitional Quality Gate decided by the maintainer
+# (2026-06-11) and binds it to the project. Idempotent: existing conditions are
 # updated only when their threshold differs from $QualityGateConditions.
 function Initialize-QualityGate {
     Log-Info "Provisioning Quality Gate '$QualityGateName' (transitional thresholds - R5.4)..."
@@ -478,15 +478,15 @@ function New-MarkdownReport {
     $qgIcon = switch ($qgStatus) { "OK" { "✅" } "ERROR" { "❌" } default { "❓" } }
 
     $sb = [System.Text.StringBuilder]::new()
-    [void]$sb.AppendLine("# Rapport d'Analyse SonarQube — Orkeon")
+    [void]$sb.AppendLine("# SonarQube Analysis Report — Orkeon")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("**Date** : ${reportDate}  |  **Dashboard** : [Ouvrir SonarQube](${SonarHost}/dashboard?id=${ProjectKey})")
+    [void]$sb.AppendLine("**Date**: ${reportDate}  |  **Dashboard**: [Open SonarQube](${SonarHost}/dashboard?id=${ProjectKey})")
     [void]$sb.AppendLine("")
     [void]$sb.AppendLine("---")
     [void]$sb.AppendLine("")
     [void]$sb.AppendLine("## Quality Gate : ${qgIcon} ${qgStatus}")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Condition | Statut | Valeur | Seuil |")
+    [void]$sb.AppendLine("| Condition | Status | Value | Threshold |")
     [void]$sb.AppendLine("|-----------|--------|--------|-------|")
 
     if ($qgResponse.projectStatus.conditions) {
@@ -496,45 +496,45 @@ function New-MarkdownReport {
             [void]$sb.AppendLine("| $($cond.metricKey) | $condIcon $($cond.status) | $($cond.actualValue) | $threshold |")
         }
     } else {
-        [void]$sb.AppendLine("| _Aucune condition disponible_ | - | - | - |")
+        [void]$sb.AppendLine("| _No condition available_ | - | - | - |")
     }
 
     # ── Global Metrics ──
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Métriques globales")
+    [void]$sb.AppendLine("## Global metrics")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Métrique | Valeur |")
+    [void]$sb.AppendLine("| Metric | Value |")
     [void]$sb.AppendLine("|----------|--------|")
 
     if ($measuresResponse) {
-        [void]$sb.AppendLine("| Lignes de code | $(Get-Metric 'ncloc') |")
+        [void]$sb.AppendLine("| Lines of code | $(Get-Metric 'ncloc') |")
         [void]$sb.AppendLine("| Bugs | $(Get-Metric 'bugs') |")
-        [void]$sb.AppendLine("| Vulnérabilités | $(Get-Metric 'vulnerabilities') |")
+        [void]$sb.AppendLine("| Vulnerabilities | $(Get-Metric 'vulnerabilities') |")
         [void]$sb.AppendLine("| Code Smells | $(Get-Metric 'code_smells') |")
-        [void]$sb.AppendLine("| Couverture | $(Get-Metric 'coverage')% |")
+        [void]$sb.AppendLine("| Coverage | $(Get-Metric 'coverage')% |")
         [void]$sb.AppendLine("| Duplication | $(Get-Metric 'duplicated_lines_density')% |")
-        [void]$sb.AppendLine("| Dette technique (min) | $(Get-Metric 'sqale_index') |")
-        [void]$sb.AppendLine("| Ratio dette | $(Get-Metric 'sqale_debt_ratio')% |")
-        [void]$sb.AppendLine("| Hotspots sécurité | $(Get-Metric 'security_hotspots') |")
-        [void]$sb.AppendLine("| Complexité cognitive | $(Get-Metric 'cognitive_complexity') |")
+        [void]$sb.AppendLine("| Technical debt (min) | $(Get-Metric 'sqale_index') |")
+        [void]$sb.AppendLine("| Debt ratio | $(Get-Metric 'sqale_debt_ratio')% |")
+        [void]$sb.AppendLine("| Security hotspots | $(Get-Metric 'security_hotspots') |")
+        [void]$sb.AppendLine("| Cognitive complexity | $(Get-Metric 'cognitive_complexity') |")
     }
 
     [void]$sb.AppendLine("")
     [void]$sb.AppendLine("### Ratings")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Catégorie | Rating |")
+    [void]$sb.AppendLine("| Category | Rating |")
     [void]$sb.AppendLine("|-----------|--------|")
     if ($measuresResponse) {
-        [void]$sb.AppendLine("| Fiabilité | $(Get-Rating (Get-Metric 'reliability_rating')) |")
-        [void]$sb.AppendLine("| Sécurité | $(Get-Rating (Get-Metric 'security_rating')) |")
-        [void]$sb.AppendLine("| Maintenabilité | $(Get-Rating (Get-Metric 'sqale_rating')) |")
+        [void]$sb.AppendLine("| Reliability | $(Get-Rating (Get-Metric 'reliability_rating')) |")
+        [void]$sb.AppendLine("| Security | $(Get-Rating (Get-Metric 'security_rating')) |")
+        [void]$sb.AppendLine("| Maintainability | $(Get-Rating (Get-Metric 'sqale_rating')) |")
     }
 
-    # ── Coverage par projet ──
+    # ── Coverage by project ──
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Couverture par projet")
+    [void]$sb.AppendLine("## Coverage by project")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Projet | Lignes | Couverture | Bugs | Code Smells | Duplication | Complexité |")
+    [void]$sb.AppendLine("| Project | Lines | Coverage | Bugs | Code Smells | Duplication | Complexity |")
     [void]$sb.AppendLine("|--------|--------|------------|------|-------------|-------------|------------|")
 
     foreach ($proj in $srcProjects) {
@@ -549,14 +549,14 @@ function New-MarkdownReport {
         [void]$sb.AppendLine("| **${projName}** | ${ncloc} | ${cov}% | ${bugs} | ${smells} | ${dup}% | ${cog} |")
     }
 
-    # ── Coverage par dossier ──
+    # ── Coverage by directory ──
     foreach ($proj in $srcProjects) {
         $projName = Split-Path $proj -Leaf
         $prefix = "$proj/"
         [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("### ${projName} — Couverture par dossier")
+        [void]$sb.AppendLine("### ${projName} — Coverage by directory")
         [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("| Dossier | Lignes | Couverture | Bugs | Code Smells |")
+        [void]$sb.AppendLine("| Directory | Lines | Coverage | Bugs | Code Smells |")
         [void]$sb.AppendLine("|---------|--------|------------|------|-------------|")
 
         if ($dirMetrics -and $dirMetrics.components) {
@@ -574,28 +574,28 @@ function New-MarkdownReport {
 
     # ── Issues summary ──
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Résumé des issues")
+    [void]$sb.AppendLine("## Issue summary")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("### Par sévérité")
+    [void]$sb.AppendLine("### By severity")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Sévérité | Nombre |")
+    [void]$sb.AppendLine("| Severity | Count |")
     [void]$sb.AppendLine("|----------|--------|")
     $sevFacet = $issuesFacets.facets | Where-Object { $_.property -eq "severities" }
     if ($sevFacet) { foreach ($v in $sevFacet.values) { [void]$sb.AppendLine("| $($v.val) | $($v.count) |") } }
 
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("### Par type")
+    [void]$sb.AppendLine("### By type")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Type | Nombre |")
+    [void]$sb.AppendLine("| Type | Count |")
     [void]$sb.AppendLine("|------|--------|")
     $typeFacet = $issuesFacets.facets | Where-Object { $_.property -eq "types" }
     if ($typeFacet) { foreach ($v in $typeFacet.values) { [void]$sb.AppendLine("| $($v.val) | $($v.count) |") } }
 
-    # Issues par projet
+    # Issues by project
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("### Par projet")
+    [void]$sb.AppendLine("### By project")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Projet | Bugs | Vulnérabilités | Code Smells | Total |")
+    [void]$sb.AppendLine("| Project | Bugs | Vulnerabilities | Code Smells | Total |")
     [void]$sb.AppendLine("|--------|------|----------------|-------------|-------|")
 
     foreach ($proj in ($srcProjects + $testProjects)) {
@@ -612,9 +612,9 @@ function New-MarkdownReport {
     # ── All Bugs ──
     $bugList = $allIssues | Where-Object { $_.type -eq "BUG" } | Sort-Object { Get-SeverityOrder $_.severity }
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Tous les Bugs ($($bugList.Count))")
+    [void]$sb.AppendLine("## All bugs ($($bugList.Count))")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| # | Sévérité | Fichier | Ligne | Message |")
+    [void]$sb.AppendLine("| # | Severity | File | Line | Message |")
     [void]$sb.AppendLine("|---|----------|---------|-------|---------|")
     if ($bugList.Count -gt 0) {
         $i = 1
@@ -625,15 +625,15 @@ function New-MarkdownReport {
             $i++
         }
     } else {
-        [void]$sb.AppendLine("| - | _Aucun bug_ | - | - | - |")
+        [void]$sb.AppendLine("| - | _No bug_ | - | - | - |")
     }
 
     # ── All Vulnerabilities ──
     $vulnList = $allIssues | Where-Object { $_.type -eq "VULNERABILITY" } | Sort-Object { Get-SeverityOrder $_.severity }
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Toutes les Vulnérabilités ($($vulnList.Count))")
+    [void]$sb.AppendLine("## All vulnerabilities ($($vulnList.Count))")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| # | Sévérité | Fichier | Ligne | Message |")
+    [void]$sb.AppendLine("| # | Severity | File | Line | Message |")
     [void]$sb.AppendLine("|---|----------|---------|-------|---------|")
     if ($vulnList.Count -gt 0) {
         $i = 1
@@ -644,13 +644,13 @@ function New-MarkdownReport {
             $i++
         }
     } else {
-        [void]$sb.AppendLine("| - | _Aucune vulnérabilité_ | - | - | - |")
+        [void]$sb.AppendLine("| - | _No vulnerability_ | - | - | - |")
     }
 
     # ── All Code Smells by project ──
     $smellList = $allIssues | Where-Object { $_.type -eq "CODE_SMELL" }
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Tous les Code Smells ($($smellList.Count))")
+    [void]$sb.AppendLine("## All code smells ($($smellList.Count))")
 
     foreach ($proj in ($srcProjects + $testProjects)) {
         $projName = Split-Path $proj -Leaf
@@ -661,7 +661,7 @@ function New-MarkdownReport {
         [void]$sb.AppendLine("")
         [void]$sb.AppendLine("### ${projName} ($($projSmells.Count) code smells)")
         [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("| # | Sévérité | Fichier | Ligne | Message | Règle |")
+        [void]$sb.AppendLine("| # | Severity | File | Line | Message | Rule |")
         [void]$sb.AppendLine("|---|----------|---------|-------|---------|-------|")
 
         $i = 1
@@ -677,11 +677,11 @@ function New-MarkdownReport {
     # ── Security hotspots ──
     $hotspotCount = if ($hotspots.hotspots) { $hotspots.hotspots.Count } else { 0 }
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("## Hotspots de sécurité ($hotspotCount)")
+    [void]$sb.AppendLine("## Security hotspots ($hotspotCount)")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("### Par statut")
+    [void]$sb.AppendLine("### By status")
     [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("| Statut | Nombre |")
+    [void]$sb.AppendLine("| Status | Count |")
     [void]$sb.AppendLine("|--------|--------|")
 
     if ($hotspotCount -gt 0) {
@@ -689,9 +689,9 @@ function New-MarkdownReport {
         foreach ($g in $grouped) { [void]$sb.AppendLine("| $($g.Name) | $($g.Count) |") }
 
         [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("### Détail des hotspots")
+        [void]$sb.AppendLine("### Hotspot details")
         [void]$sb.AppendLine("")
-        [void]$sb.AppendLine("| # | Catégorie | Fichier | Ligne | Message |")
+        [void]$sb.AppendLine("| # | Category | File | Line | Message |")
         [void]$sb.AppendLine("|---|-----------|---------|-------|---------|")
         $i = 1
         $sortedHotspots = $hotspots.hotspots | Sort-Object { switch ($_.vulnerabilityProbability) { "HIGH" { 0 } "MEDIUM" { 1 } default { 2 } } }
@@ -702,14 +702,14 @@ function New-MarkdownReport {
             $i++
         }
     } else {
-        [void]$sb.AppendLine("| _Aucun hotspot_ | 0 |")
+        [void]$sb.AppendLine("| _No hotspot_ | 0 |")
     }
 
     # ── Footer ──
-    $timestamp = Get-Date -Format "yyyy-MM-dd à HH:mm:ss"
+    $timestamp = Get-Date -Format "yyyy-MM-dd 'at' HH:mm:ss"
     [void]$sb.AppendLine(""); [void]$sb.AppendLine("---"); [void]$sb.AppendLine("")
-    [void]$sb.AppendLine("_Rapport généré automatiquement par ``scripts/sonar-analyze.ps1`` le ${timestamp}_")
-    [void]$sb.AppendLine("_Total : $($allIssues.Count) issues | Dashboard : ${SonarHost}/dashboard?id=${ProjectKey}_")
+    [void]$sb.AppendLine("_Report generated automatically by ``scripts/sonar-analyze.ps1`` on ${timestamp}_")
+    [void]$sb.AppendLine("_Total: $($allIssues.Count) issues | Dashboard: ${SonarHost}/dashboard?id=${ProjectKey}_")
 
     $sb.ToString() | Out-File -FilePath $reportFile -Encoding utf8
     Log-Success "Report generated: $reportFile ($($allIssues.Count) issues)"

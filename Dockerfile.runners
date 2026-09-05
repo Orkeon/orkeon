@@ -106,7 +106,7 @@
 # ships 10.0.3xx. This matters: Orkeon.Domain runs a source generator
 # (Orkeon.Generators) whose partial-method output only matches under that SDK
 # band — an older preview SDK leaves them unimplemented (CS8795).
-FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1ffd2a92ae84c1291bc1b6887501f8af98e6331e7af6d4c8d37168c5e87a64c AS build
 WORKDIR /src
 
 # Central build/version/package config inherited by both src/ and examples/,
@@ -186,7 +186,7 @@ RUN ESBUILD_VERSION="$(grep -A1 '"node_modules/esbuild"' esbuild-lock.json \
 RUN chmod -R a+rX /app/runners /app/esbuild-bin
 
 # ---- Stage 2: runtime --------------------------------------------------------
-FROM mcr.microsoft.com/dotnet/runtime:10.0 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:a365ce6a50b09176855d085c69da3fc1204a48432e36087e9a208f6e5860e235 AS runtime
 WORKDIR /app
 
 # zsh: interactive shell for `ORKEON_RUNNER=shell` sessions. gosu: lets the

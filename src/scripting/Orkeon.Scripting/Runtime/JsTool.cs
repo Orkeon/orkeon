@@ -34,15 +34,22 @@ namespace Orkeon.Scripting.Runtime;
 /// </list>
 /// </remarks>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // Suppresses only the camelCase JS mirror of Tool in Typings/tool.d.ts; the CLR-facing ITool members below carry their own docs.
 // CA1708: the lowercase name/description/execute members are the deliberate JS mirror
 // (Jint member resolution is ordinal); the PascalCase members are the CLR contract.
 #pragma warning disable CA1708
 public sealed class JsTool : ITool
 {
+    /// <inheritdoc />
     public string Name { get; }
+
+    /// <inheritdoc />
     public string Description { get; }
+
+    /// <inheritdoc />
     public ToolSchema Schema { get; }
+
+    /// <inheritdoc />
     public ToolAccess Access { get; }
 
     /// <summary>Whether <c>.withSchema(...)</c> was called on the builder.</summary>
@@ -81,6 +88,7 @@ public sealed class JsTool : ITool
 
     // ---- Pipeline-facing members ----
 
+    /// <inheritdoc />
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any failure of the user-supplied JS execute callback (Jint JavaScriptException or CLR error) is converted to an unsuccessful ToolCallResponse carrying the message, so a buggy script tool cannot crash the host.")]
     public Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
@@ -120,6 +128,7 @@ public sealed class JsTool : ITool
         }
     }
 
+    /// <inheritdoc />
     public async Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
     {
         Dictionary<string, object?> parameters;
@@ -141,6 +150,7 @@ public sealed class JsTool : ITool
             : ToolResult.CreateError(response.Error ?? "Tool execution failed.");
     }
 
+    /// <inheritdoc />
     public bool ValidateInput(string input)
     {
         if (string.IsNullOrWhiteSpace(input)) return true;

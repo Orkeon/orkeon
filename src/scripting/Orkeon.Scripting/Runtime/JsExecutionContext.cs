@@ -14,7 +14,7 @@ namespace Orkeon.Scripting.Runtime;
 /// them without runtime errors at the API surface.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of ExecutionContext/MemoryScope/Logger in Typings/context.d.ts; that declaration is the contract scripts read.
 public class JsExecutionContext
 {
     private readonly Engine _engine;

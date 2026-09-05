@@ -25,7 +25,7 @@ Orkeon.Application.Agent.AgentWorkloadInfo.Deconstruct(out string! AgentId, out 
 Orkeon.Application.Agent.AgentWorkloadInfo.SuccessRate.get -> double
 Orkeon.Application.Agent.AgentWorkloadInfo.SuccessRate.init -> void
 Orkeon.Application.Agent.AgentWorkloadTracker
-Orkeon.Application.Agent.AgentWorkloadTracker.AgentWorkloadTracker(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentWorkloadTracker!>? logger = null, System.TimeSpan? metricRetentionPeriod = null) -> void
+Orkeon.Application.Agent.AgentWorkloadTracker.AgentWorkloadTracker(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentWorkloadTracker!>? logger = null, System.TimeSpan? metricRetentionPeriod = null, System.TimeProvider? clock = null) -> void
 Orkeon.Application.Agent.AgentWorkloadTracker.GetAllWorkloads() -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Application.Agent.AgentWorkloadInfo!>!
 Orkeon.Application.Agent.AgentWorkloadTracker.GetWorkloadInfo(string! agentId) -> Orkeon.Application.Agent.AgentWorkloadInfo!
 Orkeon.Application.Agent.AgentWorkloadTracker.RecordTaskCompleted(string! agentId, string! taskId, System.TimeSpan executionTime, bool success) -> void
@@ -5815,7 +5815,7 @@ Orkeon.Application.Services.TaskRouting.TaskExecutionResult.TaskId.init -> void
 Orkeon.Application.Services.TaskRouting.TaskExecutionRouter
 Orkeon.Application.Services.TaskRouting.TaskExecutionRouter.GetExecutor<TExecutor>(System.Type! taskType, System.Type! contextType, System.Type! resultType) -> TExecutor?
 Orkeon.Application.Services.TaskRouting.TaskExecutionRouter.RouteAndExecuteAsync(Orkeon.Domain.Task.ICrewTask! task, Orkeon.Application.Execution.ExecutionContext<object!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Services.TaskRouting.TaskExecutionResult!>!
-Orkeon.Application.Services.TaskRouting.TaskExecutionRouter.TaskExecutionRouter(System.IServiceProvider! serviceProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.TaskRouting.TaskExecutionRouter!>! logger) -> void
+Orkeon.Application.Services.TaskRouting.TaskExecutionRouter.TaskExecutionRouter(System.IServiceProvider! serviceProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.TaskRouting.TaskExecutionRouter!>! logger, System.TimeProvider? timeProvider = null) -> void
 Orkeon.Application.Services.TaskRouting.TaskExecutionStrategy
 Orkeon.Application.Services.TaskRouting.TaskExecutionStrategy.Analysis = 1 -> Orkeon.Application.Services.TaskRouting.TaskExecutionStrategy
 Orkeon.Application.Services.TaskRouting.TaskExecutionStrategy.Coding = 3 -> Orkeon.Application.Services.TaskRouting.TaskExecutionStrategy

@@ -3490,6 +3490,7 @@ override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.DefaultBaseUrl.get ->
 override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.DefaultModel.get -> string!
 override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
 override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.IsConfigured.get -> bool
 override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.AzureOpenAILlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
@@ -3546,6 +3547,7 @@ override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.CreateErrorResponseAsync(S
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.OllamaLlmProvider.RequiresApiKey.get -> bool
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultModel.get -> string!
@@ -3883,6 +3885,7 @@ static Orkeon.Infrastructure.Flows.Visualization.GraphEdge.operator ==(Orkeon.In
 static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator !=(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
 static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator ==(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
 static Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.RequestInputAsync(Orkeon.Domain.HumanInput.ValueObjects.HumanInputRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.NotConfiguredForStreaming(string! providerDisplayName) -> System.Net.Http.HttpRequestException!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadNdjsonStreamAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadSseStreamAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadStreamLinesAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
@@ -4051,6 +4054,8 @@ virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.CreateErrorResponseA
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.CreateHttpClient(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? requestConfig = null) -> System.Net.Http.HttpClient!
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.Dispose(bool disposing) -> void
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.IsConfigured.get -> bool
+virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.RequiresApiKey.get -> bool
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.SupportsStreaming.get -> bool
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.AlwaysEmitTopP.get -> bool
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApiEndpointPath.get -> string!

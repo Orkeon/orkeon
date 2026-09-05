@@ -25,7 +25,7 @@ namespace Orkeon.Scripting.Builders;
 /// and <c>example</c> all reach <see cref="ParameterSchema"/>.
 /// </remarks>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of ToolBuilder in Typings/tool.d.ts; that declaration is the contract scripts read.
 public sealed class JsToolBuilder
 {
     private readonly Engine _engine;

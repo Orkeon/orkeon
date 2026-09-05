@@ -28,7 +28,11 @@ public sealed class TaskExecutionRouterTests : IDisposable
     {
         _logger = new TestLogger<TaskExecutionRouter>();
         _serviceProvider = new TestServiceProvider();
-        _router = new TaskExecutionRouter(_serviceProvider, _logger);
+        // The routed strategies pace themselves with Task.Delay(2..10 s). Under the injected
+        // clock those waits fire as soon as the scheduler gets to them, so a routing assertion
+        // no longer sits on the wall clock -- which is what made this class flake, and slow,
+        // when the machine was saturated.
+        _router = new TaskExecutionRouter(_serviceProvider, _logger, new ImmediateDelayTimeProvider());
         _memoryScope = new TestMemoryScope("test-agent");
         _executionContext = ExecutionContext.Create(
             CrewId.Create(),
@@ -437,6 +441,26 @@ public sealed class TaskExecutionRouterTests : IDisposable
     {
         return new ThrowingMockTask();
     }
+
+    #region Test Doubles
+
+    /// <summary>
+    /// A <see cref="TimeProvider"/> that keeps the system clock but collapses every timer
+    /// due time to zero: <c>Task.Delay(delay, provider, ct)</c> completes on the next
+    /// scheduler turn instead of after the strategy's simulated seconds. Cancellation still
+    /// works, because the delay's own token registration is untouched.
+    /// </summary>
+    private sealed class ImmediateDelayTimeProvider : TimeProvider
+    {
+        public override ITimer CreateTimer(TimerCallback callback, object? state, TimeSpan dueTime, TimeSpan period)
+            => TimeProvider.System.CreateTimer(
+                callback,
+                state,
+                dueTime == Timeout.InfiniteTimeSpan ? dueTime : TimeSpan.Zero,
+                period);
+    }
+
+    #endregion
 
     #region Mock Task Classes
 

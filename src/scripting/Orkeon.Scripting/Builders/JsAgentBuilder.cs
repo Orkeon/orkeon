@@ -20,7 +20,7 @@ namespace Orkeon.Scripting.Builders;
 /// <c>orkeon.d.ts</c> roll-up.
 /// </remarks>
 #pragma warning disable IDE1006 // Naming style aligned with the JS surface
-#pragma warning disable CS1591 // Each fluent method documents itself via the .d.ts roll-up
+#pragma warning disable CS1591 // JS-interop mirror of AgentBuilder in Typings/agent.d.ts; that declaration is the contract scripts read.
 public sealed class JsAgentBuilder
 {
     internal string? AgentName { get; private set; }

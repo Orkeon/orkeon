@@ -10,7 +10,7 @@ namespace Orkeon.Scripting.Orchestration;
 /// transition guards, and entry/exit hooks.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of StateMachine in Typings/fsm.d.ts; that declaration is the contract scripts read.
 public sealed class JsStateMachine
 {
     private readonly Engine _engine;

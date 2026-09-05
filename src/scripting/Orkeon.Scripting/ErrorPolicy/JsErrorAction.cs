@@ -24,12 +24,18 @@ public enum JsErrorActionKind
 /// runtime which honours them.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
 public sealed class JsErrorAction
 {
+    /// <summary>Which of the four decisions the handler returned.</summary>
     public JsErrorActionKind kind { get; }
+
+    /// <summary>Delay before the retry, or <see langword="null"/> to retry immediately.</summary>
     public TimeSpan? delay { get; }
+
+    /// <summary>Attempt ceiling: the runtime rethrows once <c>attempt</c> reaches it; <see langword="null"/> leaves retries uncapped.</summary>
     public int? max { get; }
+
+    /// <summary>Substitute value for <see cref="JsErrorActionKind.Fallback"/>; <see langword="null"/> otherwise.</summary>
     public JsValue? fallbackValue { get; }
 
     internal JsErrorAction(JsErrorActionKind kind, TimeSpan? delay = null, int? max = null, JsValue? fallback = null)
@@ -40,5 +46,4 @@ public sealed class JsErrorAction
         fallbackValue = fallback;
     }
 }
-#pragma warning restore CS1591
 #pragma warning restore IDE1006

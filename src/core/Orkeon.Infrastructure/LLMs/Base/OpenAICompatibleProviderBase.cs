@@ -212,9 +212,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         var effectiveConfig = config ?? Config;
 
+        // A missing key used to `yield break` here: the caller got an empty sequence that ended
+        // normally, which the buffered path reports as "API key is required". One provider, two
+        // answers, and the quiet one is the one a script sees. It fails now, like every other
+        // request this provider cannot send.
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-            yield break;
+            throw NotConfiguredForStreaming(ProviderDisplayName);
 #pragma warning restore CS0618
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.

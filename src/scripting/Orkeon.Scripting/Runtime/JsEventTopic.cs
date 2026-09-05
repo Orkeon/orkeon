@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Runtime;
 /// Subscribers are invoked sequentially or in parallel depending on the mode.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of EventTopic/Subscription in Typings/events.d.ts; that declaration is the contract scripts read.
 public sealed class JsEventTopic
 {
     private readonly Engine _engine;

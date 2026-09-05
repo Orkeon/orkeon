@@ -19,8 +19,9 @@ on:
   workflow_dispatch:
 # Least privilege: the workflow default is read-only; `installers` elevates
 # actions: write for the artifact prune above its steps, and `release` elevates
-# contents: write to publish the GitHub Release. Smoke/msi jobs run repo scripts
-# and get no write scope at all.
+# contents: write to publish the GitHub Release plus attestations + id-token:
+# write to sign its build-provenance attestation. Smoke/msi jobs run repo
+# scripts and get no write scope at all.
 permissions: { contents: read }
 jobs:
   installers:
@@ -628,7 +629,11 @@ jobs:
     needs: [ installers, smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi ]
     if: startsWith(github.ref, 'refs/tags/')
     # contents: write — publishes the GitHub Release and its assets.
-    permissions: { contents: write }
+    # attestations + id-token: write — the build-provenance attestation below is
+    # signed through OIDC and recorded in the public transparency log. Both are
+    # granted HERE, at job scope: the workflow default stays contents: read, and
+    # no other job of this file gains a signing identity.
+    permissions: { contents: write, attestations: write, id-token: write }
     steps:
       # Reassemble the full artefact set: release-assets is the complement,
       # the four per-smoke artifacts carry the rest (each archive was
@@ -657,6 +662,25 @@ jobs:
         with:
           name: orkeon-msi
           path: artifacts/installers
+      # Build provenance for every asset the step below publishes. It sits here
+      # because the six downloads above are what materialise the assets, and the
+      # release step is what hands them to the world — between the two is the only
+      # point where the attestation covers exactly what ships. Whoever downloads
+      # an asset verifies it with:
+      #   gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon
+      # which answers "GitHub Actions built this file, from this repository, at
+      # this commit" — a different question from the SHA256SUMS files, which only
+      # attest that the bytes survived the download. The two checksum manifests
+      # are not subjects themselves: every artefact they list is.
+      - name: Attest the release assets (build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-path: |
+            artifacts/installers/*.tar.gz
+            artifacts/installers/*.zip
+            artifacts/installers/*.deb
+            artifacts/installers/*.msi
+
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           files: |
@@ -666,6 +690,15 @@ jobs:
             artifacts/installers/*.msi
             artifacts/installers/SHA256SUMS
             artifacts/installers/SHA256SUMS.msi
+          # A tag carrying a pre-release segment (v1.0.0-rc.3, v1.1.0-beta.1 —
+          # SemVer spells one with a hyphen) is published AS a prerelease and so
+          # never becomes releases/latest. Without this input every tag was created
+          # as a full release, which quietly made the newest rc the download every
+          # visitor lands on — a decision nobody took. A bare v1.0.0 has no hyphen
+          # and becomes the latest release, as it should. The install blocks of
+          # README.md / README.fr.md resolve the newest tag through the releases
+          # API instead of the latest/download/ shortcut, so both cases work.
+          prerelease: ${{ contains(github.ref_name, '-') }}
           # The curated notes are the CHANGELOG section matching this tag; the
           # auto-generated commit list below is the appendix, not the story.
           body: |

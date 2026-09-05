@@ -680,9 +680,11 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
     {
         var effectiveConfig = config ?? Config;
 
+        // Same reason as the OpenAI-compatible path: an empty sequence must mean the model had
+        // nothing to say, never that this provider was never able to ask.
 #pragma warning disable CS0618 // Type or member is obsolete
         if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-            yield break;
+            throw NotConfiguredForStreaming("Anthropic");
 #pragma warning restore CS0618
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.

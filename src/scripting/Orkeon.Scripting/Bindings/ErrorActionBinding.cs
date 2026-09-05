@@ -27,7 +27,7 @@ public static class ErrorActionBinding
 /// <c>skip()</c>, <c>fallback(value)</c>.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop factory for the ErrorAction union typed in Typings/agent.d.ts; the four members it exposes are named on the type summary above.
 // CA1822: methods are intentionally instance members — Jint exposes only instance
 // members of the object handed to engine.SetValue(...). Making them static would
 // remove ErrorAction.fail()/skip()/fallback()/retry() from the script surface.

@@ -13,14 +13,26 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
     private readonly ConcurrentDictionary<string, AgentWorkloadMetrics> _workloadMetrics = new();
     private readonly ILogger<AgentWorkloadTracker> _logger;
     private readonly TimeSpan _metricRetentionPeriod;
+    private readonly TimeProvider _clock;
 
     /// <summary>
     /// Initializes a new instance of <see cref="AgentWorkloadTracker"/>.
     /// </summary>
-    public AgentWorkloadTracker(ILogger<AgentWorkloadTracker>? logger = null, TimeSpan? metricRetentionPeriod = null)
+    /// <param name="logger">Optional logger.</param>
+    /// <param name="metricRetentionPeriod">How long a completed task stays in the statistics.</param>
+    /// <param name="clock">
+    /// Optional clock used to stamp task timestamps and to compute the retention cutoff.
+    /// Defaults to <see cref="TimeProvider.System"/>; tests inject a controllable provider so
+    /// retention can be exercised without real waiting.
+    /// </param>
+    public AgentWorkloadTracker(
+        ILogger<AgentWorkloadTracker>? logger = null,
+        TimeSpan? metricRetentionPeriod = null,
+        TimeProvider? clock = null)
     {
         _logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger<AgentWorkloadTracker>.Instance;
         _metricRetentionPeriod = metricRetentionPeriod ?? MemoryDefaults.DefaultMetricRetentionPeriod;
+        _clock = clock ?? TimeProvider.System;
     }
 
     /// <summary>
@@ -28,7 +40,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
     /// </summary>
     public void RecordTaskStarted(string agentId, string taskId)
     {
-        var metrics = _workloadMetrics.GetOrAdd(agentId, _ => new AgentWorkloadMetrics(agentId));
+        var metrics = _workloadMetrics.GetOrAdd(agentId, id => new AgentWorkloadMetrics(id, _clock));
 
         metrics.IncrementActiveTasks();
         metrics.RecordTaskStart(taskId);
@@ -139,13 +151,15 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
     private sealed class AgentWorkloadMetrics
     {
         private readonly ConcurrentDictionary<string, TaskMetrics> _taskMetrics = new();
+        private readonly TimeProvider _clock;
         private int _activeTaskCount;
 
         /// <summary>
         /// Initializes a new instance of <see cref="AgentWorkloadMetrics"/>.
         /// </summary>
-        public AgentWorkloadMetrics(string agentId)
+        public AgentWorkloadMetrics(string agentId, TimeProvider clock)
         {
+            _clock = clock;
         }
 
         /// <summary>
@@ -169,7 +183,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
         {
             _taskMetrics[taskId] = new TaskMetrics
             {
-                StartTime = DateTime.UtcNow
+                StartTime = _clock.GetUtcNow().UtcDateTime
             };
         }
 
@@ -180,7 +194,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
         {
             if (_taskMetrics.TryGetValue(taskId, out var metrics))
             {
-                metrics.EndTime = DateTime.UtcNow;
+                metrics.EndTime = _clock.GetUtcNow().UtcDateTime;
                 metrics.ExecutionTime = executionTime;
                 metrics.Success = success;
             }
@@ -191,7 +205,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
         /// </summary>
         public WorkloadStatistics GetStatistics(TimeSpan retentionPeriod)
         {
-            var cutoffTime = DateTime.UtcNow - retentionPeriod;
+            var cutoffTime = _clock.GetUtcNow().UtcDateTime - retentionPeriod;
 
             // Get completed tasks within retention period
             var completedTasks = _taskMetrics.Values

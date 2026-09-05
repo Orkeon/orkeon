@@ -30,7 +30,7 @@ export LANG=C.utf8
 #                      fallback when the server is unreachable (implied when
 #                      CI=true, e.g. on GitHub Actions)
 #
-# Quality Gate (chantier R5.4 — BLOCKING):
+# Quality Gate (R5.4 work package — BLOCKING):
 #   The script provisions an idempotent "Orkeon Transitional" Quality Gate
 #   with transitional thresholds (see QUALITY_GATE_CONDITIONS below and
 #   docs/guides/quality-gate.md for the hardening trajectory), binds it to the
@@ -41,7 +41,7 @@ export LANG=C.utf8
 # ── Configuration ─────────────────────────────────────────────────────────────
 SONAR_HOST="${SONAR_HOST_URL:-http://localhost:9000}"
 # Project key renamed to "Orkeon" (2026-08-17, PUB-01 follow-up — historical
-# pre-rename key retired). This supersedes QCM 2026-06-11 and resets the
+# pre-rename key retired). This supersedes the 2026-06-11 decision and resets the
 # server-side analysis history; set SONAR_PROJECT_KEY to the old key to keep
 # browsing the old project on the self-hosted instance.
 SONAR_PROJECT_KEY="${SONAR_PROJECT_KEY:-Orkeon}"
@@ -291,9 +291,9 @@ sonar_gate_api_post() {
     echo "${code:-000}"
 }
 
-# ── Quality Gate provisioning (R5.4 — « assouplir puis durcir ») ──────────────
-# Provisions the transitional Quality Gate decided by the maintainer (QCM
-# 2026-06-11): the gate is BLOCKING immediately, with realistic *transitional*
+# ── Quality Gate provisioning (R5.4 — "loosen then tighten") ──────────────────
+# Provisions the transitional Quality Gate decided by the maintainer
+# (2026-06-11): the gate is BLOCKING immediately, with realistic *transitional*
 # thresholds, then hardened along the documented trajectory.
 #
 # Single source of truth for the thresholds: the table below, mirrored in
@@ -301,7 +301,7 @@ sonar_gate_api_post() {
 # Hardening trajectory and exit criteria: docs/guides/quality-gate.md.
 #
 # Conditions (all on NEW code; op = comparator that triggers the ERROR):
-#   metric                          op  transitional  final  rationale (fiche R5.4)
+#   metric                          op  transitional  final  rationale (R5.4 sheet)
 #   new_coverage                    LT  70            80     new code at 71.3% on 2026-05-31; aligned
 #                                                            with the 70% CI coverage gate (R5.2);
 #                                                            raised to 75 then 80 after R5.5/R5.6
@@ -313,7 +313,7 @@ sonar_gate_api_post() {
 #   new_duplicated_lines_density    GT  3             3      already met (0.56%) — kept
 #   new_security_hotspots_reviewed  LT  0             100    neutralised (always OK, stays visible)
 #                                                            until the 9 inherited hotspots are
-#                                                            reviewed (security remediation, fiche 07)
+#                                                            reviewed (security remediation, sheet 07)
 QUALITY_GATE_CONDITIONS=(
     "new_coverage|LT|70"
     "new_reliability_rating|GT|2"
@@ -407,7 +407,7 @@ provision_quality_gate() {
 
 # ── Enforce the Quality Gate verdict (R5.4 — blocking gate) ──────────────────
 # Reads the gate status from the API (robust complement to
-# sonar.qualitygate.wait, cf. fiche R5.4 alternative) and prints every failed
+# sonar.qualitygate.wait, cf. R5.4 sheet alternative) and prints every failed
 # condition so the verdict is visible in the logs. Returns 1 when the gate is
 # in ERROR (or any non-OK computed status).
 check_quality_gate() {
@@ -520,7 +520,7 @@ generate_markdown_report() {
         esac
     done <<< "$_sln_dirs"
 
-    log_info "  Modules détectés : ${#PROJECTS[@]} source, ${#TEST_PROJECTS[@]} test"
+    log_info "  Detected modules: ${#PROJECTS[@]} source, ${#TEST_PROJECTS[@]} test"
 
     # ══════════════════════════════════════════════════════════════════════════
     # 1. Fetch all data
@@ -574,73 +574,73 @@ generate_markdown_report() {
     [[ "$qg_status" == "ERROR" ]] && qg_icon="❌"
 
     cat > "$report_file" <<HEADER
-# Rapport d'Analyse SonarQube — Orkeon
+# SonarQube Analysis Report — Orkeon
 
-**Date** : ${report_date}  |  **Dashboard** : [Ouvrir SonarQube](${SONAR_HOST}/dashboard?id=${pk})
+**Date**: ${report_date}  |  **Dashboard**: [Open SonarQube](${SONAR_HOST}/dashboard?id=${pk})
 
 ---
 
 ## Quality Gate : ${qg_icon} ${qg_status}
 
-| Condition | Statut | Valeur | Seuil |
+| Condition | Status | Value | Threshold |
 |-----------|--------|--------|-------|
 HEADER
 
     echo "$qg_response" | jq -r '
         .projectStatus.conditions[]? |
         "| \(.metricKey) | \(if .status == "OK" then "✅" elif .status == "ERROR" then "❌" else "⚠️" end) \(.status) | \(.actualValue) | \(.errorThreshold // "-") |"
-    ' >> "$report_file" 2>/dev/null || echo "| _Aucune condition disponible_ | - | - | - |" >> "$report_file"
+    ' >> "$report_file" 2>/dev/null || echo "| _No condition available_ | - | - | - |" >> "$report_file"
 
     # ── Global Metrics ──
     cat >> "$report_file" <<'SECTION'
 
 ---
 
-## Métriques globales
+## Global metrics
 
-| Métrique | Valeur |
+| Metric | Value |
 |----------|--------|
 SECTION
 
     echo "$measures_response" | jq -r "
         $get_metric;
-        \"| Lignes de code | \(get(\"ncloc\")) |\",
+        \"| Lines of code | \(get(\"ncloc\")) |\",
         \"| Bugs | \(get(\"bugs\")) |\",
-        \"| Vulnérabilités | \(get(\"vulnerabilities\")) |\",
+        \"| Vulnerabilities | \(get(\"vulnerabilities\")) |\",
         \"| Code Smells | \(get(\"code_smells\")) |\",
-        \"| Couverture | \(get(\"coverage\"))% |\",
+        \"| Coverage | \(get(\"coverage\"))% |\",
         \"| Duplication | \(get(\"duplicated_lines_density\"))% |\",
-        \"| Dette technique (min) | \(get(\"sqale_index\")) |\",
-        \"| Ratio dette | \(get(\"sqale_debt_ratio\"))% |\",
-        \"| Hotspots sécurité | \(get(\"security_hotspots\")) |\",
-        \"| Complexité cognitive | \(get(\"cognitive_complexity\")) |\"
-    " >> "$report_file" 2>/dev/null || echo "| _Métriques non disponibles_ | - |" >> "$report_file"
+        \"| Technical debt (min) | \(get(\"sqale_index\")) |\",
+        \"| Debt ratio | \(get(\"sqale_debt_ratio\"))% |\",
+        \"| Security hotspots | \(get(\"security_hotspots\")) |\",
+        \"| Cognitive complexity | \(get(\"cognitive_complexity\")) |\"
+    " >> "$report_file" 2>/dev/null || echo "| _Metrics unavailable_ | - |" >> "$report_file"
 
     cat >> "$report_file" <<'SECTION'
 
 ### Ratings
 
-| Catégorie | Rating |
+| Category | Rating |
 |-----------|--------|
 SECTION
 
     echo "$measures_response" | jq -r "
         $get_metric; $rating_map;
-        \"| Fiabilité | \(get(\"reliability_rating\") | rating) |\",
-        \"| Sécurité | \(get(\"security_rating\") | rating) |\",
-        \"| Maintenabilité | \(get(\"sqale_rating\") | rating) |\"
-    " >> "$report_file" 2>/dev/null || echo "| _Ratings non disponibles_ | - |" >> "$report_file"
+        \"| Reliability | \(get(\"reliability_rating\") | rating) |\",
+        \"| Security | \(get(\"security_rating\") | rating) |\",
+        \"| Maintainability | \(get(\"sqale_rating\") | rating) |\"
+    " >> "$report_file" 2>/dev/null || echo "| _Ratings unavailable_ | - |" >> "$report_file"
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 3. Coverage par projet
+    # 3. Coverage by project
     # ══════════════════════════════════════════════════════════════════════════
     cat >> "$report_file" <<'SECTION'
 
 ---
 
-## Couverture par projet
+## Coverage by project
 
-| Projet | Lignes | Couverture | Bugs | Code Smells | Duplication | Complexité |
+| Project | Lines | Coverage | Bugs | Code Smells | Duplication | Complexity |
 |--------|--------|------------|------|-------------|-------------|------------|
 SECTION
 
@@ -654,7 +654,7 @@ SECTION
     done
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 4. Coverage par dossier (source uniquement)
+    # 4. Coverage by directory (sources only)
     # ══════════════════════════════════════════════════════════════════════════
     for proj in "${PROJECTS[@]}"; do
         local proj_name
@@ -662,9 +662,9 @@ SECTION
 
         cat >> "$report_file" <<SECTION
 
-### ${proj_name} — Couverture par dossier
+### ${proj_name} — Coverage by directory
 
-| Dossier | Lignes | Couverture | Bugs | Code Smells |
+| Directory | Lines | Coverage | Bugs | Code Smells |
 |---------|--------|------------|------|-------------|
 SECTION
 
@@ -688,44 +688,44 @@ SECTION
     done
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 5. Issues par sévérité et type (résumé)
+    # 5. Issues by severity and type (summary)
     # ══════════════════════════════════════════════════════════════════════════
     cat >> "$report_file" <<'SECTION'
 
 ---
 
-## Résumé des issues
+## Issue summary
 
-### Par sévérité
+### By severity
 
-| Sévérité | Nombre |
+| Severity | Count |
 |----------|--------|
 SECTION
 
     echo "$issues_facets_response" | jq -r '
         .facets[]? | select(.property == "severities") | .values[]? |
         "| \(.val) | \(.count) |"
-    ' >> "$report_file" 2>/dev/null || echo "| _Données non disponibles_ | - |" >> "$report_file"
+    ' >> "$report_file" 2>/dev/null || echo "| _Data unavailable_ | - |" >> "$report_file"
 
     cat >> "$report_file" <<'SECTION'
 
-### Par type
+### By type
 
-| Type | Nombre |
+| Type | Count |
 |------|--------|
 SECTION
 
     echo "$issues_facets_response" | jq -r '
         .facets[]? | select(.property == "types") | .values[]? |
         "| \(.val) | \(.count) |"
-    ' >> "$report_file" 2>/dev/null || echo "| _Données non disponibles_ | - |" >> "$report_file"
+    ' >> "$report_file" 2>/dev/null || echo "| _Data unavailable_ | - |" >> "$report_file"
 
-    # ── Issues par projet (résumé) ──
+    # ── Issues by project (summary) ──
     cat >> "$report_file" <<'SECTION'
 
-### Par projet
+### By project
 
-| Projet | Bugs | Vulnérabilités | Code Smells | Total |
+| Project | Bugs | Vulnerabilities | Code Smells | Total |
 |--------|------|----------------|-------------|-------|
 SECTION
 
@@ -759,7 +759,7 @@ SECTION
     done
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 6. Toutes les issues — Bugs
+    # 6. All issues — Bugs
     # ══════════════════════════════════════════════════════════════════════════
     local bug_count
     bug_count=$(echo "$all_issues" | jq '[.[] | select(.type == "BUG")] | length')
@@ -768,9 +768,9 @@ SECTION
 
 ---
 
-## Tous les Bugs ($bug_count)
+## All bugs ($bug_count)
 
-| # | Sévérité | Fichier | Ligne | Message |
+| # | Severity | File | Line | Message |
 |---|----------|---------|-------|---------|
 SECTION
 
@@ -781,11 +781,11 @@ SECTION
     ' >> "$report_file" 2>/dev/null
 
     if [[ "$bug_count" -eq 0 ]]; then
-        echo "| - | _Aucun bug_ | - | - | - |" >> "$report_file"
+        echo "| - | _No bug_ | - | - | - |" >> "$report_file"
     fi
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 7. Toutes les issues — Vulnérabilités
+    # 7. All issues — Vulnerabilities
     # ══════════════════════════════════════════════════════════════════════════
     local vuln_count
     vuln_count=$(echo "$all_issues" | jq '[.[] | select(.type == "VULNERABILITY")] | length')
@@ -794,9 +794,9 @@ SECTION
 
 ---
 
-## Toutes les Vulnérabilités ($vuln_count)
+## All vulnerabilities ($vuln_count)
 
-| # | Sévérité | Fichier | Ligne | Message |
+| # | Severity | File | Line | Message |
 |---|----------|---------|-------|---------|
 SECTION
 
@@ -807,11 +807,11 @@ SECTION
     ' >> "$report_file" 2>/dev/null
 
     if [[ "$vuln_count" -eq 0 ]]; then
-        echo "| - | _Aucune vulnérabilité_ | - | - | - |" >> "$report_file"
+        echo "| - | _No vulnerability_ | - | - | - |" >> "$report_file"
     fi
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 8. Tous les Code Smells — par projet
+    # 8. All code smells — by project
     # ══════════════════════════════════════════════════════════════════════════
     local smell_count
     smell_count=$(echo "$all_issues" | jq '[.[] | select(.type == "CODE_SMELL")] | length')
@@ -820,7 +820,7 @@ SECTION
 
 ---
 
-## Tous les Code Smells ($smell_count)
+## All code smells ($smell_count)
 
 SECTION
 
@@ -839,7 +839,7 @@ SECTION
 
 ### ${proj_name} ($proj_smell_count code smells)
 
-| # | Sévérité | Fichier | Ligne | Message | Règle |
+| # | Severity | File | Line | Message | Rule |
 |---|----------|---------|-------|---------|-------|
 SECTION
 
@@ -852,7 +852,7 @@ SECTION
     done
 
     # ══════════════════════════════════════════════════════════════════════════
-    # 9. Hotspots de sécurité
+    # 9. Security hotspots
     # ══════════════════════════════════════════════════════════════════════════
     local hotspot_count
     hotspot_count=$(echo "$hotspots_response" | jq '.hotspots | length' 2>/dev/null || echo "0")
@@ -861,11 +861,11 @@ SECTION
 
 ---
 
-## Hotspots de sécurité ($hotspot_count)
+## Security hotspots ($hotspot_count)
 
-### Par statut
+### By status
 
-| Statut | Nombre |
+| Status | Count |
 |--------|--------|
 SECTION
 
@@ -876,15 +876,15 @@ SECTION
             "| \(.status) | \(.count) |"
         ' >> "$report_file" 2>/dev/null
     else
-        echo "| _Aucun hotspot_ | 0 |" >> "$report_file"
+        echo "| _No hotspot_ | 0 |" >> "$report_file"
     fi
 
     if [[ "$hotspot_count" -gt 0 ]]; then
         cat >> "$report_file" <<'SECTION'
 
-### Détail des hotspots
+### Hotspot details
 
-| # | Catégorie | Fichier | Ligne | Message |
+| # | Category | File | Line | Message |
 |---|-----------|---------|-------|---------|
 SECTION
 
@@ -902,8 +902,8 @@ SECTION
 
 ---
 
-_Rapport généré automatiquement par \`scripts/sonar-analyze.sh\` le $(date '+%Y-%m-%d à %H:%M:%S')_
-_Total : $total_issues issues | Dashboard : ${SONAR_HOST}/dashboard?id=${pk}_
+_Report generated automatically by \`scripts/sonar-analyze.sh\` on $(date '+%Y-%m-%d at %H:%M:%S')_
+_Total: $total_issues issues | Dashboard: ${SONAR_HOST}/dashboard?id=${pk}_
 FOOTER
 
     log_success "Report generated: $report_file ($total_issues issues)"

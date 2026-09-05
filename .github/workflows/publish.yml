@@ -30,6 +30,12 @@ on: { push: { tags: [ 'v*' ] } }
 permissions: { contents: read, packages: write, id-token: write }
 jobs:
   publish:
+    # Restated at job scope so that attestations: write is granted here and
+    # nowhere else. The three others are what the workflow default already
+    # carries: contents to read the tree, packages to push to GitHub Packages,
+    # id-token for the NuGet Trusted Publishing OIDC exchange — which the
+    # provenance signing below reuses rather than asking for a second time.
+    permissions: { contents: read, packages: write, id-token: write, attestations: write }
     runs-on: ubuntu-latest
     env:
       NUGET_USER: ${{ vars.NUGET_USER }}
@@ -98,6 +104,18 @@ jobs:
       # packages' hand-declared external dependencies must match their embedded projects.
       - name: Check package closure
         run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli
+      # Build provenance for the packages: generated once the nupkgs exist and the
+      # closure gate has cleared them, and before the first push sends them
+      # anywhere — so both feeds receive bytes an attestation already covers.
+      # Whoever downloads a package verifies it with:
+      #   gh attestation verify Orkeon.1.0.0-rc.3.nupkg --repo Orkeon/orkeon
+      # NuGet.org shows nothing of this; the attestation lives in this repository,
+      # and it is what turns "the package claims to be Orkeon" into "GitHub Actions
+      # built it from this commit of Orkeon/orkeon".
+      - name: Attest the packages (build provenance)
+        uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
+        with:
+          subject-path: 'artifacts/*.nupkg'
       - run: >
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"

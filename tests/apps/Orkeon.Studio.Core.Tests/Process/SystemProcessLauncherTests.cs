@@ -161,8 +161,17 @@ public sealed class SystemProcessLauncherTests
         Assert.Equal(ProcessTerminationMode.Exited, result.Termination);
     }
 
+    /// <summary>
+    /// Which of the two termination paths wins — the child's own SIGINT handler, or the kill
+    /// that follows the grace period — is a real race against a real shell, and a saturated
+    /// machine loses it: the child can be starved past the grace period and come back
+    /// <see cref="ProcessTerminationMode.Killed"/>. So this test asserts the contract the
+    /// caller actually depends on (the run ended as a cancellation, the child is gone, the
+    /// user-facing code is 130) and leaves the choice between the two paths to
+    /// <c>ProcessTerminatorTests</c>, which decides it deterministically on a fake handle.
+    /// </summary>
     [Fact]
-    public async Task A_cancelled_process_is_signalled_first_and_gets_to_exit_by_itself()
+    public async Task A_cancelled_process_is_stopped_and_reported_as_cancelled()
     {
         Assert.SkipUnless(ShellAvailable, ShellRequired);
 
@@ -184,14 +193,19 @@ public sealed class SystemProcessLauncherTests
 
         var result = await run.WaitAsync(TestTimeout, TestContext.Current.CancellationToken);
 
-        Assert.Equal(ProcessTerminationMode.StoppedBySignal, result.Termination);
-        Assert.Equal(OrkeonExitCodes.Cancelled, result.ExitCode);
-        Assert.Equal(RunOutcome.Cancelled, result.Outcome);
+        // The run is over: an endless loop only ends here because the launcher stopped it.
+        Assert.True(run.IsCompleted);
         Assert.True(result.WasCancelled);
+        Assert.Equal(RunOutcome.Cancelled, result.Outcome);
+        Assert.Equal(OrkeonExitCodes.Cancelled, result.ExitCode);
 
-        // The child really ran its own handler: the raw code is the one the script chose,
-        // not a signal death. This is what the CLI's 130 contract depends on.
-        Assert.Equal(OrkeonExitCodes.Cancelled, result.RawExitCode);
+        // It did not end on its own, and it did start: both are excluded whichever path won.
+        Assert.NotEqual(ProcessTerminationMode.Exited, result.Termination);
+        Assert.NotEqual(ProcessTerminationMode.NotStarted, result.Termination);
+
+        // A graceful stop was delivered — this platform has one — so the launcher has no
+        // failure to report about it.
+        Assert.Null(result.GracefulStopFailureReason);
     }
 
     [Fact]

@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Runtime;
 /// <c>IMemoryProvider</c> implementations.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of MemoryScope/MemoryHit in Typings/context.d.ts; that declaration is the contract scripts read.
 public sealed class JsMemoryScope
 {
     private readonly ConcurrentDictionary<string, object?> _store = new(StringComparer.Ordinal);

@@ -4,7 +4,7 @@ namespace Orkeon.Scripting.Runtime;
 /// Result returned by <c>crew.run(...)</c>. Mirrors the shape declared in <c>crew.d.ts</c>.
 /// </summary>
 #pragma warning disable IDE1006 // Property names match the JS surface
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of CrewResult/TaskResult in Typings/crew.d.ts; that declaration is the contract scripts read.
 public sealed class JsCrewResult
 {
     public string output { get; }

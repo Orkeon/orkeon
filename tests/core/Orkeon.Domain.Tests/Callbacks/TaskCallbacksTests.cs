@@ -223,31 +223,44 @@ public class TaskCallbacksTests
     [Fact]
     public async System.Threading.Tasks.Task ShouldExecuteAsynchronously_WhenCreatingWithAsyncCallbacks()
     {
-        // Arrange
-        var startTime = DateTime.UtcNow;
-        var executionTimes = new List<DateTime>();
+        // Arrange - the invariant is that an async callback is awaited to completion, not that
+        // it took a given number of milliseconds. The previous version slept 2 x 50 ms and
+        // asserted a >= 90 ms wall-clock span, which a loaded machine could round below the
+        // bound; each callback now suspends with a real yield and records its own step, so the
+        // ordering is observed instead of timed.
+        var executionOrder = new List<string>();
+        var startedFinished = false;
+        var progressFinished = false;
 
         var callbacks = TaskCallbacks.Create(
             onStarted: async ctx =>
             {
-                await System.Threading.Tasks.Task.Delay(50);
-                executionTimes.Add(DateTime.UtcNow);
+                // Task.Yield forces a genuine suspension: the returned task cannot be
+                // already-completed, so completing it proves the caller awaited the body.
+                await System.Threading.Tasks.Task.Yield();
+                executionOrder.Add("started");
+                startedFinished = true;
             },
             onProgress: async ctx =>
             {
-                await System.Threading.Tasks.Task.Delay(50);
-                executionTimes.Add(DateTime.UtcNow);
+                await System.Threading.Tasks.Task.Yield();
+                executionOrder.Add("progress");
+                progressFinished = true;
             });
 
-        // Act
+        // Act & Assert - each await must observe its callback's body already finished.
         await callbacks.OnStarted!(CreateTaskStartedContext());
-        await callbacks.OnProgress!(CreateTaskProgressContext());
+        Assert.True(startedFinished);
+        Assert.False(progressFinished);
 
-        // Assert
-        var totalDuration = DateTime.UtcNow - startTime;
-        Assert.True(totalDuration.TotalMilliseconds >= 90); // At least 100ms for sequential execution
-        Assert.Equal(2, executionTimes.Count);
-        Assert.True(executionTimes[1] > executionTimes[0]); // Second callback executed after first
+        await callbacks.OnProgress!(CreateTaskProgressContext());
+        Assert.True(progressFinished);
+
+        // Sequential execution, in the order the caller invoked them.
+        Assert.Collection(
+            executionOrder,
+            first => Assert.Equal("started", first),
+            second => Assert.Equal("progress", second));
     }
 
     #endregion

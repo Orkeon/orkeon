@@ -31,7 +31,7 @@ public sealed record JsGraphConfig(
 /// global. Uses string node ids; <c>START</c> and <c>END</c> are reserved sentinels.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of StateGraph in Typings/graph.d.ts; that declaration is the contract scripts read.
 public sealed class JsStateGraph
 {
     private readonly Engine _engine;

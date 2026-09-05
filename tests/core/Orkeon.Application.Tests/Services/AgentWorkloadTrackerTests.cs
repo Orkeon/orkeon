@@ -47,6 +47,20 @@ public class AgentWorkloadTrackerTests
         }
     }
 
+    /// <summary>
+    /// Manual <see cref="TimeProvider"/> whose UTC now only moves when <see cref="Advance"/>
+    /// is called, so retention cutoffs are computed deterministically instead of racing the
+    /// real clock under CI load.
+    /// </summary>
+    private sealed class ManualTimeProvider : TimeProvider
+    {
+        private DateTimeOffset _utcNow = DateTimeOffset.UtcNow;
+
+        public override DateTimeOffset GetUtcNow() => _utcNow;
+
+        public void Advance(TimeSpan delta) => _utcNow += delta;
+    }
+
     #endregion
 
     #region Constructor Tests
@@ -454,22 +468,26 @@ public class AgentWorkloadTrackerTests
     #region Retention Period Tests
 
     [Fact]
-    public async System.Threading.Tasks.Task ShouldExcludeOldMetrics_WhenUsingGetWorkloadInfo()
+    public void ShouldExcludeOldMetrics_WhenUsingGetWorkloadInfo()
     {
-        // Arrange
-        var retentionPeriod = TimeSpan.FromMilliseconds(100);
-        var tracker = new AgentWorkloadTracker(null, retentionPeriod);
+        // Arrange - a manual clock makes the retention cutoff deterministic. The old version
+        // slept 150 ms against a 100 ms window, so a stall between the two completions aged
+        // the second one out too and the count flipped to 0 under parallel load.
+        var retentionPeriod = TimeSpan.FromMinutes(10);
+        var clock = new ManualTimeProvider();
+        var tracker = new AgentWorkloadTracker(null, retentionPeriod, clock);
         var agentId = "agent1";
 
         // Act
-        // Complete a task
+        // A first task, completed at T0.
         tracker.RecordTaskStarted(agentId, "oldTask");
         tracker.RecordTaskCompleted(agentId, "oldTask", TimeSpan.FromSeconds(1), true);
 
-        // Wait for retention period to pass
-        await System.Threading.Tasks.Task.Delay(150, TestContext.Current.CancellationToken);
+        // The clock jumps past the retention window: the first task is now out of it,
+        // with no real waiting involved.
+        clock.Advance(retentionPeriod + TimeSpan.FromMinutes(1));
 
-        // Complete another task
+        // A second task, completed at T0 + 11 min, well inside the window from there on.
         tracker.RecordTaskStarted(agentId, "newTask");
         tracker.RecordTaskCompleted(agentId, "newTask", TimeSpan.FromSeconds(2), true);
 

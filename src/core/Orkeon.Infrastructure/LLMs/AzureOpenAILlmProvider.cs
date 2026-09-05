@@ -44,6 +44,15 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     protected override string ProviderDisplayName => "Azure OpenAI";
 
     /// <summary>
+    /// Azure has no provider-wide endpoint: a resource URL is as mandatory as the key, and
+    /// <c>ValidateRequiredConfig</c> refuses every call without one. The streaming capability
+    /// must be withheld on the same terms, or the declaration is true about the credential and
+    /// false about the endpoint — and a caller that trusts it gets a stream that ends with
+    /// nothing in it (LLM-00 §8).
+    /// </summary>
+    protected override bool IsConfigured => base.IsConfigured && Config.BaseUrl is not null;
+
+    /// <summary>
     /// Azure serves the OpenAI models through the OpenAI dialect, so it offers the same
     /// surface: Structured Outputs, a reasoning effort hint, and vision.
     /// </summary>

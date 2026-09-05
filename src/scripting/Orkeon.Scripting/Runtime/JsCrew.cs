@@ -26,7 +26,7 @@ namespace Orkeon.Scripting.Runtime;
 /// <c>ICrewOrchestrationService</c> in later tasks.
 /// </remarks>
 #pragma warning disable IDE1006 // Method names match the JS surface
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of Crew in Typings/crew.d.ts; that declaration is the contract scripts read (the CLR-facing RunAsync carries its own doc).
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1708", Justification = "The camelCase JS-surface methods (add/remove/findById…) intentionally mirror their C# PascalCase peers and collide case-only by design — this type is bound into the Jint engine where JS callers require the camelCase names.")]
 public sealed class JsCrew
 {

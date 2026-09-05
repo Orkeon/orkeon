@@ -13,7 +13,7 @@ namespace Orkeon.Scripting.Builders;
 /// supplied by the script and produces a <see cref="JsCrew"/> on <see cref="build"/>.
 /// </summary>
 #pragma warning disable IDE1006 // Method names match the JS surface
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of CrewBuilder in Typings/crew.d.ts; that declaration is the contract scripts read.
 public sealed partial class JsCrewBuilder
 {
     private static readonly HashSet<string> AllowedProcesses = new(StringComparer.Ordinal)

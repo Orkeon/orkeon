@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Runtime;
 /// <c>markHandled()</c> / <c>stopPropagation()</c> / <c>lock(name, fn)</c>.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of PublishedEvent in Typings/events.d.ts; that declaration is the contract scripts read.
 public sealed class JsPublishedEvent
 {
     private readonly Engine _engine;

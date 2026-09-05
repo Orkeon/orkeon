@@ -16,7 +16,7 @@ namespace Orkeon.Scripting.Runtime;
 /// LLM" echo behaviour described in chapter 03 §<c>UndefinedLlm</c>.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of LlmFacade (ctx.llm) in Typings/context.d.ts; that declaration is the contract scripts read.
 public sealed partial class JsLlmFacade
 {
     private const int DefaultActMaxIterations = 10;
@@ -159,8 +159,41 @@ public sealed partial class JsLlmFacade
         var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
         activity?.SetTag("llm.response.tokens", resp.TokensUsed);
         ReportUsage(resp, "complete", prompt);
-        return resp.Content;
+        return RenderAnswer(resp);
     };
+
+    /// <summary>
+    /// Renders one provider answer for the script surface, and it is the ONLY place that
+    /// decides what an unusable provider looks like — <c>complete</c> and <c>stream</c> both
+    /// call it, so the two surfaces cannot drift apart again.
+    /// </summary>
+    /// <remarks>
+    /// A response with no content that carries a provider error is not an empty answer: it is a
+    /// call that never happened, and returning its empty <c>Content</c> handed a script the same
+    /// bytes as a model with nothing to say. It becomes the same
+    /// <c>&lt;undefined-llm:…&gt;</c> marker the missing-provider case already produced, with
+    /// the provider's own sentence inside it, so a script can both see it and read why.
+    /// </remarks>
+    /// <param name="response">The provider's answer.</param>
+    private static string RenderAnswer(LlmResponse response)
+    {
+        if (!string.IsNullOrEmpty(response.Content))
+            return response.Content;
+
+        return ProviderErrorOf(response) is { } error
+            ? $"<undefined-llm:{error}>"
+            : response.Content;
+    }
+
+    /// <summary>The provider's own error sentence, when the response carries one.</summary>
+    private static string? ProviderErrorOf(LlmResponse response) =>
+        response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
+        && value?.ToString() is { Length: > 0 } message
+            ? message
+            : null;
+
+    /// <summary>Metadata key every provider writes its refusal under (<c>LlmResponseMetadata</c>).</summary>
+    private const string ProviderErrorMetadataKey = "error";
 
     public Func<JsValue, JsValue?, Task<JsValue>> chat => async (messages, options) =>
     {
@@ -300,6 +333,11 @@ public sealed partial class JsLlmFacade
     /// <para>A provider without a real SSE path still yields a single full-text chunk, and
     /// the observations still carry that response's usage — the side-channel does not
     /// silently stop working on a non-streaming provider.</para>
+    /// <para>That single-chunk branch is also what an UNCONFIGURED provider now takes: it
+    /// declares <c>SupportsStreaming = false</c> (LLM-00 §8), so the answer a script gets from
+    /// <c>for await</c> is the one <c>complete</c> gives it, rendered by the same
+    /// <see cref="RenderAnswer"/> — an explicit <c>&lt;undefined-llm:…&gt;</c> naming the
+    /// missing credential, never an empty sequence that reads as "the model said nothing".</para>
     /// </remarks>
     private async IAsyncEnumerable<string> StreamCore(
         string prompt, JsValue? options, StreamObservations observations)
@@ -339,7 +377,7 @@ public sealed partial class JsLlmFacade
         }
 
         var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
-        yield return resp.Content;
+        yield return RenderAnswer(resp);
         observations.usage = ToStreamUsage(resp);
         ReportUsage(resp, "stream", prompt);
     }

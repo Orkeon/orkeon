@@ -2,6 +2,35 @@
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
   </PropertyGroup>
+
+  <!-- NuGet vulnerability audit — stated, not inherited.
+
+       These three values were already the effective behaviour, but only as .NET 10 SDK
+       DEFAULTS: nothing in the repository asked for them, so a future SDK that narrowed
+       a default would quietly lower the floor with no diff to review. Writing them down
+       pins the floor to a decision instead of to a toolchain.
+
+       * NuGetAudit=true      — run the audit at restore.
+       * NuGetAuditMode=all   — DIRECT and TRANSITIVE dependencies. Transitive is the half
+                                that matters here: the two live security pins below
+                                (SQLitePCLRaw.lib.e_sqlite3 for CVE-2025-6965, and the
+                                SharpCompress/Snappier floors) exist precisely because a
+                                transitive package was the vulnerable one.
+       * NuGetAuditLevel=low  — report EVERY severity, low included. The repo already acts
+                                on moderate advisories (NU1902, see the SharpCompress note),
+                                and a framework about to go public has no severity it would
+                                rather not hear about.
+
+       Deliberate coupling: an advisory surfaces as an NU19xx WARNING, and CI builds with
+       -warnaserror (.github/workflows/ci.yml), so an advisory FAILS the build. That is the
+       intended contract, not an accident of the ratchet — the fix is to move the pin, never
+       to suppress the code. Local builds keep the warning as a warning, so `dotnet build`
+       stays usable while a pin is being worked out. -->
+  <PropertyGroup>
+    <NuGetAudit>true</NuGetAudit>
+    <NuGetAuditMode>all</NuGetAuditMode>
+    <NuGetAuditLevel>low</NuGetAuditLevel>
+  </PropertyGroup>
   <ItemGroup Label="Microsoft.Extensions">
     <PackageVersion Include="Microsoft.Extensions.Configuration" Version="10.0.11" />
     <PackageVersion Include="Microsoft.Extensions.FileSystemGlobbing" Version="10.0.11" />

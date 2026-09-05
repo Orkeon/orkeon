@@ -56,7 +56,7 @@ public static class LlmNamespaceBinding
 /// plus a lazily resolved <c>default</c>.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of the "llm" namespace declared in Typings/llm.d.ts; that declaration is the contract scripts read.
 public sealed partial class JsLlmNamespace
 {
     private readonly IConfiguration? _config;

@@ -377,9 +377,79 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     }
 
     /// <summary>
-    /// Whether this provider supports streaming. True by default for HTTP-based providers.
+    /// Whether this provider's API needs an API key at all. True for every hosted vendor;
+    /// a provider talking to a local, unauthenticated endpoint (Ollama) overrides it to false.
     /// </summary>
-    public virtual bool SupportsStreaming => true;
+    /// <remarks>
+    /// This is the single fact <see cref="IsConfigured"/> needs from a derived provider, and it
+    /// must agree with that provider's own buffered guard: a provider whose
+    /// <see cref="ILlmProvider.GenerateAsync"/> answers "API key is required" requires one.
+    /// </remarks>
+    protected virtual bool RequiresApiKey => true;
+
+    /// <summary>
+    /// Whether this provider holds what it needs to reach its API. False means every call
+    /// this provider serves is an error response, not an answer.
+    /// </summary>
+    /// <remarks>
+    /// Mirrors exactly the guard the buffered path applies (a non-empty
+    /// <c>LlmConfig.ApiKey</c> when <see cref="RequiresApiKey"/>), so the two paths cannot
+    /// disagree about whether this provider is usable. Deliberately NOT widened to
+    /// <c>LlmConfig.ApiKeySecretName</c>: nothing resolves a secret name into an LLM
+    /// config today, so counting it would restore the very lie this property exists to remove.
+    /// It reads the boot <see cref="Config"/>, not a per-call override, because the streaming
+    /// capability is asked of the provider before any call is built.
+    /// </remarks>
+    protected virtual bool IsConfigured
+    {
+        get
+        {
+#pragma warning disable CS0618 // ApiKey is the field every provider guard reads today.
+            return !RequiresApiKey || !string.IsNullOrEmpty(Config.ApiKey);
+#pragma warning restore CS0618
+        }
+    }
+
+    /// <summary>
+    /// Whether this provider supports streaming.
+    /// </summary>
+    /// <remarks>
+    /// <para>
+    /// This used to be an unconditional <c>true</c>, and it lied: an unconfigured provider
+    /// declared the capability, the caller took the SSE branch, and the branch ended without a
+    /// single chunk — a script's <c>for await</c> completed on silence indistinguishable from a
+    /// model with nothing to say, while the same provider's buffered path returned an explicit
+    /// "API key is required". Two surfaces of one provider answered the absence of configuration
+    /// differently, one of them by saying nothing at all. LLM-02's rule is that a declared
+    /// capability describes what the provider really does, so the declaration now follows
+    /// <see cref="IsConfigured"/>: a provider that cannot call its API cannot stream from it, and
+    /// every caller that branches on this capability takes the buffered path instead — the path
+    /// that speaks.
+    /// </para>
+    /// <para>
+    /// A provider whose transport genuinely has no streaming path overrides this with a constant
+    /// <c>false</c>; one whose credentials arrive by another route overrides
+    /// <see cref="IsConfigured"/>.
+    /// </para>
+    /// </remarks>
+    public virtual bool SupportsStreaming => IsConfigured;
+
+    /// <summary>
+    /// Builds the exception a streaming call must fail with when this provider has no
+    /// credentials, so an unconfigured provider is never the cause of an empty stream.
+    /// </summary>
+    /// <remarks>
+    /// Sibling of <see cref="StreamingRejectionAsync"/> for the failure that happens BEFORE the
+    /// request: same reason (an <c>IAsyncEnumerable&lt;string&gt;</c> has no metadata channel, so
+    /// an empty sequence must mean "the model said nothing" and nothing else), same exception
+    /// type. The status code is deliberately left null — nothing was sent, so no vendor refused
+    /// anything, and readers that separate "refused" from "never reached the API" on
+    /// <see cref="HttpRequestException.StatusCode"/> classify it correctly.
+    /// </remarks>
+    /// <param name="providerDisplayName">Provider name, as the reader sees it.</param>
+    /// <returns>The exception to throw.</returns>
+    protected static HttpRequestException NotConfiguredForStreaming(string providerDisplayName)
+        => new($"{providerDisplayName} API key is required: the request was never sent, so the stream carries nothing. Configure the LLM (run `orkeon init`) before streaming.");
 
     /// <summary>
     /// Generates a streaming response. Override in derived classes for provider-specific SSE parsing.

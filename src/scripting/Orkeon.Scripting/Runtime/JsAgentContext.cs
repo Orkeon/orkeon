@@ -13,7 +13,7 @@ namespace Orkeon.Scripting.Runtime;
 /// the parent <see cref="JsExecutionContext"/> instead.
 /// </summary>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591
+#pragma warning disable CS1591 // JS-interop mirror of AgentContext in Typings/context.d.ts; that declaration is the contract scripts read.
 public sealed class JsAgentContext : JsExecutionContext, IDisposable
 {
     private readonly Engine _engineRef;

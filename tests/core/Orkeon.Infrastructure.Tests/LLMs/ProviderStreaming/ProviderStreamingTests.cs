@@ -37,12 +37,40 @@ public sealed class ProviderStreamingTests : IDisposable
         Assert.Equal(" world", tokens[1]);
     }
 
+    /// <summary>
+    /// LLM-00 §8. This test used to assert <c>Assert.Empty(tokens)</c>, which is how the lie
+    /// survived: a provider with no key declared <c>SupportsStreaming = true</c>, every caller
+    /// branching on that capability took the SSE path, and the path ended without a chunk. A
+    /// script's <c>for await</c> therefore completed on silence while <c>complete</c> on the same
+    /// provider answered "OpenAI API key is required". A capability must describe what the
+    /// provider really does (LLM-02), so it is withheld — and the stream, if called anyway,
+    /// says why instead of saying nothing.
+    /// </summary>
     [Fact]
-    public async Task ShouldYieldNothing_WhenOpenAIGenerateStreamingAsyncEmptyApiKey()
+    public async Task ShouldNotDeclareStreamingAndShouldSayWhy_WhenOpenAIHasNoApiKey()
     {
         using var provider = CreateOpenAIProvider("", HttpStatusCode.OK, apiKey: "");
-        var tokens = await CollectTokens(provider, "test");
-        Assert.Empty(tokens);
+
+        Assert.False(provider.SupportsStreaming);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Contains("API key is required", ex.Message, StringComparison.Ordinal);
+        // Nothing was sent, so nothing was refused: a reader that separates "refused" from
+        // "never reached the API" on the status code must land on the second.
+        Assert.Null(ex.StatusCode);
+    }
+
+    /// <summary>
+    /// The other half of an honest declaration: Ollama is a local, unauthenticated endpoint,
+    /// so having no key is its normal state and it must keep the capability.
+    /// </summary>
+    [Fact]
+    public void ShouldDeclareStreaming_WhenOllamaHasNoApiKeyBecauseItNeedsNone()
+    {
+        using var provider = CreateOllamaProvider("", HttpStatusCode.OK);
+        Assert.True(provider.SupportsStreaming);
     }
 
     /// <summary>
@@ -113,12 +141,19 @@ public sealed class ProviderStreamingTests : IDisposable
         Assert.Equal(" Claude", tokens[1]);
     }
 
+    /// <summary>Anthropic has its own streaming path, so the honest declaration needs its own proof.</summary>
     [Fact]
-    public async Task ShouldYieldNothing_WhenAnthropicGenerateStreamingAsyncEmptyApiKey()
+    public async Task ShouldNotDeclareStreamingAndShouldSayWhy_WhenAnthropicHasNoApiKey()
     {
         using var provider = CreateAnthropicProvider("", HttpStatusCode.OK, apiKey: "");
-        var tokens = await CollectTokens(provider, "test");
-        Assert.Empty(tokens);
+
+        Assert.False(provider.SupportsStreaming);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Contains("API key is required", ex.Message, StringComparison.Ordinal);
+        Assert.Null(ex.StatusCode);
     }
 
     #endregion

@@ -41,10 +41,24 @@
   <!-- The public PackageId equals the wrapped assembly's name, which is also the real
        project's restore name — two projects may not share a restore identity in one
        solution, so the id is applied at pack time only. -->
-  <!-- SmartComponents' contentFiles (the BGE-micro-v2 weights) flow into this project's
-       Content and pack would REDISTRIBUTE them — something this repository deliberately
-       does not do (Go/NoGo 2026-08, blocker 1). Consumers get the weights transitively
-       from the SmartComponents dependency itself; strip them from this package. -->
+  <!-- SmartComponents' contentFiles (the BGE-micro-v2 weights, ~17 MB) flow into this
+       project's Content, so pack would copy them into this LIBRARY package. This target
+       strips them. Behaviour unchanged — only the justification below is corrected.
+
+       The reason is DE-DUPLICATION, not a redistribution ban. This comment used to claim
+       that redistributing those weights was "something this repository deliberately does
+       not do" (Go/NoGo 2026-08, blocker 1). That is not what the repository does. The
+       weights ARE redistributed by the executable artefacts: the `orkeon` and
+       `orkeon-repl` dotnet tool packages carry them at
+       tools/net10.0/any/LocalEmbeddingsModel/default/model.onnx, and the platform
+       installers built from the CLI carry them under libexec/orkeon/LocalEmbeddingsModel/,
+       because Orkeon.Hosting references Orkeon.Tools.Embeddings.Local and the upstream
+       content files follow into the publish output. That is fine: both the wrapper and
+       the model are MIT, and THIRD-PARTY-NOTICES.md sections 1-2 carry the notices.
+
+       What stays true for THIS package: anyone restoring Orkeon.Tools.Embeddings.Local
+       already receives the weights transitively from the SmartComponents dependency, so a
+       second copy here would double a 17 MB download for nothing. Strip them. -->
   <Target Name="OrkeonStripUpstreamContentFromPackage" BeforeTargets="GenerateNuspec">
     <ItemGroup>
       <_PackageFiles Remove="@(_PackageFiles)"

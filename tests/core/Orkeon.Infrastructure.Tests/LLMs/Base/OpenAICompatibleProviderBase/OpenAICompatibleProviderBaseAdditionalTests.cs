@@ -29,22 +29,43 @@ public class OpenAICompatibleProviderBaseAdditionalTests
 
     #region Streaming Tests
 
+    /// <summary>
+    /// An unconfigured provider fails the stream instead of ending it empty (LLM-00 s8).
+    /// </summary>
+    /// <remarks>
+    /// Was <c>ShouldYieldNoTokens_WhenStreamingWithMissingApiKey</c>, asserting
+    /// <c>Assert.Empty(tokens)</c> — the last of the family that pinned the silence, and the
+    /// one that covered the case where nothing is ever sent. The buffered path already said
+    /// "API key is required" out loud; the streaming path returned an empty sequence a caller
+    /// could not tell apart from a model with nothing to say. It now refuses in the open, and
+    /// <c>SupportsStreaming</c> answers false beforehand so a caller that asks is routed to the
+    /// path that speaks rather than made to catch.
+    /// </remarks>
     [Fact]
-    public async Task ShouldYieldNoTokens_WhenStreamingWithMissingApiKey()
+    public async Task ShouldThrowNamingTheMissingCredential_WhenStreamingWithoutAnApiKey()
     {
         // Arrange
         var configWithoutKey = LlmConfig.Create(TestModelName, null);
         using var provider = new TestableOpenAICompatibleProvider(configWithoutKey, _httpClientFactory, _noOpPolicy, _logger);
 
+        // The capability is the first half of the contract: an unusable provider does not
+        // claim to stream, so nothing well-behaved reaches the throw below.
+        Assert.False(provider.SupportsStreaming);
+
         // Act
-        var tokens = new List<string>();
-        await foreach (var token in provider.GenerateStreamingAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken))
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(async () =>
         {
-            tokens.Add(token);
-        }
+            await foreach (var token in provider.GenerateStreamingAsync(
+                TestPrompt, cancellationToken: TestContext.Current.CancellationToken))
+            {
+                // The stream must fail before yielding anything.
+                Assert.Fail($"unexpected token: {token}");
+            }
+        });
 
         // Assert
-        Assert.Empty(tokens);
+        Assert.Null(ex.StatusCode);   // nothing was sent, so no vendor refused anything
+        Assert.Contains("API key is required", ex.Message, StringComparison.Ordinal);
     }
 
     /// <summary>
