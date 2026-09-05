@@ -179,38 +179,41 @@ public class RagIngestTool : IBaseTool
     /// enumerable of values, or a JSON array (the structured tool-calling protocol
     /// hands arrays over as <see cref="JsonElement"/>).
     /// </summary>
-    internal static IReadOnlyList<string> ExtractSourceLocations(object? raw)
+    internal static IReadOnlyList<string> ExtractSourceLocations(object? raw) => raw switch
+    {
+        null => [],
+        string single => SingleLocation(single),
+        JsonElement { ValueKind: JsonValueKind.Array } array => LocationsFromJsonArray(array),
+        JsonElement { ValueKind: JsonValueKind.String } str => SingleLocation(str.GetString()),
+        IEnumerable enumerable => LocationsFromEnumerable(enumerable),
+        _ => SingleLocation(raw.ToString()),
+    };
+
+    /// <summary>A one-location list, empty when the value carries nothing usable.</summary>
+    private static List<string> SingleLocation(string? value)
+        => string.IsNullOrWhiteSpace(value) ? [] : [value];
+
+    private static List<string> LocationsFromJsonArray(JsonElement array)
     {
         var locations = new List<string>();
-        switch (raw)
+        foreach (var item in array.EnumerateArray())
         {
-            case null:
-                break;
-            case string single:
-                if (!string.IsNullOrWhiteSpace(single)) locations.Add(single);
-                break;
-            case JsonElement { ValueKind: JsonValueKind.Array } array:
-                foreach (var item in array.EnumerateArray())
-                {
-                    var value = item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString();
-                    if (!string.IsNullOrWhiteSpace(value)) locations.Add(value!);
-                }
-                break;
-            case JsonElement { ValueKind: JsonValueKind.String } str:
-                var text = str.GetString();
-                if (!string.IsNullOrWhiteSpace(text)) locations.Add(text!);
-                break;
-            case IEnumerable enumerable:
-                foreach (var item in enumerable)
-                {
-                    var value = item?.ToString();
-                    if (!string.IsNullOrWhiteSpace(value)) locations.Add(value!);
-                }
-                break;
-            default:
-                var fallback = raw.ToString();
-                if (!string.IsNullOrWhiteSpace(fallback)) locations.Add(fallback!);
-                break;
+            var value = item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
+                locations.Add(value);
+        }
+
+        return locations;
+    }
+
+    private static List<string> LocationsFromEnumerable(IEnumerable enumerable)
+    {
+        var locations = new List<string>();
+        foreach (var item in enumerable)
+        {
+            var value = item?.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
+                locations.Add(value);
         }
 
         return locations;

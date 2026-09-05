@@ -6,6 +6,7 @@ using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -49,10 +50,12 @@ public sealed class StudioLocalizationSwitchTests
     public void ConfigTab_ReEmitsItsSummary_When_TheCultureChanges()
     {
         var strings = new SwitchableStrings();
-        var tab = new ConfigTabViewModel(
-            new FakeAppSettingsStore(),
-            new FakeDirectoryProbe(),
-            strings: strings);
+        var tab = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+            Strings = strings,
+        });
 
         var raised = new List<string>();
         tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
@@ -119,12 +122,14 @@ public sealed class StudioLocalizationSwitchTests
     public void LaunchTab_ReEmitsItsStatusLines_When_TheCultureChanges()
     {
         var strings = new SwitchableStrings();
-        var tab = new LaunchTabViewModel(
-            targetProbe: new FakeTargetProbe(),
-            directories: new FakeDirectoryProbe(),
-            historyStore: new FakeLaunchHistoryStore(),
-            settingsStore: new FakeAppSettingsStore(),
-            strings: strings);
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            TargetProbe = new FakeTargetProbe(),
+            Directories = new FakeDirectoryProbe(),
+            HistoryStore = new FakeLaunchHistoryStore(),
+            SettingsStore = new FakeAppSettingsStore(),
+            Strings = strings,
+        });
 
         var raised = new List<string>();
         tab.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");

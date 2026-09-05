@@ -30,12 +30,13 @@ public sealed partial class InMemoryRaggableStore : IRaggableStore, IIndexInvali
     private readonly Dictionary<string, List<StatementNode>> _statementsByParent;
     private readonly Dictionary<string, DateTimeOffset> _indexedAtByRoot = new(StringComparer.Ordinal);
     private readonly Lexical.Bm25CodeIndex _bm25 = new();
-    // Coordination primitives (hybrid-search + freshness work, PLAN A3/B1):
-    //  - the RW lock makes searches safe DURING an incremental reindex — the store used
-    //    to be plain Dictionaries mutated in place by AddNodes while a concurrent search
-    //    enumerated them (InvalidOperationException waiting to happen);
-    //  - the dirty set records edited-but-not-reindexed paths (IIndexInvalidation).
-    // Recursion support: query methods call each other (SemanticSearch → QueryAsync).
+    // Coordination primitives for the hybrid-search and freshness work, PLAN A3/B1. The
+    // reader-writer lock makes searches safe DURING an incremental reindex, because the
+    // store used to be plain dictionaries that AddNodes mutated in place while a
+    // concurrent search was still enumerating them, which was an InvalidOperationException
+    // waiting to happen. The dirty set records the paths that were edited but not yet
+    // reindexed, which is what IIndexInvalidation exposes. The lock allows recursion
+    // because query methods call each other, as semantic search does with the graph query.
     private readonly ReaderWriterLockSlim _lock = new(LockRecursionPolicy.SupportsRecursion);
     private readonly HashSet<string> _dirtyPaths = new(StringComparer.Ordinal);
     private Func<string, CancellationToken, Task<ReadOnlyMemory<float>?>>? _queryEmbedder;

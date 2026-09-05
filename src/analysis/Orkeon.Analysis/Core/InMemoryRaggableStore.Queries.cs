@@ -230,11 +230,20 @@ public sealed partial class InMemoryRaggableStore
         }
 
         var fused = Lexical.RankFusion.Fuse(topK, vectorRanking, lexicalRanking);
-        return [.. fused.Select(x => ToHit(
-            x.Id,
-            x.Score,
-            x.Origins == 0b01 ? "vector" : x.Origins == 0b10 ? "bm25" : "hybrid"))];
+        return [.. fused.Select(x => ToHit(x.Id, x.Score, OriginLabel(x.Origins)))];
     }
+
+    /// <summary>
+    /// Names the retrieval source behind a fused hit from the origin bitmask
+    /// <c>RankFusion.Fuse</c> returns: bit 0 is the vector ranking,
+    /// bit 1 the BM25 one, both set means the hit came from each.
+    /// </summary>
+    private static string OriginLabel(int origins) => origins switch
+    {
+        0b01 => "vector",
+        0b10 => "bm25",
+        _ => "hybrid",
+    };
 
     private IReadOnlyList<(string Id, double Score)> ScoreVector(
         ReadOnlyMemory<float> queryVec,

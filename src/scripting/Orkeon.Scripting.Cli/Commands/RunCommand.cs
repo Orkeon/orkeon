@@ -219,8 +219,25 @@ internal static partial class RunCommand
         return ExecuteCoreAsync(options);
     }
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
     private static async Task<int> ExecuteCoreAsync(RunCommandOptions options)
+    {
+        var rejected = await ValidateStreamingOptionsAsync(options).ConfigureAwait(false);
+        if (rejected is not null)
+            return rejected.Value;
+
+        var routed = await TryRouteToSharedRunnerAsync(options).ConfigureAwait(false);
+        if (routed is not null)
+            return routed.Value;
+
+        return await RunProceduralScriptAsync(options).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Vets the streaming options before anything runs, and warns about one that would
+    /// otherwise be ignored in silence. Returns the exit code to report, or <c>null</c>
+    /// when the invocation is coherent and the run may proceed.
+    /// </summary>
+    private static async Task<int?> ValidateStreamingOptionsAsync(RunCommandOptions options)
     {
         // --events accepts exactly one spelling. Any other value used to produce JSONL
         // silently — a caller asking for a format we do not have must hear "no", not receive
@@ -250,6 +267,17 @@ internal static partial class RunCommand
             return Program.ExitScriptError;
         }
 
+        return null;
+    }
+
+    /// <summary>
+    /// Routes everything that is not a procedural <c>.ork.ts</c> script to the shared one-shot
+    /// runner - the diagnostic modes, a crew directory, a YAML crew, and a script that hands
+    /// its crew off - and rejects an invocation that names no crew at all. Returns the exit
+    /// code, or <c>null</c> when the target is a procedural script the caller must run itself.
+    /// </summary>
+    private static async Task<int?> TryRouteToSharedRunnerAsync(RunCommandOptions options)
+    {
         // --list-tools dumps the runtime tool registry and needs no crew definition: it goes
         // straight to the shared runner (same host, same tool set as a real kickoff), so the
         // emitted manifest matches the standard runner byte-for-byte. Handled BEFORE the
@@ -310,6 +338,17 @@ internal static partial class RunCommand
             return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
         }
 
+        return null;
+    }
+
+    /// <summary>
+    /// Runs a procedural <c>.ork.ts</c> script on the scripting host: SIGINT wind-down, the
+    /// optional event stream, and the fault barrier that turns every failure mode into an
+    /// exit code.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level CLI fault barrier: after cancellation, file-not-found and esbuild errors are handled specifically, any other unexpected failure is converted to a runtime-error exit code so the tool reports cleanly instead of crashing with a stack trace.")]
+    private static async Task<int> RunProceduralScriptAsync(RunCommandOptions options)
+    {
         using var cts = new CancellationTokenSource();
         Console.CancelKeyPress += (_, e) =>
         {
@@ -535,40 +574,12 @@ internal static partial class RunCommand
         var cliMounts = options.Mounts.ToList();
         var llmLogPath = options.ResolvedLlmLogPath;
 
-        // The script itself is always implicitly readable — it's the CLI's primary
-        // input, not a user-declared mount — so we don't gate it behind
-        // --allow-external-mounts. Only LLM log directories outside the cwd require
-        // explicit opt-in (parity with the YAML runner's safety stance for writes).
-        // "Outside" asked of the same predicate PathValidator enforces the rule with: a bare
-        // StartsWith reads ~/proj-old as inside ~/proj and skips the opt-in the validator then
-        // needs (see PhysicalPathContainment).
         var cwd = Directory.GetCurrentDirectory();
-        var llmLogOutsideCwd = llmLogPath != null
-            && !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(llmLogPath, cwd);
-        if (llmLogOutsideCwd && !options.EffectiveAllowExternalMounts)
+        if (!await MountConfigurationIsValidAsync(options, cliMounts, settingsPath, llmLogPath, cwd)
+                .ConfigureAwait(false))
         {
-            await Console.Error.WriteLineAsync(
-                "ERROR: --allow-external-mounts is required when --llm-log-path "
-                + "points outside the current working directory "
-                + "(or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1).").ConfigureAwait(false);
-            await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
-            await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
             return Program.ExitScriptError;
         }
-
-        // Same guard as the YAML runner's TryBuildHost: a user mount claiming a root this
-        // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
-        // out of a DI factory, not as the configuration mistake it is.
-        if (!RunnerExecution.EnsureReservedRootsAreFree(
-                cliMounts, settingsPath,
-                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
-            return Program.ExitScriptError;
-
-        // Same guard as the YAML runner: a mount whose host-side directory is missing would
-        // otherwise surface as a DirectoryNotFoundException thrown out of the
-        // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
-        if (!RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath))
-            return Program.ExitScriptError;
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
@@ -595,10 +606,14 @@ internal static partial class RunCommand
         var verbosity = Math.Clamp(options.Verbose, 0, 2);
 
         using var host = RunnerHost.Build(
-            settingsPath, cliMounts,
-            allowExternalMounts: implicitlyAllow,
-            llmLogVirtualPath: llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
-            internalMounts: internalMounts,
+            settingsPath,
+            new RunnerMountPlan
+            {
+                CliMounts = cliMounts,
+                InternalMounts = internalMounts,
+                AllowExternalMounts = implicitlyAllow,
+                LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+            },
             configureLogging: verbosity > 0
                 ? (_, b) => RunnerExecution.ConfigureVerboseLogging(b, verbosity)
                 : null,
@@ -668,26 +683,7 @@ internal static partial class RunCommand
         // is simply not observed (no accounting side effects).
         var usageSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>();
 
-        // RAG pipelines back the first-class `rag.*` scripting namespace. Resolution is
-        // best-effort: a host without embedding/chat defaults must not break scripts
-        // that never touch rag.* (the binding itself fails loudly on use when null).
-        var ingestionPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline>(host.Services, logger);
-        var ragPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline>(host.Services, logger);
-        var ragBackend = ingestionPipeline is not null && ragPipeline is not null
-            ? new Orkeon.Scripting.Bindings.RagScriptingBackend
-            {
-                IngestionPipeline = ingestionPipeline,
-                RagPipeline = ragPipeline,
-                FileSystem = fileSystem,
-                // Lets `rag.query({ profile: "corrective" })` select a pipeline per
-                // call instead of being stuck with the host-wide
-                // Orkeon:Rag:Profile. Best-effort like the two above: absent
-                // resolver ⇒ the binding refuses a profile request loudly rather
-                // than silently serving the default.
-                ProfileResolver = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver>(
-                    host.Services, logger),
-            }
-            : null;
+        var ragBackend = BuildRagBackend(host.Services, fileSystem, logger);
 
         var engineFactory = new JsEngineFactory(
             limits: cliLimits,
@@ -695,10 +691,13 @@ internal static partial class RunCommand
             configuration: configuration,
             builtInTools: tools,
             llmProvider: llmProvider,
-            permissionGate: permissionGate,
-            deltaSink: deltaSink,
-            ragBackend: ragBackend,
-            usageSink: usageSink);
+            hostPorts: new ScriptingHostPorts
+            {
+                PermissionGate = permissionGate,
+                DeltaSink = deltaSink,
+                UsageSink = usageSink,
+            },
+            ragBackend: ragBackend);
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).
@@ -713,13 +712,7 @@ internal static partial class RunCommand
         // as a structured `inputs` global to fit the JS DSL). ScriptHost now exposes a
         // pre-execution hook (the `inputsJson` parameter) that parses the JSON into
         // `globalThis.inputs` before evaluation — wire --inputs / --inputs-file through it.
-        var inputsJson = options.InputsJson;
-        if (string.IsNullOrWhiteSpace(inputsJson) && !string.IsNullOrWhiteSpace(options.InputsFilePath))
-        {
-            // EXCEPTION-BOOTSTRAP: the inputs file is a user-supplied CLI argument resolved before
-            // the VFS is mounted; it is read once, not part of the sandboxed workspace.
-            inputsJson = await File.ReadAllTextAsync(options.InputsFilePath, linkCts.Token).ConfigureAwait(false);
-        }
+        var inputsJson = await ResolveInputsJsonAsync(options, linkCts.Token).ConfigureAwait(false);
 
         var virtualPath = $"{RunnerVirtualRoots.Script}/{fileName}";
         // Pass the physical path so esbuild can --bundle relative imports from the
@@ -732,6 +725,102 @@ internal static partial class RunCommand
         await (observed is null ? Console.Out : Console.Error)
             .WriteLineAsync(SerializeRunResult(result)).ConfigureAwait(false);
         return Program.ExitOk;
+    }
+
+    /// <summary>
+    /// Vets the mount configuration before the host is built: an exchange log written outside
+    /// the workspace needs the explicit opt-in, a user mount may not claim a root the runner
+    /// reserves for itself, and every mount source must exist on disk. Returns false when the
+    /// run must stop - the diagnostic has already been printed.
+    /// </summary>
+    private static async Task<bool> MountConfigurationIsValidAsync(
+        RunCommandOptions options,
+        IEnumerable<string> cliMounts,
+        string? settingsPath,
+        string? llmLogPath,
+        string cwd)
+    {
+        // The script itself is always implicitly readable — it's the CLI's primary
+        // input, not a user-declared mount — so we don't gate it behind
+        // --allow-external-mounts. Only LLM log directories outside the cwd require
+        // explicit opt-in (parity with the YAML runner's safety stance for writes).
+        // "Outside" asked of the same predicate PathValidator enforces the rule with: a bare
+        // StartsWith reads ~/proj-old as inside ~/proj and skips the opt-in the validator then
+        // needs (see PhysicalPathContainment).
+        var llmLogOutsideCwd = llmLogPath != null
+            && !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(llmLogPath, cwd);
+        if (llmLogOutsideCwd && !options.EffectiveAllowExternalMounts)
+        {
+            await Console.Error.WriteLineAsync(
+                "ERROR: --allow-external-mounts is required when --llm-log-path "
+                + "points outside the current working directory "
+                + "(or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1).").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
+            return false;
+        }
+
+        // Same guard as the YAML runner's TryBuildHost: a user mount claiming a root this
+        // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
+        // out of a DI factory, not as the configuration mistake it is.
+        if (!RunnerExecution.EnsureReservedRootsAreFree(
+                cliMounts, settingsPath,
+                RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
+        {
+            return false;
+        }
+
+        // Same guard as the YAML runner: a mount whose host-side directory is missing would
+        // otherwise surface as a DirectoryNotFoundException thrown out of the
+        // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
+        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath);
+    }
+
+    /// <summary>
+    /// Assembles the backend of the first-class <c>rag.*</c> scripting namespace, or returns
+    /// null when the host resolves no RAG pipeline. Resolution is best-effort: a host without
+    /// embedding/chat defaults must not break scripts that never touch <c>rag.*</c> (the
+    /// binding itself fails loudly on use when null).
+    /// </summary>
+    private static Orkeon.Scripting.Bindings.RagScriptingBackend? BuildRagBackend(
+        IServiceProvider services, IFileSystemService fileSystem, ILogger logger)
+    {
+        var ingestionPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IIngestionPipeline>(services, logger);
+        var ragPipeline = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline>(services, logger);
+        if (ingestionPipeline is null || ragPipeline is null)
+            return null;
+
+        return new Orkeon.Scripting.Bindings.RagScriptingBackend
+        {
+            IngestionPipeline = ingestionPipeline,
+            RagPipeline = ragPipeline,
+            FileSystem = fileSystem,
+            // Lets `rag.query({ profile: "corrective" })` select a pipeline per
+            // call instead of being stuck with the host-wide
+            // Orkeon:Rag:Profile. Best-effort like the two above: absent
+            // resolver ⇒ the binding refuses a profile request loudly rather
+            // than silently serving the default.
+            ProfileResolver = SafeGetService<Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver>(
+                services, logger),
+        };
+    }
+
+    /// <summary>
+    /// The inputs surface handed to the script as <c>globalThis.inputs</c>: the inline
+    /// <c>--inputs</c> JSON, or the contents of <c>--inputs-file</c> when the inline form is
+    /// absent, or null when neither was given.
+    /// </summary>
+    private static async Task<string?> ResolveInputsJsonAsync(RunCommandOptions options, CancellationToken ct)
+    {
+        var inputsJson = options.InputsJson;
+        if (string.IsNullOrWhiteSpace(inputsJson) && !string.IsNullOrWhiteSpace(options.InputsFilePath))
+        {
+            // EXCEPTION-BOOTSTRAP: the inputs file is a user-supplied CLI argument resolved before
+            // the VFS is mounted; it is read once, not part of the sandboxed workspace.
+            inputsJson = await File.ReadAllTextAsync(options.InputsFilePath, ct).ConfigureAwait(false);
+        }
+
+        return inputsJson;
     }
 
     [System.Text.RegularExpressions.GeneratedRegex(@"\bglobalThis\b[^\r\n]{0,60}?\.\s*crew\s*=")]

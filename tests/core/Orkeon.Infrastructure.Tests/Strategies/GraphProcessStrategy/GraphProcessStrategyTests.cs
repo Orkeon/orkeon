@@ -98,8 +98,10 @@ public sealed class GraphProcessStrategyTests : IDisposable
             new MockAgentCommunicationService(), _mockExecutionService, new TestLogger<AgentDelegationToolsProvider>());
 
         _strategy = new GraphProcessStrategy(
-            taskRepository, agentRepository, _mockExecutionService,
-            _mockMemoryScope, _delegationProvider, _logger);
+            new CrewStrategyDependencies(
+                taskRepository, agentRepository, _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger);
     }
 
     #region Constructor Tests
@@ -108,8 +110,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public void ShouldThrow_WhenConstructorWithNullTaskRepository()
     {
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new GraphProcessStrategy(null!, new MinimalAgentRepository(_agents),
-                _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger));
+            new GraphProcessStrategy(
+                new CrewStrategyDependencies(
+                    null!, new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope),
+                _delegationProvider,
+                _logger));
         Assert.Equal("taskRepository", ex.ParamName);
     }
 
@@ -117,8 +122,12 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public void ShouldThrow_WhenConstructorWithNullLogger()
     {
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new GraphProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-                _mockExecutionService, _mockMemoryScope, _delegationProvider, null!));
+            new GraphProcessStrategy(
+                new CrewStrategyDependencies(
+                    new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
+                    _mockExecutionService, _mockMemoryScope),
+                _delegationProvider,
+                null!));
         Assert.Equal("logger", ex.ParamName);
     }
 
@@ -126,8 +135,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public void ShouldCreateStrategy_WhenConstructorWithValidParameters()
     {
         var strategy = new GraphProcessStrategy(
-            new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-            _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger);
+            new CrewStrategyDependencies(
+                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
+                _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger);
         Assert.NotNull(strategy);
     }
 
@@ -255,8 +267,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
         });
 
         var retryStrategy = new GraphProcessStrategy(
-            new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-            _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger)
+            new CrewStrategyDependencies(
+                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
+                _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger)
         {
             MaxRetryCycles = 3,
             CircuitPolicy = CircuitBreakerPolicy.Permissive
@@ -283,8 +298,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
             new TaskResult(false, "Always fails", null, [], TimeSpan.FromSeconds(1)));
 
         var retryStrategy = new GraphProcessStrategy(
-            new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-            _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger)
+            new CrewStrategyDependencies(
+                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
+                _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger)
         {
             MaxRetryCycles = 2,
             CircuitPolicy = CircuitBreakerPolicy.Permissive
@@ -325,8 +343,11 @@ public sealed class GraphProcessStrategyTests : IDisposable
         };
 
         var circuitStrategy = new GraphProcessStrategy(
-            new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
-            _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger)
+            new CrewStrategyDependencies(
+                new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents),
+                _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger)
         {
             MaxRetryCycles = 100, // High — rely on circuit breaker to stop
             CircuitPolicy = tightPolicy

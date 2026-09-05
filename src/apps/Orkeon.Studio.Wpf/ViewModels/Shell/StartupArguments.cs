@@ -69,18 +69,11 @@ public sealed record StartupArguments
             }
             else if (string.Equals(argument, CaptureScreensSwitch, StringComparison.Ordinal))
             {
-                // The directory is mandatory: a campaign without a destination is a typo.
-                if (i + 1 < arguments.Count && !string.IsNullOrWhiteSpace(arguments[i + 1]))
-                    captureDirectory = arguments[++i];
-                else
-                    unrecognized.Add(argument);
+                captureDirectory = TakeDirectory(arguments, ref i, argument, captureDirectory, unrecognized);
             }
             else if (string.Equals(argument, CliDirectorySwitch, StringComparison.Ordinal))
             {
-                if (i + 1 < arguments.Count && !string.IsNullOrWhiteSpace(arguments[i + 1]))
-                    cliDirectory = arguments[++i];
-                else
-                    unrecognized.Add(argument);
+                cliDirectory = TakeDirectory(arguments, ref i, argument, cliDirectory, unrecognized);
             }
             else if (!string.IsNullOrWhiteSpace(argument))
             {
@@ -95,6 +88,25 @@ public sealed record StartupArguments
             CliDirectory = cliDirectory,
             Unrecognized = unrecognized,
         };
+    }
+
+    /// <summary>
+    /// The directory that follows a switch, consuming it. A switch that ends the command line or
+    /// is followed by a blank keeps the directory already read and reports itself as unrecognized:
+    /// the directory is mandatory, and a switch without one is a typo, not a switch.
+    /// </summary>
+    private static string? TakeDirectory(
+        IReadOnlyList<string> arguments,
+        ref int index,
+        string switchName,
+        string? current,
+        List<string> unrecognized)
+    {
+        if (index + 1 < arguments.Count && !string.IsNullOrWhiteSpace(arguments[index + 1]))
+            return arguments[++index];
+
+        unrecognized.Add(switchName);
+        return current;
     }
 
     /// <summary>The message written to standard error before exiting on an unknown argument.</summary>

@@ -197,11 +197,15 @@ internal sealed class MountFormDialog : Window
     {
         var path = NullIfBlank(_physical.Text);
 
-        _physicalStatus.Text = path is null
-            ? "Pick the folder this mount exposes."
-            : _directories.Exists(path)
-                ? "The folder exists."
-                : "This folder does not exist — the runtime rejects such a mount. Use 'Create folder'.";
+        if (path is null)
+        {
+            _physicalStatus.Text = "Pick the folder this mount exposes.";
+            return;
+        }
+
+        _physicalStatus.Text = _directories.Exists(path)
+            ? "The folder exists."
+            : "This folder does not exist — the runtime rejects such a mount. Use 'Create folder'.";
     }
 
     private static string? NullIfBlank(string? value) =>

@@ -11,7 +11,9 @@ namespace Orkeon.Application.EventHub.Exceptions;
 /// outcome.
 /// </para>
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
 public sealed class EventAclException : Exception
+#pragma warning restore S3925
 {
     /// <summary>Creates the exception with a message naming what was refused and why.</summary>
     public EventAclException(string message) : base(message)

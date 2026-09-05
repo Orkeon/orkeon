@@ -2,6 +2,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -15,13 +16,15 @@ public sealed class ConfigTabViewModelTests
         FakeDirectoryProbe? directories = null,
         FakePathPicker? picker = null,
         FakeProcessLauncher? launcher = null) =>
-        new(store ?? new FakeAppSettingsStore(),
-            directories ?? new FakeDirectoryProbe(),
-            picker ?? new FakePathPicker(),
-            new OrkeonProcessRunner(
-                launcher ?? new FakeProcessLauncher(),
-                new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            dispatcher: null,
+        new(new StudioServices
+            {
+                SettingsStore = store ?? new FakeAppSettingsStore(),
+                Directories = directories ?? new FakeDirectoryProbe(),
+                Picker = picker ?? new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    launcher ?? new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            },
             globalPathOverride: GlobalPath);
 
     [Fact]
@@ -277,7 +280,11 @@ public sealed class MountsEmptyRefusalTests
     [Fact]
     public async Task A_save_blocked_only_by_the_empty_folder_list_names_the_fix()
     {
-        var tab = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe("/data"));
+        var tab = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe("/data"),
+        });
         tab.Llm.Model = "phi3"; // dirty, but no mount declared
 
         Assert.False(await tab.SaveAsync(TestContext.Current.CancellationToken));

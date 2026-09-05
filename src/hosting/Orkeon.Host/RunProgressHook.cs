@@ -37,6 +37,6 @@ internal sealed class RunProgressHook : ICrewExecutionHook
         Task.CompletedTask;   // the completion is the final answer, delivered by the runner
 
     /// <inheritdoc />
-    public Task OnCrewFailedAsync(CrewExecutionSnapshot snapshot, Exception? ex, CancellationToken ct) =>
+    public Task OnCrewFailedAsync(CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct) =>
         Task.CompletedTask;   // failure reaches the user through the runner's outcome
 }

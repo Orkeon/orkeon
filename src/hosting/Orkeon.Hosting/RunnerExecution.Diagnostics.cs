@@ -132,9 +132,13 @@ public static partial class RunnerExecution
             var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerVirtualRoots.Crew}:ro" };
 
             using var host = RunnerHost.Build(
-                settingsPath, cliMounts,
-                allowExternalMounts: opts.EffectiveAllowExternalMounts,
-                internalMounts: internalMounts,
+                settingsPath,
+                new RunnerMountPlan
+                {
+                    CliMounts = cliMounts,
+                    InternalMounts = internalMounts,
+                    AllowExternalMounts = opts.EffectiveAllowExternalMounts,
+                },
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),
                 configureServices: (ctx, services) =>
                 {

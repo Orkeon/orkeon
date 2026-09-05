@@ -85,6 +85,22 @@ internal sealed record ForgeCommandOptions
     /// <summary>What made the parse fail, when it did.</summary>
     public string? Error { get; init; }
 
+    /// <summary>
+    /// The options that take a value, each mapped to what the parse says when the value is
+    /// missing — or, for the ones it also has to interpret, when it is not usable.
+    /// </summary>
+    private static readonly Dictionary<string, string> ValueOptionErrors = new(StringComparer.Ordinal)
+    {
+        ["--to"] = "--to needs a destination directory.",
+        ["--schedule"] = "--schedule needs a value: daily@HH:mm or hourly.",
+        ["--format"] = "--format needs a value: yaml or script.",
+        ["--max-iterations"] = "--max-iterations needs a positive integer.",
+        ["--max-tokens"] = "--max-tokens needs a non-negative integer (0 = unlimited).",
+        ["--max-seconds"] = "--max-seconds needs a non-negative integer (0 = unlimited).",
+        ["--settings"] = "--settings needs a path.",
+        ["--pack"] = "--pack needs a directory.",
+    };
+
     /// <summary>Parses the <c>forge</c> arguments; unknown options fail loudly, never silently.</summary>
     public static ForgeCommandOptions Parse(string[] args)
     {
@@ -95,114 +111,122 @@ internal sealed record ForgeCommandOptions
 
         for (var i = 0; i < args.Length; i++)
         {
-            var arg = args[i];
-            switch (arg)
-            {
-                case "list" when i == 0:
-                    return options with { List = true };
+            // A verb is positional: only the first argument can be one, anything later with
+            // the same spelling is part of the need.
+            options = i == 0 && IsVerb(args[0])
+                ? ParseVerb(args, ref i, options)
+                : ParseOption(args, ref i, options, needWords);
 
-                case "resume" when i == 0:
-                    if (i + 1 >= args.Length)
-                        return options with { Error = "resume needs a session slug (see `orkeon forge list`)." };
-                    options = options with { ResumeSlug = args[++i] };
-                    continue;
-
-                case "promote" when i == 0:
-                    if (i + 1 >= args.Length)
-                        return options with { Error = "promote needs a session slug (see `orkeon forge list`)." };
-                    options = options with { PromoteSlug = args[++i] };
-                    continue;
-
-                case "--to":
-                    if (!TryTakeValue(args, ref i, out var destination))
-                        return options with { Error = "--to needs a destination directory." };
-                    options = options with { Destination = destination };
-                    continue;
-
-                case "--schedule":
-                    if (!TryTakeValue(args, ref i, out var scheduleText))
-                        return options with { Error = "--schedule needs a value: daily@HH:mm or hourly." };
-                    if (!ForgeSchedule.TryParse(scheduleText, out var schedule, out var scheduleError))
-                        return options with { Error = scheduleError };
-                    options = options with { Schedule = schedule };
-                    continue;
-
-                case "--with-settings":
-                    options = options with { WithSettings = true };
-                    continue;
-
-                case "--format":
-                    if (!TryTakeValue(args, ref i, out var format))
-                        return options with { Error = "--format needs a value: yaml or script." };
-                    options = options with { Format = format };
-                    continue;
-
-                case "--events":
-                    // The only stream format is jsonl; the value is accepted for the spec's
-                    // spelling (`--events jsonl`) and for forward compatibility.
-                    if (i + 1 < args.Length && !args[i + 1].StartsWith('-'))
-                        i++;
-                    options = options with { Events = true };
-                    continue;
-
-                case "--auto":
-                    options = options with { Auto = true };
-                    continue;
-
-                case "--dry":
-                    options = options with { Dry = true };
-                    continue;
-
-                case "--edit":
-                    options = options with { Edit = true };
-                    continue;
-
-                case "--adopt":
-                    options = options with { Adopt = true };
-                    continue;
-
-                case "--max-iterations":
-                    if (!TryTakeValue(args, ref i, out var iterations)
-                        || !int.TryParse(iterations, NumberStyles.None, CultureInfo.InvariantCulture, out var maxIterations)
-                        || maxIterations < 1)
-                        return options with { Error = "--max-iterations needs a positive integer." };
-                    options = options with { MaxIterations = maxIterations };
-                    continue;
-
-                case "--max-tokens":
-                    if (!TryTakeValue(args, ref i, out var tokens)
-                        || !long.TryParse(tokens, NumberStyles.None, CultureInfo.InvariantCulture, out var maxTokens))
-                        return options with { Error = "--max-tokens needs a non-negative integer (0 = unlimited)." };
-                    options = options with { MaxTokens = maxTokens };
-                    continue;
-
-                case "--max-seconds":
-                    if (!TryTakeValue(args, ref i, out var seconds)
-                        || !long.TryParse(seconds, NumberStyles.None, CultureInfo.InvariantCulture, out var maxSeconds))
-                        return options with { Error = "--max-seconds needs a non-negative integer (0 = unlimited)." };
-                    options = options with { MaxSeconds = maxSeconds };
-                    continue;
-
-                case "--settings":
-                    if (!TryTakeValue(args, ref i, out var settings))
-                        return options with { Error = "--settings needs a path." };
-                    options = options with { SettingsPath = settings };
-                    continue;
-
-                case "--pack":
-                    if (!TryTakeValue(args, ref i, out var pack))
-                        return options with { Error = "--pack needs a directory." };
-                    options = options with { PackDirectory = pack };
-                    continue;
-
-                default:
-                    if (arg.StartsWith('-'))
-                        return options with { Error = $"Unknown option '{arg}'." };
-                    needWords.Add(arg);
-                    continue;
-            }
+            // `list` takes no argument and an error stops the parse where it happened.
+            if (options.Error is not null || options.List)
+                return options;
         }
 
+        return Reconcile(options, needWords);
+    }
+
+    private static bool IsVerb(string arg) => arg is "list" or "resume" or "promote";
+
+    /// <summary>The three subcommands; <c>resume</c> and <c>promote</c> take the session slug.</summary>
+    private static ForgeCommandOptions ParseVerb(string[] args, ref int i, ForgeCommandOptions options)
+    {
+        var verb = args[i];
+        if (verb == "list")
+            return options with { List = true };
+
+        // The slug is taken as written: it is positional, so it is whatever follows the verb.
+        if (i + 1 >= args.Length)
+            return options with { Error = $"{verb} needs a session slug (see `orkeon forge list`)." };
+
+        var slug = args[++i];
+        return verb == "resume"
+            ? options with { ResumeSlug = slug }
+            : options with { PromoteSlug = slug };
+    }
+
+    /// <summary>One option, one flag — or one word of the need typed on the command line.</summary>
+    private static ForgeCommandOptions ParseOption(
+        string[] args, ref int i, ForgeCommandOptions options, List<string> needWords)
+    {
+        var arg = args[i];
+
+        if (arg == "--events")
+        {
+            // The only stream format is jsonl; the value is accepted for the spec's
+            // spelling (`--events jsonl`) and for forward compatibility.
+            TryTakeValue(args, ref i, out _);
+            return options with { Events = true };
+        }
+
+        if (ApplyFlag(arg, options) is { } flagged)
+            return flagged;
+
+        if (ValueOptionErrors.TryGetValue(arg, out var missing))
+        {
+            return TryTakeValue(args, ref i, out var value)
+                ? ApplyValue(options, arg, value, missing)
+                : options with { Error = missing };
+        }
+
+        if (arg.StartsWith('-'))
+            return options with { Error = $"Unknown option '{arg}'." };
+
+        needWords.Add(arg);
+        return options;
+    }
+
+    /// <summary>The valueless switches; <see langword="null"/> when the argument is not one.</summary>
+    private static ForgeCommandOptions? ApplyFlag(string arg, ForgeCommandOptions options) => arg switch
+    {
+        "--with-settings" => options with { WithSettings = true },
+        "--auto" => options with { Auto = true },
+        "--dry" => options with { Dry = true },
+        "--edit" => options with { Edit = true },
+        "--adopt" => options with { Adopt = true },
+        _ => null,
+    };
+
+    /// <summary>
+    /// Records the value of an option that takes one; <paramref name="invalid"/> is the
+    /// message of the options this parse also has to interpret.
+    /// </summary>
+    private static ForgeCommandOptions ApplyValue(
+        ForgeCommandOptions options, string arg, string value, string invalid) => arg switch
+    {
+        "--to" => options with { Destination = value },
+        "--schedule" => WithSchedule(options, value),
+        "--format" => options with { Format = value },
+        "--max-iterations" => WithMaxIterations(options, value, invalid),
+        "--max-tokens" => WithMaxTokens(options, value, invalid),
+        "--max-seconds" => WithMaxSeconds(options, value, invalid),
+        "--settings" => options with { SettingsPath = value },
+        _ => options with { PackDirectory = value },
+    };
+
+    private static ForgeCommandOptions WithSchedule(ForgeCommandOptions options, string value) =>
+        ForgeSchedule.TryParse(value, out var schedule, out var scheduleError)
+            ? options with { Schedule = schedule }
+            : options with { Error = scheduleError };
+
+    private static ForgeCommandOptions WithMaxIterations(ForgeCommandOptions options, string value, string invalid) =>
+        int.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var maxIterations)
+        && maxIterations >= 1
+            ? options with { MaxIterations = maxIterations }
+            : options with { Error = invalid };
+
+    private static ForgeCommandOptions WithMaxTokens(ForgeCommandOptions options, string value, string invalid) =>
+        long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var maxTokens)
+            ? options with { MaxTokens = maxTokens }
+            : options with { Error = invalid };
+
+    private static ForgeCommandOptions WithMaxSeconds(ForgeCommandOptions options, string value, string invalid) =>
+        long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var maxSeconds)
+            ? options with { MaxSeconds = maxSeconds }
+            : options with { Error = invalid };
+
+    /// <summary>The rules that only make sense once every argument has been read.</summary>
+    private static ForgeCommandOptions Reconcile(ForgeCommandOptions options, List<string> needWords)
+    {
         if (options.PromoteSlug is not null && options.Destination is null)
             return options with { Error = "promote needs --to <directory>." };
         if (options.PromoteSlug is null && (options.Destination is not null || options.Schedule is not null || options.WithSettings))
@@ -306,76 +330,10 @@ internal static class ForgeCommand
     {
         // Open or create the session first: it is cheap, offline, and `resume` must be
         // able to say "no such session" before any host boots.
-        ForgeSession session;
         var resumed = options.ResumeSlug is not null;
-        if (options.ResumeSlug is { } slug)
-        {
-            if (!ForgeSession.TryLoadBySlug(workspace, slug, out var loaded, out var loadError))
-            {
-                await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
-                return ExitError;
-            }
-
-            session = loaded!;
-            if (session.Status is ForgeSessionStatus.Failed)
-            {
-                await Console.Error.WriteLineAsync(
-                    $"orkeon forge: session '{slug}' is {session.Document.Status} and cannot be resumed.")
-                    .ConfigureAwait(false);
-                return ExitError;
-            }
-
-            // The reopen (W-09): anything that reached a verdict re-enters at the
-            // arbitration — modify / re-try / re-adopt. No-op on an ordinary resume.
-            session.TryReopen(DateTimeOffset.UtcNow);
-
-            // The session's format is a fact of its artifacts: resuming cannot change it.
-            if (options.Format is { } requestedFormat
-                && !string.Equals(requestedFormat, session.Document.Format, StringComparison.OrdinalIgnoreCase))
-            {
-                await Console.Error.WriteLineAsync(
-                    $"orkeon forge: session '{slug}' was created with --format {session.Document.Format}"
-                    + " — the format of a session cannot change on resume.")
-                    .ConfigureAwait(false);
-                return ExitError;
-            }
-
-            if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable())
-            {
-                await Console.Error.WriteLineAsync(
-                    $"orkeon forge: session '{slug}' renders a script crew and esbuild was not found"
-                    + " (FORGE-ESBUILD-MISSING) — install the toolchain (see `orkeon doctor`) and resume again.")
-                    .ConfigureAwait(false);
-                return ExitError;
-            }
-
-            RaiseBudget(session, options);
-        }
-        else
-        {
-            var format = options.Format ?? ForgeSession.FormatYaml;
-            if (ForgeSession.IsScriptFormat(format) && !EsbuildAvailable())
-            {
-                // The clean degradation of SPEC §8.2: fall back to YAML with the remedy,
-                // never a transpilation error a beginner cannot read.
-                await Console.Error.WriteLineAsync(
-                    "orkeon forge: esbuild was not found (FORGE-ESBUILD-MISSING) — rendering YAML instead;"
-                    + " install the script toolchain (see `orkeon doctor`) to get a .ork.ts crew.")
-                    .ConfigureAwait(false);
-                format = ForgeSession.FormatYaml;
-            }
-
-            session = ForgeSession.Create(
-                workspace,
-                options.Need,
-                format: format,
-                budget: new ForgeBudget
-                {
-                    MaxIterations = options.MaxIterations ?? ForgeBudget.DefaultMaxIterations,
-                    MaxTokens = options.MaxTokens ?? 0,
-                    MaxWallSeconds = options.MaxSeconds ?? 0,
-                });
-        }
+        var (session, openExitCode) = await OpenSessionAsync(workspace, options).ConfigureAwait(false);
+        if (session is null)
+            return openExitCode;
 
         // The engine host: same settings chain as `orkeon run` (explicit --settings →
         // next to the workspace → global), the workspace readable, the session writable,
@@ -403,16 +361,19 @@ internal static class ForgeCommand
 
         using var host = RunnerHost.Build(
             settingsPath,
-            cliMounts:
-            [
-                // Quoted, like every other spec the framework builds: a session or
-                // workspace path carrying a ':' or ';' would otherwise split into the wrong
-                // segments and the forge would die at host build with a grammar error about
-                // a path the user never typed.
-                $"{FileSystemMount.Quote(workspace)}:{RunnerVirtualRoots.Workspace}:ro",
-                $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
-                $"{FileSystemMount.Quote(outputDirectory)}:{RunnerVirtualRoots.Output}:rw",
-            ],
+            new RunnerMountPlan
+            {
+                CliMounts =
+                [
+                    // Quoted, like every other spec the framework builds: a session or
+                    // workspace path carrying a ':' or ';' would otherwise split into the wrong
+                    // segments and the forge would die at host build with a grammar error about
+                    // a path the user never typed.
+                    $"{FileSystemMount.Quote(workspace)}:{RunnerVirtualRoots.Workspace}:ro",
+                    $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
+                    $"{FileSystemMount.Quote(outputDirectory)}:{RunnerVirtualRoots.Output}:rw",
+                ],
+            },
             // stdout carries the --events jsonl protocol. The default preset writes
             // warnings there, so one line like «Access denied by registry for virtual path
             // '.'» lands in the middle of the event stream and every consumer has to guess
@@ -480,33 +441,14 @@ internal static class ForgeCommand
         var announce = true;
         if (options.Edit)
         {
-            if (session.State != ForgeState.Test)
+            if (await ApplyEditedBlueprintAsync(session, channel, events, knownTools).ConfigureAwait(false)
+                is { } editExitCode)
             {
-                await Console.Error.WriteLineAsync(
-                    $"orkeon forge: --edit amends a session paused before its trial; session '{session.Document.Slug}'"
-                    + $" is at '{ForgeEventWriter.Spell(session.State)}' — at the arbitration, use the edit decision instead.")
-                    .ConfigureAwait(false);
-                return ExitError;
+                return editExitCode;
             }
 
-            events.SessionStarted(session, resumed: true);
+            // The amendment announced the session itself, before the exchange.
             announce = false;
-
-            var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
-                ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
-            if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events) is not { } edited)
-            {
-                // The session has not moved: it waits at the same pause, resumable again.
-                events.SessionFinished("paused", ExitError);
-                return ExitError;
-            }
-
-            session.SaveArtifact(ForgeSession.BlueprintFileName, edited);
-            events.Emit("blueprint.ready", new { blueprint = edited, iteration = session.Document.Iteration });
-            var now = DateTimeOffset.UtcNow;
-            session.AppendHistory(ForgeState.Test, ForgeTrigger.BlueprintEdited, ForgeState.Render, now);
-            session.SetState(ForgeState.Render);
-            session.Save(now);
         }
 
         var engine = new ForgeEngine(
@@ -529,16 +471,142 @@ internal static class ForgeCommand
             .RunAsync(resumed, stopBefore: options.Dry ? ForgeState.Test : null, announce: announce)
             .ConfigureAwait(false);
 
-        if (!options.Events && options.Dry && result.Outcome == ForgeEngineOutcome.Paused)
+        await AnnounceDryPauseAsync(session, options, result).ConfigureAwait(false);
+        return result.ExitCode;
+    }
+
+    /// <summary>
+    /// Opens the session <c>resume</c> names, or creates a new one. A refusal is reported on
+    /// stderr and comes back as a null session carrying the exit code.
+    /// </summary>
+    private static async Task<(ForgeSession? Session, int ExitCode)> OpenSessionAsync(
+        string workspace, ForgeCommandOptions options)
+    {
+        if (options.ResumeSlug is not { } slug)
+            return (await CreateSessionAsync(workspace, options).ConfigureAwait(false), 0);
+
+        if (!ForgeSession.TryLoadBySlug(workspace, slug, out var loaded, out var loadError))
         {
-            await Console.Out.WriteLineAsync(
-                $"Generated and validated under {Path.Combine(session.Directory, ForgeYamlRenderer.CrewDirectoryName)}."
-                + $" Try it: orkeon forge resume {session.Document.Slug}"
-                + $" — or keep it as it is, without a trial: orkeon forge resume {session.Document.Slug} --adopt")
-                .ConfigureAwait(false);
+            await Console.Error.WriteLineAsync($"orkeon forge: {loadError}").ConfigureAwait(false);
+            return (null, ExitError);
         }
 
-        return result.ExitCode;
+        var session = loaded!;
+        if (session.Status is ForgeSessionStatus.Failed)
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon forge: session '{slug}' is {session.Document.Status} and cannot be resumed.")
+                .ConfigureAwait(false);
+            return (null, ExitError);
+        }
+
+        // The reopen (W-09): anything that reached a verdict re-enters at the
+        // arbitration — modify / re-try / re-adopt. No-op on an ordinary resume.
+        session.TryReopen(DateTimeOffset.UtcNow);
+
+        // The session's format is a fact of its artifacts: resuming cannot change it.
+        if (options.Format is { } requestedFormat
+            && !string.Equals(requestedFormat, session.Document.Format, StringComparison.OrdinalIgnoreCase))
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon forge: session '{slug}' was created with --format {session.Document.Format}"
+                + " — the format of a session cannot change on resume.")
+                .ConfigureAwait(false);
+            return (null, ExitError);
+        }
+
+        if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable())
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon forge: session '{slug}' renders a script crew and esbuild was not found"
+                + " (FORGE-ESBUILD-MISSING) — install the toolchain (see `orkeon doctor`) and resume again.")
+                .ConfigureAwait(false);
+            return (null, ExitError);
+        }
+
+        RaiseBudget(session, options);
+        return (session, 0);
+    }
+
+    /// <summary>A brand-new session, with the budget the command line asked for.</summary>
+    private static async Task<ForgeSession> CreateSessionAsync(string workspace, ForgeCommandOptions options)
+    {
+        var format = options.Format ?? ForgeSession.FormatYaml;
+        if (ForgeSession.IsScriptFormat(format) && !EsbuildAvailable())
+        {
+            // The clean degradation of SPEC §8.2: fall back to YAML with the remedy,
+            // never a transpilation error a beginner cannot read.
+            await Console.Error.WriteLineAsync(
+                "orkeon forge: esbuild was not found (FORGE-ESBUILD-MISSING) — rendering YAML instead;"
+                + " install the script toolchain (see `orkeon doctor`) to get a .ork.ts crew.")
+                .ConfigureAwait(false);
+            format = ForgeSession.FormatYaml;
+        }
+
+        return ForgeSession.Create(
+            workspace,
+            options.Need,
+            format: format,
+            budget: new ForgeBudget
+            {
+                MaxIterations = options.MaxIterations ?? ForgeBudget.DefaultMaxIterations,
+                MaxTokens = options.MaxTokens ?? 0,
+                MaxWallSeconds = options.MaxSeconds ?? 0,
+            });
+    }
+
+    /// <summary>
+    /// The dry-pause edit (v3 W-10): the client sends the amended blueprint over the channel,
+    /// it is validated in full and the session moves back to a deterministic re-render.
+    /// Returns the exit code when the amendment is refused, null when it was applied.
+    /// </summary>
+    private static async Task<int?> ApplyEditedBlueprintAsync(
+        ForgeSession session,
+        IForgeUserChannel channel,
+        ForgeEventWriter events,
+        IReadOnlyCollection<string> knownTools)
+    {
+        if (session.State != ForgeState.Test)
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon forge: --edit amends a session paused before its trial; session '{session.Document.Slug}'"
+                + $" is at '{ForgeEventWriter.Spell(session.State)}' — at the arbitration, use the edit decision instead.")
+                .ConfigureAwait(false);
+            return ExitError;
+        }
+
+        events.SessionStarted(session, resumed: true);
+
+        var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
+            ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
+        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events) is not { } edited)
+        {
+            // The session has not moved: it waits at the same pause, resumable again.
+            events.SessionFinished("paused", ExitError);
+            return ExitError;
+        }
+
+        session.SaveArtifact(ForgeSession.BlueprintFileName, edited);
+        events.Emit("blueprint.ready", new { blueprint = edited, iteration = session.Document.Iteration });
+        var now = DateTimeOffset.UtcNow;
+        session.AppendHistory(ForgeState.Test, ForgeTrigger.BlueprintEdited, ForgeState.Render, now);
+        session.SetState(ForgeState.Render);
+        session.Save(now);
+        return null;
+    }
+
+    /// <summary>Where a <c>--dry</c> run stopped and how to take it from there — terminal only.</summary>
+    private static async Task AnnounceDryPauseAsync(
+        ForgeSession session, ForgeCommandOptions options, ForgeEngineResult result)
+    {
+        if (options.Events || !options.Dry || result.Outcome != ForgeEngineOutcome.Paused)
+            return;
+
+        await Console.Out.WriteLineAsync(
+            $"Generated and validated under {Path.Combine(session.Directory, ForgeYamlRenderer.CrewDirectoryName)}."
+            + $" Try it: orkeon forge resume {session.Document.Slug}"
+            + $" — or keep it as it is, without a trial: orkeon forge resume {session.Document.Slug} --adopt")
+            .ConfigureAwait(false);
     }
 
     /// <summary>

@@ -147,27 +147,34 @@ internal sealed record ForgeBrief
         if (string.IsNullOrWhiteSpace(Goal))
             errors.Add("'goal' is required: the brief must say what the crew accomplishes.");
 
-        if (Acceptance is not { Count: > 0 })
-        {
-            errors.Add("'acceptance' must hold at least one criterion — it is what the diagnosis will judge against.");
-        }
-        else
-        {
-            for (var i = 0; i < Acceptance.Count; i++)
-            {
-                var criterion = Acceptance[i];
-                if (string.IsNullOrWhiteSpace(criterion.Id))
-                    errors.Add($"acceptance[{i}]: 'id' is required (A1, A2, …).");
-                if (string.IsNullOrWhiteSpace(criterion.Statement))
-                    errors.Add($"acceptance[{i}]: 'statement' is required.");
-                if (criterion.Kind is not ("must" or "should"))
-                    errors.Add($"acceptance[{i}]: 'kind' must be 'must' or 'should', not '{criterion.Kind}'.");
-            }
-        }
+        ValidateAcceptance(errors);
 
         if (Language is not (null or "fr" or "en"))
             errors.Add($"'language' must be 'fr' or 'en', not '{Language}'.");
 
         return errors;
+    }
+
+    /// <summary>The criteria the diagnosis will judge against — the one list that refuses silence.</summary>
+    private void ValidateAcceptance(List<string> errors)
+    {
+        if (Acceptance is not { Count: > 0 })
+        {
+            errors.Add("'acceptance' must hold at least one criterion — it is what the diagnosis will judge against.");
+            return;
+        }
+
+        for (var i = 0; i < Acceptance.Count; i++)
+            ValidateCriterion(errors, i, Acceptance[i]);
+    }
+
+    private static void ValidateCriterion(List<string> errors, int index, ForgeAcceptanceCriterion criterion)
+    {
+        if (string.IsNullOrWhiteSpace(criterion.Id))
+            errors.Add($"acceptance[{index}]: 'id' is required (A1, A2, …).");
+        if (string.IsNullOrWhiteSpace(criterion.Statement))
+            errors.Add($"acceptance[{index}]: 'statement' is required.");
+        if (criterion.Kind is not ("must" or "should"))
+            errors.Add($"acceptance[{index}]: 'kind' must be 'must' or 'should', not '{criterion.Kind}'.");
     }
 }

@@ -25,41 +25,46 @@ public sealed class MainWindowViewModel : ObservableObject
 {
     private int _selectedTabIndex;
 
-    /// <summary>Builds the window over its seams; the tests construct it entirely in memory.</summary>
+    /// <summary>
+    /// Builds the window over its seams; the tests construct it entirely in memory.
+    /// <paramref name="globalPathOverride"/>, <paramref name="forgeWorkspace"/> and
+    /// <paramref name="teamsRoot"/> are the three roots Studio reads and writes under, each
+    /// falling back to the per-user location when it is not named.
+    /// </summary>
     public MainWindowViewModel(
-        IAppSettingsStore? settingsStore = null,
-        IDirectoryProbe? directories = null,
-        ITargetProbe? targetProbe = null,
-        IPathPicker? picker = null,
-        OrkeonProcessRunner? processRunner = null,
-        ILaunchHistoryStore? historyStore = null,
-        IUiDispatcher? dispatcher = null,
+        StudioServices? services = null,
+        StudioUiPreferences? preferences = null,
         string? globalPathOverride = null,
-        IStudioStrings? strings = null,
-        ForgeClient? forgeClient = null,
         string? forgeWorkspace = null,
-        string? initialUiMode = null,
-        Action<string>? persistUiMode = null,
-        IModelProfileStore? profileStore = null,
-        string? teamsRoot = null,
-        IShellOpener? shellOpener = null,
-        IUiDelay? delay = null,
-        string? initialLanguage = null,
-        Action<string>? persistLanguage = null,
-        Action<string>? applyLanguage = null,
-        string? systemLanguage = null,
-        ILlmEndpointProbe? llmProbe = null,
-        IApiKeyStore? keyStore = null)
+        string? teamsRoot = null)
     {
-        var runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+        var seams = services ?? new StudioServices();
+        var ui = preferences ?? new StudioUiPreferences();
 
-        Mode = new UiModeViewModel(initialUiMode, persistUiMode);
+        // The seams are named once here: the wiring below hands most of them to three or four
+        // screens apiece, and a local keeps the record itself out of every one of those calls.
+        var settingsStore = seams.SettingsStore;
+        var directories = seams.Directories;
+        var targetProbe = seams.TargetProbe;
+        var picker = seams.Picker;
+        var historyStore = seams.HistoryStore;
+        var dispatcher = seams.Dispatcher;
+        var strings = seams.Strings;
+        var forgeClient = seams.ForgeClient;
+        var profileStore = seams.ProfileStore;
+        var shellOpener = seams.ShellOpener;
+        var delay = seams.Delay;
+        var llmProbe = seams.LlmProbe;
+        var keyStore = seams.KeyStore;
+        var runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+
+        Mode = new UiModeViewModel(ui.InitialMode, ui.PersistMode);
 
         // The language resolves before anything reads a string: an explicit choice from
         // last time wins, otherwise the machine decides — and a detected language is
         // applied, never written down (T-13).
         Language = new LanguageSelectorViewModel(
-            initialLanguage, systemLanguage, applyLanguage, persistLanguage, strings);
+            ui.InitialLanguage, ui.SystemLanguage, ui.ApplyLanguage, ui.PersistLanguage, strings);
 
         // ONE conversation for the window (T-01). Create, Run and History all mount
         // the same instance: recreated per screen, its history would die on the first tab
@@ -67,18 +72,12 @@ public sealed class MainWindowViewModel : ObservableObject
         Chat = new ChatThreadViewModel(strings, delay);
         About = new AboutViewModel(runner, dispatcher);
 
-        Config = new ConfigTabViewModel(
-            settingsStore,
-            directories,
-            picker,
-            runner,
-            dispatcher,
-            globalPathOverride,
-            // Injected rather than hard-coded null: the screenshot campaign passes a probe that
-            // answers offline, which is what makes "the connection was tested" photographable AND
-            // makes a live HTTP call from a headless run structurally impossible.
-            llmProbe,
-            strings);
+        // The tab is built over the window's own seams, the shared runner included: the doctor
+        // panel and the launcher must never disagree about which binary is in use. The LLM probe
+        // travels with them rather than being hard-coded null — the screenshot campaign passes
+        // one that answers offline, which is what makes "the connection was tested"
+        // photographable AND makes a live HTTP call from a headless run structurally impossible.
+        Config = new ConfigTabViewModel(seams with { ProcessRunner = runner }, globalPathOverride);
 
         // The settings' folder list is read live everywhere it is needed: a team folder that is
         // not in it reads red — on the wizard's chips, the team cards and the team-mounts modal
@@ -86,18 +85,20 @@ public sealed class MainWindowViewModel : ObservableObject
         // behind after an edit in the settings.
         Func<IReadOnlyList<string>> declaredMounts = () => Config.Mounts.CurrentMountStrings;
 
-        Launch = new LaunchTabViewModel(
-            runner,
-            targetProbe,
-            directories,
-            picker,
-            historyStore,
-            settingsStore,
-            dispatcher,
-            strings,
-            TeamEnvironment,
-            shellOpener,
-            declaredMounts);
+        Launch = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = runner,
+            TargetProbe = targetProbe,
+            Directories = directories,
+            Picker = picker,
+            HistoryStore = historyStore,
+            SettingsStore = settingsStore,
+            Dispatcher = dispatcher,
+            Strings = strings,
+            EnvironmentForTarget = TeamEnvironment,
+            ShellOpener = shellOpener,
+            DeclaredMounts = declaredMounts,
+        });
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
         // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
@@ -116,25 +117,44 @@ public sealed class MainWindowViewModel : ObservableObject
 
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
-            forgeClient,
-            dispatcher,
-            strings,
-            forgeHome,
-            teamsRoot,
-            declaredMounts,
-            Chat);
+            new CreateTeamDependencies
+            {
+                Client = forgeClient,
+                Dispatcher = dispatcher,
+                Strings = strings,
+                WorkspaceDirectory = forgeHome,
+                TeamsRoot = teamsRoot,
+                DeclaredMounts = declaredMounts,
+                Chat = this.Chat,
+            });
 
-        Teams = new TeamsViewModel(
-            teamsRoot, forgeHome, strings: strings, shellOpener: shellOpener, historyStore: historyStore,
-            declaredMounts: declaredMounts);
+        Teams = new TeamsViewModel(new TeamsDependencies
+        {
+            TeamsRoot = teamsRoot,
+            WorkspaceDirectory = forgeHome,
+            Strings = strings,
+            ShellOpener = shellOpener,
+            HistoryStore = historyStore,
+            DeclaredMounts = declaredMounts,
+        });
 
 
         // The expert trial screen runs over its own launcher, with NO history store: a
         // trial is a rehearsal, not a run to replay from the history.
         Test = new TestTeamViewModel(
-            new LaunchTabViewModel(
-                runner, targetProbe, directories, picker, null, settingsStore, dispatcher, strings,
-                TeamEnvironment, shellOpener, declaredMounts),
+            new LaunchTabViewModel(new LaunchTabDependencies
+            {
+                ProcessRunner = runner,
+                TargetProbe = targetProbe,
+                Directories = directories,
+                Picker = picker,
+                SettingsStore = settingsStore,
+                Dispatcher = dispatcher,
+                Strings = strings,
+                EnvironmentForTarget = TeamEnvironment,
+                ShellOpener = shellOpener,
+                DeclaredMounts = declaredMounts,
+            }),
             teamsRoot);
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
@@ -180,8 +200,8 @@ public sealed class MainWindowViewModel : ObservableObject
         // An adopted team is an ordinary folder: the Launch action hands it to the launcher, the
         // adoption or an import refreshes the lists, a stopped session resumes in the wizard.
         Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
-        Teams.ResumeRequested += (_, e) => _ = ResumeGuarded(e.Session);
-        Teams.ModifyRequested += (_, e) => _ = ModifyGuarded(e);
+        Teams.ResumeRequested += (sender, e) => _ = ResumeGuarded(e.Session);
+        Teams.ModifyRequested += (sender, e) => _ = ModifyGuarded(e);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
     }
@@ -256,48 +276,46 @@ public sealed class MainWindowViewModel : ObservableObject
     public static MainWindowViewModel CreateForCurrentMachine(
         IPathPicker picker,
         IUiDispatcher dispatcher,
-        IStudioStrings? strings = null,
-        string? initialUiMode = null,
-        Action<string>? persistUiMode = null,
-        IModelProfileStore? profileStore = null,
-        string? teamsRoot = null,
-        IShellOpener? shellOpener = null,
-        IUiDelay? delay = null,
-        string? initialLanguage = null,
-        Action<string>? persistLanguage = null,
-        Action<string>? applyLanguage = null)
+        StudioServices? services = null,
+        StudioUiPreferences? preferences = null,
+        string? teamsRoot = null)
     {
         ArgumentNullException.ThrowIfNull(picker);
         ArgumentNullException.ThrowIfNull(dispatcher);
+
+        var seams = services ?? new StudioServices();
 
         ILaunchHistoryStore? historyStore =
             LaunchHistoryFileStore.TryGetDefaultPath(out var historyPath, out _) && historyPath is { Length: > 0 }
                 ? new LaunchHistoryFileStore(historyPath)
                 : null;
 
+        // The profiles come from the per-user file, unless the caller brought its own store.
+        IModelProfileStore? profileStore = seams.ProfileStore;
+        if (profileStore is null
+            && ModelProfileFileStore.TryGetDefaultPath(out var profilePath, out _)
+            && profilePath is { Length: > 0 })
+        {
+            profileStore = new ModelProfileFileStore(profilePath);
+        }
+
+        // Everything that touches the machine is this method's own: what the caller hands in are
+        // the front-end seams (the strings, the shell opener, the timed delay) and, for a test
+        // harness, a store it wants honoured.
         return new MainWindowViewModel(
-            PhysicalAppSettingsStore.Instance,
-            PhysicalDirectoryProbe.Instance,
-            PhysicalTargetProbe.Instance,
-            picker,
-            OrkeonProcessRunner.ForCurrentMachine(),
-            historyStore,
-            dispatcher,
-            globalPathOverride: null,
-            strings,
-            forgeClient: null,
-            forgeWorkspace: null,
-            initialUiMode,
-            persistUiMode,
-            ModelProfileFileStore.TryGetDefaultPath(out var profilePath, out _) && profilePath is { Length: > 0 }
-                ? new ModelProfileFileStore(profilePath)
-                : null,
-            teamsRoot,
-            shellOpener,
-            delay,
-            initialLanguage,
-            persistLanguage,
-            applyLanguage);
+            seams with
+            {
+                SettingsStore = PhysicalAppSettingsStore.Instance,
+                Directories = PhysicalDirectoryProbe.Instance,
+                TargetProbe = PhysicalTargetProbe.Instance,
+                Picker = picker,
+                ProcessRunner = OrkeonProcessRunner.ForCurrentMachine(),
+                HistoryStore = historyStore,
+                Dispatcher = dispatcher,
+                ProfileStore = profileStore,
+            },
+            preferences,
+            teamsRoot: teamsRoot);
     }
 
     /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>

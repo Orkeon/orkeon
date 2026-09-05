@@ -471,30 +471,37 @@ public static partial class TeamCatalog
 
         try
         {
-            var files = Directory.Exists(sourcePath)
-                ? Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
-                    .Where(f => ScannedExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)
-                                || f.EndsWith(".ork.ts", StringComparison.OrdinalIgnoreCase))
-                : File.Exists(sourcePath) ? [sourcePath] : [];
-
             // Relative to the folder for a directory candidate; a single-file candidate names
             // itself (a path relative to itself would render as ".").
             var baseDirectory = Directory.Exists(sourcePath)
                 ? sourcePath
                 : Path.GetDirectoryName(Path.GetFullPath(sourcePath)) ?? sourcePath;
-            var offending = new List<string>();
-            foreach (var file in files)
-            {
-                if (HasInlineSecret(File.ReadAllText(file)))
-                    offending.Add(Path.GetRelativePath(baseDirectory, file));
-            }
 
-            return offending;
+            return ScannableFiles(sourcePath)
+                .Where(file => HasInlineSecret(File.ReadAllText(file)))
+                .Select(file => Path.GetRelativePath(baseDirectory, file))
+                .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return [];
         }
+    }
+
+    /// <summary>
+    /// The files a secret scan reads: every definition-shaped file under a folder candidate,
+    /// or the single file candidate itself.
+    /// </summary>
+    private static IEnumerable<string> ScannableFiles(string sourcePath)
+    {
+        if (Directory.Exists(sourcePath))
+        {
+            return Directory.EnumerateFiles(sourcePath, "*", SearchOption.AllDirectories)
+                .Where(f => ScannedExtensions.Contains(Path.GetExtension(f), StringComparer.OrdinalIgnoreCase)
+                            || f.EndsWith(".ork.ts", StringComparison.OrdinalIgnoreCase));
+        }
+
+        return File.Exists(sourcePath) ? [sourcePath] : [];
     }
 
     private static readonly string[] ScannedExtensions = [".yaml", ".yml", ".json", ".ts", ".js"];

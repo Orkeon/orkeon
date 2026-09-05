@@ -75,12 +75,14 @@ public static class SessionToolsExtensions
     /// <summary>
     /// Reads <c>Llm:AvailableModels</c> — a string array, or a comma-separated string so the
     /// value can also arrive as one environment variable
-    /// (<c>Llm__AvailableModels=a,b</c>), which is how a container usually passes it.
+    /// (<c>Llm__AvailableModels=a,b</c>), which is how a container usually passes it. An
+    /// absent or unreadable section reads as an empty array: the session buffer already
+    /// treats "none configured" and "none declared" as the same thing.
     /// </summary>
-    private static string[]? ReadAvailableModels(IConfiguration? configuration)
+    private static string[] ReadAvailableModels(IConfiguration? configuration)
     {
         var section = configuration?.GetSection("Llm:AvailableModels");
-        if (section is null || !section.Exists()) return null;
+        if (section is null || !section.Exists()) return [];
 
         // An array binds to children; a scalar binds to Value. Both shapes are accepted because
         // a settings file naturally writes the first and an env var can only write the second.
@@ -91,6 +93,7 @@ public static class SessionToolsExtensions
             .ToArray();
         if (asArray.Length > 0) return asArray;
 
-        return section.Value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        return section.Value?.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            ?? [];
     }
 }

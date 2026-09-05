@@ -30,12 +30,15 @@ internal static class EphemeralSearchHarness
         var options = new RagIngestionOptions();
 
         var pipeline = new DefaultIngestionPipeline(
-            new DocumentLoaderFactory([new InlineTextLoader()]),
-            ChunkingStrategyFactoryDefaults.CreateDefault(),
-            embeddings,
-            store,
-            new DataValidationPipeline([], new InMemoryQuarantineStore(), new ProvenanceTracker()),
-            new FileIngestionManifestStore(manifestFs, options),
+            new IngestionPipelineDependencies
+            {
+                LoaderFactory = new DocumentLoaderFactory([new InlineTextLoader()]),
+                ChunkingFactory = ChunkingStrategyFactoryDefaults.CreateDefault(),
+                EmbeddingProvider = embeddings,
+                Store = store,
+                Validation = new DataValidationPipeline([], new InMemoryQuarantineStore(), new ProvenanceTracker()),
+                ManifestStore = new FileIngestionManifestStore(manifestFs, options),
+            },
             options);
 
         return new EphemeralCollectionSearchService(pipeline, store, embeddings);

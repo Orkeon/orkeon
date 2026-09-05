@@ -94,10 +94,9 @@ internal sealed class MessageListDialog : Window
             };
 
             _buttons.Add(button);
+            Add(button);
             previous = button;
         }
-
-        Add([.. _buttons]);
     }
 
     /// <inheritdoc />

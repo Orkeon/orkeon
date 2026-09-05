@@ -238,8 +238,8 @@ public sealed class RunProgressViewModel : ObservableObject
             HubMessages.Add(Describe(_model.HubMessages[index]));
 
         // A delta arrives per token, on the UI thread. Re-raising the eleven labels plus the
-        // command state for each one is thousands of change notifications per response;
-        // generated text is the only thing a delta can move.
+        // command state for each one would mean thousands of change notifications per
+        // response, and generated text is the only thing a delta can move.
         if (string.Equals(orkeonEvent!.Kind, RunEventKinds.LlmDelta, StringComparison.Ordinal))
         {
             OnPropertyChanged(nameof(GeneratedText));

@@ -81,6 +81,15 @@ public sealed class OrkeonBinaryLocator
     /// </summary>
     public static string? DirectoryOverride { get; set; }
 
+    /// <summary>
+    /// The two path separators, as one array. Spelled as two char arguments the call also
+    /// matches <c>Split(char separator, int count)</c>: the separator list does win that
+    /// overload resolution, but only a reader who redoes it can be sure the second char is a
+    /// separator and not a maximum count. The array says so outright, and is built once.
+    /// </summary>
+    private static readonly char[] DirectorySeparators =
+        [System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar];
+
     private readonly IExecutableProbe _probe;
     private readonly IReadOnlyList<string> _fileNames;
     private readonly string? _explicitDirectory;
@@ -257,7 +266,7 @@ public sealed class OrkeonBinaryLocator
             yield break;
 
         var segments = baseDirectory
-            .Split(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar)
+            .Split(DirectorySeparators)
             .Where(s => s.Length > 0)
             .ToArray();
 

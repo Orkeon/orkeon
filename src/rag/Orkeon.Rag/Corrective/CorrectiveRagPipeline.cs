@@ -108,20 +108,11 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
     /// <param name="chatClient">Chat client used for query rewriting and grounded generation.</param>
     /// <param name="retrievalEvaluator">CRAG retrieval evaluator grading each retrieval pass.</param>
     /// <param name="options">Pipeline options; <c>null</c> selects the defaults.</param>
-    /// <param name="groundednessChecker">
-    /// Optional groundedness checker closing the loop; absent, the
-    /// <c>check_groundedness</c> node is traced as skipped and the graph ends.
-    /// </param>
-    /// <param name="webRetriever">
-    /// Optional web document retriever for the opt-in <c>web_fallback</c> node
-    /// (requires <see cref="RagWebFallbackOptions.Enabled"/> too; the edge is
-    /// skipped and traced otherwise).
-    /// </param>
-    /// <param name="logger">Optional logger; defaults to a no-op logger.</param>
-    /// <param name="circuitPolicy">
-    /// Explicit circuit-breaker override for the graph engine; <c>null</c>
-    /// derives a policy from <see cref="RagCorrectiveOptions.MaxIterations"/>
-    /// (see <see cref="BuildCircuitPolicy"/>).
+    /// <param name="dependencies">
+    /// The optional collaborators (groundedness checker, web retriever, logger,
+    /// circuit-breaker override); <c>null</c> means none of the optional nodes is
+    /// wired and the breaker policy is derived from
+    /// <see cref="RagCorrectiveOptions.MaxIterations"/> (see <see cref="BuildCircuitPolicy"/>).
     /// </param>
     public CorrectiveRagPipeline(
         IDocumentStore store,
@@ -129,10 +120,7 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
         IChatClient chatClient,
         IRetrievalEvaluator retrievalEvaluator,
         RagOptions? options = null,
-        IGroundednessChecker? groundednessChecker = null,
-        IWebDocumentRetriever? webRetriever = null,
-        ILogger<CorrectiveRagPipeline>? logger = null,
-        CircuitBreakerPolicy? circuitPolicy = null)
+        CorrectiveRagPipelineDependencies? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -143,14 +131,14 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
         _embeddingProvider = embeddingProvider;
         _chatClient = chatClient;
         _retrievalEvaluator = retrievalEvaluator;
-        _groundednessChecker = groundednessChecker;
-        _webRetriever = webRetriever;
+        _groundednessChecker = dependencies?.GroundednessChecker;
+        _webRetriever = dependencies?.WebRetriever;
         _options = options ?? new RagOptions();
-        _logger = logger ?? NullLogger<CorrectiveRagPipeline>.Instance;
+        _logger = dependencies?.Logger ?? NullLogger<CorrectiveRagPipeline>.Instance;
 
         _maxIterations = _options.Corrective.MaxIterations;
         ArgumentOutOfRangeException.ThrowIfNegative(_maxIterations);
-        _circuitPolicy = circuitPolicy ?? BuildCircuitPolicy(_maxIterations);
+        _circuitPolicy = dependencies?.CircuitPolicy ?? BuildCircuitPolicy(_maxIterations);
         _edgesOrdering = IsEdgesOrdering(_options.Context.Ordering);
     }
 

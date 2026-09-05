@@ -89,7 +89,9 @@ public class ProcessStrategyFactoryTests
             var delegationProvider = new AgentDelegationToolsProvider(
                 new MockAgentCommunicationService(), mockExecutionService, new StrategyLogger<AgentDelegationToolsProvider>());
             var sequentialStrategy = new SequentialProcessStrategy(
-                mockTaskRepo, mockAgentRepo, mockExecutionService, mockMemoryScope, delegationProvider, mockLogger);
+                new CrewStrategyDependencies(mockTaskRepo, mockAgentRepo, mockExecutionService, mockMemoryScope),
+                delegationProvider,
+                mockLogger);
             serviceProvider.RegisterService<SequentialProcessStrategy>(sequentialStrategy);
         }
 
@@ -133,6 +135,7 @@ public class ProcessStrategyFactoryTests
         services.AddSingleton<IMemoryScope>(mockMemoryScope);
         services.AddSingleton<IAgentCommunicationService>(new MockAgentCommunicationService());
         services.AddTransient<AgentDelegationToolsProvider>();
+        services.AddTransient<CrewStrategyDependencies>();
 
         return services;
     }

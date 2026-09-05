@@ -50,6 +50,15 @@ public sealed class ChatChannelServiceTests
         using var service = Build(new DiscordChannelOptions { Enabled = false });
 
         await service.StartAsync(TestContext.Current.CancellationToken);
+
+        // Nothing was demanded on the way in (no crew, no allow list, no token — each of
+        // which refuses the start once the channel is enabled), and the background loop
+        // ends on its own: a disabled channel listens to nothing. Awaiting the loop rather
+        // than probing its status is what makes the second half a real check -- a fault
+        // inside ExecuteAsync surfaces here instead of being swallowed as "not completed".
+        Assert.NotNull(service.ExecuteTask);
+        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(10), TestContext.Current.CancellationToken);
+
         await service.StopAsync(TestContext.Current.CancellationToken);
     }
 

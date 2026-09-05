@@ -118,9 +118,12 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             configuration: configuration,
             builtInTools: tools,
             llmProvider: services.GetService<ILlmProvider>(),
-            permissionGate: services.GetService<IPermissionGate>(),
-            deltaSink: services.GetService<ILlmDeltaSink>(),
-            usageSink: services.GetService<ILlmUsageSink>());
+            hostPorts: new ScriptingHostPorts
+            {
+                PermissionGate = services.GetService<IPermissionGate>(),
+                DeltaSink = services.GetService<ILlmDeltaSink>(),
+                UsageSink = services.GetService<ILlmUsageSink>(),
+            });
 
         // The pack ships pre-built JS: pass-through, no esbuild required for the interview
         // (SPEC §7.1 — esbuild only matters to a `--format script` render).

@@ -41,14 +41,16 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
             .WithDirectory(teamPath)
             .WithDirectory(Path.Combine(teamPath, "agents"));
 
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            probe,
-            new FakeDirectoryProbe(teamPath),
-            picker: null,
-            new FakeLaunchHistoryStore(),
-            new FakeAppSettingsStore(),
-            declaredMounts: declared);
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = probe,
+            Directories = new FakeDirectoryProbe(teamPath),
+            HistoryStore = new FakeLaunchHistoryStore(),
+            SettingsStore = new FakeAppSettingsStore(),
+            DeclaredMounts = declared,
+        });
 
         tab.Target.Select(teamPath);
         return tab;

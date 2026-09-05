@@ -92,7 +92,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         _delegationProvider = new AgentDelegationToolsProvider(
             new MockAgentCommunicationService(), _mockExecutionService, new TestLogger<AgentDelegationToolsProvider>());
 
-        _strategy = new SequentialProcessStrategy(taskRepository, agentRepository, _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger);
+        _strategy = new SequentialProcessStrategy(
+            new CrewStrategyDependencies(taskRepository, agentRepository, _mockExecutionService, _mockMemoryScope),
+            _delegationProvider,
+            _logger);
     }
 
     #region Constructor Tests
@@ -102,7 +105,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new SequentialProcessStrategy(null!, new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger));
+            new SequentialProcessStrategy(
+                new CrewStrategyDependencies(null!, new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope),
+                _delegationProvider,
+                _logger));
         Assert.Equal("taskRepository", ex.ParamName);
     }
 
@@ -111,7 +117,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new SequentialProcessStrategy(new MinimalTaskRepository(_tasks), null!, _mockExecutionService, _mockMemoryScope, _delegationProvider, _logger));
+            new SequentialProcessStrategy(
+                new CrewStrategyDependencies(new MinimalTaskRepository(_tasks), null!, _mockExecutionService, _mockMemoryScope),
+                _delegationProvider,
+                _logger));
         Assert.Equal("agentRepository", ex.ParamName);
     }
 
@@ -120,7 +129,10 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     {
         // Act & Assert
         var ex = Assert.Throws<ArgumentNullException>(() =>
-            new SequentialProcessStrategy(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope, _delegationProvider, null!));
+            new SequentialProcessStrategy(
+                new CrewStrategyDependencies(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope),
+                _delegationProvider,
+                null!));
         Assert.Equal("logger", ex.ParamName);
     }
 
@@ -129,10 +141,11 @@ public sealed class SequentialProcessStrategyTests : IDisposable
     {
         // Act
         var strategy = new SequentialProcessStrategy(
-            new MinimalTaskRepository(_tasks),
-            new MinimalAgentRepository(_agents),
-            _mockExecutionService,
-            _mockMemoryScope,
+            new CrewStrategyDependencies(
+                new MinimalTaskRepository(_tasks),
+                new MinimalAgentRepository(_agents),
+                _mockExecutionService,
+                _mockMemoryScope),
             _delegationProvider,
             _logger);
 

@@ -5,6 +5,7 @@ using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 using Orkeon.Studio.Core.Localization;
@@ -43,12 +44,13 @@ public class CreateTeamWizardTests
             new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled()));
         var vm = new CreateTeamViewModel(
             profiles,
-            client,
-            dispatcher: null,
-            strings: null,
-            workspaceDirectory: "/ws",
-            teamsRoot: teamsRoot ?? "/teams",
-            declaredMounts: declaredMounts);
+            new CreateTeamDependencies
+            {
+                Client = client,
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = teamsRoot ?? "/teams",
+                DeclaredMounts = declaredMounts,
+            });
         return (vm, processes, profiles);
     }
 
@@ -527,7 +529,7 @@ public class CreateTeamWizardTests
                 Schedule = "daily@07:30",
             });
 
-            var teams = new TeamsViewModel(teamsRoot: root, loadSessions: () => []);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
             string? launched = null;
             teams.LaunchRequested += (_, e) => launched = e.Path;
 
@@ -594,15 +596,18 @@ public class CreateTeamWizardTests
     public void The_shell_routes_a_team_launch_into_the_ordinary_launcher()
     {
         var shell = new MainWindowViewModel(
-            settingsStore: new FakeAppSettingsStore(),
-            directories: new FakeDirectoryProbe(),
-            targetProbe: new FakeTargetProbe(),
-            picker: new FakePathPicker(),
-            processRunner: new OrkeonProcessRunner(
-                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            historyStore: new FakeLaunchHistoryStore(),
-            forgeClient: new ForgeClient(
-                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+                ForgeClient = new ForgeClient(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            },
             forgeWorkspace: "/ws",
             teamsRoot: "/nowhere/teams");
 

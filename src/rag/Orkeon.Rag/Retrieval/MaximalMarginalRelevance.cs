@@ -132,41 +132,68 @@ public static class MaximalMarginalRelevance
 
         while (picked.Count < take)
         {
-            var best = -1;
-            var bestMmr = double.NegativeInfinity;
-            var bestRelevance = double.NegativeInfinity;
-
-            for (var i = 0; i < count; i++)
-            {
-                if (isPicked[i])
-                    continue;
-
-                var mmr = (lambda * relevance[i]) - ((1 - lambda) * maxSimToPicked[i]);
-
-                // Exact equality is intentional: it only decides ties (deterministic
-                // tie-break by relevance, then by first-seen candidate).
-                if (mmr > bestMmr || (mmr == bestMmr && relevance[i] > bestRelevance))
-                {
-                    best = i;
-                    bestMmr = mmr;
-                    bestRelevance = relevance[i];
-                }
-            }
-
+            var best = PickBestIndex(relevance, isPicked, maxSimToPicked, lambda);
             isPicked[best] = true;
             picked.Add(best);
-
-            for (var i = 0; i < count; i++)
-            {
-                if (!isPicked[i])
-                    maxSimToPicked[i] = Math.Max(maxSimToPicked[i], similarity(i, best));
-            }
+            RefreshMaxSimilarities(similarity, isPicked, maxSimToPicked, best);
         }
 
         var selected = new List<ScoredChunk>(picked.Count);
         foreach (var index in picked)
             selected.Add(candidates[index]);
         return selected;
+    }
+
+    /// <summary>
+    /// Index of the still-unpicked candidate with the highest MMR score. The loop
+    /// is only ever entered while at least one candidate is unpicked, so the
+    /// returned index is always a real candidate.
+    /// </summary>
+    private static int PickBestIndex(
+        double[] relevance,
+        bool[] isPicked,
+        double[] maxSimToPicked,
+        double lambda)
+    {
+        var best = -1;
+        var bestMmr = double.NegativeInfinity;
+        var bestRelevance = double.NegativeInfinity;
+
+        for (var i = 0; i < relevance.Length; i++)
+        {
+            if (isPicked[i])
+                continue;
+
+            var mmr = (lambda * relevance[i]) - ((1 - lambda) * maxSimToPicked[i]);
+
+            // Exact equality is intentional: it only decides ties (deterministic
+            // tie-break by relevance, then by first-seen candidate).
+            if (mmr > bestMmr || (mmr == bestMmr && relevance[i] > bestRelevance))
+            {
+                best = i;
+                bestMmr = mmr;
+                bestRelevance = relevance[i];
+            }
+        }
+
+        return best;
+    }
+
+    /// <summary>
+    /// Refreshes, for every still-unpicked candidate, its maximum similarity to the
+    /// selection now that <paramref name="justPicked"/> has joined it.
+    /// </summary>
+    private static void RefreshMaxSimilarities(
+        Func<int, int, double> similarity,
+        bool[] isPicked,
+        double[] maxSimToPicked,
+        int justPicked)
+    {
+        for (var i = 0; i < isPicked.Length; i++)
+        {
+            if (!isPicked[i])
+                maxSimToPicked[i] = Math.Max(maxSimToPicked[i], similarity(i, justPicked));
+        }
     }
 
     private static void ValidateTopKAndLambda(int topK, double lambda)

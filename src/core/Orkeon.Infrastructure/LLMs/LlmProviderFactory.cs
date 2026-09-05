@@ -129,52 +129,51 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         return InferFromKnownHostPatterns(url) ?? InferFromGenericPatterns(url);
     }
 
-    private static string? InferFromKnownHostPatterns(string url)
-    {
-        // Docker Model Runner: must be checked BEFORE the generic localhost rule for Ollama
-        if (url.Contains("/engines/", StringComparison.Ordinal)
-            || url.Contains("model-runner.docker.internal", StringComparison.Ordinal))
-            return LlmProviderKeys.OpenAI;
-        if (url.Contains(LlmProviderKeys.AzureShort, StringComparison.Ordinal) || url.Contains(".cognitiveservices.", StringComparison.Ordinal))
-            return LlmProviderKeys.AzureOpenAI;
-        if (url.Contains("together.xyz", StringComparison.Ordinal))
-            return LlmProviderKeys.Together;
+    /// <summary>
+    /// The known-host table, in evaluation order: the first entry with a matching substring
+    /// wins, and its optional guard runs before the key is returned. Order is load-bearing —
+    /// Docker Model Runner must be recognized BEFORE the generic localhost rule that would
+    /// otherwise claim it for Ollama.
+    /// </summary>
+    private static readonly (string Provider, string[] Hosts, Action<string>? Guard)[] KnownHostRules =
+    [
+        // Docker Model Runner exposes an OpenAI-dialect endpoint on a local host.
+        (LlmProviderKeys.OpenAI, ["/engines/", "model-runner.docker.internal"], null),
+        (LlmProviderKeys.AzureOpenAI, [LlmProviderKeys.AzureShort, ".cognitiveservices."], null),
+        (LlmProviderKeys.Together, ["together.xyz"], null),
         // Qwen / Alibaba Model Studio: the mainland host (dashscope.aliyuncs.com), the
         // international host (dashscope-intl.aliyuncs.com — note it does NOT contain the
         // mainland string), and the per-workspace regional hosts
         // ({workspace}.{region}.maas.aliyuncs.com).
-        if (url.Contains("dashscope.aliyuncs.com", StringComparison.Ordinal)
-            || url.Contains("dashscope-intl.aliyuncs.com", StringComparison.Ordinal)
-            || url.Contains("maas.aliyuncs.com", StringComparison.Ordinal))
-            return LlmProviderKeys.Qwen;
-        if (url.Contains("deepseek.com", StringComparison.Ordinal))
-        {
-            GuardAgainstDeepSeekAnthropicEndpoint(url);
-            return LlmProviderKeys.DeepSeek;
-        }
+        (LlmProviderKeys.Qwen, ["dashscope.aliyuncs.com", "dashscope-intl.aliyuncs.com", "maas.aliyuncs.com"], null),
+        (LlmProviderKeys.DeepSeek, ["deepseek.com"], GuardAgainstDeepSeekAnthropicEndpoint),
         // Kimi: mainland (moonshot.cn) and international (moonshot.ai) hosts.
-        if (url.Contains("moonshot.cn", StringComparison.Ordinal)
-            || url.Contains("moonshot.ai", StringComparison.Ordinal))
-            return LlmProviderKeys.Kimi;
-        if (url.Contains("mistral.ai", StringComparison.Ordinal))
-            return LlmProviderKeys.Mistral;
+        (LlmProviderKeys.Kimi, ["moonshot.cn", "moonshot.ai"], null),
+        (LlmProviderKeys.Mistral, ["mistral.ai"], null),
         // Google Gemini: the OpenAI-compatible host (Vertex AI endpoints are a separate,
         // OAuth-authenticated surface and are deliberately NOT matched here).
-        if (url.Contains("generativelanguage.googleapis.com", StringComparison.Ordinal))
-            return LlmProviderKeys.Gemini;
+        (LlmProviderKeys.Gemini, ["generativelanguage.googleapis.com"], null),
         // x.AI (Grok): match the full host - "x.ai" bare would also hit any *x.ai domain.
-        if (url.Contains("api.x.ai", StringComparison.Ordinal))
-            return LlmProviderKeys.Grok;
+        (LlmProviderKeys.Grok, ["api.x.ai"], null),
         // MiniMax: international (minimax.io) and mainland (minimaxi.com) hosts.
-        if (url.Contains("api.minimax.io", StringComparison.Ordinal)
-            || url.Contains("api.minimaxi.com", StringComparison.Ordinal))
-            return LlmProviderKeys.MiniMax;
-        if (url.Contains("huggingface.co", StringComparison.Ordinal) || url.Contains("hf.co", StringComparison.Ordinal))
-            return LlmProviderKeys.HuggingFace;
+        (LlmProviderKeys.MiniMax, ["api.minimax.io", "api.minimaxi.com"], null),
+        (LlmProviderKeys.HuggingFace, ["huggingface.co", "hf.co"], null),
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
         // (which would also hit any *z.ai domain), plus the mainland bigmodel.cn twin.
-        if (url.Contains("api.z.ai", StringComparison.Ordinal) || url.Contains("bigmodel.cn", StringComparison.Ordinal))
-            return LlmProviderKeys.Zai;
+        (LlmProviderKeys.Zai, ["api.z.ai", "bigmodel.cn"], null),
+    ];
+
+    private static string? InferFromKnownHostPatterns(string url)
+    {
+        foreach (var (provider, hosts, guard) in KnownHostRules)
+        {
+            if (!Array.Exists(hosts, host => url.Contains(host, StringComparison.Ordinal)))
+                continue;
+
+            guard?.Invoke(url);
+            return provider;
+        }
+
         return null;
     }
 

@@ -32,40 +32,38 @@ public sealed class ConfigTabViewModel : ObservableObject
     private string? _statusMessage;
     private string? _loadedPath;
 
-    /// <summary>Builds the tab over the given seams; every one of them has an in-memory double in the tests.</summary>
-    public ConfigTabViewModel(
-        IAppSettingsStore? store = null,
-        IDirectoryProbe? directories = null,
-        IPathPicker? picker = null,
-        OrkeonProcessRunner? processRunner = null,
-        IUiDispatcher? dispatcher = null,
-        string? globalPathOverride = null,
-        ILlmEndpointProbe? llmProbe = null,
-        IStudioStrings? strings = null)
+    /// <summary>
+    /// Builds the tab over the given seams; every one of them has an in-memory double in the
+    /// tests, and <paramref name="globalPathOverride"/> names the per-user settings file when
+    /// the machine's own location must not be used.
+    /// </summary>
+    public ConfigTabViewModel(StudioServices? services = null, string? globalPathOverride = null)
     {
-        _store = store ?? PhysicalAppSettingsStore.Instance;
-        _validator = new AppSettingsValidator(directories);
-        _strings = strings ?? EnglishStudioStrings.Instance;
+        var seams = services ?? new StudioServices();
+
+        _store = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;
+        _validator = new AppSettingsValidator(seams.Directories);
+        _strings = seams.Strings ?? EnglishStudioStrings.Instance;
         _document = AppSettingsDocument.CreateEmpty();
 
-        Picker = picker ?? NullPathPicker.Instance;
+        Picker = seams.Picker ?? NullPathPicker.Instance;
 
-        Llm = new LlmSectionViewModel(() => _document, MarkDirty, llmProbe, dispatcher, _strings);
+        Llm = new LlmSectionViewModel(() => _document, MarkDirty, seams.LlmProbe, seams.Dispatcher, _strings);
         RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty);
         Rag = new RagSectionViewModel(() => _document, MarkDirty, _strings);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
         LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty);
 
-        Mounts = new MountsEditorViewModel(directories, Picker, requireAtLeastOne: true, _strings);
+        Mounts = new MountsEditorViewModel(seams.Directories, Picker, requireAtLeastOne: true, _strings);
         Mounts.Changed += OnMountsChanged;
 
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);
         Diagnostic = new DiagnosticViewModel(
-            processRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
-            dispatcher,
+            seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
+            seams.Dispatcher,
             _strings);
 
-        // Hot language switch (STUDIO-11): the tab lives as long as the window, so the
+        // A language change at runtime, STUDIO-11: the tab lives as long as the window, so the
         // subscription needs no teardown.
         _strings.CultureChanged += (_, _) => OnPropertyChanged(nameof(ValidationSummary));
 

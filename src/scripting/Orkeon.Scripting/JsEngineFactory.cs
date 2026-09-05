@@ -28,16 +28,21 @@ public sealed class JsEngineFactory
     /// <summary>
     /// Creates a factory that builds engines respecting <paramref name="limits"/>.
     /// </summary>
+    /// <param name="limits">Sandbox limits applied to every engine this factory builds.</param>
+    /// <param name="loggerFactory">Source of the script-facing logger; null silences it.</param>
+    /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
+    /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
+    /// <param name="llmProvider">Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour.</param>
+    /// <param name="hostPorts">Permission gate and telemetry sinks the host wired, if any.</param>
+    /// <param name="ragBackend">Pipelines + VFS backing the <c>rag</c> namespace; null makes its calls fail loudly.</param>
     public JsEngineFactory(
         IOptions<ScriptingLimitsOptions> limits,
         ILoggerFactory? loggerFactory = null,
         IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
-        Bindings.RagScriptingBackend? ragBackend = null,
-        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null)
+        ScriptingHostPorts? hostPorts = null,
+        Bindings.RagScriptingBackend? ragBackend = null)
     {
         ArgumentNullException.ThrowIfNull(limits);
         _limits = limits.Value;
@@ -45,9 +50,9 @@ public sealed class JsEngineFactory
         _configuration = configuration;
         _builtInTools = builtInTools;
         _llmProvider = llmProvider;
-        _permissionGate = permissionGate;
-        _deltaSink = deltaSink;
-        _usageSink = usageSink;
+        _permissionGate = hostPorts?.PermissionGate;
+        _deltaSink = hostPorts?.DeltaSink;
+        _usageSink = hostPorts?.UsageSink;
         _ragBackend = ragBackend;
     }
 
@@ -55,17 +60,22 @@ public sealed class JsEngineFactory
     /// Convenience constructor used by tests and by hosts that don't go through DI:
     /// builds a factory with the supplied (or default) limits.
     /// </summary>
+    /// <param name="limits">Sandbox limits; null applies the untrusted-script defaults.</param>
+    /// <param name="loggerFactory">Source of the script-facing logger; null silences it.</param>
+    /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
+    /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
+    /// <param name="llmProvider">Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour.</param>
+    /// <param name="hostPorts">Permission gate and telemetry sinks the host wired, if any.</param>
+    /// <param name="ragBackend">Pipelines + VFS backing the <c>rag</c> namespace; null makes its calls fail loudly.</param>
     public JsEngineFactory(
         ScriptingLimitsOptions? limits = null,
         ILoggerFactory? loggerFactory = null,
         IConfiguration? configuration = null,
         IEnumerable<IBaseTool>? builtInTools = null,
         Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null,
-        Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
-        Bindings.RagScriptingBackend? ragBackend = null,
-        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null)
-        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, permissionGate, deltaSink, ragBackend, usageSink)
+        ScriptingHostPorts? hostPorts = null,
+        Bindings.RagScriptingBackend? ragBackend = null)
+        : this(Microsoft.Extensions.Options.Options.Create(limits ?? new ScriptingLimitsOptions()), loggerFactory, configuration, builtInTools, llmProvider, hostPorts, ragBackend)
     {
     }
 

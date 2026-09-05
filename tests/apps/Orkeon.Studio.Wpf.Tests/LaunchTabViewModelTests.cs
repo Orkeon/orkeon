@@ -386,13 +386,15 @@ public sealed class LaunchTabViewModelTests
         var launcher = new FakeProcessLauncher();
         var history = new FakeLaunchHistoryStore();
 
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            targetProbe ?? new FakeTargetProbe(),
-            directories ?? new FakeDirectoryProbe(),
-            picker: null,
-            history,
-            settingsStore ?? new FakeAppSettingsStore());
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = targetProbe ?? new FakeTargetProbe(),
+            Directories = directories ?? new FakeDirectoryProbe(),
+            HistoryStore = history,
+            SettingsStore = settingsStore ?? new FakeAppSettingsStore(),
+        });
 
         return (tab, launcher, history);
     }
@@ -442,17 +444,18 @@ public sealed class LaunchTabViewModelTests
     {
         var probe = new FakeTargetProbe().WithFile("/teams/veille/crew.yaml");
         var launcher = new FakeProcessLauncher();
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            probe,
-            new FakeDirectoryProbe(),
-            picker: null,
-            historyStore: null,
-            settingsStore: new FakeAppSettingsStore(),
-            environmentForTarget: _ => new Dictionary<string, string>(StringComparer.Ordinal)
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = probe,
+            Directories = new FakeDirectoryProbe(),
+            SettingsStore = new FakeAppSettingsStore(),
+            EnvironmentForTarget = _ => new Dictionary<string, string>(StringComparer.Ordinal)
             {
                 ["ORKEON_Llm__Model"] = "qwen2.5:32b",
-            });
+            },
+        });
         tab.Target.Select("/teams/veille/crew.yaml");
 
         await tab.RunAsync(TestContext.Current.CancellationToken);
@@ -649,7 +652,7 @@ public sealed class LaunchTabViewModelTests
 
         Assert.Contains(tab.ValidationMessages, m => m.Code == LaunchCodes.InvalidVariable && m.IsError);
         Assert.True(tab.HasBlockingErrors);
-        Assert.Null(tab.BuildArguments());
+        Assert.Empty(tab.BuildArguments());
     }
 
     [Fact]
@@ -706,12 +709,14 @@ public sealed class LaunchTabViewModelTests
     [Fact]
     public async Task Should_ExplainHowToFixIt_When_TheCliIsMissing()
     {
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
                 new FakeProcessLauncher(),
                 new OrkeonBinaryLocator(new FakeExecutableProbe("/opt/orkeon"))),
-            new FakeTargetProbe(),
-            new FakeDirectoryProbe());
+            TargetProbe = new FakeTargetProbe(),
+            Directories = new FakeDirectoryProbe(),
+        });
 
         await tab.InitializeAsync(TestContext.Current.CancellationToken);
 
@@ -723,12 +728,14 @@ public sealed class LaunchTabViewModelTests
     public async Task Should_ReportNotStarted_When_TheCliIsMissingAndARunIsAttempted()
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
                 new FakeProcessLauncher(),
                 new OrkeonBinaryLocator(new FakeExecutableProbe("/opt/orkeon"))),
-            probe,
-            new FakeDirectoryProbe());
+            TargetProbe = probe,
+            Directories = new FakeDirectoryProbe(),
+        });
         tab.Target.Select("/crews/team.yaml");
 
         var result = await tab.RunAsync(TestContext.Current.CancellationToken);
@@ -786,16 +793,16 @@ public sealed class LaunchScreenFacetsTests
         FakeTargetProbe? targetProbe = null,
         FakeExecutableProbe? executables = null,
         RecordingShellOpener? shellOpener = null)
-        => new(
-            new OrkeonProcessRunner(
+        => new(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
                 new FakeProcessLauncher(),
                 new OrkeonBinaryLocator(executables ?? FakeExecutableProbe.WithOrkeonInstalled())),
-            targetProbe ?? new FakeTargetProbe(),
-            new FakeDirectoryProbe(),
-            picker: null,
-            historyStore: null,
-            settingsStore: new FakeAppSettingsStore(),
-            shellOpener: shellOpener);
+            TargetProbe = targetProbe ?? new FakeTargetProbe(),
+            Directories = new FakeDirectoryProbe(),
+            SettingsStore = new FakeAppSettingsStore(),
+            ShellOpener = shellOpener,
+        });
 
     [Fact]
     public async Task The_progress_card_walks_from_ready_to_done_and_the_button_follows()

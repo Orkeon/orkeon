@@ -115,13 +115,19 @@ public sealed class StatusLineView : View
             ? Math.Max(0, total - _tokensAtTurnStart)
             : null;
 
-        TurnState? state =
-            _activity?.HasOpenToolCall == true ? TurnState.Tool
-            : _deltasFlowing ? TurnState.Streaming
-            : TurnState.Working;
-
-        return StatusLineFormatter.Compose(_glyphs, gerund, elapsed, tokens, state,
+        return StatusLineFormatter.Compose(_glyphs, gerund, elapsed, tokens, ResolveTurnState(),
             head: StatusLineFormatter.SpinnerFrame(_glyphs, elapsed));
+    }
+
+    /// <summary>
+    /// What the turn is doing right now, in precedence order: an open tool call wins over
+    /// arriving content deltas, which win over plain work.
+    /// </summary>
+    private TurnState ResolveTurnState()
+    {
+        if (_activity?.HasOpenToolCall == true)
+            return TurnState.Tool;
+        return _deltasFlowing ? TurnState.Streaming : TurnState.Working;
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-supplied delegate fault barrier: a throwing progress provider degrades to no bar, never crashes the UI timer.")]
@@ -142,8 +148,8 @@ public sealed class StatusLineView : View
     {
         try
         {
-            // Live setting first (/config set spinnerVerbs …), boot-time options second;
-            // VerbFor falls back to the built-in gerunds when both are absent.
+            // Live setting first, as written by /config set spinnerVerbs, then the boot-time
+            // options. VerbFor falls back to the built-in gerunds when both are absent.
             return _integration?.SpinnerVerbs?.Invoke() is { Count: > 0 } live ? live : _bootVerbs;
         }
         catch

@@ -169,6 +169,16 @@ internal sealed record ForgeBlueprint
     {
         var errors = new List<string>();
 
+        ValidateCrew(errors);
+        ValidateEntities(errors, Agents, "agents", static a => a.Key, ValidateAgent);
+        ValidateEntities(errors, Tasks, "tasks", static t => t.Key, ValidateTask);
+
+        return errors;
+    }
+
+    /// <summary>Crew-level rules: a short display name, a goal, and a known orchestration mode.</summary>
+    private void ValidateCrew(List<string> errors)
+    {
         if (string.IsNullOrWhiteSpace(Crew?.Name))
             errors.Add("'crew.name' is required.");
         else if (Crew.Name.Trim().Length > 60)
@@ -184,51 +194,51 @@ internal sealed record ForgeBlueprint
         // a validation error. So a blueprint carrying `process: pipeline` was accepted, the
         // interview and blueprint turns were paid for, and the session died at the CLI
         // boundary — and `forge resume` reloaded the same artifact and died at the same point.
-        if (!string.IsNullOrWhiteSpace(Crew?.Process)
-            && !Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Any(
-                p => string.Equals(p.Value, Crew.Process.Trim(), StringComparison.OrdinalIgnoreCase)))
+        if (string.IsNullOrWhiteSpace(Crew?.Process) || IsKnownProcess(Crew.Process))
+            return;
+
+        errors.Add(
+            $"'crew.process' is '{Crew.Process}', which is not an orchestration mode. Use one of: "
+            + string.Join(", ", Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Select(p => p.Value).Order(StringComparer.Ordinal))
+            + ".");
+    }
+
+    private static bool IsKnownProcess(string process) =>
+        Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Any(
+            p => string.Equals(p.Value, process.Trim(), StringComparison.OrdinalIgnoreCase));
+
+    private static void ValidateAgent(List<string> errors, int index, ForgeBlueprintAgent agent)
+    {
+        if (string.IsNullOrWhiteSpace(agent.Role))
+            errors.Add($"agents[{index}] ('{agent.Key}'): 'role' is required.");
+        if (string.IsNullOrWhiteSpace(agent.Goal))
+            errors.Add($"agents[{index}] ('{agent.Key}'): 'goal' is required.");
+    }
+
+    private static void ValidateTask(List<string> errors, int index, ForgeBlueprintTask task)
+    {
+        if (string.IsNullOrWhiteSpace(task.Description))
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'description' is required.");
+        if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'expectedOutput' is required.");
+        if (string.IsNullOrWhiteSpace(task.Agent))
+            errors.Add($"tasks[{index}] ('{task.Key}'): 'agent' is required.");
+
+        // A deliverable's first segment becomes a virtual mount root that the promoted
+        // team's launcher spells on its command line, and the mount grammar splits on ':'
+        // outside quotes while the override list splits on ';'. A root carrying either
+        // produced a run.sh that died at EVERY launch with a FormatException — after
+        // ForgePromoter had already created the folder, so the team looked complete. The
+        // blueprint is LLM-authored, and renaming a folder is exactly what a repair turn
+        // is for.
+        if (DeliverableRoot(task.Deliverable) is { } root
+            && root.AsSpan().ContainsAny(':', ';'))
         {
             errors.Add(
-                $"'crew.process' is '{Crew.Process}', which is not an orchestration mode. Use one of: "
-                + string.Join(", ", Orkeon.Domain.SharedKernel.ValueObjects.ProcessType.All.Select(p => p.Value).Order(StringComparer.Ordinal))
-                + ".");
+                $"tasks[{index}] ('{task.Key}'): 'deliverable' starts with '{root}', and a "
+                + "deliverable's first folder cannot contain ':' or ';' — those separate "
+                + "the parts of a mount. Rename the folder.");
         }
-
-        ValidateEntities(errors, Agents, "agents", static a => a.Key, (list, i, agent) =>
-        {
-            if (string.IsNullOrWhiteSpace(agent.Role))
-                list.Add($"agents[{i}] ('{agent.Key}'): 'role' is required.");
-            if (string.IsNullOrWhiteSpace(agent.Goal))
-                list.Add($"agents[{i}] ('{agent.Key}'): 'goal' is required.");
-        });
-
-        ValidateEntities(errors, Tasks, "tasks", static t => t.Key, (list, i, task) =>
-        {
-            if (string.IsNullOrWhiteSpace(task.Description))
-                list.Add($"tasks[{i}] ('{task.Key}'): 'description' is required.");
-            if (string.IsNullOrWhiteSpace(task.ExpectedOutput))
-                list.Add($"tasks[{i}] ('{task.Key}'): 'expectedOutput' is required.");
-            if (string.IsNullOrWhiteSpace(task.Agent))
-                list.Add($"tasks[{i}] ('{task.Key}'): 'agent' is required.");
-
-            // A deliverable's first segment becomes a virtual mount root that the promoted
-            // team's launcher spells on its command line, and the mount grammar splits on ':'
-            // outside quotes while the override list splits on ';'. A root carrying either
-            // produced a run.sh that died at EVERY launch with a FormatException — after
-            // ForgePromoter had already created the folder, so the team looked complete. The
-            // blueprint is LLM-authored, and renaming a folder is exactly what a repair turn
-            // is for.
-            if (DeliverableRoot(task.Deliverable) is { } root
-                && root.AsSpan().ContainsAny(':', ';'))
-            {
-                list.Add(
-                    $"tasks[{i}] ('{task.Key}'): 'deliverable' starts with '{root}', and a "
-                    + "deliverable's first folder cannot contain ':' or ';' — those separate "
-                    + "the parts of a mount. Rename the folder.");
-            }
-        });
-
-        return errors;
     }
 
     private static void ValidateEntities<T>(

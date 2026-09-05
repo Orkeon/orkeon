@@ -1,3 +1,4 @@
+using System.Text;
 using System.Text.RegularExpressions;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Rag.Abstractions.Models;
@@ -134,36 +135,45 @@ public static class SourceGlobExpander
     /// </summary>
     internal static Regex GlobToRegex(string relativePattern)
     {
-        var sb = new System.Text.StringBuilder("^");
+        var sb = new StringBuilder("^");
         var i = 0;
         while (i < relativePattern.Length)
-        {
-            var c = relativePattern[i];
-            if (c == '*')
-            {
-                var isDoubleStar = i + 1 < relativePattern.Length && relativePattern[i + 1] == '*';
-                if (isDoubleStar)
-                {
-                    var followedBySlash = i + 2 < relativePattern.Length && relativePattern[i + 2] == '/';
-                    sb.Append(followedBySlash ? "(?:.*/)?" : ".*");
-                    i += followedBySlash ? 3 : 2;
-                }
-                else
-                {
-                    sb.Append("[^/]*");
-                    i++;
-                }
-                continue;
-            }
-
-            if (c == '?')
-                sb.Append("[^/]");
-            else
-                sb.Append(Regex.Escape(c.ToString()));
-            i++;
-        }
+            i += AppendToken(sb, relativePattern, i);
 
         sb.Append('$');
         return new Regex(sb.ToString(), RegexOptions.CultureInvariant, TimeSpan.FromSeconds(2));
     }
+
+    /// <summary>
+    /// Appends the regex translation of the glob token starting at
+    /// <paramref name="index"/> and returns how many pattern characters it consumed.
+    /// </summary>
+    private static int AppendToken(StringBuilder sb, string pattern, int index)
+    {
+        var c = pattern[index];
+        if (c == '*' && IsCharAt(pattern, index + 1, '*'))
+            return AppendDoubleStar(sb, pattern, index);
+
+        sb.Append(c switch
+        {
+            '*' => "[^/]*",
+            '?' => "[^/]",
+            _ => Regex.Escape(c.ToString()),
+        });
+        return 1;
+    }
+
+    /// <summary>
+    /// Appends the translation of a <c>**</c> token: <c>**/</c> spans any directory
+    /// depth including none, a trailing <c>**</c> spans anything.
+    /// </summary>
+    private static int AppendDoubleStar(StringBuilder sb, string pattern, int index)
+    {
+        var followedBySlash = IsCharAt(pattern, index + 2, '/');
+        sb.Append(followedBySlash ? "(?:.*/)?" : ".*");
+        return followedBySlash ? 3 : 2;
+    }
+
+    private static bool IsCharAt(string pattern, int index, char expected)
+        => index < pattern.Length && pattern[index] == expected;
 }

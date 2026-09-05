@@ -33,6 +33,41 @@ using Orkeon.Tools.Web.DependencyInjection;
 namespace Orkeon.Hosting;
 
 /// <summary>
+/// The VFS surface a runner host is built over. One object rather than four loose
+/// parameters on <see cref="RunnerHost.Build"/>: the four decide the same thing together —
+/// which physical directories the run can reach, under which virtual names, and with which
+/// rights — and a caller that sets one almost always has an opinion on its neighbours.
+/// </summary>
+public sealed record RunnerMountPlan
+{
+    /// <summary>The agent-facing mounts, typically the CLI's <c>--mount</c> arguments.</summary>
+    public IReadOnlyList<string> CliMounts { get; init; } = [];
+
+    /// <summary>
+    /// Mounts registered with <c>MountVisibility.Internal</c>: resolvable by the VFS, absent
+    /// from <c>GetAvailableMounts()</c> and therefore invisible to agents. Same grammar as
+    /// <see cref="CliMounts"/>.
+    /// </summary>
+    public IReadOnlyList<string> InternalMounts { get; init; } = [];
+
+    /// <summary>
+    /// When <see langword="true"/>, mount base paths are added to the PathSecurity whitelist
+    /// (<c>AdditionalAllowedDirectories</c>), allowing mounts from directories outside the
+    /// workspace root.
+    /// </summary>
+    public bool AllowExternalMounts { get; init; }
+
+    /// <summary>
+    /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
+    /// is responsible for having mounted it (the runners pass
+    /// <see cref="RunnerVirtualRoots.LlmLogs"/> in <see cref="InternalMounts"/>). All HTTP
+    /// request/response headers and payloads are captured as JSON Lines (.jsonl) files,
+    /// written through <c>IFileSystemService</c> like every other file the framework touches.
+    /// </summary>
+    public string? LlmLogVirtualPath { get; init; }
+}
+
+/// <summary>
 /// Shared host builder for Orkeon runners and CLIs.
 /// Configures LLM, Orkeon services, tools, file system, and tool registry.
 /// </summary>
@@ -52,24 +87,7 @@ public static partial class RunnerHost
     /// Builds a fully-configured host with all Orkeon services.
     /// </summary>
     /// <param name="settingsPath">Resolved appsettings.json path (nullable).</param>
-    /// <param name="cliMounts">CLI --mount arguments.</param>
-    /// <param name="allowExternalMounts">
-    /// When <c>true</c>, mount base paths are added to the PathSecurity whitelist
-    /// (<c>AdditionalAllowedDirectories</c>), allowing mounts from directories outside
-    /// the workspace root.
-    /// </param>
-    /// <param name="llmLogVirtualPath">
-    /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
-    /// is responsible for having mounted it (the runners pass
-    /// <see cref="RunnerVirtualRoots.LlmLogs"/> and mount it internally). All HTTP
-    /// request/response headers and payloads are captured as JSON Lines (.jsonl) files,
-    /// written through <c>IFileSystemService</c> like every other file the framework touches.
-    /// </param>
-    /// <param name="internalMounts">
-    /// Mounts registered with <c>MountVisibility.Internal</c>: resolvable by the VFS, absent
-    /// from <c>GetAvailableMounts()</c> and therefore invisible to agents. Same grammar as
-    /// <paramref name="cliMounts"/>.
-    /// </param>
+    /// <param name="mounts">The VFS surface the host is built over — see <see cref="RunnerMountPlan"/>.</param>
     /// <param name="configureLogging">Optional callback to customize logging (default: Console + Information).</param>
     /// <param name="configureServices">Optional callback to register additional services.</param>
     /// <param name="configureBuilder">
@@ -79,20 +97,17 @@ public static partial class RunnerHost
     /// </param>
     public static IHost Build(
         string? settingsPath,
-        IReadOnlyList<string> cliMounts,
-        bool allowExternalMounts = false,
-        string? llmLogVirtualPath = null,
-        IReadOnlyList<string>? internalMounts = null,
+        RunnerMountPlan mounts,
         Action<HostBuilderContext, ILoggingBuilder>? configureLogging = null,
         Action<HostBuilderContext, IServiceCollection>? configureServices = null,
         Action<IHostBuilder>? configureBuilder = null)
     {
-        var internals = internalMounts ?? [];
+        ArgumentNullException.ThrowIfNull(mounts);
         var builder = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((_, b) =>
-                ConfigureAppConfiguration(b, settingsPath, cliMounts, internals, allowExternalMounts))
+                ConfigureAppConfiguration(b, settingsPath, mounts.CliMounts, mounts.InternalMounts, mounts.AllowExternalMounts))
             .ConfigureServices((context, services) =>
-                ConfigureRunnerServices(context, services, llmLogVirtualPath, configureLogging, configureServices));
+                ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
 
         configureBuilder?.Invoke(builder);
 

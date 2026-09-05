@@ -224,13 +224,23 @@ public sealed class LaunchMountsViewModel : ObservableObject
     public int OverriddenCount => EffectiveMounts.Count(m => m.OverridesSettings);
 
     /// <summary>The one-line verdict above the effective table.</summary>
-    public string Summary => !HasAutoInjection
-        ? _strings[StudioStringKeys.MountsSelectCrewFirst]
-        : OverriddenCount == 0
-        ? string.Format(
-            CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.MountsEffectiveNone], EffectiveMounts.Count)
-        : string.Format(
-            CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.MountsEffectiveReplaced], EffectiveMounts.Count, OverriddenCount);
+    public string Summary
+    {
+        get
+        {
+            if (!HasAutoInjection)
+                return _strings[StudioStringKeys.MountsSelectCrewFirst];
+
+            if (OverriddenCount == 0)
+            {
+                return string.Format(
+                    CultureInfo.InvariantCulture,
+                    _strings[StudioStringKeys.MountsEffectiveNone], EffectiveMounts.Count);
+            }
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                _strings[StudioStringKeys.MountsEffectiveReplaced], EffectiveMounts.Count, OverriddenCount);
+        }
+    }
 }

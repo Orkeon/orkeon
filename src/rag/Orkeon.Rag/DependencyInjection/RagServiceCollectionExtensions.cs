@@ -143,12 +143,15 @@ public static class RagServiceCollectionExtensions
 
         // Pipelines (facades of the subsystem).
         services.TryAddSingleton<IIngestionPipeline>(sp => new DefaultIngestionPipeline(
-            sp.GetRequiredService<DocumentLoaderFactory>(),
-            sp.GetRequiredService<ChunkingStrategyFactory>(),
-            sp.GetRequiredService<IEmbeddingProvider>(),
-            sp.GetRequiredService<IDocumentStore>(),
-            sp.GetRequiredService<DataValidationPipeline>(),
-            sp.GetRequiredService<IIngestionManifestStore>(),
+            new IngestionPipelineDependencies
+            {
+                LoaderFactory = sp.GetRequiredService<DocumentLoaderFactory>(),
+                ChunkingFactory = sp.GetRequiredService<ChunkingStrategyFactory>(),
+                EmbeddingProvider = sp.GetRequiredService<IEmbeddingProvider>(),
+                Store = sp.GetRequiredService<IDocumentStore>(),
+                Validation = sp.GetRequiredService<DataValidationPipeline>(),
+                ManifestStore = sp.GetRequiredService<IIngestionManifestStore>(),
+            },
             sp.GetRequiredService<IOptions<RagIngestionOptions>>().Value,
             sp.GetService<ILogger<DefaultIngestionPipeline>>()));
 
@@ -220,10 +223,13 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IEmbeddingProvider>(),
             sp.GetRequiredService<IChatClient>(),
             options,
-            sp.GetRequiredService<QueryTransformerFactory>(),
-            sp.GetRequiredService<RerankerFactory>(),
-            sp.GetService<IGroundednessChecker>(),
-            sp.GetService<ILogger<StagedRagPipeline>>());
+            new StagedRagPipelineDependencies
+            {
+                QueryTransformers = sp.GetRequiredService<QueryTransformerFactory>(),
+                Rerankers = sp.GetRequiredService<RerankerFactory>(),
+                GroundednessChecker = sp.GetService<IGroundednessChecker>(),
+                Logger = sp.GetService<ILogger<StagedRagPipeline>>(),
+            });
 
     /// <summary>
     /// Builds the <see cref="CorrectiveRagPipeline"/> graph (RAG-06) over the
@@ -241,9 +247,12 @@ public static class RagServiceCollectionExtensions
             sp.GetRequiredService<IChatClient>(),
             sp.GetRequiredService<IRetrievalEvaluator>(),
             options,
-            sp.GetService<IGroundednessChecker>(),
-            sp.GetService<IWebDocumentRetriever>(),
-            sp.GetService<ILogger<CorrectiveRagPipeline>>());
+            new CorrectiveRagPipelineDependencies
+            {
+                GroundednessChecker = sp.GetService<IGroundednessChecker>(),
+                WebRetriever = sp.GetService<IWebDocumentRetriever>(),
+                Logger = sp.GetService<ILogger<CorrectiveRagPipeline>>(),
+            });
 
     /// <summary>
     /// Resolves the memory provider backing the default document store: the ambient

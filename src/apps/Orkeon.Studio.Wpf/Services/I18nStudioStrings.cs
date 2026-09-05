@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using Orkeon.Studio.Core.Localization;
 
 namespace Orkeon.Studio.Wpf.Services;
@@ -10,6 +11,10 @@ namespace Orkeon.Studio.Wpf.Services;
 /// hot language switch as the shell. ViewModels subscribe to
 /// <see cref="CultureChanged"/> to re-emit their bindings.
 /// </summary>
+[SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase",
+    Justification = "I18n is the numeronym for internationalization, kept verbatim from the "
+                  + "I18n type this bridges onto; the rule's own suggestion (18NStudioStrings) "
+                  + "is not even a legal C# identifier.")]
 public sealed class I18nStudioStrings : IStudioStrings, IDisposable
 {
     /// <summary>The shared instance bridging onto <see cref="I18n.Instance"/>.</summary>

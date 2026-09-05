@@ -37,7 +37,7 @@ public sealed class TeamsManagementTests
             SeedTeam(root, "veille", "Veille");
             SeedTeam(root, "synthese", "Synthèse");
 
-            var teams = new TeamsViewModel(teamsRoot: root, loadSessions: () => []);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
             Assert.Equal(2, teams.Teams.Count);
 
             teams.Teams[0].AskDeleteCommand.Execute(null);
@@ -67,7 +67,7 @@ public sealed class TeamsManagementTests
             Directory.CreateDirectory(sessionDirectory);
             var sessions = new List<ForgeSolutionSummary> { Draft("veille", sessionDirectory) };
 
-            var teams = new TeamsViewModel(teamsRoot: root, loadSessions: () => [.. sessions]);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [.. sessions] });
             var session = Assert.Single(teams.InProgress);
             Assert.True(teams.HasInProgress);
 
@@ -105,7 +105,7 @@ public sealed class TeamsManagementTests
         try
         {
             Directory.CreateDirectory(root);
-            var teams = new TeamsViewModel(teamsRoot: root, loadSessions: () => []);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
 
             Assert.True(teams.IsEmpty);
             Assert.False(teams.HasInProgress);
@@ -165,14 +165,15 @@ public sealed class NavigationDraftTests
 
         return new CreateTeamViewModel(
             profiles,
-            new Orkeon.Studio.Core.Forge.ForgeClient(
-                processes ?? new Doubles.FakeProcessLauncher(),
-                new Orkeon.Studio.Core.Process.OrkeonBinaryLocator(
-                    Doubles.FakeExecutableProbe.WithOrkeonInstalled())),
-            dispatcher: null,
-            strings: null,
-            workspaceDirectory: "/ws",
-            teamsRoot: "/teams");
+            new CreateTeamDependencies
+            {
+                Client = new Orkeon.Studio.Core.Forge.ForgeClient(
+                    processes ?? new Doubles.FakeProcessLauncher(),
+                    new Orkeon.Studio.Core.Process.OrkeonBinaryLocator(
+                        Doubles.FakeExecutableProbe.WithOrkeonInstalled())),
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = "/teams",
+            });
     }
 
     [Fact]

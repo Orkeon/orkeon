@@ -357,7 +357,8 @@ public partial class McpClient : IAsyncDisposable
     private static string? PickCommonVersion(IReadOnlyList<string> serverVersions)
     {
         // Our SupportedVersions list is newest-first; take the newest both sides speak.
-        return McpProtocol.SupportedVersions.FirstOrDefault(serverVersions.Contains);
+        return McpProtocol.SupportedVersions
+            .FirstOrDefault(version => serverVersions.Contains(version));
     }
 
     private static InvalidOperationException NoCommonVersion(IReadOnlyList<string> serverVersions)

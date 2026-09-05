@@ -22,6 +22,9 @@ namespace Orkeon.Tools.Rag;
 /// </summary>
 public class RagEvalTool : IBaseTool
 {
+    /// <summary>Metric cutoff applied when the caller gives no <c>k</c>.</summary>
+    private const int DefaultMetricCutoff = 5;
+
     private readonly IRagEvalHarness _harness;
 
     /// <inheritdoc />
@@ -59,7 +62,7 @@ public class RagEvalTool : IBaseTool
                 "integer",
                 "Metric cutoff for recall@k / precision@k (default: 5)",
                 Required: false,
-                Default: 5),
+                Default: DefaultMetricCutoff),
             ["use_llm_judge"] = new ParameterSchema(
                 "boolean",
                 "Judge generation with the configured LLM (falls back to the deterministic heuristic, always labelled)",
@@ -84,46 +87,53 @@ public class RagEvalTool : IBaseTool
         ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
-        return CallCoreAsync();
 
-        async Task<ToolCallResponse> CallCoreAsync()
-        {
-            var dataset = request.Parameters.TryGetValue("dataset", out var d) ? d?.ToString() : null;
-            if (string.IsNullOrWhiteSpace(dataset))
-                return new ToolCallResponse(false, null, "dataset parameter is required");
+        var dataset = ReadString(request.Parameters, "dataset");
+        if (string.IsNullOrWhiteSpace(dataset))
+            return Task.FromResult(new ToolCallResponse(false, null, "dataset parameter is required"));
 
-            var collection = request.Parameters.TryGetValue("collection", out var c) ? c?.ToString() : null;
-            var profile = request.Parameters.TryGetValue("profile", out var p) ? p?.ToString() : null;
-            var compare = ExtractProfiles(request.Parameters.TryGetValue("compare", out var cmp) ? cmp : null);
-
-            var k = request.Parameters.TryGetValue("k", out var kRaw) && kRaw is not null
-                ? Convert.ToInt32(kRaw, CultureInfo.InvariantCulture)
-                : 5;
-
-            var useLlmJudge = request.Parameters.TryGetValue("use_llm_judge", out var j) && ToBool(j);
-            var reindex = request.Parameters.TryGetValue("reindex", out var r) && ToBool(r);
-
-            // `compare` wins over `profile`; neither given means "the default pipeline".
-            ImmutableList<string> singleProfile =
-                string.IsNullOrWhiteSpace(profile) ? [] : ImmutableList.Create(profile!);
-
-            var profiles = compare.Count > 0 ? compare : singleProfile;
-
-            var result = await _harness.RunAsync(
-                new RagEvalRunRequest
-                {
-                    DatasetPath = dataset!,
-                    Profiles = profiles,
-                    Collection = string.IsNullOrWhiteSpace(collection) ? null : collection,
-                    K = k,
-                    UseLlmJudge = useLlmJudge,
-                    ReindexCorpus = reindex,
-                },
-                cancellationToken).ConfigureAwait(false);
-
-            return new ToolCallResponse(true, FormatResult(result), null);
-        }
+        return RunAndFormatAsync(BuildRunRequest(request.Parameters, dataset), cancellationToken);
     }
+
+    private async Task<ToolCallResponse> RunAndFormatAsync(
+        RagEvalRunRequest runRequest, CancellationToken cancellationToken)
+    {
+        var result = await _harness.RunAsync(runRequest, cancellationToken).ConfigureAwait(false);
+        return new ToolCallResponse(true, FormatResult(result), null);
+    }
+
+    /// <summary>
+    /// Maps the tool parameters onto a harness run request. <c>compare</c> wins over
+    /// <c>profile</c>; neither given means "the default pipeline".
+    /// </summary>
+    private static RagEvalRunRequest BuildRunRequest(
+        Dictionary<string, object?> parameters, string dataset)
+    {
+        var compare = ExtractProfiles(parameters.GetValueOrDefault("compare"));
+        var profile = ReadString(parameters, "profile");
+        ImmutableList<string> singleProfile =
+            string.IsNullOrWhiteSpace(profile) ? [] : ImmutableList.Create(profile);
+
+        var collection = ReadString(parameters, "collection");
+
+        return new RagEvalRunRequest
+        {
+            DatasetPath = dataset,
+            Profiles = compare.Count > 0 ? compare : singleProfile,
+            Collection = string.IsNullOrWhiteSpace(collection) ? null : collection,
+            K = ReadInt(parameters, "k", DefaultMetricCutoff),
+            UseLlmJudge = ToBool(parameters.GetValueOrDefault("use_llm_judge")),
+            ReindexCorpus = ToBool(parameters.GetValueOrDefault("reindex")),
+        };
+    }
+
+    private static string? ReadString(Dictionary<string, object?> parameters, string key)
+        => parameters.TryGetValue(key, out var value) ? value?.ToString() : null;
+
+    private static int ReadInt(Dictionary<string, object?> parameters, string key, int fallback)
+        => parameters.TryGetValue(key, out var value) && value is not null
+            ? Convert.ToInt32(value, CultureInfo.InvariantCulture)
+            : fallback;
 
     /// <inheritdoc />
     public Task<ToolResult> ExecuteAsync(string input, CancellationToken cancellationToken = default)
@@ -197,43 +207,46 @@ public class RagEvalTool : IBaseTool
     /// Tolerant extraction of the <c>compare</c> parameter: a comma-separated
     /// string, any enumerable of values, or a JSON array.
     /// </summary>
-    internal static ImmutableList<string> ExtractProfiles(object? raw)
+    internal static ImmutableList<string> ExtractProfiles(object? raw) => raw switch
     {
-        var profiles = new List<string>();
-        switch (raw)
+        null => [],
+        string csv => SplitProfileList(csv),
+        JsonElement { ValueKind: JsonValueKind.Array } array => ProfilesFromJsonArray(array),
+        JsonElement { ValueKind: JsonValueKind.String } str => SplitProfileList(str.GetString()),
+        IEnumerable enumerable => ProfilesFromEnumerable(enumerable),
+        _ => SplitProfileList(raw.ToString()),
+    };
+
+    /// <summary>Splits a comma-separated profile list; blanks yield nothing.</summary>
+    private static ImmutableList<string> SplitProfileList(string? csv)
+        => string.IsNullOrWhiteSpace(csv)
+            ? []
+            : [.. csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)];
+
+    private static ImmutableList<string> ProfilesFromJsonArray(JsonElement array)
+    {
+        var profiles = ImmutableList.CreateBuilder<string>();
+        foreach (var item in array.EnumerateArray())
         {
-            case null:
-                break;
-            case string csv:
-                profiles.AddRange(csv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                break;
-            case JsonElement { ValueKind: JsonValueKind.Array } array:
-                foreach (var item in array.EnumerateArray())
-                {
-                    var value = item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString();
-                    if (!string.IsNullOrWhiteSpace(value)) profiles.Add(value!.Trim());
-                }
-                break;
-            case JsonElement { ValueKind: JsonValueKind.String } str:
-                var text = str.GetString();
-                if (!string.IsNullOrWhiteSpace(text))
-                    profiles.AddRange(text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                break;
-            case IEnumerable enumerable:
-                foreach (var item in enumerable)
-                {
-                    var value = item?.ToString();
-                    if (!string.IsNullOrWhiteSpace(value)) profiles.Add(value!.Trim());
-                }
-                break;
-            default:
-                var fallback = raw.ToString();
-                if (!string.IsNullOrWhiteSpace(fallback))
-                    profiles.AddRange(fallback!.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries));
-                break;
+            var value = item.ValueKind == JsonValueKind.String ? item.GetString() : item.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
+                profiles.Add(value.Trim());
         }
 
-        return [.. profiles];
+        return profiles.ToImmutable();
+    }
+
+    private static ImmutableList<string> ProfilesFromEnumerable(IEnumerable enumerable)
+    {
+        var profiles = ImmutableList.CreateBuilder<string>();
+        foreach (var item in enumerable)
+        {
+            var value = item?.ToString();
+            if (!string.IsNullOrWhiteSpace(value))
+                profiles.Add(value.Trim());
+        }
+
+        return profiles.ToImmutable();
     }
 
     private static bool ToBool(object? value) => value switch

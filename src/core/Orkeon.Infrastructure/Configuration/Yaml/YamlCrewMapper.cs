@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Agent;
@@ -478,6 +479,11 @@ public sealed partial class YamlCrewMapper
     /// can read, is dropped **with a warning** rather than guessed at — a guessed direction is
     /// an authorization the author never wrote.
     /// </summary>
+    [SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null is a third state here, not the absence of a value: the ACL reads null as \"the crew never " +
+                        "declared a links: block\" and arbitrates it through ICrewLinkPolicy, while an empty list means " +
+                        "\"declared, and every entry was dropped\" and closes the door on everything. Returning an empty " +
+                        "list would silently lock out every crew that never wrote a links: block.")]
     private List<CrewLink>? MapLinks(string crewName, Collection<LinkYamlConfig>? yaml)
     {
         if (yaml is null)

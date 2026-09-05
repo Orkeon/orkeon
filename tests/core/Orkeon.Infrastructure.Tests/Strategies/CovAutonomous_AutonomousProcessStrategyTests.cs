@@ -32,7 +32,9 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         new(NullLogger<InMemoryAgentChannel>.Instance);
 
     private AutonomousProcessStrategy CreateStrategy() => new(
-        _taskRepo, _agentRepo, _execService, _channel, _manager, _memoryScope,
+        new CrewStrategyDependencies(_taskRepo, _agentRepo, _execService, _memoryScope),
+        _channel,
+        _manager,
         NullLogger<AutonomousProcessStrategy>.Instance);
 
     // ── Helpers ────────────────────────────────────────────────────────────
@@ -80,12 +82,13 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     public void Constructor_NullArgument_Throws(string paramName)
     {
         var ex = Assert.Throws<ArgumentNullException>(() => new AutonomousProcessStrategy(
-            paramName == "taskRepository" ? null! : _taskRepo,
-            paramName == "agentRepository" ? null! : _agentRepo,
-            paramName == "executionService" ? null! : _execService,
+            new CrewStrategyDependencies(
+                paramName == "taskRepository" ? null! : _taskRepo,
+                paramName == "agentRepository" ? null! : _agentRepo,
+                paramName == "executionService" ? null! : _execService,
+                paramName == "memoryScope" ? null! : _memoryScope),
             paramName == "channel" ? null! : _channel,
             paramName == "managerAgent" ? null! : _manager,
-            paramName == "memoryScope" ? null! : _memoryScope,
             paramName == "logger" ? null! : NullLogger<AutonomousProcessStrategy>.Instance));
         Assert.Equal(paramName, ex.ParamName);
     }

@@ -173,18 +173,30 @@ internal static class LlmCatalogClient
         return request;
     }
 
+    /// <summary>
+    /// Locates the array of model entries in an OpenAI-style catalogue payload.
+    /// Together answers with a BARE array - no data envelope (measured 2026-08-30; the
+    /// first real call crashed here, TryGetProperty being invalid on an array root).
+    /// Returns a default element when neither shape matches.
+    /// </summary>
+    private static JsonElement ResolveOpenAiDataArray(JsonElement root)
+    {
+        if (root.ValueKind == JsonValueKind.Array)
+            return root;
+
+        if (root.ValueKind == JsonValueKind.Object
+            && root.TryGetProperty("data", out var envelope)
+            && envelope.ValueKind == JsonValueKind.Array)
+        {
+            return envelope;
+        }
+
+        return default;
+    }
+
     private static List<string> ReadOpenAiStyleData(JsonDocument document)
     {
-        // Together answers with a BARE array - no data envelope (measured 2026-08-30; the
-        // first real call crashed here, TryGetProperty being invalid on an array root).
-        var root = document.RootElement;
-        var data = root.ValueKind == JsonValueKind.Array
-            ? root
-            : root.ValueKind == JsonValueKind.Object
-                && root.TryGetProperty("data", out var envelope)
-                && envelope.ValueKind == JsonValueKind.Array
-                ? envelope
-                : default;
+        var data = ResolveOpenAiDataArray(document.RootElement);
 
         if (data.ValueKind != JsonValueKind.Array)
             return [];

@@ -149,7 +149,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, deltaSink: sink);
+            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.act("go", null);
 
@@ -171,7 +171,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, deltaSink: sink);
+            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
@@ -204,7 +204,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null,
-            permissionGate: null, deltaSink: sink);
+            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.act("read then answer", null);
 
@@ -223,7 +223,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, tools: null, budget: null,
-            permissionGate: null, deltaSink: sink);
+            permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
         var result = await facade.act("go", null);
 

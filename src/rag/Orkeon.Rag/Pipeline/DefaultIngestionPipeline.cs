@@ -64,37 +64,28 @@ public sealed partial class DefaultIngestionPipeline : IIngestionPipeline
     private readonly ILogger<DefaultIngestionPipeline> _logger;
 
     /// <summary>Initializes the ingestion pipeline.</summary>
-    /// <param name="loaderFactory">Resolves the loader able to handle each source.</param>
-    /// <param name="chunkingFactory">Resolves the chunking strategy by name.</param>
-    /// <param name="embeddingProvider">Application embedding port used to embed chunk contents.</param>
-    /// <param name="store">Target document store.</param>
-    /// <param name="validation">Ingestion-path security validation (anti-injection, provenance, quarantine).</param>
-    /// <param name="manifestStore">Per-collection ingestion manifest persistence (incremental state).</param>
+    /// <param name="dependencies">The stage collaborators the pipeline drives.</param>
     /// <param name="options">Pipeline options; <c>null</c> selects the defaults.</param>
     /// <param name="logger">Optional logger; defaults to a no-op logger.</param>
     public DefaultIngestionPipeline(
-        DocumentLoaderFactory loaderFactory,
-        ChunkingStrategyFactory chunkingFactory,
-        IEmbeddingProvider embeddingProvider,
-        IDocumentStore store,
-        DataValidationPipeline validation,
-        IIngestionManifestStore manifestStore,
+        IngestionPipelineDependencies dependencies,
         RagIngestionOptions? options = null,
         ILogger<DefaultIngestionPipeline>? logger = null)
     {
-        ArgumentNullException.ThrowIfNull(loaderFactory);
-        ArgumentNullException.ThrowIfNull(chunkingFactory);
-        ArgumentNullException.ThrowIfNull(embeddingProvider);
-        ArgumentNullException.ThrowIfNull(store);
-        ArgumentNullException.ThrowIfNull(validation);
-        ArgumentNullException.ThrowIfNull(manifestStore);
+        ArgumentNullException.ThrowIfNull(dependencies);
+        ArgumentNullException.ThrowIfNull(dependencies.LoaderFactory);
+        ArgumentNullException.ThrowIfNull(dependencies.ChunkingFactory);
+        ArgumentNullException.ThrowIfNull(dependencies.EmbeddingProvider);
+        ArgumentNullException.ThrowIfNull(dependencies.Store);
+        ArgumentNullException.ThrowIfNull(dependencies.Validation);
+        ArgumentNullException.ThrowIfNull(dependencies.ManifestStore);
 
-        _loaderFactory = loaderFactory;
-        _chunkingFactory = chunkingFactory;
-        _embeddingProvider = embeddingProvider;
-        _store = store;
-        _validation = validation;
-        _manifestStore = manifestStore;
+        _loaderFactory = dependencies.LoaderFactory;
+        _chunkingFactory = dependencies.ChunkingFactory;
+        _embeddingProvider = dependencies.EmbeddingProvider;
+        _store = dependencies.Store;
+        _validation = dependencies.Validation;
+        _manifestStore = dependencies.ManifestStore;
         _options = options ?? new RagIngestionOptions();
         _logger = logger ?? NullLogger<DefaultIngestionPipeline>.Instance;
     }

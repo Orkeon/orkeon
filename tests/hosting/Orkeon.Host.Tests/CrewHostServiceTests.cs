@@ -65,7 +65,17 @@ public sealed class CrewHostServiceTests : IDisposable
         });
 
         await service.StartAsync(TestContext.Current.CancellationToken);
+
+        // Started: the configuration was accepted and the loop is up.
+        Assert.NotNull(service.ExecuteTask);
+
         await service.StopAsync(TestContext.Current.CancellationToken);
+
+        // Stopped cleanly: the loop really ended, on the stop signal rather than on a
+        // fault. Awaited rather than asserted on the spot because the base StopAsync does
+        // not wait for ExecuteAsync's post-cancellation tail on .NET 10.
+        await service.ExecuteTask!.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+        Assert.True(service.ExecuteTask!.IsCompletedSuccessfully);
     }
 
     [Fact]

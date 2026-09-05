@@ -119,9 +119,18 @@ public sealed class SettingsLocationViewModel : ObservableObject
     }
 
     /// <summary>The path a save would actually write to.</summary>
-    public string? EffectivePath => IsGlobal
-        ? GlobalPath
-        : CustomPath is { Length: > 0 } path ? SettingsLocations.NormalizeTargetPath(path) : null;
+    public string? EffectivePath
+    {
+        get
+        {
+            if (IsGlobal)
+                return GlobalPath;
+
+            return CustomPath is { Length: > 0 } path
+                ? SettingsLocations.NormalizeTargetPath(path)
+                : null;
+        }
+    }
 
     /// <summary>Whether a save can be attempted at all.</summary>
     public bool CanSave => EffectivePath is { Length: > 0 };

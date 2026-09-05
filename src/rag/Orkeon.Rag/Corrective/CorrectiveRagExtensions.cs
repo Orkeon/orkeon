@@ -62,9 +62,12 @@ public static partial class CorrectiveRagExtensions
             serviceProvider.GetRequiredService<IChatClient>(),
             serviceProvider.GetRequiredService<IRetrievalEvaluator>(),
             serviceProvider.GetRequiredService<RagOptions>(),
-            serviceProvider.GetService<IGroundednessChecker>(),
-            serviceProvider.GetService<IWebDocumentRetriever>(),
-            serviceProvider.GetService<ILogger<CorrectiveRagPipeline>>()));
+            new CorrectiveRagPipelineDependencies
+            {
+                GroundednessChecker = serviceProvider.GetService<IGroundednessChecker>(),
+                WebRetriever = serviceProvider.GetService<IWebDocumentRetriever>(),
+                Logger = serviceProvider.GetService<ILogger<CorrectiveRagPipeline>>(),
+            }));
 
         return services;
     }

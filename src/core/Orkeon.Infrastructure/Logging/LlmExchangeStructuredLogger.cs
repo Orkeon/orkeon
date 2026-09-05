@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Logging;
 
@@ -66,6 +67,11 @@ public sealed partial class LlmExchangeStructuredLogger : ILlmExchangeLogger
 
     [LoggerMessage(EventId = 1, Level = LogLevel.Information,
         Message = "LLM exchange {ExchangeId}: {Provider}/{Model} {Method} {Url} \u2192 {StatusCode} in {DurationMs:F1}ms (streaming={IsStreaming})")]
+    [SuppressMessage("Major Code Smell", "S107:Methods should not have too many parameters",
+        Justification = "[LoggerMessage] binds one method parameter per {Placeholder} of the " +
+        "message template; a grouping record would collapse the eight structured fields into " +
+        "a single ToString-ed property and lose them for Seq/OpenTelemetry queries. Passing them " +
+        "through ILogger.Log instead is barred by CA1848, which this repository treats as an error.")]
     private partial void LogExchangeSucceeded(
         string exchangeId, string provider, string model,
         string method, string url, int statusCode,
@@ -73,6 +79,11 @@ public sealed partial class LlmExchangeStructuredLogger : ILlmExchangeLogger
 
     [LoggerMessage(EventId = 2, Level = LogLevel.Warning,
         Message = "LLM exchange {ExchangeId} FAILED: {Provider}/{Model} {Method} {Url} \u2192 {StatusCode} in {DurationMs:F1}ms \u2014 {Error}")]
+    [SuppressMessage("Major Code Smell", "S107:Methods should not have too many parameters",
+        Justification = "[LoggerMessage] binds one method parameter per {Placeholder} of the " +
+        "message template; a grouping record would collapse the eight structured fields into " +
+        "a single ToString-ed property and lose them for Seq/OpenTelemetry queries. Passing them " +
+        "through ILogger.Log instead is barred by CA1848, which this repository treats as an error.")]
     private partial void LogExchangeFailed(
         string exchangeId, string provider, string model,
         string method, string url, int statusCode,

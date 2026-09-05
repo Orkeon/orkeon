@@ -33,8 +33,17 @@ public sealed record ProgressSnapshot
     /// The effective completion ratio in [0, 1], from <see cref="Percent"/> first, else
     /// <see cref="Step"/>/<see cref="Total"/>; null when the operation is indeterminate.
     /// </summary>
-    public double? Ratio =>
-        Percent is { } p ? Math.Clamp(p / 100d, 0d, 1d)
-        : Step is { } s && Total is { } t && t > 0 ? Math.Clamp((double)s / t, 0d, 1d)
-        : null;
+    public double? Ratio
+    {
+        get
+        {
+            if (Percent is { } percent)
+                return Math.Clamp(percent / 100d, 0d, 1d);
+
+            if (Step is { } step && Total is { } total && total > 0)
+                return Math.Clamp((double)step / total, 0d, 1d);
+
+            return null;
+        }
+    }
 }

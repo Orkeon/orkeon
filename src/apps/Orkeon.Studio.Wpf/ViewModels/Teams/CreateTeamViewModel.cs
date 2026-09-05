@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.FileSystem;
@@ -18,6 +19,9 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 public sealed class TeamAdoptedEventArgs(string path) : EventArgs
 {
     /// <summary>Absolute path of the team folder.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public string Path { get; } = path;
 }
 
@@ -141,6 +145,9 @@ public sealed class WizardDecision
 public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : EventArgs
 {
     /// <summary>The mount point to bind; null to add a folder as the settings declare it.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public string? TargetVirtualPath { get; } = targetVirtualPath;
 }
 
@@ -196,6 +203,35 @@ public sealed record MountRow(
 }
 
 /// <summary>
+/// The wizard's seams: the collaborators it otherwise builds itself. They travel as one
+/// record rather than as seven constructor parameters — a test names the two or three it
+/// cares about and leaves the rest to the real engine, the real clock and the real folders.
+/// </summary>
+public sealed record CreateTeamDependencies
+{
+    /// <summary>The forge engine channel; a client for the current machine when null.</summary>
+    public ForgeClient? Client { get; init; }
+
+    /// <summary>Where a continuation lands; the immediate (same-thread) dispatcher when null.</summary>
+    public IUiDispatcher? Dispatcher { get; init; }
+
+    /// <summary>The localized strings; English when null.</summary>
+    public IStudioStrings? Strings { get; init; }
+
+    /// <summary>Where the forge sessions live; the process working directory when null.</summary>
+    public string? WorkspaceDirectory { get; init; }
+
+    /// <summary>Where an adopted team lands; the default teams root when null.</summary>
+    public string? TeamsRoot { get; init; }
+
+    /// <summary>The folders the settings declare; none when null.</summary>
+    public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
+
+    /// <summary>The window's conversation; a private thread when null.</summary>
+    public ChatThreadViewModel? Chat { get; init; }
+}
+
+/// <summary>
 /// The "create a team" wizard (design v3): four steps — Describe, Compose, Try,
 /// Adopt — over the forge engine's event stream. The engine owns the cycle; the stepper
 /// is a projection of its milestones, and every gesture here is one of the engine's own
@@ -234,60 +270,35 @@ public sealed class CreateTeamViewModel : ObservableObject
     private string? _lastStderr;
 
     /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
-    public CreateTeamViewModel(
-        ModelProfilesViewModel profiles,
-        ForgeClient? client = null,
-        IUiDispatcher? dispatcher = null,
-        IStudioStrings? strings = null,
-        string? workspaceDirectory = null,
-        string? teamsRoot = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null,
-        ChatThreadViewModel? chat = null)
+    public CreateTeamViewModel(ModelProfilesViewModel profiles, CreateTeamDependencies? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(profiles);
 
+        var wired = dependencies ?? new CreateTeamDependencies();
         Profiles = profiles;
-        _declaredMounts = declaredMounts ?? (() => []);
-        _client = client ?? ForgeClient.ForCurrentMachine();
-        _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
-        _strings = strings ?? EnglishStudioStrings.Instance;
-        _workspace = workspaceDirectory ?? Environment.CurrentDirectory;
-        _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
+        _declaredMounts = wired.DeclaredMounts ?? (() => []);
+        _client = wired.Client ?? ForgeClient.ForCurrentMachine();
+        _dispatcher = wired.Dispatcher ?? ImmediateUiDispatcher.Instance;
+        _strings = wired.Strings ?? EnglishStudioStrings.Instance;
+        _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
+        _teamsRoot = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
 
         // The conversation is the window's, not this screen's: it has to survive a tab
         // change, and losing it on the first one is precisely the defect being fixed. A
         // test that does not care gets a private one rather than a null check everywhere.
-        Chat = chat ?? new ChatThreadViewModel(_strings);
+        Chat = wired.Chat ?? new ChatThreadViewModel(_strings);
 
         RawLog = new RunLogViewModel(_strings);
         AgentEditor = new AgentEditorViewModel(_strings);
         AddAgentCommand = new RelayCommand(() => EditAgent(null), () => CanEditAgents);
-        AllowFolderCommand = new RelayCommand(
-            () => AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(null)));
-        BindMountCommand = new RelayCommand(
-            parameter =>
-            {
-                if (parameter is string virtualPath)
-                    AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(virtualPath));
-            },
-            parameter => parameter is string);
+        AllowFolderCommand = new RelayCommand(() => RequestAllowFolder(null));
+        BindMountCommand = new RelayCommand(BindMount, IsStringParameter);
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
-        PickAdoptProfileCommand = new RelayCommand(parameter =>
-        {
-            if (parameter is string profileName)
-            {
-                AdoptProfileName = profileName;
-                IsAdoptProfilePickerOpen = false;
-            }
-        });
-        RemoveTeamMountCommand = new RelayCommand(
-            parameter => { if (parameter is string mount) { TeamMounts.Remove(mount); RefreshMountSurfaces(); } },
-            parameter => parameter is string);
-        RemoveDerivedMountCommand = new RelayCommand(
-            parameter => { if (parameter is string virtualPath && _droppedDerivedRoots.Add(virtualPath)) RefreshMountSurfaces(); },
-            parameter => parameter is string);
+        PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
+        RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
+        RemoveDerivedMountCommand = new RelayCommand(DropDerivedMount, IsStringParameter);
         RestoreDerivedMountsCommand = new RelayCommand(
-            () => { _droppedDerivedRoots.Clear(); RefreshMountSurfaces(); },
+            RestoreDerivedMounts,
             () => _droppedDerivedRoots.Count > 0);
         Progress = new ComposeProgressViewModel(_strings);
         // The count is the conversation's, read live: three per-step mini-threads were
@@ -322,48 +333,14 @@ public sealed class CreateTeamViewModel : ObservableObject
                     .Select(label => label!),
             ],
             profileName: () => Profiles.Set.Studio?.Name,
-            // The projection must hear what the user said too, or a resumed session
-            // rebuilds a conversation with every question and none of the answers.
-            askEngine: question =>
-            {
-                if (!_client.SendMessage(question))
-                    return false;
-
-                _model.AddUserMessage(question);
-                return true;
-            });
-        Chat.StopRequested += (_, _) => { if (IsEngineRunning) _client.RequestCancellation(); };
+            askEngine: AskEngine);
+        Chat.StopRequested += (_, _) => StopEngine();
         // «Edit» on the brief card means the form, not just a hidden panel. Without this the
         // pencil closed the thread and dropped the user back on whatever step they were on,
         // with the brief as unreachable as it was a moment earlier.
         Chat.EditBriefRequested += (_, _) => GoStep(1);
-        Chat.Turns.CollectionChanged += (_, _) =>
-        {
-            RaiseDraftChanged();
-            ComposeNotes.RefreshMessageCount();
-            TryNotes.RefreshMessageCount();
-            AdoptNotes.RefreshMessageCount();
-        };
-        Chat.PropertyChanged += (_, e) =>
-        {
-            if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted))
-                RestartCommand?.RaiseCanExecuteChanged();
-
-            // The nav's draft block reads the conversation too: the assistant awaiting your
-            // reply is the state a user must never walk away from without seeing.
-            if (e.PropertyName is nameof(ChatThreadViewModel.IsStarted)
-                or nameof(ChatThreadViewModel.IsBusy)
-                or nameof(ChatThreadViewModel.IsAsking)
-                or nameof(ChatThreadViewModel.UnreadCount))
-            {
-                RaiseDraftChanged();
-            }
-
-            // The brief interview is an engine blocked on stdin: while a question stands,
-            // the top-of-screen spinner must stop claiming the engine is working.
-            if (e.PropertyName is nameof(ChatThreadViewModel.IsAsking))
-                OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
-        };
+        Chat.Turns.CollectionChanged += (_, _) => OnChatTurnsChanged();
+        Chat.PropertyChanged += (_, e) => OnChatPropertyChanged(e.PropertyName);
 
         // The gesture IS the engine. The questions belong to the model, asked during its
         // brief stage; a local questionnaire played first only interviewed the user twice.
@@ -388,17 +365,121 @@ public sealed class CreateTeamViewModel : ObservableObject
         GoStep4Command = new RelayCommand(() => GoStep(4));
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
-        PickAssistantCommand = new RelayCommand(p => { if (p is string name) Profiles.StudioProfileName = name; });
+        PickAssistantCommand = new RelayCommand(PickAssistant);
 
-        Profiles.PropertyChanged += (_, e) =>
+        Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
+    }
+
+    // ── what the constructor wired ──────────────────────────────────────────
+    // The wiring above says what is connected to what; each handler below says
+    // what it then does. They are methods rather than inline lambdas so that the
+    // constructor stays a list of connections, readable in one pass.
+
+    private static bool IsStringParameter(object? parameter) => parameter is string;
+
+    /// <summary>Asks the shell for a folder — behind <paramref name="targetVirtualPath"/>, or as the settings declare it.</summary>
+    private void RequestAllowFolder(string? targetVirtualPath) =>
+        AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(targetVirtualPath));
+
+    private void BindMount(object? parameter)
+    {
+        if (parameter is string virtualPath)
+            RequestAllowFolder(virtualPath);
+    }
+
+    private void PickAdoptProfile(object? parameter)
+    {
+        if (parameter is not string profileName)
+            return;
+
+        AdoptProfileName = profileName;
+        IsAdoptProfilePickerOpen = false;
+    }
+
+    private void RemoveTeamMount(object? parameter)
+    {
+        if (parameter is not string mount)
+            return;
+
+        TeamMounts.Remove(mount);
+        RefreshMountSurfaces();
+    }
+
+    private void DropDerivedMount(object? parameter)
+    {
+        if (parameter is string virtualPath && _droppedDerivedRoots.Add(virtualPath))
+            RefreshMountSurfaces();
+    }
+
+    private void RestoreDerivedMounts()
+    {
+        _droppedDerivedRoots.Clear();
+        RefreshMountSurfaces();
+    }
+
+    private void PickAssistant(object? parameter)
+    {
+        if (parameter is string name)
+            Profiles.StudioProfileName = name;
+    }
+
+    /// <summary>
+    /// Sends a free question to the engine's stdin. The projection must hear what the user
+    /// said too, or a resumed session rebuilds a conversation with every question and none
+    /// of the answers.
+    /// </summary>
+    private bool AskEngine(string question)
+    {
+        if (!_client.SendMessage(question))
+            return false;
+
+        _model.AddUserMessage(question);
+        return true;
+    }
+
+    private void StopEngine()
+    {
+        if (IsEngineRunning)
+            _client.RequestCancellation();
+    }
+
+    private void OnChatTurnsChanged()
+    {
+        RaiseDraftChanged();
+        ComposeNotes.RefreshMessageCount();
+        TryNotes.RefreshMessageCount();
+        AdoptNotes.RefreshMessageCount();
+    }
+
+    private void OnChatPropertyChanged(string? propertyName)
+    {
+        if (propertyName is nameof(ChatThreadViewModel.IsStarted))
+            RestartCommand?.RaiseCanExecuteChanged();
+
+        // The nav's draft block reads the conversation too: the assistant awaiting your
+        // reply is the state a user must never walk away from without seeing.
+        if (propertyName is nameof(ChatThreadViewModel.IsStarted)
+            or nameof(ChatThreadViewModel.IsBusy)
+            or nameof(ChatThreadViewModel.IsAsking)
+            or nameof(ChatThreadViewModel.UnreadCount))
         {
-            if (e.PropertyName is nameof(ModelProfilesViewModel.HasStudioProfile) or nameof(ModelProfilesViewModel.Set))
-            {
-                // CanCompose starts with HasAssistant: an election must wake the button too.
-                OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint));
-                ComposeCommand.RaiseCanExecuteChanged();
-            }
-        };
+            RaiseDraftChanged();
+        }
+
+        // The brief interview is an engine blocked on stdin: while a question stands,
+        // the top-of-screen spinner must stop claiming the engine is working.
+        if (propertyName is nameof(ChatThreadViewModel.IsAsking))
+            OnPropertiesChanged(nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(TrialInProgress));
+    }
+
+    private void OnProfilesPropertyChanged(string? propertyName)
+    {
+        if (propertyName is not (nameof(ModelProfilesViewModel.HasStudioProfile) or nameof(ModelProfilesViewModel.Set)))
+            return;
+
+        // CanCompose starts with HasAssistant: an election must wake the button too.
+        OnPropertiesChanged(nameof(HasAssistant), nameof(NeedsAssistant), nameof(CanCompose), nameof(Step1Hint));
+        ComposeCommand.RaiseCanExecuteChanged();
     }
 
     /// <summary>Raised when a session becomes active — the shell brings the screen forward.</summary>
@@ -645,14 +726,27 @@ public sealed class CreateTeamViewModel : ObservableObject
         && (!OutcomeRequired || _outcome.Trim().Length > 0);
 
     /// <summary>The sentence under the compose button, tracking what is still missing.</summary>
-    public string Step1Hint =>
-        _need.Trim().Length == 0 ? _strings[StudioStringKeys.WizardHintDescribe]
-        : OutcomeRequired && _outcome.Trim().Length == 0 ? _strings[StudioStringKeys.WizardHintOutcome]
-        // A greyed button under «Everything is there — I can compose the team» is a lie:
-        // the engine is already composing, and what it wants is an answer in the thread.
-        : IsEngineRunning ? _strings[StudioStringKeys.WizardHintComposing]
-        : !CanCompose ? _strings[StudioStringKeys.WizardHintAnswers]
-        : _strings[StudioStringKeys.WizardHintReady];
+    public string Step1Hint
+    {
+        get
+        {
+            if (_need.Trim().Length == 0)
+                return _strings[StudioStringKeys.WizardHintDescribe];
+
+            if (OutcomeRequired && _outcome.Trim().Length == 0)
+                return _strings[StudioStringKeys.WizardHintOutcome];
+
+            // A greyed button under «Everything is there — I can compose the team» is a lie:
+            // the engine is already composing, and what it wants is an answer in the thread.
+            if (IsEngineRunning)
+                return _strings[StudioStringKeys.WizardHintComposing];
+
+            if (!CanCompose)
+                return _strings[StudioStringKeys.WizardHintAnswers];
+
+            return _strings[StudioStringKeys.WizardHintReady];
+        }
+    }
 
     /// <summary>Fills the need box from an example.</summary>
     public RelayCommand UseExampleCommand { get; }

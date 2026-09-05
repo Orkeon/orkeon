@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Collections.Immutable;
+using System.Diagnostics.CodeAnalysis;
 using Orkeon.Application.EventHub;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.EventHub;
@@ -38,6 +39,11 @@ public sealed class InMemoryCrewLinkRegistry : ICrewLinkRegistry
     }
 
     /// <inheritdoc />
+    [SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "The default array is a third state here, not the absence of a value: ICrewLinkProvider reads " +
+                        "it as \"the crew never declared a links: block\" and arbitrates it through ICrewLinkPolicy, " +
+                        "while an empty array means \"declared, and the door is closed\". Returning an empty array for " +
+                        "an unknown crew would turn every undeclared sender into a refused one.")]
     public ImmutableArray<CrewLink> LinksFor(CrewId source) =>
         _crews.TryGetValue(source, out var entry) ? entry.Links : default;
 

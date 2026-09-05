@@ -54,29 +54,20 @@ public sealed class LaunchTabViewModel : ObservableObject
     private BinaryLocation? _binaryLocation;
 
     /// <summary>Builds the tab over its seams; each one has an in-memory double in the tests.</summary>
-    public LaunchTabViewModel(
-        OrkeonProcessRunner? processRunner = null,
-        ITargetProbe? targetProbe = null,
-        IDirectoryProbe? directories = null,
-        IPathPicker? picker = null,
-        ILaunchHistoryStore? historyStore = null,
-        IAppSettingsStore? settingsStore = null,
-        IUiDispatcher? dispatcher = null,
-        IStudioStrings? strings = null,
-        Func<string, IReadOnlyDictionary<string, string>?>? environmentForTarget = null,
-        IShellOpener? shellOpener = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+    public LaunchTabViewModel(LaunchTabDependencies? dependencies = null)
     {
-        _environmentForTarget = environmentForTarget;
-        _declaredMounts = declaredMounts ?? (() => []);
-        _directories = directories ?? PhysicalDirectoryProbe.Instance;
-        _runner = processRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+        var seams = dependencies ?? new LaunchTabDependencies();
+
+        _environmentForTarget = seams.EnvironmentForTarget;
+        _declaredMounts = seams.DeclaredMounts ?? (() => []);
+        _directories = seams.Directories ?? PhysicalDirectoryProbe.Instance;
+        _runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
         // launcher runs over the very same class, which is what keeps the two in step.
-        _session = new RunSession(_runner, historyStore);
-        _settingsStore = settingsStore ?? PhysicalAppSettingsStore.Instance;
-        _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
-        _strings = strings ?? EnglishStudioStrings.Instance;
+        _session = new RunSession(_runner, seams.HistoryStore);
+        _settingsStore = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;
+        _dispatcher = seams.Dispatcher ?? ImmediateUiDispatcher.Instance;
+        _strings = seams.Strings ?? EnglishStudioStrings.Instance;
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
@@ -84,13 +75,13 @@ public sealed class LaunchTabViewModel : ObservableObject
             RaiseRunStateChanged();
         };
 
-        _shellOpener = shellOpener;
-        Target = new TargetSelectionViewModel(targetProbe, picker, _strings);
-        Options = new LaunchOptionsViewModel(picker, _strings);
-        Mounts = new LaunchMountsViewModel(directories, picker, _strings);
+        _shellOpener = seams.ShellOpener;
+        Target = new TargetSelectionViewModel(seams.TargetProbe, seams.Picker, _strings);
+        Options = new LaunchOptionsViewModel(seams.Picker, _strings);
+        Mounts = new LaunchMountsViewModel(seams.Directories, seams.Picker, _strings);
         Log = new RunLogViewModel(_strings);
         Progress = new RunProgressViewModel(_strings);
-        History = new LaunchHistoryViewModel(historyStore, _dispatcher, _strings, _shellOpener);
+        History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener);
 
         Target.TargetChanged += OnTargetChanged;
         Options.Changed += OnInputsChanged;
@@ -378,16 +369,21 @@ public sealed class LaunchTabViewModel : ObservableObject
         StatusMessage = _strings[StudioStringKeys.LaunchCancelling];
     }
 
-    /// <summary>The arguments the current selection produces, or null when it cannot produce any.</summary>
-    public IReadOnlyList<string>? BuildArguments()
+    /// <summary>
+    /// The arguments the current selection produces, empty when it cannot produce any — no target
+    /// is resolved, or the selection carries a blocking validation error. A built list always opens
+    /// with the run verb and the target path, so emptiness is unambiguous.
+    /// </summary>
+    public IReadOnlyList<string> BuildArguments()
     {
         if (Target.Target is not { } target)
-            return null;
+            return [];
 
         var options = BuildOptions();
-        return RunArgumentsBuilder.Validate(target, options).Any(m => m.Severity == ValidationSeverity.Error)
-            ? null
-            : RunArgumentsBuilder.Build(target, options);
+        if (RunArgumentsBuilder.Validate(target, options).Any(m => m.Severity == ValidationSeverity.Error))
+            return [];
+
+        return RunArgumentsBuilder.Build(target, options);
     }
 
     private RunLaunchOptions BuildOptions(bool validate = false) =>
@@ -706,28 +702,68 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The team card only exists once a target resolves.</summary>
     public bool HasTeamCard => Target.IsResolved;
 
+    // The four states the progress card can be in, in the order the user meets them.
+    private enum RunCardState
+    {
+        Idle,
+        Running,
+        Succeeded,
+        Failed,
+    }
+
+    // Title, badge, tone and button label are four readings of one and the same state, so they
+    // are derived from a single verdict rather than from four parallel chains of conditions:
+    // a fifth reading cannot drift away from the other four.
+    private RunCardState CardState
+    {
+        get
+        {
+            if (IsRunning)
+                return RunCardState.Running;
+
+            if (!HasResult)
+                return RunCardState.Idle;
+
+            return Outcome == RunOutcome.Success ? RunCardState.Succeeded : RunCardState.Failed;
+        }
+    }
+
     /// <summary>Plain-language state of the progress card: ready / running / finished.</summary>
     public string RunStateTitle =>
-        _strings[IsRunning ? StudioStringKeys.RunStateRunning
-            : HasResult ? StudioStringKeys.RunStateDone
-            : StudioStringKeys.RunStateIdle];
+        _strings[CardState switch
+        {
+            RunCardState.Running => StudioStringKeys.RunStateRunning,
+            RunCardState.Idle => StudioStringKeys.RunStateIdle,
+            _ => StudioStringKeys.RunStateDone,
+        }];
 
     /// <summary>The state badge next to the title.</summary>
     public string RunBadgeText =>
-        _strings[IsRunning ? StudioStringKeys.RunBadgeRunning
-            : !HasResult ? StudioStringKeys.RunBadgeIdle
-            : Outcome == RunOutcome.Success ? StudioStringKeys.RunBadgeDone
-            : StudioStringKeys.RunBadgeFailed];
+        _strings[CardState switch
+        {
+            RunCardState.Running => StudioStringKeys.RunBadgeRunning,
+            RunCardState.Idle => StudioStringKeys.RunBadgeIdle,
+            RunCardState.Succeeded => StudioStringKeys.RunBadgeDone,
+            _ => StudioStringKeys.RunBadgeFailed,
+        }];
 
     /// <summary>Tone key the view maps to colours: idle | running | ok | fail.</summary>
-    public string RunBadgeTone =>
-        IsRunning ? "running" : !HasResult ? "idle" : Outcome == RunOutcome.Success ? "ok" : "fail";
+    public string RunBadgeTone => CardState switch
+    {
+        RunCardState.Running => "running",
+        RunCardState.Idle => "idle",
+        RunCardState.Succeeded => "ok",
+        _ => "fail",
+    };
 
     /// <summary>Launch now / Running… / Relaunch — the mock's single primary button.</summary>
     public string RunButtonLabel =>
-        _strings[IsRunning ? StudioStringKeys.RunButtonRunning
-            : HasResult ? StudioStringKeys.RunButtonRelaunch
-            : StudioStringKeys.RunButtonLaunch];
+        _strings[CardState switch
+        {
+            RunCardState.Running => StudioStringKeys.RunButtonRunning,
+            RunCardState.Idle => StudioStringKeys.RunButtonLaunch,
+            _ => StudioStringKeys.RunButtonRelaunch,
+        }];
 
     /// <summary>Localized banner when the CLI is missing; the raw locator detail stays expert.</summary>
     public string? CliBanner => IsBinaryAvailable ? null : _strings[StudioStringKeys.RunCliMissing];
@@ -740,7 +776,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>Opens the result — the physical folder of the first writable mount.</summary>
-    public RelayCommand OpenResultCommand { get; private set; } = null!;
+    public RelayCommand OpenResultCommand { get; }
 
     /// <summary>A result folder exists once the run finished and a writable mount is known.</summary>
     public bool CanOpenResult => HasResult && _shellOpener is not null && ResultFolder() is not null;
@@ -830,8 +866,51 @@ public sealed class LaunchTabViewModel : ObservableObject
         // from the arguments only once the same validation has passed; otherwise the message list is
         // what tells the user why there is nothing to show.
         var arguments = BuildArguments();
-        CommandLinePreview = arguments is null ? null : CommandLineDisplay.Format(arguments);
+        CommandLinePreview = arguments.Count == 0 ? null : CommandLineDisplay.Format(arguments);
 
         CheckOptions();
     }
+}
+
+/// <summary>
+/// The seams <see cref="LaunchTabViewModel"/> is built over: the runner that spawns the CLI, the
+/// probes it reads the machine through, the stores it persists to, and the UI services it answers
+/// on. Every one is optional — left unset, the tab falls back to the real physical collaborator —
+/// and every one has an in-memory double in the tests. Grouped into one record so the tab's
+/// constructor stays narrow and so a new seam does not move the existing ones.
+/// </summary>
+public sealed record LaunchTabDependencies
+{
+    /// <summary>Spawns the co-installed <c>orkeon</c> CLI; defaults to the current machine's.</summary>
+    public OrkeonProcessRunner? ProcessRunner { get; init; }
+
+    /// <summary>Tells what a picked path is: a crew file, a script, a directory.</summary>
+    public ITargetProbe? TargetProbe { get; init; }
+
+    /// <summary>Reads the disk tree behind the mount panel; defaults to the physical one.</summary>
+    public IDirectoryProbe? Directories { get; init; }
+
+    /// <summary>Opens the file and folder dialogs.</summary>
+    public IPathPicker? Picker { get; init; }
+
+    /// <summary>Persists the replayable run history; null keeps the run out of any history.</summary>
+    public ILaunchHistoryStore? HistoryStore { get; init; }
+
+    /// <summary>Reads the appsettings the launch points at; defaults to the physical store.</summary>
+    public IAppSettingsStore? SettingsStore { get; init; }
+
+    /// <summary>Marshals back onto the UI thread; defaults to running the callback inline.</summary>
+    public IUiDispatcher? Dispatcher { get; init; }
+
+    /// <summary>The localized strings; defaults to the English set.</summary>
+    public IStudioStrings? Strings { get; init; }
+
+    /// <summary>The ORKEON_* environment a given target's model profile rides on.</summary>
+    public Func<string, IReadOnlyDictionary<string, string>?>? EnvironmentForTarget { get; init; }
+
+    /// <summary>Opens a result folder in the shell; null hides the open-result button.</summary>
+    public IShellOpener? ShellOpener { get; init; }
+
+    /// <summary>Reads the settings' allowed folders live — a snapshot would go stale.</summary>
+    public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
 }

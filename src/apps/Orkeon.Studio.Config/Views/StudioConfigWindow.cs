@@ -272,11 +272,12 @@ internal sealed class StudioConfigWindow : Window
         {
             var report = await _model.RunDoctorAsync().ConfigureAwait(false);
             lines = MessageFormatter.Format(report);
-            status = report.HasFailures
-                ? "Diagnostic: at least one check failed."
-                : report.HasWarnings
-                    ? "Diagnostic: warnings reported."
-                    : "Diagnostic: all checks passed.";
+            status = (report.HasFailures, report.HasWarnings) switch
+            {
+                (true, _) => "Diagnostic: at least one check failed.",
+                (_, true) => "Diagnostic: warnings reported.",
+                _ => "Diagnostic: all checks passed.",
+            };
         }
         catch (Exception ex)
         {

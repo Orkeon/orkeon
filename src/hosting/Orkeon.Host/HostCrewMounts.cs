@@ -46,48 +46,82 @@ internal static class HostCrewMounts
 
         var materialized = crews.ToList();
 
-        var directories = new SortedSet<string>(StringComparer.Ordinal);
-        foreach (var crew in materialized)
-        {
-            if (string.IsNullOrWhiteSpace(crew.Path))
-                continue;
+        var directories = DistinctDirectories(materialized);
+        var roots = RootsByDirectory(directories);
+        var mounts = directories
+            .Select(directory => $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(directory)}:{roots[directory]}:ro")
+            .ToList();
 
-            var full = Path.GetFullPath(crew.Path);
-            var directory = Directory.Exists(full) ? full : Path.GetDirectoryName(full);
-            if (!string.IsNullOrEmpty(directory))
-                directories.Add(directory);
-        }
+        return new HostCrewMountPlan(mounts, VirtualPathsByCrewName(materialized, roots), [.. roots.Values]);
+    }
 
-        var roots = new Dictionary<string, string>(StringComparer.Ordinal);
-        var mounts = new List<string>();
-        var index = 0;
-        foreach (var directory in directories)
-        {
-            var root = index == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{index}";
-            roots[directory] = root;
-            mounts.Add($"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(directory)}:{root}:ro");
-            index++;
-        }
+    /// <summary>
+    /// Every distinct directory the crews live in, ordinal-sorted so a given configuration
+    /// always hands the same directory the same numeric suffix.
+    /// </summary>
+    private static SortedSet<string> DistinctDirectories(IEnumerable<HostedCrewOptions> crews) =>
+        new(crews.Select(crew => Resolve(crew.Path)?.DirectoryPath).OfType<string>(), StringComparer.Ordinal);
 
+    /// <summary>The virtual root each directory is mounted under: /crews, /crews-1, and so on.</summary>
+    private static Dictionary<string, string> RootsByDirectory(IEnumerable<string> directories) =>
+        directories
+            .Select((directory, index) => (directory, root: index == 0 ? VirtualPathPrefix : $"{VirtualPathPrefix}-{index}"))
+            .ToDictionary(entry => entry.directory, entry => entry.root, StringComparer.Ordinal);
+
+    /// <summary>
+    /// The virtual spelling of each crew, keyed by its configured name. A crew whose directory
+    /// got no mount (an empty or rootless path) is simply absent.
+    /// </summary>
+    private static Dictionary<string, string> VirtualPathsByCrewName(
+        IEnumerable<HostedCrewOptions> crews,
+        IReadOnlyDictionary<string, string> roots)
+    {
         // First declaration wins, matching CrewHostRegistry.Find (FirstOrDefault by name): two
         // crews sharing a Name must not resolve to different definitions on the two paths.
         var virtualPaths = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
-        foreach (var crew in materialized)
+        foreach (var crew in crews)
         {
-            if (string.IsNullOrWhiteSpace(crew.Path) || string.IsNullOrWhiteSpace(crew.Name))
-                continue;
-            if (virtualPaths.ContainsKey(crew.Name))
+            if (string.IsNullOrWhiteSpace(crew.Name) || virtualPaths.ContainsKey(crew.Name))
                 continue;
 
-            var full = Path.GetFullPath(crew.Path);
-            var isDirectory = Directory.Exists(full);
-            var directory = isDirectory ? full : Path.GetDirectoryName(full);
-            if (string.IsNullOrEmpty(directory) || !roots.TryGetValue(directory, out var root))
-                continue;
-
-            virtualPaths[crew.Name] = isDirectory ? root : $"{root}/{Path.GetFileName(full)}";
+            if (VirtualPathOf(crew.Path, roots) is { } virtualPath)
+                virtualPaths[crew.Name] = virtualPath;
         }
 
-        return new HostCrewMountPlan(mounts, virtualPaths, [.. roots.Values]);
+        return virtualPaths;
     }
+
+    /// <summary>
+    /// How one crew path is spelled inside the VFS: the mount root itself for a crew directory,
+    /// the file under that root otherwise. Null when nothing mounted that path.
+    /// </summary>
+    private static string? VirtualPathOf(string path, IReadOnlyDictionary<string, string> roots)
+    {
+        if (Resolve(path) is not { } resolved || !roots.TryGetValue(resolved.DirectoryPath, out var root))
+            return null;
+
+        return resolved.IsDirectory ? root : $"{root}/{Path.GetFileName(resolved.FullPath)}";
+    }
+
+    /// <summary>
+    /// A configured crew path resolved on the physical disk, or null when it names no
+    /// directory the host could mount (blank, or a path with no parent).
+    /// </summary>
+    private static ResolvedCrewPath? Resolve(string path)
+    {
+        if (string.IsNullOrWhiteSpace(path))
+            return null;
+
+        var full = Path.GetFullPath(path);
+        var isDirectory = Directory.Exists(full);
+        var directory = isDirectory ? full : Path.GetDirectoryName(full);
+
+        return string.IsNullOrEmpty(directory) ? null : new ResolvedCrewPath(full, directory, isDirectory);
+    }
+
+    /// <summary>
+    /// A crew path resolved on disk: its full form, the directory that has to be mounted, and
+    /// whether the path IS that directory (a multi-file crew) rather than a file inside it.
+    /// </summary>
+    private readonly record struct ResolvedCrewPath(string FullPath, string DirectoryPath, bool IsDirectory);
 }

@@ -70,7 +70,10 @@ public class StagedRagPipelineTransformTests
                 QueryTransform = new RagQueryTransformOptions { Mode = mode, VariantCount = 3 },
                 Retrieval = new RagRetrievalOptions { Mmr = mmr ?? new MmrOptions() },
             },
-            QueryTransformFactoryDefaults.CreateDefault(() => chat));
+            new StagedRagPipelineDependencies
+            {
+                QueryTransformers = QueryTransformFactoryDefaults.CreateDefault(() => chat),
+            });
 
     // ── Union (multi-query) ────────────────────────────────────────────────
 

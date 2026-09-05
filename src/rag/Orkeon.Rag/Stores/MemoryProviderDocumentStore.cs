@@ -133,9 +133,10 @@ public sealed class MemoryProviderDocumentStore : IDocumentStore, IDocumentStore
             .ConfigureAwait(false);
         if (registry is null)
             return false;
-        foreach (var _ in ParseLines(registry.Content))
-            return true;
-        return false;
+
+        // A registry entry may exist while listing no source (every source was
+        // deleted): the collection holds content only when a line survives parsing.
+        return ParseLines(registry.Content).Length > 0;
     }
 
     /// <inheritdoc />

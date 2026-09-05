@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Windows;
 using Orkeon.Studio.Wpf.ViewModels.Capture;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
@@ -17,6 +18,9 @@ namespace Orkeon.Studio.Wpf.Services.Capture;
 internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel shell) : ICaptureSurface
 {
     /// <summary>The window this surface drives, for the executor's own rendering.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public MainWindow Window { get; } = window;
 
     /// <inheritdoc />

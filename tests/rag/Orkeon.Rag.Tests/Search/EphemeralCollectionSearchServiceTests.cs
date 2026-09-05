@@ -34,12 +34,15 @@ public class EphemeralCollectionSearchServiceTests
             var options = new RagIngestionOptions();
 
             var pipeline = new DefaultIngestionPipeline(
-                new DocumentLoaderFactory([new InlineTextLoader()]),
-                ChunkingStrategyFactoryDefaults.CreateDefault(),
-                Embeddings,
-                Store,
-                new DataValidationPipeline([], new InMemoryQuarantineStore(), new ProvenanceTracker()),
-                new FileIngestionManifestStore(fs, options),
+                new IngestionPipelineDependencies
+                {
+                    LoaderFactory = new DocumentLoaderFactory([new InlineTextLoader()]),
+                    ChunkingFactory = ChunkingStrategyFactoryDefaults.CreateDefault(),
+                    EmbeddingProvider = Embeddings,
+                    Store = Store,
+                    Validation = new DataValidationPipeline([], new InMemoryQuarantineStore(), new ProvenanceTracker()),
+                    ManifestStore = new FileIngestionManifestStore(fs, options),
+                },
                 options);
 
             return new EphemeralCollectionSearchService(pipeline, Store, Embeddings);

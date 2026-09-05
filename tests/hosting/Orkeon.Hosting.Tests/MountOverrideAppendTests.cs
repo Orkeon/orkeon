@@ -69,8 +69,11 @@ public sealed class MountOverrideAppendTests : IDisposable
 
         using var host = RunnerHost.Build(
             settingsPath,
-            cliMounts: [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
-            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"]);
+            new RunnerMountPlan
+            {
+                CliMounts = [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
+                InternalMounts = [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"],
+            });
 
         var registry = host.Services.GetRequiredService<FileSystemRegistry>();
         var virtualPaths = registry.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();
@@ -106,8 +109,11 @@ public sealed class MountOverrideAppendTests : IDisposable
 
         using var host = RunnerHost.Build(
             settingsPath,
-            cliMounts: [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
-            internalMounts: [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"]);
+            new RunnerMountPlan
+            {
+                CliMounts = [$"{FileSystemMount.Quote(crew)}:/crew:ro"],
+                InternalMounts = [$"{FileSystemMount.Quote(logs)}:{RunnerVirtualRoots.LlmLogs}:rw"],
+            });
 
         var registry = host.Services.GetRequiredService<FileSystemRegistry>();
         var virtualPaths = registry.GetAllMountsInternal().Select(m => m.VirtualPath).ToList();

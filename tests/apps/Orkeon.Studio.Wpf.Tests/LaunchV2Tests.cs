@@ -23,13 +23,15 @@ public sealed class LaunchV2Tests : IDisposable
     private static (LaunchTabViewModel Tab, FakeProcessLauncher Launcher) Build(FakeTargetProbe probe)
     {
         var launcher = new FakeProcessLauncher();
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            probe,
-            new FakeDirectoryProbe(),
-            picker: null,
-            new FakeLaunchHistoryStore(),
-            new FakeAppSettingsStore());
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = probe,
+            Directories = new FakeDirectoryProbe(),
+            HistoryStore = new FakeLaunchHistoryStore(),
+            SettingsStore = new FakeAppSettingsStore(),
+        });
         return (tab, launcher);
     }
 

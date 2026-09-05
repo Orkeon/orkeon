@@ -164,8 +164,8 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         _inner.WaitForAsync(descriptor, timeout, ct);
 
     /// <inheritdoc />
-    public Task<Message?> GetLastValueAsync(string key, CrewId? scope, CancellationToken ct) =>
-        _inner.GetLastValueAsync(key, scope, ct);
+    public Task<Message?> GetLastValueAsync(string key, CrewId? crewScope, CancellationToken ct) =>
+        _inner.GetLastValueAsync(key, crewScope, ct);
 
     // ── Inbound: the peer speaking to the agents ────────────────────────
 
@@ -363,16 +363,21 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
             : new OrkeonEventScope { CorrelationId = correlationId };
 
         // Null entries are omitted by the writer — the contract's "absent key is omitted"
-        // holds for hub.message like for every other kind. expectsReply appears only on a
-        // send: a post and a topic relay carry nothing to answer, and the peer must not have
-        // to guess which correlated lines are questions.
-        _events.Emit(HubCommandKinds.HubMessage, scope, new Dictionary<string, object?>(StringComparer.Ordinal)
+        // holds for hub.message like for every other kind.
+        var line = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
             ["from"] = from,
             ["topic"] = topic,
             ["payload"] = payload,
-            ["expectsReply"] = expectsReply ? true : (object?)null,
-        });
+        };
+
+        // expectsReply appears only on a send: a post and a topic relay carry nothing to
+        // answer, and the peer must not have to guess which correlated lines are questions,
+        // so the key is written only when there is one to answer.
+        if (expectsReply)
+            line["expectsReply"] = true;
+
+        _events.Emit(HubCommandKinds.HubMessage, scope, line);
     }
 
     /// <summary>

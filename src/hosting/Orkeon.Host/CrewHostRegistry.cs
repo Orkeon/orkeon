@@ -138,17 +138,12 @@ internal sealed class CrewHostRegistry
     }
 
     /// <summary>Asks every run in flight to stop, and reports how many were asked.</summary>
-    public int RequestStopAll()
-    {
-        var asked = 0;
-        foreach (var run in _runs.Values)
-        {
-            if (TryCancel(run))
-                asked++;
-        }
-
-        return asked;
-    }
+    /// <remarks>
+    /// Count over the stop itself: the predicate IS the gesture, and Count runs it on every
+    /// run before returning how many were still cancellable. A run that had already stopped
+    /// (or finished, and disposed its source) is not counted, and stops nothing twice.
+    /// </remarks>
+    public int RequestStopAll() => _runs.Values.Count(TryCancel);
 
     /// <summary>
     /// Cancels a run's source, racing its own completion gracefully: Finish disposes the

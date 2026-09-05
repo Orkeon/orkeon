@@ -206,7 +206,9 @@ public class AclEventHubMiddlewareTests
             Billing, "billing", new CrewLink { To = "fraud", Direction = CrewLinkDirection.Outbound });
         var acl = new AclEventHubMiddleware(links);
 
-        await Run(acl, Message("anything.at.all", Billing, targetCrew: Fraud));
+        var message = await Run(acl, Message("anything.at.all", Billing, targetCrew: Fraud));
+
+        Assert.Equal("anything.at.all", message.Topic);
     }
 
     [Fact]

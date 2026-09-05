@@ -146,17 +146,11 @@ internal static class ForgeScriptRenderer
         var identifiers = new Dictionary<string, string>(StringComparer.Ordinal);
         var taken = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var agent in blueprint.Agents ?? [])
-        {
-            if (agent.Key is not null)
-                identifiers[AgentKey(agent.Key)] = Mint("agent_", agent.Key, taken);
-        }
+        foreach (var key in (blueprint.Agents ?? []).Select(a => a.Key).OfType<string>())
+            identifiers[AgentKey(key)] = Mint("agent_", key, taken);
 
-        foreach (var task in blueprint.Tasks ?? [])
-        {
-            if (task.Key is not null)
-                identifiers[TaskKey(task.Key)] = Mint("task_", task.Key, taken);
-        }
+        foreach (var key in (blueprint.Tasks ?? []).Select(t => t.Key).OfType<string>())
+            identifiers[TaskKey(key)] = Mint("task_", key, taken);
 
         return identifiers;
     }
@@ -171,9 +165,9 @@ internal static class ForgeScriptRenderer
         return identifier;
     }
 
-    private static string AgentKey(string key) => "agent " + key;
+    private static string AgentKey(string key) => "agent\0" + key;
 
-    private static string TaskKey(string key) => "task " + key;
+    private static string TaskKey(string key) => "task\0" + key;
 
     /// <summary>
     /// Emits tasks so that every <c>withContext</c> reference points at an already-declared

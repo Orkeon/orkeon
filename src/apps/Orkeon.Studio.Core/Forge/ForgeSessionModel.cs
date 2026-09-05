@@ -299,16 +299,12 @@ public sealed class ForgeSessionModel
                 _decisionOptions.Clear();
                 break;
 
+            // A closed question is the assistant taking its turn: it must reach the
+            // conversation surface, not just the raw log, while the engine waits on stdin --
+            // the very bubble an ordinary assistant message produces.
             case ForgeEventKinds.AssistantMessage:
-                if (orkeonEvent.GetString("text") is { } text)
-                    _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, text));
-                break;
-
             case ForgeEventKinds.QuestionAsked:
-                // A closed question is the assistant taking its turn: it must reach the
-                // conversation surface, not just the raw log, while the engine waits on stdin.
-                if (orkeonEvent.GetString("text") is { } question)
-                    _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, question));
+                AddAssistantMessage(orkeonEvent);
                 break;
 
             case ForgeEventKinds.BriefReady:
@@ -319,13 +315,11 @@ public sealed class ForgeSessionModel
                 ReadBlueprint(orkeonEvent);
                 // A blueprint proves the proposal was reached — the artifact carries the
                 // milestone when it seeds a resume, where no stage.entered ever replays.
-                if (Milestone < ForgeMilestone.Propose)
-                    Milestone = ForgeMilestone.Propose;
+                RaiseMilestone(ForgeMilestone.Propose);
                 break;
 
             case ForgeEventKinds.FileWritten:
-                if (orkeonEvent.GetString("path") is { } path && !_files.Contains(path, StringComparer.Ordinal))
-                    _files.Add(path);
+                RecordFile(orkeonEvent.GetString("path"));
                 break;
 
             case ForgeEventKinds.ValidationResult:
@@ -364,8 +358,7 @@ public sealed class ForgeSessionModel
 
             case ForgeEventKinds.VerdictReady:
                 ReadVerdict(orkeonEvent);
-                if (Milestone < ForgeMilestone.Try)
-                    Milestone = ForgeMilestone.Try;
+                RaiseMilestone(ForgeMilestone.Try);
                 break;
 
             case ForgeEventKinds.DecisionNeeded:
@@ -402,6 +395,30 @@ public sealed class ForgeSessionModel
         }
     }
 
+    /// <summary>Turns an event's <c>text</c> into an assistant bubble; a textless event says nothing.</summary>
+    private void AddAssistantMessage(OrkeonEvent orkeonEvent)
+    {
+        if (orkeonEvent.GetString("text") is { } text)
+            _messages.Add(new ForgeChatMessage(ForgeChatMessage.Assistant, text));
+    }
+
+    /// <summary>Records one rendered crew file, once: a re-render repeats the paths it rewrites.</summary>
+    private void RecordFile(string? path)
+    {
+        if (path is not null && !_files.Contains(path, StringComparer.Ordinal))
+            _files.Add(path);
+    }
+
+    /// <summary>
+    /// Moves the milestone forward, never backward: an artifact that proves a stage was
+    /// reached must not rewind a screen the stream already carried further.
+    /// </summary>
+    private void RaiseMilestone(ForgeMilestone milestone)
+    {
+        if (Milestone < milestone)
+            Milestone = milestone;
+    }
+
     /// <summary>
     /// The ✔/✘ checklist of the result card (UX study §4.3): the "success" card's criteria,
     /// re-read against the verdict — same statements, word for word. A criterion with no
@@ -430,20 +447,33 @@ public sealed class ForgeSessionModel
         {
             var finding = verdict.Findings.FirstOrDefault(f =>
                 string.Equals(f.Acceptance, criterion.Id, StringComparison.OrdinalIgnoreCase));
-            items.Add(finding is not null
-                ? new ForgeChecklistItem(
-                    criterion.Statement,
-                    false,
-                    finding.Evidence is { Length: > 0 } evidence
-                        ? $"{finding.Statement} — {evidence}"
-                        : finding.Statement)
-                : new ForgeChecklistItem(
-                    criterion.Statement,
-                    verdict.Judge == ForgeVerdictView.JudgeLlm ? true : null,
-                    null));
+            items.Add(BuildChecklistItem(criterion, finding, verdict.Judge));
         }
 
         return items;
+    }
+
+    /// <summary>
+    /// One line of the checklist. A finding fails the criterion and says why, with the
+    /// judge's own evidence appended when it carried some. No finding passes it only when a
+    /// real judge looked: a deterministic verdict says "judge for yourself" (null) rather
+    /// than inventing a ✔.
+    /// </summary>
+    private static ForgeChecklistItem BuildChecklistItem(
+        ForgeCriterion criterion, ForgeFindingView? finding, string judge)
+    {
+        if (finding is null)
+        {
+            bool? passed = string.Equals(judge, ForgeVerdictView.JudgeLlm, StringComparison.Ordinal)
+                ? true
+                : null;
+            return new ForgeChecklistItem(criterion.Statement, passed, null);
+        }
+
+        var detail = finding.Evidence is { Length: > 0 } evidence
+            ? $"{finding.Statement} — {evidence}"
+            : finding.Statement;
+        return new ForgeChecklistItem(criterion.Statement, false, detail);
     }
 
     private void ReadBrief(OrkeonEvent orkeonEvent)
@@ -474,68 +504,107 @@ public sealed class ForgeSessionModel
         if (!orkeonEvent.Root.TryGetProperty("blueprint", out var blueprint) || blueprint.ValueKind != JsonValueKind.Object)
             return;
 
-        // The crew's short name ("veille-matinale") supersedes the brief's goal sentence
-        // as the display title: the adoption slug derives from it, and a goal-length slug
-        // makes a 200-character folder name (the owner met one).
-        if (blueprint.TryGetProperty("crew", out var crew) && crew.ValueKind == JsonValueKind.Object
-            && ReadString(crew, "name") is { Length: > 0 } crewName)
-        {
-            Title = crewName;
-        }
-
+        ReadCrewTitle(blueprint);
         BlueprintJson = blueprint.GetRawText();
 
         // agent key → role, so the steps can speak in roles, not keys; the full per-agent
         // view feeds the Composer cards and the agent editor.
         var roles = new Dictionary<string, string>(StringComparer.Ordinal);
         var tools = new List<string>();
-        var agentViews = new List<ForgeAgentView>();
-        if (blueprint.TryGetProperty("agents", out var agents) && agents.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var agent in agents.EnumerateArray())
-            {
-                if (agent.ValueKind != JsonValueKind.Object)
-                    continue;
-                var agentTools = new List<string>();
-                if (agent.TryGetProperty("tools", out var toolsNode) && toolsNode.ValueKind == JsonValueKind.Array)
-                {
-                    foreach (var tool in toolsNode.EnumerateArray())
-                    {
-                        if (tool.ValueKind == JsonValueKind.String && tool.GetString() is { } name)
-                        {
-                            if (!agentTools.Contains(name, StringComparer.Ordinal))
-                                agentTools.Add(name);
-                            if (!tools.Contains(name, StringComparer.Ordinal))
-                                tools.Add(name);
-                        }
-                    }
-                }
-                if (ReadString(agent, "key") is { } key && ReadString(agent, "role") is { } role)
-                {
-                    roles[key] = role;
-                    agentViews.Add(new ForgeAgentView(
-                        key, role, ReadString(agent, "goal"), ReadString(agent, "backstory"), agentTools));
-                }
-            }
-        }
+        var agentViews = ReadAgents(blueprint, roles, tools);
 
-        var steps = new List<ForgeProposalStep>();
-        if (blueprint.TryGetProperty("tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
-        {
-            foreach (var task in tasks.EnumerateArray())
-            {
-                if (task.ValueKind != JsonValueKind.Object)
-                    continue;
-                var agent = ReadString(task, "agent");
-                steps.Add(new ForgeProposalStep(
-                    ReadString(task, "description") ?? "",
-                    agent is not null && roles.TryGetValue(agent, out var role) ? role : agent));
-            }
-        }
-
-        Proposal = new ForgeProposal(steps, ReadString(blueprint, "rationale"), tools, agentViews);
+        Proposal = new ForgeProposal(
+            ReadSteps(blueprint, roles), ReadString(blueprint, "rationale"), tools, agentViews);
         DerivedMounts = DeriveMounts(agentViews, roles, blueprint);
     }
+
+    /// <summary>
+    /// The crew's short name ("veille-matinale") supersedes the brief's goal sentence as the
+    /// display title: the adoption slug derives from it, and a goal-length slug makes a
+    /// 200-character folder name (the owner met one).
+    /// </summary>
+    private void ReadCrewTitle(JsonElement blueprint)
+    {
+        if (blueprint.TryGetProperty("crew", out var crew) && crew.ValueKind == JsonValueKind.Object
+            && ReadString(crew, "name") is { Length: > 0 } crewName)
+        {
+            Title = crewName;
+        }
+    }
+
+    /// <summary>
+    /// The Composer's agent cards, in wire order. Fills <paramref name="roles"/> (agent key →
+    /// role, what the steps speak in) and <paramref name="crewTools"/> (the union the proposal
+    /// card lists) along the way — an agent missing its key or role still contributes its
+    /// tools to that union, exactly as the single pass used to.
+    /// </summary>
+    private static List<ForgeAgentView> ReadAgents(
+        JsonElement blueprint, Dictionary<string, string> roles, List<string> crewTools)
+    {
+        var agentViews = new List<ForgeAgentView>();
+        if (!blueprint.TryGetProperty("agents", out var agents) || agents.ValueKind != JsonValueKind.Array)
+            return agentViews;
+
+        foreach (var agent in agents.EnumerateArray())
+        {
+            if (agent.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var agentTools = ReadAgentTools(agent, crewTools);
+            if (ReadString(agent, "key") is { } key && ReadString(agent, "role") is { } role)
+            {
+                roles[key] = role;
+                agentViews.Add(new ForgeAgentView(
+                    key, role, ReadString(agent, "goal"), ReadString(agent, "backstory"), agentTools));
+            }
+        }
+
+        return agentViews;
+    }
+
+    /// <summary>One agent's own tools, deduplicated, and folded into the crew-wide <paramref name="crewTools"/>.</summary>
+    private static List<string> ReadAgentTools(JsonElement agent, List<string> crewTools)
+    {
+        var agentTools = new List<string>();
+        if (!agent.TryGetProperty("tools", out var toolsNode) || toolsNode.ValueKind != JsonValueKind.Array)
+            return agentTools;
+
+        foreach (var tool in toolsNode.EnumerateArray())
+        {
+            if (tool.ValueKind != JsonValueKind.String || tool.GetString() is not { } name)
+                continue;
+
+            if (!agentTools.Contains(name, StringComparer.Ordinal))
+                agentTools.Add(name);
+            if (!crewTools.Contains(name, StringComparer.Ordinal))
+                crewTools.Add(name);
+        }
+
+        return agentTools;
+    }
+
+    /// <summary>The numbered steps of the proposal, each told under its agent's role.</summary>
+    private static List<ForgeProposalStep> ReadSteps(JsonElement blueprint, Dictionary<string, string> roles)
+    {
+        var steps = new List<ForgeProposalStep>();
+        if (!blueprint.TryGetProperty("tasks", out var tasks) || tasks.ValueKind != JsonValueKind.Array)
+            return steps;
+
+        foreach (var task in tasks.EnumerateArray())
+        {
+            if (task.ValueKind != JsonValueKind.Object)
+                continue;
+
+            var agent = ReadString(task, "agent");
+            steps.Add(new ForgeProposalStep(ReadString(task, "description") ?? "", ResolveRole(roles, agent)));
+        }
+
+        return steps;
+    }
+
+    /// <summary>The role behind an agent key; the key itself when the blueprint declares no such agent.</summary>
+    private static string? ResolveRole(Dictionary<string, string> roles, string? agentKey) =>
+        agentKey is not null && roles.TryGetValue(agentKey, out var role) ? role : agentKey;
 
     /// <summary>
     /// The rule that they come from the agents, made literal: any reading tool implies the sandbox's
@@ -569,64 +638,74 @@ public sealed class ForgeSessionModel
         if (readers.Count > 0)
             mounts.Add(new ForgeDerivedMount("/workspace", IsReadWrite: false, readers));
 
-        if (blueprint.TryGetProperty("tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
+        if (!blueprint.TryGetProperty("tasks", out var tasks) || tasks.ValueKind != JsonValueKind.Array)
+            return mounts;
+
+        foreach (var task in tasks.EnumerateArray())
         {
-            foreach (var task in tasks.EnumerateArray())
-            {
-                if (task.ValueKind != JsonValueKind.Object
-                    || ReadString(task, "deliverable") is not { Length: > 1 } deliverable
-                    || deliverable[0] != '/')
-                {
-                    continue;
-                }
+            if (task.ValueKind != JsonValueKind.Object || DeliverableRoot(task) is not { } root)
+                continue;
 
-                var slash = deliverable.IndexOf('/', 1);
-                var root = slash > 1 ? deliverable[..slash] : deliverable;
-                if (root.Length <= 1)
-                    continue;
-
-                // A deliverable root is a single segment by construction; anything else would
-                // put the team's own files outside its folder. The blueprint is LLM-authored,
-                // so '..' and '.' are refused explicitly rather than trusted to be absent.
-                var folder = root[1..];
-                if (folder.Contains('/', StringComparison.Ordinal)
-                    || folder.Contains('\\', StringComparison.Ordinal)
-                    || folder is "." or "..")
-                {
-                    continue;
-                }
-
-                // A root the runner keeps for itself would make the adopted team unlaunchable:
-                // the very --mount Studio spells is refused at start (ADR-008, decision 5).
-                if (MountDefinition.IsReservedVirtualPath(root))
-                    continue;
-
-                // Deduping only against read-WRITE entries let a read-only /workspace stand
-                // beside a read-write one: two chips for one root, and WithDerivedWriteMounts
-                // keeps the read-only one, so the chip promising a write was a lie. The CLI
-                // deduped on the name alone and lost the write entirely. Both now hold the
-                // same rule — one root, one mount, write wins.
-                // The task's own agent — sitting in the same JsonElement as the deliverable
-                // and, until now, never read.
-                var writer = ReadString(task, "agent") is { } key && roles.TryGetValue(key, out var role)
-                    ? role
-                    : null;
-
-                var existing = mounts.FindIndex(m => string.Equals(m.VirtualPath, root, StringComparison.Ordinal));
-                if (existing < 0)
-                {
-                    mounts.Add(new ForgeDerivedMount(
-                        root, IsReadWrite: true, writer is null ? [] : [writer]));
-                }
-                else
-                {
-                    var merged = Merge(mounts[existing].Agents, writer);
-                    mounts[existing] = mounts[existing] with { IsReadWrite = true, Agents = merged };
-                }
-            }
+            // The task's own agent — sitting in the same JsonElement as the deliverable
+            // and, until W-04, never read.
+            AddWriteMount(mounts, root, WriterRole(task, roles));
         }
 
         return mounts;
+    }
+
+    /// <summary>
+    /// The mountable root a task deliverable implies (<c>/output/report.md</c> →
+    /// <c>/output</c>), or null when nothing may be mounted for it. The blueprint is
+    /// LLM-authored, so a root that is not a single segment — <c>'.'</c>, <c>'..'</c>, a
+    /// nested or backslashed path — is refused rather than trusted to be absent: anything
+    /// else would put the team's own files outside its folder. A root the runner keeps for
+    /// itself is refused too, since the very --mount Studio spells would then be rejected at
+    /// start (ADR-008, decision 5), making the adopted team unlaunchable.
+    /// </summary>
+    private static string? DeliverableRoot(JsonElement task)
+    {
+        if (ReadString(task, "deliverable") is not { Length: > 1 } deliverable || deliverable[0] != '/')
+            return null;
+
+        var slash = deliverable.IndexOf('/', 1);
+        var root = slash > 1 ? deliverable[..slash] : deliverable;
+        if (root.Length <= 1)
+            return null;
+
+        var folder = root[1..];
+        if (folder.Contains('/', StringComparison.Ordinal)
+            || folder.Contains('\\', StringComparison.Ordinal)
+            || folder is "." or "..")
+        {
+            return null;
+        }
+
+        return MountDefinition.IsReservedVirtualPath(root) ? null : root;
+    }
+
+    /// <summary>The role writing a task's deliverable, when the blueprint declares that agent.</summary>
+    private static string? WriterRole(JsonElement task, Dictionary<string, string> roles) =>
+        ReadString(task, "agent") is { } key && roles.TryGetValue(key, out var role) ? role : null;
+
+    /// <summary>
+    /// One root, one mount, write wins. Deduping only against read-WRITE entries let a
+    /// read-only /workspace stand beside a read-write one: two chips for one root, and
+    /// WithDerivedWriteMounts keeps the read-only one, so the chip promising a write was a
+    /// lie. The CLI deduped on the name alone and lost the write entirely. Both now hold
+    /// this same rule.
+    /// </summary>
+    private static void AddWriteMount(List<ForgeDerivedMount> mounts, string root, string? writer)
+    {
+        var existing = mounts.FindIndex(m => string.Equals(m.VirtualPath, root, StringComparison.Ordinal));
+        if (existing < 0)
+        {
+            mounts.Add(new ForgeDerivedMount(root, IsReadWrite: true, writer is null ? [] : [writer]));
+            return;
+        }
+
+        var merged = Merge(mounts[existing].Agents, writer);
+        mounts[existing] = mounts[existing] with { IsReadWrite = true, Agents = merged };
     }
 
     /// <summary>Adds a role to a mount's provenance, once.</summary>

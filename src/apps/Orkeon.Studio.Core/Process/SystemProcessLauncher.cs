@@ -1,5 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using Orkeon.Compliance.Vfs;
 
 namespace Orkeon.Studio.Core.Process;
@@ -197,7 +198,14 @@ public sealed class SystemProcessLauncher : IProcessLauncher
     /// </summary>
     private sealed class StandardInputWriter(StreamWriter writer) : IProcessInputWriter
     {
+        [SuppressMessage(
+            "Minor Code Smell",
+            "S3604:Member initializer values should not be redundant",
+            Justification = "False positive on a primary constructor: no constructor assigns "
+                + "this lock, and dropping the initializer would leave it null under the "
+                + "first lock statement.")]
         private readonly Lock _gate = new();
+
         private bool _closed;
 
         public bool TryWriteLine(string line)
@@ -246,6 +254,12 @@ public sealed class SystemProcessLauncher : IProcessLauncher
     /// <summary>Funnels both reader threads through one lock so the sink sees one line at a time.</summary>
     private sealed class SerializedOutputSink(Action<ProcessOutputLine>? onOutput)
     {
+        [SuppressMessage(
+            "Minor Code Smell",
+            "S3604:Member initializer values should not be redundant",
+            Justification = "False positive on a primary constructor: no constructor assigns "
+                + "this lock, and dropping the initializer would leave it null under the "
+                + "first lock statement.")]
         private readonly Lock _gate = new();
 
         public void Emit(ProcessOutputChannel channel, string text)

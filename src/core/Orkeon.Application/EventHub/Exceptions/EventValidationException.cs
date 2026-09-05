@@ -9,7 +9,9 @@ namespace Orkeon.Application.EventHub.Exceptions;
 /// sender side.
 /// </para>
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
 public sealed class EventValidationException : Exception
+#pragma warning restore S3925
 {
     /// <summary>The schema identifier that could not be resolved, when known.</summary>
     public string? SchemaId { get; }

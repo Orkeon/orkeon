@@ -160,9 +160,12 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             configuration: _services.GetRequiredService<Microsoft.Extensions.Configuration.IConfiguration>(),
             builtInTools: _services.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToList(),
             llmProvider: _services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
-            permissionGate: _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-            deltaSink: _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
-            usageSink: _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>());
+            hostPorts: new Orkeon.Scripting.ScriptingHostPorts
+            {
+                PermissionGate = _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
+                DeltaSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                UsageSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(),
+            });
 
         var transpiler = _transpilerFactory();
         try

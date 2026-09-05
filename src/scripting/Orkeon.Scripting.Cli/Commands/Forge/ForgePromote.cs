@@ -115,10 +115,13 @@ internal static class ForgePromoter
     public const string SettingsFileName = ConventionalNames.SettingsFile;
 
     /// <summary>The platform this process runs on.</summary>
-    public static ForgePromotePlatform DetectPlatform() =>
-        OperatingSystem.IsWindows() ? ForgePromotePlatform.Windows
-        : OperatingSystem.IsLinux() ? ForgePromotePlatform.Linux
-        : ForgePromotePlatform.Other;
+    public static ForgePromotePlatform DetectPlatform()
+    {
+        if (OperatingSystem.IsWindows())
+            return ForgePromotePlatform.Windows;
+
+        return OperatingSystem.IsLinux() ? ForgePromotePlatform.Linux : ForgePromotePlatform.Other;
+    }
 
     /// <summary>
     /// Writes the promoted folder. Throws <see cref="InvalidOperationException"/> on a
@@ -207,7 +210,16 @@ internal static class ForgePromoter
             installCommand = WriteScheduleArtifacts(destination, session, schedule, platform, now);
         }
 
-        WriteCard(destination, session, brief, verdict, schedule, installCommand, now, writeMounts);
+        WriteCard(destination, new ForgeCard
+        {
+            Session = session,
+            Brief = brief,
+            Verdict = verdict,
+            Schedule = schedule,
+            InstallCommand = installCommand,
+            Now = now,
+            WriteMounts = writeMounts,
+        });
 
         return new ForgePromotionResult
         {
@@ -257,26 +269,17 @@ internal static class ForgePromoter
         bool posix,
         IReadOnlyList<DeliverableMount> writeMounts)
     {
-        string Anchored(string relative) => posix ? $"\"$DIR/{relative}\"" : $"\"%~dp0{relative}\"";
-        // One shell-quoted token carrying the whole spec, with the mount grammar's own
-        // quotes (\" survives both shells as a literal '"') around the physical segment.
-        string GrammarQuotedMount(string relative, string virtualRoot, bool readOnly)
-        {
-            var rights = readOnly ? "ro" : "rw";
-            return posix
-                ? $"\"\\\"$DIR/{relative}\\\":{virtualRoot}:{rights}\""
-                : $"\"\\\"%~dp0{relative}\\\":{virtualRoot}:{rights}\"";
-        }
-        string Literal(string value) => posix ? ShQuote(value) : CmdQuote(value);
-
         var script = ForgeSession.IsScriptFormat(session.Document.Format);
         var segments = new List<string>
         {
-            $"run {Anchored(RunTarget(session))}",
+            $"run {Anchored(RunTarget(session), posix)}",
         };
 
         if (settingsReference is not null)
-            segments.Add($"--settings {(settingsIsRelative ? Anchored(settingsReference) : Literal(settingsReference))}");
+        {
+            segments.Add(
+                $"--settings {(settingsIsRelative ? Anchored(settingsReference, posix) : ShellLiteral(settingsReference, posix))}");
+        }
 
         // Several mounts go space-separated after ONE --mount: the CLI's parser rejects a
         // repeated option. The anchor keeps the folder relocatable with the team.
@@ -290,7 +293,7 @@ internal static class ForgePromoter
         // own --mount handles it.
         if (writeMounts.Count > 0)
         {
-            var specs = writeMounts.Select(m => GrammarQuotedMount(m.Folder, m.VirtualRoot, m.ReadOnly));
+            var specs = writeMounts.Select(m => GrammarQuotedMount(m, posix));
             segments.Add($"--mount {string.Join(' ', specs)}");
         }
 
@@ -303,17 +306,40 @@ internal static class ForgePromoter
             // --var. Emitting the flag per variable made any brief with two sample inputs
             // promote to a team the parser refuses ("option repeated").
             var variables = (brief?.Sample?.Variables ?? [])
-                .Select(pair => Literal($"{pair.Key}={pair.Value}"))
+                .Select(pair => ShellLiteral($"{pair.Key}={pair.Value}", posix))
                 .ToList();
             if (variables.Count > 0)
                 segments.Add($"--var {string.Join(' ', variables)}");
 
             if (!string.IsNullOrWhiteSpace(brief?.Sample?.InitialContext))
-                segments.Add($"--initial-context {Literal(brief.Sample.InitialContext)}");
+                segments.Add($"--initial-context {ShellLiteral(brief.Sample.InitialContext, posix)}");
         }
 
         return segments;
     }
+
+    /// <summary>
+    /// A path inside the promoted folder, anchored to the launcher's own directory so the
+    /// team stays relocatable; double-quoted so the shell expands the anchor.
+    /// </summary>
+    private static string Anchored(string relative, bool posix) =>
+        posix ? $"\"$DIR/{relative}\"" : $"\"%~dp0{relative}\"";
+
+    /// <summary>
+    /// One shell-quoted token carrying the whole mount spec, with the mount grammar's own
+    /// quotes (\" survives both shells as a literal '"') around the physical segment.
+    /// </summary>
+    private static string GrammarQuotedMount(DeliverableMount mount, bool posix)
+    {
+        var rights = mount.ReadOnly ? "ro" : "rw";
+        return posix
+            ? $"\"\\\"$DIR/{mount.Folder}\\\":{mount.VirtualRoot}:{rights}\""
+            : $"\"\\\"%~dp0{mount.Folder}\\\":{mount.VirtualRoot}:{rights}\"";
+    }
+
+    /// <summary>A literal value, quoted the way the target shell reads it back.</summary>
+    private static string ShellLiteral(string value, bool posix) =>
+        posix ? ShQuote(value) : CmdQuote(value);
 
     /// <summary>
     /// One writable mount the promoted folder carries: a virtual root the blueprint writes
@@ -373,50 +399,68 @@ internal static class ForgePromoter
 
         foreach (var task in blueprint?.Tasks ?? [])
         {
-            if (task.Deliverable is not { Length: > 1 } deliverable || deliverable[0] != '/')
-                continue;
-
-            var slash = deliverable.IndexOf('/', 1);
-            var root = slash > 1 ? deliverable[..slash] : deliverable;
-            if (root.Length <= 1)
-                continue;
-
-            var folder = root[1..];
-            // A deliverable root is a single segment by construction; anything else would
-            // put the team's own files outside its folder. The blueprint is LLM-authored, so
-            // '..' and '.' are refused explicitly rather than trusted to be absent.
-            // ':' and ';' are refused for the same reason, one level down: they are the mount
-            // grammar's own separators, so a root carrying either spells a --mount the runner
-            // cannot parse and the promoted team dies at every launch. ForgeBlueprint.Validate
-            // reports it to the model, where a repair turn can rename the folder; this is the
-            // guard for a blueprint that reached here anyway.
-            if (folder.Contains('/', StringComparison.Ordinal)
-                || folder.Contains('\\', StringComparison.Ordinal)
-                || folder.AsSpan().ContainsAny(':', ';')
-                || folder is "." or "..")
-            {
-                continue;
-            }
-
-            // A root the runner keeps for itself would make the promoted team unlaunchable:
-            // the very --mount the launcher spells is refused at start (ADR-008, decision 5).
-            if (ReservedVirtualRoots.Contains(root, StringComparer.Ordinal))
-                continue;
-
-            // The read mount is derived first, so a deliverable landing under the SAME root
-            // meets a read-only entry. Skipping on the name alone left the team with
-            // `/workspace:ro` and a deliverable it could never write — the run reports success
-            // and produces nothing. Studio deduped the other way and showed two /workspace
-            // chips, one promising a write that was then silently dropped. One root, one
-            // mount, and a write requirement wins over a read one.
-            var existing = roots.FindIndex(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal));
-            if (existing < 0)
-                roots.Add(new DeliverableMount(root, folder));
-            else if (roots[existing].ReadOnly)
-                roots[existing] = roots[existing] with { ReadOnly = false };
+            if (MountableRoot(task.Deliverable) is { } root)
+                AddWriteMount(roots, root);
         }
 
         return roots;
+    }
+
+    /// <summary>
+    /// The virtual root a deliverable can be mounted at, or <see langword="null"/> when it
+    /// cannot be one.
+    /// <para>
+    /// A deliverable root is a single segment by construction; anything else would put the
+    /// team's own files outside its folder. The blueprint is LLM-authored, so '..' and '.'
+    /// are refused explicitly rather than trusted to be absent. ':' and ';' are refused for
+    /// the same reason, one level down: they are the mount grammar's own separators, so a
+    /// root carrying either spells a --mount the runner cannot parse and the promoted team
+    /// dies at every launch. ForgeBlueprint.Validate reports it to the model, where a repair
+    /// turn can rename the folder; this is the guard for a blueprint that reached here
+    /// anyway. A root the runner keeps for itself is refused too: the very --mount the
+    /// launcher spells would be rejected at start (ADR-008, decision 5).
+    /// </para>
+    /// </summary>
+    private static string? MountableRoot(string? deliverable)
+    {
+        if (deliverable is not { Length: > 1 } value || value[0] != '/')
+            return null;
+
+        var slash = value.IndexOf('/', 1);
+        var root = slash > 1 ? value[..slash] : value;
+        if (root.Length <= 1)
+            return null;
+
+        var folder = root[1..];
+        if (folder.Contains('/', StringComparison.Ordinal)
+            || folder.Contains('\\', StringComparison.Ordinal)
+            || folder.AsSpan().ContainsAny(':', ';')
+            || folder is "." or "..")
+        {
+            return null;
+        }
+
+        return ReservedVirtualRoots.Contains(root, StringComparer.Ordinal) ? null : root;
+    }
+
+    /// <summary>
+    /// Records the write mount of <paramref name="root"/>.
+    /// <para>
+    /// The read mount is derived first, so a deliverable landing under the SAME root meets a
+    /// read-only entry. Skipping on the name alone left the team with `/workspace:ro` and a
+    /// deliverable it could never write — the run reports success and produces nothing.
+    /// Studio deduped the other way and showed two /workspace chips, one promising a write
+    /// that was then silently dropped. One root, one mount, and a write requirement wins
+    /// over a read one.
+    /// </para>
+    /// </summary>
+    private static void AddWriteMount(List<DeliverableMount> roots, string root)
+    {
+        var existing = roots.FindIndex(m => string.Equals(m.VirtualRoot, root, StringComparison.Ordinal));
+        if (existing < 0)
+            roots.Add(new DeliverableMount(root, root[1..]));
+        else if (roots[existing].ReadOnly)
+            roots[existing] = roots[existing] with { ReadOnly = false };
     }
 
     /// <summary>What `orkeon run` targets, relative to the promoted folder.</summary>
@@ -568,140 +612,207 @@ internal static class ForgePromoter
         };
     }
 
+    /// <summary>Everything <c>FORGE.md</c> says, gathered from one promotion.</summary>
+    private sealed record ForgeCard
+    {
+        /// <summary>The promoted session.</summary>
+        public required ForgeSession Session { get; init; }
+
+        /// <summary>What the crew promised, when the session holds a brief.</summary>
+        public ForgeBrief? Brief { get; init; }
+
+        /// <summary>How the trial was judged, when one was recorded.</summary>
+        public ForgeVerdict? Verdict { get; init; }
+
+        /// <summary>The requested schedule, when <c>--schedule</c> asked for one.</summary>
+        public ForgeSchedule? Schedule { get; init; }
+
+        /// <summary>The install command the card displays — never executed (§3.4).</summary>
+        public string? InstallCommand { get; init; }
+
+        /// <summary>When the folder was promoted.</summary>
+        public required DateTimeOffset Now { get; init; }
+
+        /// <summary>The mounts the launchers carry.</summary>
+        public required IReadOnlyList<DeliverableMount> WriteMounts { get; init; }
+    }
+
+    /// <summary>
+    /// The card's language: it talks to the crew's owner, in the brief's tongue, not to the
+    /// framework.
+    /// </summary>
+    private sealed record CardLanguage(bool IsFrench)
+    {
+        /// <summary>Picks the sentence this card is written in.</summary>
+        public string Pick(string french, string english) => IsFrench ? french : english;
+    }
+
     /// <summary>
     /// <c>FORGE.md</c> — the identity card a colleague reads when picking up the folder:
     /// where the crew comes from, what it promises, how it was judged. Written in the
     /// brief's language: the card talks to the crew's owner, not to the framework.
     /// </summary>
-    private static void WriteCard(
-        string destination, ForgeSession session, ForgeBrief? brief, ForgeVerdict? verdict,
-        ForgeSchedule? schedule, string? installCommand, DateTimeOffset now,
-        IReadOnlyList<DeliverableMount> writeMounts)
+    private static void WriteCard(string destination, ForgeCard content)
     {
-        var fr = string.Equals(brief?.Language, "fr", StringComparison.OrdinalIgnoreCase);
-        string L(string french, string english) => fr ? french : english;
+        var language = new CardLanguage(
+            string.Equals(content.Brief?.Language, "fr", StringComparison.OrdinalIgnoreCase));
 
         var card = new StringBuilder();
         card.AppendLine(CultureInfo.InvariantCulture,
-            $"# {session.Document.Title ?? session.Document.Slug}");
+            $"# {content.Session.Document.Title ?? content.Session.Document.Slug}");
         card.AppendLine();
         card.AppendLine(CultureInfo.InvariantCulture,
-            $"> {L("Généré par l'Atelier Orkeon le", "Generated by the Orkeon Forge on")} {now:yyyy-MM-dd} — Orkeon {ForgeEngineVersion.Current}.");
+            $"> {language.Pick("Généré par l'Atelier Orkeon le", "Generated by the Orkeon Forge on")} {content.Now:yyyy-MM-dd} — Orkeon {ForgeEngineVersion.Current}.");
 
-        if (brief is not null)
-        {
-            card.AppendLine();
-            card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Objectif", "Goal")}");
-            card.AppendLine();
-            card.AppendLine(brief.Goal ?? "");
-            if (!string.IsNullOrWhiteSpace(brief.Context))
-                card.AppendLine(CultureInfo.InvariantCulture, $"\n{brief.Context}");
-
-            if (brief.ExpectedOutput is { } output)
-            {
-                card.AppendLine();
-                card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Sortie attendue", "Expected output")}");
-                card.AppendLine();
-                card.AppendLine(CultureInfo.InvariantCulture,
-                    $"{output.Description ?? ""}{(output.Format is null ? "" : $" ({output.Format})")}");
-            }
-
-            if (brief.Constraints is { Count: > 0 } constraints)
-            {
-                card.AppendLine();
-                card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Contraintes", "Constraints")}");
-                card.AppendLine();
-                foreach (var constraint in constraints)
-                    card.AppendLine(CultureInfo.InvariantCulture, $"- {constraint}");
-            }
-
-            if (brief.Acceptance is { Count: > 0 } acceptance)
-            {
-                card.AppendLine();
-                card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Critères d'acceptation", "Acceptance criteria")}");
-                card.AppendLine();
-                foreach (var criterion in acceptance)
-                    card.AppendLine(CultureInfo.InvariantCulture,
-                        $"- **{criterion.Id}** ({criterion.Kind}) — {criterion.Statement}");
-            }
-        }
-
-        card.AppendLine();
-        card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Verdict", "Verdict")}");
-        card.AppendLine();
-        if (verdict is null)
-        {
-            card.AppendLine(L("Aucun verdict enregistré pour cette session.",
-                "No verdict was recorded for this session."));
-        }
-        else
-        {
-            var conformity = verdict.Passing
-                ? L("conforme", "conforming")
-                : L("accepté sur pièce (non conforme)", "accepted as-is (not conforming)");
-            card.AppendLine(CultureInfo.InvariantCulture,
-                $"Score {verdict.Score.ToString("0.00", CultureInfo.InvariantCulture)} — {conformity} ({L("juge", "judge")}: {verdict.Judge}).");
-            foreach (var finding in verdict.Findings)
-                card.AppendLine(CultureInfo.InvariantCulture,
-                    $"- [{finding.Severity}] {finding.Statement}{(finding.Acceptance is null ? "" : $" ({finding.Acceptance})")}");
-        }
-
-        card.AppendLine();
-        card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Lancer l'équipe", "Run the crew")}");
-        card.AppendLine();
-        // The launchers, and only the launchers. `orkeon run <dir>/crew` does start the crew,
-        // but WITHOUT the --mount arguments run.sh supplies — so a team that writes
-        // deliverables writes nothing that way, and reports success. The CLI reference and both
-        // getting-started pages carry that caveat; this card is what the colleague receiving
-        // the folder reads, and it was the one surface still recommending the bare command.
-        var deliverableCaveat = writeMounts.Count > 0;
-        card.AppendLine(fr
-            ? $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter."
-              + (deliverableCaveat
-                  ? $" Passez par eux : `orkeon run {RunTarget(session)}` démarre bien l'équipe, mais sans les `--mount` que les lanceurs fournissent, donc les livrables ne sont écrits nulle part et l'exécution se déclare réussie."
-                  : $" Le dossier est ordinaire : `orkeon run {RunTarget(session)}` le lance aussi.")
-              + " Orkeon Studio détecte le dossier."
-            : $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside."
-              + (deliverableCaveat
-                  ? $" Use them: `orkeon run {RunTarget(session)}` does start the crew, but without the `--mount` arguments the launchers supply, so the deliverables are written nowhere and the run reports success."
-                  : $" The folder is ordinary: `orkeon run {RunTarget(session)}` launches it too.")
-              + " Orkeon Studio detects the folder.");
-
-        if (writeMounts.Count > 0)
-        {
-            card.AppendLine();
-            card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Les dossiers de cette équipe", "This team's folders")}");
-            card.AppendLine();
-            card.AppendLine(fr
-                ? "Les agents n'adressent que des points de montage. Les lanceurs relient ceux-ci à des dossiers de l'équipe — déplacez le dossier, les liens suivent :"
-                : "Agents only ever address mount points. The launchers bind these to folders inside the team — move the folder and the bindings follow:");
-            card.AppendLine();
-            foreach (var mount in writeMounts)
-                card.AppendLine(CultureInfo.InvariantCulture,
-                    $"- `{mount.VirtualRoot}` {(mount.ReadOnly ? L("lecture", "read") : L("écriture", "write"))} → `{mount.Folder}/`");
-
-            if (writeMounts.Any(m => m.ReadOnly))
-            {
-                card.AppendLine();
-                card.AppendLine(fr
-                    ? $"Déposez dans `{ReadFolderName}/` ce que l'équipe doit lire. C'est le seul dossier qu'elle lit : la racine de l'équipe n'est pas montée, pour que l'`{SettingsFileName}` qui peut s'y trouver reste hors de portée des agents."
-                    : $"Drop what the team should read into `{ReadFolderName}/`. It is the only folder it reads: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach.");
-            }
-        }
-
-        if (schedule is not null)
-        {
-            card.AppendLine();
-            card.AppendLine(CultureInfo.InvariantCulture, $"## {L("Planification", "Schedule")}");
-            card.AppendLine();
-            card.AppendLine(fr
-                ? $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur : installez l'artefact vous-même — par exemple :"
-                : $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler: install the artifact yourself — for example:");
-            card.AppendLine();
-            card.AppendLine(CultureInfo.InvariantCulture, $"```\n{installCommand}\n```");
-        }
+        AppendBriefSections(card, content.Brief, language);
+        AppendVerdictSection(card, content.Verdict, language);
+        AppendLaunchSection(card, content.Session, content.WriteMounts, language);
+        AppendFoldersSection(card, content.WriteMounts, language);
+        AppendScheduleSection(card, content.Schedule, content.InstallCommand, language);
 
         File.WriteAllText(Path.Combine(destination, CardFileName), card.ToString());
+    }
+
+    /// <summary>What the crew was asked for: goal, expected output, constraints, criteria.</summary>
+    private static void AppendBriefSections(StringBuilder card, ForgeBrief? brief, CardLanguage language)
+    {
+        if (brief is null)
+            return;
+
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Objectif", "Goal")}");
+        card.AppendLine();
+        card.AppendLine(brief.Goal ?? "");
+        if (!string.IsNullOrWhiteSpace(brief.Context))
+            card.AppendLine(CultureInfo.InvariantCulture, $"\n{brief.Context}");
+
+        if (brief.ExpectedOutput is { } output)
+        {
+            card.AppendLine();
+            card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Sortie attendue", "Expected output")}");
+            card.AppendLine();
+            card.AppendLine(CultureInfo.InvariantCulture,
+                $"{output.Description ?? ""}{(output.Format is null ? "" : $" ({output.Format})")}");
+        }
+
+        if (brief.Constraints is { Count: > 0 } constraints)
+        {
+            card.AppendLine();
+            card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Contraintes", "Constraints")}");
+            card.AppendLine();
+            foreach (var constraint in constraints)
+                card.AppendLine(CultureInfo.InvariantCulture, $"- {constraint}");
+        }
+
+        if (brief.Acceptance is { Count: > 0 } acceptance)
+        {
+            card.AppendLine();
+            card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Critères d'acceptation", "Acceptance criteria")}");
+            card.AppendLine();
+            foreach (var criterion in acceptance)
+                card.AppendLine(CultureInfo.InvariantCulture,
+                    $"- **{criterion.Id}** ({criterion.Kind}) — {criterion.Statement}");
+        }
+    }
+
+    /// <summary>How the trial was judged — or that nothing judged it.</summary>
+    private static void AppendVerdictSection(StringBuilder card, ForgeVerdict? verdict, CardLanguage language)
+    {
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Verdict", "Verdict")}");
+        card.AppendLine();
+
+        if (verdict is null)
+        {
+            card.AppendLine(language.Pick("Aucun verdict enregistré pour cette session.",
+                "No verdict was recorded for this session."));
+            return;
+        }
+
+        var conformity = verdict.Passing
+            ? language.Pick("conforme", "conforming")
+            : language.Pick("accepté sur pièce (non conforme)", "accepted as-is (not conforming)");
+        card.AppendLine(CultureInfo.InvariantCulture,
+            $"Score {verdict.Score.ToString("0.00", CultureInfo.InvariantCulture)} — {conformity} ({language.Pick("juge", "judge")}: {verdict.Judge}).");
+        foreach (var finding in verdict.Findings)
+            card.AppendLine(CultureInfo.InvariantCulture,
+                $"- [{finding.Severity}] {finding.Statement}{(finding.Acceptance is null ? "" : $" ({finding.Acceptance})")}");
+    }
+
+    /// <summary>
+    /// How to launch the team. The launchers, and only the launchers: `orkeon run
+    /// &lt;dir&gt;/crew` does start the crew, but WITHOUT the --mount arguments run.sh
+    /// supplies — so a team that writes deliverables writes nothing that way, and reports
+    /// success. The CLI reference and both getting-started pages carry that caveat; this
+    /// card is what the colleague receiving the folder reads, and it was the one surface
+    /// still recommending the bare command.
+    /// </summary>
+    private static void AppendLaunchSection(
+        StringBuilder card, ForgeSession session, IReadOnlyList<DeliverableMount> writeMounts, CardLanguage language)
+    {
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Lancer l'équipe", "Run the crew")}");
+        card.AppendLine();
+
+        var target = RunTarget(session);
+        var bareCommand = writeMounts.Count > 0
+            ? language.Pick(
+                $" Passez par eux : `orkeon run {target}` démarre bien l'équipe, mais sans les `--mount` que les lanceurs fournissent, donc les livrables ne sont écrits nulle part et l'exécution se déclare réussie.",
+                $" Use them: `orkeon run {target}` does start the crew, but without the `--mount` arguments the launchers supply, so the deliverables are written nowhere and the run reports success.")
+            : language.Pick(
+                $" Le dossier est ordinaire : `orkeon run {target}` le lance aussi.",
+                $" The folder is ordinary: `orkeon run {target}` launches it too.");
+
+        card.AppendLine(
+            language.Pick(
+                $"`./{PosixLauncherName}` (Linux/macOS) ou `{WindowsLauncherName}` (Windows) — les entrées d'exemple y sont à adapter.",
+                $"`./{PosixLauncherName}` (Linux/macOS) or `{WindowsLauncherName}` (Windows) — adapt the sample inputs inside.")
+            + bareCommand
+            + language.Pick(" Orkeon Studio détecte le dossier.", " Orkeon Studio detects the folder."));
+    }
+
+    /// <summary>Where the mounts land, so the folder explains itself.</summary>
+    private static void AppendFoldersSection(
+        StringBuilder card, IReadOnlyList<DeliverableMount> writeMounts, CardLanguage language)
+    {
+        if (writeMounts.Count == 0)
+            return;
+
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Les dossiers de cette équipe", "This team's folders")}");
+        card.AppendLine();
+        card.AppendLine(language.Pick(
+            "Les agents n'adressent que des points de montage. Les lanceurs relient ceux-ci à des dossiers de l'équipe — déplacez le dossier, les liens suivent :",
+            "Agents only ever address mount points. The launchers bind these to folders inside the team — move the folder and the bindings follow:"));
+        card.AppendLine();
+        foreach (var mount in writeMounts)
+            card.AppendLine(CultureInfo.InvariantCulture,
+                $"- `{mount.VirtualRoot}` {(mount.ReadOnly ? language.Pick("lecture", "read") : language.Pick("écriture", "write"))} → `{mount.Folder}/`");
+
+        if (!writeMounts.Any(m => m.ReadOnly))
+            return;
+
+        card.AppendLine();
+        card.AppendLine(language.Pick(
+            $"Déposez dans `{ReadFolderName}/` ce que l'équipe doit lire. C'est le seul dossier qu'elle lit : la racine de l'équipe n'est pas montée, pour que l'`{SettingsFileName}` qui peut s'y trouver reste hors de portée des agents.",
+            $"Drop what the team should read into `{ReadFolderName}/`. It is the only folder it reads: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach."));
+    }
+
+    /// <summary>The schedule artifacts and the command that installs one — displayed, never run.</summary>
+    private static void AppendScheduleSection(
+        StringBuilder card, ForgeSchedule? schedule, string? installCommand, CardLanguage language)
+    {
+        if (schedule is null)
+            return;
+
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Planification", "Schedule")}");
+        card.AppendLine();
+        card.AppendLine(language.Pick(
+            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur : installez l'artefact vous-même — par exemple :",
+            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler: install the artifact yourself — for example:"));
+        card.AppendLine();
+        card.AppendLine(CultureInfo.InvariantCulture, $"```\n{installCommand}\n```");
     }
 
     private static DateTime NextOccurrence(DateTimeOffset now, int hour, int minute)

@@ -250,13 +250,23 @@ internal static class DoctorCommand
 
     // ── individual checks ───────────────────────────────────────────────────
 
+    /// <summary>Platform prefix of a native library file name ("lib" everywhere but Windows).</summary>
+    private static string NativeLibraryPrefix() => OperatingSystem.IsWindows() ? "" : "lib";
+
+    /// <summary>Platform extension of a native library file name.</summary>
+    private static string NativeLibraryExtension()
+    {
+        if (OperatingSystem.IsWindows())
+            return ".dll";
+
+        return OperatingSystem.IsMacOS() ? ".dylib" : ".so";
+    }
+
     private static DoctorCheckResult CheckDotnetRuntime()
     {
         // Self-contained publishes carry the host resolver next to the app; a
         // framework-dependent deployment resolves it from the shared installation.
-        var hostfxr = OperatingSystem.IsWindows() ? "hostfxr.dll"
-            : OperatingSystem.IsMacOS() ? "libhostfxr.dylib"
-            : "libhostfxr.so";
+        var hostfxr = NativeLibraryPrefix() + "hostfxr" + NativeLibraryExtension();
         var selfContained = File.Exists(Path.Combine(AppContext.BaseDirectory, hostfxr));
 
         return new DoctorCheckResult
@@ -513,10 +523,8 @@ internal static class DoctorCommand
     {
         // Dev/test layouts keep native libraries under runtimes/{rid}/native; self-contained
         // publishes flatten them next to the executable. Probe both, tolerantly (⚠️ only).
-        var prefix = OperatingSystem.IsWindows() ? "" : "lib";
-        var extension = OperatingSystem.IsWindows() ? ".dll"
-            : OperatingSystem.IsMacOS() ? ".dylib"
-            : ".so";
+        var prefix = NativeLibraryPrefix();
+        var extension = NativeLibraryExtension();
 
         string[] searchDirs =
         [

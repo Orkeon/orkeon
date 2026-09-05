@@ -48,8 +48,17 @@ public class CorrectiveRagPipelineTests
         }
 
         public CorrectiveRagPipeline Build(CircuitBreakerPolicy? circuitPolicy = null) => new(
-            Store, Embeddings, Chat, Evaluator, Options, Checker, Web,
-            logger: null, circuitPolicy: circuitPolicy);
+            Store,
+            Embeddings,
+            Chat,
+            Evaluator,
+            Options,
+            new CorrectiveRagPipelineDependencies
+            {
+                GroundednessChecker = Checker,
+                WebRetriever = Web,
+                CircuitPolicy = circuitPolicy,
+            });
 
         public void Dispose() => Chat.Dispose();
     }

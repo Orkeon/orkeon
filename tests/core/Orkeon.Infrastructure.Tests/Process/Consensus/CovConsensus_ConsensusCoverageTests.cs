@@ -1,5 +1,6 @@
 using Orkeon.Application.Interfaces;
 using Orkeon.Infrastructure.Consensus;
+using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -75,10 +76,7 @@ public class CovConsensus_ConsensusCoverageTests
 
         var strategy = new ConsensualProcessStrategy(
             voting ?? new MajorityVotingStrategy(),
-            mockExec,
-            taskRepo,
-            agentRepo,
-            new MockMemoryScope(),
+            new CrewStrategyDependencies(taskRepo, agentRepo, mockExec, new MockMemoryScope()),
             NullLogger<ConsensualProcessStrategy>.Instance,
             Options.Create(options));
 
@@ -109,10 +107,11 @@ public class CovConsensus_ConsensusCoverageTests
 
         Assert.Throws<ArgumentNullException>(() => new ConsensualProcessStrategy(
             nullIndex == 0 ? null! : voting,
-            nullIndex == 1 ? null! : exec,
-            nullIndex == 2 ? null! : taskRepo,
-            nullIndex == 3 ? null! : agentRepo,
-            nullIndex == 4 ? null! : scope,
+            new CrewStrategyDependencies(
+                nullIndex == 2 ? null! : taskRepo,
+                nullIndex == 3 ? null! : agentRepo,
+                nullIndex == 1 ? null! : exec,
+                nullIndex == 4 ? null! : scope),
             nullIndex == 5 ? null! : logger,
             nullIndex == 6 ? null! : options));
     }

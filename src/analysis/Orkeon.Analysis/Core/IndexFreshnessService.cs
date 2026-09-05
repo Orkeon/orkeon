@@ -193,7 +193,6 @@ public sealed partial class IndexFreshnessService : IDisposable
     }
 
     /// <summary>Dirty set ∪ git working-tree changes, normalized to virtual paths under the root.</summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Git probe fault barrier: no repo / no git degrades to the dirty set alone, never fails the search.")]
     private async Task<HashSet<string>> CollectChangedAsync(string virtualRoot, CancellationToken ct)
     {
         var changed = new HashSet<string>(StringComparer.Ordinal);
@@ -202,32 +201,9 @@ public sealed partial class IndexFreshnessService : IDisposable
             changed.Add(dirty);
         }
 
-        if (_gitDiff is not null)
+        foreach (var fromGit in await ProbeGitWorkingTreeAsync(virtualRoot, ct).ConfigureAwait(false))
         {
-            try
-            {
-                // git runs on the PHYSICAL directory behind the virtual root; results
-                // come back as physical paths and are mapped into virtual space. A root
-                // that does not resolve (or is not a repo) contributes nothing.
-                var resolution = _fileSystem.ResolveAndValidate(virtualRoot, FileAccessRights.Read);
-                if (resolution.IsAllowed && resolution.ResolvedPath is { } physicalRoot)
-                {
-                    var files = await _gitDiff.GetWorkingTreeChangesAsync(physicalRoot, ct).ConfigureAwait(false);
-                    foreach (var physical in files)
-                    {
-                        var virtualPath = _fileSystem.ToVirtualPath(physical);
-                        if (virtualPath is not null) changed.Add(virtualPath);
-                    }
-                }
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch (Exception ex)
-            {
-                LogGitProbeFailed(ex);
-            }
+            changed.Add(fromGit);
         }
 
         // Only paths the index covers: a scratch file outside the root is not our debt.
@@ -235,6 +211,45 @@ public sealed partial class IndexFreshnessService : IDisposable
             !p.Equals(virtualRoot, StringComparison.Ordinal)
             && !p.StartsWith(virtualRoot.TrimEnd('/') + "/", StringComparison.Ordinal));
         return changed;
+    }
+
+    /// <summary>
+    /// Git working-tree changes under the root, mapped into virtual space. Empty when no
+    /// git probe is wired, when the root does not resolve or is not a repository, and
+    /// when the probe itself fails.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Git probe fault barrier: no repo / no git degrades to the dirty set alone, never fails the search.")]
+    private async Task<IReadOnlyCollection<string>> ProbeGitWorkingTreeAsync(string virtualRoot, CancellationToken ct)
+    {
+        if (_gitDiff is null) return [];
+
+        try
+        {
+            // git runs on the PHYSICAL directory behind the virtual root; results
+            // come back as physical paths and are mapped into virtual space. A root
+            // that does not resolve (or is not a repo) contributes nothing.
+            var resolution = _fileSystem.ResolveAndValidate(virtualRoot, FileAccessRights.Read);
+            if (!resolution.IsAllowed || resolution.ResolvedPath is not { } physicalRoot) return [];
+
+            var files = await _gitDiff.GetWorkingTreeChangesAsync(physicalRoot, ct).ConfigureAwait(false);
+            var mapped = new List<string>();
+            foreach (var physical in files)
+            {
+                var virtualPath = _fileSystem.ToVirtualPath(physical);
+                if (virtualPath is not null) mapped.Add(virtualPath);
+            }
+
+            return mapped;
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogGitProbeFailed(ex);
+            return [];
+        }
     }
 
     /// <summary>Releases the single-flight semaphore.</summary>

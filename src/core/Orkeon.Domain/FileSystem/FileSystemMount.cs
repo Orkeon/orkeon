@@ -273,26 +273,7 @@ public sealed record FileSystemMount
 
         while (rest.Length > 0)
         {
-            int nextColon;
-            if (rest[0] == QuoteCharacter)
-            {
-                var close = IndexOfClosingQuote(rest);
-                // An unterminated quote is a malformed spec: keep the remainder as one segment
-                // so the caller reports the format error rather than splitting nonsense.
-                if (close < 0)
-                {
-                    parts.Add(rest);
-                    break;
-                }
-
-                nextColon = close + 1 < rest.Length && rest[close + 1] == ':' ? close + 1 : -1;
-            }
-            else
-            {
-                // For a Windows-path segment, start looking after the drive-letter colon.
-                nextColon = rest.IndexOf(':', HasDriveLetterPrefix(rest) ? 2 : 0);
-            }
-
+            var nextColon = IndexOfSegmentSeparator(rest);
             if (nextColon < 0)
             {
                 parts.Add(rest);
@@ -304,6 +285,28 @@ public sealed record FileSystemMount
         }
 
         return parts;
+    }
+
+    /// <summary>
+    /// Index of the ':' that closes the segment starting <paramref name="rest"/>, or -1 when
+    /// the whole remainder is the last segment. A quoted segment is measured from its closing
+    /// quote. An unterminated quote is a malformed spec, so it reports -1 too: the caller then
+    /// keeps the remainder as one segment and the format error is reported there rather than
+    /// splitting nonsense here.
+    /// </summary>
+    private static int IndexOfSegmentSeparator(string rest)
+    {
+        if (rest[0] != QuoteCharacter)
+        {
+            // For a Windows-path segment, start looking after the drive-letter colon.
+            return rest.IndexOf(':', HasDriveLetterPrefix(rest) ? 2 : 0);
+        }
+
+        var close = IndexOfClosingQuote(rest);
+        if (close < 0)
+            return -1;
+
+        return close + 1 < rest.Length && rest[close + 1] == ':' ? close + 1 : -1;
     }
 
     /// <summary>Index of the quote closing the one at position 0, honouring doubled quotes.</summary>

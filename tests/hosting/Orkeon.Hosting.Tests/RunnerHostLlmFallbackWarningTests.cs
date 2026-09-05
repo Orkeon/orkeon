@@ -44,7 +44,7 @@ public sealed class RunnerHostLlmFallbackWarningTests : IDisposable
         {
             using var host = RunnerHost.Build(
                 settingsPath: null,
-                cliMounts: [],
+                mounts: new RunnerMountPlan(),
                 configureLogging: (_, b) =>
                 {
                     b.AddProvider(logs);
@@ -79,7 +79,7 @@ public sealed class RunnerHostLlmFallbackWarningTests : IDisposable
         {
             using var host = RunnerHost.Build(
                 settingsPath: settingsPath,
-                cliMounts: [],
+                mounts: new RunnerMountPlan(),
                 configureLogging: (_, b) =>
                 {
                     b.AddProvider(logs);

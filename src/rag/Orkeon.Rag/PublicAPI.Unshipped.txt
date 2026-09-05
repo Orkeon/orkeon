@@ -1,1 +1,62 @@
 #nullable enable
+*REMOVED*Orkeon.Rag.Pipeline.DefaultIngestionPipeline.DefaultIngestionPipeline(Orkeon.Rag.Loaders.DocumentLoaderFactory! loaderFactory, Orkeon.Rag.Factories.ChunkingStrategyFactory! chunkingFactory, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Rag.Validation.DataValidationPipeline! validation, Orkeon.Rag.Ingestion.IIngestionManifestStore! manifestStore, Orkeon.Rag.Pipeline.RagIngestionOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.DefaultIngestionPipeline!>? logger = null) -> void
+*REMOVED*Orkeon.Rag.Pipeline.StagedRagPipeline.StagedRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Factories.QueryTransformerFactory? queryTransformers = null, Orkeon.Rag.Factories.RerankerFactory? rerankers = null, Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker? groundednessChecker = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.StagedRagPipeline!>? logger = null) -> void
+*REMOVED*[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline.CorrectiveRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator! retrievalEvaluator, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker? groundednessChecker = null, Orkeon.Rag.Corrective.IWebDocumentRetriever? webRetriever = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Corrective.CorrectiveRagPipeline!>? logger = null, Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> void
+Orkeon.Rag.Pipeline.DefaultIngestionPipeline.DefaultIngestionPipeline(Orkeon.Rag.Pipeline.IngestionPipelineDependencies! dependencies, Orkeon.Rag.Pipeline.RagIngestionOptions? options = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.DefaultIngestionPipeline!>? logger = null) -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.<Clone>$() -> Orkeon.Rag.Pipeline.IngestionPipelineDependencies!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.ChunkingFactory.get -> Orkeon.Rag.Factories.ChunkingStrategyFactory!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.ChunkingFactory.init -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.EmbeddingProvider.get -> Orkeon.Application.Interfaces.Ports.IEmbeddingProvider!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.EmbeddingProvider.init -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Equals(Orkeon.Rag.Pipeline.IngestionPipelineDependencies? other) -> bool
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.IngestionPipelineDependencies() -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.LoaderFactory.get -> Orkeon.Rag.Loaders.DocumentLoaderFactory!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.LoaderFactory.init -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.ManifestStore.get -> Orkeon.Rag.Ingestion.IIngestionManifestStore!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.ManifestStore.init -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Store.get -> Orkeon.Rag.Abstractions.Interfaces.IDocumentStore!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Store.init -> void
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Validation.get -> Orkeon.Rag.Validation.DataValidationPipeline!
+Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Validation.init -> void
+override Orkeon.Rag.Pipeline.IngestionPipelineDependencies.Equals(object? obj) -> bool
+override Orkeon.Rag.Pipeline.IngestionPipelineDependencies.GetHashCode() -> int
+override Orkeon.Rag.Pipeline.IngestionPipelineDependencies.ToString() -> string!
+static Orkeon.Rag.Pipeline.IngestionPipelineDependencies.operator !=(Orkeon.Rag.Pipeline.IngestionPipelineDependencies? left, Orkeon.Rag.Pipeline.IngestionPipelineDependencies? right) -> bool
+static Orkeon.Rag.Pipeline.IngestionPipelineDependencies.operator ==(Orkeon.Rag.Pipeline.IngestionPipelineDependencies? left, Orkeon.Rag.Pipeline.IngestionPipelineDependencies? right) -> bool
+Orkeon.Rag.Pipeline.StagedRagPipeline.StagedRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? dependencies = null) -> void
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.<Clone>$() -> Orkeon.Rag.Pipeline.StagedRagPipelineDependencies!
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Equals(Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? other) -> bool
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.GroundednessChecker.get -> Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker?
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.GroundednessChecker.init -> void
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Logger.get -> Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.StagedRagPipeline!>?
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Logger.init -> void
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.QueryTransformers.get -> Orkeon.Rag.Factories.QueryTransformerFactory?
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.QueryTransformers.init -> void
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Rerankers.get -> Orkeon.Rag.Factories.RerankerFactory?
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Rerankers.init -> void
+Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.StagedRagPipelineDependencies() -> void
+override Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.Equals(object? obj) -> bool
+override Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.GetHashCode() -> int
+override Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.ToString() -> string!
+static Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.operator !=(Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? left, Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? right) -> bool
+static Orkeon.Rag.Pipeline.StagedRagPipelineDependencies.operator ==(Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? left, Orkeon.Rag.Pipeline.StagedRagPipelineDependencies? right) -> bool
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipeline.CorrectiveRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.AI.IChatClient! chatClient, Orkeon.Rag.Abstractions.Interfaces.IRetrievalEvaluator! retrievalEvaluator, Orkeon.Rag.Abstractions.Options.RagOptions? options = null, Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? dependencies = null) -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.<Clone>$() -> Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies!
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.CircuitPolicy.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy?
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.CircuitPolicy.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.CorrectiveRagPipelineDependencies() -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.Equals(Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? other) -> bool
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.GroundednessChecker.get -> Orkeon.Rag.Abstractions.Interfaces.IGroundednessChecker?
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.GroundednessChecker.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.Logger.get -> Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Corrective.CorrectiveRagPipeline!>?
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.Logger.init -> void
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.WebRetriever.get -> Orkeon.Rag.Corrective.IWebDocumentRetriever?
+[ORKEXP003]Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.WebRetriever.init -> void
+[ORKEXP003]override Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.Equals(object? obj) -> bool
+[ORKEXP003]override Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.GetHashCode() -> int
+[ORKEXP003]override Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.ToString() -> string!
+[ORKEXP003]static Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.operator !=(Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? left, Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? right) -> bool
+[ORKEXP003]static Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies.operator ==(Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? left, Orkeon.Rag.Corrective.CorrectiveRagPipelineDependencies? right) -> bool

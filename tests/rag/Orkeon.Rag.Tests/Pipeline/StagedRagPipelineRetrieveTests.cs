@@ -169,7 +169,7 @@ public class StagedRagPipelineRetrieveTests
             new FakeEmbeddingProvider(),
             chat,
             new RagOptions { Rerank = new RagRerankOptions { Enabled = true, Kind = ReversingReranker.RerankerName } },
-            rerankers: rerankers);
+            new StagedRagPipelineDependencies { Rerankers = rerankers });
 
         var answer = await pipeline.RetrieveAsync(
             new RagQuery { Text = "rank?", Collection = "kb", TopN = 3 },

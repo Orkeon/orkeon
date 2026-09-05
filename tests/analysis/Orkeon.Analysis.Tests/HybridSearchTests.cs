@@ -223,28 +223,51 @@ public class StoreConcurrencyTests
         var store = new InMemoryRaggableStore([], [], new FakeFileSystemService());
         using var stop = new CancellationTokenSource(TimeSpan.FromSeconds(2));
 
+        var added = 0;
+        var searches = 0;
+        var widestPage = 0;
+
+        // do/while on both sides: each task performs at least one operation, so the
+        // assertions below cannot pass vacuously on a starved machine.
         var writer = Task.Run(() =>
         {
             var i = 0;
-            while (!stop.IsCancellationRequested)
+            do
             {
                 store.AddNodes([Node(i++)]);
                 if (i % 50 == 0) store.RemoveFilesAndDescendants([$"/src/f{i - 25}.ts"]);
             }
+            while (!stop.IsCancellationRequested);
+            added = i;
         }, TestContext.Current.CancellationToken);
 
         var reader = Task.Run(async () =>
         {
-            while (!stop.IsCancellationRequested)
+            do
             {
                 var hits = await store.SemanticSearchAsync(
                     new SemanticQuery { Text = "symbol", TopK = 10 },
                     CancellationToken.None);
-                _ = hits.Count;
+                widestPage = Math.Max(widestPage, hits.Count);
+                searches++;
             }
+            while (!stop.IsCancellationRequested);
         }, TestContext.Current.CancellationToken);
 
         // Fails the test naturally if either task threw.
         await Task.WhenAll(writer, reader);
+
+        // Both sides really interleaved, and every search came back within its TopK bound
+        // instead of on a half-mutated index.
+        Assert.True(added > 0, "the writer never added a node");
+        Assert.True(searches > 0, "the reader never completed a search");
+        Assert.True(widestPage <= 10, $"a search returned {widestPage} hits for TopK 10");
+
+        // The invariant the RW lock exists for: not one write was lost to the concurrent
+        // reads. The writer added `added` nodes and removed exactly one every 50 (an
+        // earlier one, by exact path, with no descendants), so the graph holds precisely
+        // that many - a lost update or a double insert moves this number.
+        var surviving = store.ExportSnapshot().Nodes;
+        Assert.Equal(added - (added / 50), surviving.Count);
     }
 }

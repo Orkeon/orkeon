@@ -341,5 +341,7 @@ internal sealed class ForgeUsageTally : ILlmUsageSink, ILlmDeltaSink
     /// </summary>
     public void OnTurnCompleted()
     {
+        // Intentionally empty: the turn's usage event commits the real figure and resets
+        // the in-flight estimate. Clearing it here would make the meter dip and jump back.
     }
 }

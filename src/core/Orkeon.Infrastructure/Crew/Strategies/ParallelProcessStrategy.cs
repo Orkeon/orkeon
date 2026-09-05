@@ -129,37 +129,12 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
         try
         {
-        // Load all agents
-        var agents = new List<DomainAgent>();
-        foreach (var agentId in crew.Agents)
-        {
-            var agent = await _agentRepository.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false);
-            if (agent != null) agents.Add(agent);
-        }
-
-        if (agents.Count == 0)
-            throw new InvalidOperationException("No agents available for parallel execution");
+        // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
+        // has to produce a terminal event like any other exit.
+        var agents = await LoadAgentsAsync(crew, cancellationToken).ConfigureAwait(false);
+        var tasks = await LoadPlannedTasksAsync(crew, plan, cancellationToken).ConfigureAwait(false);
 
         var taskIndex = 0;
-
-        // Use plan tasks if available, otherwise fall back to crew tasks
-        var plannedTasks = plan.GetTasksInOrder().ToList();
-        var taskIds = plannedTasks.Count > 0
-            ? plannedTasks.Select(pt => pt.TaskId)
-            : crew.Tasks;
-
-        var tasks = new List<DomainTask>();
-        foreach (var taskId in taskIds)
-        {
-            var loaded = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
-            if (loaded == null)
-            {
-                LogTaskNotFoundSkipping(taskId);
-                continue;
-            }
-
-            tasks.Add(loaded);
-        }
 
         // Waves, not one flat fan-out. A crew declaring `dependencies:` used to have them
         // ignored here: every task started at once, so a synthesis task ran against an empty
@@ -198,61 +173,9 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 var capturedTask = task;
                 var capturedAgent = agent;
 
-                executionTasks.Add(System.Threading.Tasks.Task.Run(async () =>
-                {
-                LogStartingParallelExecutionOfTask(capturedTask.Id, capturedAgent.Id);
-
-                var result = await _executionService.ExecuteTaskAsync(
-                    capturedAgent, capturedTask, context, cancellationToken).ConfigureAwait(false);
-
-                tokenTally.Record(result);
-
-                // Guard against empty output (e.g., LLM call failed)
-                string rawOutput;
-                if (!string.IsNullOrEmpty(result.Output))
-                    rawOutput = result.Output;
-                else if (result.Success)
-                    rawOutput = "(no output)";
-                else
-                    rawOutput = $"Task failed: {result.Error ?? "unknown error"}";
-
-                var domainOutput = DomainTaskOutput.Create(
-                    rawOutput: rawOutput,
-                    format: "text",
-                    formattedOutput: null,
-                    taskId: capturedTask.Id,
-                    success: result.Success,
-                    executionTime: result.ExecutionTime,
-                    structuredOutput: result.StructuredOutput);
-
-                var appOutput = new ApplicationTaskOutput(
-                    TaskId: capturedTask.Id.Value.ToString(),
-                    AgentId: capturedAgent.Id.ToString(),
-                    Content: rawOutput,
-                    CompletedAt: DateTime.UtcNow,
-                    Success: result.Success,
-                    ExecutionTime: result.ExecutionTime,
-                    ToolsUsed: result.ToolsUsed);
-
-                LogCompletedParallelExecutionOfTask(capturedTask.Id, result.Success);
-
-                var snapshot = new TaskExecutionSnapshot
-                {
-                    TaskId = capturedTask.Id.Value.ToString(),
-                    AgentRole = capturedAgent.Role.Value,
-                    Success = result.Success,
-                    Duration = result.ExecutionTime,
-                    CompletedAt = DateTimeOffset.UtcNow,
-                    ToolCallCount = result.ToolsUsed?.Count ?? 0,
-                    TokensUsed = result.TokensUsed,
-                    CacheHitTokens = result.CacheHitTokens,
-                    CacheMissTokens = result.CacheMissTokens,
-                };
-                taskSnapshots.Add(snapshot);
-                await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
-
-                return (domainOutput, appOutput);
-                }));
+                executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
+                    capturedAgent, capturedTask, context, tokenTally, taskSnapshots, cancellationToken)
+                    .ConfigureAwait(false)));
             }
 
             // Wait for this wave. One faulted task means WhenAll throws — the terminal event
@@ -306,6 +229,125 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             metadata: tokenTally
                 .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
                 .Build());
+    }
+
+    /// <summary>
+    /// The crew's agents, in declaration order. An id the repository cannot resolve is dropped,
+    /// and a crew left with none has nothing to fan out — it says so instead of running an empty
+    /// wave and reporting success on it.
+    /// </summary>
+    private async System.Threading.Tasks.Task<List<DomainAgent>> LoadAgentsAsync(
+        DomainCrew crew,
+        CancellationToken cancellationToken)
+    {
+        var agents = new List<DomainAgent>();
+        foreach (var agentId in crew.Agents)
+        {
+            var agent = await _agentRepository.GetByIdAsync(agentId, cancellationToken).ConfigureAwait(false);
+            if (agent != null) agents.Add(agent);
+        }
+
+        if (agents.Count == 0)
+            throw new InvalidOperationException("No agents available for parallel execution");
+
+        return agents;
+    }
+
+    /// <summary>
+    /// The tasks to run: the plan's order when it carries one, the crew's own list otherwise.
+    /// A task id nothing resolves is logged and skipped rather than guessed at.
+    /// </summary>
+    private async System.Threading.Tasks.Task<List<DomainTask>> LoadPlannedTasksAsync(
+        DomainCrew crew,
+        DomainExecutionPlan plan,
+        CancellationToken cancellationToken)
+    {
+        // Use plan tasks if available, otherwise fall back to crew tasks
+        var plannedTasks = plan.GetTasksInOrder().ToList();
+        var taskIds = plannedTasks.Count > 0
+            ? plannedTasks.Select(pt => pt.TaskId)
+            : crew.Tasks;
+
+        var tasks = new List<DomainTask>();
+        foreach (var taskId in taskIds)
+        {
+            var loaded = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+            if (loaded == null)
+            {
+                LogTaskNotFoundSkipping(taskId);
+                continue;
+            }
+
+            tasks.Add(loaded);
+        }
+
+        return tasks;
+    }
+
+    /// <summary>
+    /// One task of a wave, from the pool thread the fan-out launched it on: execute, record the
+    /// usage, normalise the output and publish the completion snapshot.
+    /// </summary>
+    private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)> ExecuteWaveTaskAsync(
+        DomainAgent agent,
+        DomainTask task,
+        SimpleExecutionContext context,
+        TokenUsageTally tokenTally,
+        System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot> taskSnapshots,
+        CancellationToken cancellationToken)
+    {
+        LogStartingParallelExecutionOfTask(task.Id, agent.Id);
+
+        var result = await _executionService.ExecuteTaskAsync(
+            agent, task, context, cancellationToken).ConfigureAwait(false);
+
+        tokenTally.Record(result);
+
+        // Guard against empty output (e.g., LLM call failed)
+        string rawOutput;
+        if (!string.IsNullOrEmpty(result.Output))
+            rawOutput = result.Output;
+        else if (result.Success)
+            rawOutput = "(no output)";
+        else
+            rawOutput = $"Task failed: {result.Error ?? "unknown error"}";
+
+        var domainOutput = DomainTaskOutput.Create(
+            rawOutput: rawOutput,
+            format: "text",
+            formattedOutput: null,
+            taskId: task.Id,
+            success: result.Success,
+            executionTime: result.ExecutionTime,
+            structuredOutput: result.StructuredOutput);
+
+        var appOutput = new ApplicationTaskOutput(
+            TaskId: task.Id.Value.ToString(),
+            AgentId: agent.Id.ToString(),
+            Content: rawOutput,
+            CompletedAt: DateTime.UtcNow,
+            Success: result.Success,
+            ExecutionTime: result.ExecutionTime,
+            ToolsUsed: result.ToolsUsed);
+
+        LogCompletedParallelExecutionOfTask(task.Id, result.Success);
+
+        var snapshot = new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            AgentRole = agent.Role.Value,
+            Success = result.Success,
+            Duration = result.ExecutionTime,
+            CompletedAt = DateTimeOffset.UtcNow,
+            ToolCallCount = result.ToolsUsed?.Count ?? 0,
+            TokensUsed = result.TokensUsed,
+            CacheHitTokens = result.CacheHitTokens,
+            CacheMissTokens = result.CacheMissTokens,
+        };
+        taskSnapshots.Add(snapshot);
+        await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
+
+        return (domainOutput, appOutput);
     }
 
     /// <summary>

@@ -188,11 +188,16 @@ internal sealed class MountDialog : Window
     private void RefreshPhysicalStatus()
     {
         _form.PhysicalPath = _physicalPath.Text ?? "";
-        _physicalStatus.Text = string.IsNullOrWhiteSpace(_form.PhysicalPath)
-            ? "Pick the folder this mount exposes."
-            : _form.PhysicalPathExists
-                ? "The folder exists."
-                : "This folder does not exist — the runtime rejects such a mount. Use 'Create the folder'.";
+
+        if (string.IsNullOrWhiteSpace(_form.PhysicalPath))
+        {
+            _physicalStatus.Text = "Pick the folder this mount exposes.";
+            return;
+        }
+
+        _physicalStatus.Text = _form.PhysicalPathExists
+            ? "The folder exists."
+            : "This folder does not exist — the runtime rejects such a mount. Use 'Create the folder'.";
     }
 
     /// <inheritdoc />

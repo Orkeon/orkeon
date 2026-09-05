@@ -123,7 +123,6 @@ internal sealed class ForgeEngine
         bool announce = true,
         CancellationToken cancellationToken = default)
     {
-        var machine = ForgeStateMachineFactory.Create(_session.State);
         var budget = _session.Document.Budget;
 
         // The first pass is a cycle too: charge it once, resume included.
@@ -134,11 +133,8 @@ internal sealed class ForgeEngine
         if (announce)
             _events.SessionStarted(_session, resumed);
 
-        // Wall time is charged as an absolute delta from the run's start on top of what
-        // earlier runs consumed: per-checkpoint deltas would truncate sub-second stages
-        // to zero and undercount a whole session one stage at a time.
-        var runStarted = _clock.UtcNow;
-        var wallBase = budget.ConsumedWallSeconds;
+        // The run owns the machine, the budget and the wall-time base from here on.
+        var run = new ForgeRun(this);
 
         try
         {
@@ -146,88 +142,25 @@ internal sealed class ForgeEngine
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var state = machine.CurrentState;
-
-                if (machine.IsTerminal)
-                    return Finish(state);
-
-                if (state == stopBefore)
-                {
-                    // The deliberate boundary: everything before it ran and was saved; the
-                    // session waits exactly here for a resume without --dry.
-                    Checkpoint();
-                    _events.SessionFinished("paused", 0);
-                    return new ForgeEngineResult(ForgeEngineOutcome.Paused, 0);
-                }
-
-                if (budget.ExhaustedDimension() is { } dimension)
-                    return FinishBudgetExhausted(dimension);
-
-                if (!_runners.TryGetValue(state, out var runner))
-                {
-                    // Ready without a promotion runner is the ordinary stop of a cycle:
-                    // the crew waits; `forge promote` (or the client) takes over.
-                    if (state == ForgeState.Ready)
-                    {
-                        _session.SetStatus(ForgeSessionStatus.Ready);
-                        Checkpoint();
-                        _events.SessionFinished("ready", 0);
-                        return new ForgeEngineResult(ForgeEngineOutcome.Ready, 0);
-                    }
-
-                    return Fail(CodeEngineIncomplete,
-                        $"No runner for stage '{ForgeEventWriter.Spell(state)}' in this build.");
-                }
+                var state = run.Machine.CurrentState;
+                var (stop, runner) = SelectRunner(run, state, stopBefore);
+                if (stop is not null)
+                    return stop;
 
                 _events.StageEntered(state, _session.Document.Iteration);
 
-                var outcome = await runner.RunAsync(_session, _events, cancellationToken).ConfigureAwait(false);
-                budget.RegisterTokens(outcome.Usage);
+                // SelectRunner returned no stop, so it named the runner that owns the stage.
+                var outcome = await runner!.RunAsync(_session, _events, cancellationToken).ConfigureAwait(false);
 
-                // The cost lives (UX study §7): every stage that spent tokens tells the
-                // client where the meter stands. Nothing is pending here — the budget has
-                // just been charged the whole stage — so this closes the meter on the
-                // figures a long stage was already streaming through ForgeCost.Emit.
-                if (outcome.Usage.TotalTokens > 0)
-                    ForgeCost.Emit(_events, budget, pending: default);
-
-                // Looping back is what iterations meter: the budget arbitrates before the
-                // machine moves, so a refused cycle costs nothing and the session stays
-                // exactly where it was — resumable with a raised budget. A user edit loops
-                // back too — no LLM turn, but its re-render/re-test is a cycle and its run
-                // needs its own number, or runs/N would be silently overwritten.
-                if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested
-                    or ForgeTrigger.BlueprintEdited or ForgeTrigger.RetryRequested)
-                {
-                    if (!budget.CanStartIteration)
-                        return FinishBudgetExhausted(ForgeBudgetDimension.Iterations);
-
-                    budget.RegisterIteration();
-                    _session.Document.Iteration = budget.ConsumedIterations;
-                }
-
-                if (outcome.Trigger == ForgeTrigger.Fail)
-                {
-                    return Fail(outcome.FailureCode ?? CodeStageFailed,
-                        outcome.Detail ?? "The stage reported an unrecoverable error.");
-                }
-
-                if (!machine.TryFire(outcome.Trigger, out _))
-                {
-                    return Fail(CodeInvalidTransition,
-                        $"'{outcome.Trigger}' is not a legal move from '{ForgeEventWriter.Spell(state)}'.");
-                }
-
-                _session.AppendHistory(state, outcome.Trigger, machine.CurrentState, _clock.UtcNow);
-                _session.SetState(machine.CurrentState);
-                Checkpoint();
+                if (ApplyOutcome(run, state, outcome) is { } result)
+                    return result;
             }
         }
         catch (OperationCanceledException)
         {
             // Interrupted, not finished: the session stays Active and resumable; the
             // caller owns the 130 exit contract.
-            Checkpoint();
+            run.Checkpoint();
             throw;
         }
 #pragma warning disable CA1031 // the engine boundary: an unexpected throw must still leave a saved session and a closed protocol
@@ -237,55 +170,99 @@ internal sealed class ForgeEngine
             // the wire ended mid-sentence with no verdict, and the session lost whatever
             // the last stage had done. A consumer waiting on session.finished waited for
             // ever. Report it the way every other failure is reported.
-            return Fail(CodeEngineCrashed, $"{ex.GetType().Name}: {ex.Message}");
+            return run.Fail(CodeEngineCrashed, $"{ex.GetType().Name}: {ex.Message}");
         }
 #pragma warning restore CA1031
+    }
 
-        ForgeEngineResult Finish(ForgeState state)
+    /// <summary>
+    /// Everything decided before a stage runs: a terminal state, the <c>--dry</c> boundary,
+    /// an exhausted budget, or a stage this build carries no runner for. Exactly one half of
+    /// the pair is non-null — a result that ends the run, or the runner that owns
+    /// <paramref name="state"/>.
+    /// </summary>
+    private (ForgeEngineResult? Stop, IForgeStageRunner? Runner) SelectRunner(
+        ForgeRun run, ForgeState state, ForgeState? stopBefore)
+    {
+        if (run.Machine.IsTerminal)
+            return (run.Finish(state), null);
+
+        if (state == stopBefore)
         {
-            var (status, wireStatus, outcome, exitCode) = state switch
-            {
-                ForgeState.Promoted => (ForgeSessionStatus.Promoted, "ready", ForgeEngineOutcome.Promoted, 0),
-                ForgeState.Abandoned => (ForgeSessionStatus.Abandoned, "abandoned", ForgeEngineOutcome.Abandoned, 0),
-                _ => (ForgeSessionStatus.Failed, "failed", ForgeEngineOutcome.Failed, 2),
-            };
-
-            _session.SetStatus(status);
-            Checkpoint();
-            _events.SessionFinished(wireStatus, exitCode);
-            return new ForgeEngineResult(outcome, exitCode);
+            // The deliberate boundary: everything before it ran and was saved; the
+            // session waits exactly here for a resume without --dry.
+            run.Checkpoint();
+            _events.SessionFinished("paused", 0);
+            return (new ForgeEngineResult(ForgeEngineOutcome.Paused, 0), null);
         }
 
-        ForgeEngineResult FinishBudgetExhausted(ForgeBudgetDimension dimension)
+        if (run.Budget.ExhaustedDimension() is { } dimension)
+            return (run.FinishBudgetExhausted(dimension), null);
+
+        if (_runners.TryGetValue(state, out var runner))
+            return (null, runner);
+
+        // Ready without a promotion runner is the ordinary stop of a cycle:
+        // the crew waits; `forge promote` (or the client) takes over.
+        if (state == ForgeState.Ready)
         {
-            _session.SetStatus(ForgeSessionStatus.BudgetExhausted);
-            Checkpoint();
-            _events.Error(CodeBudgetExhausted,
-                $"The session's {Spell(dimension)} budget is exhausted; resume with a raised budget to continue.",
-                recoverable: true);
-            _events.SessionFinished("abandoned", 0);
-            return new ForgeEngineResult(ForgeEngineOutcome.BudgetExhausted, 0);
+            _session.SetStatus(ForgeSessionStatus.Ready);
+            run.Checkpoint();
+            _events.SessionFinished("ready", 0);
+            return (new ForgeEngineResult(ForgeEngineOutcome.Ready, 0), null);
         }
 
-        ForgeEngineResult Fail(string code, string message)
+        return (
+            run.Fail(CodeEngineIncomplete, $"No runner for stage '{ForgeEventWriter.Spell(state)}' in this build."),
+            null);
+    }
+
+    /// <summary>
+    /// Charges what the stage consumed and moves the machine. Returns the result that ends
+    /// the run, or <see langword="null"/> when the cycle carries on to the next stage.
+    /// </summary>
+    private ForgeEngineResult? ApplyOutcome(ForgeRun run, ForgeState state, ForgeStageOutcome outcome)
+    {
+        run.Budget.RegisterTokens(outcome.Usage);
+
+        // The cost lives (UX study §7): every stage that spent tokens tells the
+        // client where the meter stands. Nothing is pending here — the budget has
+        // just been charged the whole stage — so this closes the meter on the
+        // figures a long stage was already streaming through ForgeCost.Emit.
+        if (outcome.Usage.TotalTokens > 0)
+            ForgeCost.Emit(_events, run.Budget, pending: default);
+
+        // Looping back is what iterations meter: the budget arbitrates before the
+        // machine moves, so a refused cycle costs nothing and the session stays
+        // exactly where it was — resumable with a raised budget. A user edit loops
+        // back too — no LLM turn, but its re-render/re-test is a cycle and its run
+        // needs its own number, or runs/N would be silently overwritten.
+        if (outcome.Trigger is ForgeTrigger.RepairNeeded or ForgeTrigger.RefineRequested
+            or ForgeTrigger.BlueprintEdited or ForgeTrigger.RetryRequested)
         {
-            machine.TryFire(ForgeTrigger.Fail, out _);
-            _session.SetState(ForgeState.Failed);
-            _session.SetStatus(ForgeSessionStatus.Failed);
-            _session.Document.Error = $"{code}: {message}";
-            Checkpoint();
-            _events.Error(code, message, recoverable: false);
-            _events.SessionFinished("failed", 2);
-            return new ForgeEngineResult(ForgeEngineOutcome.Failed, 2);
+            if (!run.Budget.CanStartIteration)
+                return run.FinishBudgetExhausted(ForgeBudgetDimension.Iterations);
+
+            run.Budget.RegisterIteration();
+            _session.Document.Iteration = run.Budget.ConsumedIterations;
         }
 
-        // Charges wall time and saves — after every step, so a kill loses one stage at most.
-        void Checkpoint()
+        if (outcome.Trigger == ForgeTrigger.Fail)
         {
-            var now = _clock.UtcNow;
-            budget.ConsumedWallSeconds = wallBase + (long)(now - runStarted).TotalSeconds;
-            _session.Save(now);
+            return run.Fail(outcome.FailureCode ?? CodeStageFailed,
+                outcome.Detail ?? "The stage reported an unrecoverable error.");
         }
+
+        if (!run.Machine.TryFire(outcome.Trigger, out _))
+        {
+            return run.Fail(CodeInvalidTransition,
+                $"'{outcome.Trigger}' is not a legal move from '{ForgeEventWriter.Spell(state)}'.");
+        }
+
+        _session.AppendHistory(state, outcome.Trigger, run.Machine.CurrentState, _clock.UtcNow);
+        _session.SetState(run.Machine.CurrentState);
+        run.Checkpoint();
+        return null;
     }
 
     private static string Spell(ForgeBudgetDimension dimension) => dimension switch
@@ -294,4 +271,83 @@ internal sealed class ForgeEngine
         ForgeBudgetDimension.Tokens => "token",
         _ => "wall-time",
     };
+
+    /// <summary>
+    /// One run of the cycle: the state machine, the budget, the wall-time base — and the
+    /// four ways a run ends, each of them saving the session before it closes the protocol.
+    /// </summary>
+    private sealed class ForgeRun
+    {
+        private readonly ForgeEngine _engine;
+        private readonly DateTimeOffset _startedAt;
+        private readonly long _wallBase;
+
+        public ForgeRun(ForgeEngine engine)
+        {
+            _engine = engine;
+            Machine = ForgeStateMachineFactory.Create(engine._session.State);
+            Budget = engine._session.Document.Budget;
+
+            // Wall time is charged as an absolute delta from the run's start on top of what
+            // earlier runs consumed: per-checkpoint deltas would truncate sub-second stages
+            // to zero and undercount a whole session one stage at a time.
+            _startedAt = engine._clock.UtcNow;
+            _wallBase = Budget.ConsumedWallSeconds;
+        }
+
+        /// <summary>The map of legal moves this run walks.</summary>
+        public StateMachine<ForgeState, ForgeTrigger> Machine { get; }
+
+        /// <summary>The session's budget, charged as the run goes.</summary>
+        public ForgeBudget Budget { get; }
+
+        /// <summary>A terminal state closes the run with the status it stands for.</summary>
+        public ForgeEngineResult Finish(ForgeState state)
+        {
+            var (status, wireStatus, outcome, exitCode) = state switch
+            {
+                ForgeState.Promoted => (ForgeSessionStatus.Promoted, "ready", ForgeEngineOutcome.Promoted, 0),
+                ForgeState.Abandoned => (ForgeSessionStatus.Abandoned, "abandoned", ForgeEngineOutcome.Abandoned, 0),
+                _ => (ForgeSessionStatus.Failed, "failed", ForgeEngineOutcome.Failed, 2),
+            };
+
+            _engine._session.SetStatus(status);
+            Checkpoint();
+            _engine._events.SessionFinished(wireStatus, exitCode);
+            return new ForgeEngineResult(outcome, exitCode);
+        }
+
+        /// <summary>A dimension ran out: hard stop, session resumable with a raised budget.</summary>
+        public ForgeEngineResult FinishBudgetExhausted(ForgeBudgetDimension dimension)
+        {
+            _engine._session.SetStatus(ForgeSessionStatus.BudgetExhausted);
+            Checkpoint();
+            _engine._events.Error(CodeBudgetExhausted,
+                $"The session's {Spell(dimension)} budget is exhausted; resume with a raised budget to continue.",
+                recoverable: true);
+            _engine._events.SessionFinished("abandoned", 0);
+            return new ForgeEngineResult(ForgeEngineOutcome.BudgetExhausted, 0);
+        }
+
+        /// <summary>An unrecoverable error, wherever it came from, reported the same way.</summary>
+        public ForgeEngineResult Fail(string code, string message)
+        {
+            Machine.TryFire(ForgeTrigger.Fail, out _);
+            _engine._session.SetState(ForgeState.Failed);
+            _engine._session.SetStatus(ForgeSessionStatus.Failed);
+            _engine._session.Document.Error = $"{code}: {message}";
+            Checkpoint();
+            _engine._events.Error(code, message, recoverable: false);
+            _engine._events.SessionFinished("failed", 2);
+            return new ForgeEngineResult(ForgeEngineOutcome.Failed, 2);
+        }
+
+        /// <summary>Charges wall time and saves — after every step, so a kill loses one stage at most.</summary>
+        public void Checkpoint()
+        {
+            var now = _engine._clock.UtcNow;
+            Budget.ConsumedWallSeconds = _wallBase + (long)(now - _startedAt).TotalSeconds;
+            _engine._session.Save(now);
+        }
+    }
 }

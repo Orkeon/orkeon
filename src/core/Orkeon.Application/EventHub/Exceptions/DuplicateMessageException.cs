@@ -12,7 +12,9 @@ namespace Orkeon.Application.EventHub.Exceptions;
 /// type exists instead of reusing a general one.
 /// </para>
 /// </summary>
+#pragma warning disable S3925 // BinaryFormatter serialization is obsolete in .NET 10; ISerializable pattern not required
 public sealed class DuplicateMessageException : Exception
+#pragma warning restore S3925
 {
     /// <summary>The message that had already been delivered, when known.</summary>
     public MessageId? MessageId { get; }

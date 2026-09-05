@@ -54,8 +54,14 @@ internal sealed class EventLogFailureSink : IStartupFailureSink
 /// </summary>
 internal static class StartupFailureReporter
 {
+    private static IReadOnlyList<IStartupFailureSink> _sinks = For(WindowsServiceHelpers.IsWindowsService());
+
     /// <summary>Swapped by tests; initialized from the real supervisor otherwise.</summary>
-    internal static IReadOnlyList<IStartupFailureSink> Sinks = For(WindowsServiceHelpers.IsWindowsService());
+    internal static IReadOnlyList<IStartupFailureSink> Sinks
+    {
+        get => _sinks;
+        set => _sinks = value ?? throw new ArgumentNullException(nameof(value));
+    }
 
     /// <summary>
     /// Pure routing, testable everywhere: stderr alone in a terminal or under systemd,
@@ -68,7 +74,7 @@ internal static class StartupFailureReporter
 
     internal static void Report(string message)
     {
-        foreach (var sink in Sinks)
+        foreach (var sink in _sinks)
             sink.Report(message);
     }
 }

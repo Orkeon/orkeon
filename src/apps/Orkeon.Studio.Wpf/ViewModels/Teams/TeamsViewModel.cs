@@ -1,4 +1,5 @@
 using System.Collections.ObjectModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.FileSystem;
@@ -15,6 +16,9 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 public sealed class TeamActionEventArgs(string path) : EventArgs
 {
     /// <summary>Absolute path of the team folder.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public string Path { get; } = path;
 }
 
@@ -22,6 +26,9 @@ public sealed class TeamActionEventArgs(string path) : EventArgs
 public sealed class TeamMountsRequestedEventArgs(TeamCardViewModel card) : EventArgs
 {
     /// <summary>The team card.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public TeamCardViewModel Card { get; } = card;
 }
 
@@ -29,6 +36,9 @@ public sealed class TeamMountsRequestedEventArgs(TeamCardViewModel card) : Event
 public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : EventArgs
 {
     /// <summary>The session, as the forge catalog listed it.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public ForgeSolutionSummary Session { get; } = session;
 }
 
@@ -36,9 +46,15 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
 public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary session) : EventArgs
 {
     /// <summary>The adopted team, as the catalog listed it.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public TeamSummary Team { get; } = team;
 
     /// <summary>The forge session whose <c>promotedTo</c> is the team folder.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public ForgeSolutionSummary Session { get; } = session;
 }
 
@@ -209,16 +225,31 @@ public sealed class TeamCardViewModel : ObservableObject
         IsScheduled || _lastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
 
     /// <summary>ok / warn / accent — the badge's tone name for the view's triggers.</summary>
-    public string BadgeTone => IsScheduled ? "ok" : _lastRun is null ? "warn" : "accent";
+    public string BadgeTone => (IsScheduled, _lastRun) switch
+    {
+        (true, _) => "ok",
+        (false, null) => "warn",
+        _ => "accent",
+    };
 
     /// <summary>The last-run date, or never-ran — the meta line's history part.</summary>
-    public string LastRunDisplay =>
-        _lastRun is { } startedAt
-            ? string.Format(
+    public string LastRunDisplay
+    {
+        get
+        {
+            if (_lastRun is not { } startedAt)
+                return _strings[StudioStringKeys.TeamsNeverRan];
+
+            var outcome = _strings[_lastOutcome == RunOutcome.Success
+                ? StudioStringKeys.TeamsRunOk
+                : StudioStringKeys.TeamsRunFail];
+
+            return string.Format(
                 CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsLastRun],
                 startedAt.ToLocalTime().ToString("d", CultureInfo.CurrentCulture),
-                _strings[_lastOutcome == RunOutcome.Success ? StudioStringKeys.TeamsRunOk : StudioStringKeys.TeamsRunFail])
-            : _strings[StudioStringKeys.TeamsNeverRan];
+                outcome);
+        }
+    }
 
     /// <summary>« n agents » when the folder shows agent files.</summary>
     public string? AgentCountDisplay =>
@@ -308,6 +339,39 @@ public sealed class InProgressSessionViewModel : ObservableObject
 }
 
 /// <summary>
+/// The my-teams screen's seams: the collaborators it otherwise builds itself. They travel as
+/// one record rather than as eight constructor parameters — the screen has exactly one real
+/// caller (the shell) and a row of tests, and every one of them names two or three of these
+/// and leaves the rest to the real catalogs.
+/// </summary>
+public sealed record TeamsDependencies
+{
+    /// <summary>Where the adopted teams live; the default teams root when null.</summary>
+    public string? TeamsRoot { get; init; }
+
+    /// <summary>Where the wizard sessions live; the process working directory when null.</summary>
+    public string? WorkspaceDirectory { get; init; }
+
+    /// <summary>Reads the team folders; the real catalog under <see cref="TeamsRoot"/> when null.</summary>
+    public Func<IReadOnlyList<TeamSummary>>? LoadTeams { get; init; }
+
+    /// <summary>Reads the wizard sessions; the real forge catalog when null.</summary>
+    public Func<IReadOnlyList<ForgeSolutionSummary>>? LoadSessions { get; init; }
+
+    /// <summary>The localized strings; English when null.</summary>
+    public IStudioStrings? Strings { get; init; }
+
+    /// <summary>Opens a folder in the OS explorer; the cards offer no "Ouvrir" when null.</summary>
+    public IShellOpener? ShellOpener { get; init; }
+
+    /// <summary>The launch history the cards read their last run from; none when null.</summary>
+    public ILaunchHistoryStore? HistoryStore { get; init; }
+
+    /// <summary>The folders the settings declare; none when null.</summary>
+    public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
+}
+
+/// <summary>
 /// The my-teams screen (design v3): every adopted team is an ordinary folder under the teams
 /// root — copiable, deletable, runnable with <c>orkeon run</c> alone — plus the wizard
 /// sessions still underway, resumable where they stopped.
@@ -323,24 +387,17 @@ public sealed class TeamsViewModel : ObservableObject
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
-    public TeamsViewModel(
-        string? teamsRoot = null,
-        string? workspaceDirectory = null,
-        Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
-        Func<IReadOnlyList<ForgeSolutionSummary>>? loadSessions = null,
-        IStudioStrings? strings = null,
-        IShellOpener? shellOpener = null,
-        ILaunchHistoryStore? historyStore = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+    public TeamsViewModel(TeamsDependencies? dependencies = null)
     {
-        _declaredMounts = declaredMounts ?? (() => []);
-        _shellOpener = shellOpener;
-        _historyStore = historyStore;
-        var root = teamsRoot ?? TeamCatalog.DefaultRoot();
-        var workspace = workspaceDirectory ?? Environment.CurrentDirectory;
-        _loadTeams = loadTeams ?? (() => TeamCatalog.List(root));
-        _loadSessions = loadSessions ?? (() => ForgeSessionCatalog.List(workspace));
-        _strings = strings ?? EnglishStudioStrings.Instance;
+        var wired = dependencies ?? new TeamsDependencies();
+        _declaredMounts = wired.DeclaredMounts ?? (() => []);
+        _shellOpener = wired.ShellOpener;
+        _historyStore = wired.HistoryStore;
+        var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
+        var workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
+        _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root));
+        _loadSessions = wired.LoadSessions ?? (() => ForgeSessionCatalog.List(workspace));
+        _strings = wired.Strings ?? EnglishStudioStrings.Instance;
         CreateCommand = new RelayCommand(() => CreateRequested?.Invoke(this, EventArgs.Empty));
         ImportCommand = new RelayCommand(() => ImportRequested?.Invoke(this, EventArgs.Empty));
         Refresh();
@@ -495,7 +552,7 @@ public sealed class TeamsViewModel : ObservableObject
 
     internal void Export(string path)
     {
-        if (_exportPicker?.Invoke() is not { Length: > 0 } destination)
+        if (ExportDestinationPicker?.Invoke() is not { Length: > 0 } destination)
             return;
 
         // Said either way (review D10): a refused export (existing destination, disk)
@@ -515,13 +572,7 @@ public sealed class TeamsViewModel : ObservableObject
     private string _statusMessage = "";
 
     /// <summary>The export destination chooser — wired by the shell to the OS folder browser.</summary>
-    public Func<string?>? ExportDestinationPicker
-    {
-        get => _exportPicker;
-        set => _exportPicker = value;
-    }
-
-    private Func<string?>? _exportPicker;
+    public Func<string?>? ExportDestinationPicker { get; set; }
 
     internal void Duplicate(string path)
     {

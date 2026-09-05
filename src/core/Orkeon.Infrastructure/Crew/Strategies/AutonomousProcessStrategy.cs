@@ -57,28 +57,27 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private readonly ILogger<AutonomousProcessStrategy> _logger;
 
     /// <summary>Initializes a new instance of <see cref="AutonomousProcessStrategy"/>.</summary>
+    /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
+    /// <param name="channel">The A2A channel agents register on.</param>
+    /// <param name="managerAgent">Scores which agent claims an unassigned task.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public AutonomousProcessStrategy(
-        ITaskRepository taskRepository,
-        IAgentRepository agentRepository,
-        IAgentExecutionService executionService,
+        CrewStrategyDependencies dependencies,
         IAgentChannel channel,
         IManagerAgent managerAgent,
-        IMemoryScope memoryScope,
         ILogger<AutonomousProcessStrategy> logger,
         ICrewExecutionHook? hook = null)
     {
-        ArgumentNullException.ThrowIfNull(taskRepository);
-        _taskRepository = taskRepository;
-        ArgumentNullException.ThrowIfNull(agentRepository);
-        _agentRepository = agentRepository;
-        ArgumentNullException.ThrowIfNull(executionService);
-        _executionService = executionService;
+        ArgumentNullException.ThrowIfNull(dependencies);
+        _taskRepository = dependencies.TaskRepository;
+        _agentRepository = dependencies.AgentRepository;
+        _executionService = dependencies.ExecutionService;
+        _memoryScope = dependencies.MemoryScope;
         ArgumentNullException.ThrowIfNull(channel);
         _channel = channel;
         ArgumentNullException.ThrowIfNull(managerAgent);
         _managerAgent = managerAgent;
-        ArgumentNullException.ThrowIfNull(memoryScope);
-        _memoryScope = memoryScope;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _hooks = new CrewHookDispatcher(hook, logger);

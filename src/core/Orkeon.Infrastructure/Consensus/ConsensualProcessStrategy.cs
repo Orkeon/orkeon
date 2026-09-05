@@ -46,33 +46,24 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
     /// <summary>Initializes a new instance of <see cref="ConsensualProcessStrategy"/>.</summary>
     /// <param name="votingStrategy">The voting strategy.</param>
-    /// <param name="executionService">The agent execution service.</param>
-    /// <param name="taskRepository">The task repository.</param>
-    /// <param name="agentRepository">The agent repository.</param>
-    /// <param name="memoryScope">The memory scope.</param>
+    /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="options">The consensual process options.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public ConsensualProcessStrategy(
         IVotingStrategy votingStrategy,
-        IAgentExecutionService executionService,
-        ITaskRepository taskRepository,
-        IAgentRepository agentRepository,
-        IMemoryScope memoryScope,
+        CrewStrategyDependencies dependencies,
         ILogger<ConsensualProcessStrategy> logger,
         IOptions<ConsensualProcessOptions> options,
         ICrewExecutionHook? hook = null)
     {
         ArgumentNullException.ThrowIfNull(votingStrategy);
         _votingStrategy = votingStrategy;
-        ArgumentNullException.ThrowIfNull(executionService);
-        _executionService = executionService;
-        ArgumentNullException.ThrowIfNull(taskRepository);
-        _taskRepository = taskRepository;
-        ArgumentNullException.ThrowIfNull(agentRepository);
-        _agentRepository = agentRepository;
-        ArgumentNullException.ThrowIfNull(memoryScope);
-        _memoryScope = memoryScope;
+        ArgumentNullException.ThrowIfNull(dependencies);
+        _executionService = dependencies.ExecutionService;
+        _taskRepository = dependencies.TaskRepository;
+        _agentRepository = dependencies.AgentRepository;
+        _memoryScope = dependencies.MemoryScope;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         ArgumentNullException.ThrowIfNull(options);

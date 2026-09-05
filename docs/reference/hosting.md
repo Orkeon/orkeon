@@ -27,12 +27,15 @@ reference is `PrivateAssets=all` and is correctly excluded from the package.
 ```csharp
 IHost host = RunnerHost.Build(
     settingsPath: "appsettings.json",   // resolved appsettings path (nullable)
-    cliMounts: ["/data:/data:ro"],       // CLI --mount args ("physical:virtual:rights")
-    allowExternalMounts: false,          // whitelist mount base paths outside the workspace root
-    llmLogVirtualPath: null,             // when set, a VIRTUAL directory the caller has mounted:
-                                         // LLM HTTP exchanges are captured there as .jsonl
-    internalMounts: null,                // mounts registered MountVisibility.Internal — resolvable
-                                         // by the VFS, never listed to an agent (ADR-008)
+    mounts: new RunnerMountPlan          // the whole VFS surface, in one object
+    {
+        CliMounts = ["/data:/data:ro"],   // CLI --mount args ("physical:virtual:rights")
+        InternalMounts = [],              // mounts registered MountVisibility.Internal — resolvable
+                                          // by the VFS, never listed to an agent (ADR-008)
+        AllowExternalMounts = false,      // whitelist mount base paths outside the workspace root
+        LlmLogVirtualPath = null,         // when set, a VIRTUAL directory the caller has mounted:
+                                          // LLM HTTP exchanges are captured there as .jsonl
+    },
     configureLogging: null,              // optional ILoggingBuilder customization
     configureServices: null,             // optional hook to register runner-specific services
     configureBuilder: null);             // optional IHostBuilder hook — orkeon-host uses it for UseSystemd()/UseWindowsService()
@@ -65,7 +68,7 @@ settings paths and provisions VFS mounts *before* the DI container (and thus `IF
 
 The registration order is deliberate:
 
-1. **Logging** — runner logging (Console + Information by default) and, when `llmLogVirtualPath` is set,
+1. **Logging** — runner logging (Console + Information by default) and, when `RunnerMountPlan.LlmLogVirtualPath` is set,
    the LLM exchange logging `DelegatingHandler`.
 2. **LLM provider first** — `RegisterLlmProvider` reads the `Llm` config section and registers the
    provider (and its `IChatClient`) **before** `AddOrkeonApplication` / `AddOrkeonInfrastructure`. This

@@ -116,21 +116,51 @@ public static class RunnerSettings
     {
         // 1. Explicit
         if (!string.IsNullOrEmpty(explicitPath))
-        {
-            var full = Path.GetFullPath(explicitPath);
-            if (File.Exists(full)) return full;
-            if (!quiet)
-                Console.Error.WriteLine($"WARNING: Explicit settings not found: {full}");
-            return null;
-        }
+            return ResolveExplicitSettingsPath(explicitPath, quiet);
 
         // 2. Per-example override (next to config.yaml)
         var localSettings = Path.Combine(configDir, ConventionalNames.SettingsFile);
         if (File.Exists(localSettings)) return localSettings;
 
-        // 3. Walk up to find the canonical appsettings/appsettings.json.
-        //    Fall back to the legacy _shared/appsettings.json only if the
-        //    canonical one is absent (temporary — drop at the next release).
+        // 3. Canonical appsettings/appsettings.json, found by walking up from the config dir.
+        var walkedUp = FindSettingsByWalkingUp(configDir);
+        if (walkedUp is not null) return walkedUp;
+
+        // 4. Global per-user config (written by `orkeon init`) — works from any cwd.
+        var globalSettings = TryGetGlobalSettingsPath();
+        if (globalSettings is not null && File.Exists(globalSettings)) return globalSettings;
+
+        if (!quiet)
+        {
+            Console.Error.WriteLine(
+                "WARNING: No appsettings.json found. Using environment variables only. " +
+                "Run `orkeon init` to create a configuration.");
+        }
+        return null;
+    }
+
+    /// <summary>
+    /// Step 1 of the chain: the operator's own <c>--settings</c> path. A path that does not
+    /// exist is a mistake worth naming rather than silently falling through to the
+    /// conventional locations, so it ends the resolution either way.
+    /// </summary>
+    private static string? ResolveExplicitSettingsPath(string explicitPath, bool quiet)
+    {
+        var full = Path.GetFullPath(explicitPath);
+        if (File.Exists(full)) return full;
+        if (!quiet)
+            Console.Error.WriteLine($"WARNING: Explicit settings not found: {full}");
+        return null;
+    }
+
+    /// <summary>
+    /// Step 3 of the chain: walk up from the config directory looking for the canonical
+    /// <c>appsettings/appsettings.json</c>, falling back to the legacy
+    /// <c>_shared/appsettings.json</c> only when the canonical one is absent (temporary —
+    /// drop at the next release). The walk stops at an examples solution root.
+    /// </summary>
+    private static string? FindSettingsByWalkingUp(string configDir)
+    {
         var dir = new DirectoryInfo(configDir);
         while (dir != null)
         {
@@ -145,21 +175,18 @@ public static class RunnerSettings
             dir = dir.Parent;
         }
 
-        // 4. Global per-user config (written by `orkeon init`) — works from any cwd.
-        //    An unresolvable per-user directory (bare container without HOME) simply means
-        //    "no global config": resolution degrades to env-vars-only instead of crashing.
-        string? globalSettings;
-        try { globalSettings = GetGlobalSettingsPath(); }
-        catch (InvalidOperationException) { globalSettings = null; }
-        if (globalSettings is not null && File.Exists(globalSettings)) return globalSettings;
-
-        if (!quiet)
-        {
-            Console.Error.WriteLine(
-                "WARNING: No appsettings.json found. Using environment variables only. " +
-                "Run `orkeon init` to create a configuration.");
-        }
         return null;
+    }
+
+    /// <summary>
+    /// Step 4 of the chain: the per-user config path, or null. An unresolvable per-user
+    /// directory (bare container without HOME) simply means "no global config": resolution
+    /// degrades to env-vars-only instead of crashing.
+    /// </summary>
+    private static string? TryGetGlobalSettingsPath()
+    {
+        try { return GetGlobalSettingsPath(); }
+        catch (InvalidOperationException) { return null; }
     }
 
     /// <summary>

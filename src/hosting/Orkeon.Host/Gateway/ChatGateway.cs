@@ -128,11 +128,12 @@ internal sealed partial class ChatGateway
         if (elapsed < TimeSpan.Zero)
             elapsed = TimeSpan.Zero;
 
-        return elapsed.TotalHours >= 1
-            ? $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m"
-            : elapsed.TotalMinutes >= 1
-                ? $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds:00}s"
-                : $"{elapsed.Seconds}s";
+        if (elapsed.TotalHours >= 1)
+            return $"{(int)elapsed.TotalHours}h {elapsed.Minutes:00}m";
+
+        return elapsed.TotalMinutes >= 1
+            ? $"{(int)elapsed.TotalMinutes}m {elapsed.Seconds:00}s"
+            : $"{elapsed.Seconds}s";
     }
 
     private static void Report(InboundMessage message, IChatResponder responder, string text, CancellationToken ct)

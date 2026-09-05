@@ -34,9 +34,12 @@ public sealed class ProgressBroker
         ArgumentNullException.ThrowIfNull(snapshot);
         lock (_gate)
         {
+            // A publisher that left StartedAt unset is stamped "now"; a snapshot carrying the
+            // same label as the current one keeps the stamp it already had.
+            var reported = snapshot.StartedAt == default ? DateTimeOffset.UtcNow : snapshot.StartedAt;
             var startedAt = _current is { } cur && string.Equals(cur.Label, snapshot.Label, StringComparison.Ordinal)
                 ? cur.StartedAt
-                : snapshot.StartedAt == default ? DateTimeOffset.UtcNow : snapshot.StartedAt;
+                : reported;
             _current = snapshot with { StartedAt = startedAt };
         }
     }

@@ -42,11 +42,7 @@ public sealed partial class JsLlmFacade
         IReadOnlyList<IBaseTool>? tools = null,
         Orkeon.Domain.Autonomous.AgentExecutionBudget? budget = null,
         Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null,
-        Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null,
-        Microsoft.Extensions.Logging.ILogger? logger = null,
-        Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null,
-        string? crewName = null,
-        string? agentName = null)
+        JsLlmObservability? observability = null)
     {
         _engine = engine;
         _provider = provider;
@@ -59,11 +55,11 @@ public sealed partial class JsLlmFacade
         _tools = tools ?? System.Array.Empty<IBaseTool>();
         _budget = budget;
         _permissionGate = permissionGate;
-        _deltaSink = deltaSink;
-        _logger = logger;
-        _usageSink = usageSink;
-        _crewName = crewName ?? string.Empty;
-        _agentName = agentName ?? string.Empty;
+        _deltaSink = observability?.DeltaSink;
+        _logger = observability?.Logger;
+        _usageSink = observability?.UsageSink;
+        _crewName = observability?.CrewName ?? string.Empty;
+        _agentName = observability?.AgentName ?? string.Empty;
         embed = EmbedAsync;
         act = ActAsync;
     }
@@ -101,7 +97,7 @@ public sealed partial class JsLlmFacade
         try
         {
             var prompt = estimated
-                ? (promptMessages is not null ? Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptMessages) : Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptText))
+                ? EstimatePromptTokens(promptText, promptMessages)
                 : response.PromptTokens ?? 0;
             _usageSink.Record(new Orkeon.Application.Interfaces.Ports.CostUsageEvent
             {
@@ -132,6 +128,15 @@ public sealed partial class JsLlmFacade
             // Deliberately swallowed — see the fault-barrier contract above.
         }
     }
+
+    /// <summary>
+    /// Estimates the prompt token count of a call whose response reported none: from the
+    /// conversation when the call sent one, from the single prompt string otherwise.
+    /// </summary>
+    private static int EstimatePromptTokens(string? promptText, IReadOnlyList<LlmMessage>? promptMessages)
+        => promptMessages is not null
+            ? Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptMessages)
+            : Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptText);
 
     /// <summary>Cancels the in-flight and future llm calls of this context (script-facing).</summary>
     public void interrupt() => _cts.Cancel();

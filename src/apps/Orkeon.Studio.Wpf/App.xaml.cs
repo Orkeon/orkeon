@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Windows;
 using Orkeon.Studio.Wpf.Services;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.Views;
 
@@ -120,26 +121,32 @@ public partial class App : System.Windows.Application
         _viewModel = MainWindowViewModel.CreateForCurrentMachine(
             new WindowPathPicker(),
             new WpfDispatcher(Dispatcher),
-            I18nStudioStrings.Instance,
-            preferences.Mode,
-            mode => UiPreferences.Save(ThemeManager.IsDark, ChosenLanguage, mode),
-            shellOpener: ShellOpener.Instance,
-            // The assistant's beats are timed; the ViewModels only know how to ask for
-            // "later", and this is the only place that knows what later means in WPF.
-            delay: new WpfDelay(Dispatcher),
-            // A stored language means the user picked it; null means nobody did, and the
-            // machine decides again — which is what makes a change of Windows language
-            // still get followed on the next start.
-            initialLanguage: preferences.Language,
-            persistLanguage: language => UiPreferences.Save(
-                ThemeManager.IsDark,
-                language,
-                // The mode is read LIVE, never from the startup snapshot: switching to Expert
-                // and then picking a language would otherwise write the mode back to whatever
-                // it was when the app opened, silently undoing the switch. Both lambdas only
-                // ever run on a user gesture, long after _viewModel is assigned.
-                _viewModel?.Mode.Mode ?? preferences.Mode ?? UiModeViewModel.Novice),
-            applyLanguage: I18n.Instance.SetLanguage);
+            new StudioServices
+            {
+                Strings = I18nStudioStrings.Instance,
+                ShellOpener = ShellOpener.Instance,
+                // The assistant's beats are timed; the ViewModels only know how to ask for
+                // "later", and this is the only place that knows what later means in WPF.
+                Delay = new WpfDelay(Dispatcher),
+            },
+            new StudioUiPreferences
+            {
+                InitialMode = preferences.Mode,
+                PersistMode = mode => UiPreferences.Save(ThemeManager.IsDark, ChosenLanguage, mode),
+                // A stored language means the user picked it; null means nobody did, and the
+                // machine decides again — which is what makes a change of Windows language
+                // still get followed on the next start.
+                InitialLanguage = preferences.Language,
+                PersistLanguage = language => UiPreferences.Save(
+                    ThemeManager.IsDark,
+                    language,
+                    // The mode is read LIVE, never from the startup snapshot: switching to Expert
+                    // and then picking a language would otherwise write the mode back to whatever
+                    // it was when the app opened, silently undoing the switch. Both lambdas only
+                    // ever run on a user gesture, long after _viewModel is assigned.
+                    _viewModel?.Mode.Mode ?? preferences.Mode ?? UiModeViewModel.Novice),
+                ApplyLanguage = I18n.Instance.SetLanguage,
+            });
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

@@ -36,93 +36,94 @@ public static class RunArgumentsBuilder
 
         var arguments = new List<string> { RunVerb, target.RunPath };
 
-        if (!string.IsNullOrWhiteSpace(effective.SettingsPath))
-        {
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Settings));
-            arguments.Add(effective.SettingsPath);
-        }
-
-        if (target.Dialect == RunTargetDialect.Yaml)
-        {
-            // Single -V flag, like --mount below: the CLI parser rejects a repeated option.
-            if (effective.Variables.Count > 0)
-            {
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Variables));
-                foreach (var variable in effective.Variables)
-                    arguments.Add(variable.ToToken());
-            }
-
-            if (!string.IsNullOrWhiteSpace(effective.InitialContext))
-            {
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.InitialContext));
-                arguments.Add(effective.InitialContext);
-            }
-        }
-        else
-        {
-            if (!string.IsNullOrWhiteSpace(effective.InputsJson))
-            {
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Inputs));
-                arguments.Add(effective.InputsJson);
-            }
-
-            if (!string.IsNullOrWhiteSpace(effective.InputsFilePath))
-            {
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.InputsFile));
-                arguments.Add(effective.InputsFilePath);
-            }
-        }
-
-        // One --mount flag carrying every value: the CLI's CommandLineParser REJECTS a
-        // repeated option ("Option 'm, mount' is defined multiple times"), and sequence
-        // options consume the space-separated values that follow the single flag.
-        if (effective.Mounts.Count > 0)
-        {
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Mounts));
-            foreach (var mount in effective.Mounts)
-                arguments.Add(mount);
-        }
-
-        if (effective.AllowExternalMounts)
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.AllowExternalMounts));
-
-        // 0 is the CLI default: a user leaving the slider alone types nothing.
-        if (effective.Verbosity > 0)
-        {
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Verbose));
-            arguments.Add(effective.Verbosity.ToString(CultureInfo.InvariantCulture));
-        }
-
-        if (effective.LlmLogEnabled)
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.LlmLog));
-
-        if (!string.IsNullOrWhiteSpace(effective.LlmLogPath))
-        {
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.LlmLogPath));
-            arguments.Add(effective.LlmLogPath);
-        }
-
-        if (effective.Validate)
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Validate));
-
-        // The observation flags come last so the argv a user reads still opens with what they
-        // chose, and ends with how the screen watches it.
-        if (effective.Events)
-        {
-            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Events));
-            arguments.Add(EventsFormat);
-
-            if (effective.Stream)
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Stream));
-
-            if (!string.IsNullOrWhiteSpace(effective.ClientName))
-            {
-                arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Client));
-                arguments.Add(effective.ClientName);
-            }
-        }
+        AppendValue(arguments, RunOption.Settings, effective.SettingsPath);
+        AppendDialectOptions(arguments, target.Dialect, effective);
+        AppendSharedOptions(arguments, effective);
+        AppendObservationOptions(arguments, effective);
 
         return arguments;
+    }
+
+    /// <summary>The options only one dialect accepts, in the order a user would type them.</summary>
+    private static void AppendDialectOptions(
+        List<string> arguments,
+        RunTargetDialect dialect,
+        RunLaunchOptions options)
+    {
+        if (dialect == RunTargetDialect.Yaml)
+        {
+            AppendSequence(arguments, RunOption.Variables, [.. options.Variables.Select(v => v.ToToken())]);
+            AppendValue(arguments, RunOption.InitialContext, options.InitialContext);
+            return;
+        }
+
+        AppendValue(arguments, RunOption.Inputs, options.InputsJson);
+        AppendValue(arguments, RunOption.InputsFile, options.InputsFilePath);
+    }
+
+    /// <summary>The options both dialects accept: the sandbox, the verbosity, the LLM log.</summary>
+    private static void AppendSharedOptions(List<string> arguments, RunLaunchOptions options)
+    {
+        AppendSequence(arguments, RunOption.Mounts, options.Mounts);
+        AppendFlag(arguments, RunOption.AllowExternalMounts, options.AllowExternalMounts);
+
+        // 0 is the CLI default: a user leaving the slider alone types nothing.
+        if (options.Verbosity > 0)
+        {
+            arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Verbose));
+            arguments.Add(options.Verbosity.ToString(CultureInfo.InvariantCulture));
+        }
+
+        AppendFlag(arguments, RunOption.LlmLog, options.LlmLogEnabled);
+        AppendValue(arguments, RunOption.LlmLogPath, options.LlmLogPath);
+        AppendFlag(arguments, RunOption.Validate, options.Validate);
+    }
+
+    /// <summary>
+    /// How the screen watches the run — last, so the argv a user reads still opens with what
+    /// they chose. Nothing is streamed without the events flag: --stream and --client only
+    /// mean something on a stream that exists.
+    /// </summary>
+    private static void AppendObservationOptions(List<string> arguments, RunLaunchOptions options)
+    {
+        if (!options.Events)
+            return;
+
+        arguments.Add(RunOptionAvailability.ToCommandLineName(RunOption.Events));
+        arguments.Add(EventsFormat);
+        AppendFlag(arguments, RunOption.Stream, options.Stream);
+        AppendValue(arguments, RunOption.Client, options.ClientName);
+    }
+
+    /// <summary>Appends the option and its value; an absent or blank value appends nothing.</summary>
+    private static void AppendValue(List<string> arguments, RunOption option, string? value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return;
+
+        arguments.Add(RunOptionAvailability.ToCommandLineName(option));
+        arguments.Add(value);
+    }
+
+    /// <summary>Appends the bare flag when it is set.</summary>
+    private static void AppendFlag(List<string> arguments, RunOption option, bool enabled)
+    {
+        if (enabled)
+            arguments.Add(RunOptionAvailability.ToCommandLineName(option));
+    }
+
+    /// <summary>
+    /// One flag carrying every value, never one flag per value: the CLI's CommandLineParser
+    /// REJECTS a repeated option ("Option 'm, mount' is defined multiple times"), and sequence
+    /// options consume the space-separated values that follow the single flag.
+    /// </summary>
+    private static void AppendSequence(List<string> arguments, RunOption option, IReadOnlyList<string> values)
+    {
+        if (values.Count == 0)
+            return;
+
+        arguments.Add(RunOptionAvailability.ToCommandLineName(option));
+        arguments.AddRange(values);
     }
 
     /// <summary>The command line equivalent to <see cref="Build"/>, quoted for a shell.</summary>

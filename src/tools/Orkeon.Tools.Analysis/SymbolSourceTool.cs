@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Analysis.Abstractions;
+using Orkeon.Analysis.Abstractions.DTOs.Responses;
 using Orkeon.Analysis.Abstractions.DTOs.Tools;
 using Orkeon.Analysis.Abstractions.Interfaces;
 using Orkeon.Analysis.Core;
@@ -45,20 +46,8 @@ public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourc
 
             if (!string.IsNullOrEmpty(request.StatementId))
             {
-                var node = await _store.GetAsync(request.Fqn, cancellationToken).ConfigureAwait(false);
-                if (node is not null)
-                {
-                    var stmts = await _store.GetStatementsAsync(node.Id, cancellationToken).ConfigureAwait(false);
-                    var stmt = stmts.FirstOrDefault(s => s.Id == request.StatementId);
-                    if (stmt is not null)
-                    {
-                        slice = slice with
-                        {
-                            StartLine = stmt.StartLine,
-                            EndLine = stmt.EndLine ?? stmt.StartLine,
-                        };
-                    }
-                }
+                slice = await NarrowToStatementAsync(slice, request.Fqn, request.StatementId, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             var linesRequested = Math.Max(1, request.MaxLines);
@@ -90,6 +79,31 @@ public sealed class SymbolSourceTool : ToolBase<SymbolSourceRequest, SymbolSourc
                 MarkdownReadyBlock = citationBlock,
             };
         }
+    }
+
+    /// <summary>
+    /// Narrows a symbol slice to the span of one of its statements. The slice is returned
+    /// untouched when the symbol is gone from the index or no longer carries that
+    /// statement: a stale statement id degrades to the whole symbol, it never fails.
+    /// </summary>
+    private async Task<SourceSlice> NarrowToStatementAsync(
+        SourceSlice slice,
+        string fqn,
+        string statementId,
+        CancellationToken cancellationToken)
+    {
+        var node = await _store.GetAsync(fqn, cancellationToken).ConfigureAwait(false);
+        if (node is null) return slice;
+
+        var statements = await _store.GetStatementsAsync(node.Id, cancellationToken).ConfigureAwait(false);
+        var statement = statements.FirstOrDefault(s => s.Id == statementId);
+        if (statement is null) return slice;
+
+        return slice with
+        {
+            StartLine = statement.StartLine,
+            EndLine = statement.EndLine ?? statement.StartLine,
+        };
     }
 
     private static string BuildCitationBlock(

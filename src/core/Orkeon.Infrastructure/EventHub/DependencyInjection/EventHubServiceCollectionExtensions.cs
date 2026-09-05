@@ -75,8 +75,8 @@ public static class EventHubServiceCollectionExtensions
 
         // An explicit policy that silently loses to an earlier registration is the worst
         // possible failure mode here: the operator asked for a closed door and got an open
-        // one. A null policy defers to whatever is registered (or the permissive default);
-        // an explicit one must either win or be told it cannot.
+        // one. A null policy defers to whatever is already registered, or else to the
+        // permissive default, while an explicit one must either win or be told it cannot.
         var existingPolicy = services.LastOrDefault(d => d.ServiceType == typeof(ICrewLinkPolicy));
         if (policy is not null && existingPolicy is not null
             && !ReferenceEquals(existingPolicy.ImplementationInstance, policy))

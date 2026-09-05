@@ -683,18 +683,18 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             return [];
 
         var replacements = new List<(string PhysicalBase, string VirtualPrefix)>(mounts.Count);
-        foreach (var mount in mounts)
+        foreach (var virtualPath in mounts.Select(mount => mount.VirtualPath))
         {
-            var root = _fileSystem.ResolveAndValidate(mount.VirtualPath, FileAccessRights.Read);
+            var root = _fileSystem.ResolveAndValidate(virtualPath, FileAccessRights.Read);
             if (!root.IsAllowed || string.IsNullOrEmpty(root.ResolvedPath))
                 continue;
 
-            var virtualPrefix = mount.VirtualPath.TrimEnd('/');
+            var virtualPrefix = virtualPath.TrimEnd('/');
             if (virtualPrefix.Length == 0)
                 continue;
 
             if (string.Equals(root.ResolvedPath, virtualPrefix, StringComparison.Ordinal)
-                || string.Equals(root.ResolvedPath, mount.VirtualPath, StringComparison.Ordinal))
+                || string.Equals(root.ResolvedPath, virtualPath, StringComparison.Ordinal))
                 continue;
 
             replacements.Add((root.ResolvedPath, virtualPrefix));
@@ -725,41 +725,55 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         var i = 0;
         while (i < output.Length)
         {
-            var matched = false;
-            foreach (var (physicalBase, virtualPrefix) in replacements)
-            {
-                if (!MatchesAt(output, i, physicalBase))
-                    continue;
+            if (TryRewriteTokenAt(sb, output, replacements, ref i))
+                continue;
 
-                var end = i + physicalBase.Length;
-                if (end < output.Length)
-                {
-                    var next = output[end];
-                    if (next != '/' && next != '\\' && !IsPathDelimiter(next))
-                        continue;
-                }
-
-                sb.Append(virtualPrefix);
-                i = end;
-                while (i < output.Length && !IsPathDelimiter(output[i]))
-                {
-                    sb.Append(output[i] == '\\' ? '/' : output[i]);
-                    i++;
-                }
-
-                matched = true;
-                break;
-            }
-
-            if (!matched)
-            {
-                sb.Append(output[i]);
-                i++;
-            }
+            sb.Append(output[i]);
+            i++;
         }
 
         return sb.ToString();
     }
+
+    /// <summary>
+    /// Rewrites the path token starting at <paramref name="index"/> when one of the
+    /// physical bases matches there on a path boundary, appending the virtual prefix and
+    /// the separator-normalized remainder of the token, and advancing
+    /// <paramref name="index"/> past what it consumed. Returns false without touching the
+    /// builder when no base matches, leaving the caller to copy the character as it is.
+    /// </summary>
+    private static bool TryRewriteTokenAt(
+        System.Text.StringBuilder sb,
+        string output,
+        IReadOnlyList<(string PhysicalBase, string VirtualPrefix)> replacements,
+        ref int index)
+    {
+        foreach (var (physicalBase, virtualPrefix) in replacements)
+        {
+            if (!MatchesAt(output, index, physicalBase))
+                continue;
+
+            // A base only matches when what follows closes it, so /data leaves /data2/x alone.
+            var end = index + physicalBase.Length;
+            if (end < output.Length && !ClosesPathBase(output[end]))
+                continue;
+
+            sb.Append(virtualPrefix);
+            index = end;
+            while (index < output.Length && !IsPathDelimiter(output[index]))
+            {
+                sb.Append(output[index] == '\\' ? '/' : output[index]);
+                index++;
+            }
+
+            return true;
+        }
+
+        return false;
+    }
+
+    /// <summary>True when the character ends a matched physical base: a separator or a token delimiter.</summary>
+    private static bool ClosesPathBase(char c) => c is '/' or '\\' || IsPathDelimiter(c);
 
     private static bool MatchesAt(string text, int index, string value)
         => index + value.Length <= text.Length

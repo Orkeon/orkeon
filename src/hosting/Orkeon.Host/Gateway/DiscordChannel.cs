@@ -219,9 +219,14 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         // lookups, so responding directly (no Defer) stays well inside the window. The
         // response is ephemeral: a status poke or a refusal is the invoker's business, not
         // one more line in everyone's thread.
-        var text = CommandInvoked is { } handler
-            ? await handler(invocation).ConfigureAwait(false)
-            : "The host is not listening to commands.";
+        //
+        // Invoked through ?.Invoke rather than through a null-checked local: same single read
+        // of the delegate, same call, and the invocation is visible as one to a reader (and to
+        // the analyzers) instead of hiding behind a local.
+        var answering = CommandInvoked?.Invoke(invocation);
+        var text = answering is null
+            ? "The host is not listening to commands."
+            : await answering.ConfigureAwait(false);
 
         await respond(text).ConfigureAwait(false);
     }

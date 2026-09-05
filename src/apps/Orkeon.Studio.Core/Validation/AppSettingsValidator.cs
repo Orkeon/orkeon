@@ -164,25 +164,19 @@ public sealed class AppSettingsValidator
 
     private static void ValidateTypes(AppSettingsDocument document, List<ValidationMessage> messages)
     {
-        foreach (var path in StringFields)
-        {
-            if (document.GetNode(path) is JsonObject or JsonArray)
-                messages.Add(WrongType(path, "a string"));
-        }
+        // A node that parses as the declared kind is silent; an absent one is silent too --
+        // only a value of the wrong shape is reported, one message per field.
+        messages.AddRange(StringFields
+            .Where(path => document.GetNode(path) is JsonObject or JsonArray)
+            .Select(path => WrongType(path, "a string")));
 
-        foreach (var path in NumberFields)
-        {
-            var node = document.GetNode(path);
-            if (node is not null && document.GetDouble(path) is null)
-                messages.Add(WrongType(path, "a number"));
-        }
+        messages.AddRange(NumberFields
+            .Where(path => document.GetNode(path) is not null && document.GetDouble(path) is null)
+            .Select(path => WrongType(path, "a number")));
 
-        foreach (var path in BooleanFields)
-        {
-            var node = document.GetNode(path);
-            if (node is not null && document.GetBoolean(path) is null)
-                messages.Add(WrongType(path, "true or false"));
-        }
+        messages.AddRange(BooleanFields
+            .Where(path => document.GetNode(path) is not null && document.GetBoolean(path) is null)
+            .Select(path => WrongType(path, "true or false")));
 
         var mountsNode = document.GetNode(MountsSection.SectionPath);
         if (mountsNode is not null and not JsonArray)

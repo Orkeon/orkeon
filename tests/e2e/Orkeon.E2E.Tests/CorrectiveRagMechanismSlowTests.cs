@@ -119,7 +119,7 @@ public sealed class CorrectiveRagMechanismSlowTests
                 scriptedChat,
                 new LlmRetrievalEvaluator(scriptedChat),
                 RagProfilePresets.Create(RagProfile.Corrective));
-                // groundednessChecker: none — the mechanism under test is the
+                // No CorrectiveRagPipelineDependencies — the mechanism under test is the
                 // retrieve → evaluate → rewrite loop; the graph traces the
                 // check_groundedness node as skipped.
 

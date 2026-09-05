@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -132,13 +133,14 @@ public sealed class LlmConnectionTestTests
     {
         var probe = new FakeLlmEndpointProbe();
         var tab = new ConfigTabViewModel(
-            new FakeAppSettingsStore(),
-            new FakeDirectoryProbe(),
-            new FakePathPicker(),
-            processRunner: null,
-            dispatcher: null,
-            globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
-            llmProbe: probe);
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                Picker = new FakePathPicker(),
+                LlmProbe = probe,
+            },
+            globalPathOverride: "/home/user/.config/Orkeon/appsettings.json");
 
         tab.Llm.BaseUrl = LlmProviderEndpoints.OllamaDefault;
         await tab.Llm.TestConnectionCommand.ExecuteAsync();

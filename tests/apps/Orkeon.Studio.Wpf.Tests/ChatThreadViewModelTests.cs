@@ -4,6 +4,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
@@ -32,11 +33,12 @@ public class ChatThreadViewModelTests
         var processes = new FakeProcessLauncher();
         var vm = new CreateTeamViewModel(
             profiles,
-            new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            dispatcher: null,
-            strings: null,
-            workspaceDirectory: "/ws",
-            teamsRoot: "/teams");
+            new CreateTeamDependencies
+            {
+                Client = new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = "/teams",
+            });
         vm.Need = "une veille documentaire";
         vm.FrequencyChoices[1].SelectCommand.Execute(null);
         vm.SourceChoices[0].SelectCommand.Execute(null);
@@ -307,10 +309,13 @@ public class ChatThreadViewModelTests
     public void The_window_hands_the_same_thread_to_every_screen_that_mounts_it()
     {
         var shell = new MainWindowViewModel(
-            settingsStore: new FakeAppSettingsStore(),
-            directories: new FakeDirectoryProbe(),
-            targetProbe: new FakeTargetProbe(),
-            picker: new FakePathPicker(),
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+            },
             teamsRoot: Path.Combine(Path.GetTempPath(), "orkeon-chat-" + Guid.NewGuid().ToString("N")));
 
         // One instance for the window (T-01). A per-screen thread would lose its history
@@ -583,11 +588,12 @@ public sealed class EngineDepartureTests
         var processes = new FakeProcessLauncher();
         var vm = new CreateTeamViewModel(
             profiles,
-            new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            dispatcher: null,
-            strings: null,
-            workspaceDirectory: "/ws",
-            teamsRoot: "/teams");
+            new CreateTeamDependencies
+            {
+                Client = new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = "/teams",
+            });
         vm.Need = "une veille documentaire";
         vm.FrequencyChoices[1].SelectCommand.Execute(null);
         vm.SourceChoices[0].SelectCommand.Execute(null);

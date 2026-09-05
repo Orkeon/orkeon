@@ -178,9 +178,9 @@ public class OpenAICompatibleProviderBaseSystemMessageTests
     }
 
     /// <summary>
-    /// The path a real agent takes on its second turn: replaying a tool result. It reaches the
-    /// native chat builder through <c>HasToolMetadata</c> rather than through the tool schemas,
-    /// so it is worth pinning separately.
+    /// The path a real agent takes on its second turn: replaying a tool result. The chat
+    /// builder reaches it through the per-message tool metadata (tool_call_id, raw tool calls)
+    /// rather than through the tool schemas on the config, so it is worth pinning separately.
     /// </summary>
     [Fact]
     public async Task ShouldPrependTheConfiguredSystemMessage_WhenReplayingAToolResult()

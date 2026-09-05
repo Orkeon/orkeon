@@ -45,11 +45,10 @@ internal static class TuiFidelityWiring
         var window = configuration[ConfigurationKeys.CliSessionContextWindowTokens];
         var baseUrl = configuration["Llm:BaseUrl"];
 
+        // No Llm section: the line is omitted, and /doctor + the boot warning say why.
         var modelLine = string.IsNullOrWhiteSpace(model)
-            ? "" // no Llm section: the line is omitted, and /doctor + the boot warning say why
-            : model
-              + (long.TryParse(window, out var w) && w > 0 ? $" ({FormatWindow(w)} context)" : "")
-              + (Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ? $" · {uri.Host}" : "");
+            ? ""
+            : ComposeModelLine(model, window, baseUrl);
 
         return new BannerInfo
         {
@@ -62,6 +61,17 @@ internal static class TuiFidelityWiring
                 "+more · /status",
             ],
         };
+    }
+
+    /// <summary>
+    /// The banner's model line: the configured model, followed by the context window and the
+    /// endpoint host whenever the configuration says enough for each of them.
+    /// </summary>
+    private static string ComposeModelLine(string model, string? window, string? baseUrl)
+    {
+        var contextPart = long.TryParse(window, out var w) && w > 0 ? $" ({FormatWindow(w)} context)" : "";
+        var hostPart = Uri.TryCreate(baseUrl, UriKind.Absolute, out var uri) ? $" · {uri.Host}" : "";
+        return model + contextPart + hostPart;
     }
 
     /// <summary>
@@ -177,7 +187,7 @@ internal static class TuiFidelityWiring
         ISessionBufferService? buffer,
         Func<CancellationToken, Task<string?>>? readConfigFile)
     {
-        string[]? fileVerbs = null;
+        string[] fileVerbs = [];
         var fileReadAt = DateTimeOffset.MinValue;
 
         return () =>
@@ -195,7 +205,9 @@ internal static class TuiFidelityWiring
                     var content = readConfigFile(CancellationToken.None).GetAwaiter().GetResult();
                     fileVerbs = ReadVerbsFromJsonMap(content);
                 }
-                return fileVerbs;
+                // Null, not an empty list: the delegate's contract is "no override here",
+                // which lets the status line fall back to the boot verbs.
+                return fileVerbs.Length > 0 ? fileVerbs : null;
             }
             catch
             {
@@ -204,24 +216,26 @@ internal static class TuiFidelityWiring
         };
     }
 
-    /// <summary>Extracts the CSV <c>spinnerVerbs</c> entry from a JSON object map, or null.</summary>
+    /// <summary>
+    /// Extracts the CSV <c>spinnerVerbs</c> entry from a JSON object map. An unset, malformed
+    /// or unreadable key reads as an empty list — never null.
+    /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Config-parse fault barrier: malformed JSON reads as an unset key.")]
-    private static string[]? ReadVerbsFromJsonMap(string? json)
+    private static string[] ReadVerbsFromJsonMap(string? json)
     {
-        if (string.IsNullOrWhiteSpace(json)) return null;
+        if (string.IsNullOrWhiteSpace(json)) return [];
         try
         {
             using var doc = JsonDocument.Parse(json);
-            if (doc.RootElement.ValueKind != JsonValueKind.Object) return null;
+            if (doc.RootElement.ValueKind != JsonValueKind.Object) return [];
             if (!doc.RootElement.TryGetProperty(SpinnerVerbsKey, out var el) || el.ValueKind != JsonValueKind.String)
-                return null;
-            var verbs = (el.GetString() ?? "")
+                return [];
+            return (el.GetString() ?? "")
                 .Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            return verbs.Length > 0 ? verbs : null;
         }
         catch
         {
-            return null;
+            return [];
         }
     }
 

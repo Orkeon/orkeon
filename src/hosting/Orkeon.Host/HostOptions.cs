@@ -96,6 +96,8 @@ internal sealed record OrkeonHostOptions
 /// unit lists in RestartPreventExitStatus — restarting on a typo would loop every ten seconds
 /// and bury the one message the operator needs to read.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Critical Code Smell", "S3871:Exception types should be \"public\"",
+    Justification = "orkeon-host is an executable, not a library: no assembly outside it can reference this type, so there is no caller left to catch it by name (the test project sees it through InternalsVisibleTo). Every host type is internal for that reason, and CA1515 - enabled by default for applications - would flag the public form.")]
 internal sealed class HostConfigurationException : Exception
 {
     /// <summary>The process exit code for a refused configuration (sysexits EX_CONFIG).</summary>

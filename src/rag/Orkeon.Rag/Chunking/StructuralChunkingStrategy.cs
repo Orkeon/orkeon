@@ -71,37 +71,51 @@ public sealed class StructuralChunkingStrategy : ChunkingStrategyBase
         string? sectionHeading = null;
         bool hasOpenSection = false;
 
-        int lineStart = 0;
-        while (lineStart <= content.Length)
+        foreach (var (lineStart, lineEnd) in EnumerateLines(content))
         {
-            int newlineIdx = lineStart < content.Length
-                ? content.IndexOf('\n', lineStart)
-                : -1;
-            int lineEnd = newlineIdx >= 0 ? newlineIdx : content.Length;
-
-            if (TryGetHeading(content, lineStart, lineEnd, out var heading))
+            if (!TryGetHeading(content, lineStart, lineEnd, out var heading))
             {
-                if (hasOpenSection && lineStart > sectionStart)
-                    sections.Add((sectionStart, lineStart, sectionHeading));
-
-                sectionStart = lineStart;
-                sectionHeading = heading;
+                // Body line of the open section, or the preamble before any heading.
                 hasOpenSection = true;
-            }
-            else if (!hasOpenSection)
-            {
-                hasOpenSection = true; // preamble before any heading
+                continue;
             }
 
-            if (newlineIdx < 0)
-                break;
-            lineStart = newlineIdx + 1;
+            if (hasOpenSection && lineStart > sectionStart)
+                sections.Add((sectionStart, lineStart, sectionHeading));
+
+            sectionStart = lineStart;
+            sectionHeading = heading;
+            hasOpenSection = true;
         }
 
         if (hasOpenSection && content.Length > sectionStart)
             sections.Add((sectionStart, content.Length, sectionHeading));
 
         return sections;
+    }
+
+    /// <summary>
+    /// Yields the <c>[start, end)</c> bounds of every line of
+    /// <paramref name="content"/>, the newline excluded. Content that ends with a
+    /// newline (and empty content) yields a final empty line, so callers always
+    /// see the end-of-content position as a line boundary.
+    /// </summary>
+    private static IEnumerable<(int LineStart, int LineEnd)> EnumerateLines(string content)
+    {
+        int lineStart = 0;
+        while (true)
+        {
+            int newlineIdx = lineStart < content.Length
+                ? content.IndexOf('\n', lineStart)
+                : -1;
+
+            yield return (lineStart, newlineIdx >= 0 ? newlineIdx : content.Length);
+
+            if (newlineIdx < 0)
+                yield break;
+
+            lineStart = newlineIdx + 1;
+        }
     }
 
     /// <summary>

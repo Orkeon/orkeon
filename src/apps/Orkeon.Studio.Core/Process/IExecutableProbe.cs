@@ -26,25 +26,35 @@ public interface IExecutableProbe
     "system binary discovery, outside any VFS mount, like the CLI's esbuild resolution.")]
 public sealed class PhysicalExecutableProbe : IExecutableProbe
 {
-    /// <summary>Shared stateless instance.</summary>
+    /// <summary>
+    /// The shared instance, and the only one anything builds: PATH is now read once behind
+    /// it, so a second probe would not buy a fresher reading -- it would only re-read the
+    /// same process copy, which no code outside this process can change.
+    /// </summary>
     public static PhysicalExecutableProbe Instance { get; } = new();
+
+    private readonly Lazy<IReadOnlyList<string>> _searchPathDirectories = new(ReadSearchPath);
 
     /// <inheritdoc />
     public string BaseDirectory => AppContext.BaseDirectory;
 
     /// <inheritdoc />
-    public IReadOnlyList<string> SearchPathDirectories
-    {
-        get
-        {
-            var path = System.Environment.GetEnvironmentVariable("PATH");
-            if (string.IsNullOrEmpty(path))
-                return [];
+    /// <remarks>
+    /// Split once, then handed out as is: a property must not rebuild a list on every read,
+    /// and PATH is fixed for the lifetime of a process -- nothing in Studio writes it, and a
+    /// change made outside reaches the next process, never this one.
+    /// </remarks>
+    public IReadOnlyList<string> SearchPathDirectories => _searchPathDirectories.Value;
 
-            return path
-                .Split(System.IO.Path.PathSeparator, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .ToArray();
-        }
+    private static string[] ReadSearchPath()
+    {
+        var path = System.Environment.GetEnvironmentVariable("PATH");
+        if (string.IsNullOrEmpty(path))
+            return [];
+
+        return path.Split(
+            System.IO.Path.PathSeparator,
+            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
     }
 
     /// <inheritdoc />

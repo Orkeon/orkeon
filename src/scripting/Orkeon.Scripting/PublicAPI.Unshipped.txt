@@ -13,3 +13,22 @@ Orkeon.Scripting.Builders.JsTaskBuilder.asyncExecution(bool value = true) -> Ork
 Orkeon.Scripting.Builders.JsTaskBuilder.tools(Jint.Native.JsValue! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.memory(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectScriptTools(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTool!>!
+*REMOVED*Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+*REMOVED*Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? limits = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Application.Interfaces.Security.IPermissionGate? permissionGate = null, Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? deltaSink = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Microsoft.Extensions.Options.IOptions<Orkeon.Scripting.Configuration.ScriptingLimitsOptions!>! limits, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+Orkeon.Scripting.JsEngineFactory.JsEngineFactory(Orkeon.Scripting.Configuration.ScriptingLimitsOptions? limits = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, Microsoft.Extensions.Configuration.IConfiguration? configuration = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? builtInTools = null, Orkeon.Domain.SharedKernel.ILlmProvider? llmProvider = null, Orkeon.Scripting.ScriptingHostPorts? hostPorts = null, Orkeon.Scripting.Bindings.RagScriptingBackend? ragBackend = null) -> void
+Orkeon.Scripting.ScriptingHostPorts
+Orkeon.Scripting.ScriptingHostPorts.<Clone>$() -> Orkeon.Scripting.ScriptingHostPorts!
+Orkeon.Scripting.ScriptingHostPorts.DeltaSink.get -> Orkeon.Application.Interfaces.Ports.ILlmDeltaSink?
+Orkeon.Scripting.ScriptingHostPorts.DeltaSink.init -> void
+Orkeon.Scripting.ScriptingHostPorts.Equals(Orkeon.Scripting.ScriptingHostPorts? other) -> bool
+Orkeon.Scripting.ScriptingHostPorts.PermissionGate.get -> Orkeon.Application.Interfaces.Security.IPermissionGate?
+Orkeon.Scripting.ScriptingHostPorts.PermissionGate.init -> void
+Orkeon.Scripting.ScriptingHostPorts.ScriptingHostPorts() -> void
+Orkeon.Scripting.ScriptingHostPorts.UsageSink.get -> Orkeon.Application.Interfaces.Ports.ILlmUsageSink?
+Orkeon.Scripting.ScriptingHostPorts.UsageSink.init -> void
+override Orkeon.Scripting.ScriptingHostPorts.Equals(object? obj) -> bool
+override Orkeon.Scripting.ScriptingHostPorts.GetHashCode() -> int
+override Orkeon.Scripting.ScriptingHostPorts.ToString() -> string!
+static Orkeon.Scripting.ScriptingHostPorts.operator !=(Orkeon.Scripting.ScriptingHostPorts? left, Orkeon.Scripting.ScriptingHostPorts? right) -> bool
+static Orkeon.Scripting.ScriptingHostPorts.operator ==(Orkeon.Scripting.ScriptingHostPorts? left, Orkeon.Scripting.ScriptingHostPorts? right) -> bool

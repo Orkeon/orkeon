@@ -117,9 +117,12 @@ public static class ScriptingCliServiceCollectionExtensions
                 sp.GetService<IConfiguration>(),
                 sp.GetServices<Orkeon.Domain.Tools.IBaseTool>().ToArray(),
                 sp.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>(),
-                sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-                sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
-                usageSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>());
+                new ScriptingHostPorts
+                {
+                    PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
+                    DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                    UsageSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(),
+                });
         });
 
         // Transpiler: fall back to PassThrough when esbuild isn't configured.

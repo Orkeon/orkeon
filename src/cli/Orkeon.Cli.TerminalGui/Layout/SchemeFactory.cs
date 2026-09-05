@@ -30,8 +30,8 @@ public static class SchemeFactory
     //
     // RGB attributes: Terminal.Gui downsamples to the driver's capability, so a
     // 16-color terminal gets the nearest ANSI color instead of nothing. The base
-    // panes keep the ColorName16 schemes above (their contrast is already tuned);
-    // only the fidelity accents use the sampled palette.
+    // panes keep the ColorName16 schemes above, whose contrast is already tuned,
+    // and only the fidelity accents use the sampled palette below.
 
     private static readonly Color Bg = new(0x0d, 0x0d, 0x0d);
     private static readonly Color DimFg = new(0x8a, 0x8a, 0x8a);

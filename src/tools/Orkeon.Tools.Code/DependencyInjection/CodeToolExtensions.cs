@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -61,6 +62,11 @@ public static class CodeToolExtensions
     /// section to <c>null</c> — never an empty array, which the ShellCommandTool ctor
     /// would take as "custom allowlist with zero entries" and block every command.
     /// </summary>
+    [SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null is a third state here, not the absence of a value: the ShellCommandTool ctor reads null as " +
+                        "\"no custom allowlist, keep the built-in read-only default\" and an empty array as \"custom allowlist " +
+                        "with zero entries\", which blocks every command. Returning an empty array would silently disable the " +
+                        "shell tool on any host whose configuration omits the section.")]
     private static string[]? ReadCommandList(IConfiguration? configuration, string key)
     {
         var values = configuration?.GetSection(key).GetChildren()

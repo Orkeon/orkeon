@@ -208,7 +208,7 @@ public class StagedRagPipelineTests
                 Retrieval = new RagRetrievalOptions { CandidateK = 50 },
                 Rerank = new RagRerankOptions { Enabled = true, Kind = "recording" },
             },
-            rerankers: rerankers);
+            new StagedRagPipelineDependencies { Rerankers = rerankers });
 
         var answer = await pipeline.QueryAsync(
             new RagQuery { Text = "rank?", Collection = "kb", TopN = 2 },
@@ -274,7 +274,7 @@ public class StagedRagPipelineTests
             new FakeEmbeddingProvider(),
             chat,
             new RagOptions { Rerank = new RagRerankOptions { Enabled = true, Kind = "onnx" } },
-            rerankers: rerankers);
+            new StagedRagPipelineDependencies { Rerankers = rerankers });
 
         var ex = await Assert.ThrowsAsync<RagComponentNotFoundException>(() => pipeline.QueryAsync(
             new RagQuery { Text = "rank?", Collection = "kb" },

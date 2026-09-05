@@ -122,7 +122,6 @@ internal static class CaptureReachability
 {
     /// <summary>True when <paramref name="screen"/> can be reached in <paramref name="mode"/>.</summary>
     public static bool IsReachableIn(CaptureScreen screen, CaptureModes mode) =>
-        screen is CaptureScreen.Test or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson
-            ? mode == CaptureModes.Expert
-            : true;
+        screen is not (CaptureScreen.Test or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson)
+        || mode == CaptureModes.Expert;
 }

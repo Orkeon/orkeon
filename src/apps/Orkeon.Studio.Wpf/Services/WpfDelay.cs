@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Windows.Threading;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
@@ -10,7 +11,14 @@ namespace Orkeon.Studio.Wpf.Services;
 /// </summary>
 public sealed class WpfDelay(Dispatcher dispatcher) : IUiDelay
 {
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     private readonly Dispatcher _dispatcher = dispatcher;
+
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     private readonly List<DispatcherTimer> _pending = [];
 
     /// <inheritdoc />

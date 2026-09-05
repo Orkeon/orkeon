@@ -22,13 +22,15 @@ public sealed class LaunchParityTests
         var launcher = new FakeProcessLauncher { ExitCode = exitCode };
         var history = new FakeLaunchHistoryStore();
 
-        var tab = new LaunchTabViewModel(
-            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            new FakeTargetProbe().WithFile(Crew),
-            new FakeDirectoryProbe(),
-            picker: null,
-            history,
-            new FakeAppSettingsStore());
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithFile(Crew),
+            Directories = new FakeDirectoryProbe(),
+            HistoryStore = history,
+            SettingsStore = new FakeAppSettingsStore(),
+        });
 
         tab.Target.Select(Crew);
         return (tab, launcher, history);

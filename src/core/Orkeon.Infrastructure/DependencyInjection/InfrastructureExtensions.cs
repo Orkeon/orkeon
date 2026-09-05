@@ -347,6 +347,10 @@ public static class InfrastructureExtensions
         // ever asked them anything.
         services.TryAddSingleton<Crew.Strategies.TaskAgentSelector>();
 
+        // The collaborators every strategy shares, resolved once per scope so a strategy
+        // constructor only names what its own mode adds on top of them.
+        services.TryAddScoped<Crew.Strategies.CrewStrategyDependencies>();
+
         // Add Process Strategies
         services.AddScoped<SequentialProcessStrategy>();
         services.AddScoped<HierarchicalProcessStrategy>();

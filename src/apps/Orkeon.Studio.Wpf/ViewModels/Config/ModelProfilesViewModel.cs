@@ -689,30 +689,16 @@ public sealed class ModelProfilesViewModel : ObservableObject
         if (_set.Default is not { } profile)
             return;
 
-        // Mirrored into the Llm section so a bare `orkeon run` follows the same election;
-        // the write lands in the settings document and travels through the screen's own
-        // dirty/save cycle — Studio never saves the settings file behind the user's back.
+        // Mirrored into the Llm section so that a bare orkeon run follows the same election.
+        // The write lands in the settings document and travels through the screen's own edit
+        // then save cycle: Studio never saves the settings file behind the user's back.
         _llm.Model = profile.Model;
         _llm.BaseUrl = profile.BaseUrl;
     }
 
     private void Rebuild()
     {
-        // "used by" chips (audit 07/16): which adopted teams name each profile in their
-        // sidecar. Best-effort — an unreadable teams root simply yields no chips.
-        var usage = new Dictionary<string, List<string>>(StringComparer.Ordinal);
-        if (_loadTeams is not null)
-        {
-            foreach (var team in _loadTeams())
-            {
-                if (team.Profile is { Length: > 0 } profileName)
-                {
-                    if (!usage.TryGetValue(profileName, out var teams))
-                        usage[profileName] = teams = [];
-                    teams.Add(team.Name);
-                }
-            }
-        }
+        var usage = TeamsByProfile();
 
         Profiles.Clear();
         foreach (var profile in _set.Profiles)
@@ -725,20 +711,63 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : []));
         }
 
-        // ProfileNames feeds ComboBoxes with a TwoWay SelectedItem (the assistant picker,
-        // the wizard's adopt step). Electing a profile changes no name, and clearing the
-        // list mid-write makes WPF null the selection and swallow the correcting
-        // PropertyChanged (re-entrancy guard) — the election then LOOKS unsaved. So the
-        // list is only touched when the names actually changed.
-        if (!ProfileNames.SequenceEqual(_set.Profiles.Select(p => p.Name), StringComparer.Ordinal))
+        RebuildProfileNames();
+        RebuildSecrets();
+
+        OnPropertyChanged(nameof(HasSecrets));
+
+        OnPropertiesChanged(
+            nameof(StudioProfileName), nameof(HasStudioProfile),
+            nameof(DefaultProfileName), nameof(IsEmpty), nameof(CanDelete), nameof(Set));
+    }
+
+    /// <summary>
+    /// The "used by" chips of the audit of 07/16: which adopted teams name each profile in
+    /// their sidecar. Best-effort — an unreadable teams root simply yields no chips.
+    /// </summary>
+    private Dictionary<string, List<string>> TeamsByProfile()
+    {
+        var usage = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (_loadTeams is null)
+            return usage;
+
+        foreach (var team in _loadTeams())
         {
-            ProfileNames.Clear();
-            foreach (var profile in _set.Profiles)
-                ProfileNames.Add(profile.Name);
+            if (team.Profile is not { Length: > 0 } profileName)
+                continue;
+
+            if (!usage.TryGetValue(profileName, out var teams))
+                usage[profileName] = teams = [];
+
+            teams.Add(team.Name);
         }
 
-        // The secrets card: one row per distinct key variable the profiles name. The value
-        // is peeked from the environment, never read from any file — there is nothing to read.
+        return usage;
+    }
+
+    /// <summary>
+    /// The names feed ComboBoxes with a TwoWay SelectedItem (the assistant picker, the
+    /// wizard's adopt step). Electing a profile changes no name, and clearing the list
+    /// mid-write makes WPF null the selection and swallow the correcting PropertyChanged
+    /// (re-entrancy guard) — the election then LOOKS unsaved. So the list is only touched
+    /// when the names actually changed.
+    /// </summary>
+    private void RebuildProfileNames()
+    {
+        if (ProfileNames.SequenceEqual(_set.Profiles.Select(p => p.Name), StringComparer.Ordinal))
+            return;
+
+        ProfileNames.Clear();
+        foreach (var profile in _set.Profiles)
+            ProfileNames.Add(profile.Name);
+    }
+
+    /// <summary>
+    /// The secrets card: one row per distinct key variable the profiles name. The value is
+    /// peeked from the environment, never read from any file — there is nothing to read.
+    /// </summary>
+    private void RebuildSecrets()
+    {
         Secrets.Clear();
         foreach (var group in _set.Profiles
                      .Where(p => p.KeyEnvName is { Length: > 0 })
@@ -751,11 +780,5 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 _keyStore,
                 _strings));
         }
-
-        OnPropertyChanged(nameof(HasSecrets));
-
-        OnPropertiesChanged(
-            nameof(StudioProfileName), nameof(HasStudioProfile),
-            nameof(DefaultProfileName), nameof(IsEmpty), nameof(CanDelete), nameof(Set));
     }
 }

@@ -54,10 +54,13 @@ public static class CommandLineDisplay
             : QuotePosix(argument);
     }
 
-    private static CommandLineQuotingStyle Resolve(CommandLineQuotingStyle style) =>
-        style != CommandLineQuotingStyle.Auto
-            ? style
-            : OperatingSystem.IsWindows() ? CommandLineQuotingStyle.Windows : CommandLineQuotingStyle.Posix;
+    private static CommandLineQuotingStyle Resolve(CommandLineQuotingStyle style)
+    {
+        if (style != CommandLineQuotingStyle.Auto)
+            return style;
+
+        return OperatingSystem.IsWindows() ? CommandLineQuotingStyle.Windows : CommandLineQuotingStyle.Posix;
+    }
 
     private static string QuotePosix(string argument)
     {

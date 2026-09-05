@@ -26,7 +26,12 @@ public sealed class JsLlmFacadeUsageSinkTests
 
     private static JsLlmFacade Facade(Engine engine, ILlmProvider provider, ILlmUsageSink sink, IBaseTool[]? tools = null)
         => new(engine, provider, CancellationToken.None, tools ?? Array.Empty<IBaseTool>(),
-               usageSink: sink, crewName: "main-loop", agentName: "assistant");
+               observability: new JsLlmObservability
+               {
+                   UsageSink = sink,
+                   CrewName = "main-loop",
+                   AgentName = "assistant",
+               });
 
     private static LlmResponse WithUsage(string content, int prompt, int completion, string? raw = null)
         => new()
@@ -107,7 +112,13 @@ public sealed class JsLlmFacadeUsageSinkTests
         var sink = new RecordingUsageSink();
         var provider = new OneTurnStreamingProvider(WithUsage("streamed final", 200, 30));
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(),
-            deltaSink: new NullDeltaSink(), usageSink: sink, crewName: "main-loop", agentName: "assistant");
+            observability: new JsLlmObservability
+            {
+                DeltaSink = new NullDeltaSink(),
+                UsageSink = sink,
+                CrewName = "main-loop",
+                AgentName = "assistant",
+            });
 
         var result = await facade.act("go", null);
 

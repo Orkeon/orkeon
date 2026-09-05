@@ -41,32 +41,23 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     private readonly TaskAgentSelector _agentSelector;
 
     /// <summary>Initializes a new instance of <see cref="SequentialProcessStrategy"/>.</summary>
-    /// <param name="taskRepository">The task repository.</param>
-    /// <param name="agentRepository">The agent repository.</param>
-    /// <param name="executionService">The agent execution service.</param>
-    /// <param name="memoryScope">The memory scope.</param>
+    /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
     /// <param name="delegationProvider">The agent delegation tools provider.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="hook">Optional crew execution hook (e.g. <see cref="AutoSummaryWriter"/>). May be null.</param>
     /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
     public SequentialProcessStrategy(
-        ITaskRepository taskRepository,
-        IAgentRepository agentRepository,
-        IAgentExecutionService executionService,
-        IMemoryScope memoryScope,
+        CrewStrategyDependencies dependencies,
         AgentDelegationToolsProvider delegationProvider,
         ILogger<SequentialProcessStrategy> logger,
         ICrewExecutionHook? hook = null,
         TaskAgentSelector? agentSelector = null)
     {
-        ArgumentNullException.ThrowIfNull(taskRepository);
-        _taskRepository = taskRepository;
-        ArgumentNullException.ThrowIfNull(agentRepository);
-        _agentRepository = agentRepository;
-        ArgumentNullException.ThrowIfNull(executionService);
-        _executionService = executionService;
-        ArgumentNullException.ThrowIfNull(memoryScope);
-        _memoryScope = memoryScope;
+        ArgumentNullException.ThrowIfNull(dependencies);
+        _taskRepository = dependencies.TaskRepository;
+        _agentRepository = dependencies.AgentRepository;
+        _executionService = dependencies.ExecutionService;
+        _memoryScope = dependencies.MemoryScope;
         ArgumentNullException.ThrowIfNull(delegationProvider);
         _delegationProvider = delegationProvider;
         ArgumentNullException.ThrowIfNull(logger);

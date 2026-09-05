@@ -66,44 +66,18 @@ internal sealed class BriefStage : IForgeStageRunner
 
             if (reply.BriefJson is { } json)
             {
-                if (ForgeBrief.TryParse(json, out var brief, out var briefErrors))
-                {
-                    session.SaveArtifact(ForgeSession.BriefFileName, brief);
-                    session.Document.Title ??= Truncate(brief!.Goal!, 60);
-                    events.Emit("brief.ready", new { brief });
-                    return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted, Usage = usage };
-                }
-
-                submissionAttempts++;
-                events.Error(
-                    ForgeErrorCodes.BriefIncomplete,
-                    string.Join(" ", briefErrors),
-                    recoverable: submissionAttempts < MaxSubmissionAttempts);
-
-                if (submissionAttempts >= MaxSubmissionAttempts)
-                {
-                    return new ForgeStageOutcome
-                    {
-                        Trigger = ForgeTrigger.Fail,
-                        Usage = usage,
-                        FailureCode = ForgeErrorCodes.BriefIncomplete,
-                        Detail = $"No schema-valid brief after {MaxSubmissionAttempts} submissions.",
-                    };
-                }
+                var outcome = HandleSubmission(session, events, json, usage, ref submissionAttempts, ref errors);
+                if (outcome is not null)
+                    return outcome;
 
                 // The errors go back into the next turn, verbatim; no user round-trip needed.
                 userMessage = null;
-                errors = briefErrors;
                 continue;
             }
 
             if (reply.Message is { Length: > 0 } message)
             {
-                events.Emit("assistant.message", new { text = message });
-                userMessage = await _channel.ReadUserMessageAsync(cancellationToken).ConfigureAwait(false);
-                if (userMessage is null)
-                    throw new OperationCanceledException("The user channel closed during the interview.");
-
+                userMessage = await AskUserAsync(events, message, cancellationToken).ConfigureAwait(false);
                 errors = null;
                 continue;
             }
@@ -113,25 +87,66 @@ internal sealed class BriefStage : IForgeStageRunner
             errors = ["The turn produced neither a message nor a submission."];
             submissionAttempts++;
             if (submissionAttempts >= MaxSubmissionAttempts)
-            {
-                return new ForgeStageOutcome
-                {
-                    Trigger = ForgeTrigger.Fail,
-                    Usage = usage,
-                    FailureCode = ForgeErrorCodes.BriefIncomplete,
-                    Detail = "The assistant produced empty turns.",
-                };
-            }
+                return Abandon(usage, "The assistant produced empty turns.");
         }
 
-        return new ForgeStageOutcome
-        {
-            Trigger = ForgeTrigger.Fail,
-            Usage = usage,
-            FailureCode = ForgeErrorCodes.BriefIncomplete,
-            Detail = $"The interview did not converge within {MaxTurns} turns.",
-        };
+        return Abandon(usage, $"The interview did not converge within {MaxTurns} turns.");
     }
+
+    /// <summary>
+    /// One <c>brief_submit</c>: the accepted brief becomes the stage's outcome, an exhausted
+    /// repair budget becomes a failure, and anything else returns <see langword="null"/> —
+    /// the interview takes another turn carrying <paramref name="errors"/>.
+    /// </summary>
+    private static ForgeStageOutcome? HandleSubmission(
+        ForgeSession session,
+        ForgeEventWriter events,
+        string json,
+        ForgeUsageSnapshot usage,
+        ref int submissionAttempts,
+        ref IReadOnlyList<string>? errors)
+    {
+        if (ForgeBrief.TryParse(json, out var brief, out var briefErrors))
+        {
+            session.SaveArtifact(ForgeSession.BriefFileName, brief);
+            session.Document.Title ??= Truncate(brief!.Goal!, 60);
+            events.Emit("brief.ready", new { brief });
+            return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted, Usage = usage };
+        }
+
+        submissionAttempts++;
+        events.Error(
+            ForgeErrorCodes.BriefIncomplete,
+            string.Join(" ", briefErrors),
+            recoverable: submissionAttempts < MaxSubmissionAttempts);
+
+        if (submissionAttempts >= MaxSubmissionAttempts)
+            return Abandon(usage, $"No schema-valid brief after {MaxSubmissionAttempts} submissions.");
+
+        errors = briefErrors;
+        return null;
+    }
+
+    /// <summary>
+    /// Shows the assistant's message and waits for the answer. A closed channel is an
+    /// interruption, never an answer.
+    /// </summary>
+    private async Task<string> AskUserAsync(
+        ForgeEventWriter events, string message, CancellationToken cancellationToken)
+    {
+        events.Emit("assistant.message", new { text = message });
+        return await _channel.ReadUserMessageAsync(cancellationToken).ConfigureAwait(false)
+            ?? throw new OperationCanceledException("The user channel closed during the interview.");
+    }
+
+    /// <summary>The stage gives up: same failure code whatever exhausted the interview.</summary>
+    private static ForgeStageOutcome Abandon(ForgeUsageSnapshot usage, string detail) => new()
+    {
+        Trigger = ForgeTrigger.Fail,
+        Usage = usage,
+        FailureCode = ForgeErrorCodes.BriefIncomplete,
+        Detail = detail,
+    };
 
     private static string Truncate(string text, int max) =>
         text.Length <= max ? text : text[..max].TrimEnd() + "…";

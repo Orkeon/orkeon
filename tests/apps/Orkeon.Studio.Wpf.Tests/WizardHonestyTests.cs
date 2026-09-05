@@ -36,11 +36,12 @@ public sealed class WizardHonestyTests
         var processes = new FakeProcessLauncher();
         var vm = new CreateTeamViewModel(
             profiles,
-            new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            dispatcher: null,
-            strings: null,
-            workspaceDirectory: "/ws",
-            teamsRoot: "/teams");
+            new CreateTeamDependencies
+            {
+                Client = new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = "/teams",
+            });
         vm.Need = "une veille documentaire";
         vm.FrequencyChoices[1].SelectCommand.Execute(null);
         vm.SourceChoices[0].SelectCommand.Execute(null);

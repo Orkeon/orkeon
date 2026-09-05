@@ -17,10 +17,6 @@ internal static class MessageFormatter
     public static IReadOnlyList<string> Format(IReadOnlyList<ValidationMessage> messages) =>
         ValidationMessageFormatter.FormatAll(messages);
 
-    /// <summary>A one-line summary of a validation pass, for the status bar.</summary>
-    public static string Summarize(IReadOnlyList<ValidationMessage> messages) =>
-        ValidationMessageFormatter.Summarize(messages);
-
     /// <summary>Renders a diagnostic run: the checks, then how the child process ended.</summary>
     public static IReadOnlyList<string> Format(DoctorReport report)
     {
@@ -52,4 +48,8 @@ internal static class MessageFormatter
 
         return lines;
     }
+
+    /// <summary>A one-line summary of a validation pass, for the status bar.</summary>
+    public static string Summarize(IReadOnlyList<ValidationMessage> messages) =>
+        ValidationMessageFormatter.Summarize(messages);
 }

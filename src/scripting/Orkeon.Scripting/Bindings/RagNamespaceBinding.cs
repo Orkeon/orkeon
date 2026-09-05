@@ -125,99 +125,119 @@ public static partial class RagNamespaceBinding
                     "Register it with AddOrkeonRag(configuration) (Orkeon.Rag.DependencyInjection).");
             }
 
-            if (question is null || !question.IsString() || string.IsNullOrWhiteSpace(question.AsString()))
-                throw new ArgumentException($"{surface} expects a non-empty question string as its first argument.");
-
-            if (options is null || !options.IsObject())
-                throw new ArgumentException($"{surface} expects an options object: {{ collection[, profile, topN] }}.");
-
-            var obj = options.AsObject();
+            var text = ReadQuestion(question, surface);
+            var obj = ReadOptions(options, surface);
+            // Read in this order on purpose: the collection error must win over anything
+            // the profile lookup can raise, exactly as it did before this was split up.
             var collection = GetRequiredString(obj, "collection", surface);
-
-            var topNValue = obj.Get("topN");
-            var topN = topNValue.IsNumber() ? (int)topNValue.AsNumber() : (int?)null;
-
-            // Per-call retrieval profile. This was a documented no-op until the
-            // profiles themselves shipped (RAG-04/05/06); it is now honoured by
-            // resolving a pipeline per request. Without a resolver on the host we
-            // FAIL rather than ignore: a script that asked for `corrective` and
-            // silently got `fast` would produce answers whose provenance it
-            // cannot describe, which is worse than an error.
-            var profile = GetOptionalString(obj, "profile");
-            var pipeline = backend.RagPipeline;
-            if (profile is not null)
-            {
-                if (backend.ProfileResolver is null)
-                {
-                    throw new InvalidOperationException(
-                        $"{surface}: profile '{profile}' was requested but this host registered no "
-                        + "IRagProfileResolver, so the profile cannot be honoured. Either drop the "
-                        + "option (the host-wide Orkeon:Rag:Profile then applies) or register the RAG "
-                        + "subsystem with AddOrkeonRag(configuration), which provides the resolver.");
-                }
-
-                try
-                {
-                    pipeline = backend.ProfileResolver.Resolve(profile);
-                }
-                catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException
-                                           or InvalidOperationException)
-                {
-                    throw new ArgumentException(
-                        $"{surface}: unknown retrieval profile '{profile}'. Expected one of "
-                        + $"{RagProfilePresets.FastName}, {RagProfilePresets.BalancedName}, "
-                        + $"{RagProfilePresets.QualityName}, {RagProfilePresets.CorrectiveName}, "
-                        + $"{RagProfilePresets.AdaptiveName}.", ex);
-                }
-
-                LogProfileResolved(log, profile);
-            }
-
-            var query = new RagQuery
-            {
-                Text = question.AsString(),
-                Collection = collection,
-            };
-            if (topN is int n)
-                query = query with { TopN = n };
-
-            RagAnswer answer;
-            if (generate)
-            {
-                answer = await pipeline.QueryAsync(query).ConfigureAwait(false);
-            }
-            else if (pipeline is IRagRetrievalCapable retriever)
-            {
-                answer = await retriever.RetrieveAsync(query).ConfigureAwait(false);
-            }
-            else
-            {
-                // Deliberately NOT a silent fallback to QueryAsync. A caller reaches
-                // for rag.retrieve to avoid paying for a generation it will discard;
-                // quietly generating anyway would charge it exactly what it asked to
-                // avoid, and it would have no way to tell.
-                throw new NotSupportedException(
-                    $"rag.retrieve: the resolved pipeline ({pipeline.GetType().Name}) does not implement "
-                    + "IRagRetrievalCapable, so retrieval cannot be run without generation. Use rag.query, "
-                    + "or select a profile served by the staged pipeline (fast/balanced/quality).");
-            }
-
-            var payload = new Dictionary<string, object?>
-            {
-                ["text"] = answer.Text,
-                ["citations"] = answer.Citations.Select(citation => new Dictionary<string, object?>
-                {
-                    ["marker"] = citation.Marker,
-                    ["chunkId"] = citation.ChunkId,
-                    ["sourceId"] = citation.SourceId,
-                    ["documentId"] = citation.DocumentId,
-                    ["snippet"] = citation.Snippet,
-                    ["score"] = citation.Score,
-                }).ToArray(),
-            };
-            return JsValue.FromObject(engine, payload);
+            var query = BuildRagQuery(obj, text, collection);
+            var pipeline = ResolvePipeline(backend, obj, log, surface);
+            var answer = await RunPipelineAsync(pipeline, query, generate).ConfigureAwait(false);
+            return JsValue.FromObject(engine, BuildAnswerPayload(answer));
         };
     }
+
+    private static string ReadQuestion(JsValue? question, string surface)
+    {
+        if (question is null || !question.IsString() || string.IsNullOrWhiteSpace(question.AsString()))
+            throw new ArgumentException($"{surface} expects a non-empty question string as its first argument.");
+        return question.AsString();
+    }
+
+    private static Jint.Native.Object.ObjectInstance ReadOptions(JsValue? options, string surface)
+    {
+        if (options is null || !options.IsObject())
+            throw new ArgumentException($"{surface} expects an options object: {{ collection[, profile, topN] }}.");
+        return options.AsObject();
+    }
+
+    private static RagQuery BuildRagQuery(
+        Jint.Native.Object.ObjectInstance obj, string text, string collection)
+    {
+        var query = new RagQuery
+        {
+            Text = text,
+            Collection = collection,
+        };
+
+        var topNValue = obj.Get("topN");
+        return topNValue.IsNumber() ? query with { TopN = (int)topNValue.AsNumber() } : query;
+    }
+
+    /// <summary>
+    /// Picks the pipeline serving this call: the host-wide one, or the one the
+    /// per-call <c>profile</c> option names. Without a resolver on the host we
+    /// FAIL rather than ignore: a script that asked for `corrective` and silently
+    /// got `fast` would produce answers whose provenance it cannot describe,
+    /// which is worse than an error.
+    /// </summary>
+    private static IRagPipeline ResolvePipeline(
+        RagScriptingBackend backend, Jint.Native.Object.ObjectInstance obj, ILogger log, string surface)
+    {
+        var profile = GetOptionalString(obj, "profile");
+        if (profile is null)
+            return backend.RagPipeline;
+
+        if (backend.ProfileResolver is null)
+        {
+            throw new InvalidOperationException(
+                $"{surface}: profile '{profile}' was requested but this host registered no "
+                + "IRagProfileResolver, so the profile cannot be honoured. Either drop the "
+                + "option (the host-wide Orkeon:Rag:Profile then applies) or register the RAG "
+                + "subsystem with AddOrkeonRag(configuration), which provides the resolver.");
+        }
+
+        IRagPipeline pipeline;
+        try
+        {
+            pipeline = backend.ProfileResolver.Resolve(profile);
+        }
+        catch (Exception ex) when (ex is ArgumentException or KeyNotFoundException
+                                   or InvalidOperationException)
+        {
+            throw new ArgumentException(
+                $"{surface}: unknown retrieval profile '{profile}'. Expected one of "
+                + $"{RagProfilePresets.FastName}, {RagProfilePresets.BalancedName}, "
+                + $"{RagProfilePresets.QualityName}, {RagProfilePresets.CorrectiveName}, "
+                + $"{RagProfilePresets.AdaptiveName}.", ex);
+        }
+
+        LogProfileResolved(log, profile);
+        return pipeline;
+    }
+
+    private static async Task<RagAnswer> RunPipelineAsync(
+        IRagPipeline pipeline, RagQuery query, bool generate)
+    {
+        if (generate)
+            return await pipeline.QueryAsync(query).ConfigureAwait(false);
+
+        if (pipeline is IRagRetrievalCapable retriever)
+            return await retriever.RetrieveAsync(query).ConfigureAwait(false);
+
+        // Retrieval without generation is refused rather than quietly served by the
+        // generating surface. A caller reaches for the retrieve entry point precisely
+        // to avoid paying for an answer it will discard, so generating anyway would
+        // charge it exactly what it asked to avoid, with no way for it to notice.
+        throw new NotSupportedException(
+            $"rag.retrieve: the resolved pipeline ({pipeline.GetType().Name}) does not implement "
+            + "IRagRetrievalCapable, so retrieval cannot be run without generation. Use rag.query, "
+            + "or select a profile served by the staged pipeline (fast/balanced/quality).");
+    }
+
+    private static Dictionary<string, object?> BuildAnswerPayload(RagAnswer answer) => new()
+    {
+        ["text"] = answer.Text,
+        ["citations"] = answer.Citations.Select(citation => new Dictionary<string, object?>
+        {
+            ["marker"] = citation.Marker,
+            ["chunkId"] = citation.ChunkId,
+            ["sourceId"] = citation.SourceId,
+            ["documentId"] = citation.DocumentId,
+            ["snippet"] = citation.Snippet,
+            ["score"] = citation.Score,
+        }).ToArray(),
+    };
 
     private static string GetRequiredString(Jint.Native.Object.ObjectInstance obj, string key, string surface)
     {

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Text.RegularExpressions;
 using Orkeon.Studio.Core.Localization;
 
@@ -48,6 +49,9 @@ public sealed class AssistantAnswers(IStudioStrings strings)
         (StudioStringKeys.ChatRulePrivacy,  StudioStringKeys.ChatAnswerPrivacy),
     ];
 
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     private readonly IStudioStrings _strings = strings;
 
     /// <summary>

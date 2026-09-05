@@ -133,6 +133,8 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
 
         public void Close()
         {
+            // Nothing to close: this writer only appends to the owner's in-memory line list,
+            // so there is no stream, handle or child process to release.
         }
     }
 }

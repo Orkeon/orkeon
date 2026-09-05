@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.Tests.Doubles;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -111,17 +112,19 @@ public sealed class ShellChromeViewModelTests
     public void Should_ExposeModeAndAbout_And_HandTheInitialModeThrough()
     {
         var window = new MainWindowViewModel(
-            new FakeAppSettingsStore(),
-            new FakeDirectoryProbe(),
-            new FakeTargetProbe(),
-            new FakePathPicker(),
-            new OrkeonProcessRunner(
-                new FakeProcessLauncher(),
-                new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            new FakeLaunchHistoryStore(),
-            dispatcher: null,
-            globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
-            initialUiMode: "expert");
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
+            new StudioUiPreferences { InitialMode = "expert" },
+            globalPathOverride: "/home/user/.config/Orkeon/appsettings.json");
 
         Assert.True(window.Mode.IsExpert);
         Assert.False(window.About.IsOpen);

@@ -190,9 +190,9 @@ public sealed class MountsEditorViewModel : ObservableObject
 
     private void AllowFolder()
     {
-        if (FolderPickRequested is { } requested)
+        if (FolderPickRequested is not null)
         {
-            requested.Invoke(this, EventArgs.Empty);
+            FolderPickRequested.Invoke(this, EventArgs.Empty);
             return;
         }
 

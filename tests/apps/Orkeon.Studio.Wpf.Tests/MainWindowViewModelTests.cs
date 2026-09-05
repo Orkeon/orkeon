@@ -1,6 +1,7 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.Tests.Doubles;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -8,15 +9,17 @@ namespace Orkeon.Studio.Wpf.Tests;
 public sealed class MainWindowViewModelTests
 {
     private static MainWindowViewModel Build() =>
-        new(new FakeAppSettingsStore(),
-            new FakeDirectoryProbe(),
-            new FakeTargetProbe(),
-            new FakePathPicker(),
-            new OrkeonProcessRunner(
-                new FakeProcessLauncher(),
-                new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            new FakeLaunchHistoryStore(),
-            dispatcher: null,
+        new(new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
             globalPathOverride: "/home/user/.config/Orkeon/appsettings.json");
 
     [Fact]
@@ -57,13 +60,16 @@ public sealed class MainWindowViewModelTests
         // about which binary is in use.
         var launcher = new FakeProcessLauncher();
         var window = new MainWindowViewModel(
-            new FakeAppSettingsStore(),
-            new FakeDirectoryProbe(),
-            new FakeTargetProbe(),
-            new FakePathPicker(),
-            new OrkeonProcessRunner(launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            new FakeLaunchHistoryStore(),
-            dispatcher: null,
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    launcher, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
             globalPathOverride: "/tmp/appsettings.json");
 
         window.Config.Diagnostic.RunCommand.Execute(null);
@@ -76,15 +82,17 @@ public sealed class MainWindowViewModelTests
     private static MainWindowViewModel WithDeclaredFolders(FakeAppSettingsStore store, params string[] mounts)
     {
         var window = new MainWindowViewModel(
-            store,
-            new FakeDirectoryProbe("/data", "/data/docs", "/data/out"),
-            new FakeTargetProbe(),
-            new FakePathPicker(),
-            new OrkeonProcessRunner(
-                new FakeProcessLauncher(),
-                new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            new FakeLaunchHistoryStore(),
-            dispatcher: null,
+            new StudioServices
+            {
+                SettingsStore = store,
+                Directories = new FakeDirectoryProbe("/data", "/data/docs", "/data/out"),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
             globalPathOverride: "/home/user/.config/Orkeon/appsettings.json");
 
         window.Config.Mounts.Load(mounts);

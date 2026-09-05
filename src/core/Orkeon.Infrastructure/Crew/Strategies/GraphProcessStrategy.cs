@@ -61,24 +61,23 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     /// <summary>
     /// Creates a new <see cref="GraphProcessStrategy"/>.
     /// </summary>
+    /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
+    /// <param name="delegationProvider">The agent delegation tools provider.</param>
+    /// <param name="logger">The logger.</param>
+    /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
+    /// <param name="agentSelector">Who runs a task that names no agent. Null means round-robin.</param>
     public GraphProcessStrategy(
-        ITaskRepository taskRepository,
-        IAgentRepository agentRepository,
-        IAgentExecutionService executionService,
-        IMemoryScope memoryScope,
+        CrewStrategyDependencies dependencies,
         AgentDelegationToolsProvider delegationProvider,
         ILogger<GraphProcessStrategy> logger,
         ICrewExecutionHook? hook = null,
         TaskAgentSelector? agentSelector = null)
     {
-        ArgumentNullException.ThrowIfNull(taskRepository);
-        _taskRepository = taskRepository;
-        ArgumentNullException.ThrowIfNull(agentRepository);
-        _agentRepository = agentRepository;
-        ArgumentNullException.ThrowIfNull(executionService);
-        _executionService = executionService;
-        ArgumentNullException.ThrowIfNull(memoryScope);
-        _memoryScope = memoryScope;
+        ArgumentNullException.ThrowIfNull(dependencies);
+        _taskRepository = dependencies.TaskRepository;
+        _agentRepository = dependencies.AgentRepository;
+        _executionService = dependencies.ExecutionService;
+        _memoryScope = dependencies.MemoryScope;
         ArgumentNullException.ThrowIfNull(delegationProvider);
         _delegationProvider = delegationProvider;
         ArgumentNullException.ThrowIfNull(logger);

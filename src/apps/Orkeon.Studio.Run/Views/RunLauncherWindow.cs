@@ -172,10 +172,10 @@ internal sealed class RunLauncherWindow : Window
         historyButton.Accepting += (_, _) => ShowHistory();
         quitButton.Accepting += (_, _) => Quit();
 
-        // Two subscriptions on purpose. The view-level one is what a focused button sees;
-        // the application-level one fires before any view handler, which is the only thing
-        // that reaches Escape while a text field has focus (the same swallowing the CLI
-        // console hit with Ctrl+C).
+        // Two subscriptions on purpose. The view-level one is what a focused button sees,
+        // while the application-level one fires before any view handler and is the only
+        // thing that reaches Escape while a text field has focus. The CLI console ran into
+        // the same swallowing with Ctrl+C.
         KeyDown += OnKeyDown;
         TerminalApp.KeyDown += OnKeyDown;
 

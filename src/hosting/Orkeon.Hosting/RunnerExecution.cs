@@ -75,98 +75,39 @@ public static partial class RunnerExecution
         bootstrap = null;
         errorCode = 0;
 
-        if (string.IsNullOrWhiteSpace(opts.ConfigPath))
+        if (!TryResolveCrewTarget(opts, out var target))
         {
-            // --config is optional at the parser level so --list-tools can run without it,
-            // but every crew-loading mode still needs it — enforce presence here.
-            Console.Error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
             errorCode = 1;
             return false;
         }
-
-        var configPath = Path.GetFullPath(opts.ConfigPath);
-
-        // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
-        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet). The
-        // directory form is classified here so an ambiguous or empty directory reports its own
-        // diagnostic instead of the generic "config file not found".
-        var inspection = CrewDirectoryLayout.Inspect(configPath);
-        if (inspection.Error is not null)
-        {
-            Console.Error.WriteLine($"ERROR: {inspection.Error}");
-            errorCode = 1;
-            return false;
-        }
-
-        if (!inspection.IsCrewDirectory && !File.Exists(configPath))
-        {
-            Console.Error.WriteLine($"ERROR: config file not found: {configPath}");
-            errorCode = 1;
-            return false;
-        }
-
-        // For a crew directory the config dir IS the target: mounting it (rather than its
-        // parent) keeps the VFS surface as narrow as it is for a single-file crew, and anchors
-        // appsettings resolution inside the crew.
-        if (inspection.IsCrewDirectory)
-            configPath = Path.TrimEndingDirectorySeparator(configPath);
-        var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
-        var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);
-        if (settingsPath != null)
-            Console.Error.WriteLine($"Using settings: {settingsPath}");
 
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
 
-        // The crew-config loader (YamlCrewDefinitionLoader) reads the YAML through
-        // IFileSystemService, so configDir must be visible to the VFS registry — under a
-        // NAME (ADR-008), never identity-mapped. An agent asking `list_mounts`, or reading
-        // an access-denied message, must never be handed an absolute disk path.
-        // A scripting entry point gets /script, a YAML crew gets /crew — the two roots exist
-        // because a script's relative imports resolve against its own directory. And a
-        // script's directory is the CLI's primary input rather than a user-declared mount, so
-        // it is not gated behind --allow-external-mounts, exactly as `orkeon run` argues on
-        // its own script path. Both rules used to live only there: `--validate` on a .ork.ts
-        // came through here instead, took a /crew topology the real run never uses, and was
-        // refused for a script outside the working directory that runs perfectly well. A
-        // validation that answers about a different arrangement than the run is worse than no
-        // validation.
-        var isScript = !inspection.IsCrewDirectory && IsScriptedCrewDefinition(configPath);
-        var targetVirtualRoot = isScript ? RunnerVirtualRoots.Script : RunnerVirtualRoots.Crew;
-
-        if (!EnsureExternalMountsAllowed(opts, isScript ? null : configDir, llmLogPath)
+        if (!EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
-                cliMounts, settingsPath,
-                targetVirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
-            || !EnsureMountSourcesExist(cliMounts, settingsPath))
+                cliMounts, target.SettingsPath,
+                target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
+            || !EnsureMountSourcesExist(cliMounts, target.SettingsPath))
         {
             errorCode = 1;
             return false;
         }
-        cliMounts.Insert(0, $"{FileSystemMount.Quote(configDir)}:{targetVirtualRoot}:ro");
-        var virtualConfigPath = inspection.IsCrewDirectory
-            ? targetVirtualRoot
-            : $"{targetVirtualRoot}/{Path.GetFileName(configPath)}";
+        cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
-        // The LLM exchange log is infrastructure: the VFS must reach it (AppendAllTextAsync),
-        // no agent has any business addressing it — hence the internal-mount list.
-        var internalMounts = new List<string>();
-        if (llmLogPath != null)
-        {
-            // Mount base paths must exist before FileSystemRegistry is built
-            // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
-            Directory.CreateDirectory(llmLogPath);
-            internalMounts.Add($"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw");
-        }
-
+        var internalMounts = CreateLlmLogMounts(llmLogPath);
         var verbosity = Math.Clamp(opts.Verbose, 0, 2);
         var outputMountPath = DetectOutputMountPath(cliMounts);
 
         var host = RunnerHost.Build(
-            settingsPath, cliMounts,
-            allowExternalMounts: opts.EffectiveAllowExternalMounts,
-            llmLogVirtualPath: llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
-            internalMounts: internalMounts,
+            target.SettingsPath,
+            new RunnerMountPlan
+            {
+                CliMounts = cliMounts,
+                InternalMounts = internalMounts,
+                AllowExternalMounts = opts.EffectiveAllowExternalMounts,
+                LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
+            },
             configureLogging: verbosity > 0
                 ? (_, b) => ConfigureVerboseLogging(b, verbosity)
                 : null,
@@ -193,8 +134,120 @@ public static partial class RunnerExecution
         if (llmLogPath != null)
             LogLlmExchangeLoggingEnabled(logger, llmLogPath);
 
-        bootstrap = new HostBootstrap(host, logger, configPath, virtualConfigPath, inspection.IsCrewDirectory, cliMounts);
+        bootstrap = new HostBootstrap(
+            host, logger, target.ConfigPath, target.VirtualConfigPath, target.IsCrewDirectory, cliMounts);
         return true;
+    }
+
+    /// <summary>
+    /// The crew target, decided once: the physical path the operator named, the directory that
+    /// anchors settings and the config mount, the virtual root and spelling the loader is
+    /// given, and the settings file that goes with them.
+    /// </summary>
+    /// <param name="ConfigPath">The target resolved to an absolute physical path.</param>
+    /// <param name="ConfigDir">Directory mounted read-only under <paramref name="VirtualRoot"/>.</param>
+    /// <param name="VirtualRoot"><c>/script</c> for a scripting entry point, <c>/crew</c> otherwise.</param>
+    /// <param name="VirtualConfigPath">The target spelled for the VFS.</param>
+    /// <param name="IsCrewDirectory">Whether the target is a multi-file crew directory.</param>
+    /// <param name="IsScript">Whether the target is a scripting entry point.</param>
+    /// <param name="SettingsPath">Resolved appsettings.json, or <see langword="null"/>.</param>
+    private sealed record CrewTarget(
+        string ConfigPath,
+        string ConfigDir,
+        string VirtualRoot,
+        string VirtualConfigPath,
+        bool IsCrewDirectory,
+        bool IsScript,
+        string? SettingsPath);
+
+    /// <summary>
+    /// Resolves what the operator pointed <c>--config</c> at: presence, single file versus
+    /// multi-file crew directory, the anchor directory, the settings file, and the virtual
+    /// spelling the loader is handed. Prints its own diagnostic and returns
+    /// <see langword="false"/> on invalid input.
+    /// </summary>
+    private static bool TryResolveCrewTarget(
+        RunnerOptionsBase opts,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out CrewTarget? target)
+    {
+        target = null;
+
+        if (string.IsNullOrWhiteSpace(opts.ConfigPath))
+        {
+            // --config is optional at the parser level so --list-tools can run without it,
+            // but every crew-loading mode still needs it — enforce presence here.
+            Console.Error.WriteLine("ERROR: --config is required (path to the crew .yaml or .ork.ts).");
+            return false;
+        }
+
+        var configPath = Path.GetFullPath(opts.ConfigPath);
+
+        // A crew target is either a single file (.yaml / .ork.ts) or a directory holding a
+        // multi-file crew (config.yaml + agents/ + tasks/, or the flat legacy triplet). The
+        // directory form is classified here so an ambiguous or empty directory reports its own
+        // diagnostic instead of the generic "config file not found".
+        var inspection = CrewDirectoryLayout.Inspect(configPath);
+        if (inspection.Error is not null)
+        {
+            Console.Error.WriteLine($"ERROR: {inspection.Error}");
+            return false;
+        }
+
+        if (!inspection.IsCrewDirectory && !File.Exists(configPath))
+        {
+            Console.Error.WriteLine($"ERROR: config file not found: {configPath}");
+            return false;
+        }
+
+        // For a crew directory the config dir IS the target: mounting it (rather than its
+        // parent) keeps the VFS surface as narrow as it is for a single-file crew, and anchors
+        // appsettings resolution inside the crew.
+        if (inspection.IsCrewDirectory)
+            configPath = Path.TrimEndingDirectorySeparator(configPath);
+        var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
+        var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);
+        if (settingsPath != null)
+            Console.Error.WriteLine($"Using settings: {settingsPath}");
+
+        // The crew-config loader (YamlCrewDefinitionLoader) reads the YAML through
+        // IFileSystemService, so configDir must be visible to the VFS registry — under a
+        // NAME (ADR-008), never identity-mapped. An agent asking `list_mounts`, or reading
+        // an access-denied message, must never be handed an absolute disk path.
+        // A scripting entry point gets /script, a YAML crew gets /crew — the two roots exist
+        // because a script's relative imports resolve against its own directory. And a
+        // script's directory is the CLI's primary input rather than a user-declared mount, so
+        // it is not gated behind --allow-external-mounts, exactly as `orkeon run` argues on
+        // its own script path. Both rules used to live only there: `--validate` on a .ork.ts
+        // came through here instead, took a /crew topology the real run never uses, and was
+        // refused for a script outside the working directory that runs perfectly well. A
+        // validation that answers about a different arrangement than the run is worse than no
+        // validation.
+        var isScript = !inspection.IsCrewDirectory && IsScriptedCrewDefinition(configPath);
+        var virtualRoot = isScript ? RunnerVirtualRoots.Script : RunnerVirtualRoots.Crew;
+        var virtualConfigPath = inspection.IsCrewDirectory
+            ? virtualRoot
+            : $"{virtualRoot}/{Path.GetFileName(configPath)}";
+
+        target = new CrewTarget(
+            configPath, configDir, virtualRoot, virtualConfigPath,
+            inspection.IsCrewDirectory, isScript, settingsPath);
+        return true;
+    }
+
+    /// <summary>
+    /// The internal mount carrying the LLM exchange log, or nothing when logging is off. The
+    /// log is infrastructure: the VFS must reach it (AppendAllTextAsync), no agent has any
+    /// business addressing it — hence the internal-mount list rather than <c>--mount</c>.
+    /// </summary>
+    private static IReadOnlyList<string> CreateLlmLogMounts(string? llmLogPath)
+    {
+        if (llmLogPath is null)
+            return [];
+
+        // Mount base paths must exist before FileSystemRegistry is built
+        // (FileSystemServiceRegistration throws DirectoryNotFoundException otherwise).
+        Directory.CreateDirectory(llmLogPath);
+        return [$"{FileSystemMount.Quote(llmLogPath)}:{RunnerVirtualRoots.LlmLogs}:rw"];
     }
 
     /// <summary>
@@ -390,9 +443,7 @@ public static partial class RunnerExecution
         // directory under the ephemeral root for a later process's janitor to collect — and
         // the diagnostics flows next door already dispose theirs.
         using var host = bootstrap!.Host;
-        var (logger, configPath, virtualConfigPath, cliMounts) =
-            (bootstrap.Logger, bootstrap.ConfigPath, bootstrap.VirtualConfigPath, bootstrap.CliMounts);
-        var isCrewDirectory = bootstrap.IsCrewDirectory;
+        var logger = bootstrap.Logger;
 
         // Internal CTS linked to the external one (if any). Cancelling either path stops
         // the crew: SIGINT/SIGTERM via RegisterGracefulShutdown, OR caller's externalCt.
@@ -401,43 +452,7 @@ public static partial class RunnerExecution
 
         try
         {
-            RunnerLogging.LogMounts(cliMounts, logger);
-
-            LogLoadingCrew(logger, configPath);
-
-            var factory = host.Services.GetRequiredService<ICrewFactory>();
-
-            Domain.Crew.Crew crew;
-            try
-            {
-                crew = await LoadCrewAsync(host, factory, virtualConfigPath, logger, cts.Token, isCrewDirectory).ConfigureAwait(false);
-            }
-            catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
-            {
-                // A crew that does not load is a configuration mistake — report it the way
-                // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
-                // rather than letting the generic fault barrier below dump the raw exception.
-                // A scripted crew can reach the LLM while loading, though: that failure is not
-                // a configuration mistake, so it is left to the unreachable-endpoint handler.
-                await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
-                await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
-                return 2;
-            }
-
-            var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
-
-            var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
-            if (input is null)
-                return 1;
-
-            if (!await EnsureLlmEndpointReachableAsync(host, logger, cts.Token).ConfigureAwait(false))
-                return 2;
-
-            LogKickingOffCrew(logger, crew.Goal);
-            var output = await orchestrator.KickoffAsync(crew.Id, input, cts.Token).ConfigureAwait(false);
-
-            PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
-            return 0;
+            return await KickoffLoadedCrewAsync(host, bootstrap, opts, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -461,6 +476,61 @@ public static partial class RunnerExecution
             return 2;
         }
         }
+    }
+
+    /// <summary>
+    /// The kickoff sequence itself: log the mounts, load the crew, parse the CLI input, probe
+    /// the LLM endpoint, run the crew and print its output. Split out of
+    /// <see cref="RunOneShotAsync"/> so that method reads as the exit-code fault barrier it is
+    /// and this one as the ordered sequence it runs; every failure it does not answer for
+    /// itself propagates to that barrier.
+    /// </summary>
+    /// <returns>Exit code: 0 = success, 1 = malformed <c>--var</c>, 2 = crew load or LLM failure.</returns>
+    private static async Task<int> KickoffLoadedCrewAsync(
+        IHost host,
+        HostBootstrap bootstrap,
+        RunnerOptionsBase opts,
+        CancellationToken ct)
+    {
+        var logger = bootstrap.Logger;
+        RunnerLogging.LogMounts(bootstrap.CliMounts, logger);
+
+        LogLoadingCrew(logger, bootstrap.ConfigPath);
+
+        var factory = host.Services.GetRequiredService<ICrewFactory>();
+
+        Domain.Crew.Crew crew;
+        try
+        {
+            crew = await LoadCrewAsync(
+                host, factory, bootstrap.VirtualConfigPath, logger, ct, bootstrap.IsCrewDirectory).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && !IsConnectionRefused(ex))
+        {
+            // A crew that does not load is a configuration mistake — report it the way
+            // --validate does (one actionable line, stack behind -v / ORKEON_DEBUG=1)
+            // rather than letting the generic fault barrier above dump the raw exception.
+            // A scripted crew can reach the LLM while loading, though: that failure is not
+            // a configuration mistake, so it is left to the unreachable-endpoint handler.
+            await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
+            await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
+            return 2;
+        }
+
+        var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
+
+        var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
+        if (input is null)
+            return 1;
+
+        if (!await EnsureLlmEndpointReachableAsync(host, logger, ct).ConfigureAwait(false))
+            return 2;
+
+        LogKickingOffCrew(logger, crew.Goal);
+        var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
+
+        PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
+        return 0;
     }
 
     /// <summary>
@@ -983,9 +1053,12 @@ public static partial class RunnerExecution
             configuration: configuration,
             builtInTools: tools,
             llmProvider: llmProvider,
-            permissionGate: sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
-            deltaSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
-            usageSink: sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>());
+            hostPorts: new ScriptingHostPorts
+            {
+                PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
+                DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                UsageSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(),
+            });
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the
         // script resolve consistently across .ork.ts authors. EsbuildNotFoundException

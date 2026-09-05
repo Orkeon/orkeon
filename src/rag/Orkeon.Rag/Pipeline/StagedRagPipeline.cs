@@ -77,20 +77,10 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
     /// <param name="embeddingProvider">Application embedding port used to embed the query (and its variants).</param>
     /// <param name="chatClient">Chat client used for grounded generation.</param>
     /// <param name="options">Pipeline options; <c>null</c> selects the defaults (<c>fast</c>-equivalent stages).</param>
-    /// <param name="queryTransformers">
-    /// Named query-transformer factory. Required only when
-    /// <see cref="RagQueryTransformOptions.Mode"/> is not <c>none</c>.
+    /// <param name="dependencies">
+    /// The optional stage collaborators (query transformers, rerankers, groundedness
+    /// checker, logger); <c>null</c> means none of the optional stages is wired.
     /// </param>
-    /// <param name="rerankers">
-    /// Named reranker factory. Required only when
-    /// <see cref="RagRerankOptions.Enabled"/> is set.
-    /// </param>
-    /// <param name="groundednessChecker">
-    /// Optional groundedness checker (RAG-06). Absent while
-    /// <see cref="RagGroundednessOptions.Enabled"/> is set, the stage is traced
-    /// as skipped.
-    /// </param>
-    /// <param name="logger">Optional logger; defaults to a no-op logger.</param>
     /// <exception cref="InvalidOperationException">
     /// The options request a stage whose collaborator is missing, or carry an
     /// unknown <see cref="RagContextOptions.Ordering"/>.
@@ -100,10 +90,7 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         IEmbeddingProvider embeddingProvider,
         IChatClient chatClient,
         RagOptions? options = null,
-        QueryTransformerFactory? queryTransformers = null,
-        RerankerFactory? rerankers = null,
-        IGroundednessChecker? groundednessChecker = null,
-        ILogger<StagedRagPipeline>? logger = null)
+        StagedRagPipelineDependencies? dependencies = null)
     {
         ArgumentNullException.ThrowIfNull(store);
         ArgumentNullException.ThrowIfNull(embeddingProvider);
@@ -113,10 +100,10 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         _embeddingProvider = embeddingProvider;
         _chatClient = chatClient;
         _options = options ?? new RagOptions();
-        _queryTransformers = queryTransformers;
-        _rerankers = rerankers;
-        _groundednessChecker = groundednessChecker;
-        _logger = logger ?? NullLogger<StagedRagPipeline>.Instance;
+        _queryTransformers = dependencies?.QueryTransformers;
+        _rerankers = dependencies?.Rerankers;
+        _groundednessChecker = dependencies?.GroundednessChecker;
+        _logger = dependencies?.Logger ?? NullLogger<StagedRagPipeline>.Instance;
 
         ValidateOptions(_options);
         _edgesOrdering = IsEdgesOrdering(_options.Context.Ordering);
@@ -125,14 +112,16 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         {
             throw new InvalidOperationException(
                 $"RagOptions.QueryTransform.Mode is '{_options.QueryTransform.Mode}' but no query-transformer " +
-                "factory was provided. Pass the QueryTransformerFactory (AddOrkeonRag registers one).");
+                "factory was provided. Pass the QueryTransformerFactory in " +
+                "StagedRagPipelineDependencies.QueryTransformers (AddOrkeonRag registers one).");
         }
 
         if (_options.Rerank.Enabled && _rerankers is null)
         {
             throw new InvalidOperationException(
                 "RagOptions.Rerank.Enabled is set but no reranker factory was provided. " +
-                "Pass the RerankerFactory (AddOrkeonRag registers one).");
+                "Pass the RerankerFactory in StagedRagPipelineDependencies.Rerankers " +
+                "(AddOrkeonRag registers one).");
         }
     }
 

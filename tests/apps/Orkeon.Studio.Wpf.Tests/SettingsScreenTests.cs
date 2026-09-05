@@ -5,6 +5,7 @@ using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
+using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 
 namespace Orkeon.Studio.Wpf.Tests;
@@ -142,7 +143,11 @@ public sealed class SettingsScreenTests
     private static SettingsScreenViewModel Screen(UiModeViewModel mode)
     {
         var (profiles, _, _, _) = Build();
-        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
         return new SettingsScreenViewModel(config, profiles, mode);
     }
 
@@ -266,7 +271,11 @@ public sealed class SettingsRemediationTests
     public void A_dirty_document_saves_itself_in_novice_mode_and_not_in_expert()
     {
         var store = new FakeAppSettingsStore();
-        var novice = new ConfigTabViewModel(store, new FakeDirectoryProbe("/data"));
+        var novice = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = store,
+            Directories = new FakeDirectoryProbe("/data"),
+        });
         _ = new SettingsScreenViewModel(
             novice,
             new ModelProfilesViewModel(new InMemoryModelProfileStore(), novice.Llm),
@@ -279,7 +288,11 @@ public sealed class SettingsRemediationTests
         Assert.NotEmpty(store.SavedPaths);
 
         var expertStore = new FakeAppSettingsStore();
-        var expert = new ConfigTabViewModel(expertStore, new FakeDirectoryProbe("/data"));
+        var expert = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = expertStore,
+            Directories = new FakeDirectoryProbe("/data"),
+        });
         _ = new SettingsScreenViewModel(
             expert,
             new ModelProfilesViewModel(new InMemoryModelProfileStore(), expert.Llm),
@@ -302,7 +315,11 @@ public sealed class SettingsRemediationTests
             DefaultProfile = "Local",
         }, TestContext.Current.CancellationToken);
 
-        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
         var profiles = new ModelProfilesViewModel(store, config.Llm, loadTeams: () =>
         [
             new TeamSummary { Name = "Veille", Slug = "veille", Path = "/teams/veille",
@@ -343,7 +360,11 @@ public sealed class SecretsCardTests
         }, TestContext.Current.CancellationToken);
 
         var keys = new RecordingKeyStore();
-        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
         var profiles = new ModelProfilesViewModel(store, config.Llm, keyStore: keys);
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
 
@@ -384,7 +405,11 @@ public sealed class AssistantElectionTests
             DefaultProfile = "Local",
         }, TestContext.Current.CancellationToken);
 
-        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
         var profiles = new ModelProfilesViewModel(store, config.Llm);
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
 
@@ -413,7 +438,11 @@ public sealed class EditorTemperatureTests
             DefaultProfile = "Kimi K3",
         }, TestContext.Current.CancellationToken);
 
-        var config = new ConfigTabViewModel(new FakeAppSettingsStore(), new FakeDirectoryProbe());
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
         var profiles = new ModelProfilesViewModel(store, config.Llm);
         await profiles.InitializeAsync(TestContext.Current.CancellationToken);
 

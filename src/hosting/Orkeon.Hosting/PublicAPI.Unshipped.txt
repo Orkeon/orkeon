@@ -1,7 +1,24 @@
 #nullable enable
 static Orkeon.Hosting.RunnerExecution.EnsureReservedRootsAreFree(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath, params string![]! reserved) -> bool
 static Orkeon.Hosting.RunnerExecution.EnsureMountSourcesExist(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath) -> bool
-static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, System.Collections.Generic.IReadOnlyList<string!>! cliMounts, bool allowExternalMounts = false, string? llmLogVirtualPath = null, System.Collections.Generic.IReadOnlyList<string!>? internalMounts = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null) -> Microsoft.Extensions.Hosting.IHost!
+Orkeon.Hosting.RunnerMountPlan
+Orkeon.Hosting.RunnerMountPlan.<Clone>$() -> Orkeon.Hosting.RunnerMountPlan!
+Orkeon.Hosting.RunnerMountPlan.AllowExternalMounts.get -> bool
+Orkeon.Hosting.RunnerMountPlan.AllowExternalMounts.init -> void
+Orkeon.Hosting.RunnerMountPlan.CliMounts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Hosting.RunnerMountPlan.CliMounts.init -> void
+Orkeon.Hosting.RunnerMountPlan.Equals(Orkeon.Hosting.RunnerMountPlan? other) -> bool
+Orkeon.Hosting.RunnerMountPlan.InternalMounts.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Hosting.RunnerMountPlan.InternalMounts.init -> void
+Orkeon.Hosting.RunnerMountPlan.LlmLogVirtualPath.get -> string?
+Orkeon.Hosting.RunnerMountPlan.LlmLogVirtualPath.init -> void
+Orkeon.Hosting.RunnerMountPlan.RunnerMountPlan() -> void
+override Orkeon.Hosting.RunnerMountPlan.Equals(object? obj) -> bool
+override Orkeon.Hosting.RunnerMountPlan.GetHashCode() -> int
+override Orkeon.Hosting.RunnerMountPlan.ToString() -> string!
+static Orkeon.Hosting.RunnerMountPlan.operator !=(Orkeon.Hosting.RunnerMountPlan? left, Orkeon.Hosting.RunnerMountPlan? right) -> bool
+static Orkeon.Hosting.RunnerMountPlan.operator ==(Orkeon.Hosting.RunnerMountPlan? left, Orkeon.Hosting.RunnerMountPlan? right) -> bool
+static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, Orkeon.Hosting.RunnerMountPlan! mounts, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null) -> Microsoft.Extensions.Hosting.IHost!
 *REMOVED*static Orkeon.Hosting.RunnerHost.Build(string? settingsPath, System.Collections.Generic.IReadOnlyList<string!>! cliMounts, bool allowExternalMounts = false, string? llmLogPath = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.Logging.ILoggingBuilder!>? configureLogging = null, System.Action<Microsoft.Extensions.Hosting.HostBuilderContext!, Microsoft.Extensions.DependencyInjection.IServiceCollection!>? configureServices = null, System.Action<Microsoft.Extensions.Hosting.IHostBuilder!>? configureBuilder = null) -> Microsoft.Extensions.Hosting.IHost!
 static Orkeon.Hosting.RunnerExecution.LoadCrewAsync(Microsoft.Extensions.Hosting.IHost! host, Orkeon.Application.Interfaces.ICrewFactory! factory, string! configPath, Microsoft.Extensions.Logging.ILogger! logger, System.Threading.CancellationToken ct, bool? targetIsDirectory = null) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!
 *REMOVED*static Orkeon.Hosting.RunnerExecution.LoadCrewAsync(Microsoft.Extensions.Hosting.IHost! host, Orkeon.Application.Interfaces.ICrewFactory! factory, string! configPath, Microsoft.Extensions.Logging.ILogger! logger, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.Crew!>!

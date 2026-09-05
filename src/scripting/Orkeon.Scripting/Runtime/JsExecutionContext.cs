@@ -45,8 +45,14 @@ public class JsExecutionContext
         llm = new JsLlmFacade(
             environment.Engine, environment.LlmProvider, environment.Ct,
             ResolveAgentTools(environment), environment.Budget, environment.PermissionGate,
-            environment.DeltaSink, environment.Logger,
-            environment.UsageSink, environment.Crew.name, environment.Self.name);
+            new JsLlmObservability
+            {
+                DeltaSink = environment.DeltaSink,
+                Logger = environment.Logger,
+                UsageSink = environment.UsageSink,
+                CrewName = environment.Crew.name,
+                AgentName = environment.Self.name,
+            });
     }
 
     /// <summary>

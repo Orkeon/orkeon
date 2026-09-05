@@ -114,9 +114,10 @@ internal sealed class TelemetryEventHubMiddleware : IEventHubMiddleware
         catch (Exception ex)
         {
             // A refused message is a failed span, not a missing one — that is the whole
-            // value of instrumenting the reject path. True of every publish-side refusal;
-            // a receive-side one (an idempotency duplicate) never reaches this stage, since
-            // the receive chain runs in reverse and observability sits innermost there.
+            // value of instrumenting the reject path, and it holds for every publish-side
+            // refusal. A receive-side refusal such as an idempotency duplicate never reaches
+            // this stage, because the receive chain runs in reverse and observability sits
+            // innermost there.
             activity?.SetStatus(ActivityStatusCode.Error, ex.Message);
             throw;
         }

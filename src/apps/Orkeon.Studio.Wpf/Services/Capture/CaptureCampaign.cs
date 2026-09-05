@@ -202,7 +202,10 @@ internal static class CaptureCampaign
             await stop.Arrange(context);
             await stage.Surface.SettleAsync();
 
-            problems.AddRange(Inspect(stage, item, options, window, previousSha, notes, out sha, out var png));
+            var inspection = Inspect(stage, item, options, window, previousSha, notes);
+            sha = inspection.Sha;
+            var png = inspection.Png;
+            problems.AddRange(inspection.Problems);
 
             if (problems.Count == 0 && png is not null)
             {
@@ -259,19 +262,15 @@ internal static class CaptureCampaign
     }
 
     /// <summary>Every check, cheapest first; the PNG comes back so a failed shot can be quarantined.</summary>
-    private static List<string> Inspect(
+    private static CaptureInspection Inspect(
         CaptureStage stage,
         CapturePlanItem item,
         CaptureOptions options,
         MainWindow window,
         string? previousSha,
-        List<string> notes,
-        out string? sha,
-        out byte[]? png)
+        List<string> notes)
     {
         var problems = new List<string>();
-        sha = null;
-        png = null;
 
         if (Math.Abs(window.ActualWidth - options.Width) > 0.5
             || Math.Abs(window.ActualHeight - options.Height) > 0.5)
@@ -279,7 +278,7 @@ internal static class CaptureCampaign
             problems.Add(string.Create(CultureInfo.InvariantCulture,
                 $"the window settled at {window.ActualWidth:0}x{window.ActualHeight:0}, not the "
                 + $"{options.Width:0}x{options.Height:0} the collection claims"));
-            return problems;
+            return new CaptureInspection(problems, null, null);
         }
 
         if (CaptureVerification.PanelIsUp(
@@ -306,12 +305,12 @@ internal static class CaptureCampaign
         if (CaptureVerification.Uniformity(CaptureVerification.Sample(bitmap)) is { } uniform)
             problems.Add(uniform);
 
-        (png, sha) = CaptureShot.Encode(bitmap);
+        var (png, sha) = CaptureShot.Encode(bitmap);
 
         if (CaptureVerification.DiffersFromPrevious(sha, previousSha, item.Stop.AllowSameAsPrevious) is { } same)
             problems.Add(same);
 
-        return problems;
+        return new CaptureInspection(problems, sha, png);
     }
 
     /// <summary>
@@ -357,6 +356,13 @@ internal static class CaptureCampaign
 
     private static string StudioVersion() =>
         typeof(CaptureCampaign).Assembly.GetName().Version?.ToString() ?? "?";
+
+    /// <summary>What one inspection found, and the shot it rendered on the way.</summary>
+    /// <param name="Problems">Everything that made the shot untrustworthy; empty when it is good.</param>
+    /// <param name="Sha">Hash of the encoded PNG, null when the checks stopped before rendering.</param>
+    /// <param name="Png">The encoded PNG, null when the checks stopped before rendering.</param>
+    private sealed record CaptureInspection(
+        IReadOnlyList<string> Problems, string? Sha, byte[]? Png);
 
     /// <summary>A window, its ViewModel and the world underneath, for one pass.</summary>
     private sealed record CaptureStage(

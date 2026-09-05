@@ -26,33 +26,37 @@ internal static class CaptureShellBuilder
         ArgumentNullException.ThrowIfNull(host);
 
         return new MainWindowViewModel(
-            settingsStore: PhysicalAppSettingsStore.Instance,
-            directories: PhysicalDirectoryProbe.Instance,
-            targetProbe: PhysicalTargetProbe.Instance,
-            // A picker that always cancels: no dialog can ever block a run with nobody at the keyboard.
-            picker: NullPathPicker.Instance,
-            processRunner: world.Runner,
-            historyStore: world.HistoryStore,
-            dispatcher: host.Dispatcher,
+            new StudioServices
+            {
+                SettingsStore = PhysicalAppSettingsStore.Instance,
+                Directories = PhysicalDirectoryProbe.Instance,
+                TargetProbe = PhysicalTargetProbe.Instance,
+                // A picker that always cancels: no dialog can ever block a run with nobody at the keyboard.
+                Picker = NullPathPicker.Instance,
+                ProcessRunner = world.Runner,
+                HistoryStore = world.HistoryStore,
+                Dispatcher = host.Dispatcher,
+                Strings = host.Strings,
+                ForgeClient = new Orkeon.Studio.Core.Forge.ForgeClient(world.Cli, world.Locator),
+                ProfileStore = world.ProfileStore,
+                ShellOpener = NullShellOpener.Instance,
+                Delay = world.Delay,
+                LlmProbe = world.LlmProbe,
+                KeyStore = world.KeyStore,
+            },
+            new StudioUiPreferences
+            {
+                InitialMode = host.Mode,
+                InitialLanguage = host.Language,
+                ApplyLanguage = host.ApplyLanguage,
+                SystemLanguage = host.Language,
+                // PersistMode and PersistLanguage are left unset, and that is load-bearing: the
+                // campaign toggles mode and language constantly, and having nowhere to write them
+                // is the whole reason it cannot rewrite the operator's stored preferences.
+            },
             globalPathOverride: world.SettingsPath,
-            strings: host.Strings,
-            forgeClient: new Orkeon.Studio.Core.Forge.ForgeClient(world.Cli, world.Locator),
             forgeWorkspace: world.ForgeWorkspace,
-            initialUiMode: host.Mode,
-            // Null on purpose, and load-bearing: the campaign toggles mode and language constantly,
-            // and these two nulls are the whole reason it cannot rewrite the operator's stored
-            // preferences while doing it.
-            persistUiMode: null,
-            profileStore: world.ProfileStore,
-            teamsRoot: world.TeamsRoot,
-            shellOpener: NullShellOpener.Instance,
-            delay: world.Delay,
-            initialLanguage: host.Language,
-            persistLanguage: null,
-            applyLanguage: host.ApplyLanguage,
-            systemLanguage: host.Language,
-            llmProbe: world.LlmProbe,
-            keyStore: world.KeyStore);
+            teamsRoot: world.TeamsRoot);
     }
 
     /// <summary>

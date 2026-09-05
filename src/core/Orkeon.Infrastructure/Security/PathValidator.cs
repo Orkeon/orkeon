@@ -220,9 +220,10 @@ public partial class PathValidator : IPathValidator
 
     private bool IsPathUnderAllowedDirectory(string resolvedPath, string resolvedWorkspaceRoot)
     {
-        // CRITICAL: the boundary is a separator, not a prefix — /workspace-evil must not
-        // match /workspace. PhysicalPathContainment holds that rule for the whole framework;
-        // the runners' --allow-external-mounts guard asks it the same question.
+        // CRITICAL: containment is decided on a directory separator, never on a bare string
+        // prefix, so a sibling folder whose name merely starts with the workspace name stays
+        // outside. That rule belongs to PhysicalPathContainment for the whole framework, and
+        // the guard behind the runners' external-mounts option asks it the very same question.
         if (PhysicalPathContainment.IsUnder(resolvedPath, resolvedWorkspaceRoot))
             return true;
 

@@ -620,12 +620,6 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             "only the text parts were sent; pick a provider and a model that accept this content type");
     }
 
-    private static bool HasToolMetadata(LlmMessage[] messages) =>
-        messages.Any(m => m.ToolCallId != null || m.RawToolCalls != null);
-
-    private static bool HasToolSchemas(LlmConfig config) =>
-        config.Tools is { Count: > 0 };
-
     /// <summary>
     /// True when this provider supports vision content and at least one message
     /// carries multi-modal content with non-text parts.
@@ -1258,35 +1252,29 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (content.ValueKind != JsonValueKind.Array)
             return ("", "");
 
+        return ExtractTypedContentParts(content);
+    }
+
+    /// <summary>
+    /// Walks the typed content chunks of an array-shaped <c>message.content</c>, routing each
+    /// one to the buffer its declared type belongs to. A chunk whose type is missing, unknown,
+    /// or whose payload has the wrong JSON shape is skipped rather than guessed at.
+    /// </summary>
+    private static (string Content, string Reasoning) ExtractTypedContentParts(JsonElement content)
+    {
         var text = new StringBuilder();
         var reasoning = new StringBuilder();
+
         foreach (var part in content.EnumerateArray())
         {
-            if (part.ValueKind != JsonValueKind.Object
-                || !part.TryGetProperty("type", out var typeProp))
+            switch (ReadPartType(part))
             {
-                continue;
-            }
-
-            switch (typeProp.GetString())
-            {
-                case "text" when part.TryGetProperty("text", out var textProp)
-                    && textProp.ValueKind == JsonValueKind.String:
-                    text.Append(textProp.GetString());
+                case "text":
+                    AppendStringProperty(text, part, "text");
                     break;
 
-                case "thinking" when part.TryGetProperty("thinking", out var thinkingArray)
-                    && thinkingArray.ValueKind == JsonValueKind.Array:
-                    foreach (var thought in thinkingArray.EnumerateArray())
-                    {
-                        if (thought.ValueKind == JsonValueKind.Object
-                            && thought.TryGetProperty("text", out var thoughtText)
-                            && thoughtText.ValueKind == JsonValueKind.String)
-                        {
-                            reasoning.Append(thoughtText.GetString());
-                        }
-                    }
-
+                case "thinking":
+                    AppendThinkingText(reasoning, part);
                     break;
 
                 default:
@@ -1295,6 +1283,44 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         }
 
         return (text.ToString(), reasoning.ToString());
+    }
+
+    /// <summary>Reads the <c>type</c> discriminator of a content chunk, or null when absent.</summary>
+    private static string? ReadPartType(JsonElement part) =>
+        part.ValueKind == JsonValueKind.Object && part.TryGetProperty("type", out var typeProp)
+            ? typeProp.GetString()
+            : null;
+
+    /// <summary>
+    /// Appends <paramref name="propertyName"/> to <paramref name="buffer"/> when the element
+    /// carries it as a JSON string.
+    /// </summary>
+    private static void AppendStringProperty(StringBuilder buffer, JsonElement element, string propertyName)
+    {
+        if (element.TryGetProperty(propertyName, out var prop)
+            && prop.ValueKind == JsonValueKind.String)
+        {
+            buffer.Append(prop.GetString());
+        }
+    }
+
+    /// <summary>
+    /// Flattens a <c>{"type":"thinking","thinking":[{"type":"text","text":...}]}</c> chunk into
+    /// the reasoning buffer.
+    /// </summary>
+    private static void AppendThinkingText(StringBuilder reasoning, JsonElement part)
+    {
+        if (!part.TryGetProperty("thinking", out var thinkingArray)
+            || thinkingArray.ValueKind != JsonValueKind.Array)
+        {
+            return;
+        }
+
+        foreach (var thought in thinkingArray.EnumerateArray())
+        {
+            if (thought.ValueKind == JsonValueKind.Object)
+                AppendStringProperty(reasoning, thought, "text");
+        }
     }
 
     private static int? TryReadInt(JsonElement element, string propertyName)

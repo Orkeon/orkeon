@@ -142,12 +142,14 @@ public sealed class JsToolBuilder
                 itemsFormat = GetString(items, "format");
             }
 
+            var enumValues = ReadEnumValues(spec.Get("enum"));
+
             parameters[key] = new ParameterSchema(
                 GetString(spec, "type") ?? "string",
                 GetString(spec, "description") ?? "",
                 requiredSet.Contains(key),
                 Default: GetObject(spec, "default"),
-                Enum: ReadEnumValues(spec.Get("enum")),
+                Enum: enumValues.Count > 0 ? enumValues : null,
                 Format: GetString(spec, "format"),
                 ItemsType: itemsType,
                 ItemsFormat: itemsFormat,
@@ -167,19 +169,25 @@ public sealed class JsToolBuilder
         return v.IsUndefined() || v.IsNull() ? null : v.ToObject();
     }
 
-    private static List<object>? ReadEnumValues(JsValue value)
+    /// <summary>
+    /// Reads a property's <c>enum</c> constraint. Returns an EMPTY list when the schema
+    /// declares none (or declares something that is not an array); the caller maps that
+    /// to a null <c>ParameterSchema.Enum</c>, which is how "no constraint" is spelled
+    /// in the schema record.
+    /// </summary>
+    private static List<object> ReadEnumValues(JsValue value)
     {
-        if (value is not Jint.Native.Array.ArrayInstance arr)
-            return null;
-
         var values = new List<object>();
+        if (value is not Jint.Native.Array.ArrayInstance arr)
+            return values;
+
         var len = (uint)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
         for (uint i = 0; i < len; i++)
         {
             var v = arr.Get(i.ToString(System.Globalization.CultureInfo.InvariantCulture)).ToObject();
             if (v is not null) values.Add(v);
         }
-        return values.Count > 0 ? values : null;
+        return values;
     }
 
     private static Dictionary<string, object?> ToPlainDictionary(JsValue obj)

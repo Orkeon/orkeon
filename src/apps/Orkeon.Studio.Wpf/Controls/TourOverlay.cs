@@ -136,29 +136,9 @@ public sealed class TourOverlay : Grid
     private void Layout()
     {
         var step = _steps[_index];
-        var full = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
+        var spotlight = MeasureSpotlight(step);
 
-        Rect? r = null;
-        if (step.TargetName is not null
-            && ResolveTarget(step.TargetName) is { IsVisible: true } el)
-        {
-            var origin = el.TransformToVisual(this).Transform(new Point(0, 0));
-            r = new Rect(origin.X - Pad, origin.Y - Pad, el.ActualWidth + 2 * Pad, el.ActualHeight + 2 * Pad);
-        }
-
-        if (r is { } rect)
-        {
-            _dim.Data = new CombinedGeometry(GeometryCombineMode.Exclude, full,
-                new RectangleGeometry(rect, Radius, Radius));
-            _ring.Visibility = Visibility.Visible;
-            _ring.Width = rect.Width; _ring.Height = rect.Height;
-            Canvas.SetLeft(_ring, rect.X); Canvas.SetTop(_ring, rect.Y);
-        }
-        else
-        {
-            _dim.Data = full;
-            _ring.Visibility = Visibility.Collapsed;
-        }
+        ApplySpotlight(spotlight);
 
         _title.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.TitleKey + "]") { Source = I18n.Instance });
         _body.SetBinding(TextBlock.TextProperty, new System.Windows.Data.Binding("[" + step.BodyKey + "]") { Source = I18n.Instance });
@@ -173,6 +153,53 @@ public sealed class TourOverlay : Grid
         _nextKeyHolder?.SetBinding(ContentControl.ContentProperty,
             new System.Windows.Data.Binding("[" + (_index == _steps.Count - 1 ? "Studio.Shell.Finish" : "Studio.Shell.Next") + "]") { Source = I18n.Instance });
 
+        RebuildDots();
+
+        _pop.Measure(new Size(PopW, double.PositiveInfinity));
+        var ph = Math.Max(_pop.DesiredSize.Height, 200);
+        var (x, y) = PlacePopover(spotlight, ph);
+        Canvas.SetLeft(_pop, x); Canvas.SetTop(_pop, y);
+    }
+
+    /// <summary>
+    /// The rectangle to spotlight for this step, padded around the target element; null when the
+    /// step names no target, or names one that is not on screen -- the centered welcome case.
+    /// </summary>
+    private Rect? MeasureSpotlight(TourStep step)
+    {
+        if (step.TargetName is null)
+            return null;
+
+        var el = ResolveTarget(step.TargetName);
+        if (el is not { IsVisible: true })
+            return null;
+
+        var origin = el.TransformToVisual(this).Transform(new Point(0, 0));
+        return new Rect(origin.X - Pad, origin.Y - Pad, el.ActualWidth + 2 * Pad, el.ActualHeight + 2 * Pad);
+    }
+
+    /// <summary>Dims the whole window and, when there is a target, cuts the hole and rings it.</summary>
+    private void ApplySpotlight(Rect? spotlight)
+    {
+        var full = new RectangleGeometry(new Rect(0, 0, ActualWidth, ActualHeight));
+
+        if (spotlight is { } rect)
+        {
+            _dim.Data = new CombinedGeometry(GeometryCombineMode.Exclude, full,
+                new RectangleGeometry(rect, Radius, Radius));
+            _ring.Visibility = Visibility.Visible;
+            _ring.Width = rect.Width; _ring.Height = rect.Height;
+            Canvas.SetLeft(_ring, rect.X); Canvas.SetTop(_ring, rect.Y);
+            return;
+        }
+
+        _dim.Data = full;
+        _ring.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>One clickable dot per stop, the current one accented.</summary>
+    private void RebuildDots()
+    {
         _dots.Children.Clear();
         for (var j = 0; j < _steps.Count; j++)
         {
@@ -182,24 +209,31 @@ public sealed class TourOverlay : Grid
             dot.MouseLeftButtonUp += (_, _) => Go(target);
             _dots.Children.Add(dot);
         }
+    }
 
-        // popover placement: below the target, above it, beside it, else centered
-        _pop.Measure(new Size(PopW, double.PositiveInfinity));
-        var ph = Math.Max(_pop.DesiredSize.Height, 200);
-        double x, y;
-        if (r is { } t)
-        {
-            if (ActualHeight - t.Bottom - 14 >= ph) { x = Clamp(t.X, 12, ActualWidth - PopW - 12); y = t.Bottom + 14; }
-            else if (t.Y - 14 >= ph) { x = Clamp(t.X, 12, ActualWidth - PopW - 12); y = t.Y - ph - 14; }
-            else if (ActualWidth - t.Right - 18 >= PopW + 12) { x = t.Right + 18; y = Clamp(t.Y + 8, 12, ActualHeight - ph - 12); }
-            else if (t.X - 18 >= PopW + 12) { x = t.X - PopW - 18; y = Clamp(t.Y + 8, 12, ActualHeight - ph - 12); }
-            else { x = (ActualWidth - PopW) / 2; y = (ActualHeight - ph) / 2; }
-        }
-        else
-        {
-            x = (ActualWidth - PopW) / 2; y = (ActualHeight - ph) / 2;
-        }
-        Canvas.SetLeft(_pop, x); Canvas.SetTop(_pop, y);
+    /// <summary>Popover placement: below the target, above it, beside it, else centered.</summary>
+    private (double X, double Y) PlacePopover(Rect? spotlight, double ph)
+    {
+        (double X, double Y) centered = ((ActualWidth - PopW) / 2, (ActualHeight - ph) / 2);
+
+        if (spotlight is null)
+            return centered;
+
+        var t = spotlight.Value;
+
+        if (ActualHeight - t.Bottom - 14 >= ph)
+            return (Clamp(t.X, 12, ActualWidth - PopW - 12), t.Bottom + 14);
+
+        if (t.Y - 14 >= ph)
+            return (Clamp(t.X, 12, ActualWidth - PopW - 12), t.Y - ph - 14);
+
+        if (ActualWidth - t.Right - 18 >= PopW + 12)
+            return (t.Right + 18, Clamp(t.Y + 8, 12, ActualHeight - ph - 12));
+
+        if (t.X - 18 >= PopW + 12)
+            return (t.X - PopW - 18, Clamp(t.Y + 8, 12, ActualHeight - ph - 12));
+
+        return centered;
     }
 
     private static double Clamp(double v, double min, double max) => Math.Max(min, Math.Min(v, max));

@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using Orkeon.Studio.Core.Process;
 
@@ -18,9 +19,15 @@ internal sealed class ScriptedExecutableProbe(string? binaryDirectory) : IExecut
     private static readonly string[] BinaryNames = ["orkeon", "orkeon.exe"];
 
     /// <inheritdoc />
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public string BaseDirectory { get; } = binaryDirectory ?? Path.GetTempPath();
 
     /// <inheritdoc />
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
     public IReadOnlyList<string> SearchPathDirectories { get; } =
         binaryDirectory is { Length: > 0 } ? [binaryDirectory] : [];
 

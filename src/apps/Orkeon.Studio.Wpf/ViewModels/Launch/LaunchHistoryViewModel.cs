@@ -150,11 +150,16 @@ public sealed class LaunchHistoryEntryViewModel
         return null;
     }
 
-    private static string FormatDuration(TimeSpan duration) => duration.TotalHours >= 1
-        ? string.Create(CultureInfo.CurrentCulture, $"{(int)duration.TotalHours} h {duration.Minutes:00} min")
-        : duration.TotalMinutes >= 1
-            ? string.Create(CultureInfo.CurrentCulture, $"{(int)duration.TotalMinutes} min {duration.Seconds:00} s")
-            : string.Create(CultureInfo.CurrentCulture, $"{duration.Seconds} s");
+    private static string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalHours >= 1)
+            return string.Create(CultureInfo.CurrentCulture, $"{(int)duration.TotalHours} h {duration.Minutes:00} min");
+
+        if (duration.TotalMinutes >= 1)
+            return string.Create(CultureInfo.CurrentCulture, $"{(int)duration.TotalMinutes} min {duration.Seconds:00} s");
+
+        return string.Create(CultureInfo.CurrentCulture, $"{duration.Seconds} s");
+    }
 
     /// <inheritdoc />
     public override string ToString() => Display;

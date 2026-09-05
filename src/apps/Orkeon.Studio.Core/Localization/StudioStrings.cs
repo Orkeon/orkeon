@@ -1651,7 +1651,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
     /// <inheritdoc />
     public event EventHandler? CultureChanged
     {
-        add { }     // English defaults never change culture.
-        remove { }
+        // The English defaults are the fallback provider: they never change culture, so this
+        // source can never raise the event. Accessors that keep no subscriber list are the
+        // honest implementation -- a list would only hold handlers nothing would ever call.
+        add { /* Nothing to subscribe to. */ }
+        remove { /* Nothing was subscribed. */ }
     }
 }

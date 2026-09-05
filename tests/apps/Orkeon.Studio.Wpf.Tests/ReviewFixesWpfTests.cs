@@ -36,9 +36,13 @@ public sealed class ReviewFixesWpfTests : IDisposable
         profiles.StudioProfileName = "Local";
         var wizard = new CreateTeamViewModel(
             profiles,
-            new ForgeClient(new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            workspaceDirectory: "/ws",
-            teamsRoot: "/teams");
+            new CreateTeamDependencies
+            {
+                Client = new ForgeClient(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                WorkspaceDirectory = "/ws",
+                TeamsRoot = "/teams",
+            });
         wizard.AddTeamMount(Orkeon.Studio.Core.FileSystem.MountDefinition.Parse("/a:/docs:ro"));
         Assert.True(wizard.HasTeamMounts);
 
@@ -80,7 +84,7 @@ public sealed class ReviewFixesWpfTests : IDisposable
         Directory.CreateDirectory(team);
         var destination = Path.Combine(_root, "partage");
 
-        var teams = new TeamsViewModel(teamsRoot: _root, loadSessions: () => [])
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = _root, LoadSessions = () => [] })
         {
             ExportDestinationPicker = () => destination,
         };

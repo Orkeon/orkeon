@@ -57,13 +57,15 @@ public sealed class ImportAndTestScreensTests
     {
         var probe = new FakeTargetProbe();
         probe.Directories.Add("/teams/veille");
-        var launcher = new LaunchTabViewModel(
-            new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
-            probe,
-            new FakeDirectoryProbe(),
-            new FakePathPicker(),
-            historyStore: null,
-            settingsStore: new FakeAppSettingsStore());
+        var launcher = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = probe,
+            Directories = new FakeDirectoryProbe(),
+            Picker = new FakePathPicker(),
+            SettingsStore = new FakeAppSettingsStore(),
+        });
         var vm = new TestTeamViewModel(
             launcher,
             teamsRoot: "/teams",

@@ -52,12 +52,15 @@ public class IncrementalIngestionTests
                 new ProvenanceTracker());
 
             return new DefaultIngestionPipeline(
-                loaders,
-                ChunkingFactory,
-                Embeddings,
-                Store,
-                validation,
-                ManifestStore,
+                new IngestionPipelineDependencies
+                {
+                    LoaderFactory = loaders,
+                    ChunkingFactory = ChunkingFactory,
+                    EmbeddingProvider = Embeddings,
+                    Store = Store,
+                    Validation = validation,
+                    ManifestStore = ManifestStore,
+                },
                 Options);
         }
 

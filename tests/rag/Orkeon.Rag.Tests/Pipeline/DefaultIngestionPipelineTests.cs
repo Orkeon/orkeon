@@ -55,12 +55,15 @@ public class DefaultIngestionPipelineTests
             var effectiveOptions = options ?? new RagIngestionOptions { DefaultChunkingStrategy = "stub" };
 
             return new DefaultIngestionPipeline(
-                loaders,
-                ChunkingFactory,
-                Embeddings,
-                Store,
-                validation,
-                new FileIngestionManifestStore(Fs, effectiveOptions),
+                new IngestionPipelineDependencies
+                {
+                    LoaderFactory = loaders,
+                    ChunkingFactory = ChunkingFactory,
+                    EmbeddingProvider = Embeddings,
+                    Store = Store,
+                    Validation = validation,
+                    ManifestStore = new FileIngestionManifestStore(Fs, effectiveOptions),
+                },
                 effectiveOptions);
         }
 

@@ -29,12 +29,15 @@ Les références de projets `Orkeon.*` deviennent des dépendances de paquet dan
 ```csharp
 IHost host = RunnerHost.Build(
     settingsPath: "appsettings.json",   // chemin d'appsettings résolu (nullable)
-    cliMounts: ["/data:/data:ro"],       // arguments --mount de la CLI (« physique:virtuel:droits »)
-    allowExternalMounts: false,          // autoriser des bases de montage hors de la racine du workspace
-    llmLogVirtualPath: null,             // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
-                                         // les échanges HTTP LLM y sont capturés en .jsonl
-    internalMounts: null,                // montages enregistrés en MountVisibility.Internal — résolubles
-                                         // par le VFS, jamais listés à un agent (ADR-008)
+    mounts: new RunnerMountPlan          // toute la surface VFS, en un seul objet
+    {
+        CliMounts = ["/data:/data:ro"],   // arguments --mount de la CLI (« physique:virtuel:droits »)
+        InternalMounts = [],              // montages enregistrés en MountVisibility.Internal — résolubles
+                                          // par le VFS, jamais listés à un agent (ADR-008)
+        AllowExternalMounts = false,      // autoriser des bases de montage hors de la racine du workspace
+        LlmLogVirtualPath = null,         // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
+                                          // les échanges HTTP LLM y sont capturés en .jsonl
+    },
     configureLogging: null,              // personnalisation optionnelle de ILoggingBuilder
     configureServices: null,             // hook optionnel pour enregistrer les services du runner
     configureBuilder: null);             // hook IHostBuilder optionnel — orkeon-host s'en sert pour UseSystemd()/UseWindowsService()
@@ -71,7 +74,7 @@ fournis par l'utilisateur et provisionne les montages VFS *avant* que le contene
 L'ordre d'enregistrement est délibéré :
 
 1. **Logging** — le logging du runner (Console + Information par défaut) et, quand
-   `llmLogVirtualPath` est renseigné, le `DelegatingHandler` de capture des échanges LLM.
+   `RunnerMountPlan.LlmLogVirtualPath` est renseigné, le `DelegatingHandler` de capture des échanges LLM.
 2. **Le fournisseur LLM d'abord** — `RegisterLlmProvider` lit la section de config `Llm` et enregistre
    le fournisseur (et son `IChatClient`) **avant** `AddOrkeonApplication` / `AddOrkeonInfrastructure`.
    Cet ordre compte : l'infrastructure Orkeon enregistre ses fallbacks LLM/`IChatClient` en `TryAdd`,

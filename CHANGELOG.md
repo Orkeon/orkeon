@@ -7,6 +7,57 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — SonarQube campaign: 186 issues resolved, BLOCKER through MINOR **[breaking — constructor shapes]**
+
+A full analysis (SonarQube 9.9.8, scanner .NET 11.2.1, `Sonar way` C# profile) on
+the renamed `Orkeon` project reported 186 issues in the BLOCKER..MINOR band across
+119 files, plus 17 security hotspots left `TO_REVIEW`. All 186 are now closed and
+every hotspot is reviewed: **0 bug, 0 vulnerability, 0 hotspot, 0 issue above INFO**,
+technical debt 1 762 min to **0**, and reliability / security / maintainability /
+security-review all rated **A**. Coverage (82.7 %) and duplication (1.6 %) are
+unchanged — this campaign moved no test and added no dead code.
+
+- **11 BLOCKER `S2699`** — tests that asserted nothing now assert what they claim to
+  verify (`Orkeon.Host.Tests`, `Orkeon.Infrastructure.Tests` EventHub, `Callback`,
+  `Analysis` hybrid search, `Studio.Core`).
+- **42 `S3776`** — cognitive complexity brought under 15 by extraction, not by
+  splitting: `ForgeCommandOptions.Parse` (58), `ForgePromote.WriteCard` (50),
+  `ForgeEngine.RunAsync` (30), `RagNamespaceBinding` (26), `RunnerExecution` (21),
+  `LlmProviderFactory` (19), `OpenAICompatibleProviderBase` (19), and 35 more.
+- **35 `S3358`** nested ternaries, **18 `S107`** over-long parameter lists,
+  **11 `S125`** commented-out code, **7 `S3267`** loops replaced by LINQ,
+  **5 `S1168`** null collections, and the mechanical tail (`S927`, `S1186`, `S1144`,
+  `S2365`, `S2479`, `S1854`, `S3264`, `S3871`, `S2223`, `S1751`, `S3903`, ...).
+- **20 findings arbitrated as false positives**, each carrying an in-code
+  `[SuppressMessage]` (or a local `#pragma`) that states why: `S101` on `I18n`
+  (the rule proposes `18N`), `S3604` on `Lock _gate = new()` fields of primary-
+  constructor types, `S107` on `[LoggerMessage]` partials, `S1168` where `null` is
+  a third state the caller reads (`ICrewLinkProvider.LinksFor`, the shell-tool
+  allowlist), `S2737` on catch clauses that exist to carry an exception filter,
+  `S3925` on the EventHub exceptions, `S3871` on an executable-internal exception.
+- **17 security hotspots reviewed SAFE**: 13 x `S2077` (the only interpolated
+  fragment is an allowlist-validated, quoted SQL identifier — SQLite cannot
+  parameterize identifiers in DDL/PRAGMA; every caller value is a command
+  parameter), 2 x `S4792` (the framework's own logging wiring), 2 x `S5443`
+  (`/tmp` is a virtual VFS path, not the shared OS temp directory).
+
+**Breaking (source):** four constructors that took more than seven dependencies now
+take a grouped record. No shim is provided — call sites move with them.
+
+- `Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies` (new) replaces the
+  `(taskRepository, agentRepository, executionService, memoryScope)` quadruple in
+  `SequentialProcessStrategy`, `GraphProcessStrategy`, `AutonomousProcessStrategy`
+  and `ConsensualProcessStrategy`.
+- `Orkeon.Rag.Pipeline.StagedRagPipelineDependencies` and
+  `Orkeon.Rag.Pipeline.IngestionPipelineDependencies` (new) replace the optional
+  collaborator tails of `StagedRagPipeline`, `CorrectiveRagPipeline` and
+  `DefaultIngestionPipeline`.
+- The remaining `S107` sites in `Orkeon.Scripting` and `Orkeon.Hosting` follow the
+  same shape; the four `PublicAPI.Unshipped.txt` files record every move.
+
+Out of band and left as-is: 406 `INFO` issues, 404 of them `xUnit2033` (use the
+value `Assert.Single` returns instead of re-indexing) plus two `SYSLIB` hints.
+
 ### Changed — one `Orkeon` package instead of a per-layer NuGet lineup (PUB-25) **[breaking — packaging only]**
 
 The Domain/Application/Infrastructure split is an internal discipline, not a

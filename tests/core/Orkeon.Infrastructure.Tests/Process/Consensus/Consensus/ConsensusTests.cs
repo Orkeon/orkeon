@@ -8,6 +8,7 @@ using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task.ValueObjects;
 using ExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 using Orkeon.Infrastructure.Consensus;
+using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -458,10 +459,7 @@ public class ConsensusTests
 
         var strategy = new ConsensualProcessStrategy(
             votingStrategy,
-            mockExec,
-            taskRepo,
-            agentRepo,
-            mockMemoryScope,
+            new CrewStrategyDependencies(taskRepo, agentRepo, mockExec, mockMemoryScope),
             logger,
             optionsWrapper);
 
@@ -501,10 +499,7 @@ public class ConsensusTests
 
         var strategy = new ConsensualProcessStrategy(
             votingStrategy,
-            mockExec,
-            taskRepo,
-            agentRepo,
-            mockMemoryScope,
+            new CrewStrategyDependencies(taskRepo, agentRepo, mockExec, mockMemoryScope),
             logger,
             optionsWrapper);
 

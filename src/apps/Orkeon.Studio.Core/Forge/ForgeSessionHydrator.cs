@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.Events;
+using System.Diagnostics.CodeAnalysis;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Orkeon.Compliance.Vfs;
@@ -40,7 +41,7 @@ public static class ForgeSessionHydrator
     /// </summary>
     private static void HydrateIdentity(ForgeSessionModel model, string sessionDirectory)
     {
-        if (ReadObject(Path.Combine(sessionDirectory, "session.json")) is not { } session)
+        if (!TryReadObject(Path.Combine(sessionDirectory, "session.json"), out var session))
             return;
 
         var envelope = new JsonObject
@@ -65,13 +66,13 @@ public static class ForgeSessionHydrator
     private static void HydrateVerdict(ForgeSessionModel model, string sessionDirectory)
     {
         var verdictPath = Path.Combine(sessionDirectory, "verdict.json");
-        if (ReadObject(Path.Combine(sessionDirectory, "last-run.json")) is not { } lastRun)
+        if (!TryReadObject(Path.Combine(sessionDirectory, "last-run.json"), out var lastRun))
         {
             FeedFlat(model, verdictPath, ForgeEventKinds.VerdictReady);
             return;
         }
 
-        if (ReadObject(verdictPath) is not { } verdict)
+        if (!TryReadObject(verdictPath, out var verdict))
             return;
 
         foreach (var metric in new[] { "durationMs", "tokens", "cacheHitTokens", "cacheMissTokens" })
@@ -119,7 +120,7 @@ public static class ForgeSessionHydrator
     /// <summary>Wraps a whole artifact under one payload property (<c>brief</c>, <c>blueprint</c>).</summary>
     private static void FeedWrapped(ForgeSessionModel model, string path, string kind, string property)
     {
-        if (ReadObject(path) is not { } artifact)
+        if (!TryReadObject(path, out var artifact))
             return;
 
         var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = kind, [property] = artifact };
@@ -129,7 +130,7 @@ public static class ForgeSessionHydrator
     /// <summary>Merges a flat artifact (<c>verdict.json</c>) into the envelope, the wire way.</summary>
     private static void FeedFlat(ForgeSessionModel model, string path, string kind)
     {
-        if (ReadObject(path) is not { } artifact)
+        if (!TryReadObject(path, out var artifact))
             return;
 
         var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = kind };
@@ -149,18 +150,23 @@ public static class ForgeSessionHydrator
             model.Feed(orkeonEvent!);
     }
 
-    private static JsonObject? ReadObject(string path)
+    /// <summary>
+    /// Reads one artifact. The try shape is deliberate: a missing, unreadable or non-object
+    /// file is "no artifact at all", which is not the same thing as an empty object -- an
+    /// empty one would seed a hollow event, so the absence must stay expressible.
+    /// </summary>
+    private static bool TryReadObject(string path, [NotNullWhen(true)] out JsonObject? artifact)
     {
         try
         {
-            if (!File.Exists(path))
-                return null;
-            return JsonNode.Parse(File.ReadAllText(path)) as JsonObject;
+            artifact = File.Exists(path) ? JsonNode.Parse(File.ReadAllText(path)) as JsonObject : null;
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return null;
+            artifact = null;
         }
+
+        return artifact is not null;
     }
 
     private static IEnumerable<string> ReadLines(string path)

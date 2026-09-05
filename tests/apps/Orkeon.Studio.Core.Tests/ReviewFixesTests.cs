@@ -31,11 +31,19 @@ public sealed class ReviewFixesTests : IDisposable
         Directory.CreateDirectory(asDirectory);
         var store = new LaunchHistoryFileStore(asDirectory);
 
-        await store.RecordAsync(new LaunchHistoryEntry
+        var recorded = await store.RecordAsync(new LaunchHistoryEntry
         {
             Target = "crew.yaml",
             StartedAt = DateTimeOffset.UtcNow,
         }, TestContext.Current.CancellationToken);
+
+        // The caller still gets the history it asked for...
+        Assert.Equal("crew.yaml", Assert.Single(recorded.Entries).Target);
+
+        // ...and the refused write left nothing behind: the next load reads an empty
+        // history rather than a half-written one.
+        var reloaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+        Assert.Empty(reloaded.Entries);
     }
 
     [Fact]

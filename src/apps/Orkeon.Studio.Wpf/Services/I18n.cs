@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Resources;
 
@@ -16,6 +17,9 @@ namespace Orkeon.Studio.Wpf.Services;
 /// XAML: Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"
 /// C#:   I18n.T("Studio.Shell.TourSkip");  I18n.Instance.SetLanguage("es");
 /// </summary>
+[SuppressMessage("Minor Code Smell", "S101:Types should be named in PascalCase",
+    Justification = "I18n is the numeronym for internationalization; the rule's own suggestion "
+                  + "(18N) is not even a legal C# identifier, and the name is bound from XAML.")]
 public sealed class I18n : INotifyPropertyChanged
 {
     /// <summary>The shared instance.</summary>

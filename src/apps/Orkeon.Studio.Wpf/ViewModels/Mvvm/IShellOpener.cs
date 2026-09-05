@@ -26,5 +26,7 @@ public sealed class NullShellOpener : IShellOpener
     /// <inheritdoc />
     public void Open(string path)
     {
+        // Deliberately inert: the screens gate their "open the result" buttons on having an
+        // opener at all, so this one keeps those controls on screen and opens nothing.
     }
 }

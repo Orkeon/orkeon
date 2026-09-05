@@ -21,11 +21,16 @@ internal sealed record SavePreflight(IReadOnlyList<string> FieldErrors, IReadOnl
     /// <summary>True when the user should see the findings before confirming a save.</summary>
     public bool HasWarnings => Messages.Any(message => message.Severity == ValidationSeverity.Warning);
 
-    /// <summary>Every finding as a line, field errors first.</summary>
-    public IReadOnlyList<string> Lines =>
-        FieldErrors.Select(error => string.Create(CultureInfo.InvariantCulture, $"[ERROR] {error}"))
-            .Concat(MessageFormatter.Format(Messages))
-            .ToList();
+    /// <summary>
+    /// Every finding as a line, field errors first. Built once at construction: the
+    /// preflight is immutable, so a getter that rebuilt the list on every read only
+    /// handed each caller its own copy of the same text.
+    /// </summary>
+    public IReadOnlyList<string> Lines { get; } =
+    [
+        .. FieldErrors.Select(error => string.Create(CultureInfo.InvariantCulture, $"[ERROR] {error}")),
+        .. MessageFormatter.Format(Messages),
+    ];
 }
 
 /// <summary>

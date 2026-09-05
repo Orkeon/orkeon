@@ -60,18 +60,25 @@ public class CallbackHandlerTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task TheBaseHandler_CompletesEveryHook_WithoutOverrides()
+    public void TheBaseHandler_CompletesEveryHook_WithoutOverrides()
     {
         var handler = new BareHandler();
         var ct = TestContext.Current.CancellationToken;
 
-        await handler.OnStepStartedAsync(StepStarted(), ct);
-        await handler.OnStepCompletedAsync(StepCompleted(), ct);
-        await handler.OnTaskStartedAsync(TaskStarted(), ct);
-        await handler.OnTaskProgressAsync(TaskProgress(), ct);
-        await handler.OnTaskCompletedAsync(TaskCompleted(), ct);
-        await handler.OnFlowStepStartedAsync(FlowStepStarted(), ct);
-        await handler.OnFlowStepCompletedAsync(FlowStepCompleted(), ct);
+        System.Threading.Tasks.Task[] hooks =
+        [
+            handler.OnStepStartedAsync(StepStarted(), ct),
+            handler.OnStepCompletedAsync(StepCompleted(), ct),
+            handler.OnTaskStartedAsync(TaskStarted(), ct),
+            handler.OnTaskProgressAsync(TaskProgress(), ct),
+            handler.OnTaskCompletedAsync(TaskCompleted(), ct),
+            handler.OnFlowStepStartedAsync(FlowStepStarted(), ct),
+            handler.OnFlowStepCompletedAsync(FlowStepCompleted(), ct),
+        ];
+
+        // Every un-overridden hook hands back an already completed task: none is left
+        // pending, and none faulted on a context the base never reads.
+        Assert.All(hooks, hook => Assert.True(hook.IsCompletedSuccessfully));
     }
 
     [Fact]

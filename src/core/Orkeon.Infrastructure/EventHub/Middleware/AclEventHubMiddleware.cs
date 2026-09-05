@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Orkeon.Application.EventHub;
 using Orkeon.Domain.EventHub;
 using Orkeon.Application.EventHub.Exceptions;
@@ -72,37 +73,66 @@ internal sealed class AclEventHubMiddleware : IEventHubMiddleware
 
     private void Authorize(Message message)
     {
-        // A global publish carries no target, and a topic:// mailbox is a broadcast alias:
-        // nothing to authorize against — subscribers filter on their own side.
-        if (message.TargetCrewId is null && message.TargetMailbox is null)
-            return;
-        if (message.TargetMailbox is { Kind: MailboxKind.Topic })
-            return;
-
-        // Traffic from the process itself — the host's own code, the client bridge relaying
-        // its peer — is not a crew the ACL models. It cannot be named by a link, so under the
-        // closed policy it could be neither authorized nor granted, and the daemon's own
-        // gateway would refuse itself. Whoever runs the process already stands above the hub
-        // (they hold its stdin and its configuration); the same reasoning exempts the system
-        // caller in receive_message.
-        if (Orkeon.Domain.Common.CrewId.IsSystem(message.SourceCrewId))
+        if (!NeedsAuthorization(message))
             return;
 
         var declared = _links.LinksFor(message.SourceCrewId);
         if (declared.IsDefault)
         {
-            // Never declared. The policy arbitrates — and under the closed policy, the
-            // target's own declarations can still grant this sender an inbound link.
-            if (_policy.AllowsUndeclared || TargetGrantsInbound(message))
-                return;
-
-            throw new EventAclException(
-                $"Crew '{message.SourceCrewId}' declared no CrewLink, the deployment refuses "
-                + $"undeclared traffic, and the target grants it nothing; "
-                + $"'{Describe(message)}' was not delivered.");
+            AuthorizeUndeclaredSender(message);
+            return;
         }
 
         // Declared — possibly empty, which closes the door on everything.
+        if (AnyLinkAuthorizes(declared, message))
+            return;
+
+        throw new EventAclException(
+            $"No CrewLink of crew '{message.SourceCrewId}' authorizes '{Describe(message)}'.");
+    }
+
+    /// <summary>
+    /// Whether the message is one the ACL has anything to say about. A broadcast and the
+    /// process's own traffic are not refusable, so they never reach the link rules.
+    /// </summary>
+    private static bool NeedsAuthorization(Message message)
+    {
+        // A global publish carries no target, and a topic:// mailbox is a broadcast alias:
+        // nothing to authorize against — subscribers filter on their own side.
+        if (message.TargetCrewId is null && message.TargetMailbox is null)
+            return false;
+        if (message.TargetMailbox is { Kind: MailboxKind.Topic })
+            return false;
+
+        // Traffic from the process itself — the host's own code, the client bridge relaying
+        // its peer — is not a crew the ACL models. It cannot be named by a link, so under the
+        // closed policy it could be neither authorized nor granted, and the daemon's own
+        // gateway would refuse itself. Whoever runs the process already stands above the hub
+        // — they hold its stdin and its configuration — and the same reasoning exempts the
+        // system caller in receive_message.
+        return !Orkeon.Domain.Common.CrewId.IsSystem(message.SourceCrewId);
+    }
+
+    /// <summary>
+    /// The undeclared branch: the policy arbitrates, and under the closed policy the target's
+    /// own declarations can still grant this sender an inbound link. Throws when neither does.
+    /// </summary>
+    private void AuthorizeUndeclaredSender(Message message)
+    {
+        if (_policy.AllowsUndeclared || TargetGrantsInbound(message))
+            return;
+
+        throw new EventAclException(
+            $"Crew '{message.SourceCrewId}' declared no CrewLink, the deployment refuses "
+            + $"undeclared traffic, and the target grants it nothing; "
+            + $"'{Describe(message)}' was not delivered.");
+    }
+
+    /// <summary>
+    /// Whether any of the sender's own declarations authorizes this message.
+    /// </summary>
+    private bool AnyLinkAuthorizes(ImmutableArray<CrewLink> declared, Message message)
+    {
         var targetCrewName = ResolveTargetCrewName(message);
         foreach (var link in declared)
         {
@@ -114,17 +144,16 @@ internal sealed class AclEventHubMiddleware : IEventHubMiddleware
                 // Point-to-point mail: the link itself authorizes; its topic list constrains
                 // real topics, not the hub's synthetic ones.
                 if (link.Matches(mailbox, targetCrewName))
-                    return;
+                    return true;
                 continue;
             }
 
             // Crew-scoped publish: name and topic must both be authorized.
             if (link.MatchesCrewName(targetCrewName) && link.Authorizes(message.Topic))
-                return;
+                return true;
         }
 
-        throw new EventAclException(
-            $"No CrewLink of crew '{message.SourceCrewId}' authorizes '{Describe(message)}'.");
+        return false;
     }
 
     /// <summary>

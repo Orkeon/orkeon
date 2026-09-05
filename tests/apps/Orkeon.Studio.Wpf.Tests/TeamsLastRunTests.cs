@@ -56,7 +56,8 @@ public sealed class TeamsLastRunTests : IDisposable
                 .Add(Entry(team + Path.DirectorySeparatorChar, newer, RunOutcome.Success)),
         };
 
-        var teams = new TeamsViewModel(teamsRoot: _root, loadSessions: () => [], historyStore: store);
+        var teams = new TeamsViewModel(
+            new TeamsDependencies { TeamsRoot = _root, LoadSessions = () => [], HistoryStore = store });
         await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
 
         var card = Assert.Single(teams.Teams);
@@ -72,7 +73,8 @@ public sealed class TeamsLastRunTests : IDisposable
     public async Task A_team_that_never_ran_stays_silent()
     {
         NewTeam("muette");
-        var teams = new TeamsViewModel(teamsRoot: _root, loadSessions: () => [], historyStore: new FakeLaunchHistoryStore());
+        var teams = new TeamsViewModel(
+            new TeamsDependencies { TeamsRoot = _root, LoadSessions = () => [], HistoryStore = new FakeLaunchHistoryStore() });
         await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
 
         var card = Assert.Single(teams.Teams);
@@ -84,7 +86,7 @@ public sealed class TeamsLastRunTests : IDisposable
     public void The_card_carries_the_sidecar_mounts()
     {
         NewTeam("montee", "C:/docs:/docs:ro", "C:/out:/output:rw");
-        var teams = new TeamsViewModel(teamsRoot: _root, loadSessions: () => []);
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = _root, LoadSessions = () => [] });
 
         var card = Assert.Single(teams.Teams);
         Assert.True(card.HasMounts);

@@ -81,40 +81,50 @@ public static class CrewConfigurationMapper
         foreach (var agentConfig in configuration.Agents)
         {
             var resolvedTools = ResolveTools(agentConfig.Tools, toolResolver, logger);
-
-            var builder = new AgentBuilder()
-                .Role(AgentRole.From(agentConfig.Role))
-                .Goal(AgentGoal.From(agentConfig.Goal))
-                .AllowDelegation(agentConfig.AllowDelegation)
-                .MaxIterations(agentConfig.MaxIterations)
-                .MaxRpm(agentConfig.MaxRPM)
-                .Verbose(agentConfig.Verbose);
-
-            // AgentConfiguration.Backstory defaults to string.Empty and the AgentBackstory
-            // value object rejects blank values, so an empty backstory means "no backstory".
-            if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
-                builder.Backstory(agentConfig.Backstory);
-            if (agentConfig.SystemTemplate != null)
-                builder.SystemTemplate(agentConfig.SystemTemplate);
-            if (agentConfig.PromptTemplate != null)
-                builder.PromptTemplate(agentConfig.PromptTemplate);
-            if (agentConfig.ResponseTemplate != null)
-                builder.ResponseTemplate(agentConfig.ResponseTemplate);
-            if (resolvedTools.Count > 0)
-                builder.WithTools(resolvedTools);
-            if (agentConfig.Guardrails != null)
-                builder.WithGuardrails(agentConfig.Guardrails);
-            if (agentConfig.LlmConfig != null)
-                builder.WithLlmConfig(agentConfig.LlmConfig);
-            foreach (var attachment in agentConfig.KnowledgeAttachments)
-                builder.WithKnowledge(attachment);
-
-            var agent = builder.Build();
+            var agent = BuildAgent(agentConfig, resolvedTools);
 
             TryCreateLlmProvider(agent, agentConfig.LlmConfig, llmProviderFactory, logger);
             agentPostProcessor?.Invoke(agent);
             crew.AddAgent(agent.Id);
         }
+    }
+
+    /// <summary>
+    /// Materializes a single agent entity from its configuration block: the always-present
+    /// attributes are pushed onto the builder unconditionally, the optional ones only when
+    /// the configuration actually carries a value.
+    /// </summary>
+    private static DomainAgent BuildAgent(
+        AgentConfiguration agentConfig, List<Domain.Common.ITool> resolvedTools)
+    {
+        var builder = new AgentBuilder()
+            .Role(AgentRole.From(agentConfig.Role))
+            .Goal(AgentGoal.From(agentConfig.Goal))
+            .AllowDelegation(agentConfig.AllowDelegation)
+            .MaxIterations(agentConfig.MaxIterations)
+            .MaxRpm(agentConfig.MaxRPM)
+            .Verbose(agentConfig.Verbose);
+
+        // AgentConfiguration.Backstory defaults to string.Empty and the AgentBackstory
+        // value object rejects blank values, so an empty backstory means "no backstory".
+        if (!string.IsNullOrWhiteSpace(agentConfig.Backstory))
+            builder.Backstory(agentConfig.Backstory);
+        if (agentConfig.SystemTemplate != null)
+            builder.SystemTemplate(agentConfig.SystemTemplate);
+        if (agentConfig.PromptTemplate != null)
+            builder.PromptTemplate(agentConfig.PromptTemplate);
+        if (agentConfig.ResponseTemplate != null)
+            builder.ResponseTemplate(agentConfig.ResponseTemplate);
+        if (resolvedTools.Count > 0)
+            builder.WithTools(resolvedTools);
+        if (agentConfig.Guardrails != null)
+            builder.WithGuardrails(agentConfig.Guardrails);
+        if (agentConfig.LlmConfig != null)
+            builder.WithLlmConfig(agentConfig.LlmConfig);
+        foreach (var attachment in agentConfig.KnowledgeAttachments)
+            builder.WithKnowledge(attachment);
+
+        return builder.Build();
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort tool resolution: a tool resolver throwing for one name (unknown/misconfigured tool) is logged and skipped so a single bad tool name cannot abort mapping the whole crew configuration.")]

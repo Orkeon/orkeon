@@ -158,7 +158,10 @@ public sealed class SequentialProcessIntegrationTests : IDisposable
         var delegationProvider = new AgentDelegationToolsProvider(
             new MockAgentCommunicationService(), _mockExecutionService, new TestLogger<AgentDelegationToolsProvider>());
 
-        _strategy = new SequentialProcessStrategy(_taskRepository, _agentRepository, _mockExecutionService, _mockMemoryScope, delegationProvider, _logger);
+        _strategy = new SequentialProcessStrategy(
+            new CrewStrategyDependencies(_taskRepository, _agentRepository, _mockExecutionService, _mockMemoryScope),
+            delegationProvider,
+            _logger);
     }
 
     [Fact]

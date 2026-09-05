@@ -13,13 +13,16 @@ namespace Orkeon.Infrastructure.Tests.Stubs;
 /// </summary>
 public class NullCallbacksTests
 {
-    /// <summary>Debug-enabled logger recording formatted entries.</summary>
-    private sealed class ListLogger<T> : ILogger<T>
+    /// <summary>
+    /// Logger recording every formatted entry, and reporting itself enabled or disabled on
+    /// demand — a disabled one still records, so a missing IsEnabled guard shows up.
+    /// </summary>
+    private sealed class ListLogger<T>(bool enabled = true) : ILogger<T>
     {
         public List<string> Entries { get; } = [];
 
         public IDisposable? BeginScope<TState>(TState state) where TState : notnull => null;
-        public bool IsEnabled(LogLevel logLevel) => true;
+        public bool IsEnabled(LogLevel logLevel) => enabled;
         public void Log<TState>(LogLevel logLevel, EventId eventId, TState state,
             Exception? exception, Func<TState, Exception?, string> formatter) =>
             Entries.Add(formatter(state, exception));
@@ -98,10 +101,13 @@ public class NullCallbacksTests
     [Fact]
     public async Task TheHooks_StayQuiet_WhenDebugLoggingIsDisabled()
     {
-        var callback = new NullStepCallback(
-            Microsoft.Extensions.Logging.Abstractions.NullLogger<NullStepCallback>.Instance);
+        var logger = new ListLogger<NullStepCallback>(enabled: false);
+        var callback = new NullStepCallback(logger);
 
-        // Completes without logging — the IsEnabled guard short-circuits.
         await callback.OnStepStartAsync(BuildAgent(), BuildTask(), 0);
+
+        // The hook completes and writes nothing: the IsEnabled guard short-circuits before
+        // the entry is ever formatted.
+        Assert.Empty(logger.Entries);
     }
 }

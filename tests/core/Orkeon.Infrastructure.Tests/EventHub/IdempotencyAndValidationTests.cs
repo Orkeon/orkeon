@@ -58,7 +58,10 @@ public class IdempotencyAndValidationTests
         var message = Message();
 
         for (var subscriber = 0; subscriber < 3; subscriber++)
-            await stage.OnReceiveAsync(message, Pass, CancellationToken.None);
+        {
+            var delivered = await stage.OnReceiveAsync(message, Pass, CancellationToken.None);
+            Assert.Equal(message.Id, delivered.Id);
+        }
     }
 
     [Fact]
@@ -67,8 +70,12 @@ public class IdempotencyAndValidationTests
         var stage = new IdempotencyEventHubMiddleware();
         var message = Message(mailbox: MailboxAddress.Parse(new Uri("client://studio")));
 
-        await stage.OnPublishAsync(message, Pass, CancellationToken.None);
-        await stage.OnPublishAsync(message, Pass, CancellationToken.None);
+        var first = await stage.OnPublishAsync(message, Pass, CancellationToken.None);
+        var second = await stage.OnPublishAsync(message, Pass, CancellationToken.None);
+
+        // The publish path remembers nothing: both attempts reach the next stage.
+        Assert.Equal(message.Id, first.Id);
+        Assert.Equal(message.Id, second.Id);
     }
 
     [Fact]
@@ -85,7 +92,9 @@ public class IdempotencyAndValidationTests
         // The oldest identifier fell out of the window, so its message is no longer known to
         // have been delivered. A bounded memory is a leak that was chosen over a leak that
         // only shows up in production.
-        await stage.OnReceiveAsync(first, Pass, CancellationToken.None);
+        var redelivered = await stage.OnReceiveAsync(first, Pass, CancellationToken.None);
+
+        Assert.Equal(first.Id, redelivered.Id);
     }
 
     [Fact]
@@ -121,8 +130,10 @@ public class IdempotencyAndValidationTests
     {
         var stage = new ValidationEventHubMiddleware(await RegistryWith("orkeon.run.progress.v1"));
 
-        await stage.OnPublishAsync(
+        var message = await stage.OnPublishAsync(
             Message(schemaId: "orkeon.run.progress.v1"), Pass, CancellationToken.None);
+
+        Assert.Equal("orkeon.run.progress.v1", message.SchemaId);
     }
 
     [Fact]

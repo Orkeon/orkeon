@@ -203,15 +203,18 @@ internal sealed class StaleManifestHarness
         IDocumentStore store, bool reindex = false)
     {
         var pipeline = new DefaultIngestionPipeline(
-            new DocumentLoaderFactory([new TextFileLoader(_fs)]),
-            _chunkingFactory,
-            _embeddings,
-            store,
-            new DataValidationPipeline(
-                [new PromptInjectionDocumentValidator(), new ContentIntegrityValidator()],
-                new InMemoryQuarantineStore(),
-                new ProvenanceTracker()),
-            _manifestStore,
+            new IngestionPipelineDependencies
+            {
+                LoaderFactory = new DocumentLoaderFactory([new TextFileLoader(_fs)]),
+                ChunkingFactory = _chunkingFactory,
+                EmbeddingProvider = _embeddings,
+                Store = store,
+                Validation = new DataValidationPipeline(
+                    [new PromptInjectionDocumentValidator(), new ContentIntegrityValidator()],
+                    new InMemoryQuarantineStore(),
+                    new ProvenanceTracker()),
+                ManifestStore = _manifestStore,
+            },
             _options);
 
         return pipeline.IngestAsync(new IngestionRequest
