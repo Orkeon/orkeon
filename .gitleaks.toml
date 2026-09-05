@@ -1,11 +1,18 @@
 # gitleaks configuration for Orkeon
 #
-# Extends the bundled default ruleset (gitleaks' built-in detectors) and adds
-# a *targeted* allowlist for the single known false positive identified during
-# the open-source release audit (finding OSS-007 / chantier R1.8).
+# Extends the bundled default ruleset and allowlists the reviewed false positives
+# BY VALUE — never by path.
 #
-# IMPORTANT: this allowlist is intentionally scoped to one path. Do NOT widen it
-# into a global mask — every new secret-like match must be triaged, not silenced.
+# Why that matters, demonstrated rather than asserted (2026-09-05): this file used to
+# allowlist eight paths. A well-formed, high-entropy `ghp_...` token planted in one of
+# them was NOT reported, while the identical token in any other file was. A path entry
+# does not silence the finding that was triaged; it silences every future finding in that
+# file, including a real credential committed by accident years later. The eight paths are
+# gone. Each of the values below was read in its source before being listed, and the files
+# holding them are scanned like every other file in the repository.
+#
+# Adding an entry here is a triage decision, not a way to make CI green. If a new match is
+# a real credential, it gets rotated and purged from the history — it does not get listed.
 
 title = "Orkeon gitleaks config"
 
@@ -13,28 +20,54 @@ title = "Orkeon gitleaks config"
 [extend]
 useDefault = true
 
-[allowlist]
-description = "Known, reviewed false positives (scoped — do not generalize)"
-
-# examples/others/README.md is a curated catalogue of public TypeScript
-# repositories used as analysis benchmarks. It contains i18n / library jargon
-# that the default ruleset flags as a generic secret, but holds no credential.
-# Allowlisted by path only — all other paths remain fully scanned.
+# ── Fixture and documentation values ─────────────────────────────────────────────────
 #
-# The seven test files below contain intentionally FAKE placeholder credentials
-# (e.g. "sk-test-key-1234567890", "0123456789abcdef0123456789abcdef",
-# "tvly-test-api-key-12345"). Their purpose is precisely to exercise secret
-# *redaction*/sanitization, LLM-exchange log scrubbing, key-rotation naming, and
-# API-tool wiring — they hold no real credential. Each was triaged individually
-# during the open-source migration gitleaks run (14 generic-api-key hits); listed
-# by exact path, never a broad tests/ mask, so all other paths stay fully scanned.
-paths = [
-  '''examples/others/README\.md''',
-  '''tests/core/Orkeon\.Infrastructure\.Tests/Security/LogSanitizer/LogSanitizerTests\.cs''',
-  '''tests/core/Orkeon\.Infrastructure\.Tests/Security/Encryption/KeyRotationServiceTests\.cs''',
-  '''tests/core/Orkeon\.Infrastructure\.Tests/Logging/LlmLoggingDelegatingHandlerTests\.cs''',
-  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolTests\.cs''',
-  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolExtraTests\.cs''',
-  '''tests/tools/Orkeon\.Tools\.Web\.Tests/ImageGenerationToolPathTraversalTests\.cs''',
-  '''tests/tools/Orkeon\.Tools\.Web\.Tests/WebSearchToolTests\.cs''',
+# All of these are deliberately fake, and most of them exist precisely so a test can prove
+# that Orkeon DETECTS or REDACTS a credential-shaped string:
+#
+#   sk-abc123xyz4567890abcdefghij     LogSanitizerTests — the strings the sanitizer must
+#   sk-abcdefghij1234567890abcdef     scrub out of LLM exchange logs. Also used by
+#   0123456789abcdef0123456789abcdef  LlmLoggingDelegatingHandlerTests for the same reason.
+#   abcdefgh1234567890xyz
+#   sk-test-key-1234567890            the API key the three ImageGenerationTool test files
+#                                     wire into a fake HTTP handler.
+#   tvly-test-api-key-12345           the same, for WebSearchTool (Tavily).
+#   sk-abcdef1234567890               TeamCatalogTests writes credential-shaped fixtures
+#   totally-a-secret-1234             into temp files and asserts the team catalogue
+#   ${ORKEON_Llm__ApiKey}             refuses them; the third is the literal placeholder
+#                                     used as that test's clean case.
+#   sk-test1234567890abcdef           EnvironmentSecretProviderTests sets it into an env
+#                                     var to prove the provider reads it back.
+#   orkeon-encryption-key-v2          documentation of ProvisionNewKeyAsync(store, NAME).
+#                                     A key *name*, not a key — not a credential at all.
+[[allowlists]]
+description = "Reviewed fake fixture and documentation values (listed individually, never by path)"
+regexes = [
+  '''^"?sk-abc123xyz4567890abcdefghij"?$''',
+  '''^"?sk-abcdefghij1234567890abcdef"?$''',
+  '''^"?0123456789abcdef0123456789abcdef"?$''',
+  '''^"?abcdefgh1234567890xyz"?$''',
+  '''^"?sk-test-key-1234567890"?$''',
+  '''^"?tvly-test-api-key-12345"?$''',
+  '''^"?sk-abcdef1234567890"?$''',
+  '''^"?totally-a-secret-1234"?$''',
+  '''^"?\$\{ORKEON_Llm__ApiKey\}"?$''',
+  '''^"?sk-test1234567890abcdef"?$''',
+  '''^"?orkeon-encryption-key-v2"?$''',
 ]
+
+# ── A credential that is a variable, not a value ─────────────────────────────────────
+#
+# The `curl-auth-user` default rule fires on `curl -u <value>`. Every such call in this
+# repository passes a shell variable: `curl -sf -u "$SONAR_TOKEN:" ...` in
+# scripts/sonar-analyze.sh. The secret gitleaks extracts is the literal text
+# `"$SONAR_TOKEN:"`, so this pattern says one thing only — what was matched is a variable
+# being expanded, not a value. Verified: a real token pasted at the same spot still fires.
+#
+# Deliberately NOT scoped with `targetRules = ["curl-auth-user"]`: on gitleaks 8.28.0 a
+# targetRules-scoped [[allowlists]] entry is not applied to rules inherited from the
+# default set (with it, the six findings still fire; without it, they clear). The lost
+# scoping costs nothing here — no rule of any kind should report a bare `$VARIABLE`.
+[[allowlists]]
+description = "A credential that is a shell-variable expansion, never a literal"
+regexes = ['''^"?\$\{?[A-Za-z_][A-Za-z0-9_]*\}?:?"?$''']
