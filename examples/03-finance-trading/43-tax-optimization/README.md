@@ -1,6 +1,6 @@
 # 43. Optimisation Fiscale Multi-Juridictions
 
-> Agents specialises par juridiction analysent en parallele les implications fiscales. Le IConfigurationDiffService permet de comparer visuellement les scenarios entre juridictions. (Features planifiees: IConfigurationVersioning, IConfigurationDiffService)
+> Agents spécialisés par juridiction analysent en parallèle les implications fiscales. Le IConfigurationDiffService permet de comparer visuellement les scénarios entre juridictions. (Features planifiées: IConfigurationVersioning, IConfigurationDiffService)
 
 ## Quality
 

@@ -83,7 +83,7 @@ le bon profil.
 
 ## 4. L'exécuter
 
-Chaque exemple hors finance s'exécute via la **CLI `orkeon`**. Depuis un checkout
+Chaque exemple s'exécute via la **CLI `orkeon`**. Depuis un checkout
 des sources, invoquez-la via son projet (aucune installation — elle embarque aussi
 vos modifications locales) :
 

@@ -1,4 +1,4 @@
-# 18. Assistant de Redaction Academique
+# 18. Assistant de Rédaction Académique
 
 > 4-stage pipeline reproducing the academic writing workflow. The Citation Verifier automatically checks references via bibliographic APIs (CrossRef, Semantic Scholar). Each agent produces a typed deliverable feeding the next.
 

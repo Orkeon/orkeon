@@ -1,6 +1,6 @@
-# 56. Tuteur Adaptatif — Modele Apprenant Persistant
+# 56. Tuteur Adaptatif — Modèle Apprenant Persistant
 
-> Le modele de l'apprenant est persiste en SQLite et s'enrichit a chaque session. Le tuteur adapte non seulement le niveau mais aussi le style pedagogique memorise.
+> Le modèle de l'apprenant est persisté en SQLite et s'enrichit à chaque session. Le tuteur adapte non seulement le niveau mais aussi le style pédagogique mémorisé.
 
 ## Quality
 

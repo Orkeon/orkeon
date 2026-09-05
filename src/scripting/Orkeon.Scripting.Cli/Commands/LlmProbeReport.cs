@@ -87,22 +87,22 @@ internal static class LlmProbeReport
         ArgumentNullException.ThrowIfNull(results);
 
         var sb = new StringBuilder();
-        sb.Append("# Campagne ").Append(context.Provider).Append(" — ").Append(context.Model).AppendLine();
+        sb.Append("# Campaign ").Append(context.Provider).Append(" — ").Append(context.Model).AppendLine();
         sb.AppendLine();
-        sb.Append("- **Horodatage (UTC)** : ")
+        sb.Append("- **Timestamp (UTC)**: ")
           .AppendLine(context.TimestampUtc.ToString("u", CultureInfo.InvariantCulture));
-        sb.Append("- **Version Orkeon** : ").AppendLine(context.OrkeonVersion);
-        sb.Append("- **Commit** : ").AppendLine(string.IsNullOrWhiteSpace(context.Commit) ? "non fourni" : context.Commit);
-        sb.Append("- **Endpoint** : ").AppendLine(context.EndpointHost);
-        sb.Append("- **Température** : ")
+        sb.Append("- **Orkeon version**: ").AppendLine(context.OrkeonVersion);
+        sb.Append("- **Commit**: ").AppendLine(string.IsNullOrWhiteSpace(context.Commit) ? "not provided" : context.Commit);
+        sb.Append("- **Endpoint**: ").AppendLine(context.EndpointHost);
+        sb.Append("- **Temperature**: ")
           .AppendLine(context.Temperature.ToString("0.##", CultureInfo.InvariantCulture));
         if (!string.IsNullOrWhiteSpace(context.ThinkingEffort))
-            sb.Append("- **Effort de raisonnement (base)** : ").AppendLine(context.ThinkingEffort);
+            sb.Append("- **Reasoning effort (base)**: ").AppendLine(context.ThinkingEffort);
         if (!string.IsNullOrWhiteSpace(context.M7ThinkingEffort))
-            sb.Append("- **Effort de raisonnement (M7)** : ").AppendLine(context.M7ThinkingEffort);
-        sb.AppendLine("- **Qualité de preuve** : sortie archivée");
+            sb.Append("- **Reasoning effort (M7)**: ").AppendLine(context.M7ThinkingEffort);
+        sb.AppendLine("- **Evidence quality**: archived output");
         sb.AppendLine();
-        sb.AppendLine("| Mode | Résultat | Détail | Durée |");
+        sb.AppendLine("| Mode | Result | Detail | Duration |");
         sb.AppendLine("|---|---|---|---|");
 
         foreach (var result in results)

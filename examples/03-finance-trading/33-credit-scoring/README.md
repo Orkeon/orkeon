@@ -1,6 +1,6 @@
-# 33. Scoring de Credit Validation Humaine
+# 33. Scoring de Crédit Validation Humaine
 
-> Pipeline sequentiel avec validation humaine declenchee conditionnellement: uniquement si le score depasse un seuil de risque. Le LlmJudgeEvaluator assure la coherence des evaluations.
+> Pipeline séquentiel avec validation humaine déclenchée conditionnellement: uniquement si le score dépasse un seuil de risque. Le LlmJudgeEvaluator assure la cohérence des évaluations.
 
 ## Quality
 

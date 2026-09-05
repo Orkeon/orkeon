@@ -1,6 +1,6 @@
-# 37. Conformite KYC/AML Triple Securite
+# 37. Conformité KYC/AML Triple Sécurité
 
-> Chaque etape est auditee NIST, chaque donnee chiffree, chaque prompt protege contre l'injection. Le process hierarchique strict est pilote par un Compliance Manager.
+> Chaque étape est auditée NIST, chaque donnée chiffrée, chaque prompt protégé contre l'injection. Le process hiérarchique strict est piloté par un Compliance Manager.
 
 ## Quality
 

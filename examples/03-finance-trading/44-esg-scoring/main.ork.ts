@@ -3,7 +3,6 @@
 //
 // 44. Analyse ESG Scoring Reproductible — each ESG dimension is scored
 // independently by a specialized agent, then consolidated via EvaluationSuite.
-// Source: project/marketing/content-strategy/101-USE-CASES.md #44
 // Built-in tools are referenced by name; the trading tools come as TypeScript
 // instances from the shared _tools module (EX-01).
 

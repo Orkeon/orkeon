@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <!-- Exclure les artefacts de l'autre OS pour éviter les doublons CS0579/CS0757 -->
+    <!-- Exclude the other OS's artefacts to avoid duplicate CS0579/CS0757 -->
     <DefaultItemExcludes>$(DefaultItemExcludes);obj-linux/**;obj/**</DefaultItemExcludes>
     <!-- PUB-18 (P5 of the 2026-06-15 zero-warning campaign): the FULL analyzer set
          is on, permanently. Every family is either clean or explicitly arbitrated

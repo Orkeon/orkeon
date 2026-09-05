@@ -1,6 +1,5 @@
 # 79. Composition Musicale par Consensus Unanime
 # Use case: Musical composition by unanimous consensus across 5 musical dimension specialists
-# Source: project/marketing/content-strategy/101-USE-CASES.md #79
 
 name: "music-composition"
 goal: "Compose music through unanimous consensus of 5 specialists covering melody, harmony, rhythm, arrangement, and mixing"

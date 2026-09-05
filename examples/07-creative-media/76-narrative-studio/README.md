@@ -1,6 +1,6 @@
 # 76. Studio Narratif FlowEngine Cyclique
 
-> Le FlowEngine gere les cycles creation-revision. La Composite memory maintient la coherence sur 3 couches : session courante, univers narratif persistant, et chapitres episodiques.
+> Le FlowEngine gère les cycles création-révision. La Composite memory maintient la cohérence sur 3 couches : session courante, univers narratif persistant, et chapitres épisodiques.
 
 ## Quality
 

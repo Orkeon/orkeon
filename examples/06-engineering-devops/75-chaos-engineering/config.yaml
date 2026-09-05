@@ -1,6 +1,5 @@
 # 75. Chaos Engineering — Humain Approuve Chaque Injection
 # Use case: Chaos engineering with mandatory human approval before each fault injection and real-time impact observation
-# Source: project/marketing/content-strategy/101-USE-CASES.md #75
 
 name: "chaos-engineering"
 goal: "Run chaos engineering experiments with mandatory human approval for each injection and real-time impact monitoring"

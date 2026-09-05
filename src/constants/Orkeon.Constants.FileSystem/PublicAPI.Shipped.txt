@@ -1,1 +1,15 @@
 #nullable enable
+Orkeon.Constants.FileSystem.ConventionalNames
+Orkeon.Constants.FileSystem.RunnerVirtualRoots
+const Orkeon.Constants.FileSystem.ConventionalNames.SettingsFile = "appsettings.json" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.StateDirectory = ".orkeon" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Crew = "/crew" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Forge = "/forge" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.LlmLogs = "/llm-logs" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Output = "/output" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Sandbox = "/sandbox" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Script = "/script" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Workspace = "/workspace" -> string!
+static Orkeon.Constants.FileSystem.ConventionalNames.FlatCrewLayoutFiles.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.FileSystem.RunnerVirtualRoots.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
+static Orkeon.Constants.FileSystem.RunnerVirtualRoots.ForgeReserved.get -> System.Collections.Generic.IReadOnlyList<string!>!

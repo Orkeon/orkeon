@@ -1,6 +1,6 @@
-# 62. Detection de Plagiat Multi-Couches
+# 62. Détection de Plagiat Multi-Couches
 
-> Quatre angles d'analyse en parallele (style, sources, structure, semantique). L'analyse multi-couches elimine les faux positifs qu'un seul angle aurait produits. Scoring de confiance.
+> Quatre angles d'analyse en parallèle (style, sources, structure, sémantique). L'analyse multi-couches élimine les faux positifs qu'un seul angle aurait produits. Scoring de confiance.
 
 ## Quality
 

@@ -1,6 +1,6 @@
-# 45. Stress Testing Reglementaire Rejouable
+# 45. Stress Testing Réglementaire Rejouable
 
-> Scenarios de stress versionnes et rejouables. Le IConfigurationVersioning permet de rejouer n'importe quel scenario passe a l'identique. Conformite NIST complete. (Features planifiees: IConfigurationVersioning, IConfigurationRollbackService)
+> Scénarios de stress versionnés et rejouables. Le IConfigurationVersioning permet de rejouer n'importe quel scénario passe à l'identique. Conformité NIST complète. (Features planifiées: IConfigurationVersioning, IConfigurationRollbackService)
 
 ## Quality
 

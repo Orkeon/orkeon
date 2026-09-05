@@ -1,6 +1,6 @@
-# 55. Telemedecine Augmentee Streaming
+# 55. Télémédecine Augmentée Streaming
 
-> Quatre agents assistent le medecin pendant une consultation via streaming temps reel. Le medecin (HumanAgent) garde le controle total. La memoire de session est chiffree.
+> Quatre agents assistent le médecin pendant une consultation via streaming temps réel. Le médecin (HumanAgent) garde le contrôle total. La mémoire de session est chiffrée.
 
 ## Quality
 

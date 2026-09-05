@@ -1,6 +1,5 @@
 # 52. Pharmacovigilance Deduplication Semantique
 # Use case: Monitoring parallele de 3 sources avec deduplication semantique vectorielle et rate limiting
-# Source: project/marketing/content-strategy/101-USE-CASES.md #52
 
 name: "pharmacovigilance"
 goal: "Monitor drug safety across multiple sources with semantic deduplication to eliminate duplicate adverse event reports"

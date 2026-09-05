@@ -68,7 +68,7 @@ The multi-app archive is the only one that carries more than the CLI:
 
 | Command | What it runs | Runtime |
 |---|---|---|
-| `orkeon` | **The main CLI and default entry point** — `orkeon run <config.yaml>` for any non-finance example, or `orkeon run script.ork.ts` for the scripting DSL | self-contained |
+| `orkeon` | **The main CLI and default entry point** — `orkeon run <config.yaml>` for any YAML crew, or `orkeon run script.ork.ts` for the scripting DSL | self-contained |
 | `orkeon-slim` | The same CLI, framework-dependent and much smaller | needs .NET 10 |
 | `orkeon-repl` | Full interactive REPL console (all built-in tools, code analysis, local embeddings) | needs .NET 10 |
 | `orkeon-host` | The service host daemon — registers crews and serves them long-running (systemd unit, Windows service via the bundled script or its own per-machine MSI, chat gateway, Discord channel; see [the service host](../architecture/service-host.md)) | self-contained |
@@ -427,13 +427,23 @@ docker run --rm \
 
 The entry point **is** `orkeon`, so everything after the image name is CLI
 arguments (`run <config> …`). To launch a different runner, set the
-`ORKEON_RUNNER` env var — `trading`, `repl`, or `shell`:
+`ORKEON_RUNNER` env var — `orkeon` (the default), `repl` or `shell`; any other
+value is rejected with a usage line:
 
 ```bash
-docker run --rm -e ORKEON_RUNNER=trading \
+docker run -it --rm -e ORKEON_RUNNER=repl \
+  -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
+  ghcr.io/orkeon/orkeon-runners
+```
+
+There is no runner per example family: the finance crews are `main.ork.ts`
+scripts the same `orkeon` CLI runs, like every other example.
+
+```bash
+docker run --rm \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
   ghcr.io/orkeon/orkeon-runners \
-  --config examples/03-finance-trading/31-algo-trading/config.yaml \
+  run examples/03-finance-trading/31-algo-trading/main.ork.ts \
   --settings /app/appsettings.local.json
 ```
 

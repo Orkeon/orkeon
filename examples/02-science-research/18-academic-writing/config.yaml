@@ -1,6 +1,5 @@
 # 18. Assistant de Redaction Academique
 # Use case: 4-stage academic writing pipeline with automatic reference verification via bibliographic APIs
-# Source: project/marketing/content-strategy/101-USE-CASES.md #18
 
 name: "academic-writing"
 goal: "Produce academic papers through a 4-stage pipeline: structure planning, writing, citation verification, and style editing"

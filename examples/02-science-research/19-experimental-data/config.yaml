@@ -1,6 +1,5 @@
 # 19. Analyse de Donnees Experimentales
 # Use case: Parallel-then-sequential experimental data analysis with sandbox code execution
-# Source: project/marketing/content-strategy/101-USE-CASES.md #19
 
 name: "experimental-data"
 goal: "Analyze experimental data through parallel statistical analysis and visualization, then sequential interpretation and report writing"

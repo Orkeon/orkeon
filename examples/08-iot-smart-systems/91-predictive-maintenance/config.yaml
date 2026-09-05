@@ -1,6 +1,5 @@
 # 91. Maintenance Predictive — ObserverAgent par Machine
 # Use case: predictive maintenance with one observer per critical machine, episodic memory for failure pattern prediction
-# Source: project/marketing/content-strategy/101-USE-CASES.md #91
 
 name: "predictive-maintenance"
 goal: "Deploy observer agents per critical machine to predict failures by comparing current sensor patterns against episodic memory of past incidents, then plan and prioritize maintenance interventions"

@@ -1,6 +1,6 @@
-# 80. Direction Artistique Delegation Report
+# 80. Direction Artistique Délégation Report
 
-> Processus hierarchique creatif avec un DA Manager. Les DelegationPerformanceReport mesurent l'efficacite de chaque creatif. Les DelegationEvents trackent chaque delegation.
+> Processus hiérarchique créatif avec un DA Manager. Les DelegationPerformanceReport mesurent l'efficacité de chaque créatif. Les DelegationEvents trackent chaque délégation.
 
 ## Quality
 

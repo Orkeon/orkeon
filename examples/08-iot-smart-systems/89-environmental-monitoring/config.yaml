@@ -1,6 +1,5 @@
 # 89. Monitoring Environnemental — ObserverAgent + Broadcast Alertes
 # Use case: parallel environmental monitoring with observer-triggered alerts broadcast to all agents
-# Source: project/marketing/content-strategy/101-USE-CASES.md #89
 
 name: "environmental-monitoring"
 goal: "Monitor four environmental dimensions (air, water, biodiversity, soil) in parallel with an observer agent that triggers broadcast alerts when thresholds are exceeded and produces a composite environmental score"

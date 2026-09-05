@@ -1,6 +1,6 @@
 # 44. Analyse ESG Scoring Reproductible
 
-> Chaque dimension ESG est evaluee independamment par un agent specialise, puis consolidee via EvaluationSuite. Le scoring normalise est reproductible et benchmarkable.
+> Chaque dimension ESG est évaluée indépendamment par un agent spécialisé, puis consolidée via EvaluationSuite. Le scoring normalisé est reproductible et benchmarkable.
 
 ## Quality
 

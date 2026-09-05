@@ -1906,6 +1906,8 @@ Orkeon.Domain.Crew.ValueObjects.CrewMetadata
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.<Clone>$() -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.Add(string! key, object! value) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
+Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheHitTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
+Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheMissTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCompletionTokens(int tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddDuration(string! key, System.TimeSpan duration) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
 Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddExecutionId(string! executionId) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
@@ -2329,8 +2331,9 @@ Orkeon.Domain.FileSystem.FileSystemRegistry.Dispose() -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.FileSystemRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.FileSystem.FileSystemMount!>! mounts) -> void
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetAllMountsInternal() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
 Orkeon.Domain.FileSystem.FileSystemRegistry.GetAvailableMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountInfo!>!
-Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight) -> string!
-Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath) -> string?
+Orkeon.Domain.FileSystem.FileSystemRegistry.GetMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!
+Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!
+Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath, bool includeInternal = false) -> string?
 Orkeon.Domain.FileSystem.IFileSystemScope
 Orkeon.Domain.FileSystem.IFileSystemScope.Current.get -> Orkeon.Domain.FileSystem.FileSystemRegistry?
 Orkeon.Domain.FileSystem.IFileSystemScope.Enter(Orkeon.Domain.FileSystem.FileSystemRegistry! registry) -> System.IDisposable!
@@ -2371,6 +2374,7 @@ Orkeon.Domain.FileSystem.MountInfo.Visibility.init -> void
 Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.MountVisibility.AgentFacing = 0 -> Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.MountVisibility.Internal = 1 -> Orkeon.Domain.FileSystem.MountVisibility
+Orkeon.Domain.FileSystem.PhysicalPathContainment
 Orkeon.Domain.FileSystem.SubPathOverride
 Orkeon.Domain.FileSystem.SubPathOverride.<Clone>$() -> Orkeon.Domain.FileSystem.SubPathOverride!
 Orkeon.Domain.FileSystem.SubPathOverride.Deconstruct(out string! RelativePath, out Orkeon.Domain.FileSystem.FileAccessRights Rights) -> void
@@ -4039,6 +4043,8 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Tools.get -> System.Collection
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Tools.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TopP.get -> double
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.TopP.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride.Cache.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig?
@@ -5584,10 +5590,13 @@ const Orkeon.Domain.Constants.Serialization.SerializationDefaults.JsonMaxDepth =
 const Orkeon.Domain.Constants.Task.TaskDefaults.ExpectedOutputMaxLength = 4096 -> int
 const Orkeon.Domain.Constants.Task.TaskDefaults.TaskDescriptionMaxLength = 32768 -> int
 const Orkeon.Domain.Constants.Validation.ValidationDefaults.RegexTimeoutSeconds = 5 -> int
+const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey = "cacheHitTokens" -> string!
+const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey = "cacheMissTokens" -> string!
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CompletionTokensKey = "completionTokens" -> string!
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.PromptTokensKey = "promptTokens" -> string!
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.TotalTokensKey = "totalTokens" -> string!
 const Orkeon.Domain.EventHub.CrewLink.ClientPrefix = "client:" -> string!
+const Orkeon.Domain.FileSystem.FileSystemMount.QuoteCharacter = '"' -> char
 const Orkeon.Domain.Graph.StateGraph<TState>.EndNode = "__end__" -> string!
 const Orkeon.Domain.Graph.StateGraph<TState>.StartNode = "__start__" -> string!
 const Orkeon.Domain.Knowledge.KnowledgeAttachment.DefaultTopK = 5 -> int
@@ -7003,10 +7012,15 @@ static Orkeon.Domain.EventHub.CrewLink.ForClient(string! name) -> string!
 static Orkeon.Domain.EventHub.CrewLink.operator !=(Orkeon.Domain.EventHub.CrewLink? left, Orkeon.Domain.EventHub.CrewLink? right) -> bool
 static Orkeon.Domain.EventHub.CrewLink.operator ==(Orkeon.Domain.EventHub.CrewLink? left, Orkeon.Domain.EventHub.CrewLink? right) -> bool
 static Orkeon.Domain.FileSystem.FileSystemMount.Parse(string! mountString) -> Orkeon.Domain.FileSystem.FileSystemMount!
+static Orkeon.Domain.FileSystem.FileSystemMount.Quote(string! segment) -> string!
+static Orkeon.Domain.FileSystem.FileSystemMount.TryGetBasePath(string! mountString) -> string?
+static Orkeon.Domain.FileSystem.FileSystemMount.WithBasePath(string! mountString, string! basePath) -> string!
 static Orkeon.Domain.FileSystem.FileSystemMount.operator !=(Orkeon.Domain.FileSystem.FileSystemMount? left, Orkeon.Domain.FileSystem.FileSystemMount? right) -> bool
 static Orkeon.Domain.FileSystem.FileSystemMount.operator ==(Orkeon.Domain.FileSystem.FileSystemMount? left, Orkeon.Domain.FileSystem.FileSystemMount? right) -> bool
 static Orkeon.Domain.FileSystem.MountInfo.operator !=(Orkeon.Domain.FileSystem.MountInfo? left, Orkeon.Domain.FileSystem.MountInfo? right) -> bool
 static Orkeon.Domain.FileSystem.MountInfo.operator ==(Orkeon.Domain.FileSystem.MountInfo? left, Orkeon.Domain.FileSystem.MountInfo? right) -> bool
+static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System.StringComparison
+static Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(string! path, string! directory) -> bool
 static Orkeon.Domain.FileSystem.SubPathOverride.operator !=(Orkeon.Domain.FileSystem.SubPathOverride? left, Orkeon.Domain.FileSystem.SubPathOverride? right) -> bool
 static Orkeon.Domain.FileSystem.SubPathOverride.operator ==(Orkeon.Domain.FileSystem.SubPathOverride? left, Orkeon.Domain.FileSystem.SubPathOverride? right) -> bool
 static Orkeon.Domain.FileSystem.VirtualEnumerationOptions.operator !=(Orkeon.Domain.FileSystem.VirtualEnumerationOptions? left, Orkeon.Domain.FileSystem.VirtualEnumerationOptions? right) -> bool

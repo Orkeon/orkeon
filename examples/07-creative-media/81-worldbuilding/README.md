@@ -1,6 +1,6 @@
-# 81. Worldbuilding Coherent Consensus Croise
+# 81. Worldbuilding Cohérent Consensus Croisé
 
-> Quatre agents construisent un monde fictif en parallele puis valident la coherence croisee par consensus. La memoire composite maintient la bible du monde.
+> Quatre agents construisent un monde fictif en parallèle puis valident la cohérence croisée par consensus. La mémoire composite maintient la bible du monde.
 
 ## Quality
 

@@ -1,4 +1,4 @@
-# 95. Gestion de Crise — Broadcast + Priorite Critique
+# 95. Gestion de Crise — Broadcast + Priorité Critique
 
 > Multi-agency emergency coordination. Broadcast protocol ensures universal alert diffusion. TaskPriority.Critical guarantees immediate handling of life-threatening tasks.
 

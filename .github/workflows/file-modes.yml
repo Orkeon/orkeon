@@ -1,0 +1,90 @@
+# Executable-bit gate — makes the 5th item of PULL_REQUEST_TEMPLATE.md true.
+#
+# The template promises "the checklist mirrors what CI enforces", and one of its lines
+# asks for shell/shebang scripts to be committed executable. Nothing enforced it. This
+# workflow does, and it matters because the symptom is invisible on the machine that
+# introduces it: this tree is often edited from a Windows/NTFS mount where `chmod +x`
+# does not persist and every file reports rwxrwxrwx, so a script committed as 100644
+# looks fine locally and dies with "permission denied" on the first macOS/Linux clone.
+#
+# The gate reads the git INDEX (`git ls-files -s`), never the working tree — the index
+# mode is the only thing a clone actually restores. Fix an offender with:
+#
+#     git update-index --chmod=+x path/to/script.sh
+#
+# Two candidate sets, matching the rule in CLAUDE.md: every tracked *.sh, plus every
+# tracked text file whose FIRST line is a shebang (a .py/.mjs meant to be run directly).
+# A script with no shebang, invoked only as `python script.py`, may stay 100644.
+# Submodules (mode 160000) and symlinks (120000) are skipped: their entries carry no
+# executable bit of their own, and the submodules run this same rule in their own CI.
+name: File modes
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+permissions:
+  contents: read
+concurrency:
+  group: file-modes-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  exec-bit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Every shell/shebang script is committed executable
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          # The ONE deliberate exception: a launcher TEMPLATE, never executed in place.
+          # package-installers.sh renders it through sed into $ROOT/bin/<app> and chmods
+          # the RESULT (the `chmod +x "$ROOT/bin/$name" ...` line there), so the template
+          # itself must stay a plain data file.
+          EXEMPT='scripts/installer-assets/wrapper.sh.tmpl'
+
+          # Index modes, read once.
+          declare -A MODE
+          while IFS=$'\t' read -r meta path; do MODE["$path"]="${meta%% *}"; done < <(git ls-files -s)
+
+          # Candidates: every *.sh, plus every text file whose line 1 is a shebang
+          # (`git grep -I` skips binaries, so no false positive on a stray 0x23 0x21).
+          candidates="$( { git ls-files -- '*.sh'
+                           git grep -I -n --no-color -e '^#!' -- . | awk -F: '$2 == 1 { print $1 }'
+                         } | sort -u )"
+
+          offenders=""
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            [ "$path" = "$EXEMPT" ] && continue
+            mode="${MODE[$path]:-}"
+            case "$mode" in ""|100755|160000|120000) continue ;; esac
+            offenders="${offenders}${path} (committed as ${mode})"$'\n'
+          done <<< "$candidates"
+
+          # Keep the exception from rotting: if the template is gone, or has itself become
+          # executable, the EXEMPT line above is stale and must be removed.
+          stale=""
+          if ! git ls-files --error-unmatch -- "$EXEMPT" >/dev/null 2>&1; then
+            stale="$EXEMPT no longer exists — drop it from EXEMPT in this workflow."
+          elif [ "${MODE[$EXEMPT]:-}" = "100755" ]; then
+            stale="$EXEMPT is now committed executable — drop it from EXEMPT in this workflow."
+          fi
+
+          rc=0
+          if [ -n "$offenders" ]; then
+            echo "::error::Shell/shebang scripts committed WITHOUT the executable bit (they fail on a macOS/Linux clone):"
+            printf '%s' "$offenders" | sed 's/^/  - /'
+            echo "Fix: git update-index --chmod=+x <path>   (then commit the mode change)"
+            rc=1
+          fi
+          if [ -n "$stale" ]; then
+            echo "::error::$stale"
+            rc=1
+          fi
+          if [ "$rc" -eq 0 ]; then
+            echo "Executable-bit check passed: every tracked shell/shebang script is 100755."
+          fi
+          exit $rc

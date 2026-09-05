@@ -7,18 +7,34 @@ It owns the wiring order that a working runtime needs — LLM provider, core ser
 suites, the virtual file system, and the DI-backed tool registry — plus the end-to-end execution flows
 (one-shot kickoff, interactive loop, tool listing) used by every Orkeon runner and CLI.
 
-It is consumed by the runner harness and by external hosts that reference it as a package. This page documents its public bootstrap surface.
+Inside this repository it is consumed by `Orkeon.Scripting.Cli` (the `orkeon` tool) and by
+`Orkeon.Host` (the `orkeon-host` daemon). It is **not** distributed as a NuGet package — see
+[Distribution](#distribution) below. This page documents its public bootstrap surface.
 
-## Package
+## Distribution
+
+**`Orkeon.Hosting` is not a NuGet package.** Its csproj sets `IsPackable=false`, and the
+[publication matrix](publication-matrix.md#discontinued-packages) lists it under *Discontinued
+packages*: it is pushed neither to NuGet.org nor to GitHub Packages, so
+`dotnet add package Orkeon.Hosting` cannot resolve (`NU1101`).
+
+It is not embedded in the `Orkeon` umbrella package either. `src/packaging/Orkeon/Orkeon.csproj`
+embeds eleven assemblies — `Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`,
+`Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`,
+`Orkeon.Analysis{,.Abstractions}`, `Orkeon.Rag{,.Abstractions}` — and `Orkeon.Hosting` is not one
+of them.
 
 | | |
 |---|---|
-| PackageId | `Orkeon.Hosting` |
-| Depends on | the core `Orkeon.*` libraries (Domain, Application, Infrastructure, Analysis, Scripting) and eight of the nine `Orkeon.Tools.*` suites (`Orkeon.Tools.Rag` is deliberately absent — RAG stays opt-in), plus `CommandLineParser` and `Microsoft.Extensions.Hosting` |
-| Packs via | `.github/workflows/publish.yml` (`dotnet pack Orkeon.sln`) — the whole solution is packed on a `v*` tag, so `Orkeon.Hosting` is included automatically |
+| Assembly | `Orkeon.Hosting.dll` (`src/hosting/Orkeon.Hosting`) |
+| Packable | no — `IsPackable=false`, on no feed |
+| Depends on | the core `Orkeon.*` libraries (Domain, Application, Infrastructure, Analysis, Scripting), the `Orkeon.Constants.*` satellites, and eight of the nine `Orkeon.Tools.*` suites (`Orkeon.Tools.Rag` is deliberately absent — RAG stays opt-in), plus `CommandLineParser` and `Microsoft.Extensions.Hosting` |
+| Ships through | the **CLI and installer channels** only: the `orkeon` dotnet tool (`Orkeon.Scripting.Cli`) and the `release.yml` installer archives / `.deb` / MSIs, where `Orkeon.Hosting.dll` sits next to `orkeon` and `orkeon-host` as a private implementation assembly — never as a reference a consumer adds |
 
-The `Orkeon.*` project references become package dependencies in the nuspec; the VFS-compliance analyzer
-reference is `PrivateAssets=all` and is correctly excluded from the package.
+**Building an external host against it** therefore means building from source: clone the
+repository and add a `ProjectReference` to `src/hosting/Orkeon.Hosting/Orkeon.Hosting.csproj`.
+The supported package surface for consumers is the `Orkeon` umbrella (plus `Orkeon.Tools` and the
+opt-ins); `Orkeon.Hosting` is an internal bootstrap layer, documented here for in-tree callers.
 
 ## `RunnerHost.Build`
 

@@ -1,4 +1,4 @@
-# 99. Jury Ethique Multi-Perspectives pour Decisions IA
+# 99. Jury Éthique Multi-Perspectives pour Décisions IA
 
 > Five agents embodying ethical frameworks analyze AI decision impact in parallel. No autonomous decisions are made. The human decides, informed by five perspectives and historical decision outcomes.
 

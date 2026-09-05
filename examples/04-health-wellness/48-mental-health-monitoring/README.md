@@ -1,6 +1,6 @@
-# 48. Monitoring Bien-etre Mental
+# 48. Monitoring Bien-être Mental
 
-> Donnees ultra-sensibles protegees par trois couches: chiffrement au repos, validation humaine systematique, prevention d'injection de prompts. L'ObserverAgent declenche les alertes.
+> Données ultra-sensibles protégées par trois couches: chiffrement au repos, validation humaine systématique, prévention d'injection de prompts. L'ObserverAgent déclenche les alertes.
 
 ## Quality
 

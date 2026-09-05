@@ -1,6 +1,5 @@
 # 30. Resume Adaptatif au Profil Lecteur
 # Use case: Single agent that adapts summarization style based on reader profile stored in long-term memory
-# Source: project/marketing/content-strategy/101-USE-CASES.md #30
 
 name: "adaptive-summary"
 goal: "Produce summaries that automatically adapt to the reader's profile (expert vs novice) using long-term memory for preference learning"

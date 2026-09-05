@@ -1,4 +1,4 @@
-# 23. Analyse Genomique avec Chunking
+# 23. Analyse Génomique avec Chunking
 
 > Three bioinformatics agents process long genomic sequences. ITextChunker splits FASTA files to respect context window limits. All data is encrypted at rest.
 

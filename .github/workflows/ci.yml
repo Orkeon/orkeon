@@ -39,10 +39,10 @@ jobs:
     steps:
       - name: Free up runner disk space
         run: |
-          echo "Avant:"; df -h / | tail -1
+          echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "Après:"; df -h / | tail -1
+          echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       # Bilingual docs gate (DOC-01/C3): every docs/**.md needs its docs/fr/ mirror
       # (and root community files their *.fr.md). Cheap, so it runs before the build.

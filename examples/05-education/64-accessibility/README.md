@@ -1,6 +1,6 @@
-# 64. Accessibilite Universelle des Contenus
+# 64. Accessibilité Universelle des Contenus
 
-> Quatre agents transforment en parallele un contenu en 4 formats accessibles simultanement. Le batch execution maximise la vitesse. Chaque format est valide independamment.
+> Quatre agents transforment en parallèle un contenu en 4 formats accessibles simultanément. Le batch execution maximise la vitesse. Chaque format est validé indépendamment.
 
 ## Quality
 

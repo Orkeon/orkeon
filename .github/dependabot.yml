@@ -26,13 +26,19 @@ updates:
       day: monday
 
   # Base images of the root Dockerfile and Dockerfile.runners.
+  #
+  # NOTE (owner action, LOT K): both files pin `mcr.microsoft.com/dotnet/{sdk,runtime}:10.0`
+  # — a MUTABLE tag. Dependabot only opens a PR when a NEWER tag appears, so nothing here
+  # is bumped for the whole 10.0 lifetime while the image behind the tag keeps changing,
+  # and the published GHCR image has no reproducible base. Fix: append the resolved digest
+  # (`10.0@sha256:<digest>`), which is also the form Dependabot then keeps up to date.
   - package-ecosystem: docker
     directory: /
     schedule:
       interval: weekly
       day: monday
 
-  # Base images of the deploy stack (Dockerfile.host).
+  # Base images of the deploy stack (Dockerfile.host) — same mutable-tag caveat as above.
   - package-ecosystem: docker
     directory: /deploy
     schedule:

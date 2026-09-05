@@ -1,6 +1,6 @@
-# 32. Detection de Fraude en Temps Reel
+# 32. Détection de Fraude en Temps Réel
 
-> L'ObserverAgent surveille un flux continu de transactions. Le Pattern Agent detecte les anomalies par comparaison semantique vectorielle avec les patterns connus en memoire Redis chiffree.
+> L'ObserverAgent surveille un flux continu de transactions. Le Pattern Agent détecte les anomalies par comparaison sémantique vectorielle avec les patterns connus en mémoire Redis chiffrée.
 
 ## Quality
 

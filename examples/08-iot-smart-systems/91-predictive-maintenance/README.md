@@ -1,4 +1,4 @@
-# 91. Maintenance Predictive — ObserverAgent par Machine
+# 91. Maintenance Prédictive — ObserverAgent par Machine
 
 > One ObserverAgent per critical machine. Episodic memory per machine enables failure prediction by pattern comparison. TaskPriority ensures critical machines are serviced first.
 

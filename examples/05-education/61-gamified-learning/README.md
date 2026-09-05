@@ -1,6 +1,6 @@
-# 61. Plateforme Learning Gamifie avec Hooks
+# 61. Plateforme Learning Gamifié avec Hooks
 
-> Le FlowEngine gere une progression par niveaux avec deverrouillage. Les CrewHooks declenchent les recompenses (XP, badges). La memoire episodique trace les accomplissements.
+> Le FlowEngine gère une progression par niveaux avec déverrouillage. Les CrewHooks déclenchent les récompenses (XP, badges). La mémoire épisodique trace les accomplissements.
 
 ## Quality
 

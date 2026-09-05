@@ -1,6 +1,6 @@
 # 51. Coordination de Soins Broadcast
 
-> Un ManagerAgent coordonne les intervenants multi-disciplinaires. Le protocole Broadcast garantit que toute mise a jour du plan de soins est communiquee a tous les agents sans exception.
+> Un ManagerAgent coordonne les intervenants multi-disciplinaires. Le protocole Broadcast garantit que toute mise à jour du plan de soins est communiquée à tous les agents sans exception.
 
 ## Quality
 

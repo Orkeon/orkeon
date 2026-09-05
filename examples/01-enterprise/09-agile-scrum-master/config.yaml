@@ -1,6 +1,5 @@
 # 9. Gestion de Projet Agile — Scrum Master IA
 # Use case: AI Scrum Master that decomposes epics and assigns tasks via semantic embedding matching
-# Source: project/marketing/content-strategy/101-USE-CASES.md #9
 
 name: "agile-scrum-master"
 goal: "Decompose epics into tasks and assign them to the best-qualified agents using semantic embedding-based skill matching"

@@ -1,6 +1,8 @@
-# Slack Tools for Orkeon
+# Slack tools (Orkeon.Tools.Web)
 
-This directory contains two complementary Slack tools that enable Orkeon agents to interact with Slack channels.
+`Orkeon.Tools.Web` ships two complementary Slack tools that let Orkeon agents interact with Slack
+channels: `slack_send_message` (`SlackTool`) and `slack_read_messages` (`SlackReadTool`). Both are
+opt-in — nothing registers them unless the host calls the DI extensions below.
 
 ## Tools
 
@@ -261,7 +263,7 @@ await slackTool.CallAsync(replyRequest);
 
 ## Testing
 
-Unit tests are provided in `../Orkeon.Tools.Web.Tests/SlackToolTests.cs`.
+Unit tests live in `tests/tools/Orkeon.Tools.Web.Tests/SlackToolTests.cs`.
 
 Run tests with:
 ```bash

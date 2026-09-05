@@ -1,6 +1,5 @@
 # 56. Tuteur Adaptatif — Modèle Apprenant Persistant
 # Use case: Adaptive tutor with persistent learner model that enriches across sessions
-# Source: project/marketing/content-strategy/101-USE-CASES.md #56
 
 name: "adaptive-tutor"
 goal: "Provide personalized tutoring that adapts level and pedagogical style based on a persistent learner model"

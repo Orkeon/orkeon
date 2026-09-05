@@ -1,4 +1,4 @@
-# 20. Veille Brevets avec Deduplication Semantique
+# 20. Veille Brevets avec Déduplication Sémantique
 
 > Continuous patent monitoring with Redis vector memory. Each new patent is compared semantically against existing entries via cosine similarity before addition. Zero duplicates guaranteed.
 

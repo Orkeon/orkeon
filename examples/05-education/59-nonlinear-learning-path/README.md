@@ -1,6 +1,6 @@
-# 59. Parcours de Formation Non-Lineaire
+# 59. Parcours de Formation Non-Linéaire
 
-> Le FlowEngine gere un parcours a branchements : si l'apprenant echoue, le flow bifurque vers du renforcement. Si il reussit, il avance. Le LlmFlowStep prend les decisions de branchement.
+> Le FlowEngine gère un parcours à branchements : si l'apprenant échoue, le flow bifurque vers du renforcement. Si il réussit, il avance. Le LlmFlowStep prend les décisions de branchement.
 
 ## Quality
 

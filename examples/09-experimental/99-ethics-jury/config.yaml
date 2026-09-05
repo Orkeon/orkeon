@@ -1,6 +1,5 @@
 # 99. Jury Ethique Multi-Perspectives pour Decisions IA
 # Use case: five agents embodying ethical frameworks analyze AI decisions in parallel, human makes the final call
-# Source: project/marketing/content-strategy/101-USE-CASES.md #99
 
 name: "ethics-jury"
 goal: "Evaluate AI decisions through five parallel ethical frameworks (utilitarian, deontological, care ethics, distributive justice, virtue ethics), synthesize perspectives, and present to a human decision-maker who makes the final binding decision with full audit trail"

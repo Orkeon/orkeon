@@ -1,19 +1,1 @@
 #nullable enable
-const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheHitTokensKey = "cacheHitTokens" -> string!
-const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CacheMissTokensKey = "cacheMissTokens" -> string!
-Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheHitTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
-Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder.AddCacheMissTokens(long tokens) -> Orkeon.Domain.Crew.ValueObjects.CrewMetadata.Builder!
-const Orkeon.Domain.FileSystem.FileSystemMount.QuoteCharacter = '"' -> char
-static Orkeon.Domain.FileSystem.FileSystemMount.TryGetBasePath(string! mountString) -> string?
-static Orkeon.Domain.FileSystem.FileSystemMount.WithBasePath(string! mountString, string! basePath) -> string!
-static Orkeon.Domain.FileSystem.FileSystemMount.Quote(string! segment) -> string!
-Orkeon.Domain.FileSystem.PhysicalPathContainment
-static Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(string! path, string! directory) -> bool
-static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System.StringComparison
-*REMOVED*Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight) -> string!
-*REMOVED*Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath) -> string?
-Orkeon.Domain.FileSystem.FileSystemRegistry.ResolveAndCheckRights(string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights requiredRight, bool includeInternal = false) -> string!
-Orkeon.Domain.FileSystem.FileSystemRegistry.ToVirtualPath(string! physicalPath, bool includeInternal = false) -> string?
-Orkeon.Domain.FileSystem.FileSystemRegistry.GetMounts() -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.FileSystemMount!>!
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.get -> string?
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.WorkspaceId.init -> void

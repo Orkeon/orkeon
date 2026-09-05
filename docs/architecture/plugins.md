@@ -2,7 +2,9 @@
 
 # Plugin System
 
-> **Status**: v1 (workstream R1.6). Package `Orkeon.Plugins` (`src/plugins/Orkeon.Plugins`).
+> **Status**: v1 (workstream R1.6). Assembly `Orkeon.Plugins`
+> (`src/plugins/Orkeon.Plugins`) — **not shipped as a NuGet package**; see
+> [Building a plugin project](#building-a-plugin-project).
 > The original specification (manifest, permissions, hot-reload, per-plugin
 > configuration) remains a roadmap — see `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
 
@@ -53,17 +55,39 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 - An assembly may contain several implementations; all of them are instantiated.
 - On the plugin project side: reference the contracts **without copying them** next to the plugin
   (shipping its own `Orkeon.Plugins.dll` breaks type identity — the loader
-  detects this case and reports it explicitly):
+  detects this case and reports it explicitly) — see below.
+
+### Building a plugin project
+
+`Orkeon.Plugins` is **not distributed as a NuGet package**. Its csproj sets `IsPackable=false`,
+the [publication matrix](../reference/publication-matrix.md#discontinued-packages) lists it under
+*Discontinued packages*, and it is not one of the eleven assemblies embedded in the `Orkeon`
+umbrella package (`src/packaging/Orkeon/Orkeon.csproj`). `dotnet add package Orkeon.Plugins`
+resolves on no feed — NuGet.org and GitHub Packages alike (`NU1101`).
+
+A plugin author builds against it **from source**: clone
+[`Orkeon/orkeon`](https://github.com/Orkeon/orkeon) and point a `ProjectReference` at
+`src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj`. The other contracts a plugin touches
+(`IBaseTool`, `IFileSystemService`, the provider interfaces) do come from the published `Orkeon`
+package, so only the `IOrkeonPlugin` entry point needs the source reference.
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Orkeon.Plugins" ExcludeAssets="runtime" />
+  <!-- Contracts only: ExcludeAssets="runtime" keeps Orkeon.Plugins.dll out of the plugin's
+       output, so the host's copy remains the single type identity. -->
+  <ProjectReference Include="../orkeon/src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj"
+                    ExcludeAssets="runtime" />
+  <PackageReference Include="Orkeon" ExcludeAssets="runtime" />
 </ItemGroup>
 <PropertyGroup>
   <!-- emits the .deps.json used to resolve the private dependencies -->
   <EnableDynamicLoading>true</EnableDynamicLoading>
 </PropertyGroup>
 ```
+
+The host side carries the same constraint: none of the binaries Orkeon ships calls
+`AddOrkeonPlugins(...)` — no project under `src/` references `Orkeon.Plugins`. The plugin system is activated by a host
+you build yourself, in-tree or against your own clone.
 
 ## Discovery (VFS)
 

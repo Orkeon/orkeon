@@ -1,6 +1,5 @@
 # 57. Generation d'Examens Calibres par Benchmark
 # Use case: Calibrated exam generation with Bloom taxonomy coverage and benchmark-based difficulty tuning
-# Source: project/marketing/content-strategy/101-USE-CASES.md #57
 
 name: "exam-generation"
 goal: "Generate calibrated exams with guaranteed Bloom taxonomy coverage and benchmark-tuned difficulty"

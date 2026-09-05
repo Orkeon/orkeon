@@ -1,6 +1,5 @@
 # 7. Due Diligence avec Audit NIST
 # Use case: Hierarchical due diligence with NIST-compliant audit trail and encrypted data storage
-# Source: project/marketing/content-strategy/101-USE-CASES.md #7
 
 name: "due-diligence-nist"
 goal: "Conduct comprehensive due diligence with NIST-compliant audit trail, encrypted data storage, and severity-classified findings"

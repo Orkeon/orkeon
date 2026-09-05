@@ -1,6 +1,6 @@
-# 70. Documentation Technique Versionnee
+# 70. Documentation Technique Versionnée
 
-> Les agents extraient et documentent la doc technique. Le IConfigurationVersioning versionne chaque revision. Le IConfigurationDiffService montre les changements entre versions.
+> Les agents extraient et documentent la doc technique. Le IConfigurationVersioning versionne chaque révision. Le IConfigurationDiffService montre les changements entre versions.
 
 ## Quality
 

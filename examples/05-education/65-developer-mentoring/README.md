@@ -1,6 +1,6 @@
-# 65. Mentorat IA pour Developpeurs
+# 65. Mentorat IA pour Développeurs
 
-> Quatre perspectives complementaires sur un meme code. Le ICodeSandbox permet de demontrer les alternatives proposees. Le ICodeSecurityAnalyzer verifie la securite du code soumis.
+> Quatre perspectives complémentaires sur un même code. Le ICodeSandbox permet de démontrer les alternatives proposées. Le ICodeSecurityAnalyzer vérifie la sécurité du code soumis.
 
 ## Quality
 

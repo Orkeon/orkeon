@@ -1,6 +1,5 @@
 # 59. Parcours de Formation Non-Lineaire via FlowEngine
 # Use case: Non-linear learning path with conditional branching driven by LLM decisions
-# Source: project/marketing/content-strategy/101-USE-CASES.md #59
 # TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState + LlmFlowStep)
 
 name: "nonlinear-learning-path"

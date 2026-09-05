@@ -1,6 +1,6 @@
 # 82. Curation de Newsletter Scraping
 
-> Scraping parallele de multiples sources puis pipeline de filtrage et mise en forme. La deduplication semantique Redis elimine les contenus similaires.
+> Scraping parallèle de multiples sources puis pipeline de filtrage et mise en forme. La déduplication sémantique Redis élimine les contenus similaires.
 
 ## Quality
 

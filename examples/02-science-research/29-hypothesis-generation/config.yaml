@@ -1,6 +1,5 @@
 # 29. Generation et Test d'Hypotheses Cyclique
 # Use case: Cyclic hypothesis generation via FlowEngine: observation -> hypothesis -> critique -> experimental planning
-# Source: project/marketing/content-strategy/101-USE-CASES.md #29
 
 name: "hypothesis-generation"
 goal: "Generate and test scientific hypotheses through a cyclic FlowEngine process: observation, hypothesis creation, critique, and experimental planning"

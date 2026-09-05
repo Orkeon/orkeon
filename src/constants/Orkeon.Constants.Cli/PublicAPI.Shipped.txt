@@ -1,1 +1,19 @@
 #nullable enable
+Orkeon.Constants.Cli.RunOptionNames
+const Orkeon.Constants.Cli.RunOptionNames.AllowExternalMounts = "allow-external-mounts" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Client = "client" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Events = "events" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.InitialContext = "initial-context" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Inputs = "inputs" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.InputsFile = "inputs-file" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.ListTools = "list-tools" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.LlmLog = "llm-log" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.LlmLogPath = "llm-log-path" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.MemoryLimitMb = "memory-limit-mb" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Mount = "mount" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Settings = "settings" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Stream = "stream" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Validate = "validate" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Var = "var" -> string!
+const Orkeon.Constants.Cli.RunOptionNames.Verbose = "verbose" -> string!
+static Orkeon.Constants.Cli.RunOptionNames.Flag(string! name) -> string!

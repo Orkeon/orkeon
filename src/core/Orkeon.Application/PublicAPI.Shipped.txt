@@ -1,22 +1,4 @@
 #nullable enable
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDdl.get -> bool
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDdl.init -> void
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.get -> bool
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.AllowDestructiveDeletes.init -> void
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions() -> void
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.DatabaseQueryOptions(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions! original) -> void
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.MaxRows.get -> int
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.MaxRows.init -> void
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.get -> int
-Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.TimeoutSeconds.init -> void
-Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory
-Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.GetProvider(string! providerName) -> System.Data.Common.DbProviderFactory!
-Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.IsSupported(string! providerName) -> bool
-Orkeon.Application.Abstractions.Data.IDatabaseProviderFactory.SupportedProviders.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy
-Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
-Orkeon.Application.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
 Orkeon.Application.Agent.AgentExecutionService
 Orkeon.Application.Agent.AgentExecutionService.AgentExecutionService(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Agent.AgentExecutionService!>! logger, Orkeon.Application.Interfaces.Services.IExecutionOrchestrator! executionOrchestrator, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator! callbackOrchestrator, Orkeon.Application.Interfaces.Services.IMemoryCoordinator! memoryCoordinator, Orkeon.Application.Interfaces.Ports.IPerformanceMetrics? performanceMetrics = null, Orkeon.Application.EventHub.IEventHubCallerContext? hubCallerContext = null) -> void
 Orkeon.Application.Agent.AgentExecutionService.CanExecuteTaskAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.ICrewTask! task, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<bool>!
@@ -326,9 +308,6 @@ Orkeon.Application.Callback.BeforeKickoffHook.Name.get -> string!
 Orkeon.Application.Callback.BeforeKickoffHook.Name.init -> void
 Orkeon.Application.Callback.BeforeKickoffHook.Priority.get -> int
 Orkeon.Application.Callback.BeforeKickoffHook.Priority.init -> void
-Orkeon.Application.Callback.BusinessLogicCallbackHandler
-Orkeon.Application.Callback.BusinessLogicCallbackHandler.BusinessLogicCallbackHandler() -> void
-Orkeon.Application.Callback.BusinessLogicCallbackHandler.GetExecutionLog() -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Application.Callback.CallbackExamples
 Orkeon.Application.Callback.CompositeCallbackHandler
 Orkeon.Application.Callback.CompositeCallbackHandler.CompositeCallbackHandler(System.Collections.Generic.IEnumerable<Orkeon.Application.Callback.ICallbackHandler!>! handlers) -> void
@@ -340,8 +319,6 @@ Orkeon.Application.Callback.CompositeCallbackHandler.OnStepStartedAsync(Orkeon.A
 Orkeon.Application.Callback.CompositeCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Callback.CompositeCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Callback.CompositeCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-Orkeon.Application.Callback.ConsoleCallbackHandler
-Orkeon.Application.Callback.ConsoleCallbackHandler.ConsoleCallbackHandler() -> void
 Orkeon.Application.Callback.CrewKickoffHookRunner
 Orkeon.Application.Callback.CrewKickoffHookRunner.CrewKickoffHookRunner(System.Collections.Generic.IEnumerable<Orkeon.Application.Callback.BeforeKickoffHook!>! beforeHooks, System.Collections.Generic.IEnumerable<Orkeon.Application.Callback.AfterKickoffHook!>! afterHooks, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Callback.CrewKickoffHookRunner!>? logger = null) -> void
 Orkeon.Application.Callback.CrewKickoffHookRunner.RunAfterKickoffAsync(Orkeon.Domain.Crew.Crew! crew, object? result, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
@@ -408,12 +385,6 @@ Orkeon.Application.Callback.ICrewKickoffHookRunner.RunAfterKickoffAsync(Orkeon.D
 Orkeon.Application.Callback.ICrewKickoffHookRunner.RunBeforeKickoffAsync(Orkeon.Domain.Crew.Crew! crew, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Callback.LoggingCallbackHandler
 Orkeon.Application.Callback.LoggingCallbackHandler.LoggingCallbackHandler(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Callback.LoggingCallbackHandler!>! logger) -> void
-Orkeon.Application.Callback.MetricsCallbackHandler
-Orkeon.Application.Callback.MetricsCallbackHandler.GetAverageExecutionTime() -> double
-Orkeon.Application.Callback.MetricsCallbackHandler.GetLatestMetric() -> Orkeon.Application.Callback.TaskMetric?
-Orkeon.Application.Callback.MetricsCallbackHandler.GetMetrics() -> System.Collections.Generic.IReadOnlyList<Orkeon.Application.Callback.TaskMetric!>!
-Orkeon.Application.Callback.MetricsCallbackHandler.GetSuccessRate() -> double
-Orkeon.Application.Callback.MetricsCallbackHandler.MetricsCallbackHandler() -> void
 Orkeon.Application.Callback.StepCompletedContext
 Orkeon.Application.Callback.StepCompletedContext.Action.get -> string!
 Orkeon.Application.Callback.StepCompletedContext.Action.init -> void
@@ -505,21 +476,6 @@ Orkeon.Application.Callback.TaskExecutionOutcome.Success.get -> bool
 Orkeon.Application.Callback.TaskExecutionOutcome.Success.init -> void
 Orkeon.Application.Callback.TaskExecutionOutcome.TaskExecutionOutcome(Orkeon.Application.Callback.TaskExecutionOutcome! original) -> void
 Orkeon.Application.Callback.TaskExecutionOutcome.TaskExecutionOutcome(bool Success, string? Output, object? StructuredOutput, string? Error) -> void
-Orkeon.Application.Callback.TaskMetric
-Orkeon.Application.Callback.TaskMetric.Duration.get -> System.TimeSpan
-Orkeon.Application.Callback.TaskMetric.Duration.init -> void
-Orkeon.Application.Callback.TaskMetric.EndTime.get -> System.DateTime
-Orkeon.Application.Callback.TaskMetric.EndTime.init -> void
-Orkeon.Application.Callback.TaskMetric.StartTime.get -> System.DateTime
-Orkeon.Application.Callback.TaskMetric.StartTime.init -> void
-Orkeon.Application.Callback.TaskMetric.StepsExecuted.get -> int
-Orkeon.Application.Callback.TaskMetric.StepsExecuted.init -> void
-Orkeon.Application.Callback.TaskMetric.Success.get -> bool
-Orkeon.Application.Callback.TaskMetric.Success.init -> void
-Orkeon.Application.Callback.TaskMetric.TaskId.get -> string!
-Orkeon.Application.Callback.TaskMetric.TaskId.init -> void
-Orkeon.Application.Callback.TaskMetric.TaskMetric() -> void
-Orkeon.Application.Callback.TaskMetric.TaskMetric(Orkeon.Application.Callback.TaskMetric! original) -> void
 Orkeon.Application.Callback.TaskProgressContext
 Orkeon.Application.Callback.TaskProgressContext.AgentId.get -> string?
 Orkeon.Application.Callback.TaskProgressContext.AgentId.init -> void
@@ -1970,28 +1926,6 @@ Orkeon.Application.Configuration.EmbeddingOptions.Model.get -> string!
 Orkeon.Application.Configuration.EmbeddingOptions.Model.set -> void
 Orkeon.Application.Configuration.EmbeddingOptions.Provider.get -> string!
 Orkeon.Application.Configuration.EmbeddingOptions.Provider.set -> void
-Orkeon.Application.Configuration.FeatureFlags
-Orkeon.Application.Configuration.FeatureFlags.AgentIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Application.Configuration.FeatureFlags.AgentIds.init -> void
-Orkeon.Application.Configuration.FeatureFlags.CrewIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
-Orkeon.Application.Configuration.FeatureFlags.CrewIds.init -> void
-Orkeon.Application.Configuration.FeatureFlags.EnableDetailedLogging.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.EnableDetailedLogging.set -> void
-Orkeon.Application.Configuration.FeatureFlags.EnableFallback.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.EnableFallback.set -> void
-Orkeon.Application.Configuration.FeatureFlags.FeatureFlags() -> void
-Orkeon.Application.Configuration.FeatureFlags.ShouldUseForAgent(string! agentId) -> bool
-Orkeon.Application.Configuration.FeatureFlags.ShouldUseForCrew(string! crewId) -> bool
-Orkeon.Application.Configuration.FeatureFlags.TrafficPercentage.get -> int
-Orkeon.Application.Configuration.FeatureFlags.TrafficPercentage.set -> void
-Orkeon.Application.Configuration.FeatureFlags.UseAgentExecutionService.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.UseAgentExecutionService.set -> void
-Orkeon.Application.Configuration.FeatureFlags.UseCrewCompositionService.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.UseCrewCompositionService.set -> void
-Orkeon.Application.Configuration.FeatureFlags.UseNewDomainModels.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.UseNewDomainModels.set -> void
-Orkeon.Application.Configuration.FeatureFlags.UseSequentialCrewOrchestrator.get -> bool
-Orkeon.Application.Configuration.FeatureFlags.UseSequentialCrewOrchestrator.set -> void
 Orkeon.Application.Configuration.LlmConfiguration
 Orkeon.Application.Configuration.LlmConfiguration.<Clone>$() -> Orkeon.Application.Configuration.LlmConfiguration!
 Orkeon.Application.Configuration.LlmConfiguration.Equals(Orkeon.Application.Configuration.LlmConfiguration? other) -> bool
@@ -2089,54 +2023,6 @@ Orkeon.Application.Configuration.OrkeonApplicationOptions.OpenAIEmbeddingModel.s
 Orkeon.Application.Configuration.OrkeonApplicationOptions.OrkeonApplicationOptions() -> void
 Orkeon.Application.Configuration.OrkeonApplicationOptions.PlanningLlmModel.get -> string?
 Orkeon.Application.Configuration.OrkeonApplicationOptions.PlanningLlmModel.set -> void
-Orkeon.Application.Configuration.OrkeonConfig
-Orkeon.Application.Configuration.OrkeonConfig.<Clone>$() -> Orkeon.Application.Configuration.OrkeonConfig!
-Orkeon.Application.Configuration.OrkeonConfig.CreatedAt.get -> System.DateTime
-Orkeon.Application.Configuration.OrkeonConfig.CreatedAt.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.CustomSettings.get -> System.Collections.Generic.Dictionary<string!, object!>!
-Orkeon.Application.Configuration.OrkeonConfig.CustomSettings.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.Equals(Orkeon.Application.Configuration.OrkeonConfig? other) -> bool
-Orkeon.Application.Configuration.OrkeonConfig.Execution.get -> Orkeon.Domain.SharedKernel.ValueObjects.ExecutionConfig!
-Orkeon.Application.Configuration.OrkeonConfig.Execution.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.FeatureFlags.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
-Orkeon.Application.Configuration.OrkeonConfig.FeatureFlags.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.Memory.get -> Orkeon.Domain.Memory.MemoryConfig!
-Orkeon.Application.Configuration.OrkeonConfig.Memory.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.OrkeonConfig() -> void
-Orkeon.Application.Configuration.OrkeonConfig.Telemetry.get -> Orkeon.Domain.Memory.TelemetryConfig!
-Orkeon.Application.Configuration.OrkeonConfig.Telemetry.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.UpdatedAt.get -> System.DateTime?
-Orkeon.Application.Configuration.OrkeonConfig.UpdatedAt.init -> void
-Orkeon.Application.Configuration.OrkeonConfig.Version.get -> string!
-Orkeon.Application.Configuration.OrkeonConfig.Version.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags
-Orkeon.Application.Configuration.OrkeonFeatureFlags.<Clone>$() -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
-Orkeon.Application.Configuration.OrkeonFeatureFlags.DefaultTimeoutSeconds.get -> int
-Orkeon.Application.Configuration.OrkeonFeatureFlags.DefaultTimeoutSeconds.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAdvancedDelegation.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAdvancedDelegation.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAsyncExecution.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableAsyncExecution.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableEvents.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableEvents.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableExperimentalFeatures.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableExperimentalFeatures.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableHumanInTheLoop.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableHumanInTheLoop.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableKnowledgeAugmentation.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableKnowledgeAugmentation.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableMemoryPersistence.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableMemoryPersistence.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnablePerformanceMetrics.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnablePerformanceMetrics.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableTelemetry.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableTelemetry.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableToolValidation.get -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.EnableToolValidation.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.Equals(Orkeon.Application.Configuration.OrkeonFeatureFlags? other) -> bool
-Orkeon.Application.Configuration.OrkeonFeatureFlags.MaxConcurrentOperations.get -> int
-Orkeon.Application.Configuration.OrkeonFeatureFlags.MaxConcurrentOperations.init -> void
-Orkeon.Application.Configuration.OrkeonFeatureFlags.OrkeonFeatureFlags() -> void
 Orkeon.Application.Configuration.ProcessType
 Orkeon.Application.Configuration.ProcessType.Consensus = 3 -> Orkeon.Application.Configuration.ProcessType
 Orkeon.Application.Configuration.ProcessType.Hierarchical = 2 -> Orkeon.Application.Configuration.ProcessType
@@ -2490,7 +2376,9 @@ Orkeon.Application.Crew.DTOs.CrewTaskRequest.ExistingTaskId.init -> void
 Orkeon.Application.Crew.DTOs.CrewTaskRequest.NewTask.get -> Orkeon.Application.Task.DTOs.CreateTaskRequest?
 Orkeon.Application.Crew.DTOs.CrewTaskRequest.NewTask.init -> void
 Orkeon.Application.Crew.DTOs.ProcessType
+Orkeon.Application.Crew.DTOs.ProcessType.Autonomous = 5 -> Orkeon.Application.Crew.DTOs.ProcessType
 Orkeon.Application.Crew.DTOs.ProcessType.Consensual = 3 -> Orkeon.Application.Crew.DTOs.ProcessType
+Orkeon.Application.Crew.DTOs.ProcessType.Graph = 4 -> Orkeon.Application.Crew.DTOs.ProcessType
 Orkeon.Application.Crew.DTOs.ProcessType.Hierarchical = 2 -> Orkeon.Application.Crew.DTOs.ProcessType
 Orkeon.Application.Crew.DTOs.ProcessType.Parallel = 1 -> Orkeon.Application.Crew.DTOs.ProcessType
 Orkeon.Application.Crew.DTOs.ProcessType.Sequential = 0 -> Orkeon.Application.Crew.DTOs.ProcessType
@@ -3764,6 +3652,10 @@ Orkeon.Application.Interfaces.Ports.CostReport.TotalTokens.init -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.AgentId.get -> string!
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.AgentId.init -> void
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheHitTokens.init -> void
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CacheMissTokens.init -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CompletionTokens.get -> int
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CompletionTokens.init -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.Cost.get -> decimal
@@ -3772,6 +3664,8 @@ Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostUsageEvent() -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostUsageEvent(Orkeon.Application.Interfaces.Ports.CostUsageEvent! original) -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CrewId.get -> string!
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CrewId.init -> void
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.Estimated.get -> bool
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.Estimated.init -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.Model.get -> string!
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.Model.init -> void
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.OperationType.get -> string!
@@ -5033,6 +4927,11 @@ Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.TaskResult(bool Succe
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ToolsUsed.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.ToolUsage!>!
 Orkeon.Application.Interfaces.Services.TaskResult<TOutput>.ToolsUsed.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitRatio.get -> double?
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheHitTokens.init -> void
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.get -> long?
+Orkeon.Application.Interfaces.Services.TokenUsage.CacheMissTokens.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage.CompletionTokens.get -> int
 Orkeon.Application.Interfaces.Services.TokenUsage.CompletionTokens.init -> void
 Orkeon.Application.Interfaces.Services.TokenUsage.Deconstruct(out int PromptTokens, out int CompletionTokens, out int TotalTokens) -> void
@@ -6616,9 +6515,6 @@ const Orkeon.Application.Constants.Resilience.RetryDefaults.QuotaExceededDelayMi
 const Orkeon.Application.Constants.Resilience.RetryDefaults.RateLimitDelayMinutes = 1 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.TimeoutRetryDelaySeconds = 5 -> int
 const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "_none" -> string!
-override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(object? obj) -> bool
-override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.GetHashCode() -> int
-override Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.ToString() -> string!
 override Orkeon.Application.Agent.AgentWorkloadInfo.Equals(object? obj) -> bool
 override Orkeon.Application.Agent.AgentWorkloadInfo.GetHashCode() -> int
 override Orkeon.Application.Agent.AgentWorkloadInfo.ToString() -> string!
@@ -6667,13 +6563,6 @@ override Orkeon.Application.Callback.AfterKickoffHook.ToString() -> string!
 override Orkeon.Application.Callback.BeforeKickoffHook.Equals(object? obj) -> bool
 override Orkeon.Application.Callback.BeforeKickoffHook.GetHashCode() -> int
 override Orkeon.Application.Callback.BeforeKickoffHook.ToString() -> string!
-override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.BusinessLogicCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.ConsoleCallbackHandler.OnStepCompletedAsync(Orkeon.Application.Callback.StepCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.ConsoleCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.CustomWorkflowCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.CustomWorkflowCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.FlowStepCompletedContext.Equals(object? obj) -> bool
@@ -6692,9 +6581,6 @@ override Orkeon.Application.Callback.LoggingCallbackHandler.OnStepStartedAsync(O
 override Orkeon.Application.Callback.LoggingCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.LoggingCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.LoggingCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskCompletedAsync(Orkeon.Application.Callback.TaskCompletedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskProgressAsync(Orkeon.Application.Callback.TaskProgressContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
-override Orkeon.Application.Callback.MetricsCallbackHandler.OnTaskStartedAsync(Orkeon.Application.Callback.TaskStartedContext! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 override Orkeon.Application.Callback.StepCompletedContext.Equals(object? obj) -> bool
 override Orkeon.Application.Callback.StepCompletedContext.GetHashCode() -> int
 override Orkeon.Application.Callback.StepCompletedContext.ToString() -> string!
@@ -6710,9 +6596,6 @@ override Orkeon.Application.Callback.TaskCompletedContext.ToString() -> string!
 override Orkeon.Application.Callback.TaskExecutionOutcome.Equals(object? obj) -> bool
 override Orkeon.Application.Callback.TaskExecutionOutcome.GetHashCode() -> int
 override Orkeon.Application.Callback.TaskExecutionOutcome.ToString() -> string!
-override Orkeon.Application.Callback.TaskMetric.Equals(object? obj) -> bool
-override Orkeon.Application.Callback.TaskMetric.GetHashCode() -> int
-override Orkeon.Application.Callback.TaskMetric.ToString() -> string!
 override Orkeon.Application.Callback.TaskProgressContext.Equals(object? obj) -> bool
 override Orkeon.Application.Callback.TaskProgressContext.GetHashCode() -> int
 override Orkeon.Application.Callback.TaskProgressContext.ToString() -> string!
@@ -6901,12 +6784,6 @@ override Orkeon.Application.Configuration.LlmConfiguration.ToString() -> string!
 override Orkeon.Application.Configuration.MemoryConfiguration.Equals(object? obj) -> bool
 override Orkeon.Application.Configuration.MemoryConfiguration.GetHashCode() -> int
 override Orkeon.Application.Configuration.MemoryConfiguration.ToString() -> string!
-override Orkeon.Application.Configuration.OrkeonConfig.Equals(object? obj) -> bool
-override Orkeon.Application.Configuration.OrkeonConfig.GetHashCode() -> int
-override Orkeon.Application.Configuration.OrkeonConfig.ToString() -> string!
-override Orkeon.Application.Configuration.OrkeonFeatureFlags.Equals(object? obj) -> bool
-override Orkeon.Application.Configuration.OrkeonFeatureFlags.GetHashCode() -> int
-override Orkeon.Application.Configuration.OrkeonFeatureFlags.ToString() -> string!
 override Orkeon.Application.Configuration.RetryConfiguration.Equals(object? obj) -> bool
 override Orkeon.Application.Configuration.RetryConfiguration.GetHashCode() -> int
 override Orkeon.Application.Configuration.RetryConfiguration.ToString() -> string!
@@ -7469,8 +7346,6 @@ override sealed Orkeon.Application.EventHub.WaitOnMailbox.Equals(Orkeon.Applicat
 override sealed Orkeon.Application.EventHub.WaitOnReply.Equals(Orkeon.Application.EventHub.WaitDescriptor? other) -> bool
 override sealed Orkeon.Application.EventHub.WaitOnTopic.Equals(Orkeon.Application.EventHub.WaitDescriptor? other) -> bool
 readonly Orkeon.Application.Services.Generic.TaskExecutorBase<TTask, TResult>.Logger -> Microsoft.Extensions.Logging.ILogger!
-static Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.operator !=(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? right) -> bool
-static Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.operator ==(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? right) -> bool
 static Orkeon.Application.Agent.AgentWorkloadInfo.operator !=(Orkeon.Application.Agent.AgentWorkloadInfo? left, Orkeon.Application.Agent.AgentWorkloadInfo? right) -> bool
 static Orkeon.Application.Agent.AgentWorkloadInfo.operator ==(Orkeon.Application.Agent.AgentWorkloadInfo? left, Orkeon.Application.Agent.AgentWorkloadInfo? right) -> bool
 static Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand.operator !=(Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand? left, Orkeon.Application.Agent.Commands.CreateAgent.CreateAgentCommand? right) -> bool
@@ -7528,8 +7403,6 @@ static Orkeon.Application.Callback.TaskCompletedContext.operator !=(Orkeon.Appli
 static Orkeon.Application.Callback.TaskCompletedContext.operator ==(Orkeon.Application.Callback.TaskCompletedContext? left, Orkeon.Application.Callback.TaskCompletedContext? right) -> bool
 static Orkeon.Application.Callback.TaskExecutionOutcome.operator !=(Orkeon.Application.Callback.TaskExecutionOutcome? left, Orkeon.Application.Callback.TaskExecutionOutcome? right) -> bool
 static Orkeon.Application.Callback.TaskExecutionOutcome.operator ==(Orkeon.Application.Callback.TaskExecutionOutcome? left, Orkeon.Application.Callback.TaskExecutionOutcome? right) -> bool
-static Orkeon.Application.Callback.TaskMetric.operator !=(Orkeon.Application.Callback.TaskMetric? left, Orkeon.Application.Callback.TaskMetric? right) -> bool
-static Orkeon.Application.Callback.TaskMetric.operator ==(Orkeon.Application.Callback.TaskMetric? left, Orkeon.Application.Callback.TaskMetric? right) -> bool
 static Orkeon.Application.Callback.TaskProgressContext.operator !=(Orkeon.Application.Callback.TaskProgressContext? left, Orkeon.Application.Callback.TaskProgressContext? right) -> bool
 static Orkeon.Application.Callback.TaskProgressContext.operator ==(Orkeon.Application.Callback.TaskProgressContext? left, Orkeon.Application.Callback.TaskProgressContext? right) -> bool
 static Orkeon.Application.Callback.TaskStartedContext.operator !=(Orkeon.Application.Callback.TaskStartedContext? left, Orkeon.Application.Callback.TaskStartedContext? right) -> bool
@@ -7733,16 +7606,6 @@ static Orkeon.Application.Configuration.LlmConfiguration.operator ==(Orkeon.Appl
 static Orkeon.Application.Configuration.MemoryConfiguration.Default.get -> Orkeon.Application.Configuration.MemoryConfiguration!
 static Orkeon.Application.Configuration.MemoryConfiguration.operator !=(Orkeon.Application.Configuration.MemoryConfiguration? left, Orkeon.Application.Configuration.MemoryConfiguration? right) -> bool
 static Orkeon.Application.Configuration.MemoryConfiguration.operator ==(Orkeon.Application.Configuration.MemoryConfiguration? left, Orkeon.Application.Configuration.MemoryConfiguration? right) -> bool
-static Orkeon.Application.Configuration.OrkeonConfig.Default.get -> Orkeon.Application.Configuration.OrkeonConfig!
-static Orkeon.Application.Configuration.OrkeonConfig.Development.get -> Orkeon.Application.Configuration.OrkeonConfig!
-static Orkeon.Application.Configuration.OrkeonConfig.Production.get -> Orkeon.Application.Configuration.OrkeonConfig!
-static Orkeon.Application.Configuration.OrkeonConfig.operator !=(Orkeon.Application.Configuration.OrkeonConfig? left, Orkeon.Application.Configuration.OrkeonConfig? right) -> bool
-static Orkeon.Application.Configuration.OrkeonConfig.operator ==(Orkeon.Application.Configuration.OrkeonConfig? left, Orkeon.Application.Configuration.OrkeonConfig? right) -> bool
-static Orkeon.Application.Configuration.OrkeonFeatureFlags.Default.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
-static Orkeon.Application.Configuration.OrkeonFeatureFlags.Development.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
-static Orkeon.Application.Configuration.OrkeonFeatureFlags.Production.get -> Orkeon.Application.Configuration.OrkeonFeatureFlags!
-static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator !=(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool
-static Orkeon.Application.Configuration.OrkeonFeatureFlags.operator ==(Orkeon.Application.Configuration.OrkeonFeatureFlags? left, Orkeon.Application.Configuration.OrkeonFeatureFlags? right) -> bool
 static Orkeon.Application.Configuration.RetryConfiguration.Default.get -> Orkeon.Application.Configuration.RetryConfiguration!
 static Orkeon.Application.Configuration.RetryConfiguration.operator !=(Orkeon.Application.Configuration.RetryConfiguration? left, Orkeon.Application.Configuration.RetryConfiguration? right) -> bool
 static Orkeon.Application.Configuration.RetryConfiguration.operator ==(Orkeon.Application.Configuration.RetryConfiguration? left, Orkeon.Application.Configuration.RetryConfiguration? right) -> bool
@@ -7761,7 +7624,7 @@ static Orkeon.Application.Crew.Commands.CreateCrew.CreateCrewCommand.operator ==
 static Orkeon.Application.Crew.CompositionRecommendation.operator !=(Orkeon.Application.Crew.CompositionRecommendation? left, Orkeon.Application.Crew.CompositionRecommendation? right) -> bool
 static Orkeon.Application.Crew.CompositionRecommendation.operator ==(Orkeon.Application.Crew.CompositionRecommendation? left, Orkeon.Application.Crew.CompositionRecommendation? right) -> bool
 static Orkeon.Application.Crew.CrewConfigurationMapper.ToConfiguration(this Orkeon.Domain.Crew.Crew! crew, System.Collections.Generic.IEnumerable<Orkeon.Domain.Agent.Agent!>! agents, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.CrewTask!>! tasks) -> Orkeon.Domain.Configuration.CrewConfiguration!
-static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProviderFactory! llmProviderFactory, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null) -> Orkeon.Domain.Crew.Crew!
+static Orkeon.Application.Crew.CrewConfigurationMapper.ToDomainCrew(this Orkeon.Domain.Configuration.CrewConfiguration! configuration, System.Func<string!, Orkeon.Domain.Tools.IBaseTool!>! toolResolver, Orkeon.Application.Interfaces.Ports.ILlmProviderFactory! llmProviderFactory, System.Action<Orkeon.Domain.Agent.Agent!>? agentPostProcessor = null, System.Action<Orkeon.Domain.Task.CrewTask!>? taskPostProcessor = null, Microsoft.Extensions.Logging.ILogger? logger = null) -> Orkeon.Domain.Crew.Crew!
 static Orkeon.Application.Crew.CrewExecutionSnapshot.operator !=(Orkeon.Application.Crew.CrewExecutionSnapshot? left, Orkeon.Application.Crew.CrewExecutionSnapshot? right) -> bool
 static Orkeon.Application.Crew.CrewExecutionSnapshot.operator ==(Orkeon.Application.Crew.CrewExecutionSnapshot? left, Orkeon.Application.Crew.CrewExecutionSnapshot? right) -> bool
 static Orkeon.Application.Crew.DTOs.CreateCrewRequest.operator !=(Orkeon.Application.Crew.DTOs.CreateCrewRequest? left, Orkeon.Application.Crew.DTOs.CreateCrewRequest? right) -> bool
@@ -8278,10 +8141,6 @@ static readonly Orkeon.Application.Context.NullMemoryScope.Instance -> Orkeon.Ap
 static readonly Orkeon.Application.EventHub.ForeverWaitTimeout.Instance -> Orkeon.Application.EventHub.ForeverWaitTimeout!
 static readonly Orkeon.Application.Interfaces.Ports.DurationStatistics.Zero -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
 static readonly Orkeon.Application.Interfaces.Services.CallbackHandlers.None -> Orkeon.Application.Interfaces.Services.CallbackHandlers!
-virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.<Clone>$() -> Orkeon.Application.Abstractions.Data.DatabaseQueryOptions!
-virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.Equals(Orkeon.Application.Abstractions.Data.DatabaseQueryOptions? other) -> bool
-virtual Orkeon.Application.Abstractions.Data.DatabaseQueryOptions.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.<Clone>$() -> Orkeon.Application.Agent.AgentWorkloadInfo!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.Equals(Orkeon.Application.Agent.AgentWorkloadInfo? other) -> bool
@@ -8349,10 +8208,6 @@ virtual Orkeon.Application.Callback.TaskExecutionOutcome.<Clone>$() -> Orkeon.Ap
 virtual Orkeon.Application.Callback.TaskExecutionOutcome.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Callback.TaskExecutionOutcome.Equals(Orkeon.Application.Callback.TaskExecutionOutcome? other) -> bool
 virtual Orkeon.Application.Callback.TaskExecutionOutcome.PrintMembers(System.Text.StringBuilder! builder) -> bool
-virtual Orkeon.Application.Callback.TaskMetric.<Clone>$() -> Orkeon.Application.Callback.TaskMetric!
-virtual Orkeon.Application.Callback.TaskMetric.EqualityContract.get -> System.Type!
-virtual Orkeon.Application.Callback.TaskMetric.Equals(Orkeon.Application.Callback.TaskMetric? other) -> bool
-virtual Orkeon.Application.Callback.TaskMetric.PrintMembers(System.Text.StringBuilder! builder) -> bool
 virtual Orkeon.Application.Callback.TaskProgressContext.<Clone>$() -> Orkeon.Application.Callback.TaskProgressContext!
 virtual Orkeon.Application.Callback.TaskProgressContext.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Callback.TaskProgressContext.Equals(Orkeon.Application.Callback.TaskProgressContext? other) -> bool

@@ -1,6 +1,5 @@
 # 23. Analyse Genomique avec Chunking
 # Use case: Hierarchical genomic analysis with text chunking for long FASTA sequences and encrypted data
-# Source: project/marketing/content-strategy/101-USE-CASES.md #23
 
 name: "genomic-analysis"
 goal: "Analyze genomic sequences using chunking for long FASTA files, encrypted storage, and hierarchical coordination by a bioinformatics lead"

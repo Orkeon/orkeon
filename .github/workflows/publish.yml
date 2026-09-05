@@ -36,10 +36,10 @@ jobs:
     steps:
       - name: Free up runner disk space
         run: |
-          echo "Avant:"; df -h / | tail -1
+          echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "Après:"; df -h / | tail -1
+          echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
       # Anti-0.9.1 guard: the tag decides nothing — the packed version comes from
@@ -56,6 +56,13 @@ jobs:
             exit 1
           fi
           echo "Tag v$tag matches props version $version."
+      # LOT K: the other two release steps CONTRIBUTING asks for, made mechanical —
+      # the CHANGELOG's [Unreleased] section must be cut into a dated version section,
+      # and no PublicAPI.Unshipped.txt may still declare an API. Both were pure
+      # discipline until now, and discipline is what produced the 0.9.1-beta incident
+      # the guard above exists for. Runnable locally: python3 scripts/check-release-readiness.py
+      - name: Verify the release checklist (CHANGELOG cut, PublicAPI shipped)
+        run: python3 scripts/check-release-readiness.py
       - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore Orkeon.sln

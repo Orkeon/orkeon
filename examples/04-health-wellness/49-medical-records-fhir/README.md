@@ -1,6 +1,6 @@
-# 49. Structuration Dossiers Medicaux FHIR
+# 49. Structuration Dossiers Médicaux FHIR
 
-> Extraction et normalisation FHIR de dossiers medicaux multi-format. Le IDocumentLoaderFactory gere automatiquement PDF, XML, JSON. Le ITextChunker decoupe les dossiers volumineux.
+> Extraction et normalisation FHIR de dossiers médicaux multi-format. Le IDocumentLoaderFactory gère automatiquement PDF, XML, JSON. Le ITextChunker découpe les dossiers volumineux.
 
 ## Quality
 

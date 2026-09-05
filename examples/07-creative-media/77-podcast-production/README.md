@@ -1,6 +1,6 @@
-# 77. Production de Podcast Pipeline Type
+# 77. Production de Podcast Pipeline Typé
 
-> Pipeline sequentiel ou chaque etape produit un livrable avec contrat type ToolBase<TReq, TRes>. Le contrat d'interface entre etapes est garanti par le framework.
+> Pipeline séquentiel où chaque étape produit un livrable avec contrat typé ToolBase<TReq, TRes>. Le contrat d'interface entre étapes est garanti par le framework.
 
 ## Quality
 

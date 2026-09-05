@@ -1,4 +1,4 @@
-# 12. Onboarding Automatise des Employes
+# 12. Onboarding Automatisé des Employés
 
 > Fully YAML-configurable onboarding crew. Each onboarding step is a task with its own validation. Mentor selection uses semantic embedding-based skill matching.
 

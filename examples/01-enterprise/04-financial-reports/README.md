@@ -1,4 +1,4 @@
-# 4. Generation de Rapports Financiers avec Reprise
+# 4. Génération de Rapports Financiers avec Reprise
 
 > Four agents work in parallel (API collection, quantitative analysis, compliance verification) then converge to a final writer. ICheckpointManager enables recovery after crashes or API timeouts.
 

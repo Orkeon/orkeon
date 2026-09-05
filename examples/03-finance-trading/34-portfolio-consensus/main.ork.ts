@@ -5,7 +5,6 @@
 // investment philosophies must agree, votes weighted by historical track
 // record; no manager (consensual process). The data/ folder feeds the
 // assessments (/data/fundamentals.csv, /data/price-history.csv).
-// Source: project/marketing/content-strategy/101-USE-CASES.md #34
 // Built-in tools are referenced by name; the trading tools come as TypeScript
 // instances from the shared _tools module (EX-01).
 

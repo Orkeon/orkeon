@@ -1,6 +1,5 @@
 # 92. Logistique Warehouse — Batch Haute Performance
 # Use case: high-performance parallel warehouse operations with batch execution and rate limiting
-# Source: project/marketing/content-strategy/101-USE-CASES.md #92
 
 name: "warehouse-logistics"
 goal: "Execute high-performance parallel warehouse operations for real-time order management using batch execution and rate limiting to maximize throughput while protecting backend systems"

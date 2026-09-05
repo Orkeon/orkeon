@@ -1,4 +1,4 @@
-# 21. Peer Review Simule avec Calibration
+# 21. Peer Review Simulé avec Calibration
 
 > Before submission, 3 independent reviewer-agents evaluate the article. BenchmarkRunner calibrates severity. The consensual process identifies unanimous critical points.
 

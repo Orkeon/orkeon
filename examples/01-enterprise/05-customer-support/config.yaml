@@ -1,6 +1,5 @@
 # 5. Support Client Multi-Niveaux avec Escalade
 # Use case: 3-tier customer support with automatic escalation and episodic memory per client
-# Source: project/marketing/content-strategy/101-USE-CASES.md #5
 
 name: "customer-support"
 goal: "Provide multi-tier customer support with automatic escalation from L1 triage to L2 specialist to L3 human manager, preserving full client history"

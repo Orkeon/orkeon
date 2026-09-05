@@ -7,7 +7,7 @@ Ce dossier contient **20 codebases TypeScript réputées difficiles**, clonées 
 
 Toutes les applications retenues ont vocation à être **remplaçables par une équipe d'agents IA** : la valeur réside dans la logique métier/décisionnelle, pas dans l'UX pure. Elles couvrent les cinq familles qui stressent le plus un orchestrateur multi-agent : moteurs de workflow, state machines explicites, éditeurs canvas/CRDT, DSL type-level et plateformes agent-replaceable.
 
-> Voir le plan de test complet, la fiche de chaque repo et les paramétrages suggérés dans `project/tasks/ts-benchmark-repos-for-102-103.md`.
+> Le plan de test complet et les paramétrages suggérés vivent dans le sous-module privé `backstage` (non disponible dans un clone public).
 
 ---
 

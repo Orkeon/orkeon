@@ -1,6 +1,6 @@
-# 74. Gestion des Dependances CVE
+# 74. Gestion des Dépendances CVE
 
-> Scanner, Analyse CVE, Test compatibilite, Upgrade. Les CVE critiques sont traitees en priorite via TaskPriority. Le ICodeSandbox teste la compatibilite avant application.
+> Scanner, Analyse CVE, Test compatibilité, Upgrade. Les CVE critiques sont traitées en priorité via TaskPriority. Le ICodeSandbox teste la compatibilité avant application.
 
 ## Quality
 

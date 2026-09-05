@@ -1,15 +1,16 @@
 # test-all-examples.ps1
-# Automated test runner for all 105 Orkeon examples
+# Automated test runner for every Orkeon example (YAML crews and .ork.ts crews alike)
 # Uses Docker Desktop Models (ai/granite-4.0-h-tiny) via localhost:12434
 #
 # Usage:
 #   .\examples\test-all-examples.ps1                    # Test all examples
 #   .\examples\test-all-examples.ps1 -Category 01       # Test only category 01
 #   .\examples\test-all-examples.ps1 -Example 01-enterprise/01-research-assistant  # Single example
-#   .\examples\test-all-examples.ps1 -Level load         # Only test config loading (fast)
+#   .\examples\test-all-examples.ps1 -Level build        # Build only
+#   .\examples\test-all-examples.ps1 -Level load         # Offline validation, no LLM call (default)
 #   .\examples\test-all-examples.ps1 -Level run          # Full crew execution (slow)
 #   .\examples\test-all-examples.ps1 -TimeoutSeconds 300  # Custom timeout per example
-#   .\examples\test-all-examples.ps1 -Settings examples\_shared\appsettings.docker.json
+#   .\examples\test-all-examples.ps1 -Settings examples\appsettings\appsettings.json
 
 param(
     [string]$Category = "",
@@ -41,7 +42,8 @@ if ($LASTEXITCODE -ne 0) {
 }
 Write-Host "Build OK" -ForegroundColor Green
 
-# Non-trading examples run on the `orkeon` CLI, which lives in the root solution.
+# Examples run on the `orkeon` CLI, which lives in the root solution (not
+# Orkeon.Examples.sln). Build it once here so the per-example runs invoke its dll.
 $OrkeonCliDll = Join-Path $RepoRoot "src\scripting\Orkeon.Scripting.Cli\bin\Release\net10.0\orkeon.dll"
 Write-Host "`n=== Building the orkeon CLI ===" -ForegroundColor Cyan
 $cliBuild = dotnet build (Join-Path $RepoRoot "src\scripting\Orkeon.Scripting.Cli\Orkeon.Scripting.Cli.csproj") --configuration Release --verbosity quiet 2>&1
@@ -50,6 +52,7 @@ if ($LASTEXITCODE -ne 0) {
     $cliBuild | Write-Host
     exit 1
 }
+Write-Host "Build OK" -ForegroundColor Green
 
 if ($Level -eq "build") {
     Write-Host "`n=== Build-only mode: done ===" -ForegroundColor Green
@@ -62,32 +65,31 @@ if ($Level -eq "build") {
 $exampleDirs = @()
 
 if ($Example) {
-    # Single example mode
-    $configPath = Join-Path $ScriptDir "$Example\config.yaml"
-    if (-not (Test-Path $configPath)) {
-        Write-Host "ERROR: config.yaml not found at $configPath" -ForegroundColor Red
+    # Single example mode: a crew is declared either in YAML or in TypeScript (EX-01).
+    $exampleDir = Join-Path $ScriptDir $Example
+    if (-not ((Test-Path (Join-Path $exampleDir "config.yaml")) -or
+              (Test-Path (Join-Path $exampleDir "main.ork.ts")))) {
+        Write-Host "ERROR: neither config.yaml nor main.ork.ts found under $exampleDir" -ForegroundColor Red
         exit 1
     }
     $exampleDirs += $Example
 }
 else {
-    # Discover all examples (or by category)
+    # Discover all examples (or by category). An example is a folder holding a crew
+    # definition: config.yaml (YAML crews) or main.ork.ts (TypeScript crews, EX-01).
     $searchPath = $ScriptDir
-    Get-ChildItem -Path $searchPath -Filter "config.yaml" -Recurse |
-        Where-Object {
-            $_.FullName -notmatch "_legacy" -and
-            $_.FullName -notmatch "_shared" -and
-            $_.FullName -notmatch "runners" -and
-            $_.FullName -notmatch "\.vs" -and
-            $_.FullName -notmatch "\.orkeon"
-        } |
-        ForEach-Object {
-            $rel = $_.Directory.FullName.Replace($searchPath, "").TrimStart("\", "/")
-            if (-not $Category -or $rel.StartsWith($Category)) {
-                $exampleDirs += $rel
-            }
-        }
-    $exampleDirs = $exampleDirs | Sort-Object
+    $crewFiles = @(
+        Get-ChildItem -Path $searchPath -Filter "config.yaml" -Recurse -File
+        Get-ChildItem -Path $searchPath -Filter "main.ork.ts" -Recurse -File
+    )
+    $excluded = "(^|[\\/])(_legacy|_shared|runners|\.vs|\.orkeon|bin|obj|node_modules)([\\/]|$)"
+    $exampleDirs = @(
+        $crewFiles |
+            ForEach-Object { $_.Directory.FullName.Substring($searchPath.Length).TrimStart("\", "/") } |
+            Where-Object { $_ -and $_ -notmatch $excluded } |
+            Where-Object { -not $Category -or $_.StartsWith($Category) } |
+            Sort-Object -Unique
+    )
 }
 
 $total = $exampleDirs.Count
@@ -99,35 +101,25 @@ Write-Host "`n=== Testing $total examples (level: $Level, timeout: ${TimeoutSeco
 $results = @()
 $passed = 0
 $failed = 0
-$skipped = 0
 $index = 0
 
 foreach ($example in $exampleDirs) {
     $index++
-    $configPath = Join-Path $ScriptDir "$example\config.yaml"
+    $exampleDir = Join-Path $ScriptDir $example
+    $configPath = Join-Path $exampleDir "config.yaml"
 
+    # A migrated example declares its crew in TypeScript (EX-01) - one entry file,
+    # run and validated through the orkeon CLI whatever the category.
+    if (Test-Path (Join-Path $exampleDir "main.ork.ts")) {
+        $configPath = Join-Path $exampleDir "main.ork.ts"
+    }
     # A multi-file crew keeps its agents/tasks in sibling folders, so its config.yaml
     # is only the crew settings: the runner must be given the DIRECTORY, not the file.
-    $exampleDir = Join-Path $ScriptDir $example
-    if ((Test-Path (Join-Path $exampleDir "agents") -PathType Container) -or
-        (Test-Path (Join-Path $exampleDir "tasks") -PathType Container)) {
+    elseif ((Test-Path (Join-Path $exampleDir "agents") -PathType Container) -or
+            (Test-Path (Join-Path $exampleDir "tasks") -PathType Container)) {
         $configPath = $exampleDir
     }
 
-    # Determine how to run it: trading crews use the dedicated trading runner
-    # (`--config <yaml>`); everything else runs on the `orkeon` CLI.
-    $cat = ($example -split "[/\\]")[0]
-    $isTrading = ($cat -eq "03-finance-trading")
-    if ($isTrading -and $Level -eq "load") {
-        # The CLI cannot resolve the trading-specific tools and the trading runner has
-        # no --validate: skip at this level rather than fail for the wrong reason.
-        Write-Host "[$index/$total] $example " -NoNewline
-        Write-Host "SKIP (trading runner has no --validate; covered at -Level run)" -ForegroundColor Yellow
-        $results += [PSCustomObject]@{ Index = $index; Example = $example; Status = "SKIP"; Duration = 0; Warnings = 0; Error = "" }
-        continue
-    }
-
-    $shortName = $example -replace "^[0-9]+-[^/\\]+[/\\]", ""
     Write-Host "[$index/$total] $example " -NoNewline
 
     $sw = [System.Diagnostics.Stopwatch]::StartNew()
@@ -136,14 +128,13 @@ foreach ($example in $exampleDirs) {
     $warnings = @()
 
     try {
-        if ($isTrading) {
-            $dotnetArgs = @("run", "--project", (Join-Path $ScriptDir "runners\trading"), "--no-build", "--configuration", "Release", "--", "--config", $configPath)
-        } else {
-            $dotnetArgs = @($OrkeonCliDll, "run", $configPath)
-            # Level `load` = config parses and agents/tasks/tools resolve, no LLM call:
-            # `orkeon run --validate` does exactly that and exits non-zero on a broken config.
-            if ($Level -eq "load") { $dotnetArgs += "--validate" }
-        }
+        # Every crew - YAML or TypeScript - runs on the `orkeon` CLI (the definition
+        # passed positionally after the `run` verb; TS crews carry their own tools).
+        $dotnetArgs = @($OrkeonCliDll, "run", $configPath)
+        # Level `load` = config parses and agents/tasks/tools resolve, no LLM call and
+        # no network: `orkeon run --validate` does exactly that in ~2s and exits
+        # non-zero on a broken config.
+        if ($Level -eq "load") { $dotnetArgs += "--validate" }
         if ($Settings) {
             $dotnetArgs += "--settings"
             $dotnetArgs += $Settings
@@ -236,7 +227,7 @@ foreach ($example in $exampleDirs) {
         Error    = $errorMsg
     }
 
-    if ($StopOnError -and ($status -in @("FAIL", "ERROR"))) {
+    if ($StopOnError -and ($status -ne "PASS")) {
         Write-Host "`nStopping on first error (-StopOnError)" -ForegroundColor Yellow
         break
     }
@@ -246,7 +237,7 @@ foreach ($example in $exampleDirs) {
 # Step 3: Summary
 # ============================================================
 Write-Host "`n$("=" * 60)" -ForegroundColor Cyan
-Write-Host "RESULTS: $passed passed, $failed failed, $skipped skipped / $total total" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
+Write-Host "RESULTS: $passed passed, $failed failed / $total total" -ForegroundColor $(if ($failed -eq 0) { "Green" } else { "Red" })
 Write-Host "$("=" * 60)`n" -ForegroundColor Cyan
 
 # ============================================================

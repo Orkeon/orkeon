@@ -1,6 +1,5 @@
 # 16. Meta-Analyse Scientifique PRISMA
 # Use case: Systematic literature review with full PRISMA-compliant inclusion/exclusion traceability
-# Source: project/marketing/content-strategy/101-USE-CASES.md #16
 
 name: "prisma-meta-analysis"
 goal: "Conduct a systematic literature review following PRISMA protocol with full traceability of inclusion/exclusion decisions and episodic memory journaling"

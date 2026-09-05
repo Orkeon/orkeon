@@ -1,6 +1,5 @@
 # 11. Traduction et Localisation par Consensus
 # Use case: Consensual translation process requiring unanimity from 3 language experts
-# Source: project/marketing/content-strategy/101-USE-CASES.md #11
 
 name: "translation-consensus"
 goal: "Produce high-quality translations through a consensus process requiring agreement between translator, native reviewer, and terminologist"

@@ -1,6 +1,6 @@
 # 38. Analyse de Contrats avec Chunking
 
-> Deux agents analysent un contrat en parallele (juridique et financier), puis un Negociateur propose des alternatives. Le ITextChunker decoupe les contrats volumineux pour respecter la context window.
+> Deux agents analysent un contrat en parallèle (juridique et financier), puis un Négociateur propose des alternatives. Le ITextChunker découpe les contrats volumineux pour respecter la context window.
 
 ## Quality
 

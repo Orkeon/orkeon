@@ -1,6 +1,6 @@
 # 83. Fiction Interactive FlowEngine
 
-> Le FlowEngine gere un arbre de choix narratifs. Le lecteur (HumanAgent) fait des choix qui influencent la suite. Un ObserverAgent verifie la coherence narrative en temps reel.
+> Le FlowEngine gère un arbre de choix narratifs. Le lecteur (HumanAgent) fait des choix qui influencent la suite. Un ObserverAgent vérifie la cohérence narrative en temps réel.
 
 ## Quality
 

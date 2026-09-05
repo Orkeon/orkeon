@@ -82,7 +82,7 @@ pointing at the right profile.
 
 ## 4. Run it
 
-Every non-finance example runs through the **`orkeon` CLI**. From a source
+Every example runs through the **`orkeon` CLI**. From a source
 checkout, invoke it via its project (no install needed — it also picks up your
 local code changes):
 

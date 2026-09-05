@@ -153,6 +153,13 @@ dotnet_diagnostic.xUnit1051.severity = error
 #            3 intentional [Fact(Skip)] remain (Terminal.Gui crashes under xUnit, TUI-12).
 dotnet_diagnostic.xUnit2032.severity = error
 
+# xUnit2033 (use the value returned by Assert.Single instead of re-indexing the
+# collection): 404 live suggestions across the tests tree, purely stylistic and
+# test-only — documented arbitrage (2026-09-05, SonarQube tail): the rewrite carries
+# zero behaviour or correctness value, so the rule is neutralised here rather than
+# left as permanent IDE noise for every contributor.
+dotnet_diagnostic.xUnit2033.severity = none
+
 # --- R6.9 Palier B final wave (2026-06-15): test disposal / static hygiene ---
 # Resorbed to zero across the tests tree (multi-agent wave + adversarial review)
 # with REAL fixes (no editorconfig neutralisation, no broad #pragma, zero

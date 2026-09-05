@@ -1,6 +1,6 @@
 # 79. Composition Musicale par Consensus
 
-> Agents par dimension musicale qui doivent s'harmoniser via consensus unanime. Le protocole Feedback permet les ajustements iteratifs.
+> Agents par dimension musicale qui doivent s'harmoniser via consensus unanime. Le protocole Feedback permet les ajustements itératifs.
 
 ## Quality
 

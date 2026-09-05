@@ -1,6 +1,5 @@
 # 4. Generation de Rapports Financiers avec Reprise
 # Use case: Parallel data collection converging to a final report with checkpoint/resume on failure
-# Source: project/marketing/content-strategy/101-USE-CASES.md #4
 
 name: "financial-reports"
 goal: "Generate comprehensive financial reports with parallel data collection, compliance verification, and checkpoint-based recovery on failure"

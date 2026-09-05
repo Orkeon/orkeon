@@ -1,6 +1,6 @@
-# 85. Adaptation Cross-Media Pipeline Type
+# 85. Adaptation Cross-Media Pipeline Typé
 
-> Extraction des elements narratifs d'un media source puis transformation vers un media cible via le pipeline type ComponentBase<TReq, TRes>. Chaque transformation est contractualisee.
+> Extraction des éléments narratifs d'un média source puis transformation vers un média cible via le pipeline typé ComponentBase<TReq, TRes>. Chaque transformation est contractualisée.
 
 ## Quality
 

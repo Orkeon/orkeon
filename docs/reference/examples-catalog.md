@@ -38,10 +38,9 @@ The numbered YAML crews live in nine thematic folders:
 | `local-embeddings/` | On-device embeddings (no API key) wired into memory and agent selection |
 | `crew-multifile/` | A crew described as a directory (`orkeon run <dir>`) |
 | `forge/promote-demo/` | The Atelier's offline half: a ready `orkeon forge` session bundled as a workspace — `forge list`, then `forge promote` into an ordinary folder (no LLM needed) |
-| `runners/` | The runner projects that execute the numbered examples, incl. two interactive dotnet tools |
 | `service-host/` | The `orkeon-host` daemon's example material: a README and `appsettings.host.json` |
 | `run-events/` | The `orkeon run --events jsonl` protocol: README, `sample-stream.jsonl`, `watch-run.py` |
-| `appsettings/`, `_shared/`, `others/` | The shared settings profile matrix, shared assets, and miscellaneous one-offs |
+| `appsettings/`, `others/` | The shared settings profile matrix and miscellaneous one-offs |
 
 ## Notable examples
 
@@ -60,7 +59,7 @@ The numbered YAML crews live in nine thematic folders:
 ```bash
 orkeon run examples/crew-multifile/          # a crew directory
 orkeon run examples/scripting/01-hello-world.ork.ts
-./examples/run-example.sh 7                  # numbered example, from source
+./examples/run-example.sh 01-enterprise/01-research-assistant   # from source
 docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners
 # then inside the container: orkeon-example list && orkeon-example run 7
 ```

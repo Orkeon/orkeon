@@ -3,7 +3,7 @@
 //
 // 42. Pricing Dynamique Arbitrage Hierarchique — a Manager Agent arbitrates
 // between three conflicting perspectives on the optimal price (demand,
-// competition, margin). Source: project/marketing/content-strategy/101-USE-CASES.md #42
+// competition, margin).
 // Built-in tools are referenced by name; the trading tools come as TypeScript
 // instances from the shared _tools module (EX-01).
 

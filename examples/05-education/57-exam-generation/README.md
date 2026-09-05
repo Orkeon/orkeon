@@ -1,6 +1,6 @@
-# 57. Generation d'Examens Calibres par Benchmark
+# 57. Génération d'Examens Calibrés par Benchmark
 
-> Le BenchmarkRunner calibre la difficulte des questions. Le consensus garantit la couverture taxonomique Bloom. Le LlmJudgeEvaluator evalue la clarte de chaque question.
+> Le BenchmarkRunner calibre la difficulté des questions. Le consensus garantit la couverture taxonomique Bloom. Le LlmJudgeEvaluator évalue la clarté de chaque question.
 
 ## Quality
 

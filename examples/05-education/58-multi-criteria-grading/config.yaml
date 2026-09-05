@@ -1,6 +1,5 @@
 # 58. Correction Multi-Criteres Reproductible
 # Use case: Reproducible multi-criteria grading with parallel independent graders and inter-grader consistency
-# Source: project/marketing/content-strategy/101-USE-CASES.md #58
 
 name: "multi-criteria-grading"
 goal: "Grade student submissions reproducibly using parallel independent graders with inter-grader consistency verification"

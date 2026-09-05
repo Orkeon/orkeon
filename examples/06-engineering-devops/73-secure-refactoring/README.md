@@ -1,6 +1,6 @@
-# 73. Refactoring Securise Sandbox
+# 73. Refactoring Sécurisé Sandbox
 
-> Le code refactore est systematiquement execute dans un ICodeSandbox et analyse par ICodeSecurityAnalyzer avant validation. Aucun code ne touche la production sans passer les tests.
+> Le code refactoré est systématiquement exécuté dans un ICodeSandbox et analysé par ICodeSecurityAnalyzer avant validation. Aucun code ne touche la production sans passer les tests.
 
 ## Quality
 

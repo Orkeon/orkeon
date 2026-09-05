@@ -14,6 +14,7 @@ dotnet add package Orkeon.Tools --prerelease
 
 ## Documentation
 
+- [Slack tools guide](https://github.com/Orkeon/orkeon/blob/main/src/tools/Orkeon.Tools.Web/SLACK.md)
 - [Tool inventory](https://github.com/Orkeon/orkeon/blob/main/docs/tools/inventory.md)
 - [Repository & getting started](https://github.com/Orkeon/orkeon)
 

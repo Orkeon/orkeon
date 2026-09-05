@@ -31,12 +31,31 @@ jobs:
     steps:
       - name: Free up runner disk space
         run: |
-          echo "Avant:"; df -h / | tail -1
+          echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "Après:"; df -h / | tail -1
+          echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with: { fetch-depth: 0 }
+
+      # Same anti-0.9.1 guard publish.yml runs, for the same reason one step later in
+      # the chain: on a tag this job derives `--version ${GITHUB_REF_NAME#v}` below and
+      # scripts/package-installers.sh stamps it into every published binary, filename
+      # and checksum line. A mistyped tag would ship installers labelled with a version
+      # that exists nowhere else. src/Directory.Build.props stays the single source of
+      # truth; the tag only has to agree with it. workflow_dispatch has no tag to check.
+      - name: Verify tag matches Directory.Build.props version
+        if: startsWith(github.ref, 'refs/tags/')
+        run: |
+          prefix=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
+          suffix=$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
+          version="$prefix${suffix:+-$suffix}"
+          tag="${GITHUB_REF_NAME#v}"
+          if [ "$tag" != "$version" ]; then
+            echo "::error::Tag v$tag does not match src/Directory.Build.props version $version - the installers would be stamped with a version that exists nowhere else. Bump the props before tagging."
+            exit 1
+          fi
+          echo "Tag v$tag matches props version $version."
 
       # Every artifact this workflow uploads is a 1-day courier between jobs,
       # but GitHub recalculates storage only every 6-12 h — leftovers from a
@@ -670,10 +689,10 @@ jobs:
     steps:
       - name: Free up runner disk space
         run: |
-          echo "Avant:"; df -h / | tail -1
+          echo "Before:"; df -h / | tail -1
           sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
           sudo docker image prune --all --force >/dev/null 2>&1 || true
-          echo "Après:"; df -h / | tail -1
+          echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - name: Resolve version tag (strip leading v)
         id: ver

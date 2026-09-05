@@ -1,6 +1,5 @@
 # 68. Migration de Base de Donnees — Reprise Exacte
 # Use case: Database migration with exact checkpoint-based resume on failure
-# Source: project/marketing/content-strategy/101-USE-CASES.md #68
 
 name: "database-migration"
 goal: "Execute database migrations with checkpoint at each step and exact resume on failure"

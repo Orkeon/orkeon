@@ -1,6 +1,5 @@
 # 64. Accessibilite Universelle des Contenus
 # Use case: Parallel transformation of content into 4 accessible formats simultaneously with independent validation
-# Source: project/marketing/content-strategy/101-USE-CASES.md #64
 
 name: "accessibility"
 goal: "Transform content into 4 accessible formats simultaneously (text transcript, simplified language, audio description, screen reader) with independent validation"

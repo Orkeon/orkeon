@@ -4,7 +4,6 @@
 // 39. Robo-Advisor Profilage Interactif — the risk profile is collected
 // through typed interactive questions (human_input on the profiling task),
 // client responses kept in encrypted episodic memory.
-// Source: project/marketing/content-strategy/101-USE-CASES.md #39
 // Built-in tools are referenced by name; the trading tools come as TypeScript
 // instances from the shared _tools module (EX-01).
 

@@ -93,7 +93,7 @@ var crew = new CrewBuilder()
         .ExpectedOutput("A comprehensive summary report"))
     .Build();
 
-// câbler l'hôte et lancer l'exécution — voir docs/getting-started/bootstrap.md
+// câbler l'hôte et lancer l'exécution — voir docs/fr/getting-started/bootstrap.md
 ```
 
 **Pas de clé API ?** Tout tourne sur un modèle installé sur votre machine
@@ -109,13 +109,23 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 | Vous voulez… | Faites | Détails |
 |---|---|---|
 | **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 105 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
-| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. Autres plateformes : prenez l'archive dans les [releases](https://github.com/Orkeon/orkeon/releases) (`linux-arm64`, `osx-x64/arm64`), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
-| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet. Ajoutez au besoin `Orkeon.Tools` (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/getting-started/bootstrap.md) |
-| **Contribuer au framework** | `git clone` + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
+| **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Pour `linux-arm64` — et pour qui veut aussi le REPL ou le host de service — c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
+| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet. Ajoutez au besoin `Orkeon.Tools` (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
+| **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
+
+> **Clonez sans `--recursive`.** `backstage/` et `experiments/` sont des
+> **sous-modules privés de mainteneurs** : ils ne sont pas disponibles dans un clone
+> public. Ni le build, ni les tests, ni le workflow de contribution n'en ont besoin, et
+> un `git submodule update` en échec sur ces deux chemins est attendu et sans
+> conséquence — voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
 **Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :
 
 ```powershell
+# Vérifiez d'abord le téléchargement : chaque release publie un asset SHA256SUMS (SHA256SUMS.msi pour le .msi)
+(Get-FileHash orkeon-cli-<version>-win-x64.zip -Algorithm SHA256).Hash.ToLower()
+Select-String -Path SHA256SUMS -Pattern 'win-x64\.zip'   # les deux empreintes doivent coïncider
+
 Expand-Archive orkeon-cli-<version>-win-x64.zip -DestinationPath .; cd orkeon-cli-<version>-win-x64
 .\install.ps1        # ou : msiexec /i orkeon-<version>-win-x64.msi -- un seul canal, pas les deux
 orkeon init          # dans un NOUVEAU terminal : choisissez le fournisseur LLM et le modèle
@@ -125,6 +135,9 @@ orkeon run crew.yaml
 **Debian / Ubuntu** — téléchargez `orkeon_<version>_amd64.deb` ; self-contained lui aussi, aucun paquet `dotnet-runtime` tiré :
 
 ```bash
+# SHA256SUMS est un asset de release lui aussi — téléchargez-le à côté du .deb et vérifiez
+grep " orkeon_<version>_amd64.deb$" SHA256SUMS | sha256sum --check   # attendu : OK
+
 sudo apt install ./orkeon_<version>_amd64.deb
 orkeon init          # écrit ~/.config/Orkeon/appsettings.json
 orkeon run crew.yaml
@@ -141,8 +154,17 @@ orkeon run crew.yaml
 En attendant (et sur n'importe quelle machine), l'archive self-contained — `osx-arm64` pour Apple Silicon, `osx-x64` pour Intel. `install.sh` retire pour vous l'attribut de quarantaine Gatekeeper :
 
 ```bash
-curl -fsSL -O https://github.com/Orkeon/orkeon/releases/latest/download/orkeon-cli-<version>-osx-arm64.tar.gz
-tar -xzf orkeon-cli-<version>-osx-arm64.tar.gz && cd orkeon-cli-<version>-osx-arm64 && ./install.sh
+# Le nom de l'asset porte la version, et le raccourci `latest/download/` de GitHub
+# ignore les préversions — résolvez donc d'abord le tag le plus récent (ou copiez le
+# lien de l'asset depuis la page des releases, ce qui revient au même à la main).
+TAG=$(curl -fsSL https://api.github.com/repos/Orkeon/orkeon/releases | grep -m1 '"tag_name"' | cut -d'"' -f4)
+VER=${TAG#v}; BASE=https://github.com/Orkeon/orkeon/releases/download/$TAG
+
+curl -fsSL -O "$BASE/orkeon-cli-$VER-osx-arm64.tar.gz"     # osx-x64 sur Intel
+curl -fsSL -O "$BASE/SHA256SUMS"
+grep " orkeon-cli-$VER-osx-arm64.tar.gz$" SHA256SUMS | shasum -a 256 --check -   # attendu : OK
+
+tar -xzf "orkeon-cli-$VER-osx-arm64.tar.gz" && cd "orkeon-cli-$VER-osx-arm64" && ./install.sh
 orkeon init
 ```
 
@@ -242,7 +264,7 @@ Chaque pull request est gardée en CI :
 - la **surface d'API publique est gelée** (Microsoft.CodeAnalysis.PublicApiAnalyzers ; un changement d'API non déclaré est une erreur de build)
 - les suites de tests unitaires et rapides (les suites Integration/Slow tournent chaque nuit dans un workflow dédié) et la gate de parité documentaire EN/FR ; des gates filtrées par chemin ajoutent les linters d'exemples sur les PR touchant `examples/`, et un build docfx strict (`--warningsAsErrors`) sur les PR touchant les sources ou la doc
 
-L'analyse qualité tourne sur un SonarQube local via `scripts/sonar-analyze.sh` — voir la [politique de quality gate](docs/fr/guides/quality-gate.md). Dernière passe de couverture (août 2026) : projets cœur mesurés entre **83 et 90 %** de couverture de lignes, **0 vulnérabilité, 0 code smell**.
+L'analyse qualité tourne sur un SonarQube local via `scripts/sonar-analyze.sh` — voir la [politique de quality gate](docs/fr/guides/quality-gate.md). Dernière passe (**5 septembre 2026**, rapport complet dans [`sonarqube/sonarqube-report-2026-09-05.md`](sonarqube/sonarqube-report-2026-09-05.md)) : quality gate **OK**, **82,7 %** de couverture de lignes sur 162 k lignes (Application 90,7 %, Domain 88,3 %, Infrastructure 84,3 %), **0 bug, 0 vulnérabilité, 0 hotspot de sécurité**, dette technique **0 min**, 1,6 % de duplication. La même passe relève **406 code smells — tous de sévérité INFO** : 404 sont une seule suggestion d'analyseur xUnit répétée dans les projets de test (`xUnit2033`, « utilisez la valeur retournée par `Assert.Single` »), et les deux restants étaient des suggestions d'analyseur dans du code produit (`SYSLIB1054` dans `Orkeon.Studio.Core`, et un `SYSLIB1006` dans `Orkeon.Hosting` depuis corrigé). Aucun n'est une issue MINOR ou pire.
 
 Les contraintes connues sont suivies dans [docs/fr/reference/limitations.md](docs/fr/reference/limitations.md).
 
@@ -263,6 +285,14 @@ dotnet build Orkeon.sln -p:SkipScriptingNpmInstall=true
 ```
 
 Si npm est indisponible, le build réussit quand même ; esbuild est alors résolu depuis le `PATH` à l'exécution.
+
+---
+
+## Communauté et support
+
+- **Obtenir de l'aide** — [SUPPORT.fr.md](SUPPORT.fr.md) nomme les lieux : les [GitHub Discussions](https://github.com/Orkeon/orkeon/discussions) pour les questions et les retours d'usage, les [formulaires d'issue](https://github.com/Orkeon/orkeon/issues/new/choose) pour les bugs et les demandes de fonctionnalité. Il n'y a ni Discord ni Slack.
+- **Signaler une vulnérabilité** — [SECURITY.fr.md](SECURITY.fr.md). Jamais d'issue publique : passez par le GitHub Private Vulnerability Reporting (dépôt → *Security* → *Report a vulnerability*).
+- **Règles de vie commune** — le [code de conduite](CODE_OF_CONDUCT.fr.md) (Contributor Covenant 2.1) s'applique à tous les espaces du projet.
 
 ---
 

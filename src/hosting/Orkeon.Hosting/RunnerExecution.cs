@@ -1159,7 +1159,7 @@ public static partial class RunnerExecution
     [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Adapted JsCrew '{CrewName}' to CrewConfiguration ({AgentCount} agent(s), {TaskCount} task(s)).")]
     private static partial void LogAdaptedJsCrew(ILogger logger, string crewName, int agentCount, int taskCount);
 
-    [LoggerMessage(EventId = 12, Level = LogLevel.Information, Message = "Registered {Count} script-defined tool(s) from crew '{CrewName}' with the runtime tool registry.")]
+    [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Registered {Count} script-defined tool(s) from crew '{CrewName}' with the runtime tool registry.")]
     private static partial void LogRegisteredScriptTools(ILogger logger, int count, string crewName);
 
     private sealed class CompositeDisposable : IDisposable

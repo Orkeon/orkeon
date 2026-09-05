@@ -1,6 +1,5 @@
 # 48. Monitoring Bien-etre Mental
 # Use case: Donnees ultra-sensibles protegees par trois couches: chiffrement, validation humaine, prevention d'injection
-# Source: project/marketing/content-strategy/101-USE-CASES.md #48
 
 name: "mental-health-monitoring"
 goal: "Monitor mental well-being with triple security: encrypted storage, systematic human validation, and prompt injection prevention"

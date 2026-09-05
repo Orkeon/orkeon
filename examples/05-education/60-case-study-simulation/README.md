@@ -1,6 +1,6 @@
 # 60. Simulation de Cas Pratiques Immersive
 
-> Des agents jouent des roles dans un scenario interactif configurable en YAML. L'apprenant interagit via HumanAgent. Un ObserverAgent evalue en temps reel les competences demontrees.
+> Des agents jouent des rôles dans un scénario interactif configurable en YAML. L'apprenant interagit via HumanAgent. Un ObserverAgent évalue en temps réel les compétences démontrées.
 
 ## Quality
 

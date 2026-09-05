@@ -1,4 +1,4 @@
-# 8. Creation de Contenu Marketing
+# 8. Création de Contenu Marketing
 
 > Sequential pipeline reproducing a natural content team workflow. Each agent refines the previous agent's work. The Fact-Checker verifies claims via web scraping before publication.
 

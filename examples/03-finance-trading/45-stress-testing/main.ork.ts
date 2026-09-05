@@ -3,7 +3,6 @@
 //
 // 45. Stress Testing Reglementaire Rejouable
 // Use case: Scenarios de stress versionnes et rejouables avec conformite NIST complete
-// Source: project/marketing/content-strategy/101-USE-CASES.md #45
 // TODO: feature planifiee — IConfigurationVersioning, IConfigurationRollbackService
 
 import { pickTools } from "../_tools/index.ts";

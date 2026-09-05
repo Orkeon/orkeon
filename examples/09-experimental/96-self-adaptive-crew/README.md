@@ -1,4 +1,4 @@
-# 96. Crew Evolutive Auto-Adaptative
+# 96. Crew Évolutive Auto-Adaptative
 
 > Meta-crew where an Architect agent observes performance and dynamically reconfigures the team. IConfigurationVersioning versions each configuration. IConfigurationRollbackService restores the previous one if performance degrades.
 

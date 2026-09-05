@@ -10,7 +10,7 @@
 //
 //   scripted> help            # 'hello' shows up
 //   scripted> hello           # → Hello, world!
-//   scripted> hello --who=Cyril
+//   scripted> hello --who=Ada
 //   scripted> help-cmd hello  # signature with typed args
 //   scripted> exit
 

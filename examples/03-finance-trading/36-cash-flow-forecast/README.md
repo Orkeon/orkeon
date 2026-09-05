@@ -1,6 +1,6 @@
-# 36. Prevision de Tresorerie Auto-Corrective
+# 36. Prévision de Trésorerie Auto-Corrective
 
-> Les modeles s'affinent via memoire long-terme qui compare predictions passees vs realisations. Le BenchmarkRunner mesure l'accuracy et le systeme corrige automatiquement ses biais.
+> Les modèles s'affinent via mémoire long-terme qui compare prédictions passées vs réalisations. Le BenchmarkRunner mesure l'accuracy et le système corrige automatiquement ses biais.
 
 ## Quality
 

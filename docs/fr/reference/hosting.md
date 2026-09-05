@@ -8,19 +8,35 @@ services cœur, suites d'outils standard, système de fichiers virtuel et regist
 DI — plus les flux d'exécution de bout en bout (kickoff one-shot, boucle interactive, listing des
 outils) utilisés par chaque runner et CLI Orkeon.
 
-Elle est consommée par le harnais des runners et par les hôtes externes qui la référencent comme
-paquet. Cette page documente sa surface de bootstrap publique.
+Dans ce dépôt, elle est consommée par `Orkeon.Scripting.Cli` (l'outil `orkeon`) et par
+`Orkeon.Host` (le démon `orkeon-host`). Elle n'est **pas** distribuée comme paquet NuGet — voir
+[Distribution](#distribution) ci-dessous. Cette page documente sa surface de bootstrap publique.
 
-## Paquet
+## Distribution
+
+**`Orkeon.Hosting` n'est pas un paquet NuGet.** Son csproj pose `IsPackable=false`, et la
+[matrice de publication](publication-matrix.md#paquets-abandonnés) la classe dans les *paquets
+abandonnés* : elle n'est poussée ni sur NuGet.org ni sur GitHub Packages, donc
+`dotnet add package Orkeon.Hosting` ne peut pas se résoudre (`NU1101`).
+
+Elle n'est pas non plus embarquée dans le paquet parapluie `Orkeon`.
+`src/packaging/Orkeon/Orkeon.csproj` embarque onze assemblies — `Orkeon.Domain`,
+`Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`,
+`Orkeon.Tools.Abstractions`, `Orkeon.Analysis{,.Abstractions}`, `Orkeon.Rag{,.Abstractions}` — et
+`Orkeon.Hosting` n'en fait pas partie.
 
 | | |
 |---|---|
-| PackageId | `Orkeon.Hosting` |
-| Dépend de | les bibliothèques cœur `Orkeon.*` (Domain, Application, Infrastructure, Analysis, Scripting) et huit des neuf suites `Orkeon.Tools.*` (`Orkeon.Tools.Rag` est volontairement absente — le RAG reste opt-in), plus `CommandLineParser` et `Microsoft.Extensions.Hosting` |
-| Packagé par | `.github/workflows/publish.yml` (`dotnet pack Orkeon.sln`) — toute la solution est packagée sur un tag `v*`, `Orkeon.Hosting` est donc inclus automatiquement |
+| Assembly | `Orkeon.Hosting.dll` (`src/hosting/Orkeon.Hosting`) |
+| Packageable | non — `IsPackable=false`, sur aucun flux |
+| Dépend de | les bibliothèques cœur `Orkeon.*` (Domain, Application, Infrastructure, Analysis, Scripting), les satellites `Orkeon.Constants.*`, et huit des neuf suites `Orkeon.Tools.*` (`Orkeon.Tools.Rag` est volontairement absente — le RAG reste opt-in), plus `CommandLineParser` et `Microsoft.Extensions.Hosting` |
+| Livrée par | les **canaux CLI et installeurs** uniquement : l'outil dotnet `orkeon` (`Orkeon.Scripting.Cli`) et les archives d'installation / `.deb` / MSI produits par `release.yml`, où `Orkeon.Hosting.dll` est posée à côté de `orkeon` et `orkeon-host` comme assembly d'implémentation privée — jamais comme une référence qu'un consommateur ajoute |
 
-Les références de projets `Orkeon.*` deviennent des dépendances de paquet dans le nuspec ; la référence
-à l'analyseur de conformité VFS est `PrivateAssets=all` et correctement exclue du paquet.
+**Construire un hôte externe contre elle** passe donc par les sources : cloner le dépôt et ajouter
+une `ProjectReference` vers `src/hosting/Orkeon.Hosting/Orkeon.Hosting.csproj`. La surface de
+paquets supportée pour les consommateurs est le parapluie `Orkeon` (plus `Orkeon.Tools` et les
+opt-ins) ; `Orkeon.Hosting` est une couche de bootstrap interne, documentée ici pour les
+appelants in-tree.
 
 ## `RunnerHost.Build`
 

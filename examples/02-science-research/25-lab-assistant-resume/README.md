@@ -1,4 +1,4 @@
-# 25. Assistant de Laboratoire avec Reprise d'Experiences
+# 25. Assistant de Laboratoire avec Reprise d'Expériences
 
 > Agents connected to IoT instruments. ICheckpointManager saves experiment state at each step. On interruption (power failure, sensor timeout), IResumeEngine resumes exactly where the experiment stopped.
 

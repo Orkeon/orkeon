@@ -2,7 +2,9 @@
 
 # Système de plugins
 
-> **Statut** : v1 (chantier R1.6). Paquet `Orkeon.Plugins` (`src/plugins/Orkeon.Plugins`).
+> **Statut** : v1 (chantier R1.6). Assembly `Orkeon.Plugins`
+> (`src/plugins/Orkeon.Plugins`) — **non livrée comme paquet NuGet** ; voir
+> [Construire un projet de plugin](#construire-un-projet-de-plugin).
 > La spécification d'origine (manifeste, permissions, hot-reload, configuration par
 > plugin) reste une feuille de route — voir `src/plugins/Orkeon.Plugins/SPECIFICATION.md`.
 
@@ -53,17 +55,40 @@ public sealed class WeatherPlugin : IOrkeonPlugin
 - Un assembly peut contenir plusieurs implémentations ; toutes sont instanciées.
 - Côté projet plugin : référencer les contrats **sans les copier** à côté du plugin
   (embarquer son propre `Orkeon.Plugins.dll` casse l'identité de types — le chargeur
-  détecte ce cas et le signale explicitement) :
+  détecte ce cas et le signale explicitement) — voir ci-dessous.
+
+### Construire un projet de plugin
+
+`Orkeon.Plugins` n'est **pas distribuée comme paquet NuGet**. Son csproj pose
+`IsPackable=false`, la [matrice de publication](../reference/publication-matrix.md#paquets-abandonnés)
+la classe dans les *paquets abandonnés*, et elle ne fait pas partie des onze assemblies embarquées
+dans le paquet parapluie `Orkeon` (`src/packaging/Orkeon/Orkeon.csproj`).
+`dotnet add package Orkeon.Plugins` ne se résout sur aucun flux — NuGet.org comme GitHub Packages
+(`NU1101`).
+
+Un auteur de plugin construit donc **depuis les sources** : cloner
+[`Orkeon/orkeon`](https://github.com/Orkeon/orkeon) et pointer une `ProjectReference` vers
+`src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj`. Les autres contrats que touche un plugin
+(`IBaseTool`, `IFileSystemService`, les interfaces de providers) viennent, eux, du paquet publié
+`Orkeon` : seul le point d'entrée `IOrkeonPlugin` exige la référence aux sources.
 
 ```xml
 <ItemGroup>
-  <PackageReference Include="Orkeon.Plugins" ExcludeAssets="runtime" />
+  <!-- Contrats seulement : ExcludeAssets="runtime" garde Orkeon.Plugins.dll hors de la sortie
+       du plugin, pour que la copie de l'hôte reste la seule identité de types. -->
+  <ProjectReference Include="../orkeon/src/plugins/Orkeon.Plugins/Orkeon.Plugins.csproj"
+                    ExcludeAssets="runtime" />
+  <PackageReference Include="Orkeon" ExcludeAssets="runtime" />
 </ItemGroup>
 <PropertyGroup>
   <!-- émet le .deps.json utilisé pour résoudre les dépendances privées -->
   <EnableDynamicLoading>true</EnableDynamicLoading>
 </PropertyGroup>
 ```
+
+Côté hôte, même contrainte : aucun binaire livré par Orkeon n'appelle `AddOrkeonPlugins(...)`
+— aucun projet sous `src/` ne référence `Orkeon.Plugins`. Le système de plugins est activé par un
+hôte que vous construisez vous-même, in-tree ou contre votre propre clone.
 
 ## Découverte (VFS)
 

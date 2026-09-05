@@ -1,6 +1,5 @@
 # 74. Gestion des Dependances — Priorisation CVE
 # Use case: Dependency management with CVE prioritization, sandbox compatibility testing, and tracked upgrade history
-# Source: project/marketing/content-strategy/101-USE-CASES.md #74
 
 name: "dependency-management"
 goal: "Scan dependencies for vulnerabilities, prioritize by CVE severity, test compatibility in sandbox, and apply upgrades"

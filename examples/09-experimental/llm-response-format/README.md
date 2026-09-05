@@ -36,4 +36,4 @@ does **not** modify your prompt.
 ## Reference
 
 - Full guide: `docs/guides/llm-response-format.md`
-- Plan / spec: `project/tasks/LLM-RESPONSE-FORMAT-PLAN.md`
+- Reference: [LLM response format](../../../docs/architecture/llm-providers.md)

@@ -27,12 +27,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Compile Remove="ToMigrate\**" />
-    <EmbeddedResource Remove="ToMigrate\**" />
-    <None Remove="ToMigrate\**" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
 

@@ -1,6 +1,5 @@
 # 17. Simulation de Debat Scientifique
 # Use case: Structured scientific debate with 3 opposing positions moderated by a Manager Agent
-# Source: project/marketing/content-strategy/101-USE-CASES.md #17
 
 name: "scientific-debate"
 goal: "Simulate a structured scientific debate with opposing positions, moderated convergence, and balanced synthesis with citations"

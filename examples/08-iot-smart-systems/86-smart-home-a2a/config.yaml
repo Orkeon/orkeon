@@ -1,6 +1,5 @@
 # 86. Maison Intelligente — Protocole A2A Natif
 # Use case: smart home where each subsystem is an agent with A2A discovery and broadcast communication
-# Source: project/marketing/content-strategy/101-USE-CASES.md #86
 
 name: "smart-home-a2a"
 goal: "Orchestrate a smart home where each subsystem (heating, lighting, security, energy) is an autonomous agent communicating via A2A protocol with automatic discovery and broadcast state changes"

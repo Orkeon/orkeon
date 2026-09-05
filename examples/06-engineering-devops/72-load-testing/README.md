@@ -1,6 +1,6 @@
 # 72. Test de Charge Trending Historique
 
-> Chaque run est compare aux precedents via memoire long-terme. Le BenchmarkRunner assure la reproductibilite. Les regressions de performance sont detectees automatiquement.
+> Chaque run est comparé aux précédents via mémoire long-terme. Le BenchmarkRunner assure la reproductibilité. Les régressions de performance sont détectées automatiquement.
 
 ## Quality
 

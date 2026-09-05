@@ -1,6 +1,6 @@
-# 31. Trading Algorithmique Multi-Strategies
+# 31. Trading Algorithmique Multi-Stratégies
 
-> Showcase complete du framework: 8 agents, 40+ outils specialises, processus hierarchique complet. Le CIO coordonne analyse, risque, execution et compliance en temps reel.
+> Showcase complète du framework: 8 agents, 40+ outils spécialisés, processus hiérarchique complet. Le CIO coordonne analyse, risque, exécution et compliance en temps réel.
 
 ## Quality
 

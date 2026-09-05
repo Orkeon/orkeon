@@ -4,6 +4,29 @@
 
 > **See also**: [Overview](./overview.md) · [YAML configuration](../architecture/yaml-schema.md) · [Back to the index](../INDEX.md)
 
+## Getting the packages
+
+Before any of the code below compiles, add the two NuGet packages it uses. The framework
+itself ships as a single package, `Orkeon`; the built-in tool suites wired below
+(`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeonWebTools`,
+`AddOrkeonCodeTools`) live in a second one, `Orkeon.Tools`:
+
+```bash
+dotnet add package Orkeon --prerelease
+dotnet add package Orkeon.Tools --prerelease
+```
+
+`--prerelease` is required while the 1.0.0 line is a release candidate; drop it once
+1.0.0 is final. Both commands write the matching `<PackageReference>` entries into your
+`.csproj`, so an equivalent hand-edit works just as well.
+
+`Orkeon` carries the whole core closure (Domain, Application, Infrastructure, Hosting,
+Plugins, RAG, Analysis, Scripting) — there is no separate `Orkeon.Domain` /
+`Orkeon.Application` / `Orkeon.Infrastructure` package. The two opt-ins
+`Orkeon.Rag.Onnx` and `Orkeon.Tools.Embeddings.Local` are added the same way when you
+need them. The full lineup is the
+[publication matrix](../reference/publication-matrix.md).
+
 ## Bootstrap and dependency injection
 
 Integrating Orkeon into a .NET application is done through dependency injection at startup. Here is a complete example in `Program.cs`:

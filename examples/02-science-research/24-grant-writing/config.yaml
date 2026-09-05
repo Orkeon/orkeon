@@ -1,6 +1,5 @@
 # 24. Redaction de Demandes de Subventions
 # Use case: 100% YAML-configurable grant writing pipeline with human PI validation per section
-# Source: project/marketing/content-strategy/101-USE-CASES.md #24
 
 name: "grant-writing"
 goal: "Produce grant applications through a YAML-driven pipeline with section-by-section validation and human PI approval"

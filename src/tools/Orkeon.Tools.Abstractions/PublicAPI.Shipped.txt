@@ -59,7 +59,6 @@ Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy
 Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.IsDestructiveOperation(string! query) -> bool
 Orkeon.Tools.Abstractions.Data.IDatabaseSecurityPolicy.ValidateQuery(string! query, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions! options) -> Orkeon.Domain.SharedKernel.ValidationResult!
 Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions
-Orkeon.Tools.Abstractions.Helpers.ImageHelper
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.Deconstruct(out System.Collections.Generic.IReadOnlyDictionary<string!, string!>! SanitizedHeaders, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
 Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.HeaderSanitizationResult(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult! original) -> void
@@ -160,11 +159,6 @@ static Orkeon.Tools.Abstractions.Base.ValidationResult.operator ==(Orkeon.Tools.
 static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator !=(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
 static Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions.operator ==(Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? left, Orkeon.Tools.Abstractions.Data.DatabaseQueryOptions? right) -> bool
 static Orkeon.Tools.Abstractions.DependencyInjection.AbstractionToolExtensions.AddOrkeonAbstractionTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
-static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeType(byte[]! data) -> string!
-static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeTypeFromPath(string! filePath) -> string!
-static Orkeon.Tools.Abstractions.Helpers.ImageHelper.IsSupportedMimeType(string! mimeType) -> bool
-static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromUrlAsync(System.Net.Http.HttpClient! httpClient, System.Uri! url, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
-static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromVfsAsync(Orkeon.Domain.FileSystem.IFileSystemService! fs, string! vPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
 static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator !=(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
 static Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult.operator ==(Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? left, Orkeon.Tools.Abstractions.Security.HeaderSanitizationResult? right) -> bool
 static Orkeon.Tools.Abstractions.Tools.ListMountsRequest.operator !=(Orkeon.Tools.Abstractions.Tools.ListMountsRequest? left, Orkeon.Tools.Abstractions.Tools.ListMountsRequest? right) -> bool

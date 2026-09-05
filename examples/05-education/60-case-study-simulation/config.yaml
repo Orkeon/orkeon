@@ -1,6 +1,5 @@
 # 60. Simulation de Cas Pratiques Immersive
 # Use case: Immersive case study simulation with role-playing agents and real-time competency evaluation
-# Source: project/marketing/content-strategy/101-USE-CASES.md #60
 
 name: "case-study-simulation"
 goal: "Run immersive case study simulations with role-playing agents and real-time competency evaluation"

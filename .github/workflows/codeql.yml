@@ -1,6 +1,18 @@
-# CodeQL code scanning (C#). Uses build-mode: none — CodeQL extracts the
-# C# codebase without compiling, which sidesteps the native-deps disk pressure
-# the build workflows have to manage.
+# CodeQL code scanning. Uses build-mode: none for every language — CodeQL extracts the
+# codebase without compiling, which sidesteps the native-deps disk pressure the build
+# workflows have to manage, and is the only mode the interpreted languages accept.
+#
+# Four languages, because C# is not the whole shipped surface:
+#   - csharp                — the framework itself.
+#   - javascript-typescript — the .ork.ts scripting DSL is a user-facing EXECUTION path
+#                             (`orkeon run script.ork.ts`), not sample text: 67 tracked
+#                             *.ts, examples and CLI commands included.
+#   - python                — the repo's tooling scripts, three of which gate ci.yml.
+#   - actions               — the workflows themselves (injection-prone `run:` blocks,
+#                             unpinned actions). Supported since CodeQL Action 3.27;
+#                             the pin below is 3.37.9.
+# Each language uploads under its own `category`, so their results never overwrite one
+# another in the Security tab.
 name: CodeQL
 on:
   push:
@@ -13,18 +25,24 @@ permissions:
   contents: read
 jobs:
   analyze:
+    name: Analyze (${{ matrix.language }})
     runs-on: ubuntu-latest
     permissions:
       contents: read
       security-events: write
       actions: read   # required by codeql-action on private repos (workflow-run lookup at upload time)
+    strategy:
+      # One bad language must not hide the findings of the other three.
+      fail-fast: false
+      matrix:
+        language: [ csharp, javascript-typescript, python, actions ]
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: github/codeql-action/init@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
-          languages: csharp
+          languages: ${{ matrix.language }}
           build-mode: none
           queries: security-and-quality
       - uses: github/codeql-action/analyze@6f5948dfacef28e207b48d0905cf90c03365536d # v3
         with:
-          category: "/language:csharp"
+          category: "/language:${{ matrix.language }}"

@@ -120,26 +120,26 @@ public sealed class CodebaseContextProvider : ICodebaseContextProvider
     private static string RenderMarkdown(CodebaseSnapshot s)
     {
         var sb = new StringBuilder();
-        sb.AppendLine("CONTEXTE CODEBASE (généré automatiquement par RaggableTree) :");
+        sb.AppendLine("CODEBASE CONTEXT (generated automatically by RaggableTree):");
         sb.Append(s.PackageCount).Append(" packages, ");
         sb.Append(FormatFileBreakdown(s.FilesByLanguage, s.ModuleCount)).Append(", ");
-        sb.Append(s.SymbolCount).AppendLine(" symboles");
+        sb.Append(s.SymbolCount).AppendLine(" symbols");
 
         if (s.TopComplexity.Count > 0)
         {
             sb.Append("Top-").Append(s.TopComplexity.Count)
-                .Append(" fichiers par complexité : ")
+                .Append(" files by complexity: ")
                 .AppendLine(string.Join(", ", s.TopComplexity));
         }
         if (s.TopCentrality.Count > 0)
         {
             sb.Append("Top-").Append(s.TopCentrality.Count)
-                .Append(" symboles par couplage : ")
+                .Append(" symbols by coupling: ")
                 .AppendLine(string.Join(", ", s.TopCentrality));
         }
         if (s.Patterns.Count > 0)
         {
-            sb.Append("Patterns détectés : ")
+            sb.Append("Detected patterns: ")
                 .AppendLine(string.Join(", ", s.Patterns));
         }
         return sb.ToString().TrimEnd();
@@ -183,16 +183,16 @@ public sealed class CodebaseContextProvider : ICodebaseContextProvider
 
     private static string FormatFileBreakdown(IReadOnlyDictionary<string, int> byLanguage, int total)
     {
-        if (byLanguage.Count == 0) return $"{total} fichiers";
+        if (byLanguage.Count == 0) return $"{total} files";
         if (byLanguage.Count == 1)
         {
             var only = byLanguage.First();
-            return string.Format(CultureInfo.InvariantCulture, "{0} fichiers .{1}", only.Value, only.Key);
+            return string.Format(CultureInfo.InvariantCulture, "{0} files .{1}", only.Value, only.Key);
         }
         var parts = byLanguage
             .OrderByDescending(kv => kv.Value)
             .Select(kv => string.Format(CultureInfo.InvariantCulture, "{0} .{1}", kv.Value, kv.Key));
-        return $"{total} fichiers ({string.Join(", ", parts)})";
+        return $"{total} files ({string.Join(", ", parts)})";
     }
 
     private sealed record CodebaseSnapshot(

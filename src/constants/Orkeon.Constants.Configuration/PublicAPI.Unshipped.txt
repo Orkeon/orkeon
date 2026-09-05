@@ -1,10 +1,1 @@
 #nullable enable
-Orkeon.Constants.Configuration.ConfigurationKeys
-Orkeon.Constants.Configuration.OperatorMessages
-const Orkeon.Constants.Configuration.ConfigurationKeys.CliSessionContextWindowTokens = "Orkeon:Cli:Session:ContextWindowTokens" -> string!
-const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemInternalMounts = "Orkeon:FileSystem:InternalMounts" -> string!
-const Orkeon.Constants.Configuration.ConfigurationKeys.FileSystemMounts = "Orkeon:FileSystem:Mounts" -> string!
-const Orkeon.Constants.Configuration.ConfigurationKeys.LlmSection = "Llm" -> string!
-const Orkeon.Constants.Configuration.ConfigurationKeys.Rag = "Orkeon:Rag" -> string!
-const Orkeon.Constants.Configuration.ConfigurationKeys.ThinkingSection = "Thinking" -> string!
-const Orkeon.Constants.Configuration.OperatorMessages.LlmNotConfigured = "No `Llm` section configured — falling back to the echo provider (`<undefined-llm>`). Run `orkeon init` to create a configuration, or set `ORKEON_Llm__BaseUrl` / `ORKEON_Llm__Model`." -> string!

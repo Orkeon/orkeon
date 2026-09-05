@@ -1,0 +1,33 @@
+# Dependency review — blocks a pull request that introduces a dependency with a known
+# vulnerability, or one under a license the project cannot ship.
+#
+# This is the PR-time counterpart of dependabot.yml: dependabot chases what is already
+# in the manifest, this refuses the new one before it lands. It diffs the PR's base and
+# head dependency graphs through GitHub's Dependency Review API, so it needs the
+# dependency graph enabled (default on public repositories) and it only runs on
+# `pull_request` — there is no "base" to diff against on a push.
+#
+# fail-on-severity: high — moderate and low findings are reported in the log but do not
+# block a contributor; anything high or critical does.
+name: Dependency review
+on:
+  pull_request:
+    branches: [ main ]
+permissions:
+  contents: read
+concurrency:
+  group: dependency-review-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  dependency-review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: Review the dependencies this PR adds
+        uses: actions/dependency-review-action@a1d282b36b6f3519aa1f3fc636f609c47dddb294 # v5.0.0
+        with:
+          fail-on-severity: high
+          # Posting the summary as a PR comment would need `pull-requests: write`,
+          # which a fork's token does not have — the job summary carries it instead.
+          comment-summary-in-pr: never

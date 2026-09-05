@@ -1,6 +1,6 @@
-# 46. Aide au Diagnostic -- Humain Systematique
+# 46. Aide au Diagnostic -- Humain Systématique
 
-> Validation humaine a chaque etape. Aucun diagnostic n'est jamais pose de maniere autonome. Donnees chiffrees de bout en bout. Anti-injection de prompts pour empecher les manipulations.
+> Validation humaine à chaque étape. Aucun diagnostic n'est jamais posé de manière autonome. Données chiffrées de bout en bout. Anti-injection de prompts pour empêcher les manipulations.
 
 ## Quality
 

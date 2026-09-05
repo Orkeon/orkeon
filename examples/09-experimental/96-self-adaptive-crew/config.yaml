@@ -1,6 +1,5 @@
 # 96. Crew Evolutive Auto-Adaptative
 # Use case: meta-crew where an Architect agent observes performance and dynamically reconfigures the team
-# Source: project/marketing/content-strategy/101-USE-CASES.md #96
 # TODO: feature planifiee — IConfigurationVersioning, IConfigurationRollbackService, IConfigurationDiffService
 
 name: "self-adaptive-crew"

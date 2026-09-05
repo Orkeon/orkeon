@@ -1,6 +1,5 @@
 # 90. Gestion Energetique — Cycle Continu FlowEngine
 # Use case: continuous energy management cycle (monitor -> predict -> optimize -> report) via FlowEngine
-# Source: project/marketing/content-strategy/101-USE-CASES.md #90
 
 name: "energy-management"
 goal: "Manage building energy with a continuous FlowEngine cycle: monitor consumption, predict peak loads, optimize parameters, and report efficiency gains using long-term consumption history"

@@ -50,11 +50,12 @@ dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Data.Tests/Orkeon.Tools.Data.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.FileSystem.Tests/Orkeon.Tools.FileSystem.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
+dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj   # local BGE ONNX (native runtime — run on host/CI, not in a sandbox; the process exits 139 at teardown, see docs/reference/limitations.md)
 
 # Run RAG subsystem tests
 dotnet test tests/rag/Orkeon.Rag.Abstractions.Tests/Orkeon.Rag.Abstractions.Tests.csproj
 dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
-dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (native runtime — run on host/CI, not in a sandbox)
+dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (native runtime — run on host/CI, not in a sandbox, like Orkeon.Tools.Embeddings.Local.Tests above)
 dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
 
 # RAG offline evaluation (profiles fast/balanced/quality/corrective/adaptive, golden dataset)
@@ -283,7 +284,7 @@ test dependencies minimal and the doubles' behavior explicit and debuggable.
 
 ### Virtual File System (VFS) — mandatory for all I/O
 
-Framework code MUST NOT call `System.IO.File.*`, `System.IO.Directory.*`, `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher` directly. Route all filesystem access through `IFileSystemService` (mount-aware, rights-audited, virtual paths). See `docs/architecture/vfs-compliance.md` for the full spec; the baseline audit and second-pass review live in `project/audit-vfs-compliance-*.md`.
+Framework code MUST NOT call `System.IO.File.*`, `System.IO.Directory.*`, `new FileStream/FileInfo/DirectoryInfo/FileSystemWatcher` directly. Route all filesystem access through `IFileSystemService` (mount-aware, rights-audited, virtual paths). See `docs/architecture/vfs-compliance.md` for the full spec; the baseline audit and second-pass review live in the private `backstage` submodule.
 
 Allowed exceptions:
 - **VFS implementation** (`src/core/Orkeon.Domain/FileSystem/`, `src/core/Orkeon.Infrastructure/FileSystem/`) — where the abstraction itself lives.

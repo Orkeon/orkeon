@@ -1,6 +1,6 @@
-# 58. Correction Multi-Criteres Reproductible
+# 58. Correction Multi-Critères Reproductible
 
-> Trois correcteurs independants en parallele, plus un LlmJudgeEvaluator pour coherence inter-correcteurs. L'EvaluationSuite garantit reproductibilite et equite.
+> Trois correcteurs indépendants en parallèle, plus un LlmJudgeEvaluator pour cohérence inter-correcteurs. L'EvaluationSuite garantit reproductibilité et équité.
 
 ## Quality
 

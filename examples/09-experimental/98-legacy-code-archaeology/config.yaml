@@ -1,6 +1,5 @@
 # 98. Archeologie Numerique de Codebase Legacy
 # Use case: five agents explore an unknown codebase and produce complete documentation using composite memory
-# Source: project/marketing/content-strategy/101-USE-CASES.md #98
 # TODO: feature planifiee — Composite memory (ShortTerm: session + LongTerm: codebase mental model)
 
 name: "legacy-code-archaeology"

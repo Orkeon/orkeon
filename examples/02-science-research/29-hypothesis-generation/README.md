@@ -1,4 +1,4 @@
-# 29. Generation et Test d'Hypotheses Cyclique
+# 29. Génération et Test d'Hypothèses Cyclique
 
 > Four agents in a cyclic flow: observation, hypothesis generation, critique, experimental planning. FlowEngine manages the cycle with typed states and an explicit exit condition.
 

@@ -1,4 +1,4 @@
-# 27. Prediction de Tendances avec Auto-Calibration
+# 27. Prédiction de Tendances avec Auto-Calibration
 
 > Parallel agents analyze weak signals (publications, patents, funding). Long-term memory compares past predictions with actual outcomes for automatic bias correction.
 

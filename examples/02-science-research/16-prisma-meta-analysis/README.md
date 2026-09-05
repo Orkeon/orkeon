@@ -1,4 +1,4 @@
-# 16. Meta-Analyse Scientifique PRISMA
+# 16. Méta-Analyse Scientifique PRISMA
 
 > Systematic literature review with full traceability of inclusion/exclusion decisions following the PRISMA protocol. Episodic memory journals every decision with its reasoning.
 

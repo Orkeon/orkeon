@@ -1,6 +1,5 @@
 # 77. Production de Podcast — Pipeline Type Bout-en-Bout
 # Use case: End-to-end podcast production pipeline with typed contracts between stages
-# Source: project/marketing/content-strategy/101-USE-CASES.md #77
 
 name: "podcast-production"
 goal: "Produce podcast episodes through a typed pipeline where each stage outputs a deliverable with guaranteed contract"

@@ -7,9 +7,9 @@ using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 namespace Orkeon.Analysis.Tests;
 
 /// <summary>
-/// LE-12 — White-box tests for <c>TryCreateLocalProvider</c>, the reflection helper
-/// added by LE-09 in <see cref="RaggableTreeServiceCollectionExtensions"/>. Validates the
-/// 3 acceptance criteria of LE-09 :
+/// White-box tests for <c>TryCreateLocalProvider</c>, the reflection helper in
+/// <see cref="RaggableTreeServiceCollectionExtensions"/> that wires the optional
+/// local-embeddings package without a hard reference. Validates its 3 guarantees:
 /// <list type="number">
 /// <item>Assembly loaded → provider resolves to <c>LocalEmbeddingProvider</c>.</item>
 /// <item>Assembly absent → <c>InvalidOperationException</c> with actionable message
@@ -58,10 +58,13 @@ public sealed class RaggableTreeReflectionWiringTests
         // from this test project, which references Orkeon.Tools.Embeddings.Local. Without
         // AssemblyLoadContext-isolation the factory can never return null here. The
         // pragmatic alternative is to "pin the contract wording" on the source itself,
-        // catching any drift in the actionable error message LE-09 introduced.
+        // catching any drift in that actionable error message.
         //
-        // TODO v1.1 (cf. SPEC-LOCAL-EMBEDDINGS §15) — replace this source-level pin with
-        // a real isolated-AssemblyLoadContext test that drives Type.GetType(...) → null.
+        // TODO — replace this source-level pin with a real runtime test: load
+        // Orkeon.Analysis into a collectible AssemblyLoadContext that does NOT resolve
+        // Orkeon.Tools.Embeddings.Local, so Type.GetType(...) actually returns null,
+        // then assert the thrown InvalidOperationException message instead of the source
+        // text. That removes the dependency on the bin/ -> src/ relative path below.
         var sourcePath = Path.Combine(
             // From bin/Debug/net10.0/, climb to the repo root then point the source file.
             // ATTENTION: assumes the binary runs from bin/Debug/netX.0/. Adjust if the
@@ -72,7 +75,7 @@ public sealed class RaggableTreeReflectionWiringTests
 
         var source = File.ReadAllText(Path.GetFullPath(sourcePath));
 
-        // The contractual error message defined in LE-09 must contain all four fragments.
+        // The contractual error message must contain all four fragments.
         // The LocalSmartComponents error wording must point at the missing package.
         Assert.Contains("requires the package", source);
         // The wording must name the opt-in package the user needs to reference.

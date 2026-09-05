@@ -37,10 +37,10 @@ public class CodebaseContextProviderTests
                 new CodebaseContextOptions { Format = "markdown", TopN = 3 },
                 CancellationToken.None);
 
-            Assert.Contains("CONTEXTE CODEBASE", text, StringComparison.Ordinal);
+            Assert.Contains("CODEBASE CONTEXT", text, StringComparison.Ordinal);
             Assert.Contains("packages", text, StringComparison.Ordinal);
-            Assert.Contains("symboles", text, StringComparison.Ordinal);
-            Assert.Contains("2 fichiers .typescript", text, StringComparison.Ordinal);
+            Assert.Contains("symbols", text, StringComparison.Ordinal);
+            Assert.Contains("2 files .typescript", text, StringComparison.Ordinal);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -61,8 +61,8 @@ public class CodebaseContextProviderTests
                 CancellationToken.None);
 
             Assert.Contains("Top-", text, StringComparison.Ordinal);
-            Assert.Contains("complexité", text, StringComparison.Ordinal);
-            Assert.Contains("couplage", text, StringComparison.Ordinal);
+            Assert.Contains("complexity", text, StringComparison.Ordinal);
+            Assert.Contains("coupling", text, StringComparison.Ordinal);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -146,7 +146,7 @@ public class CodebaseContextProviderTests
                 new CodebaseContextOptions { IncludePatterns = false }, CancellationToken.None);
 
             Assert.Contains("observer", with, StringComparison.OrdinalIgnoreCase);
-            Assert.DoesNotContain("Patterns détectés", without, StringComparison.Ordinal);
+            Assert.DoesNotContain("Detected patterns", without, StringComparison.Ordinal);
         }
         finally { Directory.Delete(dir, recursive: true); }
     }
@@ -181,8 +181,8 @@ public class CodebaseContextProviderTests
             CancellationToken.None);
 
         Assert.Contains("14 packages", text, StringComparison.Ordinal);
-        Assert.Contains("333 fichiers", text, StringComparison.Ordinal);
-        Assert.Contains("842 symboles", text, StringComparison.Ordinal);
+        Assert.Contains("333 files", text, StringComparison.Ordinal);
+        Assert.Contains("842 symbols", text, StringComparison.Ordinal);
         Assert.Contains("types", text, StringComparison.Ordinal);
         Assert.Contains("ActorLogic", text, StringComparison.Ordinal);
     }

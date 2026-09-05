@@ -1,4 +1,4 @@
-# 15. Redaction de Propositions Commerciales
+# 15. Rédaction de Propositions Commerciales
 
 > Sequential proposal writing guided by YAML templates with human validation. Each section is produced by a specialized agent and validated by JSON schema before passing to the next. Human Agent approves the final version.
 

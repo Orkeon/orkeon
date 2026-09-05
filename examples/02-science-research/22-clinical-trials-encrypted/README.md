@@ -1,4 +1,4 @@
-# 22. Monitoring d'Essais Cliniques Chiffre
+# 22. Monitoring d'Essais Cliniques Chiffré
 
 > Continuous monitoring of sensitive patient data. Observer Agent detects alarm signals in real time. All data is encrypted, all actions audited per NIST standards.
 

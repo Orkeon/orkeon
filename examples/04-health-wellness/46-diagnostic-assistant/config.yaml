@@ -1,6 +1,5 @@
 # 46. Aide au Diagnostic — Humain Systematique
 # Use case: Validation humaine a chaque etape. Aucun diagnostic n'est jamais pose de maniere autonome.
-# Source: project/marketing/content-strategy/101-USE-CASES.md #46
 
 name: "diagnostic-assistant"
 goal: "Assist medical diagnosis with mandatory human validation at every step — zero autonomous diagnostic decisions"

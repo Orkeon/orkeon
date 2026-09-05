@@ -7,6 +7,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.3] - 2026-09-05
+
+The release candidate that opens the repository. Since `1.0.0-rc.2`: the NuGet
+distribution collapses from a per-layer lineup into a single `Orkeon` package plus
+`Orkeon.Tools` and the opt-ins (PUB-25); the example catalogue drops its dedicated C#
+trading runner and speaks TypeScript end to end; MiniMax and Grok bring the provider
+fleet to **14** (Groq removed, no shims); the VFS boundary is enforced everywhere by its
+own analyzer, and virtual paths became the only currency an agent is paid in (ADR-008);
+constants shared by two projects moved to zero-dependency satellites (ADR-009); and a
+full SonarQube campaign closed every issue above INFO — 0 bug, 0 vulnerability, 0
+hotspot, technical debt down from 1 762 minutes to zero, A on all four ratings.
+
+The public API surface is frozen at this tag: the 328 additions and 203 removals
+accumulated since rc.2 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
+across the twelve projects that carried them, and the seven `ORKVFS` analyzer rules ship
+with them.
+
+
 ### Fixed — SonarQube campaign: 186 issues resolved, BLOCKER through MINOR **[breaking — constructor shapes]**
 
 A full analysis (SonarQube 9.9.8, scanner .NET 11.2.1, `Sonar way` C# profile) on
@@ -58,6 +76,46 @@ take a grouped record. No shim is provided — call sites move with them.
 Out of band and left as-is: 406 `INFO` issues, 404 of them `xUnit2033` (use the
 value `Assert.Single` returns instead of re-indexing) plus two `SYSLIB` hints.
 
+### Changed — the example catalogue speaks TypeScript, and the trading assembly retires **[breaking — one package removed]**
+
+The numbered catalogue had two ways to run: the `orkeon` CLI for most of it, and a
+dedicated C# runner for the fifteen finance crews, dragging a 14 000-line assembly and
+its own package behind it. It now has one.
+
+- **The fifteen finance crews are `main.ork.ts`** — every process type (hierarchical
+  with managers, parallel fan-outs, sequential, consensual), memory, the three
+  `humanInput` reviews, dependency DAGs, built-ins by name, and their tools attached as
+  instances. All validated end to end through the same strict pipeline as YAML. The
+  catalogue holds at 105 examples.
+- **A shared `_tools` TypeScript module** replaces `Orkeon.Trading.Tools`: 27 tools over
+  seven category files plus a small financial-math core (correlation and covariance
+  matrices, Acklam's normal inverse CDF, a seeded mulberry32 PRNG). Every tool is
+  **deterministic** — same input, same output — which the `Random`-based C# originals
+  never were. Simplifications where the C# leaned on MathNet are documented in place
+  (grid-scan mean-variance, convex-blend Black-Litterman, midpoint-bisection HRP);
+  everything else is a faithful port, Wilder's full ADX included. The seventeen tools no
+  finance config ever referenced were not ported.
+- **Removed**: `Orkeon.Trading.Tools` (162 files), the trading runner, the two
+  interactive example runners and the `examples/_shared` library — from both solutions
+  and from the disk. `publish.yml` **no longer packs `Orkeon.Runners.Shared`**: that
+  package is discontinued. `MathNet.Numerics` and `YahooFinanceApi` leave the package
+  versions with no consumer left, the container image drops its trading publish stage and
+  banner line, and the installers drop the `orkeon-trading` launcher.
+- **A declarative `.ork.ts` now runs through the real pipeline.** A bare
+  `orkeon run crew.ork.ts` used to execute a flat loop over agent bodies that ignored
+  tasks, process, manager, `humanInput` and deliverables — the full orchestration was
+  reachable only behind `--config`. `run` now routes to the shared one-shot runner
+  whenever the script declares the `globalThis.crew` handoff, so the script is evaluated
+  exactly once, by the pipeline. Procedural scripts keep the script path untouched.
+- Every surface that discovers, validates, lints, indexes or launches the catalogue
+  accepts `main.ork.ts` beside `config.yaml`: `run-example`, `test-all-examples`,
+  `validate-all-examples`, the config linter (which grew a TypeScript lint checking every
+  quoted tool name against the manifest and the shared module), the index generator, and
+  the container's `orkeon-example` dispatch. The guides say one CLI, EN and FR.
+- Incidental: a Cyrillic-homoglyph agent id the 36 finance YAML files had carried since
+  birth is ASCII at last, and the catalogue-wide `CA5394` waiver lifts — the seeded-PRNG
+  TypeScript successors made it moot.
+
 ### Changed — one `Orkeon` package instead of a per-layer NuGet lineup (PUB-25) **[breaking — packaging only]**
 
 The Domain/Application/Infrastructure split is an internal discipline, not a
@@ -96,7 +154,7 @@ source layout, namespaces, and per-assembly PublicAPI freeze are untouched, so
   had silently disabled emission, shipping non-debuggable packages with no
   SourceLink attachment point); `EmbedUntrackedSources` is on.
 - The `orkeon` dotnet tool package no longer bundles the iOS/Android
-  onnxruntime natives a CLI tool can never load: 262.5 MB → 144 MB, back under
+  onnxruntime natives a CLI tool can never load: 262.5 MB → 137.6 MB, back under
   the nuget.org size limit.
 - The docfx API reference now covers the five `Orkeon.Constants.*` assemblies,
   and `namespaceLayout: flattened` removes the 26 dead breadcrumb links the
@@ -2639,7 +2697,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...HEAD
+[1.0.0-rc.3]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
 [0.9.2-beta]: https://github.com/Orkeon/orkeon/compare/v0.9.1-beta.rc1...v0.9.2-beta

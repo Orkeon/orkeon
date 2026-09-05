@@ -1,4 +1,4 @@
-# 100. Simulateur de Civilisation Emergente
+# 100. Simulateur de Civilisation Émergente
 
 > Ecosystem of 20+ agents representing factions. FlowEngine manages turns. A2A protocol enables inter-faction diplomacy. Episodic memory creates a unique emergent history.
 

@@ -3,7 +3,7 @@
 //
 // 33. Scoring de Credit Validation Humaine — a sequential pipeline with a
 // conditionally triggered human validation (when the score crosses a risk
-// threshold). Source: project/marketing/content-strategy/101-USE-CASES.md #33
+// threshold).
 // Built-in tools are referenced by name; the trading tools come as TypeScript
 // instances from the shared _tools module (EX-01).
 

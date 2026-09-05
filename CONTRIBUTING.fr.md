@@ -6,7 +6,7 @@ Avant tout, merci d'envisager de contribuer à Orkeon ! Ce sont des personnes co
 
 ## Code de conduite
 
-Ce projet et toutes les personnes qui y participent sont régis par notre Code de conduite. En participant, vous vous engagez à le respecter.
+Ce projet et toutes les personnes qui y participent sont régis par notre [Code de conduite](CODE_OF_CONDUCT.fr.md). En participant, vous vous engagez à le respecter.
 
 ## Comment puis-je contribuer ?
 
@@ -56,9 +56,17 @@ dotnet restore Orkeon.sln
 # Build
 dotnet build Orkeon.sln
 
-# Run tests
-dotnet test Orkeon.sln
+# Run tests (the set CI runs)
+dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 ```
+
+> **Pourquoi ce filtre, et pas un `dotnet test Orkeon.sln` nu** : `Category=Integration`
+> couvre les tests Testcontainers, qui exigent Docker et téléchargent des gigaoctets
+> d'images de bases de données, et `Category=Slow` porte la suite ONNX de
+> `Orkeon.Tools.Embeddings.Local`, dont le runtime natif fait tomber le processus au
+> teardown (code 139) **après** que tous les tests sont passés. `ci.yml` exécute
+> exactement la commande filtrée ci-dessus, puis lance cette suite ONNX dans une étape
+> dédiée qui tolère cette seule forme de crash.
 
 > **Note** — `backstage/` et `experiments/` sont des **sous-modules privés des mainteneurs** :
 > clonez **sans** `--recursive` (comme ci-dessus). Le build, les tests et tout le flux de
@@ -259,11 +267,18 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    lui correspond pas**.
 2. Couper la section `[Unreleased]` de `CHANGELOG.md` en section versionnée datée.
 3. Basculer les entrées `PublicAPI.Unshipped.txt` dans `PublicAPI.Shipped.txt`.
-4. Vérifier que la CI est verte : build `-warnaserror`, tests,
+4. Basculer de même les règles d'analyseur : toute entrée en attente dans
+   `src/analyzers/Orkeon.Compliance.Vfs/AnalyzerReleases.Unshipped.md` (les règles de
+   conformité VFS `ORKVFS00x`) passe dans `AnalyzerReleases.Shipped.md` sous un titre
+   `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
+5. Vérifier que la CI est verte : build `-warnaserror`, tests,
    `scripts/check-docs-parity.sh`, linters d'exemples, build docfx strict.
-5. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **Domain/Application/Infrastructure sur NuGet.org**, chaque paquet sur
-   GitHub Packages — voir [la matrice de publication](docs/fr/reference/publication-matrix.md)),
+6. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
+   pousse **les six paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
+   `Orkeon.Scripting.Cli`, l'ombrelle en premier puisque les autres en dépendent — et
+   chaque projet packable sur GitHub Packages ; voir
+   [la matrice de publication](docs/fr/reference/publication-matrix.md)),
    `release.yml` (zip+MSI Windows, tarballs macOS, paquet Debian) et `docs.yml`
    (déploie le site de documentation sur GitHub Pages).
 

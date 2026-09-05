@@ -37,7 +37,7 @@ The documentation is organized into 6 thematic sections.
 | [TypeScript CLI commands](./architecture/cli-ts-commands.md) | Interactive REPL commands in `*.cmd.ts` (`defineCommand`) loaded at startup without .NET recompilation, with work dispatch to agents |
 | [MCP client & server](./architecture/mcp.md) | Dual-era Model Context Protocol integration (`2026-07-28` stateless + legacy revisions), transports, activation, honest gaps |
 | [Orkeon Studio](./architecture/studio.md) | The graphical/terminal front-ends over the CLI workflows: the four projects, the shared core, localization, how it ships |
-| [TypeScript coding agent](./architecture/coding-agent-ts.md) | Agentic coding agent built on the scripted stack: `*.cmd.ts` control plane vs `crew.ork.ts` engine, C# `ToolBase` tools |
+| [TypeScript coding agent](./architecture/coding-agent-ts.md) | Agentic coding agent built on the scripted stack: `*.cmd.ts` control plane vs `crew.ork.ts` engine, C# `ToolBase` tools — ⚠️ the architecture is public, but the sources it points at (`experiments/07-orkeon-coding-agent-ts/`) live in the **private `experiments` submodule** and are absent from a public clone |
 | [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, circuitBreaker, graphConfig) |
 | [RaggableTree — semantic graph](./architecture/raggable-tree.md) | 6-phase pipeline, 15 tools, 5 languages, incremental reindexing, watcher, context injection |
 | [RAG pipeline](./architecture/rag-pipeline.md) | The `src/rag/` subsystem: ingestion, 7-stage pipeline (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), corrective CRAG graph, web fallback, 5 profiles, measured evaluation |

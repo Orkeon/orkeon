@@ -1,6 +1,5 @@
 # 49. Structuration Dossiers Medicaux FHIR
 # Use case: Extraction et normalisation FHIR de dossiers medicaux multi-format avec chunking intelligent
-# Source: project/marketing/content-strategy/101-USE-CASES.md #49
 
 name: "medical-records-fhir"
 goal: "Extract and normalize multi-format medical records into FHIR-compliant structured data with encryption and audit"

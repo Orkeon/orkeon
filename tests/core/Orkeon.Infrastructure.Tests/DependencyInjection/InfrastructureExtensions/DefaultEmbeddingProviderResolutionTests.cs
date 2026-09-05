@@ -180,14 +180,14 @@ public class DefaultEmbeddingProviderResolutionTests
         var ex1 = await Assert.ThrowsAsync<InvalidOperationException>(
             () => port.GetEmbeddingAsync("hello", TestContext.Current.CancellationToken));
         Assert.Contains(
-            "aucun embedding provider sémantique configuré ; ajoutez AddOrkeonLocalEmbeddings() ou configurez Orkeon:Embeddings",
+            "no semantic embedding provider is configured; add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings",
             ex1.Message,
             StringComparison.Ordinal);
 
         var ex2 = await Assert.ThrowsAsync<InvalidOperationException>(
             () => port.GetEmbeddingsAsync(["a", "b"], TestContext.Current.CancellationToken));
         Assert.Contains(
-            "aucun embedding provider sémantique configuré ; ajoutez AddOrkeonLocalEmbeddings() ou configurez Orkeon:Embeddings",
+            "no semantic embedding provider is configured; add AddOrkeonLocalEmbeddings() or configure Orkeon:Embeddings",
             ex2.Message,
             StringComparison.Ordinal);
     }

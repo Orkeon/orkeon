@@ -1,6 +1,5 @@
 # 20. Veille Brevets avec Deduplication Semantique
 # Use case: Continuous patent monitoring with Redis vector search for semantic deduplication
-# Source: project/marketing/content-strategy/101-USE-CASES.md #20
 
 name: "patent-monitoring"
 goal: "Monitor patent filings continuously with semantic deduplication ensuring zero duplicates via Redis vector search"

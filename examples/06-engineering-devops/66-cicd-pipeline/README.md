@@ -1,6 +1,6 @@
 # 66. Pipeline CI/CD avec Rollback Automatique
 
-> Le ICheckpointManager sauvegarde l'etat a chaque stage. En cas d'echec, le rollback est automatique. Les CrewHooks notifient en temps reel.
+> Le ICheckpointManager sauvegarde l'état à chaque stage. En cas d'échec, le rollback est automatique. Les CrewHooks notifient en temps réel.
 
 ## Quality
 

@@ -143,7 +143,7 @@ The release archives carry more launchers than the two documented here: `orkeon-
 (the same CLI, framework-dependent), **`orkeon-host`** (the long-running service daemon —
 see [the service host](../architecture/service-host.md)), the two Studio TUIs
 (`orkeon-studio-config`, `orkeon-studio-run`) and the Windows desktop app (`orkeon-studio`)
-— see [Orkeon Studio](../architecture/studio.md) — plus the example runners. The
+— see [Orkeon Studio](../architecture/studio.md). That is the whole list. The
 [publication matrix](./publication-matrix.md) and
 [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md) list exactly
 which archive carries what.

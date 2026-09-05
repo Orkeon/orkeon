@@ -4,7 +4,6 @@
 // 41. Detection de Delit d'Initie
 // Use case: ObserverAgent correle les transactions inhabituelles avec les evenements
 // d'entreprise en temps reel
-// Source: project/marketing/content-strategy/101-USE-CASES.md #41
 
 import { pickTools } from "../_tools/index.ts";
 

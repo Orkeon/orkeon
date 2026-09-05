@@ -40,8 +40,7 @@ Les crews YAML numérotés vivent dans neuf dossiers thématiques :
 | `forge/promote-demo/` | La moitié hors ligne de l'Atelier : une session `orkeon forge` prête, livrée comme workspace — `forge list`, puis `forge promote` vers un dossier ordinaire (aucun LLM requis) |
 | `service-host/` | Le matériel d'exemple du daemon `orkeon-host` : un README et `appsettings.host.json` |
 | `run-events/` | Le protocole `orkeon run --events jsonl` : README, `sample-stream.jsonl`, `watch-run.py` |
-| `appsettings/`, `_shared/`, `others/` | La matrice de profils de settings partagée, les assets partagés, et des one-offs divers |
-| `runners/` | Les projets runners qui exécutent les exemples numérotés, dont deux tools dotnet interactifs |
+| `appsettings/`, `others/` | La matrice de profils de settings partagée et des one-offs divers |
 
 ## Exemples notables
 
@@ -60,7 +59,7 @@ Les crews YAML numérotés vivent dans neuf dossiers thématiques :
 ```bash
 orkeon run examples/crew-multifile/          # un dossier de crew
 orkeon run examples/scripting/01-hello-world.ork.ts
-./examples/run-example.sh 7                  # exemple numéroté, depuis les sources
+./examples/run-example.sh 01-enterprise/01-research-assistant   # depuis les sources
 docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners
 # puis dans le conteneur : orkeon-example list && orkeon-example run 7
 ```

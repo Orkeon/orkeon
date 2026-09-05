@@ -1,6 +1,6 @@
 # 102. Analyse de Codebase TypeScript et Plan de Migration Orkeon
 
-> Crew de 6 agents en 3 phases sequentielles qui analyse exhaustivement un codebase TypeScript, produit sa specification fonctionnelle complete, puis genere le plan de migration vers une architecture Orkeon.
+> Crew de 6 agents en 3 phases séquentielles qui analyse exhaustivement un codebase TypeScript, produit sa spécification fonctionnelle complète, puis génère le plan de migration vers une architecture Orkeon.
 
 ## Quality
 

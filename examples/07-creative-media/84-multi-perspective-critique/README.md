@@ -1,6 +1,6 @@
 # 84. Critique Multi-Perspectives
 
-> Trois agents incarnant des ecoles de pensee analysent independamment la meme oeuvre en parallele. L'independance est garantie par le batch execution (aucun agent ne voit le travail des autres).
+> Trois agents incarnant des écoles de pensée analysent indépendamment la même oeuvre en parallèle. L'indépendance est garantie par le batch execution (aucun agent ne voit le travail des autres).
 
 ## Quality
 

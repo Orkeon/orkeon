@@ -10,9 +10,14 @@
 # Two things this run inherits from Microsoft.Testing.Platform (global.json):
 #   - selecting one category across the whole solution leaves MOST modules with zero
 #     matching tests, and MTP calls that an error (exit 8) per module. Hence
-#     --ignore-exit-code 8, plus an explicit check that the run as a whole executed
-#     something: tolerating "zero tests" per module must not make "zero tests anywhere"
-#     — a mistyped filter — look green.
+#     --ignore-exit-code 8, plus an explicit FLOOR on the reported total: tolerating
+#     "zero tests" per module must not make "zero tests anywhere" — a mistyped filter —
+#     look green, and neither must "a handful of tests anywhere".
+#
+# The floor is only half the guard. The database fixtures SKIP rather than fail when a
+# container will not start, so the run stays green with a full test total while having
+# exercised no database at all; the last step therefore asserts, against the local image
+# store, that Testcontainers really pulled and started them. See its comment.
 #   - Embeddings.Local is left out: its 8 ONNX tests crash the process at exit 139
 #     after passing, and ci.yml already runs exactly those on every push with a guard
 #     that tells that crash apart from a real failure. Repeating them here would only
@@ -60,6 +65,13 @@ jobs:
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
       - name: Run Integration + Slow suites (Testcontainers)
+        env:
+          # Floor on the number of tests the run must report. The nightly executes ~99
+          # today; the floor sits well under that so a normal add/remove never trips it,
+          # while a filter typo, a module silently dropping out of the sweep, or a
+          # solution restructure that stops selecting the suites still does. Raise it
+          # when the real count grows durably; never lower it to make a red run green.
+          MIN_TESTS: '60'
         run: |
           set +e
           out="$(dotnet test Orkeon.sln -c Release --no-build \
@@ -70,12 +82,50 @@ jobs:
           # MTP colors its summary; strip ANSI escapes before parsing "total:" so the
           # guard reads the real count (the 2026-09-01 run mis-reported "no test at
           # all" on a run that executed 99 because ESC[m defeated the anchor).
-          total="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*total:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | tail -1)"
+          # Take the MAXIMUM of the parsed totals, not the last one: MTP prints a summary
+          # per module and, depending on the SDK build, an aggregate after them — the max
+          # is the aggregate under one layout and the biggest module under the other, and
+          # the floor below is meaningful in both.
+          total="$(printf '%s\n' "$out" | sed -e 's/\x1b\[[0-9;]*m//g' | sed -n 's/^[[:space:]]*total:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p' | sort -n | tail -1)"
           if [ "${total:-0}" -eq 0 ]; then
             echo "::error::No parsable test total for this run — either the filter selected nothing solution-wide, or the summary is missing. Check the log above before trusting any other diagnosis."
             exit 1
           fi
+          if [ "$total" -lt "$MIN_TESTS" ]; then
+            echo "::error::Only $total test(s) reported, expected at least $MIN_TESTS. The sweep selected far less than it should — check the filter and that every suite module still ran, do NOT lower MIN_TESTS to clear this."
+            exit 1
+          fi
+          echo "Test total reported: $total (floor: $MIN_TESTS)"
           exit $rc
+
+      # The database suites do not FAIL when Docker is unusable — every fixture catches
+      # its container-start error and the tests then call Assert.SkipWhen(...), so a
+      # wedged daemon, an exhausted disk mid-pull (what killed 2026-09-01) or a broken
+      # Testcontainers setup produces a GREEN nightly that tested no database at all.
+      # A test total cannot see that: the skipped tests are still counted.
+      #
+      # What proves the containers really started is the local image store. The disk
+      # cleanup at the top of this job prunes every image, so anything present here was
+      # pulled by this run. Repository names only (no tags): a fixture bumping
+      # `mongo:7.0` to `mongo:8.0` must not turn this guard red.
+      # Source of the list: tests/tools/Orkeon.Tools.Data.Tests/Integration/*IntegrationTests.cs
+      # (ArcadeDB and JanusGraph are deliberately absent — they have no Testcontainers
+      # module and legitimately skip on a hosted runner).
+      - name: Assert the container-gated suites actually ran
+        if: ${{ !cancelled() }}
+        run: |
+          set -uo pipefail
+          present="$(docker image ls --format '{{.Repository}}' | sort -u)"
+          echo "Images pulled by this run:"; printf '%s\n' "$present" | sed 's/^/  - /'
+          missing=""
+          for repo in mariadb mongo mysql postgres mcr.microsoft.com/mssql/server; do
+            printf '%s\n' "$present" | grep -qx "$repo" || missing="$missing $repo"
+          done
+          if [ -n "$missing" ]; then
+            echo "::error::Testcontainers never started:$missing — the database suites SKIPPED instead of failing, so this run proves nothing about them. Check the Docker daemon and the runner's free disk above."
+            exit 1
+          fi
+          echo "All five Testcontainers images were pulled — the database suites really executed."
       - name: Surface the failure as a tracking issue
         if: failure()
         env:

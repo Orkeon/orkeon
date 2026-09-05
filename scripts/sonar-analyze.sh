@@ -3,7 +3,7 @@ set -euo pipefail
 
 # ── Locale ────────────────────────────────────────────────────────────────────
 # Force a UTF-8 locale so the SonarScanner JVM (sun.jnu.encoding) can encode
-# non-ASCII source paths (e.g. accented French filenames under project/). This
+# non-ASCII source paths (e.g. accented French filenames under examples/). This
 # image ships only C.utf8 (no en_US.UTF-8 is generated), so without this the
 # scanner's project-reactor build crashes with java.nio.file.InvalidPathException
 # on the first accented path. C.utf8 keeps C semantics for everything but charset.

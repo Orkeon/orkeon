@@ -37,7 +37,7 @@ public sealed class LlmProbeReportTests
         Assert.Contains("gpt-5.6-sol", report, StringComparison.Ordinal);
         Assert.Contains("2026-07-27", report, StringComparison.Ordinal);
         Assert.Contains("9cbc020", report, StringComparison.Ordinal);
-        Assert.Contains("sortie archivée", report, StringComparison.Ordinal);
+        Assert.Contains("archived output", report, StringComparison.Ordinal);
         Assert.Contains("| M1 | ✅ |", report, StringComparison.Ordinal);
         Assert.Contains("| M8 | ❌ |", report, StringComparison.Ordinal);
         Assert.Contains("| M9 | ➖ |", report, StringComparison.Ordinal);
@@ -82,7 +82,7 @@ public sealed class LlmProbeReportTests
         using var document = JsonDocument.Parse(LlmProbeReport.ToJson(context, results));
         Assert.Equal(0.4d, document.RootElement.GetProperty("temperature").GetDouble());
 
-        Assert.Contains("**Température** : 0.4", LlmProbeReport.ToMarkdown(context, results),
+        Assert.Contains("**Temperature**: 0.4", LlmProbeReport.ToMarkdown(context, results),
             StringComparison.Ordinal);
     }
 
@@ -90,7 +90,7 @@ public sealed class LlmProbeReportTests
     [Fact]
     public void ShouldRenderAPinnedZero_RatherThanNothing()
     {
-        Assert.Contains("**Température** : 0", LlmProbeReport.ToMarkdown(Context(), Results()),
+        Assert.Contains("**Temperature**: 0", LlmProbeReport.ToMarkdown(Context(), Results()),
             StringComparison.Ordinal);
     }
 
@@ -107,7 +107,7 @@ public sealed class LlmProbeReportTests
         var context = Context() with { M7ThinkingEffort = "high" };
         var results = Results();
 
-        Assert.Contains("**Effort de raisonnement (M7)** : high",
+        Assert.Contains("**Reasoning effort (M7)**: high",
             LlmProbeReport.ToMarkdown(context, results), StringComparison.Ordinal);
 
         using var document = JsonDocument.Parse(LlmProbeReport.ToJson(context, results));
@@ -118,7 +118,7 @@ public sealed class LlmProbeReportTests
     [Fact]
     public void ShouldStayQuietAboutTheM7Effort_WhenTheRunUsedTheDefault()
     {
-        Assert.DoesNotContain("Effort de raisonnement (M7)",
+        Assert.DoesNotContain("Reasoning effort (M7)",
             LlmProbeReport.ToMarkdown(Context(), Results()), StringComparison.Ordinal);
     }
 

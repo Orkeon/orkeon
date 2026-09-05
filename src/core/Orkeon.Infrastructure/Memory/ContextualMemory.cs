@@ -173,7 +173,4 @@ public sealed class ContextualMemory : IContextualMemory
                 .ToList();
         }
     }
-
-    // REMOVED: Horrible reflection hack - dependencies must be provided via constructor
-    // If you need to resolve circular dependencies, use a proper DI container or factory pattern
 }

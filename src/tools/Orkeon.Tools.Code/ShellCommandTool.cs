@@ -341,7 +341,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             {
                 ExitCode = -1,
                 Stdout = "",
-                Stderr = $"Argument refusé: {argumentDenial}",
+                Stderr = $"Argument denied: {argumentDenial}",
                 Completed = false
             };
         arguments = rewrittenArguments;
@@ -352,7 +352,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
             {
                 ExitCode = -1,
                 Stdout = "",
-                Stderr = $"WorkingDirectory refusé: {workingDirectoryDenial}",
+                Stderr = $"WorkingDirectory denied: {workingDirectoryDenial}",
                 Completed = false
             };
 
@@ -599,7 +599,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
         var readable = mounts.FirstOrDefault(m => m.DefaultRights.HasFlag(FileAccessRights.Read));
         if (readable is null)
-            return ("", "aucun montage lisible n'est disponible pour servir de répertoire de travail.");
+            return ("", "no readable mount is available to serve as the working directory.");
 
         var resolved = _fileSystem.ResolveAndValidate(readable.VirtualPath, FileAccessRights.Read);
         return resolved.IsAllowed ? (resolved.ResolvedPath!, null) : ("", resolved.DenialReason);

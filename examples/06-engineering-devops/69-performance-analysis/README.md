@@ -1,6 +1,6 @@
 # 69. Analyse de Performance 4 Couches
 
-> Quatre analystes paralleles (backend, frontend, reseau, BDD) alimentes par metriques OpenTelemetry, puis synthese priorisee des bottlenecks.
+> Quatre analystes parallèles (backend, frontend, réseau, BDD) alimentés par métriques OpenTelemetry, puis synthèse priorisée des bottlenecks.
 
 ## Quality
 

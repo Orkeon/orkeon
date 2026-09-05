@@ -1,6 +1,6 @@
-# 35. Reconciliation Comptable Multi-Sources
+# 35. Réconciliation Comptable Multi-Sources
 
-> Un agent par source de donnees en parallele (banque, ERP, CRM), puis convergence vers un Reconciliateur. Le checkpointing permet de reprendre apres un timeout API sans recommencer.
+> Un agent par source de données en parallèle (banque, ERP, CRM), puis convergence vers un Réconciliateur. Le checkpointing permet de reprendre après un timeout API sans recommencer.
 
 ## Quality
 

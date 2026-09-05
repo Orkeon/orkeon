@@ -1,4 +1,4 @@
-# 93. Controle Qualite Visuel — Auto-Calibration par Historique
+# 93. Contrôle Qualité Visuel — Auto-Calibration par Historique
 
 > Long-term memory enables the system to auto-calibrate acceptance thresholds. Thresholds refine with experience. The BenchmarkRunner ensures inspection reproducibility.
 

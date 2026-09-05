@@ -34,10 +34,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
-    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
-    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
     <!-- Needed for TypedPipelineIntegrationTests (JsonTool) -->
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
     <!-- Needed for RaggableTree embedding logging tests -->
     <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
     <!-- Needed for RunnerDiSmokeTests (catches ambiguous tool ctors across all tool packs) -->
@@ -45,14 +44,6 @@
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
-  </ItemGroup>
-
-  <!-- Temporarily exclude broken test files from other WIP features -->
-  <ItemGroup>
-    <Compile Remove="Process\Consensus\Consensus\ConsensusTests.cs" />
-    <Compile Remove="Process\Consensus\Consensus\ConsensusTestsFixture.cs" />
-    <Compile Remove="Agent\AgentFactoryTests.cs" />
-    <Compile Remove="Agent\DynamicAgentServiceTests.cs" />
   </ItemGroup>
 
 </Project>

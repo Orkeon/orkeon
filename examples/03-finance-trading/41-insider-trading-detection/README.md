@@ -1,6 +1,6 @@
-# 41. Detection de Delit d'Initie
+# 41. Détection de Délit d'Initié
 
-> ObserverAgent correle les transactions inhabituelles avec les evenements d'entreprise en temps reel. Le IKnowledgeSource alimente les bases reglementaires. Audit exhaustif.
+> ObserverAgent corrèle les transactions inhabituelles avec les événements d'entreprise en temps réel. Le IKnowledgeSource alimente les bases réglementaires. Audit exhaustif.
 
 ## Quality
 

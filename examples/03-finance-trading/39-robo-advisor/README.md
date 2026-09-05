@@ -1,6 +1,6 @@
 # 39. Robo-Advisor Profilage Interactif
 
-> Le HumanAgent collecte le profil de risque via questions interactives typees (choix multiples, numeriques, confirmation). La memoire episodique chiffree conserve l'historique complet de chaque client.
+> Le HumanAgent collecte le profil de risque via questions interactives typées (choix multiples, numériques, confirmation). La mémoire épisodique chiffrée conserve l'historique complet de chaque client.
 
 ## Quality
 

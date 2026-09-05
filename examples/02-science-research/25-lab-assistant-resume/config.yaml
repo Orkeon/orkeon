@@ -1,6 +1,5 @@
 # 25. Assistant de Laboratoire avec Reprise d'Experiences
 # Use case: Lab assistant connected to IoT instruments with checkpoint/resume for experiment recovery
-# Source: project/marketing/content-strategy/101-USE-CASES.md #25
 
 name: "lab-assistant-resume"
 goal: "Manage laboratory experiments with IoT instrument monitoring, checkpoint-based recovery on interruption, and literature comparison"

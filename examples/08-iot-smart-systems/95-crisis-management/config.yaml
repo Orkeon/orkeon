@@ -1,6 +1,5 @@
 # 95. Gestion de Crise — Broadcast + Priorite Critique
 # Use case: multi-agency crisis coordination with broadcast alerts and critical priority task handling
-# Source: project/marketing/content-strategy/101-USE-CASES.md #95
 
 name: "crisis-management"
 goal: "Coordinate multi-agency emergency response with broadcast alert diffusion, critical priority task handling, human decision-maker validation, and complete audit trail"

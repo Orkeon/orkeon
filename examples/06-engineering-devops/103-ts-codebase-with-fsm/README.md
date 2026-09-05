@@ -1,6 +1,6 @@
 # 103. Analyse de Codebase TypeScript avec FSM et Circuit Breaker
 
-> Extension de l'exemple 102 avec orchestration par machine a etats finis (FSM) et circuit breaker integre pour la stabilite production.
+> Extension de l'exemple 102 avec orchestration par machine à états finis (FSM) et circuit breaker intégré pour la stabilité production.
 
 ## Ce que cet exemple demontre
 

@@ -9,9 +9,16 @@
 #
 # Two of the three jobs are pure-Python static lints (no dotnet build, no PyYAML): the
 # tool manifests they check against are committed under scripts/data/ and regenerated
-# from the runners' --list-tools contract. The third job builds and runs the shared
+# from the stock CLI's `run --list-tools` contract. The third job COMPILES
+# examples/Orkeon.Examples.sln (warnings as errors) and then runs the shared
 # validate-all-examples.sh over the whole catalog, so it needs the .NET 10 SDK and,
 # like the main CI, some extra free disk on the hosted runner.
+#
+# The compile step is not redundant with the validation sweep: validate-all-examples.sh
+# builds the `orkeon` CLI alone and then loads each crew definition, so a SOURCE-breaking
+# change to the framework (a constructor signature, a renamed type) went in with zero
+# example coverage — c17fab7b shipped exactly that. The examples solution is the only
+# place a real consumer's C# is compiled against the public API.
 name: Examples CI
 on:
   push:
@@ -73,5 +80,7 @@ jobs:
           path: ~/.nuget/packages
           key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
           restore-keys: nuget-${{ runner.os }}-
-      - name: Build runners and validate all example configs
+      - name: Build the examples solution (warnings are errors)
+        run: dotnet build examples/Orkeon.Examples.sln -c Release -warnaserror
+      - name: Validate every example crew definition
         run: bash scripts/validate-all-examples.sh

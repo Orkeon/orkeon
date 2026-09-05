@@ -1,6 +1,6 @@
-# 52. Pharmacovigilance Deduplication Semantique
+# 52. Pharmacovigilance Déduplication Sémantique
 
-> Monitoring parallele de 3 sources (rapports officiels, litterature, reseaux sociaux) avec deduplication semantique vectorielle. Le rate limiting protege les APIs sensibles.
+> Monitoring parallèle de 3 sources (rapports officiels, littérature, réseaux sociaux) avec déduplication sémantique vectorielle. Le rate limiting protège les APIs sensibles.
 
 ## Quality
 

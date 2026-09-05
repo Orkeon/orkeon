@@ -1,6 +1,6 @@
-# 50. Imagerie Medicale -- Radiologue Dernier Mot
+# 50. Imagerie Médicale -- Radiologue Dernier Mot
 
-> Le rapport est genere automatiquement mais jamais finalise sans validation du Radiologue humain. La memoire long-terme compare avec l'historique patient pour detecter les evolutions.
+> Le rapport est généré automatiquement mais jamais finalisé sans validation du Radiologue humain. La mémoire long-terme compare avec l'historique patient pour détecter les évolutions.
 
 ## Quality
 

@@ -1,4 +1,4 @@
-# 30. Resume Adaptatif au Profil Lecteur
+# 30. Résumé Adaptatif au Profil Lecteur
 
 > A single agent whose behavior adapts to the reader's profile stored in long-term memory. Expert gets a concise technical summary. Novice gets a pedagogical summary. Memory learns preferences over interactions.
 

@@ -5,11 +5,18 @@ Ground truth is computed from the repository itself; the claims checked are the
 ones that have historically rotted (provider/tool/example/project counts and the
 version string). A mismatch fails the build with an actionable message.
 
+It also carries two release-safety gates that need no build, so CI can run them on
+every pull request through this one step (LOT K): the NuGet lineup must read the same
+in its four hand-maintained copies, and scripts/check-package-closure.py's source-mode
+checks must pass -- otherwise a closure regression is only discovered by publish.yml,
+on a tag that is already cut.
+
 Run from the repository root: python3 scripts/check-doc-claims.py
 """
 
 from __future__ import annotations
 
+import importlib.util
 import re
 import sys
 from pathlib import Path
@@ -113,6 +120,84 @@ def expect_absent(path: str, pattern: str, why: str) -> None:
         fail(f"{hit}: stale pattern /{pattern}/ ({why})")
 
 
+# --- NuGet lineup: four hand-written copies, one truth ------------------------------------
+
+def load_closure_module():
+    """scripts/check-package-closure.py is not an importable module name (hyphens), and
+    it is the file that owns the lineup constant and the source-mode checks."""
+    spec = importlib.util.spec_from_file_location(
+        "check_package_closure", ROOT / "scripts/check-package-closure.py")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+def lineup_from_publish_gate() -> list[str]:
+    """The --lineup arguments of publish.yml's closure-gate step."""
+    m = re.search(r"check-package-closure\.py[^\n]*--lineup ([^\n]+)",
+                  read(".github/workflows/publish.yml"))
+    if not m:
+        fail(".github/workflows/publish.yml: no `--lineup ...` closure-gate arguments found")
+        return []
+    return m.group(1).split()
+
+
+def lineup_from_publish_push() -> list[str]:
+    """The ids of publish.yml's NuGet.org push loop."""
+    m = re.search(r"for id in ([^;]+); do", read(".github/workflows/publish.yml"))
+    if not m:
+        fail(".github/workflows/publish.yml: no `for id in ...; do` NuGet.org push loop found")
+        return []
+    return m.group(1).split()
+
+
+def lineup_from_matrix(path: str) -> list[str]:
+    """The PackageIds of the publication matrix' lineup table, in table order. One cell
+    may name several ids (the ONNX reranker pair ships as one row)."""
+    text = read(path)
+    m = re.search(r"^## [^\n]*lineup[^\n]*$", text, flags=re.M | re.I)
+    if not m:
+        fail(f"{path}: no '## ... lineup ...' section heading found")
+        return []
+    section_text = re.split(r"^## ", text[m.end():], maxsplit=1, flags=re.M)[0]
+    ids: list[str] = []
+    for row in re.findall(r"^\|([^|]+)\|", section_text, flags=re.M):
+        for pkg_id in re.findall(r"`(Orkeon[A-Za-z0-9.]*)`", row):
+            if pkg_id not in ids:
+                ids.append(pkg_id)
+    return ids
+
+
+def check_lineup_copies(canonical: list[str]) -> None:
+    """The six lineup ids are typed independently in four places and nothing compared
+    them until now: publish.yml's closure-gate arguments, publish.yml's push loop, the
+    publication matrix (EN + its FR mirror), and check-package-closure.py's LINEUP.
+    Any of them going stale is how a package silently stops being published -- or worse,
+    keeps being published after the matrix says it was discontinued."""
+    copies = {
+        ".github/workflows/publish.yml (closure-gate --lineup)": lineup_from_publish_gate(),
+        ".github/workflows/publish.yml (NuGet.org push loop)": lineup_from_publish_push(),
+        "docs/reference/publication-matrix.md (lineup table)":
+            lineup_from_matrix("docs/reference/publication-matrix.md"),
+        "docs/fr/reference/publication-matrix.md (tableau du lineup)":
+            lineup_from_matrix("docs/fr/reference/publication-matrix.md"),
+    }
+    for where, ids in copies.items():
+        if not ids:
+            continue  # already reported by the parser
+        if set(ids) != set(canonical):
+            fail(f"{where}: lineup {sorted(ids)} differs from "
+                 f"scripts/check-package-closure.py LINEUP {sorted(canonical)}")
+
+    # The push order is load-bearing, not cosmetic: `Orkeon` must go first because every
+    # other lineup package depends on it and NuGet orders nothing (the rc.1/rc.2 shape).
+    push = copies[".github/workflows/publish.yml (NuGet.org push loop)"]
+    if push and push[0] != canonical[0]:
+        fail(f".github/workflows/publish.yml: the push loop starts with {push[0]!r}; "
+             f"{canonical[0]!r} must be pushed first (its dependents would expose an "
+             f"unrestorable package otherwise)")
+
+
 def main() -> int:
     version = gt_version()
     providers = gt_llm_providers()
@@ -175,6 +260,14 @@ def main() -> int:
     # Known-stale patterns that must never come back (outside legitimate history).
     for path in ("README.md", "README.fr.md", "docs/INDEX.md", "docs/fr/INDEX.md"):
         expect_absent(path, r"\b12(th|e|ᵉ)? (LLM )?(provider|fournisseur)", "Gemini is the 13th provider")
+
+    # Release-safety gates that need no build, so they run on every PR here rather than
+    # only on the tag (LOT K): the four copies of the NuGet lineup, and the csproj-only
+    # half of the package-closure gate that publish.yml otherwise runs after `dotnet pack`.
+    closure = load_closure_module()
+    check_lineup_copies(closure.LINEUP)
+    for e in closure.source_errors(list(closure.LINEUP)):
+        fail(f"check-package-closure (source mode): {e}")
 
     if ERRORS:
         print(f"\ncheck-doc-claims FAILED — {len(ERRORS)} problem(s):")

@@ -1,6 +1,6 @@
-# 75. Chaos Engineering Humain Approuve
+# 75. Chaos Engineering Humain Approuvé
 
-> Le HumanAgent valide chaque injection de perturbation. L'ObserverAgent mesure l'impact en temps reel. Le ICheckpointManager permet le rollback si necessaire.
+> Le HumanAgent valide chaque injection de perturbation. L'ObserverAgent mesure l'impact en temps réel. Le ICheckpointManager permet le rollback si nécessaire.
 
 ## Quality
 

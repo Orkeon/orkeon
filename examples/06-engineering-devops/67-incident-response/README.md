@@ -1,6 +1,6 @@
 # 67. Incident Response — Humain Valide en Prod
 
-> Detection, Diagnostic, Remediation, Post-mortem. Le HumanAgent valide toute action touchant la production. Le streaming permet le suivi temps reel de la resolution.
+> Détection, Diagnostic, Remédiation, Post-mortem. Le HumanAgent valide toute action touchant la production. Le streaming permet le suivi temps réel de la résolution.
 
 ## Quality
 

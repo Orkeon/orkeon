@@ -1,6 +1,5 @@
 # 76. Studio Narratif — FlowEngine Cyclique + Memoire Composite 3 Couches
 # Use case: Narrative studio with cyclic creation-revision via FlowEngine and 3-layer composite memory
-# Source: project/marketing/content-strategy/101-USE-CASES.md #76
 # TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState) + Composite memory
 
 name: "narrative-studio"

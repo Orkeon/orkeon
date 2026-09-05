@@ -1,4 +1,4 @@
-# 88. Agriculture de Precision — Humain Valide les Actions Physiques
+# 88. Agriculture de Précision — Humain Valide les Actions Physiques
 
 > Precision agriculture where agents connected to IoT sensors analyze field data. The HumanAgent (farmer) validates every physical action (irrigation, chemical treatment). Rate limiting protects sensor APIs.
 

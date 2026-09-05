@@ -10,7 +10,7 @@ namespace Orkeon.Infrastructure.LLMs.Embeddings;
 /// </summary>
 /// <remarks>
 /// <para>
-/// RAG-01/C4 (« mort du stub hash silencieux ») : instead of silently degrading to
+/// RAG-01/C4 ("death of the silent hash stub"): instead of silently degrading to
 /// hash-based pseudo-embeddings, every embedding request throws an
 /// <see cref="InvalidOperationException"/> with an actionable message. The throw
 /// happens at the <b>first use</b> (an embed call), never at container build time —
@@ -28,8 +28,8 @@ public sealed class UnconfiguredEmbeddingProvider : IEmbeddingProvider
     /// and tests can rely on it).
     /// </summary>
     public const string DefaultMessage =
-        "aucun embedding provider sémantique configuré ; ajoutez AddOrkeonLocalEmbeddings() " +
-        "ou configurez Orkeon:Embeddings";
+        "no semantic embedding provider is configured; add AddOrkeonLocalEmbeddings() " +
+        "or configure Orkeon:Embeddings";
 
     private readonly string _message;
 

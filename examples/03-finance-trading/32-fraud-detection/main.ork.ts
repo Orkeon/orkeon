@@ -4,7 +4,6 @@
 // 32. Detection de Fraude en Temps Reel
 // Use case: ObserverAgent surveille un flux continu de transactions avec detection
 // d'anomalies par comparaison semantique vectorielle
-// Source: project/marketing/content-strategy/101-USE-CASES.md #32
 
 import { pickTools } from "../_tools/index.ts";
 

@@ -1,6 +1,6 @@
-# 54. Coach Sportif Adaptatif par Episodique
+# 54. Coach Sportif Adaptatif par Épisodique
 
-> La memoire episodique trace la progression de l'athlete seance par seance. Les plans s'adaptent automatiquement aux performances mesurees. L'EvaluationScore suit les progres.
+> La mémoire épisodique trace la progression de l'athlète séance par séance. Les plans s'adaptent automatiquement aux performances mesurées. L'EvaluationScore suit les progrès.
 
 ## Quality
 

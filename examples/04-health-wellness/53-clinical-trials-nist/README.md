@@ -1,6 +1,6 @@
 # 53. Essais Cliniques Checkpoint + Audit NIST
 
-> Architecture hierarchique stricte avec le PI comme Manager. Donnees chiffrees, actions auditees, checkpointing pour reprise. Le Data Safety Board intervient via HumanAgent.
+> Architecture hiérarchique stricte avec le PI comme Manager. Données chiffrées, actions auditées, checkpointing pour reprise. Le Data Safety Board intervient via HumanAgent.
 
 ## Quality
 

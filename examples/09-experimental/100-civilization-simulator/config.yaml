@@ -1,6 +1,5 @@
 # 100. Simulateur de Civilisation Emergente
 # Use case: 20+ agents representing factions play civilization turns via FlowEngine with A2A diplomacy
-# Source: project/marketing/content-strategy/101-USE-CASES.md #100
 # TODO: feature planifiee — Composite memory (ShortTerm: current turn + LongTerm: civilization history + Episodic: landmark events)
 
 name: "civilization-simulator"

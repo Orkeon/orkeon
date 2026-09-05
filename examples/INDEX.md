@@ -34,20 +34,20 @@ Runner: `standard` · 16 examples · folder [`01-enterprise/`](01-enterprise/)
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 1 | [1. Multi-Source Research Assistant](01-enterprise/01-research-assistant/) | Sequential | 3 | 3 | `web_scrape`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 2 | [2. Revue de Code Automatisee](01-enterprise/02-code-review/) | Hierarchical | 5 | 5 | `file_read`, `directory_read` | ✅ |
+| 2 | [2. Revue de Code Automatisée](01-enterprise/02-code-review/) | Hierarchical | 5 | 5 | `file_read`, `directory_read` | ✅ |
 | 3 | [3. Pipeline de Traitement d'Emails](01-enterprise/03-email-pipeline/) | Sequential | 4 | 4 | `email_parser`, `json_tool`, `file_write` | ✅ |
-| 4 | [4. Generation de Rapports Financiers avec Reprise](01-enterprise/04-financial-reports/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
+| 4 | [4. Génération de Rapports Financiers avec Reprise](01-enterprise/04-financial-reports/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 5 | [5. Support Client Multi-Niveaux avec Escalade](01-enterprise/05-customer-support/) | Hierarchical | 4 | 3 | `json_tool`, `web_scrape`, `http_api` | ✅ |
 | 6 | [6. Veille Concurrentielle Continue](01-enterprise/06-competitive-intelligence/) | Parallel | 5 | 5 | `web_scrape`, `json_tool`, `http_api`, `csv_reader`, `file_write` | ✅ |
 | 7 | [7. Due Diligence avec Audit NIST](01-enterprise/07-due-diligence-nist/) | Hierarchical | 5 | 5 | `json_tool`, `pdf_reader`, `csv_reader`, `web_scrape`, `http_api` | ✅ |
-| 8 | [8. Creation de Contenu Marketing](01-enterprise/08-content-marketing/) | Sequential | 4 | 4 | `web_scrape`, `json_tool`, `file_write` | ✅ |
+| 8 | [8. Création de Contenu Marketing](01-enterprise/08-content-marketing/) | Sequential | 4 | 4 | `web_scrape`, `json_tool`, `file_write` | ✅ |
 | 9 | [9. Gestion de Projet Agile — Scrum Master IA](01-enterprise/09-agile-scrum-master/) | Hierarchical | 4 | 4 | `http_api`, `json_tool`, `file_write` | ✅ |
 | 10 | [10. Analyse de Sentiment Client Multi-Plateforme](01-enterprise/10-sentiment-analysis/) | Parallel | 4 | 4 | `web_scrape`, `json_tool`, `http_api`, `csv_reader`, `file_write` | ✅ |
 | 11 | [11. Traduction et Localisation par Consensus](01-enterprise/11-translation-consensus/) | Consensual | 3 | 3 | `file_read`, `file_write`, `json_tool` | ✅ |
-| 12 | [12. Onboarding Automatise des Employes](01-enterprise/12-employee-onboarding/) | Sequential | 4 | 4 | `file_write`, `json_tool`, `http_api` | ✅ |
-| 13 | [13. Audit de Securite Informatique](01-enterprise/13-security-audit/) | Hierarchical | 5 | 4 | `json_tool`, `http_api`, `file_read`, `directory_read`, `file_write` | ✅ |
+| 12 | [12. Onboarding Automatisé des Employés](01-enterprise/12-employee-onboarding/) | Sequential | 4 | 4 | `file_write`, `json_tool`, `http_api` | ✅ |
+| 13 | [13. Audit de Sécurité Informatique](01-enterprise/13-security-audit/) | Hierarchical | 5 | 4 | `json_tool`, `http_api`, `file_read`, `directory_read`, `file_write` | ✅ |
 | 14 | [14. Pipeline ETL Intelligent](01-enterprise/14-etl-pipeline/) | Sequential | 4 | 4 | `pdf_reader`, `csv_reader`, `xml_parser`, `json_tool`, `http_api`, `relational_database_query`, `file_write` | ✅ |
-| 15 | [15. Redaction de Propositions Commerciales](01-enterprise/15-commercial-proposals/) | Sequential | 5 | 5 | `pdf_reader`, `json_tool`, `file_write`, `http_api` | ✅ |
+| 15 | [15. Rédaction de Propositions Commerciales](01-enterprise/15-commercial-proposals/) | Sequential | 5 | 5 | `pdf_reader`, `json_tool`, `file_write`, `http_api` | ✅ |
 | 16 | [16 - Interactive Q&A Session](01-enterprise/16-interactive-qa/) | Sequential | 3 | 3 | `web_search`, `web_scrape` | ✅ |
 
 ## 02 - Sciences & Recherche (16-30)
@@ -56,21 +56,21 @@ Runner: `standard` · 15 examples · folder [`02-science-research/`](02-science-
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 16 | [16. Meta-Analyse Scientifique PRISMA](02-science-research/16-prisma-meta-analysis/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `pdf_reader`, `file_write` | ✅ |
-| 17 | [17. Simulation de Debat Scientifique](02-science-research/17-scientific-debate/) | Consensual | 4 | 4 | `json_tool`, `web_scrape`, `http_api` | ✅ |
-| 18 | [18. Assistant de Redaction Academique](02-science-research/18-academic-writing/) | Sequential | 4 | 4 | `json_tool`, `file_write`, `http_api`, `file_read` | ✅ |
+| 16 | [16. Méta-Analyse Scientifique PRISMA](02-science-research/16-prisma-meta-analysis/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `pdf_reader`, `file_write` | ✅ |
+| 17 | [17. Simulation de Débat Scientifique](02-science-research/17-scientific-debate/) | Consensual | 4 | 4 | `json_tool`, `web_scrape`, `http_api` | ✅ |
+| 18 | [18. Assistant de Rédaction Académique](02-science-research/18-academic-writing/) | Sequential | 4 | 4 | `json_tool`, `file_write`, `http_api`, `file_read` | ✅ |
 | 19 | [19. Experimental Data Analysis](02-science-research/19-experimental-data/) | Parallel | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 20 | [20. Veille Brevets avec Deduplication Semantique](02-science-research/20-patent-monitoring/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `pdf_reader`, `file_write` | ✅ |
-| 21 | [21. Peer Review Simule avec Calibration](02-science-research/21-peer-review-calibration/) | Consensual | 4 | 4 | `pdf_reader`, `json_tool`, `file_read`, `file_write` | ✅ |
-| 22 | [22. Monitoring d'Essais Cliniques Chiffre](02-science-research/22-clinical-trials-encrypted/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
-| 23 | [23. Analyse Genomique avec Chunking](02-science-research/23-genomic-analysis/) | Hierarchical | 4 | 3 | `json_tool`, `file_read`, `http_api`, `csv_reader`, `file_write` | ✅ |
-| 24 | [24. Redaction de Demandes de Subventions](02-science-research/24-grant-writing/) | Sequential | 5 | 5 | `http_api`, `json_tool`, `file_read`, `file_write`, `csv_reader` | ✅ |
-| 25 | [25. Assistant de Laboratoire avec Reprise d'Experiences](02-science-research/25-lab-assistant-resume/) | Sequential | 4 | 4 | `json_tool`, `file_write`, `http_api`, `csv_reader`, `web_scrape` | ✅ |
+| 20 | [20. Veille Brevets avec Déduplication Sémantique](02-science-research/20-patent-monitoring/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `pdf_reader`, `file_write` | ✅ |
+| 21 | [21. Peer Review Simulé avec Calibration](02-science-research/21-peer-review-calibration/) | Consensual | 4 | 4 | `pdf_reader`, `json_tool`, `file_read`, `file_write` | ✅ |
+| 22 | [22. Monitoring d'Essais Cliniques Chiffré](02-science-research/22-clinical-trials-encrypted/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
+| 23 | [23. Analyse Génomique avec Chunking](02-science-research/23-genomic-analysis/) | Hierarchical | 4 | 3 | `json_tool`, `file_read`, `http_api`, `csv_reader`, `file_write` | ✅ |
+| 24 | [24. Rédaction de Demandes de Subventions](02-science-research/24-grant-writing/) | Sequential | 5 | 5 | `http_api`, `json_tool`, `file_read`, `file_write`, `csv_reader` | ✅ |
+| 25 | [25. Assistant de Laboratoire avec Reprise d'Expériences](02-science-research/25-lab-assistant-resume/) | Sequential | 4 | 4 | `json_tool`, `file_write`, `http_api`, `csv_reader`, `web_scrape` | ✅ |
 | 26 | [26. Construction de Graphe de Connaissances](02-science-research/26-knowledge-graph/) | Sequential | 5 | 5 | `pdf_reader`, `json_tool`, `file_write` | ✅ |
-| 27 | [27. Prediction de Tendances avec Auto-Calibration](02-science-research/27-trend-prediction/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `web_scrape`, `csv_reader`, `file_write` | ✅ |
-| 28 | [28. Validation Croisee par Triple Analyse Independante](02-science-research/28-triple-validation/) | Consensual | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 29 | [29. Generation et Test d'Hypotheses Cyclique](02-science-research/29-hypothesis-generation/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `http_api`, `file_write` | ✅ |
-| 30 | [30. Resume Adaptatif au Profil Lecteur](02-science-research/30-adaptive-summary/) | Sequential | 1 | 3 | `pdf_reader`, `file_write` | ✅ |
+| 27 | [27. Prédiction de Tendances avec Auto-Calibration](02-science-research/27-trend-prediction/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `web_scrape`, `csv_reader`, `file_write` | ✅ |
+| 28 | [28. Validation Croisée par Triple Analyse Indépendante](02-science-research/28-triple-validation/) | Consensual | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
+| 29 | [29. Génération et Test d'Hypothèses Cyclique](02-science-research/29-hypothesis-generation/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `http_api`, `file_write` | ✅ |
+| 30 | [30. Résumé Adaptatif au Profil Lecteur](02-science-research/30-adaptive-summary/) | Sequential | 1 | 3 | `pdf_reader`, `file_write` | ✅ |
 
 ## 03 - Finance & Trading (31-45)
 
@@ -78,21 +78,21 @@ Runner: `standard` · 15 examples · folder [`03-finance-trading/`](03-finance-t
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 31 | [31. Trading Algorithmique Multi-Strategies](03-finance-trading/31-algo-trading/) | Hierarchical | 8 | 7 | `http_api`, `json_tool`, `csv_reader`, `file_write`, `relational_database_query`, `technical_indicators`, `market_regime_classification`, `arima_prediction`, `ensemble_prediction`, `backtesting`, `var_calculation`, `cvar_calculation`, `mean_variance_optimization`, `portfolio_rebalancing`, `twap_execution`, `vwap_execution`, `smart_order_routing` | ✅ |
-| 32 | [32. Detection de Fraude en Temps Reel](03-finance-trading/32-fraud-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `alert_management`, `audit_trail` | ✅ |
-| 33 | [33. Scoring de Credit Validation Humaine](03-finance-trading/33-credit-scoring/) | Sequential | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `fundamental_data`, `factor_exposure`, `var_calculation` | ✅ |
+| 31 | [31. Trading Algorithmique Multi-Stratégies](03-finance-trading/31-algo-trading/) | Hierarchical | 8 | 7 | `http_api`, `json_tool`, `csv_reader`, `file_write`, `relational_database_query`, `technical_indicators`, `market_regime_classification`, `arima_prediction`, `ensemble_prediction`, `backtesting`, `var_calculation`, `cvar_calculation`, `mean_variance_optimization`, `portfolio_rebalancing`, `twap_execution`, `vwap_execution`, `smart_order_routing` | ✅ |
+| 32 | [32. Détection de Fraude en Temps Réel](03-finance-trading/32-fraud-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `alert_management`, `audit_trail` | ✅ |
+| 33 | [33. Scoring de Crédit Validation Humaine](03-finance-trading/33-credit-scoring/) | Sequential | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `fundamental_data`, `factor_exposure`, `var_calculation` | ✅ |
 | 34 | [34. Portfolio Optimization by Consensus](03-finance-trading/34-portfolio-consensus/) | Consensual | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write`, `technical_indicators`, `correlation_analysis`, `mean_variance_optimization`, `risk_parity`, `hierarchical_risk_parity`, `black_litterman` | ✅ |
-| 35 | [35. Reconciliation Comptable Multi-Sources](03-finance-trading/35-accounting-reconciliation/) | Parallel | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `audit_trail`, `dashboard_metrics` | ✅ |
-| 36 | [36. Prevision de Tresorerie Auto-Corrective](03-finance-trading/36-cash-flow-forecast/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `relational_database_query`, `http_api`, `file_write`, `arima_prediction`, `prophet_prediction`, `ensemble_prediction` | ✅ |
-| 37 | [37. Conformite KYC/AML Triple Securite](03-finance-trading/37-kyc-aml-compliance/) | Hierarchical | 4 | 3 | `http_api`, `pdf_reader`, `json_tool`, `compliance_check`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 35 | [35. Réconciliation Comptable Multi-Sources](03-finance-trading/35-accounting-reconciliation/) | Parallel | 5 | 5 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write`, `audit_trail`, `dashboard_metrics` | ✅ |
+| 36 | [36. Prévision de Trésorerie Auto-Corrective](03-finance-trading/36-cash-flow-forecast/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `relational_database_query`, `http_api`, `file_write`, `arima_prediction`, `prophet_prediction`, `ensemble_prediction` | ✅ |
+| 37 | [37. Conformité KYC/AML Triple Sécurité](03-finance-trading/37-kyc-aml-compliance/) | Hierarchical | 4 | 3 | `http_api`, `pdf_reader`, `json_tool`, `compliance_check`, `regulatory_reporting`, `audit_trail` | ✅ |
 | 38 | [38. Analyse de Contrats avec Chunking](03-finance-trading/38-contract-analysis/) | Parallel | 3 | 3 | `pdf_reader`, `json_tool`, `csv_reader`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
 | 39 | [39. Robo-Advisor Profilage Interactif](03-finance-trading/39-robo-advisor/) | Sequential | 4 | 4 | `json_tool`, `human_input`, `http_api`, `csv_reader`, `file_write`, `mean_variance_optimization`, `risk_parity`, `portfolio_rebalancing` | ✅ |
 | 40 | [40. Automated Invoice Processing](03-finance-trading/40-invoice-processing/) | Sequential | 3 | 3 | `pdf_reader`, `csv_reader`, `json_tool`, `file_write`, `relational_database_query`, `audit_trail`, `dashboard_metrics` | ✅ |
-| 41 | [41. Detection de Delit d'Initie](03-finance-trading/41-insider-trading-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
-| 42 | [42. Pricing Dynamique Arbitrage Hierarchique](03-finance-trading/42-dynamic-pricing/) | Hierarchical | 4 | 3 | `http_api`, `csv_reader`, `json_tool`, `web_scrape`, `file_write`, `market_regime_classification`, `alternative_data`, `dashboard_metrics` | ✅ |
+| 41 | [41. Détection de Délit d'Initié](03-finance-trading/41-insider-trading-detection/) | Parallel | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `semantic_search`, `file_write`, `pattern_recognition`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 42 | [42. Pricing Dynamique Arbitrage Hiérarchique](03-finance-trading/42-dynamic-pricing/) | Hierarchical | 4 | 3 | `http_api`, `csv_reader`, `json_tool`, `web_scrape`, `file_write`, `market_regime_classification`, `alternative_data`, `dashboard_metrics` | ✅ |
 | 43 | [43. Optimisation Fiscale Multi-Juridictions](03-finance-trading/43-tax-optimization/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `json_tool`, `csv_reader`, `file_write`, `regulatory_reporting`, `audit_trail` | ✅ |
 | 44 | [44. Analyse ESG Scoring Reproductible](03-finance-trading/44-esg-scoring/) | Parallel | 5 | 5 | `http_api`, `pdf_reader`, `csv_reader`, `json_tool`, `file_write`, `alternative_data`, `dashboard_metrics` | ✅ |
-| 45 | [45. Stress Testing Reglementaire Rejouable](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`, `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
+| 45 | [45. Stress Testing Réglementaire Rejouable](03-finance-trading/45-stress-testing/) | Sequential | 4 | 4 | `csv_reader`, `http_api`, `json_tool`, `relational_database_query`, `file_write`, `stress_testing`, `var_calculation`, `cvar_calculation`, `factor_exposure`, `correlation_analysis`, `regulatory_reporting`, `audit_trail` | ✅ |
 
 ## 04 - Sante & Bien-etre (46-55)
 
@@ -100,16 +100,16 @@ Runner: `standard` · 10 examples · folder [`04-health-wellness/`](04-health-we
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 46 | [46. Aide au Diagnostic -- Humain Systematique](04-health-wellness/46-diagnostic-assistant/) | Sequential | 4 | 3 | `http_api`, `json_tool`, `pdf_reader` | ✅ |
+| 46 | [46. Aide au Diagnostic -- Humain Systématique](04-health-wellness/46-diagnostic-assistant/) | Sequential | 4 | 3 | `http_api`, `json_tool`, `pdf_reader` | ✅ |
 | 47 | [47. Nutrition Planner](04-health-wellness/47-nutrition-planner/) | Sequential | 4 | 4 | `json_tool`, `csv_reader`, `http_api`, `file_write` | ✅ |
-| 48 | [48. Monitoring Bien-etre Mental](04-health-wellness/48-mental-health-monitoring/) | Sequential | 4 | 3 | `json_tool`, `file_write` | ✅ |
-| 49 | [49. Structuration Dossiers Medicaux FHIR](04-health-wellness/49-medical-records-fhir/) | Sequential | 3 | 3 | `pdf_reader`, `json_tool`, `xml_parser`, `file_write` | ✅ |
-| 50 | [50. Imagerie Medicale -- Radiologue Dernier Mot](04-health-wellness/50-radiology-assistant/) | Sequential | 5 | 5 | `file_read`, `json_tool`, `http_api`, `file_write` | ✅ |
+| 48 | [48. Monitoring Bien-être Mental](04-health-wellness/48-mental-health-monitoring/) | Sequential | 4 | 3 | `json_tool`, `file_write` | ✅ |
+| 49 | [49. Structuration Dossiers Médicaux FHIR](04-health-wellness/49-medical-records-fhir/) | Sequential | 3 | 3 | `pdf_reader`, `json_tool`, `xml_parser`, `file_write` | ✅ |
+| 50 | [50. Imagerie Médicale -- Radiologue Dernier Mot](04-health-wellness/50-radiology-assistant/) | Sequential | 5 | 5 | `file_read`, `json_tool`, `http_api`, `file_write` | ✅ |
 | 51 | [51. Coordination de Soins Broadcast](04-health-wellness/51-care-coordination/) | Hierarchical | 5 | 4 | `json_tool`, `http_api`, `file_write` | ✅ |
-| 52 | [52. Pharmacovigilance Deduplication Semantique](04-health-wellness/52-pharmacovigilance/) | Parallel | 5 | 5 | `http_api`, `json_tool`, `pdf_reader`, `web_scrape`, `semantic_search`, `file_write` | ✅ |
+| 52 | [52. Pharmacovigilance Déduplication Sémantique](04-health-wellness/52-pharmacovigilance/) | Parallel | 5 | 5 | `http_api`, `json_tool`, `pdf_reader`, `web_scrape`, `semantic_search`, `file_write` | ✅ |
 | 53 | [53. Essais Cliniques Checkpoint + Audit NIST](04-health-wellness/53-clinical-trials-nist/) | Hierarchical | 6 | 5 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 54 | [54. Coach Sportif Adaptatif par Episodique](04-health-wellness/54-sports-coach/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 55 | [55. Telemedecine Augmentee Streaming](04-health-wellness/55-telemedicine-streaming/) | Parallel | 5 | 4 | `json_tool`, `http_api`, `file_write` | ✅ |
+| 54 | [54. Coach Sportif Adaptatif par Épisodique](04-health-wellness/54-sports-coach/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
+| 55 | [55. Télémédecine Augmentée Streaming](04-health-wellness/55-telemedicine-streaming/) | Parallel | 5 | 4 | `json_tool`, `http_api`, `file_write` | ✅ |
 
 ## 05 - Education & Formation (56-65)
 
@@ -117,16 +117,16 @@ Runner: `standard` · 10 examples · folder [`05-education/`](05-education/)
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 56 | [56. Tuteur Adaptatif — Modele Apprenant Persistant](05-education/56-adaptive-tutor/) | Sequential | 4 | 4 | `json_tool`, `file_read`, `file_write` | ✅ |
-| 57 | [57. Generation d'Examens Calibres par Benchmark](05-education/57-exam-generation/) | Consensual | 4 | 4 | `json_tool`, `file_write` | ✅ |
-| 58 | [58. Correction Multi-Criteres Reproductible](05-education/58-multi-criteria-grading/) | Parallel | 4 | 4 | `file_read`, `json_tool`, `file_write` | ✅ |
-| 59 | [59. Parcours de Formation Non-Lineaire](05-education/59-nonlinear-learning-path/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `file_write` | ✅ |
+| 56 | [56. Tuteur Adaptatif — Modèle Apprenant Persistant](05-education/56-adaptive-tutor/) | Sequential | 4 | 4 | `json_tool`, `file_read`, `file_write` | ✅ |
+| 57 | [57. Génération d'Examens Calibrés par Benchmark](05-education/57-exam-generation/) | Consensual | 4 | 4 | `json_tool`, `file_write` | ✅ |
+| 58 | [58. Correction Multi-Critères Reproductible](05-education/58-multi-criteria-grading/) | Parallel | 4 | 4 | `file_read`, `json_tool`, `file_write` | ✅ |
+| 59 | [59. Parcours de Formation Non-Linéaire](05-education/59-nonlinear-learning-path/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `file_write` | ✅ |
 | 60 | [60. Simulation de Cas Pratiques Immersive](05-education/60-case-study-simulation/) | Sequential | 3 | 3 | `json_tool`, `file_write` | ✅ |
-| 61 | [61. Plateforme Learning Gamifie avec Hooks](05-education/61-gamified-learning/) | Sequential | 3 | 3 | `json_tool`, `file_write` | ✅ |
-| 62 | [62. Detection de Plagiat Multi-Couches](05-education/62-plagiarism-detection/) | Parallel | 5 | 5 | `file_read`, `json_tool`, `web_scrape`, `http_api`, `file_write` | ✅ |
+| 61 | [61. Plateforme Learning Gamifié avec Hooks](05-education/61-gamified-learning/) | Sequential | 3 | 3 | `json_tool`, `file_write` | ✅ |
+| 62 | [62. Détection de Plagiat Multi-Couches](05-education/62-plagiarism-detection/) | Parallel | 5 | 5 | `file_read`, `json_tool`, `web_scrape`, `http_api`, `file_write` | ✅ |
 | 63 | [63. Team Skills-Gap Mapping](05-education/63-skills-gap-mapping/) | Parallel | 3 | 3 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 64 | [64. Accessibilite Universelle des Contenus](05-education/64-accessibility/) | Parallel | 4 | 4 | `file_read`, `file_write`, `json_tool`, `xml_parser` | ✅ |
-| 65 | [65. Mentorat IA pour Developpeurs](05-education/65-developer-mentoring/) | Parallel | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write` | ✅ |
+| 64 | [64. Accessibilité Universelle des Contenus](05-education/64-accessibility/) | Parallel | 4 | 4 | `file_read`, `file_write`, `json_tool`, `xml_parser` | ✅ |
+| 65 | [65. Mentorat IA pour Développeurs](05-education/65-developer-mentoring/) | Parallel | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write` | ✅ |
 
 ## 06 - Ingenierie & DevOps (66-75, 102-103)
 
@@ -136,14 +136,14 @@ Runner: `standard` · 12 examples · folder [`06-engineering-devops/`](06-engine
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 66 | [66. Pipeline CI/CD avec Rollback Automatique](06-engineering-devops/66-cicd-pipeline/) | Sequential | 4 | 4 | `github`, `file_read`, `json_tool`, `http_api`, `file_write` | ✅ |
 | 67 | [67. Incident Response — Humain Valide en Prod](06-engineering-devops/67-incident-response/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
-| 68 | [68. Migration de Base de Donnees — Reprise Exacte](06-engineering-devops/68-database-migration/) | Sequential | 4 | 4 | `relational_database_query`, `json_tool`, `file_write`, `file_read` | ✅ |
+| 68 | [68. Migration de Base de Données — Reprise Exacte](06-engineering-devops/68-database-migration/) | Sequential | 4 | 4 | `relational_database_query`, `json_tool`, `file_write`, `file_read` | ✅ |
 | 69 | [69. Analyse de Performance 4 Couches](06-engineering-devops/69-performance-analysis/) | Parallel | 5 | 5 | `http_api`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
-| 70 | [70. Documentation Technique Versionnee](06-engineering-devops/70-versioned-documentation/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `github`, `file_write` | ✅ |
+| 70 | [70. Documentation Technique Versionnée](06-engineering-devops/70-versioned-documentation/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `github`, `file_write` | ✅ |
 | 71 | [71. Multi-Pillar Cloud Audit (NIST)](06-engineering-devops/71-cloud-audit-nist/) | Parallel | 6 | 6 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 72 | [72. Test de Charge Trending Historique](06-engineering-devops/72-load-testing/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 73 | [73. Refactoring Securise Sandbox](06-engineering-devops/73-secure-refactoring/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write`, `shell_command` | ✅ |
-| 74 | [74. Gestion des Dependances CVE](06-engineering-devops/74-dependency-management/) | Sequential | 4 | 4 | `file_read`, `http_api`, `json_tool`, `file_write`, `shell_command` | ✅ |
-| 75 | [75. Chaos Engineering Humain Approuve](06-engineering-devops/75-chaos-engineering/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `file_write` | ✅ |
+| 73 | [73. Refactoring Sécurisé Sandbox](06-engineering-devops/73-secure-refactoring/) | Sequential | 4 | 4 | `file_read`, `directory_read`, `json_tool`, `file_write`, `shell_command` | ✅ |
+| 74 | [74. Gestion des Dépendances CVE](06-engineering-devops/74-dependency-management/) | Sequential | 4 | 4 | `file_read`, `http_api`, `json_tool`, `file_write`, `shell_command` | ✅ |
+| 75 | [75. Chaos Engineering Humain Approuvé](06-engineering-devops/75-chaos-engineering/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `file_write` | ✅ |
 | 102 | [102. Analyse de Codebase TypeScript et Plan de Migration Orkeon](06-engineering-devops/102-ts-codebase-documentation/) | Sequential | 7 | 1 | `directory_read`, `file_write`, `file_read`, `json_tool` | ✅ |
 | 103 | [103. Analyse de Codebase TypeScript avec FSM et Circuit Breaker](06-engineering-devops/103-ts-codebase-with-fsm/) | Sequential | 7 | 1 | `directory_read`, `file_write`, `file_read`, `json_tool` | ✅ |
 
@@ -154,15 +154,15 @@ Runner: `standard` · 10 examples · folder [`07-creative-media/`](07-creative-m
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 76 | [76. Studio Narratif FlowEngine Cyclique](07-creative-media/76-narrative-studio/) | Sequential | 4 | 4 | `file_read`, `file_write`, `json_tool` | ✅ |
-| 77 | [77. Production de Podcast Pipeline Type](07-creative-media/77-podcast-production/) | Sequential | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read` | ✅ |
+| 77 | [77. Production de Podcast Pipeline Typé](07-creative-media/77-podcast-production/) | Sequential | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read` | ✅ |
 | 78 | [78. Privacy-Safe Synthetic Data](07-creative-media/78-synthetic-data/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
 | 79 | [79. Composition Musicale par Consensus](07-creative-media/79-music-composition/) | Consensual | 5 | 5 | `json_tool`, `file_write` | ✅ |
-| 80 | [80. Direction Artistique Delegation Report](07-creative-media/80-art-direction/) | Hierarchical | 5 | 4 | `json_tool`, `file_write`, `web_scrape`, `http_api` | ✅ |
-| 81 | [81. Worldbuilding Coherent Consensus Croise](07-creative-media/81-worldbuilding/) | Consensual | 5 | 5 | `json_tool`, `file_write`, `file_read` | ✅ |
+| 80 | [80. Direction Artistique Délégation Report](07-creative-media/80-art-direction/) | Hierarchical | 5 | 4 | `json_tool`, `file_write`, `web_scrape`, `http_api` | ✅ |
+| 81 | [81. Worldbuilding Cohérent Consensus Croisé](07-creative-media/81-worldbuilding/) | Consensual | 5 | 5 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 82 | [82. Curation de Newsletter Scraping](07-creative-media/82-newsletter-curation/) | Parallel | 5 | 5 | `web_scrape`, `http_api`, `json_tool`, `pdf_reader`, `file_write` | ✅ |
 | 83 | [83. Fiction Interactive FlowEngine](07-creative-media/83-interactive-fiction/) | Sequential | 3 | 4 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 84 | [84. Critique Multi-Perspectives](07-creative-media/84-multi-perspective-critique/) | Parallel | 4 | 4 | `file_read`, `json_tool`, `web_scrape`, `file_write` | ✅ |
-| 85 | [85. Adaptation Cross-Media Pipeline Type](07-creative-media/85-cross-media-adaptation/) | Sequential | 4 | 4 | `file_read`, `pdf_reader`, `json_tool`, `file_write` | ✅ |
+| 85 | [85. Adaptation Cross-Media Pipeline Typé](07-creative-media/85-cross-media-adaptation/) | Sequential | 4 | 4 | `file_read`, `pdf_reader`, `json_tool`, `file_write` | ✅ |
 
 ## 08 - IoT, Monde Physique & Smart Systems (86-95)
 
@@ -172,14 +172,14 @@ Runner: `standard` · 10 examples · folder [`08-iot-smart-systems/`](08-iot-sma
 |---|---------|---------|:------:|:-----:|-------|:------:|
 | 86 | [86. Maison Intelligente — Protocole A2A Natif](08-iot-smart-systems/86-smart-home-a2a/) | Parallel | 5 | 6 | `http_api`, `json_tool` | ✅ |
 | 87 | [87. Fleet Management](08-iot-smart-systems/87-fleet-management/) | Hierarchical | 5 | 7 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
-| 88 | [88. Agriculture de Precision — Humain Valide les Actions Physiques](08-iot-smart-systems/88-precision-agriculture/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
+| 88 | [88. Agriculture de Précision — Humain Valide les Actions Physiques](08-iot-smart-systems/88-precision-agriculture/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 89 | [89. Monitoring Environnemental — ObserverAgent + Broadcast Alertes](08-iot-smart-systems/89-environmental-monitoring/) | Parallel | 6 | 6 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 90 | [90. Gestion Energetique — Cycle Continu FlowEngine](08-iot-smart-systems/90-energy-management/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 91 | [91. Maintenance Predictive — ObserverAgent par Machine](08-iot-smart-systems/91-predictive-maintenance/) | Parallel | 6 | 6 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
+| 90 | [90. Gestion Énergétique — Cycle Continu FlowEngine](08-iot-smart-systems/90-energy-management/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
+| 91 | [91. Maintenance Prédictive — ObserverAgent par Machine](08-iot-smart-systems/91-predictive-maintenance/) | Parallel | 6 | 6 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
 | 92 | [92. Logistique Warehouse — Batch Haute Performance](08-iot-smart-systems/92-warehouse-logistics/) | Parallel | 4 | 5 | `http_api`, `relational_database_query`, `json_tool`, `file_write` | ✅ |
-| 93 | [93. Controle Qualite Visuel — Auto-Calibration par Historique](08-iot-smart-systems/93-visual-quality-control/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
+| 93 | [93. Contrôle Qualité Visuel — Auto-Calibration par Historique](08-iot-smart-systems/93-visual-quality-control/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 94 | [94. Smart City Trafic — A2A Inter-Zones](08-iot-smart-systems/94-smart-city-traffic/) | Parallel | 6 | 6 | `http_api`, `json_tool`, `file_write` | ✅ |
-| 95 | [95. Gestion de Crise — Broadcast + Priorite Critique](08-iot-smart-systems/95-crisis-management/) | Hierarchical | 6 | 6 | `http_api`, `json_tool`, `file_write`, `web_scrape` | ✅ |
+| 95 | [95. Gestion de Crise — Broadcast + Priorité Critique](08-iot-smart-systems/95-crisis-management/) | Hierarchical | 6 | 6 | `http_api`, `json_tool`, `file_write`, `web_scrape` | ✅ |
 
 ## 09 - Avant-Garde & Experimental (96-102)
 
@@ -187,11 +187,11 @@ Runner: `standard` · 7 examples · folder [`09-experimental/`](09-experimental/
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 96 | [96. Crew Evolutive Auto-Adaptative](09-experimental/96-self-adaptive-crew/) | Sequential | 4 | 5 | `json_tool`, `file_write`, `web_scrape` | ✅ |
+| 96 | [96. Crew Évolutive Auto-Adaptative](09-experimental/96-self-adaptive-crew/) | Sequential | 4 | 5 | `json_tool`, `file_write`, `web_scrape` | ✅ |
 | 97 | [97. Multi-Party Negotiation](09-experimental/97-multi-party-negotiation/) | Consensual | 7 | 6 | `json_tool`, `file_write` | ✅ |
-| 98 | [98. Archeologie Numerique de Codebase Legacy](09-experimental/98-legacy-code-archaeology/) | Sequential | 5 | 5 | `directory_read`, `file_read`, `json_tool`, `file_write`, `github` | ✅ |
-| 99 | [99. Jury Ethique Multi-Perspectives pour Decisions IA](09-experimental/99-ethics-jury/) | Parallel | 7 | 7 | `json_tool`, `file_write`, `web_scrape` | ✅ |
-| 100 | [100. Simulateur de Civilisation Emergente](09-experimental/100-civilization-simulator/) | Sequential | 8 | 9 | `json_tool`, `file_write` | ✅ |
+| 98 | [98. Archéologie Numérique de Codebase Legacy](09-experimental/98-legacy-code-archaeology/) | Sequential | 5 | 5 | `directory_read`, `file_read`, `json_tool`, `file_write`, `github` | ✅ |
+| 99 | [99. Jury Éthique Multi-Perspectives pour Décisions IA](09-experimental/99-ethics-jury/) | Parallel | 7 | 7 | `json_tool`, `file_write`, `web_scrape` | ✅ |
+| 100 | [100. Simulateur de Civilisation Émergente](09-experimental/100-civilization-simulator/) | Sequential | 8 | 9 | `json_tool`, `file_write` | ✅ |
 | 101 | [101. Crew de Crews — L'Orchestre des Orchestres](09-experimental/101-crew-of-crews/) | Hierarchical | 5 | 6 | `json_tool`, `file_write`, `semantic_search`, `web_scrape`, `http_api`, `file_read`, `shell_command`, `directory_read` | ✅ |
 | 102 | [102. Graph-Based Orchestration (LangGraph-Style)](09-experimental/102-graph-orchestration/) | Graph | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write` | ✅ |
 

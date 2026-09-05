@@ -1,4 +1,4 @@
-# 13. Audit de Securite Informatique
+# 13. Audit de Sécurité Informatique
 
 > Hierarchical process with a virtual CISO coordinating 4 specialists. Suspect code is analyzed in a secure sandbox. All file paths are validated by IPathValidator and HTTP headers sanitized.
 

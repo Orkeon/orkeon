@@ -1,6 +1,6 @@
-# 42. Pricing Dynamique Arbitrage Hierarchique
+# 42. Pricing Dynamique Arbitrage Hiérarchique
 
-> Un Manager Agent arbitre entre trois perspectives conflictuelles sur le prix optimal. Les contraintes min/max empechent les prix aberrants. Le DelegationParameters encadre chaque delegation.
+> Un Manager Agent arbitre entre trois perspectives conflictuelles sur le prix optimal. Les contraintes min/max empêchent les prix aberrants. Le DelegationParameters encadre chaque délégation.
 
 ## Quality
 

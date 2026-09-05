@@ -1,6 +1,5 @@
 # 47. Planification Nutritionnelle YAML-Driven
 # Use case: Configuration des contraintes alimentaires entierement en YAML, agents s'adaptent automatiquement
-# Source: project/marketing/content-strategy/101-USE-CASES.md #47
 
 name: "nutrition-planner"
 goal: "Generate personalized nutrition plans driven entirely by YAML configuration with automatic adaptation to dietary constraints"

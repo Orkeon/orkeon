@@ -1,4 +1,4 @@
-# 28. Validation Croisee par Triple Analyse Independante
+# 28. Validation Croisée par Triple Analyse Indépendante
 
 > Three independent agents reproduce the same analysis with different methods (frequentist, Bayesian, ML). Consensus validates only if 2/3 converge. An Arbiter investigates divergences.
 

@@ -6,7 +6,7 @@ First off, thank you for considering contributing to Orkeon! It's people like yo
 
 ## Code of Conduct
 
-This project and everyone participating in it is governed by our Code of Conduct. By participating, you are expected to uphold this code.
+This project and everyone participating in it is governed by our [Code of Conduct](CODE_OF_CONDUCT.md). By participating, you are expected to uphold this code.
 
 ## How Can I Contribute?
 
@@ -56,9 +56,16 @@ dotnet restore Orkeon.sln
 # Build
 dotnet build Orkeon.sln
 
-# Run tests
-dotnet test Orkeon.sln
+# Run tests (the set CI runs)
+dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 ```
+
+> **Why the filter, and not a bare `dotnet test Orkeon.sln`**: `Category=Integration`
+> covers the Testcontainers tests, which need Docker and pull gigabytes of database
+> images, and `Category=Slow` carries the `Orkeon.Tools.Embeddings.Local` ONNX suite,
+> whose native runtime takes the process down on teardown (exit 139) **after** every
+> test has passed. `ci.yml` runs exactly the filtered command above, then runs that
+> ONNX suite in a step of its own that tolerates that one crash shape.
 
 > **Note** — `backstage/` and `experiments/` are **private maintainer submodules**: clone
 > **without** `--recursive` (as above). The build, the tests and the whole contribution
@@ -251,11 +258,18 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    source of truth. The publish workflow **refuses a `v*` tag that does not match it**.
 2. Cut the `[Unreleased]` section of `CHANGELOG.md` into a dated version section.
 3. Move `PublicAPI.Unshipped.txt` entries to `PublicAPI.Shipped.txt`.
-4. Make sure CI is green: `-warnaserror` build, tests, `scripts/check-docs-parity.sh`,
+4. Move the analyzer rules the same way: any entry pending in
+   `src/analyzers/Orkeon.Compliance.Vfs/AnalyzerReleases.Unshipped.md` (the `ORKVFS00x`
+   VFS-compliance rules) goes into `AnalyzerReleases.Shipped.md` under a
+   `## Release <version>` heading, leaving the `Unshipped` file with its header only.
+5. Make sure CI is green: `-warnaserror` build, tests, `scripts/check-docs-parity.sh`,
    examples linters, strict docfx build.
-5. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
-   pushes **Domain/Application/Infrastructure to NuGet.org**, every package to GitHub
-   Packages — see [the publication matrix](docs/reference/publication-matrix.md)),
+6. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
+   pushes the **six-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
+   `Orkeon.Scripting.Cli`, the umbrella first because the others depend on it — and
+   every packable to GitHub Packages; see
+   [the publication matrix](docs/reference/publication-matrix.md)),
    `release.yml` (Windows zip+MSI, macOS tarballs, Debian package) and `docs.yml`
    (deploys the documentation site to GitHub Pages).
 

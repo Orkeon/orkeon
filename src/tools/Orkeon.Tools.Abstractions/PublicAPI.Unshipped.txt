@@ -1,7 +1,1 @@
 #nullable enable
-*REMOVED*Orkeon.Tools.Abstractions.Helpers.ImageHelper
-*REMOVED*static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeType(byte[]! data) -> string!
-*REMOVED*static Orkeon.Tools.Abstractions.Helpers.ImageHelper.DetectMimeTypeFromPath(string! filePath) -> string!
-*REMOVED*static Orkeon.Tools.Abstractions.Helpers.ImageHelper.IsSupportedMimeType(string! mimeType) -> bool
-*REMOVED*static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromUrlAsync(System.Net.Http.HttpClient! httpClient, System.Uri! url, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!
-*REMOVED*static Orkeon.Tools.Abstractions.Helpers.ImageHelper.LoadFromVfsAsync(Orkeon.Domain.FileSystem.IFileSystemService! fs, string! vPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.Content.ImageContentPart!>!

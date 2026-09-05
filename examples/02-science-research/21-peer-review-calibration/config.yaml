@@ -1,6 +1,5 @@
 # 21. Peer Review Simule avec Calibration
 # Use case: Simulated peer review with 3 independent reviewers, benchmark calibration, and consensus
-# Source: project/marketing/content-strategy/101-USE-CASES.md #21
 
 name: "peer-review-calibration"
 goal: "Simulate peer review with 3 independent reviewers calibrated by benchmark, achieving consensus on critical points through structured evaluation"

@@ -44,10 +44,10 @@ dotnet run --project src/apps/Orkeon.ConsoleApp -- \
 At the prompt:
 
 ```
-scripted> help              # 'hello' shows up
-scripted> hello             # → Hello, world!
-scripted> hello --who=Cyril # → Hello, Cyril!
-scripted> help-cmd hello    # signature with typed args
+scripted> help            # 'hello' shows up
+scripted> hello           # → Hello, world!
+scripted> hello --who=Ada # → Hello, Ada!
+scripted> help-cmd hello  # signature with typed args
 scripted> exit
 ```
 

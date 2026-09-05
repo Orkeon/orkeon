@@ -1,6 +1,5 @@
 # 70. Documentation Technique Versionnee comme du Code
 # Use case: Versioned technical documentation with diff between versions and automatic extraction from code
-# Source: project/marketing/content-strategy/101-USE-CASES.md #70
 # TODO: feature planifiee — IConfigurationVersioning + IConfigurationDiffService
 
 name: "versioned-documentation"

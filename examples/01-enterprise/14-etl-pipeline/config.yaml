@@ -1,6 +1,5 @@
 # 14. Pipeline ETL Intelligent
 # Use case: Intelligent ETL pipeline processing 7 formats with idempotent steps and checkpoint recovery
-# Source: project/marketing/content-strategy/101-USE-CASES.md #14
 
 name: "etl-pipeline"
 goal: "Extract, transform, and load data from 7 different formats with idempotent steps, checkpointing, and tolerant format converters"

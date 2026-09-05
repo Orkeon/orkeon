@@ -31,7 +31,7 @@ un amont en pré-release).
 | `Orkeon.Tools` | Les sept familles d'outils intégrés (`Analysis`, `Code`, `Data`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur qu'un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. Dépendent d'`Orkeon`. |
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
-| `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 144 Mo, sous la limite de taille de nuget.org. |
+| `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 137,6 Mo, sous la limite de taille de nuget.org. |
 
 ### Comment les projets d'empaquetage sont construits
 
@@ -163,13 +163,13 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 
 | Canal | Artefact | Runtime | Public |
 |---|---|---|---|
-| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis que le paquet est passé de 262,5 Mo à 144 Mo (natifs onnxruntime iOS/Android exclus) ; premier push au tag `v1.0.0-rc.3` |
+| Tool dotnet NuGet | `Orkeon.Scripting.Cli` (`PackAsTool`, commande `orkeon`) | requiert le SDK .NET 10 (`dotnet tool install`) | développeurs .NET. Fait partie du lineup NuGet.org (PUB-25) — publiable depuis que le paquet est passé de 262,5 Mo à 137,6 Mo (natifs onnxruntime iOS/Android exclus) ; premier push au tag `v1.0.0-rc.3` |
 | Zip Windows + `install.ps1` | `orkeon-cli-<version>-win-x64.zip` | self-contained | onboarding Windows — le canal recommandé. Livre `orkeon-studio` (Orkeon Studio WPF) à côté du CLI |
 | MSI Windows (per-user) | `orkeon-<version>-win-x64.msi` | self-contained | Windows, installation au double-clic et entrée « Applications installées ». Livre `orkeon-studio` avec un raccourci menu Démarrer. Un canal à la fois : le MSI refuse de s'installer par-dessus une install zip |
 | Paquet Debian | `orkeon_<version>_amd64.deb` | self-contained | onboarding Debian / Ubuntu — le canal recommandé. Livre les TUI `orkeon-studio-config` / `orkeon-studio-run` à côté du CLI |
 | Archive macOS + `install.sh` | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | self-contained | onboarding macOS aujourd'hui ; `install.sh` retire l'attribut de quarantaine Gatekeeper et re-signe en ad-hoc les Mach-O que `codesign -v` rejette |
 | Homebrew | les mêmes archives osx, via `installers/homebrew/orkeon.rb` | self-contained | macOS, une fois le tap créé — **pas encore publié**, voir ci-dessous |
-| Archive d'installation multi-apps | launchers `orkeon` / `orkeon-slim` | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs voulant aussi le REPL ou l'hôte de service |
+| Archive d'installation multi-apps | launchers `orkeon` / `orkeon-slim` | `orkeon` self-contained, `orkeon-slim` framework-dependent | devs voulant aussi le REPL, l'hôte de service ou les applications Studio |
 
 **Homebrew — formule dans le repo, tap pas encore créé.** `installers/homebrew/orkeon.rb` est
 une formule binaire : elle télécharge l'archive osx correspondant à l'architecture de la
@@ -214,7 +214,7 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
 ## Câblage de la publication
 
 - Tout le packaging et le push NuGet vivent dans **`publish.yml`** (tag `v*`) :
-  `dotnet pack Orkeon.sln` (+ les tools runners) piloté par `IsPackable`, le gate
+  `dotnet pack Orkeon.sln` piloté par `IsPackable`, le gate
   `scripts/check-package-closure.py` sur les artefacts packés, un push de tout vers
   **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes), puis le **lineup
   NuGet.org** (le tableau ci-dessus, `Orkeon` en premier) vers **NuGet.org**. `ci.yml` valide
@@ -235,4 +235,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.3`) ; les seuls projets qui la surchargent sont les trois packables d'`examples/runners` (deux tools dotnet plus la bibliothèque partagée), à bumper au pas à chaque release — le garde-fou de tag du workflow de publication ne vérifie que le fichier props, leur bump est donc une étape de checklist de release, pas une contrainte outillée.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.3`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit.

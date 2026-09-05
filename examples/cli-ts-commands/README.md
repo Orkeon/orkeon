@@ -45,8 +45,8 @@ Available commands:
 scripted> hello
 Hello, world!
 
-scripted> hello --who=Cyril
-Hello, Cyril!
+scripted> hello --who=Ada
+Hello, Ada!
 
 scripted> help-cmd hello
 hello — Greet someone (or the world).
@@ -94,11 +94,9 @@ scripted> result --ticket=t1   # [t1] HELLO
 ```
 
 Détails : `docs/architecture/cli-ts-commands.md` §« Dispatching commands to
-agents » et `project/features/cli-ts-commands/COMMAND-DISPATCH-DESIGN.md`.
+agents ».
 
 ## Pour aller plus loin
 
 - Doc utilisateur complète : `docs/architecture/cli-ts-commands.md`.
-- Spec d'architecture : `project/features/cli-ts-commands/SPEC.md`.
-- Design du dispatch : `project/features/cli-ts-commands/COMMAND-DISPATCH-DESIGN.md`.
-- Récap d'implémentation : `project/tasks/done/CLI-TS-IMPLEMENTATION-DONE.md`.
+- Documentation : [commandes CLI en TypeScript](../../docs/fr/architecture/cli-ts-commands.md).

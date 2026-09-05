@@ -73,7 +73,7 @@ L'archive multi-apps est la seule à embarquer plus que le CLI :
 
 | Commande | Ce qu'elle exécute | Runtime |
 |---|---|---|
-| `orkeon` | **Le CLI principal et le point d'entrée par défaut** — `orkeon run <config.yaml>` pour tout exemple hors finance, ou `orkeon run script.ork.ts` pour le DSL de scripting | self-contained |
+| `orkeon` | **Le CLI principal et le point d'entrée par défaut** — `orkeon run <config.yaml>` pour tout crew YAML, ou `orkeon run script.ork.ts` pour le DSL de scripting | self-contained |
 | `orkeon-slim` | Le même CLI, framework-dependent et bien plus petit | requiert .NET 10 |
 | `orkeon-repl` | Console REPL interactive complète (tous les outils intégrés, analyse de code, embeddings locaux) | requiert .NET 10 |
 | `orkeon-host` | Le daemon d'hébergement — enregistre des crews et les sert en continu (unité systemd, service Windows via le script embarqué ou son MSI per-machine dédié, passerelle de chat, canal Discord ; voir [le service host](../architecture/service-host.md)) | autonome |
@@ -288,8 +288,6 @@ que soit son nom — est refusé, en nommant les deux candidats, tout comme un d
 sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 [YAML et builders](./yaml-and-builders.md) pour la disposition elle-même.
 
-Pour une vitrine finance/trading, prenez le runner spécialisé :
-
 Vous pouvez aussi exécuter une commande directement depuis l'archive extraite,
 sans installer : `./libexec/orkeon/orkeon run …`.
 
@@ -455,13 +453,24 @@ docker run --rm \
 
 Le point d'entrée **est** `orkeon`, donc tout ce qui suit le nom de l'image est
 un argument du CLI (`run <config> …`). Pour lancer un autre runner, définissez
-la variable d'environnement `ORKEON_RUNNER` — `trading`, `repl`, ou `shell` :
+la variable d'environnement `ORKEON_RUNNER` — `orkeon` (la valeur par défaut),
+`repl` ou `shell` ; toute autre valeur est refusée avec une ligne d'usage :
 
 ```bash
-docker run --rm -e ORKEON_RUNNER=trading \
+docker run -it --rm -e ORKEON_RUNNER=repl \
+  -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
+  ghcr.io/orkeon/orkeon-runners
+```
+
+Il n'y a pas de runner par famille d'exemples : les crews finance sont des
+scripts `main.ork.ts` qu'exécute la même CLI `orkeon`, comme tous les autres
+exemples.
+
+```bash
+docker run --rm \
   -v "$PWD/appsettings.local.json:/app/appsettings.local.json:ro" \
   ghcr.io/orkeon/orkeon-runners \
-  --config examples/03-finance-trading/31-algo-trading/config.yaml \
+  run examples/03-finance-trading/31-algo-trading/main.ork.ts \
   --settings /app/appsettings.local.json
 ```
 

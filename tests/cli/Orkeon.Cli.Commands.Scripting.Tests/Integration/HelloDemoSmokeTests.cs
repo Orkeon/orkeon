@@ -61,7 +61,7 @@ public sealed class HelloDemoSmokeTests : IDisposable
         var runner = new TestRunner(defaults, registry, console, services);
 
         console.EnqueueLine("hello");                  // default 'world'
-        console.EnqueueLine("hello --who=Cyril");      // typed arg
+        console.EnqueueLine("hello --who=Ada");        // typed arg
         console.EnqueueLine("help-cmd hello");         // formatted signature
         console.EnqueueLine("exit");
 
@@ -70,7 +70,7 @@ public sealed class HelloDemoSmokeTests : IDisposable
 
         var output = console.Output;
         Assert.Contains("Hello, world!", output);
-        Assert.Contains("Hello, Cyril!", output);
+        Assert.Contains("Hello, Ada!", output);
         Assert.Contains("--who", output);
         Assert.Contains("Greet someone", output);
     }

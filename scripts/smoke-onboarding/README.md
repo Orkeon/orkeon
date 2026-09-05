@@ -16,16 +16,18 @@ The rest of this page documents `run-smoke.sh`; the three released-artefact
 smokes are covered in [their own section](#released-artefact-smokes-win-06--lin-02--mac-02)
 at the bottom.
 
-`run-smoke.sh` is the **executable, measurable** implementation of the onboarding
-acceptance criterion from
-`backstage/remediation-onboarding-examples-experiments-2026-07-10.md` §2:
+`run-smoke.sh` is the **executable, measurable** implementation of the project's
+onboarding acceptance criterion. The criterion is stated here in full, so this page
+depends on no other document:
 
 > On a clean machine (Linux/macOS), a new user following only the READMEs reaches
 > a successful crew run in ≤ 20 minutes of active time, **by the path of their
 > choice**: sources, a Releases binary, or a container.
 
-It walks the three documented onboarding paths, **times each**, and reports
-`PASS` / `FAIL` / `SKIP` with durations.
+The three paths named there are the three documented in
+[`docs/getting-started/three-ways-to-run-orkeon.md`](../../docs/getting-started/three-ways-to-run-orkeon.md).
+The script walks all three, **times each**, and reports `PASS` / `FAIL` / `SKIP`
+with durations — the budget fails out loud instead of on a reviewer's stopwatch.
 
 ## The three scenarios
 

@@ -1,4 +1,4 @@
-# 24. Redaction de Demandes de Subventions
+# 24. Rédaction de Demandes de Subventions
 
 > 100% YAML-configurable pipeline. Each section of the grant application is a Task with its own validation. The Human Agent (PI) validates each section before progressing to the next.
 

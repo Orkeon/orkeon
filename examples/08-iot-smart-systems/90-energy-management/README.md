@@ -1,4 +1,4 @@
-# 90. Gestion Energetique — Cycle Continu FlowEngine
+# 90. Gestion Énergétique — Cycle Continu FlowEngine
 
 > The FlowEngine manages a continuous cycle of monitoring, prediction, optimization, and reporting. Long-term memory enables consumption prediction based on historical patterns.
 

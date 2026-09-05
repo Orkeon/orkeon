@@ -1,4 +1,4 @@
-# 98. Archeologie Numerique de Codebase Legacy
+# 98. Archéologie Numérique de Codebase Legacy
 
 > Five agents explore an unknown codebase and produce complete documentation. Composite memory progressively builds a mental model. FlowEngine manages iterative exploration.
 

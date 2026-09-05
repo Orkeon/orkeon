@@ -1,6 +1,6 @@
-# 68. Migration de Base de Donnees — Reprise Exacte
+# 68. Migration de Base de Données — Reprise Exacte
 
-> Chaque etape est checkpointee. En cas d'echec a l'etape 3 sur 4, le IResumeEngine reprend exactement a l'etape 3. Le DatabaseQueryTool valide l'integrite referentielle.
+> Chaque étape est checkpointée. En cas d'échec à l'étape 3 sur 4, le IResumeEngine reprend exactement à l'étape 3. Le DatabaseQueryTool valide l'intégrité référentielle.
 
 ## Quality
 

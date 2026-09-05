@@ -1,4 +1,4 @@
-# 2. Revue de Code Automatisee
+# 2. Revue de Code Automatisée
 
 > A Manager Agent distributes code to 4 specialized reviewers (security, performance, tests, style), aggregates findings into a consolidated report, and uses LlmJudgeEvaluator for calibration.
 

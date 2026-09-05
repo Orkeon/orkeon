@@ -159,10 +159,10 @@ public static partial class DefaultEmbeddingProviderResolver
             if (logger is not null)
                 LogConfiguredProviderMissingGenerator(logger, options.Provider);
             return new UnconfiguredEmbeddingProvider(
-                $"Orkeon:Embeddings déclare le provider '{options.Provider}' mais aucun " +
-                "IEmbeddingGenerator<string, Embedding<float>> n'est enregistré ; enregistrez un " +
-                "générateur M.E.AI (ou appelez AddOrkeonVectorSearch(configuration)), ou ajoutez " +
-                "AddOrkeonLocalEmbeddings() pour l'embedding local.");
+                $"Orkeon:Embeddings declares the provider '{options.Provider}' but no " +
+                "IEmbeddingGenerator<string, Embedding<float>> is registered; register an " +
+                "M.E.AI generator (or call AddOrkeonVectorSearch(configuration)), or add " +
+                "AddOrkeonLocalEmbeddings() for local embedding.");
         }
 
         if (logger is not null)

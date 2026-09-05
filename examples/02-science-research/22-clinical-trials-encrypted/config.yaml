@@ -1,6 +1,5 @@
 # 22. Monitoring d'Essais Cliniques Chiffre
 # Use case: Continuous clinical trial monitoring with encrypted patient data, real-time alerts, and NIST audit
-# Source: project/marketing/content-strategy/101-USE-CASES.md #22
 
 name: "clinical-trials-encrypted"
 goal: "Monitor clinical trials continuously with encrypted patient data, real-time safety alerts via Observer Agent, and NIST-compliant audit trail"

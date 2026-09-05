@@ -1,4 +1,4 @@
-# 17. Simulation de Debat Scientifique
+# 17. Simulation de Débat Scientifique
 
 > Three agents embody opposing scientific positions, supervised by a Moderator Manager. A structured communication protocol prevents loops and forces convergence toward a balanced synthesis with citations.
 
