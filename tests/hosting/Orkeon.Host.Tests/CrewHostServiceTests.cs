@@ -1,5 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.Timing;
 
 namespace Orkeon.Host.Tests;
 
@@ -58,16 +60,25 @@ public sealed class CrewHostServiceTests : IDisposable
     [Fact]
     public async Task A_valid_configuration_starts_and_stops_cleanly()
     {
-        using var service = Build(new OrkeonHostOptions
+        var options = new OrkeonHostOptions
         {
             Crews = [Crew()],
             ShutdownGracePeriod = TimeSpan.FromMilliseconds(50),
-        });
+        };
+        var log = new MockLogger<CrewHostService>();
+        using var service = new CrewHostService(new CrewHostRegistry(Options.Create(options)), Options.Create(options), log);
 
         await service.StartAsync(TestContext.Current.CancellationToken);
 
-        // Started: the configuration was accepted and the loop is up.
+        // Started: the configuration was accepted and the loop is up. "Up" is the loop's own
+        // announcement (its first act is to log each hosted crew), not StartAsync returning:
+        // on .NET 10 the base class hands ExecuteAsync to the thread pool, so a stop that
+        // lands before its first instruction ran completes ExecuteTask as Canceled — not the
+        // clean stop this test pins, and exactly what happened whenever the assembly's other
+        // classes kept the pool busy.
         Assert.NotNull(service.ExecuteTask);
+        await Polling.WaitUntilAsync(() => log.LogCallCount > 0);
+        Assert.Contains("Hosting crew 'support'", log.LastLogMessage, StringComparison.Ordinal);
 
         await service.StopAsync(TestContext.Current.CancellationToken);
 
