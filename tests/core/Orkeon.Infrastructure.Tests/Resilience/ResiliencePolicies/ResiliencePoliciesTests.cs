@@ -318,26 +318,36 @@ public sealed class ResiliencePoliciesTests : IDisposable
     public async Task ShouldRespectServerDelay_WhenGetLlmApiPolicyWithRetryAfterHeader()
     {
         // Arrange
-        var policy = ResiliencePolicies.GetLlmApiPolicy(_logger);
+        var serverDelay = TimeSpan.FromMilliseconds(50);
+        var scheduled = new List<(int Attempt, TimeSpan Delay, string Reason)>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger,
+            onRetry: (attempt, delay, reason) => scheduled.Add((attempt, delay, reason)));
 
         var rateLimitedResponse = new HttpResponseMessage(HttpStatusCode.TooManyRequests);
-        rateLimitedResponse.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(
-            TimeSpan.FromMilliseconds(50));
+        rateLimitedResponse.Headers.RetryAfter = new System.Net.Http.Headers.RetryConditionHeaderValue(serverDelay);
 
         _httpHandler.SetupResponses(
             rateLimitedResponse,
             new HttpResponseMessage(HttpStatusCode.OK)
         );
 
-        // Act
-        var startTime = DateTime.UtcNow;
+        // Act. Stopwatch, not DateTime.UtcNow: the wall clock is not monotonic and a step
+        // backwards (NTP, a VM resuming) once measured this wait as shorter than the
+        // header asked for.
+        var clock = System.Diagnostics.Stopwatch.StartNew();
         var response = await policy.ExecuteAsync(async () =>
             await _httpClient.GetAsync("http://test.com"));
-        var duration = DateTime.UtcNow - startTime;
+        clock.Stop();
 
-        // Assert
+        // Assert. The contract is that the server's delay is honoured on top of the
+        // ladder: the hook reports the effective wait, and the monotonic clock confirms
+        // the call did not return before it.
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.True(duration >= TimeSpan.FromMilliseconds(50));
+        var retry = Assert.Single(scheduled);
+        Assert.Equal(1, retry.Attempt);
+        Assert.True(retry.Delay >= serverDelay, $"effective delay {retry.Delay} < Retry-After {serverDelay}");
+        Assert.True(clock.Elapsed >= serverDelay, $"returned after {clock.Elapsed}, before the {serverDelay} the server asked for");
         Assert.True(_logger.HasLoggedInformation("LLM API rate limited"));
     }
 
