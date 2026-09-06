@@ -30,14 +30,14 @@ provider=$(jq -r '.provider' "$CAMPAIGN")
 model=$(jq -r '.model' "$CAMPAIGN")
 host=$(jq -r '.endpointHost' "$CAMPAIGN")
 version=$(jq -r '.orkeonVersion' "$CAMPAIGN")
-commit=$(jq -r '.commit // "" | if . == "" then "non fourni" else . end' "$CAMPAIGN")
+commit=$(jq -r '.commit // "" | if . == "" then "not supplied" else . end' "$CAMPAIGN")
 stamp=$(jq -r '.timestampUtc' "$CAMPAIGN")
-# Older campaigns predate the field; "non épinglée" is the honest rendering of a run whose
+# Older campaigns predate the field; "not pinned" is the honest rendering of a run whose
 # sampling was left at the framework default, and reads as the caveat it is.
-temperature=$(jq -r 'if has("temperature") then (.temperature | tostring) else "non épinglée" end' "$CAMPAIGN")
-# Efforts de raisonnement epingles par le registre par-modele (requiredParams) : presents
-# uniquement quand la campagne a du s'ecarter du defaut — l'en-tete porte les valeurs
-# reellement utilisees, sinon un verdict M7 lit comme obtenu au defaut.
+temperature=$(jq -r 'if has("temperature") then (.temperature | tostring) else "not pinned" end' "$CAMPAIGN")
+# Reasoning efforts pinned by the per-model registry (requiredParams): present only when
+# the campaign had to depart from the default — the header carries the values actually
+# used, otherwise an M7 verdict reads as obtained at the default.
 thinking_effort=$(jq -r '.thinking_effort // ""' "$CAMPAIGN")
 m7_effort=$(jq -r '.m7_thinking_effort // ""' "$CAMPAIGN")
 passed=$(jq -r '.passed' "$CAMPAIGN")
@@ -51,35 +51,35 @@ label=$(jq -r --arg p "$canonical" '.providers[$p].label // $p' "$CATALOG")
 section=$(jq -r --arg p "$canonical" '.providers[$p].matrix // ""' "$CATALOG")
 
 if [[ "$failed" -gt 0 ]]; then
-  verdict="❌ **Échec** — $failed mode(s) en échec"
+  verdict="❌ **Failure** — $failed failed mode(s)"
 elif [[ "$passed" -eq 0 ]]; then
-  verdict="➖ **Rien exercé** — aucun mode applicable à ce provider"
+  verdict="➖ **Nothing exercised** — no mode applicable to this provider"
 else
-  verdict="✅ **Succès** — $passed mode(s) validé(s)"
+  verdict="✅ **Success** — $passed mode(s) validated"
 fi
 
 mkdir -p "$(dirname "$OUTPUT")"
 
 {
-  echo "# Campagne ${label} — \`${model}\`"
+  echo "# Campaign ${label} — \`${model}\`"
   echo
   echo "|  |  |"
   echo "|---|---|"
   echo "| **Provider** | \`${provider}\` |"
-  echo "| **Modèle** | \`${model}\` |"
+  echo "| **Model** | \`${model}\` |"
   echo "| **Endpoint** | \`${host}\` |"
-  echo "| **Horodatage (UTC)** | ${stamp} |"
-  echo "| **Version Orkeon** | ${version} |"
+  echo "| **Timestamp (UTC)** | ${stamp} |"
+  echo "| **Orkeon version** | ${version} |"
   echo "| **Commit** | \`${commit}\` |"
-  echo "| **Modes exercés** | ${modes_run} |"
-  echo "| **Température** | ${temperature} |"
-  [[ -n "$thinking_effort" ]] && echo "| **Effort de raisonnement (base)** | ${thinking_effort} |"
-  [[ -n "$m7_effort" ]] && echo "| **Effort de raisonnement (M7)** | ${m7_effort} |"
-  echo "| **Qualité de preuve** | sortie archivée |"
+  echo "| **Modes exercised** | ${modes_run} |"
+  echo "| **Temperature** | ${temperature} |"
+  [[ -n "$thinking_effort" ]] && echo "| **Reasoning effort (base)** | ${thinking_effort} |"
+  [[ -n "$m7_effort" ]] && echo "| **Reasoning effort (M7)** | ${m7_effort} |"
+  echo "| **Proof quality** | archived output |"
   echo
-  echo "## Résultats"
+  echo "## Results"
   echo
-  echo "| Mode | Protocole | Résultat | Détail | Durée |"
+  echo "| Mode | Protocol | Result | Detail | Duration |"
   echo "|---|---|---|---|---|"
 
   jq -r --slurpfile catalog "$CATALOG" '
@@ -95,33 +95,33 @@ mkdir -p "$(dirname "$OUTPUT")"
   echo
   echo "${verdict} · ${passed} ✅ · ${failed} ❌ · ${skipped} ➖"
   echo
-  echo "> ➖ = mode non applicable à ce provider ou à ce modèle. Rien n'a été exercé, il n'y a"
-  echo "> donc rien à corriger — c'est une absence de capacité, pas un défaut."
+  echo "> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is"
+  echo "> nothing to fix — it is an absence of capability, not a defect."
 
   notes=$(jq -r --arg p "$canonical" '.providers[$p].notes // [] | .[] | "- " + .' "$CATALOG")
   if [[ -n "$notes" ]]; then
     echo
-    echo "## Points de vigilance (matrice ${section})"
+    echo "## Points of attention (matrix ${section})"
     echo
     echo "$notes"
   fi
 
   echo
-  echo "## À reporter dans la matrice"
+  echo "## To carry into the matrix"
   echo
-  echo "Journal (§7) :"
+  echo "Journal (§7):"
   echo
   echo '```'
-  printf '| %s | %s `%s` | campagne `llmproviders-test` | %s | %s | `llmproviders-test/%s/%s` | Sortie archivée |\n' \
+  printf '| %s | %s `%s` | campaign `llmproviders-test` | %s | %s | `llmproviders-test/%s/%s` | Archived output |\n' \
     "${stamp%%T*}" "$label" "$model" "$modes_run" \
     "$(if [[ "$failed" -gt 0 ]]; then echo "❌"; else echo "✅"; fi)" \
     "$provider" "$(basename "$OUTPUT")"
   echo '```'
   echo
-  echo "Tableau modèles (${section:-§6}) :"
+  echo "Model table (${section:-§6}):"
   echo
   echo '```'
-  printf '| `%s` | | | %s | %s | %s | %s | campagne %s |\n' \
+  printf '| `%s` | | | %s | %s | %s | %s | campaign %s |\n' \
     "$model" "$modes_run" \
     "$(if [[ "$failed" -gt 0 ]]; then echo "❌"; else echo "✅"; fi)" \
     "${stamp%%T*}" "$version" "$(basename "$OUTPUT")"

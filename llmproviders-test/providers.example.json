@@ -2,9 +2,9 @@
   "$schema": "./providers.schema.json",
 
   "_comment": [
-    "Gabarit de campagne. Copiez-le en providers.local.json (gitignoré) avant d'y toucher.",
-    "Aucune clé API ne doit apparaître dans CE fichier : il est versionné.",
-    "Préférez toujours apiKeyEnv (nom d'une variable d'environnement) à apiKey (valeur en clair)."
+    "Campaign template. Copy it to providers.local.json (gitignored) before touching it.",
+    "No API key must appear in THIS file: it is versioned.",
+    "Always prefer apiKeyEnv (the name of an environment variable) over apiKey (a plain-text value)."
   ],
 
   "defaults": {
@@ -14,7 +14,7 @@
 
   "providers": {
     "ollama": {
-      "_comment": "Coût nul. À lancer en premier : il valide le kit de bout en bout sans dépenser un crédit.",
+      "_comment": "Zero cost. Run it first: it validates the kit end to end without spending a single credit.",
       "baseUrl": "http://localhost:11434",
       "models": ["llama3.2"]
     },
@@ -25,17 +25,17 @@
     },
 
     "anthropic": {
-      "_comment": "Clé identity-linked ? Ajoutez workspaceId (wrkspc_…) — l'API refuse chaque requête sans lui. Les clés classiques n'en ont pas besoin.",
+      "_comment": "Identity-linked key? Add workspaceId (wrkspc_…) — the API rejects every request without it. Classic keys do not need it.",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "models": ["claude-sonnet-5"]
     },
 
     "azure": {
-      "_comment": "Azure sert des déploiements, pas un catalogue : le wildcard ne s'applique pas, déclarez-les ici.",
+      "_comment": "Azure serves deployments, not a catalogue: the wildcard does not apply, declare them here.",
       "apiKeyEnv": "AZURE_OPENAI_API_KEY",
-      "baseUrl": "https://mon-resource.openai.azure.com",
+      "baseUrl": "https://my-resource.openai.azure.com",
       "apiVersion": "2024-02-01",
-      "models": ["mon-deploiement"]
+      "models": ["my-deployment"]
     },
 
 
@@ -51,27 +51,27 @@
     },
 
     "kimi": {
-      "_comment": "Endpoint international par défaut. Compte Chine continentale : baseUrl https://api.moonshot.cn/v1.",
+      "_comment": "International endpoint by default. Mainland China account: baseUrl https://api.moonshot.cn/v1.",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
       "models": ["kimi-k2.6"]
     },
 
     "qwen": {
-      "_comment": "Endpoint international : https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
+      "_comment": "International endpoint: https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "modes": "M1,M2,M3,M4,M5",
       "models": ["qwen3.7-plus"]
     },
 
     "mistral": {
-      "_comment": "Lancer SANS baseUrl : c'est ainsi qu'on vérifie en réel que G-14 est fermé.",
+      "_comment": "Run WITHOUT baseUrl: that is how G-14 is verified closed against the real API.",
       "apiKeyEnv": "MISTRAL_API_KEY",
       "models": ["mistral-medium-2604"]
     },
 
     "huggingface": {
-      "_comment": "Suffixes de routage acceptés : openai/gpt-oss-120b:cheapest (G-23).",
+      "_comment": "Accepted routing suffixes: openai/gpt-oss-120b:cheapest (G-23).",
       "apiKeyEnv": "HF_TOKEN",
       "modes": "M1,M2,M3,M4,M5",
       "models": ["openai/gpt-oss-120b"]
@@ -88,13 +88,13 @@
     },
 
     "minimax": {
-      "_comment": "Campagne 2026-08-30 : 7 modes verts sur MiniMax-M2 (les rouges sont au modèle). Endpoint continental : baseUrl https://api.minimaxi.com/v1.",
+      "_comment": "Campaign 2026-08-30: 7 modes green on MiniMax-M2 (the red ones are on the model's side). Mainland endpoint: baseUrl https://api.minimaxi.com/v1.",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "models": ["MiniMax-M2"]
     },
 
     "gemini": {
-      "_comment": "Endpoint de compatibilite OpenAI de Google, pas Vertex AI. M8 s'y exerce pleinement depuis le 2026-08-30 (json_object et json_schema acceptes, schema valide cote serveur).",
+      "_comment": "Google's OpenAI compatibility endpoint, not Vertex AI. M8 is fully exercised there since 2026-08-30 (json_object and json_schema accepted, schema validated server-side).",
       "apiKeyEnv": "GEMINI_API_KEY",
       "models": ["gemini-3.7-flash"]
     }

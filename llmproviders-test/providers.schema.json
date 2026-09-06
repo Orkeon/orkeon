@@ -1,21 +1,21 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://orkeon.org/schemas/llmproviders-test/providers.schema.json",
-  "title": "Orkeon — configuration de campagne LLM",
-  "description": "Fichier d'entrée de llmproviders-test/run-campaign.sh|.ps1. Un fichier portant des clés API en clair DOIT être nommé *.local.json ou *.secrets.json (gitignorés).",
+  "title": "Orkeon — LLM campaign configuration",
+  "description": "Input file of llmproviders-test/run-campaign.sh|.ps1. A file carrying plain-text API keys MUST be named *.local.json or *.secrets.json (gitignored).",
   "type": "object",
   "additionalProperties": false,
 
   "properties": {
     "$schema": { "type": "string" },
     "_comment": {
-      "description": "Commentaire libre, ignoré par les scripts.",
+      "description": "Free-form comment, ignored by the scripts.",
       "oneOf": [{ "type": "string" }, { "type": "array", "items": { "type": "string" } }]
     },
 
     "defaults": {
       "type": "object",
-      "description": "Valeurs appliquées à tout provider qui ne les redéfinit pas.",
+      "description": "Values applied to every provider that does not override them.",
       "additionalProperties": false,
       "properties": {
         "modes": { "$ref": "#/$defs/modes" },
@@ -25,7 +25,7 @@
 
     "providers": {
       "type": "object",
-      "description": "Une entrée par provider, la clé étant celle acceptée par LlmProviderFactory.",
+      "description": "One entry per provider, the key being the one accepted by LlmProviderFactory.",
       "minProperties": 1,
       "propertyNames": {
         "enum": [
@@ -44,13 +44,13 @@
   "$defs": {
     "modes": {
       "type": "string",
-      "description": "Modes du protocole, séparés par des virgules. Seuls M1 à M10, M12 et M13 sont automatisés : M11 (contexte long) et M14 (crew de bout en bout) sont manuels et le harnais les refuse — le motif ci-dessous les exclut donc plutôt que de laisser passer une configuration qui échouerait à l'exécution.",
+      "description": "Protocol modes, comma-separated. Only M1 to M10, M12 and M13 are automated: M11 (long context) and M14 (end-to-end crew) are manual and the harness rejects them — the pattern below therefore excludes them rather than letting through a configuration that would fail at run time.",
       "pattern": "^M(10|12|13|[1-9])(,M(10|12|13|[1-9]))*$"
     },
 
     "maxModels": {
       "type": "integer",
-      "description": "Plafond du nombre de modèles exercés quand --model est un wildcard.",
+      "description": "Cap on the number of models exercised when --model is a wildcard.",
       "minimum": 1,
       "maximum": 50
     },
@@ -64,31 +64,31 @@
         },
         "apiKeyEnv": {
           "type": "string",
-          "description": "Nom de la variable d'environnement portant la clé. Forme recommandée.",
+          "description": "Name of the environment variable carrying the key. Recommended form.",
           "pattern": "^[A-Za-z_][A-Za-z0-9_]*$"
         },
         "apiKey": {
           "type": "string",
-          "description": "Clé en clair. Tolérée, mais impose un nom de fichier *.local.json — les scripts refusent de la lire autrement."
+          "description": "Plain-text key. Tolerated, but requires a *.local.json file name — the scripts refuse to read it otherwise."
         },
         "baseUrl": {
           "type": "string",
           "format": "uri",
-          "description": "Surcharge d'endpoint (Azure, miroirs régionaux)."
+          "description": "Endpoint override (Azure, regional mirrors)."
         },
         "apiVersion": {
           "type": "string",
-          "description": "api-version Azure en mode deployment. Omis en mode v1 GA."
+          "description": "Azure api-version in deployment mode. Omitted in v1 GA mode."
         },
         "workspaceId": {
           "type": "string",
-          "description": "Workspace des requêtes, pour les clés à portée de workspace (les clés identity-linked d'Anthropic l'exigent). Un identifiant, pas un secret."
+          "description": "Workspace of the requests, for workspace-scoped keys (Anthropic identity-linked keys require it). An identifier, not a secret."
         },
         "modes": { "$ref": "#/$defs/modes" },
         "maxModels": { "$ref": "#/$defs/maxModels" },
         "models": {
           "type": "array",
-          "description": "Modèles à exercer. Sert aussi de repli quand la découverte de catalogue échoue.",
+          "description": "Models to exercise. Also serves as the fallback when catalogue discovery fails.",
           "items": { "type": "string", "minLength": 1 }
         }
       }

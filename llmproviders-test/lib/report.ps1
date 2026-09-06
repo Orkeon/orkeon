@@ -27,7 +27,7 @@ $rawJson = Get-Content -Raw -LiteralPath $Campaign
 $c = $rawJson | ConvertFrom-Json
 $catalog = Get-Content -Raw -LiteralPath (Join-Path $LibDir 'catalog.json') | ConvertFrom-Json
 
-$commit = if ([string]::IsNullOrWhiteSpace($c.commit)) { 'non fourni' } else { $c.commit }
+$commit = if ([string]::IsNullOrWhiteSpace($c.commit)) { 'not supplied' } else { $c.commit }
 $modesRun = ($c.modes | ForEach-Object { $_.mode }) -join ', '
 
 # ConvertFrom-Json turns an ISO-8601 string into a [DateTime], which would render in the
@@ -45,9 +45,9 @@ $section = if ($canonical -and $canonical.matrix) { $canonical.matrix } else { '
 
 $status = if ($c.failed -gt 0) { '❌' } else { '✅' }
 $verdict =
-    if ($c.failed -gt 0) { "❌ **Échec** — $($c.failed) mode(s) en échec" }
-    elseif ($c.passed -eq 0) { '➖ **Rien exercé** — aucun mode applicable à ce provider' }
-    else { "✅ **Succès** — $($c.passed) mode(s) validé(s)" }
+    if ($c.failed -gt 0) { "❌ **Failure** — $($c.failed) failed mode(s)" }
+    elseif ($c.passed -eq 0) { '➖ **Nothing exercised** — no mode applicable to this provider' }
+    else { "✅ **Success** — $($c.passed) mode(s) validated" }
 
 $outDir = Split-Path -Parent $Output
 if ($outDir -and -not (Test-Path -LiteralPath $outDir)) {
@@ -60,36 +60,36 @@ $fileName = Split-Path -Leaf $Output
 $lines = [System.Collections.Generic.List[string]]::new()
 $add = { param($text) $lines.Add([string]$text) }
 
-& $add "# Campagne $label — ``$($c.model)``"
+& $add "# Campaign $label — ``$($c.model)``"
 & $add ''
 & $add '|  |  |'
 & $add '|---|---|'
 & $add "| **Provider** | ``$($c.provider)`` |"
-& $add "| **Modèle** | ``$($c.model)`` |"
+& $add "| **Model** | ``$($c.model)`` |"
 & $add "| **Endpoint** | ``$($c.endpointHost)`` |"
-& $add "| **Horodatage (UTC)** | $stamp |"
-& $add "| **Version Orkeon** | $($c.orkeonVersion) |"
+& $add "| **Timestamp (UTC)** | $stamp |"
+& $add "| **Orkeon version** | $($c.orkeonVersion) |"
 & $add "| **Commit** | ``$commit`` |"
-& $add "| **Modes exercés** | $modesRun |"
-# Older campaigns predate the field; "non épinglée" is the honest rendering of a run whose
+& $add "| **Modes exercised** | $modesRun |"
+# Older campaigns predate the field; "not pinned" is the honest rendering of a run whose
 # sampling was left at the framework default, and reads as the caveat it is.
 $temperature = if ($null -ne $c.PSObject.Properties['temperature']) {
     $c.temperature.ToString([cultureinfo]::InvariantCulture)
-} else { 'non épinglée' }
-& $add "| **Température** | $temperature |"
-# Efforts de raisonnement epingles par le registre par-modele (requiredParams) : presents
-# uniquement quand la campagne a du s'ecarter du defaut.
+} else { 'not pinned' }
+& $add "| **Temperature** | $temperature |"
+# Reasoning efforts pinned by the per-model registry (requiredParams): present only when
+# the campaign had to depart from the default.
 if ($c.PSObject.Properties['thinking_effort'] -and $c.thinking_effort) {
-    & $add "| **Effort de raisonnement (base)** | $($c.thinking_effort) |"
+    & $add "| **Reasoning effort (base)** | $($c.thinking_effort) |"
 }
 if ($c.PSObject.Properties['m7_thinking_effort'] -and $c.m7_thinking_effort) {
-    & $add "| **Effort de raisonnement (M7)** | $($c.m7_thinking_effort) |"
+    & $add "| **Reasoning effort (M7)** | $($c.m7_thinking_effort) |"
 }
-& $add '| **Qualité de preuve** | sortie archivée |'
+& $add '| **Proof quality** | archived output |'
 & $add ''
-& $add '## Résultats'
+& $add '## Results'
 & $add ''
-& $add '| Mode | Protocole | Résultat | Détail | Durée |'
+& $add '| Mode | Protocol | Result | Detail | Duration |'
 & $add '|---|---|---|---|---|'
 
 foreach ($mode in $c.modes) {
@@ -101,12 +101,12 @@ foreach ($mode in $c.modes) {
 & $add ''
 & $add "$verdict · $($c.passed) ✅ · $($c.failed) ❌ · $($c.notApplicable) ➖"
 & $add ''
-& $add '> ➖ = mode non applicable à ce provider ou à ce modèle. Rien n''a été exercé, il n''y a'
-& $add '> donc rien à corriger — c''est une absence de capacité, pas un défaut.'
+& $add '> ➖ = mode not applicable to this provider or this model. Nothing was exercised, so there is'
+& $add '> nothing to fix — it is an absence of capability, not a defect.'
 
 if ($canonical -and $canonical.notes) {
     & $add ''
-    & $add "## Points de vigilance (matrice $section)"
+    & $add "## Points of attention (matrix $section)"
     & $add ''
     foreach ($note in $canonical.notes) { & $add "- $note" }
 }
@@ -114,18 +114,18 @@ if ($canonical -and $canonical.notes) {
 $sectionOrDefault = if ($section) { $section } else { '§6' }
 
 & $add ''
-& $add '## À reporter dans la matrice'
+& $add '## To carry into the matrix'
 & $add ''
-& $add 'Journal (§7) :'
-& $add ''
-& $add '```'
-& $add "| $date | $label ``$($c.model)`` | campagne ``llmproviders-test`` | $modesRun | $status | ``llmproviders-test/$($c.provider)/$fileName`` | Sortie archivée |"
-& $add '```'
-& $add ''
-& $add "Tableau modèles ($sectionOrDefault) :"
+& $add 'Journal (§7):'
 & $add ''
 & $add '```'
-& $add "| ``$($c.model)`` | | | $modesRun | $status | $date | $($c.orkeonVersion) | campagne $fileName |"
+& $add "| $date | $label ``$($c.model)`` | campaign ``llmproviders-test`` | $modesRun | $status | ``llmproviders-test/$($c.provider)/$fileName`` | Archived output |"
+& $add '```'
+& $add ''
+& $add "Model table ($sectionOrDefault):"
+& $add ''
+& $add '```'
+& $add "| ``$($c.model)`` | | | $modesRun | $status | $date | $($c.orkeonVersion) | campaign $fileName |"
 & $add '```'
 & $add ''
 & $add $JsonMarker

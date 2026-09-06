@@ -304,9 +304,10 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 
 ## Campaigns run
 
-> The per-campaign reports linked below are written in **French**: they predate the switch
-> of the report generator to English, and they are timestamped evidence, so they are kept
-> exactly as they were produced rather than re-rendered.
+> The per-campaign reports dated before 2026-09-06 are written in **French**: they predate the
+> switch of the report generator to English (2026-09-06), and they are timestamped evidence, so
+> they are kept exactly as they were produced rather than re-rendered. Reports from 2026-09-06
+> onwards are in English.
 
 | Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Version | Report |
 |---|---|---|---|---|---|

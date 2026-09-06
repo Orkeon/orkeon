@@ -1,34 +1,34 @@
 {
   "_comment": [
-    "Données partagées par run-campaign.sh et run-campaign.ps1 : libellés des modes du",
-    "protocole (matrice §5) et points de vigilance par provider (matrice §4 et §6).",
-    "Un seul fichier pour les deux scripts — une prose dupliquée dans deux langages",
-    "diverge à la première correction.",
+    "Data shared by run-campaign.sh and run-campaign.ps1: the labels of the protocol modes",
+    "(matrix §5) and the points of vigilance per provider (matrix §4 and §6).",
+    "One file for both scripts — prose duplicated across two languages diverges at the",
+    "first correction.",
     "",
-    "requiredParams consigne, PAR MODÈLE, les paramètres dont un modèle exige une valeur",
-    "précise (kimi-k2.6 et gpt-5.6-sol et claude-sonnet-5 refusent toute température autre",
-    "que 1 ; gpt-5.6-sol exige reasoning_effort none avec des function tools). Par modèle et",
-    "non par fournisseur : gpt-4o-mini, même fournisseur, rejette reasoning_effort tout",
-    "court — un épinglage au niveau fournisseur casserait sa campagne. N'y entrent que des",
-    "valeurs MESURÉES, datées dans les notes ; le miroir lisible est la section",
-    "'Per-model mandatory parameter values' de docs/reference/llm-providers-comparison.md."
+    "requiredParams records, PER MODEL, the parameters for which a model demands one specific",
+    "value (kimi-k2.6 and gpt-5.6-sol and claude-sonnet-5 refuse any temperature other than 1;",
+    "gpt-5.6-sol demands reasoning_effort none with function tools). Per model and not per",
+    "provider: gpt-4o-mini, same provider, rejects reasoning_effort outright — a provider-level",
+    "pin would break its campaign. Only MEASURED values go in, dated in the notes; the",
+    "human-readable twin is the 'Per-model mandatory parameter values' section of",
+    "docs/reference/llm-providers-comparison.md."
   ],
 
   "modes": {
-    "M1":  "Chat simple",
-    "M2":  "Multi-tours + system (2 formes)",
-    "M3":  "Streaming texte",
-    "M4":  "Streaming chat",
-    "M5":  "Tool calling natif",
-    "M6":  "Tool calling fallback texte",
+    "M1":  "Simple chat",
+    "M2":  "Multi-turn + system (2 shapes)",
+    "M3":  "Text streaming",
+    "M4":  "Chat streaming",
+    "M5":  "Native tool calling",
+    "M6":  "Text-fallback tool calling",
     "M7":  "Thinking / reasoning",
     "M8":  "response_format JSON",
     "M9":  "Vision / multimodal",
-    "M10": "Cache de contexte",
-    "M11": "Contexte long (manuel)",
-    "M12": "Erreurs & résilience",
-    "M13": "Annulation",
-    "M14": "Crew de bout en bout (manuel)"
+    "M10": "Context cache",
+    "M11": "Long context (manual)",
+    "M12": "Errors & resilience",
+    "M13": "Cancellation",
+    "M14": "End-to-end crew (manual)"
   },
 
   "providers": {
@@ -41,11 +41,11 @@
         "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" }
       },
       "notes": [
-        "Cible générique du fallback de `LlmProviderFactory` : une campagne verte ici valide indirectement Docker Model Runner, vLLM et LM Studio. Prouvé en réel le 2026-08-30 : campagne 12/12 contre `api.x.ai` (`grok-4.6`, dialecte OpenAI, base-url seule) — rapport sous `custom-endpoints/`.",
-        "G-05 fermé (LLM-01) : le défaut est passé de `gpt-4` (8 K de contexte, extinction 2026-10-23) à `gpt-5.6-sol`.",
-        "Les modèles actuels refusent `max_tokens` (campagne 2026-08-30 : dix modes rouges sur ce seul champ). Le dialecte OpenAI écrit `max_completion_tokens` depuis cette date — accepté aussi par les générations antérieures (vérifié sur `gpt-4o-mini` le même jour).",
-        "`gpt-5.6-sol` refuse toute température autre que 1 (`'temperature' does not support 0 with this model`) — même classe que `kimi-k2.6`, même remède : le catalogue l'épingle pour ce modèle (requiredParams) et l'en-tête du rapport porte la valeur utilisée.",
-        "`gpt-5.6-sol` raisonne par défaut et refuse les function tools sur chat/completions tant que `reasoning_effort` n'est pas explicitement `none` (mesuré 2026-08-30, `none` débloque l'appel). Le catalogue l'épingle pour ce modèle (`requiredParams`) ; M7 continue de sonder le thinking avec son propre effort explicite."
+        "Generic target of the `LlmProviderFactory` fallback: a green campaign here indirectly validates Docker Model Runner, vLLM and LM Studio. Proven live on 2026-08-30: 12/12 campaign against `api.x.ai` (`grok-4.6`, OpenAI dialect, base-url alone) — report under `custom-endpoints/`.",
+        "G-05 closed (LLM-01): the default moved from `gpt-4` (8 K context, retirement 2026-10-23) to `gpt-5.6-sol`.",
+        "Current models refuse `max_tokens` (2026-08-30 campaign: ten modes red on that one field). The OpenAI dialect writes `max_completion_tokens` since that date — accepted by the earlier generations too (verified on `gpt-4o-mini` the same day).",
+        "`gpt-5.6-sol` refuses any temperature other than 1 (`'temperature' does not support 0 with this model`) — same class as `kimi-k2.6`, same remedy: the catalog pins it for this model (requiredParams) and the report header carries the value used.",
+        "`gpt-5.6-sol` reasons by default and refuses function tools on chat/completions as long as `reasoning_effort` is not explicitly `none` (measured 2026-08-30, `none` unblocks the call). The catalog pins it for this model (`requiredParams`); M7 keeps probing thinking with its own explicit effort."
       ]
     },
     "anthropic": {
@@ -57,12 +57,12 @@
         "claude-sonnet-5": { "temperature": 1 }
       },
       "notes": [
-        "Dialecte propre (Messages API) : c'est le provider qui porte le plus de code spécifique.",
-        "M8 est **schéma obligatoire** — `output_config.format` n'a pas d'équivalent de `json_object`.",
-        "M10 n'a de sens qu'avec un breakpoint explicite : sans `cache_control`, Anthropic ne cache rien (G-17). Le harnais l'active de lui-même ici.",
-        "M4 doit confirmer le SSE natif livré par LLM-05 (G-20), et non un repli bufferisé.",
-        "Les clés identity-linked exigent l'en-tête `anthropic-workspace-id` sur chaque requête (mesuré 2026-08-30). Déclarer `workspaceId` dans le JSON de campagne ou passer `--workspace-id` ; les clés classiques n'en ont pas besoin.",
-        "`claude-sonnet-5` refuse toute température explicite autre que 1 (`temperature is deprecated for this model`, mesuré 2026-08-30 : 1 et l'omission passent, 0 et 0.7 non) — même classe que `kimi-k2.6` et `gpt-5.6-sol`, même remède : le catalogue l'épingle pour ce modèle (requiredParams), l'en-tête du rapport porte la valeur utilisée."
+        "Own dialect (Messages API): this is the provider carrying the most specific code.",
+        "M8 is **schema mandatory** — `output_config.format` has no `json_object` equivalent.",
+        "M10 only makes sense with an explicit breakpoint: without `cache_control`, Anthropic caches nothing (G-17). The harness enables it on its own here.",
+        "M4 must confirm the native SSE delivered by LLM-05 (G-20), not a buffered fallback.",
+        "Identity-linked keys require the `anthropic-workspace-id` header on every request (measured 2026-08-30). Declare `workspaceId` in the campaign JSON or pass `--workspace-id`; classic keys need nothing.",
+        "`claude-sonnet-5` refuses any explicit temperature other than 1 (`temperature is deprecated for this model`, measured 2026-08-30: 1 and omission pass, 0 and 0.7 do not) — same class as `kimi-k2.6` and `gpt-5.6-sol`, same remedy: the catalog pins it for this model (requiredParams), the report header carries the value used."
       ]
     },
     "azure": {
@@ -70,9 +70,9 @@
       "matrix": "§6.3",
       "apiKeyEnv": "AZURE_OPENAI_API_KEY",
       "notes": [
-        "Deux modes d'URL à exercer séparément : deployment (`api-version`) et v1 GA (LLM-07, G-06).",
-        "Seul provider où **M4 doit aussi couvrir le cas dégradé** : `BaseUrl` absente ⇒ erreur typée, jamais une `NullReferenceException` (D-01).",
-        "Pas de catalogue public : les déploiements se déclarent dans le JSON de campagne, le wildcard ne s'applique pas."
+        "Two URL modes to exercise separately: deployment (`api-version`) and v1 GA (LLM-07, G-06).",
+        "The only provider where **M4 must also cover the degraded case**: missing `BaseUrl` ⇒ typed error, never a `NullReferenceException` (D-01).",
+        "No public catalog: deployments are declared in the campaign JSON, the wildcard does not apply."
       ]
     },
     "azure-openai": { "label": "Azure OpenAI", "matrix": "§6.3", "aliasOf": "azure" },
@@ -82,10 +82,10 @@
       "defaultModel": "llama3.2",
       "visionModel": "llava",
       "notes": [
-        "Coût nul : c'est la campagne qui sert de rodage au kit avant toute dépense.",
-        "Seul chemin **M6** (protocole texte) du parc.",
-        "**M5 natif** est désormais possible via `/api/chat` (LLM-07, G-10) — cette campagne est ce qui le confirme en réel.",
-        "Le contexte effectif est plafonné par `num_ctx`, bien en deçà des 128 K annoncés : à mesurer en M11."
+        "Zero cost: this is the campaign that serves as the kit's shakedown before any spending.",
+        "The only **M6** path (text protocol) in the fleet.",
+        "**Native M5** is now possible via `/api/chat` (LLM-07, G-10) — this campaign is what confirms it live.",
+        "The effective context is capped by `num_ctx`, well below the advertised 128 K: to be measured in M11."
       ]
     },
     "together": {
@@ -94,9 +94,9 @@
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
       "notes": [
-        "Le défaut `Llama-3.3-70B-Instruct-Turbo` est texte seul : son M9 rouge est la preuve D-03 (campagne 2026-08-30). Pas de compagnon vision déclarable : les 4 modèles vision testés (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) sont tous non-serverless sur le tier mesuré — endpoint dédié payant requis, rapport d'échec archivé comme preuve.",
-        "Endpoint et modèle par défaut à jour. Un passage M1–M5 suffit.",
-        "Together sert DeepSeek-V4-Pro à 512 K là où DeepSeek le sert à 1 M — écart de service à vérifier en M11."
+        "The default `Llama-3.3-70B-Instruct-Turbo` is text-only: its red M9 is the D-03 proof (2026-08-30 campaign). No declarable vision companion: the 4 vision models tested (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) are all non-serverless on the measured tier — paid dedicated endpoint required, failure report archived as proof.",
+        "Endpoint and default model up to date. One M1–M5 pass is enough.",
+        "Together serves DeepSeek-V4-Pro at 512 K where DeepSeek serves it at 1 M — a service gap to verify in M11."
       ]
     },
     "togetherai": { "label": "Together AI", "matrix": "§6.6", "aliasOf": "together" },
@@ -107,10 +107,10 @@
       "defaultModel": "deepseek-v4-flash",
       "visionModel": "deepseek-v4-flash-vision-exp",
       "notes": [
-        "À **revalider** malgré son ancienneté de preuve : LLM-01 a changé son modèle par défaut et LLM-02 l'a refactoré sur le socle de capacités.",
-        "M7 doit confirmer le round-trip de `reasoning_content` — sans lui l'API renvoie un 400.",
-        "M8 doit confirmer la garde « mot *json* absent du prompt ».",
-        "Longtemps seul provider du parc sans modèle vision, jusqu'à `deepseek-v4-flash-vision-exp` (mesuré 2026-08-30 : il lit une image base64). Le défaut `deepseek-v4-flash` reste texte seul : son M9 rouge est la preuve D-03, le compagnon vision apporte le fait complémentaire."
+        "To **revalidate** despite the age of its proof: LLM-01 changed its default model and LLM-02 refactored it onto the capabilities base.",
+        "M7 must confirm the `reasoning_content` round-trip — without it the API returns a 400.",
+        "M8 must confirm the “word *json* absent from the prompt” guard.",
+        "Long the only provider in the fleet without a vision model, until `deepseek-v4-flash-vision-exp` (measured 2026-08-30: it reads a base64 image). The default `deepseek-v4-flash` stays text-only: its red M9 is the D-03 proof, the vision companion brings the complementary fact."
       ]
     },
     "kimi": {
@@ -122,10 +122,10 @@
         "kimi-k2.6": { "temperature": 1 }
       },
       "notes": [
-        "`kimi-k2.6` **refuse toute température autre que 1** (`invalid temperature: only 1 is allowed for this model`) — le catalogue l'épingle pour ce modèle (requiredParams), et l'en-tête du rapport porte la valeur réellement utilisée. Un verdict Kimi n'est pas reproductible au même titre qu'un verdict à température 0.",
-        "Deux endpoints régionaux à **comptes séparés** : `api.moonshot.ai` (international, défaut) et `api.moonshot.cn` (Chine continentale).",
-        "G-11 fermé : vérifier que l'hôte résolu dans l'en-tête du rapport est bien celui attendu.",
-        "La série `moonshot-v1-*` compte entrée + sortie dans la même borne — son « 8 K » n'est pas une fenêtre d'entrée de 8 K."
+        "`kimi-k2.6` **refuses any temperature other than 1** (`invalid temperature: only 1 is allowed for this model`) — the catalog pins it for this model (requiredParams), and the report header carries the value actually used. A Kimi verdict is not reproducible in the same sense as a verdict at temperature 0.",
+        "Two regional endpoints with **separate accounts**: `api.moonshot.ai` (international, default) and `api.moonshot.cn` (mainland China).",
+        "G-11 closed: check that the host resolved in the report header is the expected one.",
+        "The `moonshot-v1-*` series counts input + output within the same bound — its “8 K” is not an 8 K input window."
       ]
     },
     "moonshot": { "label": "Kimi (Moonshot AI)", "matrix": "§6.8", "aliasOf": "kimi" },
@@ -135,9 +135,9 @@
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "defaultModel": "qwen3.7-plus",
       "notes": [
-        "Endpoint international distinct : `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 fermé).",
-        "Seul provider où le budget de réflexion est câblé (`thinking_budget`) : M7 y est plus riche qu'ailleurs. Validé en réel le 2026-08-30 (12/12, trace de raisonnement retournée).",
-        "Le cache implicite DashScope n'accroche qu'au-delà d'un seuil élevé : 0 token caché avec le préfixe de sonde historique (~2050 tokens, 3 mesures) mais `cached_tokens: 4352` à 5809 tokens de préfixe (2026-08-30). La sonde M10 envoie ~8200 tokens depuis cette date ; le run propre archive 6528 cachés, ratio 0.81."
+        "Distinct international endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 closed).",
+        "The only provider where the thinking budget is wired (`thinking_budget`): M7 is richer here than elsewhere. Validated live on 2026-08-30 (12/12, reasoning trace returned).",
+        "The DashScope implicit cache only engages above a high threshold: 0 cached tokens with the historical probe prefix (~2050 tokens, 3 measurements) but `cached_tokens: 4352` at 5809 prefix tokens (2026-08-30). The M10 probe sends ~8200 tokens since that date; the clean run archives 6528 cached, ratio 0.81."
       ]
     },
     "mistral": {
@@ -149,11 +149,11 @@
         "mistral-medium-2604": { "m7Effort": "high" }
       },
       "notes": [
-        "Lancer **sans `--base-url`** : c'est ainsi, et seulement ainsi, qu'on vérifie en réel que G-14 est fermé — un modèle `mistral-*` nu ne doit plus partir vers `localhost:11434`.",
-        "L'hôte affiché dans l'en-tête du rapport est la preuve : `api.mistral.ai`, pas `localhost`.",
-  "`mistral-medium-2604` restreint `reasoning_effort` à `['high', 'none']` (mesuré 2026-08-30) — le `low` par défaut de M7 est refusé, d'où le `m7Effort: high` de requiredParams.",
-  "M10 : l'usage porte `prompt_tokens_details.cached_tokens` mais la valeur reste 0 sur un préfixe identique de 5812 tokens appelé deux fois (3 mesures, 2026-08-30). Le champ existe, le cache implicite n'accroche pas — rouge vendeur, pas défaut Orkeon. Confirmé au préfixe long : toujours 0 à ~8200 tokens (2026-08-30).",
-        "Les identifiants mêlent alias et snapshots datés : confirmer l'id sur la fiche modèle officielle avant de le figer. Le défaut compilé a été exactement ce piège : `mistral-medium-3-5-26-04` (une concaténation de l'alias `-3-5` et du millésime `26-04`) n'a jamais été servi — `Invalid model`, mesuré 2026-08-30, corrigé en `mistral-medium-2604`."
+        "Run **without `--base-url`**: that is how, and only how, one verifies live that G-14 is closed — a bare `mistral-*` model must no longer head for `localhost:11434`.",
+        "The host shown in the report header is the proof: `api.mistral.ai`, not `localhost`.",
+        "`mistral-medium-2604` restricts `reasoning_effort` to `['high', 'none']` (measured 2026-08-30) — M7's default `low` is refused, hence the `m7Effort: high` in requiredParams.",
+        "M10: the usage carries `prompt_tokens_details.cached_tokens` but the value stays 0 on an identical 5812-token prefix called twice (3 measurements, 2026-08-30). The field exists, the implicit cache does not engage — vendor red, not an Orkeon defect. Confirmed on the long prefix: still 0 at ~8200 tokens (2026-08-30).",
+        "Identifiers mix aliases and dated snapshots: confirm the id on the official model card before freezing it. The compiled default was exactly that trap: `mistral-medium-3-5-26-04` (a concatenation of the `-3-5` alias and the `26-04` vintage) was never served — `Invalid model`, measured 2026-08-30, corrected to `mistral-medium-2604`."
       ]
     },
     "huggingface": {
@@ -163,11 +163,11 @@
       "defaultModel": "meta-llama/Llama-3.1-8B-Instruct",
       "visionModel": "Qwen/Qwen3-VL-30B-A3B-Instruct",
       "notes": [
-        "Le routeur résout l'identifiant vers le partenaire (le M9 de campagne répond au nom `Meta-Llama-3.1-8B-Instruct-Turbo`) : le défaut est texte seul, son M9 rouge est la preuve D-03, le compagnon `Qwen3-VL-30B-A3B-Instruct` apporte le complément.",
-        "Le défaut compilé `meta-llama/Llama-3.1-8B-Instruct`, longtemps signalé inatteignable via le routeur, est INNOCENTÉ : M1 vivant mesuré le 2026-08-30 (20 tokens, 1.5 s). Le catalogue s'aligne sur lui — la campagne valide ce que la plateforme livre.",
-        "G-01 fermé : l'ancien `api-inference.huggingface.co` est supprimé, le défaut est `router.huggingface.co/v1`.",
-        "Exercer en plus un suffixe de routage (`:cheapest`, `:fastest`, `:<provider>`) — G-23.",
-        "Le contexte et la sortie effectifs dépendent du fournisseur routé, pas du modèle : `GET /v1/models` donne les valeurs par fournisseur."
+        "The router resolves the identifier to the partner (the campaign M9 answers under the name `Meta-Llama-3.1-8B-Instruct-Turbo`): the default is text-only, its red M9 is the D-03 proof, the companion `Qwen3-VL-30B-A3B-Instruct` brings the complement.",
+        "The compiled default `meta-llama/Llama-3.1-8B-Instruct`, long reported unreachable through the router, is CLEARED: live M1 measured on 2026-08-30 (20 tokens, 1.5 s). The catalog aligns with it — the campaign validates what the platform delivers.",
+        "G-01 closed: the old `api-inference.huggingface.co` is removed, the default is `router.huggingface.co/v1`.",
+        "Also exercise a routing suffix (`:cheapest`, `:fastest`, `:<provider>`) — G-23.",
+        "The effective context and output depend on the routed provider, not on the model: `GET /v1/models` gives the values per provider."
       ]
     },
     "hf": { "label": "HuggingFace", "matrix": "§6.11", "aliasOf": "huggingface" },
@@ -178,8 +178,8 @@
       "defaultModel": "glm-5.2",
       "visionModel": "glm-4.6v-flash",
       "notes": [
-        "Dette de traçabilité propre : la seule preuve existante est un commentaire de configuration daté. Cette campagne doit lui produire une **sortie archivée**.",
-        "À revalider après LLM-02, qui l'a refactoré sur le socle de capacités."
+        "Traceability debt of its own: the only existing proof is a dated configuration comment. This campaign must produce an **archived output** for it.",
+        "To revalidate after LLM-02, which refactored it onto the capabilities base."
       ]
     },
     "glm": { "label": "Z.AI (Zhipu GLM)", "matrix": "§6.12", "aliasOf": "zai" },
@@ -190,9 +190,9 @@
       "apiKeyEnv": "XAI_API_KEY",
       "defaultModel": "grok-4.6",
       "notes": [
-        "Quatorzième provider, arrivé le 2026-08-30 précédé de sa propre preuve : campagne 12/12 contre `api.x.ai` via le dialecte OpenAI générique AVANT que la classe existe (archivée sous `custom-endpoints/`). Chaque capacité déclarée est une mesure de cette campagne.",
-        "Les clés portent le préfixe `xai-` — le quasi-homographe grok/groq est exactement la confusion que l'inférence de la factory absorbe (`api.groq.com` refuse ces clés, mesuré).",
-        "Cache implicite au format standard `cached_tokens` (512 tokens, ratio 0.19 au premier passage M10)."
+        "Fourteenth provider, arrived on 2026-08-30 preceded by its own proof: 12/12 campaign against `api.x.ai` through the generic OpenAI dialect BEFORE the class existed (archived under `custom-endpoints/`). Every declared capability is a measurement from that campaign.",
+        "Keys carry the `xai-` prefix — the grok/groq near-homograph is exactly the confusion the factory's inference absorbs (`api.groq.com` refuses these keys, measured).",
+        "Implicit cache in the standard `cached_tokens` format (512 tokens, ratio 0.19 on the first M10 pass)."
       ]
     },
     "xai": {
@@ -206,11 +206,11 @@
       "apiKeyEnv": "MINIMAX_API_KEY",
       "defaultModel": "MiniMax-M2",
       "notes": [
-        "Quinzième fiche, SANS preuve d'exécution : intégré le 2026-08-30 depuis la documentation vendeur, aucune clé disponible. La première campagne est la preuve en attente — la leçon Mistral (défaut compilé jamais servi) s'applique en entier jusqu'à un M1 vivant archivé.",
-        "Deux endpoints régionaux à comptes séparés : `api.minimax.io` (international, défaut) et `api.minimaxi.com` (Chine continentale) — même motif que Kimi.",
-        "Première tentative le 2026-08-30 : clé internationale valide, catalogue servi (`MiniMax-M2` vivant, générations jusqu'à `MiniMax-M3` listées), mais Token Plan épuisé — chaque mode facturé répond `insufficient_balance_error` (402), erreurs typées de bout en bout. Le transport est validé ; la campagne reste la preuve en attente, à relancer compte rechargé.",
-        "Première campagne le 2026-08-30 (7/2/3 sur `MiniMax-M2`, clé `sk-api-` — les clés `sk-cp-` sont des forfaits coding à quota propre). Les trois questions tranchées : (1) la trace arrive INLINE en bloc `<think>` dans le contenu, sans champ séparé — le dialecte Orkeon l'extrait vers `reasoning_content` et la réinjecte au replay comme la doc l'exige ; (2) aucune ventilation de cache à 8k de préfixe ; (3) `response_format` accepté mais NON contraignant (schéma ignoré, json_object en clôture markdown) — la déclaration None est une mesure.",
-        "M2 et M9 rouges : comportement modèle (système ignoré sur les deux formes ; text-only, `I'm unable to view the image`). La famille VL n'apparaît pas au catalogue `/models` de la plateforme — pas de compagnon vision déclarable en l'état."
+        "Fifteenth sheet, WITHOUT execution proof: integrated on 2026-08-30 from the vendor documentation, no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
+        "Two regional endpoints with separate accounts: `api.minimax.io` (international, default) and `api.minimaxi.com` (mainland China) — same pattern as Kimi.",
+        "First attempt on 2026-08-30: valid international key, catalog served (`MiniMax-M2` live, generations up to `MiniMax-M3` listed), but Token Plan exhausted — every billed mode answers `insufficient_balance_error` (402), typed errors end to end. The transport is validated; the campaign remains the pending proof, to rerun once the account is topped up.",
+        "First campaign on 2026-08-30 (7/2/3 on `MiniMax-M2`, `sk-api-` key — `sk-cp-` keys are coding plans with their own quota). The three questions settled: (1) the trace arrives INLINE as a `<think>` block inside the content, no separate field — the Orkeon dialect extracts it to `reasoning_content` and re-injects it on replay as the doc requires; (2) no cache breakdown at 8k of prefix; (3) `response_format` accepted but NON-BINDING (schema ignored, json_object fenced in markdown) — the None declaration is a measurement.",
+        "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — no declarable vision companion as things stand."
       ]
     },
     "gemini": {
@@ -219,12 +219,12 @@
       "apiKeyEnv": "GEMINI_API_KEY",
       "defaultModel": "gemini-3.7-flash",
       "notes": [
-        "Arrivé **après** l'audit du 2026-07-27 : il ne porte aucun gap G-xx hérité, et sa fiche §6.13 a été ouverte sans campagne. Celle-ci est sa première preuve d'exécution réelle.",
-        "Endpoint de **compatibilité OpenAI** (`generativelanguage.googleapis.com/v1beta/openai`) — ni l'API Gemini native, ni Vertex AI. L'hôte porté par l'en-tête du rapport est ce qui le confirme.",
-        "**M8 n'est plus ➖** : mesuré le 2026-08-30, la surface de compatibilité accepte `response_format` `json_object` **et** `json_schema`, schéma validé côté serveur (`additionalProperties` compris). Le provider déclare `JsonSchema` depuis cette date — l'avertissement qu'il émettait refusait quelque chose qui marche.",
-        "M3/M4 streament par gros blocs (~13 caractères par événement) : une réponse trop courte tient dans un seul chunk et se lit comme un repli bufferisé. La sonde demande cent nombres depuis le 2026-08-30 pour discriminer (trente suffisaient ici, mais claude-sonnet-5 a coalescé trente en un seul delta).",
-        "M7 est **effort seul** (`reasoning_effort` traduit en `thinking_level`) : ni bascule, ni budget de tokens, contrairement à Qwen.",
-        "Le modèle par défaut voit : M9 s'exerce sur lui, sans campagne vision compagnon."
+        "Arrived **after** the 2026-07-27 audit: it carries no inherited G-xx gap, and its §6.13 sheet was opened without a campaign. This one is its first real execution proof.",
+        "**OpenAI-compatibility** endpoint (`generativelanguage.googleapis.com/v1beta/openai`) — neither the native Gemini API nor Vertex AI. The host carried by the report header is what confirms it.",
+        "**M8 is no longer ➖**: measured on 2026-08-30, the compatibility surface accepts `response_format` `json_object` **and** `json_schema`, schema validated server-side (`additionalProperties` included). The provider declares `JsonSchema` since that date — the warning it used to emit refused something that works.",
+        "M3/M4 stream in large blocks (~13 characters per event): a reply that is too short fits in a single chunk and reads like a buffered fallback. The probe asks for a hundred numbers since 2026-08-30 to discriminate (thirty were enough here, but claude-sonnet-5 coalesced thirty into a single delta).",
+        "M7 is **effort only** (`reasoning_effort` translated to `thinking_level`): neither toggle nor token budget, unlike Qwen.",
+        "The default model sees: M9 is exercised on it, with no companion vision campaign."
       ]
     },
     "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" }
