@@ -14,15 +14,19 @@ plus a source-only mode that proves as much of them as csproj files can, early:
    embedded projects do NOT flow into the nuspec and are re-declared by hand.
    This check recomputes the union from the embedded csproj files and fails if
    the nuspec is missing any of it (a missing dependency breaks consumers at
-   runtime with FileNotFoundException, not at restore).
+   runtime with FileNotFoundException, not at restore). The union is taken over
+   the whole ProjectReference closure, not the first level: an embedded assembly
+   drags its own references along, and their externals are just as absent from
+   the nuspec as its own.
 
 3. SOURCE MODE (`--source-only`) — everything the csproj files alone can prove,
    with no pack and no build, so a closure regression is caught on the PR that
    introduces it instead of on the tag that ships it: the lineup ids all exist and
    are packable, no packable project has appeared outside the declared feeds, a
-   lineup package would declare no out-of-lineup `Orkeon.*` nuspec dependency, and
-   the umbrella externals match their embedded projects. Only the "what actually
-   landed in lib/" comparison needs a real nupkg and stays tag-only.
+   lineup package would declare no out-of-lineup `Orkeon.*` nuspec dependency,
+   every assembly the embedded ones reach transitively ships somewhere in the
+   lineup, and the umbrella externals match their embedded projects. Only the
+   "what actually landed in lib/" comparison needs a real nupkg and stays tag-only.
 
 Usage:
     # on a tag, after `dotnet pack` (publish.yml) — the full check
@@ -114,9 +118,44 @@ def embedded_projects(packaging_csproj: Path) -> list[Path]:
     return out
 
 
+def project_references(text: str) -> list[tuple[str, str]]:
+    return [(m.group(1), m.group(2))
+            for m in re.finditer(r'<ProjectReference Include="([^"]+)"([^>]*)/?>', text)]
+
+
+def referenced_projects(project: Path) -> list[Path]:
+    """The projects `project` really carries at runtime. A reference marked
+    ReferenceOutputAssembly="false" (the source generators, the VFS analyzer) contributes
+    no assembly and no package dependency, so it is not part of the shipping closure."""
+    out: list[Path] = []
+    for include, attributes in project_references(project.read_text(encoding="utf-8")):
+        if 'ReferenceOutputAssembly="false"' in attributes:
+            continue
+        out.append((project.parent / include.replace("\\", "/")).resolve())
+    return out
+
+
+def transitive_projects(roots: list[Path]) -> set[Path]:
+    """`roots` plus every project they reach through ProjectReferences.
+
+    Embedding is transitive: an embedded assembly needs the assemblies it references and
+    the external packages they declare, none of which the packaging csproj lists. Walking
+    only the first level is what let a whole subtree escape both the drift union and the
+    ships-nowhere assertion."""
+    seen: set[Path] = set()
+    queue = list(roots)
+    while queue:
+        project = queue.pop()
+        if project in seen or not project.is_file():
+            continue
+        seen.add(project)
+        queue.extend(referenced_projects(project))
+    return seen
+
+
 def external_union(projects: list[Path]) -> set[str]:
     union: set[str] = set()
-    for p in projects:
+    for p in transitive_projects(projects):
         union |= set(csproj_refs(p, "Package"))
     return union - NON_FLOWING
 
@@ -145,11 +184,6 @@ def package_id(path: Path, text: str) -> str:
     identity), so take the last literal found anywhere in the file."""
     ids = re.findall(r"<PackageId>([^<]+)</PackageId>", text)
     return ids[-1].strip() if ids else path.stem
-
-
-def project_references(text: str) -> list[tuple[str, str]]:
-    return [(m.group(1), m.group(2))
-            for m in re.finditer(r'<ProjectReference Include="([^"]+)"([^>]*)/?>', text)]
 
 
 def source_errors(lineup: list[str]) -> list[str]:
@@ -242,6 +276,25 @@ def source_errors(lineup: list[str]) -> list[str]:
     for pkg_id in PACKAGING:
         if pkg_id not in lineup:
             errors.append(f"PACKAGING declares {pkg_id}, which is not in the lineup")
+
+    # 5. Transitive embedding closure: an assembly an embedded one reaches through its own
+    #    ProjectReferences must itself ship somewhere the consumer restores -- either
+    #    embedded in the same package, or in the `Orkeon` umbrella that every other lineup
+    #    package takes a nuspec dependency on. Anything else restores fine and then throws
+    #    FileNotFoundException on first use. Check 3 covers the packaging projects' own
+    #    references; this covers everything below them.
+    umbrella_embedded = {p.stem for p in embedded_projects(PACKAGING["Orkeon"])}
+    for pkg_id, csproj in PACKAGING.items():
+        own = embedded_projects(csproj)
+        shipped = {p.stem for p in own} | umbrella_embedded
+        orphans = sorted({p.stem for p in transitive_projects(own)} - shipped)
+        if orphans:
+            errors.append(
+                f"{pkg_id}: embedded assemblies reference {orphans}, which are embedded "
+                f"neither here nor in the `Orkeon` umbrella -- the assembly ships nowhere "
+                f"(FileNotFoundException for consumers). Add it to an embedded set, or stop "
+                f"referencing it"
+            )
 
     return errors
 
