@@ -266,6 +266,11 @@ for RID in $RIDS; do
   sed -e "s/{{VERSION}}/$VERSION/g" -e "s/{{RID}}/$RID/g" \
     "$ASSETS/README.archive.md.tmpl" > "$ROOT/README.md"
   cp "$REPO_ROOT/LICENSE.md" "$ROOT/LICENSE.md"
+  # The archive redistributes third-party model weights -- BGE-micro-v2 under
+  # libexec/*/LocalEmbeddingsModel, the ms-marco cross-encoder embedded in
+  # Orkeon.Rag.Onnx.Model.dll -- whose notice obligations attach to the artifact,
+  # not to the repository. Ship the notices with the bits they cover.
+  cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$ROOT/THIRD-PARTY-NOTICES.md"
   # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
   # entry, and it lets a user identify an already-extracted tree.
   printf '%s\n' "$VERSION" > "$ROOT/VERSION"

@@ -189,6 +189,11 @@ foreach ($rid in $Rids) {
         Replace('{{VERSION}}', $Version).Replace('{{RID}}', $rid) |
         Set-Content (Join-Path $root 'README.md')
     Copy-Item (Join-Path $RepoRoot 'LICENSE.md') (Join-Path $root 'LICENSE.md')
+    # The archive redistributes third-party model weights (BGE-micro-v2 under
+    # libexec/*/LocalEmbeddingsModel, the ms-marco cross-encoder embedded in
+    # Orkeon.Rag.Onnx.Model.dll), whose notice obligations attach to the artifact
+    # rather than to the repository -- mirrors package-installers.sh.
+    Copy-Item (Join-Path $RepoRoot 'THIRD-PARTY-NOTICES.md') (Join-Path $root 'THIRD-PARTY-NOTICES.md')
     # Plain-text version marker: install.ps1 reads it for the Add/Remove Programs
     # entry, and it lets a user identify an already-extracted tree. LF-terminated
     # to stay byte-identical with the archive package-installers.sh produces.

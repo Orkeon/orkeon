@@ -141,6 +141,10 @@ cat > "$PKG_DIR/usr/share/doc/orkeon/copyright" <<EOF
 Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/
 Upstream-Name: Orkeon
 Source: $HOMEPAGE
+Comment: The payload bundles third-party components whose licenses require an
+ explicit notice -- notably the machine-learning model weights it redistributes.
+ Their notices are reproduced verbatim in
+ /usr/share/doc/orkeon/THIRD-PARTY-NOTICES.md.
 
 Files: *
 Copyright: 2024 Orkeon Contributors
@@ -165,6 +169,11 @@ License: MIT
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
  SOFTWARE.
 EOF
+
+# Third-party notices travel with the bits they cover: the payload embeds model
+# weights (BGE-micro-v2, the ms-marco cross-encoder) whose attribution obligations
+# attach to what is installed, not to the repository the package was built from.
+cp "$REPO_ROOT/THIRD-PARTY-NOTICES.md" "$PKG_DIR/usr/share/doc/orkeon/THIRD-PARTY-NOTICES.md"
 
 # SOURCE_DATE_EPOCH keeps the changelog stamp reproducible when CI sets it.
 if [[ -n "${SOURCE_DATE_EPOCH:-}" ]]; then

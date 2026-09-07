@@ -21,4 +21,4 @@ orkeon-repl
 - [TypeScript CLI commands](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/cli-ts-commands.md)
 - [Repository & getting started](https://github.com/Orkeon/orkeon)
 
-MIT © Orkeon Contributors
+MIT © Orkeon Contributors — this package also redistributes third-party components, including machine-learning model weights; their notices are in `THIRD-PARTY-NOTICES.md` at the package root ([repository copy](https://github.com/Orkeon/orkeon/blob/main/THIRD-PARTY-NOTICES.md)).

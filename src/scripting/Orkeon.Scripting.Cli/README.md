@@ -20,4 +20,4 @@ Self-contained installers (Windows zip/MSI, Debian package, macOS tarball) are a
 - [Three ways to run Orkeon](https://github.com/Orkeon/orkeon/blob/main/docs/getting-started/three-ways-to-run-orkeon.md)
 - [Repository & getting started](https://github.com/Orkeon/orkeon)
 
-MIT © Orkeon Contributors
+MIT © Orkeon Contributors — this package also redistributes third-party components, including machine-learning model weights; their notices are in `THIRD-PARTY-NOTICES.md` at the package root ([repository copy](https://github.com/Orkeon/orkeon/blob/main/THIRD-PARTY-NOTICES.md)).

@@ -61,6 +61,12 @@
 
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="\" />
+    <!-- This tool package redistributes third-party model weights: the BGE-micro-v2
+         embeddings model (MIT) under tools/net10.0/any/LocalEmbeddingsModel/, and the
+         ms-marco-MiniLM-L-6-v2 cross-encoder (Apache-2.0) embedded in
+         Orkeon.Rag.Onnx.Model.dll. Their attribution obligations attach to the
+         artifact, not to the repository, so the notices ship inside the nupkg. -->
+    <None Include="..\..\..\THIRD-PARTY-NOTICES.md" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
 
