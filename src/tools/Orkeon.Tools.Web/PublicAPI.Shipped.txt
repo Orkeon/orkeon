@@ -321,6 +321,7 @@ Orkeon.Tools.Web.WebSearchResult.Url.init -> void
 Orkeon.Tools.Web.WebSearchResult.WebSearchResult() -> void
 Orkeon.Tools.Web.WebSearchTool
 Orkeon.Tools.Web.WebSearchTool.WebSearchTool(Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.WebSearchTool!>? logger = null) -> void
+const Orkeon.Tools.Web.DependencyInjection.WebToolExtensions.HttpClientName = "orkeon.web-tools" -> string!
 const Orkeon.Tools.Web.WebScrapeTool.CacheSourceTag = "web_scrape" -> string!
 const Orkeon.Tools.Web.WebSearchTool.TavilyApiKeySecretName = "TAVILY_API_KEY" -> string!
 override Orkeon.Tools.Web.BraveSearchTool.ExecuteTypedAsync(Orkeon.Tools.Web.WebSearchRequest! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Web.WebSearchResponse!>!

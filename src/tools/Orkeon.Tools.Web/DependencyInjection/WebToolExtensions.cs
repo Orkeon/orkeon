@@ -14,6 +14,12 @@ namespace Orkeon.Tools.Web.DependencyInjection;
 public static class WebToolExtensions
 {
     /// <summary>
+    /// Name of the <see cref="HttpClient"/> every web tool goes through when an
+    /// <see cref="IHttpClientFactory"/> is available.
+    /// </summary>
+    public const string HttpClientName = "orkeon.web-tools";
+
+    /// <summary>
     /// Adds web tools (HttpApi, WebScrape, GitHub) to the service collection.
     /// When <see cref="IUrlValidator"/> and <see cref="HttpHeaderSanitizer"/> are registered,
     /// HttpApiTool will use them for SSRF protection and header sanitization.
@@ -22,6 +28,7 @@ public static class WebToolExtensions
     /// </summary>
     public static IServiceCollection AddOrkeonWebTools(this IServiceCollection services)
     {
+        RegisterWebToolsHttpClient(services);
         services.AddTransient<IBaseTool>(CreateHttpApiTool);
         // WebScrapeTool: prefers the RAG-enabled ctor when IEmbeddingService and
         // IMemoryProvider are available. Always wires the IUrlValidator (SSRF) when
@@ -30,17 +37,68 @@ public static class WebToolExtensions
         // fail-closed default guard applies even when no IUrlValidator is registered).
         services.AddTransient<IBaseTool>(CreateWebScrapeTool);
         services.AddTransient<IBaseTool>(CreateScrapeElementTool);
-        services.AddTransient<IBaseTool, GitHubTool>();
+        services.AddTransient<IBaseTool>(CreateGitHubTool);
         services.AddTransient<IBaseTool>(CreateImageGenerationTool);
         return services;
     }
+
+    /// <summary>
+    /// Registers the single <see cref="HttpClient"/> every web tool goes through.
+    /// Its primary handler refuses redirects: a 302 answered by a host the
+    /// <see cref="IUrlValidator"/> just approved would otherwise carry the request
+    /// to an internal address nobody validated (SSRF by redirect). A tool that
+    /// needs to follow a redirect must re-validate the Location and re-issue the
+    /// request itself. PooledConnectionLifetime recycles pooled connections so DNS
+    /// changes are honoured. The client is named rather than global on purpose: a
+    /// library must not reconfigure the host's own clients.
+    /// </summary>
+    private static void RegisterWebToolsHttpClient(IServiceCollection services)
+    {
+        // Every entry point that hands the client to a tool calls this, so the
+        // marker keeps the primary-handler configuration registered exactly once:
+        // a second ConfigurePrimaryHttpMessageHandler would build a handler that
+        // is immediately replaced, and never disposed.
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(WebToolsHttpClientMarker)))
+            return;
+
+        services.AddSingleton(new WebToolsHttpClientMarker());
+        services.AddHttpClient(HttpClientName)
+            .ConfigurePrimaryHttpMessageHandler(CreateRedirectFreeHandler);
+    }
+
+    /// <summary>Marker service proving the named client has been configured.</summary>
+    private sealed class WebToolsHttpClientMarker;
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "The IHttpClientFactory takes ownership of the primary handler it is given and disposes it when the handler chain expires.")]
+    private static HttpMessageHandler CreateRedirectFreeHandler() =>
+        new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        };
+
+    /// <summary>
+    /// Resolves the redirect-free named client. Without an
+    /// <see cref="IHttpClientFactory"/> in the container there is nothing safe to
+    /// hand over, so the tools fall back to their own static client — which is
+    /// configured the same way (see <c>HttpToolBase.CreateSharedHttpClient</c>).
+    /// </summary>
+    private static HttpClient? ResolveHttpClient(IServiceProvider sp) =>
+        sp.GetService<IHttpClientFactory>()?.CreateClient(HttpClientName);
+
+    private static IBaseTool CreateGitHubTool(IServiceProvider sp) =>
+        new GitHubTool(
+            personalAccessToken: null,
+            ResolveHttpClient(sp),
+            sp.GetService<Microsoft.Extensions.Logging.ILogger<GitHubTool>>());
 
     private static IBaseTool CreateHttpApiTool(IServiceProvider sp)
     {
         var urlValidator = sp.GetService<IUrlValidator>();
         var headerSanitizer = sp.GetService<HttpHeaderSanitizer>();
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<HttpApiTool>>();
-        var httpClient = sp.GetService<HttpClient>();
+        var httpClient = ResolveHttpClient(sp);
 
         if (urlValidator is not null && headerSanitizer is not null)
             return new HttpApiTool(urlValidator, headerSanitizer, httpClient, logger);
@@ -50,7 +108,7 @@ public static class WebToolExtensions
 
     private static IBaseTool CreateWebScrapeTool(IServiceProvider sp)
     {
-        var httpClient = sp.GetService<HttpClient>();
+        var httpClient = ResolveHttpClient(sp);
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<WebScrapeTool>>();
         var embedding = sp.GetService<IEmbeddingService>();
         var memory = sp.GetService<IMemoryProvider>();
@@ -71,7 +129,7 @@ public static class WebToolExtensions
 
     private static IBaseTool CreateScrapeElementTool(IServiceProvider sp)
     {
-        var httpClient = sp.GetService<HttpClient>();
+        var httpClient = ResolveHttpClient(sp);
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<ScrapeElementTool>>();
         var urlValidator = sp.GetService<IUrlValidator>();
         var headerSanitizer = sp.GetService<HttpHeaderSanitizer>();
@@ -83,7 +141,7 @@ public static class WebToolExtensions
 
     private static IBaseTool CreateImageGenerationTool(IServiceProvider sp)
     {
-        var httpClient = sp.GetService<HttpClient>();
+        var httpClient = ResolveHttpClient(sp);
         var logger = sp.GetService<Microsoft.Extensions.Logging.ILogger<ImageGenerationTool>>();
         var fileSystem = sp.GetService<Orkeon.Domain.FileSystem.IFileSystemService>();
         var urlValidator = sp.GetService<IUrlValidator>();
@@ -124,8 +182,9 @@ public static class WebToolExtensions
     public static IServiceCollection AddOrkeonBraveSearchTool(
         this IServiceCollection services, string braveApiKey)
     {
+        RegisterWebToolsHttpClient(services);
         services.AddTransient<IBaseTool>(sp =>
-            new BraveSearchTool(braveApiKey, sp.GetService<HttpClient>()));
+            new BraveSearchTool(braveApiKey, ResolveHttpClient(sp)));
         return services;
     }
 
@@ -139,8 +198,9 @@ public static class WebToolExtensions
     public static IServiceCollection AddOrkeonSlackTool(
         this IServiceCollection services, string slackBotToken)
     {
+        RegisterWebToolsHttpClient(services);
         services.AddTransient<IBaseTool>(sp =>
-            new SlackTool(slackBotToken, sp.GetService<HttpClient>()));
+            new SlackTool(slackBotToken, ResolveHttpClient(sp)));
         return services;
     }
 
@@ -154,8 +214,9 @@ public static class WebToolExtensions
     public static IServiceCollection AddOrkeonSlackReadTool(
         this IServiceCollection services, string slackBotToken)
     {
+        RegisterWebToolsHttpClient(services);
         services.AddTransient<IBaseTool>(sp =>
-            new SlackReadTool(slackBotToken, sp.GetService<HttpClient>()));
+            new SlackReadTool(slackBotToken, ResolveHttpClient(sp)));
         return services;
     }
 
