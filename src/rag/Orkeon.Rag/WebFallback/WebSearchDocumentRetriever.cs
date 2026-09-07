@@ -2,6 +2,7 @@ using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Loaders;
 using Orkeon.Rag.Validation;
@@ -44,13 +45,24 @@ public sealed partial class WebSearchDocumentRetriever
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly WebSearchRetrieverOptions _options;
     private readonly PromptInjectionDocumentValidator _validator;
+    private readonly IUrlValidator? _urlValidator;
     private readonly ILogger<WebSearchDocumentRetriever> _logger;
 
     /// <summary>Initializes a new instance of <see cref="WebSearchDocumentRetriever"/>.</summary>
+    /// <param name="httpClientFactory">Factory of the named search and page clients.</param>
+    /// <param name="options">Transport options bound on <see cref="WebSearchRetrieverOptions.SectionKey"/>.</param>
+    /// <param name="validator">Prompt-injection gate applied to every downloaded document.</param>
+    /// <param name="urlValidator">
+    /// SSRF validator handed to the page loader. Result URLs come from a search
+    /// engine, so they are as untrusted as any agent-supplied source; without a
+    /// validator the loader refuses to fetch and every page is skipped.
+    /// </param>
+    /// <param name="logger">Optional logger.</param>
     public WebSearchDocumentRetriever(
         IHttpClientFactory httpClientFactory,
         IOptions<WebSearchRetrieverOptions> options,
         PromptInjectionDocumentValidator validator,
+        IUrlValidator? urlValidator = null,
         ILogger<WebSearchDocumentRetriever>? logger = null)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
@@ -60,6 +72,7 @@ public sealed partial class WebSearchDocumentRetriever
         _httpClientFactory = httpClientFactory;
         _options = options.Value;
         _validator = validator;
+        _urlValidator = urlValidator;
         _logger = logger ?? NullLogger<WebSearchDocumentRetriever>.Instance;
     }
 
@@ -185,7 +198,7 @@ public sealed partial class WebSearchDocumentRetriever
     private async Task<IReadOnlyList<RagDocument>> DownloadAndValidateAsync(
         IReadOnlyList<string> urls, CancellationToken cancellationToken)
     {
-        var loader = new WebPageLoader(_httpClientFactory.CreateClient(PageClientName));
+        var loader = new WebPageLoader(_httpClientFactory.CreateClient(PageClientName), _urlValidator);
         var documents = new List<RagDocument>(urls.Count);
 
         foreach (var url in urls)
@@ -249,6 +262,14 @@ public sealed partial class WebSearchDocumentRetriever
         catch (ArgumentException exception)
         {
             LogPageDownloadFailed(url, exception.Message);
+            return null;
+        }
+        catch (InvalidOperationException exception)
+        {
+            // The loader refused the URL (SSRF verdict, or no validator at all).
+            // One poisoned search result must not abort the whole fallback, so the
+            // page is skipped and the reason traced.
+            LogPageBlocked(url, exception.Message);
             return null;
         }
         catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -319,6 +340,9 @@ public sealed partial class WebSearchDocumentRetriever
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "RAG web fallback page download failed for {Url}: {Error} — skipping result")]
     private partial void LogPageDownloadFailed(string url, string error);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "RAG web fallback page download was blocked for {Url}: {Error} — skipping result")]
+    private partial void LogPageBlocked(string url, string error);
 
     [LoggerMessage(Level = LogLevel.Warning, Message = "RAG web fallback page download timed out for {Url} after {Timeout} — skipping result")]
     private partial void LogPageTimedOut(string url, TimeSpan timeout);

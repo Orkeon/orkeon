@@ -1,6 +1,7 @@
 using System.Collections.Immutable;
 using System.Globalization;
 using System.Runtime.CompilerServices;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 
@@ -20,13 +21,20 @@ public sealed class WebPageLoader : IDocumentLoader
     public const string WebKind = "web";
 
     private readonly HttpClient _httpClient;
+    private readonly IUrlValidator? _urlValidator;
 
     /// <summary>Initializes a new instance of <see cref="WebPageLoader"/>.</summary>
     /// <param name="httpClient">The HTTP client used to fetch pages.</param>
-    public WebPageLoader(HttpClient httpClient)
+    /// <param name="urlValidator">
+    /// SSRF validator applied to every URL before it is fetched. Ingestion sources
+    /// are agent-supplied, so the loader refuses to fetch anything when this is
+    /// <see langword="null"/>.
+    /// </param>
+    public WebPageLoader(HttpClient httpClient, IUrlValidator? urlValidator = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         _httpClient = httpClient;
+        _urlValidator = urlValidator;
     }
 
     /// <inheritdoc />
@@ -60,9 +68,38 @@ public sealed class WebPageLoader : IDocumentLoader
         yield return await LoadPageAsync(source, cancellationToken).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Fails closed before any network call. Ingestion sources reach this loader
+    /// straight from an agent (<c>rag_ingest</c> forwards its <c>sources</c>
+    /// verbatim), so an unvalidated URL is an SSRF primitive: cloud metadata
+    /// endpoints and internal services answer, and their response is then stored
+    /// in the collection and readable back through <c>rag_search</c>. With no
+    /// validator there is nothing to check against, and refusing is the only safe
+    /// answer.
+    /// </summary>
+    private async Task EnsureUrlIsAllowedAsync(Uri requestUri, CancellationToken cancellationToken)
+    {
+        if (_urlValidator is null)
+        {
+            throw new InvalidOperationException(
+                $"URL ingestion requires an {nameof(IUrlValidator)} to guard against SSRF, and none is "
+                + $"registered; refusing to fetch '{requestUri}'. AddOrkeonInfrastructure() registers one, "
+                + "or pass a validator to the loader.");
+        }
+
+        var validation = await _urlValidator.ValidateUrlAsync(requestUri, cancellationToken).ConfigureAwait(false);
+        if (!validation.IsAllowed)
+        {
+            throw new InvalidOperationException(
+                $"URL ingestion of '{requestUri}' was blocked by SSRF validation: {validation.DenialReason}");
+        }
+    }
+
     private async Task<RagDocument> LoadPageAsync(SourceDescriptor source, CancellationToken cancellationToken)
     {
         var requestUri = new Uri(source.Location, UriKind.Absolute);
+        await EnsureUrlIsAllowedAsync(requestUri, cancellationToken).ConfigureAwait(false);
+
         var response = await _httpClient.GetAsync(requestUri, cancellationToken).ConfigureAwait(false);
         response.EnsureSuccessStatusCode();
 

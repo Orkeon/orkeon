@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Domain.Tools.Security;
 using Orkeon.Rag.Corrective;
 using Orkeon.Rag.Validation;
 
@@ -34,7 +35,12 @@ public static class WebFallbackExtensions
         services.Configure<WebSearchRetrieverOptions>(configuration.GetSection(WebSearchRetrieverOptions.SectionKey));
 
         services.AddHttpClient(WebSearchDocumentRetriever.SearchClientName);
-        services.AddHttpClient(WebSearchDocumentRetriever.PageClientName);
+
+        // Result pages are fetched from URLs a search engine chose, so the page
+        // client refuses redirects: the SSRF verdict must hold for the address
+        // actually contacted, not only for the one that was validated.
+        services.AddHttpClient(WebSearchDocumentRetriever.PageClientName)
+            .ConfigurePrimaryHttpMessageHandler(CreateRedirectFreeHandler);
 
         // Concrete validator for the retriever gate. Kept distinct from the
         // IDataValidator enumerable registration owned by AddOrkeonRag (ingestion
@@ -45,6 +51,7 @@ public static class WebFallbackExtensions
             sp.GetRequiredService<IHttpClientFactory>(),
             sp.GetRequiredService<IOptions<WebSearchRetrieverOptions>>(),
             sp.GetRequiredService<PromptInjectionDocumentValidator>(),
+            sp.GetService<IUrlValidator>(),
             sp.GetService<ILogger<WebSearchDocumentRetriever>>()));
 
         // Corrective-graph seam (6D): the IWebDocumentRetriever adapter is
@@ -65,4 +72,13 @@ public static class WebFallbackExtensions
 
         return services;
     }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "The IHttpClientFactory takes ownership of the primary handler it is given and disposes it when the handler chain expires.")]
+    private static HttpMessageHandler CreateRedirectFreeHandler() =>
+        new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        };
 }

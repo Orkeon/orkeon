@@ -2,6 +2,7 @@ using System.Net;
 using System.Text;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Loaders;
+using Orkeon.Rag.Tests.Doubles;
 
 namespace Orkeon.Rag.Tests.Loaders;
 
@@ -19,7 +20,9 @@ public sealed class WebPageLoaderTests : IDisposable
     public WebPageLoaderTests()
     {
         _httpClient = new HttpClient(_handler);
-        _loader = new WebPageLoader(_httpClient);
+        // The loader fails closed without an IUrlValidator; these tests exercise the
+        // fetch/parse behavior, so they wire the permissive double.
+        _loader = new WebPageLoader(_httpClient, new StubUrlValidator());
     }
 
     public void Dispose()

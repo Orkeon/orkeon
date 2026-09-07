@@ -24,11 +24,15 @@ public sealed class WebSearchDocumentRetrieverTests : IDisposable
 
     public void Dispose() => _handler.Dispose();
 
-    private WebSearchDocumentRetriever CreateRetriever(WebSearchRetrieverOptions options) =>
+    private WebSearchDocumentRetriever CreateRetriever(
+        WebSearchRetrieverOptions options, StubUrlValidator? urlValidator = null) =>
         new(
             new FakeHttpClientFactory(_handler),
             Microsoft.Extensions.Options.Options.Create(options),
             new PromptInjectionDocumentValidator(),
+            // The page loader fails closed without an IUrlValidator; tests that are
+            // about the search/injection behavior wire the permissive double.
+            urlValidator ?? new StubUrlValidator(),
             _logger);
 
     private static WebSearchRetrieverOptions EnabledOptions() => new()
@@ -114,6 +118,55 @@ public sealed class WebSearchDocumentRetrieverTests : IDisposable
         Assert.Equal(2, documents.Count);
         // 1 search call + 2 page downloads only.
         Assert.Equal(3, _handler.Requests.Count);
+    }
+
+    // ------------------------------------------------------------------
+    // SSRF gate
+    // ------------------------------------------------------------------
+
+    [Fact]
+    public async Task SearchAsync_SkipsResults_TheUrlValidatorDenies_AndTracesThem()
+    {
+        // A search engine picks the result URLs, so one of them pointing at an
+        // internal address is a realistic SSRF vector (D9-09): the page must never
+        // be fetched, and the rest of the results must still come through.
+        _handler.Map(Endpoint, HttpStatusCode.OK, SearchJson(
+            "http://169.254.169.254/latest/meta-data/", "https://good.example/ok"));
+        _handler.Map("https://good.example/ok", HttpStatusCode.OK, Page("Neutral content."));
+
+        var validator = new StubUrlValidator(
+            url => !url.Host.StartsWith("169.254", StringComparison.Ordinal),
+            "private/reserved IP");
+        var retriever = CreateRetriever(EnabledOptions(), validator);
+
+        var documents = await retriever.SearchAsync("query", 3, TestContext.Current.CancellationToken);
+
+        var document = Assert.Single(documents);
+        Assert.Equal("https://good.example/ok", document.Location);
+        Assert.DoesNotContain(_handler.Requests, r => r.Contains("169.254", StringComparison.Ordinal));
+        Assert.True(_logger.Contains(LogLevel.Warning, "blocked"));
+    }
+
+    [Fact]
+    public async Task SearchAsync_DownloadsNothing_WhenNoUrlValidatorIsAvailable()
+    {
+        // Fail closed: without a validator the loader refuses every page, and the
+        // fallback degrades to an empty result instead of fetching unchecked.
+        _handler.Map(Endpoint, HttpStatusCode.OK, SearchJson("https://good.example/ok"));
+        _handler.Map("https://good.example/ok", HttpStatusCode.OK, Page("Neutral content."));
+
+        var retriever = new WebSearchDocumentRetriever(
+            new FakeHttpClientFactory(_handler),
+            Microsoft.Extensions.Options.Options.Create(EnabledOptions()),
+            new PromptInjectionDocumentValidator(),
+            urlValidator: null,
+            _logger);
+
+        var documents = await retriever.SearchAsync("query", 3, TestContext.Current.CancellationToken);
+
+        Assert.Empty(documents);
+        Assert.Single(_handler.Requests); // the search call only
+        Assert.True(_logger.Contains(LogLevel.Warning, "blocked"));
     }
 
     // ------------------------------------------------------------------

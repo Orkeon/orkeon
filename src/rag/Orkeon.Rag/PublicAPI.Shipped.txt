@@ -223,7 +223,7 @@ Orkeon.Rag.Loaders.TextFileLoader.TextFileLoader(Orkeon.Domain.FileSystem.IFileS
 Orkeon.Rag.Loaders.WebPageLoader
 Orkeon.Rag.Loaders.WebPageLoader.CanLoad(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source) -> bool
 Orkeon.Rag.Loaders.WebPageLoader.LoadAsync(Orkeon.Rag.Abstractions.Models.SourceDescriptor! source, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Rag.Abstractions.Models.RagDocument!>!
-Orkeon.Rag.Loaders.WebPageLoader.WebPageLoader(System.Net.Http.HttpClient! httpClient) -> void
+Orkeon.Rag.Loaders.WebPageLoader.WebPageLoader(System.Net.Http.HttpClient! httpClient, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null) -> void
 Orkeon.Rag.Pipeline.AdaptiveRagPipeline
 Orkeon.Rag.Pipeline.AdaptiveRagPipeline.AdaptiveRagPipeline(Orkeon.Rag.Abstractions.Interfaces.IQueryComplexityClassifier! classifier, Microsoft.Extensions.AI.IChatClient! chatClient, System.Func<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! singleShotPipeline, System.Func<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline!>! iterativePipeline, string! singleShotProfileName = "balanced", string! iterativeProfileName = "corrective", Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Pipeline.AdaptiveRagPipeline!>? logger = null) -> void
 Orkeon.Rag.Pipeline.AdaptiveRagPipeline.QueryAsync(Orkeon.Rag.Abstractions.Models.RagQuery! query, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Rag.Abstractions.Models.RagAnswer!>!
@@ -435,7 +435,7 @@ Orkeon.Rag.Validation.SuspiciousContentAction.Flag = 0 -> Orkeon.Rag.Validation.
 Orkeon.Rag.WebFallback.WebFallbackExtensions
 Orkeon.Rag.WebFallback.WebSearchDocumentRetriever
 Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.SearchAsync(string! query, int maxResults, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagDocument!>!>!
-Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.WebSearchDocumentRetriever(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Rag.WebFallback.WebSearchRetrieverOptions!>! options, Orkeon.Rag.Validation.PromptInjectionDocumentValidator! validator, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.WebFallback.WebSearchDocumentRetriever!>? logger = null) -> void
+Orkeon.Rag.WebFallback.WebSearchDocumentRetriever.WebSearchDocumentRetriever(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Options.IOptions<Orkeon.Rag.WebFallback.WebSearchRetrieverOptions!>! options, Orkeon.Rag.Validation.PromptInjectionDocumentValidator! validator, Orkeon.Domain.Tools.Security.IUrlValidator? urlValidator = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.WebFallback.WebSearchDocumentRetriever!>? logger = null) -> void
 Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter
 Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter.SearchAsync(string! query, int maxResults, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Rag.Abstractions.Models.RagDocument!>!>!
 Orkeon.Rag.WebFallback.WebSearchDocumentRetrieverAdapter.WebSearchDocumentRetrieverAdapter(Orkeon.Rag.WebFallback.WebSearchDocumentRetriever! inner) -> void

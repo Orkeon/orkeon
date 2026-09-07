@@ -101,8 +101,13 @@ public static class RagServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, HtmlDocumentLoader>());
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, PdfDocumentLoader>());
 
-        // HTTP-backed web page loader (typed HttpClient).
-        services.AddHttpClient<WebPageLoader>();
+        // HTTP-backed web page loader (typed HttpClient). Its primary handler
+        // refuses redirects: an ingestion URL the IUrlValidator has just approved
+        // must not be able to hand the fetch over to an internal address through a
+        // 302 (SSRF by redirect). PooledConnectionLifetime recycles pooled
+        // connections so DNS changes are honoured.
+        services.AddHttpClient<WebPageLoader>()
+            .ConfigurePrimaryHttpMessageHandler(CreateRedirectFreeHandler);
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IDocumentLoader, WebPageLoader>(
             sp => sp.GetRequiredService<WebPageLoader>()));
 
@@ -209,6 +214,19 @@ public static class RagServiceCollectionExtensions
 
         return services;
     }
+
+    /// <summary>
+    /// Primary handler of the web page loader's typed client: redirects off, so a
+    /// validated URL cannot be turned into an unvalidated one by a 3xx answer.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "The IHttpClientFactory takes ownership of the primary handler it is given and disposes it when the handler chain expires.")]
+    private static HttpMessageHandler CreateRedirectFreeHandler() =>
+        new SocketsHttpHandler
+        {
+            AllowAutoRedirect = false,
+            PooledConnectionLifetime = TimeSpan.FromMinutes(2),
+        };
 
     /// <summary>
     /// Builds a <see cref="StagedRagPipeline"/> over the shared collaborators for

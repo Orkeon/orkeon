@@ -1,3 +1,4 @@
+using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
 using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Factories;
@@ -39,13 +40,21 @@ public class DefaultIngestionPipelineTests
             ChunkingFactory.Register("stub", () => Chunker);
         }
 
-        public DefaultIngestionPipeline CreatePipeline(RagIngestionOptions? options = null)
+        public DefaultIngestionPipeline CreatePipeline(
+            RagIngestionOptions? options = null,
+            IDocumentLoader? extraLoader = null)
         {
-            var loaders = new DocumentLoaderFactory(
+            List<IDocumentLoader> loaderList =
             [
                 new TextFileLoader(Fs),
                 new CsvDocumentLoader(Fs),
-            ]);
+            ];
+            if (extraLoader is not null)
+            {
+                loaderList.Add(extraLoader);
+            }
+
+            var loaders = new DocumentLoaderFactory(loaderList);
 
             var validation = new DataValidationPipeline(
                 [new PromptInjectionDocumentValidator(), new ContentIntegrityValidator()],
@@ -181,6 +190,31 @@ public class DefaultIngestionPipelineTests
         Assert.Equal(0, report.DocumentsLoaded);
         var error = Assert.Single(report.Errors);
         Assert.Contains("/kb/absent.txt", error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task IngestAsync_UrlSourceDeniedBySsrfValidation_IsReported_AndNeverFetched()
+    {
+        // rag_ingest forwards its agent-supplied sources verbatim, so the cloud
+        // metadata endpoint reaches the loader as an ordinary source. It must never
+        // be fetched, and the report must say why (D9-09).
+        var harness = new Harness();
+        using var handler = new RecordingHttpMessageHandler();
+        using var http = new HttpClient(handler);
+        var validator = new StubUrlValidator(
+            url => !url.Host.StartsWith("169.254", StringComparison.Ordinal),
+            "private/reserved IP");
+        var pipeline = harness.CreatePipeline(extraLoader: new WebPageLoader(http, validator));
+
+        var report = await pipeline.IngestAsync(
+            Harness.Request("http://169.254.169.254/latest/meta-data/"),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(0, report.DocumentsLoaded);
+        Assert.Equal(0, harness.Store.Count("kb"));
+        var error = Assert.Single(report.Errors);
+        Assert.Contains("SSRF", error, StringComparison.Ordinal);
+        Assert.Empty(handler.Requests);
     }
 
     [Fact]
