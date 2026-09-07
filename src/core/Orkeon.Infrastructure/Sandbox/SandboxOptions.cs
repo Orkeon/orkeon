@@ -9,11 +9,6 @@ namespace Orkeon.Infrastructure.Sandbox;
 public class SandboxOptions
 {
     /// <summary>
-    /// Preferred sandbox type: "process" or "docker".
-    /// </summary>
-    public string PreferredSandbox { get; set; } = "process";
-
-    /// <summary>
     /// Default execution timeout in seconds.
     /// </summary>
     public int TimeoutSeconds { get; set; } = 30;
@@ -27,11 +22,6 @@ public class SandboxOptions
     /// Maximum output bytes (default: 50 KB).
     /// </summary>
     public long MaxOutputBytes { get; set; } = 50_000;
-
-    /// <summary>
-    /// Whether human approval is required before executing code.
-    /// </summary>
-    public bool RequireHumanApproval { get; set; } = true;
 
     /// <summary>
     /// Explicit, noisy opt-in to allow executing code on a sandbox that provides NO OS-level

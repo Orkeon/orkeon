@@ -994,11 +994,21 @@ public class SandboxOptionsTests
     {
         var options = SandboxOptionsTestsFixture.CreateSandboxOptions();
 
-        Assert.Equal("process", options.PreferredSandbox);
         Assert.Equal(30, options.TimeoutSeconds);
         Assert.Equal(256 * 1024 * 1024, options.MaxMemoryBytes);
         Assert.Equal(50_000, options.MaxOutputBytes);
-        Assert.True(options.RequireHumanApproval);
+        Assert.False(options.AllowHostExecution);
+    }
+
+    // Both options were bound from "Orkeon:CodeSandbox" and read by nothing: no approval
+    // step ever ran and sandbox selection stayed Docker-first, so they promised a gate the
+    // framework did not honour. This pins their removal so neither returns as a dead promise.
+    [Theory]
+    [InlineData("RequireHumanApproval")]
+    [InlineData("PreferredSandbox")]
+    public void ShouldNotExposeOption_WhenOptionIsReadByNothing(string propertyName)
+    {
+        Assert.Null(typeof(SandboxOptions).GetProperty(propertyName));
     }
 
     [Fact]

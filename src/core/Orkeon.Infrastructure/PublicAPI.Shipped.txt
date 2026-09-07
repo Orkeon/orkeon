@@ -2074,10 +2074,6 @@ Orkeon.Infrastructure.Sandbox.SandboxOptions.MaxMemoryBytes.get -> long
 Orkeon.Infrastructure.Sandbox.SandboxOptions.MaxMemoryBytes.set -> void
 Orkeon.Infrastructure.Sandbox.SandboxOptions.MaxOutputBytes.get -> long
 Orkeon.Infrastructure.Sandbox.SandboxOptions.MaxOutputBytes.set -> void
-Orkeon.Infrastructure.Sandbox.SandboxOptions.PreferredSandbox.get -> string!
-Orkeon.Infrastructure.Sandbox.SandboxOptions.PreferredSandbox.set -> void
-Orkeon.Infrastructure.Sandbox.SandboxOptions.RequireHumanApproval.get -> bool
-Orkeon.Infrastructure.Sandbox.SandboxOptions.RequireHumanApproval.set -> void
 Orkeon.Infrastructure.Sandbox.SandboxOptions.SandboxOptions() -> void
 Orkeon.Infrastructure.Sandbox.SandboxOptions.SecurityOptions.get -> Orkeon.Application.Interfaces.SecurityAnalysisOptions!
 Orkeon.Infrastructure.Sandbox.SandboxOptions.SecurityOptions.set -> void
