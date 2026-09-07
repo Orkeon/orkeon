@@ -18,45 +18,87 @@ internal static class Program
     /// <summary>Cancelled via SIGINT (Ctrl+C).</summary>
     public const int ExitCancelled = 130;
 
-    /// <summary>Main entry; parses args and dispatches to a command.</summary>
+    /// <summary>
+    /// The verb table: every top-level command and the entry point that owns it. Each verb
+    /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
+    /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
+    /// (FORGE-03) — so the option grammars never collide.
+    /// </summary>
+    private static readonly Dictionary<string, Func<string[], Task<int>>> Verbs =
+        new(StringComparer.OrdinalIgnoreCase)
+        {
+            ["run"] = RunAsync,
+            ["init"] = InitCommand.DispatchAsync,
+            ["doctor"] = DoctorCommand.DispatchAsync,
+            ["llm"] = LlmCommand.DispatchAsync,
+            ["rag"] = RagCommand.DispatchAsync,
+            // A lambda rather than a method group: the forge dispatch carries an optional
+            // working-directory override its tests use, and an optional parameter forbids the
+            // conversion.
+            ["forge"] = tail => Commands.Forge.ForgeCommand.DispatchAsync(tail),
+        };
+
+    /// <summary>The verbs the dispatch answers to, so the usage listing can be checked against it.</summary>
+    internal static IReadOnlyCollection<string> KnownVerbs => Verbs.Keys;
+
+    /// <summary>Main entry; prepares the console then dispatches.</summary>
     public static async Task<int> Main(string[] args)
     {
         ArgumentNullException.ThrowIfNull(args);
         UseUtf8Console();
-        // `orkeon rag ingest|search|eval` — RAG subsystem verbs (RAG-03/C3, RAG-04/C1)
-        // get their own dispatch branch with their own verb parser.
-        if (args.Length > 0 && string.Equals(args[0], "rag", StringComparison.OrdinalIgnoreCase))
-            return await RagCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+        return await DispatchAsync(args).ConfigureAwait(false);
+    }
 
-        // `orkeon llm probe` — provider test-protocol harness (LLM-08/C1).
-        if (args.Length > 0 && string.Equals(args[0], "llm", StringComparison.OrdinalIgnoreCase))
-            return await LlmCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+    /// <summary>
+    /// Routes one command line to the verb that owns it. Separate from <see cref="Main"/>
+    /// because the console preparation above rebinds the process streams, which a test
+    /// driving the dispatch in-process cannot afford.
+    /// </summary>
+    internal static async Task<int> DispatchAsync(string[] args)
+    {
+        ArgumentNullException.ThrowIfNull(args);
 
-        // `orkeon init` — configuration assistant (WIN-02).
-        if (args.Length > 0 && string.Equals(args[0], "init", StringComparison.OrdinalIgnoreCase))
-            return await InitCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+        // The bare tool name is a question, not a run without a target: it is answered with the
+        // verb listing, and with exit 0 — asking what a tool does is not a failure.
+        if (args.Length == 0 || CliUsage.IsHelpToken(args[0]))
+        {
+            await Console.Out.WriteAsync(CliUsage.Render()).ConfigureAwait(false);
+            return ExitOk;
+        }
 
-        // `orkeon doctor` — installation diagnostic (WIN-03).
-        if (args.Length > 0 && string.Equals(args[0], "doctor", StringComparison.OrdinalIgnoreCase))
-            return await DoctorCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+        if (CliUsage.IsVersionToken(args[0]))
+        {
+            await Console.Out.WriteLineAsync(CliUsage.VersionLine).ConfigureAwait(false);
+            return ExitOk;
+        }
 
-        // `orkeon forge` — the Atelier: need → generated crew → validation (FORGE-03).
-        if (args.Length > 0 && string.Equals(args[0], "forge", StringComparison.OrdinalIgnoreCase))
-            return await Commands.Forge.ForgeCommand.DispatchAsync(args[1..]).ConfigureAwait(false);
+        if (Verbs.TryGetValue(args[0], out var verb))
+            return await verb(args[1..]).ConfigureAwait(false);
 
-        // Strip a leading "run" verb so users can write `orkeon run script.ork.ts`.
-        // Future verbs (e.g. `test`) will get their own dispatch branch here.
-        var effective = args;
-        if (args.Length > 0 && string.Equals(args[0], "run", StringComparison.OrdinalIgnoreCase))
-            effective = args[1..];
+        // The `run` verb stays optional: an option written first (`orkeon --list-tools`) and
+        // anything shaped like a crew path go to the run parser exactly as before. Everything
+        // else is a mistyped command, and answering it with the run parser's "script not found"
+        // hides the only useful fact — that the word itself is not a command.
+        if (!args[0].StartsWith('-') && !CliUsage.LooksLikeCrewTarget(args[0]))
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon: unknown command '{args[0]}'; run `orkeon --help` for the list.").ConfigureAwait(false);
+            return ExitScriptError;
+        }
 
+        return await RunAsync(args).ConfigureAwait(false);
+    }
+
+    /// <summary>Parses the `run` option grammar and executes it.</summary>
+    private static async Task<int> RunAsync(string[] args)
+    {
         using var parser = new Parser(s =>
         {
             s.HelpWriter = Console.Out;
             s.CaseInsensitiveEnumValues = true;
         });
 
-        return await parser.ParseArguments<RunCommandOptions>(effective)
+        return await parser.ParseArguments<RunCommandOptions>(args)
             .MapResult(
                 async (RunCommandOptions o) => await RunCommand.ExecuteAsync(o).ConfigureAwait(false),
                 _ => Task.FromResult(ExitScriptError))

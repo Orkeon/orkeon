@@ -195,9 +195,11 @@ fixtures in `fixtures/`:
 Each script leaves the machine as it found it: a pre-existing user config is
 backed up and restored, one the smoke created is removed.
 
-> `orkeon --version` and `orkeon --help` exit **1** (a pre-existing
-> CommandLineParser behaviour), so `orkeon doctor` is the liveness probe in all
-> three scripts. Do not add a `--version` smoke without accounting for that.
+> `orkeon --version` and `orkeon --help` exit **0** since D3-05 (the top-level
+> dispatch answers them itself instead of handing them to the `run` parser).
+> `orkeon doctor` remains the liveness probe in all three scripts anyway: a
+> version line proves the entry point started, `doctor` proves the payload —
+> esbuild, the embedding model, the grammars — actually shipped.
 
 ### macOS: what only this job can prove
 
