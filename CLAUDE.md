@@ -139,7 +139,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ **NEW**: Graph orchestration (`StateGraph<TState>`) LangGraph-style with conditional edges and controlled cycles
 - ✅ **NEW**: LLM exchange logging — full HTTP request/response capture (headers + payload) via `DelegatingHandler`
 - ✅ **NEW**: `LlmResponseFormat` value object + `LlmConfigOverride` cascade
-  (crew → agent → task → script → call-site). DeepSeek câble
+  (crew → agent → task → script → call-site). DeepSeek wires
   `response_format: json_object`.
 - ✅ **NEW**: RAG subsystem `src/rag/` (RAG-02, ADR-006) — contracts in
   `Orkeon.Rag.Abstractions` (`IRagPipeline`, `IIngestionPipeline`, `IDocumentStore`,
@@ -462,7 +462,7 @@ The repository contains **43 src projects** and **33 test projects**, plus two s
 │   ├── cli/
 │   │   ├── Orkeon.Cli.Abstractions/    # Pure contracts: IInteractiveCommand, runner base, console adapter
 │   │   ├── Orkeon.Cli/                 # Reusable common commands (help/exit/clear) + DefaultCommandRegistry
-│   │   ├── Orkeon.Cli.Commands.Scripting/ # TypeScript-scripted interactive commands (adapter Cli.Abstractions ↔ Scripting). NB: distinct de Orkeon.Scripting.Cli (entrypoint du tool `orkeon`) — renommé depuis Orkeon.Cli.Scripting (ADR-007)
+│   │   ├── Orkeon.Cli.Commands.Scripting/ # TypeScript-scripted interactive commands (adapter Cli.Abstractions ↔ Scripting). NB: distinct from Orkeon.Scripting.Cli (the `orkeon` tool entrypoint) — renamed from Orkeon.Cli.Scripting (ADR-007)
 │   │   └── Orkeon.Cli.TerminalGui/     # Terminal.Gui v2 split-pane console (logs + REPL); IConsoleAdapter + ILoggerProvider
 │   ├── scripting/
 │   │   ├── Orkeon.Scripting/           # TypeScript-syntax scripting DSL (.ork.ts) — Jint runtime + esbuild transpile
