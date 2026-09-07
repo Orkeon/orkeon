@@ -31,7 +31,12 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
         context.EnableConcurrentExecution();
 
         context.RegisterSyntaxNodeAction(AnalyzeInvocation, SyntaxKind.InvocationExpression);
-        context.RegisterSyntaxNodeAction(AnalyzeObjectCreation, SyntaxKind.ObjectCreationExpression);
+        context.RegisterSyntaxNodeAction(
+            AnalyzeObjectCreation,
+            SyntaxKind.ObjectCreationExpression,
+            // `FileStream fs = new(path, ...)` is the same instantiation as
+            // `new FileStream(path, ...)`; only the syntax node differs.
+            SyntaxKind.ImplicitObjectCreationExpression);
         context.RegisterSyntaxNodeAction(AnalyzeNullableFileSystemService, SyntaxKind.FieldDeclaration, SyntaxKind.Parameter);
     }
 
@@ -41,8 +46,17 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
             return;
 
         var invocation = (InvocationExpressionSyntax)context.Node;
-        if (invocation.Expression is not MemberAccessExpressionSyntax member)
-            return;
+
+        // The call is judged on its RESOLVED SYMBOL, not on its syntax. Requiring a
+        // MemberAccessExpressionSyntax meant `using static System.IO.File; ReadAllText(p)`
+        // -- a bare identifier invocation -- reached the same System.IO.File.ReadAllText
+        // without the analyzer ever looking at it. The location reported is the name being
+        // invoked, whichever shape carried it.
+        var nameLocation = invocation.Expression switch
+        {
+            MemberAccessExpressionSyntax member => member.Name.GetLocation(),
+            _ => invocation.Expression.GetLocation(),
+        };
 
         var symbolInfo = context.SemanticModel.GetSymbolInfo(invocation, context.CancellationToken);
         if (symbolInfo.Symbol is not IMethodSymbol method)
@@ -67,19 +81,19 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
             case "File":
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.DirectFileUsage,
-                    member.Name.GetLocation(),
+                    nameLocation,
                     methodName));
                 break;
             case "Directory":
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.DirectDirectoryUsage,
-                    member.Name.GetLocation(),
+                    nameLocation,
                     methodName));
                 break;
             case "Path" when methodName == "GetFullPath":
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.SuspiciousPathGetFullPath,
-                    member.Name.GetLocation()));
+                    nameLocation));
                 break;
         }
     }
@@ -89,11 +103,17 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
         if (IsExemptByPath(context.Node.SyntaxTree.FilePath))
             return;
 
-        var creation = (ObjectCreationExpressionSyntax)context.Node;
+        var creation = (BaseObjectCreationExpressionSyntax)context.Node;
         var typeInfo = context.SemanticModel.GetTypeInfo(creation, context.CancellationToken);
         var type = typeInfo.Type;
         if (type is null)
             return;
+
+        // An implicit `new(...)` has no type syntax to point at; the whole expression is
+        // the smallest thing that names the type to a reader.
+        var typeLocation = creation is ObjectCreationExpressionSyntax explicitCreation
+            ? explicitCreation.Type.GetLocation()
+            : creation.GetLocation();
 
         var ns = type.ContainingNamespace?.ToDisplayString();
         if (ns != "System.IO")
@@ -112,14 +132,14 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         DiagnosticDescriptors.DirectFileSystemTypeInstantiation,
-                        creation.Type.GetLocation(),
+                        typeLocation,
                         name));
                 }
                 break;
             case "FileSystemWatcher":
                 context.ReportDiagnostic(Diagnostic.Create(
                     DiagnosticDescriptors.DirectFileSystemWatcher,
-                    creation.Type.GetLocation()));
+                    typeLocation));
                 break;
             case "StreamReader":
             case "StreamWriter":
@@ -128,7 +148,7 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
                 {
                     context.ReportDiagnostic(Diagnostic.Create(
                         DiagnosticDescriptors.DirectStreamReaderWriterPath,
-                        creation.Type.GetLocation(),
+                        typeLocation,
                         name));
                 }
                 break;
@@ -176,7 +196,7 @@ public sealed class SystemIoUsageAnalyzer : DiagnosticAnalyzer
     }
 
     private static bool TakesStringPath(
-        ObjectCreationExpressionSyntax creation,
+        BaseObjectCreationExpressionSyntax creation,
         SemanticModel model,
         System.Threading.CancellationToken ct)
     {

@@ -98,12 +98,35 @@ public sealed class RoslynCodeSecurityAnalyzer : ICodeSecurityAnalyzer
                 CodeSnippet = "unsafe { ... }"
             });
         }
+
+        // `unsafe` is also a MODIFIER -- on a method, a type, a local function. That form
+        // carries no UnsafeStatementSyntax at all, so the loop above never saw it.
+        var unsafeMembers = root.DescendantNodes()
+            .Where(node => node is MemberDeclarationSyntax or LocalFunctionStatementSyntax)
+            .Where(node => node.ChildTokens().Any(token => token.IsKind(SyntaxKind.UnsafeKeyword)));
+        foreach (var member in unsafeMembers)
+        {
+            violations.Add(new SecurityViolation
+            {
+                Rule = "UnsafeCode",
+                Description = "Unsafe code is not allowed",
+                Risk = SecurityRiskLevel.Critical,
+                LineNumber = GetLineNumber(member),
+                CodeSnippet = "unsafe modifier"
+            });
+        }
     }
 
     private static readonly string[] ProcessExecPatterns =
     [
         "Process.Start", "ProcessStartInfo", "Process.GetProcesses",
-        "Process.GetProcessById", "Process.Kill"
+        "Process.GetProcessById", "Process.Kill",
+        // Reaching the host process itself needs no Process type at all: Exit kills the
+        // sandbox runner, and the environment is where every API key the host resolved
+        // lives (ORKEON_Llm__ApiKey among them).
+        "Environment.Exit", "Environment.FailFast",
+        "Environment.GetEnvironmentVariable", "Environment.GetEnvironmentVariables",
+        "Environment.SetEnvironmentVariable"
     ];
 
     private static readonly string[] ReflectionPatterns =
@@ -119,7 +142,11 @@ public sealed class RoslynCodeSecurityAnalyzer : ICodeSecurityAnalyzer
         // Expression-tree / delegate based indirection
         "Expression.Call", "Expression.Lambda", "Expression.New", ".Compile",
         // Marshal-based memory/function-pointer escapes
-        "Marshal.GetDelegateForFunctionPointer", "Marshal.GetFunctionPointerForDelegate"
+        "Marshal.GetDelegateForFunctionPointer", "Marshal.GetFunctionPointerForDelegate",
+        // AppDomain is a second door to assembly loading, and it never appeared on the
+        // list: AppDomain.CurrentDomain.Load(bytes) loads a byte array with no Assembly
+        // identifier in sight.
+        "AppDomain."
     ];
 
     private static readonly string[] FileIOPatterns =
@@ -224,10 +251,16 @@ public sealed class RoslynCodeSecurityAnalyzer : ICodeSecurityAnalyzer
         SecurityAnalysisOptions options,
         List<SecurityViolation> violations)
     {
-        var objectCreations = root.DescendantNodes().OfType<ObjectCreationExpressionSyntax>();
+        // BaseObjectCreationExpressionSyntax covers `new T(...)` AND the target-typed
+        // `T x = new(...)`: the same instantiation, and the walker used to see only the
+        // first of the two.
+        var objectCreations = root.DescendantNodes().OfType<BaseObjectCreationExpressionSyntax>();
         foreach (var creation in objectCreations)
         {
-            var typeName = creation.Type.ToString();
+            var typeName = TypeNameOf(creation);
+            if (typeName.Length == 0)
+                continue;
+
             var ctx = new NodeContext(GetLineNumber(creation), creation.ToString().Trim());
 
             CheckBlockedTypes(typeName, options.BlockedTypes, ctx, violations);
@@ -244,6 +277,22 @@ public sealed class RoslynCodeSecurityAnalyzer : ICodeSecurityAnalyzer
                     $"File I/O object creation is not allowed: new {typeName}(...)", SecurityRiskLevel.High),
                 ctx, violations);
         }
+    }
+
+    /// <summary>
+    /// The type being instantiated, for either creation shape. An implicit `new()` carries
+    /// no type syntax, so the declared type of the variable it initialises is what names it.
+    /// </summary>
+    private static string TypeNameOf(BaseObjectCreationExpressionSyntax creation)
+    {
+        if (creation is ObjectCreationExpressionSyntax explicitCreation)
+            return explicitCreation.Type.ToString();
+
+        // `Process p = new();` -> the declaration's type. `return new();` and the other
+        // target-typed positions carry no local type syntax; they are left to the
+        // invocation and namespace checks rather than guessed at.
+        var declarator = creation.Ancestors().OfType<VariableDeclarationSyntax>().FirstOrDefault();
+        return declarator?.Type.ToString() ?? string.Empty;
     }
 
     private static void CheckBlockedTypes(

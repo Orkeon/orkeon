@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using System.Globalization;
 using System.Net;
 using System.Net.Sockets;
 using Orkeon.Domain.Tools.Security;
@@ -69,7 +70,7 @@ public sealed partial class UrlValidator : IUrlValidator
             return UrlValidationResult.Denied("Invalid URL format");
 
         var uri = url;
-        var basicResult = ValidateBasicUrlProperties(uri, url.ToString());
+        var basicResult = ValidateBasicUrlProperties(uri, SafeForLog(uri));
         if (basicResult != null)
             return basicResult;
 
@@ -82,6 +83,29 @@ public sealed partial class UrlValidator : IUrlValidator
             return ipResult;
 
         return UrlValidationResult.Allowed(uri);
+    }
+
+    /// <summary>
+    /// The form of a URL that may be written to a log: scheme, host and port. Nothing else.
+    /// <para>
+    /// Everything after the authority is dropped rather than masked. All of it is
+    /// attacker-controlled on this path -- the caller is often an LLM -- and all of it
+    /// routinely carries secrets: the embedded-credentials denial used to log the very
+    /// password it had just refused, a query string carries tokens just as happily, and a
+    /// path segment can be a reset token. The path is not merely "the part before the
+    /// query" either: for a scheme .NET does not treat as hierarchical, `Uri.AbsolutePath`
+    /// swallows the query whole (`ftp://h/x?t=SECRET` becomes `/x%3Ft=SECRET`), so keeping
+    /// it would have re-opened the leak on exactly the scheme this validator refuses.
+    /// </para>
+    /// <para>
+    /// What is left is what makes the line actionable: which host was refused, on which
+    /// port, under which scheme. The denial reason returned to the caller carries the rest.
+    /// </para>
+    /// </summary>
+    private static string SafeForLog(Uri uri)
+    {
+        var port = uri.IsDefaultPort ? string.Empty : $":{uri.Port.ToString(CultureInfo.InvariantCulture)}";
+        return $"{uri.Scheme}://{uri.Host}{port}";
     }
 
     private UrlValidationResult? ValidateBasicUrlProperties(Uri uri, string url)

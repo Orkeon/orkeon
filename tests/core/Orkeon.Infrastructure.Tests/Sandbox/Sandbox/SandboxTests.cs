@@ -135,6 +135,42 @@ public class RoslynCodeSecurityAnalyzerTests
         Assert.DoesNotContain(report.Violations, v => v.Rule == "UnsafeCode");
     }
 
+    [Theory]
+    // Three shapes the denylist could not see. The class calls itself defense-in-depth, but
+    // these are the ones that reach past the namespace blocklist without any reflection.
+    [InlineData("Environment.Exit(1);", "ProcessExecution")]
+    [InlineData("var v = Environment.GetEnvironmentVariable(\"ORKEON_Llm__ApiKey\");", "ProcessExecution")]
+    [InlineData("Environment.SetEnvironmentVariable(\"PATH\", \"/evil\");", "ProcessExecution")]
+    [InlineData("var a = AppDomain.CurrentDomain.Load(new byte[0]);", "Reflection")]
+    public void ShouldReturnViolation_WhenHostEnvironmentIsReached(string code, string rule)
+    {
+        var report = _fixture.Analyze(code);
+
+        Assert.False(report.IsAllowed);
+        Assert.Contains(report.Violations, v => v.Rule == rule);
+    }
+
+    [Fact]
+    public void ShouldReturnViolation_WhenProcessIsCreatedWithATargetTypedNew()
+    {
+        // `Process p = new();` is the same instantiation as `new Process()`; only the
+        // syntax node differs, and the walker looked at one of the two.
+        var report = _fixture.Analyze("System.Diagnostics.Process p = new();");
+
+        Assert.False(report.IsAllowed);
+        Assert.Contains(report.Violations, v => v.Rule == "ProcessExecution");
+    }
+
+    [Fact]
+    public void ShouldReturnViolation_WhenUnsafeIsAMethodModifier()
+    {
+        // The check walked UnsafeStatementSyntax only, so the modifier form was invisible.
+        var report = _fixture.Analyze("public unsafe void Poke(int* p) { *p = 1; }");
+
+        Assert.False(report.IsAllowed);
+        Assert.Contains(report.Violations, v => v.Rule == "UnsafeCode");
+    }
+
     [Fact]
     public void ShouldReturnViolation_WhenBlockedNamespaceUsed()
     {

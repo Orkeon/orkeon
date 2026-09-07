@@ -35,6 +35,69 @@ public class SystemIoUsageAnalyzerTests
         Assert.Contains("ReadAllText", diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture));
     }
 
+    // Two shapes the analyzer could not see. Neither exists in src today, which is exactly
+    // why they are worth pinning: the gate is what keeps them from appearing.
+
+    [Fact]
+    public async System.Threading.Tasks.Task File_ReadAllText_ViaUsingStatic_Reports_ORKVFS001()
+    {
+        const string source = """
+            using static System.IO.File;
+            public class C
+            {
+                public string Read() => ReadAllText("/tmp/foo");
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness<SystemIoUsageAnalyzer>.RunAsync(source, FrameworkPath);
+
+        Assert.Single(diagnostics);
+        Assert.Equal("ORKVFS001", diagnostics[0].Id);
+        Assert.Contains("ReadAllText", diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FileStream_TargetTyped_New_Reports_ORKVFS003()
+    {
+        const string source = """
+            using System.IO;
+            public class C
+            {
+                public void Open()
+                {
+                    FileStream fs = new("/tmp/foo", FileMode.Open);
+                    fs.Dispose();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness<SystemIoUsageAnalyzer>.RunAsync(source, FrameworkPath);
+
+        Assert.Single(diagnostics);
+        Assert.Equal("ORKVFS003", diagnostics[0].Id);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task StreamReader_TargetTyped_New_Reports_ORKVFS006()
+    {
+        const string source = """
+            using System.IO;
+            public class C
+            {
+                public void Read()
+                {
+                    StreamReader r = new("/tmp/foo");
+                    r.Dispose();
+                }
+            }
+            """;
+
+        var diagnostics = await AnalyzerHarness<SystemIoUsageAnalyzer>.RunAsync(source, FrameworkPath);
+
+        Assert.Single(diagnostics);
+        Assert.Equal("ORKVFS006", diagnostics[0].Id);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task Directory_Exists_Reports_ORKVFS002()
     {
