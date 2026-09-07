@@ -75,7 +75,14 @@ public static class ForgeSessionHydrator
         if (!TryReadObject(verdictPath, out var verdict))
             return;
 
-        foreach (var metric in new[] { "durationMs", "tokens", "cacheHitTokens", "cacheMissTokens" })
+        // The six figures the live verdict.ready declares, and all six on purpose: the
+        // engine persists the whole trial cost in last-run.json, so a shorter list here is
+        // a resume that shows less than the live screen and says nothing about it.
+        foreach (var metric in new[]
+                 {
+                     "durationMs", "tokens", "promptTokens", "completionTokens",
+                     "cacheHitTokens", "cacheMissTokens",
+                 })
         {
             if (!verdict.ContainsKey(metric) && lastRun[metric] is { } value)
                 verdict[metric] = value.DeepClone();

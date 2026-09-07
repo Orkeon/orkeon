@@ -204,6 +204,51 @@ public sealed class ForgeSessionHydratorTests : IDisposable
         Assert.Equal("llm", model.Verdict.Judge);
     }
 
+    /// <summary>
+    /// The recalled verdict carries the whole cost of the last trial, not a subset of it.
+    /// The live <c>verdict.ready</c> declares six figures (W-08) and <c>last-run.json</c>
+    /// persists all six, so a resume that folds in only some of them shows a screen the
+    /// live one would not have shown — silently, since a missing figure is a missing chip
+    /// rather than an error.
+    /// </summary>
+    [Fact]
+    public void The_recalled_verdict_carries_every_metric_the_last_run_persisted()
+    {
+        File.WriteAllText(Path.Combine(_directory, "last-run.json"),
+            """{"run":1,"success":true,"durationMs":59000,"tokens":12840,"promptTokens":9600,"completionTokens":3240,"cacheHitTokens":7980,"cacheMissTokens":1620}""");
+        File.WriteAllText(Path.Combine(_directory, "verdict.json"),
+            """{"score":0.78,"passing":true,"findings":[],"suggestions":[],"judge":"llm"}""");
+
+        var model = new ForgeSessionModel();
+        ForgeSessionHydrator.Hydrate(model, _directory);
+
+        Assert.Equal(59000L, model.Verdict!.DurationMs);
+        Assert.Equal(12840L, model.Verdict.Tokens);
+        Assert.Equal(9600L, model.Verdict.PromptTokens);
+        Assert.Equal(3240L, model.Verdict.CompletionTokens);
+        Assert.Equal(7980L, model.Verdict.CacheHitTokens);
+        Assert.Equal(1620L, model.Verdict.CacheMissTokens);
+    }
+
+    /// <summary>
+    /// The verdict's own figure wins: <c>verdict.json</c> is the arbitration that was
+    /// actually reached, and <c>last-run.json</c> only fills what it left unsaid.
+    /// </summary>
+    [Fact]
+    public void The_verdicts_own_metric_is_not_overwritten_by_the_last_run()
+    {
+        File.WriteAllText(Path.Combine(_directory, "last-run.json"),
+            """{"tokens":12840,"promptTokens":9600}""");
+        File.WriteAllText(Path.Combine(_directory, "verdict.json"),
+            """{"score":0.78,"passing":true,"judge":"llm","promptTokens":42}""");
+
+        var model = new ForgeSessionModel();
+        ForgeSessionHydrator.Hydrate(model, _directory);
+
+        Assert.Equal(42L, model.Verdict!.PromptTokens);
+        Assert.Equal(12840L, model.Verdict.Tokens);
+    }
+
     [Fact]
     public void An_empty_or_broken_directory_seeds_nothing_and_blocks_nothing()
     {
