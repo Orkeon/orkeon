@@ -15,6 +15,13 @@ public sealed class ShellCommandToolTests : IDisposable
         : ["pwd", "echo"];
     private static readonly string[] s_python3Allowlist = ["python3"];
     private static readonly string[] s_dangerousBlocklist = ["dangerous"];
+    private static readonly string[] s_environmentReaderAllowlist = s_isWindows
+        ? ["set"]
+        : ["cat"];
+
+    /// <summary>Environment variable planted on the test process to stand in for a host secret.</summary>
+    private const string EnvironmentProbeName = "ORKEON_TEST_SECRET";
+    private const string EnvironmentProbeValue = "s3cr3t-fixture";
 
     private readonly ShellCommandTool _tool;
 
@@ -606,6 +613,89 @@ public sealed class ShellCommandToolTests : IDisposable
 
         Assert.False(result.Success);
         Assert.Contains("not allowed", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldNotExposeHostEnvironment_WhenCommandReadsEnvironment()
+    {
+        var previous = Environment.GetEnvironmentVariable(EnvironmentProbeName);
+        Environment.SetEnvironmentVariable(EnvironmentProbeName, EnvironmentProbeValue);
+        try
+        {
+            var tool = new ShellCommandTool(
+                new FakeFileSystemService(),
+                allowedCommands: s_environmentReaderAllowlist);
+
+            var request = new ToolCallRequest(
+                ToolName: "shell_command",
+                Parameters: new Dictionary<string, object?>
+                {
+                    ["command"] = s_isWindows ? "set" : "cat /proc/self/environ"
+                }
+            );
+
+            var result = await tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+            Assert.True(result.Success);
+            var dict = result.Result as Dictionary<string, object?>;
+            Assert.NotNull(dict);
+            Assert.DoesNotContain(
+                EnvironmentProbeValue,
+                dict["stdout"]!.ToString()!,
+                StringComparison.Ordinal);
+
+            tool.Dispose();
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(EnvironmentProbeName, previous);
+        }
+    }
+
+    [Fact]
+    public async Task ShouldKeepPathAndHome_WhenCommandReadsEnvironment()
+    {
+        var tool = new ShellCommandTool(
+            new FakeFileSystemService(),
+            allowedCommands: s_environmentReaderAllowlist);
+
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = s_isWindows ? "set" : "cat /proc/self/environ"
+            }
+        );
+
+        var result = await tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        var dict = result.Result as Dictionary<string, object?>;
+        Assert.NotNull(dict);
+        var stdout = dict["stdout"]!.ToString()!;
+        Assert.Contains("PATH=", stdout, StringComparison.Ordinal);
+        Assert.Contains(s_isWindows ? "USERPROFILE=" : "HOME=", stdout, StringComparison.OrdinalIgnoreCase);
+
+        tool.Dispose();
+    }
+
+    [Theory]
+    [InlineData("echo %ORKEON_TEST_SECRET%")]
+    [InlineData("echo %PATH%")]
+    public async Task ShouldRejectPercentSign_WhenCommandRunsThroughTheWindowsShell(string command)
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = command
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("%", result.Error, StringComparison.Ordinal);
     }
 
     public void Dispose()
