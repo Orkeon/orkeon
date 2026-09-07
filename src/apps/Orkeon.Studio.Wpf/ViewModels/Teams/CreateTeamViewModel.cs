@@ -526,7 +526,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     public StepNotesViewModel ComposeNotes { get; }
 
-    /// <summary>The "Consigne d'essai" block.</summary>
+    /// <summary>The "Trial instruction" block.</summary>
     public StepNotesViewModel TryNotes { get; }
 
     /// <summary>The "Consigne d'adoption" block.</summary>
@@ -597,7 +597,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// The step line — number, total and stage name assembled from a per-culture pattern — Chinese has no
-    /// « sur » and a concatenation would ship the French joiner everywhere.
+    /// word for the "of" joiner, and a concatenation would ship one culture's joiner everywhere.
     /// </summary>
     public string DraftLine
     {
@@ -1211,8 +1211,8 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// The mount a reading tool addresses, taken from what the blueprint actually implies.
-    /// Null when the blueprint implies none — better a chip that says «lit des fichiers»
-    /// than one that names a folder nobody chose.
+    /// Null when the blueprint implies none — better a chip that says it reads files than
+    /// one that names a folder nobody chose.
     /// </summary>
     private string? ReadScope() =>
         _model.DerivedMounts.FirstOrDefault(m => !m.IsReadWrite)?.VirtualPath;
@@ -1592,7 +1592,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>
     /// Reopens the just-adopted session (the engine's reopen re-enters at the
     /// arbitration); <paramref name="autoRetry"/> answers it with <c>retry</c> the moment
-    /// it arrives — «Refaire un essai» means the trial runs, not "go find a button".
+    /// it arrives — "Run the trial again" means the trial runs, not "go find a button".
     /// </summary>
     private async Task ReopenAdoptedAsync(int step, bool autoRetry)
     {
@@ -1899,7 +1899,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// « Ce que j'ai retenu ». The brief and the three step-1 precisions first, then one
+    /// "What I've noted". The brief and the three step-1 precisions first, then one
     /// row per interview question, then each instruction that was actually typed — an
     /// empty instruction is not a fact the assistant is missing, so it is not listed.
     /// </summary>
@@ -2060,7 +2060,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         SyncDecisions();
         SyncProgress();
 
-        // «Refaire un essai» answers the reopened arbitration itself (W-09): the flag is
+        // "Run the trial again" answers the reopened arbitration itself (W-09): the flag is
         // cleared BEFORE deciding — Decide re-enters this sync.
         if (_autoRetryPending && DecisionPending
             && _model.DecisionOptions.Contains("retry", StringComparer.Ordinal))

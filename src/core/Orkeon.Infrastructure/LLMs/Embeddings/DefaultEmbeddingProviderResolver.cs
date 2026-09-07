@@ -13,7 +13,7 @@ namespace Orkeon.Infrastructure.LLMs.Embeddings;
 /// <summary>
 /// Default resolution of the Application port <see cref="IEmbeddingProvider"/> used by
 /// <c>AddOrkeonInfrastructure()</c> when the host registers no provider explicitly
-/// (RAG-01/C4 — « mort du stub hash silencieux »).
+/// (RAG-01/C4 — the end of the silent hash stub).
 /// </summary>
 /// <remarks>
 /// <para>Resolution order, evaluated lazily at the port's first resolution:</para>

@@ -52,7 +52,7 @@ public class ReplPaneViewTests
     {
         // The input field is live from the first frame, but the runner only starts reading
         // after its (slow) startup script load. A line typed in that window used to be
-        // echoed to the transcript and then silently DROPPED — the live "que fait-on ?"
+        // echoed to the transcript and then silently DROPPED — the live "what do we do?"
         // incident: nothing ever happened. Type-ahead must buffer it instead.
         using var pane = CreatePane();
 

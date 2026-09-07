@@ -75,7 +75,7 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// <summary>
     /// Shows the editor over <paramref name="blueprintJson"/> — for the agent named by
     /// <paramref name="agentKey"/>, or a new one when null. <paramref name="teamMounts"/>
-    /// feeds the informative "sur quel dossier" line (rights live per mount, not per
+    /// feeds the informative "On which folder" line (rights live per mount, not per
     /// agent); <paramref name="apply"/> receives the amended blueprint JSON.
     /// <para>
     /// The line names the mounts the way the agent addresses them — the virtual path with

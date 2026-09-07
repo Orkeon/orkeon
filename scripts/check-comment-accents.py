@@ -8,12 +8,22 @@ accented UI label ("Modele d'IA") cites something that does not exist, and an
 accent-stripped French sentence is still French, only worse. So the check is
 deliberately narrow, and narrow in two different ways depending on the file:
 
-  * tracked ``*.cs`` — comment lines only, accented LETTERS only. A user-facing
-    string keeps its accents; that is settled, and the whole product would read
-    wrong otherwise. This repository uses em dashes, ellipses, arrows and box
-    glyphs heavily; none of those are accents and all of them stay. U+00D7 and
-    U+00F7 sit inside the Latin-1 letter block but are multiplication and
-    division signs, so they are excluded by name.
+  * tracked ``*.cs`` — comment lines only; accented LETTERS, plus a list of
+    unaccented French words. A user-facing string keeps its accents; that is
+    settled, and the whole product would read wrong otherwise. This repository
+    uses em dashes, ellipses, arrows and box glyphs heavily; none of those are
+    accents and all of them stay. U+00D7 and U+00F7 sit inside the Latin-1
+    letter block but are multiplication and division signs, so they are excluded
+    by name.
+
+    The word list exists because the accent test alone was blind to the most
+    common shape of the defect: a comment quoting a French UI label. Studio ships
+    five catalogues, so a comment naming a button in French names it in one
+    culture out of five — and after the catalogue rewrite, several of those
+    labels no longer existed in any of them. The .cs list is matched
+    CASE-SENSITIVELY on lowercase words: `TRes` is a type parameter, `tres` is
+    French, and only the second may fire. It also omits `importer`, which is an
+    English verb.
 
   * tracked ``.github/workflows/*.yml`` and the repo's ``Directory.Build.props``
     files — EVERY line, accented letters AND a short list of unambiguous French
@@ -53,6 +63,20 @@ FRENCH_WORDS = re.compile(
     r")\b"
 )
 
+# The .cs variant: case-SENSITIVE lowercase (so `TRes` and `Sur` survive), without
+# `importer` (an English verb), and widened with the words that actually appear in
+# quoted French UI labels. `plus` and `lit` are deliberately absent: both are ordinary
+# English words in this codebase and fired on 127 innocent comment lines.
+FRENCH_WORDS_CS = re.compile(
+    r"\b("
+    r"ainsi|alors|aucun|aucune|apres|avant|avec|celle|celui|ceux|chaque|comme|"
+    r"dans|depuis|doit|doivent|donc|dont|essai|essayer|etre|fichier|fichiers|"
+    r"jamais|les|leur|leurs|lorsque|mais|meme|notamment|nous|parce|plutot|pour|"
+    r"pourquoi|puis|quand|que|qui|sans|selon|silencieux|sinon|sont|sous|sur|"
+    r"toujours|tous|toute|toutes|tres|une"
+    r")\b"
+)
+
 
 def _tracked(*patterns: str) -> list[Path]:
     out = subprocess.run(
@@ -69,7 +93,7 @@ def _lines(path: Path) -> list[str]:
 
 
 def cs_violations(path: Path) -> list[tuple[int, str]]:
-    """Accented letter in a C# comment line."""
+    """Accented letter, or unaccented French, in a C# comment line."""
     found = []
     for number, line in enumerate(_lines(path), 1):
         stripped = line.lstrip()
@@ -77,6 +101,12 @@ def cs_violations(path: Path) -> list[tuple[int, str]]:
             continue
         if ACCENTED.search(line):
             found.append((number, f"accented letter in a comment: {stripped[:120]}"))
+            continue
+        match = FRENCH_WORDS_CS.search(line)
+        if match:
+            found.append(
+                (number, f"French word '{match.group(0)}' in a comment: {stripped[:120]}")
+            )
     return found
 
 

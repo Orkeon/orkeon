@@ -86,7 +86,7 @@ public sealed class ChatTurnViewModel : ObservableObject
     }
 }
 
-/// <summary>One line of « Ce que j'ai retenu »: a label, what is known, and whether it is.</summary>
+/// <summary>One line of "What I've noted": a label, what is known, and whether it is.</summary>
 /// <param name="Label">What the fact is called.</param>
 /// <param name="Value">What is known — or the «pending» word when nothing is.</param>
 /// <param name="IsKnown">Drives the check / question-mark icon and the italic.</param>

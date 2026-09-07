@@ -10,7 +10,7 @@ namespace Orkeon.Domain.Tests.Fixtures;
 /// </summary>
 /// <remarks>
 /// Once the Domain layer reads time through an injectable <see cref="TimeProvider"/>
-/// (chantier horloge, fichier 04), these waits should be replaced by advancing a
+/// (the clock work item, sheet 04), these waits should be replaced by advancing a
 /// <c>FakeTimeProvider</c> instead of waiting on the real clock.
 /// </remarks>
 internal static class ClockAdvance

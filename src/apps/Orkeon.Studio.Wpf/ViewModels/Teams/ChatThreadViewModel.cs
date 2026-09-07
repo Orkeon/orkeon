@@ -168,7 +168,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         }
     }
 
-    /// <summary>Whether « Ce que j'ai retenu » is unfolded.</summary>
+    /// <summary>Whether "What I've noted" is unfolded.</summary>
     public bool IsRecapExpanded
     {
         get => _isRecapExpanded;
@@ -259,7 +259,7 @@ public sealed class ChatThreadViewModel : ObservableObject
         is AssistantContext.WizardStep1 or AssistantContext.WizardStep2
         or AssistantContext.WizardStep3 or AssistantContext.WizardStep4;
 
-    /// <summary>« Ce que j'ai retenu », rebuilt from the owner on every change.</summary>
+    /// <summary>"What I've noted", rebuilt from the owner on every change.</summary>
     public IReadOnlyList<ChatRecapFact> Facts => _facts?.Invoke() ?? [];
 
     /// <summary>«4 / 8» — how much of the recap is filled in.</summary>

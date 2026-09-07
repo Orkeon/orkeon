@@ -178,7 +178,7 @@ internal static class StudioFixture
         ]
         """;
 
-    /// <summary>Composed, never tried: the state «Adopter sans essai» was invented for.</summary>
+    /// <summary>Composed, never tried: the state "Adopt without trying" was invented for.</summary>
     private static SessionSeed DryPauseSession => new()
     {
         Slug = DryPauseSessionSlug,

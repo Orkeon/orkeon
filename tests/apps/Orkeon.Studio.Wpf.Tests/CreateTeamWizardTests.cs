@@ -899,7 +899,7 @@ public class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// The other answer to the dry pause, from Studio: « Adopter sans essayer » resumes the
+    /// The other answer to the dry pause, from Studio: "Adopt without trying" resumes the
     /// same session with <c>--adopt</c>. It is offered exactly when the trial is — the pause
     /// is where both answers exist — and it runs the engine offline, without a trial.
     /// </summary>
@@ -971,8 +971,8 @@ public sealed class AskWithoutEngineTests
     [Fact]
     public void With_nobody_listening_the_local_bank_answers_rather_than_the_thread_going_quiet()
     {
-        // The guarantee behind the owner's escalation — « je pose une question a
-        // l'assistant, rien ne se passe » — used to be met by a notice explaining that
+        // The guarantee behind the owner's escalation — "I ask the assistant a question and
+        // nothing happens" — used to be met by a notice explaining that
         // nothing had been sent. It is now met by an actual answer: with no forge session
         // listening, the keyword bank replies, which is the thing the notice was standing
         // in for. What must never happen is silence, and it still cannot.

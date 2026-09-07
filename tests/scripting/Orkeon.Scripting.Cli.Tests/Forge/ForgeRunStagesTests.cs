@@ -436,7 +436,7 @@ public sealed class ForgeRunStagesTests : IDisposable
     [Fact]
     public async Task A_retry_reruns_the_trial_without_an_llm_turn()
     {
-        // W-09 «Refaire un essai»: same blueprint, a fresh run under its own number,
+        // W-09 "Run the trial again": same blueprint, a fresh run under its own number,
         // a fresh verdict — and not one extra compose turn on the assistant.
         var assistant = HappyAssistant();
         var bench = new FakeTestBench().Succeeds().Succeeds();

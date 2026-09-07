@@ -81,7 +81,7 @@ public class SequentialCrewOrchestratorTests
 
         public System.Threading.Tasks.Task<IReadOnlyList<DomainCrew>> GetByStatusAsync(CrewStatus status, CancellationToken cancellationToken = default)
         {
-            // Simplified pour les tests
+            // Simplified for the tests
             return System.Threading.Tasks.Task.FromResult<IReadOnlyList<DomainCrew>>([]);
         }
 

@@ -22,7 +22,8 @@ namespace Orkeon.Cli.Commands.Scripting.Bindings;
 ///     <see cref="ILogger"/> (or <see cref="NullLogger.Instance"/>) BEFORE
 ///     <c>engine.Evaluate(js)</c> at load time. Ensures `console.log` called during
 ///     module evaluation doesn't blow up and is not routed to a per-command ctx that
-///     doesn't exist yet (spec §13 Phase 2 "au load, console.* doit pointer vers ILogger neutre").
+///     doesn't exist yet (spec §13 Phase 2: at load time, console.* must point at a
+///     neutral ILogger).
 ///   </description></item>
 ///   <item><description>
 ///     <see cref="ApplyForInvocation"/> — re-binds console to a per-command logger shim

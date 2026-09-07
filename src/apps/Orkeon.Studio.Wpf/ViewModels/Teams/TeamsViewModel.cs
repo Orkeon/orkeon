@@ -22,7 +22,7 @@ public sealed class TeamActionEventArgs(string path) : EventArgs
     public string Path { get; } = path;
 }
 
-/// <summary>Payload of a « Changer les dossiers » request: the card whose mounts open.</summary>
+/// <summary>Payload of a "Change the folders" request: the card whose mounts open.</summary>
 public sealed class TeamMountsRequestedEventArgs(TeamCardViewModel card) : EventArgs
 {
     /// <summary>The team card.</summary>
@@ -128,7 +128,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Whether a forge session points at this team folder.</summary>
     public bool CanModify { get; }
 
-    /// <summary>« Changer les dossiers » — the team-mounts modal (remediation v2, F-02).</summary>
+    /// <summary>"Change the folders" — the team-mounts modal (remediation v2, F-02).</summary>
     public RelayCommand ChangeMountsCommand { get; }
 
     /// <summary>Copies the team folder somewhere for sharing, settings file left behind.</summary>
@@ -418,7 +418,7 @@ public sealed class TeamsViewModel : ObservableObject
     /// </summary>
     public event EventHandler? ImportRequested;
 
-    /// <summary>Raised by « Changer les dossiers » — the shell opens the team-mounts modal.</summary>
+    /// <summary>Raised by "Change the folders" — the shell opens the team-mounts modal.</summary>
     public event EventHandler<TeamMountsRequestedEventArgs>? MountsRequested;
 
     /// <summary>Raised by the card's Tester icon — the shell brings the trial screen forward.</summary>

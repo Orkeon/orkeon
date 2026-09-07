@@ -69,7 +69,7 @@ internal static class ForgeStateMachineFactory
             // unchanged Validate/Test/Diagnose path.
             .AddTransition(ForgeState.Verdict, ForgeTrigger.BlueprintEdited, ForgeState.Render)
 
-            // «Refaire un essai» (W-09): the same team runs again — a fresh run
+            // "Run the trial again" (W-09): the same team runs again — a fresh run
             // directory, a fresh verdict, not a single LLM compose token.
             .AddTransition(ForgeState.Verdict, ForgeTrigger.RetryRequested, ForgeState.Test)
 

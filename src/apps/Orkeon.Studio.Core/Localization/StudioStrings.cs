@@ -82,8 +82,9 @@ public static class StudioStringKeys
     /// <summary>"Adopt"</summary>
     public const string WizardStep4 = "Studio.Create.Step4";
 
-    /// <summary>"Step {0} of {1} · {2}" — never assembled by hand: Chinese has no
-    /// « sur », and a concatenation would ship the French joiner to every culture.</summary>
+    /// <summary>"Step {0} of {1} · {2}" — never assembled by hand: Chinese has no word
+    /// for the "of" joiner, and a concatenation would ship one culture's joiner to all of
+    /// them.</summary>
     public const string WizardDraftStepPattern = "Studio.Create.DraftStepPattern";
 
     /// <summary>"A creation in progress"</summary>

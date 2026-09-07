@@ -8,7 +8,7 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 
 /// <summary>
 /// A parsed <c>--schedule</c> value (SPEC-ORKEON-FORGE §11). Two spellings cover the
-/// archetypal needs of the audience: <c>daily@HH:mm</c> ("chaque matin") and
+/// archetypal needs of the audience: <c>daily@HH:mm</c> ("every morning") and
 /// <c>hourly</c>. Everything richer belongs in the generated artifacts, edited by hand.
 /// </summary>
 internal sealed record ForgeSchedule

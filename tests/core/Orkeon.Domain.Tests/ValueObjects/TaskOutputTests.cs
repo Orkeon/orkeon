@@ -77,7 +77,7 @@ public class TaskOutputTests
     [Fact]
     public void ShouldThrowArgumentException_WhenConstructingWithNullRawOutput()
     {
-        // Act & Assert — cast explicite pour eviter l'ambiguite de surcharge avec TaskOutput(TaskOutputInfo)
+        // Act & Assert — explicit cast to avoid the overload ambiguity with TaskOutput(TaskOutputInfo)
         var exception = Assert.Throws<ArgumentException>(() => TaskOutput.Create((string)null!));
         Assert.Contains("cannot be empty", exception.Message);
         Assert.Equal("info", exception.ParamName);
