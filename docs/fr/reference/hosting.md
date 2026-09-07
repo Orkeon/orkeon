@@ -89,7 +89,7 @@ fournis par l'utilisateur et provisionne les montages VFS *avant* que le contene
 
 L'ordre d'enregistrement est délibéré :
 
-1. **Logging** — le logging du runner (Console + Information par défaut) et, quand
+1. **Logging** — le logging du runner (console sur une ligne au niveau **Warning** par défaut ; `--verbose 1`/`2` ou un callback `configureLogging` le relève) et, quand
    `RunnerMountPlan.LlmLogVirtualPath` est renseigné, le `DelegatingHandler` de capture des échanges LLM.
 2. **Le fournisseur LLM d'abord** — `RegisterLlmProvider` lit la section de config `Llm` et enregistre
    le fournisseur (et son `IChatClient`) **avant** `AddOrkeonApplication` / `AddOrkeonInfrastructure`.

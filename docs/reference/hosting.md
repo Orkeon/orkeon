@@ -84,7 +84,7 @@ settings paths and provisions VFS mounts *before* the DI container (and thus `IF
 
 The registration order is deliberate:
 
-1. **Logging** — runner logging (Console + Information by default) and, when `RunnerMountPlan.LlmLogVirtualPath` is set,
+1. **Logging** — runner logging (a single-line console at **Warning** level by default; `--verbose 1`/`2` or a `configureLogging` callback raises it) and, when `RunnerMountPlan.LlmLogVirtualPath` is set,
    the LLM exchange logging `DelegatingHandler`.
 2. **LLM provider first** — `RegisterLlmProvider` reads the `Llm` config section and registers the
    provider (and its `IChatClient`) **before** `AddOrkeonApplication` / `AddOrkeonInfrastructure`. This

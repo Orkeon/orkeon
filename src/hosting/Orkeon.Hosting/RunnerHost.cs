@@ -88,7 +88,7 @@ public static partial class RunnerHost
     /// </summary>
     /// <param name="settingsPath">Resolved appsettings.json path (nullable).</param>
     /// <param name="mounts">The VFS surface the host is built over — see <see cref="RunnerMountPlan"/>.</param>
-    /// <param name="configureLogging">Optional callback to customize logging (default: Console + Information).</param>
+    /// <param name="configureLogging">Optional callback to customize logging (default: a single-line console at Warning level; --verbose raises it).</param>
     /// <param name="configureServices">Optional callback to register additional services.</param>
     /// <param name="configureBuilder">
     /// Optional callback on the builder itself, before it is built. The service host uses it
