@@ -39,7 +39,17 @@ Les vulnérabilités dans ces couches (contournement d'allowlist, contournement 
 
 ## Recommandations de durcissement
 
-- Gardez les outils dangereux (shell, interpréteur de code) **non enregistrés** sauf nécessité ; ils ne sont pas exposés comme `IBaseTool` par défaut.
+- **`code_interpreter` n'est jamais exposé comme `IBaseTool`** : `SecureCodeInterpreterTool`
+  n'est enregistré que comme type concret, donc aucun agent ne peut l'appeler tant que vous ne
+  l'exposez pas vous-même.
+- **`shell_command`, lui, est livré enregistré.** `AddOrkeonCodeTools()` l'enregistre comme
+  `IBaseTool`, et les deux runners livrés (`orkeon run`, `orkeon-repl`) appellent cette méthode
+  sans condition : l'outil est donc au catalogue par défaut. Son allowlist par défaut est en
+  **lecture seule** (`ls`, `cat`, `pwd`, `grep`… plus les sous-commandes `git` non mutantes) ;
+  les interpréteurs et le `git` mutant restent fermés tant que vous ne posez pas
+  `Orkeon:Tools:Shell:AllowInterpreters`, qui est **équivalent à une RCE** et fait émettre à
+  l'outil un avertissement de sécurité. Pour tenir `shell_command` hors de portée d'un agent,
+  composez votre hôte sans `AddOrkeonCodeTools()`.
 - Utilisez `DockerSandbox` pour tout scénario d'exécution de code avec des entrées non fiables.
 - Configurez les clés d'API via des variables d'environnement ou un gestionnaire de secrets — jamais dans les définitions YAML de crew.
 - Activez le chiffrement de la mémoire au repos (`EncryptedMemoryProviderDecorator`) pour les charges de travail sensibles.

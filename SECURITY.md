@@ -39,7 +39,15 @@ Vulnerabilities in these layers (allowlist bypass, SSRF filter bypass, VFS escap
 
 ## Hardening Recommendations
 
-- Keep dangerous tools (shell, code interpreter) **unregistered** unless required; they are not exposed as `IBaseTool` by default.
+- **`code_interpreter` is never exposed as an `IBaseTool`**: `SecureCodeInterpreterTool` is
+  registered as a concrete type only, so no agent can call it unless you expose it yourself.
+- **`shell_command` is different — it ships registered.** `AddOrkeonCodeTools()` registers it
+  as an `IBaseTool`, and both shipped runners (`orkeon run`, `orkeon-repl`) call that method
+  unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
+  **read-only** (`ls`, `cat`, `pwd`, `grep`… plus read-only `git` subcommands); interpreters
+  and mutating `git` stay off unless you set `Orkeon:Tools:Shell:AllowInterpreters`, which is
+  **RCE-equivalent** and makes the tool emit a security warning. To keep `shell_command` out
+  of an agent's reach entirely, compose your host without `AddOrkeonCodeTools()`.
 - Use `DockerSandbox` for any code-execution scenario with untrusted input.
 - Configure API keys via environment variables or a secret manager — never in YAML crew definitions.
 - Enable memory encryption at rest (`EncryptedMemoryProviderDecorator`) for sensitive workloads.
