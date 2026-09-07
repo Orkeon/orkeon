@@ -99,6 +99,17 @@ points at for untrusted code — started its container as root with the daemon's
 default capability set; the run line now always carries `--cap-drop=ALL`,
 `--security-opt=no-new-privileges` and `--pids-limit`.
 
+**Three more, on the same security surface.** The URL validator logged the credentials
+it had just refused: an embedded-credentials denial wrote the password into a Warning
+line, and the scheme and port denials logged the query string. Log lines now carry
+scheme, host and port only. The VFS analyzer could not see `using static System.IO.File;
+ReadAllText(p)` nor `FileStream fs = new(path, …)`, so both shapes escaped ORKVFS001-006;
+it now judges invocations on the resolved symbol and registers the target-typed creation
+form. And the sandbox's Roslyn denylist ignored `Environment.Exit`,
+`Environment.GetEnvironmentVariable` (the environment holds every API key the host
+resolved), `AppDomain.CurrentDomain.Load(bytes)`, the target-typed `Process p = new();`
+and `unsafe` used as a method modifier — all five are now flagged.
+
 **Gates.** `check-doc-claims.py` compares the CONTRIBUTING copies of the NuGet
 lineup (six copies now, not four) and checks the push order in each;
 `check-comment-accents.py` reaches unaccented French in C# comments, which is how
