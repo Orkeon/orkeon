@@ -29,7 +29,7 @@ un amont en pré-release).
 |---|---|
 | `Orkeon` | Le paquet ombrelle — les onze assemblies de la fermeture du cœur (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`) embarquées dans un seul nupkg. Une installation = le framework complet : agents, crews, six modes d'orchestration, 14 fournisseurs LLM, 6 stores mémoire, RAG, RaggableTree. Le découpage Clean Architecture reste une discipline d'arborescence source, pas un contrat de distribution. |
 | `Orkeon.Tools` | Les sept familles d'outils intégrés (`Analysis`, `Code`, `Data`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur qu'un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
-| `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. Dépendent d'`Orkeon`. |
+| `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. `Orkeon.Rag.Onnx` dépend d'`Orkeon` ; `Orkeon.Rag.Onnx.Model` n'a aucune dépendance (ressources embarquées seulement) et se référence à côté de lui. |
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
 | `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 137,6 Mo, sous la limite de taille de nuget.org. |
 
@@ -101,11 +101,14 @@ que `experiments/` consomme en mode packages :
 
 ## Archives d'installation (`release.yml`)
 
-Sur un tag `v*`, `release.yml` construit tous les artefacts d'installation, **smoke-teste les
-deux canaux d'onboarding sur de vrais runners**, et seulement ensuite les attache à la GitHub
-Release. Le pipeline est `installers → {smoke-windows, smoke-deb, smoke-macos, msi} → release` ;
-`workflow_dispatch` exécute la même chose sans la publication (pas de tag, donc pas de Release
-à alimenter). Le runner `orkeon-examples`, retiré, n'est **plus packagé** — le CLI `orkeon` le
+Sur un tag `v*`, `release.yml` construit tous les artefacts d'installation, **smoke-teste chaque
+canal d'onboarding sur un vrai runner** (zip CLI Windows, service Windows, paquet Debian,
+tarball macOS), et seulement ensuite les attache à la GitHub Release. Le pipeline est
+`installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
+release` ; derrière ces mêmes cinq jobs, `runners-image` pousse l'image conteneur
+`orkeon-runners` sur GHCR en parallèle de `release`, de sorte qu'un smoke rouge ne déplace
+ni la Release ni le tag `:latest`. `workflow_dispatch` exécute la même chose sans la
+publication (pas de tag, donc pas de Release à alimenter). Le runner `orkeon-examples`, retiré, n'est **plus packagé** — le CLI `orkeon` le
 remplace (`orkeon run crew.yaml` exécute les crews YAML de `examples/` ;
 `orkeon run script.ork.ts` exécute le DSL de scripting).
 

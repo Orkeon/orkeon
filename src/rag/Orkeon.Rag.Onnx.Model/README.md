@@ -11,7 +11,7 @@
 dotnet add package Orkeon.Rag.Onnx.Model --prerelease
 ```
 
-> Published to NuGet.org as part of the consolidated lineup (from `v1.0.0-rc.3`; earlier versions reached the GitHub Packages feed only); depends on the [`Orkeon`](https://www.nuget.org/packages/Orkeon) package — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> Published to NuGet.org as part of the consolidated lineup (from `v1.0.0-rc.3`; earlier versions reached the GitHub Packages feed only). It declares **no dependency**: it is a pure weights package, referenced next to [`Orkeon.Rag.Onnx`](https://www.nuget.org/packages/Orkeon.Rag.Onnx), which is the package that depends on [`Orkeon`](https://www.nuget.org/packages/Orkeon) — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
 
 
 **Offline story**: the weights and the WordPiece vocab are committed to this repository and

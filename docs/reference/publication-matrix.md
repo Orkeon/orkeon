@@ -28,7 +28,7 @@ runtimes, a pre-release upstream).
 |---|---|
 | `Orkeon` | The umbrella package — the eleven assemblies of the core closure (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`) embedded in one nupkg. One install = the complete framework: agents, crews, six orchestration modes, 14 LLM providers, 6 memory stores, RAG, RaggableTree. The Clean Architecture split stays a source-layout discipline, not a distribution contract. |
 | `Orkeon.Tools` | The seven built-in tool families (`Analysis`, `Code`, `Data`, `EventHub`, `FileSystem`, `Rag`, `Web`) in one nupkg. Separate from `Orkeon` **only for dependency weight**: the Data tools pull database drivers, PDF and spreadsheet libraries a consumer who never uses them should not inherit. Depends on `Orkeon`. |
-| `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. Depend on `Orkeon`. |
+| `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
 
@@ -98,10 +98,13 @@ NuGet.org lineup above **plus** the build-time and runner packages that stay off
 
 ## Installer archives (`release.yml`)
 
-On a `v*` tag, `release.yml` builds every installer artifact, **smokes the two onboarding
-channels on real runners**, and only then attaches everything to the GitHub Release. The
-pipeline is `installers → {smoke-windows, smoke-deb, smoke-macos, msi} → release`;
-`workflow_dispatch` runs
+On a `v*` tag, `release.yml` builds every installer artifact, **smokes each onboarding
+channel on a real runner** (Windows CLI zip, Windows service, Debian package, macOS
+tarball), and only then attaches everything to the GitHub Release. The pipeline is
+`installers → {smoke-windows, smoke-windows-service, smoke-deb, smoke-macos, msi} →
+release`; behind those same five jobs, `runners-image` pushes the `orkeon-runners`
+container image to GHCR in parallel with `release`, so a red smoke moves neither the
+Release nor the `:latest` tag. `workflow_dispatch` runs
 the same thing minus the publication (no tag, no Release to attach to). The retired
 `orkeon-examples` runner is **no longer packaged** — the `orkeon` CLI replaces it
 (`orkeon run crew.yaml` runs the `examples/` YAML crews; `orkeon run script.ork.ts` runs the
