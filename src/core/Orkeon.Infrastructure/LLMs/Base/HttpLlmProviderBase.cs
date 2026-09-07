@@ -455,6 +455,14 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
     /// Generates a streaming response. Override in derived classes for provider-specific SSE parsing.
     /// Default implementation falls back to non-streaming.
     /// </summary>
+    /// <remarks>
+    /// The buffered answer becomes one chunk — unless it is a refusal, which arrives as an empty
+    /// <see cref="LlmResponse.Content"/> with the reason in <see cref="LlmResponse.Metadata"/>, a
+    /// shape this signature cannot express. Yielding nothing would reproduce here, one layer up,
+    /// the silence <see cref="SupportsStreaming"/> was changed to remove: a stream that ends
+    /// normally while the provider had a sentence to say. So the refusal is thrown, in the family
+    /// <see cref="NotConfiguredForStreaming"/> and <see cref="StreamingRejectionAsync"/> already use.
+    /// </remarks>
     public virtual async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
         LlmConfig? config = null,
@@ -465,8 +473,29 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
         if (!string.IsNullOrEmpty(response.Content))
         {
             yield return response.Content;
+            yield break;
         }
+
+        if (BufferedFallbackRefusal(response) is { } refusal)
+            throw refusal;
     }
+
+    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
+    private const string ProviderErrorMetadataKey = "error";
+
+    /// <summary>
+    /// The exception a buffered-fallback stream must fail with when the buffered answer is a
+    /// refusal rather than an answer. Returns <see langword="null"/> when the answer is merely
+    /// empty: a model with nothing to say still ends its stream normally, and only that reading
+    /// of an empty sequence stays true.
+    /// </summary>
+    /// <param name="response">The buffered answer the fallback was going to yield.</param>
+    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
+        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
+           && value?.ToString() is { Length: > 0 } error
+            ? new HttpRequestException(
+                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
+            : null;
 
     /// <summary>
     /// Streams a multi-message chat completion. Default implementation is the

@@ -99,6 +99,14 @@ public sealed partial class RateLimitedLlmProvider : ILlmProvider, IStreamingLlm
     /// <c>MaxConcurrentRequests</c>. A non-streaming inner provider falls back to a
     /// buffered single-chunk stream (same throttling).
     /// </summary>
+    /// <remarks>
+    /// An unconfigured provider is exactly a non-streaming one — it declares
+    /// <c>SupportsStreaming = false</c> — so the fallback is the path its refusal takes, and that
+    /// refusal is an empty <c>Content</c> with the reason in the metadata. Yielding nothing would
+    /// hand the caller a stream that ended normally on silence, which is the confusion the
+    /// capability declaration was changed to remove; the refusal is thrown instead, in the same
+    /// family as the providers' own streaming failures.
+    /// </remarks>
     public async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt, LlmConfig? config = null,
         [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -113,8 +121,30 @@ public sealed partial class RateLimitedLlmProvider : ILlmProvider, IStreamingLlm
 
         var response = await _inner.GenerateAsync(prompt, config, cancellationToken).ConfigureAwait(false);
         if (!string.IsNullOrEmpty(response.Content))
+        {
             yield return response.Content;
+            yield break;
+        }
+
+        if (BufferedFallbackRefusal(response) is { } refusal)
+            throw refusal;
     }
+
+    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
+    private const string ProviderErrorMetadataKey = "error";
+
+    /// <summary>
+    /// The exception the buffered fallback must fail with when the wrapped provider refused
+    /// instead of answering. Returns <see langword="null"/> for a merely empty answer: a model
+    /// with nothing to say still ends its stream normally.
+    /// </summary>
+    /// <param name="response">The buffered answer the fallback was going to yield.</param>
+    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
+        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
+           && value?.ToString() is { Length: > 0 } error
+            ? new HttpRequestException(
+                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
+            : null;
 
     /// <inheritdoc cref="GenerateStreamingAsync" />
     public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(

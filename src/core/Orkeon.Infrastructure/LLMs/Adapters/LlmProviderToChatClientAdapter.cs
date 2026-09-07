@@ -62,16 +62,27 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         return GetResponseCoreAsync();
 
         async Task<ChatResponse> GetResponseCoreAsync()
-        {
-            var llmMessages = MapMessages(messages);
-            var config = MapOptions(options);
+            => (await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false)).Mapped;
+    }
 
-            var response = await _provider.ChatAsync(llmMessages, config, cancellationToken).ConfigureAwait(false);
+    /// <summary>
+    /// One buffered call to the provider, returning both the answer as the provider gave it and
+    /// its M.E.AI mapping. The streaming fallback needs the raw answer too: a refusal lives in
+    /// <see cref="LlmResponse.Metadata"/>, which a <see cref="ChatResponse"/> does not carry.
+    /// </summary>
+    private async Task<(LlmResponse Raw, ChatResponse Mapped)> CallProviderAsync(
+        IEnumerable<ChatMessage> messages, ChatOptions? options, CancellationToken cancellationToken)
+    {
+        var llmMessages = MapMessages(messages);
+        var config = MapOptions(options);
 
-            return TryBuildNativeToolCallResponse(response)
-                ?? TryBuildTextFallbackToolCallResponse(response)
-                ?? BuildPlainTextResponse(response);
-        }
+        var response = await _provider.ChatAsync(llmMessages, config, cancellationToken).ConfigureAwait(false);
+
+        var mapped = TryBuildNativeToolCallResponse(response)
+            ?? TryBuildTextFallbackToolCallResponse(response)
+            ?? BuildPlainTextResponse(response);
+
+        return (response, mapped);
     }
 
     /// <summary>
@@ -272,14 +283,38 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         }
         else
         {
-            // Fallback: execute non-streaming and return complete result as single chunk
-            var response = await GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
-            yield return new ChatResponseUpdate(ChatRole.Assistant, response.Text ?? string.Empty)
+            // Fallback: execute non-streaming and return complete result as single chunk.
+            // A refusal (no content, the reason in the metadata) is not a chunk: an empty update
+            // would tell the consumer the model said nothing, hiding the sentence the provider
+            // did produce, so it fails the enumeration the way the providers' own streaming
+            // paths fail a rejected request.
+            var (raw, mapped) = await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false);
+
+            if (string.IsNullOrEmpty(raw.Content) && BufferedFallbackRefusal(raw) is { } refusal)
+                throw refusal;
+
+            yield return new ChatResponseUpdate(ChatRole.Assistant, mapped.Text ?? string.Empty)
             {
-                ModelId = response.ModelId
+                ModelId = mapped.ModelId
             };
         }
     }
+
+    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
+    private const string ProviderErrorMetadataKey = "error";
+
+    /// <summary>
+    /// The exception the streaming fallback must fail with when the buffered answer is a refusal
+    /// rather than an answer. Returns <see langword="null"/> for a merely empty answer: a model
+    /// with nothing to say still ends its stream normally.
+    /// </summary>
+    /// <param name="response">The buffered answer the fallback was going to turn into one update.</param>
+    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
+        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
+           && value?.ToString() is { Length: > 0 } error
+            ? new HttpRequestException(
+                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
+            : null;
 
     /// <inheritdoc />
     public object? GetService(Type serviceType, object? serviceKey = null)

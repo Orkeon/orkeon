@@ -86,15 +86,83 @@ public class RateLimitedLlmProviderStreamingTests
         Assert.True(lease.Disposed);
     }
 
+    /// <summary>
+    /// D5-03: an unconfigured inner provider declares <c>SupportsStreaming = false</c>, so the
+    /// decorator takes the buffered fallback — and that fallback used to yield nothing at all,
+    /// because the missing-key answer carries its sentence in the metadata and an empty
+    /// <c>Content</c>. The caller then saw a stream that ended normally on silence, which is the
+    /// exact defect the capability declaration was changed to remove one layer down.
+    /// </summary>
+    [Fact]
+    public async Task GenerateStreaming_with_unconfigured_inner_fails_instead_of_ending_silently()
+    {
+        var inner = new UnconfiguredProvider();
+        using var lease = new TrackingLease();
+        var sut = new RateLimitedLlmProvider(inner, new AlwaysAcquire(lease));
+
+        var chunks = new List<string>();
+        var failure = await Assert.ThrowsAsync<HttpRequestException>(async () =>
+        {
+            await foreach (var chunk in sut.GenerateStreamingAsync("p", cancellationToken: TestContext.Current.CancellationToken))
+                chunks.Add(chunk);
+        });
+
+        Assert.Contains(UnconfiguredProvider.MissingKeyError, failure.Message, StringComparison.Ordinal);
+        Assert.Empty(chunks);
+        Assert.True(lease.Disposed);   // the lease is released even when the fallback fails
+    }
+
+    /// <summary>
+    /// The counterpart of the test above: a provider that genuinely answered nothing carries no
+    /// error, and that stays an empty stream — only a refusal becomes an exception.
+    /// </summary>
+    [Fact]
+    public async Task GenerateStreaming_with_an_empty_answer_and_no_error_still_ends_normally()
+    {
+        var inner = new NonStreamingProvider { Answer = "" };
+        var sut = new RateLimitedLlmProvider(inner, new AlwaysAcquire());
+
+        var chunks = new List<string>();
+        await foreach (var chunk in sut.GenerateStreamingAsync("p", cancellationToken: TestContext.Current.CancellationToken))
+            chunks.Add(chunk);
+
+        Assert.Empty(chunks);
+    }
+
     // ── fakes ────────────────────────────────────────────────────────────────
 
     private sealed class NonStreamingProvider : ILlmProvider
     {
         public string Name => "plain";
+        public string Answer { get; init; } = "buffered";
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
-            => Task.FromResult(new LlmResponse { Content = "buffered" });
+            => Task.FromResult(new LlmResponse { Content = Answer });
         public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
-            => Task.FromResult(new LlmResponse { Content = "buffered" });
+            => Task.FromResult(new LlmResponse { Content = Answer });
+    }
+
+    /// <summary>Shape of every provider whose API key is missing: no content, the reason in the metadata.</summary>
+    private sealed class UnconfiguredProvider : ILlmProvider
+    {
+        public const string MissingKeyError = "OpenAI API key is required";
+
+        public string Name => "unconfigured";
+
+        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(MissingKeyResponse);
+
+        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(MissingKeyResponse);
+
+        private static LlmResponse MissingKeyResponse => new()
+        {
+            Content = "",
+            Metadata = new Dictionary<string, object>
+            {
+                ["provider"] = "unconfigured",
+                ["error"] = MissingKeyError,
+            },
+        };
     }
 
     private sealed class TrackingLease : IDisposable
