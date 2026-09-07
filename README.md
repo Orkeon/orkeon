@@ -241,6 +241,10 @@ Around the core, dedicated projects cover hosting (`Orkeon.Hosting`, plus the `o
 | **Architecture deep dives** (plugins, scripting, VFS, security, RaggableTree) | [Architecture docs](docs/INDEX.md) · [ADRs](docs/adr/README.md) |
 | **Everything else** | [Documentation index](docs/INDEX.md) *(also available [in French](docs/fr/INDEX.md))* |
 
+These pages, together with the generated API reference, are published as a browsable site
+at **<https://orkeon.github.io/orkeon/>**. `docs.yml` deploys it on every `v*` tag, so the site goes
+live with the first tagged release and always documents a tagged version.
+
 ---
 
 ## Why Orkeon?
@@ -272,7 +276,7 @@ Known constraints are tracked in [docs/reference/limitations.md](docs/reference/
 
 ## Contributing
 
-Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request. Make sure all tests pass (`dotnet test Orkeon.sln`) and that new code follows the Clean Architecture conventions described in [CONTRIBUTING.md](CONTRIBUTING.md).
+Contributions are welcome. Please open an issue to discuss significant changes before submitting a pull request. Make sure the tests CI runs pass (`dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"` — [CONTRIBUTING.md](CONTRIBUTING.md) explains why the filter is not optional) and that new code follows the Clean Architecture conventions described in [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ### Building from source
 

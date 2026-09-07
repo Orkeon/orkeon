@@ -241,6 +241,10 @@ Autour du cœur, des projets dédiés couvrent l'hébergement (`Orkeon.Hosting`,
 | **L'architecture en profondeur** (plugins, scripting, VFS, sécurité, RaggableTree) | [Docs d'architecture](docs/fr/INDEX.md) · [ADRs](docs/fr/adr/README.md) |
 | **Tout le reste** | [Index de la documentation](docs/fr/INDEX.md) *(aussi disponible [en anglais](docs/INDEX.md))* |
 
+Ces pages, avec la référence d'API générée, sont publiées sous forme de site consultable à
+l'adresse **<https://orkeon.github.io/orkeon/>**. `docs.yml` le déploie à chaque tag `v*` : le site
+paraît donc avec la première release taguée et documente toujours une version taguée.
+
 ---
 
 ## Pourquoi Orkeon ?
@@ -272,7 +276,7 @@ Les contraintes connues sont suivies dans [docs/fr/reference/limitations.md](doc
 
 ## Contribuer
 
-Les contributions sont bienvenues. Ouvrez une issue pour discuter des changements significatifs avant de soumettre une pull request. Assurez-vous que tous les tests passent (`dotnet test Orkeon.sln`) et que le nouveau code suit les conventions de Clean Architecture décrites dans [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
+Les contributions sont bienvenues. Ouvrez une issue pour discuter des changements significatifs avant de soumettre une pull request. Assurez-vous que les tests joués par la CI passent (`dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"` — [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md) explique pourquoi le filtre n'est pas optionnel) et que le nouveau code suit les conventions de Clean Architecture décrites dans [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
 ### Compiler depuis les sources
 
