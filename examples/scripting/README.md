@@ -20,6 +20,14 @@ configured, so they are runnable without API keys.
 | `06-custom-tool-and-hooks.ork.ts` | `toolBuilder` + `onAgentStart` / `onAgentStop` |
 | `07-fsm-and-graph.ork.ts` | `stateMachine` and `stateGraph` literal forms |
 | `08-rag.ork.ts` | First-class `rag.ingest` / `rag.query` over the RAG subsystem (offline) |
+| `09-tools-and-act.ork.ts` | The three tool surfaces, then `ctx.llm.act` — the tool-calling loop |
+| `10-inputs-and-memory.ork.ts` | `globalThis.inputs`, agent state, crew memory, `ErrorAction.retry` |
+
+Every file above ends with `await crew.run()` — the **procedural** shape, where each agent's
+`.body()` runs and tasks are ignored. [`crew-review-desk/`](crew-review-desk/README.md) is
+the other one: a three-agent crew with tasks, a dependency chain and a deliverable, handed
+off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is
+arranged to prevent.
 
 `08-rag.ork.ts` ingests a corpus shipped in `data/08-rag/` and needs two extra
 flags for the full offline experience — a writable `/output` mount (persists
@@ -32,5 +40,12 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
   --mount "$(mktemp -d)":/output:rw --allow-external-mounts
 ```
 
-See the [scripting DSL architecture guide](../../docs/architecture/scripting.md)
-for the full DSL reference.
+`10-inputs-and-memory.ork.ts` reads `--inputs`, and falls back to a default without it:
+
+```bash
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/10-inputs-and-memory.ork.ts \
+  --inputs '{"topic":"espresso"}'
+```
+
+See [the scripting DSL architecture note](../../docs/architecture/scripting.md) for where
+the DSL sits.

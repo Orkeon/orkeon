@@ -27,9 +27,9 @@ runner démarre sans commande scriptée (juste `help`, `exit`, `clear`).
    Orkeon Scripted Commands REPL
 ==================================
 
-Type 'help' for the command list, 'help-cmd <name>' for a single command's signature.
+Type '/help' for the command list, '/help-cmd <name>' for a single command's signature.
 
-scripted> help
+scripted> /help
 
 Available commands:
 
@@ -42,18 +42,18 @@ Available commands:
     hello       Greet someone (or the world).
     help-cmd    Show detailed help for a scripted command (usage: help-cmd <name>).
 
-scripted> hello
+scripted> /hello
 Hello, world!
 
-scripted> hello --who=Ada
+scripted> /hello --who=Ada
 Hello, Ada!
 
-scripted> help-cmd hello
+scripted> /help-cmd hello
 hello — Greet someone (or the world).
 Arguments:
   --who  string  default: "world"
 
-scripted> exit
+scripted> /exit
 ```
 
 ## Comment ça marche
@@ -87,14 +87,54 @@ un agent **par son nom** au travers de `ctx.services.get("commands")` :
   introspection et contrôle des commandes en vol.
 
 ```
-scripted> ask hello            # → HELLO
-scripted> ask-bg hello         # launched (ticket t1)
-scripted> ps                   # t1 ask-bg echo running …
-scripted> result --ticket=t1   # [t1] HELLO
+scripted> /ask hello            # → HELLO
+scripted> /ask-bg hello         # launched (ticket t1)
+scripted> /ps                   # t1 ask-bg echo running …
+scripted> /result --ticket=t1   # [t1] HELLO
 ```
 
 Détails : `docs/architecture/cli-ts-commands.md` §« Dispatching commands to
 agents ».
+
+## Lancer une crew — la façade `script-host`
+
+`dispatch.cmd.ts` s'adresse à un **agent** ; `runcrew.cmd.ts` lance une **crew**. Ce sont
+deux services distincts, et cette distinction est tout le propos de la séparation entre un
+plan de contrôle et un moteur :
+
+| | service | ce que ça atteint |
+|---|---|---|
+| `dispatch.cmd.ts` | `ctx.services.get("commands")` | un agent vivant, par son nom |
+| `runcrew.cmd.ts` | `ctx.services.get("script-host")` | `<crews-dir>/<nom>/crew.ork.ts` |
+
+`--crews-dir` (répétable) donne au host les dossiers où chercher ; une crew nommée `review`
+est le fichier `crews/review/crew.ork.ts`. Ce que la commande passe en `input` arrive dans
+la crew comme `globalThis.inputs`.
+
+```bash
+dotnet run --project src/apps/Orkeon.ConsoleApp -- \
+    --runner=scripted-commands \
+    --commands-dir examples/cli-ts-commands \
+    --crews-dir    examples/cli-ts-commands/crews
+```
+
+```
+scripted> /crews
+review
+
+scripted> /review src/Program.cs
+src/Program.cs: source file — worth a read
+
+scripted> /review-bg examples/README.md
+launched (ticket t1)
+```
+
+- `/review` — **synchrone** : `runCrew(nom, input)` bloque et rend `{ ok, summary, error }`.
+- `/review-bg` — **asynchrone** : `runCrewAsync` rend un ticket tout de suite, et `completed(...)`
+  est rejoué à la fin. Même cycle de tickets que `commands.post`, donc `/ps`, `/inspect`,
+  `/result` et `/cancel` de `dispatch.cmd.ts` fonctionnent aussi dessus.
+
+La crew de démonstration n'appelle aucun LLM : tout ceci tourne sans clé d'API.
 
 ## Pour aller plus loin
 
