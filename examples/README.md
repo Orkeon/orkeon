@@ -75,7 +75,7 @@ Pre-configured profiles are available in `appsettings/` (see `appsettings/README
 |---------|------|----------|
 | **Docker Models (localhost)** | `appsettings/appsettings.json` | Default -- Docker Desktop Models on Windows/Mac |
 | **Docker Models (container)** | `appsettings/appsettings.docker-model-runner.local.json.example` | From inside a container (swap `localhost` for `host.docker.internal`) |
-| **OpenAI** | `appsettings/appsettings.openai.local.json.example` | OpenAI API (requires `OPENAI_API_KEY`) |
+| **OpenAI** | `appsettings/appsettings.openai.local.json.example` | OpenAI API (key in the copied file, or `ORKEON_Llm__ApiKey`) |
 | **DeepSeek / Z.AI GLM** | `appsettings/appsettings.{deepseek,glm,glm-medium}.local.json.example` | Cloud providers (see `appsettings/README.md`) |
 
 The committed default is `appsettings/appsettings.json`; the CLI picks it up
@@ -94,7 +94,7 @@ orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
 # OpenAI:
 cp examples/appsettings/appsettings.openai.local.json.example \
    examples/appsettings/appsettings.openai.local.json
-export OPENAI_API_KEY="sk-..."   # or put the key in the copied file
+export ORKEON_Llm__ApiKey="sk-..."   # or put the key in the copied file
 orkeon run examples/01-enterprise/01-research-assistant/config.yaml \
   --settings examples/appsettings/appsettings.openai.local.json
 ```

@@ -115,7 +115,7 @@ Celles que vous utiliserez vraiment :
 | `--settings <chemin>` | `-s` | Chemin de l'`appsettings.json` portant la config LLM. Optionnel — voir la [résolution des settings](#comment-les-settings-sont-résolus). |
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = échanges LLM & outils, `2` = debug complet. |
 | `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro` ou `rw`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
-| `--allow-external-mounts` | | Autorise des montages (et un `--config` / `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, les chemins externes sont refusés par garde-fou. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
+| `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, les chemins externes sont refusés par garde-fou. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
 | `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
 | `--inputs <json>` | | Entrées JSON inline transmises à un script comme variable globale `inputs` (voie `.ork.ts`). |
@@ -155,7 +155,7 @@ Quand vous omettez `--settings`, le runner cherche un `appsettings.json` dans ce
 ordre (premier trouvé gagne) :
 
 1. Le `--settings <chemin>` explicite, s'il est donné.
-2. L'`appsettings.json` voisin du fichier `--config`.
+2. L'`appsettings.json` voisin du fichier `<config>`.
 3. En remontant l'arborescence depuis le config, en cherchant à chaque niveau un
    sous-répertoire `appsettings/appsettings.json` — c'est ainsi qu'est trouvée la
    matrice de profils partagée `examples/appsettings/appsettings.json`
@@ -181,7 +181,7 @@ correctif :
 | `dotnet: command not found` (dans un script, alors que `dotnet` marche en interactif) | `dotnet` est un alias/fonction shell invisible des shells non interactifs | Mettez le SDK sur le `PATH` dans `~/.zprofile` / `~/.profile`, p. ex. `export PATH="$HOME/.dotnet:$PATH"`. |
 | `Connection refused (localhost:12434)` | Le profil par défaut vise Docker Model Runner, qui ne tourne pas | Démarrez Docker Model Runner, ou copiez un profil cloud (p. ex. `appsettings.deepseek.local.json`) et passez-le avec `--settings`. |
 | `401 (Unauthorized)` au restore depuis GitHub Packages | Le token `gh` n'a pas le scope `read:packages`, ou vous avez utilisé un PAT fine-grained | Utilisez un PAT **classique** avec `read:packages` (les tokens fine-grained ne sont pas supportés). Test : `curl -u <user>:$TOKEN https://nuget.pkg.github.com/Orkeon/orkeon.hosting/index.json` doit retourner `200`. |
-| `ERROR: --allow-external-mounts is required ...` | Votre `--config`, un `--mount` ou `--llm-log-path` pointe hors du répertoire de travail | Ajoutez `--allow-external-mounts` (ou posez `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), ou ramenez les chemins sous le cwd. |
+| `ERROR: --allow-external-mounts is required ...` | Votre chemin `<config>`, un `--mount` ou `--llm-log-path` pointe hors du répertoire de travail | Ajoutez `--allow-external-mounts` (ou posez `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), ou ramenez les chemins sous le cwd. |
 | `WARNING: No appsettings.json found. Using environment variables only.` | La résolution des settings n'a rien trouvé | Passez `--settings <chemin>` explicitement (voir l'[ordre de résolution](#comment-les-settings-sont-résolus)). |
 
 ## Étapes suivantes

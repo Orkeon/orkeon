@@ -113,7 +113,7 @@ The `orkeon` CLI options you will actually reach for:
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
 | `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
-| `--allow-external-mounts` | | Permit mounts (and a `--config` / `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
+| `--allow-external-mounts` | | Permit mounts (and a `<config>` path or `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
 | `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Several variables go space-separated after a single `-V` (a repeated flag is rejected). **YAML crews only** — ignored for `.ork.ts` scripts, which take `--inputs`. |
 | `--initial-context <text>` | | A free-form context string passed to the crew input. **YAML crews only** — ignored for `.ork.ts` scripts. |
 | `--inputs <json>` | | Inline JSON inputs forwarded to a script as the global `inputs` variable (`.ork.ts` path). |
@@ -151,7 +151,7 @@ When you omit `--settings`, the runner looks for an `appsettings.json` in this
 order (first hit wins):
 
 1. The explicit `--settings <path>`, if given.
-2. `appsettings.json` sitting next to the `--config` file.
+2. `appsettings.json` sitting next to the `<config>` file.
 3. Walking up the directory tree from the config, looking for an
    `appsettings/appsettings.json` sub-directory at each level — that is how the
    shared `examples/appsettings/appsettings.json` profile matrix is found
@@ -175,7 +175,7 @@ Symptoms you may hit on a fresh machine, with the exact message and fix:
 | `dotnet: command not found` (in a script, though `dotnet` works interactively) | `dotnet` is a shell alias/function not visible to non-interactive shells | Put the SDK on `PATH` in `~/.zprofile` / `~/.profile`, e.g. `export PATH="$HOME/.dotnet:$PATH"`. |
 | `Connection refused (localhost:12434)` | The default profile targets Docker Model Runner, which isn't running | Start Docker Model Runner, or copy a cloud profile (e.g. `appsettings.deepseek.local.json`) and pass it with `--settings`. |
 | `401 (Unauthorized)` when restoring from GitHub Packages | `gh` token lacks the `read:packages` scope, or you used a fine-grained PAT | Use a **classic** PAT with `read:packages` (fine-grained tokens are not supported). Test: `curl -u <user>:$TOKEN https://nuget.pkg.github.com/Orkeon/orkeon.hosting/index.json` must return `200`. |
-| `ERROR: --allow-external-mounts is required ...` | Your `--config`, a `--mount`, or `--llm-log-path` points outside the working directory | Add `--allow-external-mounts` (or set `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), or move the paths under the cwd. |
+| `ERROR: --allow-external-mounts is required ...` | Your `<config>` path, a `--mount`, or `--llm-log-path` points outside the working directory | Add `--allow-external-mounts` (or set `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`), or move the paths under the cwd. |
 | `WARNING: No appsettings.json found. Using environment variables only.` | Settings resolution found nothing | Pass `--settings <path>` explicitly (see [resolution order](#how-settings-are-resolved)). |
 
 ## Next steps
