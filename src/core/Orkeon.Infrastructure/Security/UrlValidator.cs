@@ -16,7 +16,7 @@ public sealed partial class UrlValidator : IUrlValidator
     private readonly UrlSecurityOptions _options;
     private readonly ILogger<UrlValidator> _logger;
 
-    private static readonly HashSet<string> BlockedHostnames = new(StringComparer.OrdinalIgnoreCase)
+    internal static readonly HashSet<string> BlockedHostnames = new(StringComparer.OrdinalIgnoreCase)
     {
         "localhost",
         "metadata.google.internal",
@@ -171,7 +171,15 @@ public sealed partial class UrlValidator : IUrlValidator
             host.EndsWith("." + domain, StringComparison.OrdinalIgnoreCase));
     }
 
-    private static bool IsPrivateIP(IPAddress address)
+    /// <summary>
+    /// Whether the address belongs to a range that must never be reachable from a tool.
+    /// <para>
+    /// Internal on purpose: <see cref="Guards.ToolGuard"/> is the second consumer in this
+    /// assembly and must judge an address exactly as this validator does. A third
+    /// hand-written table is how the IPv6 families got missed in the first place.
+    /// </para>
+    /// </summary>
+    internal static bool IsPrivateIP(IPAddress address)
     {
         // Handle IPv4-mapped IPv6 addresses
         if (address.IsIPv4MappedToIPv6)

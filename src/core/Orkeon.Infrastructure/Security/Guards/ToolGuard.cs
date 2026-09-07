@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using System.Net;
 using System.Text.RegularExpressions;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Services.Security;
@@ -15,9 +16,6 @@ public partial class ToolGuard : IGuardian
 
     [GeneratedRegex(@"(?:'\s*;\s*DROP|1\s*=\s*1|UNION\s+SELECT|OR\s+1\s*=\s*1|'\s*OR\s*'|--\s*$|/\*.*\*/|;\s*DELETE|;\s*UPDATE|;\s*INSERT|'\s*;\s*EXEC|xp_cmdshell)", RegexOptions.IgnoreCase)]
     private static partial Regex SqlInjectionPattern();
-
-    [GeneratedRegex(@"^(10\.\d{1,3}\.\d{1,3}\.\d{1,3}|172\.(1[6-9]|2[0-9]|3[01])\.\d{1,3}\.\d{1,3}|192\.168\.\d{1,3}\.\d{1,3}|127\.\d{1,3}\.\d{1,3}\.\d{1,3}|169\.254\.\d{1,3}\.\d{1,3}|0\.0\.0\.0|localhost)$", RegexOptions.IgnoreCase)]
-    private static partial Regex PrivateIpPattern();
 
     /// <summary>Initializes a new instance of <see cref="ToolGuard"/>.</summary>
     /// <param name="policyEngine">The policy engine used to retrieve per-crew/agent security policies.</param>
@@ -139,14 +137,30 @@ public partial class ToolGuard : IGuardian
 
     private static bool ContainsSsrfTarget(string value)
     {
-        // Try to extract host from URL
-        if (Uri.TryCreate(value, UriKind.Absolute, out var uri))
-        {
-            return PrivateIpPattern().IsMatch(uri.Host);
-        }
+        var host = Uri.TryCreate(value, UriKind.Absolute, out var uri) ? uri.Host : value;
+        return IsBlockedHost(host);
+    }
 
-        // Check raw value as host
-        return PrivateIpPattern().IsMatch(value);
+    /// <summary>
+    /// Judges a host with the same tables <see cref="UrlValidator"/> uses, rather than with
+    /// a table of its own. The regex this replaced covered IPv4 private ranges and the word
+    /// "localhost" only, so [::1], [::], the IPv4-mapped and NAT64 forms of the metadata
+    /// endpoint, and 100.64.0.0/10 all reached the tool.
+    /// </summary>
+    private static bool IsBlockedHost(string host)
+    {
+        if (string.IsNullOrWhiteSpace(host))
+            return false;
+
+        // Uri.Host keeps the brackets on an IPv6 literal; IPAddress.Parse does not want them.
+        var candidate = host.Length > 1 && host[0] == '[' && host[^1] == ']'
+            ? host[1..^1]
+            : host;
+
+        if (IPAddress.TryParse(candidate, out var address))
+            return UrlValidator.IsPrivateIP(address);
+
+        return UrlValidator.BlockedHostnames.Contains(host);
     }
 
     private static bool IsQueryArgument(string key) =>

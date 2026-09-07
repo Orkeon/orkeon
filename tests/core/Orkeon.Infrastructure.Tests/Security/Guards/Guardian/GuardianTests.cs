@@ -292,6 +292,42 @@ public class GuardianTests
         Assert.Equal(GuardThreatSeverity.Critical, result.Violations[0].Severity);
     }
 
+    [Theory]
+    // The Guardian's own SSRF check is the THIRD guard on this surface, next to
+    // UrlValidator and DefaultSsrfGuard. It used a hand-written IPv4 regex, so every
+    // family the other two learned on 2026-09-07 walked straight through it.
+    [InlineData("http://[::1]:6379/", "IPv6 loopback")]
+    [InlineData("http://[::]:6379/", "IPv6 unspecified")]
+    [InlineData("http://[::ffff:169.254.169.254]/latest/meta-data/", "IPv4-mapped metadata")]
+    [InlineData("http://[64:ff9b::a9fe:a9fe]/latest/meta-data/", "NAT64 metadata")]
+    [InlineData("http://100.64.0.1/admin", "CGNAT shared address space")]
+    public async Task ShouldReturnCriticalBlock_WhenSsrfTargetsAnAddressTheRegexNeverCovered(
+        string url, string family)
+    {
+        var guard = GuardianTestsFixture.CreateToolGuard();
+        var result = await guard.CheckAsync(GuardianTestsFixture.CreateContext(
+            phase: GuardPhase.ToolExecution, toolName: ToolHttpApi,
+            toolArgs: new Dictionary<string, object> { [ParamUrl] = url }), TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsAllowed, $"{family} ({url}) must be blocked");
+        Assert.Equal(GuardAction.Block, result.Action);
+        Assert.Equal(GuardThreatSeverity.Critical, result.Violations[0].Severity);
+    }
+
+    [Theory]
+    [InlineData("https://example.com/api")]
+    [InlineData("http://8.8.8.8/resolve")]
+    [InlineData("http://[2001:4860:4860::8888]/resolve")]
+    public async Task ShouldAllow_WhenSsrfTargetIsPublic(string url)
+    {
+        var guard = GuardianTestsFixture.CreateToolGuard();
+        var result = await guard.CheckAsync(GuardianTestsFixture.CreateContext(
+            phase: GuardPhase.ToolExecution, toolName: ToolHttpApi,
+            toolArgs: new Dictionary<string, object> { [ParamUrl] = url }), TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsAllowed, $"{url} is public and must not be blocked");
+    }
+
     [Fact]
     public async Task ShouldReturnCriticalBlock_WhenSsrfLocalhostDetected()
     {

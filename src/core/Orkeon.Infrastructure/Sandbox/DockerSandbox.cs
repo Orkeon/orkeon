@@ -197,10 +197,37 @@ public partial class DockerSandbox : ICodeSandbox
         await _fs.WriteAllTextAsync($"{vRunDir}/Program.cs", programCs, ct).ConfigureAwait(false);
     }
 
+    /// <summary>
+    /// Test seam over <see cref="BuildDockerArgs"/>: the container flags are a security
+    /// boundary, so they are pinned by assertion rather than by reading the source. The run
+    /// directory is irrelevant to the flags under test, so a fixed virtual path is passed.
+    /// </summary>
+    internal string BuildDockerArgsForTest(SandboxExecutionRequest request, long maxMemory, TimeSpan timeout)
+        => BuildDockerArgs("/tmp/orkeon-sandbox-probe", request, maxMemory, timeout);
+
+    /// <summary>
+    /// Process ceiling inside the container. A .NET build plus the built program stays far
+    /// below this; a fork bomb does not.
+    /// </summary>
+    private const int MaxProcessIds = 256;
+
     private string BuildDockerArgs(
         string physicalRunDir, SandboxExecutionRequest request, long maxMemory, TimeSpan timeout)
     {
         var sb = new StringBuilder("run --rm");
+
+        // Confinement that does not depend on the caller's permissions. SECURITY.md points
+        // at this sandbox for "any code-execution scenario with untrusted input", so the
+        // container must not start with the daemon's default capability set:
+        //   --cap-drop=ALL           the code needs none of them to compile and run
+        //   --security-opt=...       a setuid binary cannot re-grant what was dropped
+        //   --pids-limit             a fork bomb hits a wall instead of the host's PID space
+        // NOTE: the container still runs as root INSIDE its namespace. Adding --user needs
+        // an image that declares a usable non-root UID with a writable HOME and NuGet cache;
+        // the default SDK image does not, and forcing a UID here breaks `dotnet build`
+        // against the tmpfs. Dropping every capability is what closes the gap in the
+        // meantime -- root without capabilities cannot act on the host.
+        sb.Append(CultureInfo.InvariantCulture, $" --cap-drop=ALL --security-opt=no-new-privileges --pids-limit={MaxProcessIds}");
 
         // Memory limit
         sb.Append(CultureInfo.InvariantCulture, $" --memory={maxMemory}");
