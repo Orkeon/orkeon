@@ -7,7 +7,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-## [1.0.0-rc.3] - 2026-09-05
+## [1.0.0-rc.3] - 2026-09-07
 
 The release candidate that opens the repository. Since `1.0.0-rc.2`: the NuGet
 distribution collapses from a per-layer lineup into a single `Orkeon` package plus
@@ -24,6 +24,36 @@ accumulated since rc.2 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped
 across the twelve projects that carried them, and the seven `ORKVFS` analyzer rules ship
 with them.
 
+
+### Fixed — a provider that cannot stream now says so, and the clocks stop deciding tests
+
+- **`ILlmProvider.SupportsStreaming` follows `IsConfigured`** instead of being an
+  unconditional `true` on all 14 providers. An unconfigured provider used to declare
+  streaming, the caller took the SSE branch, and the branch ended without a single chunk —
+  a script's `for await` completed on a silence indistinguishable from a model with nothing
+  to say, while the very same provider's buffered path said "API key is required" out loud.
+  A direct streaming call on an unconfigured provider now **fails in the open**, and the
+  streaming and buffered paths render the same marker. Consumers that branch on the
+  declaration (`LlmProviderToChatClientAdapter`, `RateLimitedLlmProvider`, the scripting
+  `llm` facade) see it change with the configuration.
+- `AgentWorkloadTracker` and `TaskExecutionRouter` take an injected `TimeProvider`. Five
+  test classes stop measuring wall-clock time — three of them were assertion bugs rather
+  than timing ones.
+- Publishing hardening: both release workflows attach **build provenance attestations**,
+  the container base images are pinned **by digest** (Ollama stops floating on `:latest`),
+  `NuGetAudit` is declared rather than inherited as a side effect of `-warnaserror`, and a
+  tag carrying a prerelease suffix now publishes as a **prerelease** instead of becoming
+  `Latest` by omission.
+- The secret-scan allowlist stops masking whole files and **names the individual values** it
+  accepts, so a real credential added to an allowlisted file is still caught.
+- Two tests stopped depending on the machine: the `Retry-After` policy test reads a
+  **monotonic** `Stopwatch` instead of `DateTime.UtcNow`, and the crew-host start/stop test
+  waits for the hosted loop to announce itself instead of racing it.
+- The strict docfx build (`--warningsAsErrors`) is green again — the API landing page is
+  reachable from the table of contents, and the generated SonarQube reports joined the
+  site's content set instead of dangling as broken links.
+- The LLM campaign kit (`llmproviders-test/`) generates its reports and its regenerated
+  index in **English**; reports dated before 2026-09-06 stay French, and the index says so.
 
 ### Fixed — SonarQube campaign: 186 issues resolved, BLOCKER through MINOR **[breaking — constructor shapes]**
 
@@ -60,7 +90,9 @@ unchanged — this campaign moved no test and added no dead code.
   (`/tmp` is a virtual VFS path, not the shared OS temp directory).
 
 **Breaking (source):** four constructors that took more than seven dependencies now
-take a grouped record. No shim is provided — call sites move with them.
+take a single grouped dependency object — a `sealed record` for the three RAG ones, a
+`sealed class` for `CrewStrategyDependencies`. No shim is provided — call sites move
+with them.
 
 - `Orkeon.Infrastructure.Crew.Strategies.CrewStrategyDependencies` (new) replaces the
   `(taskRepository, agentRepository, executionService, memoryScope)` quadruple in
@@ -71,7 +103,8 @@ take a grouped record. No shim is provided — call sites move with them.
   collaborator tails of `StagedRagPipeline`, `CorrectiveRagPipeline` and
   `DefaultIngestionPipeline`.
 - The remaining `S107` sites in `Orkeon.Scripting` and `Orkeon.Hosting` follow the
-  same shape; the four `PublicAPI.Unshipped.txt` files record every move.
+  same shape; every move is declared in the affected projects' `PublicAPI.Shipped.txt`
+  (the `Unshipped` files stay header-only, as the release-readiness gate requires).
 
 Out of band and left as-is: 406 `INFO` issues, 404 of them `xUnit2033` (use the
 value `Assert.Single` returns instead of re-indexing) plus two `SYSLIB` hints.
