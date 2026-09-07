@@ -541,7 +541,7 @@
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>API keys</value></data>
   <data name="Studio.Settings.Intro" xml:space="preserve"><value>Keys live in your user environment variables, never in a file. Paste a key and remember it; the field empties once stored.</value></data>
-  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Dossiers autorisés tab) — your changes will be saved as soon as one is in place.</value></data>
+  <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copy</value></data>
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Temperature (optional)</value></data>
@@ -628,7 +628,7 @@
   <data name="Studio.Import.MountsDeclared" xml:space="preserve"><value>Declared folders</value></data>
   <data name="Studio.Import.MountsDeclaredDetail" xml:space="preserve"><value>{0} folder(s): {1}</value></data>
   <data name="Studio.Import.MountsNone" xml:space="preserve"><value>No declared folder</value></data>
-  <data name="Studio.Import.MountsNoneDetail" xml:space="preserve"><value>Allow its folders after adding — Mes équipes, Changer les dossiers.</value></data>
+  <data name="Studio.Import.MountsNoneDetail" xml:space="preserve"><value>Allow its folders after adding — My teams, Change the folders.</value></data>
   <data name="Studio.Create.TrialCommand" xml:space="preserve"><value>TRIAL COMMAND</value></data>
   <data name="Studio.Diagnostics.Copied" xml:space="preserve"><value>Copied!</value></data>
   <data name="Studio.Diagnostics.CardNovice" xml:space="preserve"><value>Installation check</value></data>
@@ -636,7 +636,7 @@
   <data name="Studio.Create.HelpStep1" xml:space="preserve"><value>Describe what you need in your own words — folders to read, the result you expect, how often. The assistant asks its questions until the brief is clear; nothing runs on your machine yet.</value></data>
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value></data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value></data>
-  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in Mes équipes.</value></data>
+  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in My teams.</value></data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Not saved — the file could not be written: {0}</value></data>
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Team exported to {0}</value></data>

@@ -40,6 +40,38 @@ public sealed class StudioStringsResxDriftTests
         Assert.True(failures.Count == 0, string.Join(Environment.NewLine, failures));
     }
 
+    /// <summary>
+    /// The neutral culture is the English one, screen names included. A value that names a
+    /// button in French sends the English reader hunting for a label that screen never
+    /// shows — "Dossiers autorises" where the tab reads "Authorized folders" — and neither
+    /// parity nor drift sees it, because the key is there and every satellite agrees with
+    /// it. An accented letter is the cheap tell, and the one this catalogue can afford:
+    /// its English values are otherwise plain ASCII plus typographic punctuation.
+    /// </summary>
+    [Fact]
+    public void Should_SpeakEnglishOnly_InTheNeutralCulture()
+    {
+        var offenders = ReadEnglishResx()
+            .Where(entry => CarriesAnAccentedLetter(entry.Value))
+            .Select(entry => $"{entry.Key}: {entry.Value}")
+            .Order()
+            .ToList();
+
+        Assert.True(
+            offenders.Count == 0,
+            $"Non-English text in Strings.resx:{Environment.NewLine}{string.Join(Environment.NewLine, offenders)}");
+    }
+
+    /// <summary>
+    /// The alphabet the repository's own comment gate polices (scripts/check-comment-accents.py):
+    /// Latin-1 Supplement letters plus Latin Extended-A, minus the multiplication and division
+    /// signs that sit inside that block. Em dashes, ellipses and quotation marks are punctuation,
+    /// not accents, and the English catalogue leans on them everywhere.
+    /// </summary>
+    private static bool CarriesAnAccentedLetter(string value) =>
+        value.Any(c => c is (>= '\u00c0' and <= '\u00ff' and not '\u00d7' and not '\u00f7')
+                         or (>= '\u0100' and <= '\u017f'));
+
     [Fact]
     public void Should_HaveNoOrphanCoreOrVmKey_InTheResx()
     {
