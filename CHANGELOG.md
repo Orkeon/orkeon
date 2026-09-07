@@ -25,6 +25,77 @@ across the twelve projects that carried them, and the seven `ORKVFS` analyzer ru
 with them.
 
 
+### Fixed — the final pre-publication review: what eleven reviewers found in the tree they were about to make public
+
+**Security.** Web tools no longer share the host's ambient `HttpClient`:
+`AddOrkeonWebTools` registers its own named client
+(`WebToolExtensions.HttpClientName`) with `AllowAutoRedirect = false`, closing an
+SSRF-by-redirect hole where a validated first hop could redirect a request to a
+metadata endpoint the guard never saw. The RAG `WebPageLoader` gained the guard
+it never had: it validates through `IUrlValidator` before any fetch and **fails
+closed** when no validator is registered, so `rag_ingest` can no longer be
+pointed at `169.254.169.254`. Both SSRF guards learned the IPv6 addresses they
+were letting through -- `::`, `ff00::/8` multicast, the `64:ff9b::/96` NAT64
+prefix, and IPv4-compatible `::x.y.z.w` forms judged against the IPv4 table --
+and a new test pins the two tables against each other so they cannot drift.
+`http_api` now runs LLM-supplied headers through the header sanitizer instead of
+forwarding them verbatim, with a default sanitizer backing every construction
+shape, so a model can no longer set `Host` or `Cookie` or smuggle a CRLF. The
+shell tool clears the child's environment down to a named allowlist rather than
+handing it every variable the host process holds, and its read-only `git`
+guarantee inspects every token instead of the subcommand alone (`git log
+--output=/tmp/x` was a write). `LogSanitizer` learned the key shapes this
+repository actually ships -- underscores inside keys, `xai-`, `hf_`, `tgp_v1_`,
+`tvly-`, `xox[abp]-`, `AIza`, and the dotted DashScope form -- and the two
+`sk-` patterns became one, which also fixed a case where the narrower pattern
+matched first and left the tail of a key in the log.
+
+**Contracts that lied.** `SandboxOptions.RequireHumanApproval` and
+`PreferredSandbox` were public, documented, bound from configuration and read by
+nothing; an option that promises a human gate and does nothing is worse than no
+option, so both are **removed**. `LlmConfig.ApiKey` stopped being `[Obsolete]`:
+it steered every caller to `ApiKeySecretName`, which the framework never
+resolves, so following the compiler produced an unconfigured provider --
+`ApiKeySecretName` is now documented as reserved and the limitation is recorded.
+Azure OpenAI's direct streaming path threw instead of ending on silence, joining
+what the other providers already did; and the three buffered streaming fallbacks
+(`RateLimitedLlmProvider`, `HttpLlmProviderBase`'s default, the `IChatClient`
+adapter) stopped swallowing a provider's refusal and re-emitting it as an empty
+stream.
+
+**Distribution.** Both tool packages redistribute ONNX model weights, and neither
+carried `THIRD-PARTY-NOTICES.md`; the notices now travel with them, in the two
+nupkgs, the installer archives and the Debian package. The package-closure gate
+walks the whole transitive `ProjectReference` tree, so an assembly that ships in
+no lineup package fails the gate instead of reaching a consumer as a
+`FileNotFoundException`.
+
+**Command line.** `orkeon --help`, `orkeon help` and a bare `orkeon` print a
+usage page listing every verb and exit 0, instead of listing nothing and exiting
+1; an unknown first token is rejected by name rather than falling through to
+`run`.
+
+**Studio.** Three English catalogue values still named French buttons; the
+orphan-key drift gate filtered on a key prefix no key carries, so it checked
+nothing; and a resumed forge session dropped most of the metrics
+`last-run.json` carries.
+
+**Documentation.** The pages stopped describing a repository that does not
+exist: the install lines carry `--prerelease`, the phantom `--config` flag became
+the positional `<config>` the CLI really takes, `examples/README.md` names the
+environment variable the runtime actually reads, the release pipeline is drawn
+from `release.yml`'s own job graph, the quality-gate policy dates its
+measurements against the September report, `SECURITY.md` admits that
+`shell_command` ships registered, the runner logging default is Warning and says
+so, the English Studio page quotes the English catalogue, and the documentation
+site has a published address. Every `src` project has a README.
+
+**Gates.** `check-doc-claims.py` compares the CONTRIBUTING copies of the NuGet
+lineup (six copies now, not four) and checks the push order in each;
+`check-comment-accents.py` reaches unaccented French in C# comments, which is how
+twenty-seven comments quoting French UI labels had survived the catalogue
+rewrite.
+
 ### Fixed — a provider that cannot stream now says so, and the clocks stop deciding tests
 
 - **`ILlmProvider.SupportsStreaming` follows `IsConfigured`** instead of being an
