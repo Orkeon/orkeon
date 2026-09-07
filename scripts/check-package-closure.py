@@ -34,7 +34,7 @@ Usage:
     python3 scripts/check-package-closure.py --source-only
 
 `--lineup` defaults to LINEUP below. publish.yml still spells the list out, and
-scripts/check-doc-claims.py fails the build if any of its four hand-written copies
+scripts/check-doc-claims.py fails the build if any of its six hand-written copies
 (this constant, the two publish.yml lists, the publication matrix + its FR mirror)
 ever drifts from the others.
 """

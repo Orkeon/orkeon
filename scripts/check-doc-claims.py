@@ -7,7 +7,7 @@ version string). A mismatch fails the build with an actionable message.
 
 It also carries two release-safety gates that need no build, so CI can run them on
 every pull request through this one step (LOT K): the NuGet lineup must read the same
-in its four hand-maintained copies, and scripts/check-package-closure.py's source-mode
+in its six hand-maintained copies, and scripts/check-package-closure.py's source-mode
 checks must pass -- otherwise a closure regression is only discovered by publish.yml,
 on a tag that is already cut.
 
@@ -120,7 +120,7 @@ def expect_absent(path: str, pattern: str, why: str) -> None:
         fail(f"{hit}: stale pattern /{pattern}/ ({why})")
 
 
-# --- NuGet lineup: four hand-written copies, one truth ------------------------------------
+# --- NuGet lineup: six hand-written copies, one truth ------------------------------------
 
 def load_closure_module():
     """scripts/check-package-closure.py is not an importable module name (hyphens), and
@@ -168,10 +168,30 @@ def lineup_from_matrix(path: str) -> list[str]:
     return ids
 
 
+def lineup_from_contributing(path: str) -> list[str]:
+    """The PackageIds spelled out in CONTRIBUTING's release process, in push order.
+    This copy is prose rather than a table or a shell loop, which is exactly why it was
+    the one nobody compared: a maintainer following the release steps reads it, and it
+    is the only copy that also states the push order in words."""
+    text = read(path)
+    heading = r"^## Release Process$" if not path.endswith(".fr.md") else r"^## Processus de release$"
+    m = re.search(heading, text, flags=re.M)
+    if not m:
+        fail(f"{path}: no release-process section heading found")
+        return []
+    section = re.split(r"^## ", text[m.end():], maxsplit=1, flags=re.M)[0]
+    ids: list[str] = []
+    for pkg_id in re.findall(r"`(Orkeon[A-Za-z0-9.]*)`", section):
+        if pkg_id not in ids:
+            ids.append(pkg_id)
+    return ids
+
+
 def check_lineup_copies(canonical: list[str]) -> None:
-    """The six lineup ids are typed independently in four places and nothing compared
+    """The six lineup ids are typed independently in six places and nothing compared
     them until now: publish.yml's closure-gate arguments, publish.yml's push loop, the
-    publication matrix (EN + its FR mirror), and check-package-closure.py's LINEUP.
+    publication matrix (EN + its FR mirror), CONTRIBUTING's release process (EN + FR),
+    and check-package-closure.py's LINEUP.
     Any of them going stale is how a package silently stops being published -- or worse,
     keeps being published after the matrix says it was discontinued."""
     copies = {
@@ -181,6 +201,9 @@ def check_lineup_copies(canonical: list[str]) -> None:
             lineup_from_matrix("docs/reference/publication-matrix.md"),
         "docs/fr/reference/publication-matrix.md (tableau du lineup)":
             lineup_from_matrix("docs/fr/reference/publication-matrix.md"),
+        "CONTRIBUTING.md (release process)": lineup_from_contributing("CONTRIBUTING.md"),
+        "CONTRIBUTING.fr.md (processus de release)":
+            lineup_from_contributing("CONTRIBUTING.fr.md"),
     }
     for where, ids in copies.items():
         if not ids:
@@ -191,11 +214,16 @@ def check_lineup_copies(canonical: list[str]) -> None:
 
     # The push order is load-bearing, not cosmetic: `Orkeon` must go first because every
     # other lineup package depends on it and NuGet orders nothing (the rc.1/rc.2 shape).
-    push = copies[".github/workflows/publish.yml (NuGet.org push loop)"]
-    if push and push[0] != canonical[0]:
-        fail(f".github/workflows/publish.yml: the push loop starts with {push[0]!r}; "
-             f"{canonical[0]!r} must be pushed first (its dependents would expose an "
-             f"unrestorable package otherwise)")
+    ordered = [
+        ".github/workflows/publish.yml (NuGet.org push loop)",
+        "CONTRIBUTING.md (release process)",
+        "CONTRIBUTING.fr.md (processus de release)",
+    ]
+    for where in ordered:
+        ids = copies[where]
+        if ids and ids[0] != canonical[0]:
+            fail(f"{where}: the lineup starts with {ids[0]!r}; {canonical[0]!r} must come "
+                 f"first (its dependents would expose an unrestorable package otherwise)")
 
 
 def main() -> int:
@@ -262,7 +290,7 @@ def main() -> int:
         expect_absent(path, r"\b12(th|e|ᵉ)? (LLM )?(provider|fournisseur)", "Gemini is the 13th provider")
 
     # Release-safety gates that need no build, so they run on every PR here rather than
-    # only on the tag (LOT K): the four copies of the NuGet lineup, and the csproj-only
+    # only on the tag (LOT K): the six copies of the NuGet lineup, and the csproj-only
     # half of the package-closure gate that publish.yml otherwise runs after `dotnet pack`.
     closure = load_closure_module()
     check_lineup_copies(closure.LINEUP)
