@@ -25,6 +25,33 @@ across the twelve projects that carried them, and the seven `ORKVFS` analyzer ru
 with them.
 
 
+### Fixed — the ONNX crash CI had been tolerating was a call into a disposed session
+
+`LocalEmbeddingProvider`, shipped in the `Orkeon.Tools.Embeddings.Local` package, set a
+`_disposed` flag in `Dispose()` and never read it again. `EmbedBatchAsync` and
+`Dimensions` went on to use the `LocalEmbedder` whose native ONNX session had just been
+freed. Both now throw `ObjectDisposedException`, so a disposed provider refuses the call
+instead of dereferencing freed memory — which for a library means it can no longer take
+its host process down at shutdown.
+
+The visible symptom was a test suite that killed its own process.
+`Dispose_Releases_Embedder` asserted that a disposed provider "raises any exception",
+an assertion written over undefined behaviour. On a warm heap the freed session returned
+nonsense (`OnnxRuntimeException: input name cannot be empty`); on a dirty one it was a
+SIGSEGV. Measured: the class crashed 5 runs out of 5, while each of its tests run alone
+crashed 0 out of 3 — the crash needed the earlier tests to dirty the heap first. After
+the fix, 17 consecutive runs exit 0 with all 11 tests green. The test now asserts
+`ObjectDisposedException` exactly, and a second one covers `Dimensions`.
+
+That crash had been recorded as an ONNX Runtime teardown artefact (PUB-17 / SONAR-14).
+`ci.yml` and `publish.yml` each carried a step tolerating exit 139 whenever "every
+discovered test was accounted for" — but the accounting came from the crashed process
+itself, so a truncated run always matched, and a crash landing before the first result
+reported zero tests and failed the step anyway, which is how the CI run of 2026-09-07
+went red. Both steps are plain `dotnet test` runs again, `integration.yml` no longer
+excludes the project from the nightly sweep, and `docs/reference/limitations.md` (EN+FR)
+now records what the crash was instead of what it was taken for.
+
 ### Fixed — the final pre-publication review: what eleven reviewers found in the tree they were about to make public
 
 **Security.** Web tools no longer share the host's ambient `HttpClient`:

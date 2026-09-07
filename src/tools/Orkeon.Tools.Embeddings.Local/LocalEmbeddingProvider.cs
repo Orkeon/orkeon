@@ -115,13 +115,28 @@ public sealed class LocalEmbeddingProvider : IEmbeddingProvider, IDisposable
     /// <c>"probe"</c> and caching the result. Subsequent reads return the cached value.
     /// For BGE-micro-v2 this is <c>384</c>.
     /// </summary>
-    public int Dimensions => _dimensions.Value;
+    /// <exception cref="ObjectDisposedException">The provider has been disposed.</exception>
+    public int Dimensions
+    {
+        get
+        {
+            ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
+            return _dimensions.Value;
+        }
+    }
 
     /// <inheritdoc />
+    /// <exception cref="ObjectDisposedException">The provider has been disposed.</exception>
     public Task<IReadOnlyList<ReadOnlyMemory<float>>> EmbedBatchAsync(
         IReadOnlyList<string> texts,
         CancellationToken ct)
     {
+        // Mandatory before anything reaches _embedder: the wrapped LocalEmbedder owns a
+        // native ONNX session, and calling into it after Dispose() dereferences freed
+        // memory. That is undefined behaviour, not an exception -- observed as a bogus
+        // OnnxRuntimeException on a warm heap and as a process-killing SIGSEGV on a
+        // dirty one.
+        ObjectDisposedException.ThrowIf(Volatile.Read(ref _disposed) != 0, this);
         ArgumentNullException.ThrowIfNull(texts);
         if (texts.Count == 0)
             return Task.FromResult<IReadOnlyList<ReadOnlyMemory<float>>>([]);

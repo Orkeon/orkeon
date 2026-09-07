@@ -108,11 +108,22 @@ public sealed class LocalEmbeddingProviderTests
         var provider = CreateDefaultProvider();
         provider.Dispose();
 
-        // Upstream contract validation: SmartComponents.LocalEmbeddings.LocalEmbedder
-        // does not document a guaranteed exception type after Dispose(). We therefore
-        // assert that ANY exception is raised — the precise type is irrelevant; what
-        // matters is that the disposed embedder refuses to serve a new call.
-        await Assert.ThrowsAnyAsync<Exception>(
+        // The provider must refuse the call itself. Letting it reach the disposed
+        // LocalEmbedder means dereferencing a freed native ONNX session: undefined
+        // behaviour that takes the whole process down with a SIGSEGV depending on what
+        // the process allocated beforehand — so the exception type is asserted exactly.
+        await Assert.ThrowsAsync<ObjectDisposedException>(
             () => provider.EmbedBatchAsync(["hello"], CancellationToken.None));
+    }
+
+    [Fact]
+    public void Dimensions_After_Dispose_Throws()
+    {
+        var provider = CreateDefaultProvider();
+        provider.Dispose();
+
+        // Same reason as above: the lazy probe embeds a literal, so an unguarded read
+        // would call into the freed session.
+        Assert.Throws<ObjectDisposedException>(() => provider.Dimensions);
     }
 }

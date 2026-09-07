@@ -18,10 +18,10 @@
 # container will not start, so the run stays green with a full test total while having
 # exercised no database at all; the last step therefore asserts, against the local image
 # store, that Testcontainers really pulled and started them. See its comment.
-#   - Embeddings.Local is left out: its 8 ONNX tests crash the process at exit 139
-#     after passing, and ci.yml already runs exactly those on every push with a guard
-#     that tells that crash apart from a real failure. Repeating them here would only
-#     mean a nightly that is red for a reason we already accept.
+#   - Embeddings.Local used to be left out here, because its ONNX tests crashed the
+#     process at exit 139. That crash was a call into a disposed native session, not a
+#     property of the runtime; it is fixed, the suite exits 0, and the sweep now
+#     covers it like any other.
 name: Integration (nightly)
 on:
   schedule:
@@ -75,7 +75,7 @@ jobs:
         run: |
           set +e
           out="$(dotnet test Orkeon.sln -c Release --no-build \
-            --filter "(Category=Integration|Category=Slow)&FullyQualifiedName!~Orkeon.Tools.Embeddings.Local" \
+            --filter "Category=Integration|Category=Slow" \
             -- --ignore-exit-code 8 --no-ansi 2>&1)"
           rc=$?
           echo "$out"

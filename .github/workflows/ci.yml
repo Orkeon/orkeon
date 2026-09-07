@@ -8,12 +8,9 @@
 #   - Category=Integration → Testcontainers DB tests (pull GBs of MsSql/Postgres/
 #     MySql/MariaDb/MongoDb images — the actual cause of "No space left on device",
 #     plus the ~26 min runtime). They stay runnable locally / in a nightly job.
-#   - Category=Slow — which now includes the reason Embeddings.Local used to be
-#     excluded wholesale: the crash comes from its 8 Slow tests, the ones that boot the
-#     real ONNX model, and from those alone (measured: 3/3 crash with only them, 5/5
-#     clean without them). They get their own step below, which tolerates that one
-#     crash and nothing else; the assembly's other 28 tests now run with everyone
-#     else's instead of being skipped by a name filter.
+#   - Category=Slow — the tests that boot the real ONNX model. They get their own step
+#     below so a native-runtime failure names itself instead of dissolving into a
+#     solution-wide run; the assembly's other 28 tests run with everyone else's.
 #
 # `dotnet test` here drives Microsoft.Testing.Platform, not VSTest: the .NET 10 SDK
 # refuses the VSTest target for MTP test projects outright ("Testing with VSTest target
@@ -71,26 +68,14 @@ jobs:
       - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
       # Unit + fast tests only (see header for what's excluded and why).
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
-      # The 8 ONNX tests of Embeddings.Local, alone. They all pass and the native
-      # runtime then takes the process down (SIGSEGV, exit 139) — a teardown artefact
-      # tracked in PUB-17/SONAR-14, not a test failure. PUB-17 T3: no blanket
-      # continue-on-error; this step reads the runner's own accounting and tolerates the
-      # crash ONLY when every discovered test was accounted for and none failed. A run
-      # that dies mid-suite leaves total > succeeded + skipped and stays red.
-      - name: Test Embeddings.Local ONNX suite (tolerate the crash only after green results)
-        run: |
-          set +e
-          out="$(dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow" 2>&1)"
-          rc=$?
-          echo "$out"
-          if [ $rc -eq 0 ]; then exit 0; fi
-          field() { printf '%s\n' "$out" | sed -n "s/^[[:space:]]*$1:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p" | tail -1; }
-          total=$(field total); failed=$(field failed); ok=$(field succeeded); skipped=$(field skipped)
-          : "${total:=0}"; : "${failed:=-1}"; : "${ok:=0}"; : "${skipped:=0}"
-          if { [ "$rc" -eq 139 ] || printf '%s\n' "$out" | grep -q "Exit code: 139"; } \
-             && [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$((ok + skipped))" -eq "$total" ]; then
-            echo "::warning::Embeddings.Local: $ok/$total ONNX tests passed, then the native runtime crashed the process (exit 139 — known issue, PUB-17/SONAR-14). Treated as green."
-            exit 0
-          fi
-          echo "::error::Embeddings.Local run failed (exit $rc, $failed failed, $ok/$total accounted for) — this is not the known post-green ONNX crash."
-          exit $rc
+      # The ONNX tests of Embeddings.Local, alone, so a native-runtime failure names
+      # itself. This step used to tolerate a SIGSEGV (exit 139) held to be an ONNX
+      # teardown artefact. It was not one: Dispose_Releases_Embedder called straight
+      # into the freed native session, and that read landed wherever the heap was
+      # dirty — often before a single result had been reported, which is how the
+      # 2026-09-07 run failed with "Zero tests ran". Worse, the accounting this step
+      # trusted came from the crashed process itself, so the truncated total always
+      # matched succeeded + skipped and no lost test could ever be seen. The provider
+      # now throws ObjectDisposedException instead of dereferencing freed memory, and
+      # the suite exits 0 — 17 runs in a row. Any exit code is a failure again.
+      - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow"

@@ -19,9 +19,9 @@
 # Hosted runners only have ~14 GB free disk; this repo's native deps need more, so
 # the first step frees ~20 GB. The test phase runs unit + fast tests only — it
 # EXCLUDES Category=Integration (Testcontainers DB tests that pull GBs of DB images
-# and caused "No space left on device") and Category=Slow, the latter carrying the 8
-# Embeddings.Local tests whose native ONNX runtime crashes the process after they pass
-# (exit 139); those run in a step of their own that tolerates that one shape.
+# and caused "No space left on device") and Category=Slow, the latter carrying the
+# Embeddings.Local tests that boot the real ONNX model; those run in a step of their
+# own so a native-runtime failure names itself.
 # `dotnet test` drives Microsoft.Testing.Platform (global.json), not VSTest — see
 # ci.yml's header for what that changes about filters and flags.
 name: Publish packages
@@ -77,27 +77,11 @@ jobs:
       # Microsoft.Testing.Platform via global.json, no by-name project exclusion —
       # a filter matching zero tests in a module is an error there, not a no-op.
       - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
-      # The 8 ONNX tests of Embeddings.Local, alone: they pass and the native runtime
-      # then crashes the process (exit 139). Only that shape is tolerated — every
-      # discovered test accounted for, none failed — so a real failure still blocks the
-      # release (PUB-17 T3, same guard as ci.yml).
-      - name: Test Embeddings.Local ONNX suite (tolerate the crash only after green results)
-        run: |
-          set +e
-          out="$(dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow" 2>&1)"
-          rc=$?
-          echo "$out"
-          if [ $rc -eq 0 ]; then exit 0; fi
-          field() { printf '%s\n' "$out" | sed -n "s/^[[:space:]]*$1:[[:space:]]*\([0-9][0-9]*\)[[:space:]]*$/\1/p" | tail -1; }
-          total=$(field total); failed=$(field failed); ok=$(field succeeded); skipped=$(field skipped)
-          : "${total:=0}"; : "${failed:=-1}"; : "${ok:=0}"; : "${skipped:=0}"
-          if { [ "$rc" -eq 139 ] || printf '%s\n' "$out" | grep -q "Exit code: 139"; } \
-             && [ "$total" -gt 0 ] && [ "$failed" -eq 0 ] && [ "$((ok + skipped))" -eq "$total" ]; then
-            echo "::warning::Embeddings.Local: $ok/$total ONNX tests passed; native-runtime crash at exit 139 tolerated (known issue, PUB-17/SONAR-14)."
-            exit 0
-          fi
-          echo "::error::Embeddings.Local run failed (exit $rc, $failed failed, $ok/$total accounted for) — not the known post-green ONNX crash. Release blocked."
-          exit $rc
+      # The ONNX tests of Embeddings.Local, alone, so a native-runtime failure names
+      # itself and blocks the release. The exit-139 tolerance this step used to carry
+      # is gone with its cause: the crash was a call into a disposed native session,
+      # not an ONNX teardown artefact (see ci.yml's step for the full account).
+      - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow"
       - run: dotnet pack  Orkeon.sln -c Release -o artifacts /p:ContinuousIntegrationBuild=true
       # Package-closure gate (PUB-25): the public lineup must be restorable (no Orkeon.*
       # dependency outside the lineup — the rc.1/rc.2 NU1101 incident), and the umbrella

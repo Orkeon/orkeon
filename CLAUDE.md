@@ -50,12 +50,12 @@ dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Data.Tests/Orkeon.Tools.Data.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.FileSystem.Tests/Orkeon.Tools.FileSystem.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
-dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj   # local BGE ONNX (native runtime — run on host/CI, not in a sandbox; the process exits 139 at teardown, see docs/reference/limitations.md)
+dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj   # local BGE ONNX (loads the ONNX Runtime native library — see docs/reference/limitations.md)
 
 # Run RAG subsystem tests
 dotnet test tests/rag/Orkeon.Rag.Abstractions.Tests/Orkeon.Rag.Abstractions.Tests.csproj
 dotnet test tests/rag/Orkeon.Rag.Tests/Orkeon.Rag.Tests.csproj
-dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (native runtime — run on host/CI, not in a sandbox, like Orkeon.Tools.Embeddings.Local.Tests above)
+dotnet test tests/rag/Orkeon.Rag.Onnx.Tests/Orkeon.Rag.Onnx.Tests.csproj   # ONNX cross-encoder (loads the ONNX Runtime native library, like Orkeon.Tools.Embeddings.Local.Tests above)
 dotnet test tests/tools/Orkeon.Tools.Rag.Tests/Orkeon.Tools.Rag.Tests.csproj
 
 # RAG offline evaluation (profiles fast/balanced/quality/corrective/adaptive, golden dataset)
