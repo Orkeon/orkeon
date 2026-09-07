@@ -218,7 +218,7 @@ readable by the CLI — you can switch between the two at any point.
 
 | Platform | Command | Ships in | What it gives you |
 |---|---|---|---|
-| **Windows** | `orkeon-studio` | the `win-x64` zip and the MSI | A desktop window with a sidebar of screens — settings editor (presets, sections, mounts, raw JSON, diagnostic) and crew launcher (run + history) — with light/dark theme, EN/FR language toggle and a guided tour. The MSI also registers an **"Orkeon Studio" Start-menu shortcut**, so it takes no terminal at all to start |
+| **Windows** | `orkeon-studio` | the `win-x64` zip and the MSI | A desktop window with a sidebar of screens — settings editor (presets, sections, mounts, raw JSON, diagnostic) and crew launcher (run + history) — with light/dark theme, a five-language selector (English, French, Spanish, German, Chinese) and a guided tour. The MSI also registers an **"Orkeon Studio" Start-menu shortcut**, so it takes no terminal at all to start |
 | **Linux** | `orkeon-studio-config` | the `.deb` and the linux archives | A full-screen terminal editor for the settings file: provider presets, model and endpoint, and the VFS mount table |
 | **Linux** | `orkeon-studio-run` | the `.deb` and the linux archives | Pick a target (a `config.yaml`, a crew directory, or a `.ork.ts` script), set the run options — including `--validate` for a dry run — then watch the output live and cancel if you need to |
 | **macOS** | — | — | Not in V1 on the onboarding channel: the `orkeon-cli-*-osx-*` tarballs and Homebrew ship the CLI alone. The multi-app `orkeon-<version>-osx-*` archives do carry the two terminal apps (only the WPF app has a RID filter), untested on macOS in V1 |
