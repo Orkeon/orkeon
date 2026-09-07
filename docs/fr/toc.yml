@@ -40,7 +40,7 @@
       href: architecture/scripting.md
     - name: Commandes CLI TypeScript
       href: architecture/cli-ts-commands.md
-    - name: Coding agent TypeScript
+    - name: Piloter des crews depuis le REPL
       href: architecture/coding-agent-ts.md
     - name: Client & serveur MCP
       href: architecture/mcp.md

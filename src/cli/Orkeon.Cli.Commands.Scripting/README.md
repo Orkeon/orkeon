@@ -11,7 +11,7 @@ This project is no longer distributed as a NuGet package — reference it from s
 ## Documentation
 
 - [TypeScript CLI commands](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/cli-ts-commands.md)
-- [TypeScript coding agent](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/coding-agent-ts.md)
+- [Driving crews from the REPL](https://github.com/Orkeon/orkeon/blob/main/docs/architecture/coding-agent-ts.md)
 - [Repository & getting started](https://github.com/Orkeon/orkeon)
 
 MIT © Orkeon Contributors
