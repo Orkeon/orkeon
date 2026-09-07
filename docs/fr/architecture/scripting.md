@@ -69,21 +69,23 @@ drapeaux diagnostics/protocole (`--validate`, `--list-tools`, `--events jsonl`,
 
 ## Récapitulatif de l'API
 
-Les pointeurs `chapters/NN` ci-dessous référencent l'archive de conception des
-mainteneurs (`features/scripting-dsl/chapters/` dans le sous-module privé
-`backstage`) — ils ne font pas partie de l'arbre de docs public.
+Les déclarations sont la référence. Elles sont livrées avec le DSL, ce sont elles que lit
+votre éditeur, et elles vivent sous `src/scripting/Orkeon.Scripting/Typings/` —
+concaténées au build dans le `orkeon.d.ts` que la CLI émet.
 
 | Concept | Où regarder |
 |---------|---------------|
-| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `chapters/03` |
-| `ExecutionContext` et `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `chapters/04`, `chapters/05` |
-| Événements (`ctx.events.queue` / `ctx.events.topic`) | `chapters/06` |
-| Formes littérales `stateMachine` / `stateGraph` | `chapters/07` |
-| `onError`, `ErrorAction`, codes d'erreur | `chapters/05`, `chapters/13` |
-| Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `chapters/05` |
+| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
+| `ExecutionContext` et `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `context.d.ts` |
+| `ctx.llm.act` — la boucle LLM ⇄ appels d'outils, et ses `ActOptions` | `context.d.ts` |
+| Événements (`ctx.events.queue` / `ctx.events.topic`) | `events.d.ts` |
+| Formes littérales `stateMachine` / `stateGraph` | `fsm.d.ts`, `graph.d.ts` |
+| `onError`, `ErrorAction`, codes d'erreur | `agent.d.ts`, `errors.d.ts` |
+| Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
-| Namespace intégré `tools.X(...)` | `chapters/03` §tools |
-| Providers LLM (`llm.openai`, `llm.default`, etc.) | `chapters/03` §llm |
+| Namespace intégré `tools.X(...)` | `tools.d.ts` |
+| Providers LLM (`llm.openai`, `llm.default`, etc.) | `llm.d.ts` |
+| RAG (`rag.ingest`, `rag.query`) | `rag.d.ts` |
 
 ## Coexistence avec YAML
 
@@ -129,8 +131,11 @@ retourne un ticket immédiatement et livre le résumé du crew au callback
   un chantier ultérieur.
 - La composabilité hiérarchique FSM/Graph (sub-states, sub-graphs) est prévue en V1.5.
 - Les événements sont uniquement en mémoire (pas de persistance Redis/NATS).
-- Voir `chapters/12-roadmap-and-questions.md` (archive des mainteneurs, cf. ci-dessus) pour le backlog complet.
 
 ## Référence
 
-Cette page et les typings livrés avec la CLI (`orkeon-cli.d.ts`) constituent la référence du DSL
+Cette page dit ce qu'est le DSL et où il se situe ; les typings disent ce qu'il expose. La
+surface des crews est `orkeon.d.ts` — construit depuis les `Typings/*.d.ts` ci-dessus, et
+émis à côté de la sortie de build de la CLI. `orkeon-cli.d.ts` est un autre fichier pour une
+autre surface : les commandes `*.cmd.ts` documentées dans
+[cli-ts-commands.md](../architecture/cli-ts-commands.md).

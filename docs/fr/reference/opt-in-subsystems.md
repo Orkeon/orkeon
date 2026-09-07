@@ -388,7 +388,7 @@ partiel (signalé au cas par cas ci-dessous).
 
 ---
 
-## Barrière de permissions — `AddOrkeonPermissionGate(configuration)` (exp07 F2)
+## Barrière de permissions — `AddOrkeonPermissionGate(configuration)`
 
 - **Activation** : appelée par `RunnerHost` et le bootstrap de la ConsoleApp, mais
   n'enregistre rien tant que `Orkeon:Security:PermissionGate:Enabled = true` n'est pas
@@ -416,8 +416,9 @@ partiel (signalé au cas par cas ci-dessous).
 - **`AllowInterpreters = true`** (config seule, lue par `AddOrkeonCodeTools()`) :
   réactive `node`/`dotnet`/`npm`/`find` ET lève la restriction git lecture-seule
   (`git add`/`commit`/`branch` fonctionnent). Équivalent RCE sur l'hôte — à réserver
-  aux hôtes coding-agent de confiance (le REPL exp07 est le consommateur de
-  référence ; `/commit` ne marche pas sans). Avertissement de sécurité loggé.
+  aux hôtes coding-agent de confiance (le REPL scripted-commands est le consommateur
+  de référence — voir `examples/cli-ts-commands/` ; une commande de commit ne marche
+  pas sans). Avertissement de sécurité loggé.
 - **Allowlist personnalisée** (deux clés tableau de chaînes) :
   - `ExtraAllowedCommands` — **additive** sur l'allowlist par défaut (ou de
     remplacement) ; la voie recommandée pour autoriser `make`/`cargo`/etc. Compose
@@ -437,7 +438,7 @@ partiel (signalé au cas par cas ci-dessous).
 - **Défaut rétro-compatible** : aucune clé → allowlist stricte lecture-seule,
   comportement historique inchangé.
 
-## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)` (exp07 F5 L3)
+## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)`
 
 - **Activation** : appelée par le bootstrap de la ConsoleApp, mais n'enregistre rien
   tant que `Orkeon:Cli:ConsoleStreaming:Enabled = true` n'est pas posé.

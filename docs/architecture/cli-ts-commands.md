@@ -329,9 +329,7 @@ while (bounded) so `result`/`inspect` can read a recent ticket, then evicted.
 in-memory channel — the CLI dispatch bus — plus the name directory and instance
 registry) and adds `commands` to the default whitelist. Agents are connected with
 `AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory)`,
-which registers the channel handler and the name→id mapping. See
-the maintainers' design archive (feature `cli-ts-commands`, COMMAND-DISPATCH-DESIGN §11) for the full
-file map.
+which registers the channel handler and the name→id mapping.
 
 ### End-to-end example
 

@@ -70,21 +70,23 @@ and the diagnostics/protocol flags (`--validate`, `--list-tools`, `--events json
 
 ## API recap
 
-The `chapters/NN` pointers below reference the maintainers' design archive
-(`features/scripting-dsl/chapters/` in the private `backstage` submodule) — they
-are not part of the public docs tree.
+The declarations are the reference. They ship with the DSL, they are what your editor
+reads, and they live under `src/scripting/Orkeon.Scripting/Typings/` — concatenated at build
+into the `orkeon.d.ts` the CLI emits.
 
 | Concept | Where to look |
 |---------|---------------|
-| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `chapters/03` |
-| `ExecutionContext` and `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `chapters/04`, `chapters/05` |
-| Events (`ctx.events.queue` / `ctx.events.topic`) | `chapters/06` |
-| `stateMachine` / `stateGraph` literal forms | `chapters/07` |
-| `onError`, `ErrorAction`, error codes | `chapters/05`, `chapters/13` |
-| Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `chapters/05` |
+| `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |
+| `ExecutionContext` and `AgentContext` (`ctx.llm`, `ctx.memory`, A2A, locks, spawn) | `context.d.ts` |
+| `ctx.llm.act` — the LLM ⇄ tool-call loop, and its `ActOptions` | `context.d.ts` |
+| Events (`ctx.events.queue` / `ctx.events.topic`) | `events.d.ts` |
+| `stateMachine` / `stateGraph` literal forms | `fsm.d.ts`, `graph.d.ts` |
+| `onError`, `ErrorAction`, error codes | `agent.d.ts`, `errors.d.ts` |
+| Lifecycle hooks (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — answer dispatched CLI commands by name | [cli-ts-commands.md](./cli-ts-commands.md#the-agent-side--oncommand) |
-| Built-in `tools.X(...)` namespace | `chapters/03` §tools |
-| LLM providers (`llm.openai`, `llm.default`, etc.) | `chapters/03` §llm |
+| Built-in `tools.X(...)` namespace | `tools.d.ts` |
+| LLM providers (`llm.openai`, `llm.default`, etc.) | `llm.d.ts` |
+| RAG (`rag.ingest`, `rag.query`) | `rag.d.ts` |
 
 ## Coexistence with YAML
 
@@ -130,8 +132,10 @@ returns a ticket immediately and delivers the crew summary to a
   follow-up.
 - FSM/Graph hierarchical composability (sub-states, sub-graphs) is V1.5.
 - Events are in-memory only (no Redis/NATS persistence).
-- See `chapters/12-roadmap-and-questions.md` (maintainers' archive, see above) for the full backlog.
 
 ## Reference
 
-This page and the typings shipped with the CLI (`orkeon-cli.d.ts`) are the DSL reference
+This page says what the DSL is and where it sits; the typings say what it exposes. The crew
+surface is `orkeon.d.ts` — built from the `Typings/*.d.ts` above, and emitted next to the CLI
+build output. `orkeon-cli.d.ts` is a different file for a different surface: the `*.cmd.ts`
+commands documented in [cli-ts-commands.md](./cli-ts-commands.md).

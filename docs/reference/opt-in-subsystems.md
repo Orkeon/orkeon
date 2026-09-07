@@ -381,7 +381,7 @@ partial (flagged case by case below).
 
 ---
 
-## Permission gate — `AddOrkeonPermissionGate(configuration)` (exp07 F2)
+## Permission gate — `AddOrkeonPermissionGate(configuration)`
 
 - **Activation**: called by `RunnerHost` and the ConsoleApp bootstrap, but registers
   nothing unless `Orkeon:Security:PermissionGate:Enabled = true`. `Interactive`
@@ -409,8 +409,9 @@ partial (flagged case by case below).
   `node`/`dotnet`/`npm`/`find` AND lifts the read-only git subcommand restriction so
   `git add`/`commit`/`branch` work). The tool logs its security warning when active.
 - **Security**: RCE-equivalent on the host — reserve it for trusted coding-agent
-  hosts running inside a confined workspace (the exp07 REPL/fixture is the
-  reference consumer; `/commit` cannot work without it).
+  hosts running inside a confined workspace (the scripted-commands REPL is the
+  reference consumer — see `examples/cli-ts-commands/`; a commit command cannot
+  work without it).
 - **Backward-compatible default**: flag absent → strict read-only allowlist,
   historical behavior unchanged.
 - **Allowlist customization** (two string-array keys, both read by
@@ -430,7 +431,7 @@ partial (flagged case by case below).
   paths. `AgentFacing` mounts, ordinal matching; without mounts both passes are
   no-ops.
 
-## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)` (exp07 F5 L3)
+## Native LLM console streaming — `AddLlmConsoleStreaming(configuration)`
 
 - **Activation**: called by the ConsoleApp bootstrap, but registers nothing unless
   `Orkeon:Cli:ConsoleStreaming:Enabled = true`.

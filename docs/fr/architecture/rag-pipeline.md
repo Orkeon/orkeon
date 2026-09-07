@@ -380,7 +380,7 @@ mêmes passages, aucun appel LLM.
 
 Sa raison d'être est une mesure plutôt qu'une préférence : un appelant qui cite les passages
 retrouvés — parce qu'il veut la preuve, pas son résumé — payait quand même une génération
-ancrée. Sur la passe de comblement d'exp02 (2026-08-04), sept appels `rag.query` dont les
+ancrée. Sur la passe de comblement du 2026-08-04, sept appels `rag.query` dont les
 réponses étaient écartées par construction ont coûté **14 748 tokens de complétion, dont
 68 % de tokens de raisonnement, et 394 s de temps réel**. Rien dans l'API ne permettait à
 l'appelant de s'arrêter après `assemble`.

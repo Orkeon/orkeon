@@ -92,7 +92,7 @@ Actions propriétaire restantes :
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) avec `--skip-duplicate`. Soit le lineup
 NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors de NuGet.org :
 `Orkeon.ConsoleApp`, `Orkeon.Generators` et `Orkeon.Compliance.Vfs`. C'est ce feed
-que `experiments/` consomme en mode packages :
+:
 
 | PackageId | Commande tool | Projet source |
 |---|---|---|

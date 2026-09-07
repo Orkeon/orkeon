@@ -135,5 +135,5 @@ tools-avec-raisonnement).
 Chaque ligne est adossée à des tests unitaires qui vérifient le payload émis — contre un **handler
 HTTP mocké**. Un mock prouve qu'Orkeon envoie ce que nous croyons envoyer ; il ne prouve pas que
 le fournisseur l'accepte. Les preuves d'exécution réelle sont suivies séparément dans le journal
-de la matrice de tests (`backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md` §7, submodule privé `backstage`) ; lancez une
+de la matrice de tests ; lancez une
 campagne avec `orkeon llm probe --provider <name> --archive <dir>`.

@@ -336,9 +336,7 @@ canal in-memory — le bus de dispatch CLI — plus l'annuaire de noms et le reg
 d'instances) et ajoute `commands` à la whitelist par défaut. Les agents sont
 connectés avec
 `AgentCommandRegistrar.Register(agent, engine, engineLock, service.Channel, service.Directory)`,
-qui enregistre le handler de canal et le mapping nom→id. Voir
-l'archive de conception des mainteneurs (feature `cli-ts-commands`, COMMAND-DISPATCH-DESIGN §11) pour la
-cartographie complète des fichiers.
+qui enregistre le handler de canal et le mapping nom→id.
 
 ### Exemple de bout en bout
 

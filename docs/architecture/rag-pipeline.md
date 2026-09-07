@@ -378,8 +378,8 @@ passages, no LLM call.
 
 The reason it exists is a measurement rather than a preference: a caller that
 quotes the retrieved passages — because it wants the evidence, not a summary of
-it — was still paying for a grounded generation. On exp02's gap round
-(2026-08-04) seven `rag.query` calls whose answers were discarded by design cost
+it — was still paying for a grounded generation. On the gap round of 2026-08-04,
+seven `rag.query` calls whose answers were discarded by design cost
 **14 748 completion tokens, 68 % of them reasoning tokens, and 394 s of wall
 time**. Nothing in the API let the caller stop after `assemble`.
 

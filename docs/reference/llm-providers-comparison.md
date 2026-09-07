@@ -124,5 +124,5 @@ tools-with-reasoning refusal).
 Every row is backed by unit tests asserting the emitted payload — against a **mocked HTTP
 handler**. A mock proves Orkeon sends what we believe it sends; it does not prove the vendor
 accepts it. Real-execution evidence is tracked separately in the test matrix journal
-(`backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md` §7, private `backstage` submodule); run a campaign with
+; run a campaign with
 `orkeon llm probe --provider <name> --archive <dir>`.
