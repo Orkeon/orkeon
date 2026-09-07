@@ -89,9 +89,13 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 
 ## Structure du projet
 
-La solution compte **43 projets src répartis en 13 zones**, chacun reflété par un
-projet de tests (plus `tests/e2e`, `tests/shared` ; les quatre projets
-`src/packaging/` sont de pur empaquetage et n'ont pas de miroir de tests) :
+La solution compte **43 projets src répartis en 13 zones** et **33 projets de tests**.
+Trente et un projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+forment les deux autres. Douze projets src n'ont volontairement pas de miroir : les cinq
+satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
+des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
+`Orkeon.Analysis.Tests`, `Orkeon.Generators` est couvert par la compilation des projets qui
+le consomment, et les quatre projets `src/packaging/` sont de pur empaquetage :
 
 ```
 src/
@@ -256,8 +260,9 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
   n'importe quelle version. Voir
   [docs/fr/reference/experimental-apis.md](docs/fr/reference/experimental-apis.md).
 - **Engagement de stabilité pour la fenêtre 1.x** : une fois la 1.0 publiée, aucun
-  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là (0.x),
-  des breaking changes peuvent arriver en version mineure mais sont toujours annoncés
+  breaking change sur une API livrée non expérimentale avant la 2.0. D'ici là — la
+  ligne `1.0.0-rc.*` sur laquelle `main` se trouve aujourd'hui — des breaking changes
+  peuvent encore arriver d'une release candidate à l'autre, mais sont toujours annoncés
   dans le CHANGELOG et les notes de migration.
 
 ## Processus de release
@@ -271,16 +276,31 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `src/analyzers/Orkeon.Compliance.Vfs/AnalyzerReleases.Unshipped.md` (les règles de
    conformité VFS `ORKVFS00x`) passe dans `AnalyzerReleases.Shipped.md` sous un titre
    `## Release <version>`, ne laissant que son en-tête au fichier `Unshipped`.
-5. Vérifier que la CI est verte : build `-warnaserror`, tests,
-   `scripts/check-docs-parity.sh`, linters d'exemples, build docfx strict.
+   L'analyseur de suivi des releases lit ce titre comme un simple numéro
+   `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : le titre de la
+   ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags `rc.*` n'y ajoutent
+   rien.
+5. Vérifier que la CI est verte. Au-delà du build `-warnaserror` et des suites de tests,
+   les gates qui doivent passer sont `scripts/check-docs-parity.sh`,
+   `scripts/check-doc-claims.py`, `scripts/check-comment-accents.py`,
+   `scripts/check-release-readiness.py` (il refuse une release dont les fichiers
+   `PublicAPI.Unshipped.txt` ne sont pas réduits à leur en-tête),
+   `scripts/check-package-closure.py`, les linters d'exemples
+   (`scripts/generate-examples-index.sh --check`, `scripts/lint-example-configs.py`,
+   `scripts/lint-example-readmes.py`), la gate des bits exécutables (`file-modes.yml`),
+   le scan de secrets (`secret-scan.yml`) et le build docfx strict.
 6. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
    pousse **les six paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
    `Orkeon.Scripting.Cli`, l'ombrelle en premier puisque les autres en dépendent — et
    chaque projet packable sur GitHub Packages ; voir
    [la matrice de publication](docs/fr/reference/publication-matrix.md)),
-   `release.yml` (zip+MSI Windows, tarballs macOS, paquet Debian) et `docs.yml`
-   (déploie le site de documentation sur GitHub Pages).
+   `release.yml` (les paquets CLI par plateforme et les archives multi-apps pour chaque
+   RID, le MSI Windows per-user et le MSI de service `orkeon-host`, les tarballs macOS, le
+   paquet Debian et leurs fichiers de sommes — chacun smoke-testé sur un vrai runner avant
+   publication de la Release — plus l'image conteneur `orkeon-runners` poussée sur GHCR)
+   et `docs.yml`
+   (déploie le site de documentation sur GitHub Pages, à l'adresse <https://orkeon.github.io/orkeon/>).
 
 ## Des questions ?
 

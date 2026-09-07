@@ -87,9 +87,13 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 
 ## Project Structure
 
-The solution has **43 src projects across 13 zones**, each mirrored by a test
-project (plus `tests/e2e`, `tests/shared`; the four `src/packaging/`
-projects are packaging-only and have no test mirror):
+The solution has **43 src projects across 13 zones** and **33 test projects**. Thirty-one
+src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
+up the other two test projects. Twelve src projects carry no test mirror by design: the five
+`Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
+resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Analysis.Tests`,
+`Orkeon.Generators` is covered by the consuming projects' compilation, and the four
+`src/packaging/` projects are packaging-only:
 
 ```
 src/
@@ -248,9 +252,9 @@ matter of opinion — it is **recorded in the repository** and enforced at build
   suppress explicitly, which is your opt-in to a surface that may change in any
   release. See [docs/reference/experimental-apis.md](docs/reference/experimental-apis.md).
 - **Stability commitment for the 1.x window**: once 1.0 ships, no breaking change to
-  a non-experimental shipped API before 2.0. Until then (0.x), breaking changes may
-  land in minor versions but are always called out in the CHANGELOG and the migration
-  notes.
+  a non-experimental shipped API before 2.0. Until then — the `1.0.0-rc.*` line
+  that `main` is on today — breaking changes may still land between release
+  candidates, but are always called out in the CHANGELOG and the migration notes.
 
 ## Release Process
 
@@ -262,16 +266,29 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `src/analyzers/Orkeon.Compliance.Vfs/AnalyzerReleases.Unshipped.md` (the `ORKVFS00x`
    VFS-compliance rules) goes into `AnalyzerReleases.Shipped.md` under a
    `## Release <version>` heading, leaving the `Unshipped` file with its header only.
-5. Make sure CI is green: `-warnaserror` build, tests, `scripts/check-docs-parity.sh`,
-   examples linters, strict docfx build.
+   The release-tracking analyzer parses that heading as a plain `Major.Minor.Patch`
+   number and rejects a prerelease suffix (RS2007), so the heading for the 1.0.0 line
+   is `## Release 1.0.0` — it is already there, and the `rc.*` tags add nothing to it.
+5. Make sure CI is green. Beyond the `-warnaserror` build and the test suites, the
+   gates that must pass are `scripts/check-docs-parity.sh`,
+   `scripts/check-doc-claims.py`, `scripts/check-comment-accents.py`,
+   `scripts/check-release-readiness.py` (it refuses a release whose
+   `PublicAPI.Unshipped.txt` files are not header-only), `scripts/check-package-closure.py`,
+   the examples linters (`scripts/generate-examples-index.sh --check`,
+   `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`), the executable-bit
+   gate (`file-modes.yml`), the secret scan (`secret-scan.yml`) and the strict docfx build.
 6. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
    pushes the **six-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
    `Orkeon.Scripting.Cli`, the umbrella first because the others depend on it — and
    every packable to GitHub Packages; see
    [the publication matrix](docs/reference/publication-matrix.md)),
-   `release.yml` (Windows zip+MSI, macOS tarballs, Debian package) and `docs.yml`
-   (deploys the documentation site to GitHub Pages).
+   `release.yml` (the per-platform CLI packages and multi-app archives for every RID,
+   the Windows per-user MSI and the `orkeon-host` service MSI, the macOS tarballs, the
+   Debian package and their checksum files — each smoked on a real runner before the
+   Release is published — plus the `orkeon-runners` container image pushed to GHCR)
+   and `docs.yml`
+   (deploys the documentation site to GitHub Pages, at <https://orkeon.github.io/orkeon/>).
 
 ## Questions?
 
