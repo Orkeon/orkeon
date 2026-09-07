@@ -183,7 +183,17 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         }
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Streams the completion token by token, guarding the Azure-specific configuration first.
+    /// </summary>
+    /// <remarks>
+    /// This path returns <c>IAsyncEnumerable&lt;string&gt;</c> and has no channel to carry an
+    /// error, so an empty sequence must mean one thing only: the deployment had nothing to say.
+    /// Both failures therefore throw, as they do in the three other native streaming
+    /// implementations (D5-02) -- an unusable configuration before the request, the vendor's own
+    /// words after it. Logging the abort and yielding nothing, which is what this did, put the
+    /// reason where an operator may read it later and left the caller with silence.
+    /// </remarks>
     public override async IAsyncEnumerable<string> GenerateStreamingAsync(
         string prompt,
         LlmConfig? config = null,
@@ -191,15 +201,9 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
     {
         var effectiveConfig = config ?? Config;
 
-        // D-01: this path returns IAsyncEnumerable<string> and has no channel to carry an
-        // error, so an invalid configuration still ends in an empty stream — but it is now
-        // logged instead of failing silently.
-        var configError = ValidateRequiredConfig(effectiveConfig);
-        if (configError is not null)
-        {
-            LogAzureStreamingConfigError();
-            yield break;
-        }
+        var missingRequirement = MissingRequirement(effectiveConfig);
+        if (missingRequirement is not null)
+            throw NotConfiguredForStreaming(ProviderDisplayName, missingRequirement);
 
         // Do NOT use 'using' — factory-managed clients must not be disposed.
         var client = CreateHttpClient(effectiveConfig);
@@ -223,7 +227,8 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
             if (!response.IsSuccessStatusCode)
             {
                 LogAzureStreamingError(response.StatusCode);
-                yield break;
+                throw await StreamingRejectionAsync(response, ProviderDisplayName, cancellationToken)
+                    .ConfigureAwait(false);
             }
 
             // Azure OpenAI uses OpenAI-compatible SSE format
@@ -303,26 +308,63 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         return DefaultApiVersion;
     }
 
+    /// <summary>The api-key requirement, named the way a caller reads it.</summary>
+    private const string RequirementApiKey = "API key";
+
+    /// <summary>The resource-endpoint requirement, named the way a caller reads it.</summary>
+    private const string RequirementEndpoint = "endpoint (BaseUrl)";
+
+    /// <summary>
+    /// Names the mandatory Azure setting that is missing, or null when the configuration is
+    /// complete.
+    /// </summary>
+    /// <remarks>
+    /// Split out of <see cref="ValidateRequiredConfig"/> because the token-streaming path cannot
+    /// use the <see cref="LlmResponse"/> that method returns -- it has to throw -- yet must name
+    /// the very same missing setting, or one provider would answer the same absence with two
+    /// different words depending on which entry point the caller took.
+    /// </remarks>
+    private static string? MissingRequirement(LlmConfig effectiveConfig)
+    {
+#pragma warning disable CS0618 // Type or member is obsolete
+        if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
+#pragma warning restore CS0618
+        {
+            return RequirementApiKey;
+        }
+
+        return effectiveConfig.BaseUrl is null ? RequirementEndpoint : null;
+    }
+
     /// <summary>
     /// Validates the Azure-specific configuration requirements (api-key and resource endpoint).
     /// Returns an error <see cref="LlmResponse"/> when a requirement is missing, otherwise null.
     /// </summary>
     private LlmResponse? ValidateRequiredConfig(LlmConfig effectiveConfig)
     {
-#pragma warning disable CS0618 // Type or member is obsolete
-        if (string.IsNullOrEmpty(effectiveConfig.ApiKey))
-#pragma warning restore CS0618
-        {
-            return CreateConfigErrorResponse("Azure OpenAI API key is required");
-        }
-
-        if (effectiveConfig.BaseUrl is null)
-        {
-            return CreateConfigErrorResponse("Azure OpenAI endpoint (BaseUrl) is required");
-        }
-
-        return null;
+        var missing = MissingRequirement(effectiveConfig);
+        return missing is null
+            ? null
+            : CreateConfigErrorResponse($"{ProviderDisplayName} {missing} is required");
     }
+
+    /// <summary>
+    /// Builds the exception the token-streaming path fails with when Azure cannot reach its API.
+    /// </summary>
+    /// <remarks>
+    /// Same contract as the base <see cref="HttpLlmProviderBase.NotConfiguredForStreaming(string)"/>:
+    /// same sentence, and a status code left null on purpose, since nothing was sent and no
+    /// vendor refused anything. It is spelled out here only because that helper always names the
+    /// API key, while Azure has a second mandatory setting -- a caller holding a valid key and
+    /// told "API key is required" would look in the wrong place.
+    /// </remarks>
+    /// <param name="providerDisplayName">Provider name, as the reader sees it.</param>
+    /// <param name="missingRequirement">The setting the configuration does not carry.</param>
+    /// <returns>The exception to throw.</returns>
+    private static HttpRequestException NotConfiguredForStreaming(
+        string providerDisplayName,
+        string missingRequirement)
+        => new($"{providerDisplayName} {missingRequirement} is required: the request was never sent, so the stream carries nothing. Configure the LLM (run `orkeon init`) before streaming.");
 
     /// <summary>Creates an error response for a missing configuration requirement.</summary>
     private LlmResponse CreateConfigErrorResponse(string error)
@@ -340,8 +382,4 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Azure OpenAI streaming error: {StatusCode}")]
     private partial void LogAzureStreamingError(System.Net.HttpStatusCode statusCode);
-
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error,
-        Message = "Azure OpenAI text streaming aborted: the API key and the resource endpoint (BaseUrl) are both required. The stream completed empty.")]
-    private partial void LogAzureStreamingConfigError();
 }

@@ -231,6 +231,50 @@ public sealed class ProviderStreamingTests : IDisposable
         Assert.Equal(" token", tokens[1]);
     }
 
+    /// <summary>
+    /// Azure needs two settings where the other OpenAI-dialect providers need one: a key with
+    /// no resource URL reaches nothing, since <c>BuildEndpoint</c> has no provider-wide default
+    /// to fall back on. The capability therefore has to be withheld on the endpoint too (LLM-02),
+    /// and the stream, if a caller takes the SSE branch anyway, names the missing setting
+    /// instead of ending empty (defect D5-02).
+    /// </summary>
+    [Fact]
+    public async Task ShouldNotDeclareStreaming_WhenAzureHasKeyButNoBaseUrl()
+    {
+        using var provider = CreateAzureOpenAIProvider("", HttpStatusCode.OK, withBaseUrl: false);
+
+        Assert.False(provider.SupportsStreaming);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Contains("endpoint (BaseUrl) is required", ex.Message, StringComparison.Ordinal);
+        Assert.Null(ex.StatusCode);
+    }
+
+    /// <summary>The positive twin: both settings present, so the declaration is honest.</summary>
+    [Fact]
+    public void ShouldDeclareStreaming_WhenAzureHasKeyAndBaseUrl()
+    {
+        using var provider = CreateAzureOpenAIProvider("", HttpStatusCode.OK);
+        Assert.True(provider.SupportsStreaming);
+    }
+
+    /// <summary>Azure has its own token-streaming path, so the refusal needs its own proof.</summary>
+    [Fact]
+    public async Task ShouldThrowWithTheVendorsWords_WhenAzureTokenStreamIsRefused()
+    {
+        using var provider = CreateAzureOpenAIProvider(
+            """{"error":{"code":"DeploymentNotFound","message":"the deployment does not exist"}}""",
+            HttpStatusCode.NotFound);
+
+        var ex = await Assert.ThrowsAsync<HttpRequestException>(
+            () => CollectTokens(provider, "test"));
+
+        Assert.Equal(HttpStatusCode.NotFound, ex.StatusCode);
+        Assert.Contains("DeploymentNotFound", ex.Message, StringComparison.Ordinal);
+    }
+
     #endregion
 
     #region SSE Termination
@@ -327,7 +371,7 @@ public sealed class ProviderStreamingTests : IDisposable
     }
 
     private AzureOpenAILlmProvider CreateAzureOpenAIProvider(
-        string responseBody, HttpStatusCode statusCode)
+        string responseBody, HttpStatusCode statusCode, bool withBaseUrl = true)
     {
         SetupHttpClient(responseBody, statusCode);
         var config = LlmConfig.Default() with
@@ -335,7 +379,7 @@ public sealed class ProviderStreamingTests : IDisposable
             MaxRetries = 0,
             ApiKey = "azure-key",
             Model = ModelGpt4,
-            BaseUrl = new Uri("https://myendpoint.openai.azure.com")
+            BaseUrl = withBaseUrl ? new Uri("https://myendpoint.openai.azure.com") : null
         };
         return new AzureOpenAILlmProvider(config, _httpClientFactory, _noOpPolicy,
             NullLogger<AzureOpenAILlmProvider>.Instance);
