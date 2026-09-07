@@ -8,8 +8,8 @@ namespace Orkeon.Rag.Tests.Corrective;
 /// responses (prose, code fences, escaped string literals) and tolerant property
 /// reads. The escaped-literal cases also stand as the proof that the
 /// <c>escaped</c> state flag of <c>FindBalancedEnd</c> is genuinely reachable —
-/// SonarQube's S2583 claims otherwise (false positive, see
-/// <c>sonarqube/PLAN-REMEDIATION-2026-07-28.md</c> §3).
+/// SonarQube's S2583 claims otherwise, and these cases are what make that a
+/// false positive rather than an assertion.
 /// </summary>
 public class TolerantJsonReaderTests
 {

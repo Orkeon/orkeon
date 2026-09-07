@@ -29,8 +29,9 @@ Depuis R5.4 :
 - les seuils sont **transitoires** (réalistes au regard de l'état mesuré au
   2026-05-31) et leur **durcissement est planifié** ci-dessous.
 
-**Où en est le projet au 2026-09-05**
-([rapport complet](../../../sonarqube/sonarqube-report-2026-09-05.md)) : le gate est **OK**
+**Où en est le projet au 2026-09-05** (mesuré par `scripts/sonar-analyze.sh` ; le rapport
+complet qu'il écrit sous `sonarqube/` est un artefact local que le dépôt ne versionne
+pas) : le gate est **OK**
 sur chaque condition qu'il rapporte — `new_reliability_rating` **A (1)**,
 `new_security_rating` **A**, `new_maintainability_rating` **A**, `new_coverage` **78,1 %**,
 `new_duplicated_lines_density` **0,0 %** — sur 162 k lignes portant **0 bug,

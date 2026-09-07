@@ -47,8 +47,7 @@
     "content": [
       { "files": ["api/**.yml", "api/index.md"] },
       { "files": ["docs/toc.yml", "docs/fr/toc.yml", "docs/*.md", "docs/**/*.md"] },
-      { "files": ["*.md", "toc.yml"], "exclude": ["artifacts/**", "_site/**", "CLAUDE.md"] },
-      { "files": ["sonarqube/sonarqube-report-*.md"] }
+      { "files": ["*.md", "toc.yml"], "exclude": ["artifacts/**", "_site/**", "CLAUDE.md"] }
     ],
     "resource": [
       { "files": ["docs/assets/**"] }

@@ -28,8 +28,9 @@ Since R5.4:
 - the thresholds are **transitional** (realistic given the state measured on
   2026-05-31) and their **hardening is planned** below.
 
-**Where the project stands on 2026-09-05**
-([full report](../../sonarqube/sonarqube-report-2026-09-05.md)): the gate is **OK** on every
+**Where the project stands on 2026-09-05** (measured by `scripts/sonar-analyze.sh`; the
+full report it writes under `sonarqube/` is a local artifact the repository does not
+track): the gate is **OK** on every
 condition it reports — `new_reliability_rating` **A (1)**, `new_security_rating` **A**,
 `new_maintainability_rating` **A**, `new_coverage` **78.1 %**,
 `new_duplicated_lines_density` **0.0 %** — over 162 k lines carrying **0 bugs,
