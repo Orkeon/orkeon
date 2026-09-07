@@ -30,6 +30,12 @@ public static partial class LogSanitizer
         "x-api-key",
         "x-goog-api-key",
         "x-auth-token",
+        // Brave Search (BraveSearchTool) and Azure API Management carry their credential in
+        // these two. The exchange-logging handler is attached to every client the factory
+        // hands out and not only to the LLM ones, so those values reach a log like any other
+        // header, and neither value has a shape a pattern could recognise.
+        "x-subscription-token",
+        "ocp-apim-subscription-key",
         "x-amz-*",
         "cookie",
         "set-cookie"
@@ -81,13 +87,24 @@ public static partial class LogSanitizer
         return SanitizeString(headerValue);
     }
 
-    // OpenAI keys: sk- followed by 20+ alphanumeric chars (also matches sk-proj- variants)
-    [GeneratedRegex(@"sk-[a-zA-Z0-9\-]{20,}", RegexOptions.Compiled)]
-    private static partial Regex OpenAIKeyPattern();
+    // The whole sk- family in one pattern: OpenAI (sk-, sk-proj-, sk-svcacct-), Anthropic
+    // (sk-ant-api03-), MiniMax (sk-api-) and DashScope/Qwen (sk-ws-). Their bodies are
+    // URL-safe base64, so an underscore is part of the key and not its end, and a DashScope
+    // workspace key splits its body with a dot. The lookahead holds the twenty-character
+    // floor over the whole body while the match itself never ends on a dot, so the period
+    // closing a sentence after a key stays in the log instead of pulling the next word in.
+    // A narrower sk-ant- pattern used to run first and truncated such a key at its first
+    // underscore, publishing the tail: one pattern for the family removes that hazard.
+    [GeneratedRegex(@"sk-(?=[A-Za-z0-9_.\-]{20,})[A-Za-z0-9_\-]+(?:\.[A-Za-z0-9_\-]+)*", RegexOptions.Compiled)]
+    private static partial Regex SkPrefixedKeyPattern();
 
-    // Anthropic keys: sk-ant- followed by 20+ alphanumeric chars
-    [GeneratedRegex(@"sk-ant-[a-zA-Z0-9\-]{20,}", RegexOptions.Compiled)]
-    private static partial Regex AnthropicKeyPattern();
+    // Vendor-prefixed keys of the providers Orkeon ships a client for: x.AI, HuggingFace,
+    // TogetherAI, Tavily, Slack (bot, app and user tokens) and Google AI Studio. Redaction
+    // by header name protects these only while they travel in a header; in a request body,
+    // an error message or a stack trace, nothing recognised them at all. The lookbehind
+    // keeps the prefixes from firing in the middle of an ordinary identifier.
+    [GeneratedRegex(@"(?<![A-Za-z0-9_])(?:xai-|hf_|tgp_v1_|tvly-|xox[abp]-|AIza)[A-Za-z0-9_\-]{16,}", RegexOptions.Compiled)]
+    private static partial Regex VendorPrefixedKeyPattern();
 
     // GitHub personal access tokens: ghp_ followed by alphanumeric chars
     [GeneratedRegex(@"ghp_[a-zA-Z0-9]{20,}", RegexOptions.Compiled)]
@@ -118,8 +135,8 @@ public static partial class LogSanitizer
             return text;
 
         // Order matters: more specific patterns first
-        text = AnthropicKeyPattern().Replace(text, MaskMatch);
-        text = OpenAIKeyPattern().Replace(text, MaskMatch);
+        text = SkPrefixedKeyPattern().Replace(text, MaskMatch);
+        text = VendorPrefixedKeyPattern().Replace(text, MaskMatch);
         text = GitHubFineGrainedTokenPattern().Replace(text, MaskMatch);
         text = GitHubTokenPattern().Replace(text, MaskMatch);
         text = BearerTokenPattern().Replace(text, MaskBearerMatch);
@@ -143,8 +160,8 @@ public static partial class LogSanitizer
         var sanitized = input;
 
         // Order matters: more specific patterns first
-        sanitized = AnthropicKeyPattern().Replace(sanitized, RedactedPlaceholder);
-        sanitized = OpenAIKeyPattern().Replace(sanitized, RedactedPlaceholder);
+        sanitized = SkPrefixedKeyPattern().Replace(sanitized, RedactedPlaceholder);
+        sanitized = VendorPrefixedKeyPattern().Replace(sanitized, RedactedPlaceholder);
         sanitized = GitHubFineGrainedTokenPattern().Replace(sanitized, RedactedPlaceholder);
         sanitized = GitHubTokenPattern().Replace(sanitized, RedactedPlaceholder);
         sanitized = BearerTokenPattern().Replace(sanitized, RedactBearerMatch);

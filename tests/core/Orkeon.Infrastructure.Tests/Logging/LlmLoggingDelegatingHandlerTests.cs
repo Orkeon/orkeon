@@ -123,6 +123,41 @@ public sealed class LlmLoggingDelegatingHandlerTests : IDisposable
     }
 
     [Fact]
+    public async Task SendAsync_RedactsXSubscriptionTokenHeader_ByName()
+    {
+        // This handler is attached to every client the factory hands out, not only to the
+        // LLM ones, so a Brave Search call travels through it. Brave authenticates with
+        // X-Subscription-Token, whose opaque value no value pattern can recognise: unless
+        // the header name is known to be sensitive, --llm-log writes the key verbatim.
+        const string braveHeaderValue = "BSAfake-fake-fake-fake-0000";
+        _innerHandler.SetResponse(new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent("{}", Encoding.UTF8, "application/json")
+        });
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Get,
+            "https://api.search.brave.com/res/v1/web/search?q=orkeon");
+        request.Headers.Add("X-Subscription-Token", braveHeaderValue);
+
+        await _invoker.SendAsync(request, TestContext.Current.CancellationToken);
+        await Polling.WaitUntilAsync(() => _logger.Captured is not null);
+
+        var captured = _logger.Captured;
+        Assert.NotNull(captured);
+        var tokenValues = captured!.RequestHeaders
+            .Where(h => h.Key.Equals("X-Subscription-Token", StringComparison.OrdinalIgnoreCase))
+            .SelectMany(h => h.Value)
+            .ToList();
+        Assert.NotEmpty(tokenValues);
+        foreach (var val in tokenValues)
+        {
+            Assert.DoesNotContain(braveHeaderValue, val);
+            Assert.Contains("REDACTED", val);
+        }
+    }
+
+    [Fact]
     public async Task SendAsync_SanitizesSecretInRequestBody()
     {
         const string secret = "sk-abcdefghij1234567890abcdef";

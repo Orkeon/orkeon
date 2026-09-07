@@ -301,6 +301,9 @@ public class LogSanitizerTests
     [InlineData("proxy-authorization")]
     [InlineData("x-amz-security-token")]
     [InlineData("x-amz-date")]
+    [InlineData("x-subscription-token")]
+    [InlineData("X-Subscription-Token")]
+    [InlineData("ocp-apim-subscription-key")]
     public void IsSensitiveHeader_ShouldReturnTrue_ForKnownSensitiveNames(string headerName)
     {
         Assert.True(LogSanitizerSut.IsSensitiveHeader(headerName));
@@ -358,4 +361,112 @@ public class LogSanitizerTests
 
         Assert.Equal("application/json", result);
     }
+
+    [Fact]
+    public void ShouldRedactXSubscriptionTokenHeader_ByName()
+    {
+        // Brave Search authenticates with X-Subscription-Token, and the value it carries is
+        // an opaque vendor string: no value pattern can recognise it, so the header name is
+        // the only thing that can keep it out of an exchange log.
+        const string braveHeaderValue = "BSAfake-fake-fake-fake-0000";
+        var result = LogSanitizerSut.SanitizeHeaderValue("X-Subscription-Token", braveHeaderValue);
+
+        Assert.DoesNotContain(braveHeaderValue, result);
+        Assert.Equal("***REDACTED***", result);
+    }
+
+    [Fact]
+    public void ShouldRedactOcpApimSubscriptionKeyHeader_ByName()
+    {
+        // Azure API Management fronts OpenAI-compatible endpoints and takes its credential
+        // in Ocp-Apim-Subscription-Key, again as a bare opaque value.
+        const string apimHeaderValue = "0000fake0000apim0000fake000";
+        var result = LogSanitizerSut.SanitizeHeaderValue("Ocp-Apim-Subscription-Key", apimHeaderValue);
+
+        Assert.DoesNotContain(apimHeaderValue, result);
+        Assert.Equal("***REDACTED***", result);
+    }
+
+    // ────────────────────────────────────────────────────────────
+    // Key shapes the shipped providers actually issue
+    // ────────────────────────────────────────────────────────────
+
+    [Fact]
+    public void ShouldRedactWholeKey_WhenKeyContainsUnderscore()
+    {
+        // OpenAI project and service-account keys, and Anthropic sk-ant-api03- keys, carry
+        // a URL-safe base64 body: the underscore is part of the key, not a delimiter.
+        var key = CredentialShaped("sk-proj-", "fake_underscore_fixture_0000");
+        var result = LogSanitizerSut.SanitizeString($"Using key {key} for the request");
+
+        Assert.DoesNotContain(key, result);
+        Assert.DoesNotContain("underscore_fixture_0000", result);
+        Assert.Contains("***REDACTED***", result);
+    }
+
+    [Fact]
+    public void ShouldRedactWholeKey_WhenDashScopeKeyContainsDot()
+    {
+        // Alibaba DashScope (Qwen) issues workspace-scoped keys whose body is split by a
+        // dot, so a key regex made of one unbroken run of characters stops on the dot.
+        var key = CredentialShaped("sk-ws-", "H.fake_dashscope_fixture_00");
+        var result = LogSanitizerSut.SanitizeString($"Using key {key} for the request");
+
+        Assert.DoesNotContain(key, result);
+        Assert.DoesNotContain("fake_dashscope_fixture_00", result);
+        Assert.Contains("***REDACTED***", result);
+    }
+
+    [Fact]
+    public void ShouldRedactWholeKey_WhenMiniMaxKeyContainsUnderscore()
+    {
+        var key = CredentialShaped("sk-api-", "fake_minimax_fixture_00000");
+        var result = LogSanitizerSut.SanitizeString($"key={key}");
+
+        Assert.DoesNotContain(key, result);
+        Assert.DoesNotContain("minimax_fixture_00000", result);
+        Assert.Contains("***REDACTED***", result);
+    }
+
+    /// <summary>
+    /// One case per vendor prefix Orkeon ships a client for. Header-name redaction covers
+    /// these keys only while they travel in a header; in a request body, an error message
+    /// or a stack trace, nothing else recognises them.
+    /// </summary>
+    [Theory]
+    [InlineData("xai-", "fake_grok_fixture_0000000")]
+    [InlineData("hf_", "fake_huggingface_fixture0")]
+    [InlineData("tgp_v1_", "fake_together_fixture_000")]
+    [InlineData("tvly-", "fake_tavily_fixture_00000")]
+    [InlineData("xoxb-", "fake-slack-bot-fixture-00")]
+    [InlineData("xoxp-", "fake-slack-user-fixture-0")]
+    [InlineData("AIza", "fake_gemini_fixture_00000")]
+    public void ShouldRedactVendorPrefixedKey_ForShippedProviderFamilies(string prefix, string body)
+    {
+        var key = CredentialShaped(prefix, body);
+        var result = LogSanitizerSut.SanitizeString($"provider call failed with {key} attached");
+
+        Assert.DoesNotContain(key, result);
+        Assert.DoesNotContain(body, result);
+        Assert.Contains("***REDACTED***", result);
+    }
+
+    [Fact]
+    public void ShouldLeaveOrdinaryWordsUntouched_WhenTheyOnlyResembleAVendorPrefix()
+    {
+        // The vendor patterns must not eat identifiers that merely contain the same
+        // letters: a prefix counts only at a token boundary, followed by a key-length body.
+        var nearMiss = CredentialShaped("shf_", "abcdefghijklmnopqrst");
+        var input = $"half_a_dozen_shelf_entries and {nearMiss} stay readable";
+        var result = LogSanitizerSut.SanitizeString(input);
+
+        Assert.Equal(input, result);
+    }
+
+    /// <summary>
+    /// Assembles a credential-shaped fixture from its prefix and its body at run time. The
+    /// committed source therefore never holds a literal shaped like a live key, so the
+    /// secret scanners keep watching these files instead of learning to ignore a value.
+    /// </summary>
+    private static string CredentialShaped(string prefix, string body) => prefix + body;
 }
