@@ -258,6 +258,65 @@ public class UrlValidatorTests
     }
 
     [Fact]
+    public async Task ShouldBeDenied_WhenHostIsIPv6Unspecified()
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri("http://[::]/"), TestContext.Current.CancellationToken);
+        Assert.False(result.IsAllowed);
+        Assert.Contains("private", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldBeDenied_WhenHostIsNat64EmbeddedLoopback()
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri("http://[64:ff9b::7f00:1]/"), TestContext.Current.CancellationToken);
+        Assert.False(result.IsAllowed);
+        Assert.Contains("private", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldBeDenied_WhenHostIsIPv4CompatibleLoopback()
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri("http://[::7f00:1]/"), TestContext.Current.CancellationToken);
+        Assert.False(result.IsAllowed);
+        Assert.Contains("private", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldBeDenied_WhenHostIsIPv6Multicast()
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri("http://[ff02::1]/"), TestContext.Current.CancellationToken);
+        Assert.False(result.IsAllowed);
+        Assert.Contains("private", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldBeAllowed_WhenHostIsPublicIPv6()
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri("http://[2001:4860:4860::8888]/"), TestContext.Current.CancellationToken);
+        Assert.True(result.IsAllowed);
+    }
+
+    // Alternate numeric spellings of 127.0.0.1 never reach the range table as written: Uri
+    // canonicalises them to the dotted-quad form, so these pin that assumption in place.
+    [Theory]
+    [InlineData("http://2130706433/")]
+    [InlineData("http://0x7f000001/")]
+    [InlineData("http://0177.0.0.1/")]
+    [InlineData("http://127.1/")]
+    public async Task ShouldBeDenied_WhenLoopbackIsSpelledInAnAlternateNumericForm(string url)
+    {
+        var validator = CreateValidator();
+        var result = await validator.ValidateUrlAsync(new Uri(url), TestContext.Current.CancellationToken);
+        Assert.False(result.IsAllowed);
+        Assert.Contains("private", result.DenialReason!, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public async Task ShouldBeDenied_WhenUrlIsLoopback127_0_0_2()
     {
         var validator = CreateValidator();

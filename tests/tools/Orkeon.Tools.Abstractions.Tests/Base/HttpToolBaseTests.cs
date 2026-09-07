@@ -52,6 +52,11 @@ public class HttpToolBaseTests
     [InlineData("http://10.0.0.1/internal")]
     [InlineData("http://192.168.1.1/")]
     [InlineData("http://localhost/secret")]
+    [InlineData("http://[::]/")]
+    [InlineData("http://[::1]/")]
+    [InlineData("http://[64:ff9b::7f00:1]/")]
+    [InlineData("http://[::7f00:1]/")]
+    [InlineData("http://[ff02::1]/")]
     public async Task ValidateUrlAsync_ShouldDenyPrivateAddress_WhenNoValidatorConfigured(string url)
     {
         using var tool = new SimpleHttpTool();

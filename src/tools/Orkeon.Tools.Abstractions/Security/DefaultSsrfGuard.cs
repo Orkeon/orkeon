@@ -41,11 +41,16 @@ internal static class DefaultSsrfGuard
         ([100, 64, 0, 0], 10),    // 100.64.0.0/10 carrier-grade NAT
     ];
 
+    // This table is duplicated verbatim in Orkeon.Infrastructure.Security.UrlValidator (which this
+    // package cannot reference); SsrfGuardParityTests keeps the two copies honest.
     private static readonly (byte[] Network, int PrefixLength)[] PrivateIPv6Ranges =
     [
         (IPAddress.IPv6Loopback.GetAddressBytes(), 128),                            // ::1/128
+        (IPAddress.IPv6Any.GetAddressBytes(), 128),                                 // ::/128 unspecified, which connect() turns into loopback
         ([0xfc, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 7),                  // fc00::/7 unique-local
         ([0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 10),              // fe80::/10 link-local
+        ([0xff, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 8),                  // ff00::/8 multicast
+        ([0, 0x64, 0xff, 0x9b, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], 96),           // 64:ff9b::/96 NAT64 well-known prefix
     ];
 
     /// <summary>
@@ -116,10 +121,33 @@ internal static class DefaultSsrfGuard
         if (address.AddressFamily == AddressFamily.InterNetworkV6)
         {
             var bytes = address.GetAddressBytes();
+
+            // The deprecated IPv4-compatible form ::a.b.c.d carries its real destination in its
+            // last four bytes, exactly like the ::ffff: mapped form handled above, so it has to
+            // be judged by the IPv4 table: ::7f00:1 reaches loopback while matching no IPv6 range.
+            if (IsIPv4Compatible(bytes) &&
+                PrivateIPv4Ranges.Any(r => IsInCidrRange(bytes[12..], r.Network, r.PrefixLength)))
+            {
+                return true;
+            }
+
             return PrivateIPv6Ranges.Any(r => IsInCidrRange(bytes, r.Network, r.PrefixLength));
         }
 
         return false;
+    }
+
+    private static bool IsIPv4Compatible(byte[] ipv6Bytes)
+    {
+        // ::a.b.c.d is simply an IPv6 address whose first 96 bits are zero. IPAddress offers no
+        // predicate for it the way it does for the mapped form, hence the explicit prefix check.
+        for (var i = 0; i < 12; i++)
+        {
+            if (ipv6Bytes[i] != 0)
+                return false;
+        }
+
+        return true;
     }
 
     private static bool IsInCidrRange(byte[] address, byte[] network, int prefixLength)
