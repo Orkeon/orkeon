@@ -225,7 +225,40 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         "status", "log", "diff", "show"
     };
 
-    /// <summary>Default set of blocked command patterns.</summary>
+    /// <summary>
+    /// Options refused anywhere in a <c>git</c> command line, whichever read-only
+    /// subcommand carries them. Checking the subcommand alone was not enough: the four
+    /// permitted ones accept diff options that write a file, run a configured program, or
+    /// step outside the validated working directory, so "read-only git" was only a claim
+    /// about the second token.
+    /// <para>
+    /// Their global forms (before the subcommand) are already refused by the leading-option
+    /// rule below; listing them here keeps a single gate rather than a case analysis, at the
+    /// deliberate cost of the diff-side meanings of <c>-c</c> (combined diff) and <c>-C</c>
+    /// (copy detection).
+    /// </para>
+    /// </summary>
+    private static readonly string[] s_forbiddenGitOptions =
+    [
+        // Write the output to an arbitrary host file, or read an order file from one.
+        "--output", "-o", "-O",
+        // Run the configured external diff driver or textconv filter.
+        "--ext-diff", "--textconv",
+        // Override the configuration, which is how git is made to spawn a process
+        // (core.pager, diff.external, core.sshCommand), or relocate its own binaries.
+        "-c", "--config-env", "--exec-path",
+        // Repoint the repository or the work tree away from the validated directory.
+        "-C", "--git-dir", "--work-tree",
+        // Diff two arbitrary host paths, ignoring the repository altogether.
+        "--no-index"
+    ];
+
+    /// <summary>
+    /// Default set of blocked command patterns. Each one names a destructive command, so it
+    /// is matched as a whole token (see <see cref="ContainsBlockedPattern"/>) and not as a
+    /// bare substring: <c>format</c> means the disk-formatting command, not the
+    /// <c>--format=%H</c> of <c>git log</c>.
+    /// </summary>
     private static readonly string[] s_defaultBlockedPatterns =
     [
         "rm -rf /", "sudo", "mkfs", "dd if=", "shutdown",
@@ -345,7 +378,7 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         }
 
         var blockedPattern = _blockedPatterns
-            .FirstOrDefault(pattern => request.Command.Contains(pattern, StringComparison.OrdinalIgnoreCase));
+            .FirstOrDefault(pattern => ContainsBlockedPattern(request.Command, pattern));
         if (blockedPattern is not null)
             return $"Command contains blocked pattern: '{blockedPattern}'";
 
@@ -857,9 +890,11 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
 
     /// <summary>
     /// Validates that a <c>git</c> command uses a read-only subcommand
-    /// (<c>status</c>/<c>log</c>/<c>diff</c>/<c>show</c>). The first non-option
-    /// token after <c>git</c> is treated as the subcommand; any leading option
-    /// (e.g. <c>-c …</c>) is rejected because it can alter execution behaviour.
+    /// (<c>status</c>/<c>log</c>/<c>diff</c>/<c>show</c>) AND that none of its options
+    /// breaks that promise. The first non-option token after <c>git</c> is treated as the
+    /// subcommand; any leading option (e.g. <c>-c …</c>) is rejected because it can alter
+    /// execution behaviour, and every remaining token is scanned against
+    /// <see cref="s_forbiddenGitOptions"/>.
     /// </summary>
     private static string? ValidateGitSubcommand(string command)
     {
@@ -877,7 +912,77 @@ public partial class ShellCommandTool : ToolBase<ShellCommandRequest, ShellComma
         if (!s_allowedGitSubcommands.Contains(subcommand))
             return $"git subcommand '{subcommand}' is not allowed; only read-only subcommands (status, log, diff, show) are permitted";
 
+        // The subcommand alone does not make the call read-only: the options it accepts do.
+        var forbiddenOption = FindForbiddenGitOption(tokens);
+        if (forbiddenOption is not null)
+            return $"git option '{forbiddenOption}' is not allowed; it would write, execute, or leave the working directory";
+
         return null;
+    }
+
+    /// <summary>
+    /// Returns the first option of <see cref="s_forbiddenGitOptions"/> present in
+    /// <paramref name="tokens"/>, or null when the command line carries none. A long option
+    /// is matched on its name, so <c>--output=&lt;file&gt;</c> and <c>--output &lt;file&gt;</c>
+    /// are the same option; a short one is matched on its prefix, because git lets it carry
+    /// its value attached (<c>-o/tmp/x</c>).
+    /// </summary>
+    private static string? FindForbiddenGitOption(IReadOnlyList<string> tokens)
+    {
+        for (var i = 1; i < tokens.Count; i++)
+        {
+            var token = tokens[i];
+            if (token.Length < 2 || token[0] != '-')
+                continue;
+
+            var equals = token.IndexOf('=', StringComparison.Ordinal);
+            var name = equals > 0 ? token[..equals] : token;
+
+            foreach (var option in s_forbiddenGitOptions)
+            {
+                var matched = option.StartsWith("--", StringComparison.Ordinal)
+                    ? string.Equals(name, option, StringComparison.Ordinal)
+                    : token.StartsWith(option, StringComparison.Ordinal);
+                if (matched)
+                    return option;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// True when <paramref name="pattern"/> occurs in <paramref name="command"/> at a token
+    /// boundary: it must start the command or follow whitespace, and — when it ends on a
+    /// letter or a digit — it must not continue into a longer word. Patterns that end on
+    /// punctuation (<c>dd if=</c>, <c>rm -rf /</c>) carry their own right boundary.
+    /// <para>
+    /// The check used to be a bare <c>Contains</c>, which read the intent of every entry
+    /// wrongly: <c>format</c> is the disk-formatting command, and the substring match refused
+    /// the legitimate <c>git log --format=%H</c> and every <c>--pretty=format:</c> with it.
+    /// </para>
+    /// </summary>
+    private static bool ContainsBlockedPattern(string command, string pattern)
+    {
+        if (pattern.Length == 0)
+            return false;
+
+        var index = command.IndexOf(pattern, StringComparison.OrdinalIgnoreCase);
+        while (index >= 0)
+        {
+            var startsToken = index == 0 || char.IsWhiteSpace(command[index - 1]);
+            var end = index + pattern.Length;
+            var endsToken = end == command.Length
+                || !char.IsLetterOrDigit(pattern[^1])
+                || !char.IsLetterOrDigit(command[end]);
+
+            if (startsToken && endsToken)
+                return true;
+
+            index = command.IndexOf(pattern, index + 1, StringComparison.OrdinalIgnoreCase);
+        }
+
+        return false;
     }
 
     /// <summary>Truncates a string to <see cref="MaxOutputLength"/> characters.</summary>

@@ -698,6 +698,86 @@ public sealed class ShellCommandToolTests : IDisposable
         Assert.Contains("%", result.Error, StringComparison.Ordinal);
     }
 
+    [Theory]
+    [InlineData("git log --output=/tmp/orkeon-x")]
+    [InlineData("git diff --output /tmp/orkeon-x")]
+    [InlineData("git show -o/tmp/orkeon-x")]
+    public async Task ShouldRejectGitOutputOption_ByDefault(string command)
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = command
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("not allowed", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("git show --ext-diff")]
+    [InlineData("git log --textconv")]
+    [InlineData("git diff --no-index /etc/hostname /etc/hosts")]
+    [InlineData("git log --git-dir=/tmp/other")]
+    [InlineData("git log --exec-path=/tmp/other")]
+    public async Task ShouldRejectGitEscapeOption_ByDefault(string command)
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = command
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("not allowed", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task ShouldAllowGitLogFormat_ByDefault()
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = "git log -1 --format=%H"
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        // --format is a display option: it must survive both the git option scan and the
+        // blocked-pattern list, whose "format" entry means the disk-formatting command.
+        Assert.DoesNotContain("blocked pattern", result.Error ?? "", StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("not allowed", result.Error ?? "", StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Theory]
+    [InlineData("echo sudo")]
+    [InlineData("echo run sudo now")]
+    public async Task ShouldRejectBlockedPattern_WhenItStandsAsItsOwnToken(string command)
+    {
+        var request = new ToolCallRequest(
+            ToolName: "shell_command",
+            Parameters: new Dictionary<string, object?>
+            {
+                ["command"] = command
+            }
+        );
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("blocked pattern", result.Error, StringComparison.OrdinalIgnoreCase);
+    }
+
     public void Dispose()
     {
         GC.SuppressFinalize(this);
