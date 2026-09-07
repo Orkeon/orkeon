@@ -29,6 +29,16 @@ Depuis R5.4 :
 - les seuils sont **transitoires** (réalistes au regard de l'état mesuré au
   2026-05-31) et leur **durcissement est planifié** ci-dessous.
 
+**Où en est le projet au 2026-09-05**
+([rapport complet](../../../sonarqube/sonarqube-report-2026-09-05.md)) : le gate est **OK**
+sur chaque condition qu'il rapporte — `new_reliability_rating` **A (1)**,
+`new_security_rating` **A**, `new_maintainability_rating` **A**, `new_coverage` **78,1 %**,
+`new_duplicated_lines_density` **0,0 %** — sur 162 k lignes portant **0 bug,
+0 vulnérabilité, 0 hotspot non statué** (17 hotspots, tous REVIEWED) et 0 min de dette
+technique. Les deux conditions que cette page décrivait rouges ou neutralisées en mai sont
+donc **tenues**. Les seuils ci-dessous n'ont pas encore bougé : les relever relève de la
+procédure du §6, pas de cette mesure.
+
 ## 2. Clé de projet
 
 La clé de projet SonarQube est **`Orkeon`** (renommée le 2026-08-17 en suite
@@ -58,11 +68,11 @@ dont le seuil diffère, et (ré)associe le gate au projet.
 | Condition | Sens | Seuil transitoire (T0) | Cible finale | Justification du seuil transitoire |
 |---|---|:--:|:--:|---|
 | `new_coverage` | ≥ | **70 %** | 80 % | Nouveau code à 71,3 % au 2026-05-31 ; aligné sur la cible de couverture à 70 % (décision R5.2). Remonte avec R5.5/R5.6. |
-| `new_reliability_rating` | ≤ | **B (2)** | A (1) | B tolère les bugs *mineurs* le temps de corriger les 3 bugs *majeurs* connus. Au 2026-05-31 le nouveau code était à **C** : la condition reste rouge tant que ces 3 bugs ne sont pas corrigés — **c'est voulu** (pression ciblée du gate bloquant sur les seules vraies causes, cf. fiche R5.4). |
+| `new_reliability_rating` | ≤ | **B (2)** | A (1) | B tolérait les bugs *mineurs* le temps de corriger les 3 bugs *majeurs* connus. Au 2026-05-31 le nouveau code était à **C** et la condition restait rouge à dessein — pression ciblée du gate bloquant sur les seules vraies causes (cf. fiche R5.4). Ces bugs ont disparu : au 2026-09-05 le nouveau code est à **A (1)** et le projet relève 0 bug, donc B est devenu du mou et non de la pression. Le durcissement vers A est débloqué (§5). |
 | `new_security_rating` | ≤ | **A (1)** | A (1) | Déjà tenue — maintenue stricte. |
 | `new_maintainability_rating` | ≤ | **A (1)** | A (1) | Déjà tenue — maintenue stricte. |
 | `new_duplicated_lines_density` | ≤ | **3 %** | 3 % | Déjà tenue (0,56 %) — maintenue. |
-| `new_security_hotspots_reviewed` | ≥ | **0 % (neutralisée)** | 100 % | 9 hotspots hérités non statués (en cours via la remédiation sécurité, fiche 07). Le seuil 0 rend la condition toujours OK **tout en la gardant visible** dans le gate et les rapports. |
+| `new_security_hotspots_reviewed` | ≥ | **0 % (neutralisée)** | 100 % | Neutralisée le temps que 9 hotspots hérités soient statués (remédiation sécurité, fiche 07). Les 17 hotspots sont **REVIEWED** au 2026-09-05 et aucun ne reste non statué, donc la neutralisation ne masque plus rien ; le seuil 0 garde la condition **visible** dans le gate et les rapports jusqu'à sa montée à 100 (§5). |
 
 ## 4. Où le verdict est appliqué
 
@@ -83,11 +93,11 @@ visible dans les logs du script.
 Chaque condition est durcie **dès que son critère de passage est rempli** —
 pas de big-bang. Récapitulatif :
 
-| Condition | T0 (transitoire, aujourd'hui) | Critère de passage | T1 | Critère de passage | T2 (cible) |
+| Condition | T0 (en vigueur) | Critère de passage | T1 | Critère de passage | T2 (cible) |
 |---|:--:|---|:--:|---|:--:|
-| `new_coverage` | 70 % | R5.5 (tests contractuels `Tools.Analysis`) **et** R5.6 (dé-flake) livrés ; cible de couverture montée à 75 % (R5.2) | 75 % | nouveau code stable ≥ 80 % sur ~1 mois de merges | **80 %** |
-| `new_reliability_rating` | B | les 3 bugs majeurs connus corrigés (campagne de remédiation) | A | — | **A** |
-| `new_security_hotspots_reviewed` | 0 % (neutralisée) | les 9 hotspots hérités statués sur le serveur (remédiation sécurité, fiche 07) | 100 % | — | **100 %** |
+| `new_coverage` | 70 % | R5.5 (tests contractuels `Tools.Analysis`) **et** R5.6 (dé-flake) livrés ; cible de couverture montée à 75 % (R5.2). Nouveau code mesuré à 78,1 % au 2026-09-05 | 75 % | nouveau code stable ≥ 80 % sur ~1 mois de merges | **80 %** |
+| `new_reliability_rating` | B | les 3 bugs majeurs connus corrigés (campagne de remédiation) — **tenu au 2026-09-05** : 0 bug, nouveau code à A | A | — | **A** |
+| `new_security_hotspots_reviewed` | 0 % (neutralisée) | les 9 hotspots hérités statués sur le serveur (remédiation sécurité, fiche 07) — **tenu au 2026-09-05** : 17/17 REVIEWED | 100 % | — | **100 %** |
 | `new_security_rating` | A | déjà au niveau cible | A | — | **A** |
 | `new_maintainability_rating` | A | déjà au niveau cible | A | — | **A** |
 | `new_duplicated_lines_density` | 3 % | déjà au niveau cible | 3 % | — | **3 %** |

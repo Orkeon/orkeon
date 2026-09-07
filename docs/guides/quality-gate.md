@@ -28,6 +28,16 @@ Since R5.4:
 - the thresholds are **transitional** (realistic given the state measured on
   2026-05-31) and their **hardening is planned** below.
 
+**Where the project stands on 2026-09-05**
+([full report](../../sonarqube/sonarqube-report-2026-09-05.md)): the gate is **OK** on every
+condition it reports — `new_reliability_rating` **A (1)**, `new_security_rating` **A**,
+`new_maintainability_rating` **A**, `new_coverage` **78.1 %**,
+`new_duplicated_lines_density` **0.0 %** — over 162 k lines carrying **0 bugs,
+0 vulnerabilities, 0 unreviewed hotspots** (17 hotspots, all REVIEWED) and 0 min of
+technical debt. The two conditions this page described as red or neutralized in May are
+therefore **met**. The thresholds below have not moved yet: raising them is the procedure
+of §6, not a consequence of this measurement.
+
 ## 2. Project key
 
 The SonarQube project key is **`Orkeon`** (renamed on 2026-08-17 as a PUB-01
@@ -56,11 +66,11 @@ condition whose threshold differs, and (re)associates the gate with the project.
 | Condition | Direction | Transitional threshold (T0) | Final target | Rationale for the transitional threshold |
 |---|---|:--:|:--:|---|
 | `new_coverage` | ≥ | **70%** | 80% | New code at 71.3% on 2026-05-31; aligned with the 70% coverage target (R5.2 decision). Rises with R5.5/R5.6. |
-| `new_reliability_rating` | ≤ | **B (2)** | A (1) | B tolerates *minor* bugs while the 3 known *major* bugs get fixed. On 2026-05-31 the new code was at **C**: the condition stays red until those 3 bugs are fixed — **this is intentional** (targeted pressure of the blocking gate on the only real causes, cf. R5.4 work item). |
+| `new_reliability_rating` | ≤ | **B (2)** | A (1) | B tolerated *minor* bugs while the 3 known *major* bugs got fixed. On 2026-05-31 the new code was at **C** and the condition stayed red on purpose — targeted pressure of the blocking gate on the only real causes (cf. R5.4 work item). Those bugs are gone: on 2026-09-05 the new code is at **A (1)** and the project reports 0 bugs, so B is now slack rather than pressure. Hardening to A is unblocked (§5). |
 | `new_security_rating` | ≤ | **A (1)** | A (1) | Already met — kept strict. |
 | `new_maintainability_rating` | ≤ | **A (1)** | A (1) | Already met — kept strict. |
 | `new_duplicated_lines_density` | ≤ | **3%** | 3% | Already met (0.56%) — kept. |
-| `new_security_hotspots_reviewed` | ≥ | **0% (neutralized)** | 100% | 9 inherited hotspots not yet reviewed (in progress via the security remediation, sheet 07). The 0 threshold makes the condition always OK **while keeping it visible** in the gate and the reports. |
+| `new_security_hotspots_reviewed` | ≥ | **0% (neutralized)** | 100% | Neutralized while 9 inherited hotspots awaited review (security remediation, sheet 07). All 17 hotspots are **REVIEWED** as of 2026-09-05 and none is left unreviewed, so the neutralization no longer masks anything; the 0 threshold keeps the condition **visible** in the gate and the reports until it is raised to 100 (§5). |
 
 ## 4. Where the verdict is enforced
 
@@ -81,11 +91,11 @@ logs.
 Each condition is hardened **as soon as its passing criterion is met** —
 no big-bang. Summary:
 
-| Condition | T0 (transitional, today) | Passing criterion | T1 | Passing criterion | T2 (target) |
+| Condition | T0 (in force) | Passing criterion | T1 | Passing criterion | T2 (target) |
 |---|:--:|---|:--:|---|:--:|
-| `new_coverage` | 70% | R5.5 (`Tools.Analysis` contract tests) **and** R5.6 (de-flake) delivered; coverage target raised to 75% (R5.2) | 75% | new code stable ≥ 80% over ~1 month of merges | **80%** |
-| `new_reliability_rating` | B | the 3 known major bugs fixed (remediation campaign) | A | — | **A** |
-| `new_security_hotspots_reviewed` | 0% (neutralized) | the 9 inherited hotspots reviewed on the server (security remediation, sheet 07) | 100% | — | **100%** |
+| `new_coverage` | 70% | R5.5 (`Tools.Analysis` contract tests) **and** R5.6 (de-flake) delivered; coverage target raised to 75% (R5.2). New code measured at 78.1% on 2026-09-05 | 75% | new code stable ≥ 80% over ~1 month of merges | **80%** |
+| `new_reliability_rating` | B | the 3 known major bugs fixed (remediation campaign) — **met on 2026-09-05**: 0 bugs, new code at A | A | — | **A** |
+| `new_security_hotspots_reviewed` | 0% (neutralized) | the 9 inherited hotspots reviewed on the server (security remediation, sheet 07) — **met on 2026-09-05**: 17/17 REVIEWED | 100% | — | **100%** |
 | `new_security_rating` | A | already at the target level | A | — | **A** |
 | `new_maintainability_rating` | A | already at the target level | A | — | **A** |
 | `new_duplicated_lines_density` | 3% | already at the target level | 3% | — | **3%** |
