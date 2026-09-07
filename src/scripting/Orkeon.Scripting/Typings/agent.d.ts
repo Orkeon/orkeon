@@ -75,11 +75,36 @@ declare global {
         readonly agentName: string;
     }
 
-    type ErrorAction =
-        | { kind: "fail" }
-        | { kind: "retry"; afterMs?: number }
-        | { kind: "skip" }
-        | { kind: "fallback"; value: unknown };
+    // ErrorAction was declared here as a union of plain object literals
+    // (`{ kind: "retry"; afterMs?: number }` and friends). The runtime accepts no such
+    // thing: JsCrew.InvokeOnError converts the handler's return value and keeps it only
+    // when it is a JsErrorAction instance, i.e. something the global `ErrorAction` factory
+    // produced — anything else becomes `fail()`. A handler written against the old
+    // declaration therefore compiled, ran, and silently turned every retry into a failed
+    // run. What follows is the surface ErrorActionBinding actually registers.
+
+    /**
+     * The outcome an `onError` handler returns. Opaque by design: build one with the global
+     * {@link ErrorAction} factory below. A plain object is treated as `ErrorAction.fail()`.
+     */
+    interface ErrorAction {
+        readonly kind: "fail" | "retry" | "skip" | "fallback";
+    }
+
+    /** The four outcomes an `onError` handler can return. */
+    const ErrorAction: {
+        /** Give up and fail the run with the original error. */
+        fail(): ErrorAction;
+        /** Swallow the error and continue with no output for this agent. */
+        skip(): ErrorAction;
+        /** Swallow the error and use <paramref name="value" /> as the agent's output. */
+        fallback(value: unknown): ErrorAction;
+        /**
+         * Run the body again. `delay` is milliseconds or a duration string ("250ms", "2s");
+         * `max` caps the attempts, and reaching it rethrows the original error.
+         */
+        retry(options?: { delay?: number | string; max?: number }): ErrorAction;
+    };
 
     function agentBuilder<TIn = unknown, TOut = unknown, TState = unknown>(): AgentBuilder<TIn, TOut, TState>;
 }

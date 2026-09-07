@@ -78,7 +78,7 @@ public sealed partial class TypingsParseTests
     [Fact]
     public void No_global_name_is_declared_twice_in_a_conflicting_shape()
     {
-        var declarations = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        var declarations = new Dictionary<string, List<(string Kind, string File)>>(StringComparer.Ordinal);
 
         foreach (var file in Directory.EnumerateFiles(TypingsDirectory(), "*.d.ts").Order(StringComparer.Ordinal))
         {
@@ -93,22 +93,70 @@ public sealed partial class TypingsParseTests
                 if (!declarations.TryGetValue(name, out var kinds))
                     declarations[name] = kinds = [];
 
-                kinds.Add($"{kind} in {Path.GetFileName(file)}");
+                kinds.Add((kind, Path.GetFileName(file)));
             }
         }
 
         var conflicts = declarations
-            .Where(d => d.Value.Count > 1)
-            .Select(d => $"'{d.Key}' declared as {string.Join(" and ", d.Value)}")
+            .Where(d => d.Value.Count > 1 && !IsTypeAndValueCompanion(d.Value))
+            .Select(d => $"'{d.Key}' declared as {string.Join(" and ", d.Value.Select(k => $"{k.Kind} in {k.File}"))}")
             .Order(StringComparer.Ordinal)
             .ToList();
 
         Assert.Empty(conflicts);
     }
 
+    /// <summary>
+    /// One name in type space and the same name in value space is not a duplicate — it is how
+    /// TypeScript declares a type together with the factory that builds it, the way the lib
+    /// files pair <c>Promise</c> the type with <c>Promise</c> the constructor. <c>ErrorAction</c>
+    /// is ours: the interface an <c>onError</c> handler returns, and the const that produces one.
+    /// The shapes this test exists for — two interfaces whose members disagree, a namespace
+    /// against a const — stay conflicts, because neither pair merges.
+    /// </summary>
+    private static bool IsTypeAndValueCompanion(List<(string Kind, string File)> kinds)
+        => kinds.Count == 2
+           && kinds.Count(k => k.Kind == "interface") == 1
+           && kinds.Count(k => k.Kind is "const" or "function") == 1
+           && kinds.Select(k => k.File).Distinct(StringComparer.Ordinal).Count() == 1;
+
     [System.Text.RegularExpressions.GeneratedRegex(
         @"^\s*(export\s+)?(declare\s+)?(?<kind>interface|namespace|type|const|function|class|enum)\s+(?<name>[A-Za-z_$][A-Za-z0-9_$]*)")]
     private static partial System.Text.RegularExpressions.Regex DeclarationPattern();
+
+    /// <summary>
+    /// Every global the engine registers must be declared in the shipped typings. Nothing
+    /// enforced this, and the gap is what let <c>ErrorAction</c> drift: the binding registered
+    /// a factory while <c>agent.d.ts</c> declared a union of object literals, so a handler
+    /// written against the published typings compiled and then silently failed the run.
+    ///
+    /// <para>
+    /// The names come from the bindings themselves, so adding a binding without declaring it
+    /// fails here rather than reaching a user's editor.
+    /// </para>
+    /// </summary>
+    [Theory]
+    [InlineData("agentBuilder")]
+    [InlineData("crewBuilder")]
+    [InlineData("taskBuilder")]
+    [InlineData("toolBuilder")]
+    [InlineData("ErrorAction")]
+    [InlineData("llm")]
+    [InlineData("rag")]
+    [InlineData("tools")]
+    [InlineData("stateMachine")]
+    [InlineData("stateGraph")]
+    public void Every_registered_global_is_declared_in_the_typings(string globalName)
+    {
+        var declared = Directory.EnumerateFiles(TypingsDirectory(), "*.d.ts")
+            .SelectMany(File.ReadLines)
+            .Select(line => DeclarationPattern().Match(line))
+            .Where(m => m.Success)
+            .Select(m => m.Groups["name"].Value)
+            .ToHashSet(StringComparer.Ordinal);
+
+        Assert.Contains(globalName, declared);
+    }
 
     [Fact]
     public void The_typings_directory_is_not_empty()
