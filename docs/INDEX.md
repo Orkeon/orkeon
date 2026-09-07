@@ -8,6 +8,8 @@ The documentation is organized into 6 thematic sections.
 
 > **Language policy** — every page under `docs/` is maintained in English and French in parallel (`docs/fr/` mirrors the tree path-for-path); a missing mirror fails CI (`scripts/check-docs-parity.sh`). See [CONTRIBUTING.md](../CONTRIBUTING.md) for the contract.
 
+> **Online** — this tree and the generated API reference are published at <https://orkeon.github.io/orkeon/>, deployed by `docs.yml` on every `v*` tag. The site therefore goes live with the first tagged release and always documents a tagged version.
+
 ### Getting started
 
 | File | Description |

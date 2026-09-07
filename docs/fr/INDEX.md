@@ -8,6 +8,8 @@ La documentation est organisée en 6 sections thématiques.
 
 > **Politique de langue** — chaque page sous `docs/` est maintenue en anglais et en français en parallèle (`docs/fr/` reflète l'arborescence chemin pour chemin) ; un miroir manquant fait échouer la CI (`scripts/check-docs-parity.sh`). Voir [CONTRIBUTING.fr.md](../../CONTRIBUTING.fr.md) pour le contrat.
 
+> **En ligne** — cette arborescence et la référence d'API générée sont publiées à l'adresse <https://orkeon.github.io/orkeon/>, déployées par `docs.yml` à chaque tag `v*`. Le site paraît donc avec la première release taguée et documente toujours une version taguée.
+
 ### Démarrage
 
 | Fichier | Description |

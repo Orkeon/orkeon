@@ -4,6 +4,9 @@ Generated reference for the public surface of the thirty Orkeon assemblies liste
 `docfx.json` — the same surface that is frozen in each project's `PublicAPI.Shipped.txt`
 (see [CONTRIBUTING — Versioning and API stability](../CONTRIBUTING.md#versioning-and-api-stability)).
 
+This reference is published with the rest of the documentation at <https://orkeon.github.io/orkeon/>,
+deployed by `docs.yml` on every `v*` tag.
+
 **Documented is not the same as installable.** Distribution was consolidated in PUB-25: six
 package IDs go to NuGet.org, and the rest of the framework reaches you inside the `orkeon` CLI
 and the installer archives. Both groups are documented here, because both are the API a caller
@@ -23,7 +26,7 @@ authority on what ships where is the
 - **`Orkeon.Rag.Abstractions`, `Orkeon.Rag`** — the RAG contracts and pipeline.
 
 The eleven assemblies above are the closure embedded in the single `Orkeon` package —
-`dotnet add package Orkeon` installs all of them at once. The remaining shipped assemblies are
+`dotnet add package Orkeon --prerelease` installs all of them at once. The remaining shipped assemblies are
 opt-in packages of their own:
 
 - **`Orkeon.Tools.{Analysis,Code,Data,EventHub,FileSystem,Rag,Web}`** — the seven agent tool
