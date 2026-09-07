@@ -321,15 +321,22 @@ public sealed class JsCrew
     /// </summary>
     private static readonly TimeSpan BodyPromiseTimeout = TimeSpan.FromMinutes(30);
 
-    private static async Task<object?> UnwrapPromise(JsValue promise, CancellationToken ct)
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1849", Justification = "Blocking here is the point: this thread already owns the engine (crew.run() was called from the script), and UnwrapIfPromise drains the engine's continuations while it waits. UnwrapIfPromiseAsync would resume the pump on a pool thread, putting a second thread inside a Jint engine that is neither thread-safe nor re-entrant — measured: 1 full-suite run in 6 failed that way, and forcing a dedicated thread made it 4 in 4. It also bakes in a 10s ceiling this call must not have.")]
+    private static Task<object?> UnwrapPromise(JsValue promise, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
         try
         {
-            var settled = await Task.Run(
-                () => JsValueExt.UnwrapIfPromise(promise, BodyPromiseTimeout),
-                ct).ConfigureAwait(false);
-            return settled.ToObject();
+            // Inline, on the calling thread — NOT on a pool thread. `crew.run()` is invoked
+            // from the script, so this thread is already inside `engine.Evaluate`; settling the
+            // body's promise means re-entering that same engine, and a Jint engine is neither
+            // thread-safe nor re-entrant. `UnwrapIfPromise` drains the engine's continuations
+            // while it waits, which is precisely the pump this thread owes the engine — moving
+            // it onto another thread put two threads inside one engine and produced everything
+            // but the cause (a body resuming with its parameters unbound, a result that never
+            // settles).
+            var settled = JsValueExt.UnwrapIfPromise(promise, BodyPromiseTimeout);
+            return Task.FromResult(settled.ToObject());
         }
         catch (OperationCanceledException) when (ct.IsCancellationRequested)
         {

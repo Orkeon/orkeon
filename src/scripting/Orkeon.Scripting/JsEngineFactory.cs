@@ -92,6 +92,16 @@ public sealed class JsEngineFactory
     /// Copying is what makes the runtime honour the contract the <c>.d.ts</c> files publish;
     /// changing that contract is a decision for the DSL, not a side effect of a version bump.
     /// </para>
+    /// <para>
+    /// <see cref="ExperimentalFeature.TaskInterop"/> is there for the same reason. The bindings
+    /// hand CLR tasks to the script — <c>crew.run()</c> returns
+    /// <see cref="System.Threading.Tasks.Task{TResult}"/>, and <c>crew.d.ts</c> declares
+    /// <c>run(): Promise&lt;CrewResult&gt;</c>. Without this flag a CLR task is not a thenable,
+    /// and <c>await</c> on a non-thenable hands the object straight back: a script read
+    /// <c>undefined</c> off a Task where it expected <c>output</c>, and walked on while the crew
+    /// was still running. Every procedural example ends on <c>await crew.run()</c>, so the whole
+    /// catalogue depended on this.
+    /// </para>
     /// </summary>
     /// <param name="options">The options being built for a new engine.</param>
     /// <returns>The same instance, so it can be chained.</returns>
@@ -99,6 +109,7 @@ public sealed class JsEngineFactory
     {
         ArgumentNullException.ThrowIfNull(options);
         options.Interop.ArrayConversion = ArrayConversionMode.Copy;
+        options.ExperimentalFeatures |= ExperimentalFeature.TaskInterop;
         return options;
     }
 
