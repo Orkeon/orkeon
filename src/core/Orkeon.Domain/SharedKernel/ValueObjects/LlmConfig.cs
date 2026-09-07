@@ -17,16 +17,27 @@ public sealed record LlmConfig
     public string Model { get; init; } = LlmDefaults.DefaultModelName;
 
     /// <summary>
-    /// Direct API key. Prefer <see cref="ApiKeySecretName"/> with ISecretProvider instead
-    /// to avoid storing secrets in configuration objects.
+    /// The API key the provider authenticates with. This is the supported path in 1.0:
+    /// every provider guard and every request path reads this property, and a config
+    /// without it is treated as unconfigured.
     /// </summary>
-    [Obsolete("Use ApiKeySecretName with ISecretProvider instead. Will be removed in v2.0.")]
+    /// <remarks>
+    /// Keep the value out of source and out of crew YAML: bind it from the settings file
+    /// (<c>Llm:ApiKey</c>) or from the environment (<c>ORKEON_Llm__ApiKey</c>), which is
+    /// what the runners already do.
+    /// </remarks>
     public string? ApiKey { get; init; }
 
     /// <summary>
-    /// Logical name of the secret to resolve via ISecretProvider at runtime.
-    /// When set, this takes precedence over <see cref="ApiKey"/>.
+    /// Logical name of a secret, recorded for a host that resolves secrets itself.
     /// </summary>
+    /// <remarks>
+    /// <b>Reserved, and not resolved by the framework in 1.0.</b> Nothing in Orkeon turns
+    /// this name into a key: a config that carries only <see cref="ApiKeySecretName"/> is
+    /// unconfigured, and every call against it answers that an API key is required. A host
+    /// that keeps its keys in a secret store resolves the name itself and assigns the
+    /// result to <see cref="ApiKey"/>. See <c>docs/reference/limitations.md</c>.
+    /// </remarks>
     public string? ApiKeySecretName { get; init; }
 
     /// <summary>Gets the base URL for the LLM provider.</summary>
@@ -126,9 +137,7 @@ public sealed record LlmConfig
     private LlmConfig(string model, string? apiKey = null)
     {
         Model = model;
-#pragma warning disable CS0618 // Type or member is obsolete
         ApiKey = apiKey;
-#pragma warning restore CS0618
     }
 
     /// <summary>Creates a new <see cref="LlmConfig"/> with the specified model and optional API key.</summary>
@@ -245,34 +254,34 @@ public sealed record LlmConfig
     }
 
     /// <summary>
-    /// Creates a config on the platform's default OpenAI model that resolves the API key from
-    /// ISecretProvider at runtime.
+    /// Creates a config on the platform's default OpenAI model carrying a secret name.
+    /// The framework does not resolve it -- see <see cref="ApiKeySecretName"/>.
     /// </summary>
-    /// <param name="apiKeySecretName">The secret name to resolve.</param>
-    /// <returns>A <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    /// <param name="apiKeySecretName">The secret name to record.</param>
+    /// <returns>A <see cref="LlmConfig"/> whose key the host must still supply.</returns>
     public static LlmConfig WithDefaultModelSecret(string apiKeySecretName = "OPENAI_API_KEY")
     {
         return new LlmConfig(LlmDefaults.DefaultModelName) { ApiKeySecretName = apiKeySecretName };
     }
 
-    /// <summary>Creates a default-model config that resolves the API key from ISecretProvider at runtime.</summary>
-    /// <param name="apiKeySecretName">The secret name to resolve.</param>
-    /// <returns>A <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    /// <summary>Creates a default-model config carrying a secret name the framework does not resolve.</summary>
+    /// <param name="apiKeySecretName">The secret name to record.</param>
+    /// <returns>A <see cref="LlmConfig"/> whose key the host must still supply.</returns>
     [Obsolete("Renamed to WithDefaultModelSecret: this factory has always returned the platform default model, which is no longer gpt-4 (LLM-01).")]
     public static LlmConfig Gpt4WithSecret(string apiKeySecretName = "OPENAI_API_KEY")
         => WithDefaultModelSecret(apiKeySecretName);
 
-    /// <summary>Creates a GPT-3.5-Turbo config that resolves the API key from ISecretProvider at runtime.</summary>
-    /// <param name="apiKeySecretName">The secret name to resolve.</param>
-    /// <returns>A GPT-3.5-Turbo <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    /// <summary>Creates a GPT-3.5-Turbo config carrying a secret name the framework does not resolve.</summary>
+    /// <param name="apiKeySecretName">The secret name to record.</param>
+    /// <returns>A GPT-3.5-Turbo <see cref="LlmConfig"/> whose key the host must still supply.</returns>
     public static LlmConfig Gpt35TurboWithSecret(string apiKeySecretName = "OPENAI_API_KEY")
     {
         return new LlmConfig(LlmDefaults.LegacyModelName) { ApiKeySecretName = apiKeySecretName };
     }
 
-    /// <summary>Creates a Claude config that resolves the API key from ISecretProvider at runtime.</summary>
-    /// <param name="apiKeySecretName">The secret name to resolve.</param>
-    /// <returns>A Claude <see cref="LlmConfig"/> using secret-based API key resolution.</returns>
+    /// <summary>Creates a Claude config carrying a secret name the framework does not resolve.</summary>
+    /// <param name="apiKeySecretName">The secret name to record.</param>
+    /// <returns>A Claude <see cref="LlmConfig"/> whose key the host must still supply.</returns>
     public static LlmConfig ClaudeWithSecret(string apiKeySecretName = "ANTHROPIC_API_KEY")
     {
         return new LlmConfig("claude-3-opus-20240229")
