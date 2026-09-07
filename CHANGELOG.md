@@ -90,6 +90,15 @@ measurements against the September report, `SECURITY.md` admits that
 so, the English Studio page quotes the English catalogue, and the documentation
 site has a published address. Every `src` project has a README.
 
+**Two more guards, caught by the same pass.** The Guardian's own SSRF check was the
+third guard on this surface and had kept a hand-written IPv4 regex while the other
+two were hardened; it now judges through `UrlValidator`'s tables, so `[::1]`,
+`[::]`, the IPv4-mapped and NAT64 forms of the metadata endpoint and `100.64.0.0/10`
+are refused where they used to pass. And `DockerSandbox` — the boundary `SECURITY.md`
+points at for untrusted code — started its container as root with the daemon's
+default capability set; the run line now always carries `--cap-drop=ALL`,
+`--security-opt=no-new-privileges` and `--pids-limit`.
+
 **Gates.** `check-doc-claims.py` compares the CONTRIBUTING copies of the NuGet
 lineup (six copies now, not four) and checks the push order in each;
 `check-comment-accents.py` reaches unaccented French in C# comments, which is how
