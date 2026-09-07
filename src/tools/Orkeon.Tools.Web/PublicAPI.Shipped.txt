@@ -114,6 +114,8 @@ Orkeon.Tools.Web.HttpApiRequest.Url.set -> void
 Orkeon.Tools.Web.HttpApiResponse
 Orkeon.Tools.Web.HttpApiResponse.Body.get -> string!
 Orkeon.Tools.Web.HttpApiResponse.Body.set -> void
+Orkeon.Tools.Web.HttpApiResponse.HeaderWarnings.get -> System.Collections.Generic.IReadOnlyList<string!>?
+Orkeon.Tools.Web.HttpApiResponse.HeaderWarnings.init -> void
 Orkeon.Tools.Web.HttpApiResponse.Headers.get -> System.Collections.Generic.Dictionary<string!, string!>!
 Orkeon.Tools.Web.HttpApiResponse.Headers.init -> void
 Orkeon.Tools.Web.HttpApiResponse.HttpApiResponse() -> void

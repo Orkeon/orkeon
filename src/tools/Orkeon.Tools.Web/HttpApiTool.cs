@@ -76,6 +76,15 @@ public sealed class HttpApiResponse
     [JsonPropertyName("is_success")]
     [ReturnSchema(Description = "Whether the response has a 2xx status code", Example = true)]
     public bool IsSuccess { get; set; }
+
+    /// <summary>
+    /// Gets the warnings raised while sanitizing the request headers, or <c>null</c> when the
+    /// caller's headers went through untouched. It is left null rather than empty so the key
+    /// stays out of the serialized result on every clean call.
+    /// </summary>
+    [JsonPropertyName("header_warnings")]
+    [ReturnSchema(Description = "Warnings raised while sanitizing the request headers (dropped or sensitive headers); absent when there is nothing to report", ItemsType = "string")]
+    public IReadOnlyList<string>? HeaderWarnings { get; init; }
 }
 
 // ── Tool implementation ──────────────────────────────────────────────────
@@ -90,6 +99,13 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
     {
         "GET", "POST", "PUT", "DELETE", "PATCH", "HEAD", "OPTIONS"
     };
+
+    /// <summary>
+    /// Sanitizer used when none was injected. The headers come from an LLM, so forwarding them
+    /// raw would let Host, Cookie or a CRLF-bearing value reach the wire; this shared default
+    /// keeps the tool fail-closed the same way DefaultSsrfGuard backs ValidateUrlAsync.
+    /// </summary>
+    private static readonly HttpHeaderSanitizer s_defaultHeaderSanitizer = new();
 
     /// <inheritdoc />
     public override string Name => "http_api";
@@ -164,11 +180,15 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
 
         using var httpRequest = new HttpRequestMessage(new HttpMethod(method), uri);
 
-        // Add custom headers
+        // Add the caller's headers, sanitized: forbidden and CRLF-bearing entries are dropped
+        // before they can reach the wire, and what was dropped is reported to the caller.
+        IReadOnlyList<string> headerWarnings = [];
         if (request.Headers != null)
         {
             var headers = ParseHeaders(request.Headers);
-            foreach (var (key, value) in headers)
+            var sanitization = SanitizeHeaders(headers) ?? s_defaultHeaderSanitizer.SanitizeHeaders(headers);
+            headerWarnings = sanitization.Warnings;
+            foreach (var (key, value) in sanitization.SanitizedHeaders)
             {
                 httpRequest.Headers.TryAddWithoutValidation(key, value);
             }
@@ -201,7 +221,8 @@ public partial class HttpApiTool : HttpToolBase<HttpApiRequest, HttpApiResponse>
             StatusDescription = response.ReasonPhrase ?? "",
             Body = responseBody,
             Headers = responseHeaders,
-            IsSuccess = response.IsSuccessStatusCode
+            IsSuccess = response.IsSuccessStatusCode,
+            HeaderWarnings = headerWarnings.Count > 0 ? headerWarnings : null
         };
         }
     }

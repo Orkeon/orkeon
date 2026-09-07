@@ -48,6 +48,128 @@ public sealed class HttpApiToolHeaderTests : IDisposable
     }
 
     [Fact]
+    public async Task CallAsync_ForbiddenHostAndCookieHeaders_AreDropped()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
+
+        var request = new ToolCallRequest("http_api", new Dictionary<string, object?>
+        {
+            [ParamUrl] = "https://api.example.com/x",
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["Host"] = "internal.corp",
+                ["Cookie"] = "sid=1",
+                ["X-Custom"] = "ok"
+            }
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.NotNull(_mockHandler.LastRequest);
+        Assert.Null(_mockHandler.LastRequest!.Headers.Host);
+        Assert.False(_mockHandler.LastRequest.Headers.Contains("Host"));
+        Assert.False(_mockHandler.LastRequest.Headers.Contains("Cookie"));
+        Assert.Equal("ok", _mockHandler.LastRequest.Headers.GetValues("X-Custom").Single());
+    }
+
+    [Fact]
+    public async Task CallAsync_CrlfInjectedHeader_IsDropped()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
+
+        var request = new ToolCallRequest("http_api", new Dictionary<string, object?>
+        {
+            [ParamUrl] = "https://api.example.com/x",
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["X-Injected"] = "a\r\nEvil: b",
+                ["X-Custom"] = "ok"
+            }
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.NotNull(_mockHandler.LastRequest);
+        Assert.False(_mockHandler.LastRequest!.Headers.Contains("X-Injected"));
+        Assert.False(_mockHandler.LastRequest.Headers.Contains("Evil"));
+        Assert.Equal("ok", _mockHandler.LastRequest.Headers.GetValues("X-Custom").Single());
+    }
+
+    [Fact]
+    public async Task CallAsync_DroppedHeaders_AreReportedAsHeaderWarnings()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
+
+        var request = new ToolCallRequest("http_api", new Dictionary<string, object?>
+        {
+            [ParamUrl] = "https://api.example.com/x",
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["Cookie"] = "sid=1"
+            }
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
+        var warnings = Assert.IsType<IEnumerable<object?>>(dict["header_warnings"], exactMatch: false);
+        // The parameter pipeline lower-cases nested keys, and the sanitizer is
+        // case-insensitive, so the warning names the header as it was received.
+        Assert.Contains(warnings, w => w is string text && text.Contains("Cookie", StringComparison.OrdinalIgnoreCase));
+    }
+
+    [Fact]
+    public async Task CallAsync_CleanHeaders_ReportNoHeaderWarnings()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
+
+        var request = new ToolCallRequest("http_api", new Dictionary<string, object?>
+        {
+            [ParamUrl] = "https://api.example.com/x",
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["X-Custom"] = "ok"
+            }
+        });
+
+        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        var dict = Assert.IsType<Dictionary<string, object?>>(result.Result);
+        Assert.False(dict.ContainsKey("header_warnings"));
+    }
+
+    [Fact]
+    public async Task CallAsync_WithoutInjectedSanitizer_StillDropsForbiddenHeaders()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
+        // The legacy constructor injects no sanitizer; the tool must fall back to a
+        // default one instead of forwarding LLM-supplied headers raw. A public IP
+        // literal keeps the fail-closed default URL guard away from DNS.
+        using var tool = new HttpApiTool(_httpClient);
+
+        var request = new ToolCallRequest("http_api", new Dictionary<string, object?>
+        {
+            [ParamUrl] = "https://93.184.216.34/x",
+            ["headers"] = new Dictionary<string, object?>
+            {
+                ["Cookie"] = "sid=1",
+                ["X-Custom"] = "ok"
+            }
+        });
+
+        var result = await tool.CallAsync(request, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.NotNull(_mockHandler.LastRequest);
+        Assert.False(_mockHandler.LastRequest!.Headers.Contains("Cookie"));
+        Assert.Equal("ok", _mockHandler.LastRequest.Headers.GetValues("X-Custom").Single());
+    }
+
+    [Fact]
     public async Task CallAsync_NoHeaders_StillSucceeds()
     {
         _mockHandler.SetResponse(HttpStatusCode.OK, "ok");
