@@ -74,7 +74,7 @@ public sealed class JsLlmFacadeCallConfigTests
     [Fact]
     public async Task act_ModelOverride_ReachesTheProvider_WithCredentialsIntact()
     {
-        // B-10 (exp07): the main loop hot-swaps the model per turn by passing
+        // An interactive loop hot-swaps the model per turn by passing
         // `{ llm: { model } }` to act(); the agent's boot provider must keep its credentials.
         using var engine = new Engine();
         var provider = Configured();

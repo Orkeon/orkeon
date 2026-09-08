@@ -19,7 +19,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs.Base;
 /// reachable by declaring a tool or attaching an image.
 /// </para>
 /// <para>
-/// Measured on 2026-08-04 in exp02's round-41 exchange log: every one of the seven RAG
+/// Measured on 2026-08-04 against a live provider: every one of the seven RAG
 /// generations went out as
 /// <c>messages: [{ role: "user", content: "system: You are a retrieval-augmented assistant…" }]</c>.
 /// That is the shape of the whole RAG subsystem's generation stage, and of every LLM judge,

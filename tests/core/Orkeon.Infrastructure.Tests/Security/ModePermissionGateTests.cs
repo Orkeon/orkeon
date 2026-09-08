@@ -5,7 +5,7 @@ using Orkeon.Infrastructure.Security;
 namespace Orkeon.Infrastructure.Tests.Security;
 
 /// <summary>
-/// F2 (exp07): mode → per-tool verdicts of <see cref="ModePermissionGate"/>, including the
+/// Mode → per-tool verdicts of <see cref="ModePermissionGate"/>, including the
 /// non-interactive Ask→Deny downgrade and the fail-closed classification of unknown tools.
 /// </summary>
 public class ModePermissionGateTests

@@ -56,7 +56,7 @@ internal sealed record ForgeAssistantReply
 
 /// <summary>
 /// The conversational side of the cycle (SPEC-ORKEON-FORGE §7.1) behind one seam. The
-/// production implementation is the exp07-adapted crew run in-engine via
+/// production implementation is the assistant crew run in-engine via
 /// <c>ScriptHost</c>; the tests script this interface directly — no test talks to a model,
 /// and the stages cannot tell the difference. Submissions come back as raw JSON: parsing
 /// and schema validation stay on the engine side of the seam, never trusted to the

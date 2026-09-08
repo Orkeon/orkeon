@@ -9,7 +9,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// exp 07: <c>ctx.llm.act</c> real tool-calling loop. Drives a fake provider that returns a
+/// <c>ctx.llm.act</c>'s real tool-calling loop. Drives a fake provider that returns a
 /// tool call on the first turn and a final answer on the second, asserting the loop executes
 /// the matching <see cref="IBaseTool"/> and feeds the result back.
 /// </summary>

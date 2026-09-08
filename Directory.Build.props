@@ -16,12 +16,15 @@
        compiler that runs them. Repo-wide because every project loads them, and a project left
        on the SDK compiler would silently lose both.
 
-       Conditioned on central package management, because this file is inherited by the
-       `experiments/` submodule, whose own Directory.Packages.props turns CPM OFF on purpose.
-       A versionless PackageReference with no central version is NU1015, and it broke restore
-       there outright; giving it a version here instead would be NU1008 in this repo, where CPM
-       is on. The condition is the only form that is correct on both sides. Experiments carry no
-       Orkeon analyzer, so the SDK compiler is the right one for them. -->
+       Conditioned on central package management, because this file is also inherited by the
+       nested repositories that maintainer checkouts mount under this one, whose own
+       Directory.Packages.props turns CPM OFF on purpose. Such a checkout exists today, so
+       this condition is live rather than defensive — do not delete it just because a public
+       clone shows no nested Directory.Packages.props. A versionless PackageReference with no
+       central version is NU1015, and it broke restore there outright; giving it a version
+       here instead would be NU1008 in this repo, where CPM is on. The condition is the only
+       form correct on both sides, and those checkouts carry no Orkeon analyzer, so the SDK
+       compiler is the right one for them. -->
   <ItemGroup Condition="'$(ManagePackageVersionsCentrally)' == 'true'">
     <PackageReference Include="Microsoft.Net.Compilers.Toolset" PrivateAssets="all" />
   </ItemGroup>

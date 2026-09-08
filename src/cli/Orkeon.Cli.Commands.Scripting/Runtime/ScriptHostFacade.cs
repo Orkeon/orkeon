@@ -12,14 +12,14 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 
 #pragma warning disable IDE1006 // camelCase methods: this CLR type is exposed to scripts as ctx.services.get("script-host")
 /// <summary>
-/// Host-side facade exposed to scripts as <c>script-host</c> (exp 07 SPEC §6). Lets a
+/// Host-side facade exposed to scripts as <c>script-host</c>. Lets a
 /// <c>*.cmd.ts</c> launch a <c>crew.ork.ts</c> by name and pass it an input, bridging the
 /// command-runtime (<c>Orkeon.Cli.Commands.Scripting</c>) to the crew-runtime
 /// (<c>Orkeon.Scripting.ScriptHost</c>, which honours <c>.body()</c> + <c>ctx.llm</c>).
 /// </summary>
 /// <remarks>
 /// <para>
-/// This is the "host engine" the control plane calls for long work (SPEC §2): the command
+/// This is the "host engine" the control plane calls for long work: the command
 /// only <em>talks</em> to it. <see cref="runCrew"/> runs synchronously (short crews, bounded
 /// by <see cref="ScriptHostFacadeOptions.RunCrewTimeout"/>);
 /// <see cref="runCrewAsync"/> posts the run on a pool thread and returns a ticket, reusing the
@@ -29,7 +29,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// <para>
 /// Crews are resolved as <c>&lt;dir&gt;/&lt;name&gt;/crew.ork.ts</c> across
 /// <see cref="ScriptHostFacadeOptions.CrewDirectories"/>. Input is handed to the crew engine
-/// as a <c>globalThis.inputs</c> JS object (parsed from JSON inside the engine — SPEC §6.2 (a)).
+/// as a <c>globalThis.inputs</c> JS object (parsed from JSON inside the engine).
 /// </para>
 /// </remarks>
 public sealed partial class ScriptHostFacade

@@ -1,0 +1,71 @@
+# Fixture for YamlAnchorPreprocessorTests: a crew configuration in the exact shape the
+# preprocessor exists for - a top-level `anchors` mapping of reusable prompt fragments,
+# aliased from inside the `|` literal blocks of several agent backstories, where native
+# YamlDotNet anchor resolution never looks.
+anchors:
+  fqn_sourcing: &fqn_sourcing |
+    <fqn_sourcing>
+    Name every symbol by its fully qualified name, taken from the index.
+    Never invent a name the index does not contain.
+    </fqn_sourcing>
+
+  verbatim_citation: &verbatim_citation |
+    <verbatim_citation_protocol>
+    Quote the source verbatim; never paraphrase a quoted line.
+    </verbatim_citation_protocol>
+
+  decisive_reasoning: &decisive_reasoning |
+    <decisive_reasoning>
+    State the conclusion first, then the evidence that supports it.
+    </decisive_reasoning>
+
+  semantic_exploration: &semantic_exploration |
+    <semantic_exploration>
+    Search by meaning before you search by string.
+    </semantic_exploration>
+
+  exact_numbers: &exact_numbers |
+    <exact_numbers>
+    Report measured counts, never rounded estimates.
+    </exact_numbers>
+
+  # Defined but never aliased: the preprocessor must drop it together with the
+  # anchors block instead of leaking it into the processed document.
+  write_persistence: &write_persistence |
+    <output_persistence>
+    Your last action must be a file write.
+    </output_persistence>
+
+name: analysis-crew
+process: sequential
+
+settings:
+  manager_agent: analyst
+
+agents:
+  analyst:
+    role: Analyst
+    goal: Map the codebase
+    backstory: |
+      You are an analyst.
+
+      *fqn_sourcing
+
+      *semantic_exploration
+
+  reporter:
+    role: Reporter
+    goal: Write the report
+    backstory: |
+        You are a reporter.
+
+        *verbatim_citation
+
+        *decisive_reasoning
+
+        *exact_numbers
+
+tasks:
+  - description: Produce the analysis report.
+    expected_output: A report citing every symbol it names.
+    agent: analyst

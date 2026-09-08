@@ -5,7 +5,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// <summary>
 /// Options for <see cref="ScriptHostFacade"/> — chiefly the virtual directories scanned for
 /// <c>&lt;name&gt;/crew.ork.ts</c> crews. The host populates <see cref="CrewDirectories"/>
-/// from its mount bootstrap (exp 07 SPEC §9.3); empty means no crews are resolvable.
+/// from its mount bootstrap; empty means no crews are resolvable.
 /// </summary>
 public sealed class ScriptHostFacadeOptions
 {

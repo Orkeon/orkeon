@@ -50,7 +50,7 @@ public sealed class MemoryStoreResponse
 }
 
 /// <summary>
-/// Typed CRUD over the four memory categories (exp 07 SPEC §7.3; backs <c>/memory</c>).
+/// Typed CRUD over the four memory categories (backs <c>/memory</c>).
 /// Operations: <c>list</c> / <c>add</c> / <c>delete</c> / <c>get</c>.
 /// </summary>
 public sealed class MemoryStoreTool : ToolBase<MemoryStoreRequest, MemoryStoreResponse>

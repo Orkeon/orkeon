@@ -68,9 +68,9 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 > exactement la commande filtrée ci-dessus, puis lance cette suite ONNX dans une étape
 > dédiée qui tolère cette seule forme de crash.
 
-> **Note** — `backstage/` et `experiments/` sont des **sous-modules privés des mainteneurs** :
+> **Note** — ce dépôt déclare des **sous-modules privés des mainteneurs** :
 > clonez **sans** `--recursive` (comme ci-dessus). Le build, les tests et tout le flux de
-> contribution s'en passent ; un échec de `git submodule update` sur ces deux chemins est
+> contribution s'en passent ; un échec de `git submodule update` sur ces chemins est
 > attendu et sans conséquence.
 
 > **Le premier build touche le réseau une fois** : la couche scripting provisionne

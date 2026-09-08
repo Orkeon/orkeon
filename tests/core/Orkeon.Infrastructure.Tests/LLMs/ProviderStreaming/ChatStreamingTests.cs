@@ -12,7 +12,7 @@ using System.Text.Json;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// exp07 F5 L2: <c>ChatStreamingAsync</c> on the OpenAI-compatible SSE path — content and
+/// <c>ChatStreamingAsync</c> on the OpenAI-compatible SSE path — content and
 /// DeepSeek <c>reasoning_content</c> deltas, final usage chunk (<c>include_usage</c>),
 /// multi-chunk tool-call accumulation with a synthesized <c>RawResponseBody</c>, and the
 /// buffered fallback of <c>HttpLlmProviderBase</c>.

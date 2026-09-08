@@ -7,8 +7,8 @@
   (%LOCALAPPDATA%\Programs\Orkeon), same payload (the pruned self-contained
   `orkeon` publish, WIN-04), same PATH contract — only the delivery mechanism
   differs: double-click, no UAC, native "Apps installed" entry, in-place
-  MajorUpgrade. See backstage/tasks/WIN-07-msi-wix.md for the full spec and
-  backstage/tasks/WIN-00-PLAN.md §5 for the "one channel at a time" decision.
+  MajorUpgrade. The two channels are deliberately alternatives, never
+  cumulative: one channel at a time, since both target the same directory.
 
   Built by scripts/build-msi.ps1, which supplies two preprocessor variables:
     OrkeonVersion      x.y.z only (MSI ProductVersion accepts no suffix)
@@ -27,7 +27,6 @@
   .config/dotnet-tools.json, and v6/v7 gate every command behind accepting
   the Open Source Maintenance Fee EULA (WIX7015) — a fresh CI runner has
   never accepted it, so that gate would kill the `msi` job outright. See
-  backstage/tasks/WIN-07-msi-wix.md ("Version WiX épinglée") and
   scripts/build-msi.ps1 for the full reasoning. Every construct used below
   (<StandardDirectory>, <Files Include=.. Exclude=..> inside a
   <ComponentGroup Directory=..>, <Launch Condition=..>, <ui:WixUI>,
@@ -45,7 +44,6 @@
     on 2026-08-07, WIN-07 authoring). NEVER REGENERATE: this is the single GUID
     MajorUpgrade uses to recognize "an earlier Orkeon" across versions. Changing
     it turns every future release into a second, parallel-installable product.
-    Mirrored in backstage/tasks/WIN-07-msi-wix.md ("UpgradeCode" section).
   -->
   <?define OrkeonUpgradeCode = "15C4ADB4-6586-4F71-9B0B-40FEA3BAE641" ?>
 
@@ -60,9 +58,9 @@
     <SummaryInformation Keywords="Installer" Description="Orkeon CLI $(var.OrkeonVersionFull) — per-user setup" />
 
     <!--
-      Unsigned MSI is an accepted-for-now tradeoff (see WIN-00-PLAN.md §8):
-      SmartScreen will warn on first run until Authenticode/Azure Trusted
-      Signing is purchased. Not this fiche's scope.
+      Unsigned MSI is an accepted-for-now tradeoff: SmartScreen will warn on
+      first run until Authenticode/Azure Trusted Signing is purchased. Out of
+      scope for this installer.
     -->
 
     <!--
@@ -91,7 +89,7 @@
     <Property Id="ARPNOREPAIR" Value="1" />
 
     <!-- ==================================================================
-         Channel coexistence (WIN-00-PLAN.md §5 decision n°5): refuse to
+         Channel coexistence, a deliberate decision: refuse to
          install over a live ZIP-channel install. install.ps1 (WIN-05) writes
          its ARP entry at HKCU\...\Uninstall\Orkeon (a literal key name, not a
          ProductCode GUID — this MSI's own ARP entry lives under a GUID key,
@@ -134,17 +132,16 @@
       LICENSE.md, VERSION, appsettings.sample.json. <Files> auto-generates one
       Component per file and mirrors the subfolders (bin\, libexec\,
       libexec\orkeon\, libexec\esbuild-bin\) as child Directory elements of
-      INSTALLFOLDER, with per-path stable GUIDs — see the "Risques" note in
-      WIN-07-msi-wix.md: those GUIDs stay stable only as long as the staging
-      tree's shape does, so the WIN-04 pruning has to already be in place (it
-      is).
+      INSTALLFOLDER, with per-path stable GUIDs — and those GUIDs stay stable
+      only as long as the staging tree's shape does, so the WIN-04 pruning has
+      to already be in place (it is).
 
       Excluded: install.ps1 — that file belongs to the ZIP channel's own
       uninstaller (its ARP UninstallString points at the copy it makes of
       itself, see install.ps1's header). Shipping it inside the MSI would let
       a user run the ZIP channel's uninstall logic against an MSI-managed
-      install, which is exactly the "one channel at a time" boundary
-      WIN-00-PLAN.md §5 draws.
+      install, which is exactly what the "one channel at a time" boundary
+      forbids.
     -->
     <ComponentGroup Id="PayloadComponents" Directory="INSTALLFOLDER">
       <!-- WIX0004: Exclude is a child element in WiX v5, not an attribute. -->

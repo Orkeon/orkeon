@@ -3,7 +3,7 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Infrastructure.Memory;
 
 /// <summary>
-/// In-memory <see cref="ICategoryMemoryStore"/> for the MVP (exp 07 SPEC §7.5). Thread-safe,
+/// In-memory <see cref="ICategoryMemoryStore"/> for the MVP. Thread-safe,
 /// auto-incrementing integer ids. A provider-backed implementation (over <c>IMemoryProvider</c>)
 /// can replace this later without touching the tool or the port.
 /// </summary>

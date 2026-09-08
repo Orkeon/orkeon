@@ -9,7 +9,7 @@ namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
 /// SEVEN concurrent <c>for await</c> loops over <c>ctx.llm.stream</c> on ONE Jint
-/// engine — the shape of exp02's gap-profile area fan-out.
+/// engine — the shape of a real document-generation fan-out, one writer per section.
 /// </summary>
 /// <remarks>
 /// <para>This is a regression test for a defect that reached production: the first
@@ -18,7 +18,7 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// single-threaded, so with seven enumerations in flight the first callback
 /// re-entered it from the wrong thread and <c>ScriptFunction.Call</c> threw
 /// NullReferenceException INSIDE the engine.</para>
-/// <para>What that cost, on exp02 round-42: all seven area writers fell back to a
+/// <para>What that cost, on the run that surfaced it: all seven writers fell back to a
 /// placeholder fragment, the script died silently right after assembling the
 /// document, and six of the seven HTTP calls had already returned 200. Nothing in
 /// the round's log named a cause — the engine was too broken to log. It read like

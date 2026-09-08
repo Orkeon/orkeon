@@ -4,14 +4,14 @@ using Orkeon.Domain.Tools;
 namespace Orkeon.Infrastructure.Security;
 
 /// <summary>
-/// Default <see cref="IPermissionGate"/> mapping permission modes to per-tool verdicts
-/// (exp07 SPEC §3.3, cross-checked against the Claude Code analysis of exp02 round-36/37):
+/// Default <see cref="IPermissionGate"/> mapping permission modes to per-tool verdicts:
 /// <c>bypassPermissions</c> allows everything; <c>plan</c> denies anything non-read;
 /// <c>acceptEdits</c> auto-accepts reads AND file edits but asks for shell commands
 /// (that is the point of the mode); <c>default</c> auto-accepts reads and asks for
 /// everything else — read-only tools observing state carry no risk, and denying them
-/// headless made every containerized/scripted session useless (aligned with the
-/// original's default mode, which never prompts for reads). Unknown modes
+/// headless made every containerized/scripted session useless (aligned with the way
+/// coding-assistant CLIs conventionally treat their own default mode, which never
+/// prompts for reads). Unknown modes
 /// fall back to <c>default</c>; unknown tools are classified as writes (fail-closed).
 /// In non-interactive sessions every <c>ask</c> degrades to a motivated deny — the model
 /// receives the refusal as the tool result and can adapt.

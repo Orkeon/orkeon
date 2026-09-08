@@ -169,7 +169,7 @@ public sealed partial class CommandDispatchService
     /// the exact ticket → terminal → <c>completed</c> drain cycle as <see cref="post"/>. Unlike
     /// <see cref="post"/> (which dispatches to a named agent over the channel), the work is an
     /// opaque <see cref="Func{T, TResult}"/> — used by <c>script-host.runCrewAsync</c> to launch a
-    /// crew (exp 07 SPEC §6). The instance is captured in the ambient scope so the runner wires its
+    /// crew. The instance is captured in the ambient scope so the runner wires its
     /// completion onto the engine's drain queue. JS is never called back from the pool thread.
     /// </summary>
     /// <param name="label">Logical name for the instance (e.g. the crew name). Used as the intent.</param>

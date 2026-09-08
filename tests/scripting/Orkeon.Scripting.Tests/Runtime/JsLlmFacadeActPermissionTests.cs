@@ -10,7 +10,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// F2 (exp07): the per-tool-call permission hook inside <c>ctx.llm.act</c>. A Deny verdict
+/// The per-tool-call permission hook inside <c>ctx.llm.act</c>. A Deny verdict
 /// must short-circuit the tool execution and feed a motivated <c>DENIED:</c> refusal back
 /// to the model as the tool result (no exception); a null gate keeps the ungated path.
 /// </summary>

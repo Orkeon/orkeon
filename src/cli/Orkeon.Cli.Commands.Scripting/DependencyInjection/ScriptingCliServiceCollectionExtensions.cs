@@ -91,7 +91,7 @@ public static class ScriptingCliServiceCollectionExtensions
         // Keyed services would be cleaner, but a single TryAddSingleton works because
         // Orkeon.Cli.Commands.Scripting is the only project resolving JsEngineFactory.
         //
-        // exp 07 §7.0: pass the built-in tools (and LLM provider) so the `tools.<camelCase>`
+        // Pass the built-in tools (and LLM provider) so the `tools.<camelCase>`
         // global is populated — both in command engines (so `.cmd.ts` handlers can call
         // tools directly) and in crew engines launched via ScriptHost/script-host (so `.body()`
         // + ctx.llm + tools work). Without this the namespace exists but is empty.
@@ -197,7 +197,7 @@ public static class ScriptingCliServiceCollectionExtensions
         services.TryAddSingleton<ScriptCommandRegistry>(sp =>
             new ScriptCommandRegistry(ct => sp.GetRequiredService<ScriptCommandLoader>().LoadAndRegisterAsync(ct)));
 
-        // ---- exp 07: the script-host service (cmd → crew bridge, SPEC §6) -------------------
+        // ---- The script-host service (cmd → crew bridge) ------------------------------------
         // Bind crew-directory options (section Orkeon:Cli:ScriptHost) so a host can point the
         // facade at its crews; the ConsoleApp bootstrap also appends mounted crew dirs.
         if (configuration is not null)

@@ -34,10 +34,10 @@ public sealed class TokenBudgetResponse
 
 /// <summary>
 /// Reports the model's context window, used tokens, and available budget for the current
-/// session (exp 07 SPEC §7.3; backs SessionCompact + <c>/compact</c>).
+/// session (backs SessionCompact + <c>/compact</c>).
 /// </summary>
 /// <remarks>
-/// The domain <c>ILlmProvider</c> exposes no context-window API (SPEC risk R5), so the window
+/// The domain <c>ILlmProvider</c> exposes no context-window API, so the window
 /// and model name are read from configuration: <c>Orkeon:Cli:Session:ContextWindowTokens</c>
 /// (default 200000) and <c>Llm:Model</c>. Used tokens come from the buffer's heuristic.
 /// </remarks>

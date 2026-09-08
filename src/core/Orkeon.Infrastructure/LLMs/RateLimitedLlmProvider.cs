@@ -93,7 +93,7 @@ public sealed partial class RateLimitedLlmProvider : ILlmProvider, IStreamingLlm
     public bool SupportsStreaming => (_inner as IStreamingLlmProvider)?.SupportsStreaming ?? false;
 
     /// <summary>
-    /// Streaming passthrough (exp07 F5): the rate-limit lease is acquired before the first
+    /// Streaming passthrough: the rate-limit lease is acquired before the first
     /// byte and held for the whole enumeration — the socket stays open for the stream's
     /// lifetime, so releasing earlier would let a fan-out exceed
     /// <c>MaxConcurrentRequests</c>. A non-streaming inner provider falls back to a

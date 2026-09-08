@@ -8,10 +8,10 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Analysis.Tests;
 
 /// <summary>
-/// Dirty marking + lazy freshness (PLAN phase B): the write-side contract on the store,
-/// and the single-flight / degradation behaviour of the service. The full
-/// write→search round-trip runs live in exp07's probe crew (B-14 discipline) — here the
-/// pieces are pinned with hand-written doubles per the repo rule.
+/// Dirty marking + lazy freshness: the write-side contract on the store, and the
+/// single-flight / degradation behaviour of the service. The full write→search
+/// round-trip is exercised live by an internal probe crew — here the pieces are pinned
+/// with hand-written doubles per the repo rule.
 /// </summary>
 public class IndexInvalidationTests
 {

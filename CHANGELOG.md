@@ -2402,7 +2402,7 @@ erase a newer operation's bar.
 The status line's verb rotation ("thinking verbs" in the tweakcc vocabulary) is now
 configurable: `TerminalGuiOptions.SpinnerVerbs` seeds a boot-time list (bound from
 `Orkeon:Cli:Tui:SpinnerVerbs` in the ConsoleApp), and the live
-`TuiIntegration.SpinnerVerbs` delegate — wired by the ConsoleApp to exp07's `/config`
+`TuiIntegration.SpinnerVerbs` delegate — wired by the ConsoleApp to the scripted `/config`
 layers (`config_map` session state over `/workspace/.orkeon/config.json`) — wins over
 it without a restart. The verb re-draws every fifteen seconds on long turns
 (`StatusLineFormatter.VerbFor`), the leading glyph animates through spinner frames
@@ -2495,24 +2495,24 @@ could not resolve it) and the bus are now registered by `AddRaggableTree`, and
 
 Orkeon.ConsoleApp wires `AddOrkeonRag` + `AddOrkeonRagTools`: `rag_search`/`rag_ingest`/
 `rag_eval` are available to the scripted REPL, and `rag_search`'s `raggable-tree`
-collection inherits the hybrid + freshness path. Live-validated end to end (exp07 probe,
+collection inherits the hybrid + freshness path. Live-validated end to end (an internal probe crew,
 8/8): exact identifier ranks `hybrid`, write→search round-trip reports
 `refreshed_files: 1`, RAG routing serves the code index.
 
 ### Changed — `ctx.llm.stream` now asks for usage and carries the reasoning channel (SCR-24)
 
-`stream` went through `GenerateStreamingAsync`; it now goes through `ChatStreamingAsync`. Both read the same SSE stream, and the difference is what they ask for: the chat path sends `stream_options: { include_usage: true }`, without which most providers emit no usage chunk at all — so a streamed call had **no token accounting**. Measured on exp02 round-41, whose two streamed requests were `{"model":…,"stream":true}` with no `stream_options`; they carried usage only because Moonshot volunteers it, and the same round on OpenAI would have reported nothing. The calls that stream are the long, expensive ones.
+`stream` went through `GenerateStreamingAsync`; it now goes through `ChatStreamingAsync`. Both read the same SSE stream, and the difference is what they ask for: the chat path sends `stream_options: { include_usage: true }`, without which most providers emit no usage chunk at all — so a streamed call had **no token accounting**. Measured on a live run whose two streamed requests were `{"model":…,"stream":true}` with no `stream_options`; they carried usage only because Moonshot volunteers it, and the same round on OpenAI would have reported nothing. The calls that stream are the long, expensive ones.
 
 The plain path also dropped `delta.reasoning_content`, so a thinking model's stream is silent for as long as it thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens reasoning, most of a nine-minute call in which "no chunk yet" and "the stream died" were the same observation.
 
 - `stream(prompt)` keeps yielding strings — no contract change. What the chunks cannot carry is exposed on the returned object: **`usage`** (`{ promptTokens, completionTokens, tokensUsed, cacheHitTokens, model }`, `null` while the stream runs and `null` for good when the provider reported nothing) and **`reasoningChunks`**. Read them after the loop.
-- Deliberately NOT callbacks. A callback has to be invoked from the stream's own thread, and Jint's `Engine` is single-threaded: the first cut of this did exactly that, and exp02's round-42 — seven area writers streaming concurrently — died of a `NullReferenceException` inside `ScriptFunction.Call`, with all seven writers falling back to a placeholder and the script stopping silently after assembling its document. CLR state read through interop runs on the engine's own thread.
+- Deliberately NOT callbacks. A callback has to be invoked from the stream's own thread, and Jint's `Engine` is single-threaded: the first cut of this did exactly that, and a measured run — seven area writers streaming concurrently — died of a `NullReferenceException` inside `ScriptFunction.Call`, with all seven writers falling back to a placeholder and the script stopping silently after assembling its document. CLR state read through interop runs on the engine's own thread.
 - Reasoning progress is logged by the facade through the host logger every 200 deltas: a script cannot log it for itself, because while the model reasons its loop body never runs.
 - `usage` is populated on the non-streaming fallback too, so "this provider does not stream" and "this provider reported no usage" stay distinguishable.
 
 ### Added — `rag.retrieve` / `IRagRetrievalCapable`: retrieval without the generation nobody asked for (SCR-24)
 
-A caller that wants the retrieved passages rather than prose was still charged for a full grounded generation, because `IRagPipeline` exposed only `QueryAsync`. Measured on exp02's gap round (2026-08-04): seven `rag.query` calls whose generated answers were discarded **by design** cost 14 748 completion tokens — 68 % of them reasoning tokens — and 394 s of wall time, on top of retrieval that had already produced every citation the caller used. The generation stage is the expensive half of a RAG call and it is optional far more often than the API shape suggested.
+A caller that wants the retrieved passages rather than prose was still charged for a full grounded generation, because `IRagPipeline` exposed only `QueryAsync`. Measured on the 2026-08-04 gap round: seven `rag.query` calls whose generated answers were discarded **by design** cost 14 748 completion tokens — 68 % of them reasoning tokens — and 394 s of wall time, on top of retrieval that had already produced every citation the caller used. The generation stage is the expensive half of a RAG call and it is optional far more often than the API shape suggested.
 
 - **`IRagRetrievalCapable` (`Orkeon.Rag.Abstractions`)** — opt-in capability, same shape as `IHybridSearchCapable`: `RetrieveAsync` runs `transform → retrieve → fuse → rerank → assemble` and stops. Declared as a separate interface rather than added to `IRagPipeline` because not every executor can honour it — the corrective graph interleaves evaluation with generation, so "retrieval only" is not a prefix of its run — and a caller must be able to ask instead of discovering the answer through an exception.
 - **`StagedRagPipeline`** implements it; `QueryAsync` and `RetrieveAsync` now share one `RetrieveCoreAsync`, so the two cannot drift. The returned `RagAnswer` keeps the same shape (empty `Text`, populated `Citations`) and the trace carries a `generate` step saying the stage was skipped on purpose — an absent step would read as a trace from an older pipeline.
@@ -2520,7 +2520,7 @@ A caller that wants the retrieved passages rather than prose was still charged f
 
 ### Fixed — the `system` role was flattened into the user message on every OpenAI-compatible provider (SCR-24)
 
-`HttpLlmProviderBase.ChatAsync` flattens messages into one prompt shaped `"{role}: {content}"` per line, and `OpenAICompatibleProviderBase` took the structured chat path only when tools, tool-call metadata or a vision payload were present. A plain `system` + `user` conversation — the shape of the entire RAG generation stage, and of every LLM judge, retrieval evaluator and groundedness checker in this repository, none of which declares a tool — therefore reached the provider as a single `user` message whose text began with `system: `. A multi-turn history was concatenated the same way, so an assistant turn arrived as something the user claimed the assistant had said. Evidence: exp02 round-41's exchange log, all seven RAG generations sent as `messages: [{ role: "user", content: "system: You are a retrieval-augmented assistant…" }]`.
+`HttpLlmProviderBase.ChatAsync` flattens messages into one prompt shaped `"{role}: {content}"` per line, and `OpenAICompatibleProviderBase` took the structured chat path only when tools, tool-call metadata or a vision payload were present. A plain `system` + `user` conversation — the shape of the entire RAG generation stage, and of every LLM judge, retrieval evaluator and groundedness checker in this repository, none of which declares a tool — therefore reached the provider as a single `user` message whose text began with `system: `. A multi-turn history was concatenated the same way, so an assistant turn arrived as something the user claimed the assistant had said. Evidence: the run's exchange log, all seven RAG generations sent as `messages: [{ role: "user", content: "system: You are a retrieval-augmented assistant…" }]`.
 
 - Every `ChatAsync` call with at least one message now takes the structured path. A lone user message was affected too (it went out as `"user: Hello."`), so no case is left on the flattening path; an empty or null array still delegates to the base, which turns it into an empty single prompt.
 - `grammar` (GBNF) was emitted only by the single-prompt builder and is now written by both, so an option cannot appear or vanish with the number of messages sent.
@@ -2570,7 +2570,7 @@ The two gaps that needed a pipeline migration rather than a payload field. Close
 
 ### Changed — LLM provider defaults, host routing and the Azure config guard (LLM-01)
 
-First sheet of the LLM provider remediation plan (`backstage/tasks/LLM-00-PLAN.md`), closing gaps G-01→G-05, G-07→G-09, G-11, G-12, G-14 and defect D-01 of the 2026-07-27 audit. **Four providers out of twelve failed with their out-of-the-box configuration**; four more targeted a superseded generation.
+First sheet of the LLM provider remediation plan, closing gaps G-01→G-05, G-07→G-09, G-11, G-12, G-14 and defect D-01 of the 2026-07-27 audit. **Four providers out of twelve failed with their out-of-the-box configuration**; four more targeted a superseded generation.
 
 - ⚠️ **Default models changed — this changes the behaviour of every configuration that does not specify a model.** Each identifier was confirmed on the vendor's official documentation on 2026-07-27: OpenAI `gpt-4` → **`gpt-5.6-sol`** (`gpt-4` reaches end of life 2026-10-23 and caps context at 8 192 tokens), Anthropic `claude-3-5-sonnet-20241022` → **`claude-sonnet-5`** (retired 2025-10-28), DeepSeek `deepseek-chat` → **`deepseek-v4-flash`** (retired 2026-07-24), Kimi `moonshot-v1-8k` → **`kimi-k2.6`** (the `moonshot-v1-*` series sunsets 2026-08-31), Qwen `qwen-turbo` → **`qwen3.7-plus`** (absent from the catalogue), Mistral `mistral-large-latest` → **`mistral-medium-3-5-26-04`**. `LlmDefaults.DefaultModelName` — the fallback of `LlmConfig.Model` itself — moves with the OpenAI default. Pin a model explicitly to keep the previous behaviour.
 - ⚠️ **Default endpoints changed** — HuggingFace `api-inference.huggingface.co` → **`router.huggingface.co`** (the old host is gone, so the provider could not work at all), Kimi `api.moonshot.cn` → **`api.moonshot.ai`** (the mainland host was the default for every account, including international ones; set `BaseUrl` explicitly for a mainland account).

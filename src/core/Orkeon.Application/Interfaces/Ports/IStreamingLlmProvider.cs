@@ -30,7 +30,7 @@ public interface IStreamingLlmProvider
         CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Streams a multi-message chat completion (exp07 F5 L2). Yields content/reasoning
+    /// Streams a multi-message chat completion. Yields content/reasoning
     /// deltas as they arrive and terminates with exactly one
     /// <see cref="LlmStreamEventKind.Completed"/> event whose
     /// <see cref="LlmStreamEvent.FinalResponse"/> is equivalent to the non-streaming

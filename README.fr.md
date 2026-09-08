@@ -113,10 +113,10 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 | **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet. Ajoutez au besoin `Orkeon.Tools` (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
 | **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
 
-> **Clonez sans `--recursive`.** `backstage/` et `experiments/` sont des
-> **sous-modules privés de mainteneurs** : ils ne sont pas disponibles dans un clone
+> **Clonez sans `--recursive`.** Ce dépôt déclare des **sous-modules privés de
+> mainteneurs** : ils ne sont pas disponibles dans un clone
 > public. Ni le build, ni les tests, ni le workflow de contribution n'en ont besoin, et
-> un `git submodule update` en échec sur ces deux chemins est attendu et sans
+> un `git submodule update` en échec sur ces chemins est attendu et sans
 > conséquence — voir [CONTRIBUTING.fr.md](CONTRIBUTING.fr.md).
 
 **Windows** — téléchargez `orkeon-cli-<version>-win-x64.zip` (ou le `.msi`) depuis les [releases](https://github.com/Orkeon/orkeon/releases) ; l'artefact est self-contained, aucun .NET requis :

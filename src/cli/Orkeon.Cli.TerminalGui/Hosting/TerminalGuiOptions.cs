@@ -18,8 +18,8 @@ public sealed record TerminalGuiOptions
     public string LogsPaneTitle { get; init; } = "Logs";
 
     /// <summary>
-    /// Whether the logs drawer is open at startup. Default FALSE since the fidelity layout
-    /// (PLAN phase 1): the reference UI has no log pane — ours is the deliberate addition,
+    /// Whether the logs drawer is open at startup. Default FALSE since the fidelity
+    /// layout's reference UI has no log pane — ours is the deliberate addition,
     /// hidden until toggled (Ctrl+G) and announced by the hint bar.
     /// </summary>
     public bool LogsVisibleAtStartup { get; init; }
@@ -48,7 +48,7 @@ public sealed record TerminalGuiOptions
     /// Boot-time spinner-verb rotation for the status line (the <c>spinnerVerbs</c>
     /// setting; "thinking verbs" in the tweakcc vocabulary). Null/empty ⇒ the built-in
     /// gerunds. A live value provided through <c>TuiIntegration.SpinnerVerbs</c>
-    /// (e.g. exp07's <c>/config set spinnerVerbs …</c>) wins over this.
+    /// (e.g. a scripted <c>/config set spinnerVerbs …</c>) wins over this.
     /// </summary>
     public IReadOnlyList<string>? SpinnerVerbs { get; init; }
 }

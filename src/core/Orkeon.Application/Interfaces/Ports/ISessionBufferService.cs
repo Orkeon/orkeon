@@ -1,7 +1,7 @@
 namespace Orkeon.Application.Interfaces.Ports;
 
 /// <summary>
-/// The conversation-buffer primitive of the coding agent (exp 07 SPEC §7.4). Holds the
+/// The conversation-buffer primitive of the coding agent. Holds the
 /// ordered list of messages for the current REPL session plus its metadata, and is the
 /// single source of truth read/written by the interactive loop, the session commands
 /// (<c>/context</c>, <c>/compact</c>, <c>/force-snip</c>, …) and the SessionCompact crew.

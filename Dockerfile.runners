@@ -213,10 +213,10 @@ RUN set -e; \
 # suppresses the zsh-newuser-install first-run wizard and gives the shell a
 # usable prompt/completion. The compdump goes to /tmp — ZDOTDIR itself is not
 # writable by the dropped uid. The banner (suppressible via ORKEON_NO_BANNER=1)
-# opens with the Orkeon mascot (docker/orkeon-banner.txt — a copy of
-# backstage/marketing/assets/media/mascot/orkeon_banner_80-2.txt, duplicated
-# here because backstage/ is not part of the published tree), then orients
-# first-time users: commands, paths, a typical run.
+# opens with the Orkeon mascot (docker/orkeon-banner.txt — an in-tree copy of
+# the mascot artwork, duplicated here because the artwork's source lives
+# outside the published tree), then orients first-time users: commands, paths,
+# a typical run.
 COPY docker/orkeon-banner.txt /etc/orkeon/banner.txt
 RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd && printf '%b\n' \
   '' \
@@ -265,13 +265,13 @@ RUN mkdir -p /etc/orkeon/zsh && cat /etc/orkeon/banner.txt > /etc/orkeon/motd &&
   > /etc/orkeon/zsh/.zshrc
 ENV ZDOTDIR=/etc/orkeon/zsh
 
-# Shim orkeon.sh embarqué : permet aux run*.sh des expériences de fonctionner
-# quand SEULE l'expérience est montée (le helper central experiments/scripts/
-# orkeon.sh n'est alors pas visible). Même API de fonctions, mode cli
-# uniquement — le CLI `orkeon` et les wrappers sont déjà sur le PATH, esbuild
-# est embarqué, donc les ensure_* sont des no-ops.
+# Bundled orkeon.sh shim: lets a project's own run*.sh helpers work when ONLY
+# that project directory is mounted, so the shared orkeon.sh helper they
+# normally source is not visible. Same function API, cli mode only — the
+# `orkeon` CLI and its wrappers are already on the PATH and esbuild is bundled,
+# so the ensure_* functions are no-ops.
 RUN printf '%s\n' \
-  '# shim orkeon.sh (image orkeon-runners) — mode cli uniquement' \
+  '# orkeon.sh shim (orkeon-runners image) - cli mode only' \
   'ORKEON_MODE=cli' \
   'orkeon_parse_mode() {' \
   '  ORKEON_ARGS=()' \

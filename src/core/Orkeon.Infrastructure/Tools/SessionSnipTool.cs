@@ -27,7 +27,7 @@ public sealed class SessionSnipResponse
 
 /// <summary>
 /// Atomically truncates the session buffer to a minimal window (head + last N) — a fast,
-/// destructive alternative to <c>/compact</c> (exp 07 SPEC §7.3; backs <c>/force-snip</c>).
+/// destructive alternative to <c>/compact</c> (backs <c>/force-snip</c>).
 /// </summary>
 public sealed class SessionSnipTool : ToolBase<SessionSnipRequest, SessionSnipResponse>
 {

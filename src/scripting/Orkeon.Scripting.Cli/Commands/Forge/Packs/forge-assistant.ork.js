@@ -3,7 +3,7 @@
 // design — the engine passes the conversation history in `inputs` and persists it, so a
 // resumed session remembers without this script holding anything.
 //
-// Mechanics adapted from experiments/07 (stable system header for prompt-cache reuse,
+// Mechanics adapted from an internal prototype (stable system header for prompt-cache reuse,
 // volatile user body, capability by tool catalogue); all prompt text here is original.
 // The only way this script produces anything is the submit tool the engine injected —
 // it never writes a file and never steers the cycle.

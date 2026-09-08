@@ -15,9 +15,9 @@ namespace Orkeon.Rag.Tests.Pipeline;
 /// </summary>
 /// <remarks>
 /// The point every test here defends is that "same passages, no LLM call" is a
-/// guarantee and not a hope. The measurement that motivated the surface — exp02's
-/// round-41, seven generations discarded by design at 14 748 completion tokens and
-/// 394 s — is only recovered if the citations are IDENTICAL to the query path's;
+/// guarantee and not a hope. The measurement that motivated the surface — a measured
+/// run discarding seven generations by design at 14 748 completion tokens and 394 s —
+/// is only recovered if the citations are IDENTICAL to the query path's;
 /// a retrieve that returned different passages would just be a second, cheaper
 /// pipeline with its own behaviour.
 /// </remarks>

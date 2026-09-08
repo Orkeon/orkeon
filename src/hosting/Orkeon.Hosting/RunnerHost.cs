@@ -238,7 +238,7 @@ public static partial class RunnerHost
         services.Configure<Orkeon.Infrastructure.Configuration.CrewFactoryOptions>(
             o => o.StrictTools = strictTools);
 
-        // Per-tool-call permission gate (exp 07 F2) — config opt-in:
+        // Per-tool-call permission gate — config opt-in:
         // Orkeon:Security:PermissionGate:Enabled = true. No-op otherwise.
         services.AddOrkeonPermissionGate(context.Configuration);
 
@@ -248,7 +248,7 @@ public static partial class RunnerHost
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
         services.AddOrkeonAbstractionTools();
-        // exp 07 session primitives (session_store/session_snip/token_budget/
+        // Session primitives (session_store/session_snip/token_budget/
         // memory_store/session_cost/session_stats) — previously REPL-only
         // (ConsoleApp), which made standalone crew runs silently lose the session
         // buffer, auto-compaction and memory. In-memory backing; idempotent.

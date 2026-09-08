@@ -6,7 +6,7 @@ using Orkeon.Infrastructure.Tools;
 namespace Orkeon.Infrastructure.Tests.Session;
 
 /// <summary>
-/// exp 07 Phase 2: the session buffer primitive and the three session tools
+/// The session buffer primitive and the three session tools
 /// (<c>session_store</c>, <c>session_snip</c>, <c>token_budget</c>).
 /// </summary>
 public sealed class SessionBufferAndToolsTests

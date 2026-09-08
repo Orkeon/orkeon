@@ -265,7 +265,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     /// <summary>
-    /// Streams a multi-message chat completion over SSE (exp07 F5 L2): emits
+    /// Streams a multi-message chat completion over SSE: emits
     /// <c>delta.content</c> as content deltas, <c>delta.reasoning_content</c> (DeepSeek
     /// thinking mode) as reasoning deltas, accumulates <c>delta.tool_calls</c> fragments by
     /// index, captures the final usage chunk (<c>stream_options.include_usage</c>), and
@@ -548,7 +548,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         // `base.ChatAsync`, which FLATTENS the messages into one user message
         // shaped "{role}: {content}" per line.
         //
-        // Measured on 2026-08-04, exp02 round-41's exchange log: all seven RAG
+        // Measured on 2026-08-04 against a captured LLM exchange log: all seven RAG
         // generations went out as `messages: [{role: "user", content: "system:
         // You are a retrieval-augmented assistant…"}]`. No system role, no
         // conversation history — the model answered a prompt about a prompt. That

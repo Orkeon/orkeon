@@ -46,4 +46,11 @@
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <!-- YAML fixtures read at run time (YamlAnchorPreprocessorTests) -->
+    <None Update="TestData\**\*">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+
 </Project>

@@ -1,9 +1,9 @@
 namespace Orkeon.Cli.TerminalGui.Layout;
 
-/// <summary>The kinds of line the fidelity transcript distinguishes (PLAN C2).</summary>
+/// <summary>The kinds of line the fidelity transcript distinguishes.</summary>
 public enum TranscriptKind
 {
-    /// <summary>The operator's own text — no marge glyph, exactly as the reference.</summary>
+    /// <summary>The operator's own text — no margin glyph, exactly as the reference.</summary>
     UserTurn,
 
     /// <summary>First paragraph of an assistant message — bulleted.</summary>
@@ -18,8 +18,8 @@ public enum TranscriptKind
     /// <summary>Host notification (a ticket completed) — bulleted, green in the reference.</summary>
     Notice,
 
-    /// <summary>Recap line. Reserved: exp07 emits none today (PLAN §7) — mapping kept so a
-    /// future emitter needs no UI change, but nothing produces this kind yet.</summary>
+    /// <summary>Recap line. Reserved: nothing emits one today — the mapping is kept so a
+    /// future emitter needs no UI change.</summary>
     Recap,
 }
 
@@ -32,7 +32,7 @@ public enum TranscriptKind
 /// Rendering is text-only: a <c>TextView</c> paints one attribute for its whole buffer, so
 /// per-glyph color (white vs green bullet) is not reachable with this widget. The structure
 /// is faithful; the bullet colors are an accepted residue until the transcript becomes a
-/// custom-drawn view — recorded in the PLAN (§5 phase 6) rather than silently dropped.
+/// custom-drawn view — a known limitation rather than a silent drop.
 /// </remarks>
 public static class TranscriptModel
 {

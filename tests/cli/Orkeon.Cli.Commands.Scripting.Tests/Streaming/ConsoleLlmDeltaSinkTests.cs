@@ -9,7 +9,7 @@ using Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 namespace Orkeon.Cli.Commands.Scripting.Tests.Streaming;
 
 /// <summary>
-/// exp07 F5 L3: the native console delta sink writes deltas inline and terminates the
+/// The native console delta sink writes deltas inline and terminates the
 /// line at end of turn; its DI registration is a strict config opt-in.
 /// </summary>
 public sealed class ConsoleLlmDeltaSinkTests

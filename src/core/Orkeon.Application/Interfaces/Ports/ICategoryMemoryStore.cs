@@ -1,7 +1,7 @@
 namespace Orkeon.Application.Interfaces.Ports;
 
 /// <summary>
-/// Typed, category-scoped memory store for the coding agent (exp 07 SPEC §7.5). Mirrors
+/// Typed, category-scoped memory store for the coding agent. Mirrors
 /// Claude Code's four memory categories (<c>user</c>, <c>project</c>, <c>feedback</c>,
 /// <c>reference</c>) with integer-id CRUD, accessible to both <c>*.cmd.ts</c> handlers
 /// (via <c>memory_store</c>) and crew agents.

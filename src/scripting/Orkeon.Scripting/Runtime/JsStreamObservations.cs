@@ -13,7 +13,7 @@ namespace Orkeon.Scripting.Runtime;
 /// the first version of this called JS callbacks (<c>onReasoning</c> /
 /// <c>onComplete</c>) from the loop, which re-enters the engine from whatever
 /// thread the enumeration happens to be on. Jint's <c>Engine</c> is
-/// single-threaded, and exp02's round-42 proved what that costs: seven area
+/// single-threaded, and a real concurrent run proved what that costs: seven area
 /// writers streaming concurrently, the first callback fired mid-flight, and
 /// <c>ScriptFunction.Call</c> threw NullReferenceException inside the engine.
 /// All seven writers fell back to a placeholder and the script died silently

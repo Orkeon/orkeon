@@ -7,7 +7,7 @@ using Orkeon.Infrastructure.Tests.Doubles;
 namespace Orkeon.Infrastructure.Tests.LLMs;
 
 /// <summary>
-/// exp07 F5: streaming passthrough of <see cref="RateLimitedLlmProvider"/> — the lease is
+/// Streaming passthrough of <see cref="RateLimitedLlmProvider"/> — the lease is
 /// acquired before the first delta and held for the whole enumeration (closes the previous
 /// throttling bypass of the streaming path); a non-streaming inner provider falls back to
 /// a buffered single-delta stream under the same lease.

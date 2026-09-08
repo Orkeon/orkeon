@@ -113,10 +113,10 @@ Runner, Ollama, or a model embedded in the container image) — see the
 | **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package. Optionally add `Orkeon.Tools` (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
-> **Clone without `--recursive`.** `backstage/` and `experiments/` are **private
-> maintainer submodules**: they are not available in a public clone. Nothing in the
+> **Clone without `--recursive`.** This repository declares **private maintainer
+> submodules**: they are not available in a public clone. Nothing in the
 > build, the tests or the contribution workflow needs them, and a failing
-> `git submodule update` on those two paths is expected and harmless — see
+> `git submodule update` on those paths is expected and harmless — see
 > [CONTRIBUTING.md](CONTRIBUTING.md).
 
 **Windows** — download `orkeon-cli-<version>-win-x64.zip` (or the `.msi`) from the [releases](https://github.com/Orkeon/orkeon/releases); it is self-contained, no .NET needed:

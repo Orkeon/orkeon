@@ -7,7 +7,7 @@ using Orkeon.Infrastructure.Security;
 namespace Orkeon.Infrastructure.DependencyInjection;
 
 /// <summary>
-/// DI extension for the per-tool-call permission gate (exp 07 FINALIZE-PLAN F2). The gate
+/// DI extension for the per-tool-call permission gate. The gate
 /// is a config opt-in: without <c>Orkeon:Security:PermissionGate:Enabled = true</c> nothing
 /// is registered and <c>ctx.llm.act</c> keeps its ungated behaviour — enabling it globally
 /// would deny every tool call of scripts that never pass a <c>permissionMode</c> (the

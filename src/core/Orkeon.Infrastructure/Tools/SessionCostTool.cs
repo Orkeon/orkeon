@@ -31,8 +31,8 @@ public sealed class SessionCostResponse
 }
 
 /// <summary>
-/// Reports cumulative session cost (USD), token usage, and per-model breakdown (exp 07 SPEC §7.3;
-/// backs <c>/cost</c>). Backed by <see cref="ICostBudgetManager"/>; reports zeros when unwired.
+/// Reports cumulative session cost (USD), token usage, and per-model breakdown (backs
+/// <c>/cost</c>). Backed by <see cref="ICostBudgetManager"/>; reports zeros when unwired.
 /// </summary>
 public sealed class SessionCostTool : ToolBase<SessionCostRequest, SessionCostResponse>
 {

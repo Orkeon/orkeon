@@ -219,34 +219,60 @@ public class YamlAnchorPreprocessorTests
         Assert.Contains("role: R", result);
     }
 
+    /// <summary>
+    /// End-to-end pass over a whole crew configuration file (TestData/crew-with-anchors.yaml):
+    /// six anchors, aliased from the backstory literal blocks of two agents at two different
+    /// indent levels, with a defined-but-never-aliased anchor among them. The unit tests above
+    /// each cover one rule; this one checks they compose over a realistic document and that
+    /// everything outside the anchors section comes through untouched.
+    /// </summary>
     [Fact]
-    public void Preprocess_R12CrewConfig_ExpandsAllBackstoryAliases()
+    public void Preprocess_CrewConfigFixture_ExpandsEveryBackstoryAlias()
     {
-        var path = Path.GetFullPath(Path.Combine(
-            AppContext.BaseDirectory,
-            "../../../../../../project/experiments/02-CREWS/inngest-js-rt/config.yaml"));
-
-        if (!File.Exists(path))
-            return; // test-only file, skip when not present in the current checkout
+        var path = Path.Combine(AppContext.BaseDirectory, "TestData", "crew-with-anchors.yaml");
+        Assert.True(File.Exists(path), $"Missing test fixture '{path}'. It is copied to the output directory by the csproj.");
 
         var yaml = File.ReadAllText(path);
 
         var processed = YamlAnchorPreprocessor.Preprocess(yaml);
 
-        Assert.DoesNotContain("*fqn_from_index", processed);
+        // Every alias token is gone, and so is the anchors section that defined them.
+        Assert.DoesNotContain("anchors:", processed);
+        Assert.DoesNotContain("*fqn_sourcing", processed);
         Assert.DoesNotContain("*verbatim_citation", processed);
-        Assert.DoesNotContain("*write_persistence", processed);
         Assert.DoesNotContain("*decisive_reasoning", processed);
         Assert.DoesNotContain("*semantic_exploration", processed);
         Assert.DoesNotContain("*exact_numbers", processed);
-        Assert.Contains("<fqn_sourcing>", processed);
-        Assert.Contains("<verbatim_citation_protocol>", processed);
-        // Note: <output_persistence> anchor is defined-but-unused since the migration
-        // to Solution A (framework-managed deliverables). It remains in the anchors
-        // section for potential future reuse by tasks still in tool_call mode.
-        Assert.Contains("<decisive_reasoning>", processed);
-        Assert.Contains("<semantic_exploration>", processed);
-        Assert.Contains("<exact_numbers>", processed);
+        Assert.DoesNotContain("*write_persistence", processed);
+
+        // Each expansion lands at the indent of the alias line it replaced: six spaces
+        // inside the first agent's backstory, eight inside the second's.
+        Assert.Contains(
+            "      <fqn_sourcing>\n" +
+            "      Name every symbol by its fully qualified name, taken from the index.\n" +
+            "      Never invent a name the index does not contain.\n" +
+            "      </fqn_sourcing>",
+            processed);
+        Assert.Contains("      <semantic_exploration>\n      Search by meaning before you search by string.", processed);
+        Assert.Contains(
+            "        <verbatim_citation_protocol>\n" +
+            "        Quote the source verbatim; never paraphrase a quoted line.\n" +
+            "        </verbatim_citation_protocol>",
+            processed);
+        Assert.Contains("        <decisive_reasoning>\n        State the conclusion first, then the evidence that supports it.", processed);
+        Assert.Contains("        <exact_numbers>\n        Report measured counts, never rounded estimates.", processed);
+
+        // Blank lines between two consecutive expansions survive.
+        Assert.Contains("</fqn_sourcing>\n\n      <semantic_exploration>", processed);
+
+        // write_persistence is defined but never aliased: it must be dropped with the
+        // anchors section, never leaked into the processed document.
+        Assert.DoesNotContain("<output_persistence>", processed);
+
+        // Everything that is not an anchor or an alias comes through unchanged.
+        Assert.Contains("name: analysis-crew", processed);
+        Assert.Contains("manager_agent: analyst", processed);
+        Assert.Contains("expected_output: A report citing every symbol it names.", processed);
     }
 
     [Fact]

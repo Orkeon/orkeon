@@ -29,13 +29,13 @@ public static class ScriptServiceKeys
     /// <summary>Optional: a script-scoped <see cref="Microsoft.Extensions.Logging.ILogger"/>.</summary>
     public const string Logger = "logger";
 
-    /// <summary>The command-dispatch facade — <c>ctx.services.get("commands")</c> (design §4, §8 item 1).</summary>
+    /// <summary>The command-dispatch facade — <c>ctx.services.get("commands")</c>.</summary>
     public const string Commands = "commands";
 
     /// <summary>
     /// Optional: the crew-launching facade — <c>ctx.services.get("script-host")</c>. Lets a
     /// <c>*.cmd.ts</c> run a <c>crew.ork.ts</c> by name (sync or async) and pass it an input.
-    /// The host-side engine the control plane calls for long work (exp 07 SPEC §6).
+    /// The host-side engine the control plane calls for long work.
     /// </summary>
     public const string ScriptHost = "script-host";
 }

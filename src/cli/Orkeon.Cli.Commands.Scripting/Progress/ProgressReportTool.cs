@@ -50,8 +50,11 @@ public sealed class ProgressReportResponse
 /// <remarks>
 /// Command scripts have <c>ctx.progress(...)</c> for the same purpose; crews have no
 /// <c>ctx.services</c> and reach the host exclusively through the <c>tools</c> global,
-/// which is why this is a tool and not a context method. Deliberately absent from the
-/// exp07 LLM catalogue: it is plumbing for scripted orchestration, not an agent capability.
+/// which is why this is a tool and not a context method. It is not meant as an agent
+/// capability — it is plumbing for scripted orchestration — so a host that assembles an
+/// agent's tool set should leave it out. Nothing filters it automatically: it rides the
+/// same <see cref="IBaseTool"/> enumeration as the built-ins, so an agent handed that
+/// whole set does get it.
 /// </remarks>
 public sealed class ProgressReportTool : ToolBase<ProgressReportRequest, ProgressReportResponse>
 {

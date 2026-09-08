@@ -212,8 +212,8 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Streams the completion as 1+ chunks. Streams per-token when the provider exposes a
-    /// real SSE path (<see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider"/>,
-    /// exp07 F5); otherwise falls back to a single full-text chunk.
+    /// real SSE path (<see cref="Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider"/>);
+    /// otherwise falls back to a single full-text chunk.
     /// </summary>
     public Func<string, JsValue?, JsValue> stream => (prompt, options) =>
     {
@@ -315,13 +315,13 @@ public sealed partial class JsLlmFacade
     /// <item><description><b>Usage.</b> The chat path sends
     /// <c>stream_options: { include_usage: true }</c>; the plain path does not. Without it
     /// most providers emit no usage chunk at all, so a streamed call had NO token
-    /// accounting — measured on exp02 round-41, whose two streamed calls carried usage only
-    /// because Moonshot volunteers it. On OpenAI the same round would have reported nothing,
+    /// accounting — measured on a real agent run whose two streamed calls carried usage only
+    /// because Moonshot volunteers it. On OpenAI the same run would have reported nothing,
     /// and the calls that stream are the long, expensive ones.</description></item>
     /// <item><description><b>Reasoning.</b> The plain path yields
     /// <c>delta.content</c> only. A thinking model emits its reasoning as
     /// <c>delta.reasoning_content</c>, so the stream is SILENT for as long as the model
-    /// thinks — round-41's deliverable 13 spent 22 673 of its 32 627 completion tokens
+    /// thinks — one deliverable of that run spent 22 673 of its 32 627 completion tokens
     /// there, i.e. most of a nine-minute call during which nothing arrived. A consumer had
     /// no way to tell that from a dead stream. Reasoning deltas are counted, logged through
     /// the HOST logger every <see cref="ReasoningLogEvery"/>, and deliberately NOT yielded

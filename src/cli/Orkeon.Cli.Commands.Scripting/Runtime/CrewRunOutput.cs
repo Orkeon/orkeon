@@ -2,8 +2,8 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 
 #pragma warning disable IDE1006 // lowercase members: this CLR type is marshalled to JS as the result of script-host.runCrew()
 /// <summary>
-/// Result of a crew run launched through <see cref="ScriptHostFacade"/>, marshalled to JS
-/// (exp 07 SPEC §6.1). Property names are intentionally lowercase to read naturally from a
+/// Result of a crew run launched through <see cref="ScriptHostFacade"/>, marshalled to JS.
+/// Property names are intentionally lowercase to read naturally from a
 /// <c>*.cmd.ts</c> handler (<c>result.ok</c>, <c>result.summary</c>), matching the
 /// <c>CommandResponse</c> convention.
 /// </summary>

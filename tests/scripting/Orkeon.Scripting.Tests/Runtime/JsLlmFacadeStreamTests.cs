@@ -12,7 +12,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// exp07 F5 L1: <c>ctx.llm.stream</c> streams per-chunk when the provider implements
+/// <c>ctx.llm.stream</c> streams per-chunk when the provider implements
 /// <see cref="IStreamingLlmProvider"/>, and the <c>onDelta</c> act option receives each
 /// content delta before the loop resumes with the assembled final response — composing
 /// with the budget (F1) and permission gate (F2) unchanged.
@@ -358,7 +358,7 @@ public sealed class JsLlmFacadeStreamTests
     public void Stream_reports_no_usage_rather_than_zeros_when_the_provider_reported_none()
     {
         // "this provider reported no usage" and "this call used 0 tokens" must not be
-        // the same observation — the same rule as exp02's cache report.
+        // the same observation — the same rule the cache-metrics reporting follows.
         using var engine = new Engine();
         var provider = new PlainProvider("full text");
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);

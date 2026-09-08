@@ -14,7 +14,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// <c>usage.prompt_tokens_details.cached_tokens</c> (reads only, no miss counter).
 /// The base parser must map it onto the typed <see cref="LlmResponse.CacheHitTokens"/> and
 /// derive <see cref="LlmResponse.CacheMissTokens"/> from <c>prompt_tokens</c> so
-/// <see cref="LlmResponse.CacheHitRatio"/> stays computable (exp02 GLM run analysis).
+/// <see cref="LlmResponse.CacheHitRatio"/> stays computable (measured on a live GLM run).
 /// </summary>
 public class ZaiCacheMetricsTests
 {

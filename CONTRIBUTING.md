@@ -67,9 +67,9 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 > test has passed. `ci.yml` runs exactly the filtered command above, then runs that
 > ONNX suite in a step of its own that tolerates that one crash shape.
 
-> **Note** — `backstage/` and `experiments/` are **private maintainer submodules**: clone
+> **Note** — this repository declares **private maintainer submodules**: clone
 > **without** `--recursive` (as above). The build, the tests and the whole contribution
-> workflow do not need them; a failing `git submodule update` on those two paths is expected
+> workflow do not need them; a failing `git submodule update` on those paths is expected
 > and harmless.
 
 > **First build touches the network once**: the scripting layer bootstraps a small

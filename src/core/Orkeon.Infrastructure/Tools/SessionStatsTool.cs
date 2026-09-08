@@ -39,8 +39,8 @@ public sealed class SessionStatsResponse
 }
 
 /// <summary>
-/// Full session telemetry — conversation size plus cost/token/call totals (exp 07 SPEC §7.3;
-/// backs <c>/stats</c>). Combines <see cref="ISessionBufferService"/> with the optional
+/// Full session telemetry — conversation size plus cost/token/call totals (backs
+/// <c>/stats</c>). Combines <see cref="ISessionBufferService"/> with the optional
 /// <see cref="ICostBudgetManager"/>.
 /// </summary>
 public sealed class SessionStatsTool : ToolBase<SessionStatsRequest, SessionStatsResponse>

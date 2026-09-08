@@ -10,7 +10,7 @@ namespace Orkeon.Cli.Commands.Scripting.Runtime;
 /// <summary>
 /// Builds the default <see cref="ScriptServiceWhitelist"/> used when the host does not
 /// supply its own. Only entries that map to interfaces present in the repo are added —
-/// no speculative <c>ICrewLoader</c> (which doesn't exist) per spec §8.3.
+/// no speculative <c>ICrewLoader</c> (which doesn't exist).
 /// </summary>
 public static class DefaultScriptServiceWhitelist
 {
@@ -33,7 +33,7 @@ public static class DefaultScriptServiceWhitelist
             .AddOptional(ScriptServiceKeys.Logger, sp => sp.GetRequiredService<ILoggerFactory>().CreateLogger("script"))
             // Optional: present only when the host wired the command-dispatch substrate (AddScriptCommands).
             .AddOptional(ScriptServiceKeys.Commands, sp => sp.GetService<CommandDispatchService>())
-            // Optional: the crew-launching facade (exp 07 SPEC §6) — present when AddScriptCommands ran.
+            // Optional: the crew-launching facade — present when AddScriptCommands ran.
             .AddOptional(ScriptServiceKeys.ScriptHost, sp => sp.GetService<ScriptHostFacade>());
     }
 

@@ -16,8 +16,7 @@ namespace Orkeon.Infrastructure.Tests.LLMs;
 /// Changing a default silently changes the behaviour of every configuration that does not
 /// specify a model or a base URL. These tests make such a change fail loudly, so it becomes
 /// a deliberate decision visible in review rather than a drift nobody noticed. Each value
-/// below was confirmed on the vendor's official documentation on 2026-07-27 — see
-/// <c>backstage/features/drafts/LLM-PROVIDERS-TEST-MATRIX.md</c> §6.
+/// below was confirmed on the vendor's official documentation on 2026-07-27.
 /// </remarks>
 public class ProviderDefaultsPinningTests
 {

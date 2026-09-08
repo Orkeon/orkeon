@@ -3,8 +3,8 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Infrastructure.Session;
 
 /// <summary>
-/// In-memory, thread-safe <see cref="ISessionBufferService"/> for the single-session REPL
-/// (exp 07 SPEC §7.4). The whole surface is guarded by one lock — contention is negligible
+/// In-memory, thread-safe <see cref="ISessionBufferService"/> for the single-session REPL.
+/// The whole surface is guarded by one lock — contention is negligible
 /// (a human-paced REPL) and it keeps the truncation/estimate logic obviously correct.
 /// </summary>
 public sealed class InMemorySessionBufferService : ISessionBufferService

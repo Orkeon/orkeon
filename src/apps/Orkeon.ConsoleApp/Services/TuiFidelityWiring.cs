@@ -15,25 +15,28 @@ namespace Orkeon.ConsoleApp.Services;
 /// <see cref="BannerInfo"/>. This is the one place the fidelity views touch the
 /// application services — the TerminalGui layer only references Cli.Abstractions, so
 /// the session state bag, the cost tracker and the command-instance registry all have
-/// to be closed over HERE, where the service provider exists (PLAN §3).
+/// to be closed over HERE, where the service provider exists.
 /// </summary>
 internal static class TuiFidelityWiring
 {
-    /// <summary>Session-state key of the /mode default — the exp07 vocabulary.</summary>
+    /// <summary>Session-state key of the /mode default — the scripted-commands vocabulary.</summary>
     private const string DefaultModeStateKey = "default_permission_mode";
 
-    /// <summary>Session-state key of exp07's /config override map (B-6 vocabulary).</summary>
+    /// <summary>Session-state key of the scripted /config override map.</summary>
     private const string ConfigMapStateKey = "config_map";
 
-    /// <summary>exp07's persisted /config settings file (VFS path).</summary>
+    /// <summary>The scripted /config command's persisted settings file (VFS path).</summary>
     private const string ConfigFilePath = "/workspace/.orkeon/config.json";
 
     /// <summary>The /config key carrying the spinner-verb rotation (CSV).</summary>
     private const string SpinnerVerbsKey = "spinnerVerbs";
 
     /// <summary>
-    /// The hint bar's Shift+Tab cycle. Mirrors exp07's E-12 order exactly, `dontAsk`
-    /// excluded from the cycle like the original — it is reachable by name, not by tab.
+    /// The hint bar's Shift+Tab cycle. The order is deliberate — it runs from the most
+    /// restrictive mode to the least, so a distracted Shift+Tab widens authority one
+    /// visible step at a time instead of jumping to <c>bypassPermissions</c>. Do not
+    /// reorder. <c>dontAsk</c> is excluded from the cycle on purpose: it is reachable by
+    /// name only. The modes themselves are specified on <see cref="ModePermissionGate"/>.
     /// </summary>
     private static readonly string[] ModeCycle = ["default", "acceptEdits", "plan", "bypassPermissions"];
 
@@ -95,7 +98,7 @@ internal static class TuiFidelityWiring
                 buffer.SetState(DefaultModeStateKey, ModeCycle[(idx + 1 + ModeCycle.Length) % ModeCycle.Length]);
             };
             // Chip: the session title (/rename) when set, else the workspace — session
-            // styling (blue). Agent-target styling waits on addressable sub-agents (PLAN §7).
+            // styling (blue). Agent-target styling waits on addressable sub-agents.
             integration.ContextChip = () =>
             {
                 var title = buffer.GetMetadata().Title;
@@ -177,7 +180,7 @@ internal static class TuiFidelityWiring
     }
 
     /// <summary>
-    /// Live reader of the <c>spinnerVerbs</c> setting, layered like exp07's /config:
+    /// Live reader of the <c>spinnerVerbs</c> setting, layered like the scripted /config:
     /// session override map first, persisted settings file second. The status line polls
     /// several times a second, so the file layer is cached briefly; the session map is an
     /// in-memory read and stays live.

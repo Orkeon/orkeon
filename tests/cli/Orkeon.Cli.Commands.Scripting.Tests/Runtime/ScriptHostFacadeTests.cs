@@ -11,7 +11,7 @@ using Orkeon.Tests.Shared.FileSystem;
 namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 
 /// <summary>
-/// exp 07 Phase 1: the <see cref="ScriptHostFacade"/> launches a <c>crew.ork.ts</c> by name,
+/// The <see cref="ScriptHostFacade"/> launches a <c>crew.ork.ts</c> by name,
 /// passes it a <c>globalThis.inputs</c> object, and reports the run result. Covers the sync
 /// <c>runCrew</c>, the async <c>runCrewAsync</c> (ticket → terminal), <c>listCrews</c>, and
 /// error handling. Crews here are plain last-expression scripts (no LLM) so the tests stay

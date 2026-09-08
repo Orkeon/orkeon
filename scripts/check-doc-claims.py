@@ -17,6 +17,7 @@ Run from the repository root: python3 scripts/check-doc-claims.py
 from __future__ import annotations
 
 import importlib.util
+import os
 import re
 import sys
 from pathlib import Path
@@ -226,6 +227,129 @@ def check_lineup_copies(canonical: list[str]) -> None:
                  f"first (its dependents would expose an unrestorable package otherwise)")
 
 
+# --- private submodules must not leak into anything a public reader reads ----------------
+
+# `experiments/` and `backstage/` are private submodules: a public clone gets empty
+# directories. A pointer into them is not a broken link -- docfx renders code spans as
+# literal text and stays green -- it is a dead end the reader only discovers by trying.
+# The 2026-09-07 sweep found 24 such lines across 14 files, plus 46 in `src/**` XML doc
+# comments that docfx republishes under `api/**.yml`.
+#
+# Four patterns, because each catches what the others miss. Pattern 3 matches the
+# DISCLAIMER, not the pointer: the state this gate exists to prevent was reached by adding
+# a warning instead of removing the reference.
+PRIVATE_LEAK_PATTERNS: list[tuple[str, str]] = [
+    (r"(?<![\w/.-])(experiments|backstage)/", "path into a private submodule"),
+    (r"\bexp ?-?0\d\b", "private experiment codename (exp07, exp 02, ...)"),
+    (
+        r"private [`*_]*(experiments|backstage)[`*_]* submodule|sous-module priv\u00e9|submodule priv\u00e9",
+        "disclaimer about a private submodule -- remove the pointer instead of warning about it",
+    ),
+    (r"`chapters?/\d|See chapter \d", "private design-archive chapter"),
+]
+
+# Legitimately mentions the submodules, and stays out of the scan:
+#   .gitmodules, .gitignore      -- the declarations themselves
+#   CLAUDE.md                    -- maintainer-facing; docfx.json excludes it from the site
+#   scripts/smoke-onboarding/*   -- maintainer tooling that operates on those paths
+#   examples/others/README.md    -- its `backstage/` is github.com/backstage/backstage,
+#                                   a third-party OSS corpus used as a benchmark
+PRIVATE_LEAK_EXCLUDED = {"examples/others/README.md"}
+
+
+# Directory names never walked: build output, dependency trees, and the vendored
+# packages cache. Pruning them at the directory level rather than filtering paths
+# afterwards is what keeps this gate under a second -- `rglob` descends into
+# `obj-linux/` first and pays 16 s per extension for the privilege.
+PRIVATE_LEAK_PRUNED_DIRS = {"bin", "obj", "obj-linux", "node_modules", "packages",
+                           ".git", "artifacts", "_site", "TestResults"}
+
+# What each root contributes to the scan, by suffix.
+PRIVATE_LEAK_ROOTS: list[tuple[str, tuple[str, ...]]] = [
+    ("docs", (".md",)),
+    ("examples", (".md",)),          # README.md and the example pages beside them
+    ("src", (".cs", ".ts", ".js", ".csproj", ".props", ".targets")),
+    ("tests", (".cs",)),
+    ("installers", (".wxs",)),
+    (".github", (".yml",)),
+]
+
+
+def private_leak_files() -> list[Path]:
+    """Everything a public reader reads.
+
+    Four groups, and the last three were added after a review found the first one alone
+    left more uncovered than it covered:
+
+      the site           -- docs/ in both languages, the root pages, the example READMEs;
+      what docfx ships   -- `src/**/*.cs` XML comments, republished under `api/**.yml`;
+      what NuGet ships   -- the typings concatenated into `dist/orkeon.d.ts`, and
+                            `src/**/*.js|*.ts`: `forge-assistant.ork.js` is an
+                            EmbeddedResource of the `orkeon` tool, so its header reaches
+                            every consumer who never clones the repo;
+      what a clone reads -- `tests/**/*.cs` (22 live pointers when this was widened),
+                            the build files, the installer and the Dockerfiles. A test
+                            comment is not published, but it is the first thing a
+                            contributor opens, and it must not cite what they cannot see.
+    """
+    out: list[Path] = []
+    seen: set[Path] = set()
+
+    def add(path: Path) -> None:
+        if not path.is_file() or path in seen:
+            return
+        seen.add(path)
+        if path.relative_to(ROOT).as_posix() in PRIVATE_LEAK_EXCLUDED:
+            return
+        out.append(path)
+
+    # CHANGELOG.md IS scanned: docfx publishes it as CHANGELOG.html and indexes it for
+    # search, so it is documentation by any definition a reader would use. It carried seven
+    # private pointers when this was widened. Rewording one to drop an unfollowable path is
+    # not rewriting history -- every measurement, date and gap id was kept.
+    for name in ROOT.glob("*.md"):
+        if name.name != "CLAUDE.md":
+            add(name)
+    for name in ROOT.glob("Dockerfile*"):
+        add(name)
+    add(ROOT / "Directory.Build.props")
+
+    for root_name, suffixes in PRIVATE_LEAK_ROOTS:
+        root = ROOT / root_name
+        if not root.is_dir():
+            continue
+        for dirpath, dirnames, filenames in os.walk(root):
+            dirnames[:] = [d for d in dirnames if d not in PRIVATE_LEAK_PRUNED_DIRS]
+            for filename in filenames:
+                if filename.endswith(suffixes):
+                    add(Path(dirpath) / filename)
+
+    return sorted(out)
+
+
+def check_private_submodule_leaks() -> None:
+    """Fail on any pointer to a private submodule in public-facing material.
+
+    Deliberately NOT covered, so this gate is not itself a false claim: git history and
+    commit messages; the private submodules' own contents; `scripts/` tooling, which has
+    to spell the names to match them; the files listed in PRIVATE_LEAK_EXCLUDED; and
+    non-text assets. Walks with rglob rather than a git pathspec because
+    `git grep -- 'docs/**/*.md'` silently skips `docs/INDEX.md` -- the globstar needs a
+    directory level, and a gate must not have that failure mode.
+    """
+    compiled = [(re.compile(pat), why) for pat, why in PRIVATE_LEAK_PATTERNS]
+    for path in private_leak_files():
+        rel = path.relative_to(ROOT).as_posix()
+        try:
+            lines = path.read_text(encoding="utf-8").splitlines()
+        except UnicodeDecodeError:
+            continue
+        for i, line in enumerate(lines):
+            for rx, why in compiled:
+                if rx.search(line):
+                    fail(f"{rel}:{i + 1}: points at private material ({why}): {line.strip()[:100]}")
+
+
 def main() -> int:
     version = gt_version()
     providers = gt_llm_providers()
@@ -292,6 +416,8 @@ def main() -> int:
     # Release-safety gates that need no build, so they run on every PR here rather than
     # only on the tag (LOT K): the six copies of the NuGet lineup, and the csproj-only
     # half of the package-closure gate that publish.yml otherwise runs after `dotnet pack`.
+    check_private_submodule_leaks()
+
     closure = load_closure_module()
     check_lineup_copies(closure.LINEUP)
     for e in closure.source_errors(list(closure.LINEUP)):

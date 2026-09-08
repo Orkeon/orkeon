@@ -8,8 +8,8 @@
     <!-- R1.5/TST-004: the `orkeon` assembly name belongs to the dotnet tool
          (Orkeon.Scripting.Cli, PackAsTool). This app uses the default assembly
          name (Orkeon.ConsoleApp) and the tool command `orkeon-repl` to avoid
-         the binary/coverage collision. Packaged as a dotnet tool so
-         experiments/ can run the REPL in packages mode (no source clone). -->
+         the binary/coverage collision. Packaged as a dotnet tool so the REPL
+         can be run straight from packages, with no source clone. -->
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>orkeon-repl</ToolCommandName>

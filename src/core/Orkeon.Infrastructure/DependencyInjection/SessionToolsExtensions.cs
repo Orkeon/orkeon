@@ -11,7 +11,7 @@ using Orkeon.Infrastructure.Tools;
 namespace Orkeon.Infrastructure.DependencyInjection;
 
 /// <summary>
-/// DI extension for the coding-agent session primitives (exp 07 SPEC §7): the
+/// DI extension for the coding-agent session primitives: the
 /// <see cref="ISessionBufferService"/> singleton, the typed memory store, the cost-tracking
 /// substrate, and the six create-tools (<c>session_store</c>, <c>session_snip</c>,
 /// <c>token_budget</c>, <c>memory_store</c>, <c>session_cost</c>, <c>session_stats</c>).
@@ -56,7 +56,7 @@ public static class SessionToolsExtensions
                 availableModels));
         services.TryAddSingleton<ICategoryMemoryStore, InMemoryCategoryMemoryStore>();
 
-        // Cost-tracking substrate (exp 07 Phase 6) — not registered elsewhere. Both the
+        // Cost-tracking substrate — not registered elsewhere. Both the
         // pricing registry and the manager resolve IOptions<CostTrackingOptions> + ILogger.
         services.AddOptions<CostTrackingOptions>();
         services.TryAddSingleton<IModelPricingRegistry, ModelPricingRegistry>();

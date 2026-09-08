@@ -5,7 +5,7 @@ namespace Orkeon.Cli.Commands.Scripting.Streaming;
 
 /// <summary>
 /// Renders streamed <c>ctx.llm.act</c> content deltas incrementally on the host console
-/// (exp 07 F5 L3 — native rendering, no script-side <c>onDelta</c> required). Deltas are
+/// (native rendering, no script-side <c>onDelta</c> required). Deltas are
 /// written verbatim without a newline; the turn terminator closes the line so subsequent
 /// REPL output starts clean.
 /// </summary>

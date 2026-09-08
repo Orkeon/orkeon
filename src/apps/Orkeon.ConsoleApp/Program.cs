@@ -181,14 +181,14 @@ static class Program
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
         services.AddOrkeonAbstractionTools();
-        // exp 07: session buffer + session_store/session_snip/token_budget tools. The
+        // Session buffer + session_store/session_snip/token_budget tools. The
         // configuration is passed so the session metadata carries `Llm:AvailableModels` —
         // what a scripted /model can offer as a choice.
         services.AddOrkeonSessionTools(context.Configuration);
-        // exp 07 F2: per-tool-call permission gate — config opt-in
+        // Per-tool-call permission gate — config opt-in
         // (Orkeon:Security:PermissionGate:Enabled = true).
         services.AddOrkeonPermissionGate(context.Configuration);
-        // exp 07 F5 L3: native incremental rendering of streamed act() output — config
+        // Native incremental rendering of streamed act() output — config
         // opt-in (Orkeon:Cli:ConsoleStreaming:Enabled = true). Registered here (after the
         // IConsoleAdapter choice below is declared later in this method, resolution is
         // lazy) so the REPL streams tokens without scripts passing onDelta.

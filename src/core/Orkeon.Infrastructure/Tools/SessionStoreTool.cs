@@ -6,7 +6,7 @@ using Orkeon.Tools.Abstractions.Base;
 
 namespace Orkeon.Infrastructure.Tools;
 
-/// <summary>Typed request for <see cref="SessionStoreTool"/> (exp 07 SPEC §7.3).</summary>
+/// <summary>Typed request for <see cref="SessionStoreTool"/>.</summary>
 public sealed class SessionStoreRequest
 {
     /// <summary>Operation: read_messages / write_messages / append_note / get_metadata / set_title / truncate / reset / get_state / set_state.</summary>
@@ -63,8 +63,8 @@ public sealed class SessionStoreResponse
 }
 
 /// <summary>
-/// Read/write access to the session conversation buffer and metadata — the pivot tool of the
-/// coding agent (exp 07 SPEC §7.3). Backed by <see cref="ISessionBufferService"/>.
+/// Read/write access to the session conversation buffer and metadata — the pivot tool of a
+/// coding agent session. Backed by <see cref="ISessionBufferService"/>.
 /// </summary>
 public sealed class SessionStoreTool : ToolBase<SessionStoreRequest, SessionStoreResponse>
 {

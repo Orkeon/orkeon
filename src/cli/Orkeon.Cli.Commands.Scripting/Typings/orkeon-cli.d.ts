@@ -15,7 +15,7 @@ declare global {
   ): void;
 
   /**
-   * Register an asynchronous scripted command (design §4.2). `dispatch` launches and returns
+   * Register an asynchronous scripted command. `dispatch` launches and returns
    * the prompt immediately; the optional `completed` is replayed on the engine thread when the
    * agent responds. Called at module top level (same freeze rule as `defineCommand`).
    */
@@ -24,7 +24,7 @@ declare global {
   ): void;
 }
 
-/** Descriptor passed to `defineAsyncCommand`. See design §4.2. */
+/** Descriptor passed to `defineAsyncCommand`. */
 export interface AsyncCommandDescriptor<TArgs = Record<string, unknown>> {
   name: string;
   aliases?: readonly string[];
@@ -32,17 +32,17 @@ export interface AsyncCommandDescriptor<TArgs = Record<string, unknown>> {
   args?: ArgsSchema<TArgs>;
   /**
    * Per-command admission quota: the max number of in-flight instances of THIS command.
-   * Omitted ⇒ unbounded (∞). Must be an integer ≥ 1 when present (design §5).
+   * Omitted ⇒ unbounded (∞). Must be an integer ≥ 1 when present.
    */
   maxConcurrent?: number;
   /** Launches the work and returns immediately (do not block). Typically returns `{ ticket }`. */
   dispatch: (args: ParsedArgs<TArgs>, ctx: CommandRuntimeContext) => unknown;
-  /** Replayed on the engine thread when the agent responds (design §4.3). */
+  /** Replayed on the engine thread when the agent responds. */
   completed?: (result: CommandResponse, ctx: CommandRuntimeContext) => void;
 }
 
 /**
- * The command-dispatch façade — `ctx.services.get<CommandsFacade>("commands")` (design §4, §8).
+ * The command-dispatch facade — `ctx.services.get<CommandsFacade>("commands")`.
  * Addresses agents by name; the host routes over `IAgentChannel` and correlates completion.
  */
 export interface CommandsFacade {
@@ -76,7 +76,7 @@ export interface CommandInstanceFilter {
   agent?: string;
 }
 
-/** Snapshot of a dispatched command instance (design §6). */
+/** Snapshot of a dispatched command instance. */
 export interface CommandInstanceView {
   readonly ticket: string;
   readonly name: string;
@@ -95,7 +95,7 @@ export interface CommandInstanceView {
   readonly tokens: number;
 }
 
-/** Descriptor passed to `defineCommand`. See spec §4.2. */
+/** Descriptor passed to `defineCommand`. */
 export interface CommandDescriptor<TArgs = Record<string, unknown>> {
   /** Primary identifier, lowercase kebab-case (`^[a-z][a-z0-9-]*$`). */
   name: string;
@@ -118,7 +118,7 @@ export interface CommandActionResult {
   message?: string;
 }
 
-/** Rich runtime context — see spec §5.1. */
+/** Rich runtime context. */
 export interface CommandRuntimeContext {
   readonly command: { readonly name: string; readonly rawInput: string };
 
@@ -139,7 +139,7 @@ export interface CommandRuntimeContext {
 
   /**
    * Cooperative cancellation token, exposed directly by Jint. Properties are PascalCase
-   * (CLR convention preserved through reflection — see spec §5.2):
+   * (CLR convention preserved through reflection):
    *   if (ctx.signal.IsCancellationRequested) return ctx.continue("cancelled");
    *   ctx.signal.ThrowIfCancellationRequested();
    *
@@ -187,14 +187,14 @@ export interface ServiceLocator {
    * - `"fs"` → IFileSystemService, `"configuration"` → IConfiguration,
    *   `"tools"` → IBaseTool[], `"llm"` → ILlmProvider, `"logger"` → ILogger,
    *   `"commands"` → CommandsFacade (agent dispatch),
-   *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name — exp 07 SPEC §6).
+   *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name).
    */
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
 
 /**
- * The crew-launching façade — `ctx.services.get<ScriptHostFacade>("script-host")` (exp 07 §6).
+ * The crew-launching facade — `ctx.services.get<ScriptHostFacade>("script-host")`.
  * Runs a `crews/<name>/crew.ork.ts` (which honours `.body()` + `ctx.llm`), passing `input`
  * as the crew's `globalThis.inputs` object.
  */

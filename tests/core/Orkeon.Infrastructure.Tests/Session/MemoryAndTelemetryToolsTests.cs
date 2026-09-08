@@ -6,7 +6,7 @@ using Orkeon.Infrastructure.Tools;
 namespace Orkeon.Infrastructure.Tests.Session;
 
 /// <summary>
-/// exp 07 Phase 6: the typed memory store and the cost/stats telemetry tools.
+/// The typed memory store and the cost/stats telemetry tools.
 /// </summary>
 public sealed class MemoryAndTelemetryToolsTests
 {

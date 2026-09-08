@@ -256,7 +256,7 @@ public sealed class RagNamespaceBindingTests
     {
         // The whole point of the surface. A `retrieve` that quietly called
         // QueryAsync would charge the caller for the stage it asked to skip —
-        // exp02's round-41 paid 14 748 completion tokens that way.
+        // a measured run paid 14 748 completion tokens that way.
         var pipeline = new FakeRetrievalCapableRagPipeline
         {
             Retrieved = new RagAnswer

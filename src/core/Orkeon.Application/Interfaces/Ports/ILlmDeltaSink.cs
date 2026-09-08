@@ -1,7 +1,7 @@
 namespace Orkeon.Application.Interfaces.Ports;
 
 /// <summary>
-/// Host-registered renderer for streamed LLM output (exp 07 F5 L3 — native incremental
+/// Host-registered renderer for streamed LLM output (native incremental
 /// rendering). When a host registers a sink, the scripted <c>ctx.llm.act</c> loop switches
 /// to the provider's streaming path (when available) and pushes every content delta here,
 /// so a REPL can render tokens as they arrive without the script passing <c>onDelta</c>.

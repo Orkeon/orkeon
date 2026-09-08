@@ -9,7 +9,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// F1 end-to-end (test twin of the exp07 A9 acceptance probe): a crew declaring
+/// Budget enforcement end-to-end (the test twin of an internal acceptance probe): a crew declaring
 /// <c>.budget({ toolCalls: 1 })</c> whose agent body drives a divergent
 /// <c>ctx.llm.act</c> loop must surface a typed <see cref="BudgetExhaustedException"/>
 /// from <c>crew.RunAsync</c> — not a generic promise rejection, and not a normal

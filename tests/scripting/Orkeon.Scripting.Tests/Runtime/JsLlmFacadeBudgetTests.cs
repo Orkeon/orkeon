@@ -10,7 +10,7 @@ using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
-/// F1 (exp07 A9): <see cref="AgentExecutionBudget"/> enforcement inside the
+/// <see cref="AgentExecutionBudget"/> enforcement inside the
 /// <c>ctx.llm.act</c> tool-calling loop — pre-iteration gate, per-tool-call and per-token
 /// accounting. A null budget must leave the loop byte-identical to the pre-F1 behaviour
 /// (covered by the untouched <see cref="JsLlmFacadeActTests"/>).

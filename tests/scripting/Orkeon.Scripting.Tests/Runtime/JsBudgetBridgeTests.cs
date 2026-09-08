@@ -26,7 +26,7 @@ public sealed class JsBudgetBridgeTests
     [Fact]
     public void FromSpec_maps_jint_doubles_to_integer_dimensions()
     {
-        // Jint's ToObject() surfaces JS numbers as double — the exp07 crew shape.
+        // Jint's ToObject() surfaces JS numbers as double — the real crew shape.
         var spec = new Dictionary<string, object?>
         {
             ["toolCalls"] = 200d,
