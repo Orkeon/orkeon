@@ -84,3 +84,9 @@ jobs:
         run: dotnet build examples/Orkeon.Examples.sln -c Release -warnaserror
       - name: Validate every example crew definition
         run: bash scripts/validate-all-examples.sh
+      # The tutorial crew lives in examples/scripting/, not in a numbered NN-category/
+      # directory, so the `examples/0[0-9]-*` glob of the sweep above does not reach it.
+      # It is the worked example the TypeScript guide is built on, so it is validated by
+      # name rather than left uncovered.
+      - name: Validate the tutorial TypeScript crew
+        run: bash scripts/validate-all-examples.sh --configs examples/scripting/crew-review-desk/main.ork.ts

@@ -74,6 +74,11 @@ The declarations are the reference. They ship with the DSL, they are what your e
 reads, and they live under `src/scripting/Orkeon.Scripting/Typings/` — concatenated at build
 into the `orkeon.d.ts` the CLI emits.
 
+Two pages sit on top of them: [Write a crew in TypeScript](../guides/write-a-crew-in-typescript.md)
+for the narrative, and the [Scripting DSL reference](../reference/scripting-dsl.md) for the
+method-by-method table — including the column the declarations cannot carry, **which of the
+two script shapes actually honours each method**.
+
 | Concept | Where to look |
 |---------|---------------|
 | `agentBuilder()` / `crewBuilder()` / `taskBuilder()` / `toolBuilder()` | `agent.d.ts`, `crew.d.ts`, `task.d.ts`, `tool.d.ts` |

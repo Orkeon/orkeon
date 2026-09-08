@@ -235,7 +235,7 @@ Around the core, dedicated projects cover hosting (`Orkeon.Hosting`, plus the `o
 | **The three ways to run Orkeon** (source / binary / container) | [Three ways to run Orkeon](docs/getting-started/three-ways-to-run-orkeon.md) |
 | **Local models** (Docker Model Runner, Ollama, embedded, 128K contexts) | [Local models guide](docs/guides/local-models.md) |
 | **The 105 runnable examples** (9 themed categories + `orkeon-example`) | [Examples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Catalog](docs/reference/examples-catalog.md) |
-| **Writing crews**: YAML vs builders, host wiring, execution | [YAML & builders](docs/getting-started/yaml-and-builders.md) · [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Writing crews**: YAML, builders, TypeScript, host wiring, execution | [YAML & builders](docs/getting-started/yaml-and-builders.md) · [Write a crew in TypeScript](docs/guides/write-a-crew-in-typescript.md) · [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Orchestration modes** (incl. FSM and graph deep dives) | [Process types](docs/orchestration/process-types.md) · [FSM](docs/orchestration/fsm.md) · [Graph](docs/orchestration/graph.md) |
 | **Writing your own tools** | [New tool pattern](docs/tools/new-tool-pattern.md) · [Tool inventory](docs/tools/inventory.md) |
 | **Architecture deep dives** (plugins, scripting, VFS, security, RaggableTree) | [Architecture docs](docs/INDEX.md) · [ADRs](docs/adr/README.md) |

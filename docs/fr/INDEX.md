@@ -66,6 +66,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
+| [Écrire une crew en TypeScript](./guides/write-a-crew-in-typescript.md) | Le DSL `.ork.ts` de bout en bout : les deux formes de script et pourquoi choisir la mauvaise ignore silencieusement vos tâches, agents, outils, le DAG `withContext`, livrables, `ctx.llm.act`, état, réglage de l'éditeur |
 | [Méthodologie de portage](./guides/porting-methodology.md) | 5 étapes pour migrer une application, YAML-first vs Code-first, estimation effort |
 | [Exemple de portage](./guides/porting-example.md) | Pipeline e-commerce complet : analyse, mapping agents, YAML, bootstrap C# |
 | [Blueprint nouvelle orchestration](./guides/blueprint.md) | Template 8 étapes pour ajouter un nouveau ProcessType au framework |
@@ -78,6 +79,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
+| [Référence du DSL de scripting](./reference/scripting-dsl.md) | Chaque builder et chaque méthode `.ork.ts`, avec la colonne qui n'existe nulle part ailleurs : laquelle des deux formes l'honore. Plus les écarts connus entre les typings et le runtime |
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
 | [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `doctor`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des sections d'`appsettings.json` (`Llm`, `Orkeon:*`, `MCP`), sources et précédence, colonne opt-in |

@@ -138,5 +138,6 @@ La crew de démonstration n'appelle aucun LLM : tout ceci tourne sans clé d'API
 
 ## Pour aller plus loin
 
-- Doc utilisateur complète : `docs/architecture/cli-ts-commands.md`.
 - Documentation : [commandes CLI en TypeScript](../../docs/fr/architecture/cli-ts-commands.md).
+- Le pont commande → crew : [piloter des crews depuis le REPL](../../docs/fr/architecture/coding-agent-ts.md).
+- Écrire la crew que `runcrew.cmd.ts` lance : [écrire une crew en TypeScript](../../docs/fr/guides/write-a-crew-in-typescript.md).

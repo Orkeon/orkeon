@@ -18,7 +18,10 @@ picks the engine:
 | `--validate` | works | fails — nothing was handed off |
 
 Write `.body()` and you are on the procedural shape; write `withTask` and you are on the
-declarative one. Never both in one file.
+declarative one. Never both in one file. The full story is in
+[Write a crew in TypeScript](../../../docs/guides/write-a-crew-in-typescript.md); the
+method-by-method table is in the
+[Scripting DSL reference](../../../docs/reference/scripting-dsl.md).
 
 ## What is in it
 

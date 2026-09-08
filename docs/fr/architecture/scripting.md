@@ -69,6 +69,11 @@ drapeaux diagnostics/protocole (`--validate`, `--list-tools`, `--events jsonl`,
 
 ## Récapitulatif de l'API
 
+Deux pages s'appuient dessus : [Écrire une crew en TypeScript](../guides/write-a-crew-in-typescript.md)
+pour le récit, et la [Référence du DSL de scripting](../reference/scripting-dsl.md) pour le
+tableau méthode par méthode — dont la colonne que les déclarations ne peuvent pas porter :
+**laquelle des deux formes de script honore réellement chaque méthode**.
+
 Les déclarations sont la référence. Elles sont livrées avec le DSL, ce sont elles que lit
 votre éditeur, et elles vivent sous `src/scripting/Orkeon.Scripting/Typings/` —
 concaténées au build dans le `orkeon.d.ts` que la CLI émet.

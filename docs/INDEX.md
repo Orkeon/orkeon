@@ -66,6 +66,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
+| [Write a crew in TypeScript](./guides/write-a-crew-in-typescript.md) | The `.ork.ts` DSL end to end: the two script shapes and why picking the wrong one silently ignores your tasks, agents, tools, the `withContext` DAG, deliverables, `ctx.llm.act`, state, editor setup |
 | [Porting methodology](./guides/porting-methodology.md) | 5 steps to migrate an application, YAML-first vs Code-first, effort estimation |
 | [Porting example](./guides/porting-example.md) | Complete e-commerce pipeline: analysis, agent mapping, YAML, C# bootstrap |
 | [New orchestration blueprint](./guides/blueprint.md) | 8-step template to add a new ProcessType to the framework |
@@ -78,6 +79,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
+| [Scripting DSL reference](./reference/scripting-dsl.md) | Every `.ork.ts` builder and method, with the column that exists nowhere else: which of the two shapes honours it. Plus the known gaps between the typings and the runtime |
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
 | [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `doctor`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the `appsettings.json` sections (`Llm`, `Orkeon:*`, `MCP`), sources and precedence, opt-in column |

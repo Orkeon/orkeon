@@ -235,7 +235,7 @@ Autour du cœur, des projets dédiés couvrent l'hébergement (`Orkeon.Hosting`,
 | **Les trois façons d'exécuter Orkeon** (source / binaire / conteneur) | [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) |
 | **Les modèles locaux** (Docker Model Runner, Ollama, embarqué, contextes 128K) | [Guide des modèles locaux](docs/fr/guides/local-models.md) |
 | **Les 105 exemples exécutables** (9 catégories thématiques + `orkeon-example`) | [Exemples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Catalogue](docs/fr/reference/examples-catalog.md) |
-| **Écrire des crews** : YAML vs builders, câblage de l'hôte, exécution | [YAML & builders](docs/fr/getting-started/yaml-and-builders.md) · [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
+| **Écrire des crews** : YAML, builders, TypeScript, câblage de l'hôte, exécution | [YAML & builders](docs/fr/getting-started/yaml-and-builders.md) · [Écrire une crew en TypeScript](docs/fr/guides/write-a-crew-in-typescript.md) · [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
 | **Les modes d'orchestration** (dont FSM et graphe en profondeur) | [Process types](docs/fr/orchestration/process-types.md) · [FSM](docs/fr/orchestration/fsm.md) · [Graph](docs/fr/orchestration/graph.md) |
 | **Écrire vos propres outils** | [New tool pattern](docs/fr/tools/new-tool-pattern.md) · [Inventaire des outils](docs/fr/tools/inventory.md) |
 | **L'architecture en profondeur** (plugins, scripting, VFS, sécurité, RaggableTree) | [Docs d'architecture](docs/fr/INDEX.md) · [ADRs](docs/fr/adr/README.md) |

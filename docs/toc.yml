@@ -72,6 +72,8 @@
       href: tools/new-tool-pattern.md
 - name: Guides
   items:
+    - name: Write a crew in TypeScript
+      href: guides/write-a-crew-in-typescript.md
     - name: Porting methodology
       href: guides/porting-methodology.md
     - name: Porting example
@@ -88,6 +90,8 @@
       href: guides/local-models.md
 - name: Reference
   items:
+    - name: Scripting DSL reference
+      href: reference/scripting-dsl.md
     - name: Examples catalog
       href: reference/examples-catalog.md
     - name: LLM provider comparison

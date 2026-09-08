@@ -47,5 +47,10 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
   --inputs '{"topic":"espresso"}'
 ```
 
-See [the scripting DSL architecture note](../../docs/architecture/scripting.md) for where
-the DSL sits.
+## Where to go next
+
+- [Write a crew in TypeScript](../../docs/guides/write-a-crew-in-typescript.md) — the guide
+  these files illustrate, starting with the two script shapes and why the choice matters.
+- [Scripting DSL reference](../../docs/reference/scripting-dsl.md) — every builder and method,
+  and which of the two shapes honours it.
+- [Scripting DSL — architecture](../../docs/architecture/scripting.md) — where the DSL sits.
