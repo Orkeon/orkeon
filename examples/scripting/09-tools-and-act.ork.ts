@@ -64,7 +64,7 @@ const crew = crewBuilder().name("release-desk").withAgent(analyst).build();
 // handed back. Assign a PLAIN object: the CrewResult itself is a CLR object the serializer
 // refuses, and you get a ToString() fallback instead of your data.
 const res = await crew.run();
-(globalThis as any).result = {
+globalThis.result = {
     output: res.output,
     agents: res.tasks.map((t) => ({ name: t.name, ms: Math.round(t.durationMs) })),
 };

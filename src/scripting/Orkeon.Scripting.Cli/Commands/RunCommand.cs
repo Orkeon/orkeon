@@ -823,14 +823,12 @@ internal static partial class RunCommand
         return inputsJson;
     }
 
-    [System.Text.RegularExpressions.GeneratedRegex(@"\bglobalThis\b[^\r\n]{0,60}?\.\s*crew\s*=")]
-    private static partial System.Text.RegularExpressions.Regex CrewHandoffPattern();
-
     /// <summary>
     /// Whether the entry script declares the <c>globalThis.crew = …</c> handoff —
     /// spelled either bare or through the <c>(globalThis as any)</c> TypeScript cast.
     /// A source-text sniff, deliberately: evaluating the script to find out would run
-    /// its top level twice on the pipeline path.
+    /// its top level twice on the pipeline path. See <see cref="CrewHandoffDetector"/>
+    /// for why comments and strings are excluded from the sniff.
     /// </summary>
     private static async Task<bool> DeclaresCrewHandoffAsync(string scriptPath)
     {
@@ -839,7 +837,7 @@ internal static partial class RunCommand
         if (!File.Exists(scriptPath))
             return false;
         var source = await File.ReadAllTextAsync(scriptPath).ConfigureAwait(false);
-        return CrewHandoffPattern().IsMatch(source);
+        return CrewHandoffDetector.DeclaresHandoff(source);
     }
 
     /// <summary>

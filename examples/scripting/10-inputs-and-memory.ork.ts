@@ -11,11 +11,12 @@
 //
 // Runs with no API key. Without --inputs the topic falls back to "coffee".
 
-// `--inputs '<json>'` (or `--inputs-file`) lands here. It is NOT declared in the typings, so
-// read it defensively and give every field a default: a script that assumes its caller
-// passed something is a script that fails on the first bare `orkeon run`.
-const passed = (globalThis as any).inputs ?? {};
-const topic: string = passed.topic ?? "coffee";
+// `--inputs '<json>'` (or `--inputs-file`) lands here. It is declared -- as
+// `Record<string, unknown> | undefined`, because the JSON is whatever the caller typed --
+// so every field has to be narrowed before use, and every field needs a default: a script
+// that assumes its caller passed something fails on the first bare `orkeon run`.
+const passed = globalThis.inputs ?? {};
+const topic = typeof passed.topic === "string" ? passed.topic : "coffee";
 
 let attempts = 0;
 
@@ -62,7 +63,7 @@ const reporter = agentBuilder()
 const crew = crewBuilder().name("field-notes").withAgent(researcher).withAgent(reporter).build();
 
 const res = await crew.run();
-(globalThis as any).result = {
+globalThis.result = {
     topic: topic,
     attempts: attempts,
     output: res.output,

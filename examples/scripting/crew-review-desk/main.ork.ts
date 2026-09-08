@@ -96,4 +96,4 @@ const crew = crewBuilder()
     .build();
 
 // The handoff. Not `await crew.run()` — see the header.
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

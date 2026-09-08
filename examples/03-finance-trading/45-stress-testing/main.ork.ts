@@ -106,4 +106,4 @@ const crew = crewBuilder()
     .withTasks([designScenarios, runModels, writeRegulatoryReport, auditCompliance])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

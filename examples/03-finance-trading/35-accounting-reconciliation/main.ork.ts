@@ -128,4 +128,4 @@ const crew = crewBuilder()
     .withTasks([extractBank, extractErp, extractCrm, reconcile, correctDiscrepancies])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

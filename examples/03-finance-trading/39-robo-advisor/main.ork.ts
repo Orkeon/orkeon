@@ -107,4 +107,4 @@ const crew = crewBuilder()
     .withTasks([profileClient, designStrategy, monitorPortfolio, rebalance])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

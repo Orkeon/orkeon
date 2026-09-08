@@ -106,4 +106,4 @@ const crew = crewBuilder()
     .withTasks([monitorTransactions, correlateEvents, analyzeBehavior, generateRegulatoryReport])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

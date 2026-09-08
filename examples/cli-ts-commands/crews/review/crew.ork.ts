@@ -7,8 +7,9 @@
 // deliberately LLM-free so the demo runs with no API key; swap the body for a
 // `ctx.llm.act(...)` and it becomes a real reviewer.
 
-const inputs = (globalThis as any).inputs ?? {};
-const target: string = inputs.path ?? "(nothing given)";
+const inputs = globalThis.inputs ?? {};
+// `inputs` values are `unknown`: the JSON is whatever the caller sent. Narrow, then default.
+const target = typeof inputs.path === "string" ? inputs.path : "(nothing given)";
 
 const reviewer = agentBuilder()
     .name("reviewer")
@@ -26,4 +27,4 @@ const reviewer = agentBuilder()
 const crew = crewBuilder().name("review").withAgent(reviewer).build();
 
 const res = await crew.run();
-(globalThis as any).result = res.output;
+globalThis.result = res.output;

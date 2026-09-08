@@ -95,4 +95,4 @@ const crew = crewBuilder()
     .withTasks([analyzeDemand, monitorCompetition, optimizeMargin])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

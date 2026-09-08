@@ -97,4 +97,4 @@ const crew = crewBuilder()
     .withTasks([verifyIdentity, screenSanctions, assessCountryRisk])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

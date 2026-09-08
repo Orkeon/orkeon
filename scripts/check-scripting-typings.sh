@@ -46,10 +46,20 @@ trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/typings" "$WORK/scripts"
 cp "$TYPINGS"/*.d.ts "$WORK/typings/"
 
-strip_pragma() { sed 's|^/// <reference orkeon-script.*$||' "$1" > "$2"; }
+# Both pragma spellings go: the `orkeon-script` version is not a form tsc knows, and the
+# `path=` one points at a per-project .orkeon/ folder that does not exist in this scratch
+# tree -- the typings are supplied as explicit files instead.
+strip_pragma() { sed -E 's|^/// <reference (orkeon-script\|path)=?.*$||' "$1" > "$2"; }
 
 for f in "$ROOT"/examples/scripting/*.ork.ts; do
     strip_pragma "$f" "$WORK/scripts/$(basename "$f" .ork.ts).ts"
+done
+
+# The REPL-bridge crews are the same DSL against the same typings, and live outside
+# examples/scripting/. Left uncovered, one of them drifted; they are flattened in too.
+for f in "$ROOT"/examples/cli-ts-commands/crews/*/crew.ork.ts; do
+    [ -e "$f" ] || continue
+    strip_pragma "$f" "$WORK/scripts/cli-crew-$(basename "$(dirname "$f")").ts"
 done
 
 # The declarative crew lives in its own folder and imports a sibling module; flatten both,

@@ -84,4 +84,4 @@ const crew = crewBuilder()
     .withTasks([extractInvoices, structureData, reconcileAccounts])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

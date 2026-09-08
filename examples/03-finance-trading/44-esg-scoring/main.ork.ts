@@ -130,4 +130,4 @@ const crew = crewBuilder()
     .withTasks([collectEsgData, scoreEnvironmental, scoreSocial, scoreGovernance, integrateScores])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

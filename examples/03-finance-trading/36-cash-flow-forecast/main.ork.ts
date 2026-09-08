@@ -103,4 +103,4 @@ const crew = crewBuilder()
     .withTasks([analyzePatterns, collectCommitments, forecastCashFlow, stressTest])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

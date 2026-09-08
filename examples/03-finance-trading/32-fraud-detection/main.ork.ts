@@ -103,4 +103,4 @@ const crew = crewBuilder()
     .withTasks([monitorTransactions, detectPatterns, investigateCases, generateAlerts])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

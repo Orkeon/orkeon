@@ -170,4 +170,4 @@ const crew = crewBuilder()
     .withTasks([collectMarketData, analyzeTechnicals, runQuantModels, assessRisk, optimizePortfolio, executeTrades, complianceReview])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

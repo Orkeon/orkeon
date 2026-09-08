@@ -132,4 +132,4 @@ const crew = crewBuilder()
     .withTasks([analyzeUs, analyzeEu, analyzeApac, consolidateStrategy, seniorReview])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

@@ -126,4 +126,4 @@ const crew = crewBuilder()
     .withTasks([collectData, calculateScore, analyzeRisk, generateRecommendation, humanReview])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;

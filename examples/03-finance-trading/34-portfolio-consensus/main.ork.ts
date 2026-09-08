@@ -105,4 +105,4 @@ const crew = crewBuilder()
     .withTasks([fundamentalAssessment, technicalAssessment, macroAssessment, validateAllocation])
     .build();
 
-(globalThis as any).crew = crew;
+globalThis.crew = crew;
