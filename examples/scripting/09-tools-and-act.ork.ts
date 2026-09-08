@@ -12,7 +12,7 @@
 //   dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/09-tools-and-act.ork.ts
 
 // Surface 2 — a tool you author here, handed to the agent as an instance.
-const wordCount = toolBuilder()
+const wordCount = toolBuilder<{ text: string }, { words: number }>()
     .name("word_count")
     .description("Counts the words of a text")
     .withSchema({

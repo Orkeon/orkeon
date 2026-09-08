@@ -1,5 +1,5 @@
 // Orkeon Scripting DSL — Crew builder
-// See chapter 03 (creation-agent-crew-task.md).
+// Declares Crew, CrewBuilder, the six process modes, and the result and stream shapes a run produces.
 
 declare global {
     type Process =
@@ -11,7 +11,11 @@ declare global {
         | "autonomous";
 
     interface CrewRunOptions {
-        signal?: AbortSignal;
+        /**
+         * A signal obtained from `ctx.signal`. Anything else is ignored: the runner only
+         * honours a value that arrives as a .NET CancellationToken.
+         */
+        signal?: CancellationSignal;
         timeout?: number | string;
         inputs?: Record<string, unknown>;
     }
@@ -61,6 +65,13 @@ declare global {
         verbose(value?: boolean): this;
         /** YAML parity `memory: true` — the crew keeps a shared memory scope. */
         memory(value?: boolean): this;
+        /**
+         * @deprecated NO-OP. Declared on all three builders and honoured by neither engine:
+         * `JsCrewBuilder.when` and `JsTaskBuilder.when` discard the predicate outright
+         * (`_ = predicate`), and the one `JsAgentBuilder` stores is never read by the
+         * adapter or by `JsCrew`. Conditional inclusion does not exist -- guard with an
+         * `if` around the `withAgent`/`withTask` call instead.
+         */
         when(predicate: () => boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;

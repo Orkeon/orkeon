@@ -1,8 +1,27 @@
 // Orkeon Scripting DSL — Execution context module
 // `ExecutionContext` is the surface every agent body and hook receives.
-// See chapter 04 (execution-context-and-communication.md).
 
 declare global {
+    /**
+     * The run's cancellation handle.
+     *
+     * NOT a DOM `AbortSignal`, which is what this was declared as until 2026-09-07. There
+     * is no DOM in the Jint engine: what a script receives is a .NET `CancellationToken`
+     * projected through interop, so `aborted`, `addEventListener` and `throwIfAborted` are
+     * all `undefined`. The idiomatic `if (ctx.signal.aborted) return;` therefore compiled,
+     * ran, and never once fired -- the most expensive shape a wrong declaration can take.
+     *
+     * The members below are the ones that exist, CLR-cased because that is how interop
+     * projects them. Prefer passing the signal along to awaiting on it: `crew.run()` and
+     * the `llm` calls observe it for you.
+     */
+    interface CancellationSignal {
+        /** True once cancellation has been requested for this run. */
+        readonly IsCancellationRequested: boolean;
+        /** False for a signal that can never be cancelled -- nothing will ever request it. */
+        readonly CanBeCanceled: boolean;
+    }
+
     interface MemoryHit<T = unknown> {
         readonly id: string;
         readonly score: number;
@@ -49,7 +68,7 @@ declare global {
         model?: string;
         temperature?: number;
         maxTokens?: number;
-        signal?: AbortSignal;
+        signal?: CancellationSignal;
     }
 
     /**
@@ -140,7 +159,11 @@ declare global {
         readonly llm: LlmFacade;
         readonly memory: { readonly crew: MemoryScope };
         readonly events: EventBroker;
-        readonly signal: AbortSignal;
+        /**
+         * The run's cancellation handle. Pass it on to `crew.run({ signal })` or an
+         * `llm` call; that is the whole of its intended use.
+         */
+        readonly signal: CancellationSignal;
         readonly log: Logger;
         delegate<T = unknown>(agent: string | Agent<unknown, T>, input: unknown): Promise<T>;
         send(agent: string, message: unknown): Promise<void>;
@@ -148,8 +171,27 @@ declare global {
         broadcast(message: unknown): Promise<void>;
     }
 
+    /**
+     * The agent's state, as the body sees it: a read-only view carrying the ONE mutator.
+     *
+     * Direct assignment is trapped at runtime -- `ctx.state.count = 1` throws
+     * `StateMutationOutsideWithException` rather than quietly working -- because
+     * `with()` is what serialises mutations against the agent's state mutex.
+     */
+    type AgentState<TState> = Readonly<TState> & {
+        /**
+         * Replaces the state with what `mutate` returns, under the state mutex, and
+         * resolves to the new state.
+         *
+         * REPLACES, not merges: the return value becomes the whole state, so carry the
+         * fields you are not changing (`prev => ({ ...prev, count: prev.count + 1 })`).
+         * `mutate` may be async; concurrent calls queue rather than interleave.
+         */
+        with(mutate: (prev: Readonly<TState>) => TState | Promise<TState>): Promise<Readonly<TState>>;
+    };
+
     interface AgentContext<TState = unknown> extends ExecutionContext {
-        readonly state: Readonly<TState>;
+        readonly state: AgentState<TState>;
         readonly memory: { readonly agent: MemoryScope; readonly crew: MemoryScope };
         lock<T>(name: string, fn: () => Promise<T>): Promise<T>;
         spawn<TIn, TOut>(builder: AgentBuilder<TIn, TOut, unknown>): Agent<TIn, TOut>;

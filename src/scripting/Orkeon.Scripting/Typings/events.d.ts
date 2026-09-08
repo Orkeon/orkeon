@@ -1,5 +1,5 @@
 // Orkeon Scripting DSL — Events, queues, topics
-// See chapter 06 (events-queues-topics.md).
+// Declares the event broker surface: queues, topics, published events and subscriptions.
 
 declare global {
     interface ChannelParticipant {

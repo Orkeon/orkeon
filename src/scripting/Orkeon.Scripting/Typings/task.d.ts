@@ -1,5 +1,5 @@
 // Orkeon Scripting DSL — Task builder
-// See chapter 03 (creation-agent-crew-task.md).
+// Declares Task, TaskBuilder, and the deliverable contract a task can attach to its output.
 
 declare global {
     interface Task<TIn = unknown, TOut = unknown> {
@@ -32,6 +32,13 @@ declare global {
          * source is `structured_output`) validates against the inline `schema`.
          */
         deliverable(spec: TaskDeliverableSpec): this;
+        /**
+         * @deprecated NO-OP. Declared on all three builders and honoured by neither engine:
+         * `JsCrewBuilder.when` and `JsTaskBuilder.when` discard the predicate outright
+         * (`_ = predicate`), and the one `JsAgentBuilder` stores is never read by the
+         * adapter or by `JsCrew`. Conditional inclusion does not exist -- guard with an
+         * `if` around the `withAgent`/`withTask` call instead.
+         */
         when(predicate: () => boolean): this;
         build(): Task<TIn, TOut>;
     }

@@ -1,0 +1,28 @@
+// The tsconfig an .ork.ts author should copy. Three of these options are what make a
+// script typecheck at all, and the reasons are worth knowing.
+{
+  "compilerOptions": {
+    // Treats every file as a module even with no import or export. Without it a script
+    // gets two errors that have nothing to do with its code: top-level `await crew.run()`
+    // is rejected (TS1375), and a top-level `const crew` collides with the `crew` global
+    // the runner reads (TS2451).
+    "moduleDetection": "force",
+
+    // The DSL is transpiled by esbuild and run by Jint, which supports this level. Asking
+    // for less hides real syntax; asking for more promises APIs Jint does not have.
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+
+    // There is no Node in a .ork.ts. Leaving @types/node in scope would offer `process`,
+    // `require` and `Buffer`, none of which exist at run time.
+    "types": [],
+
+    "strict": true,
+    // The runner transpiles; tsc is here to check, never to build.
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}

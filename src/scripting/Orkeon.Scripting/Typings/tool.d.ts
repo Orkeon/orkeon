@@ -1,5 +1,5 @@
 // Orkeon Scripting DSL — Custom tool builder
-// See chapter 03 §custom tools.
+// Declares Tool, ToolBuilder, and the schema shapes a script-defined tool exposes to the LLM.
 
 declare global {
     /**

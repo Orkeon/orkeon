@@ -1,5 +1,5 @@
 // Orkeon Scripting DSL — Llm provider namespace
-// See chapter 03 §`llm namespace` and chapter 10 §default provider.
+// Declares LlmConfig, the provider factories under the `llm` namespace, and the resolved `llm.default_`.
 
 declare global {
     /**

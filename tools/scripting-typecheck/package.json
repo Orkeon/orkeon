@@ -1,0 +1,8 @@
+{
+  "name": "orkeon-scripting-typecheck",
+  "private": true,
+  "description": "Bootstraps the TypeScript compiler used by scripts/check-scripting-typings.sh to typecheck the shipped .ork.ts examples against the shipped Typings/*.d.ts.",
+  "dependencies": {
+    "typescript": "5.9.3"
+  }
+}

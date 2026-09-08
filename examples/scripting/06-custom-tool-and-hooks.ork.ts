@@ -1,7 +1,9 @@
 /// <reference orkeon-script="1.0" />
 
 // Custom tool authored with toolBuilder + lifecycle hooks on the agent.
-const reverseTool = toolBuilder()
+// The generic states what the schema below promises: TypeScript does not read the schema,
+// so without it `input` is `unknown` and every field access is an error.
+const reverseTool = toolBuilder<{ value: string }, { reversed: string }>()
     .name("reverse")
     .description("Reverses a string")
     .withSchema({

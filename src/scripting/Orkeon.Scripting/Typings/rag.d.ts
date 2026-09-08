@@ -80,7 +80,7 @@ declare global {
          * `citations` with an empty `text`. No LLM call, so no token cost.
          *
          * Use this whenever the caller quotes the passages rather than the
-         * pipeline's prose. Measured on exp02's round-41 (2026-08-04): seven
+         * pipeline's prose. Measured on a real run (2026-08-04): seven
          * `query` calls whose generated answers were discarded by design cost
          * 14 748 completion tokens and 394 s of wall time for citations that
          * retrieval had already produced.

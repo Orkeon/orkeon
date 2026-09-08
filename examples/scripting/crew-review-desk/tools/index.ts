@@ -3,7 +3,9 @@
 // tools once and a `pickTools` that fails loudly on a typo, so a name that no longer exists
 // stops the run instead of quietly leaving an agent one tool short.
 
-const diffStats = toolBuilder()
+// `toolBuilder<TIn, TOut>` states what the schema promises. TypeScript never reads the
+// schema, so the generic is what makes `input.diff` legal instead of an error on `unknown`.
+const diffStats = toolBuilder<{ diff: string }, { added: number; removed: number; net: number }>()
     .name("diff_stats")
     .description("Counts added and removed lines in a unified diff")
     .withSchema({
@@ -19,7 +21,7 @@ const diffStats = toolBuilder()
     })
     .build();
 
-const touchedFiles = toolBuilder()
+const touchedFiles = toolBuilder<{ diff: string }, { files: string[]; count: number }>()
     .name("touched_files")
     .description("Lists the files a unified diff touches")
     .withSchema({
@@ -36,7 +38,7 @@ const touchedFiles = toolBuilder()
     })
     .build();
 
-const riskFlags = toolBuilder()
+const riskFlags = toolBuilder<{ diff: string }, { flags: string[]; clean: boolean }>()
     .name("risk_flags")
     .description("Flags patterns that deserve a second look in a diff")
     .withSchema({

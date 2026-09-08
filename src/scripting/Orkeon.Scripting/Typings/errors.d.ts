@@ -1,6 +1,5 @@
 // Orkeon Scripting DSL — Errors module
 // Loaded first because other modules reference these types.
-// See chapter 13 (errors-reference.md) for the full taxonomy.
 
 declare global {
     /** Thrown when the runtime cannot satisfy the version declared by a script. */
