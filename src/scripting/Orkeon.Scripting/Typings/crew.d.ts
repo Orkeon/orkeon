@@ -65,14 +65,6 @@ declare global {
         verbose(value?: boolean): this;
         /** YAML parity `memory: true` — the crew keeps a shared memory scope. */
         memory(value?: boolean): this;
-        /**
-         * @deprecated NO-OP. Declared on all three builders and honoured by neither engine:
-         * `JsCrewBuilder.when` and `JsTaskBuilder.when` discard the predicate outright
-         * (`_ = predicate`), and the one `JsAgentBuilder` stores is never read by the
-         * adapter or by `JsCrew`. Conditional inclusion does not exist -- guard with an
-         * `if` around the `withAgent`/`withTask` call instead.
-         */
-        when(predicate: () => boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
         onCrewError(hook: (ctx: ExecutionContext, err: Error) => Promise<void> | void): this;

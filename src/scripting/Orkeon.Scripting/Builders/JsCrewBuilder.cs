@@ -135,7 +135,6 @@ public sealed partial class JsCrewBuilder
 
     public JsCrewBuilder verbose() { _verbose = true; return this; }
     public JsCrewBuilder verbose(bool value) { _verbose = value; return this; }
-    public JsCrewBuilder when(JsValue predicate) { _ = predicate; return this; }
     public JsCrewBuilder onCrewStart(JsValue hook) { _onCrewStart = hook; return this; }
     public JsCrewBuilder onCrewComplete(JsValue hook) { _onCrewComplete = hook; return this; }
     public JsCrewBuilder onCrewError(JsValue hook) { _onCrewError = hook; return this; }

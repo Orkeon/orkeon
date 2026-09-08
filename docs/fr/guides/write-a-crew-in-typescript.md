@@ -300,8 +300,8 @@ vaut mieux connaître avant d'en être surpris :
 ## Hors périmètre, volontairement
 
 `budget()` et `globalThis.inputs` ne font rien sur le chemin déclaratif ; `.body()` non plus.
-`.when(predicate)` ne fait rien **nulle part** — gardez l'appel `withAgent`/`withTask` avec un
-`if` à la place. `ctx.llm.embed` rend un vecteur bidon. La liste complète, avec ce que chacun
+Il n'existe pas de méthode d'inclusion conditionnelle — gardez l'appel `withAgent`/`withTask`
+avec un `if` à la place. `ctx.llm.embed` rend un vecteur bidon. La liste complète, avec ce que chacun
 fait réellement, est dans
 [Écarts connus entre les typings et le runtime](../reference/scripting-dsl.md#écarts-connus-entre-les-typings-et-le-runtime).
 

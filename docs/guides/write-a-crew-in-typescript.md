@@ -291,7 +291,7 @@ knowing before you are surprised by them:
 ## Deliberately out of scope
 
 `budget()` and `globalThis.inputs` do nothing on the declarative path; `.body()` does nothing
-there either. `.when(predicate)` does nothing **anywhere** — guard the `withAgent`/`withTask`
+there either. There is no conditional-inclusion method — guard the `withAgent`/`withTask`
 call with an `if` instead. `ctx.llm.embed` returns a stub vector. The full list, with what
 each one actually does, is in
 [Known gaps between the typings and the runtime](../reference/scripting-dsl.md#known-gaps-between-the-typings-and-the-runtime).

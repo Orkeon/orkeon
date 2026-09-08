@@ -42,14 +42,6 @@ declare global {
          */
         onCommand(handler: (env: AgentCommandEnvelope) => AgentCommandReply): this;
         onCommand(intent: string, handler: (env: AgentCommandEnvelope) => AgentCommandReply): this;
-        /**
-         * @deprecated NO-OP. Declared on all three builders and honoured by neither engine:
-         * `JsCrewBuilder.when` and `JsTaskBuilder.when` discard the predicate outright
-         * (`_ = predicate`), and the one `JsAgentBuilder` stores is never read by the
-         * adapter or by `JsCrew`. Conditional inclusion does not exist -- guard with an
-         * `if` around the `withAgent`/`withTask` call instead.
-         */
-        when(predicate: () => boolean): this;
         build(): Agent<TIn, TOut>;
     }
 

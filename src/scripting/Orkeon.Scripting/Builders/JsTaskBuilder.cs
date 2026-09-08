@@ -93,7 +93,6 @@ public sealed class JsTaskBuilder
 
     public JsTaskBuilder expect(JsValue schema) { _expectSchema = schema; return this; }
     public JsTaskBuilder withTaskTool(JsValue tool) { _taskTool = tool; return this; }
-    public JsTaskBuilder when(JsValue predicate) { _ = predicate; return this; }
 
     /// <summary>
     /// Forces the LLM output format on this task only (e.g. <c>"json_object"</c>).

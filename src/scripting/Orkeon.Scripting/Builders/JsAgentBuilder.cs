@@ -52,7 +52,6 @@ public sealed class JsAgentBuilder
     internal JsValue? OnErrorHandler { get; private set; }
     internal JsValue? OnAgentStartHandler { get; private set; }
     internal JsValue? OnAgentStopHandler { get; private set; }
-    internal JsValue? WhenPredicate { get; private set; }
 
     /// <summary>Declared <c>onCommand</c> handlers — the seam through which an agent answers dispatched commands (design §8 item 9).</summary>
     internal List<AgentCommandHandler> OnCommandHandlers { get; } = new();
@@ -165,7 +164,6 @@ public sealed class JsAgentBuilder
     public JsAgentBuilder onError(JsValue handler) { OnErrorHandler = handler; return this; }
     public JsAgentBuilder onAgentStart(JsValue handler) { OnAgentStartHandler = handler; return this; }
     public JsAgentBuilder onAgentStop(JsValue handler) { OnAgentStopHandler = handler; return this; }
-    public JsAgentBuilder when(JsValue predicate) { WhenPredicate = predicate; return this; }
 
     /// <summary>
     /// Declares that this agent answers dispatched commands (design §8 item 9). With one

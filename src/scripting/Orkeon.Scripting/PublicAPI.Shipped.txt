@@ -71,7 +71,6 @@ Orkeon.Scripting.Builders.JsAgentBuilder.role(string! value) -> Orkeon.Scripting
 Orkeon.Scripting.Builders.JsAgentBuilder.tools(Jint.Native.JsValue! names) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.verbose() -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.verbose(bool value) -> Orkeon.Scripting.Builders.JsAgentBuilder!
-Orkeon.Scripting.Builders.JsAgentBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.withAutonomousTool(Jint.Native.JsValue! tool) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.withAutonomousTools(Jint.Native.JsValue! tools) -> Orkeon.Scripting.Builders.JsAgentBuilder!
 Orkeon.Scripting.Builders.JsAgentBuilder.withResponseFormat(string! type) -> Orkeon.Scripting.Builders.JsAgentBuilder!
@@ -92,7 +91,6 @@ Orkeon.Scripting.Builders.JsCrewBuilder.onCrewStart(Jint.Native.JsValue! hook) -
 Orkeon.Scripting.Builders.JsCrewBuilder.process(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.verbose() -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.verbose(bool value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.withAgent(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.withAgents(Jint.Native.JsValue! agents) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.withTask(Jint.Native.JsValue! task) -> Orkeon.Scripting.Builders.JsCrewBuilder!
@@ -109,7 +107,6 @@ Orkeon.Scripting.Builders.JsTaskBuilder.expectedOutput(string! value) -> Orkeon.
 Orkeon.Scripting.Builders.JsTaskBuilder.humanInput(bool value = true) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.tools(Jint.Native.JsValue! value) -> Orkeon.Scripting.Builders.JsTaskBuilder!
-Orkeon.Scripting.Builders.JsTaskBuilder.when(Jint.Native.JsValue! predicate) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.withContext(Orkeon.Scripting.Runtime.JsTask! task) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.withContexts(Jint.Native.JsValue! tasks) -> Orkeon.Scripting.Builders.JsTaskBuilder!
 Orkeon.Scripting.Builders.JsTaskBuilder.withResponseFormat(string! type) -> Orkeon.Scripting.Builders.JsTaskBuilder!

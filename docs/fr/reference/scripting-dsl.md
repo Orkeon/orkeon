@@ -54,7 +54,6 @@ Mesuré sur `JsCrewConfigurationAdapter.cs` et `JsCrew.cs`, pas déduit.
 | `onAgentStart` / `onAgentStop` | ✅ | ❌ |
 | `concurrency` | seulement `1` — voir plus bas | ❌ |
 | `onCommand` | ni l'un ni l'autre : c'est la couture de dispatch CLI, pas un hook d'exécution | |
-| `when` | ❌ sans effet — voir [Surface morte](#surface-morte) | ❌ |
 
 ### `crewBuilder()`
 
@@ -69,13 +68,12 @@ Mesuré sur `JsCrewConfigurationAdapter.cs` et `JsCrew.cs`, pas déduit.
 | `budget` | ✅ | ❌ ignoré |
 | `graph` | ✅ | ❌ |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
-| `when` | ❌ sans effet | ❌ |
 
 ### `taskBuilder()`
 
 Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. `name`, `description`,
 `agent`, `expectedOutput`, `withContext(s)` (c'est ce qui construit le DAG), `expect`,
-`tools`, `withTaskTool`, `humanInput`, `asyncExecution`, `deliverable`. `when` est sans effet.
+`tools`, `withTaskTool`, `humanInput`, `asyncExecution`, `deliverable`.
 
 ### `toolBuilder()`
 
@@ -182,7 +180,6 @@ Voici ce qui reste une fois ce garde-fou au vert.
 
 | Écart | Comportement |
 |---|---|
-| `.when(predicate)` sur les trois builders | **Sans effet.** Voir plus bas. |
 | `budget()` en forme déclarative | Silencieusement ignoré — l'adaptateur ne le lit jamais. Utilisez `process("autonomous")` en procédural. |
 | `.body()` en forme déclarative | Silencieusement ignoré. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
 | `globalThis.inputs` en forme déclarative | Jamais planté ; `--inputs` n'a aucun effet sur ce chemin. |
@@ -193,15 +190,16 @@ Voici ce qui reste une fois ce garde-fou au vert.
 | Les événements | En mémoire seulement ; pas de persistance Redis/NATS. |
 | Composition FSM/Graphe | Sous-états et sous-graphes en V1.5. |
 
-### Surface morte
+### Inclusion conditionnelle
 
-`when(predicate)` est déclarée sur `agentBuilder`, `crewBuilder` et `taskBuilder`, et n'est
-honorée par **aucun des deux moteurs**. `JsCrewBuilder.when` et `JsTaskBuilder.when` jettent
-l'argument purement et simplement (`_ = predicate;`) ; `JsAgentBuilder.when` le range dans
-`WhenPredicate`, que rien ne lit jamais. Une crew écrite avec `.when(() => false)` inclut
-l'agent quand même.
+Il n'y a pas de méthode de builder pour cela. `when(predicate)` était déclarée sur les trois
+builders et n'était honorée par aucun moteur — `JsCrewBuilder.when` et `JsTaskBuilder.when`
+jetaient l'argument, et le prédicat rangé par `JsAgentBuilder` n'était jamais lu, si bien que
+`.when(() => false)` incluait l'agent quand même. Elle a été retirée plutôt qu'implémentée :
+une méthode qui fait silencieusement l'inverse de ce qu'elle annonce vaut moins que pas de
+méthode du tout.
 
-Gardez l'appel plutôt que le builder :
+Gardez l'appel :
 
 ```ts
 const b = crewBuilder().name("nightly");

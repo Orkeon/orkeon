@@ -53,7 +53,6 @@ Measured against `JsCrewConfigurationAdapter.cs` and `JsCrew.cs`, not inferred.
 | `onAgentStart` / `onAgentStop` | ✅ | ❌ |
 | `concurrency` | only `1` — see below | ❌ |
 | `onCommand` | neither: it is the CLI dispatch seam, not a run-time hook | |
-| `when` | ❌ no-op — see [Dead surface](#dead-surface) | ❌ |
 
 ### `crewBuilder()`
 
@@ -68,13 +67,12 @@ Measured against `JsCrewConfigurationAdapter.cs` and `JsCrew.cs`, not inferred.
 | `budget` | ✅ | ❌ ignored |
 | `graph` | ✅ | ❌ |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
-| `when` | ❌ no-op | ❌ |
 
 ### `taskBuilder()`
 
 Declarative only — the procedural engine never reads tasks. `name`, `description`, `agent`,
 `expectedOutput`, `withContext(s)` (this is what builds the DAG), `expect`, `tools`,
-`withTaskTool`, `humanInput`, `asyncExecution`, `deliverable`. `when` is a no-op.
+`withTaskTool`, `humanInput`, `asyncExecution`, `deliverable`.
 
 ### `toolBuilder()`
 
@@ -177,7 +175,6 @@ did. What follows is what remains after that gate went green.
 
 | Gap | Behaviour |
 |---|---|
-| `.when(predicate)` on all three builders | **No-op.** See below. |
 | `budget()` in the declarative shape | Silently ignored — the adapter never reads it. Use `process("autonomous")` in the procedural shape. |
 | `.body()` in the declarative shape | Silently ignored. The most expensive confusion in the DSL, and the reason for the shape table above. |
 | `globalThis.inputs` in the declarative shape | Never planted; `--inputs` has no effect on that path. |
@@ -188,14 +185,15 @@ did. What follows is what remains after that gate went green.
 | Events | In-memory only; no Redis/NATS persistence. |
 | FSM/Graph composition | Sub-states and sub-graphs are V1.5. |
 
-### Dead surface
+### Conditional inclusion
 
-`when(predicate)` is declared on `agentBuilder`, `crewBuilder` and `taskBuilder`, and is
-honoured by **neither engine**. `JsCrewBuilder.when` and `JsTaskBuilder.when` discard the
-argument outright (`_ = predicate;`); `JsAgentBuilder.when` stores it in `WhenPredicate`,
-which nothing ever reads. A crew written with `.when(() => false)` includes the agent anyway.
+There is no builder method for it. `when(predicate)` used to be declared on all three
+builders and was honoured by neither engine — `JsCrewBuilder.when` and `JsTaskBuilder.when`
+discarded the argument outright, and the predicate `JsAgentBuilder` stored was never read,
+so `.when(() => false)` included the agent anyway. It was removed rather than implemented:
+a method that silently does the opposite of what it says is worse than no method.
 
-Guard the call instead of the builder:
+Guard the call instead:
 
 ```ts
 const b = crewBuilder().name("nightly");
