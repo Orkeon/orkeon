@@ -69,7 +69,7 @@ jobs:
       # the guard above exists for. Runnable locally: python3 scripts/check-release-readiness.py
       - name: Verify the release checklist (CHANGELOG cut, PublicAPI shipped)
         run: python3 scripts/check-release-readiness.py
-      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+      - uses: actions/setup-dotnet@a98b56852c35b8e3190ac28c8c2271da59106c68 # v6.0.0
         with: { dotnet-version: '10.0.x' }
       - run: dotnet restore Orkeon.sln
       - run: dotnet build Orkeon.sln -c Release --no-restore
