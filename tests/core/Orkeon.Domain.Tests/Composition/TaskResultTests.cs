@@ -115,10 +115,11 @@ public class TaskResultTests
         // Verify timestamps
         Assert.True(result.CompletedAt >= beforeCreation);
         Assert.True(result.CompletedAt <= afterCreation);
-        // Allow small timing differences due to DateTime.UtcNow calls
-        var expectedStartTime = result.CompletedAt.Subtract(duration);
-        Assert.True(Math.Abs((expectedStartTime - result.StartedAt).TotalMilliseconds) < 10,
-            $"Expected start time: {expectedStartTime}, Actual: {result.StartedAt}");
+        // Exact, not approximate: the factory reads the clock once, so StartedAt is
+        // CompletedAt minus Duration to the tick. The old 10 ms tolerance was hiding two
+        // clock reads, and its message formatted both sides without sub-seconds -- it
+        // failed under load printing "Expected 10:38:31, Actual 10:38:31".
+        Assert.Equal(result.CompletedAt.Subtract(duration), result.StartedAt);
 
         // Verify empty collections
         Assert.Empty(result.ToolsUsed);
@@ -207,10 +208,11 @@ public class TaskResultTests
         // Verify timestamps
         Assert.True(result.CompletedAt >= beforeCreation);
         Assert.True(result.CompletedAt <= afterCreation);
-        // Allow small timing differences due to DateTime.UtcNow calls
-        var expectedStartTime = result.CompletedAt.Subtract(duration);
-        Assert.True(Math.Abs((expectedStartTime - result.StartedAt).TotalMilliseconds) < 10,
-            $"Expected start time: {expectedStartTime}, Actual: {result.StartedAt}");
+        // Exact, not approximate: the factory reads the clock once, so StartedAt is
+        // CompletedAt minus Duration to the tick. The old 10 ms tolerance was hiding two
+        // clock reads, and its message formatted both sides without sub-seconds -- it
+        // failed under load printing "Expected 10:38:31, Actual 10:38:31".
+        Assert.Equal(result.CompletedAt.Subtract(duration), result.StartedAt);
 
         // Verify empty collections
         Assert.Empty(result.ToolsUsed);
@@ -246,9 +248,7 @@ public class TaskResultTests
 
         // Assert
         Assert.Equal(duration, result.Duration);
-        var actualDuration = result.CompletedAt - result.StartedAt;
-        Assert.True(Math.Abs((TimeSpan.FromHours(24) - actualDuration).TotalMilliseconds) < 10,
-            $"Expected 24 hours, got {actualDuration}");
+        Assert.Equal(duration, result.CompletedAt - result.StartedAt);
     }
 
     #endregion
@@ -568,9 +568,7 @@ public class TaskResultTests
         var result = TaskResult.CreateSuccess(TaskId.Create(), AgentId.Create(), TaskId.Create(), duration);
 
         // Assert
-        var actualDuration = result.CompletedAt - result.StartedAt;
-        Assert.True(Math.Abs((duration - actualDuration).TotalMilliseconds) < 10,
-            $"Expected duration: {duration}, Actual: {actualDuration}");
+        Assert.Equal(duration, result.CompletedAt - result.StartedAt);
         Assert.True(result.StartedAt < result.CompletedAt);
         Assert.Equal(DateTimeKind.Utc, result.StartedAt.Kind);
         Assert.Equal(DateTimeKind.Utc, result.CompletedAt.Kind);
@@ -586,9 +584,7 @@ public class TaskResultTests
         var result = TaskResult.CreateFailure(TaskId.Create(), AgentId.Create(), TaskId.Create(), duration);
 
         // Assert
-        var actualDuration = result.CompletedAt - result.StartedAt;
-        Assert.True(Math.Abs((duration - actualDuration).TotalMilliseconds) < 10,
-            $"Expected duration: {duration}, Actual: {actualDuration}");
+        Assert.Equal(duration, result.CompletedAt - result.StartedAt);
         Assert.True(result.StartedAt < result.CompletedAt);
     }
 

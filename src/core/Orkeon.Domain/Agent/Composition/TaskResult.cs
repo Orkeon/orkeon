@@ -46,6 +46,10 @@ public sealed record TaskResult
         TimeSpan duration,
         object? structuredOutput = null)
     {
+        // One clock read, not two: with a read per property, StartedAt + Duration lands a
+        // variable distance from CompletedAt -- the gap between the two calls, which a
+        // loaded machine can stretch past 10 ms. Readers take that invariant seriously.
+        var completedAt = DateTime.UtcNow;
         return new TaskResult
         {
             TaskId = taskId,
@@ -54,8 +58,8 @@ public sealed record TaskResult
             Output = output,
             StructuredOutput = structuredOutput,
             Duration = duration,
-            CompletedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow.Subtract(duration)
+            CompletedAt = completedAt,
+            StartedAt = completedAt.Subtract(duration)
         };
     }
 
@@ -71,6 +75,7 @@ public sealed record TaskResult
         string error,
         TimeSpan duration)
     {
+        var completedAt = DateTime.UtcNow;
         return new TaskResult
         {
             TaskId = taskId,
@@ -78,8 +83,8 @@ public sealed record TaskResult
             Success = false,
             Error = error,
             Duration = duration,
-            CompletedAt = DateTime.UtcNow,
-            StartedAt = DateTime.UtcNow.Subtract(duration)
+            CompletedAt = completedAt,
+            StartedAt = completedAt.Subtract(duration)
         };
     }
 }
