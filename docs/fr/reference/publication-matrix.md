@@ -71,20 +71,31 @@ donc tel quel — seule l'installation change. Désinstallez les paquets par cou
 
 ## État réel de NuGet.org, et actions propriétaire restantes
 
-`orkeon.domain`, `orkeon.application` et `orkeon.infrastructure` **sont publiés** sur
+`orkeon.domain`, `orkeon.application` et `orkeon.infrastructure` **ont été publiés** sur
 NuGet.org : `1.0.0-rc.1` (2026-08-18) et `1.0.0-rc.2` (2026-08-25), poussés par `publish.yml`
-via le Trusted Publishing. `Orkeon.Application` et `Orkeon.Infrastructure` n'y sont pas
-restaurables (`NU1101`) : ils déclarent cinq dépendances `Orkeon.*` jamais publiées —
-l'incident qui a motivé le gate de fermeture ci-dessus.
+via le Trusted Publishing. Deux des trois n'y étaient pas restaurables (`NU1101`) : ils
+déclaraient cinq dépendances `Orkeon.*` jamais publiées — l'incident qui a motivé le gate de
+fermeture ci-dessus. Les six versions ont été **délistées le 2026-09-07** — délistées, pas
+supprimées : les octets restent servis, donc une restauration qui les épingle fonctionne
+toujours.
 
-Actions propriétaire restantes :
+Actions propriétaire déjà faites :
 
-1. **Délister** les paquets par couche `rc.1` / `rc.2` sur NuGet.org — *après* la publication
-   du nouveau lineup au tag `v1.0.0-rc.3` (délister d'abord ne laisserait rien d'installable).
-2. **Réserver le préfixe `Orkeon`** sur nuget.org — l'ID nu `Orkeon` ET la famille
-   `Orkeon.*`.
-3. Rien d'autre : la variable de dépôt `NUGET_USER` et la politique de Trusted Publishing
-   sont déjà opérationnelles (les pushes rc.1/rc.2 le prouvent).
+- ✅ **2026-09-07 — les six versions `rc.1` / `rc.2` du trio par couche sont délistées**
+  (`listed: false` sur les trois paquets). Plus personne ne se voit proposer un paquet qui
+  ne restaure pas.
+- ✅ **2026-09-08 — le préfixe `Orkeon` est réservé** sur nuget.org pour le compte
+  propriétaire `arion-orkeon` : l'ID nu `Orkeon` *et* la famille `Orkeon.*`. Tout ID
+  correspondant poussé par un autre compte est désormais rejeté — les ~30 noms d'assemblys
+  `Orkeon.*` que cette documentation rend publics ne peuvent plus être squattés.
+- ✅ La variable de dépôt `NUGET_USER` et la politique de Trusted Publishing sont
+  opérationnelles (les pushes rc.1/rc.2 le prouvent).
+
+Action propriétaire restante — **une seule** : taguer `v1.0.0-rc.3` pour que le lineup
+ci-dessus soit réellement poussé. Jusqu'à ce tag, rien n'est listé sous le nom `Orkeon` sur
+nuget.org : la famille n'a pas de page et une recherche libre sur « Orkeon » ne rend rien.
+La réservation, elle, n'en dépend pas : elle s'appuie sur la *propriété* des paquets, pas sur
+leur listage.
 
 ## Publiés sur GitHub Packages
 

@@ -69,20 +69,28 @@ only the install changes. Uninstall the per-layer packages and
 
 ## Actual NuGet.org state, and the remaining owner actions
 
-`orkeon.domain`, `orkeon.application` and `orkeon.infrastructure` **are published** on
+`orkeon.domain`, `orkeon.application` and `orkeon.infrastructure` **were published** on
 NuGet.org: `1.0.0-rc.1` (2026-08-18) and `1.0.0-rc.2` (2026-08-25), pushed by `publish.yml`
-through Trusted Publishing. `Orkeon.Application` and `Orkeon.Infrastructure` are not restorable
-there (`NU1101`): they declare five `Orkeon.*` dependencies that were never published — the
-incident that motivated the closure gate above.
+through Trusted Publishing. Two of the three were not restorable there (`NU1101`): they
+declared five `Orkeon.*` dependencies that were never published — the incident that motivated
+the closure gate above. All six versions were **unlisted on 2026-09-07** — unlisted, not
+deleted: the bytes are still served, so a consumer pinning one of them still restores.
 
-Remaining owner actions:
+Owner actions already done:
 
-1. **Unlist** the per-layer `rc.1` / `rc.2` packages on NuGet.org — *after* the new lineup is
-   published at `v1.0.0-rc.3` (unlisting first would leave nothing installable).
-2. **Reserve the `Orkeon` prefix** on nuget.org — both the bare `Orkeon` ID and the
-   `Orkeon.*` family.
-3. Nothing else: the `NUGET_USER` repository variable and the Trusted Publishing policy are
-   already operational (the rc.1/rc.2 pushes prove it).
+- ✅ **2026-09-07 — the six `rc.1` / `rc.2` versions of the per-layer trio are unlisted**
+  (`listed: false` on the three packages). Nobody is offered a package that cannot restore.
+- ✅ **2026-09-08 — the `Orkeon` prefix is reserved** on nuget.org for the owner account
+  `arion-orkeon`: the bare `Orkeon` ID *and* the `Orkeon.*` family. Any matching package ID
+  pushed by another account is rejected from now on — the ~30 `Orkeon.*` assembly names this
+  documentation makes public can no longer be squatted.
+- ✅ The `NUGET_USER` repository variable and the Trusted Publishing policy are operational
+  (the rc.1/rc.2 pushes prove it).
+
+Remaining owner action — **one**: tag `v1.0.0-rc.3` so the lineup above is actually pushed.
+Until that tag, nothing is listed under the `Orkeon` name on nuget.org: the family has no
+page, and a free-text search for "Orkeon" returns nothing. The reservation is unaffected by
+that — it rests on package *ownership*, not on listing.
 
 ## Published to GitHub Packages
 
