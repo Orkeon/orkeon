@@ -5,7 +5,8 @@
 # database images (Redis, Postgres, MsSql, Mongo, MariaDb…), so it needs the
 # Docker daemon of a hosted ubuntu runner and tens of minutes. A red run is
 # VISIBLE: it opens (or comments) a pinned tracking issue instead of dying in
-# a log nobody reads.
+# a log nobody reads, and the next green run closes that issue again -- an open
+# issue therefore means "the nightly is red NOW", not "was red once".
 #
 # Two things this run inherits from Microsoft.Testing.Platform (global.json):
 #   - selecting one category across the whole solution leaves MOST modules with zero
@@ -37,6 +38,11 @@ jobs:
   integration:
     runs-on: ubuntu-latest
     timeout-minutes: 90
+    env:
+      # One title, read by both the step that opens the tracking issue and the step
+      # that closes it. They must not drift: a lookup on a different title would leave
+      # a red streak latched open forever.
+      TRACKING_ISSUE_TITLE: "Nightly integration run is red"
     steps:
       - name: Free up runner disk space
         # The 2026-09-01 run died at "0 MB free": Release build of the full solution
@@ -126,17 +132,47 @@ jobs:
             exit 1
           fi
           echo "All five Testcontainers images were pulled — the database suites really executed."
+      # The tracking issue is a LATCH, not a log: one issue for the whole failure
+      # streak, a comment per red night, and the green run below is what clears it.
+      # Both steps look the issue up the same way so they always address the same one.
       - name: Surface the failure as a tracking issue
         if: failure()
         env:
           GH_TOKEN: ${{ github.token }}
           RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
-          title="Nightly integration run is red"
-          existing="$(gh issue list --state open --search "$title in:title" --json number --jq '.[0].number' || true)"
+          # in:title is a FUZZY search -- it also returns issues that merely share words
+          # with the title. Re-filter on an exact title match so neither step can latch
+          # onto, or close, somebody else's issue; empty means "no such issue".
+          existing="$(gh issue list --state open --search "$TRACKING_ISSUE_TITLE in:title" --json number,title \
+            | jq -r --arg t "$TRACKING_ISSUE_TITLE" 'map(select(.title == $t)) | .[0].number // empty' || true)"
           body="Nightly Integration/Slow suites failed: $RUN_URL"
-          if [ -n "$existing" ] && [ "$existing" != "null" ]; then
+          if [ -n "$existing" ]; then
             gh issue comment "$existing" --body "$body"
           else
-            gh issue create --title "$title" --label bug --body "$body"
+            gh issue create --title "$TRACKING_ISSUE_TITLE" --label bug --body "$body"
           fi
+
+      # Without this, the issue opened by the first red night outlives the fix and the
+      # only remaining signal is the date of its last comment -- issue #8 stayed open
+      # through five consecutive green runs (2026-09-04 to 09-08) before anyone read it
+      # by hand. A green run closes it; no open issue means there is nothing to close,
+      # so the step is a no-op on the ordinary night.
+      - name: Clear the tracking issue on a green run
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          # in:title is a FUZZY search -- it also returns issues that merely share words
+          # with the title. Re-filter on an exact title match so neither step can latch
+          # onto, or close, somebody else's issue; empty means "no such issue".
+          existing="$(gh issue list --state open --search "$TRACKING_ISSUE_TITLE in:title" --json number,title \
+            | jq -r --arg t "$TRACKING_ISSUE_TITLE" 'map(select(.title == $t)) | .[0].number // empty' || true)"
+          if [ -z "$existing" ]; then
+            echo "No open tracking issue — nothing to clear."
+            exit 0
+          fi
+          gh issue close "$existing" --reason completed \
+            --comment "Nightly Integration/Slow suites are green again: $RUN_URL"
+          echo "Closed tracking issue #$existing."
