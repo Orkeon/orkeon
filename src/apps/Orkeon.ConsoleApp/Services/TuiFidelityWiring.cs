@@ -36,7 +36,7 @@ internal static class TuiFidelityWiring
     /// restrictive mode to the least, so a distracted Shift+Tab widens authority one
     /// visible step at a time instead of jumping to <c>bypassPermissions</c>. Do not
     /// reorder. <c>dontAsk</c> is excluded from the cycle on purpose: it is reachable by
-    /// name only. The modes themselves are specified on <see cref="ModePermissionGate"/>.
+    /// name only. The modes themselves are specified on <see cref="Orkeon.Infrastructure.Security.ModePermissionGate"/>.
     /// </summary>
     private static readonly string[] ModeCycle = ["default", "acceptEdits", "plan", "bypassPermissions"];
 
