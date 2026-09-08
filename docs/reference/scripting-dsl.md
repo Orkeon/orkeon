@@ -32,7 +32,8 @@ occurrences** of `body` and of `Budget`.
 
 **The rule:** write `.body()` and you are procedural; write `withTask` and you are
 declarative. Never both in one file. A crew with tasks that ends with `await crew.run()`
-runs its agents and silently ignores every task you wrote.
+runs its agents and ignores every task you wrote — logging a warning that says exactly that,
+which is the only reason the mistake is now cheap to find.
 
 ## What each shape reads
 
@@ -61,12 +62,28 @@ Measured against `JsCrewConfigurationAdapter.cs` and `JsCrew.cs`, not inferred.
 | `name` `goal` `verbose` | ✅ | ✅ |
 | `withAgent(s)` | ✅ | ✅ |
 | `withTask(s)` | ❌ ignored | ✅ **the whole point** |
-| `process` | ❌ telemetry tag only | ✅ |
+| `process` | ❌ telemetry tag only | ✅ (`"graph"` selects the domain's retry-and-route strategy, not a script-drawn topology — see below) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
 | `budget` | ✅ | ❌ ignored |
-| `graph` | ✅ | ❌ |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
+
+Everything marked ❌ on the declarative side is now **announced**: the run logs one warning
+per dropped declaration, naming the method and the agent it was written on. It is still
+dropped — the two shapes are two engines — but a crew no longer runs a body that was never
+invoked and says nothing about it.
+
+#### `process("graph")` is not `stateGraph`
+
+They are different facilities with a shared word. `process("graph")` runs the crew on the
+**domain's** graph strategy: a fixed `agent_execute → route_decision` loop with a circuit
+breaker, tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology **you**
+draw, and it runs when you call `.run()` on it — from an agent `.body()`, so procedurally.
+
+`crewBuilder().graph(g)` used to blur the two: it accepted a `stateGraph`, stored it in a
+field no engine ever read, and `process("graph")` refused to build without it. The mode was
+gated behind a method that discarded its argument. The method is gone; `process("graph")`
+now builds on its own.
 
 ### `taskBuilder()`
 
@@ -175,9 +192,9 @@ did. What follows is what remains after that gate went green.
 
 | Gap | Behaviour |
 |---|---|
-| `budget()` in the declarative shape | Silently ignored — the adapter never reads it. Use `process("autonomous")` in the procedural shape. |
-| `.body()` in the declarative shape | Silently ignored. The most expensive confusion in the DSL, and the reason for the shape table above. |
-| `globalThis.inputs` in the declarative shape | Never planted; `--inputs` has no effect on that path. |
+| `budget()` in the declarative shape | Ignored, and said so: the run logs a warning naming the method. Use `process("autonomous")` in the procedural shape. |
+| `.body()` in the declarative shape | Ignored, and said so: the run logs a warning naming the agent. The most expensive confusion in the DSL, and the reason for the shape table above. |
+| `globalThis.inputs` in the declarative shape | Never planted. Passing `--inputs`, `--inputs-file` or `--memory-limit-mb` to a declarative script now prints a warning on stderr instead of dropping the flag in silence. |
 | A plain `{ provider, model }` object passed to `llm()` | Dropped. `ExtractLlmConfig` returns `null` for anything that is not a `JsLlmConfig`, so build one with `llm.openai({...})`, `llm.default()`, etc. |
 | `ctx.llm.embed` | Returns a stub vector. Real embedders are a follow-up. |
 | `concurrency(n)` with `n > 1` | Rejected at build with a clear message — V1 is a mutex, the N-holder semaphore is V1.5. Loud, not silent. |

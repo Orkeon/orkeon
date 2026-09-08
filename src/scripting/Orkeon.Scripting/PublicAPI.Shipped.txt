@@ -81,7 +81,6 @@ Orkeon.Scripting.Builders.JsCrewBuilder.JsCrewBuilder(Jint.Engine! engine, Micro
 Orkeon.Scripting.Builders.JsCrewBuilder.budget(Jint.Native.JsValue! spec) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.build() -> Orkeon.Scripting.Runtime.JsCrew!
 Orkeon.Scripting.Builders.JsCrewBuilder.goal(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
-Orkeon.Scripting.Builders.JsCrewBuilder.graph(Jint.Native.JsValue! graphInstance) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.manager(Orkeon.Scripting.Builders.JsAgent! agent) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.memory(bool value = true) -> Orkeon.Scripting.Builders.JsCrewBuilder!
 Orkeon.Scripting.Builders.JsCrewBuilder.name(string! value) -> Orkeon.Scripting.Builders.JsCrewBuilder!
@@ -514,6 +513,7 @@ override Orkeon.Scripting.Orchestration.JsGraphConfig.ToString() -> string!
 override Orkeon.Scripting.ScriptingHostPorts.Equals(object? obj) -> bool
 override Orkeon.Scripting.ScriptingHostPorts.GetHashCode() -> int
 override Orkeon.Scripting.ScriptingHostPorts.ToString() -> string!
+static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectIgnoredFeatures(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<string!>!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.CollectScriptTools(Orkeon.Scripting.Runtime.JsCrew! crew) -> System.Collections.Generic.IReadOnlyList<Orkeon.Scripting.Runtime.JsTool!>!
 static Orkeon.Scripting.Adapters.JsCrewConfigurationAdapter.ToConfiguration(Orkeon.Scripting.Runtime.JsCrew! crew) -> Orkeon.Domain.Configuration.CrewConfiguration!
 static Orkeon.Scripting.Bindings.AgentBuilderBinding.Register(Jint.Engine! engine) -> void

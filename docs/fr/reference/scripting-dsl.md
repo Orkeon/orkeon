@@ -33,7 +33,9 @@ contient **zéro occurrence** de `body` et de `Budget`.
 
 **La règle :** écrivez `.body()` et vous êtes en procédural ; écrivez `withTask` et vous êtes
 en déclaratif. Jamais les deux dans un fichier. Une crew avec des tâches qui se termine par
-`await crew.run()` exécute ses agents et ignore silencieusement chaque tâche écrite.
+`await crew.run()` exécute ses agents et ignore chaque tâche écrite — en journalisant un
+avertissement qui le dit, seule raison pour laquelle l'erreur est désormais peu coûteuse à
+trouver.
 
 ## Ce que lit chaque forme
 
@@ -62,12 +64,29 @@ Mesuré sur `JsCrewConfigurationAdapter.cs` et `JsCrew.cs`, pas déduit.
 | `name` `goal` `verbose` | ✅ | ✅ |
 | `withAgent(s)` | ✅ | ✅ |
 | `withTask(s)` | ❌ ignoré | ✅ **tout l'intérêt** |
-| `process` | ❌ tag de télémétrie seulement | ✅ |
+| `process` | ❌ tag de télémétrie seulement | ✅ (`"graph"` choisit la stratégie de reprise-et-routage du domaine, pas une topologie dessinée par le script — voir plus bas) |
 | `manager` | ❌ | ✅ |
 | `memory` | ❌ | ✅ |
 | `budget` | ✅ | ❌ ignoré |
-| `graph` | ✅ | ❌ |
 | `onCrewStart` / `onCrewComplete` / `onCrewError` | ✅ | ❌ |
+
+Tout ce qui porte un ❌ du côté déclaratif est désormais **annoncé** : l'exécution journalise
+un avertissement par déclaration abandonnée, en nommant la méthode et l'agent sur lequel elle
+était écrite. C'est toujours abandonné — les deux formes sont deux moteurs — mais une crew ne
+peut plus exécuter un `.body()` jamais invoqué sans rien en dire.
+
+#### `process("graph")` n'est pas `stateGraph`
+
+Deux dispositifs différents qui partagent un mot. `process("graph")` exécute la crew sur la
+stratégie graphe **du domaine** : une boucle fixe `agent_execute → route_decision` avec
+disjoncteur, réglée par `GraphConfig`. `stateGraph({ nodes, edges })` est la topologie que
+**vous** dessinez, et elle s'exécute quand vous appelez `.run()` dessus — depuis un `.body()`
+d'agent, donc en procédural.
+
+`crewBuilder().graph(g)` brouillait les deux : la méthode acceptait un `stateGraph`, le
+rangeait dans un champ qu'aucun moteur n'a jamais lu, et `process("graph")` refusait de se
+construire sans elle. Le mode était verrouillé derrière une méthode qui jetait son argument.
+La méthode a disparu ; `process("graph")` se construit maintenant seul.
 
 ### `taskBuilder()`
 
@@ -180,9 +199,9 @@ Voici ce qui reste une fois ce garde-fou au vert.
 
 | Écart | Comportement |
 |---|---|
-| `budget()` en forme déclarative | Silencieusement ignoré — l'adaptateur ne le lit jamais. Utilisez `process("autonomous")` en procédural. |
-| `.body()` en forme déclarative | Silencieusement ignoré. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
-| `globalThis.inputs` en forme déclarative | Jamais planté ; `--inputs` n'a aucun effet sur ce chemin. |
+| `budget()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme la méthode. Utilisez `process("autonomous")` en procédural. |
+| `.body()` en forme déclarative | Ignoré, et dit : l'exécution journalise un avertissement qui nomme l'agent. La confusion la plus coûteuse du DSL, et la raison du tableau des formes ci-dessus. |
+| `globalThis.inputs` en forme déclarative | Jamais planté. Passer `--inputs`, `--inputs-file` ou `--memory-limit-mb` à un script déclaratif affiche désormais un avertissement sur stderr au lieu de perdre l'option en silence. |
 | Un objet `{ provider, model }` simple passé à `llm()` | Jeté. `ExtractLlmConfig` rend `null` pour tout ce qui n'est pas un `JsLlmConfig` : construisez-en un avec `llm.openai({...})`, `llm.default()`, etc. |
 | `ctx.llm.embed` | Rend un vecteur bidon. Les vrais embedders sont une suite. |
 | `concurrency(n)` avec `n > 1` | Rejeté au build avec un message clair — V1 est un mutex, le sémaphore à N détenteurs est V1.5. Bruyant, pas silencieux. |

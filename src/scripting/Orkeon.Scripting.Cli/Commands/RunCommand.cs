@@ -335,6 +335,7 @@ internal static partial class RunCommand
         if (RunnerExecution.IsScriptedCrewDefinition(options.ScriptPath)
             && await DeclaresCrewHandoffAsync(options.ScriptPath).ConfigureAwait(false))
         {
+            await WarnAboutScriptOnlyOptionsAsync(options).ConfigureAwait(false);
             return await RunViaSharedRunnerAsync(options).ConfigureAwait(false);
         }
 
@@ -496,6 +497,32 @@ internal static partial class RunCommand
             .ConfigureAwait(false);
 
         return await observed.FinishAsync(exitCode).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Says out loud that the script-only options do not survive the handoff.
+    /// </summary>
+    /// <remarks>
+    /// <c>ToRunnerOptions</c> deliberately does not carry <c>--inputs</c>,
+    /// <c>--inputs-file</c> or <c>--memory-limit-mb</c>: they have no YAML equivalent, and
+    /// the shared runner is the YAML pipeline. That is correct and silent, which is the
+    /// problem — a script that reads <c>globalThis.inputs</c> and hands its crew off reads
+    /// <c>undefined</c>, having been passed the flag it asked for.
+    /// </remarks>
+    private static async Task WarnAboutScriptOnlyOptionsAsync(RunCommandOptions options)
+    {
+        var given = new List<string>();
+        if (!string.IsNullOrWhiteSpace(options.InputsJson)) given.Add(RunOptionNames.Inputs);
+        if (!string.IsNullOrWhiteSpace(options.InputsFilePath)) given.Add(RunOptionNames.InputsFile);
+        if (options.MemoryLimitMb is not null) given.Add(RunOptionNames.MemoryLimitMb);
+        if (given.Count == 0) return;
+
+        await Console.Error.WriteLineAsync(
+            $"orkeon run: {string.Join(", ", given)} {(given.Count == 1 ? "has" : "have")} no effect on this script. "
+            + "It ends with `globalThis.crew = crew`, so it runs as a crew definition through the shared "
+            + "pipeline, where those options have no equivalent — globalThis.inputs is never planted. "
+            + "End the script with `await crew.run()` to run it procedurally instead.")
+            .ConfigureAwait(false);
     }
 
     /// <summary>

@@ -442,4 +442,120 @@ public sealed class JsCrewConfigurationAdapterTests
         var tool = Assert.Single(scriptTools);
         Assert.Equal("script_tool", tool.Name);
     }
+
+    [Fact]
+    public void Ignored_features_are_empty_when_the_script_declares_only_what_this_path_honours()
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const analyst = agentBuilder()
+                .name("analyst")
+                .role("Analyst")
+                .goal("Analyse")
+                .maxIterations(4)
+                .build();
+
+            const work = taskBuilder()
+                .name("work")
+                .agent(analyst)
+                .description("Do the work")
+                .expectedOutput("A result")
+                .build();
+
+            crewBuilder()
+                .name("clean")
+                .goal("Nothing is dropped")
+                .process("sequential")
+                .withAgent(analyst)
+                .withTask(work)
+                .build();
+            """);
+
+        Assert.Empty(JsCrewConfigurationAdapter.CollectIgnoredFeatures(crew));
+    }
+
+    [Fact]
+    public void Ignored_features_name_every_declaration_this_path_drops()
+    {
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const runner = agentBuilder()
+                .name("runner")
+                .role("Runner")
+                .goal("Run a body that will never be invoked")
+                .withState(() => ({ seen: 0 }))
+                .body(async (ctx) => "never runs")
+                .onError(() => "retry")
+                .onAgentStart(() => {})
+                .build();
+
+            const work = taskBuilder()
+                .name("work")
+                .agent(runner)
+                .description("Do the work")
+                .expectedOutput("A result")
+                .build();
+
+            crewBuilder()
+                .name("lossy")
+                .goal("Declares both halves of the DSL")
+                .process("sequential")
+                .budget({ toolCalls: 10 })
+                .onCrewComplete(() => {})
+                .withAgent(runner)
+                .withTask(work)
+                .build();
+            """);
+
+        var ignored = JsCrewConfigurationAdapter.CollectIgnoredFeatures(crew);
+
+        // Each warning names the member AND, for an agent-scoped one, which agent -- a
+        // warning that says "a body was dropped" in a six-agent crew is a second search.
+        Assert.Contains(ignored, w => w.Contains(".body()", StringComparison.Ordinal)
+            && w.Contains("'runner'", StringComparison.Ordinal));
+        Assert.Contains(ignored, w => w.Contains(".withState(", StringComparison.Ordinal)
+            && w.Contains("'runner'", StringComparison.Ordinal));
+        Assert.Contains(ignored, w => w.Contains(".onError(", StringComparison.Ordinal)
+            && w.Contains("'runner'", StringComparison.Ordinal));
+        Assert.Contains(ignored, w => w.Contains(".onAgentStart", StringComparison.Ordinal)
+            && w.Contains("'runner'", StringComparison.Ordinal));
+        Assert.Contains(ignored, w => w.Contains("budget(", StringComparison.Ordinal));
+        Assert.Contains(ignored, w => w.Contains("onCrewComplete", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void A_graph_crew_builds_without_the_method_that_used_to_be_required_to_discard_it()
+    {
+        // crewBuilder().graph(g) stored the graph in a private field read by nothing --
+        // not JsCrewDefinition, not JsCrew, not this adapter -- while process("graph")
+        // refused to build without it. The mode was gated behind a no-op.
+        var engine = NewEngine();
+        var crew = BuildCrew(engine, """
+            const worker = agentBuilder()
+                .name("worker")
+                .role("Worker")
+                .goal("Work")
+                .build();
+
+            const work = taskBuilder()
+                .name("work")
+                .agent(worker)
+                .description("Do the work")
+                .expectedOutput("A result")
+                .build();
+
+            crewBuilder()
+                .name("graphed")
+                .goal("Run on the graph strategy")
+                .process("graph")
+                .withAgent(worker)
+                .withTask(work)
+                .build();
+            """);
+
+        var config = JsCrewConfigurationAdapter.ToConfiguration(crew);
+
+        Assert.Equal(ProcessType.Graph, config.Process);
+        Assert.Empty(JsCrewConfigurationAdapter.CollectIgnoredFeatures(crew));
+    }
 }

@@ -58,9 +58,11 @@ agents et ne regarde jamais les tâches. L'adaptateur déclaratif n'invoque jama
 **La règle :** si vous écrivez `.body()`, vous êtes en procédural. Si vous écrivez `withTask`,
 vous êtes en déclaratif. Jamais les deux dans un fichier.
 
-L'échec que cela prévient est silencieux. Une crew avec trois tâches soigneusement écrites qui
-se termine par `await crew.run()` va s'exécuter, afficher un résultat, et **ignorer chaque
-tâche** — sans avertissement, sans erreur. C'est l'erreur la plus coûteuse de ce DSL, d'où sa
+L'échec que cela prévient était silencieux. Une crew avec trois tâches soigneusement écrites
+qui se termine par `await crew.run()` s'exécute toujours, affiche un résultat et **ignore
+chaque tâche** — mais elle journalise désormais un avertissement qui le dit, et la forme
+déclarative avertit symétriquement pour le `.body()` qu'elle n'invoquera jamais. L'exécution
+reste fausse ; elle n'est plus muette. C'est l'erreur la plus coûteuse de ce DSL, d'où sa
 place en tête de page plutôt qu'en note de bas de page.
 
 ## Forme A — la crew déclarative

@@ -54,6 +54,12 @@ declare global {
         name(value: string): this;
         /** The crew goal; when omitted, one is synthesized from the name. */
         goal(value: string): this;
+        /**
+         * `process("graph")` runs the crew on the domain's graph strategy — a
+         * retry-and-route topology with a circuit breaker, tuned by `GraphConfig`,
+         * not a topology the script draws. To author your own nodes and edges, build a
+         * `stateGraph({...})` and call `.run()` on it from an agent `.body()`.
+         */
         process(value: Process): this;
         withAgent(agent: Agent<unknown, unknown> | ((b: AgentBuilder) => AgentBuilder)): this;
         withAgents(agents: readonly Agent<unknown, unknown>[]): this;
@@ -61,7 +67,6 @@ declare global {
         withTasks(tasks: readonly Task<unknown, unknown>[]): this;
         manager(agent: Agent<unknown, unknown>): this;
         budget(opts: ExecutionBudget): this;
-        graph(graph: StateGraph<unknown>): this;
         verbose(value?: boolean): this;
         /** YAML parity `memory: true` — the crew keeps a shared memory scope. */
         memory(value?: boolean): this;

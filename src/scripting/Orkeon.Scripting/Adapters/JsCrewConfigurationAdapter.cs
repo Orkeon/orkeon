@@ -368,6 +368,84 @@ public static class JsCrewConfigurationAdapter
         return tools;
     }
 
+    /// <summary>
+    /// Lists, one actionable sentence each, the script-side declarations this adapter
+    /// cannot carry — so the caller warns instead of dropping them in silence.
+    /// </summary>
+    /// <remarks>
+    /// The declarative shape and the procedural shape are two engines, and each honours
+    /// what the other ignores. Every member below is read by <c>JsCrew.RunAsync</c> and by
+    /// nothing on this path: a script that declares one gets no error, no output, and no
+    /// clue — <c>.body()</c> in particular is the whole point of an agent on the procedural
+    /// shape and is simply never invoked here.
+    ///
+    /// <c>.concurrency(n &gt; 1)</c> is deliberately absent: <c>JsAgentBuilder.build()</c>
+    /// already throws on it, so no crew reaching this method can carry one. Listing it
+    /// would be a warning for a state that cannot exist.
+    /// </remarks>
+    public static IReadOnlyList<string> CollectIgnoredFeatures(JsCrew crew)
+    {
+        ArgumentNullException.ThrowIfNull(crew);
+        var ignored = new List<string>();
+
+        if (crew.Budget.Count > 0)
+        {
+            ignored.Add(
+                "crewBuilder().budget({...}) is ignored: the budget bounds the procedural agent "
+                + "loop, and this crew runs its tasks through the orchestration pipeline. To bound "
+                + "a run here, cap .maxIterations per agent; to use the budget, write the crew in "
+                + "the procedural shape (process(\"autonomous\") + .body(), ending with await crew.run()).");
+        }
+
+        if (IsSet(crew._onCrewStart) || IsSet(crew._onCrewComplete) || IsSet(crew._onCrewError))
+        {
+            ignored.Add(
+                "crewBuilder().onCrewStart/onCrewComplete/onCrewError are ignored: crew hooks are "
+                + "invoked by JsCrew.RunAsync, which this path does not use.");
+        }
+
+        foreach (var agent in crew.agents)
+        {
+            var builder = agent.Builder;
+
+            if (IsSet(builder.BodyFunction))
+            {
+                ignored.Add(
+                    $"agent '{agent.name}': .body() is NEVER invoked here — the task descriptions "
+                    + "drive the run, not the body. Either move the body's work into a task "
+                    + "description, or drop the `globalThis.crew = crew` handoff and end the "
+                    + "script with `await crew.run()` to get the procedural engine.");
+            }
+
+            if (IsSet(builder.StateFactory))
+            {
+                ignored.Add(
+                    $"agent '{agent.name}': .withState(...) is ignored — ctx.state only exists "
+                    + "inside .body(), which this path never calls.");
+            }
+
+            if (IsSet(builder.OnErrorHandler))
+            {
+                ignored.Add(
+                    $"agent '{agent.name}': .onError(...) is ignored — error policy on this path "
+                    + "is the crew's, not the script's.");
+            }
+
+            if (IsSet(builder.OnAgentStartHandler) || IsSet(builder.OnAgentStopHandler))
+            {
+                ignored.Add(
+                    $"agent '{agent.name}': .onAgentStart/.onAgentStop are ignored — agent "
+                    + "lifecycle hooks are invoked by JsCrew.RunAsync, which this path does not use.");
+            }
+        }
+
+        return ignored;
+    }
+
+    /// <summary>A hook slot the script actually filled: null, JS null and undefined all mean "absent".</summary>
+    private static bool IsSet(JsValue? value)
+        => value is not null && !value.IsUndefined() && !value.IsNull();
+
     private static string ResolveCrewGoal(JsCrew crew)
     {
         // YamlCrewDefinitionLoader.Validate rejects empty Goal; synthesize one from the

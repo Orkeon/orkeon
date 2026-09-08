@@ -56,10 +56,12 @@ agents and never looks at tasks. The declarative adapter never invokes a `.body(
 **The rule:** if you write `.body()`, you are procedural. If you write `withTask`, you are
 declarative. Never both in one file.
 
-The failure this prevents is silent. A crew with three carefully written tasks that ends with
-`await crew.run()` will run, print a result, and **ignore every task** — no warning, no error.
-That is the single most expensive mistake in this DSL, which is why it is the first thing on
-this page rather than a footnote.
+The failure this prevents used to be silent. A crew with three carefully written tasks that
+ends with `await crew.run()` still runs, prints a result, and **ignores every task** — but it
+now logs a warning saying so, and the declarative shape warns symmetrically about the
+`.body()` it will never invoke. The run is still wrong; it is no longer quiet about it. That
+is the single most expensive mistake in this DSL, which is why it is the first thing on this
+page rather than a footnote.
 
 ## Shape A — the declarative crew
 

@@ -25,6 +25,43 @@ across the twelve projects that carried them, and the seven `ORKVFS` analyzer ru
 with them.
 
 
+### Changed — the scripting DSL stops dropping half of what a script declares in silence
+
+A `.ork.ts` file picks one of two engines by how it ends, and each engine honours what the
+other ignores. A crew that declares tasks and ends with `await crew.run()` ran its agents
+and never looked at the tasks; a crew that declares `.body()` and hands itself off with
+`globalThis.crew = crew` ran its tasks and never invoked a body. Both produced a run that
+succeeded, printed a plausible result, and said nothing about the half it had thrown away.
+
+Both halves now warn, symmetrically and by name. `JsCrew.RunAsync` reports the tasks it
+will not read (with the count), a manager it will not use, and a `process(...)` that
+reaches only a telemetry tag. `JsCrewConfigurationAdapter.CollectIgnoredFeatures` reports
+`.body()`, `.withState`, `.onError`, `.onAgentStart`/`.onAgentStop`, `budget()` and the
+crew hooks — each naming the agent it was written on, because "a body was dropped" in a
+six-agent crew is a second search. The runner logs them; `orkeon run` also warns on stderr
+when `--inputs`, `--inputs-file` or `--memory-limit-mb` is passed to a script that hands its
+crew off, since those options have no equivalent on that path and `globalThis.inputs` is
+never planted.
+
+`.concurrency(n > 1)` is deliberately not in that list: `JsAgentBuilder.build()` already
+throws on it, so no crew carrying one can reach the adapter. A warning for an impossible
+state is noise.
+
+### Removed — `crewBuilder().graph()`, a method whose argument no engine ever read
+
+`.graph(stateGraph)` stored its argument in a private field that reached neither
+`JsCrewDefinition` nor `JsCrew` nor the declarative adapter — and `process("graph")` refused
+to build without it. The one crew mode that needed the method was gated behind a method that
+discarded what it was given, and no file in the repository ever called it.
+
+The two facilities share a word and nothing else. `process("graph")` runs the crew on the
+domain's graph strategy — a fixed `agent_execute → route_decision` loop with a circuit
+breaker, tuned by `GraphConfig`. `stateGraph({ nodes, edges })` is the topology the script
+draws, and it runs on `.run()` from an agent `.body()`. Removing the method unblocks the
+mode: `process("graph")` now builds on its own. Same treatment as `when()` earlier in this
+release, and for the same reason — nothing is released at rc.3, and this repository takes no
+compatibility shims.
+
 ### Fixed — the ONNX crash CI had been tolerating was a call into a disposed session
 
 `LocalEmbeddingProvider`, shipped in the `Orkeon.Tools.Embeddings.Local` package, set a

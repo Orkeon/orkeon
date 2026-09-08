@@ -66,7 +66,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [Write a crew in TypeScript](./guides/write-a-crew-in-typescript.md) | The `.ork.ts` DSL end to end: the two script shapes and why picking the wrong one silently ignores your tasks, agents, tools, the `withContext` DAG, deliverables, `ctx.llm.act`, state, editor setup |
+| [Write a crew in TypeScript](./guides/write-a-crew-in-typescript.md) | The `.ork.ts` DSL end to end: the two script shapes and why picking the wrong one drops half of what you wrote (loudly, since rc.3): tasks, agents, tools, the `withContext` DAG, deliverables, `ctx.llm.act`, state, editor setup |
 | [Porting methodology](./guides/porting-methodology.md) | 5 steps to migrate an application, YAML-first vs Code-first, effort estimation |
 | [Porting example](./guides/porting-example.md) | Complete e-commerce pipeline: analysis, agent mapping, YAML, C# bootstrap |
 | [New orchestration blueprint](./guides/blueprint.md) | 8-step template to add a new ProcessType to the framework |

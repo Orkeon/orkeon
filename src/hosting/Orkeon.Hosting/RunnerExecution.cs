@@ -1085,6 +1085,12 @@ public static partial class RunnerExecution
         var jsCrew = await scriptHost.LoadCrewFromFileAsync(physicalPath, virtualPath, ct).ConfigureAwait(false);
         var crewConfig = JsCrewConfigurationAdapter.ToConfiguration(jsCrew);
 
+        // The two script shapes honour opposite halves of the DSL, and this is the half
+        // this one drops. Dropping it quietly is how a reader concludes .body() ran: the
+        // run succeeds, the output is plausible, and nothing says the body was skipped.
+        foreach (var ignored in JsCrewConfigurationAdapter.CollectIgnoredFeatures(jsCrew))
+            LogDeclarativeShapeIgnores(logger, ignored);
+
         // Script-defined tools become first-class (EX-01): register the instances with
         // the runtime registry BEFORE the factory's strict resolution runs — the same
         // late-registration path MCP tools use. Shadowing an already-registered name is
@@ -1158,6 +1164,9 @@ public static partial class RunnerExecution
 
     [LoggerMessage(EventId = 11, Level = LogLevel.Information, Message = "Adapted JsCrew '{CrewName}' to CrewConfiguration ({AgentCount} agent(s), {TaskCount} task(s)).")]
     private static partial void LogAdaptedJsCrew(ILogger logger, string crewName, int agentCount, int taskCount);
+
+    [LoggerMessage(EventId = 14, Level = LogLevel.Warning, Message = "Declarative crew script: {Detail}")]
+    private static partial void LogDeclarativeShapeIgnores(ILogger logger, string detail);
 
     [LoggerMessage(EventId = 13, Level = LogLevel.Information, Message = "Registered {Count} script-defined tool(s) from crew '{CrewName}' with the runtime tool registry.")]
     private static partial void LogRegisteredScriptTools(ILogger logger, int count, string crewName);

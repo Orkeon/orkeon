@@ -35,7 +35,6 @@ public sealed partial class JsCrewBuilder
     private readonly List<object> _tasks = new();
     private JsAgent? _manager;
     private readonly Dictionary<string, object?> _budget = new();
-    private object? _graph;
     private bool _verbose;
     private bool _memory;
     private JsValue? _onCrewStart, _onCrewComplete, _onCrewError;
@@ -123,13 +122,6 @@ public sealed partial class JsCrewBuilder
         return this;
     }
 
-    public JsCrewBuilder graph(JsValue graphInstance)
-    {
-        ArgumentNullException.ThrowIfNull(graphInstance);
-        _graph = graphInstance.ToObject();
-        return this;
-    }
-
     /// <summary>YAML parity <c>memory: true</c> — the crew keeps a shared memory scope.</summary>
     public JsCrewBuilder memory(bool value = true) { _memory = value; return this; }
 
@@ -143,8 +135,6 @@ public sealed partial class JsCrewBuilder
     {
         if (string.Equals(_process, "hierarchical", StringComparison.Ordinal) && _manager is null)
             throw new InvalidScriptException("crewBuilder().process(\"hierarchical\") requires .manager(agent).");
-        if (string.Equals(_process, "graph", StringComparison.Ordinal) && _graph is null)
-            throw new InvalidScriptException("crewBuilder().process(\"graph\") requires .graph(stateGraph).");
 
         WarnOnAutonomousToolsWithoutSchema();
 

@@ -28,7 +28,7 @@ namespace Orkeon.Scripting.Runtime;
 #pragma warning disable IDE1006 // Method names match the JS surface
 #pragma warning disable CS1591 // JS-interop mirror of Crew in Typings/crew.d.ts; that declaration is the contract scripts read (the CLR-facing RunAsync carries its own doc).
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1708", Justification = "The camelCase JS-surface methods (add/remove/findById…) intentionally mirror their C# PascalCase peers and collide case-only by design — this type is bound into the Jint engine where JS callers require the camelCase names.")]
-public sealed class JsCrew
+public sealed partial class JsCrew
 {
     private static readonly SearchValues<char> HostExceptionDelimiters = SearchValues.Create(" \n\r\t");
 
@@ -233,6 +233,8 @@ public sealed class JsCrew
         // created here (not at build time) so the wall-time clock starts with the run.
         _currentRunBudget = JsBudgetBridge.FromSpec(Budget);
 
+        WarnOnceAboutDeclarativeOnlyDeclarations();
+
         InvokeCrewHook(_onCrewStart, result: null, error: null, linked.Token);
 
         var taskResults = new List<JsTaskResult>(_agents.Count);
@@ -274,6 +276,52 @@ public sealed class JsCrew
             _currentRunBudget = null;
         }
     }
+
+    private bool _warnedAboutDeclarativeOnly;
+
+    /// <summary>
+    /// Says out loud what this engine does not read, once per crew instance.
+    /// </summary>
+    /// <remarks>
+    /// The mirror of <c>JsCrewConfigurationAdapter.CollectIgnoredFeatures</c>: the two shapes
+    /// each drop the other's half, and this is the half dropped here. A crew that declares
+    /// tasks and ends with <c>await crew.run()</c> runs its agents in declaration order and
+    /// never looks at the tasks — the most common way to get a plausible run that did none
+    /// of the work the script describes. Once per instance, not once per run: the condition
+    /// is fixed at build time, so a crew run in a loop would repeat an unchanging fact.
+    /// </remarks>
+    private void WarnOnceAboutDeclarativeOnlyDeclarations()
+    {
+        if (_warnedAboutDeclarativeOnly) return;
+        _warnedAboutDeclarativeOnly = true;
+
+        if (_tasks.Count > 0)
+        {
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}' declares {_tasks.Count} task(s) that this run will not read. "
+                + "The procedural engine runs agent .body() in declaration order; tasks, their "
+                + "withContext DAG and their deliverables belong to the declarative shape. "
+                + "End the script with `globalThis.crew = crew` instead of `await crew.run()` "
+                + "to execute the tasks.");
+        }
+
+        if (Manager is not null)
+        {
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}' declares a manager agent, which this run will not use: "
+                + "delegation is orchestrated on the declarative shape.");
+        }
+
+        if (!string.Equals(Process, "sequential", StringComparison.Ordinal))
+        {
+            LogProceduralShapeIgnores(_logger,
+                $"crew '{name}' declares process(\"{Process}\"), which reaches only a telemetry "
+                + "tag here: the procedural engine always runs agents in declaration order.");
+        }
+    }
+
+    [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Procedural crew script: {Detail}")]
+    private static partial void LogProceduralShapeIgnores(ILogger logger, string detail);
 
     public Task<object?> runAgent(JsAgent agent, JsValue? input)
     {
