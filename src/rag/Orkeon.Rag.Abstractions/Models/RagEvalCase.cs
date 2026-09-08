@@ -24,7 +24,7 @@ public sealed record RagEvalCase
 
     /// <summary>
     /// References of the relevant sources/chunks: a chunk id, a document id, a
-    /// source id, or a source path suffix (e.g. <c>corpus/faq.md</c>); an optional
+    /// source id, or a source path suffix (e.g. <c>corpus/faq-returns.md</c>); an optional
     /// <c>#fragment</c> is ignored by suffix matching. Empty means the case carries
     /// no retrieval ground truth — its retrieval metrics stay <c>null</c>.
     /// </summary>

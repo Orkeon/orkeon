@@ -13,9 +13,9 @@ namespace Orkeon.Cli.Commands.Scripting.Configuration;
 /// because a CLI command should not load an entire crew into memory.
 /// </para>
 /// <para>
-/// Per-script overrides (<c>defineCommand({ limits: ... })</c>) are NOT honoured in v1 —
-/// implementing them would require one JsEngineFactory per script. Tracked for Phase 5;
-/// see <c>project/tasks/done/CLI-TS-IMPLEMENTATION-DONE.md</c> "deferred".
+/// Per-script overrides (<c>defineCommand({ limits: ... })</c>) are NOT honoured in v1:
+/// honouring them would require one <c>JsEngineFactory</c> per script, since the limits
+/// are engine-construction parameters. The values below apply to every scripted command.
 /// </para>
 /// </remarks>
 public sealed record CliScriptLimitsOptions

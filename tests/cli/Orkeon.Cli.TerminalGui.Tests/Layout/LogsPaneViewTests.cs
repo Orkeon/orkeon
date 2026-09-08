@@ -9,7 +9,6 @@ namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 
 // Skip cause: Terminal.Gui 2.1.0 ModuleInitializer crashes inside xUnit test processes
 // (TypeLoadException on MemberNotNullWhenAttribute via Microsoft.TestPlatform.CoreUtilities).
-// Tracked in project/tasks: TUI-12.
 public class LogsPaneViewTests
 {
     private const string SkipReason = "Terminal.Gui 2.1.0 module-init bug — see TUI-12";

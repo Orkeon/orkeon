@@ -19,8 +19,7 @@ namespace Orkeon.Scripting.Adapters;
 /// for free.
 /// </summary>
 /// <remarks>
-/// Friction #8 of <c>project/prompts/orkeon-csharp-fix-7-framework-frictions.md</c>:
-/// before this adapter, the only way to execute a <c>.ork.ts</c> crew was
+/// Before this adapter, the only way to execute a <c>.ork.ts</c> crew was
 /// <see cref="ScriptHost.RunFromFileAsync"/> which invokes <c>JsCrew.RunAsync</c> — the
 /// lean script-runtime path that does NOT honor task deliverables or AUTO_SUMMARY.md.
 /// </remarks>

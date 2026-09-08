@@ -229,17 +229,19 @@ def check_lineup_copies(canonical: list[str]) -> None:
 
 # --- private submodules must not leak into anything a public reader reads ----------------
 
-# `experiments/` and `backstage/` are private submodules: a public clone gets empty
-# directories. A pointer into them is not a broken link -- docfx renders code spans as
-# literal text and stays green -- it is a dead end the reader only discovers by trying.
-# The 2026-09-07 sweep found 24 such lines across 14 files, plus 46 in `src/**` XML doc
-# comments that docfx republishes under `api/**.yml`.
+# `experiments/` and `backstage/` are private submodules and `project/` is the maintainer's
+# workspace above them: a public clone gets empty directories, or nothing at all. A pointer
+# into them is not a broken link -- docfx renders code spans as literal text and stays
+# green -- it is a dead end the reader only discovers by trying. The 2026-09-07 sweep found
+# 24 such lines across 14 files, plus 46 in `src/**` XML doc comments that docfx
+# republishes under `api/**.yml`; `project/` was found later, by the cited-path rule
+# below, which is why that second check exists at all.
 #
 # Four patterns, because each catches what the others miss. Pattern 3 matches the
 # DISCLAIMER, not the pointer: the state this gate exists to prevent was reached by adding
 # a warning instead of removing the reference.
 PRIVATE_LEAK_PATTERNS: list[tuple[str, str]] = [
-    (r"(?<![\w/.-])(experiments|backstage)/", "path into a private submodule"),
+    (r"(?<![\w/.-])(experiments|backstage|project)/", "path into private maintainer material"),
     (r"\bexp ?-?0\d\b", "private experiment codename (exp07, exp 02, ...)"),
     (
         r"private [`*_]*(experiments|backstage)[`*_]* submodule|sous-module priv\u00e9|submodule priv\u00e9",
@@ -327,6 +329,46 @@ def private_leak_files() -> list[Path]:
     return sorted(out)
 
 
+# --- a cited path must be a path that exists -------------------------------------------
+
+# The check above enumerates names, so it only ever catches the roots someone thought to
+# list. `project/` -- the maintainer workspace above the two submodules -- proves the
+# failure mode: 11 citations (3 in `src/**`, all on public types whose XML doc docfx
+# republishes and the `orkeon` package ships; 6 in `tests/**`; 2 in CHANGELOG.md) survived
+# the whole sweep that invented the check above, because nobody had written "project" in a
+# pattern.
+#
+# This one asks a question no blocklist has to be kept current for: a `.md` file cited with
+# a directory component in code that ships must be findable in this repository. Restricted
+# to `src/**` and `tests/**` -- the surface docfx republishes and NuGet packs -- because
+# that is where the false-positive rate is zero. Prose keeps the name-based check: a README
+# legitimately writes `docs/orchestration/new-type.md` for a file the reader will create.
+#
+# "Findable" means a repo-root path, a path relative to the citing file, OR a path SUFFIX of
+# something tracked -- because a suffix is a legitimate way to cite: RagEvalCase documents
+# `corpus/faq-returns.md` to illustrate the suffix matching its own field performs, and
+# spelling the full path there would destroy the example. Suffix resolution costs nothing in
+# strictness: no file in this tree ends with `project/prompts/...`.
+CITED_MD = re.compile(r"(?:<c>|`)((?:[A-Za-z0-9_.-]+/)+[A-Za-z0-9_.-]+\.md)(?:</c>|`)")
+CITED_PATH_ROOTS = ("src/", "tests/")
+CITED_PATH_SUFFIXES = (".cs", ".ts", ".js")
+
+
+def known_md_files() -> list[str]:
+    """Every `.md` path in the tree, for suffix resolution.
+
+    Pruning walk, not rglob: private_leak_files() above records what rglob costs when it
+    descends into obj-linux/ before anyone filters the result.
+    """
+    out: list[str] = []
+    for dirpath, dirnames, filenames in os.walk(ROOT):
+        dirnames[:] = [d for d in dirnames if d not in PRIVATE_LEAK_PRUNED_DIRS]
+        for filename in filenames:
+            if filename.endswith(".md"):
+                out.append(Path(dirpath).joinpath(filename).relative_to(ROOT).as_posix())
+    return out
+
+
 def check_private_submodule_leaks() -> None:
     """Fail on any pointer to a private submodule in public-facing material.
 
@@ -338,16 +380,29 @@ def check_private_submodule_leaks() -> None:
     directory level, and a gate must not have that failure mode.
     """
     compiled = [(re.compile(pat), why) for pat, why in PRIVATE_LEAK_PATTERNS]
+    md_files = known_md_files()
     for path in private_leak_files():
         rel = path.relative_to(ROOT).as_posix()
         try:
             lines = path.read_text(encoding="utf-8").splitlines()
         except UnicodeDecodeError:
             continue
+        # The cited-path rule rides along on the same read: a second walk over `src/**`
+        # and `tests/**` doubled this gate's runtime for material already in hand.
+        cites = rel.startswith(CITED_PATH_ROOTS) and rel.endswith(CITED_PATH_SUFFIXES)
         for i, line in enumerate(lines):
             for rx, why in compiled:
                 if rx.search(line):
                     fail(f"{rel}:{i + 1}: points at private material ({why}): {line.strip()[:100]}")
+            if not cites:
+                continue
+            for cited in CITED_MD.findall(line):
+                if (ROOT / cited).exists() or (path.parent / cited).exists():
+                    continue
+                if any(t.endswith("/" + cited) for t in md_files):
+                    continue
+                fail(f"{rel}:{i + 1}: cites {cited!r}, which does not exist in this "
+                     f"repository -- a reader cannot open it")
 
 
 def main() -> int:

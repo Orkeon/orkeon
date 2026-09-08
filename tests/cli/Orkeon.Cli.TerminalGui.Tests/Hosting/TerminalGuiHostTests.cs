@@ -7,7 +7,6 @@ namespace Orkeon.Cli.TerminalGui.Tests.Hosting;
 #pragma warning disable xUnit1004 // Test methods should not be skipped
 
 // Skip cause: Terminal.Gui 2.1.0 ModuleInitializer crashes inside xUnit test processes.
-// Tracked in project/tasks: TUI-12.
 public class TerminalGuiHostTests
 {
     private const string SkipReason = "Terminal.Gui 2.1.0 module-init bug — see TUI-12";

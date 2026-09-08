@@ -12,8 +12,8 @@ public static class RetrievalEvalMetrics
     /// <summary>
     /// True when <paramref name="identifier"/> satisfies <paramref name="relevantRef"/>:
     /// exact match (chunk/document ids), or path-suffix match after stripping an
-    /// optional <c>#fragment</c> from the ref (so <c>corpus/faq.md#refunds</c>
-    /// matches the source id <c>/workspace/examples/rag/eval/corpus/faq.md</c>).
+    /// optional <c>#fragment</c> from the ref (so <c>corpus/faq-returns.md#refunds</c>
+    /// matches the source id <c>/workspace/examples/rag/eval/corpus/faq-returns.md</c>).
     /// Comparison is ordinal case-insensitive; <c>\</c> is normalized to <c>/</c>
     /// and a leading <c>./</c> is ignored.
     /// </summary>

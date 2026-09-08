@@ -26,7 +26,7 @@ namespace Orkeon.Cli.Abstractions.Console.LineEditing;
 /// ↑/↓ recall command history only when the caret is on the first / last row of the draft; in the
 /// middle of a multi-line draft they move the caret between lines. Home/End act on the current logical
 /// line. Ambiguous Tab inserts the longest common prefix (it does not list candidates — listing would
-/// disturb the inline anchor); see <c>project/tasks/repl-plain-mode-line-editor.md</c>.
+/// disturb the inline anchor).
 /// </para>
 /// </remarks>
 public sealed class LineEditor

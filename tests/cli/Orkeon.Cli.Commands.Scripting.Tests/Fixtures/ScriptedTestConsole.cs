@@ -11,8 +11,8 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Fixtures;
 /// <remarks>
 /// This is a Phase 1 stand-in for the richer <c>TestConsoleAdapter</c> living in
 /// <c>tests/cli/Orkeon.Cli.Abstractions.Tests/Console/</c>. Promoting that adapter to
-/// <c>Orkeon.Tests.Shared</c> would touch ~15 existing test files and was deferred —
-/// see <c>project/tasks/CLI-TS-PLAN.md</c> Q1.
+/// <c>Orkeon.Tests.Shared</c> would touch ~15 existing test files, so this project keeps
+/// its own narrower stand-in.
 /// </remarks>
 internal sealed class ScriptedTestConsole : IConsoleAdapter
 {
