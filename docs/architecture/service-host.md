@@ -192,11 +192,16 @@ the unit's `User=orkeon`: no password to manage, its own SID, Modify on
 `WorkingDirectory=/var/lib/orkeon`. (A Windows service is born in `System32`;
 the flag is how it leaves it.)
 
-That account is the service's own SID used as a logon identity, so the
-registration enables the SID first (`sc.exe sidtype Orkeon unrestricted`) and
-only then assigns it. Skip that step and the SCM refuses the account with
-error 1057, *the account name is invalid or does not exist* — which is true,
-and reads like a typo. `restricted` is the next hardening step, untested here.
+No password is ever passed for that account, and that is a requirement rather
+than a convenience: the SCM demands a *NULL* password for a virtual account,
+and an *empty* password is a different value. Give it the empty one and it
+validates the name down the ordinary-account path and refuses it with error
+1057, *the account name is invalid or does not exist* — about a name that is
+perfectly valid. The MSI channel never meets this (its `ServiceInstall` table
+leaves the password null); the script matches it by omitting `password=`
+altogether. Registration also sets the service SID type
+(`sc.exe sidtype Orkeon unrestricted`); `restricted` is the next hardening
+step, untested here.
 
 Secrets go in the service's own `Environment` value (`REG_MULTI_SZ` under the
 service key) — `-EnvironmentSecrets` writes it — which only the SCM reads and

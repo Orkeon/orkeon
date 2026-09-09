@@ -195,12 +195,16 @@ de settings — répertoires de crews compris — s'y résolvent, miroir de
 `WorkingDirectory=/var/lib/orkeon`. (Un service Windows naît dans `System32` ;
 le drapeau est ce qui l'en fait sortir.)
 
-Ce compte est le SID du service lui-même utilisé comme identité de connexion :
-l'enregistrement active donc le SID d'abord (`sc.exe sidtype Orkeon
-unrestricted`), et seulement ensuite l'assigne. Sans cette étape, le SCM refuse
-le compte avec l'erreur 1057, *le nom de compte est invalide ou n'existe pas* —
-ce qui est exact, et se lit comme une faute de frappe. `restricted` est l'étape
-de durcissement suivante, non testée ici.
+Aucun mot de passe n'est jamais passé pour ce compte, et c'est une exigence
+plutôt qu'un confort : le SCM réclame un mot de passe *NULL* pour un compte
+virtuel, et un mot de passe *vide* est une autre valeur. Donnez-lui le vide et
+il valide le nom comme un compte ordinaire, puis le refuse avec l'erreur 1057,
+*le nom de compte est invalide ou n'existe pas* — à propos d'un nom
+parfaitement valide. Le canal MSI ne la rencontre jamais (sa table
+`ServiceInstall` laisse le mot de passe à null) ; le script s'aligne dessus en
+omettant complètement `password=`. L'enregistrement fixe aussi le type de SID
+du service (`sc.exe sidtype Orkeon unrestricted`) ; `restricted` est l'étape de
+durcissement suivante, non testée ici.
 
 Les secrets vont dans la valeur `Environment` du service (`REG_MULTI_SZ` sous
 sa clé) — `-EnvironmentSecrets` l'écrit — que seul le SCM lit et que seuls les
