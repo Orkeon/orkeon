@@ -45,10 +45,18 @@ jobs:
       # after build, test and pack — so on a private repo this job spends the whole
       # cycle doing perfectly good work and then dies at the one step it cannot pass,
       # having published nothing. Fail here instead, and say what to do about it.
+      #
+      # The LIVE value, not github.event.repository.private: an event payload is
+      # frozen the moment the event fires, so a run created while the repository was
+      # private would keep failing here on every re-run, long after the flip — the
+      # guard would outlive the condition it guards. The API is the only thing that
+      # answers "is it public now".
       - name: Attestation needs a public repository
-        if: ${{ github.event.repository.private }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          echo "::error::The repository is private. actions/attest-build-provenance requires a public repository or a paid plan, and it runs before either push — so nothing would be published even if every other step passed. Make the repository public (backstage PUB-26 §2) and re-run this workflow, or re-push the tag."
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" != "true" ]; then exit 0; fi
+          echo "::error::The repository is private. actions/attest-build-provenance requires a public repository or a paid plan, and it runs before either push — so nothing would be published even if every other step passed. Make the repository public (backstage PUB-26 §2), then re-run this workflow or re-push the tag."
           exit 1
       - name: Free up runner disk space
         run: |

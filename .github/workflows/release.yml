@@ -38,9 +38,18 @@ jobs:
       # Learn it here instead. A workflow_dispatch run is unaffected on purpose:
       # it publishes nothing, and validating the installers is exactly what it is
       # for.
+      #
+      # The LIVE value, not github.event.repository.private: an event payload is
+      # frozen the moment the event fires, so a run created while the repository was
+      # private would keep failing here on every re-run, long after the flip — the
+      # guard would outlive the condition it guards. The API is the only thing that
+      # answers "is it public now".
       - name: A tag release needs a public repository
-        if: ${{ startsWith(github.ref, 'refs/tags/') && github.event.repository.private }}
+        if: ${{ startsWith(github.ref, 'refs/tags/') }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          if [ "$(gh api "repos/${GITHUB_REPOSITORY}" --jq .private)" != "true" ]; then exit 0; fi
           echo "::error::The repository is private. The release job attests the assets with actions/attest-build-provenance, which requires a public repository or a paid plan, and it runs before the Release is created — so no Release and no assets would be published even if every smoke passed. Make the repository public (backstage PUB-26 §2) and re-push the tag. Use workflow_dispatch if you only want to validate the installers."
           exit 1
       - name: Free up runner disk space
