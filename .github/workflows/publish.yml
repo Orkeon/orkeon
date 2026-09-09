@@ -40,6 +40,16 @@ jobs:
     env:
       NUGET_USER: ${{ vars.NUGET_USER }}
     steps:
+      # Two seconds instead of eighteen minutes. The provenance attestation below
+      # needs a public repository (or a paid plan for a private one), and it sits
+      # after build, test and pack — so on a private repo this job spends the whole
+      # cycle doing perfectly good work and then dies at the one step it cannot pass,
+      # having published nothing. Fail here instead, and say what to do about it.
+      - name: Attestation needs a public repository
+        if: ${{ github.event.repository.private }}
+        run: |
+          echo "::error::The repository is private. actions/attest-build-provenance requires a public repository or a paid plan, and it runs before either push — so nothing would be published even if every other step passed. Make the repository public (backstage PUB-26 §2) and re-run this workflow, or re-push the tag."
+          exit 1
       - name: Free up runner disk space
         run: |
           echo "Before:"; df -h / | tail -1
