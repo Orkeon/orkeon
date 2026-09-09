@@ -519,7 +519,7 @@ jobs:
         with:
           name: orkeon-msi
           path: |
-            artifacts/installers/*.msi
+            artifacts/installers/orkeon*.msi
             artifacts/installers/SHA256SUMS.msi
           if-no-files-found: error
           compression-level: 0
@@ -701,15 +701,22 @@ jobs:
             artifacts/installers/*.tar.gz
             artifacts/installers/*.zip
             artifacts/installers/*.deb
-            artifacts/installers/*.msi
+            artifacts/installers/orkeon*.msi
 
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
+          # `orkeon*.msi`, not `*.msi`: the checksum manifest for the MSI channel is
+          # itself named SHA256SUMS.msi, so a bare `*.msi` swallows it AND the line
+          # below lists it again. This action uploads in parallel, so the same asset
+          # got two delete-then-upload cycles; the second one called the assets
+          # endpoint on something the first had already deleted and the job died on
+          # `Not Found - .../releases/assets#update-a-release-asset`. Every real
+          # artefact is named orkeon*, so anchoring the glob separates the two.
           files: |
             artifacts/installers/*.tar.gz
             artifacts/installers/*.zip
             artifacts/installers/*.deb
-            artifacts/installers/*.msi
+            artifacts/installers/orkeon*.msi
             artifacts/installers/SHA256SUMS
             artifacts/installers/SHA256SUMS.msi
           # A tag carrying a pre-release segment (v1.0.0-rc.3, v1.1.0-beta.1 —

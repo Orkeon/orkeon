@@ -87,19 +87,24 @@ Owner actions already done:
 - ✅ The `NUGET_USER` repository variable and the Trusted Publishing policy are operational
   (the rc.1/rc.2 pushes prove it).
 
-Remaining owner action — **one**: re-tag `v1.0.0-rc.3` so the lineup above is actually
-pushed. The 2026-09-09 run on that tag went the whole way — build, tests, pack, closure
-gate, provenance attestation, GitHub Packages, OIDC key exchange — and died on the last
-step, pushing nothing to NuGet.org: the lineup glob `artifacts/${id}.[0-9]*.nupkg` was
-quoted, so it reached `dotnet nuget push` as a literal. That CLI resolves wildcards through
-NuGet's own `PathResolver`, which understands `*` and `?` and no character class, and it
-answered `File does not exist` about a file that was sitting in `artifacts/`. The
-GitHub Packages push in the same job never met it — `artifacts/*.nupkg` is inside that
-dialect. Fixed by letting the shell expand the pattern; the next tag pushes for real.
+**2026-09-09 — the v1 lineup is published.** `1.0.0-rc.3` of all six packages was pushed by
+`publish.yml` through Trusted Publishing (owner `arion-orkeon`, the account holding the
+`Orkeon` prefix reservation). The family finally has a page on nuget.org.
 
-Until that push, nothing is listed under the `Orkeon` name on nuget.org: the family has no
-page, and a free-text search for "Orkeon" returns nothing. The reservation is unaffected by
-that — it rests on package *ownership*, not on listing.
+It took two attempts, and the first one is worth keeping: that run went the whole way —
+build, tests, pack, closure gate, provenance attestation, GitHub Packages, OIDC key
+exchange — and died on the last step, pushing nothing. The lineup glob
+`artifacts/${id}.[0-9]*.nupkg` was quoted, so it reached `dotnet nuget push` as a literal,
+and that CLI resolves wildcards through NuGet's own `PathResolver`, which understands `*`
+and `?` and no character class. It answered `File does not exist` about a file sitting in
+`artifacts/`. The GitHub Packages push in the same job never met it — `artifacts/*.nupkg`
+is inside that dialect. Fixed by letting the shell expand the pattern.
+
+A freshly pushed package is **not immediately downloadable**: NuGet.org validates it first,
+and until that finishes its page answers 200 with "not been indexed" while
+`v3-flatcontainer` still 404s. `Orkeon.Rag.Onnx.Model` sat there longest, which is expected
+— it is the package embedding the int8 model weights. Nothing to do but wait; it is not a
+failed push, and `--skip-duplicate` makes a re-push a no-op either way.
 
 ## Published to GitHub Packages
 

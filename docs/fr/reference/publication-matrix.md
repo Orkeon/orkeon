@@ -91,20 +91,26 @@ Actions propriétaire déjà faites :
 - ✅ La variable de dépôt `NUGET_USER` et la politique de Trusted Publishing sont
   opérationnelles (les pushes rc.1/rc.2 le prouvent).
 
-Action propriétaire restante — **une seule** : re-taguer `v1.0.0-rc.3` pour que le lineup
-ci-dessus soit réellement poussé. L'exécution du 2026-09-09 sur ce tag est allée jusqu'au
-bout — build, tests, pack, gate de closure, attestation de provenance, GitHub Packages,
-échange de clé OIDC — et est morte sur la dernière étape, sans rien pousser vers NuGet.org :
-le glob du lineup `artifacts/${id}.[0-9]*.nupkg` était entre guillemets, il est donc arrivé
-littéral à `dotnet nuget push`. Cette CLI résout ses jokers via le `PathResolver` de NuGet,
-qui connaît `*` et `?` et aucune classe de caractères ; elle a répondu `File does not exist`
-à propos d'un fichier bel et bien présent dans `artifacts/`. Le push GitHub Packages du même
-job ne l'a jamais rencontré — `artifacts/*.nupkg` reste dans ce dialecte. Corrigé en laissant
-le shell expanser le motif ; le prochain tag poussera pour de bon.
+**2026-09-09 — la gamme v1 est publiée.** Les six paquets en `1.0.0-rc.3` ont été poussés
+par `publish.yml` via Trusted Publishing (propriétaire `arion-orkeon`, le compte qui détient
+la réservation du préfixe `Orkeon`). La famille a enfin une page sur nuget.org.
 
-Jusqu'à ce push, rien n'est listé sous le nom `Orkeon` sur nuget.org : la famille n'a pas de
-page et une recherche libre sur « Orkeon » ne rend rien. La réservation, elle, n'en dépend
-pas : elle s'appuie sur la *propriété* des paquets, pas sur leur listage.
+Il aura fallu deux tentatives, et la première mérite d'être conservée : cette exécution est
+allée jusqu'au bout — build, tests, pack, gate de closure, attestation de provenance,
+GitHub Packages, échange de clé OIDC — et est morte sur la dernière étape, sans rien
+pousser. Le glob du lineup `artifacts/${id}.[0-9]*.nupkg` était entre guillemets, il est
+donc arrivé littéral à `dotnet nuget push` ; or cette CLI résout ses jokers via le
+`PathResolver` de NuGet, qui connaît `*` et `?` et aucune classe de caractères. Elle a
+répondu `File does not exist` à propos d'un fichier bel et bien présent dans `artifacts/`.
+Le push GitHub Packages du même job ne l'a jamais rencontré — `artifacts/*.nupkg` reste
+dans ce dialecte. Corrigé en laissant le shell expanser le motif.
+
+Un paquet fraîchement poussé n'est **pas immédiatement téléchargeable** : NuGet.org le
+valide d'abord, et tant que ce n'est pas fini sa page répond 200 avec « not been indexed »
+pendant que `v3-flatcontainer` renvoie encore 404. `Orkeon.Rag.Onnx.Model` y est resté le
+plus longtemps, ce qui est attendu — c'est le paquet qui embarque les poids du modèle en
+int8. Rien à faire sinon attendre : ce n'est pas un push raté, et `--skip-duplicate` rend
+de toute façon un nouveau push sans effet.
 
 ## Publiés sur GitHub Packages
 
