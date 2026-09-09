@@ -10,6 +10,9 @@
     working directory. Defaults mirror the systemd unit: binaries under Program Files, the
     configuration and state under ProgramData.
 
+    The service is given an `unrestricted` SID type on the way: the virtual account IS the
+    service SID used as a logon identity, so it does not exist until the SID does.
+
     Secrets never appear on the registration command line and are never baked into a package.
     Pass them with -EnvironmentSecrets: they land in the service's own Environment value
     (REG_MULTI_SZ under the service key), which only the SCM reads at start and only
@@ -113,6 +116,21 @@ New-Service `
 # name, the password, or the service it derives from — and this step failed once in CI with
 # nothing but "exit 1057" to go on, which cost a whole release cycle to learn nothing.
 $account = "NT SERVICE\$ServiceName"
+
+# The service SID has to exist before the account derived from it can be used to log on.
+# New-Service creates services with sidtype `none`, and the SCM then refuses
+# NT SERVICE\<name> with 1057 — "the account name is invalid or does not exist" — because,
+# at that moment, it does not. That was the rc.3 smoke failure, and the reason it reads as
+# a name problem rather than a missing prerequisite. `unrestricted` is the minimum that
+# makes the principal resolvable; it is not the hardening step, which is `restricted`.
+$sidOutput = & sc.exe sidtype $ServiceName unrestricted
+if ($LASTEXITCODE -ne 0) {
+    $said = ($sidOutput | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }) -join ' / '
+    throw ("sc.exe sidtype failed to enable the service SID (exit $LASTEXITCODE). " +
+           "Without it the virtual account '$account' cannot exist. sc.exe said: " +
+           "$(if ($said) { $said } else { '(no output)' })")
+}
+
 # No 2>&1: sc.exe writes "[SC] ChangeServiceConfig FAILED …" to stdout, and redirecting a
 # native stderr into the success stream under $ErrorActionPreference = 'Stop' can throw
 # before the check below ever runs — which is the failure mode this block exists to fix.
@@ -123,7 +141,7 @@ if ($LASTEXITCODE -ne 0) {
     $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
     $state = if ($svc) { "exists, status $($svc.Status)" } else { 'DOES NOT EXIST' }
     $hint = switch ($code) {
-        1057 { "1057 is ERROR_INVALID_SERVICE_ACCOUNT: the SCM could not resolve '$account', or rejected the password given for it. A virtual account resolves only against a service of exactly that name." }
+        1057 { "1057 is ERROR_INVALID_SERVICE_ACCOUNT: the SCM could not resolve '$account', or rejected the password given for it. The service SID was enabled just above, which is the usual cause — if it still fails here, look at the password argument (PowerShell renders empty native arguments differently across versions) before doubting the name." }
         1072 { '1072 is ERROR_SERVICE_MARKED_FOR_DELETE: a previous instance is still being torn down.' }
         default { '' }
     }
@@ -131,7 +149,10 @@ if ($LASTEXITCODE -ne 0) {
            "Requested account: '$account'. Service '$ServiceName': $state. " +
            "sc.exe said: $(if ($said) { $said } else { '(no output)' }). $hint")
 }
-# Future hardening (not done here, and not something the MSI channel can express):
+# Future hardening (not done here, and not something the MSI channel can express): the SID
+# type set above is `unrestricted`, the minimum the virtual account needs. `restricted` adds
+# the write-restricted token, which is a behaviour change the service has not been tested
+# against — it is the next step, not a free one:
 #   sc.exe sidtype $ServiceName restricted
 
 # The account needs to write its state where it starts; Program Files stays read-only for it

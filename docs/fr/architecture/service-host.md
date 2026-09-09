@@ -195,6 +195,13 @@ de settings — répertoires de crews compris — s'y résolvent, miroir de
 `WorkingDirectory=/var/lib/orkeon`. (Un service Windows naît dans `System32` ;
 le drapeau est ce qui l'en fait sortir.)
 
+Ce compte est le SID du service lui-même utilisé comme identité de connexion :
+l'enregistrement active donc le SID d'abord (`sc.exe sidtype Orkeon
+unrestricted`), et seulement ensuite l'assigne. Sans cette étape, le SCM refuse
+le compte avec l'erreur 1057, *le nom de compte est invalide ou n'existe pas* —
+ce qui est exact, et se lit comme une faute de frappe. `restricted` est l'étape
+de durcissement suivante, non testée ici.
+
 Les secrets vont dans la valeur `Environment` du service (`REG_MULTI_SZ` sous
 sa clé) — `-EnvironmentSecrets` l'écrit — que seul le SCM lit et que seuls les
 administrateurs ouvrent : le miroir le plus proche d'`EnvironmentFile`.

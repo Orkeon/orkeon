@@ -192,6 +192,12 @@ the unit's `User=orkeon`: no password to manage, its own SID, Modify on
 `WorkingDirectory=/var/lib/orkeon`. (A Windows service is born in `System32`;
 the flag is how it leaves it.)
 
+That account is the service's own SID used as a logon identity, so the
+registration enables the SID first (`sc.exe sidtype Orkeon unrestricted`) and
+only then assigns it. Skip that step and the SCM refuses the account with
+error 1057, *the account name is invalid or does not exist* — which is true,
+and reads like a typo. `restricted` is the next hardening step, untested here.
+
 Secrets go in the service's own `Environment` value (`REG_MULTI_SZ` under the
 service key) — `-EnvironmentSecrets` writes it — which only the SCM reads and
 only administrators open: the closest mirror of `EnvironmentFile`. Restart the
