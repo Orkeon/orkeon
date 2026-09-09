@@ -11,7 +11,6 @@ public interface ICrewOrchestrationService
 {
     /// <summary>
     /// Executes a crew with standard kickoff (asynchronous).
-    /// Python equivalent: crew.kickoff() / crew.kickoff_async()
     /// </summary>
     /// <remarks>
     /// The synchronous Kickoff() overload was removed to eliminate deadlock risk
@@ -25,7 +24,6 @@ public interface ICrewOrchestrationService
 
     /// <summary>
     /// Executes crew for each input in sequence.
-    /// Python equivalent: crew.kickoff_for_each()
     /// </summary>
     System.Threading.Tasks.Task<BatchOutput> KickoffForEachAsync(
         CrewId crewId,
@@ -34,7 +32,6 @@ public interface ICrewOrchestrationService
 
     /// <summary>
     /// Executes crew asynchronously without waiting.
-    /// Python equivalent: crew.kickoff_async()
     /// </summary>
     System.Threading.Tasks.Task<CrewExecutionId> KickoffAsyncNoWait(
         CrewId crewId,
