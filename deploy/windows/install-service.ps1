@@ -122,9 +122,10 @@ $account = "NT SERVICE\$ServiceName"
 # PackageService.wxs registers the same account through CreateService with no SID-type step
 # at all, so the principal exists without it. It is set here because the ZIP channel can, and
 # because a service SID present in the token is what keeps the icacls grant below meaningful
-# under any future account model. It stays one round longer than its justification: it was
-# added on a first reading of 1057 that the MSI path disproves, and removing it in the same
-# commit as the real fix would leave the next log unable to say which change mattered.
+# under any future account model. The round it was kept for has now been run: on 2026-09-09
+# smoke-windows-service went green with the password argument gone and this call untouched,
+# which attributes the fix to the password alone and leaves this step with no 1057-shaped
+# reason to exist. It stays for the token reason above, not for that one.
 # `unrestricted` is the minimum; `restricted` is the hardening step, and a behaviour change
 # the host has not been tested against.
 $sidOutput = & sc.exe sidtype $ServiceName unrestricted

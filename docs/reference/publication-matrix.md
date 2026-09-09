@@ -87,8 +87,17 @@ Owner actions already done:
 - ✅ The `NUGET_USER` repository variable and the Trusted Publishing policy are operational
   (the rc.1/rc.2 pushes prove it).
 
-Remaining owner action — **one**: tag `v1.0.0-rc.3` so the lineup above is actually pushed.
-Until that tag, nothing is listed under the `Orkeon` name on nuget.org: the family has no
+Remaining owner action — **one**: re-tag `v1.0.0-rc.3` so the lineup above is actually
+pushed. The 2026-09-09 run on that tag went the whole way — build, tests, pack, closure
+gate, provenance attestation, GitHub Packages, OIDC key exchange — and died on the last
+step, pushing nothing to NuGet.org: the lineup glob `artifacts/${id}.[0-9]*.nupkg` was
+quoted, so it reached `dotnet nuget push` as a literal. That CLI resolves wildcards through
+NuGet's own `PathResolver`, which understands `*` and `?` and no character class, and it
+answered `File does not exist` about a file that was sitting in `artifacts/`. The
+GitHub Packages push in the same job never met it — `artifacts/*.nupkg` is inside that
+dialect. Fixed by letting the shell expand the pattern; the next tag pushes for real.
+
+Until that push, nothing is listed under the `Orkeon` name on nuget.org: the family has no
 page, and a free-text search for "Orkeon" returns nothing. The reservation is unaffected by
 that — it rests on package *ownership*, not on listing.
 

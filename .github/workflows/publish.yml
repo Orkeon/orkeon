@@ -145,10 +145,27 @@ jobs:
           # order pushes for us — pushing a dependent before its dependency would expose
           # a package whose restore fails (the rc.1/rc.2 incident).
           #
-          # The [0-9] in the glob keeps `Orkeon.*.nupkg` from swallowing Orkeon.Tools & co:
-          # it anchors the match to the version segment.
+          # The [0-9] keeps `Orkeon.*.nupkg` from swallowing Orkeon.Tools & co: it anchors
+          # the match to the version segment. THE SHELL must expand it, not the CLI —
+          # `dotnet nuget push` resolves its own wildcards through NuGet's PathResolver,
+          # which knows `*` and `?` and nothing else. A quoted `[0-9]` reached it as a
+          # literal and it answered `File does not exist (artifacts/Orkeon.[0-9]*.nupkg)`
+          # while the file sat right there. The GitHub Packages push above never met this:
+          # `artifacts/*.nupkg` is inside that dialect. So: unquoted glob, bash expands it,
+          # and the CLI is handed a real path.
           for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli; do
-            dotnet nuget push "artifacts/${id}.[0-9]*.nupkg" \
-              --source "https://api.nuget.org/v3/index.json" \
-              --api-key "$NUGET_API_KEY" --skip-duplicate
+            # No nullglob: an unmatched pattern stays literal, so test the first element
+            # rather than trust the count — a missing package must stop the release, not
+            # be pushed as a filename.
+            matches=(artifacts/${id}.[0-9]*.nupkg)
+            if [ ! -e "${matches[0]}" ]; then
+              echo "::error::No package matched artifacts/${id}.<version>.nupkg — dotnet pack did not produce it, or the lineup and the packaging projects have drifted apart."
+              exit 1
+            fi
+            # One path per invocation: the CLI takes a single root argument.
+            for pkg in "${matches[@]}"; do
+              dotnet nuget push "$pkg" \
+                --source "https://api.nuget.org/v3/index.json" \
+                --api-key "$NUGET_API_KEY" --skip-duplicate
+            done
           done

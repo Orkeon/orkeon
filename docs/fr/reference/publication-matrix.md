@@ -91,11 +91,20 @@ Actions propriétaire déjà faites :
 - ✅ La variable de dépôt `NUGET_USER` et la politique de Trusted Publishing sont
   opérationnelles (les pushes rc.1/rc.2 le prouvent).
 
-Action propriétaire restante — **une seule** : taguer `v1.0.0-rc.3` pour que le lineup
-ci-dessus soit réellement poussé. Jusqu'à ce tag, rien n'est listé sous le nom `Orkeon` sur
-nuget.org : la famille n'a pas de page et une recherche libre sur « Orkeon » ne rend rien.
-La réservation, elle, n'en dépend pas : elle s'appuie sur la *propriété* des paquets, pas sur
-leur listage.
+Action propriétaire restante — **une seule** : re-taguer `v1.0.0-rc.3` pour que le lineup
+ci-dessus soit réellement poussé. L'exécution du 2026-09-09 sur ce tag est allée jusqu'au
+bout — build, tests, pack, gate de closure, attestation de provenance, GitHub Packages,
+échange de clé OIDC — et est morte sur la dernière étape, sans rien pousser vers NuGet.org :
+le glob du lineup `artifacts/${id}.[0-9]*.nupkg` était entre guillemets, il est donc arrivé
+littéral à `dotnet nuget push`. Cette CLI résout ses jokers via le `PathResolver` de NuGet,
+qui connaît `*` et `?` et aucune classe de caractères ; elle a répondu `File does not exist`
+à propos d'un fichier bel et bien présent dans `artifacts/`. Le push GitHub Packages du même
+job ne l'a jamais rencontré — `artifacts/*.nupkg` reste dans ce dialecte. Corrigé en laissant
+le shell expanser le motif ; le prochain tag poussera pour de bon.
+
+Jusqu'à ce push, rien n'est listé sous le nom `Orkeon` sur nuget.org : la famille n'a pas de
+page et une recherche libre sur « Orkeon » ne rend rien. La réservation, elle, n'en dépend
+pas : elle s'appuie sur la *propriété* des paquets, pas sur leur listage.
 
 ## Publiés sur GitHub Packages
 
