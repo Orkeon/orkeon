@@ -108,8 +108,29 @@ New-Service `
 
 # Virtual account (mirror of the unit's User=orkeon). New-Service cannot do this: it passes
 # an empty credential where CreateService wants NULL, so the swap goes through sc.exe.
-sc.exe config $ServiceName obj= "NT SERVICE\$ServiceName" password= "" | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "sc.exe config failed to set the service account (exit $LASTEXITCODE)." }
+#
+# sc.exe's own message is kept: an exit code alone does not say whether the SCM refused the
+# name, the password, or the service it derives from — and this step failed once in CI with
+# nothing but "exit 1057" to go on, which cost a whole release cycle to learn nothing.
+$account = "NT SERVICE\$ServiceName"
+# No 2>&1: sc.exe writes "[SC] ChangeServiceConfig FAILED …" to stdout, and redirecting a
+# native stderr into the success stream under $ErrorActionPreference = 'Stop' can throw
+# before the check below ever runs — which is the failure mode this block exists to fix.
+$scOutput = & sc.exe config $ServiceName obj= $account password= ""
+if ($LASTEXITCODE -ne 0) {
+    $code = $LASTEXITCODE
+    $said = ($scOutput | ForEach-Object { $_.ToString().Trim() } | Where-Object { $_ }) -join ' / '
+    $svc = Get-Service -Name $ServiceName -ErrorAction SilentlyContinue
+    $state = if ($svc) { "exists, status $($svc.Status)" } else { 'DOES NOT EXIST' }
+    $hint = switch ($code) {
+        1057 { "1057 is ERROR_INVALID_SERVICE_ACCOUNT: the SCM could not resolve '$account', or rejected the password given for it. A virtual account resolves only against a service of exactly that name." }
+        1072 { '1072 is ERROR_SERVICE_MARKED_FOR_DELETE: a previous instance is still being torn down.' }
+        default { '' }
+    }
+    throw ("sc.exe config failed to set the service account (exit $code). " +
+           "Requested account: '$account'. Service '$ServiceName': $state. " +
+           "sc.exe said: $(if ($said) { $said } else { '(no output)' }). $hint")
+}
 # Future hardening (not done here, and not something the MSI channel can express):
 #   sc.exe sidtype $ServiceName restricted
 
