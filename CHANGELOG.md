@@ -7,6 +7,33 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — the quickstart's first CI run failed, and three things came out of it
+
+The first run of `quickstart.yml` on a GitHub runner did everything the README says —
+pinned Ollama, the tool installed from the checkout, the settings found next to the crew —
+and wrote no file: `llama3.2:1b` under Ollama 0.34.0 answered the `file_write` call as
+*text*, the whole JSON envelope with a broken string inside (`"content": "create_backup":
+"False"`), the loop took that text for the final answer, and the run "succeeded" with the
+envelope as its deliverable. Reproduced here byte for byte with the same Ollama build (four
+runs out of four, 550 tokens each; under 0.12.3 the same model makes a real tool call — the
+server's template and parser changed between the two).
+
+1. **A JSON envelope written as text is a tool call.** `ToolCallTextParser` gains the third
+   shape next to `[TOOL_CALL]` and `<invoke>`: `{"name", "parameters"|"arguments"}`,
+   `{"type":"function","function":{…}}`, `{"type":"function","function":"<name>", …}`, a
+   `tool_calls` array, fenced or not, with raw line breaks inside strings repaired before
+   parsing.
+2. **An answer shaped like a tool call that cannot be executed is not a final answer.**
+   The loop hands it back with the fix the model needs (call the tool, or write one valid
+   JSON object), twice at most, then lets it stand — `LooksLikeToolCallAttempt` requires
+   the envelope vocabulary *and* one of the agent's tool names, so a JSON deliverable is
+   never mistaken for one.
+3. **The quickstart model is `qwen2.5:1.5b`.** Smaller (986 MB against 1.3 GB) and it
+   calls the tool the way a tool is called: measured 5/5 under Ollama 0.34.0 and 3/3 under
+   0.12.3, before and after the two guards above; `llama3.2:1b` still fails 3/3 after them
+   (it repeats the same broken string). README, quickstart, Aspire example and workflow
+   cache key follow.
+
 ### Added — `Orkeon.Hosting.Aspire`, and runners that export OpenTelemetry by the standard contract (ADR-011)
 
 The runners built their host with the parameterless `AddOrkeonInfrastructure()` (no

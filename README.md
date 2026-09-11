@@ -29,7 +29,7 @@ A local model, one agent, one writable mount. From a clone of this repository (`
 
 <!-- quickstart:begin -->
 ```bash
-ollama pull llama3.2:1b
+ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
 ```

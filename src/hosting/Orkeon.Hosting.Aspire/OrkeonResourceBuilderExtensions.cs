@@ -101,7 +101,7 @@ public static class OrkeonResourceBuilderExtensions
 
     /// <summary>
     /// Sets an Orkeon configuration key for the resource through the environment the
-    /// runners read (<c>ORKEON_</c> prefix, <c>__</c> for <c>:</c>): <c>WithOrkeonSetting("Llm:Model", "llama3.2:1b")</c>.
+    /// runners read (<c>ORKEON_</c> prefix, <c>__</c> for <c>:</c>): <c>WithOrkeonSetting("Llm:Model", "qwen2.5:1.5b")</c>.
     /// </summary>
     public static IResourceBuilder<T> WithOrkeonSetting<T>(this IResourceBuilder<T> builder, string key, string value)
         where T : IResourceWithEnvironment

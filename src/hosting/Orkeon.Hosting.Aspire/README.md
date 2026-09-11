@@ -15,7 +15,7 @@ builder.AddOrkeonHost("orkeon-host", settingsPath: "host.appsettings.json");
 
 // one crew run, files under ./out, on a local model
 builder.AddOrkeonCrewRun("quickstart", crewPath: "../../quickstart/crew.yaml")
-       .WithOrkeonModel(new Uri("http://localhost:11434"), "llama3.2:1b");
+       .WithOrkeonModel(new Uri("http://localhost:11434"), "qwen2.5:1.5b");
 
 builder.Build().Run();
 ```

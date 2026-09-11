@@ -29,7 +29,7 @@ Un modèle local, un agent, un seul montage en écriture. Depuis un clone de ce 
 
 <!-- quickstart:begin -->
 ```bash
-ollama pull llama3.2:1b
+ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
 ```

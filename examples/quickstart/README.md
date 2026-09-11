@@ -2,11 +2,11 @@
 
 The crew behind the README's *Try it in two minutes*. One agent (`Scribe`), one tool
 (`file_write`), one task: write three lines to `/output/hello.md`. Its `appsettings.json`
-points at Ollama on `localhost:11434` with `llama3.2:1b`, so nothing else has to be
+points at Ollama on `localhost:11434` with `qwen2.5:1.5b`, so nothing else has to be
 configured — the settings file next to the crew wins over every other source.
 
 ```bash
-ollama pull llama3.2:1b
+ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease
 mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
 ```
@@ -24,12 +24,18 @@ Tool result << file_write [FAIL]: Error: No mount found for virtual path '/etc/h
 
 Try it: edit `crew.yaml`, replace both `/output/hello.md` with `/etc/hello.md`, run again.
 
-## Why a 1B model
+## Why this model
 
-Because the boundary is the point, not the prose. `llama3.2:1b` is 1.3 GB, runs on any
-laptop CPU in seconds, and is small enough to make mistakes — its first attempt wraps the
-whole tool-call envelope inside the arguments (`{"type":"function","function":"file_write",
-"parameters":{…}}`), which the dispatcher now unwraps. Any bigger model works too:
+Because the boundary is the point, not the prose. `qwen2.5:1.5b` is 986 MB, runs on any
+laptop CPU in seconds, and calls a tool the way a tool is called — measured five runs out
+of five under Ollama 0.34.0 and three out of three under 0.12.3. The README first shipped
+with `llama3.2:1b`, which is 1.3 GB and one size smaller in judgement: under Ollama 0.12.3
+it made a real tool call with the whole envelope inside the arguments (the dispatcher
+unwraps that now), and under 0.34.0 — the version pinned in CI — it wrote the envelope as
+its answer, with a broken JSON string, every single time, so no tool ran. Two runtime
+guards came out of that run (a JSON envelope in the text is parsed as a tool call; an
+answer shaped like a tool call that cannot be executed is handed back to the model instead
+of accepted as final), and the model changed. Any bigger model works too:
 `orkeon init --provider ollama --model <name>` or edit `appsettings.json`.
 
 ## Verified by CI

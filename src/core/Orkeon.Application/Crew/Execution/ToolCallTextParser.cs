@@ -64,9 +64,10 @@ internal static partial class ToolCallTextParser
 
     /// <summary>
     /// Parses all tool call blocks from an LLM text response.
-    /// Supports two formats:
+    /// Supports three formats:
     /// 1. [TOOL_CALL]{tool => "name", args => {--key "value"}}[/TOOL_CALL]
     /// 2. XML-style: &lt;invoke name="tool"&gt; with inline attrs or &lt;parameter&gt; children (MiniMax, Anthropic proxies)
+    /// 3. A JSON tool-call envelope written as text (small local models when the server's parser gives up)
     /// </summary>
     internal static List<ParsedToolCall> ParseToolCallBlocks(string response)
     {
@@ -82,6 +83,12 @@ internal static partial class ToolCallTextParser
         if (results.Count == 0)
         {
             results.AddRange(ParseXmlToolCallBlocks(response));
+        }
+
+        // 3. Then a JSON envelope written as text (ToolCallTextParser.Json.cs)
+        if (results.Count == 0)
+        {
+            results.AddRange(ParseJsonEnvelopes(response));
         }
 
         return results;

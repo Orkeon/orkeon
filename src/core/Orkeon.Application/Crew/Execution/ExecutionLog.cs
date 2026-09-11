@@ -83,6 +83,9 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}] produced empty final message after {Iterations} iterations; retrying once with tool_choice=none")]
     internal static partial void LogEmptyFinalMessageRetrying(ILogger logger, object agentRole, int iterations);
 
+    [LoggerMessage(Level = LogLevel.Warning, Message = "ChatClient iteration {Iteration} for [{AgentRole}]: the answer is shaped like a tool call but none could be executed from it; asking the model to call the tool instead of describing the call")]
+    internal static partial void LogToolCallShapedAnswerRetrying(ILogger logger, object agentRole, int iteration);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "ChatClient iteration {Iteration} for [{AgentRole}]: no native function calls but found {TextToolCallCount} [TOOL_CALL] text blocks — falling back to text parsing")]
     internal static partial void LogChatClientTextToolCallFallback(ILogger logger, object agentRole, int iteration, int textToolCallCount);
 

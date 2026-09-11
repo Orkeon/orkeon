@@ -162,6 +162,68 @@ public class ChatClientAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task RunsAJsonEnvelopeWrittenAsText_AsAToolCall()
+    {
+        var tool = new SpyTool("file_write", result: "written");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+
+        client.EnqueueText("""{"type":"function","function":{"name":"file_write","parameters":{"path":"/output/hello.md","content":"hi"}}}""");
+        client.EnqueueText("DONE");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal("DONE", result.Output);
+        Assert.Equal(2, result.IterationsUsed);
+        Assert.Single(tool.Calls);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task HandsAToolCallShapedAnswerBack_InsteadOfAcceptingItAsFinal()
+    {
+        var tool = new SpyTool("file_write", result: "written");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+
+        // The runner's answer of 2026-09-11: an envelope with a broken string -- not
+        // executable, and not a deliverable either.
+        var broken = "{\"type\":\"function\",\"function\":{\"name\":\"file_write\",\"parameters\":{\"path\":\"/output/hello.md\",\"content\": \"create_backup\": \"False\"}}}";
+        client.EnqueueText(broken);
+        client.EnqueueFunctionCall("call-1", "file_write");
+        client.EnqueueText("DONE");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal("DONE", result.Output);
+        Assert.Equal(3, result.IterationsUsed);
+        Assert.Single(tool.Calls);
+        var secondRequest = client.Requests[1].Messages;
+        Assert.Contains(secondRequest, m => m.Role == ChatRole.User && m.Text.Contains("described a tool call instead of making one", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task AcceptsAToolCallShapedAnswer_AfterTwoCorrections()
+    {
+        var tool = new SpyTool("file_write", result: "written");
+        var agent = BuildAgent(6, tool);
+        var (loop, client) = BuildLoop(tool);
+
+        var broken = "{\"name\":\"file_write\",\"parameters\":{\"content\": \"a\": \"b\"}}";
+        client.EnqueueText(broken);
+        client.EnqueueText(broken);
+        client.EnqueueText(broken);
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 6, TestContext.Current.CancellationToken);
+
+        Assert.Equal(broken, result.Output);
+        Assert.Equal(3, result.IterationsUsed);
+        Assert.Empty(tool.Calls);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task RunsTheTextFallbackToolRound_WhenTheLlmEmitsToolCallBlocks()
     {
         var tool = new SpyTool("text_tool", result: "fallback data");

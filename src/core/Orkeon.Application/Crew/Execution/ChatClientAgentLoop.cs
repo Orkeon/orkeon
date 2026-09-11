@@ -94,6 +94,7 @@ internal sealed class ChatClientAgentLoop
         agentActivity?.SetTag(GenAiAttributes.RequestModel, options.ModelId);
         agentActivity?.SetTag("orkeon.task.id", task.Id.ToString());
         var totalTokensUsed = 0;
+        var toolCallShapedAnswers = 0;
         // Prompt/completion split accumulated from UsageDetails when the provider reports
         // it (R10.8). Tool-free retry turns only feed the total, so split <= total.
         var promptTokensTotal = 0;
@@ -169,6 +170,21 @@ internal sealed class ChatClientAgentLoop
 
             var responseText = chatResponse.Text ?? string.Empty;
 
+            // An answer shaped like a tool call that nothing could execute -- a JSON
+            // envelope with a defect, a call the server's parser dropped -- is not a final
+            // answer: taken as one, the run "succeeds" with the envelope as its deliverable
+            // and the tool never runs (llama3.2:1b under Ollama 0.34.0, 2026-09-11). Hand it
+            // back with the fix the model needs, twice at most, then let it stand.
+            if (availableTools.Count > 0 && toolCallShapedAnswers < MaxToolCallShapedAnswers
+                && ToolCallTextParser.LooksLikeToolCallAttempt(responseText, availableTools.Select(t => t.Name)))
+            {
+                toolCallShapedAnswers++;
+                ExecutionLog.LogToolCallShapedAnswerRetrying(_logger, agent.Role, iteration + 1);
+                messages.AddRange(chatResponse.Messages);
+                messages.Add(new ChatMessage(ChatRole.User, ToolCallShapedAnswerCorrection));
+                continue;
+            }
+
             // Empty-final-message retry: MiniMax (and some other providers) occasionally emit
             // tool_calls across several iterations and then terminate with no assistant text.
             // The deliverable resolver then persists an empty file. Force one retry with
@@ -236,6 +252,15 @@ internal sealed class ChatClientAgentLoop
     /// Record, ILlmUsageSink only ever heard from the scripting facade, and an observed crew
     /// run reported zero tokens no matter what it spent.
     /// </summary>
+    /// <summary>How many tool-call-shaped answers are handed back before one is accepted as final.</summary>
+    private const int MaxToolCallShapedAnswers = 2;
+
+    private const string ToolCallShapedAnswerCorrection =
+        "Your previous answer described a tool call instead of making one, and it could not be executed. " +
+        "Call the tool through the tool-calling interface. If you must write it as text, write exactly one " +
+        "valid JSON object -- {\"name\": \"<tool>\", \"parameters\": {...}} -- with every string properly " +
+        "escaped and nothing else around it. Then answer the task.";
+
     private Activity? StartChatActivity(DomainAgent agent, ChatOptions options)
     {
         var activity = Telemetry.OrkeonActivitySources.Llm.StartActivity(

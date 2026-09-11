@@ -9,7 +9,7 @@ using Orkeon.Hosting.Aspire;
 //
 // `orkeon` must be on the PATH (dotnet tool install -g Orkeon.Scripting.Cli --prerelease)
 // or named through ORKEON_CLI (e.g. a source build: ORKEON_CLI=/path/to/orkeon). The model
-// is the quickstart's: Ollama on localhost with llama3.2:1b.
+// is the quickstart's: Ollama on localhost with qwen2.5:1.5b.
 var builder = DistributedApplication.CreateBuilder(args);
 
 var cli = Environment.GetEnvironmentVariable("ORKEON_CLI") ?? "orkeon";
@@ -19,6 +19,6 @@ var crew = Path.Combine(builder.AppHostDirectory, "..", "..", "quickstart", "cre
 var model = new Uri(Environment.GetEnvironmentVariable("ORKEON_Llm__BaseUrl") ?? "http://localhost:11434");
 
 builder.AddOrkeonCrewRun("quickstart", crew, command: cli)
-    .WithOrkeonModel(model, "llama3.2:1b");
+    .WithOrkeonModel(model, "qwen2.5:1.5b");
 
 builder.Build().Run();

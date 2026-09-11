@@ -9,7 +9,7 @@ the structured logs. Nothing is configured for that: Aspire injects
 ## Run
 
 ```bash
-ollama pull llama3.2:1b
+ollama pull qwen2.5:1.5b
 dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # or ORKEON_CLI=/path/to/a/source-built orkeon
 dotnet run --project examples/aspire/AppHost/OrkeonAppHost.csproj
 ```
