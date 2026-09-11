@@ -13,3 +13,4 @@ const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmPromptTokens = "ge
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider = "gen_ai.provider.name" -> string!
 *REMOVED*const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "orkeon.tool.name" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "gen_ai.tool.name" -> string!
+const Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.InitialContextVariable = "initial_context" -> string!

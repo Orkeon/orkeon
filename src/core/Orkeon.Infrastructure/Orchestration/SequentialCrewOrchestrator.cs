@@ -203,7 +203,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
             var plan = await CreatePlanIfEnabledAsync(crew, domainInput).ConfigureAwait(false);
 
             // Extract string variables from input for template interpolation
-            var stringVariables = input.GetStringVariables();
+            var stringVariables = PromptVariables(input);
 
             // Execute according to process type (moved from Crew.KickoffAsync)
             var domainOutput = await ExecuteDomainStrategyAsync(
@@ -500,7 +500,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         var context = new Orkeon.Application.Context.SimpleExecutionContext(
             crewId,
-            new Dictionary<string, string>(input.GetStringVariables()),
+            new Dictionary<string, string>(PromptVariables(input)),
             Orkeon.Application.Context.NullMemoryScope.Instance,
             []);
         var agentIndex = 0;
@@ -610,5 +610,23 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
     private partial void LogAsyncCrewOrchestrationError(Exception ex);
     [LoggerMessage(Level = LogLevel.Debug, Message = "Orchestrating status check for execution {ExecutionId}")]
     private partial void LogStatusCheck(CrewExecutionId executionId);
-}
 
+    /// <summary>
+    /// The variables the prompt composer interpolates and lists under "Context Variables".
+    /// The initial context joins them as <c>initial_context</c>: until 2026-09-11 it was
+    /// mapped into the domain input and read by nothing -- `--initial-context`, Studio's
+    /// field and every programmatic <c>CrewInput.Empty("...")</c> reached no agent. A
+    /// caller that already set an <c>initial_context</c> variable keeps its own value.
+    /// </summary>
+    internal static IReadOnlyDictionary<string, string> PromptVariables(Orkeon.Application.Interfaces.Services.CrewInput input)
+    {
+        var variables = input.GetStringVariables();
+        if (string.IsNullOrWhiteSpace(input.InitialContext) || variables.ContainsKey(InitialContextVariable))
+            return variables;
+        var merged = new Dictionary<string, string>(variables) { [InitialContextVariable] = input.InitialContext };
+        return merged;
+    }
+
+    /// <summary>The variable name the initial context is exposed under in prompts and templates.</summary>
+    public const string InitialContextVariable = "initial_context";
+}
