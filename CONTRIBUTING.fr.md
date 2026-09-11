@@ -39,6 +39,12 @@ Les suggestions d'amélioration sont suivies via les issues GitHub. Lorsque vous
 4. Assurez-vous que la suite de tests passe
 5. Vérifiez que votre code suit le style de code existant
 6. Soumettez cette pull request !
+7. Sur votre première pull request, acceptez l'[accord de licence de contribution](CLA.fr.md) :
+   une vérification poste la phrase à répondre, et reste rouge tant que ce n'est pas
+   fait. Une fois par compte GitHub ; vous gardez votre droit d'auteur, le projet obtient
+   une licence qu'il peut transmettre à une entité successeur. (Le texte est un gabarit
+   en attente de relecture juridique — il le dit dès sa première ligne — et la
+   vérification documente le processus voulu en attendant.)
 
 ## Mise en place de l'environnement de développement
 

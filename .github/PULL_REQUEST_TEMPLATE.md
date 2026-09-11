@@ -25,6 +25,7 @@
       whole history of the PR, and a hit means rotate first, force-push second.
 - [ ] No direct `System.IO` in framework code — route through `IFileSystemService`
       (the VFS analyzer enforces this).
+- [ ] First contribution? The CLA check will ask for one sentence — see [CLA.md](../CLA.md).
 
 ## Notes for the reviewer
 

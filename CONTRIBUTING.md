@@ -39,6 +39,11 @@ Enhancement suggestions are tracked as GitHub issues. When creating an enhanceme
 4. Ensure the test suite passes
 5. Make sure your code follows the existing code style
 6. Issue that pull request!
+7. On your first pull request, accept the [Contributor License Agreement](CLA.md):
+   a check posts the one sentence to reply with, and stays red until you do. Once per
+   GitHub account; you keep your copyright, the project gets a licence it can carry to
+   a successor entity. (The text is a template awaiting legal review — it says so on
+   its first line — and the check documents the intended process meanwhile.)
 
 ## Development Setup
 

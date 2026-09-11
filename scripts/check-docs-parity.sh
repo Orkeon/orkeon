@@ -35,7 +35,7 @@ if [ -n "$missing_en" ]; then
 fi
 
 # --- root community pairs ---------------------------------------------------------------
-for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY SUPPORT index; do
+for base in README CONTRIBUTING CODE_OF_CONDUCT SECURITY SUPPORT CLA index; do
   if [ -f "$base.md" ] && [ ! -f "$base.fr.md" ]; then
     echo "::error::$base.md has no French mirror $base.fr.md"; fail=1
   fi
