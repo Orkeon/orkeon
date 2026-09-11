@@ -92,7 +92,13 @@ template and the docs-parity gate know about it.
 
 `ci.yml` gains a non-blocking job that restores, builds and tests `Orkeon.sln` with the
 .NET 11 SDK (preview channel until GA on 2026-11-10), widening `global.json`'s
-roll-forward on the runner only. Verified locally with `11.0.100-rc.1`. Both dotnet
+roll-forward on the runner only. Verified locally with `11.0.100-rc.1` — and that build
+was red: the 11 SDK ships three analyzer rules the 10 SDK does not, all fixed so the job
+starts green. `CA2027` (a `Task.Delay` that lost a `WhenAny` race keeps its timer alive)
+in the Studio process launcher, the capture settle and context, and the Terminal.Gui shutdown grace
+period, now `WaitAsync(timeout)`; `CA2026` (`JsonDocument.Parse(...).RootElement` leaks
+the document) at 55 sites in MCP and the tests, now `JsonElement.Parse`; `CA1860`
+(`Any()` on a collection with a `Count`) at 3 sites in test doubles. Both dotnet
 tools (`orkeon`, `orkeon-repl`) now declare `RollForward=Major`: a machine whose only
 runtime is .NET 11 runs them instead of printing "You must install .NET". The target
 framework, `global.json` and the container base images do not move before GA.
@@ -133,8 +139,8 @@ subsystem stays in the code and in the reference pages (`opt-in-subsystems.md`,
 the identical block, and runs it on a GitHub runner: a pinned Ollama release checked
 against its published digest (no `curl | sh`), the `orkeon` tool installed by the block's
 own `dotnet tool install` line — resolved to a pack of the checkout under test through a
-`nuget.config`, versioned above anything published — then `out/hello.md` must exist and
-say hello. Change the README, the job runs the new README; break it, the build is red.
+`nuget.config` that names that pack as the only source — then `out/hello.md` must exist
+and say hello. Change the README, the job runs the new README; break it, the build is red.
 
 ### Fixed — a tool-call envelope inside the arguments no longer trips the circuit breaker
 

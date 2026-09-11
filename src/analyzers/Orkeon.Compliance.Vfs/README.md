@@ -11,7 +11,7 @@ project, that line does not compile.
 ## Install
 
 ```xml
-<PackageReference Include="Orkeon.Compliance.Vfs" Version="1.0.0-rc.4" PrivateAssets="all" />
+<PackageReference Include="Orkeon.Compliance.Vfs" Version="<version>" PrivateAssets="all" />
 ```
 
 `dotnet build` — and every `File.*`, `Directory.*`, `new FileStream(...)`, `new FileSystemWatcher(...)`,
@@ -20,7 +20,7 @@ Nothing else from Orkeon is required: the package depends on no Orkeon assembly.
 
 > `1.0.0-rc.3` of this package was inert outside the Orkeon repository: it was compiled
 > against Roslyn 5.9.0, newer than the compiler of a stock .NET 10 SDK, and the compiler
-> skipped it with `CS9057`. Since `1.0.0-rc.4` it is compiled against Roslyn 4.8.0 — any SDK
+> skipped it with `CS9057`. Every later version is compiled against Roslyn 4.8.0 — any SDK
 > from .NET 8.0.100 on loads it.
 
 | Rule | Reports |

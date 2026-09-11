@@ -627,7 +627,7 @@ public sealed partial class JsLlmFacade
                     return JsValue.FromObject(_engine, new { output = resp.Content, iterations = i + 1 });
 
                 var (toolName, toolArgs) = call.Value;
-                activity?.SetTag("llm.act.tool", toolName);
+                activity?.SetTag("orkeon.llm.act.tool", toolName);
 
                 var resultText = await ResolveToolResultAsync(toolName, toolArgs, permissionMode, activity).ConfigureAwait(false);
 
@@ -700,7 +700,7 @@ public sealed partial class JsLlmFacade
             // Deny (and Ask without an interactive channel, already downgraded by the
             // gate) becomes a motivated refusal fed back as the tool result — no
             // exception, the model can adapt. Denied calls consume no tool-call budget.
-            activity?.SetTag("llm.act.permission", "denied");
+            activity?.SetTag("orkeon.llm.act.permission", "denied");
             return $"DENIED: {verdict.Message ?? $"tool '{toolName}' is not permitted in mode '{permissionMode}'."}";
         }
 

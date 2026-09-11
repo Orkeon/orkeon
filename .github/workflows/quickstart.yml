@@ -9,9 +9,10 @@
 # the .NET 10 SDK, an Ollama binary downloaded from its GitHub release and checked
 # against the release's sha256sum.txt (no curl | sh), and the `orkeon` tool. The only
 # indirection is where `dotnet tool install -g Orkeon.Scripting.Cli --prerelease`
-# resolves the package: a nuget.config in the working directory puts a local pack of
-# THIS checkout first, versioned above anything nuget.org has, so the block installs
-# the code under test and not the last release. The line itself is untouched.
+# resolves the package: a nuget.config in the working directory makes a local pack of
+# THIS checkout the only source (a tool package carries its dependencies, so no feed
+# is needed), and the block installs the code under test, never a published release
+# -- whatever version either carries. The line itself is untouched.
 name: Quickstart
 on:
   push:
@@ -95,10 +96,11 @@ jobs:
           done
 
       # `dotnet tool install -g Orkeon.Scripting.Cli --prerelease` -- the block's own line --
-      # must install this checkout. A local pack versioned <props version>.ci<run> outranks
-      # every published pre-release of the same prefix, and the nuget.config below makes the
-      # pack directory a source in the directory the block runs from.
-      - name: Pack the orkeon tool from this checkout, above anything published
+      # must install this checkout. The nuget.config below makes the pack directory the ONLY
+      # source in the directory the block runs from: with nuget.org as a fallback, a
+      # published stable 1.0.0 would outrank a local 1.0.0-ci<run> and the job would test
+      # the release instead of the change. The .ci<run> suffix only labels the pack.
+      - name: Pack the orkeon tool from this checkout, as the only source
         run: |
           prefix=$(sed -n 's/.*<VersionPrefix>\([^<]*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
           suffix=$(sed -n 's/.*<VersionSuffix>\([^<]*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
@@ -112,7 +114,6 @@ jobs:
             <packageSources>
               <clear />
               <add key="this-checkout" value="$PWD/artifacts/cli" />
-              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
             </packageSources>
           </configuration>
           XML
