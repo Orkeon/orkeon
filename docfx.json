@@ -33,6 +33,8 @@
             "src/cli/Orkeon.Cli.Commands.Scripting/bin/Release/net10.0/Orkeon.Cli.Commands.Scripting.dll",
             "src/cli/Orkeon.Cli.TerminalGui/bin/Release/net10.0/Orkeon.Cli.TerminalGui.dll",
             "src/hosting/Orkeon.Hosting/bin/Release/net10.0/Orkeon.Hosting.dll",
+            "src/hosting/Orkeon.Hosting.Aspire/bin/Release/net10.0/Orkeon.Hosting.Aspire.dll",
+            "src/interop/Orkeon.Interop.AgentFramework/bin/Release/net10.0/Orkeon.Interop.AgentFramework.dll",
             "src/plugins/Orkeon.Plugins/bin/Release/net10.0/Orkeon.Plugins.dll"
           ],
           "src": "."

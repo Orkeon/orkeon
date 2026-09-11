@@ -24,7 +24,8 @@ Both resources launch the shipped executables (`orkeon-host`, `orkeon`) found on
 or the `command:` you pass. `WithOrkeonSetting("Llm:Model", …)` sets any Orkeon
 configuration key through the `ORKEON_` environment the runners read.
 
-Depends on `Aspire.Hosting` and on the Orkeon constants satellites only — it describes
-processes, it does not run crews.
+The assembly itself references nothing of Orkeon but a constants satellite — it describes
+processes, it does not run crews; the package depends on `Aspire.Hosting` and on the
+`Orkeon` umbrella, which is where that satellite ships.
 
 MIT © Orkeon Contributors
