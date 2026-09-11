@@ -51,3 +51,22 @@ Vulnerabilities in these layers (allowlist bypass, SSRF filter bypass, VFS escap
 - Use `DockerSandbox` for any code-execution scenario with untrusted input.
 - Configure API keys via environment variables or a secret manager — never in YAML crew definitions.
 - Enable memory encryption at rest (`EncryptedMemoryProviderDecorator`) for sensitive workloads.
+
+## Verifying What You Install
+
+Every artefact — NuGet packages, installers, CLI archives, `.deb`, MSIs — is built by a
+public GitHub Actions workflow and carries a GitHub-signed **build provenance attestation**
+(SLSA v1) naming the workflow, the tag and the commit that produced those exact bytes.
+NuGet.org publishing goes through Trusted Publishing (OIDC): no long-lived API key exists.
+Every release also ships `SHA256SUMS` and, from the next release on, a CycloneDX SBOM
+covered by the same attestation.
+
+```bash
+gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon
+```
+
+A package downloaded from nuget.org is repository-signed by nuget.org, which changes its
+bytes: strip that signature first (`scripts/nupkg-unsign.py`), then verify. The exact
+commands, what each mechanism proves and does not, and what to do when a check fails are in
+[Verify what you install](docs/guides/verify-what-you-install.md). An artefact that fails
+verification is a security report, not a support question.

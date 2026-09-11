@@ -53,3 +53,23 @@ Les vulnérabilités dans ces couches (contournement d'allowlist, contournement 
 - Utilisez `DockerSandbox` pour tout scénario d'exécution de code avec des entrées non fiables.
 - Configurez les clés d'API via des variables d'environnement ou un gestionnaire de secrets — jamais dans les définitions YAML de crew.
 - Activez le chiffrement de la mémoire au repos (`EncryptedMemoryProviderDecorator`) pour les charges de travail sensibles.
+
+## Vérifier ce que vous installez
+
+Chaque artefact — paquets NuGet, installeurs, archives CLI, `.deb`, MSI — est construit par
+un workflow GitHub Actions public et porte une **attestation de provenance de build** signée
+par GitHub (SLSA v1) qui nomme le workflow, le tag et le commit ayant produit ces octets
+exacts. La publication sur NuGet.org passe par Trusted Publishing (OIDC) : aucune clé API
+longue durée n'existe. Chaque release livre aussi `SHA256SUMS` et, à partir de la
+prochaine, un SBOM CycloneDX couvert par la même attestation.
+
+```bash
+gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon
+```
+
+Un paquet téléchargé depuis nuget.org est re-signé par nuget.org, ce qui change ses
+octets : retirez d'abord cette signature (`scripts/nupkg-unsign.py`), puis vérifiez. Les
+commandes exactes, ce que chaque mécanisme prouve ou non, et la conduite à tenir quand une
+vérification échoue sont dans [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md).
+Un artefact qui échoue à la vérification est un signalement de sécurité, pas une question
+de support.
