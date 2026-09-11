@@ -32,6 +32,7 @@ un amont en pré-release).
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. `Orkeon.Rag.Onnx` dépend d'`Orkeon` ; `Orkeon.Rag.Onnx.Model` n'a aucune dépendance (ressources embarquées seulement) et se référence à côté de lui. |
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
 | `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 137,6 Mo, sous la limite de taille de nuget.org. |
+| `Orkeon.Compliance.Vfs` | L'analyseur Roslyn qui refuse `System.IO` direct dans votre propre code (règles `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Autonome par conception : il ne dépend de rien d'Orkeon et fonctionne dans n'importe quel projet C# — ajoutez le `PackageReference`, compilez, et chaque appel `File.*`/`Directory.*` devient un diagnostic. Publié depuis l'élargissement du lineup le 2026-09-11 (`1.0.0-rc.3` était packé mais jamais poussé : la boucle de push était une liste figée de six identifiants). |
 
 ### Comment les projets d'empaquetage sont construits
 
@@ -117,7 +118,7 @@ de toute façon un nouveau push sans effet.
 `publish.yml` (tag `v*`) packe `Orkeon.sln` et pousse **chaque projet packable** vers
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) avec `--skip-duplicate`. Soit le lineup
 NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors de NuGet.org :
-`Orkeon.ConsoleApp`, `Orkeon.Generators` et `Orkeon.Compliance.Vfs`. C'est ce feed
+`Orkeon.ConsoleApp` et `Orkeon.Generators`. C'est ce feed
 :
 
 | PackageId | Commande tool | Projet source |
@@ -236,7 +237,6 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
 | PackageId | Note |
 |---|---|
 | `Orkeon.Generators` | Source generator — consommé au build. GitHub Packages uniquement. |
-| `Orkeon.Compliance.Vfs` | Analyseur Roslyn — consommé au build. GitHub Packages uniquement. |
 | `Orkeon.Host` | `IsPackable=false` — livré uniquement comme binaire `orkeon-host` dans les archives de release. |
 | `Orkeon.Studio.{Core,Config,Run,Wpf}` | `IsPackable=false` — livrés uniquement via les installeurs de release (voir [Orkeon Studio](../architecture/studio.md)). |
 
@@ -264,4 +264,14 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   les tags `v0.9.1-beta.rc*` ont re-packé la version inchangée des props et
   `--skip-duplicate` a sauté chaque push en silence — une « release » qui n'a rien publié.
   Le garde maintient `--skip-duplicate` honnête.
+- **Provenance et SBOM.** Les deux workflows attestent ce qu'ils publient avec
+  `actions/attest-build-provenance` (SLSA v1, signé par l'instance Sigstore de GitHub) :
+  `publish.yml` chaque `*.nupkg`, `release.yml` chaque archive, `.deb` et MSI. Tous deux
+  génèrent un **SBOM CycloneDX** de `Orkeon.sln` juste après le build (outil dotnet
+  `CycloneDX`, version épinglée, aucune action tierce) — `orkeon-<version>.sbom.cdx.json` — et
+  le couvrent par la **même** attestation : un asset de release à côté des archives et une
+  ligne dans `SHA256SUMS` pour `release.yml`, un artefact de run nommé `sbom` pour
+  `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
+  d'abord perdre sa signature repository, est dans
+  [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
 - La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.3`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit.

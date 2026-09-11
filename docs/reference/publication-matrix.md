@@ -31,6 +31,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
+| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. Published since the lineup was widened on 2026-09-11 (`1.0.0-rc.3` was packed but never pushed: the push loop was a fixed list of six ids). |
 
 ### How the packaging projects are built
 
@@ -111,7 +112,7 @@ failed push, and `--skip-duplicate` makes a re-push a no-op either way.
 `publish.yml` (tag `v*`) packs `Orkeon.sln` and pushes **every packable project** to
 **GitHub Packages** (`nuget.pkg.github.com/Orkeon`) with `--skip-duplicate`. That is the
 NuGet.org lineup above **plus** the build-time and runner packages that stay off NuGet.org:
-`Orkeon.ConsoleApp`, `Orkeon.Generators` and `Orkeon.Compliance.Vfs`:
+`Orkeon.ConsoleApp` and `Orkeon.Generators`:
 
 | PackageId | Tool command | Source project |
 |---|---|---|
@@ -227,7 +228,6 @@ print the runtime install commands rather than failing at first launch.
 | PackageId | Note |
 |---|---|
 | `Orkeon.Generators` | Source generator — consumed at build time. GitHub Packages only. |
-| `Orkeon.Compliance.Vfs` | Roslyn analyzer — consumed at build time. GitHub Packages only. |
 | `Orkeon.Host` | `IsPackable=false` — ships only as the `orkeon-host` binary in the release archives. |
 | `Orkeon.Studio.{Core,Config,Run,Wpf}` | `IsPackable=false` — ship only through the release installers (see [Orkeon Studio](../architecture/studio.md)). |
 
@@ -252,4 +252,13 @@ print the runtime install commands rather than failing at first launch.
   Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
   a "release" that published nothing. The guard keeps `--skip-duplicate` honest.
+- **Provenance and SBOM.** Both workflows attest what they publish with
+  `actions/attest-build-provenance` (SLSA v1, signed by GitHub's Sigstore instance):
+  `publish.yml` every `*.nupkg`, `release.yml` every archive, `.deb` and MSI. Both generate a
+  **CycloneDX SBOM** of `Orkeon.sln` right after the build (`CycloneDX` dotnet tool, pinned
+  version, no third-party action) — `orkeon-<version>.sbom.cdx.json` — and cover it with the
+  **same** attestation: a release asset next to the archives and a line in `SHA256SUMS` in
+  `release.yml`, a run artefact named `sbom` in `publish.yml`. How to verify any of it, and
+  why a nuget.org download must shed its repository signature first, is in
+  [Verify what you install](../guides/verify-what-you-install.md).
 - Version flows from `src/Directory.Build.props` (currently `1.0.0-rc.3`), the single source of truth: no project overrides it, and the publish workflow's tag guard refuses any `v*` tag that disagrees with it.

@@ -155,8 +155,22 @@ jobs:
           fi
           ./scripts/package-deb.sh --stage "${stages[0]}" --out artifacts/installers
 
+      # Software bill of materials (CycloneDX 1.7 JSON) of the solution the
+      # installers were published from, as a release asset: pinned dotnet tool,
+      # no third-party action. Its checksum joins SHA256SUMS here (the packaging
+      # scripts only sum archives), and the release job attests it with the
+      # archives — one statement covers the binaries and the list of what is
+      # inside them. The version is read off the CLI archive name so the
+      # workflow_dispatch path (no tag) needs no second resolution.
+      - name: Generate the SBOM
+        run: |
+          ver="$(basename artifacts/installers/orkeon-cli-*-win-x64.zip)"; ver="${ver#orkeon-cli-}"; ver="${ver%-win-x64.zip}"
+          dotnet tool install --tool-path .tools CycloneDX --version 6.2.0
+          .tools/dotnet-CycloneDX Orkeon.sln -o artifacts/installers -fn "orkeon-$ver.sbom.cdx.json" -F Json -t -sn Orkeon -sv "$ver"
+          (cd artifacts/installers && sha256sum "orkeon-$ver.sbom.cdx.json" >> SHA256SUMS && sort -k2 -o SHA256SUMS SHA256SUMS)
+
       - name: List the artefacts
-        run: ls -lh artifacts/installers/*.tar.gz artifacts/installers/*.zip artifacts/installers/*.deb artifacts/installers/SHA256SUMS
+        run: ls -lh artifacts/installers/*.tar.gz artifacts/installers/*.zip artifacts/installers/*.deb artifacts/installers/*.sbom.cdx.json artifacts/installers/SHA256SUMS
 
       # One artefact per smoke plus a complement for the release: each smoke
       # pulls only what it needs (a few hundred MB), and every archive is
@@ -222,6 +236,7 @@ jobs:
           path: |
             artifacts/installers/*.tar.gz
             artifacts/installers/*.zip
+            artifacts/installers/*.sbom.cdx.json
             artifacts/installers/SHA256SUMS
             !artifacts/installers/orkeon-cli-*-win-x64.zip
             !artifacts/installers/orkeon-*-win-x64.zip
@@ -702,6 +717,7 @@ jobs:
             artifacts/installers/*.zip
             artifacts/installers/*.deb
             artifacts/installers/orkeon*.msi
+            artifacts/installers/*.sbom.cdx.json
 
       - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
@@ -717,6 +733,7 @@ jobs:
             artifacts/installers/*.zip
             artifacts/installers/*.deb
             artifacts/installers/orkeon*.msi
+            artifacts/installers/*.sbom.cdx.json
             artifacts/installers/SHA256SUMS
             artifacts/installers/SHA256SUMS.msi
           # A tag carrying a pre-release segment (v1.0.0-rc.3, v1.1.0-beta.1 —

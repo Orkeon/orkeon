@@ -105,19 +105,39 @@ jobs:
       # dependency outside the lineup — the rc.1/rc.2 NU1101 incident), and the umbrella
       # packages' hand-declared external dependencies must match their embedded projects.
       - name: Check package closure
-        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli
-      # Build provenance for the packages: generated once the nupkgs exist and the
-      # closure gate has cleared them, and before the first push sends them
-      # anywhere — so both feeds receive bytes an attestation already covers.
-      # Whoever downloads a package verifies it with:
-      #   gh attestation verify Orkeon.1.0.0-rc.3.nupkg --repo Orkeon/orkeon
+        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs
+      # Software bill of materials (CycloneDX 1.7 JSON) of the whole solution as
+      # packed: every NuGet dependency, transitive included, read from the
+      # project.assets.json files the pack just produced. The tool is a pinned
+      # dotnet tool, not a third-party action. Generated before the attestation so
+      # the same statement covers it, and kept as a run artefact — nuget.org has no
+      # slot for an SBOM; release.yml attaches the same document to the Release.
+      - name: Generate the SBOM
+        run: |
+          dotnet tool install --tool-path .tools CycloneDX --version 6.2.0
+          .tools/dotnet-CycloneDX Orkeon.sln -o artifacts -fn "orkeon-${GITHUB_REF_NAME#v}.sbom.cdx.json" -F Json -t -sn Orkeon -sv "${GITHUB_REF_NAME#v}"
+          python3 -c "import json,sys; d=json.load(open(sys.argv[1])); print(f\"{len(d.get('components', []))} components\")" "artifacts/orkeon-${GITHUB_REF_NAME#v}.sbom.cdx.json"
+      # Build provenance for the packages and the SBOM: generated once the nupkgs
+      # exist and the closure gate has cleared them, and before the first push sends
+      # them anywhere — so both feeds receive bytes an attestation already covers.
+      # Whoever downloads a package verifies it as docs/guides/verify-what-you-install.md
+      # describes (a nuget.org download must shed its repository signature first —
+      # scripts/nupkg-unsign.py — because nuget.org rewrites the archive):
+      #   gh attestation verify Orkeon.1.0.0-rc.3.unsigned.nupkg --repo Orkeon/orkeon
       # NuGet.org shows nothing of this; the attestation lives in this repository,
       # and it is what turns "the package claims to be Orkeon" into "GitHub Actions
       # built it from this commit of Orkeon/orkeon".
-      - name: Attest the packages (build provenance)
+      - name: Attest the packages and the SBOM (build provenance)
         uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4
         with:
-          subject-path: 'artifacts/*.nupkg'
+          subject-path: |
+            artifacts/*.nupkg
+            artifacts/*.sbom.cdx.json
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: sbom
+          path: artifacts/*.sbom.cdx.json
+          if-no-files-found: error
       - run: >
           dotnet nuget push "artifacts/*.nupkg"
           --source "https://nuget.pkg.github.com/Orkeon/index.json"
@@ -153,7 +173,7 @@ jobs:
           # while the file sat right there. The GitHub Packages push above never met this:
           # `artifacts/*.nupkg` is inside that dialect. So: unquoted glob, bash expands it,
           # and the CLI is handed a real path.
-          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli; do
+          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs; do
             # No nullglob: an unmatched pattern stays literal, so test the first element
             # rather than trust the count — a missing package must stop the release, not
             # be pushed as a filename.
