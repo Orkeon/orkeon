@@ -136,7 +136,22 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
   lieu de booter une instance éphémère sans historique (qui rendrait le verdict
   « nouveau code » dénué de sens).
 
-## 8. Historique
+## 8. D'où vient le chiffre public de couverture
+
+La passe SonarQube ci-dessus est locale : son rapport est écrit sous `sonarqube/`, que le
+dépôt ne versionne pas, si bien que rien de ce qu'elle mesure n'est vérifiable par un tiers.
+Le chiffre de couverture qui *peut* l'être vient du
+[workflow Coverage](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml)
+(`.github/workflows/coverage.yml`) : à chaque push sur `main` et chaque semaine, il exécute
+les suites unitaires et rapides — le même filtre `Category!=Integration&Category!=Slow` que
+`ci.yml` — sous `dotnet-coverage` (épinglé), refuse une mesure vide, écrit le résumé
+ReportGenerator sur la page du run et conserve `coverage.cobertura.xml` plus un rapport HTML
+comme artefact `coverage` (90 jours). C'est la *couverture de lignes par les suites
+unitaires et rapides* ; les catégories Integration et Slow tournent dans `integration.yml`
+sans couverture. Le README renvoie au workflow et ne cite aucun nombre : un run est une
+mesure, un nombre tapé est une affirmation.
+
+## 9. Historique
 
 | Date | Événement |
 |---|---|

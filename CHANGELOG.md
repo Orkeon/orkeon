@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — coverage is measured in public, and the README quotes no number for it
+
+The README stated 82.7 % line coverage from a SonarQube pass on one machine whose report
+the repository does not track. A new `coverage.yml` workflow runs the unit and fast suites
+under a pinned `dotnet-coverage` on every push to `main` and weekly, refuses an empty
+measurement, writes the summary on the run page and keeps the Cobertura file plus an HTML
+report as an artefact. The README's status section links to the workflow and quotes
+neither the coverage nor the SonarQube figures any more; `quality-gate.md` explains where
+the checkable number comes from and what it covers.
+
 ### Changed — the numbers on the front page are counted by one rule, printed with it, and exact
 
 Three sources gave three tool counts: `75+` in the README, `79` in `CLAUDE.md`, `73` from

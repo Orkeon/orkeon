@@ -1,0 +1,84 @@
+# Line coverage, measured where anyone can see it. The README used to quote a figure from
+# a SonarQube pass on the maintainer's machine whose report the repository does not
+# track -- a number nobody else could reproduce. This workflow runs the unit and fast
+# suites under dotnet-coverage on every push to main (and weekly, so the artefact never
+# expires unnoticed), writes the summary into the run page, and keeps the Cobertura file
+# and an HTML report as artefacts. The README points here instead of quoting a number.
+#
+# dotnet-coverage, not --collect: the test projects run on Microsoft.Testing.Platform
+# (global.json), which does not implement VSTest data collectors -- the collector flag
+# is rejected, not ignored. dotnet-coverage profiles the test processes from outside.
+# Same invocation as scripts/sonar-analyze.sh, minus SonarQube.
+name: Coverage
+on:
+  push:
+    branches: [ main ]
+  schedule:
+    - cron: '17 4 * * 1'  # Mondays 04:17 UTC
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: coverage-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  coverage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - name: Free runner disk
+        run: |
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          df -h / | tail -1
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      - run: dotnet restore Orkeon.sln
+      - run: dotnet build Orkeon.sln -c Release --no-restore
+      - name: Install the coverage tools (pinned)
+        run: |
+          dotnet tool install --tool-path .tools dotnet-coverage --version 18.11.0
+          dotnet tool install --tool-path .tools dotnet-reportgenerator-globaltool --version 5.5.11
+      # The same filter as ci.yml's test step: the Integration and Slow categories need
+      # Testcontainers and the ONNX runtime and run in integration.yml. The figure this
+      # produces is therefore "coverage by the unit and fast suites" -- the README says so.
+      - name: Run the unit and fast suites under dotnet-coverage
+        run: |
+          .tools/dotnet-coverage collect \
+            --output coverage/coverage.cobertura.xml \
+            --output-format cobertura \
+            -- dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"
+      # A report with no data is a failure, not a 0 % measurement (the shape
+      # scripts/sonar-analyze.sh guards against: an empty <packages> element).
+      - name: Refuse an empty measurement
+        run: |
+          python3 - <<'PY'
+          import re, sys
+          text = open("coverage/coverage.cobertura.xml", encoding="utf-8").read()
+          m = re.search(r'<coverage[^>]*\blines-covered="(\d+)"[^>]*\blines-valid="(\d+)"', text) or \
+              re.search(r'<coverage[^>]*\blines-valid="(\d+)"[^>]*\blines-covered="(\d+)"', text)
+          if not m or int(m.group(2)) == 0:
+              print("::error::the Cobertura report measures nothing -- coverage collection did not attach")
+              sys.exit(1)
+          PY
+      - name: Summarise (run page) and render (HTML)
+        run: |
+          .tools/reportgenerator -reports:coverage/coverage.cobertura.xml -targetdir:coverage/report \
+            -reporttypes:"MarkdownSummaryGithub;HtmlInline_AzurePipelines" \
+            -assemblyfilters:"-*.Tests;-Orkeon.Tests.Shared;-Orkeon.Examples*" \
+            -title:"Orkeon line coverage (unit + fast suites)"
+          cat coverage/report/SummaryGithub.md >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: coverage
+          path: |
+            coverage/coverage.cobertura.xml
+            coverage/report/
+          if-no-files-found: error
+          retention-days: 90

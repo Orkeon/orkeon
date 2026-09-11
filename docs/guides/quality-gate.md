@@ -134,7 +134,22 @@ overwritten on the next script run.
   booting an ephemeral instance without history (which would render the
   "new code" verdict meaningless).
 
-## 8. History
+## 8. Where the public coverage number comes from
+
+The SonarQube pass above is local: its report is written under `sonarqube/`, which the
+repository does not track, so nothing it measures can be checked by a third party. The
+coverage figure that *can* be checked comes from the
+[Coverage workflow](https://github.com/Orkeon/orkeon/actions/workflows/coverage.yml)
+(`.github/workflows/coverage.yml`): on every push to `main` and weekly, it runs the unit and
+fast suites — the same `Category!=Integration&Category!=Slow` filter as `ci.yml` — under
+`dotnet-coverage` (pinned), refuses an empty measurement, writes the ReportGenerator
+summary to the run page and keeps `coverage.cobertura.xml` plus an HTML report as the
+`coverage` artefact (90 days). It is *line coverage by the unit and fast suites*; the
+Integration and Slow categories run in `integration.yml` without coverage. The README
+links to the workflow and quotes no number: a run is a measurement, a typed number is a
+claim.
+
+## 9. History
 
 | Date | Event |
 |---|---|
