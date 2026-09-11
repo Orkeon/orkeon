@@ -88,6 +88,8 @@
       href: guides/quality-gate.md
     - name: Modèles locaux
       href: guides/local-models.md
+    - name: Vérifier ce que vous installez
+      href: guides/verify-what-you-install.md
 - name: Référence
   items:
     - name: Référence du DSL de scripting

@@ -74,6 +74,7 @@ The documentation is organized into 6 thematic sections.
 | [LLM response format](./guides/llm-response-format.md) | Forced JSON output at the provider boundary (`response_format: json_object`), 5-level override cascade (crew → agent → task → script → call), first wired provider: DeepSeek |
 | [SonarQube Quality Gate](./guides/quality-gate.md) | Local SonarQube analysis with the "Orkeon Transitional" gate: transitional thresholds, hardening trajectory, automatic provisioning by the scripts |
 | [Local models](./guides/local-models.md) | Run everything on your own machine: Docker Model Runner (pull/configure/inspect, 128K contexts), Ollama, embedded `local-llm` image variant, model switching, troubleshooting |
+| [Verify what you install](./guides/verify-what-you-install.md) | What the provenance chain proves and does not (OIDC Trusted Publishing, SLSA attestations, `SHA256SUMS`, SBOM), the exact `gh attestation verify` / `dotnet nuget verify` commands, and why a nuget.org package must be un-signed before its digest matches |
 
 ### Reference
 
