@@ -59,7 +59,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
-| [Inventaire des outils](./tools/inventory.md) | 75+ outils par catégorie, résolution YAML, enregistrement DI, gaps identifiés |
+| [Inventaire des outils](./tools/inventory.md) | 79 outils par catégorie, résolution YAML, enregistrement DI, gaps identifiés |
 | [Créer un nouvel outil](./tools/new-tool-pattern.md) | Pipeline typé, attributs FieldSchema/ReturnSchema, pattern composition, enregistrement |
 
 ### Guides

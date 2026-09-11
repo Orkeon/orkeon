@@ -5,6 +5,11 @@ Ground truth is computed from the repository itself; the claims checked are the
 ones that have historically rotted (provider/tool/example/project counts and the
 version string). A mismatch fails the build with an actionable message.
 
+`--surface` prints the ground truth itself -- every number the front page shows, next
+to the rule that produced it -- and exits; `--surface --json` prints it as JSON. That is
+what `scripts/count-surface.sh` wraps: the numbers on the README are these, recomputed,
+never typed.
+
 It also carries two release-safety gates that need no build, so CI can run them on
 every pull request through this one step (LOT K): the NuGet lineup must read the same
 in its six hand-maintained copies, and scripts/check-package-closure.py's source-mode
@@ -24,6 +29,25 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS: list[str] = []
+
+# Directory names never walked, anywhere: build output, dependency trees, the vendored
+# packages cache. Pruned at the directory level -- rglob descends into obj-linux/ first
+# and, on the WSL mount this repository often lives on, pays minutes for the privilege.
+PRUNED_DIRS = {"bin", "obj", "obj-linux", "node_modules", "packages", ".git", "artifacts",
+               "_site", "TestResults"}
+
+
+def walk(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
+    """Every file under `root` whose name ends with one of `suffixes`, skipping PRUNED_DIRS."""
+    out: list[Path] = []
+    if not root.is_dir():
+        return out
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames[:] = [d for d in dirnames if d not in PRUNED_DIRS]
+        for filename in filenames:
+            if filename.endswith(suffixes):
+                out.append(Path(dirpath) / filename)
+    return sorted(out)
 
 
 def fail(msg: str) -> None:
@@ -54,14 +78,14 @@ def gt_llm_providers() -> int:
 
 
 def tool_files() -> list[Path]:
-    # Skipped: interfaces, doubles, adapters and decorators that match the glob without
-    # being built-in tools (ObservedTool is BUS-03's instrumentation decorator).
+    """One `*Tool.cs` file under src/ = one built-in tool class. This is THE counting rule
+    for the tool number on the front page (the grep-by-base-class alternative undercounts:
+    the relational database tools, the file-search tools and the code interpreter derive
+    from intermediate bases and it misses all seven of them).
+    Skipped: interfaces, doubles, adapters and decorators that match the glob without
+    being built-in tools (ObservedTool is BUS-03's instrumentation decorator)."""
     skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs"}
-    return [
-        f for f in (ROOT / "src").rglob("*Tool.cs")
-        if not any(part in ("obj", "bin", "obj-linux") for part in f.parts)
-        and f.name not in skip
-    ]
+    return [f for f in walk(ROOT / "src", ("Tool.cs",)) if f.name not in skip]
 
 
 def gt_tool_classes() -> int:
@@ -86,23 +110,100 @@ def gt_tool_names() -> set[str]:
 
 
 def gt_examples() -> int:
-    index = read("examples/INDEX.md")
-    m = re.search(r"\*\*(\d+)\*\* numbered crew examples", index) or \
-        re.search(r"the (\d+) numbered crew examples", index)
-    if m:
-        return int(m.group(1))
-    # fallback: count table rows that link into a category directory
-    return len(re.findall(r"^\| \[?`?\d+", index, flags=re.M))
+    """A numbered example is a directory `examples/NN-<category>/NNN-<name>/` (two or
+    three digits) holding a
+    `config.yaml` or a `main.ork.ts`. Counted on disk -- examples/INDEX.md used to be the
+    source, which made the README's "105" a claim about a document, not about the tree."""
+    count = 0
+    for category in sorted((ROOT / "examples").iterdir()):
+        if not category.is_dir() or not re.match(r"^\d{2}-", category.name):
+            continue
+        for example in sorted(category.iterdir()):
+            if example.is_dir() and re.match(r"^\d{2,3}-", example.name) and (
+                    (example / "config.yaml").is_file() or (example / "main.ork.ts").is_file()):
+                count += 1
+    return count
 
 
 def gt_src_projects() -> int:
-    return len([f for f in (ROOT / "src").rglob("*.csproj")
-                if "obj" not in f.parts and "bin" not in f.parts])
+    return len(walk(ROOT / "src", (".csproj",)))
 
 
 def gt_test_projects() -> int:
-    return len([f for f in (ROOT / "tests").rglob("*.csproj")
-                if "obj" not in f.parts and "bin" not in f.parts])
+    return len(walk(ROOT / "tests", (".csproj",)))
+
+
+def gt_memory_stores() -> int:
+    """Concrete memory stores: classes deriving MemoryProviderBase under Infrastructure/Memory.
+    Decorators (encryption) wrap a store and are not one."""
+    count = 0
+    for f in walk(ROOT / "src/core/Orkeon.Infrastructure/Memory", (".cs",)):
+        if re.search(r"class \w+\s*:\s*MemoryProviderBase\b", f.read_text(encoding="utf-8")):
+            count += 1
+    return count
+
+
+def gt_vfs_rules() -> int:
+    """Distinct ORKVFS diagnostic ids declared by the analyzer."""
+    ids: set[str] = set()
+    for f in walk(ROOT / "src/analyzers", (".cs",)):
+        ids.update(re.findall(r'id:\s*"(ORKVFS\d+)"', f.read_text(encoding="utf-8")))
+    return len(ids)
+
+
+def gt_test_methods() -> tuple[int, int]:
+    """`[Fact]` and `[Theory]` attributes at the start of a line, over tests/**/*.cs."""
+    facts = theories = 0
+    for f in walk(ROOT / "tests", (".cs",)):
+        text = f.read_text(encoding="utf-8")
+        facts += len(re.findall(r"^\s*\[Fact\b", text, flags=re.M))
+        theories += len(re.findall(r"^\s*\[Theory\b", text, flags=re.M))
+    return facts, theories
+
+
+def git_tags() -> list[str]:
+    """`v*` tags, newest first; empty when the clone carries none (a shallow checkout)."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "tag", "--list", "v*", "--sort=-v:refname"],
+                             cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return []
+    return [line.strip() for line in out.splitlines() if line.strip()]
+
+
+def surface() -> list[tuple[str, object, str]]:
+    """Every number the front page shows, with the rule that produced it."""
+    facts, theories = gt_test_methods()
+    tags = git_tags()
+    return [
+        ("version", gt_version(), "VersionPrefix[-VersionSuffix] in src/Directory.Build.props"),
+        ("latest_tag", tags[0] if tags else None, "newest v* tag of the clone (None: no tags fetched)"),
+        ("llm_providers", gt_llm_providers(),
+         "*.cs in src/core/Orkeon.Infrastructure/LLMs deriving OpenAICompatibleProviderBase or HttpLlmProviderBase"),
+        ("tool_classes", gt_tool_classes(),
+         "*Tool.cs under src/ minus IBaseTool/MockTool/JsTool/ObservedTool (bin/obj pruned)"),
+        ("memory_stores", gt_memory_stores(),
+         "classes deriving MemoryProviderBase under src/core/Orkeon.Infrastructure/Memory"),
+        ("examples", gt_examples(),
+         "examples/NN-*/N{2,3}-*/ directories holding config.yaml or main.ork.ts"),
+        ("vfs_rules", gt_vfs_rules(), 'distinct id: "ORKVFS…" under src/analyzers'),
+        ("src_projects", gt_src_projects(), "*.csproj under src/"),
+        ("test_projects", gt_test_projects(), "*.csproj under tests/"),
+        ("test_facts", facts, "lines starting with [Fact under tests/**/*.cs"),
+        ("test_theories", theories, "lines starting with [Theory under tests/**/*.cs"),
+    ]
+
+
+def print_surface(as_json: bool) -> None:
+    rows = surface()
+    if as_json:
+        import json
+        print(json.dumps({k: {"value": v, "rule": r} for k, v, r in rows}, indent=2))
+        return
+    width = max(len(k) for k, _, _ in rows)
+    for key, value, rule in rows:
+        print(f"{key:<{width}}  {str(value):>12}  {rule}")
 
 
 # --- claim checks -----------------------------------------------------------------------
@@ -128,13 +229,7 @@ def check_tag_matches_version(version: str) -> None:
     may claim otherwise; when the newest `v*` tag is *ahead* of the props version, the
     version bump was forgotten after a release. A clone without tags (shallow checkout)
     proves nothing either way and is skipped silently."""
-    import subprocess
-    try:
-        out = subprocess.run(["git", "tag", "--list", "v*", "--sort=-v:refname"],
-                             cwd=ROOT, capture_output=True, text=True, check=True).stdout
-    except (OSError, subprocess.CalledProcessError):
-        return
-    tags = [line.strip() for line in out.splitlines() if line.strip()]
+    tags = git_tags()
     if not tags:
         return
     newest = tags[0]
@@ -281,12 +376,8 @@ PRIVATE_LEAK_PATTERNS: list[tuple[str, str]] = [
 PRIVATE_LEAK_EXCLUDED = {"examples/others/README.md"}
 
 
-# Directory names never walked: build output, dependency trees, and the vendored
-# packages cache. Pruning them at the directory level rather than filtering paths
-# afterwards is what keeps this gate under a second -- `rglob` descends into
-# `obj-linux/` first and pays 16 s per extension for the privilege.
-PRIVATE_LEAK_PRUNED_DIRS = {"bin", "obj", "obj-linux", "node_modules", "packages",
-                           ".git", "artifacts", "_site", "TestResults"}
+# The same prune list as every other walk in this file (PRUNED_DIRS, top).
+PRIVATE_LEAK_PRUNED_DIRS = PRUNED_DIRS
 
 # What each root contributes to the scan, by suffix.
 PRIVATE_LEAK_ROOTS: list[tuple[str, tuple[str, ...]]] = [
@@ -427,16 +518,22 @@ def check_private_submodule_leaks() -> None:
                      f"repository -- a reader cannot open it")
 
 
-def main() -> int:
+def main(argv: list[str]) -> int:
+    if "--surface" in argv:
+        print_surface(as_json="--json" in argv)
+        return 0
+
     version = gt_version()
     providers = gt_llm_providers()
     tools = gt_tool_classes()
     examples = gt_examples()
     src_projects = gt_src_projects()
     test_projects = gt_test_projects()
+    stores = gt_memory_stores()
 
     print(f"ground truth: version={version} providers={providers} tool-classes={tools} "
-          f"examples={examples} src-projects={src_projects} test-projects={test_projects}")
+          f"memory-stores={stores} examples={examples} src-projects={src_projects} "
+          f"test-projects={test_projects}")
 
     # Version — the single source of truth must be echoed correctly.
     expect_contains("CLAUDE.md", f"`{version}`", "version from src/Directory.Build.props")
@@ -468,19 +565,27 @@ def main() -> int:
         if f"**{tools}**" not in text:
             fail(f"{path}: the per-package summary total must state {tools}")
 
-    # Tool-class count: CLAUDE.md states it exactly; READMEs use a "N+" floor.
+    # Tool-class count, exact everywhere. The READMEs used to carry a "N+" floor, which
+    # is a number nobody can check: "75+" read as approximate while CLAUDE.md said 79 and
+    # a narrower grep said 73. One rule (tool_files), one number, every page.
     expect_contains("CLAUDE.md", f"{tools} built-in tool classes", "count of *Tool.cs under src/")
-    for path in ("README.md", "README.fr.md", "docs/INDEX.md", "docs/fr/INDEX.md"):
-        m = re.search(r"\b(\d+)\+ (?:built-in tools|tools by category|outils)", read(path))
-        if not m:
-            fail(f"{path}: no 'N+' tool-count claim found")
-        elif not (0 < tools - int(m.group(1)) <= 15):
-            fail(f"{path}: tool floor {m.group(1)}+ is out of range for the real count {tools} "
-                 f"(keep the floor within 15 of reality)")
+    for path, needle in (("README.md", f"{tools} built-in tools"),
+                         ("README.fr.md", f"{tools} outils intégrés"),
+                         ("docs/INDEX.md", f"{tools} tools by category"),
+                         ("docs/fr/INDEX.md", f"{tools} outils par catégorie")):
+        expect_contains(path, needle, "exact tool count -- no 'N+' floor")
+        expect_absent(path, r"\b\d+\+ (?:built-in tools|tools by category|tools,|outils)",
+                      "a 'N+' floor is not a verifiable number")
 
-    # Examples count.
+    # Memory stores.
+    expect_contains("README.md", f"{stores} memory providers", "classes deriving MemoryProviderBase")
+    expect_contains("README.fr.md", f"{stores} fournisseurs de mémoire", "classes deriving MemoryProviderBase")
+
+    # Examples count -- on disk, and examples/INDEX.md must agree with the disk.
     for path in ("README.md", "README.fr.md"):
-        expect_contains(path, f"{examples} ", f"example count from examples/INDEX.md")
+        expect_contains(path, f"{examples} ", "numbered example directories under examples/")
+    expect_contains("examples/INDEX.md", f"**{examples}** numbered crew examples",
+                    "numbered example directories under examples/")
 
     # Project counts.
     expect_contains("CLAUDE.md", f"**{src_projects} src projects**", "csproj count under src/")
@@ -518,4 +623,4 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

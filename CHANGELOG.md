@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the numbers on the front page are counted by one rule, printed with it, and exact
+
+Three sources gave three tool counts: `75+` in the README, `79` in `CLAUDE.md`, `73` from
+a grep by base class. All three were "true" under their own rule; none published it. The
+rule is now one — a `*Tool.cs` file under `src/` is a built-in tool (the grep undercounted:
+the four relational-database tools, the two file-search tools and the code interpreter
+derive from intermediate bases) — and the number is **79** on every page, exact: the
+`N+` floor `check-doc-claims.py` used to accept is rejected as a number nobody can check.
+The example count is measured on disk (`examples/NN-*/NNN-*/` holding a `config.yaml` or
+a `main.ork.ts`, 105) and `examples/INDEX.md` is checked against it, rather than the other
+way round. The memory-store count (6, classes deriving `MemoryProviderBase`) joins the
+gate. `scripts/count-surface.sh` — `check-doc-claims.py --surface` — prints every
+front-page number next to the rule that produced it, JSON on request. The walks are
+pruned at the directory level: the gate took four minutes on this tree, it takes seventy
+seconds.
+
 ### Added — the provenance chain is documented, verified on rc.3, and closed with an SBOM
 
 The CI already did what almost no .NET open-source project does — Trusted Publishing by

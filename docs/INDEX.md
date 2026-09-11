@@ -59,7 +59,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [Tool inventory](./tools/inventory.md) | 75+ tools by category, YAML resolution, DI registration, identified gaps |
+| [Tool inventory](./tools/inventory.md) | 79 tools by category, YAML resolution, DI registration, identified gaps |
 | [Creating a new tool](./tools/new-tool-pattern.md) | Typed pipeline, FieldSchema/ReturnSchema attributes, composition pattern, registration |
 
 ### Guides

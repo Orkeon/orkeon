@@ -46,8 +46,10 @@ jobs:
       # (and root community files their *.fr.md). Cheap, so it runs before the build.
       - name: Check docs FR/EN parity
         run: bash scripts/check-docs-parity.sh
-      # Numeric-claims gate (DOC-02/F1): provider/tool/example/project counts and
-      # the version string in README/INDEX/CLAUDE.md are checked against the code.
+      # Numeric-claims gate (DOC-02/F1): provider/tool/memory-store/example/project
+      # counts, the version string and the tag-state prose in README/INDEX/CLAUDE.md
+      # are checked against the code -- exact numbers, no "N+" floors.
+      # `scripts/count-surface.sh` prints the same ground truth with its rules.
       - name: Check documentation claims against the code
         run: python3 scripts/check-doc-claims.py
       # Comment-language invariant: comments are English and never accented. Cheap and
