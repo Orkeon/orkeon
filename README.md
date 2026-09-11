@@ -260,7 +260,7 @@ live with the first tagged release and always documents a tagged version.
 
 ## Project Status
 
-`main` is preparing **1.0.0-rc.3** on .NET 10 — the V1 release candidate; the latest tag is `v1.0.0-rc.2` (2026-08-25), which predates the Grok and MiniMax providers. Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 14, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax).
+The current version is **1.0.0-rc.3** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 14, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax).
 
 Every pull request is gated in CI:
 
@@ -270,7 +270,7 @@ Every pull request is gated in CI:
 
 Quality analysis runs on a local SonarQube via `scripts/sonar-analyze.sh` — see the [quality-gate policy](docs/guides/quality-gate.md). Latest pass (**5 September 2026**; the full report is a local artifact — `scripts/sonar-analyze.sh` writes it under `sonarqube/`, which the repository does not track): quality gate **OK**, **82.7 %** line coverage over 162 k lines (Application 90.7 %, Domain 88.3 %, Infrastructure 84.3 %), **0 bugs, 0 vulnerabilities, 0 security hotspots**, technical debt **0 min**, 1.6 % duplication. The same run reports **406 code smells — all of them INFO severity**: 404 are one xUnit analyzer suggestion repeated across the test projects (`xUnit2033`, “use the value returned by `Assert.Single`”), and the two remaining ones were analyzer suggestions in product code (`SYSLIB1054` in `Orkeon.Studio.Core`, and a `SYSLIB1006` in `Orkeon.Hosting` that has since been fixed). None is a MINOR-or-worse issue.
 
-Known constraints are tracked in [docs/reference/limitations.md](docs/reference/limitations.md).
+Known constraints are tracked in [docs/reference/limitations.md](docs/reference/limitations.md). What happens if the project stops — MIT, a reproducible build, no private infrastructure, forkable by anyone — is written down in [SUPPORT.md](SUPPORT.md#if-the-project-stops).
 
 ---
 

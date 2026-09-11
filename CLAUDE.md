@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 Orkeon is a C# framework for creating and managing AI agent teams that collaborate on complex tasks using LLMs.
 
-**Current Status**: V1 release candidate (`1.0.0-rc.3`, not yet tagged; the latest tag is `v1.0.0-rc.2`). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
+**Current Status**: V1 release candidate (`1.0.0-rc.3`; `git tag` is the authority on what is tagged — never assert tag state in prose, `scripts/check-doc-claims.py` rejects it). Domain and Application layers are ~90% complete. Infrastructure layer has been redesigned (Akka.NET removed; replaced with simple HTTP-based implementations on .NET 10).
 
 ## Common Development Commands
 

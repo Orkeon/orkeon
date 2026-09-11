@@ -121,6 +121,28 @@ def expect_absent(path: str, pattern: str, why: str) -> None:
         fail(f"{hit}: stale pattern /{pattern}/ ({why})")
 
 
+# --- the tagged version, when the clone carries tags ------------------------------------
+
+def check_tag_matches_version(version: str) -> None:
+    """When a tag `v<version>` exists, the props version is the released one and nothing
+    may claim otherwise; when the newest `v*` tag is *ahead* of the props version, the
+    version bump was forgotten after a release. A clone without tags (shallow checkout)
+    proves nothing either way and is skipped silently."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "tag", "--list", "v*", "--sort=-v:refname"],
+                             cwd=ROOT, capture_output=True, text=True, check=True).stdout
+    except (OSError, subprocess.CalledProcessError):
+        return
+    tags = [line.strip() for line in out.splitlines() if line.strip()]
+    if not tags:
+        return
+    newest = tags[0]
+    if newest != f"v{version}" and f"v{version}" in tags:
+        fail(f"src/Directory.Build.props: version {version} is tagged but {newest} is newer "
+             f"-- bump the version after a release")
+
+
 # --- NuGet lineup: six hand-written copies, one truth ------------------------------------
 
 def load_closure_module():
@@ -467,6 +489,14 @@ def main() -> int:
     # Known-stale patterns that must never come back (outside legitimate history).
     for path in ("README.md", "README.fr.md", "docs/INDEX.md", "docs/fr/INDEX.md"):
         expect_absent(path, r"\b12(th|e|ᵉ)? (LLM )?(provider|fournisseur)", "Gemini is the 13th provider")
+
+    # Tag state is never asserted in prose: the README said "the latest tag is v1.0.0-rc.2"
+    # for two days after v1.0.0-rc.3 was tagged and its packages were on NuGet.org. The
+    # Release badge and `git tag` are live; a sentence is not.
+    for path in ("README.md", "README.fr.md", "CLAUDE.md"):
+        expect_absent(path, r"not yet tagged|latest tag is|dernier tag est|pas encore tagu",
+                      "tag state must not be asserted in prose -- git tag is the authority")
+    check_tag_matches_version(version)
 
     # Release-safety gates that need no build, so they run on every PR here rather than
     # only on the tag (LOT K): the six copies of the NuGet lineup, and the csproj-only

@@ -41,6 +41,7 @@ jobs:
           sudo docker image prune --all --force >/dev/null 2>&1 || true
           echo "After:"; df -h / | tail -1
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with: { fetch-depth: 0 } # tags: check-doc-claims.py compares the props version to `git tag`
       # Bilingual docs gate (DOC-01/C3): every docs/**.md needs its docs/fr/ mirror
       # (and root community files their *.fr.md). Cheap, so it runs before the build.
       - name: Check docs FR/EN parity
