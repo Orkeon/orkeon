@@ -59,10 +59,18 @@ public sealed class EngineThreadingContractTests
             var fs = new DiskBackedFileSystemService(dir, "/scripts");
             var host = new ScriptHost(fs, new JsEngineFactory(llmProvider: new SlowProvider()));
 
-            var run = host.RunAsync("/scripts/probe.ork.ts", CancellationToken.None);
-            var winner = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(20)));
-            Assert.True(ReferenceEquals(winner, run), "HANG: the script did not settle within 20 s");
-            var map = (await run) as IDictionary<string, object?>;
+            object? raw;
+            try
+            {
+                raw = await host.RunAsync("/scripts/probe.ork.ts", CancellationToken.None)
+                    .WaitAsync(TimeSpan.FromSeconds(20));
+            }
+            catch (TimeoutException)
+            {
+                Assert.Fail("HANG: the script did not settle within 20 s");
+                throw;
+            }
+            var map = raw as IDictionary<string, object?>;
             Assert.NotNull(map);
             return map;
         }
