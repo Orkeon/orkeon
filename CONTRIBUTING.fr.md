@@ -216,17 +216,31 @@ public async Task Agent_Should_Execute_Task_Successfully()
 
 ## Domaines de contribution
 
+### Le périmètre est gelé
+
+Orkeon embarque déjà 14 fournisseurs LLM, 79 outils intégrés, 6 stores de
+mémoire, deux pipelines RAG, RaggableTree, un DSL de scripting, des plugins,
+MCP, A2A et un Studio — maintenus par une seule personne. Tant que de vrais
+utilisateurs n'en demandent pas davantage, **la surface fonctionnelle ne
+grandit pas** :
+
+- pas de 15ᵉ fournisseur LLM — la base compatible OpenAI couvre tout endpoint
+  qui parle ce dialecte ; pointez `Orkeon:Llm:BaseUrl` dessus ;
+- pas de nouvel outil intégré — écrivez le vôtre dans un script `.ork.ts` ou
+  un plugin, tous deux de premier rang et sans modification ici ;
+- pas de nouveau store de mémoire, adaptateur de langage ou mode d'orchestration.
+
+Une pull request qui ajoute l'un d'eux sera fermée avec un lien vers cette
+section, quelle que soit sa qualité. Ce qui *est* bienvenu, c'est tout ce qui
+abaisse le coût d'essayer Orkeon ou de lui faire confiance : bugs, tests,
+documentation, interopérabilité avec ce que les gens utilisent déjà (Microsoft
+Agent Framework, OpenTelemetry, .NET Aspire), et performance.
+
 ### Priorité haute
-- [ ] Fournisseurs LLM supplémentaires (Cohere, Vertex AI / Bedrock via leurs SDKs)
-- [ ] Adaptateurs de langage supplémentaires pour RaggableTree (`ILanguageAdapter` : Java, Ruby, PHP…)
+- [ ] Bugs trouvés en exécutant les exemples sur un modèle local
 - [ ] Tests d'interop MCP contre les serveurs de référence (MCP Inspector)
 - [ ] Optimisations de performance
 - [ ] Améliorations de la documentation (voir le contrat de parité EN/FR ci-dessus)
-
-### Priorité moyenne
-- [ ] Outils supplémentaires (calendrier, ticketing, messagerie au-delà de Slack/Email)
-- [ ] Fournisseurs de mémoire supplémentaires (Qdrant, Weaviate, Milvus)
-- [ ] Interface web de gestion des crews
 
 ### Bonnes premières issues
 - [ ] Ajouter davantage d'exemples (suivre [le gabarit de README d'exemple](docs/fr/templates/example-readme.md))

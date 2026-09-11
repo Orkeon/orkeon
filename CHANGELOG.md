@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the front page stops asserting what `git tag` already says, and says who answers
+
+The README and `CLAUDE.md` claimed "the latest tag is `v1.0.0-rc.2`" two days after
+`v1.0.0-rc.3` was tagged and its six packages were on NuGet.org. Tag state is no longer
+asserted in prose anywhere: `scripts/check-doc-claims.py` rejects the sentence shapes that
+rotted (`not yet tagged`, `latest tag is`, and their French forms) and, when the clone
+carries tags, fails the build if a `v*` tag newer than the props version exists — the
+version bump that follows a release can no longer be forgotten silently. `ci.yml` checks
+out with tags for that purpose.
+
+`.github/CODEOWNERS` routed every review to `@Orkeon/maintainers`, a team that does not
+exist — which GitHub treats as no owner at all. It now names the maintainer account.
+
+`SUPPORT.md` gains an *If the project stops* section: MIT, a build reproducible from a
+public clone, every action and base image pinned, no private infrastructure on the path —
+so a fork that keeps the tests green is a full replacement. The README links to it.
+
+`CONTRIBUTING.md` opens its *Areas for Contribution* with a scope freeze: no 15th LLM
+provider, no new built-in tool, memory store, language adapter or orchestration mode
+until real users ask — one maintainer carries the whole surface. The former wish list
+(Cohere, Vertex AI, Qdrant, a web UI, calendar tools…) is gone; interoperability,
+observability, tests, docs and bugs are what remains open. `limitations.md` records the
+rule and the issue chooser links to it before a proposal is typed.
+
 ## [1.0.0-rc.3] - 2026-09-07
 
 The release candidate that opens the repository. Since `1.0.0-rc.2`: the NuGet

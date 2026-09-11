@@ -211,17 +211,30 @@ public async Task Agent_Should_Execute_Task_Successfully()
 
 ## Areas for Contribution
 
+### The scope is frozen
+
+Orkeon already ships 14 LLM providers, 79 built-in tools, 6 memory stores, two
+RAG pipelines, RaggableTree, a scripting DSL, plugins, MCP, A2A and a Studio —
+maintained by one person. Until real users ask for more, **the functional
+surface does not grow**:
+
+- no 15th LLM provider — the OpenAI-compatible base covers any endpoint that
+  speaks that dialect; point `Orkeon:Llm:BaseUrl` at it;
+- no new built-in tool — write yours in a `.ork.ts` script or a plugin, both
+  are first-class and need no change here;
+- no new memory store, language adapter, or orchestration mode.
+
+A pull request adding one of these will be closed with a link to this section,
+whatever its quality. What *is* welcome is everything that lowers the cost of
+trying Orkeon or of trusting it: bugs, tests, documentation, interoperability
+with what people already use (Microsoft Agent Framework, OpenTelemetry, .NET
+Aspire), and performance.
+
 ### High Priority
-- [ ] Additional LLM providers (Cohere, Vertex AI / Bedrock via their SDKs)
-- [ ] Additional language adapters for RaggableTree (`ILanguageAdapter`: Java, Ruby, PHP…)
+- [ ] Bugs found by running the examples against a local model
 - [ ] MCP interop testing against reference servers (MCP Inspector)
 - [ ] Performance optimizations
 - [ ] Documentation improvements (see the EN/FR parity contract above)
-
-### Medium Priority
-- [ ] Additional tools (calendar, ticketing, messaging beyond Slack/Email)
-- [ ] Additional memory providers (Qdrant, Weaviate, Milvus)
-- [ ] Web UI for crew management
 
 ### Good First Issues
 - [ ] Add more examples (follow [the example README template](docs/templates/example-readme.md))

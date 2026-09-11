@@ -3,6 +3,9 @@ contact_links:
   - name: Question / discussion
     url: https://github.com/Orkeon/orkeon/discussions
     about: Ask questions, share what you built, discuss ideas before they become issues.
+  - name: Proposing a new LLM provider, tool or memory store?
+    url: https://github.com/Orkeon/orkeon/blob/main/CONTRIBUTING.md#the-scope-is-frozen
+    about: The functional scope is frozen until real users ask for more — read why, and what is welcome instead, before opening an issue.
   - name: Security vulnerability
     url: https://github.com/Orkeon/orkeon/blob/main/SECURITY.md
     about: Please do NOT open a public issue for security reports — follow the security policy.
