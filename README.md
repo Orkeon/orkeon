@@ -2,7 +2,7 @@
 
 # <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="96" align="absmiddle"> Orkeon
 
-**Build and orchestrate AI agent teams — describe them in declarative YAML, programmatic TypeScript (`.ork.ts`), or pure C#; a single full-.NET stack executes them all**
+**AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
 
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon?include_prereleases)](https://github.com/Orkeon/orkeon/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
@@ -11,9 +11,44 @@
 
 ---
 
-## What is Orkeon?
+## The problem
 
-Orkeon is a C# framework for creating and managing collaborative AI agent teams that tackle complex, multi-step tasks using large language models. Agents are organized into crews, each with a defined role, goal, and toolset, and work together through one of six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, or autonomous). Built on Clean Architecture principles, Orkeon provides a fully typed, extensible foundation for production-grade agentic workflows in .NET.
+You let a coding agent loose on a repository. It reads what it needs, then writes — a file two directories up, a `~/.config` it had no business in, a `/tmp` script it runs next. Nothing stopped it because nothing was there to stop it: the agent's tools called `File.WriteAllText` on whatever path the model produced.
+
+Orkeon puts the boundary in front of the model, not behind it:
+
+- **A virtual file system.** Agents only ever see virtual paths (`/workspace`, `/output`); each one is a mount you declared, with the rights you gave it (`ro`/`rw`). A path outside a mount is refused before any byte lands on disk.
+- **A sandbox for code**, an **execution budget** for autonomy — tool calls, depth, wall time, tokens, spawned agents — and **circuit breakers** for loops. The agent runs out of permission before it runs out of ideas.
+- **A Roslyn analyzer for your own code.** [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) is a standalone NuGet package with no Orkeon dependency: add it to any C# project and every direct `System.IO` call is a compile error — the line an agent (or a colleague) would have slipped in does not build.
+
+Around that boundary sits a complete agent-team framework: crews of agents with roles, goals and tools, six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, autonomous), 14 LLM providers, memory, RAG, semantic code analysis — typed end to end, Clean Architecture, .NET 10.
+
+## Try it in two minutes — no API key
+
+A local model, one agent, one writable mount. From a clone of this repository (`git clone --depth 1 https://github.com/Orkeon/orkeon && cd orkeon`), with [Ollama](https://ollama.com) installed and the .NET 10 SDK:
+
+<!-- quickstart:begin -->
+```bash
+ollama pull llama3.2:1b
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
+mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
+```
+<!-- quickstart:end -->
+
+The agent writes `./out/hello.md` — and only there: `/output` is the single mount, `rw`. Change the crew's task to write anywhere else and watch the file-system service refuse it. The block above is executed literally by CI on every change ([Quickstart workflow](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)): if it stops working, the build goes red before you find out. Everything about local models — Docker Model Runner, Ollama, a model baked into the container image — is in the [local models guide](docs/guides/local-models.md).
+
+## Forge a team from a need
+
+You do not have to write the crew. Describe the need; `orkeon forge` interviews you, drafts the team, renders it (YAML or `.ork.ts`), validates it, **runs it in a sandbox**, diagnoses the run and asks for your verdict — then promotes the result into your project when you say so:
+
+```bash
+orkeon init                                  # once: pick a provider and a model (Ollama included)
+orkeon forge "a team that triages the issues of a GitHub repository every morning"
+orkeon forge list                            # every session on disk, resumable
+orkeon forge promote <slug> --to ./crews     # adopt the crew that passed
+```
+
+The cycle is *brief → blueprint → render → validate → test → diagnose → verdict*, with sessions you can resume, edit and re-test. It needs a configured model: without one it stops at the door with `FORGE-LLM-UNAVAILABLE` and points you to `orkeon init`. Walkthrough: [Forge a team from a need](docs/getting-started/forge-a-team-from-a-need.md).
 
 ---
 
@@ -182,7 +217,7 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 | **79 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
 | **14 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI), and MiniMax — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url`) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
-| **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — all composable with the AES-256-GCM at-rest encryption decorator |
+| **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — one `IMemoryProvider` port, composable decorators |
 | **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
 | **Plugin system** | Drop-in assemblies implementing `IOrkeonPlugin`, discovered in a plugin directory, loaded in isolated collectible `AssemblyLoadContext`s, activated explicitly via `AddOrkeonPlugins(...)` — see [plugins](docs/architecture/plugins.md) |
 | **Host bootstrap & scripting** | `Orkeon.Hosting` (`RunnerHost`) wires the full stack for runners/CLIs (appsettings, VFS mounts, providers, tools); the `orkeon` dotnet tool runs TypeScript-syntax `.ork.ts` crew scripts |
@@ -195,8 +230,7 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 | **Semantic agent selection** | Embedding-based similarity matching to route tasks to the most suitable agent |
 | **Checkpointing & resume** | Execution state persisted to pluggable state stores (InMemory, JSON file, SQLite, PostgreSQL); `CheckpointManager` time-travel (fork, replay, diff) and `ResumeEngine` to resume interrupted runs |
 | **A2A communication** | Agent-to-Agent protocol with discovery, `A2AClient`/`A2AServer`, a scoped agent repository over a shared registration store, and optional mTLS / auth-scheme enforcement (client certificate + server-side `RequireMutualTls` / `AllowedAuthSchemes`) |
-| **Enterprise security** | Memory encryption at-rest (AES-256-GCM), key rotation with atomic two-phase re-encryption, DLP/PII detection, Azure AD and OIDC auth |
-| **Opt-in subsystems** | A2A, monitoring, NIST compliance, DLP, tool rate-limiting, key rotation, benchmarking, multimodal, kickoff hooks — none registered by default, each enabled via its dedicated `AddOrkeonXxx()` extension — see the [opt-in reference](docs/reference/opt-in-subsystems.md) |
+| **Opt-in subsystems** | A2A, monitoring, tool rate-limiting, benchmarking, multimodal, kickoff hooks and more — none registered by default, each enabled via its dedicated `AddOrkeonXxx()` extension — see the [opt-in reference](docs/reference/opt-in-subsystems.md) |
 
 ---
 
@@ -256,7 +290,7 @@ live with the first tagged release and always documents a tagged version.
 - **Orchestration beyond pipelines** — six strategies, including LangGraph-style state graphs with conditional edges and a fully autonomous mode where agents delegate, spawn, and communicate under a multi-dimensional execution budget (tool calls, depth, wall time, tokens, spawns).
 - **Batteries included** — 79 tools, 14 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
 - **Local-first** — every example runs against a model on your own machine (Docker Model Runner, Ollama, or llama.cpp embedded in the container image). No API key required to evaluate it.
-- **Production posture** — a rights-audited virtual filesystem sandboxes every file access; circuit breakers stop runaway agents; execution state checkpoints and resumes; memory encrypts at rest; DLP and rate limiting are one `AddOrkeonXxx()` away.
+- **The boundary is the product** — a rights-audited virtual filesystem in front of every file access, a Roslyn analyzer that refuses raw `System.IO` in your own code, execution budgets and circuit breakers for autonomy, checkpoint and resume for long runs. Rate limiting, monitoring and the rest are one `AddOrkeonXxx()` away.
 - **Typed all the way down** — no `Dictionary<string, object>` plumbing; source generators keep the typed surface boilerplate-free.
 
 ---

@@ -2,7 +2,7 @@
 
 # <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="96" align="absmiddle"> Orkeon
 
-**Construisez et orchestrez des équipes d'agents IA — décrites en YAML déclaratif, en TypeScript programmatique (`.ork.ts`) ou en pur C# ; une seule stack d'exécution full .NET les fait toutes tourner**
+**Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
 
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon?include_prereleases)](https://github.com/Orkeon/orkeon/releases)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
@@ -11,9 +11,44 @@
 
 ---
 
-## Qu'est-ce qu'Orkeon ?
+## Le problème
 
-Orkeon est un framework C# pour créer et gérer des équipes collaboratives d'agents IA qui s'attaquent à des tâches complexes en plusieurs étapes à l'aide de grands modèles de langage. Les agents sont organisés en crews, chacun avec un rôle, un objectif et un ensemble d'outils définis, et travaillent ensemble via l'une des six stratégies d'orchestration (séquentielle, hiérarchique, parallèle, consensuelle, graphe ou autonome). Bâti sur les principes de la Clean Architecture, Orkeon fournit une fondation entièrement typée et extensible pour des workflows agentiques de qualité production en .NET.
+Vous lâchez un agent de code sur un dépôt. Il lit ce dont il a besoin, puis il écrit — un fichier deux répertoires plus haut, un `~/.config` qui ne le regardait pas, un script dans `/tmp` qu'il exécute dans la foulée. Rien ne l'a arrêté parce que rien n'était là pour l'arrêter : ses outils appelaient `File.WriteAllText` sur le chemin que le modèle avait produit.
+
+Orkeon place la frontière devant le modèle, pas derrière :
+
+- **Un système de fichiers virtuel.** Les agents ne voient jamais que des chemins virtuels (`/workspace`, `/output`) ; chacun est un montage que vous avez déclaré, avec les droits que vous lui avez donnés (`ro`/`rw`). Un chemin hors montage est refusé avant qu'un seul octet n'atteigne le disque.
+- **Un sandbox pour le code**, un **budget d'exécution** pour l'autonomie — appels d'outils, profondeur, temps, tokens, agents engendrés — et des **circuit breakers** contre les boucles. L'agent épuise sa permission avant d'épuiser ses idées.
+- **Un analyseur Roslyn pour votre propre code.** [`Orkeon.Compliance.Vfs`](docs/fr/architecture/vfs-compliance.md) est un paquet NuGet autonome sans dépendance à Orkeon : ajoutez-le à n'importe quel projet C# et tout appel direct à `System.IO` devient une erreur de compilation — la ligne qu'un agent (ou un collègue) aurait glissée ne compile pas.
+
+Autour de cette frontière, un framework d'équipes d'agents complet : des crews d'agents avec rôles, objectifs et outils, six stratégies d'orchestration (séquentielle, hiérarchique, parallèle, consensuelle, graphe, autonome), 14 fournisseurs LLM, mémoire, RAG, analyse sémantique de code — typé de bout en bout, Clean Architecture, .NET 10.
+
+## Essayez-le en deux minutes — sans clé API
+
+Un modèle local, un agent, un seul montage en écriture. Depuis un clone de ce dépôt (`git clone --depth 1 https://github.com/Orkeon/orkeon && cd orkeon`), avec [Ollama](https://ollama.com) installé et le SDK .NET 10 :
+
+<!-- quickstart:begin -->
+```bash
+ollama pull llama3.2:1b
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease
+mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:rw
+```
+<!-- quickstart:end -->
+
+L'agent écrit `./out/hello.md` — et seulement là : `/output` est l'unique montage, en `rw`. Changez la tâche du crew pour écrire ailleurs et regardez le service de fichiers refuser. Le bloc ci-dessus est exécuté littéralement par la CI à chaque changement ([workflow Quickstart](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)) : s'il cesse de fonctionner, le build passe au rouge avant que vous ne le découvriez. Tout sur les modèles locaux — Docker Model Runner, Ollama, un modèle embarqué dans l'image conteneur — est dans le [guide des modèles locaux](docs/fr/guides/local-models.md).
+
+## Forger une équipe à partir d'un besoin
+
+Vous n'avez pas à écrire le crew. Décrivez le besoin ; `orkeon forge` vous interroge, ébauche l'équipe, la rend (YAML ou `.ork.ts`), la valide, **l'exécute dans un sandbox**, diagnostique le run et demande votre verdict — puis promeut le résultat dans votre projet quand vous le dites :
+
+```bash
+orkeon init                                  # une fois : choisir un fournisseur et un modèle (Ollama inclus)
+orkeon forge "une équipe qui trie les issues d'un dépôt GitHub chaque matin"
+orkeon forge list                            # chaque session sur disque, reprenable
+orkeon forge promote <slug> --to ./crews     # adopter le crew qui a réussi
+```
+
+Le cycle est *brief → blueprint → render → validate → test → diagnose → verdict*, avec des sessions que vous pouvez reprendre, éditer et retester. Il exige un modèle configuré : sans lui il s'arrête à la porte avec `FORGE-LLM-UNAVAILABLE` et vous renvoie vers `orkeon init`. Pas à pas : [Forger une équipe à partir d'un besoin](docs/fr/getting-started/forge-a-team-from-a-need.md).
 
 ---
 
@@ -182,7 +217,7 @@ Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI �
 | **79 outils intégrés** | Système de fichiers, web scraping (AngleSharp), APIs HTTP, JSON/CSV/XML/PDF/Office (DOCX & XLSX lecture/écriture), bases de données, exécution de code sécurisée, RAG et recherche sémantique, messagerie EventHub, analyse de code RaggableTree, délégation/collaboration — voir l'[inventaire des outils](docs/fr/tools/inventory.md) |
 | **14 fournisseurs LLM** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) et MiniMax — tous basés sur HTTP, étendant `HttpLlmProviderBase` ; modèles locaux via Docker Model Runner, Ollama ou llama.cpp embarqué — voir le [guide des modèles locaux](docs/fr/guides/local-models.md) |
 | **Vision / multimodal** | Le contenu image circule de bout en bout (`MultiModalContent` → blocs image Anthropic / `image_url` OpenAI) avec un chargeur adossé au VFS ; opt-in via `AddOrkeonMultiModal(...)` — voir le [guide multimodal](docs/fr/guides/multimodal.md) |
-| **6 fournisseurs de mémoire** | Redis (recherche vectorielle), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (serveur REST distant) — tous composables avec le décorateur de chiffrement au repos AES-256-GCM |
+| **6 fournisseurs de mémoire** | Redis (recherche vectorielle), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (serveur REST distant) — un seul port `IMemoryProvider`, décorateurs composables |
 | **6 stratégies d'orchestration** | Sequential, Hierarchical, Parallel, Consensual (stratégies de vote Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount), Graph (style LangGraph), Autonomous (budget d'exécution multi-dimensionnel) — voir le [guide des process types](docs/fr/orchestration/process-types.md) |
 | **Système de plugins** | Assemblies drop-in implémentant `IOrkeonPlugin`, découvertes dans un répertoire de plugins, chargées dans des `AssemblyLoadContext` collectables et isolés, activées explicitement via `AddOrkeonPlugins(...)` — voir [plugins](docs/fr/architecture/plugins.md) |
 | **Bootstrap d'hôte & scripting** | `Orkeon.Hosting` (`RunnerHost`) câble la pile complète pour les runners/CLI (appsettings, montages VFS, providers, outils) ; le dotnet tool `orkeon` exécute des scripts de crew `.ork.ts` à syntaxe TypeScript |
@@ -195,8 +230,7 @@ Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI �
 | **Sélection sémantique d'agents** | Appariement par similarité d'embeddings pour router les tâches vers l'agent le plus adapté |
 | **Checkpointing & reprise** | État d'exécution persisté dans des state stores enfichables (InMemory, fichier JSON, SQLite, PostgreSQL) ; time-travel via `CheckpointManager` (fork, replay, diff) et `ResumeEngine` pour reprendre les exécutions interrompues |
 | **Communication A2A** | Protocole Agent-to-Agent avec découverte, `A2AClient`/`A2AServer`, un repository d'agents scopé au-dessus d'un store d'enregistrement partagé, et application optionnelle de mTLS / schémas d'authentification (certificat client + `RequireMutualTls` / `AllowedAuthSchemes` côté serveur) |
-| **Sécurité d'entreprise** | Chiffrement de la mémoire au repos (AES-256-GCM), rotation de clés avec re-chiffrement atomique en deux phases, détection DLP/PII, authentification Azure AD et OIDC |
-| **Sous-systèmes opt-in** | A2A, monitoring, conformité NIST, DLP, rate-limiting des outils, rotation de clés, benchmarking, multimodal, hooks de kickoff — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
+| **Sous-systèmes opt-in** | A2A, monitoring, rate-limiting des outils, benchmarking, multimodal, hooks de kickoff et d'autres — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
 
 ---
 
@@ -256,7 +290,7 @@ paraît donc avec la première release taguée et documente toujours une version
 - **Une orchestration au-delà des pipelines** — six stratégies, dont les graphes d'états style LangGraph à arêtes conditionnelles et un mode entièrement autonome où les agents délèguent, se dupliquent et communiquent sous un budget d'exécution multi-dimensionnel (appels d'outils, profondeur, temps, tokens, spawns).
 - **Batteries incluses** — 79 outils, 14 fournisseurs LLM, 6 stores de mémoire, vision, RAG, analyse de code : utilisables immédiatement, remplaçables via les ports de la Clean Architecture.
 - **Local d'abord** — chaque exemple tourne sur un modèle installé sur votre machine (Docker Model Runner, Ollama, ou llama.cpp embarqué dans l'image conteneur). Aucune clé API nécessaire pour évaluer.
-- **Posture production** — un système de fichiers virtuel audité par droits sandboxe chaque accès fichier ; des circuit breakers arrêtent les agents en dérive ; l'état d'exécution se checkpointe et se reprend ; la mémoire se chiffre au repos ; DLP et rate limiting sont à un `AddOrkeonXxx()` près.
+- **La frontière est le produit** — un système de fichiers virtuel audité par droits devant chaque accès fichier, un analyseur Roslyn qui refuse le `System.IO` brut dans votre propre code, des budgets d'exécution et des circuit breakers pour l'autonomie, checkpoint et reprise pour les longs runs. Rate limiting, monitoring et le reste sont à un `AddOrkeonXxx()` près.
 - **Typé jusqu'au bout** — pas de plomberie `Dictionary<string, object>` ; les générateurs de source gardent la surface typée sans boilerplate.
 
 ---

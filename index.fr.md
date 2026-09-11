@@ -6,14 +6,16 @@ title: Orkeon
 
 # <img src="docs/assets/orkeon-mascot.png" alt="Mascotte Orkeon — un caméléon curieux" width="96" align="absmiddle"> Orkeon
 
-**Créez et orchestrez des équipes d'agents IA — décrites en YAML déclaratif, en TypeScript
-programmatique (`.ork.ts`) ou en C# pur ; une seule pile full-.NET les exécute toutes**
+**Des équipes d'agents IA qui restent dans les clous — chaque fichier, endpoint et budget qu'un agent peut toucher est déclaré, puis appliqué. Décrites en YAML, TypeScript (`.ork.ts`) ou C# ; un seul runtime .NET exécute les trois.**
 
-Orkeon est un framework C# pour créer et piloter des équipes d'agents IA collaboratifs qui
-traitent des tâches complexes et multi-étapes à l'aide de grands modèles de langage. Les agents
-sont organisés en crews, chacun avec un rôle, un objectif et un outillage définis, et
-collaborent selon l'une des six stratégies d'orchestration (séquentielle, hiérarchique,
-parallèle, consensuelle, graphe ou autonome).
+Un agent lâché sur un dépôt écrit là où il ne devrait pas, parce que rien n'est là pour
+l'arrêter. Orkeon place la frontière devant le modèle : un système de fichiers virtuel où
+chaque chemin est un montage déclaré avec des droits déclarés, un sandbox pour le code, un
+budget d'exécution pour l'autonomie — et un analyseur Roslyn autonome (`Orkeon.Compliance.Vfs`)
+qui fait du `System.IO` brut une erreur de compilation dans votre propre code. Autour, un
+framework .NET complet pour des crews d'agents : six stratégies d'orchestration, 14
+fournisseurs LLM, mémoire, RAG, analyse de code. Il tourne sur un modèle local sans clé API —
+voir le démarrage en deux minutes du [README](README.fr.md#essayez-le-en-deux-minutes--sans-clé-api).
 
 ## Par où commencer
 

@@ -1,0 +1,44 @@
+# The two-minute crew of the README: one agent, one task, a local model, no API key.
+#
+# The point is not the summary it writes. The point is WHERE it can write it: the
+# agent sees a virtual file system, and the only writable place in it is the mount
+# you pass on the command line (`--mount ./out:/output:rw`). A path outside a mount
+# is refused by the file-system service before any byte lands on disk -- the agent
+# does not get to decide where your files go.
+
+name: "quickstart"
+goal: "Write a short note about what an agent can and cannot touch in this run"
+process: "sequential"
+verbose: true
+memory: false
+planning: false
+
+agents:
+  scribe:
+    role: "Scribe"
+    goal: "Write one short markdown note to /output/hello.md"
+    backstory: |
+      You write short, plain notes. You have one tool, file_write, and one place
+      you may write to: the /output folder. You never try any other path.
+    tools:
+      - "file_write"
+    allowDelegation: false
+    maxIter: 3
+    verbose: true
+
+tasks:
+  write_note:
+    description: |
+      Call file_write exactly once with path "/output/hello.md" and this content,
+      verbatim, as three markdown lines:
+
+      # Hello from Orkeon
+      This file was written by an agent running on a local model.
+      /output is the only place it was allowed to write.
+
+      Then answer with the single word DONE.
+    expectedOutput: "The word DONE after /output/hello.md has been written"
+    agent: "scribe"
+    dependencies: []
+    asyncExecution: false
+    humanInput: false

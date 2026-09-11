@@ -6,12 +6,16 @@ title: Orkeon
 
 # <img src="docs/assets/orkeon-mascot.png" alt="Orkeon mascot — a curious chameleon" width="96" align="absmiddle"> Orkeon
 
-**Build and orchestrate AI agent teams — describe them in declarative YAML, programmatic TypeScript (`.ork.ts`), or pure C#; a single full-.NET stack executes them all**
+**AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
 
-Orkeon is a C# framework for creating and managing collaborative AI agent teams that tackle
-complex, multi-step tasks using large language models. Agents are organized into crews, each
-with a defined role, goal, and toolset, and work together through one of six orchestration
-strategies (sequential, hierarchical, parallel, consensual, graph, or autonomous).
+An agent let loose on a repository writes where it should not, because nothing is there to
+stop it. Orkeon puts the boundary in front of the model: a virtual file system where every
+path is a declared mount with declared rights, a sandbox for code, an execution budget for
+autonomy — and a standalone Roslyn analyzer (`Orkeon.Compliance.Vfs`) that makes raw
+`System.IO` a compile error in your own code. Around it, a complete .NET framework for crews
+of agents: six orchestration strategies, 14 LLM providers, memory, RAG, code analysis. It
+runs on a local model with no API key — see the two-minute start in the
+[README](README.md#try-it-in-two-minutes--no-api-key).
 
 ## Start here
 
