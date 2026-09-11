@@ -1,0 +1,13 @@
+#nullable enable
+const Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions.EnvironmentPrefix = "ORKEON_" -> string!
+Orkeon.Hosting.Aspire.OrkeonCrewRunResource
+Orkeon.Hosting.Aspire.OrkeonCrewRunResource.CrewPath.get -> string!
+Orkeon.Hosting.Aspire.OrkeonCrewRunResource.OrkeonCrewRunResource(string! name, string! command, string! workingDirectory, string! crewPath, string! outputDirectory) -> void
+Orkeon.Hosting.Aspire.OrkeonCrewRunResource.OutputDirectory.get -> string!
+Orkeon.Hosting.Aspire.OrkeonHostResource
+Orkeon.Hosting.Aspire.OrkeonHostResource.OrkeonHostResource(string! name, string! command, string! workingDirectory) -> void
+Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions
+static Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions.AddOrkeonCrewRun(this Aspire.Hosting.IDistributedApplicationBuilder! builder, string! name, string! crewPath, string? outputDirectory = null, string? settingsPath = null, string! command = "orkeon") -> Aspire.Hosting.ApplicationModel.IResourceBuilder<Orkeon.Hosting.Aspire.OrkeonCrewRunResource!>!
+static Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions.AddOrkeonHost(this Aspire.Hosting.IDistributedApplicationBuilder! builder, string! name, string? settingsPath = null, string? workingDirectory = null, string! command = "orkeon-host") -> Aspire.Hosting.ApplicationModel.IResourceBuilder<Orkeon.Hosting.Aspire.OrkeonHostResource!>!
+static Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions.WithOrkeonModel<T>(this Aspire.Hosting.ApplicationModel.IResourceBuilder<T>! builder, System.Uri! baseUrl, string! model, string? apiKey = null) -> Aspire.Hosting.ApplicationModel.IResourceBuilder<T>!
+static Orkeon.Hosting.Aspire.OrkeonResourceBuilderExtensions.WithOrkeonSetting<T>(this Aspire.Hosting.ApplicationModel.IResourceBuilder<T>! builder, string! key, string! value) -> Aspire.Hosting.ApplicationModel.IResourceBuilder<T>!

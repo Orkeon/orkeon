@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25 wrapper: packs the Orkeon.Hosting.Aspire assembly with a nuspec dependency on
+       the `Orkeon` umbrella (which carries the constants satellite it uses) and on
+       Aspire.Hosting. Kept out of the umbrella because Aspire.Hosting is an AppHost's
+       choice, not one every Orkeon user should inherit. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>.NET Aspire hosting integration for Orkeon: add the orkeon-host service daemon or a single crew run to an AppHost, with the settings, mounts and OTLP export the Aspire dashboard reads.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>core</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\hosting\Orkeon.Hosting.Aspire\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\hosting\Orkeon.Hosting.Aspire\Orkeon.Hosting.Aspire.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Hosting.Aspire'" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Hosting.Aspire</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

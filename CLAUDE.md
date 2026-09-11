@@ -447,13 +447,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **45 src projects** and **34 test projects**, plus two solutions:
+The repository contains **47 src projects** and **35 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 45 projects
+├── src/                          # 47 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -496,20 +496,21 @@ The repository contains **45 src projects** and **34 test projects**, plus two s
 │   ├── generators/
 │   │   └── Orkeon.Generators/    # Source generators (TypedDictionary…)
 │   ├── hosting/
-│   │   ├── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in)
+│   │   ├── Orkeon.Hosting/       # Shared runner host (RunnerHost/RunnerExecution, semantic_search opt-in; exports OpenTelemetry per OTEL_EXPORTER_OTLP_ENDPOINT)
+│   │   ├── Orkeon.Hosting.Aspire/ # .NET Aspire AppHost integration (AddOrkeonHost, AddOrkeonCrewRun — ADR-011)
 │   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE)
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   ├── interop/
 │   │   └── Orkeon.Interop.AgentFramework/ # Microsoft Agent Framework bridge, both directions (ADR-010): CrewAgent : AIAgent, AIAgentLlmProvider, AIAgentTool
-│   ├── packaging/                # NuGet packaging projects (PUB-25, 5 incl. the Interop wrapper): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 7 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
+│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 7 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
 │       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)
 │       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
 │       ├── Orkeon.Studio.Run/    # Studio: run TUI
 │       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 34 projects
+├── tests/                        # 35 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
@@ -517,7 +518,7 @@ The repository contains **45 src projects** and **34 test projects**, plus two s
 │   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
 │   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
-│   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests
+│   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests, Orkeon.Hosting.Aspire.Tests
 │   ├── interop/                  # Orkeon.Interop.AgentFramework.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests
 │   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests

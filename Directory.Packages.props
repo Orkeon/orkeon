@@ -62,6 +62,9 @@
     <!-- Microsoft Agent Framework (A-14 interop): the AIAgent abstraction Orkeon.Interop.AgentFramework bridges to. -->
     <PackageVersion Include="Microsoft.Agents.AI" Version="1.20.0" />
     <PackageVersion Include="Microsoft.Agents.AI.Abstractions" Version="1.20.0" />
+    <!-- .NET Aspire (A-16): the AppHost integration Orkeon.Hosting.Aspire builds on. -->
+    <PackageVersion Include="Aspire.Hosting" Version="13.5.3" />
+    <PackageVersion Include="Aspire.Hosting.AppHost" Version="13.5.3" />
   </ItemGroup>
   <ItemGroup Label="Data">
     <!-- Arrow IPC encode/decode for the LanceDB Cloud/Enterprise REST protocol (R4.11).

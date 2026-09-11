@@ -1,0 +1,27 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.5.3">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsAspireHost>true</IsAspireHost>
+    <RootNamespace>Orkeon.Examples.AppHost</RootNamespace>
+    <!-- The AppHost SDK sets a user-secrets id; this one is stable so the dashboard's
+         generated login token survives rebuilds. -->
+    <UserSecretsId>orkeon-examples-aspire-apphost</UserSecretsId>
+    <!-- ASPIRE010: the Aspire CLI bundle brings `aspire run`, deploy and publish tooling;
+         this example only needs the dashboard and the orchestrator, which the packages
+         ship. Suppressed rather than enabled so a plain `dotnet run` stays the whole story. -->
+    <NoWarn>$(NoWarn);ASPIRE010</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.AppHost" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting.Aspire\Orkeon.Hosting.Aspire.csproj" IsAspireProjectResource="false" />
+  </ItemGroup>
+
+</Project>

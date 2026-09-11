@@ -138,6 +138,8 @@
       href: adr/ADR-009-shared-constants-satellites.md
     - name: ADR-010 — Microsoft Agent Framework interop
       href: adr/ADR-010-agent-framework-interop.md
+    - name: ADR-011 — Aspire dashboard as the observability surface
+      href: adr/ADR-011-aspire-dashboard-observability.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

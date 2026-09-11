@@ -18,6 +18,7 @@ using Orkeon.Infrastructure.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
+using Orkeon.Infrastructure.Telemetry;
 using Orkeon.Infrastructure.Logging;
 using Orkeon.Analysis.DependencyInjection;
 using Orkeon.Compliance.Vfs;
@@ -114,7 +115,21 @@ public static partial class RunnerHost
         var host = builder.Build();
 
         WarnIfLlmNotConfigured(host);
+        ActivateTelemetry(host);
         return host;
+    }
+
+    /// <summary>
+    /// OpenTelemetry creates its tracer and meter providers in a hosted service, and the
+    /// runners never start the host -- they resolve services and run one command. Resolving
+    /// the two providers here is what creates them: the ActivitySource listeners come alive,
+    /// the exporters (OTLP from the environment or the settings, console) attach, and the
+    /// container disposes them with the host, which flushes the last batch.
+    /// </summary>
+    private static void ActivateTelemetry(IHost host)
+    {
+        _ = host.Services.GetService<OpenTelemetry.Trace.TracerProvider>();
+        _ = host.Services.GetService<OpenTelemetry.Metrics.MeterProvider>();
     }
 
     /// <summary>
@@ -227,6 +242,11 @@ public static partial class RunnerHost
         // Core Orkeon services
         services.AddOrkeonApplication();
         services.AddOrkeonInfrastructure();
+        // OpenTelemetry export: the `Telemetry` section of the settings, or the standard
+        // OTEL_EXPORTER_OTLP_ENDPOINT environment a .NET Aspire AppHost (or any collector)
+        // injects. Until 2026-09-11 the runners registered no exporter at all, so a run
+        // launched from Aspire produced spans that went nowhere.
+        services.AddOrkeonTelemetry(context.Configuration);
 
         // Runners load crews from user-authored YAML/TS: a tool referenced by a crew but
         // absent from the registry is almost always a typo or a missing registration, not an

@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Orkeon.Hosting.Aspire`, and runners that export OpenTelemetry by the standard contract (ADR-011)
+
+The runners built their host with the parameterless `AddOrkeonInfrastructure()` (no
+telemetry), never started it (OpenTelemetry's hosted service never created the
+providers) and ignored `OTEL_EXPORTER_OTLP_ENDPOINT`: a run launched from .NET Aspire
+produced spans that went nowhere. `RunnerHost` now registers telemetry from the
+settings, honours the standard OTLP environment for traces, metrics **and** logs, and
+resolves the providers itself after the build. Measured with a two-line OTLP sink and
+the quickstart crew: `v1/traces` with `invoke_agent Scribe`, `chat llama3.2:1b` and
+`execute_tool file_write` (gen_ai.* attributes), `v1/metrics`, and `v1/logs` at
+verbosity 1 — with nothing but the environment variable set.
+
+`Orkeon.Hosting.Aspire` (ninth id of the lineup, PUB-25 wrapper on `Orkeon` +
+`Aspire.Hosting` 13.5) adds `AddOrkeonHost` (the `orkeon-host` daemon) and
+`AddOrkeonCrewRun` (one `orkeon run`, with its `/output` mount created by the AppHost)
+as executable resources, `WithOrkeonSetting` / `WithOrkeonModel` for the `ORKEON_`
+environment, and `.WithOtlpExporter()` applied. Three launch-free tests evaluate the
+arguments and environment Aspire would hand the process (the OTLP endpoint included);
+`examples/aspire/AppHost/` ran the quickstart crew as a resource on this machine —
+`out/hello.md` written, dashboard up. The decision that goes with it: the Aspire
+dashboard is the cross-platform observability surface, and no web Studio will be built.
+
 ### Added — `Orkeon.Interop.AgentFramework`: Microsoft Agent Framework, in both directions (ADR-010)
 
 A developer with Microsoft Agent Framework code can try Orkeon without giving anything up,

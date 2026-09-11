@@ -140,8 +140,10 @@ partial (flagged case by case below).
 
 ## Traces and metrics follow the OpenTelemetry GenAI conventions
 
-Not an opt-in — every run emits them; only the exporter is (`AddOrkeonTelemetry`,
-`Orkeon:Telemetry:OtlpEndpoint`). Since 2026-09-11 the execution path itself carries the
+Not an opt-in — every run emits them, and the runners (`orkeon run`, `orkeon-host`) export
+them wherever the standard `OTEL_EXPORTER_OTLP_ENDPOINT` points (a .NET Aspire AppHost sets
+it — see [ADR-011](../adr/ADR-011-aspire-dashboard-observability.md)) or the `Telemetry`
+section of the settings says (`Telemetry:OtlpEndpoint`, `Telemetry:ExportToConsole`). Since 2026-09-11 the execution path itself carries the
 spans (they used to live in helpers nothing in production called), named and attributed
 by the [OpenTelemetry generative-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
 so Langfuse, Honeycomb, Application Insights or the Aspire dashboard read them without a
