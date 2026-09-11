@@ -1,5 +1,4 @@
-# Review routing. All paths default to the maintainers team.
-# Owner action before this takes effect: create the @Orkeon/maintainers team
-# (or replace it with individual handles) — an unknown team makes the file
-# inert and GitHub flags it in the CODEOWNERS editor.
-* @Orkeon/maintainers
+# Review routing. Every path is owned by the maintainer account; there is no
+# maintainers team yet. When one exists, replace the handle with the team and
+# nothing else here changes.
+* @arion-orkeon
