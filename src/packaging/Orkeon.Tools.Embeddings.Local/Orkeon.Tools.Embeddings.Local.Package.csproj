@@ -11,6 +11,14 @@
     <OrkeonIconFamily>tools</OrkeonIconFamily>
     <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
     <IncludeBuildOutput>false</IncludeBuildOutput>
+    <!-- The pre-release dependency is assumed, not hidden (decision of 2026-09-11, see
+         docs/reference/limitations.md): SmartComponents.LocalEmbeddings has no stable
+         release and its upstream is archived, so a stable 1.0.0 of THIS opt-in package
+         will always depend on a pre-release. NU5104 is the pack warning that says so;
+         with -warnaserror it would make the stable pack of the whole line fail. It is
+         silenced here and nowhere else: the umbrella, the tools and the CLI never carry
+         the dependency. The README and the limitations page say it in words. -->
+    <NoWarn>$(NoWarn);NU5104</NoWarn>
     <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
   </PropertyGroup>
 
