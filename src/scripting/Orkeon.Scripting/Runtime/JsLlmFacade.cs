@@ -277,26 +277,27 @@ public sealed partial class JsLlmFacade
         var enumerator = source.GetAsyncEnumerator(_ct);
         var disposed = false;
 
-        async Task<JsValue> DisposeOnceAsync()
+        async Task<object> DisposeOnceAsync()
         {
             if (!disposed)
             {
                 disposed = true;
                 await enumerator.DisposeAsync().ConfigureAwait(false);
             }
-            return Result(JsValue.Undefined, done: true);
+            return IteratorResult(null, done: true);
         }
 
         // `next` pulls one chunk. Disposal happens as soon as the sequence ends so a
         // fully-consumed stream does not depend on the consumer calling `return()`.
-        var next = new Func<Task<JsValue>>(async () =>
+        // Both callbacks resolve to a CLR object, never a JsValue: see IteratorResult.
+        var next = new Func<Task<object>>(async () =>
         {
             if (disposed)
-                return Result(JsValue.Undefined, done: true);
+                return IteratorResult(null, done: true);
             try
             {
                 if (await enumerator.MoveNextAsync().ConfigureAwait(false))
-                    return Result(enumerator.Current ?? string.Empty, done: false);
+                    return IteratorResult(enumerator.Current ?? string.Empty, done: false);
             }
             catch
             {
@@ -308,7 +309,7 @@ public sealed partial class JsLlmFacade
 
         // `return` is what a `break` inside `for await` calls: it must release the
         // enumerator, otherwise an abandoned stream leaks the underlying HTTP read.
-        var ret = new Func<Task<JsValue>>(DisposeOnceAsync);
+        var ret = new Func<Task<object>>(DisposeOnceAsync);
 
         // `usage` / `reasoningChunks` are getters onto the CLR observations object,
         // so the script reads them when IT is executing (after the loop) instead of
@@ -321,12 +322,28 @@ public sealed partial class JsLlmFacade
         return _engine.Invoke(factory, next, ret, observations);
     }
 
-    private JsValue Result(JsValue value, bool done)
-        => JsValue.FromObject(_engine, new Dictionary<string, object?>
+    /// <summary>
+    /// One <c>{ value, done }</c> step of the async-iterator protocol, as a CLR object.
+    /// </summary>
+    /// <remarks>
+    /// Deliberately NOT a <see cref="JsValue"/>. <c>next()</c> resolves after
+    /// <c>ConfigureAwait(false)</c>, i.e. on a thread-pool thread, and
+    /// <see cref="JsValue.FromObject(Engine, object)"/> enters the engine — Jint's
+    /// <c>Engine</c> is single-threaded, and seven streams consumed under one
+    /// <c>Promise.all</c> converted their steps concurrently and crashed with a
+    /// NullReferenceException inside <c>DefaultObjectConverter</c> (flaky in CI,
+    /// 2026-09-11). Handing Jint the CLR value instead lets its task-to-promise bridge
+    /// (<c>RegisterPromiseWithClrValue</c>) run the conversion on the engine's own event
+    /// loop, which is the only thread allowed to touch it. A dictionary rather than a
+    /// record so the member names are <c>value</c>/<c>done</c> under any member-naming
+    /// policy the engine is configured with.
+    /// </remarks>
+    private static Dictionary<string, object?> IteratorResult(string? value, bool done)
+        => new()
         {
-            ["value"] = value.IsUndefined() ? null : value.ToObject(),
+            ["value"] = value,
             ["done"] = done,
-        });
+        };
 
     /// <summary>
     /// The chunk sequence behind <c>stream</c>: visible content deltas, in order.

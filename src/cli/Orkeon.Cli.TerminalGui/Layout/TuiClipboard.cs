@@ -71,8 +71,19 @@ internal static class TuiClipboard
         return false;
     }
 
-    /// <summary>Clears the in-process cache (tests).</summary>
-    internal static void Reset() => _lastCopy = null;
+    /// <summary>
+    /// Clears every surface <see cref="TryGetText"/> reads (tests): the in-process cache and
+    /// the driver clipboard. The latter matters because it outlives a test — once another
+    /// test class has run <c>Application.Init</c>, Terminal.Gui's <c>FakeClipboard</c> keeps
+    /// whatever the previous test copied, and a test asserting "nothing to paste" read it
+    /// back (flaky in CI, 2026-09-11). Best-effort: an unsupported clipboard refuses the
+    /// write and is equally invisible to <see cref="TryGetText"/>.
+    /// </summary>
+    internal static void Reset()
+    {
+        _lastCopy = null;
+        Application.Clipboard?.TrySetClipboardData(string.Empty);
+    }
 
     private static void EmitOsc52(string text)
     {

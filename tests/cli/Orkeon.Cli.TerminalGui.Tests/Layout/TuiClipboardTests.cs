@@ -7,7 +7,8 @@ namespace Orkeon.Cli.TerminalGui.Tests.Layout;
 /// Deterministic, OS-clipboard-independent behaviour of <see cref="TuiClipboard"/>: the
 /// in-process cache round-trip (the paste fallback used when xclip/pbcopy are absent —
 /// exactly the headless-CI / Docker situation) and the OSC 52 emission captured through
-/// the test writer hook. Sequential by nature (shared static cache): every test resets it.
+/// the test writer hook. Sequential by nature (shared static cache, and a driver clipboard
+/// that survives whichever test class ran <c>Application.Init</c>): every test resets both.
 /// </summary>
 public sealed class TuiClipboardTests : IDisposable
 {
