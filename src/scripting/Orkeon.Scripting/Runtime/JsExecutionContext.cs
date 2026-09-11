@@ -136,7 +136,7 @@ public class JsExecutionContext
         _channel.Send(target.name, message);
     };
 
-    public Func<JsValue?, Task<JsValue>> receive => async options =>
+    public Func<JsValue?, Task<object?>> receive => async options =>
     {
         EnsureSelfInCrew();
         TimeSpan? timeout = null;
@@ -146,8 +146,10 @@ public class JsExecutionContext
             if (to.IsNumber()) timeout = TimeSpan.FromMilliseconds(to.AsNumber());
             else if (to.IsString()) timeout = ParseDuration(to.AsString());
         }
-        var raw = await _channel.ReceiveAsync(_self.name, timeout, _ct).ConfigureAwait(false);
-        return raw is JsValue jv ? jv : JsValue.FromObject(_engine, raw);
+        // Resolved as-is: a JsValue passes through Jint's bridge untouched, and a CLR
+        // payload is converted on the engine's event loop rather than on this
+        // thread-pool continuation.
+        return await _channel.ReceiveAsync(_self.name, timeout, _ct).ConfigureAwait(false);
     };
 
     public Action<JsValue> broadcast => message =>

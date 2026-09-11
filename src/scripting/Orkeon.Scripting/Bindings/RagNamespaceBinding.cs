@@ -43,14 +43,13 @@ public static partial class RagNamespaceBinding
         var log = logger ?? NullLogger.Instance;
 
         IDictionary<string, object?> ns = new ExpandoObject();
-        ns["ingest"] = BuildIngest(engine, backend);
-        ns["query"] = BuildQuery(engine, backend, log, generate: true);
-        ns["retrieve"] = BuildQuery(engine, backend, log, generate: false);
+        ns["ingest"] = BuildIngest(backend);
+        ns["query"] = BuildQuery(backend, log, generate: true);
+        ns["retrieve"] = BuildQuery(backend, log, generate: false);
         engine.SetValue(GlobalName, ns);
     }
 
-    private static Func<JsValue?, Task<JsValue>> BuildIngest(
-        Engine engine, RagScriptingBackend? backend)
+    private static Func<JsValue?, Task<object>> BuildIngest(RagScriptingBackend? backend)
     {
         return async options =>
         {
@@ -102,7 +101,9 @@ public static partial class RagNamespaceBinding
                 ["durationMs"] = report.Duration.TotalMilliseconds,
                 ["errors"] = report.Errors.ToArray(),
             };
-            return JsValue.FromObject(engine, payload);
+            // A CLR payload, converted by Jint on its own event loop: this continuation is on
+            // a thread-pool thread, where the engine must not be touched.
+            return payload;
         };
     }
 
@@ -112,8 +113,8 @@ public static partial class RagNamespaceBinding
     /// last: retrieval, fusion, reranking and assembly are identical, and only
     /// <c>query</c> pays for a grounded generation on top.
     /// </summary>
-    private static Func<JsValue?, JsValue?, Task<JsValue>> BuildQuery(
-        Engine engine, RagScriptingBackend? backend, ILogger log, bool generate)
+    private static Func<JsValue?, JsValue?, Task<object>> BuildQuery(
+        RagScriptingBackend? backend, ILogger log, bool generate)
     {
         var surface = generate ? "rag.query" : "rag.retrieve";
         return async (question, options) =>
@@ -133,7 +134,7 @@ public static partial class RagNamespaceBinding
             var query = BuildRagQuery(obj, text, collection);
             var pipeline = ResolvePipeline(backend, obj, log, surface);
             var answer = await RunPipelineAsync(pipeline, query, generate).ConfigureAwait(false);
-            return JsValue.FromObject(engine, BuildAnswerPayload(answer));
+            return BuildAnswerPayload(answer);
         };
     }
 

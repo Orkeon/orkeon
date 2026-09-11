@@ -290,7 +290,7 @@ Orkeon.Scripting.Runtime.JsExecutionContext.events.get -> Orkeon.Scripting.Runti
 Orkeon.Scripting.Runtime.JsExecutionContext.llm.get -> Orkeon.Scripting.Runtime.JsLlmFacade!
 Orkeon.Scripting.Runtime.JsExecutionContext.log.get -> Orkeon.Scripting.Runtime.JsLogger!
 Orkeon.Scripting.Runtime.JsExecutionContext.memory.get -> Orkeon.Scripting.Runtime.JsMemoryRoot!
-Orkeon.Scripting.Runtime.JsExecutionContext.receive.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsExecutionContext.receive.get -> System.Func<Jint.Native.JsValue?, System.Threading.Tasks.Task<object?>!>!
 Orkeon.Scripting.Runtime.JsExecutionContext.send.get -> System.Action<Orkeon.Scripting.Builders.JsAgent!, Jint.Native.JsValue!>!
 Orkeon.Scripting.Runtime.JsExecutionContext.signal.get -> System.Threading.CancellationToken
 Orkeon.Scripting.Runtime.JsLlmConfig
@@ -302,12 +302,12 @@ Orkeon.Scripting.Runtime.JsLlmConfig.provider.get -> string!
 Orkeon.Scripting.Runtime.JsLlmConfig.temperature.get -> double?
 Orkeon.Scripting.Runtime.JsLlmConfig.with(Jint.Native.JsValue! overrides) -> Orkeon.Scripting.Runtime.JsLlmConfig!
 Orkeon.Scripting.Runtime.JsLlmFacade
-Orkeon.Scripting.Runtime.JsLlmFacade.act.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
-Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.act.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
-Orkeon.Scripting.Runtime.JsLlmFacade.embed.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
-Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.embed.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.extract.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object?>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.interrupt() -> void
 Orkeon.Scripting.Runtime.JsLlmFacade.isInterrupted.get -> bool
 Orkeon.Scripting.Runtime.JsLlmFacade.stream.get -> System.Func<string!, Jint.Native.JsValue?, Jint.Native.JsValue!>!

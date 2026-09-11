@@ -220,19 +220,22 @@ public sealed partial class JsLlmFacade
     /// <summary>Metadata key every provider writes its refusal under (<c>LlmResponseMetadata</c>).</summary>
     private const string ProviderErrorMetadataKey = "error";
 
-    public Func<JsValue, JsValue?, Task<JsValue>> chat => async (messages, options) =>
+    // Every async surface below resolves a CLR object, never a JsValue built here: the
+    // continuation after ConfigureAwait(false) is on a thread-pool thread, and only the
+    // engine's own event loop may convert it. See IteratorResult for the incident.
+    public Func<JsValue, JsValue?, Task<object>> chat => async (messages, options) =>
     {
         var msgs = ToMessages(messages);
         if (_provider is null)
-            return JsValue.FromObject(_engine, new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 });
+            return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
         var resp = await _provider.ChatAsync(msgs, ConfigFrom(options), _ct).ConfigureAwait(false);
         ReportUsage(resp, "chat", promptMessages: msgs);
-        return JsValue.FromObject(_engine, new
+        return new
         {
             content = resp.Content,
             tokensUsed = resp.TokensUsed,
             model = resp.Model ?? string.Empty,
-        });
+        };
     };
 
     /// <summary>
@@ -461,12 +464,12 @@ public sealed partial class JsLlmFacade
         };
     }
 
-    public Func<string, JsValue, JsValue?, Task<JsValue>> extract => async (prompt, schema, options) =>
+    public Func<string, JsValue, JsValue?, Task<object?>> extract => async (prompt, schema, options) =>
     {
         if (_provider is null)
         {
             using var empty = JsonDocument.Parse("{}");
-            return JsValue.FromObject(_engine, JsonElementToObject(empty.RootElement));
+            return JsonElementToObject(empty.RootElement);
         }
 
         // extract's contract is "return structured JSON". Three things make that reliable instead
@@ -482,7 +485,7 @@ public sealed partial class JsLlmFacade
         try
         {
             using var doc = JsonDocument.Parse(content);
-            return JsValue.FromObject(_engine, JsonElementToObject(doc.RootElement));
+            return JsonElementToObject(doc.RootElement);
         }
         catch (JsonException ex)
         {
@@ -572,9 +575,9 @@ public sealed partial class JsLlmFacade
         return picked;
     };
 
-    public Func<JsValue, JsValue?, Task<JsValue>> embed { get; }
+    public Func<JsValue, JsValue?, Task<object>> embed { get; }
 
-    private async Task<JsValue> EmbedAsync(JsValue text, JsValue? options)
+    private async Task<object> EmbedAsync(JsValue text, JsValue? options)
     {
         _ = options;
         await Task.Yield();
@@ -586,7 +589,7 @@ public sealed partial class JsLlmFacade
                 .ToArray()
             : [text.ToString() ?? string.Empty];
         var vectors = inputs.Select(StubEmbedding).ToArray();
-        return JsValue.FromObject(_engine, vectors);
+        return vectors;
     }
 
     /// <summary>
@@ -596,15 +599,15 @@ public sealed partial class JsLlmFacade
     /// is hit. Uses the provider's <see cref="ILlmProvider.BaseConfig"/> so the configured
     /// model/credentials are preserved while the tool schemas are added per call.
     /// </summary>
-    public Func<string, JsValue?, Task<JsValue>> act { get; }
+    public Func<string, JsValue?, Task<object>> act { get; }
 
-    private async Task<JsValue> ActAsync(string prompt, JsValue? options)
+    private async Task<object> ActAsync(string prompt, JsValue? options)
     {
         var maxIterations = ResolveMaxIterations(options);
         var permissionMode = ResolvePermissionMode(options);
         var onDelta = ResolveOnDelta(options);
         if (_provider is null)
-            return JsValue.FromObject(_engine, new { output = $"<undefined-llm:act:{prompt}>", iterations = 0 });
+            return new { output = $"<undefined-llm:act:{prompt}>", iterations = 0 };
 
         var baseCfg = ConfigFrom(options) ?? _provider.BaseConfig ?? LlmConfig.Default();
         var toolSchemas = _tools.Count > 0 ? _tools.Select(t => t.Schema).ToList() : null;
@@ -641,7 +644,7 @@ public sealed partial class JsLlmFacade
 
                 var call = TryParseToolCall(resp.RawResponseBody);
                 if (call is null)
-                    return JsValue.FromObject(_engine, new { output = resp.Content, iterations = i + 1 });
+                    return new { output = resp.Content, iterations = i + 1 };
 
                 var (toolName, toolArgs) = call.Value;
                 activity?.SetTag("orkeon.llm.act.tool", toolName);
@@ -661,20 +664,20 @@ public sealed partial class JsLlmFacade
             // ctx.llm.interrupt(): graceful settle instead of a crash — the script keeps
             // control and can inspect { interrupted: true }. Host cancellation is excluded
             // by the filter and keeps propagating as OperationCanceledException.
-            return JsValue.FromObject(_engine, new
+            return new
             {
                 output = "(interrupted)",
                 iterations = completedIterations,
                 interrupted = true,
-            });
+            };
         }
 
-        return JsValue.FromObject(_engine, new
+        return new
         {
             output = "(max tool-call iterations reached without a final answer)",
             iterations = maxIterations,
             exhausted = true,
-        });
+        };
     }
 
     /// <summary>

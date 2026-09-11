@@ -119,9 +119,10 @@ public sealed class LlmFacadeTests
 
         var vectors = await facade.embed(input, null);
 
-        var arr = (Jint.Native.Array.ArrayInstance)vectors;
-        var len = (int)Jint.Runtime.TypeConverter.ToInteger(arr.Get("length"));
-        Assert.Equal(2, len);
+        // The CLR array Jint copies into a JS array on its event loop (ArrayConversionMode.Copy).
+        var arr = Assert.IsType<double[][]>(vectors);
+        Assert.Equal(2, arr.Length);
+        Assert.All(arr, v => Assert.Equal(8, v.Length));
     }
 
     [Fact]

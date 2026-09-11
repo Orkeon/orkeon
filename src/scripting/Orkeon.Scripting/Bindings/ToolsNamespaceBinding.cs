@@ -36,13 +36,13 @@ public static partial class ToolsNamespaceBinding
         foreach (var tool in tools)
         {
             var jsName = ToCamelCase(tool.Name);
-            ns[jsName] = WrapTool(engine, tool);
+            ns[jsName] = WrapTool(tool);
             LogToolExposed(log, tool.Name, jsName);
         }
         engine.SetValue(GlobalName, ns);
     }
 
-    private static Func<JsValue, Task<JsValue>> WrapTool(Engine engine, IBaseTool tool)
+    private static Func<JsValue, Task<object?>> WrapTool(IBaseTool tool)
     {
         return async input =>
         {
@@ -73,8 +73,11 @@ public static partial class ToolsNamespaceBinding
             // JsonElement values can crash JsValue.FromObject (the underlying pooled
             // buffer may be released before Jint reflects on them — surfaces as
             // ArgumentException "Offset and length out of bounds"). Materialise to
-            // plain CLR types before handing off.
-            return JsValue.FromObject(engine, UnwrapJsonElements(resp.Result));
+            // plain CLR types before handing off. The conversion itself is Jint's, on
+            // its event loop: this continuation runs on a thread-pool thread, and a
+            // Promise.all over several tool calls converted concurrently would race
+            // inside the single-threaded engine.
+            return UnwrapJsonElements(resp.Result);
         };
     }
 
