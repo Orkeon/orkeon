@@ -1,0 +1,143 @@
+# The README's "Try it in two minutes -- no API key" block, executed literally.
+#
+# The job does not have its own copy of the commands: it cuts the fenced block between
+# the <!-- quickstart:begin --> / <!-- quickstart:end --> markers out of README.md,
+# checks that README.fr.md carries the identical block, and runs it. Change the
+# README and the job runs the new README; break the README and the job goes red.
+#
+# Everything the block needs is provided the way a reader would provide it, pinned:
+# the .NET 10 SDK, an Ollama binary downloaded from its GitHub release and checked
+# against the release's sha256sum.txt (no curl | sh), and the `orkeon` tool. The only
+# indirection is where `dotnet tool install -g Orkeon.Scripting.Cli --prerelease`
+# resolves the package: a nuget.config in the working directory puts a local pack of
+# THIS checkout first, versioned above anything nuget.org has, so the block installs
+# the code under test and not the last release. The line itself is untouched.
+name: Quickstart
+on:
+  push:
+    branches: [ main ]
+    paths:
+      - README.md
+      - README.fr.md
+      - examples/quickstart/**
+      - src/**
+      - Directory.Packages.props
+      - Directory.Build.props
+      - global.json
+      - .github/workflows/quickstart.yml
+  pull_request:
+    branches: [ main ]
+    paths:
+      - README.md
+      - README.fr.md
+      - examples/quickstart/**
+      - src/**
+      - Directory.Packages.props
+      - Directory.Build.props
+      - global.json
+      - .github/workflows/quickstart.yml
+  schedule:
+    - cron: '41 5 * * 1'  # Mondays 05:41 UTC -- a README that rots quietly rots weekly at most
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: quickstart-${{ github.ref }}
+  cancel-in-progress: true
+env:
+  OLLAMA_VERSION: 0.34.0
+  OLLAMA_SHA256: cf95886728959aa09910bb34de5cca1cc5a8f68003b5597197d3f2c2d57c0804
+jobs:
+  quickstart:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: '10.0.x' }
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-${{ runner.os }}-
+      # The model weights (1.3 GB) survive between runs; the pull in the block is then a
+      # no-op that still exercises the command.
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.ollama/models
+          key: ollama-models-llama3.2-1b
+
+      - name: Cut the block out of README.md, and check README.fr.md carries the same one
+        run: |
+          extract() {
+            awk '/<!-- quickstart:begin -->/{on=1; next} /<!-- quickstart:end -->/{on=0} on' "$1" \
+              | grep -v '^```'
+          }
+          extract README.md    > quickstart.sh
+          extract README.fr.md > quickstart.fr.sh
+          if ! diff -u quickstart.sh quickstart.fr.sh; then
+            echo "::error::README.md and README.fr.md carry different quickstart blocks"; exit 1
+          fi
+          test -s quickstart.sh || { echo "::error::no quickstart block found between the markers"; exit 1; }
+          echo "--- the block that will run:"; cat quickstart.sh
+
+      - name: Install Ollama (pinned release, checked against its published digest)
+        run: |
+          curl -fsSL -o ollama.tar.zst \
+            "https://github.com/ollama/ollama/releases/download/v${OLLAMA_VERSION}/ollama-linux-amd64.tar.zst"
+          echo "${OLLAMA_SHA256}  ollama.tar.zst" | sha256sum --check
+          mkdir -p "$HOME/ollama" && tar --zstd -xf ollama.tar.zst -C "$HOME/ollama"
+          echo "$HOME/ollama/bin" >> "$GITHUB_PATH"
+          "$HOME/ollama/bin/ollama" serve > ollama.log 2>&1 &
+          for i in $(seq 1 30); do
+            curl -fsS localhost:11434/api/version && break
+            sleep 1
+          done
+
+      # `dotnet tool install -g Orkeon.Scripting.Cli --prerelease` -- the block's own line --
+      # must install this checkout. A local pack versioned <props version>.ci<run> outranks
+      # every published pre-release of the same prefix, and the nuget.config below makes the
+      # pack directory a source in the directory the block runs from.
+      - name: Pack the orkeon tool from this checkout, above anything published
+        run: |
+          prefix=$(sed -n 's/.*<VersionPrefix>\([^<]*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
+          suffix=$(sed -n 's/.*<VersionSuffix>\([^<]*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
+          ci_suffix="${suffix:+$suffix.}ci${GITHUB_RUN_NUMBER}"
+          echo "packing $prefix-$ci_suffix"
+          dotnet pack src/scripting/Orkeon.Scripting.Cli/Orkeon.Scripting.Cli.csproj -c Release \
+            -o "$PWD/artifacts/cli" -p:VersionSuffix="$ci_suffix"
+          cat > nuget.config <<XML
+          <?xml version="1.0" encoding="utf-8"?>
+          <configuration>
+            <packageSources>
+              <clear />
+              <add key="this-checkout" value="$PWD/artifacts/cli" />
+              <add key="nuget.org" value="https://api.nuget.org/v3/index.json" />
+            </packageSources>
+          </configuration>
+          XML
+
+      - name: Run the README block
+        run: |
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          export PATH="$HOME/.dotnet/tools:$PATH"
+          bash -euxo pipefail quickstart.sh
+
+      - name: The agent wrote where it was allowed to, and nowhere else
+        run: |
+          test -s out/hello.md || { echo "::error::out/hello.md was not written"; exit 1; }
+          grep -q "Hello from Orkeon" out/hello.md
+          orkeon --version
+          echo "--- out/hello.md"; cat out/hello.md
+
+      - name: Keep the run's evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: quickstart-run
+          path: |
+            out/
+            quickstart.sh
+            ollama.log
+          if-no-files-found: ignore
+          retention-days: 14

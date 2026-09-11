@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the README opens on the problem, then on a command that runs without a key
+
+The front page used to open on *one crew, three ways* and a YAML block — a pitch to
+someone who had already decided, on the one promise Microsoft Agent Framework has also kept
+since July. It now opens on the problem: a coding agent let loose on a repository writes
+where it should not, because nothing is there to stop it. Then on what Orkeon puts in front
+of the model — the virtual file system and its declared mounts, the sandbox, the execution
+budget, and `Orkeon.Compliance.Vfs` as a standalone analyzer for the reader's own code —
+and on a three-line block that runs a crew on `llama3.2:1b` with no API key:
+`examples/quickstart/` (one agent, one `file_write`, one `rw` mount, its own
+`appsettings.json` pointing at Ollama). Measured on 2026-09-11: the crew writes
+`out/hello.md` in 14 s; the same crew asked to write `/etc/hello.md` is refused by the
+file-system service before any byte lands (`No mount found for virtual path`). `orkeon
+forge` gets its own section — the *brief → blueprint → render → validate → test → diagnose
+→ verdict* cycle, the four commands, the `FORGE-LLM-UNAVAILABLE` door. *Quick Start —
+one crew, three ways* moves down, unchanged. The compliance vocabulary — NIST, DLP,
+memory encryption, key rotation — leaves the README and the docfx landing page; every
+subsystem stays in the code and in the reference pages (`opt-in-subsystems.md`,
+`security.md`). `index.md` / `index.fr.md` open the same way.
+
+### Added — the README's quickstart block is executed by CI, literally
+
+`quickstart.yml` cuts the fenced block between the `<!-- quickstart:begin -->` /
+`<!-- quickstart:end -->` markers out of `README.md`, checks that `README.fr.md` carries
+the identical block, and runs it on a GitHub runner: a pinned Ollama release checked
+against its published digest (no `curl | sh`), the `orkeon` tool installed by the block's
+own `dotnet tool install` line — resolved to a pack of the checkout under test through a
+`nuget.config`, versioned above anything published — then `out/hello.md` must exist and
+say hello. Change the README, the job runs the new README; break it, the build is red.
+
+### Fixed — a tool-call envelope inside the arguments no longer trips the circuit breaker
+
+`llama3.2:1b` answers a `file_write` call with the whole envelope as the arguments —
+`{"type":"function","function":"file_write","parameters":{"path":…,"content":…}}`. The
+dispatcher passed it through, the tool saw no `path`, said so, and the model repeated the
+identical envelope until the circuit breaker tripped after three iterations. When every
+key of the arguments belongs to that envelope (`type`, `function`, `name`, `parameters`,
+`arguments`) and the payload is an object — or a JSON-encoded one — `ChatToolDispatcher`
+now unwraps it. Anything else is left exactly as it was.
+
 ### Changed — coverage is measured in public, and the README quotes no number for it
 
 The README stated 82.7 % line coverage from a SonarQube pass on one machine whose report
