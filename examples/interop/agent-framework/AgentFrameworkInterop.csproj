@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <LangVersion>latest</LangVersion>
+    <RootNamespace>Orkeon.Examples.AgentFrameworkInterop</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Microsoft.Agents.AI (not only the abstractions): AsAIAgent() turns an IChatClient into a ChatClientAgent. -->
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
+    <ProjectReference Include="..\..\..\src\interop\Orkeon.Interop.AgentFramework\Orkeon.Interop.AgentFramework.csproj" />
+  </ItemGroup>
+
+</Project>

@@ -296,10 +296,10 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`), the executable-bit
    gate (`file-modes.yml`), the secret scan (`secret-scan.yml`) and the strict docfx build.
 6. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
-   pushes the **seven-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pushes the **eight-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, the umbrella first because the
-   others depend on it — and
+   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`, the
+   umbrella first because the others depend on it — and
    every packable to GitHub Packages; see
    [the publication matrix](docs/reference/publication-matrix.md)),
    `release.yml` (the per-platform CLI packages and multi-app archives for every RID,

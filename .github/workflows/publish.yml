@@ -105,7 +105,7 @@ jobs:
       # dependency outside the lineup — the rc.1/rc.2 NU1101 incident), and the umbrella
       # packages' hand-declared external dependencies must match their embedded projects.
       - name: Check package closure
-        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs
+        run: python3 scripts/check-package-closure.py --artifacts artifacts --lineup Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework
       # Software bill of materials (CycloneDX 1.7 JSON) of the whole solution as
       # packed: every NuGet dependency, transitive included, read from the
       # project.assets.json files the pack just produced. The tool is a pinned
@@ -173,7 +173,7 @@ jobs:
           # while the file sat right there. The GitHub Packages push above never met this:
           # `artifacts/*.nupkg` is inside that dialect. So: unquoted glob, bash expands it,
           # and the CLI is handed a real path.
-          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs; do
+          for id in Orkeon Orkeon.Tools Orkeon.Rag.Onnx Orkeon.Rag.Onnx.Model Orkeon.Tools.Embeddings.Local Orkeon.Scripting.Cli Orkeon.Compliance.Vfs Orkeon.Interop.AgentFramework; do
             # No nullglob: an unmatched pattern stays literal, so test the first element
             # rather than trust the count — a missing package must stop the release, not
             # be pushed as a filename.

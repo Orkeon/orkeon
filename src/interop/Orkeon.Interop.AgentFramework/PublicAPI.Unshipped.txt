@@ -1,0 +1,36 @@
+#nullable enable
+Orkeon.Interop.AgentFramework.AgentBuilderExtensions
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.AIAgentLlmProvider(Microsoft.Agents.AI.AIAgent! agent) -> void
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Interop.AgentFramework.AIAgentLlmProvider.Name.get -> string!
+Orkeon.Interop.AgentFramework.AIAgentTool
+Orkeon.Interop.AgentFramework.AIAgentTool.AIAgentTool(Microsoft.Agents.AI.AIAgent! agent, string? toolName = null, string? description = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Interop.AgentFramework.AIAgentTool!>? logger = null) -> void
+Orkeon.Interop.AgentFramework.AIAgentToolRequest
+Orkeon.Interop.AgentFramework.AIAgentToolRequest.AIAgentToolRequest() -> void
+Orkeon.Interop.AgentFramework.AIAgentToolRequest.Request.get -> string!
+Orkeon.Interop.AgentFramework.AIAgentToolRequest.Request.set -> void
+Orkeon.Interop.AgentFramework.AIAgentToolResponse
+Orkeon.Interop.AgentFramework.AIAgentToolResponse.Agent.get -> string!
+Orkeon.Interop.AgentFramework.AIAgentToolResponse.Agent.init -> void
+Orkeon.Interop.AgentFramework.AIAgentToolResponse.AIAgentToolResponse() -> void
+Orkeon.Interop.AgentFramework.AIAgentToolResponse.Answer.get -> string!
+Orkeon.Interop.AgentFramework.AIAgentToolResponse.Answer.init -> void
+Orkeon.Interop.AgentFramework.CrewAgent
+Orkeon.Interop.AgentFramework.CrewAgent.CrewAgent(Orkeon.Application.Interfaces.Services.ICrewOrchestrationService! orchestrator, Orkeon.Domain.Common.CrewId! crewId, string? name = null, string? description = null) -> void
+Orkeon.Interop.AgentFramework.CrewAgent.CrewAgent(Orkeon.Application.Interfaces.Services.ICrewOrchestrationService! orchestrator, Orkeon.Domain.Crew.Crew! crew) -> void
+Orkeon.Interop.AgentFramework.CrewAgent.CrewId.get -> Orkeon.Domain.Common.CrewId!
+Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory
+Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(Orkeon.Domain.Common.CrewId! crewId, string? name = null, string? description = null) -> Orkeon.Interop.AgentFramework.CrewAgent!
+Orkeon.Interop.AgentFramework.DependencyInjection.ICrewAgentFactory.Create(Orkeon.Domain.Crew.Crew! crew) -> Orkeon.Interop.AgentFramework.CrewAgent!
+Orkeon.Interop.AgentFramework.DependencyInjection.ServiceCollectionExtensions
+override Orkeon.Interop.AgentFramework.AIAgentTool.Category.get -> string!
+override Orkeon.Interop.AgentFramework.AIAgentTool.Description.get -> string!
+override Orkeon.Interop.AgentFramework.AIAgentTool.Name.get -> string!
+override Orkeon.Interop.AgentFramework.CrewAgent.Description.get -> string?
+override Orkeon.Interop.AgentFramework.CrewAgent.Name.get -> string?
+static Orkeon.Interop.AgentFramework.AgentBuilderExtensions.WithAgentFrameworkAgent(this Orkeon.Domain.Agent.AgentBuilder! builder, Microsoft.Agents.AI.AIAgent! agent) -> Orkeon.Domain.Agent.AgentBuilder!
+static Orkeon.Interop.AgentFramework.AgentBuilderExtensions.WithAgentFrameworkTool(this Orkeon.Domain.Agent.AgentBuilder! builder, Microsoft.Agents.AI.AIAgent! agent, string? toolName = null, string? description = null) -> Orkeon.Domain.Agent.AgentBuilder!
+static Orkeon.Interop.AgentFramework.DependencyInjection.ServiceCollectionExtensions.AddOrkeonAgentFramework(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -83,8 +83,10 @@ def tool_files() -> list[Path]:
     the relational database tools, the file-search tools and the code interpreter derive
     from intermediate bases and it misses all seven of them).
     Skipped: interfaces, doubles, adapters and decorators that match the glob without
-    being built-in tools (ObservedTool is BUS-03's instrumentation decorator)."""
-    skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs"}
+    being built-in tools (ObservedTool is BUS-03's instrumentation decorator; AIAgentTool
+    wraps a Microsoft Agent Framework agent the user supplies -- an interop adapter, not a
+    catalogue entry, and the scope freeze adds no built-in tool)."""
+    skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs", "AIAgentTool.cs"}
     return [f for f in walk(ROOT / "src", ("Tool.cs",)) if f.name not in skip]
 
 
@@ -182,7 +184,7 @@ def surface() -> list[tuple[str, object, str]]:
         ("llm_providers", gt_llm_providers(),
          "*.cs in src/core/Orkeon.Infrastructure/LLMs deriving OpenAICompatibleProviderBase or HttpLlmProviderBase"),
         ("tool_classes", gt_tool_classes(),
-         "*Tool.cs under src/ minus IBaseTool/MockTool/JsTool/ObservedTool (bin/obj pruned)"),
+         "*Tool.cs under src/ minus IBaseTool/MockTool/JsTool/ObservedTool/AIAgentTool (bin/obj pruned)"),
         ("memory_stores", gt_memory_stores(),
          "classes deriving MemoryProviderBase under src/core/Orkeon.Infrastructure/Memory"),
         ("examples", gt_examples(),

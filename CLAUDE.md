@@ -447,13 +447,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **43 src projects** and **33 test projects**, plus two solutions:
+The repository contains **45 src projects** and **34 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 43 projects
+├── src/                          # 45 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -500,14 +500,16 @@ The repository contains **43 src projects** and **33 test projects**, plus two s
 │   │   └── Orkeon.Host/          # Service host daemon `orkeon-host` (crew registry, chat gateway, Discord channel — GATE)
 │   ├── plugins/
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
-│   ├── packaging/                # NuGet packaging projects (PUB-25, 4): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 7 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
+│   ├── interop/
+│   │   └── Orkeon.Interop.AgentFramework/ # Microsoft Agent Framework bridge, both directions (ADR-010): CrewAgent : AIAgent, AIAgentLlmProvider, AIAgentTool
+│   ├── packaging/                # NuGet packaging projects (PUB-25, 5 incl. the Interop wrapper): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 7 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
 │       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)
 │       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
 │       ├── Orkeon.Studio.Run/    # Studio: run TUI
 │       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 33 projects
+├── tests/                        # 34 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
@@ -516,6 +518,7 @@ The repository contains **43 src projects** and **33 test projects**, plus two s
 │   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
 │   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests
+│   ├── interop/                  # Orkeon.Interop.AgentFramework.Tests
 │   ├── plugins/                  # Orkeon.Plugins.Tests
 │   ├── apps/                     # Orkeon.ConsoleApp.Tests, Orkeon.Studio.{Config,Core,Run,Wpf}.Tests
 │   ├── e2e/                      # Orkeon.E2E.Tests

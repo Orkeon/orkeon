@@ -1,0 +1,49 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- PUB-25 wrapper: packs the Orkeon.Interop.AgentFramework assembly with a nuspec
+       dependency on the `Orkeon` umbrella and on Microsoft.Agents.AI.Abstractions. Kept
+       out of the umbrella because the Agent Framework dependency is a choice a consumer
+       makes, not one every Orkeon user should inherit. -->
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Description>Microsoft Agent Framework interop for Orkeon: run an Orkeon crew as an AIAgent, and use an AIAgent as the brain or as a tool of an Orkeon agent.</Description>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <OrkeonIconFamily>tools</OrkeonIconFamily>
+    <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <TargetsForTfmSpecificContentInPackage>$(TargetsForTfmSpecificContentInPackage);OrkeonEmbedWrappedAssembly</TargetsForTfmSpecificContentInPackage>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\..\interop\Orkeon.Interop.AgentFramework\README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\interop\Orkeon.Interop.AgentFramework\Orkeon.Interop.AgentFramework.csproj" PrivateAssets="all" />
+    <ProjectReference Include="..\Orkeon\Orkeon.csproj" />
+  </ItemGroup>
+
+  <!-- Externals of the wrapped assembly that `Orkeon` does not already carry. -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI.Abstractions" />
+  </ItemGroup>
+
+  <Target Name="OrkeonEmbedWrappedAssembly" DependsOnTargets="BuildOnlySettings;ResolveReferences">
+    <ItemGroup>
+      <_OrkeonWrapped Include="@(ReferenceCopyLocalPaths)"
+                      Condition="'%(ReferenceCopyLocalPaths.ReferenceSourceTarget)' == 'ProjectReference'
+                                 And ('%(ReferenceCopyLocalPaths.Extension)' == '.dll' Or '%(ReferenceCopyLocalPaths.Extension)' == '.xml')
+                                 And '%(ReferenceCopyLocalPaths.Filename)' == 'Orkeon.Interop.AgentFramework'" />
+      <TfmSpecificPackageFile Include="@(_OrkeonWrapped)" PackagePath="lib/$(TargetFramework)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The PackageId is the wrapped assembly's name, applied at pack time only (the same
+       target as the other wrappers) so the wrapper's own AssemblyName stays distinct. -->
+  <Target Name="OrkeonWrapperPackageIdentity" BeforeTargets="_GetAbsoluteOutputPathsForPack;_GetOutputItemsFromPack;GenerateNuspec">
+    <PropertyGroup>
+      <PackageId>Orkeon.Interop.AgentFramework</PackageId>
+    </PropertyGroup>
+  </Target>
+
+</Project>

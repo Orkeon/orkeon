@@ -7,6 +7,30 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `Orkeon.Interop.AgentFramework`: Microsoft Agent Framework, in both directions (ADR-010)
+
+A developer with Microsoft Agent Framework code can try Orkeon without giving anything up,
+and an Orkeon crew can be one more agent in a MAF workflow. One package, depending on
+`Orkeon` and `Microsoft.Agents.AI.Abstractions` 1.20 only, eighth id of the NuGet lineup:
+`CrewAgent : AIAgent` (a crew as a MAF agent — one kickoff per `RunAsync`, the conversation
+as initial context, the final output as the assistant message, token telemetry as
+`Usage`, stateless sessions that still serialise), `AIAgentLlmProvider : ILlmProvider`
+(a MAF agent as the model of an Orkeon agent — `AgentBuilder.WithAgentFrameworkAgent`, one
+MAF session for the provider's lifetime) and `AIAgentTool` (a MAF agent as a tool of an
+Orkeon agent — `WithAgentFrameworkTool`, the mirror of MAF's `AsAIFunction()`).
+`AddOrkeonAgentFramework()` registers an `ICrewAgentFactory`. Eleven tests with
+hand-written doubles; `examples/interop/agent-framework/` runs both directions on the
+configured model — verified on `llama3.2:1b` via Ollama.
+
+### Fixed — the initial context of a kickoff reaches the agents
+
+`CrewInput.InitialContext` was mapped into the domain input and read by nothing:
+`orkeon run --initial-context`, Studio's field and every programmatic
+`CrewInput.Empty("…")` reached no prompt — a crew asked to "summarise the text given as
+initial context" answered "what text?". The orchestrator now exposes it as the
+`initial_context` prompt variable (listed under *Context Variables* and available to
+`{initial_context}` templates); a caller-supplied variable of that name wins.
+
 ### Changed — a run now produces spans, and they speak the OpenTelemetry GenAI conventions
 
 The telemetry plumbing was complete and unused: `TracingInstrumentation`, `OrkeonMetrics`

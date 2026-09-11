@@ -136,6 +136,8 @@
       href: adr/ADR-008-virtual-paths-are-the-only-currency.md
     - name: ADR-009 — Satellites de constantes partagées
       href: adr/ADR-009-shared-constants-satellites.md
+    - name: ADR-010 — Interop Microsoft Agent Framework
+      href: adr/ADR-010-agent-framework-interop.md
     - name: ADR — Graphe sémantique RaggableTree
       href: architecture/raggable-tree-adr.md
 - name: Gabarits

@@ -58,6 +58,7 @@ PACKAGING = {
     "Orkeon.Tools": REPO / "src/packaging/Orkeon.Tools/Orkeon.Tools.csproj",
     "Orkeon.Rag.Onnx": REPO / "src/packaging/Orkeon.Rag.Onnx/Orkeon.Rag.Onnx.Package.csproj",
     "Orkeon.Tools.Embeddings.Local": REPO / "src/packaging/Orkeon.Tools.Embeddings.Local/Orkeon.Tools.Embeddings.Local.Package.csproj",
+    "Orkeon.Interop.AgentFramework": REPO / "src/packaging/Orkeon.Interop.AgentFramework/Orkeon.Interop.AgentFramework.Package.csproj",
 }
 NON_FLOWING = {"Microsoft.CodeAnalysis.PublicApiAnalyzers"}  # PrivateAssets=all analyzers
 
@@ -72,6 +73,7 @@ LINEUP = [
     "Orkeon.Tools.Embeddings.Local",
     "Orkeon.Scripting.Cli",
     "Orkeon.Compliance.Vfs",
+    "Orkeon.Interop.AgentFramework",
 ]
 
 # Packable, but deliberately GitHub Packages only — never pushed to NuGet.org.
