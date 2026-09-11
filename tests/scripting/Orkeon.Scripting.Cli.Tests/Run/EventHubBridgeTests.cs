@@ -31,7 +31,7 @@ public class EventHubBridgeTests
         public IReadOnlyList<JsonElement> Emitted() =>
             [.. Output.ToString()
                 .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-                .Select(line => JsonDocument.Parse(line).RootElement.Clone())];
+                .Select(line => JsonElement.Parse(line).Clone())];
 
         public async ValueTask DisposeAsync()
         {

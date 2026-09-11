@@ -144,7 +144,7 @@ internal static class CaptureSettle
         CompositionTarget.Rendering += onRendering;
         try
         {
-            return await Task.WhenAny(arrived.Task, Task.Delay(FrameTimeout)) == arrived.Task;
+            return await CompletedWithinAsync(arrived.Task, FrameTimeout);
         }
         finally
         {
@@ -170,8 +170,22 @@ internal static class CaptureSettle
         if (pending.Count == 0)
             return true;
 
-        var all = Task.WhenAll(pending.Select(WaitOneAsync));
-        return await Task.WhenAny(all, Task.Delay(ImageTimeout)) == all;
+        return await CompletedWithinAsync(Task.WhenAll(pending.Select(WaitOneAsync)), ImageTimeout);
+    }
+
+    // WaitAsync rather than WhenAny + Delay: a Delay that lost the race keeps its timer
+    // alive until it fires (CA2027, .NET 11 SDK analyzers).
+    private static async Task<bool> CompletedWithinAsync(Task task, TimeSpan timeout)
+    {
+        try
+        {
+            await task.WaitAsync(timeout);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
     }
 
     private static Task WaitOneAsync(BitmapImage bitmap)

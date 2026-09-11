@@ -74,11 +74,11 @@ public class McpServerTests
         {
             Method = "initialize",
             Id = JsonSerializer.SerializeToElement(1),
-            Params = JsonDocument.Parse(@"{
+            Params = JsonElement.Parse(@"{
                 ""protocolVersion"": ""2024-11-05"",
                 ""capabilities"": {},
                 ""clientInfo"": { ""name"": ""test-client"", ""version"": ""1.0"" }
-            }").RootElement
+            }")
         };
 
         // Act
@@ -152,10 +152,10 @@ public class McpServerTests
         {
             Method = "tools/call",
             Id = JsonSerializer.SerializeToElement(3),
-            Params = JsonDocument.Parse(@"{
+            Params = JsonElement.Parse(@"{
                 ""name"": ""search"",
                 ""arguments"": { ""query"": ""hello"" }
-            }").RootElement
+            }")
         };
 
         // Act
@@ -187,10 +187,10 @@ public class McpServerTests
         {
             Method = "tools/call",
             Id = JsonSerializer.SerializeToElement(4),
-            Params = JsonDocument.Parse(@"{
+            Params = JsonElement.Parse(@"{
                 ""name"": ""nonexistent"",
                 ""arguments"": {}
-            }").RootElement
+            }")
         };
 
         // Act
@@ -253,7 +253,7 @@ public class McpServerTests
         {
             Method = "tools/call",
             Id = JsonSerializer.SerializeToElement(6),
-            Params = JsonDocument.Parse(@"{}").RootElement
+            Params = JsonElement.Parse(@"{}")
         };
 
         // Act
@@ -280,10 +280,10 @@ public class McpServerTests
         {
             Method = "tools/call",
             Id = JsonSerializer.SerializeToElement(7),
-            Params = JsonDocument.Parse(@"{
+            Params = JsonElement.Parse(@"{
                 ""name"": ""failing-tool"",
                 ""arguments"": {}
-            }").RootElement
+            }")
         };
 
         // Act

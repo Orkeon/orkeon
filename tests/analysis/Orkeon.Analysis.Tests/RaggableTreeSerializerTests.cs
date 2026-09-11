@@ -160,7 +160,7 @@ public class RaggableTreeSerializerTests
         await serializer.SerializeAsync(tree, "idx-meta", stream, CancellationToken.None);
         var after = DateTimeOffset.UtcNow.AddSeconds(1);
 
-        var json = JsonDocument.Parse(stream.ToArray()).RootElement;
+        var json = JsonElement.Parse(stream.ToArray());
         Assert.Equal("2.0", json.GetProperty("version").GetString());
         Assert.Equal("idx-meta", json.GetProperty("indexId").GetString());
         Assert.Equal(tree.Nodes.Count, json.GetProperty("nodeCount").GetInt32());

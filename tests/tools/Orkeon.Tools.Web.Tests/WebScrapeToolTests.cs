@@ -159,8 +159,8 @@ public sealed class WebScrapeToolTests : IDisposable
 
         // Guard the test itself with a hard timeout in case the cancellation
         // is not honoured — this catches regressions immediately.
-        var finished = await Task.WhenAny(call, Task.Delay(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
-        Assert.Same(call, finished);
+        // WaitAsync rather than WhenAny + Delay (CA2027): a timeout here is the regression.
+        await call.WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
 
         try
         {

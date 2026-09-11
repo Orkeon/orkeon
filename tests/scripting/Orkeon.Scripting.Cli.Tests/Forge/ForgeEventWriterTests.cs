@@ -59,7 +59,7 @@ public class ForgeEventWriterTests
 
         var sequences = output.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => System.Text.Json.JsonDocument.Parse(line).RootElement.GetProperty("seq").GetInt32());
+            .Select(line => System.Text.Json.JsonElement.Parse(line).GetProperty("seq").GetInt32());
 
         Assert.Equal([1, 2, 3], sequences);
     }
@@ -83,7 +83,7 @@ public class ForgeEventWriterTests
             stage = "brief",
         });
 
-        var root = System.Text.Json.JsonDocument.Parse(output.ToString()).RootElement;
+        var root = System.Text.Json.JsonElement.Parse(output.ToString());
 
         Assert.Equal(OrkeonEventWriter.ProtocolVersion, root.GetProperty("v").GetInt32());
         Assert.Equal(1, root.GetProperty("seq").GetInt32());
@@ -131,7 +131,7 @@ public class ForgeEventWriterTests
 
         writer.Emit("x", new { present = "yes", missing = (string?)null });
 
-        var root = System.Text.Json.JsonDocument.Parse(output.ToString()).RootElement;
+        var root = System.Text.Json.JsonElement.Parse(output.ToString());
         Assert.Equal("yes", root.GetProperty("present").GetString());
         Assert.False(root.TryGetProperty("missing", out _));
     }

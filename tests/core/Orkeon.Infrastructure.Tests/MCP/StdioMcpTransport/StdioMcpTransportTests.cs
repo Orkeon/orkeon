@@ -57,7 +57,7 @@ public class StdioMcpTransportTests
         {
             Method = "test",
             Id = JsonSerializer.SerializeToElement(1),
-            Params = JsonDocument.Parse("{\"hello\":\"world\"}").RootElement
+            Params = JsonElement.Parse("{\"hello\":\"world\"}")
         };
 
         // The echo process echoes the serialized request line back as is,

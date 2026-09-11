@@ -350,7 +350,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.True(File.Exists(Path.Combine(Destination, ForgePromoter.CardFileName)));
 
         var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement).ToList();
+            .Select(line => JsonElement.Parse(line)).ToList();
         Assert.Equal(["session.started", "promoted", "session.finished"],
             events.Select(e => e.GetProperty("kind").GetString()).ToList());
         Assert.Equal(Destination, events[1].GetProperty("path").GetString());
@@ -384,7 +384,7 @@ public sealed class ForgePromoteTests : IDisposable
 
         Assert.Equal(1, exitCode);
         var error = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement)
+            .Select(line => JsonElement.Parse(line))
             .Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeErrorCodes.PromoteFailed, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());

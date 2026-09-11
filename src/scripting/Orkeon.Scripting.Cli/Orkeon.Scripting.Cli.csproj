@@ -12,6 +12,10 @@
     <PackageTags>AI;Agents;LLM;Orkeon;Scripting;CLI</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackAsTool>true</PackAsTool>
+    <!-- A net10.0 tool must start on a machine whose only runtime is .NET 11 (GA on
+         2026-11-10): without Major roll-forward the host refuses to run it and the user
+         sees "You must install .NET to run this application". -->
+    <RollForward>Major</RollForward>
     <ToolCommandName>orkeon</ToolCommandName>
   </PropertyGroup>
 

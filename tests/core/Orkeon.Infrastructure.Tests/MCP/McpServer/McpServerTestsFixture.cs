@@ -52,11 +52,11 @@ public class McpServerTestsFixture
         {
             Method = "initialize",
             Id = JsonSerializer.SerializeToElement(id),
-            Params = JsonDocument.Parse(@"{
+            Params = JsonElement.Parse(@"{
                 ""protocolVersion"": ""2024-11-05"",
                 ""capabilities"": {},
                 ""clientInfo"": { ""name"": ""test-client"", ""version"": ""1.0"" }
-            }").RootElement
+            }")
         };
 
     public static JsonRpcRequest CreateToolsListRequest(int id = 2)
@@ -67,7 +67,7 @@ public class McpServerTestsFixture
         {
             Method = "tools/call",
             Id = JsonSerializer.SerializeToElement(id),
-            Params = JsonDocument.Parse($@"{{""name"": ""{name}"", ""arguments"": {argsJson}}}").RootElement
+            Params = JsonElement.Parse($@"{{""name"": ""{name}"", ""arguments"": {argsJson}}}")
         };
 
     // --- Inspection ---

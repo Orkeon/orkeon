@@ -15,7 +15,7 @@ public class JsonRpcTypesTestsFixture
             Id = JsonSerializer.SerializeToElement(id)
         };
         if (paramsJson != null)
-            request.Params = JsonDocument.Parse(paramsJson).RootElement;
+            request.Params = JsonElement.Parse(paramsJson);
         return request;
     }
 
@@ -25,7 +25,7 @@ public class JsonRpcTypesTestsFixture
         => new()
         {
             Id = JsonSerializer.SerializeToElement(id),
-            Result = JsonDocument.Parse(resultJson).RootElement
+            Result = JsonElement.Parse(resultJson)
         };
 
     public static JsonRpcResponse CreateResponseWithError(int id, int code, string message)

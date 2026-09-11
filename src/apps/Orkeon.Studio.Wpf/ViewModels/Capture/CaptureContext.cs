@@ -47,8 +47,14 @@ internal sealed class CaptureContext
         // teardown down with it. The timeout is the other half: a stop that parks a run and never
         // releases it is a bug in the stop, and it has to read as one instead of hanging a
         // campaign somebody left running.
-        var all = Task.WhenAll(held).ContinueWith(static _ => { }, TaskScheduler.Default);
-        if (await Task.WhenAny(all, Task.Delay(DrainLimit)) != all)
+        // WaitAsync throws the TimeoutException itself (WhenAny + Delay left a timer running: CA2027).
+        try
+        {
+            await Task.WhenAll(held).ContinueWith(static _ => { }, TaskScheduler.Default).WaitAsync(DrainLimit);
+        }
+        catch (TimeoutException)
+        {
             throw new TimeoutException("a stop parked work it never released");
+        }
     }
 }

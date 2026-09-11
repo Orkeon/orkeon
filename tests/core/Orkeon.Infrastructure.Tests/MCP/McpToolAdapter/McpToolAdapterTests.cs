@@ -33,7 +33,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
                 return new JsonRpcResponse
                 {
                     Id = req.Id,
-                    Result = JsonDocument.Parse(json).RootElement
+                    Result = JsonElement.Parse(json)
                 };
             }
 
@@ -50,7 +50,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
                 return new JsonRpcResponse
                 {
                     Id = req.Id,
-                    Result = JsonDocument.Parse(json).RootElement
+                    Result = JsonElement.Parse(json)
                 };
             }
 
@@ -72,14 +72,14 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
 
     private static McpToolDefinition CreateDefinition(string name = "test-tool", string desc = "A test tool")
     {
-        var inputSchema = JsonDocument.Parse(@"{
+        var inputSchema = JsonElement.Parse(@"{
             ""type"": ""object"",
             ""properties"": {
                 ""query"": { ""type"": ""string"", ""description"": ""Search query"" },
                 ""limit"": { ""type"": ""integer"", ""description"": ""Max results"", ""default"": 10 }
             },
             ""required"": [""query""]
-        }").RootElement;
+        }");
 
         return new McpToolDefinition
         {
@@ -128,7 +128,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
                 return new JsonRpcResponse
                 {
                     Id = req.Id,
-                    Result = JsonDocument.Parse(json).RootElement
+                    Result = JsonElement.Parse(json)
                 };
             }
 
@@ -145,7 +145,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
             return new JsonRpcResponse
             {
                 Id = req.Id,
-                Result = JsonDocument.Parse(errorJson).RootElement
+                Result = JsonElement.Parse(errorJson)
             };
         });
 
@@ -172,7 +172,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
     public void ShouldConvertFromMcpInputSchema_WhenAccessingSchema()
     {
         // Arrange
-        var inputSchema = JsonDocument.Parse(@"{
+        var inputSchema = JsonElement.Parse(@"{
             ""type"": ""object"",
             ""properties"": {
                 ""query"": { ""type"": ""string"", ""description"": ""Search query"" },
@@ -180,7 +180,7 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
                 ""format"": { ""type"": ""string"", ""description"": ""Output format"", ""enum"": [""json"", ""csv"", ""text""] }
             },
             ""required"": [""query""]
-        }").RootElement;
+        }");
 
         var definition = new McpToolDefinition
         {
@@ -286,12 +286,12 @@ public sealed class McpToolAdapterTests : IAsyncDisposable
     public void ShouldConvertBooleanDefault_WhenConvertingSchema()
     {
         // Arrange
-        var inputSchema = JsonDocument.Parse(@"{
+        var inputSchema = JsonElement.Parse(@"{
             ""type"": ""object"",
             ""properties"": {
                 ""verbose"": { ""type"": ""boolean"", ""description"": ""Verbose output"", ""default"": true }
             }
-        }").RootElement;
+        }");
 
         var definition = new McpToolDefinition
         {

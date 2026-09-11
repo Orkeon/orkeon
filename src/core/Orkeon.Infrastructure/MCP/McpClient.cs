@@ -332,7 +332,7 @@ public partial class McpClient : IAsyncDisposable
         if (parameters != null)
         {
             var json = JsonSerializer.Serialize(parameters);
-            request.Params = JsonDocument.Parse(json).RootElement;
+            request.Params = JsonElement.Parse(json);
         }
 
         return request;

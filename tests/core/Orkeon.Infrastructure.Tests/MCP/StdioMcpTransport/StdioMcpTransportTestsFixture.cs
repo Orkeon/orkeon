@@ -72,7 +72,7 @@ public class StdioMcpTransportTestsFixture
             Id = JsonSerializer.SerializeToElement(id)
         };
         if (paramsJson != null)
-            request.Params = JsonDocument.Parse(paramsJson).RootElement;
+            request.Params = JsonElement.Parse(paramsJson);
         return request;
     }
 }

@@ -166,7 +166,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal(0, exitCode);
         var kinds = console.Stdout
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => System.Text.Json.JsonDocument.Parse(line).RootElement)
+            .Select(line => System.Text.Json.JsonElement.Parse(line))
             .ToList();
         Assert.Equal(["session.started", "session.finished"], kinds.Select(k => k.GetProperty("kind").GetString()));
         Assert.Equal("ready", kinds[^1].GetProperty("status").GetString());
@@ -194,7 +194,7 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Equal(1, exitCode);
         var lines = console.Stdout
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => System.Text.Json.JsonDocument.Parse(line).RootElement)
+            .Select(line => System.Text.Json.JsonElement.Parse(line))
             .ToList();
         var error = Assert.Single(lines, l => l.GetProperty("kind").GetString() == "error");
         Assert.Equal("FORGE-INVALID-STATE", error.GetProperty("code").GetString());

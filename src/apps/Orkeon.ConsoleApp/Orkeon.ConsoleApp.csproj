@@ -12,6 +12,10 @@
          can be run straight from packages, with no source clone. -->
     <IsPackable>true</IsPackable>
     <PackAsTool>true</PackAsTool>
+    <!-- A net10.0 tool must start on a machine whose only runtime is .NET 11 (GA on
+         2026-11-10): without Major roll-forward the host refuses to run it and the user
+         sees "You must install .NET to run this application". -->
+    <RollForward>Major</RollForward>
     <ToolCommandName>orkeon-repl</ToolCommandName>
 
     <!-- Version, Authors and Copyright flow from the single source of truth

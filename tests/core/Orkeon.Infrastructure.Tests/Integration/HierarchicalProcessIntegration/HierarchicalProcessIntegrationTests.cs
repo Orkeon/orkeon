@@ -88,7 +88,7 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
         public Task<IReadOnlyList<DomainTask>> GetDependentTasksAsync(TaskId taskId, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<DomainTask>>(_storage.Values.Where(t => t.Dependencies.Contains(taskId)).ToList());
         public Task<IReadOnlyList<DomainTask>> GetReadyTasksAsync(CancellationToken ct = default)
-            => Task.FromResult<IReadOnlyList<DomainTask>>(_storage.Values.Where(t => t.Status == Orkeon.Domain.Task.ValueObjects.TaskStatus.Pending && !t.Dependencies.Any()).ToList());
+            => Task.FromResult<IReadOnlyList<DomainTask>>(_storage.Values.Where(t => t.Status == Orkeon.Domain.Task.ValueObjects.TaskStatus.Pending && t.Dependencies.Count == 0).ToList());
         public Task<IReadOnlyList<DomainTask>> GetByPriorityAsync(TaskPriority priority, CancellationToken ct = default)
             => Task.FromResult<IReadOnlyList<DomainTask>>(_storage.Values.Where(t => t.Priority == priority).ToList());
         public Task<bool> IsCompletedAsync(TaskId id, CancellationToken ct = default)

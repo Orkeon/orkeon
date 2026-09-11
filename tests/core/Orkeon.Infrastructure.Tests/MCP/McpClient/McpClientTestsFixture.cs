@@ -80,7 +80,7 @@ public sealed class McpClientTestsFixture : IAsyncDisposable
         return new JsonRpcResponse
         {
             Id = JsonSerializer.SerializeToElement(id),
-            Result = JsonDocument.Parse(json).RootElement
+            Result = JsonElement.Parse(json)
         };
     }
 

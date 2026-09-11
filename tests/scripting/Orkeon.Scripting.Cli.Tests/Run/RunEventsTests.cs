@@ -58,7 +58,7 @@ public sealed class RunEventsTests : IDisposable
     [
         .. _output.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement),
+            .Select(line => JsonElement.Parse(line)),
     ];
 
     private static TaskExecutionSnapshot Snapshot(string taskId, string role = "Writer", bool success = true) =>

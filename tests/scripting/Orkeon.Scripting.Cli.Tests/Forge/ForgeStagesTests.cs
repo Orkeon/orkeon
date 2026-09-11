@@ -124,7 +124,7 @@ public sealed class ForgeStagesTests : IDisposable
     [
         .. _output.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement),
+            .Select(line => JsonElement.Parse(line)),
     ];
 
     private IReadOnlyList<string> Kinds() => [.. Events().Select(e => e.GetProperty("kind").GetString()!)];

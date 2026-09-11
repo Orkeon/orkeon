@@ -39,9 +39,23 @@ public sealed class RunnerWithDefaultsIntegrationTests
             if (input is null) { console.Complete(); break; }
             await console.SendLineAsync(input).ConfigureAwait(false);
         }
-        var done = await Task.WhenAny(run, Task.Delay(TimeSpan.FromSeconds(5))).ConfigureAwait(false);
-        if (done != run) console.Complete();
+        if (!await FinishedWithinAsync(run, TimeSpan.FromSeconds(5)).ConfigureAwait(false)) console.Complete();
         await run.ConfigureAwait(false);
+    }
+
+    // WaitAsync rather than WhenAny + Delay: a Delay that lost the race keeps its timer
+    // alive until it fires (CA2027, .NET 11 SDK analyzers).
+    private static async Task<bool> FinishedWithinAsync(Task task, TimeSpan timeout)
+    {
+        try
+        {
+            await task.WaitAsync(timeout).ConfigureAwait(false);
+            return true;
+        }
+        catch (TimeoutException)
+        {
+            return false;
+        }
     }
 
     [Fact]

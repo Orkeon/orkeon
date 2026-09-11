@@ -23,7 +23,7 @@ public sealed class McpClientTests : IAsyncDisposable
         return new JsonRpcResponse
         {
             Id = JsonSerializer.SerializeToElement(id),
-            Result = JsonDocument.Parse(json).RootElement
+            Result = JsonElement.Parse(json)
         };
     }
 
@@ -155,7 +155,7 @@ public sealed class McpClientTests : IAsyncDisposable
 
         await client.InitializeAsync(TestContext.Current.CancellationToken);
 
-        var args = JsonDocument.Parse("{\"expression\":\"6*7\"}").RootElement;
+        var args = JsonElement.Parse("{\"expression\":\"6*7\"}");
 
         // Act
         await client.CallToolAsync("calculate", args, TestContext.Current.CancellationToken);

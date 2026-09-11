@@ -125,7 +125,7 @@ public sealed class ForgeSessionTests : IDisposable
         var lines = File.ReadAllLines(Path.Combine(session.Directory, ForgeSession.HistoryFileName));
 
         Assert.Equal(2, lines.Length);
-        var first = JsonDocument.Parse(lines[0]).RootElement;
+        var first = JsonElement.Parse(lines[0]);
         Assert.Equal("Brief", first.GetProperty("from").GetString());
         Assert.Equal("BriefSubmitted", first.GetProperty("trigger").GetString());
         Assert.Equal("Blueprint", first.GetProperty("to").GetString());
@@ -208,7 +208,7 @@ public sealed class ForgeSessionTests : IDisposable
         Assert.Equal(ForgeState.Ready, reloaded!.State);
 
         var history = File.ReadAllLines(Path.Combine(session.Directory, ForgeSession.HistoryFileName));
-        var last = JsonDocument.Parse(history[^1]).RootElement;
+        var last = JsonElement.Parse(history[^1]);
         Assert.Equal("Test", last.GetProperty("from").GetString());
         Assert.Equal("TrialSkipped", last.GetProperty("trigger").GetString());
         Assert.Equal("Ready", last.GetProperty("to").GetString());

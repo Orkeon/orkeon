@@ -50,7 +50,7 @@ public class McpToolAdapter : IBaseTool
             if (request.Parameters.Count > 0)
             {
                 var json = JsonSerializer.Serialize(request.Parameters);
-                arguments = JsonDocument.Parse(json).RootElement;
+                arguments = JsonElement.Parse(json);
             }
 
             var result = await _client.CallToolAsync(_definition.Name, arguments, cancellationToken).ConfigureAwait(false);

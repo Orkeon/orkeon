@@ -92,3 +92,39 @@ jobs:
       # now throws ObjectDisposedException instead of dereferencing freed memory, and
       # the suite exits 0 — 17 runs in a row. Any exit code is a failure again.
       - run: dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj -c Release --no-build --filter "Category=Integration|Category=Slow"
+
+  # .NET 11 readiness (GA on 2026-11-10, during .NET Conf). Everything still targets
+  # net10.0 and global.json still pins the 10.0.300 feature band -- this job is the
+  # early warning, not the migration: it builds and tests the same solution with the
+  # .NET 11 SDK (preview channel until GA) so a breaking change in the compiler, the
+  # SDK targets or a NuGet resolution shows up weeks before the day the tag moves.
+  # global.json's `latestFeature` would refuse an 11.x SDK, so the job widens the
+  # roll-forward on the runner only; the committed file does not change.
+  # continue-on-error until GA: a preview SDK may break for reasons that are not ours;
+  # the job result stays visible on the run page either way.
+  build-test-net11-preview:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with:
+          dotnet-version: '11.0.x'
+          dotnet-quality: preview
+      - uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4
+        with:
+          path: ~/.nuget/packages
+          key: nuget-net11-${{ runner.os }}-${{ hashFiles('**/*.csproj', '**/Directory.Packages.props') }}
+          restore-keys: nuget-net11-${{ runner.os }}-
+      - name: Let the 11.x SDK build a 10.0.300-pinned tree (runner only)
+        run: |
+          python3 - <<'PY'
+          import json
+          g = json.load(open("global.json"))
+          g["sdk"]["rollForward"] = "latestMajor"
+          json.dump(g, open("global.json", "w"), indent=2)
+          PY
+          dotnet --version
+      - run: dotnet restore Orkeon.sln
+      - run: dotnet build Orkeon.sln -c Release --no-restore -warnaserror
+      - run: dotnet test Orkeon.sln -c Release --no-build --filter "Category!=Integration&Category!=Slow"

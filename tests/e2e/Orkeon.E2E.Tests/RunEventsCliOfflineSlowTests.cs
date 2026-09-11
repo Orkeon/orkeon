@@ -31,7 +31,7 @@ public sealed class RunEventsCliOfflineSlowTests
     {
         try
         {
-            return JsonDocument.Parse(line).RootElement.Clone();
+            return JsonElement.Parse(line).Clone();
         }
         catch (JsonException)
         {

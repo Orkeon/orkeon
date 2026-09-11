@@ -114,10 +114,10 @@ public sealed class RagEvalToolTests
         Assert.Equal(["a", "b"], RagEvalTool.ExtractProfiles(TwoProfiles));
         Assert.Equal(
             ["a", "b"],
-            RagEvalTool.ExtractProfiles(JsonDocument.Parse("""["a","b"]""").RootElement));
+            RagEvalTool.ExtractProfiles(JsonElement.Parse("""["a","b"]""")));
         Assert.Equal(
             ["a", "b"],
-            RagEvalTool.ExtractProfiles(JsonDocument.Parse("\"a,b\"").RootElement));
+            RagEvalTool.ExtractProfiles(JsonElement.Parse("\"a,b\"")));
         Assert.Empty(RagEvalTool.ExtractProfiles(null));
     }
 }

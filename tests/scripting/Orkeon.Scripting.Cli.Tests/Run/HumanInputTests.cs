@@ -47,7 +47,7 @@ public sealed class HumanInputTests : IDisposable
     private JsonElement LastEvent()
     {
         var lines = _output.ToString().Split('\n', StringSplitOptions.RemoveEmptyEntries);
-        return JsonDocument.Parse(lines[^1]).RootElement;
+        return JsonElement.Parse(lines[^1]);
     }
 
     [Fact]

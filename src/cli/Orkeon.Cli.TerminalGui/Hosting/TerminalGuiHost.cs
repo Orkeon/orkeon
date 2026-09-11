@@ -265,13 +265,13 @@ public sealed class TerminalGuiHost : IAsyncDisposable
             //       Shutdown are no-ops).
             _toplevel?.Repl.CancelPendingRead();
 
-            var grace = await Task.WhenAny(replTask, Task.Delay(ShutdownGracePeriod, ct)).ConfigureAwait(false);
-            if (grace == replTask)
-            {
-                try { await replTask.ConfigureAwait(false); }
-                catch (OperationCanceledException) { /* expected */ }
-            }
-            else
+            // WaitAsync rather than WhenAny + Delay: a Delay that lost the race keeps its
+            // timer alive until it fires (CA2027, .NET 11 SDK analyzers).
+            var honored = true;
+            try { await replTask.WaitAsync(ShutdownGracePeriod, ct).ConfigureAwait(false); }
+            catch (OperationCanceledException) { /* expected */ }
+            catch (TimeoutException) { honored = false; }
+            if (!honored)
             {
                 Diag($"REPL task did not honor cancellation within {ShutdownGracePeriod.TotalSeconds:F0}s — abandoning (will finish in background).");
             }

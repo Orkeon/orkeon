@@ -342,7 +342,7 @@ public partial class McpServer
             jsonSchema["required"] = required;
 
         var json = JsonSerializer.Serialize(jsonSchema);
-        return JsonDocument.Parse(json).RootElement;
+        return JsonElement.Parse(json);
     }
 
     private static JsonRpcResponse CreateSuccessResponse(JsonElement? id, object result)
@@ -351,7 +351,7 @@ public partial class McpServer
         return new JsonRpcResponse
         {
             Id = id,
-            Result = JsonDocument.Parse(json).RootElement
+            Result = JsonElement.Parse(json)
         };
     }
 

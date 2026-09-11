@@ -53,7 +53,7 @@ public class ObservedToolTests
     private static IReadOnlyList<JsonElement> Emitted(StringWriter output) =>
         [.. output.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement.Clone())];
+            .Select(line => JsonElement.Parse(line).Clone())];
 
     [Fact]
     public void The_decorator_is_an_ITool_or_the_agents_would_get_no_tools_at_all()

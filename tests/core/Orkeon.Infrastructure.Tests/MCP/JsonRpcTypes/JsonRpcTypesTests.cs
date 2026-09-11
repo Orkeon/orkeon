@@ -14,7 +14,7 @@ public class JsonRpcTypesTests
         {
             Method = "tools/list",
             Id = JsonSerializer.SerializeToElement(42),
-            Params = JsonDocument.Parse("{\"cursor\":\"abc\"}").RootElement
+            Params = JsonElement.Parse("{\"cursor\":\"abc\"}")
         };
 
         // Act
@@ -37,7 +37,7 @@ public class JsonRpcTypesTests
         var response = new JsonRpcResponse
         {
             Id = JsonSerializer.SerializeToElement(1),
-            Result = JsonDocument.Parse("{\"tools\":[]}").RootElement
+            Result = JsonElement.Parse("{\"tools\":[]}")
         };
 
         // Act

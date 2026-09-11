@@ -53,7 +53,7 @@ public sealed class McpToolAdapterTestsFixture : IAsyncDisposable
                 return new JsonRpcResponse
                 {
                     Id = req.Id,
-                    Result = JsonDocument.Parse(json).RootElement
+                    Result = JsonElement.Parse(json)
                 };
             }
 
@@ -70,7 +70,7 @@ public sealed class McpToolAdapterTestsFixture : IAsyncDisposable
                 return new JsonRpcResponse
                 {
                     Id = req.Id,
-                    Result = JsonDocument.Parse(json).RootElement
+                    Result = JsonElement.Parse(json)
                 };
             }
 
@@ -86,14 +86,14 @@ public sealed class McpToolAdapterTestsFixture : IAsyncDisposable
 
     public static McpToolDefinition CreateDefinition(string name = "test-tool", string desc = "A test tool")
     {
-        var inputSchema = JsonDocument.Parse(@"{
+        var inputSchema = JsonElement.Parse(@"{
             ""type"": ""object"",
             ""properties"": {
                 ""query"": { ""type"": ""string"", ""description"": ""Search query"" },
                 ""limit"": { ""type"": ""integer"", ""description"": ""Max results"", ""default"": 10 }
             },
             ""required"": [""query""]
-        }").RootElement;
+        }");
 
         return new McpToolDefinition
         {
@@ -111,7 +111,7 @@ public sealed class McpToolAdapterTestsFixture : IAsyncDisposable
         {
             Name = name,
             Description = desc,
-            InputSchema = JsonDocument.Parse(schemaJson).RootElement
+            InputSchema = JsonElement.Parse(schemaJson)
         };
 
     // --- Inspection ---

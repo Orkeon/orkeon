@@ -182,8 +182,16 @@ public sealed class SystemProcessLauncher : IProcessLauncher
 
     private static async Task WaitForOutputFlushAsync(Task stdoutClosed, Task stderrClosed)
     {
-        var both = Task.WhenAll(stdoutClosed, stderrClosed);
-        await Task.WhenAny(both, Task.Delay(OutputFlushTimeout)).ConfigureAwait(false);
+        // WaitAsync, not WhenAny + Delay: the timer of a Delay that lost the race keeps
+        // running until it fires (CA2027, flagged by the .NET 11 SDK analyzers).
+        try
+        {
+            await Task.WhenAll(stdoutClosed, stderrClosed).WaitAsync(OutputFlushTimeout).ConfigureAwait(false);
+        }
+        catch (TimeoutException)
+        {
+            // The streams did not close in time; the exit code is read regardless.
+        }
     }
 
     private static int ReadExitCode(System.Diagnostics.Process process)

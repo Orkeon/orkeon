@@ -58,7 +58,7 @@ public sealed class McpToolProviderTestsFixture : IAsyncDisposable
             return Task.FromResult(new JsonRpcResponse
             {
                 Id = req.Id,
-                Result = JsonDocument.Parse(json).RootElement
+                Result = JsonElement.Parse(json)
             });
         });
 

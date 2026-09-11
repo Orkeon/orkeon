@@ -355,6 +355,6 @@ public sealed class ForgeCrewAssistantTests : IDisposable
     [
         .. output.ToString()
             .Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonDocument.Parse(line).RootElement),
+            .Select(line => JsonElement.Parse(line)),
     ];
 }
