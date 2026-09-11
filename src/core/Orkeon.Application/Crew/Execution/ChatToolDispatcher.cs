@@ -2,6 +2,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Constants.Orchestration;
+using Orkeon.Constants.Llm;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Tools;
@@ -258,6 +259,15 @@ internal sealed class ChatToolDispatcher
             ExecutionLog.LogToolCallStart(_logger, tool.Name, toolArgs);
         }
 
+        // One execute_tool span per call the model made, paired with the model's own
+        // call id (gen_ai.tool.call.id), child of the agent's invoke_agent span.
+        using var toolActivity = Telemetry.OrkeonActivitySources.Tool.StartActivity(
+            GenAiAttributes.SpanName(GenAiAttributes.OperationExecuteTool, tool.Name), System.Diagnostics.ActivityKind.Internal);
+        toolActivity?.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationExecuteTool);
+        toolActivity?.SetTag(GenAiAttributes.ToolName, tool.Name);
+        toolActivity?.SetTag(GenAiAttributes.ToolCallId, fc.CallId);
+        toolActivity?.SetTag(GenAiAttributes.AgentName, agent.Role.ToString());
+
         var toolStartTime = DateTime.UtcNow;
         var request = new Domain.Tools.Protocol.ToolCallRequest(tool.Name, parameters);
 
@@ -265,6 +275,11 @@ internal sealed class ChatToolDispatcher
         {
             var result = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
             var toolDuration = DateTime.UtcNow - toolStartTime;
+            if (!result.Success)
+            {
+                toolActivity?.SetTag(GenAiAttributes.ErrorType, "tool_error");
+                toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Error);
+            }
 
             var resultText = result.Success
                 ? ToolCallFormatting.FormatResult(result.Result)
@@ -295,6 +310,8 @@ internal sealed class ChatToolDispatcher
         catch (Exception ex)
         {
             var toolDuration = DateTime.UtcNow - toolStartTime;
+            toolActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
+            toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, ex.Message);
             ExecutionLog.LogToolCallResult(_logger, tool.Name, toolDuration.TotalMilliseconds, "ERROR", ex.Message);
 
             messages.Add(new ChatMessage(ChatRole.Tool,

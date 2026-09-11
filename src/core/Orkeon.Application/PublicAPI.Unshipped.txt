@@ -1,1 +1,12 @@
 #nullable enable
+Orkeon.Application.Telemetry.OrkeonActivitySources
+const Orkeon.Application.Telemetry.OrkeonActivitySources.Version = "1.0.0" -> string!
+static Orkeon.Application.Telemetry.OrkeonActivitySources.ProviderName(string? providerName) -> string!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Agent -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.AllNames -> string![]!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Crew -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.EventHub -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Llm -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Memory -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Task -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Tool -> System.Diagnostics.ActivitySource!

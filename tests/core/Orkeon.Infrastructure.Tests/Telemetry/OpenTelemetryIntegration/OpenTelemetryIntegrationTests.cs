@@ -126,11 +126,11 @@ public class OpenTelemetryIntegrationTests
         Assert.Equal("Test response", response.Text);
 
         var llmActivities = activities
-            .Where(a => a.DisplayName == "llm.call"
-                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "TestProvider")
+            .Where(a => a.DisplayName.StartsWith("chat", StringComparison.Ordinal)
+                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "testprovider")
             .ToList();
         Assert.Single(llmActivities);
-        Assert.Equal("TestProvider", llmActivities[0].GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
+        Assert.Equal("testprovider", llmActivities[0].GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
         Assert.Equal(TestModelName, llmActivities[0].GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel));
     }
 
@@ -150,8 +150,8 @@ public class OpenTelemetryIntegrationTests
             [new ChatMessage(ChatRole.User, "Hello")], cancellationToken: TestContext.Current.CancellationToken));
 
         var llmActivities = activities
-            .Where(a => a.DisplayName == "llm.call"
-                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "TestProvider")
+            .Where(a => a.DisplayName.StartsWith("chat", StringComparison.Ordinal)
+                && a.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider)?.ToString() == "testprovider")
             .ToList();
         Assert.Single(llmActivities);
         Assert.Equal(ActivityStatusCode.Error, llmActivities[0].Status);

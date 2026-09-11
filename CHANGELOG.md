@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a run now produces spans, and they speak the OpenTelemetry GenAI conventions
+
+The telemetry plumbing was complete and unused: `TracingInstrumentation`, `OrkeonMetrics`
+and the seven `ActivitySource`s were called by one `IChatClient` decorator that only the
+tests instantiated, so a real crew execution emitted no span at all — and the attribute
+names were Orkeon's own (`orkeon.llm.model`), which no backend recognises. The
+`ActivitySource`s move to the Application layer (`OrkeonActivitySources`, same names;
+Infrastructure's `OrkeonDiagnostics` re-exposes the same instances) and the execution
+path emits on them: `invoke_agent {agent}` around each agent turn, `chat {model}`
+(kind Client) around each model call with the request/response/usage attributes,
+`execute_tool {tool}` around each tool call with the model's own call id — children of
+the agent span, `error.type` and an error status on failure. The names and attributes
+are the [generative-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/),
+declared once in `Orkeon.Constants.Llm.GenAiAttributes` (ADR-009 satellite) and used by
+the loop, the tracing helpers and the scripting runtime alike. `OrkeonDiagnosticTags`
+keeps its member names but its LLM/agent/tool/error values are now the convention's
+(`gen_ai.provider.name`, `gen_ai.request.model`, `gen_ai.usage.input_tokens`…);
+`OrkeonMetrics` records `gen_ai.client.token.usage` (per token type) and
+`gen_ai.client.operation.duration` (seconds) instead of `orkeon.llm.tokens` / `orkeon.llm.duration`.
+The Terminal.Gui tool aggregator identifies tool spans by `gen_ai.operation.name` rather
+than by a span name. Documented in `opt-in-subsystems.md` (EN + FR).
+
+### Added — a Contributor License Agreement template, and the check that asks for it
+
+Zero external contributors, zero `Signed-off-by`, and the intent to hand the project to a
+foundation one day: the only cheap moment to put a licence frame in place is before the
+first outside pull request. `CLA.md` / `CLA.fr.md` are an individual CLA **template**,
+marked on their first line as awaiting counsel's validation — the licence is granted to
+the current maintainer *and any successor entity*, so the transfer needs no second round
+of signatures. `cla.yml` (`contributor-assistant/github-action`, pinned by SHA,
+signatures on this repository's `cla-signatures` branch, no external service, no PAT)
+posts the one sentence to reply with and stays red until it is posted; the maintainer
+account and dependabot are allowlisted. `CONTRIBUTING` (both languages), the pull-request
+template and the docs-parity gate know about it.
+
+### Changed — .NET 11 readiness, without moving the target
+
+`ci.yml` gains a non-blocking job that restores, builds and tests `Orkeon.sln` with the
+.NET 11 SDK (preview channel until GA on 2026-11-10), widening `global.json`'s
+roll-forward on the runner only. Verified locally with `11.0.100-rc.1`. Both dotnet
+tools (`orkeon`, `orkeon-repl`) now declare `RollForward=Major`: a machine whose only
+runtime is .NET 11 runs them instead of printing "You must install .NET". The target
+framework, `global.json` and the container base images do not move before GA.
+
+### Changed — the pre-release upstream of `Orkeon.Tools.Embeddings.Local` is assumed, in writing
+
+`SmartComponents.LocalEmbeddings` has one version, a pre-release, and an archived
+upstream. Rather than vendoring its inference wrapper, the packaging project of the
+opt-in silences `NU5104` — the only project that ever carries the dependency — and the
+decision is recorded where it is read: one line in the README's installation table, a
+paragraph in `limitations.md`. Verified: `dotnet pack Orkeon.sln -p:VersionSuffix= -warnaserror`
+produces the nine `1.0.0` packages, the opt-in depending on the pre-release as declared.
+
 ### Changed — the README opens on the problem, then on a command that runs without a key
 
 The front page used to open on *one crew, three ways* and a YAML block — a pitch to

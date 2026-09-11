@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Orkeon.Constants.Llm;
 
 namespace Orkeon.Scripting.Telemetry;
 
@@ -20,11 +21,11 @@ public static class ScriptingActivitySource
     public const string CrewRunSpan = "crew.run";
 
     /// <summary>Span name for a single agent body invocation.</summary>
-    public const string AgentRunSpan = "agent.run";
+    public const string AgentRunSpan = GenAiAttributes.OperationInvokeAgent;
 
     /// <summary>Span name for an LLM call (complete/chat/extract/decide/embed/act).</summary>
-    public const string LlmCallSpan = "llm.call";
+    public const string LlmCallSpan = GenAiAttributes.OperationChat;
 
     /// <summary>Span name for a tool call.</summary>
-    public const string ToolCallSpan = "tool.call";
+    public const string ToolCallSpan = GenAiAttributes.OperationExecuteTool;
 }

@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using System.Text.Json;
+using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
 using Orkeon.Domain.SharedKernel;
@@ -150,14 +152,37 @@ public sealed partial class JsLlmFacade
     /// <summary>Releases the linked interrupt source. Called by <see cref="JsAgentContext.Dispose"/>.</summary>
     internal void DisposeInterruptSource() => _cts.Dispose();
 
+    // chat {model} spans with the gen_ai.* attributes (Orkeon.Constants.Llm.GenAiAttributes),
+    // like the C# execution loop: one backend view for both runtimes.
+    private Activity? StartChatActivity(string method)
+    {
+        var model = _provider?.BaseConfig?.Model;
+        var activity = ScriptingActivitySource.Instance.StartActivity(
+            GenAiAttributes.SpanName(ScriptingActivitySource.LlmCallSpan, model), ActivityKind.Client);
+        if (activity is null) return null;
+        activity.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationChat);
+        activity.SetTag(GenAiAttributes.ProviderName, Application.Telemetry.OrkeonActivitySources.ProviderName(_provider?.Name));
+        activity.SetTag(GenAiAttributes.RequestModel, model);
+        activity.SetTag(GenAiAttributes.AgentName, _agentName);
+        activity.SetTag("orkeon.llm.method", method);
+        return activity;
+    }
+
+    private static void CompleteChatActivity(Activity? activity, LlmResponse response)
+    {
+        if (activity is null) return;
+        activity.SetTag(GenAiAttributes.ResponseModel, response.Model);
+        activity.SetTag(GenAiAttributes.UsageInputTokens, response.PromptTokens);
+        activity.SetTag(GenAiAttributes.UsageOutputTokens, response.CompletionTokens);
+    }
+
     public Func<string, JsValue?, Task<string>> complete => async (prompt, options) =>
     {
-        using var activity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.LlmCallSpan);
-        activity?.SetTag("llm.method", "complete");
-        activity?.SetTag("llm.prompt.length", prompt.Length);
+        using var activity = StartChatActivity("complete");
+        activity?.SetTag("orkeon.llm.prompt.length", prompt.Length);
         if (_provider is null) return $"<undefined-llm:{prompt}>";
         var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
-        activity?.SetTag("llm.response.tokens", resp.TokensUsed);
+        CompleteChatActivity(activity, resp);
         ReportUsage(resp, "complete", prompt);
         return RenderAnswer(resp);
     };
@@ -587,9 +612,8 @@ public sealed partial class JsLlmFacade
                 // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
                 // host via JsCrew.TryUnwrapTypedHostException).
                 _budget?.ThrowIfExhausted();
-                using var activity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.LlmCallSpan);
-                activity?.SetTag("llm.method", "act");
-                activity?.SetTag("llm.act.iteration", i);
+                using var activity = StartChatActivity("act");
+                activity?.SetTag("orkeon.llm.act.iteration", i);
 
                 var cfg = toolSchemas is null
                     ? baseCfg

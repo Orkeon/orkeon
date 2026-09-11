@@ -72,8 +72,9 @@ public sealed class TracingInstrumentationTests : IDisposable
 
         Assert.NotNull(activity);
         Assert.Equal(ActivityKind.Client, activity!.Kind);
-        Assert.Equal("llm.call", activity.DisplayName);
-        Assert.Equal("OpenAI", activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
+        Assert.Equal($"chat {ModelGpt4}", activity.DisplayName);
+        Assert.Equal("chat", activity.GetTagItem("gen_ai.operation.name"));
+        Assert.Equal("openai", activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider));
         Assert.Equal(ModelGpt4, activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel));
         Assert.Equal("Researcher", activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentRole));
     }
@@ -121,7 +122,8 @@ public sealed class TracingInstrumentationTests : IDisposable
         using var activity = global::Orkeon.Infrastructure.Telemetry.TracingInstrumentation.StartToolExecution(ToolFileRead, "Researcher");
 
         Assert.NotNull(activity);
-        Assert.Equal("tool.execute", activity!.DisplayName);
+        Assert.Equal($"execute_tool {ToolFileRead}", activity!.DisplayName);
+        Assert.Equal("execute_tool", activity.GetTagItem("gen_ai.operation.name"));
         Assert.Equal(ToolFileRead, activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName));
         Assert.Equal("Researcher", activity.GetTagItem(global::Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentRole));
     }

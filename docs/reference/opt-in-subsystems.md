@@ -138,6 +138,28 @@ partial (flagged case by case below).
 - **Note**: does not replace OpenTelemetry telemetry (`AddOrkeonTelemetry`),
   which remains wired by the `AddOrkeonInfrastructure(IConfiguration)` overload.
 
+## Traces and metrics follow the OpenTelemetry GenAI conventions
+
+Not an opt-in — every run emits them; only the exporter is (`AddOrkeonTelemetry`,
+`Orkeon:Telemetry:OtlpEndpoint`). Since 2026-09-11 the execution path itself carries the
+spans (they used to live in helpers nothing in production called), named and attributed
+by the [OpenTelemetry generative-AI semantic conventions](https://opentelemetry.io/docs/specs/semconv/gen-ai/)
+so Langfuse, Honeycomb, Application Insights or the Aspire dashboard read them without a
+mapping. The names are the constants of `Orkeon.Constants.Llm.GenAiAttributes`.
+
+| Span (`ActivitySource`) | Name | Attributes |
+|---|---|---|
+| Agent turn (`Orkeon.Agent`) | `invoke_agent {agent}` | `gen_ai.operation.name=invoke_agent`, `gen_ai.agent.name`, `gen_ai.agent.id`, `gen_ai.provider.name`, `gen_ai.request.model`, `orkeon.task.id` |
+| Model call (`Orkeon.Llm`, kind Client) | `chat {model}` | `gen_ai.operation.name=chat`, `gen_ai.provider.name` (lower-case), `gen_ai.request.model`, `gen_ai.request.temperature`, `gen_ai.request.max_tokens`, `gen_ai.response.model`, `gen_ai.response.id`, `gen_ai.response.finish_reasons`, `gen_ai.usage.input_tokens`, `gen_ai.usage.output_tokens`, `error.type` on failure |
+| Tool execution (`Orkeon.Tool`) | `execute_tool {tool}` | `gen_ai.operation.name=execute_tool`, `gen_ai.tool.name`, `gen_ai.tool.call.id` (the model's own id), `gen_ai.agent.name`, `error.type` on failure |
+| Scripting runtime (`Orkeon.Scripting`) | the same three, plus `crew.run` | same attributes; `orkeon.llm.method` (`complete`/`act`), `orkeon.crew.name`, `orkeon.crew.process` |
+
+Metrics (`OrkeonMetrics`, meter `Orkeon`): `gen_ai.client.token.usage` (histogram, tokens,
+`gen_ai.token.type` = `input` | `output`) and `gen_ai.client.operation.duration` (histogram,
+seconds), both tagged with `gen_ai.provider.name` and `gen_ai.request.model`; the
+`orkeon.*` counters (calls, tool executions, cost) keep their names. What has no
+convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost.
+
 ## NIST compliance — `AddOrkeonNistCompliance()`
 
 - **Role**: generation of NIST SP 800-53 compliance reports from the audit

@@ -18,8 +18,12 @@ namespace Orkeon.Cli.TerminalGui.Telemetry;
 public sealed class ToolActivityAggregator : IDisposable
 {
     private const string SourceName = "Orkeon.Scripting";
-    private const string ToolCallSpan = "tool.call";
-    private const string ToolNameTag = "tool.name";
+    // The gen_ai.* conventions the scripting runtime emits (Orkeon.Constants.Llm.GenAiAttributes;
+    // spelled out here because this project references no Orkeon assembly): a tool span
+    // is one whose gen_ai.operation.name is execute_tool, and its tool is gen_ai.tool.name.
+    private const string OperationTag = "gen_ai.operation.name";
+    private const string ExecuteToolOperation = "execute_tool";
+    private const string ToolNameTag = "gen_ai.tool.name";
 
     private readonly ConcurrentDictionary<string, int> _counts = new(StringComparer.Ordinal);
     private readonly ActivityListener _listener;
@@ -33,12 +37,12 @@ public sealed class ToolActivityAggregator : IDisposable
             Sample = static (ref ActivityCreationOptions<ActivityContext> _) => ActivitySamplingResult.AllData,
             ActivityStarted = activity =>
             {
-                if (activity.OperationName == ToolCallSpan)
+                if (IsToolSpan(activity))
                     Interlocked.Increment(ref _openToolSpans);
             },
             ActivityStopped = activity =>
             {
-                if (activity.OperationName != ToolCallSpan) return;
+                if (!IsToolSpan(activity)) return;
                 Interlocked.Decrement(ref _openToolSpans);
                 var tool = activity.GetTagItem(ToolNameTag)?.ToString();
                 if (!string.IsNullOrEmpty(tool))
@@ -110,4 +114,7 @@ public sealed class ToolActivityAggregator : IDisposable
     private static string Plural(int n) => n == 1 ? "" : "s";
 
     public void Dispose() => _listener.Dispose();
+
+    private static bool IsToolSpan(Activity activity) =>
+        string.Equals(activity.GetTagItem(OperationTag)?.ToString(), ExecuteToolOperation, StringComparison.Ordinal);
 }

@@ -354,10 +354,16 @@ public class ToolActivityAggregatorTests
         using var aggregator = new ToolActivityAggregator();
         using var source = new System.Diagnostics.ActivitySource("Orkeon.Scripting");
 
-        using (var a = source.StartActivity("tool.call"))
-            a?.SetTag("tool.name", "file_read");
-        using (var a = source.StartActivity("tool.call"))
-            a?.SetTag("tool.name", "shell_command");
+        using (var a = source.StartActivity("execute_tool file_read"))
+        {
+            a?.SetTag("gen_ai.operation.name", "execute_tool");
+            a?.SetTag("gen_ai.tool.name", "file_read");
+        }
+        using (var a = source.StartActivity("execute_tool shell_command"))
+        {
+            a?.SetTag("gen_ai.operation.name", "execute_tool");
+            a?.SetTag("gen_ai.tool.name", "shell_command");
+        }
         using (var a = source.StartActivity("other.span")) { /* must not count */ }
 
         var sentence = aggregator.DrainSentence();

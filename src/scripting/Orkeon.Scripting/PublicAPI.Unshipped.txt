@@ -1,1 +1,7 @@
 #nullable enable
+*REMOVED*const Orkeon.Scripting.Telemetry.ScriptingActivitySource.AgentRunSpan = "agent.run" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.AgentRunSpan = "invoke_agent" -> string!
+*REMOVED*const Orkeon.Scripting.Telemetry.ScriptingActivitySource.LlmCallSpan = "llm.call" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.LlmCallSpan = "chat" -> string!
+*REMOVED*const Orkeon.Scripting.Telemetry.ScriptingActivitySource.ToolCallSpan = "tool.call" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.ToolCallSpan = "execute_tool" -> string!

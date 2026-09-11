@@ -46,9 +46,9 @@ public sealed class OtelTests
 
             var crewSpan = Snapshot(spans)
                 .Where(s => s.OperationName == ScriptingActivitySource.CrewRunSpan)
-                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "crew.name" && kv.Value == "test-crew"));
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "orkeon.crew.name" && kv.Value == "test-crew"));
             Assert.NotNull(crewSpan);
-            Assert.Contains(crewSpan!.Tags, kv => kv.Key == "crew.process" && kv.Value == "sequential");
+            Assert.Contains(crewSpan!.Tags, kv => kv.Key == "orkeon.crew.process" && kv.Value == "sequential");
         }
         finally { listener.Dispose(); }
     }
@@ -68,8 +68,8 @@ public sealed class OtelTests
             await crew.RunAsync(null, CancellationToken.None);
 
             var agentSpan = Snapshot(spans)
-                .Where(s => s.OperationName == ScriptingActivitySource.AgentRunSpan)
-                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "agent.name" && kv.Value == "Worker-Otel"));
+                .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.AgentRunSpan, StringComparison.Ordinal))
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.agent.name" && kv.Value == "Worker-Otel"));
             Assert.NotNull(agentSpan);
         }
         finally { listener.Dispose(); }
@@ -88,7 +88,7 @@ public sealed class OtelTests
             // A prompt whose LENGTH no other test in this assembly produces: the
             // ActivityListener is process-global, and this test used to take the first
             // llm-call span it saw. Under a parallel run that was somebody else's — a
-            // concurrent act() loop, whose span is tagged llm.method=act — and the
+            // concurrent act() loop, whose span is tagged orkeon.llm.method=act — and the
             // assertion failed on a span this test never emitted (same idiom as
             // crew_run/agent_run/tool_call above, which all discriminate by tag).
             const string Prompt = "otel-probe-unique-prompt-length";
@@ -96,11 +96,11 @@ public sealed class OtelTests
             await facade.complete(Prompt, null);
 
             var span = Snapshot(spans)
-                .Where(s => s.OperationName == ScriptingActivitySource.LlmCallSpan)
+                .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.LlmCallSpan, StringComparison.Ordinal))
                 .FirstOrDefault(s => s.TagObjects.Any(
-                    kv => kv.Key == "llm.prompt.length" && Equals(kv.Value, Prompt.Length)));
+                    kv => kv.Key == "orkeon.llm.prompt.length" && Equals(kv.Value, Prompt.Length)));
             Assert.NotNull(span);
-            Assert.Contains(span!.Tags, kv => kv.Key == "llm.method" && kv.Value == "complete");
+            Assert.Contains(span!.Tags, kv => kv.Key == "orkeon.llm.method" && kv.Value == "complete");
         }
         finally { listener.Dispose(); }
     }
@@ -120,8 +120,8 @@ public sealed class OtelTests
             // so a concurrent test emitting another tool-call span would otherwise be picked
             // up here (same idiom as crew_run/agent_run above).
             var span = Snapshot(spans)
-                .Where(s => s.OperationName == ScriptingActivitySource.ToolCallSpan)
-                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "tool.name" && kv.Value == "file_read"));
+                .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.ToolCallSpan, StringComparison.Ordinal))
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.tool.name" && kv.Value == "file_read"));
             Assert.NotNull(span);
         }
         finally { listener.Dispose(); }

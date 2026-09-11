@@ -88,6 +88,53 @@ public class ChatClientAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task EmitsGenAiSpans_ForTheAgentTurn_TheChatCall_AndTheToolCall()
+    {
+        // The spans a backend that knows the OpenTelemetry gen_ai conventions expects:
+        // invoke_agent {agent} > chat {model} + execute_tool {tool}, with the gen_ai.* names.
+        // A unique role: the ActivityListener is process-global and the suite runs in parallel,
+        // so every assertion below is scoped to this run's trace.
+        var tool = new SpyTool("native_tool", result: "ok");
+        var agent = new AgentBuilder().Role("Span Agent 7f3e").Goal("Emit spans").MaxIterations(5).WithTool(tool).Build();
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("call-7", "native_tool");
+        client.EnqueueText("done", new UsageDetails { InputTokenCount = 11, OutputTokenCount = 3, TotalTokenCount = 14 });
+
+        var spans = new List<System.Diagnostics.Activity>();
+        using var listener = new System.Diagnostics.ActivityListener
+        {
+            ShouldListenTo = source => source.Name is "Orkeon.Agent" or "Orkeon.Llm" or "Orkeon.Tool",
+            Sample = static (ref System.Diagnostics.ActivityCreationOptions<System.Diagnostics.ActivityContext> _) =>
+                System.Diagnostics.ActivitySamplingResult.AllData,
+            ActivityStopped = spans.Add,
+        };
+        System.Diagnostics.ActivitySource.AddActivityListener(listener);
+
+        await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        var agentSpan = Assert.Single(spans, s => s.Source.Name == "Orkeon.Agent" && s.DisplayName == "invoke_agent Span Agent 7f3e");
+        Assert.Equal("invoke_agent", agentSpan.GetTagItem("gen_ai.operation.name"));
+        Assert.Equal("Span Agent 7f3e", agentSpan.GetTagItem("gen_ai.agent.name"));
+        spans = spans.Where(s => s.TraceId == agentSpan.TraceId).ToList();
+
+        var chatSpans = spans.Where(s => s.Source.Name == "Orkeon.Llm").ToList();
+        Assert.Equal(2, chatSpans.Count);
+        Assert.All(chatSpans, s => Assert.Equal(System.Diagnostics.ActivityKind.Client, s.Kind));
+        Assert.All(chatSpans, s => Assert.Equal("chat", s.GetTagItem("gen_ai.operation.name")));
+        Assert.All(chatSpans, s => Assert.Equal(agentSpan.SpanId, s.ParentSpanId));
+        Assert.Equal(11L, chatSpans[1].GetTagItem("gen_ai.usage.input_tokens"));
+        Assert.Equal(3L, chatSpans[1].GetTagItem("gen_ai.usage.output_tokens"));
+        Assert.NotNull(chatSpans[0].GetTagItem("gen_ai.provider.name"));
+
+        var toolSpan = Assert.Single(spans, s => s.Source.Name == "Orkeon.Tool");
+        Assert.Equal("execute_tool native_tool", toolSpan.DisplayName);
+        Assert.Equal("execute_tool", toolSpan.GetTagItem("gen_ai.operation.name"));
+        Assert.Equal("native_tool", toolSpan.GetTagItem("gen_ai.tool.name"));
+        Assert.Equal("call-7", toolSpan.GetTagItem("gen_ai.tool.call.id"));
+        Assert.Equal(agentSpan.SpanId, toolSpan.ParentSpanId);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task AccumulatesTokenAndCacheUsage_AcrossTheLoop()
     {
         var (loop, client) = BuildLoop();

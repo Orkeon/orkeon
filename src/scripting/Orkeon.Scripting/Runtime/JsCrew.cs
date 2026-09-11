@@ -226,8 +226,8 @@ public sealed partial class JsCrew
             externalCt, signal ?? CancellationToken.None, timeoutCts?.Token ?? CancellationToken.None);
 
         using var crewActivity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.CrewRunSpan);
-        crewActivity?.SetTag("crew.name", name);
-        crewActivity?.SetTag("crew.process", Process);
+        crewActivity?.SetTag("orkeon.crew.name", name);
+        crewActivity?.SetTag("orkeon.crew.process", Process);
 
         // One typed budget instance per crew run, shared by every agent of the run  —
         // created here (not at build time) so the wall-time clock starts with the run.
@@ -252,9 +252,11 @@ public sealed partial class JsCrew
                 object? output = null;
                 if (agent.Builder.BodyFunction is not null && !agent.Builder.BodyFunction.IsUndefined())
                 {
-                    using var agentActivity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.AgentRunSpan);
-                    agentActivity?.SetTag("agent.name", agent.name);
-                    agentActivity?.SetTag("agent.id", agent.id);
+                    using var agentActivity = ScriptingActivitySource.Instance.StartActivity(
+                        Orkeon.Constants.Llm.GenAiAttributes.SpanName(ScriptingActivitySource.AgentRunSpan, agent.name));
+                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.OperationName, Orkeon.Constants.Llm.GenAiAttributes.OperationInvokeAgent);
+                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.AgentName, agent.name);
+                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.AgentId, agent.id);
                     output = await RunAgentBodyWithErrorPolicyAsync(agent, linked.Token).ConfigureAwait(false);
                 }
                 var duration = (DateTime.UtcNow - start).TotalMilliseconds;

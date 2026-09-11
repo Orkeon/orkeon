@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Orkeon.Constants.Llm;
 
 namespace Orkeon.Infrastructure.Telemetry;
 
@@ -68,12 +69,13 @@ public static class TracingInstrumentation
     public static Activity? StartLlmCall(string provider, string? model = null, string? agentRole = null)
     {
         var activity = OrkeonDiagnostics.LlmSource.StartActivity(
-            "llm.call",
+            GenAiAttributes.SpanName(GenAiAttributes.OperationChat, model),
             ActivityKind.Client);
 
         if (activity is not null)
         {
-            activity.SetTag(OrkeonDiagnosticTags.LlmProvider, provider);
+            activity.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationChat);
+            activity.SetTag(OrkeonDiagnosticTags.LlmProvider, Application.Telemetry.OrkeonActivitySources.ProviderName(provider));
             if (model is not null)
                 activity.SetTag(OrkeonDiagnosticTags.LlmModel, model);
             if (agentRole is not null)
@@ -121,11 +123,12 @@ public static class TracingInstrumentation
     public static Activity? StartToolExecution(string toolName, string? agentRole = null)
     {
         var activity = OrkeonDiagnostics.ToolSource.StartActivity(
-            "tool.execute",
+            GenAiAttributes.SpanName(GenAiAttributes.OperationExecuteTool, toolName),
             ActivityKind.Internal);
 
         if (activity is not null)
         {
+            activity.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationExecuteTool);
             activity.SetTag(OrkeonDiagnosticTags.ToolName, toolName);
             if (agentRole is not null)
                 activity.SetTag(OrkeonDiagnosticTags.AgentRole, agentRole);

@@ -1,10 +1,14 @@
 using System.Diagnostics;
+using Orkeon.Application.Telemetry;
+using Orkeon.Constants.Llm;
 
 namespace Orkeon.Infrastructure.Telemetry;
 
 /// <summary>
 /// Central diagnostics registry for Orkeon OpenTelemetry instrumentation.
-/// Provides ActivitySources for distributed tracing and standardized tag names.
+/// The <see cref="ActivitySource"/>s are the Application layer's
+/// (<see cref="OrkeonActivitySources"/>): the execution path emits on them, this class
+/// re-exposes the same instances for callers that wire an exporter from Infrastructure.
 /// </summary>
 public static class OrkeonDiagnostics
 {
@@ -21,55 +25,49 @@ public static class OrkeonDiagnostics
     /// <summary>
     /// ActivitySource for crew-level operations (kickoff, batch, streaming).
     /// </summary>
-    public static readonly ActivitySource CrewSource = new("Orkeon.Crew", ServiceVersion);
+    public static readonly ActivitySource CrewSource = OrkeonActivitySources.Crew;
 
     /// <summary>
     /// ActivitySource for agent-level operations (execution, delegation).
     /// </summary>
-    public static readonly ActivitySource AgentSource = new("Orkeon.Agent", ServiceVersion);
+    public static readonly ActivitySource AgentSource = OrkeonActivitySources.Agent;
 
     /// <summary>
     /// ActivitySource for task-level operations (execution, planning, validation).
     /// </summary>
-    public static readonly ActivitySource TaskSource = new("Orkeon.Task", ServiceVersion);
+    public static readonly ActivitySource TaskSource = OrkeonActivitySources.Task;
 
     /// <summary>
     /// ActivitySource for LLM provider operations (chat, generate, streaming).
     /// </summary>
-    public static readonly ActivitySource LlmSource = new("Orkeon.Llm", ServiceVersion);
+    public static readonly ActivitySource LlmSource = OrkeonActivitySources.Llm;
 
     /// <summary>
     /// ActivitySource for tool execution operations.
     /// </summary>
-    public static readonly ActivitySource ToolSource = new("Orkeon.Tool", ServiceVersion);
+    public static readonly ActivitySource ToolSource = OrkeonActivitySources.Tool;
 
     /// <summary>
     /// ActivitySource for memory operations (store, search, delete).
     /// </summary>
-    public static readonly ActivitySource MemorySource = new("Orkeon.Memory", ServiceVersion);
+    public static readonly ActivitySource MemorySource = OrkeonActivitySources.Memory;
 
     /// <summary>
     /// ActivitySource for EventHub messaging (publish, post, send, receive) — HUB-02.
     /// </summary>
-    public static readonly ActivitySource EventHubSource = new("Orkeon.EventHub", ServiceVersion);
+    public static readonly ActivitySource EventHubSource = OrkeonActivitySources.EventHub;
 
     /// <summary>
     /// All ActivitySource names for registration with OpenTelemetry.
     /// </summary>
-    public static readonly string[] AllSourceNames =
-    [
-        "Orkeon.Crew",
-        "Orkeon.Agent",
-        "Orkeon.Task",
-        "Orkeon.Llm",
-        "Orkeon.Tool",
-        "Orkeon.Memory",
-        "Orkeon.EventHub"
-    ];
+    public static readonly string[] AllSourceNames = OrkeonActivitySources.AllNames;
 }
 
 /// <summary>
-/// Standardized tag names for OpenTelemetry spans and metrics.
+/// Standardized tag names for OpenTelemetry spans and metrics. Where the OpenTelemetry
+/// generative-AI conventions define the attribute (provider, model, token counts, agent
+/// name, tool name, error type) the name IS the convention's, taken from
+/// <see cref="GenAiAttributes"/>; only Orkeon-specific facts keep the <c>orkeon.</c> prefix.
 /// </summary>
 public static class OrkeonDiagnosticTags
 {
@@ -89,7 +87,7 @@ public static class OrkeonDiagnosticTags
         /// <summary>Gets the tag name for agent ID.</summary>
         public const string AgentId = "orkeon.agent.id";
         /// <summary>Gets the tag name for agent role.</summary>
-        public const string AgentRole = "orkeon.agent.role";
+        public const string AgentRole = GenAiAttributes.AgentName;
         /// <summary>Gets the tag name for agent type.</summary>
         public const string AgentType = "orkeon.agent.type";
         /// <summary>Gets the tag name for agent iteration count.</summary>
@@ -107,13 +105,13 @@ public static class OrkeonDiagnosticTags
 
         // LLM tags
         /// <summary>Gets the tag name for LLM provider.</summary>
-        public const string LlmProvider = "orkeon.llm.provider";
+        public const string LlmProvider = GenAiAttributes.ProviderName;
         /// <summary>Gets the tag name for LLM model.</summary>
-        public const string LlmModel = "orkeon.llm.model";
+        public const string LlmModel = GenAiAttributes.RequestModel;
         /// <summary>Gets the tag name for LLM prompt token count.</summary>
-        public const string LlmPromptTokens = "orkeon.llm.prompt_tokens";
+        public const string LlmPromptTokens = GenAiAttributes.UsageInputTokens;
         /// <summary>Gets the tag name for LLM completion token count.</summary>
-        public const string LlmCompletionTokens = "orkeon.llm.completion_tokens";
+        public const string LlmCompletionTokens = GenAiAttributes.UsageOutputTokens;
         /// <summary>Gets the tag name for LLM total token count.</summary>
         public const string LlmTotalTokens = "orkeon.llm.total_tokens";
         /// <summary>Gets the tag name for LLM estimated cost in USD.</summary>
@@ -123,7 +121,7 @@ public static class OrkeonDiagnosticTags
 
         // Tool tags
         /// <summary>Gets the tag name for tool name.</summary>
-        public const string ToolName = "orkeon.tool.name";
+        public const string ToolName = GenAiAttributes.ToolName;
         /// <summary>Gets the tag name for tool category.</summary>
         public const string ToolCategory = "orkeon.tool.category";
         /// <summary>Gets the tag name for tool execution success flag.</summary>
@@ -145,7 +143,7 @@ public static class OrkeonDiagnosticTags
 
         // General tags
         /// <summary>Gets the tag name for error type.</summary>
-        public const string ErrorType = "orkeon.error.type";
+        public const string ErrorType = GenAiAttributes.ErrorType;
         /// <summary>Gets the tag name for error message.</summary>
         public const string ErrorMessage = "orkeon.error.message";
 }

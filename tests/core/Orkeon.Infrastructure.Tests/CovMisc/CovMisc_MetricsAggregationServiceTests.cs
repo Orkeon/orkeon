@@ -71,10 +71,10 @@ public class CovMisc_MetricsAggregationServiceTests
         // >= because parallel test classes may emit on the shared "Orkeon" meter.
         Assert.True(snapshot.CountersByName["orkeon.llm.calls"] >= 2);
 
-        // Histogram average of llm.duration is the mean of all recorded samples; with the two
-        // 100/200ms samples it is bounded within [100, 200] even under parallel contamination.
-        Assert.True(snapshot.HistogramAverages.ContainsKey("orkeon.llm.duration"));
-        var avg = snapshot.HistogramAverages["orkeon.llm.duration"];
+        // Histogram average of the operation duration (seconds) is the mean of all recorded
+        // samples; positive whatever parallel test classes add on the shared meter.
+        Assert.True(snapshot.HistogramAverages.ContainsKey("gen_ai.client.operation.duration"));
+        var avg = snapshot.HistogramAverages["gen_ai.client.operation.duration"];
         Assert.True(avg > 0.0, "histogram average should be positive");
     }
 

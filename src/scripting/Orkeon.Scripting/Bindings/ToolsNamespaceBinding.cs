@@ -46,8 +46,10 @@ public static partial class ToolsNamespaceBinding
     {
         return async input =>
         {
-            using var activity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.ToolCallSpan);
-            activity?.SetTag("tool.name", tool.Name);
+            using var activity = ScriptingActivitySource.Instance.StartActivity(
+                Orkeon.Constants.Llm.GenAiAttributes.SpanName(ScriptingActivitySource.ToolCallSpan, tool.Name));
+            activity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.OperationName, Orkeon.Constants.Llm.GenAiAttributes.OperationExecuteTool);
+            activity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.ToolName, tool.Name);
             var parameters = new Dictionary<string, object?>();
             if (input is not null && input.IsObject())
             {

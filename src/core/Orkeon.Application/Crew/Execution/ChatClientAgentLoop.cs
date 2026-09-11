@@ -1,5 +1,7 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
+using System.Diagnostics;
 using Microsoft.Extensions.AI;
+using Orkeon.Constants.Llm;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
@@ -79,6 +81,18 @@ internal sealed class ChatClientAgentLoop
 
         var (options, availableTools) = await _optionsComposer.BuildChatOptionsAsync(agent, task, cancellationToken).ConfigureAwait(false);
         var maxIter = agent.MaxIterations > 0 ? agent.MaxIterations : defaultMaxIterations;
+
+        // One invoke_agent span per task an agent works on; every chat and execute_tool
+        // span below is its child. gen_ai.* names, so the run reads in any backend that
+        // knows the convention (Orkeon.Constants.Llm.GenAiAttributes).
+        using var agentActivity = Telemetry.OrkeonActivitySources.Agent.StartActivity(
+            GenAiAttributes.SpanName(GenAiAttributes.OperationInvokeAgent, agent.Role), ActivityKind.Internal);
+        agentActivity?.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationInvokeAgent);
+        agentActivity?.SetTag(GenAiAttributes.AgentName, agent.Role.ToString());
+        agentActivity?.SetTag(GenAiAttributes.AgentId, agent.Id.ToString());
+        agentActivity?.SetTag(GenAiAttributes.ProviderName, Telemetry.OrkeonActivitySources.ProviderName(_llmGate.ProviderName));
+        agentActivity?.SetTag(GenAiAttributes.RequestModel, options.ModelId);
+        agentActivity?.SetTag("orkeon.task.id", task.Id.ToString());
         var totalTokensUsed = 0;
         // Prompt/completion split accumulated from UsageDetails when the provider reports
         // it (R10.8). Tool-free retry turns only feed the total, so split <= total.
@@ -107,13 +121,23 @@ internal sealed class ChatClientAgentLoop
             var iterSw = System.Diagnostics.Stopwatch.StartNew();
             ChatResponse chatResponse;
             var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
-            try
+            using (var chatActivity = StartChatActivity(agent, options))
             {
-                chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
-            }
-            finally
-            {
-                llmLease?.Dispose();
+                try
+                {
+                    chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+                    CompleteChatActivity(chatActivity, chatResponse);
+                }
+                catch (Exception ex)
+                {
+                    chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
+                    chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    throw;
+                }
+                finally
+                {
+                    llmLease?.Dispose();
+                }
             }
             iterSw.Stop();
 
@@ -212,6 +236,40 @@ internal sealed class ChatClientAgentLoop
     /// Record, ILlmUsageSink only ever heard from the scripting facade, and an observed crew
     /// run reported zero tokens no matter what it spent.
     /// </summary>
+    private Activity? StartChatActivity(DomainAgent agent, ChatOptions options)
+    {
+        var activity = Telemetry.OrkeonActivitySources.Llm.StartActivity(
+            GenAiAttributes.SpanName(GenAiAttributes.OperationChat, options.ModelId), ActivityKind.Client);
+        if (activity is null)
+            return null;
+
+        activity.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationChat);
+        activity.SetTag(GenAiAttributes.ProviderName, Telemetry.OrkeonActivitySources.ProviderName(_llmGate.ProviderName));
+        activity.SetTag(GenAiAttributes.RequestModel, options.ModelId);
+        activity.SetTag(GenAiAttributes.AgentName, agent.Role.ToString());
+        if (options.Temperature is { } temperature)
+            activity.SetTag(GenAiAttributes.RequestTemperature, temperature);
+        if (options.MaxOutputTokens is { } maxTokens)
+            activity.SetTag(GenAiAttributes.RequestMaxTokens, maxTokens);
+        return activity;
+    }
+
+    private static void CompleteChatActivity(Activity? activity, ChatResponse response)
+    {
+        if (activity is null)
+            return;
+
+        activity.SetTag(GenAiAttributes.ResponseModel, response.ModelId);
+        activity.SetTag(GenAiAttributes.ResponseId, response.ResponseId);
+        if (response.FinishReason is { } finishReason)
+            activity.SetTag(GenAiAttributes.ResponseFinishReasons, new[] { finishReason.Value });
+        if (response.Usage is { } usage)
+        {
+            activity.SetTag(GenAiAttributes.UsageInputTokens, usage.InputTokenCount);
+            activity.SetTag(GenAiAttributes.UsageOutputTokens, usage.OutputTokenCount);
+        }
+    }
+
     private void ReportUsageToSink(DomainAgent agent, ChatResponse chatResponse)
     {
         var usage = chatResponse.Usage;

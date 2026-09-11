@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using Orkeon.Constants.Llm;
 using System.Diagnostics.Metrics;
 using Orkeon.Domain.Constants.Platform;
 
@@ -27,7 +28,7 @@ public sealed class OrkeonMetrics : IDisposable
 
     // Counters
     private readonly Counter<long> _llmCallsCounter;
-    private readonly Counter<long> _llmTokensCounter;
+    private readonly Histogram<long> _llmTokensHistogram;
     private readonly Counter<long> _toolExecutionsCounter;
     private readonly Counter<long> _taskExecutionsCounter;
     private readonly Counter<long> _crewExecutionsCounter;
@@ -59,10 +60,13 @@ public sealed class OrkeonMetrics : IDisposable
             unit: "{call}",
             description: "Total number of LLM API calls");
 
-        _llmTokensCounter = _meter.CreateCounter<long>(
-            "orkeon.llm.tokens",
+        // gen_ai.client.token.usage and gen_ai.client.operation.duration are the two
+        // instruments the OpenTelemetry generative-AI conventions define for a client;
+        // a backend that knows them charts tokens per model without configuration.
+        _llmTokensHistogram = _meter.CreateHistogram<long>(
+            GenAiAttributes.MetricClientTokenUsage,
             unit: "{token}",
-            description: "Total number of tokens consumed by LLM calls");
+            description: "Number of input and output tokens used per LLM call (gen_ai.token.type = input | output)");
 
         _toolExecutionsCounter = _meter.CreateCounter<long>(
             "orkeon.tool.executions",
@@ -86,9 +90,9 @@ public sealed class OrkeonMetrics : IDisposable
 
         // Histograms
         _llmDurationHistogram = _meter.CreateHistogram<double>(
-            "orkeon.llm.duration",
-            unit: "ms",
-            description: "Duration of LLM API calls in milliseconds");
+            GenAiAttributes.MetricClientOperationDuration,
+            unit: "s",
+            description: "Duration of LLM API calls in seconds");
 
         _toolDurationHistogram = _meter.CreateHistogram<double>(
             "orkeon.tool.duration",
@@ -143,17 +147,26 @@ public sealed class OrkeonMetrics : IDisposable
     {
         var tags = new TagList
         {
-            { OrkeonDiagnosticTags.LlmProvider, provider },
+            { GenAiAttributes.OperationName, GenAiAttributes.OperationChat },
+            { OrkeonDiagnosticTags.LlmProvider, Application.Telemetry.OrkeonActivitySources.ProviderName(provider) },
             { OrkeonDiagnosticTags.LlmModel, model },
             { OrkeonDiagnosticTags.LlmSuccess, success }
         };
 
         _llmCallsCounter.Add(1, tags);
-        _llmDurationHistogram.Record(durationMs, tags);
+        _llmDurationHistogram.Record(durationMs / 1000.0, tags);
 
-        if (promptTokens + completionTokens > 0)
+        if (promptTokens > 0)
         {
-            _llmTokensCounter.Add(promptTokens + completionTokens, tags);
+            var inputTags = tags;
+            inputTags.Add(GenAiAttributes.TokenType, "input");
+            _llmTokensHistogram.Record(promptTokens, inputTags);
+        }
+        if (completionTokens > 0)
+        {
+            var outputTags = tags;
+            outputTags.Add(GenAiAttributes.TokenType, "output");
+            _llmTokensHistogram.Record(completionTokens, outputTags);
         }
 
         if (costUsd > 0)

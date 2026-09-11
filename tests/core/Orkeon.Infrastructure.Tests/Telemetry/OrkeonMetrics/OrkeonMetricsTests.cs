@@ -22,9 +22,11 @@ public sealed class OrkeonMetricsTests : IDisposable
     {
         _fixture.RecordLlmCall("OpenAI", ModelGpt4, durationMs: 150.0, promptTokens: 100, completionTokens: 50);
 
-        Assert.True(_fixture.HasMeasurement("orkeon.llm.tokens"));
-        Assert.Single(_fixture.GetMeasurement("orkeon.llm.tokens"));
-        Assert.Equal(150L, _fixture.GetMeasurement("orkeon.llm.tokens")[0]);
+        // gen_ai.client.token.usage: one sample per token type (input, output), never a sum.
+        Assert.True(_fixture.HasMeasurement("gen_ai.client.token.usage"));
+        Assert.Equal(2, _fixture.GetMeasurement("gen_ai.client.token.usage").Count);
+        Assert.Equal(100L, _fixture.GetMeasurement("gen_ai.client.token.usage")[0]);
+        Assert.Equal(50L, _fixture.GetMeasurement("gen_ai.client.token.usage")[1]);
     }
 
     [Fact]
@@ -32,9 +34,10 @@ public sealed class OrkeonMetricsTests : IDisposable
     {
         _fixture.RecordLlmCall("OpenAI", ModelGpt4, durationMs: 250.5);
 
-        Assert.True(_fixture.HasMeasurement("orkeon.llm.duration"));
-        Assert.Single(_fixture.GetMeasurement("orkeon.llm.duration"));
-        Assert.Equal(250.5, _fixture.GetMeasurement("orkeon.llm.duration")[0]);
+        // gen_ai.client.operation.duration is in seconds, as the convention says.
+        Assert.True(_fixture.HasMeasurement("gen_ai.client.operation.duration"));
+        Assert.Single(_fixture.GetMeasurement("gen_ai.client.operation.duration"));
+        Assert.Equal(0.2505, Assert.IsType<double>(_fixture.GetMeasurement("gen_ai.client.operation.duration")[0]), precision: 6);
     }
 
     [Fact]

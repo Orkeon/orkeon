@@ -1,1 +1,25 @@
 #nullable enable
+Orkeon.Constants.Llm.GenAiAttributes
+const Orkeon.Constants.Llm.GenAiAttributes.AgentId = "gen_ai.agent.id" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.AgentName = "gen_ai.agent.name" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ConversationId = "gen_ai.conversation.id" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ErrorType = "error.type" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.MetricClientOperationDuration = "gen_ai.client.operation.duration" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.MetricClientTokenUsage = "gen_ai.client.token.usage" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.OperationChat = "chat" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.OperationExecuteTool = "execute_tool" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.OperationInvokeAgent = "invoke_agent" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.OperationName = "gen_ai.operation.name" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ProviderName = "gen_ai.provider.name" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.RequestMaxTokens = "gen_ai.request.max_tokens" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.RequestModel = "gen_ai.request.model" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.RequestTemperature = "gen_ai.request.temperature" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ResponseFinishReasons = "gen_ai.response.finish_reasons" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ResponseId = "gen_ai.response.id" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ResponseModel = "gen_ai.response.model" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.TokenType = "gen_ai.token.type" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ToolCallId = "gen_ai.tool.call.id" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.ToolName = "gen_ai.tool.name" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.UsageInputTokens = "gen_ai.usage.input_tokens" -> string!
+const Orkeon.Constants.Llm.GenAiAttributes.UsageOutputTokens = "gen_ai.usage.output_tokens" -> string!
+static Orkeon.Constants.Llm.GenAiAttributes.SpanName(string! operation, string? target) -> string!

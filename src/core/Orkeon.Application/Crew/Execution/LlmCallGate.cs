@@ -18,6 +18,9 @@ internal sealed class LlmCallGate
     private readonly IBasicLlmProvider _llmProvider;
     private readonly ILlmRateLimiter? _rateLimiter;
 
+    /// <summary>The provider's own name, for the <c>gen_ai.provider.name</c> attribute of the spans.</summary>
+    internal string ProviderName => _llmProvider.Name;
+
     internal LlmCallGate(ILogger logger, IBasicLlmProvider llmProvider, ILlmRateLimiter? rateLimiter)
     {
         _logger = logger;
