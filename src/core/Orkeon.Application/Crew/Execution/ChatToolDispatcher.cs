@@ -187,8 +187,58 @@ internal sealed class ChatToolDispatcher
         if (fc.Arguments is null)
             return [];
 
-        return fc.Arguments
-            .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+        return UnwrapCallEnvelope(fc.Arguments.ToDictionary(kvp => kvp.Key, kvp => kvp.Value));
+    }
+
+    private static readonly HashSet<string> s_envelopeKeys =
+        new(StringComparer.OrdinalIgnoreCase) { "type", "function", "name", "parameters", "arguments" };
+
+    // Small models put the whole tool-call envelope into the arguments -- llama3.2:1b
+    // (measured 2026-09-11 on the README quickstart) answers a file_write call with
+    // {"type":"function","function":"file_write","parameters":{"path":...,"content":...}}.
+    // Passed through as-is, the tool saw no `path`, said so, and the model repeated the
+    // exact same envelope until the circuit breaker tripped. When every key belongs to
+    // that envelope and the payload is an object, the payload is the arguments.
+    internal static Dictionary<string, object?> UnwrapCallEnvelope(Dictionary<string, object?> arguments)
+    {
+        if (arguments.Count == 0 || !arguments.Keys.All(s_envelopeKeys.Contains))
+            return arguments;
+
+        var payloadKey = arguments.Keys.FirstOrDefault(k => k.Equals("parameters", StringComparison.OrdinalIgnoreCase))
+            ?? arguments.Keys.FirstOrDefault(k => k.Equals("arguments", StringComparison.OrdinalIgnoreCase));
+        if (payloadKey is null)
+            return arguments;
+
+        switch (arguments[payloadKey])
+        {
+            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.Object } element:
+                return element.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value);
+            case IDictionary<string, object?> dictionary:
+                return new Dictionary<string, object?>(dictionary);
+            case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } text:
+                return TryParseObject(text.GetString()) ?? arguments;
+            case string text:
+                return TryParseObject(text) ?? arguments;
+            default:
+                return arguments;
+        }
+    }
+
+    private static Dictionary<string, object?>? TryParseObject(string? json)
+    {
+        if (string.IsNullOrWhiteSpace(json))
+            return null;
+        try
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(json);
+            if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
+                return null;
+            return document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value.Clone());
+        }
+        catch (System.Text.Json.JsonException)
+        {
+            return null;
+        }
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any tool failure is recorded as a failed ToolUsage and returned to the LLM as a FunctionResultContent error so one tool cannot crash the agent loop.")]

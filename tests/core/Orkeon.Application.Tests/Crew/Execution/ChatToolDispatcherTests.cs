@@ -37,6 +37,49 @@ public class ChatToolDispatcherTests
     // ── Native FunctionCallContent dispatch ───────────────────────────────
 
     [Fact]
+    public async System.Threading.Tasks.Task UnwrapsACallEnvelope_ThatASmallModelPutInsideTheArguments()
+    {
+        // llama3.2:1b on the README quickstart: the arguments carry the whole envelope.
+        var tool = new SpyTool("file_write", result: "written");
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var ctx = BuildContext([tool], out _, out var toolsUsed);
+        using var payload = System.Text.Json.JsonDocument.Parse(
+            """{"path":"/output/hello.md","content":"# Hello","append":"False"}""");
+        var call = new FunctionCallContent("call-1b", "file_write", new Dictionary<string, object?>
+        {
+            ["type"] = "function",
+            ["function"] = "file_write",
+            ["parameters"] = payload.RootElement.Clone(),
+        });
+
+        await dispatcher.HandleNativeFunctionCallsAsync([call], ctx, elapsedMs: 5, TestContext.Current.CancellationToken);
+
+        var parameters = Assert.Single(tool.Calls).Parameters;
+        Assert.Equal("/output/hello.md", parameters["path"]?.ToString());
+        Assert.Equal("# Hello", parameters["content"]?.ToString());
+        Assert.False(parameters.ContainsKey("type"));
+        Assert.True(Assert.Single(toolsUsed).Success);
+    }
+
+    [Fact]
+    public void LeavesArgumentsAlone_WhenAKeyIsNotPartOfAnEnvelope()
+    {
+        var arguments = new Dictionary<string, object?> { ["type"] = "function", ["parameters"] = "x", ["path"] = "/a" };
+
+        Assert.Same(arguments, ChatToolDispatcher.UnwrapCallEnvelope(arguments));
+    }
+
+    [Fact]
+    public void UnwrapsAJsonEncodedPayload_AndKeepsAScalarOne()
+    {
+        var encoded = new Dictionary<string, object?> { ["function"] = "t", ["arguments"] = """{"path":"/a"}""" };
+        var scalar = new Dictionary<string, object?> { ["function"] = "t", ["arguments"] = "not json" };
+
+        Assert.Equal("/a", ChatToolDispatcher.UnwrapCallEnvelope(encoded)["path"]?.ToString());
+        Assert.Same(scalar, ChatToolDispatcher.UnwrapCallEnvelope(scalar));
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ExecutesANativeCall_AndPairsTheResultWithItsCallId()
     {
         var tool = new SpyTool("native_tool", result: "native result");
