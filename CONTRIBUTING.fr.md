@@ -304,9 +304,10 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `scripts/lint-example-readmes.py`), la gate des bits exécutables (`file-modes.yml`),
    le scan de secrets (`secret-scan.yml`) et le build docfx strict.
 6. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
-   pousse **les six paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
+   pousse **les sept paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
-   `Orkeon.Scripting.Cli`, l'ombrelle en premier puisque les autres en dépendent — et
+   `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, l'ombrelle en premier puisque les
+   autres en dépendent — et
    chaque projet packable sur GitHub Packages ; voir
    [la matrice de publication](docs/fr/reference/publication-matrix.md)),
    `release.yml` (les paquets CLI par plateforme et les archives multi-apps pour chaque

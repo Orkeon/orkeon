@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the provenance chain is documented, verified on rc.3, and closed with an SBOM
+
+The CI already did what almost no .NET open-source project does — Trusted Publishing by
+OIDC, `actions/attest-build-provenance` on every package and every release asset,
+`ContinuousIntegrationBuild` at pack time, `SHA256SUMS` per channel — and said so in one
+line of one reference page. [Verify what you install](docs/guides/verify-what-you-install.md)
+(EN + FR) now gives the exact gestures, each run against the published `v1.0.0-rc.3`
+artefacts before being written down, and states what the chain does *not* prove.
+
+Two measurements shaped the page. A release asset verifies as downloaded: the GitHub
+attestation API returns one SLSA v1 statement for `orkeon-cli-1.0.0-rc.3-osx-arm64.tar.gz`,
+builder `release.yml@refs/tags/v1.0.0-rc.3`, eleven subjects. A package downloaded from
+nuget.org does **not**: nuget.org repository-signs every package by appending a
+`.signature.p7s` entry, so its digest is no longer the attested one. The signature is
+always the last entry, so `scripts/nupkg-unsign.py` (standard library, no re-zipping)
+recovers the original bytes exactly — measured digest
+`5800062e…cbb8e7` for `Orkeon.1.0.0-rc.3.nupkg`, which the API resolves to the
+`publish.yml` statement with its nine subjects. `SECURITY.md` gains a *Verifying what you
+install* section and the README installation table a *Verify what you download* row.
+
+The one missing piece of the chain was the cheapest: both `publish.yml` and `release.yml`
+now generate a **CycloneDX SBOM** of `Orkeon.sln` (`CycloneDX` dotnet tool 6.2.0, pinned;
+199 components on rc.3) right after the build and cover it with the **same** attestation —
+a release asset with its `SHA256SUMS` line, and a `sbom` run artefact for the package push.
+
+### Fixed — `Orkeon.Compliance.Vfs` reaches NuGet.org, and works once it gets there
+
+The analyzer was `IsPackable`, packed at every tag, and never pushed to nuget.org: the
+publish lineup was a fixed list of six ids in two places. It is the seventh now, in all
+seven hand-maintained copies `check-doc-claims.py` compares.
+
+Pushing rc.3 would have shipped an inert package. Built against the repository's pinned
+Roslyn 5.9.0, it was refused by the compiler of a stock .NET 10 SDK (10.0.301 ships
+5.6.0) with `CS9057` — a *warning*, after which the analyzer is silently skipped. A fresh
+project with a `File.ReadAllText` call built clean. The package is now compiled against
+Roslyn 4.8.0 (the .NET 8.0.100 compiler; `VersionOverride` on the one reference), and the
+same fresh project reports `ORKVFS001` and `ORKVFS002` as errors. Its README is rewritten
+for a consumer who has never heard of `IFileSystemService`: the seven rules, the path
+exemptions, the name-matched suppression attribute to declare locally, `.editorconfig`
+severities.
+
 ### Changed — the front page stops asserting what `git tag` already says, and says who answers
 
 The README and `CLAUDE.md` claimed "the latest tag is `v1.0.0-rc.2`" two days after

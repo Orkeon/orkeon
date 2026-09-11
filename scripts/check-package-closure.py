@@ -71,10 +71,11 @@ LINEUP = [
     "Orkeon.Rag.Onnx.Model",
     "Orkeon.Tools.Embeddings.Local",
     "Orkeon.Scripting.Cli",
+    "Orkeon.Compliance.Vfs",
 ]
 
 # Packable, but deliberately GitHub Packages only — never pushed to NuGet.org.
-GITHUB_PACKAGES_ONLY = {"Orkeon.ConsoleApp", "Orkeon.Generators", "Orkeon.Compliance.Vfs"}
+GITHUB_PACKAGES_ONLY = {"Orkeon.ConsoleApp", "Orkeon.Generators"}
 
 
 def nuspec_of(nupkg: Path) -> ET.Element:

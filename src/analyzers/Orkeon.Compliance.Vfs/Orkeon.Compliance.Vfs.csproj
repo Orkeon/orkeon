@@ -19,8 +19,17 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
 
+  <!-- An analyzer must be compiled against the OLDEST compiler it wants to run in, not
+       the newest: the compiler refuses (CS9057, a warning, and the analyzer is silently
+       skipped) any analyzer that references a Microsoft.CodeAnalysis newer than itself:
+       The repository pins Roslyn 5.9.0 for its own build through Microsoft.Net.Compilers.
+       Toolset, so 1.0.0-rc.3 of this package was built against 5.9.0 and stayed inert in
+       every project that used a stock SDK (10.0.301 ships compiler 5.6.0), measured on
+       2026-09-11 with a fresh project and a File.ReadAllText call: zero diagnostics were reported.
+       4.8.0 is the compiler of the .NET 8.0.100 SDK: every SDK a consumer can plausibly
+       run is at or above it. Nothing here needs a newer API. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="4.8.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 
@@ -28,10 +37,6 @@
     <AdditionalFiles Include="AnalyzerReleases.Shipped.md" />
     <AdditionalFiles Include="AnalyzerReleases.Unshipped.md" />
   </ItemGroup>
-
-  <!-- <ItemGroup> -->
-    <!-- <None Remove="bin\Debug\netstandard2.0\\Orkeon.Compliance.Vfs.dll" /> -->
-  <!-- </ItemGroup> -->
 
 
   <ItemGroup>
