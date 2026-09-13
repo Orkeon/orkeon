@@ -52,10 +52,10 @@ internal sealed record CrewRunHelpers
     /// <summary><c>(scope, agent) =&gt; step</c> — opens the agent's span.</summary>
     public required Func<CrewRunScope, JsAgent, AgentStep> beginAgent { get; init; }
 
-    /// <summary><c>(scope, agent, initialState, attempt) =&gt; attempt</c> — a fresh context and the broker attribution; the loop reads <c>attempt.ctx</c>.</summary>
-    public required Func<CrewRunScope, JsAgent, JsValue, int, AgentAttempt> openAttempt { get; init; }
+    /// <summary><c>(scope, agent, initialState) =&gt; attempt</c> — a fresh context and the broker attribution; the loop reads <c>attempt.ctx</c>.</summary>
+    public required Func<CrewRunScope, JsAgent, JsValue, AgentAttempt> openAttempt { get; init; }
 
-    /// <summary><c>(scope, attempt)</c> — restores the attribution, disposes the context; idempotent.</summary>
+    /// <summary><c>(scope, attempt)</c> — withdraws the attribution, disposes the context; idempotent.</summary>
     public required Action<CrewRunScope, AgentAttempt> closeAttempt { get; init; }
 
     /// <summary><c>(scope, step)</c> — closes the agent's span; idempotent.</summary>
@@ -76,7 +76,7 @@ internal sealed record CrewRunHelpers
     /// <summary><c>(scope) =&gt; CrewResult</c>.</summary>
     public required Func<CrewRunScope, JsCrewResult> finishRun { get; init; }
 
-    /// <summary><c>(scope, "start" | "complete" | "error") =&gt; hook | undefined</c>.</summary>
+    /// <summary><c>(scope, "start" | "complete" | "error") =&gt; hook | undefined</c> — undefined once the run is no longer running.</summary>
     public required Func<CrewRunScope, string, JsValue> crewHookOf { get; init; }
 
     /// <summary><c>(scope) =&gt; ctx</c> — a fresh execution context for one crew-hook invocation.</summary>

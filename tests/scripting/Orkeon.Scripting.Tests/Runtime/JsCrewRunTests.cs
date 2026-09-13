@@ -99,6 +99,141 @@ public sealed class JsCrewRunTests
     }
 
     /// <summary>
+    /// A run opened from a body — here <c>crew.runAgent</c> without <c>{ signal: ctx.signal }</c> — is
+    /// linked to the outer run's token: cancelling the outer run cancels it, its instance semaphore
+    /// comes back inside the outer run's unwind, and nothing waits for a later drain to settle it. The
+    /// count is read right after <see cref="JsCrew.RunAsync"/> threw, with no pump active.
+    /// </summary>
+    [Fact]
+    public async Task Cancelled_run_cancels_the_runAgent_it_opened_and_releases_its_semaphore()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        engine.SetValue("quick", false);
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => quick ? "fast" : await crew.runAgent("B", {})).build();
+            const b = agentBuilder().name("B").role("R").goal("G")
+                .body(async (input, ctx) => { if (quick) return "b"; await __sleep(60000); return "slow"; }).build();
+            const crew = crewBuilder().withAgent(a).withAgent(b).build();
+            crew;
+            """);
+        var semaphoreB = crew.GetInstanceSemaphore(crew.findByName("B")!);
+
+        using var cts = new CancellationTokenSource(100);
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => crew.RunAsync(null, cts.Token).WaitAsync(TimeSpan.FromSeconds(3), Ct));
+
+        Assert.Equal(1, semaphoreB.CurrentCount);
+        engine.SetValue("quick", true);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        Assert.Equal("b", result.output);
+    }
+
+    /// <summary>
+    /// The broker's attribution is the set of open attempts, not a stack of previous values: a fan-out
+    /// whose attempts close in opening order (A before B) leaves an idle crew attributing nothing, so a
+    /// later top-level <c>runAgent("A")</c> is not mistaken for re-entrance. Restoring "what was
+    /// current when this attempt opened" handed A back when B closed, for good.
+    /// </summary>
+    [Fact]
+    public async Task Fan_out_closing_in_opening_order_leaves_no_attribution_behind()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        var crew = Eval<JsCrew>(engine, """
+            let releaseB; const gateB = new Promise(resolve => { releaseB = resolve; });
+            const a = agentBuilder().name("A").role("R").goal("G").body(async () => { await __sleep(10); return "a"; }).build();
+            const b = agentBuilder().name("B").role("R").goal("G").body(async () => { await gateB; return "b"; }).build();
+            globalThis.crew = crewBuilder().withAgent(a).withAgent(b).build();
+            """);
+
+        var outcome = await engine.EvaluateAsync("""
+            (async () => {
+                const pa = crew.runAgent("A", {});
+                const pb = crew.runAgent("B", {});
+                await pa;                 // A closes while B is still open
+                releaseB();
+                await pb;
+                return await crew.runAgent("A", {});
+            })()
+            """, cancellationToken: Ct);
+
+        Assert.Equal("a", outcome.AsString());
+        Assert.Null(crew.EventBroker.CurrentAgentId);
+        Assert.False(crew.EventBroker.CurrentCt.CanBeCanceled);
+    }
+
+    /// <summary>
+    /// The same closing order with a timed-out first attempt: the token a later attempt's close leaves
+    /// behind is none, never the dead run's cancelled one — which <c>stateGraph.run()</c>, a topic
+    /// handler's <c>ev.lock</c> and a run opened from a body would all read as ambient cancellation.
+    /// </summary>
+    [Fact]
+    public async Task Timed_out_attempt_closing_first_leaves_no_cancelled_token_behind()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        var crew = Eval<JsCrew>(engine, """
+            let releaseB; const gateB = new Promise(resolve => { releaseB = resolve; });
+            const a = agentBuilder().name("A").role("R").goal("G").body(async () => { await __sleep(60000); return "a"; }).build();
+            const b = agentBuilder().name("B").role("R").goal("G").body(async () => { await gateB; return "b"; }).build();
+            globalThis.crew = crewBuilder().withAgent(a).withAgent(b).build();
+            """);
+
+        var outcome = await engine.EvaluateAsync("""
+            (async () => {
+                const pa = crew.runAgent("A", {}, { timeout: "50ms" });
+                const pb = crew.runAgent("B", {});
+                const first = await pa.then(() => "no-throw", e => e.clrType);
+                releaseB();
+                return first + "," + await pb;
+            })()
+            """, cancellationToken: Ct);
+
+        Assert.Equal("OperationCanceledException,b", outcome.AsString());
+        Assert.Null(crew.EventBroker.CurrentAgentId);
+        Assert.False(crew.EventBroker.CurrentCt.CanBeCanceled);
+    }
+
+    /// <summary>
+    /// A run the host abandoned — a raw CLR throw from a non-bridged member inside the body erupts
+    /// from the drain — has its stranded chain unwound under the engine's next drain. That chain
+    /// fires no crew hook: the failure was the host's to report, and the next run's own hooks are
+    /// the only ones it sees.
+    /// </summary>
+    [Fact]
+    public async Task Abandoned_run_fires_no_crew_hook_under_a_later_drain()
+    {
+        var engine = NewEngine();
+        var log = InstallLog(engine);
+        engine.SetValue("quick", false);
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    if (quick) { __log("body"); return "fast"; }
+                    await Promise.resolve();
+                    crew.add(agentBuilder().name("A").role("R").goal("G").build());
+                    return "unreachable";
+                }).build();
+            const crew = crewBuilder().name("abandoned").withAgent(a)
+                .onCrewError((ctx, msg) => { __log("error:" + msg); })
+                .onCrewComplete((ctx, result) => { __log("complete:" + result.output); })
+                .build();
+            crew;
+            """);
+
+        await Assert.ThrowsAsync<DuplicateAgentNameException>(() => crew.RunAsync(null, Ct));
+        Assert.Empty(log);
+
+        engine.SetValue("quick", true);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        Assert.Equal("fast", result.output);
+        Assert.Equal(["body", "complete:fast"], log);
+    }
+
+    /// <summary>
     /// The cooperative unwind a CLR caller's drain allows after cancellation: the body's own
     /// <c>finally</c> runs, <c>onCrewError</c> runs with the cancellation message and is awaited even
     /// though the run is cancelled (it is not raced), and the caller still sees the cancellation.

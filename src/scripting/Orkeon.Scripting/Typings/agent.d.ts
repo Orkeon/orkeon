@@ -76,11 +76,11 @@ declare global {
 
     // ErrorAction was declared here as a union of plain object literals
     // (`{ kind: "retry"; afterMs?: number }` and friends). The runtime accepts no such
-    // thing: JsCrew.InvokeOnError converts the handler's return value and keeps it only
-    // when it is a JsErrorAction instance, i.e. something the global `ErrorAction` factory
-    // produced — anything else becomes `fail()`. A handler written against the old
-    // declaration therefore compiled, ran, and silently turned every retry into a failed
-    // run. What follows is the surface ErrorActionBinding actually registers.
+    // thing: the run loop's decideAction helper (JsCrew.Run.cs) converts the handler's
+    // return value and keeps it only when it is a JsErrorAction instance, i.e. something the
+    // global `ErrorAction` factory produced — anything else becomes `fail()`. A handler
+    // written against the old declaration therefore compiled, ran, and silently turned every
+    // retry into a failed run. What follows is the surface ErrorActionBinding actually registers.
 
     /**
      * The outcome an `onError` handler returns. Opaque by design: build one with the global

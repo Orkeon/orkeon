@@ -36,7 +36,7 @@ public sealed class CrewRunScopeTests
         scope.Start();
         await scope.AcquireAsync(agent);
         var step = scope.BeginAgent(agent);
-        var attempt = scope.OpenAttempt(agent, JsValue.Undefined, 1);
+        var attempt = scope.OpenAttempt(agent, JsValue.Undefined);
         Assert.Equal(0, semaphore.CurrentCount);
 
         scope.Abandon();
@@ -56,7 +56,7 @@ public sealed class CrewRunScopeTests
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => scope.AcquireAsync(agent));
         Assert.Throws<OperationCanceledException>(() => scope.BeginAgent(agent));
-        Assert.Throws<OperationCanceledException>(() => scope.OpenAttempt(agent, JsValue.Undefined, 2));
+        Assert.Throws<OperationCanceledException>(() => scope.OpenAttempt(agent, JsValue.Undefined));
         Assert.Throws<OperationCanceledException>(scope.ThrowIfNotRunning);
         Assert.Equal(1, semaphore.CurrentCount);
     }

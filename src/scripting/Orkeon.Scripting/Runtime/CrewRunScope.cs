@@ -182,10 +182,13 @@ internal sealed class CrewRunScope : IDisposable
     }
 
     /// <summary>
-    /// Opens the agent's step: one <c>invoke_agent</c> span per agent, spanning every attempt, an
-    /// explicit child of the crew span so parentage holds when two runs interleave on one drainer
-    /// (<see cref="System.Diagnostics.Activity.Current"/> is one thread-wide value); the span is
-    /// nevertheless current on the calling thread for the LLM facade's own spans to nest under.
+    /// Opens the agent's step: one <c>invoke_agent</c> span per agent, spanning every attempt, a child
+    /// of the crew span — started with that span made current for the call rather than through an
+    /// explicit parent context, so parentage holds when two runs interleave on one drainer
+    /// (<see cref="System.Diagnostics.Activity.Current"/> is one thread-wide value) and the span's
+    /// <c>Parent</c> is the crew span object: its stop hands <c>Current</c> back to the crew span, and
+    /// <see cref="UnstickCurrent"/> can walk up from it. The span is current on the calling thread for
+    /// the LLM facade's own spans to nest under.
     /// </summary>
     internal AgentStep BeginAgent(JsAgent agent)
     {
@@ -193,10 +196,12 @@ internal sealed class CrewRunScope : IDisposable
         Activity? activity = null;
         if (JsCrew.HasBody(agent))
         {
+            var ambient = Activity.Current;
+            if (Activity is not null) Activity.Current = Activity;
             activity = ScriptingActivitySource.Instance.StartActivity(
                 GenAiAttributes.SpanName(ScriptingActivitySource.AgentRunSpan, agent.name),
-                ActivityKind.Internal,
-                parentContext: Activity?.Context ?? default);
+                ActivityKind.Internal);
+            if (activity is null) Activity.Current = ambient;
             activity?.SetTag(GenAiAttributes.OperationName, GenAiAttributes.OperationInvokeAgent);
             activity?.SetTag(GenAiAttributes.AgentName, agent.name);
             activity?.SetTag(GenAiAttributes.AgentId, agent.id);
@@ -224,27 +229,28 @@ internal sealed class CrewRunScope : IDisposable
             _steps.Remove(step);
         }
         step.Activity?.Dispose();
+        UnstickCurrent();
     }
 
     /// <summary>
     /// Opens one attempt of the agent's body: a fresh <see cref="JsAgentContext"/> over this run's
     /// token and budget (its state proxy is engine work, legal here on the draining thread), and the
-    /// broker's current-agent attribution, remembered so <see cref="CloseAttempt"/> can restore it.
+    /// broker's attribution of what happens next to this agent, withdrawn by <see cref="CloseAttempt"/>.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000", Justification = "The context is owned by the AgentAttempt handle this returns: CloseAttempt disposes it in the loop's finally, and ReleaseEverything (End/Abandon) disposes any attempt still open. The catch below disposes it on every path that does not hand the handle out.")]
-    internal AgentAttempt OpenAttempt(JsAgent agent, JsValue initialState, int attempt)
+    internal AgentAttempt OpenAttempt(JsAgent agent, JsValue initialState)
     {
         ThrowIfNotRunning();
         var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token), initialState);
         try
         {
-            var previous = _crew.BeginBrokerScope(agent, Token);
-            var handle = new AgentAttempt(agent, ctx, previous, attempt);
+            var attribution = _crew.BeginBrokerScope(agent, Token);
+            var handle = new AgentAttempt(ctx, attribution);
             lock (_sync)
             {
                 if (_state != RunState.Running)
                 {
-                    _crew.EndBrokerScope(previous);
+                    _crew.EndBrokerScope(attribution);
                     throw NotRunning();
                 }
                 _attempts.Add(handle);
@@ -258,7 +264,7 @@ internal sealed class CrewRunScope : IDisposable
         }
     }
 
-    /// <summary>Closes an attempt: the broker attribution goes back to its previous owner, the context is disposed; idempotent.</summary>
+    /// <summary>Closes an attempt: its broker attribution is withdrawn, the context is disposed; idempotent.</summary>
     internal void CloseAttempt(AgentAttempt attempt)
     {
         lock (_sync)
@@ -267,7 +273,7 @@ internal sealed class CrewRunScope : IDisposable
             attempt.Closed = true;
             _attempts.Remove(attempt);
         }
-        _crew.EndBrokerScope(attempt.Previous);
+        _crew.EndBrokerScope(attempt.Attribution);
         attempt.ctx.Dispose();
     }
 
@@ -363,13 +369,32 @@ internal sealed class CrewRunScope : IDisposable
         }
         foreach (var attempt in attempts)
         {
-            _crew.EndBrokerScope(attempt.Previous);
+            _crew.EndBrokerScope(attempt.Attribution);
             attempt.ctx.Dispose();
         }
         foreach (var step in steps) step.Activity?.Dispose();
         foreach (var agent in held) _crew.GetInstanceSemaphore(agent).Release();
         Activity?.Dispose();
+        UnstickCurrent();
         return (attempts.Length, steps.Length, held.Length);
+    }
+
+    /// <summary>
+    /// One drainer thread runs the jobs of every run interleaved on its engine, and
+    /// <see cref="System.Diagnostics.Activity.Current"/> is one thread-wide value: a span's stop restores
+    /// what was current at its start only while the span itself is still current, so two runs closing
+    /// in the other order leave the thread pointing at a span the other run already stopped — and every
+    /// later span on the thread would parent under it. Called after each stop: a stopped current span
+    /// gives way to its nearest live ancestor (the crew span starts under the ambient span, the agent
+    /// span under the crew span, so the chain is walkable).
+    /// </summary>
+    private static void UnstickCurrent()
+    {
+        var current = Activity.Current;
+        if (current is null || !current.IsStopped) return;
+        var live = current.Parent;
+        while (live is { IsStopped: true }) live = live.Parent;
+        Activity.Current = live;
     }
 
     private void ScheduleAbandon()
@@ -397,12 +422,10 @@ internal sealed class AgentStep(JsAgent agent, Activity? activity, DateTime star
 
 /// <summary>One attempt of an agent's body, opened by <c>openAttempt</c>, closed by <c>closeAttempt</c>; JavaScript reads <c>ctx</c>.</summary>
 #pragma warning disable IDE1006 // ctx is the property the JS loop reads
-internal sealed class AgentAttempt(JsAgent agent, JsAgentContext ctx, BrokerScopeMemento previous, int attempt)
+internal sealed class AgentAttempt(JsAgentContext ctx, BrokerAttribution attribution)
 {
-    internal JsAgent Agent { get; } = agent;
     public JsAgentContext ctx { get; } = ctx;
-    internal BrokerScopeMemento Previous { get; } = previous;
-    internal int Attempt { get; } = attempt;
+    internal BrokerAttribution Attribution { get; } = attribution;
     internal bool Closed;
 }
 #pragma warning restore IDE1006
@@ -421,5 +444,13 @@ internal sealed class ErrorDecision(string kind, JsValue value, double delayMs)
 }
 #pragma warning restore IDE1006
 
-/// <summary>The broker's current-agent attribution before an attempt opened; restored when it closes, so a nested <c>runAgent</c> hands attribution back to the body that called it.</summary>
-internal readonly record struct BrokerScopeMemento(string? AgentId, CancellationToken Ct);
+/// <summary>
+/// One open attempt's entry in the crew's attribution (<see cref="JsCrew.BeginBrokerScope"/>): the
+/// agent whose body is executing and the token of its run. Reference identity — the crew removes
+/// this very entry when the attempt closes, whatever opened or closed in between.
+/// </summary>
+internal sealed class BrokerAttribution(string agentId, CancellationToken ct)
+{
+    internal string AgentId { get; } = agentId;
+    internal CancellationToken Ct { get; } = ct;
+}

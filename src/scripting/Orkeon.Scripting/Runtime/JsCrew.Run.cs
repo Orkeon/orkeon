@@ -10,14 +10,11 @@ using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
-/// <summary>
-/// The crew's run loop, in JavaScript (SCR-25 T4): <see cref="run"/>, <see cref="runAgent"/> and
-/// <see cref="runStream"/> are JS functions built once per crew from <see cref="RunModuleSource"/>;
-/// the CLR supplies the helpers of <see cref="CrewRunHelpers"/> and drives the loop only from
-/// <see cref="RunAsync"/>, a root pump on an engine at rest.
-/// </summary>
+// The crew's run loop, in JavaScript (SCR-25 T4): run, runAgent and runStream are JS functions built
+// once per crew from RunModuleSource; the CLR supplies the helpers of CrewRunHelpers and drives the
+// loop only from RunAsync, a root pump on an engine at rest. The type's documentation is on the other
+// partial declaration, in JsCrew.cs.
 #pragma warning disable IDE1006 // Member names match the JS surface
-#pragma warning disable CS1591 // JS-interop mirror of Crew in Typings/crew.d.ts; that declaration is the contract scripts read.
 public sealed partial class JsCrew
 {
     /// <summary>
@@ -76,7 +73,7 @@ public sealed partial class JsCrew
                     try {
                         const seed = stateSeed(agent);
                         const initial = typeof seed === "function" ? await wait(seed()) : seed;
-                        a = openAttempt(scope, agent, initial, attempt);
+                        a = openAttempt(scope, agent, initial);
                         try {
                             return await wait(body(input, a.ctx));
                         } catch (err) {
@@ -227,10 +224,13 @@ public sealed partial class JsCrew
     /// </summary>
     private CrewRunHelpers BuildRunModule() => new()
     {
+        // A script-opened run links the innermost open attempt's token (none at the script's top level):
+        // a run opened from a body — crew.runAgent, a nested crew.run — is cancelled with the outer run
+        // and unwinds inside its grace, instead of keeping its semaphores until some later drain settles it.
         open = (kind, options) => JsHostError.Guard(_engine, () =>
         {
             var (signal, timeout) = CrewRunOptions.From(options);
-            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false, CancellationToken.None);
+            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false, AmbientToken);
         }),
         start = scope => JsHostError.Guard(_engine, scope.Start),
         endRun = scope => JsHostError.Guard(_engine, scope.End),
@@ -247,7 +247,7 @@ public sealed partial class JsCrew
         acquire = (scope, agent) => scope.AcquireAsync(agent),
         release = (scope, agent) => JsHostError.Guard(_engine, () => scope.Release(agent)),
         beginAgent = (scope, agent) => JsHostError.Guard(_engine, () => scope.BeginAgent(agent)),
-        openAttempt = (scope, agent, initial, attempt) => JsHostError.Guard(_engine, () => scope.OpenAttempt(agent, initial, attempt)),
+        openAttempt = (scope, agent, initial) => JsHostError.Guard(_engine, () => scope.OpenAttempt(agent, initial)),
         closeAttempt = (scope, attempt) => JsHostError.Guard(_engine, () => scope.CloseAttempt(attempt)),
         endAgent = (scope, step) => JsHostError.Guard(_engine, () => scope.EndAgent(step)),
         describeError = (scope, agent, err, attempt) => JsHostError.Guard(_engine, () => DescribeError(scope, agent, err, attempt)),
@@ -328,11 +328,14 @@ public sealed partial class JsCrew
 
     /// <summary>
     /// The crew hook the loop awaits, or <c>undefined</c>: none declared, a crew without agents (the
-    /// hook context needs an anchor agent), or a <c>runAgent</c> scope (no crew hooks there).
+    /// hook context needs an anchor agent), a <c>runAgent</c> scope (no crew hooks there), or a run
+    /// that already ended or was abandoned — the chain a host abandoned unwinds under a later drain of
+    /// the engine, and its <c>onCrewError</c> must not fire then, in the middle of another run, for a
+    /// failure the host already reported.
     /// </summary>
     private JsValue CrewHookOf(CrewRunScope scope, string which)
     {
-        if (scope.Kind == CrewRunKind.Agent || _agents.Count == 0) return JsValue.Undefined;
+        if (scope.Kind == CrewRunKind.Agent || _agents.Count == 0 || !scope.IsRunning) return JsValue.Undefined;
         var hook = which switch
         {
             "start" => _onCrewStart,
@@ -389,5 +392,4 @@ public sealed partial class JsCrew
     [LoggerMessage(EventId = 3, Level = LogLevel.Error, Message = "Crew '{Crew}' hook {Hook} failed: {Reason}")]
     private static partial void LogCrewHookFailed(ILogger logger, string crew, string hook, string reason);
 }
-#pragma warning restore CS1591
 #pragma warning restore IDE1006

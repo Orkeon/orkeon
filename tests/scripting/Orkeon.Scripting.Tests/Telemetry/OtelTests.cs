@@ -71,8 +71,8 @@ public sealed class OtelTests
                 .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.AgentRunSpan, StringComparison.Ordinal))
                 .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.agent.name" && kv.Value == "Worker-Otel"));
             Assert.NotNull(agentSpan);
-            // The agent span is an explicit child of its run's crew span (SCR-25 T4), not of whatever
-            // Activity.Current happened to be on the draining thread.
+            // The agent span is a child of its run's crew span (SCR-25 T4) — started with that span made
+            // current for the call — not of whatever Activity.Current happened to be on the draining thread.
             var crewSpan = Snapshot(spans)
                 .Where(s => s.OperationName == ScriptingActivitySource.CrewRunSpan)
                 .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "orkeon.crew.name" && kv.Value == "parent-otel"));
@@ -130,6 +130,45 @@ public sealed class OtelTests
                 .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.ToolCallSpan, StringComparison.Ordinal))
                 .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.tool.name" && kv.Value == "file_read"));
             Assert.NotNull(span);
+        }
+        finally { listener.Dispose(); }
+    }
+
+    /// <summary>
+    /// Two runs interleaved on one drainer stop their spans in an order that leaves the thread's
+    /// <see cref="Activity.Current"/> on a span the other run already stopped — every later span would
+    /// parent under it. The runtime unsticks it after each stop, so the script's next span (or its
+    /// next crew run) starts from a live ancestor or from nothing.
+    /// </summary>
+    [Fact]
+    public async Task interleaved_crew_runs_leave_no_stopped_span_current()
+    {
+        var (_, listener) = Capture();
+        try
+        {
+            var engine = new JsEngineFactory().Create();
+            engine.SetValue("__sleep", new Func<double, Task<Jint.Native.JsValue>>(async ms =>
+            {
+                await Task.Delay(TimeSpan.FromMilliseconds(ms)).ConfigureAwait(false);
+                return Jint.Native.JsValue.Undefined;
+            }));
+            engine.SetValue("__current", new Func<string>(
+                () => Activity.Current is { } a ? a.OperationName + (a.IsStopped ? "(stopped)" : "") : "none"));
+
+            var seen = await engine.EvaluateAsync("""
+                const a1 = agentBuilder().name("A1").role("R").goal("G").body(async () => { await __sleep(30); return "a1"; }).build();
+                const a2 = agentBuilder().name("A2").role("R").goal("G").body(async () => { await __sleep(60); return "a2"; }).build();
+                const c1 = crewBuilder().name("otel-c1").withAgent(a1).build();
+                const c2 = crewBuilder().name("otel-c2").withAgent(a2).build();
+                (async () => {
+                    await Promise.all([c1.run(), c2.run()]);
+                    const after = __current();
+                    await c1.run();
+                    return after + "|" + __current();
+                })()
+                """, cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.DoesNotContain("(stopped)", seen.AsString(), StringComparison.Ordinal);
         }
         finally { listener.Dispose(); }
     }

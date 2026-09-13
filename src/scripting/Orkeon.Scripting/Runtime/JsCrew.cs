@@ -224,13 +224,20 @@ public sealed partial class JsCrew
     /// call it from inside a body.
     /// </summary>
     /// <remarks>
-    /// What a caller receives, in precedence order: an <see cref="OperationCanceledException"/> (exact
+    /// <para>What a caller receives, in precedence order: an <see cref="OperationCanceledException"/> (exact
     /// type) whenever the run's linked token — <paramref name="externalCt"/>, <c>options.signal</c>,
     /// <c>options.timeout</c> — is cancelled, whatever the JavaScript rejected with; the typed host
     /// exception a bridged or wrapped rejection carries (<see cref="StateMutationOutsideWithException"/>,
     /// <see cref="RecursiveAgentInvocationException"/>, <see cref="BudgetExhaustedException"/>);
     /// otherwise Jint's <c>PromiseRejectedException</c> carrying the rejected value. A bad
-    /// <c>timeout</c> option is a <see cref="FormatException"/>, raised before the loop starts.
+    /// <c>timeout</c> option is a <see cref="FormatException"/>, raised before the loop starts.</para>
+    /// <para>A cancelled run rejects promptly even when a body sits in a host await that ignores
+    /// <c>ctx.signal</c>: the loop races every body await against the cancellation, closes the attempt
+    /// and hands the instance semaphore back while that body is still executing. Its context is
+    /// disposed, so its later failures are its own unobserved rejection, but the body's remaining
+    /// continuations still run under whichever drain is active — during the next run of the same
+    /// agent, if one starts at once. It is the one cancellation case where per-instance serialization
+    /// does not hold; a body that observes <c>ctx.signal</c> never gets there.</para>
     /// </remarks>
     public async Task<JsCrewResult> RunAsync(JsValue? options, CancellationToken externalCt)
     {
@@ -400,27 +407,62 @@ public sealed partial class JsCrew
     internal SemaphoreSlim GetInstanceSemaphore(JsAgent agent)
         => _instanceSemaphores.GetOrAdd(agent.id, _ => new SemaphoreSlim(1, 1));
 
+    // The open attempts of this crew in opening order; the last one is what the broker attributes to.
+    // Guarded by its own lock: attempts open on the draining thread and close there or, when a host
+    // abandons its run, on the host thread.
+    private readonly List<BrokerAttribution> _attributions = new();
+    private readonly Lock _attributionSync = new();
+
     /// <summary>
     /// Attributes what happens next to <paramref name="agent"/> — <see cref="JsEventTopic.subscribe"/>
-    /// records the subscriber, <c>stateGraph.run()</c> picks up the ambient token — and returns what
-    /// was current, so <see cref="EndBrokerScope"/> can hand attribution back to a body that called
-    /// <c>runAgent</c> rather than clear it. The context constructor has already created the broker.
+    /// records the subscriber, <c>stateGraph.run()</c> and a run opened from the body pick up the
+    /// ambient token — for as long as the attempt is open. The entries form the set of open attempts,
+    /// not a stack of previous values: two runs of one crew interleaved on one event loop close their
+    /// attempts in any order, and restoring "what was current when this one opened" would hand a
+    /// closed attempt's attribution back to an idle crew. When an attempt closes, the attribution is
+    /// the most recently opened attempt still open, or none — so a nested <c>runAgent</c> hands it
+    /// back to the body that called it, and an idle crew attributes nothing. The context constructor
+    /// has already created the broker.
     /// </summary>
-    internal BrokerScopeMemento BeginBrokerScope(JsAgent agent, CancellationToken ct)
+    internal BrokerAttribution BeginBrokerScope(JsAgent agent, CancellationToken ct)
     {
         var broker = EventBroker;
-        var previous = new BrokerScopeMemento(broker.CurrentAgentId, broker.CurrentCt);
-        broker.CurrentAgentId = agent.id;
-        broker.CurrentCt = ct;
-        return previous;
+        var entry = new BrokerAttribution(agent.id, ct);
+        lock (_attributionSync)
+        {
+            _attributions.Add(entry);
+            broker.CurrentAgentId = entry.AgentId;
+            broker.CurrentCt = entry.Ct;
+        }
+        return entry;
     }
 
-    internal void EndBrokerScope(BrokerScopeMemento previous)
+    internal void EndBrokerScope(BrokerAttribution entry)
     {
         var broker = _eventBroker;
         if (broker is null) return;
-        broker.CurrentAgentId = previous.AgentId;
-        broker.CurrentCt = previous.Ct;
+        lock (_attributionSync)
+        {
+            _attributions.Remove(entry);
+            var current = _attributions.Count == 0 ? null : _attributions[^1];
+            broker.CurrentAgentId = current?.AgentId;
+            broker.CurrentCt = current?.Ct ?? CancellationToken.None;
+        }
+    }
+
+    /// <summary>
+    /// The token of the innermost open attempt of this crew, or none: what a run opened from a body
+    /// (<c>crew.runAgent</c>, a nested <c>crew.run</c>) links to, so cancelling the outer run cancels
+    /// it too and its semaphores come back with the outer run's unwind instead of outliving it. One
+    /// crew-wide value, so best-effort under two runs of one crew interleaved on one event loop;
+    /// <c>{ signal: ctx.signal }</c> is the explicit form.
+    /// </summary>
+    internal CancellationToken AmbientToken
+    {
+        get
+        {
+            lock (_attributionSync) return _eventBroker?.CurrentCt ?? CancellationToken.None;
+        }
     }
 }
 #pragma warning restore CS1591

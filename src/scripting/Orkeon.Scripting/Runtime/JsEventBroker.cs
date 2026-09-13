@@ -20,20 +20,22 @@ public sealed class JsEventBroker
     internal JsEventBroker(Engine engine) { _engine = engine; }
 
     /// <summary>
-    /// Set by <see cref="JsCrew"/> for the duration of a body attempt so that
-    /// <see cref="JsEventTopic.subscribe"/> can attribute the new subscription to the agent that
-    /// called it, and restored to its previous value when the attempt closes (a nested
-    /// <c>runAgent</c> hands attribution back to the body that called it). One crew-wide value: two
-    /// runs of one crew interleaved on one event loop (<c>Promise.all([crew.run(), crew.run()])</c>)
-    /// share it, so the attribution — and the <c>runAgent</c> re-entrance guard built on it — is
-    /// best-effort under such interleaving.
+    /// The agent whose body attempt opened most recently and is still open, set by
+    /// <see cref="JsCrew.BeginBrokerScope"/> and recomputed when an attempt closes, so that
+    /// <see cref="JsEventTopic.subscribe"/> can attribute a new subscription to the agent that called
+    /// it and a nested <c>runAgent</c> hands attribution back to the body that called it; null on an
+    /// idle crew, whatever order the attempts closed in. One crew-wide value: two runs of one crew
+    /// interleaved on one event loop (<c>Promise.all([crew.run(), crew.run()])</c>) share it, so the
+    /// attribution — and the <c>runAgent</c> re-entrance guard built on it — is best-effort under such
+    /// interleaving.
     /// </summary>
     internal string? CurrentAgentId { get; set; }
 
     /// <summary>
-    /// Cancellation token bound to the active body. Surfaces to <c>stateGraph.run</c>
-    /// so a script-level <c>cts.Cancel()</c> can abort an in-flight transition without
-    /// requiring an explicit signal argument.
+    /// The token of the run whose attempt <see cref="CurrentAgentId"/> names, none on an idle crew.
+    /// Surfaces to <c>stateGraph.run</c> and to a topic handler's <c>ev.lock</c> so a script-level
+    /// cancellation aborts them without an explicit signal argument, and to a run opened from a body
+    /// (<see cref="JsCrew.AmbientToken"/>). Same crew-wide, best-effort caveat as the agent id.
     /// </summary>
     internal CancellationToken CurrentCt { get; set; } = CancellationToken.None;
 
