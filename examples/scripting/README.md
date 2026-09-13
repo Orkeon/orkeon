@@ -25,8 +25,10 @@ configured, so they are runnable without API keys.
 | `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
 | `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
 
-Every file above ends with `await crew.run()` — the **procedural** shape, where each agent's
-`.body()` runs and tasks are ignored. [`crew-review-desk/`](crew-review-desk/README.md) is
+Every file above is the **procedural** shape — it runs its crew(s) with `await crew.run()`
+(`08-rag` has no crew and only exercises `rag.*`; `12` runs two in sequence) and never assigns
+`globalThis.crew`; each agent's `.body()` runs and tasks are ignored.
+[`crew-review-desk/`](crew-review-desk/README.md) is
 the other one: a three-agent crew with tasks, a dependency chain and a deliverable, handed
 off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is
 arranged to prevent.

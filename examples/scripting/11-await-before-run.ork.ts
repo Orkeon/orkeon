@@ -5,7 +5,7 @@
 //
 // The order matters more than it looks. The other files that run a crew start it from the
 // script's synchronous prefix; this one starts it from a promise continuation, after the file
-// read has settled. Before SCR-25 that second shape never returned -- the crew's synchronous drain was
+// read has settled. Before SCR-25 that second shape never returned — the crew's synchronous drain was
 // reached from inside an event-loop job it could not pump, and the script sat on a 30-minute
 // ceiling. One thread drains the engine now and the crew loop is JavaScript under it, so a
 // crew started after an await behaves exactly like one started before it.
@@ -20,7 +20,7 @@ const brief = await tools.fileRead({ path: "/script/data/11-await-before-run/bri
 const text = brief.content;
 
 // 2. Agents close over what was read. On the procedural shape a body receives no input, so
-//    top-level values reach it through the closure -- the same way `globalThis.inputs` does
+//    top-level values reach it through the closure — the same way `globalThis.inputs` does
 //    in 10-inputs-and-memory.
 const openItems = text.split("\n").filter((line) => line.startsWith("- [ ]"));
 

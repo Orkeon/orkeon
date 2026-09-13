@@ -44,7 +44,7 @@ internal sealed class CrewRunScope : IDisposable
     private readonly CancellationTokenSource? _timeout;
     private readonly CancellationTokenSource _linked;
     private readonly CancellationTokenSource _abandon;
-    private readonly TaskCompletionSource<JsValue> _cancelled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+    private readonly TaskCompletionSource<JsValue> _cancelled = new();
     private readonly CancellationTokenRegistration _cancelledRegistration;
     private readonly CancellationTokenRegistration _graceRegistration;
     private readonly Lock _sync = new();
@@ -59,17 +59,21 @@ internal sealed class CrewRunScope : IDisposable
     /// <summary>
     /// Constructed with the parsed options so a bad <c>timeout</c> string fails before anything is
     /// allocated (and before <c>Invoke</c>, for a CLR caller). Every token-related member exists from
-    /// construction on; <see cref="Start"/> adds only what a run allocates.
+    /// construction on; <see cref="Start"/> adds only what a run allocates. <paramref name="parent"/>
+    /// is the scope of the attempt a script-opened run was opened from (<see cref="Parent"/>); a CLR
+    /// caller's run and a run opened at a script's top level have none.
     /// </summary>
     internal CrewRunScope(JsCrew crew, CrewRunKind kind, CancellationToken? signal, TimeSpan? timeout,
-        bool ownedByHost, CancellationToken externalCt)
+        bool ownedByHost, CancellationToken externalCt, CrewRunScope? parent = null)
     {
         _crew = crew;
         Kind = kind;
+        Parent = parent;
         _ownedByHost = ownedByHost;
         _timeout = timeout is null ? null : new CancellationTokenSource(timeout.Value);
         _linked = CancellationTokenSource.CreateLinkedTokenSource(
-            externalCt, signal ?? CancellationToken.None, _timeout?.Token ?? CancellationToken.None);
+            externalCt, signal ?? CancellationToken.None, _timeout?.Token ?? CancellationToken.None,
+            parent?.Token ?? CancellationToken.None);
         _abandon = new CancellationTokenSource();
         Token = _linked.Token;
         AbandonToken = _abandon.Token;
@@ -77,7 +81,13 @@ internal sealed class CrewRunScope : IDisposable
         // Both registrations run on the cancelling thread and touch CLR state only: the faulted
         // task is what Jint turns into the rejection of the loop's `stop` promise (a cancelled task
         // would surface as Jint's own ExecutionCanceledException instead), enqueued on the engine's
-        // loop by Jint's task bridge and run by whoever drains next — never here.
+        // loop by Jint's task bridge and run by whoever drains next — never here. The bridge's
+        // continuation runs inline, on this thread: it only enqueues the job and signals the
+        // drainer (thread-safe by design, the path every Task settled off-thread takes), so the
+        // rejection is queued the instant the token fires. Routed through the pool instead
+        // (RunContinuationsAsynchronously), it waited for a pool thread — under a starved pool,
+        // longer than the whole CancellationGrace, and the host abandoned a run whose loop had not
+        // yet been told it was cancelled.
         _cancelledRegistration = Token.Register(
             static (state, token) => ((CrewRunScope)state!)._cancelled.TrySetException(new OperationCanceledException(token)),
             this);
@@ -86,8 +96,39 @@ internal sealed class CrewRunScope : IDisposable
 
     internal CrewRunKind Kind { get; }
 
-    /// <summary>The run's own cancellation: external token, <c>options.signal</c> and <c>options.timeout</c> linked.</summary>
+    /// <summary>
+    /// The scope of the attempt this run was opened from — the innermost attempt open on the engine
+    /// when the script called <c>run</c>, <c>runAgent</c> or <c>runStream</c>
+    /// (<see cref="JsEngineAttempts"/>) — or none for a CLR caller's run and a run opened at a
+    /// script's top level. Its token is linked into <see cref="Token"/>, and its
+    /// <see cref="StopPromise"/> is what the nested loop races.
+    /// </summary>
+    internal CrewRunScope? Parent { get; }
+
+    /// <summary>
+    /// The loop's <c>stop</c> promise for this run, kept by the loop as soon as it enters the scope:
+    /// a run opened from one of this run's bodies races it too, so the outer cancellation unwinds the
+    /// nested run in the same drain pass as this one, instead of reaching it through the CLR link, a
+    /// pool thread and a later job.
+    /// </summary>
+    internal JsValue? StopPromise { get; set; }
+
+    /// <summary>The run's own cancellation: external token, <c>options.signal</c>, <c>options.timeout</c> and the parent's token linked.</summary>
     internal CancellationToken Token { get; }
+
+    /// <summary>
+    /// Whether this run or an ancestor was cancelled. An ancestor's cancellation reaches
+    /// <see cref="Token"/> through the link, on the cancelling thread (callbacks run newest first, so
+    /// the link — registered after the ancestor's own — fires before its <c>cancelled</c> task faults);
+    /// the walk keeps the loop's reading of its own cancellation independent of that order.
+    /// </summary>
+    internal bool IsCancelled => Token.IsCancellationRequested || (Parent?.IsCancelled ?? false);
+
+    /// <summary>The loop's step check: an <see cref="OperationCanceledException"/> carrying <see cref="Token"/> once this run or an ancestor was cancelled.</summary>
+    internal void ThrowIfCancelled()
+    {
+        if (IsCancelled) throw new OperationCanceledException(Token);
+    }
 
     /// <summary>Fires <see cref="CancellationGrace"/> after <see cref="Token"/>: the bound of a CLR root pump's drain.</summary>
     internal CancellationToken AbandonToken { get; }
@@ -244,7 +285,7 @@ internal sealed class CrewRunScope : IDisposable
         var ctx = new JsAgentContext(_crew.CreateEnvironment(agent, Budget, Token), initialState);
         try
         {
-            var attribution = _crew.BeginBrokerScope(agent, Token);
+            var attribution = _crew.BeginBrokerScope(agent, this);
             var handle = new AgentAttempt(ctx, attribution);
             lock (_sync)
             {
@@ -445,12 +486,14 @@ internal sealed class ErrorDecision(string kind, JsValue value, double delayMs)
 #pragma warning restore IDE1006
 
 /// <summary>
-/// One open attempt's entry in the crew's attribution (<see cref="JsCrew.BeginBrokerScope"/>): the
-/// agent whose body is executing and the token of its run. Reference identity — the crew removes
-/// this very entry when the attempt closes, whatever opened or closed in between.
+/// One open attempt's entry in the crew's attribution (<see cref="JsCrew.BeginBrokerScope"/>) and in
+/// the engine's (<see cref="JsEngineAttempts"/>): the agent whose body is executing and the scope of
+/// its run. Reference identity — the crew removes this very entry when the attempt closes, whatever
+/// opened or closed in between.
 /// </summary>
-internal sealed class BrokerAttribution(string agentId, CancellationToken ct)
+internal sealed class BrokerAttribution(string agentId, CrewRunScope scope)
 {
     internal string AgentId { get; } = agentId;
-    internal CancellationToken Ct { get; } = ct;
+    internal CrewRunScope Scope { get; } = scope;
+    internal CancellationToken Ct => Scope.Token;
 }

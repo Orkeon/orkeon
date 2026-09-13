@@ -40,7 +40,7 @@ public class JsExecutionContext
         _channel = environment.Channel;
         _ct = environment.Ct;
         memory = new JsMemoryRoot(environment.CrewMemory);
-        crew = new JsCrewProxy(environment.Crew, environment.Engine);
+        crew = new JsCrewProxy(environment.Crew, environment.Engine, environment.Ct);
         log = new JsLogger(environment.Logger);
         events = environment.Crew.EventBroker;
         llm = new JsLlmFacade(
@@ -204,16 +204,17 @@ public sealed class JsCrewProxy
 {
     private readonly JsCrew _crew;
     private readonly Engine _engineRef;
+    private readonly CancellationToken _ct;
     private JsValue? _lockJs;
 
-    internal JsCrewProxy(JsCrew crew, Engine engine) { _crew = crew; _engineRef = engine; }
+    internal JsCrewProxy(JsCrew crew, Engine engine, CancellationToken ct) { _crew = crew; _engineRef = engine; _ct = ct; }
     public JsAgent? findByName(string name) => _crew.findByName(name);
     public JsAgent? findById(string id) => _crew.findById(id);
     public IReadOnlyList<JsAgent> findByRole(string role) => _crew.findByRole(role);
     public bool has(JsAgent agent) => _crew.has(agent);
     public string name => _crew.name;
 
-    // The shared named-lock trampoline (JsTrampolineFactories.Lock) over the crew's lock table.
+    /// <summary>JS <c>async (name, fn) =&gt; result</c>: the shared named-lock trampoline (<see cref="JsTrampolineFactories.Lock"/>) over the crew's lock table, acquired with the context's token — a waiter is released when its run is cancelled, as with <c>ctx.lock</c> and a published event's <c>lock</c>.</summary>
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private JsValue BuildLockFunction()
@@ -222,13 +223,10 @@ public sealed class JsCrewProxy
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);
             var sem = _crew.GetCrewLock(name);
-            await sem.WaitAsync().ConfigureAwait(false);
+            await sem.WaitAsync(_ct).ConfigureAwait(false);
             return JsValue.Undefined;
         };
-        Action<string> release = name =>
-        {
-            _crew.GetCrewLock(name).Release();
-        };
+        Action<string> release = name => JsHostError.Guard(_engineRef, () => _crew.GetCrewLock(name).Release());
         return _engineRef.Invoke(JsTrampolineFactories.Lock.For(_engineRef), [acquire, release]);
     }
 }

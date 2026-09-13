@@ -34,8 +34,8 @@ ops thin              ══ ENGINE: crew.ork.ts ══       living agent .onCo
 ```
 
 La règle que ce schéma encode : le registre de commandes est un plan de contrôle, pas un
-moteur de concurrence. Tout le TypeScript tourne dans Jint — mono-thread, sans boucle
-d'événements — donc une commande, synchrone ou asynchrone, ne fait jamais le travail long
+moteur de concurrence. Tout le TypeScript tourne dans Jint — mono-thread, avec une boucle
+d'événements mais sans timers — donc une commande, synchrone ou asynchrone, ne fait jamais le travail long
 elle-même. Elle *parle* à un moteur côté hôte au travers de la whitelist de services, et
 `script-host` **est** ce moteur pour les crews. Le versant dispatch de la même règle est dans
 [Commandes CLI en TypeScript](cli-ts-commands.md).

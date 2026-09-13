@@ -12,25 +12,33 @@ namespace Orkeon.Scripting.Tests.Architecture;
 /// removed cannot come back. A CLR delegate exposed to the script may (a) return a value
 /// synchronously, (b) return a <see cref="Task"/> whose result is a CLR value, or (c) return
 /// a JS promise obtained synchronously; it must NEVER call <c>Engine.Invoke</c> /
-/// <c>Evaluate</c> / <c>Execute</c> / <c>SetValue</c> / <c>JsValue.FromObject</c> /
-/// <c>Call</c> after an <c>await</c> — an <c>await</c> expression, an <c>await foreach</c>
-/// or an <c>await using</c>, an await nested in the entry's own receiver or arguments included —
-/// because the continuation runs on a thread-pool thread while another may be draining the
-/// engine; and never drain (<c>UnwrapIfPromise*</c>) from inside an event-loop job. The only
-/// drains are the three root pumps — <c>ScriptHost.EvaluateAsync</c>, <c>JsCrew.Pump</c>,
+/// <c>Evaluate</c> / <c>Execute</c> / <c>Construct</c> / <c>SetValue</c> /
+/// <c>JsValue.FromObject</c> / <c>Call</c> after an <c>await</c> — an <c>await</c> expression,
+/// an <c>await foreach</c> or an <c>await using</c>, an await nested in the entry's own receiver
+/// or arguments included — because the continuation runs on a thread-pool thread while another
+/// may be draining the engine; nor from a lambda handed to <c>Task.Run</c>, <c>ContinueWith</c>,
+/// <c>CancellationToken.Register</c> or the thread pool, which runs on another thread without any
+/// <c>await</c> of its own; and never drain from inside an event-loop job. The only drains are
+/// the three root pumps — <c>ScriptHost.EvaluateAsync</c>, <c>JsCrew.Pump</c>,
 /// <c>JsTool.CallAsync</c> — each on the <c>UnwrapIfPromise(CancellationToken)</c> overload,
 /// inside the pump's synchronous body (its <c>Task.Run</c> lambda, or the synchronous method
-/// <c>Task.Run</c> dispatches) holding <c>JsEngineGate</c>. A third rule guards the trampoline
-/// factories (T4 design, fact F2): <c>Engine.Evaluate</c> drains queued jobs on its way out, so
-/// a factory evaluated lazily from a script's synchronous prefix runs microtasks mid-statement;
+/// <c>Task.Run</c> dispatches) holding <c>JsEngineGate</c>; Jint's own asynchronous drains —
+/// <c>Engine.EvaluateAsync</c>, <c>InvokeAsync</c>, <c>ExecuteAsync</c>, each an entry followed by
+/// <c>AwaitPromiseSettlementAsync</c>, the spelling Jint documents as the alternative to
+/// <c>UnwrapIfPromise</c> — belong nowhere in the runtime. A third rule guards the trampoline
+/// factories (sheet section 7): <c>Engine.Evaluate</c> drains queued jobs on its way out, so a
+/// factory evaluated lazily from a script's synchronous prefix runs microtasks mid-statement;
 /// every factory is evaluated by <c>JsTrampolineFactories</c> with the engine at rest, and
 /// nothing else evaluates.
 /// </summary>
 /// <remarks>
-/// The analyser is exercised on inline snippets too (one violation of each kind, and clean
+/// <para>The analyser is exercised on inline snippets too (one violation of each kind, and clean
 /// shapes it must accept), so a silently broken analyser cannot pass the repository scan; and
 /// the scan's file filter is checked against the compiled assembly, so a filter that drops a
-/// folder cannot silently shrink the guard.
+/// folder cannot silently shrink the guard.</para>
+/// <para>What the guard sees is the direct call: an entry reached through a runtime helper of our
+/// own (<c>JsHostError.Wrap</c>, a <c>JsObject</c> built and set after an await) is out of its
+/// reach, as is a getter that runs script code (<c>JsValue.Get</c>). The rule stands for those too.</para>
 /// </remarks>
 public sealed class EngineThreadingGuardTests
 {
@@ -51,6 +59,18 @@ public sealed class EngineThreadingGuardTests
     }
 
     [Fact]
+    public void Sources_never_enter_the_engine_from_a_lambda_dispatched_to_another_thread()
+    {
+        var violations = EngineThreadingAnalyzer.Analyze(Sources.Value)
+            .Where(v => v.Rule == EngineThreadingAnalyzer.EntryOffThread).ToList();
+
+        Assert.True(violations.Count == 0,
+            "A lambda handed to Task.Run, ContinueWith, CancellationToken.Register or the thread pool runs on another " +
+            $"thread, with no await to mark it: no engine entry inside it, outside the three root pumps — {Sheet}. " +
+            "Violations:\n" + Report(violations));
+    }
+
+    [Fact]
     public void Sources_drain_only_in_the_three_root_pumps()
     {
         var violations = EngineThreadingAnalyzer.Analyze(Sources.Value)
@@ -58,7 +78,8 @@ public sealed class EngineThreadingGuardTests
 
         Assert.True(violations.Count == 0,
             "The only drains are the three root pumps (ScriptHost.EvaluateAsync, JsCrew.Pump, JsTool.CallAsync), " +
-            $"each on the synchronous UnwrapIfPromise(CancellationToken) overload inside the pump's synchronous body — {Sheet}. " +
+            $"each on the synchronous UnwrapIfPromise(CancellationToken) overload inside the pump's synchronous body — {Sheet}; " +
+            "Jint's EvaluateAsync/InvokeAsync/ExecuteAsync are that same drain under another name and belong nowhere. " +
             "Violations:\n" + Report(violations));
     }
 
@@ -69,8 +90,8 @@ public sealed class EngineThreadingGuardTests
             .Where(v => v.Rule == EngineThreadingAnalyzer.EvaluateOutsideStore).ToList();
 
         Assert.True(violations.Count == 0,
-            "Engine.Evaluate drains queued event-loop jobs on its way out (T4 design, F2): a trampoline factory " +
-            "belongs in JsTrampolineFactories, evaluated with the engine at rest; only ScriptHost evaluates otherwise. " +
+            "Engine.Evaluate drains queued event-loop jobs on its way out (the SCR-25 task sheet, section 7): a trampoline " +
+            "factory belongs in JsTrampolineFactories, evaluated with the engine at rest; only ScriptHost evaluates otherwise. " +
             "Violations:\n" + Report(violations));
     }
 
@@ -168,7 +189,23 @@ public sealed class EngineThreadingGuardTests
 
                 public async Task AwaitNestedInTheEntrysReceiver(JsValue fn) => (await Task.FromResult(_engine)).Invoke(fn);       // expect: entry-after-await
 
+                public async Task ConstructAfterAwait(JsValue ctor) { await Task.Yield(); _engine.Construct(ctor); }               // expect: entry-after-await
+
                 public JsValue DrainOutsideAPump(JsValue p) => p.UnwrapIfPromise(CancellationToken.None);                         // expect: drain-outside-root-pump
+
+                public Task<JsValue> JintEvaluateAsync(CancellationToken ct) => _engine.EvaluateAsync("1", cancellationToken: ct); // expect: drain-outside-root-pump
+
+                public Task<JsValue> JintInvokeAsync(CancellationToken ct) => _engine.InvokeAsync("f", ct);                        // expect: drain-outside-root-pump
+
+                public Task JintExecuteAsync(CancellationToken ct) => _engine.ExecuteAsync("1", cancellationToken: ct);            // expect: drain-outside-root-pump
+
+                public Task SyncLambdaHandedToTaskRun(JsValue fn) => Task.Run(() => _engine.Invoke(fn));                          // expect: entry-off-thread
+
+                public void SyncLambdaHandedToRegister(JsValue fn, CancellationToken ct) => ct.Register(() => _engine.Invoke(fn)); // expect: entry-off-thread
+
+                public Task SyncLambdaHandedToContinueWith(JsValue fn, Task t) => t.ContinueWith(_ => _engine.Invoke(fn));        // expect: entry-off-thread
+
+                public void SyncLambdaHandedToThePool(JsValue fn) => ThreadPool.QueueUserWorkItem(_ => _engine.Invoke(fn));       // expect: entry-off-thread
 
                 public JsValue EvaluateOutsideTheStore() => _engine.Evaluate("1");                                                // expect: evaluate-outside-store
             }
@@ -209,9 +246,11 @@ public sealed class EngineThreadingGuardTests
     /// <summary>
     /// Negative control: the shapes the rule allows — an entry before the await (an <c>await foreach</c>
     /// included), an entry inside an <c>await using</c> block before its dispose, an async lambda
-    /// analysed on its own (the outer await does not taint it), a delegate's own <c>Invoke</c>, and the
-    /// three root pumps themselves: the synchronous <c>Task.Run</c> lambda of <c>ScriptHost.EvaluateAsync</c>
-    /// and <c>JsTool.CallAsync</c>, the synchronous <c>JsCrew.Pump</c>, on the CancellationToken overload.
+    /// analysed on its own (the outer await does not taint it), a delegate's own <c>Invoke</c>, a
+    /// runtime method of ours that merely shares a Jint name (<c>ExecuteAsync</c>, <c>Register</c>), a
+    /// lambda dispatched off-thread that enters nothing, and the three root pumps themselves: the
+    /// synchronous <c>Task.Run</c> lambda of <c>ScriptHost.EvaluateAsync</c> and <c>JsTool.CallAsync</c>,
+    /// the synchronous <c>JsCrew.Pump</c>, on the CancellationToken overload.
     /// </summary>
     [Fact]
     public void Analyser_accepts_the_allowed_shapes()
@@ -249,6 +288,16 @@ public sealed class EngineThreadingGuardTests
                 }
 
                 public async Task DelegateInvokeIsNotTheEngine(Func<int> f) { await Task.Yield(); f.Invoke(); }
+
+                public Task<int> OurOwnExecuteAsyncIsNotJints(CancellationToken ct) => ExecuteAsync("input", ct);
+
+                private static Task<int> ExecuteAsync(string input, CancellationToken ct) => Task.FromResult(input.Length);
+
+                public void OurOwnRegisterIsNotADispatch(JsValue fn) => Register(() => _engine.Invoke(fn));
+
+                private static void Register(Func<JsValue> f) => f();
+
+                public Task DispatchedLambdaThatEntersNothing(CancellationToken ct) => Task.Run(() => ct.IsCancellationRequested, ct);
             }
 
             namespace Orkeon.Scripting
@@ -434,18 +483,26 @@ internal sealed record EngineThreadingViolation(string Rule, string File, int Li
 }
 
 /// <summary>
-/// The three rules over a compilation. Receiver types and containing types come from the
+/// The four rules over a compilation. Receiver types and containing types come from the
 /// semantic model; when a symbol cannot be resolved the member name alone decides, on the
 /// conservative side.
 /// </summary>
 internal static class EngineThreadingAnalyzer
 {
     public const string EntryAfterAwait = "entry-after-await";
+    public const string EntryOffThread = "entry-off-thread";
     public const string DrainOutsideRootPump = "drain-outside-root-pump";
     public const string EvaluateOutsideStore = "evaluate-outside-store";
 
-    private static readonly HashSet<string> EntryNames = new(StringComparer.Ordinal) { "Invoke", "Evaluate", "FromObject", "SetValue", "Execute", "Call" };
+    private static readonly HashSet<string> EntryNames = new(StringComparer.Ordinal) { "Invoke", "Evaluate", "FromObject", "SetValue", "Execute", "Construct", "Call" };
     private static readonly HashSet<string> DrainNames = new(StringComparer.Ordinal) { "UnwrapIfPromise", "UnwrapIfPromiseAsync" };
+
+    /// <summary>Jint's asynchronous drains: an entry followed by <c>AwaitPromiseSettlementAsync</c>, forbidden everywhere. Only Jint's own (<see cref="IsEngineEntry"/>): the runtime has an <c>ExecuteAsync</c> and an <c>EvaluateAsync</c> of its own.</summary>
+    private static readonly HashSet<string> JintAsyncDrainNames = new(StringComparer.Ordinal) { "EvaluateAsync", "InvokeAsync", "ExecuteAsync" };
+
+    /// <summary>The methods that run a lambda on another thread: <c>Task.Run</c>, <c>TaskFactory.StartNew</c>, <c>Task.ContinueWith</c>, <c>CancellationToken.Register</c>, <c>ThreadPool.QueueUserWorkItem</c>.</summary>
+    private static readonly HashSet<string> DispatchNames = new(StringComparer.Ordinal) { "Run", "StartNew", "ContinueWith", "Register", "UnsafeRegister", "QueueUserWorkItem", "UnsafeQueueUserWorkItem" };
+    private static readonly HashSet<string> DispatchTypes = new(StringComparer.Ordinal) { "Task", "TaskFactory", "CancellationToken", "ThreadPool" };
 
     /// <summary>The root pumps, by fully qualified containing type and containing method declaration.</summary>
     private static readonly (string Type, string Member)[] RootPumps =
@@ -467,12 +524,20 @@ internal static class EngineThreadingAnalyzer
             var root = tree.GetRoot();
             foreach (var owner in root.DescendantNodes().Where(IsAsyncBody))
                 CheckEntriesAfterAwait(model, owner, violations);
+            foreach (var lambda in root.DescendantNodes().OfType<AnonymousFunctionExpressionSyntax>())
+            {
+                if (DispatchOf(model, lambda) is { } dispatch && !IsRootPumpLambda(model, lambda))
+                    CheckEntriesOffThread(model, lambda, dispatch, violations);
+            }
             foreach (var invocation in root.DescendantNodes().OfType<InvocationExpressionSyntax>())
             {
                 var name = InvokedName(invocation);
                 if (name is null) continue;
                 if (DrainNames.Contains(name))
                     CheckDrain(model, invocation, name, violations);
+                else if (JintAsyncDrainNames.Contains(name) && IsEngineEntry(model, invocation))
+                    violations.Add(Violation(DrainOutsideRootPump, invocation,
+                        $"Engine.{name} in {Location(model, invocation)}: Jint's asynchronous drain (an entry, then AwaitPromiseSettlementAsync) — a root pump drains synchronously, on UnwrapIfPromise(CancellationToken), and nothing else drains"));
                 else if (string.Equals(name, "Evaluate", StringComparison.Ordinal) && IsEngineEntry(model, invocation))
                     CheckEvaluateOwner(model, invocation, violations);
             }
@@ -568,6 +633,45 @@ internal static class EngineThreadingAnalyzer
         {
             if (current is ForStatementSyntax or CommonForEachStatementSyntax or WhileStatementSyntax or DoStatementSyntax)
                 yield return current;
+        }
+    }
+
+    // ---- rule 4: no engine entry in a lambda dispatched to another thread ----
+
+    /// <summary>
+    /// The dispatching call when <paramref name="lambda"/> is an argument of <c>Task.Run</c>,
+    /// <c>TaskFactory.StartNew</c>, <c>Task.ContinueWith</c>, <c>CancellationToken.Register</c> or
+    /// <c>ThreadPool.QueueUserWorkItem</c> — by the resolved method's containing type, or by the name
+    /// alone when it does not resolve — and null otherwise.
+    /// </summary>
+    private static string? DispatchOf(SemanticModel model, AnonymousFunctionExpressionSyntax lambda)
+    {
+        if (lambda.Parent is not ArgumentSyntax { Parent: ArgumentListSyntax { Parent: InvocationExpressionSyntax call } })
+            return null;
+        var name = InvokedName(call);
+        if (name is null || !DispatchNames.Contains(name)) return null;
+        if (ResolveMethod(model, call) is { } method)
+        {
+            var type = method.ContainingType;
+            if (!DispatchTypes.Contains(type.Name) || !type.ContainingNamespace.ToDisplayString().StartsWith("System.Threading", StringComparison.Ordinal))
+                return null;
+            return type.Name + "." + name;
+        }
+        return name;
+    }
+
+    /// <summary>
+    /// Every engine entry inside the dispatched lambda, nested functions included: they run on the
+    /// thread the dispatch chose, or later on one of its continuations — never on the drainer.
+    /// </summary>
+    private static void CheckEntriesOffThread(SemanticModel model, AnonymousFunctionExpressionSyntax lambda, string dispatch, List<EngineThreadingViolation> violations)
+    {
+        foreach (var invocation in lambda.Body.DescendantNodesAndSelf().OfType<InvocationExpressionSyntax>())
+        {
+            var name = InvokedName(invocation);
+            if (name is null || !EntryNames.Contains(name) || !IsEngineEntry(model, invocation)) continue;
+            violations.Add(Violation(EntryOffThread, invocation,
+                $"{name} in a lambda handed to {dispatch} in {Location(model, invocation)}: it runs on another thread, outside the root pumps"));
         }
     }
 

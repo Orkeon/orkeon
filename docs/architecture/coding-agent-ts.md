@@ -34,7 +34,7 @@ ops thin              ══ ENGINE: crew.ork.ts ══       living agent .onCo
 ```
 
 The rule the diagram encodes: the command registry is a control plane, not a concurrency
-engine. All TypeScript runs in Jint — single-threaded, no event loop — so a command, sync or
+engine. All TypeScript runs in Jint — single-threaded, with an event loop but no timers — so a command, sync or
 async, never does long work itself. It *talks* to a host-side engine through the service
 whitelist, and `script-host` **is** that engine for crews. The dispatch side of the same rule
 is in [TypeScript CLI commands](cli-ts-commands.md).

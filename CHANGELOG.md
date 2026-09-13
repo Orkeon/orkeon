@@ -42,8 +42,10 @@ The model is written up in `docs/architecture/scripting.md` (EN + FR).
 and `runStream`, `JsStateMachine.send`, `JsAgentContext.stateWith`, `JsEventTopic.publish`,
 `JsPublishedEvent.lock` and `JsLlmFacade.act` are `JsValue` properties now — the JS functions
 themselves, not CLR methods. A host runs a crew through `JsCrew.RunAsync(options, ct)`; the
-script surface and the typings are unchanged. What one loop doing the work of several
-changes for scripts:
+script surface is unchanged, and so are the typings but for one correction: `onCrewError`'s
+second argument is declared `string` — the displayed message the runtime has always passed —
+where `crew.d.ts` promised an `Error` no script could read `.message` off. What one loop
+doing the work of several changes for scripts:
 
 - An `onCrewStart` that throws fails the run and reaches `onCrewError` (it ran outside the
   error path before); a run started on an already-cancelled `signal` skips `onCrewStart`,
@@ -63,13 +65,24 @@ changes for scripts:
   (`signal`, `timeout`), and throws `RecursiveAgentInvocationException` when called on the
   agent whose body is executing instead of deadlocking on the semaphore that body holds. It
   used to invoke `body(input, undefined)` bare.
+- A run opened from a body — `crew.runAgent`, `await sub.run()` on another crew — without
+  `{ signal: ctx.signal }` is a child of the run that opened it: cancelling the outer run
+  cancels it, and its semaphores come back inside the outer run's own unwind. It used to run
+  on with no token of its own, and a sub-crew whose body never settled kept its semaphore for
+  good. The link is best-effort under runs interleaved on one event loop (it reads the most
+  recently opened attempt still open); the explicit `signal` remains the exact form. And a
+  cancellation the loop meets on a Task it awaits itself — the instance semaphore, a retry
+  delay — rejects the script with the same bridged `OperationCanceledException` (`clrType`,
+  `message`) as a raced body await, not Jint's raw cancelled-task object.
 - `crew.runStream` *is* the run, observed as a stream: same semaphore, contexts, hooks and
   spans as `run`; `at` is epoch milliseconds (`Date.now()`) instead of .NET ticks; `break`
   out of the `for await` ends the run without firing `onCrewComplete` or `onCrewError`.
-- `ExecutionTimeout` (`Orkeon:Scripting:Limits`, 30 s by default) spans a whole CLR-driven
-  run — the `globalThis.crew` handoff through `ScriptHost.RunAsync`, `JsCrew.RunAsync` — as
-  it already spanned a whole script; it used to re-arm per agent body. A host driving a
-  longer run raises the limit, as a long script already required.
+- `ExecutionTimeout` and `MemoryLimitBytes` (`Orkeon:Scripting:Limits`, 30 s and 100 MB by
+  default) span a whole CLR-driven run — the `globalThis.crew` handoff through
+  `ScriptHost.RunAsync`, `JsCrew.RunAsync` — as they already spanned a whole script; both
+  used to re-arm per agent body (Jint resets its constraints at each non-nested entry, and
+  the run is one entry now). A host driving a longer run, or a many-agent one that allocates,
+  raises the limits, as a long script already required.
 - `ScriptHost.RunAsync` and `JsTool.CallAsync` propagate cancellation as
   `OperationCanceledException` — a 30-minute wait that ignored the token, and a failed
   `ToolCallResponse`, before.

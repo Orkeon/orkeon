@@ -40,9 +40,11 @@ internal static class ActCalls
 
     /// <summary>
     /// <see cref="ActAsync"/> as the host sees it: the rule of <c>JsCrew.RunAsync</c>'s pump applies
-    /// at the root, where any rejection under a cancelled <paramref name="hostToken"/> is the host's
-    /// <see cref="OperationCanceledException"/>. A settled result is never touched, so a loop that
-    /// settled host cancellation gracefully still fails an assertion that expects the throw.
+    /// at the root, where a cancellation rendered by Jint's task bridge — the
+    /// <see cref="ExecutionCanceledException"/> a cancelled Task rejects with — under a cancelled
+    /// <paramref name="hostToken"/> is the host's <see cref="OperationCanceledException"/>. Only that
+    /// shape is mapped: a loop that rejected with anything else under a cancelled token still fails
+    /// an assertion that expects the cancellation, and so does one that settled it gracefully.
     /// </summary>
     public static async Task<JsValue> ActAsHostAsync(this JsLlmFacade facade, Engine engine, string prompt, JsValue? options, CancellationToken hostToken)
     {
@@ -50,7 +52,7 @@ internal static class ActCalls
         {
             return await ActAsync(facade, engine, prompt, options);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException && hostToken.IsCancellationRequested)
+        catch (ExecutionCanceledException ex) when (hostToken.IsCancellationRequested)
         {
             throw new OperationCanceledException("act rejected under a cancelled host token.", ex, hostToken);
         }

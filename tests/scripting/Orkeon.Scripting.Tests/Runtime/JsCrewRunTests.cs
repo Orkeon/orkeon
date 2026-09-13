@@ -1,9 +1,11 @@
 using Jint;
 using Jint.Native;
 using Microsoft.Extensions.Logging;
+using Orkeon.Scripting.Configuration;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.Doubles;
+using static Orkeon.Scripting.Tests.Testing.ScriptGlobals;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -14,58 +16,61 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// and the re-entrance guard, <c>runStream</c> abandoned, retries and async policies, and a CLR
 /// root pump refused from inside its own drain.
 /// </summary>
+/// <remarks>
+/// A cancellation is raised from inside the body (<c>__cancel()</c>), never by a timer: under this
+/// suite's own contention (24 blocking root pumps) a timer callback and every pool hop after it can
+/// be late by seconds, and a wall-clock bound on the run then measures the pool, not the runtime.
+/// That a cancelled run unwound cooperatively — inside <see cref="CrewRunScope.CancellationGrace"/>,
+/// not abandoned at it — is read from the log instead: the host logs the abandonment (event 4) only
+/// when the grace expired before the loop's own <c>finally</c> ran. A generous guard turns a hang
+/// into a failure.
+/// </remarks>
 public sealed class JsCrewRunTests
 {
     private static CancellationToken Ct => TestContext.Current.CancellationToken;
 
+    private static readonly TimeSpan HangGuard = TimeSpan.FromSeconds(20);
+
     private static Engine NewEngine(ILoggerFactory? loggerFactory = null)
         => new JsEngineFactory(loggerFactory: loggerFactory).Create();
+
+    /// <summary>The run unwound on its own: the host never abandoned it at the grace (<c>JsCrew</c> event 4 is the abandon path's only log).</summary>
+    private static void AssertNotAbandoned(RecordingLoggerFactory factory)
+        => Assert.DoesNotContain(factory.Logger.Entries, e => e.Message.Contains("run abandoned by its host", StringComparison.Ordinal));
 
     private static T Eval<T>(Engine engine, string js) => (T)engine.Evaluate(js).ToObject()!;
 
     private static JsValue Js(Engine engine, string js) => engine.Evaluate(js);
 
-    /// <summary>Installs <c>__sleep(ms[, ct])</c> as a JS-awaitable Task helper.</summary>
-    private static void InstallSleep(Engine engine)
-    {
-        engine.SetValue("__sleep", new Func<double, JsValue?, Task<JsValue>>(async (ms, ctVal) =>
-        {
-            var ct = CancellationToken.None;
-            if (ctVal is not null && !ctVal.IsUndefined() && !ctVal.IsNull() && ctVal.ToObject() is CancellationToken token)
-                ct = token;
-            await Task.Delay(TimeSpan.FromMilliseconds(ms), ct).ConfigureAwait(false);
-            return JsValue.Undefined;
-        }));
-    }
-
-    /// <summary>Installs <c>__log(text)</c>, appending to the returned list.</summary>
-    private static List<string> InstallLog(Engine engine)
-    {
-        var log = new List<string>();
-        engine.SetValue("__log", new Action<string>(text => { lock (log) log.Add(text); }));
-        return log;
-    }
-
     /// <summary>
     /// A cancelled run hands the agent's instance semaphore back through the loop's own
-    /// <c>finally</c>: the next run of the same crew is not stuck behind it.
+    /// <c>finally</c>: the next run of the same crew is not stuck behind it. The body parks on
+    /// <c>ctx.receive</c> before it cancels, so the run is cancelled while a body await is pending.
     /// </summary>
     [Fact]
     public async Task Cancelled_run_releases_the_instance_semaphore_for_the_next_run()
     {
-        var engine = NewEngine();
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
+        using var cts = InstallCancel(engine);
         engine.SetValue("quick", false);
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
-                .body(async (input, ctx) => quick ? "fast" : await ctx.receive({ timeout: 5000 })).build();
+                .body(async (input, ctx) => {
+                    if (quick) return "fast";
+                    const parked = ctx.receive({ timeout: 5000 });
+                    __cancel();
+                    return await parked;
+                }).build();
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(50);
-        await Assert.ThrowsAsync<OperationCanceledException>(() => crew.RunAsync(null, cts.Token));
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+        AssertNotAbandoned(factory);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal("fast", result.output);
     }
@@ -73,61 +78,125 @@ public sealed class JsCrewRunTests
     /// <summary>
     /// A body that awaits a host operation ignoring <c>ctx.signal</c> does not hold the cancelled run:
     /// every script await is raced against the run's cancellation, so the caller gets its
-    /// <see cref="OperationCanceledException"/> at once — well inside <see cref="CrewRunScope.CancellationGrace"/>
-    /// — and the crew is reusable, the zombie body left to its own unobserved chain.
+    /// <see cref="OperationCanceledException"/> from the raced unwind — never from the host abandoning
+    /// the run at <see cref="CrewRunScope.CancellationGrace"/> — and the crew is reusable, the zombie
+    /// body left to its own unobserved chain.
     /// </summary>
     [Fact]
     public async Task Cancelled_run_whose_body_ignores_the_signal_returns_within_the_grace()
     {
-        var engine = NewEngine();
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
         InstallSleep(engine);
+        using var cts = InstallCancel(engine);
         engine.SetValue("quick", false);
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
-                .body(async (input, ctx) => { if (quick) return "fast"; await __sleep(60000); return "slow"; }).build();
+                .body(async (input, ctx) => {
+                    if (quick) return "fast";
+                    const parked = __sleep(60000);
+                    __cancel();
+                    await parked;
+                    return "slow";
+                }).build();
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(100);
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(TimeSpan.FromSeconds(3), Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+        AssertNotAbandoned(factory);
 
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
 
         Assert.Equal("fast", result.output);
     }
 
     /// <summary>
     /// A run opened from a body — here <c>crew.runAgent</c> without <c>{ signal: ctx.signal }</c> — is
-    /// linked to the outer run's token: cancelling the outer run cancels it, its instance semaphore
-    /// comes back inside the outer run's unwind, and nothing waits for a later drain to settle it. The
-    /// count is read right after <see cref="JsCrew.RunAsync"/> threw, with no pump active.
+    /// a child of the attempt that opened it: cancelling the outer run cancels it, and its instance
+    /// semaphore comes back inside the outer run's unwind, not under a later drain. The nested loop
+    /// races the outer run's <c>stop</c> promise, so its unwind runs in the drain pass that rejects the
+    /// outer run, whichever of the two rejection jobs runs first; the count is read right after
+    /// <see cref="JsCrew.RunAsync"/> threw, with no pump active.
     /// </summary>
     [Fact]
     public async Task Cancelled_run_cancels_the_runAgent_it_opened_and_releases_its_semaphore()
     {
-        var engine = NewEngine();
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
         InstallSleep(engine);
+        using var cts = InstallCancel(engine);
         engine.SetValue("quick", false);
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => quick ? "fast" : await crew.runAgent("B", {})).build();
             const b = agentBuilder().name("B").role("R").goal("G")
-                .body(async (input, ctx) => { if (quick) return "b"; await __sleep(60000); return "slow"; }).build();
+                .body(async (input, ctx) => {
+                    if (quick) return "b";
+                    const parked = __sleep(60000);
+                    __cancel();
+                    await parked;
+                    return "slow";
+                }).build();
             const crew = crewBuilder().withAgent(a).withAgent(b).build();
             crew;
             """);
         var semaphoreB = crew.GetInstanceSemaphore(crew.findByName("B")!);
 
-        using var cts = new CancellationTokenSource(100);
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(TimeSpan.FromSeconds(3), Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
 
+        AssertNotAbandoned(factory);
         Assert.Equal(1, semaphoreB.CurrentCount);
+        Assert.Null(crew.EventBroker.CurrentAgentId);
         engine.SetValue("quick", true);
-        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
         Assert.Equal("b", result.output);
+    }
+
+    /// <summary>
+    /// The same link across crews: <c>await sub.run()</c> from a body, without <c>{ signal: ctx.signal }</c>,
+    /// is a child of the innermost attempt open on the engine — the calling body's, whichever crew it
+    /// belongs to; the sub-crew has no open attempt of its own to read. Cancelling the outer run
+    /// cancels the sub-crew's run, its instance semaphore comes back inside the outer unwind, and the
+    /// sub-crew runs again at once. Read per crew, the sub-crew's run was unlinked: it kept its
+    /// semaphore for good, and every later run of the sub-crew deadlocked on it.
+    /// </summary>
+    [Fact]
+    public async Task Cancelled_run_cancels_the_sub_crew_run_it_opened_and_releases_its_semaphore()
+    {
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
+        InstallSleep(engine);
+        using var cts = InstallCancel(engine);
+        engine.SetValue("quick", false);
+        var outer = Eval<JsCrew>(engine, """
+            const y = agentBuilder().name("Y").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    if (quick) return "y";
+                    const parked = __sleep(60000);
+                    __cancel();
+                    await parked;
+                    return "slow";
+                }).build();
+            globalThis.sub = crewBuilder().name("sub").withAgent(y).build();
+            const x = agentBuilder().name("X").role("R").goal("G")
+                .body(async (input, ctx) => quick ? "x" : (await sub.run()).output).build();
+            crewBuilder().name("outer").withAgent(x).build();
+            """);
+        var sub = Eval<JsCrew>(engine, "sub");
+        var semaphoreY = sub.GetInstanceSemaphore(sub.findByName("Y")!);
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => outer.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
+
+        AssertNotAbandoned(factory);
+        Assert.Equal(1, semaphoreY.CurrentCount);
+        Assert.Null(sub.EventBroker.CurrentAgentId);
+        engine.SetValue("quick", true);
+        var result = await sub.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+        Assert.Equal("y", result.output);
     }
 
     /// <summary>
@@ -240,29 +309,34 @@ public sealed class JsCrewRunTests
     /// The cooperative unwind a CLR caller's drain allows after cancellation: the body's own
     /// <c>finally</c> runs, <c>onCrewError</c> runs with the cancellation message and is awaited even
     /// though the run is cancelled (it is not raced), and the caller still sees the cancellation.
-    /// Draining on the run token itself skipped all of it.
+    /// Draining on the run token itself skipped all of it. The body parks on <c>ctx.receive</c>, and
+    /// the hook releases it as well: the receive's own cancellation reaches JS through a pool
+    /// continuation, and the proof that nothing was abandoned must not wait on the pool.
     /// </summary>
     [Fact]
     public async Task Cancelled_run_runs_its_finally_blocks_and_onCrewError()
     {
-        var engine = NewEngine();
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
         var log = InstallLog(engine);
+        using var cts = InstallCancel(engine);
         var crew = Eval<JsCrew>(engine, """
             let bodyDone; const bodySettled = new Promise(resolve => { bodyDone = resolve; });
+            let releaseBody; const bodyGate = new Promise(resolve => { releaseBody = resolve; });
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => {
-                    try { await ctx.receive({ timeout: 5000 }); }
+                    try { const parked = ctx.receive({ timeout: 5000 }); __cancel(); await Promise.race([parked, bodyGate]); }
                     finally { __log("finally"); bodyDone(); }
                 }).build();
             crewBuilder().withAgent(a)
-                .onCrewError(async (ctx, msg) => { __log("error:" + msg); await bodySettled; __log("error-done"); })
+                .onCrewError(async (ctx, msg) => { __log("error:" + msg); releaseBody(); await bodySettled; __log("error-done"); })
                 .build();
             """);
 
-        using var cts = new CancellationTokenSource(50);
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(TimeSpan.FromSeconds(3), Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
 
+        AssertNotAbandoned(factory);
         Assert.Contains("finally", log);
         Assert.Contains(log, e => e.StartsWith("error:", StringComparison.Ordinal) && e.Contains("canceled", StringComparison.OrdinalIgnoreCase));
         Assert.Equal("error-done", log[^1]);
@@ -272,21 +346,58 @@ public sealed class JsCrewRunTests
     [Fact]
     public async Task Cancellation_bypasses_onError()
     {
-        var engine = NewEngine();
+        using var factory = new RecordingLoggerFactory();
+        var engine = NewEngine(factory);
+        using var cts = InstallCancel(engine);
         engine.SetValue("__onError", 0);
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
-                .body(async (input, ctx) => await ctx.receive({ timeout: 5000 }))
+                .body(async (input, ctx) => { const parked = ctx.receive({ timeout: 5000 }); __cancel(); return await parked; })
                 .onError((err, ctx) => { __onError += 1; return ErrorAction.retry({ max: 10 }); })
                 .build();
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(50);
         await Assert.ThrowsAsync<OperationCanceledException>(
-            () => crew.RunAsync(null, cts.Token).WaitAsync(TimeSpan.FromSeconds(3), Ct));
+            () => crew.RunAsync(null, cts.Token).WaitAsync(HangGuard, Ct));
 
+        AssertNotAbandoned(factory);
         Assert.Equal(0d, engine.GetValue("__onError").AsNumber());
+    }
+
+    /// <summary>
+    /// A cancellation the loop meets on a Task it awaits directly — the instance semaphore, held by
+    /// another run — rejects the script caller with the same shape as a raced body await: the bridged
+    /// <see cref="OperationCanceledException"/> with its <c>clrType</c>, not Jint's raw
+    /// <c>ExecutionCanceledException</c> object a cancelled Task is marshalled as.
+    /// </summary>
+    [Fact]
+    public async Task Cancellation_met_on_the_semaphore_acquisition_rejects_with_the_bridged_shape()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        var outer = Eval<JsCrew>(engine, """
+            let release; const gate = new Promise(resolve => { release = resolve; });
+            const a = agentBuilder().name("A").role("R").goal("G").body(async () => { await gate; return "a"; }).build();
+            const inner = crewBuilder().name("inner").withAgent(a).build();
+            const describe = (e) => e && e.clrType ? "bridged:" + e.clrType : "raw:" + String(e);
+            const o = agentBuilder().name("O").role("R").goal("G").body(async () => {
+                // The body parks on the gate: a raced body await meets the timeout.
+                const raced = await inner.run({ timeout: 50 }).then(() => "no-throw", describe);
+                // A holder parks on the gate under A's semaphore: the next run meets its timeout on the acquisition.
+                const holder = inner.run();
+                await __sleep(10);
+                const queued = await inner.run({ timeout: 50 }).then(() => "no-throw", describe);
+                release();
+                await holder;
+                return raced + "|" + queued;
+            }).build();
+            crewBuilder().name("outer").withAgent(o).build();
+            """);
+
+        var result = await outer.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+
+        Assert.Equal("bridged:OperationCanceledException|bridged:OperationCanceledException", result.output);
     }
 
     /// <summary>
@@ -561,5 +672,147 @@ public sealed class JsCrewRunTests
         var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
 
         Assert.Equal(nameof(InvalidOperationException), result.output);
+    }
+
+    /// <summary>
+    /// A failure that arrived as a faulted <c>Task</c> — a <c>ctx.receive({ timeout })</c> that expired —
+    /// reaches <c>onError</c> with the code of the innermost CLR exception (<c>receive_timeout</c>),
+    /// not <c>unknown</c> for the <see cref="AggregateException"/> Jint rejects the await with.
+    /// </summary>
+    [Fact]
+    public async Task Faulted_task_failure_reaches_onError_with_the_innermost_code()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => await ctx.receive({ timeout: 20 }))
+                .onError((err, ctx) => ErrorAction.fallback(err.code + "|" + err.message))
+                .build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+
+        Assert.StartsWith("receive_timeout|", result.output, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A run started on an already-cancelled <c>signal</c> never reaches <c>onCrewStart</c> nor a body,
+    /// and <c>onCrewError</c> still runs — it runs because the run failed, cancellation included.
+    /// </summary>
+    [Fact]
+    public async Task Already_cancelled_signal_skips_onCrewStart_and_reaches_onCrewError()
+    {
+        var engine = NewEngine();
+        var log = InstallLog(engine);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        engine.SetValue("__dead", cts.Token);
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G").body(() => { __log("body"); return "x"; }).build();
+            globalThis.crew = crewBuilder().withAgent(a)
+                .onCrewStart((ctx) => { __log("start"); })
+                .onCrewError((ctx, msg) => { __log("error:" + msg); })
+                .build();
+            """);
+
+        var outcome = await engine.EvaluateAsync(
+            "(async () => { try { await crew.run({ signal: __dead }); return 'no-throw'; } catch (e) { return e.clrType; } })()",
+            cancellationToken: Ct);
+
+        Assert.Equal(nameof(OperationCanceledException), outcome.AsString());
+        Assert.Single(log);
+        Assert.StartsWith("error:", log[0], StringComparison.Ordinal);
+        Assert.Contains("canceled", log[0], StringComparison.OrdinalIgnoreCase);
+    }
+
+    /// <summary>
+    /// <c>ExecutionTimeout</c> spans a whole CLR-driven run: two bodies that each await a host task
+    /// shorter than the limit exceed it together. It used to re-arm per agent body, which let a run
+    /// of any length through under a limit meant as the sandbox's ceiling.
+    /// </summary>
+    [Fact]
+    public async Task ExecutionTimeout_spans_the_whole_CLR_driven_run()
+    {
+        var engine = new JsEngineFactory(new ScriptingLimitsOptions { ExecutionTimeout = TimeSpan.FromMilliseconds(300) }).Create();
+        InstallSleep(engine);
+        var crew = Eval<JsCrew>(engine, """
+            const mk = (n) => agentBuilder().name(n).role("R").goal("G").body(async () => { await __sleep(200); return n; }).build();
+            crewBuilder().withAgent(mk("A")).withAgent(mk("B")).build();
+            """);
+
+        await Assert.ThrowsAsync<TimeoutException>(() => crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct));
+    }
+
+    /// <summary>
+    /// <c>runAgent</c> applies the target's own <c>onError</c> policy: a throwing target with a
+    /// fallback hands the fallback to the caller, exactly as the crew loop would.
+    /// </summary>
+    [Fact]
+    public async Task runAgent_applies_the_targets_own_onError_policy()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const b = agentBuilder().name("B").role("R").goal("G")
+                .body(() => { throw new Error("b-boom"); })
+                .onError((err, ctx) => ErrorAction.fallback("fallback:" + err.message))
+                .build();
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => await crew.runAgent("B", {})).build();
+            const crew = crewBuilder().withAgent(a).withAgent(b).build();
+            crew;
+            """);
+
+        var result = await crew.RunAsync(null, Ct).WaitAsync(HangGuard, Ct);
+
+        Assert.Equal("fallback:b-boom", result.output);
+    }
+
+    /// <summary><c>runAgent</c> honours <c>opts.signal</c>: a cancelled signal rejects the call with the bridged cancellation, before the target's body runs.</summary>
+    [Fact]
+    public async Task runAgent_honours_the_signal_option()
+    {
+        var engine = NewEngine();
+        var log = InstallLog(engine);
+        using var cts = new CancellationTokenSource();
+        await cts.CancelAsync();
+        engine.SetValue("__dead", cts.Token);
+
+        var outcome = await engine.EvaluateAsync("""
+            const b = agentBuilder().name("B").role("R").goal("G").body(() => { __log("b"); return "b"; }).build();
+            const crew = crewBuilder().withAgent(b).build();
+            (async () => { try { await crew.runAgent("B", {}, { signal: __dead }); return "no-throw"; } catch (e) { return e.clrType; } })()
+            """, cancellationToken: Ct);
+
+        Assert.Equal(nameof(OperationCanceledException), outcome.AsString());
+        Assert.Empty(log);
+    }
+
+    /// <summary>
+    /// <c>runStream</c> consumed to its end is the run: the crew hooks fire around it as they do for
+    /// <c>run</c>, and each event's <c>at</c> is epoch milliseconds (<c>Date.now()</c>) inside the
+    /// window the stream was consumed in.
+    /// </summary>
+    [Fact]
+    public async Task runStream_consumed_to_its_end_fires_the_crew_hooks_and_stamps_epoch_milliseconds()
+    {
+        var engine = NewEngine();
+        var log = InstallLog(engine);
+        var before = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        var stamps = await engine.EvaluateAsync("""
+            const a = agentBuilder().name("A").role("R").goal("G").body(() => "x").build();
+            const crew = crewBuilder().withAgent(a)
+                .onCrewStart((ctx) => { __log("start"); })
+                .onCrewComplete((ctx, result) => { __log("complete:" + result.output); })
+                .build();
+            (async () => { const at = []; for await (const e of crew.runStream()) at.push(e.at); return at; })()
+            """, cancellationToken: Ct);
+
+        var after = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        Assert.Equal(["start", "complete:x"], log);
+        var values = ((object[])stamps.ToObject()!).Select(v => Convert.ToInt64(v, System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        Assert.Equal(2, values.Length);
+        Assert.All(values, at => Assert.InRange(at, before, after));
     }
 }

@@ -19,10 +19,9 @@ namespace Orkeon.Scripting.Orchestration;
 /// promise reaction on whichever thread drains the loop, and the CLR only supplies three
 /// synchronous helpers — <c>lookup</c>, <c>current</c> and <c>commit</c> — that never invoke a
 /// script callback and re-enter the engine only synchronously, through the
-/// <see cref="JsHostError"/> bridge when they fail.</para>
-/// <para>The helpers that can fail go through <see cref="JsHostError"/>: a raw CLR exception
-/// thrown inside an async JS function skips <c>catch</c> and <c>finally</c> and leaves the
-/// promise pending, whereas a bridged one rejects it like a script throw.</para>
+/// <see cref="JsHostError"/> bridge: a raw CLR exception thrown inside an async JS function
+/// skips <c>catch</c> and <c>finally</c> and leaves the promise pending, whereas a bridged one
+/// rejects it like a script throw.</para>
 /// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of StateMachine in Typings/fsm.d.ts; that declaration is the contract scripts read.
@@ -62,12 +61,13 @@ public sealed class JsStateMachine
         _states = states;
     }
 
+    /// <summary>JS <c>async (eventName, payload?) =&gt; state</c>; see the class remarks.</summary>
     public JsValue send => _sendJs ??= BuildSendFunction();
 
     private JsValue BuildSendFunction()
     {
         Func<string?, JsFsmTransitionView?> lookup = eventName => JsHostError.Guard(_engine, () => Lookup(eventName));
-        Func<string> readCurrent = () => current;
+        Func<string> readCurrent = () => JsHostError.Guard(_engine, () => current);
         Action<string> commit = target => JsHostError.Guard(_engine, () => Commit(target));
         var factory = JsTrampolineFactories.FsmSend.For(_engine);
         return _engine.Invoke(factory, [lookup, readCurrent, commit]);

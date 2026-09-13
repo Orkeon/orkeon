@@ -63,14 +63,17 @@ public sealed class JsEventTopic
             _handlers.RemoveAll(h => string.Equals(h.AgentId, agentId, StringComparison.Ordinal));
     }
 
-    // Implemented in JS (SCR-25 T5): the delivery loop calls back into the handlers, so it
-    // has to live where the handlers live. Driven from C#, publish invoked each handler and
-    // drained its promise synchronously, which cannot pump when publish is reached from
-    // inside an event-loop job — i.e. after any await in the calling body — and the
-    // asynchronous alternative would resume on a pool thread and invoke JS there. As an
-    // async JS function, every handler runs as a promise reaction on whichever thread drains
-    // the loop, and the CLR side only provides synchronous helpers: the handler snapshot,
-    // the delivery counter, the stop flag.
+    /// <summary>JS <c>async (value) =&gt; void</c>; see the remarks.</summary>
+    /// <remarks>
+    /// Implemented in JS (SCR-25 T5): the delivery loop calls back into the handlers, so it
+    /// has to live where the handlers live. Driven from C#, publish invoked each handler and
+    /// drained its promise synchronously, which cannot pump when publish is reached from
+    /// inside an event-loop job — i.e. after any await in the calling body — and the
+    /// asynchronous alternative would resume on a pool thread and invoke JS there. As an
+    /// async JS function, every handler runs as a promise reaction on whichever thread drains
+    /// the loop, and the CLR side only provides synchronous helpers: the handler snapshot,
+    /// the delivery counter, the stop flag.
+    /// </remarks>
     public JsValue publish => _publishJs ??= BuildPublishFunction();
 
     /// <summary>
@@ -105,9 +108,9 @@ public sealed class JsEventTopic
 
     private JsValue BuildPublishFunction()
     {
-        // None of these helpers has a failure path of its own, so none needs the JsHostError
-        // bridge: they read and write plain fields of an event this topic minted.
-        Func<JsValue, JsPublishedEvent?> begin = value =>
+        // Bridged uniformly (JsHostError), although none of these has a failure path of its
+        // own today: they read and write plain fields of an event this topic minted.
+        Func<JsValue, JsPublishedEvent?> begin = value => JsHostError.Guard(_engine, () =>
         {
             JsValue[] snapshot;
             lock (_lock) snapshot = _handlers.Select(h => h.Handler).ToArray();
@@ -120,10 +123,10 @@ public sealed class JsEventTopic
                     // handler queued on `ev.lock` — the publish promise is part of that body.
                     Cancellation = Broker?.CurrentCt ?? CancellationToken.None,
                 };
-        };
-        Func<JsPublishedEvent, JsValue[]> handlersOf = ev => ev.Handlers;
-        Action<JsPublishedEvent, int> setHandlerCount = (ev, count) => ev.handlerCount = count;
-        Func<JsPublishedEvent, bool> shouldStop = ev => ev.ShouldStop;
+        });
+        Func<JsPublishedEvent, JsValue[]> handlersOf = ev => JsHostError.Guard(_engine, () => ev.Handlers);
+        Action<JsPublishedEvent, int> setHandlerCount = (ev, count) => JsHostError.Guard(_engine, () => { ev.handlerCount = count; });
+        Func<JsPublishedEvent, bool> shouldStop = ev => JsHostError.Guard(_engine, () => ev.ShouldStop);
 
         var factory = JsTrampolineFactories.Publish.For(_engine);
         return _engine.Invoke(factory, [_parallel, begin, handlersOf, setHandlerCount, shouldStop]);

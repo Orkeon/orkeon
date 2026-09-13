@@ -107,8 +107,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     }
 
     private JsValue? _lockJs;
-    // The shared named-lock trampoline (JsTrampolineFactories.Lock) over this context's
-    // semaphore table, acquired with the run's signal.
+    /// <summary>JS <c>async (name, fn) =&gt; result</c>: the shared named-lock trampoline (<see cref="JsTrampolineFactories.Lock"/>) over this context's semaphore table, acquired with the run's signal.</summary>
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private JsValue BuildLockFunction()
@@ -120,10 +119,11 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
             await sem.WaitAsync(signal).ConfigureAwait(false);
             return JsValue.Undefined;
         };
-        Action<string> release = name =>
+        // Bridged like every synchronous helper; a release after Dispose finds the table cleared.
+        Action<string> release = name => JsHostError.Guard(_engineRef, () =>
         {
             if (_locks.TryGetValue(name, out var sem)) sem.Release();
-        };
+        });
         return _engineRef.Invoke(JsTrampolineFactories.Lock.For(_engineRef), [acquire, release]);
     }
 

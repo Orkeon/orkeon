@@ -31,7 +31,7 @@ public sealed partial class JsCrew
             // engine, whichever it is; nothing calls back into the CLR from any other thread.
             const {
                 open, start, endRun, snapshotAgents,
-                cancelled, throwIfCancelled,
+                cancelled, outerStop, keepStop, throwIfCancelled,
                 bodyOf, onErrorOf, stateSeed,
                 acquire, release, beginAgent, openAttempt, closeAttempt, endAgent,
                 describeError, decideAction, delay,
@@ -43,13 +43,33 @@ public sealed partial class JsCrew
             // One run's JS-side handle: the CLR scope plus `wait`, which races a script promise
             // against the run's cancellation so a cancelled run does not sit behind a body, a state
             // factory or an onError handler that ignores ctx.signal. `cancelled(scope)` is a Task that
-            // FAULTS when the run token fires (never completes otherwise); its rejection reaches JS as
-            // Jint's own ExecutionCanceledException, so it is re-raised through `throwIfCancelled` on
-            // the engine thread and the run rejects with the same bridged OperationCanceledException as
-            // a step check would.
+            // FAULTS when the run token fires (never completes otherwise): its rejection reaches JS as
+            // the faulted task's AggregateException — a wrapped CLR object, not a bridged Error, since
+            // nothing on the cancelling thread can build one — so it is re-raised through
+            // `throwIfCancelled` on the engine thread, and the run rejects with the same bridged
+            // OperationCanceledException as a step check would.
+            // A run opened from a body races the opener's `stop` too (`outerStop`): its token is linked
+            // to the opener's on the CLR side, but that link reaches this loop through a pool thread
+            // and a later job, while the opener's own rejection is already running here — racing it
+            // settles the nested run's awaits in the same drain pass, so its semaphores come back
+            // inside the opener's unwind and never wait for a later drain.
             const enter = (scope) => {
-                const stop = cancelled(scope).catch(() => { throwIfCancelled(scope); });
+                const own = cancelled(scope).catch(() => { throwIfCancelled(scope); });
+                const outer = outerStop(scope);
+                const stop = outer === undefined ? own : Promise.race([own, outer]);
+                keepStop(scope, stop);
                 return { scope, wait: (value) => Promise.race([value, stop]) };
+            };
+
+            // A cancelled Task the loop awaits directly — the semaphore acquisition, a retry delay
+            // that lost its race — reaches JS as Jint's own ExecutionCanceledException, a wrapped
+            // object with no `clrType`; re-raised through `throwIfCancelled`, a script caller sees the
+            // one shape a raced await gives it, the bridged OperationCanceledException. The raw
+            // rejection stands when the run is not cancelled (an acquisition landing on a run that
+            // merely ended).
+            const settle = async (task, scope) => {
+                try { return await task; }
+                catch (err) { throwIfCancelled(scope); throw err; }
             };
 
             // One agent, every attempt: the instance semaphore, a fresh AgentContext per attempt, the
@@ -67,7 +87,7 @@ public sealed partial class JsCrew
                 const onError = onErrorOf(agent);
                 for (let attempt = 1; ; attempt++) {
                     throwIfCancelled(scope);
-                    await acquire(scope, agent);
+                    await settle(acquire(scope, agent), scope);
                     let a = null;
                     try {
                         const seed = stateSeed(agent);
@@ -81,7 +101,7 @@ public sealed partial class JsCrew
                             const decision = decideAction(await wait(onError(errCtx, a.ctx)), attempt);
                             if (decision.kind === "return") return decision.value;
                             if (decision.kind !== "retry") throw err;
-                            if (decision.delayMs > 0) await wait(delay(scope, decision.delayMs));
+                            if (decision.delayMs > 0) await settle(wait(delay(scope, decision.delayMs)), scope);
                         }
                     } finally {
                         if (a !== null) closeAttempt(scope, a);
@@ -206,7 +226,7 @@ public sealed partial class JsCrew
     /// by <see cref="JsTrampolineFactories"/> with the engine at rest: <c>Evaluate</c> drains queued jobs
     /// on its way out, which a mid-statement nested evaluation must not do.
     /// </summary>
-    private JsValue RunModuleInstance => _runModule ??= _engine.Invoke(JsTrampolineFactories.CrewRunModule.For(_engine), [BuildRunModule()]);
+    private JsValue RunModuleInstance => _runModule ??= _engine.Invoke(JsTrampolineFactories.CrewRunModule.For(_engine), [BuildRunHelpers()]);
 
     /// <summary>
     /// The helper record the module destructures. Every synchronous body is bridged — uniformly,
@@ -214,15 +234,18 @@ public sealed partial class JsCrew
     /// the loop's <c>catch</c> and <c>finally</c> see; the three task-returning helpers reject natively
     /// (a faulted or cancelled task), and nothing could build a bridged Error on a pool thread anyway.
     /// </summary>
-    private CrewRunHelpers BuildRunModule() => new()
+    private CrewRunHelpers BuildRunHelpers() => new()
     {
-        // A script-opened run links the innermost open attempt's token (none at the script's top level):
-        // a run opened from a body — crew.runAgent, a nested crew.run — is cancelled with the outer run
-        // and unwinds inside its grace, instead of keeping its semaphores until some later drain settles it.
+        // A script-opened run is a child of the attempt it was opened from — the innermost attempt open
+        // on the engine, whichever crew's (JsEngineAttempts), none at a script's top level: cancelling
+        // the outer run cancels it, and it unwinds inside the outer run's own unwind (`outerStop`)
+        // instead of keeping its semaphores until some later drain settles it. Best-effort under runs
+        // interleaved on one event loop; `{ signal: ctx.signal }` is the explicit form.
         open = (kind, options) => JsHostError.Guard(_engine, () =>
         {
             var (signal, timeout) = CrewRunOptions.From(options);
-            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false, AmbientToken);
+            return new CrewRunScope(this, ParseKind(kind), signal, timeout, ownedByHost: false,
+                CancellationToken.None, JsEngineAttempts.Innermost(_engine)?.Scope);
         }),
         start = scope => JsHostError.Guard(_engine, scope.Start),
         endRun = scope => JsHostError.Guard(_engine, scope.End),
@@ -232,7 +255,9 @@ public sealed partial class JsCrew
             return scope.Agents;
         }),
         cancelled = scope => scope.Cancelled,
-        throwIfCancelled = scope => JsHostError.Guard(_engine, () => scope.Token.ThrowIfCancellationRequested()),
+        outerStop = scope => JsHostError.Guard(_engine, () => scope.Parent?.StopPromise ?? JsValue.Undefined),
+        keepStop = (scope, stop) => JsHostError.Guard(_engine, () => { scope.StopPromise = stop; }),
+        throwIfCancelled = scope => JsHostError.Guard(_engine, scope.ThrowIfCancelled),
         bodyOf = agent => JsHostError.Guard(_engine, () => Normalize(agent.Builder.BodyFunction)),
         onErrorOf = agent => JsHostError.Guard(_engine, () => Normalize(agent.Builder.OnErrorHandler)),
         stateSeed = agent => JsHostError.Guard(_engine, () => Normalize(agent.Builder.StateFactory)),
@@ -281,7 +306,7 @@ public sealed partial class JsCrew
     /// </summary>
     private static JsErrorContext? DescribeError(CrewRunScope scope, JsAgent agent, JsValue err, int attempt)
     {
-        if (scope.Token.IsCancellationRequested) return null;
+        if (scope.IsCancelled) return null;
         var inner = ToClrException(err);
         return new JsErrorContext(ErrorCodeMapper.MapToCode(inner), inner.Message, inner, attempt,
             new JsAgentRef(agent.id, agent.name));

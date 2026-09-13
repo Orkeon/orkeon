@@ -421,30 +421,33 @@ public sealed partial class JsCrew
 
     /// <summary>
     /// Attributes what happens next to <paramref name="agent"/> — <see cref="JsEventTopic.subscribe"/>
-    /// records the subscriber, <c>stateGraph.run()</c> and a run opened from the body pick up the
-    /// ambient token — for as long as the attempt is open. The entries form the set of open attempts,
-    /// not a stack of previous values: two runs of one crew interleaved on one event loop close their
-    /// attempts in any order, and restoring "what was current when this one opened" would hand a
-    /// closed attempt's attribution back to an idle crew. When an attempt closes, the attribution is
-    /// the most recently opened attempt still open, or none — so a nested <c>runAgent</c> hands it
-    /// back to the body that called it, and an idle crew attributes nothing. The context constructor
-    /// has already created the broker.
+    /// records the subscriber, <c>stateGraph.run()</c> and a topic handler's <c>ev.lock</c> pick up
+    /// the ambient token — for as long as the attempt is open, and registers the attempt on the engine
+    /// (<see cref="JsEngineAttempts"/>), where a run opened from the body finds its parent whichever
+    /// crew it belongs to. The entries form the set of open attempts, not a stack of previous values:
+    /// two runs of one crew interleaved on one event loop close their attempts in any order, and
+    /// restoring "what was current when this one opened" would hand a closed attempt's attribution
+    /// back to an idle crew. When an attempt closes, the attribution is the most recently opened
+    /// attempt still open, or none — so a nested <c>runAgent</c> hands it back to the body that called
+    /// it, and an idle crew attributes nothing. The context constructor has already created the broker.
     /// </summary>
-    internal BrokerAttribution BeginBrokerScope(JsAgent agent, CancellationToken ct)
+    internal BrokerAttribution BeginBrokerScope(JsAgent agent, CrewRunScope scope)
     {
         var broker = EventBroker;
-        var entry = new BrokerAttribution(agent.id, ct);
+        var entry = new BrokerAttribution(agent.id, scope);
         lock (_attributionSync)
         {
             _attributions.Add(entry);
             broker.CurrentAgentId = entry.AgentId;
             broker.CurrentCt = entry.Ct;
         }
+        JsEngineAttempts.Open(_engine, entry);
         return entry;
     }
 
     internal void EndBrokerScope(BrokerAttribution entry)
     {
+        JsEngineAttempts.Close(_engine, entry);
         var broker = _eventBroker;
         if (broker is null) return;
         lock (_attributionSync)
@@ -453,21 +456,6 @@ public sealed partial class JsCrew
             var current = _attributions.Count == 0 ? null : _attributions[^1];
             broker.CurrentAgentId = current?.AgentId;
             broker.CurrentCt = current?.Ct ?? CancellationToken.None;
-        }
-    }
-
-    /// <summary>
-    /// The token of the innermost open attempt of this crew, or none: what a run opened from a body
-    /// (<c>crew.runAgent</c>, a nested <c>crew.run</c>) links to, so cancelling the outer run cancels
-    /// it too and its semaphores come back with the outer run's unwind instead of outliving it. One
-    /// crew-wide value, so best-effort under two runs of one crew interleaved on one event loop;
-    /// <c>{ signal: ctx.signal }</c> is the explicit form.
-    /// </summary>
-    internal CancellationToken AmbientToken
-    {
-        get
-        {
-            lock (_attributionSync) return _eventBroker?.CurrentCt ?? CancellationToken.None;
         }
     }
 }

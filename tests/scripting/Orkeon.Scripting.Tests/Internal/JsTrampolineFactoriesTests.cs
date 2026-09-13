@@ -4,7 +4,7 @@ using Orkeon.Scripting.Internal;
 namespace Orkeon.Scripting.Tests.Internal;
 
 /// <summary>
-/// WHEN a trampoline factory is evaluated (SCR-25 T7; T4 design, fact F2). <c>Engine.Evaluate</c>
+/// WHEN a trampoline factory is evaluated (SCR-25 T7; the task sheet, section 7). <c>Engine.Evaluate</c>
 /// drains the queued event-loop jobs on its way out, so a factory evaluated lazily from a script's
 /// synchronous prefix ran the prefix's own microtasks in the middle of a statement — a
 /// <c>then</c> callback queued two lines earlier observed state the prefix had not finished
@@ -73,6 +73,27 @@ public sealed class JsTrampolineFactoriesTests
         }));
 
         Assert.Equal(["prefix-done", "microtask"], OrderAfter(engine, "__touchAll();"));
+    }
+
+    /// <summary>
+    /// The oracle of <see cref="JsTrampolineFactories.All"/>, the hand-maintained list <see cref="JsTrampolineFactories.Prepare"/>
+    /// and the fact above iterate: every <c>Factory</c> field the class declares is in it. A twelfth
+    /// trampoline added as a field but not to the list would be evaluated lazily at its first touch —
+    /// the mid-statement drain this class exists to keep out — with every other test here still green.
+    /// </summary>
+    [Fact]
+    public void Every_declared_factory_is_in_All()
+    {
+        var declared = typeof(JsTrampolineFactories)
+            .GetFields(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+            .Where(f => f.FieldType == typeof(JsTrampolineFactories.Factory))
+            .Select(f => (f.Name, Factory: (JsTrampolineFactories.Factory)f.GetValue(null)!))
+            .ToList();
+
+        Assert.NotEmpty(declared);
+        var missing = declared.Where(d => !JsTrampolineFactories.All.Contains(d.Factory)).Select(d => d.Name).ToList();
+        Assert.True(missing.Count == 0, "Factory fields missing from JsTrampolineFactories.All: " + string.Join(", ", missing));
+        Assert.Equal(declared.Count, JsTrampolineFactories.All.Distinct().Count());
     }
 
     /// <summary>

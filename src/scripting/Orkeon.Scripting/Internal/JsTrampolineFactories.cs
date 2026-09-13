@@ -48,9 +48,9 @@ internal static class JsTrampolineFactories
 
     /// <summary>
     /// The named-lock trampoline shared by <c>ctx.lock</c>, <c>ctx.crew.lock</c> and a published
-    /// event's <c>lock</c>: the semantics are one — acquire a semaphore, run the callback, release
-    /// in <c>finally</c> — and only the semaphore table behind <c>acquire</c> / <c>release</c>
-    /// differs. Implemented in JS rather than C# because the callback's promise must settle under
+    /// event's <c>lock</c>: the semantics are one — acquire a semaphore with the body's token, run
+    /// the callback, release in <c>finally</c> — and only the semaphore table behind
+    /// <c>acquire</c> / <c>release</c> differs. Implemented in JS rather than C# because the callback's promise must settle under
     /// the pump that is already draining: a C# implementation would have to drain it from inside
     /// an engine callback, which Jint's single-drainer loop does not allow. The trampoline only
     /// awaits a real Task (<c>acquire</c>) and chains directly on the callback's promise.

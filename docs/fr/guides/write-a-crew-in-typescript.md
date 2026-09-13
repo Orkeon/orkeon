@@ -282,7 +282,9 @@ vaut mieux connaître avant d'en être surpris :
   `AbortSignal`.
 - **Un seul thread, pas de timers.** Les promesses et `await` fonctionnent — chaque
   continuation s'exécute sur l'unique thread qui pilote le script — mais il n'y a pas de
-  `setTimeout`, et un appel hôte qui attend bloque tout le script.
+  `setTimeout`. Un appel hôte *synchrone* qui attend (les ponts `runCrew` / `request` de la
+  CLI) bloque tout le script ; un appel attendu avec `await` (`ctx.llm.*`, `tools.*`,
+  `ctx.delegate`, `ctx.receive`) ne suspend que sa propre chaîne, et les autres continuent.
 - **`import` fonctionne entre vos propres fichiers**, résolu relativement au script.
 
 ## Dix erreurs et ce qu'elles veulent dire

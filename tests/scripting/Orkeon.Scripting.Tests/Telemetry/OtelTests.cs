@@ -138,7 +138,9 @@ public sealed class OtelTests
     /// Two runs interleaved on one drainer stop their spans in an order that leaves the thread's
     /// <see cref="Activity.Current"/> on a span the other run already stopped — every later span would
     /// parent under it. The runtime unsticks it after each stop, so the script's next span (or its
-    /// next crew run) starts from a live ancestor or from nothing.
+    /// next crew run) starts from a live ancestor or from nothing. The closing order is a property of
+    /// the script — the second body releases the first and waits to be released after the first run
+    /// closed — not of the scheduler: the other order never creates the stuck span.
     /// </summary>
     [Fact]
     public async Task interleaved_crew_runs_leave_no_stopped_span_current()
@@ -147,21 +149,22 @@ public sealed class OtelTests
         try
         {
             var engine = new JsEngineFactory().Create();
-            engine.SetValue("__sleep", new Func<double, Task<Jint.Native.JsValue>>(async ms =>
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(ms)).ConfigureAwait(false);
-                return Jint.Native.JsValue.Undefined;
-            }));
             engine.SetValue("__current", new Func<string>(
                 () => Activity.Current is { } a ? a.OperationName + (a.IsStopped ? "(stopped)" : "") : "none"));
 
             var seen = await engine.EvaluateAsync("""
-                const a1 = agentBuilder().name("A1").role("R").goal("G").body(async () => { await __sleep(30); return "a1"; }).build();
-                const a2 = agentBuilder().name("A2").role("R").goal("G").body(async () => { await __sleep(60); return "a2"; }).build();
+                let release1, release2;
+                const gate1 = new Promise(resolve => { release1 = resolve; });
+                const gate2 = new Promise(resolve => { release2 = resolve; });
+                const a1 = agentBuilder().name("A1").role("R").goal("G").body(async () => { await gate1; return "a1"; }).build();
+                const a2 = agentBuilder().name("A2").role("R").goal("G").body(async () => { release1(); await gate2; return "a2"; }).build();
                 const c1 = crewBuilder().name("otel-c1").withAgent(a1).build();
                 const c2 = crewBuilder().name("otel-c2").withAgent(a2).build();
                 (async () => {
-                    await Promise.all([c1.run(), c2.run()]);
+                    const r1 = c1.run(), r2 = c2.run();
+                    await r1;            // c1 closes while c2's body is open
+                    release2();
+                    await r2;
                     const after = __current();
                     await c1.run();
                     return after + "|" + __current();

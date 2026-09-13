@@ -273,8 +273,10 @@ knowing before you are surprised by them:
 - **There is no Node and no DOM.** No `fs`, no `fetch`, no `process`. File access goes through
   tools; `ctx.signal` is a .NET cancellation token, not an `AbortSignal`.
 - **One thread, no timers.** Promises and `await` work — every continuation runs on the one
-  thread that drives the script — but there is no `setTimeout`, and a host call that waits
-  blocks the whole script.
+  thread that drives the script — but there is no `setTimeout`. A *synchronous* host call
+  that waits (the CLI's `runCrew` / `request` bridges) blocks the whole script; an awaited
+  one (`ctx.llm.*`, `tools.*`, `ctx.delegate`, `ctx.receive`) only suspends its own chain,
+  and the others keep running.
 - **`import` works between your own files**, resolved relative to the script.
 
 ## Ten errors and what they mean

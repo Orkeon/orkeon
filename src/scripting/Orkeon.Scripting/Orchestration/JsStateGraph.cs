@@ -39,8 +39,9 @@ public sealed record JsGraphConfig(
 /// first await). So <see cref="run"/> and <see cref="runStream"/> are JS functions built once per
 /// graph from <see cref="TrampolineSource"/>: they await node and edge results as ordinary promise
 /// reactions on the thread draining the loop, whichever it is, and the CLR only supplies
-/// synchronous helpers — the budget, the edge table, the node table, the cancellation.</para>
-/// <para>Every helper that can fail throws through <see cref="JsHostError"/>: a raw CLR exception
+/// synchronous helpers — the budget, the edge table, the node table — and one awaited
+/// <see cref="Task"/>, the cancellation.</para>
+/// <para>Every synchronous helper throws through <see cref="JsHostError"/>: a raw CLR exception
 /// from a delegate would skip the trampoline's <c>finally</c>, leave its promise pending and
 /// erupt out of the drainer. The bridged Error carries the typed exception on <c>clr</c>, with
 /// the same messages as before — <see cref="InvalidOperationException"/> for a budget overrun,
@@ -140,7 +141,7 @@ public sealed class JsStateGraph
     {
         Func<GraphRun> begin = () => JsHostError.Guard(_engine,
             () => new GraphRun(_config.MaxTotalDuration, _ambientCt?.Invoke() ?? CancellationToken.None));
-        Action<GraphRun> end = run => run.Dispose();
+        Action<GraphRun> end = run => JsHostError.Guard(_engine, run.Dispose);
         Func<GraphRun, Task<JsValue>> cancellation = run => run.Cancellation;
         Func<string, JsValue> edge = from => JsHostError.Guard(_engine, () => ResolveEdge(from));
         Func<string, JsValue, string> resolveTarget = (from, target) => JsHostError.Guard(_engine, () => ResolveTarget(from, target));
@@ -216,7 +217,7 @@ public sealed class JsStateGraph
     {
         private readonly CancellationTokenSource? _duration;
         private readonly CancellationTokenSource? _linked;
-        private readonly TaskCompletionSource<JsValue> _cancelled = new(TaskCreationOptions.RunContinuationsAsynchronously);
+        private readonly TaskCompletionSource<JsValue> _cancelled = new();
         private readonly CancellationTokenRegistration _registration;
 
         public GraphRun(TimeSpan? maxTotalDuration, CancellationToken ambient)
@@ -234,7 +235,10 @@ public sealed class JsStateGraph
 
             // Faulted rather than cancelled so that Jint rejects the promise (a cancelled Task is
             // reported as its own ExecutionCanceledException); the trampoline re-raises the
-            // rejection as the typed OperationCanceledException from the engine thread.
+            // rejection as the typed OperationCanceledException from the engine thread. Jint's
+            // bridge enqueues that rejection inline, on the cancelling thread — it only enqueues
+            // and signals there — so the loop is told the instant the token fires, with no pool
+            // thread in between (CrewRunScope explains the starvation this avoids).
             _registration = Token.Register(
                 static (state, token) => ((GraphRun)state!)._cancelled.TrySetException(new OperationCanceledException(token)),
                 this);

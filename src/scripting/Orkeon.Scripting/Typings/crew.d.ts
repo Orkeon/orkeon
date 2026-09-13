@@ -72,7 +72,8 @@ declare global {
         memory(value?: boolean): this;
         onCrewStart(hook: (ctx: ExecutionContext) => Promise<void> | void): this;
         onCrewComplete(hook: (ctx: ExecutionContext, result: CrewResult) => Promise<void> | void): this;
-        onCrewError(hook: (ctx: ExecutionContext, err: Error) => Promise<void> | void): this;
+        /** `message` is the displayed message of the failure — the innermost CLR message, or a script error's own. */
+        onCrewError(hook: (ctx: ExecutionContext, message: string) => Promise<void> | void): this;
         build(): Crew;
     }
 

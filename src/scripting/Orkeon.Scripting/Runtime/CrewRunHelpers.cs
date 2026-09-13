@@ -31,7 +31,13 @@ internal sealed record CrewRunHelpers
     /// <summary><c>(scope) =&gt; Task</c> — faults when the run's token fires; the loop's <c>stop</c> promise.</summary>
     public required Func<CrewRunScope, Task<JsValue>> cancelled { get; init; }
 
-    /// <summary><c>(scope)</c> — throws the bridged <see cref="OperationCanceledException"/> once the run's token fired.</summary>
+    /// <summary><c>(scope) =&gt; Promise | undefined</c> — the <c>stop</c> promise of the run this one was opened from (<see cref="CrewRunScope.Parent"/>), raced by the nested loop.</summary>
+    public required Func<CrewRunScope, JsValue> outerStop { get; init; }
+
+    /// <summary><c>(scope, stop)</c> — keeps the loop's <c>stop</c> promise on the scope (<see cref="CrewRunScope.StopPromise"/>) for the runs opened under it.</summary>
+    public required Action<CrewRunScope, JsValue> keepStop { get; init; }
+
+    /// <summary><c>(scope)</c> — throws the bridged <see cref="OperationCanceledException"/> once the run's token, or an ancestor's, fired.</summary>
     public required Action<CrewRunScope> throwIfCancelled { get; init; }
 
     /// <summary><c>(agent) =&gt; body | undefined</c>.</summary>

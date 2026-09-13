@@ -1,6 +1,5 @@
-using Orkeon.Domain.SharedKernel;
-using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Scripting.Tests.Toolchain;
 using Orkeon.Scripting.Toolchain;
 using Orkeon.Tests.Shared.Doubles;
@@ -16,7 +15,7 @@ namespace Orkeon.Scripting.Tests.Examples;
 /// <remarks>
 /// <para>The catalogue passed against the echo provider while two of its shapes hung against
 /// any HTTP provider: the echo completes synchronously, so every await settled on the same
-/// thread and no wake-up was ever lost. <see cref="SlowProvider"/> yields to the thread
+/// thread and no wake-up was ever lost. <see cref="SlowLlmProvider"/> yields to the thread
 /// pool before answering, like <c>EngineThreadingContractTests</c> does, which is what made the
 /// hangs reproducible. <c>11-await-before-run</c> and <c>12-events-async-handlers</c> were added
 /// to the catalogue for exactly those shapes; the older files pin that the fix cost nothing
@@ -38,23 +37,6 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
     /// <summary>The one file of the catalogue this class cannot run, and why — see the class remarks.</summary>
     private const string RagExample = "08-rag.ork.ts";
 
-    private sealed class SlowProvider : ILlmProvider
-    {
-        public string Name => "slow";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "slow" };
-
-        public async Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
-        {
-            await Task.Delay(3, ct).ConfigureAwait(false);
-            return new LlmResponse { Content = "R:" + prompt };
-        }
-
-        public async Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
-        {
-            await Task.Delay(3, ct).ConfigureAwait(false);
-            return new LlmResponse { Content = "R:" + messages[^1].Content };
-        }
-    }
 
     private static readonly string[] Files =
     [
@@ -164,7 +146,7 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         using var fileRead = new FileReadTool(fs, new StubPathValidator().AllowAll());
         var factory = new JsEngineFactory(
             builtInTools: new IBaseTool[] { fileRead },
-            llmProvider: new SlowProvider());
+            llmProvider: new SlowLlmProvider());
         var host = new ScriptHost(fs, transpiler, factory);
 
         // The guard token reaches the root pump: a script that hangs on an idle wait of the drain

@@ -69,6 +69,26 @@ public sealed class JsToolTests
         Assert.Contains("kaboom", response.Error);
     }
 
+    /// <summary>
+    /// <see cref="JsTool.CallAsync"/> is a root pump bounded by its token (SCR-25): a cancellation
+    /// met while the callback's promise is pending propagates as the exact
+    /// <see cref="OperationCanceledException"/>, where the fault barrier used to turn it into a
+    /// failed <c>ToolCallResponse</c>. The callback cancels the token itself, so the drain meets
+    /// the cancellation on its first idle check.
+    /// </summary>
+    [Fact]
+    public async Task CallAsync_propagates_cancellation_instead_of_a_failed_response()
+    {
+        var engine = NewEngine();
+        using var cts = new CancellationTokenSource();
+        engine.SetValue("__cancel", new Action(cts.Cancel));
+        var tool = BuildTool(engine, "() => { __cancel(); return new Promise(() => {}); }");
+
+        await Assert.ThrowsAsync<OperationCanceledException>(
+            () => tool.CallAsync(new ToolCallRequest("echo", new Dictionary<string, object?>()), cts.Token)
+                .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken));
+    }
+
     [Fact]
     public async Task CallAsync_null_request_throws()
     {

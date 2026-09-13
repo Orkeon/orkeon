@@ -162,14 +162,21 @@ public sealed class CrewBuilderTests
     public async Task Crew_run_with_already_cancelled_token_throws_OperationCanceledException()
     {
         var engine = NewEngine();
+        engine.SetValue("__hooks", 0);
         var crew = Eval<JsCrew>(engine, """
-            const a = agentBuilder().name("A").role("R").goal("G").body(() => "x").build();
-            crewBuilder().withAgent(a).build();
+            const a = agentBuilder().name("A").role("R").goal("G").body(() => { __hooks += 100; return "x"; }).build();
+            crewBuilder().withAgent(a)
+                .onCrewStart((ctx) => { __hooks += 1; })
+                .onCrewError((ctx, msg) => { __hooks += 10; })
+                .build();
             """);
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
         await Assert.ThrowsAsync<OperationCanceledException>(() => crew.RunAsync(null, cts.Token));
+
+        // A CLR caller with a cancelled token is refused before the loop starts: no hook, no body.
+        Assert.Equal(0d, engine.GetValue("__hooks").AsNumber());
     }
 
     /// <summary>

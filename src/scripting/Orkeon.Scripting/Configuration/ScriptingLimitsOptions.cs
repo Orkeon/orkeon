@@ -38,6 +38,12 @@ public sealed record ScriptingLimitsOptions
     /// raise <c>Orkeon:Scripting:Limits:MemoryLimitBytes</c> in appsettings, or
     /// set <c>--memory-limit-mb 0</c> on the CLI (translates to a large ceiling)
     /// for a fully trusted run. The strict default stays tight.
+    ///
+    /// One window per root pump, like <see cref="ExecutionTimeout"/>: a crew run the CLR
+    /// drives (the <c>globalThis.crew</c> handoff through <c>ScriptHost</c>,
+    /// <c>JsCrew.RunAsync</c>) counts every agent body's allocations against one budget, the
+    /// way a script already did — not one fresh window per body — so a many-agent run that
+    /// allocates raises the limit.
     /// </summary>
     public long MemoryLimitBytes { get; init; } = 100L * 1024 * 1024;
 

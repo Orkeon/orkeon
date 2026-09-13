@@ -55,11 +55,13 @@ public sealed class JsPublishedEvent
     public void markHandled() => _handled = true;
     public void stopPropagation() => _stopPropagation = true;
 
-    // The shared named-lock trampoline (JsTrampolineFactories.Lock). The locks are the
-    // topic's, shared by every event it publishes, so two parallel handlers of the same event
-    // serialize on a name exactly as chapter 06 promises. A cancelled wait is a cancelled
-    // Task: Jint rejects the acquire promise on the loop, so the waiter unwinds as a JS
-    // rejection and never invokes its callback.
+    /// <summary>JS <c>async (name, fn) =&gt; result</c>: the shared named-lock trampoline (<see cref="JsTrampolineFactories.Lock"/>); see the remarks.</summary>
+    /// <remarks>
+    /// The locks are the topic's, shared by every event it publishes, so two parallel handlers
+    /// of the same event serialize on a name exactly as chapter 06 promises. A cancelled wait is
+    /// a cancelled Task: Jint rejects the acquire promise on the loop, so the waiter unwinds as
+    /// a JS rejection and never invokes its callback.
+    /// </remarks>
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private JsValue BuildLockFunction()
@@ -71,10 +73,10 @@ public sealed class JsPublishedEvent
             await sem.WaitAsync(Cancellation).ConfigureAwait(false);
             return JsValue.Undefined;
         };
-        Action<string> release = name =>
+        Action<string> release = name => JsHostError.Guard(_engine, () =>
         {
             if (_locks.TryGetValue(name, out var sem)) sem.Release();
-        };
+        });
         return _engine.Invoke(JsTrampolineFactories.Lock.For(_engine), [acquire, release]);
     }
 }

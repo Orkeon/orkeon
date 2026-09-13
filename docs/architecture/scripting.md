@@ -167,8 +167,13 @@ pin it:
   promise timeout remains in the runtime: a root pump drains until its promise settles or its
   token fires. The sandbox's `ExecutionTimeout` (wall-clock, `Orkeon:Scripting:Limits`) bounds
   the evaluation itself and now spans a whole CLR-driven run, as it already spanned a whole
-  script. A cancelled `RunAsync` leaves the loop a short grace to unwind — its `finally`
-  blocks, `onCrewError` — before it abandons the run and releases what the CLR owns.
+  script (so does `MemoryLimitBytes`). A cancelled `RunAsync` leaves the loop a short grace to
+  unwind — its `finally` blocks, `onCrewError` — before it abandons the run and releases what
+  the CLR owns. A run a body opens without a `signal` of its own — `crew.runAgent`, a
+  sub-crew's `run` — is a child of the run that opened it: cancelled with it, unwound inside
+  its unwind. The parent is the most recently opened attempt still open on the engine, exact
+  under sequential nesting and best-effort under runs interleaved on one event loop;
+  `{ signal: ctx.signal }` is the explicit form.
 
 ## V1 limits
 

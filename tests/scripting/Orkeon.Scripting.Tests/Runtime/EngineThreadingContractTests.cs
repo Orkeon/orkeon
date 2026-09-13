@@ -4,6 +4,7 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Scripting.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -11,7 +12,7 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// <summary>
 /// The contract a script can rely on when its awaits really suspend: every scenario runs
 /// through <see cref="ScriptHost"/> against a provider that yields to the thread pool
-/// (<see cref="SlowProvider"/>), the way every HTTP provider does. The echo provider and
+/// (<see cref="SlowLlmProvider"/>), the way every HTTP provider does. The echo provider and
 /// the stubs elsewhere in this suite complete synchronously, which is why none of this
 /// surfaced there.
 /// </summary>
@@ -25,31 +26,15 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// settled. Every surface that calls back into script code is a JS trampoline now: the graph,
 /// FSM, state, topic and <c>act</c> since SCR-25 T1, T2, T3, T5 and T6, the crew run loop since
 /// T4 — every scenario is live, 24× under contention (the sheet's acceptance criterion).</para>
-/// <para>One scenario (<c>runStream</c> on a crew) is not a race: it pins the shape the rewrite
-/// had to produce — a JS async generator, since Jint does not expose an <c>IAsyncEnumerable</c>
-/// as an async iterable — the shape the graph's <c>runStream</c> already had.</para>
-/// <para>A 20 s guard turns a hang into a failure.</para>
+/// <para>Two scenarios (<c>runStream</c> on a graph and on a crew) are not races: they pin the
+/// shape the rewrite had to produce — a JS async generator, since Jint does not expose an
+/// <c>IAsyncEnumerable</c> as an async iterable (T1 for the graph, T4 for the crew).</para>
+/// <para>A 20 s guard turns a hang into a failure, and releases the pump it bounds: the guard's
+/// token is the host token the script runs under, so a detected hang does not leave 24 root
+/// pumps blocked on an idle drain for the rest of the process.</para>
 /// </remarks>
 public sealed class EngineThreadingContractTests
 {
-    private sealed class SlowProvider : ILlmProvider
-    {
-        public string Name => "slow";
-        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "slow" };
-
-        public async Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
-        {
-            await Task.Delay(3, ct).ConfigureAwait(false);
-            return new LlmResponse { Content = "R:" + prompt };
-        }
-
-        public async Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
-        {
-            await Task.Delay(3, ct).ConfigureAwait(false);
-            return new LlmResponse { Content = "R:" + messages[^1].Content };
-        }
-    }
-
     /// <summary>
     /// A provider whose chat stream yields each delta after a real suspension, so the
     /// <c>onDelta</c> callback of <c>ctx.llm.act</c> is reached from a thread-pool continuation.
@@ -93,15 +78,19 @@ public sealed class EngineThreadingContractTests
         {
             await File.WriteAllTextAsync(Path.Combine(dir, "probe.ork.ts"), source);
             var fs = new DiskBackedFileSystemService(dir, "/scripts");
-            var host = new ScriptHost(fs, new JsEngineFactory(llmProvider: new SlowProvider()));
+            var host = new ScriptHost(fs, new JsEngineFactory(llmProvider: new SlowLlmProvider()));
 
+            // The guard cancels the pump itself, so a hang fails here instead of leaving the drain
+            // blocked for good; the WaitAsync is the deterministic backstop behind it.
+            using var guard = CancellationTokenSource.CreateLinkedTokenSource(TestContext.Current.CancellationToken);
+            guard.CancelAfter(TimeSpan.FromSeconds(20));
             object? raw;
             try
             {
-                raw = await host.RunAsync("/scripts/probe.ork.ts", CancellationToken.None)
-                    .WaitAsync(TimeSpan.FromSeconds(20));
+                raw = await host.RunAsync("/scripts/probe.ork.ts", guard.Token)
+                    .WaitAsync(TimeSpan.FromSeconds(25));
             }
-            catch (TimeoutException)
+            catch (Exception ex) when (ex is TimeoutException || (ex is OperationCanceledException && guard.IsCancellationRequested && !TestContext.Current.CancellationToken.IsCancellationRequested))
             {
                 Assert.Fail("HANG: the script did not settle within 20 s");
                 throw;
@@ -465,8 +454,9 @@ public sealed class EngineThreadingContractTests
     /// <summary>
     /// An async <c>onCrewStart</c> hook with <c>crew.run()</c> after a top-level await. The former
     /// <c>JsCrew.InvokeCrewHook</c> drained it with <c>UnwrapIfPromise(ct)</c> from inside a job —
-    /// no timeout at all, only the run's own cancellation, and the 1.5 s run timeout was what
-    /// bounded the scenario. The hook is awaited in JS since SCR-25 T4.
+    /// no timeout at all, only the run's own cancellation, so a run <c>timeout</c> option was what
+    /// bounded the scenario then; the harness's guard bounds it now. The hook is awaited in JS since
+    /// SCR-25 T4.
     /// </summary>
     [Fact]
     public async Task Crew_start_hook_that_suspends_settles_when_run_follows_a_top_level_await()
@@ -479,7 +469,7 @@ public sealed class EngineThreadingContractTests
                 const crew = crewBuilder().name("c").withAgent(worker)
                     .onCrewStart(async (c) => { await Promise.resolve(); })
                     .build();
-                const res = await crew.run({ timeout: 1500 });
+                const res = await crew.run();
                 result = { out: res.output };
                 """);
             Assert.Equal("ok", r["out"]);

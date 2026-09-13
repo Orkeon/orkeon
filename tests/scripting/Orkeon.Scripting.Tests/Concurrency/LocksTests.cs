@@ -2,6 +2,7 @@ using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Runtime;
+using static Orkeon.Scripting.Tests.Testing.ScriptGlobals;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
 namespace Orkeon.Scripting.Tests.Concurrency;
@@ -14,21 +15,6 @@ public sealed class LocksTests
     private static Engine NewEngine() => new JsEngineFactory().Create();
 
     private static T Eval<T>(Engine engine, string js) => (T)engine.Evaluate(js).ToObject()!;
-
-    /// <summary>Installs <c>__sleep(ms[, ct])</c> as a JS-awaitable Task helper.</summary>
-    private static void InstallSleep(Engine engine)
-    {
-        engine.SetValue("__sleep", new Func<double, JsValue?, Task<JsValue>>(async (ms, ctVal) =>
-        {
-            var ct = CancellationToken.None;
-            if (ctVal is not null && !ctVal.IsUndefined() && !ctVal.IsNull())
-            {
-                if (ctVal.ToObject() is CancellationToken token) ct = token;
-            }
-            await Task.Delay(TimeSpan.FromMilliseconds(ms), ct).ConfigureAwait(false);
-            return JsValue.Undefined;
-        }));
-    }
 
     [Fact]
     public void agentBuilder_concurrency_above_1_throws_InvalidScriptException()
@@ -301,12 +287,16 @@ public sealed class LocksTests
     {
         var engine = NewEngine();
         InstallSleep(engine);
+        // Cancelled from inside the first transform, once it holds the mutex and the second is
+        // queued on it — the same reason as the named-lock test above: no timer.
+        using var cts = new CancellationTokenSource();
+        engine.SetValue("__cancel", new Action(cts.Cancel));
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
                 .withState(() => ({ n: 0 }))
                 .body(async (input, ctx) => {
                     await Promise.all([
-                        ctx.state.with(async (s) => { await __sleep(120000, ctx.signal); return s; }),
+                        ctx.state.with(async (s) => { __cancel(); await __sleep(120000, ctx.signal); return s; }),
                         ctx.state.with((s) => ({ n: s.n + 1 })),
                     ]);
                     return "done";
@@ -314,7 +304,6 @@ public sealed class LocksTests
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(150);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => crew.RunAsync(null, cts.Token));
     }

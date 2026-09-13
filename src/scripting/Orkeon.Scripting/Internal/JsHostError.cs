@@ -25,6 +25,10 @@ namespace Orkeon.Scripting.Internal;
 /// <para>A faulted <see cref="Task"/> awaited by the script needs none of this: Jint's task
 /// bridge rejects the promise with the <see cref="AggregateException"/> as a wrapped CLR object,
 /// which <see cref="Unwrap"/> also recognises.</para>
+/// <para>The policy, one for every trampoline: every synchronous helper handed to JavaScript goes
+/// through <see cref="Guard"/>, uniformly — the ones with no failure path of their own included,
+/// so that a failure path added later is bridged by construction and a reader never has to
+/// decide which helper was left raw on purpose. Only the awaited <see cref="Task"/>s stay raw.</para>
 /// </remarks>
 internal static class JsHostError
 {

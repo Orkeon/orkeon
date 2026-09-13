@@ -34,8 +34,9 @@ public sealed class JsEventBroker
     /// <summary>
     /// The token of the run whose attempt <see cref="CurrentAgentId"/> names, none on an idle crew.
     /// Surfaces to <c>stateGraph.run</c> and to a topic handler's <c>ev.lock</c> so a script-level
-    /// cancellation aborts them without an explicit signal argument, and to a run opened from a body
-    /// (<see cref="JsCrew.AmbientToken"/>). Same crew-wide, best-effort caveat as the agent id.
+    /// cancellation aborts them without an explicit signal argument. Same crew-wide, best-effort
+    /// caveat as the agent id; a run opened from a body reads the engine-wide
+    /// <see cref="JsEngineAttempts"/> instead, so a sub-crew run links to the crew that opened it.
     /// </summary>
     internal CancellationToken CurrentCt { get; set; } = CancellationToken.None;
 

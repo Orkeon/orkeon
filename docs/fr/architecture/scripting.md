@@ -170,9 +170,14 @@ désormais une règle, que les reproducteurs de
   Aucun timeout de promesse ne subsiste dans le runtime : une pompe racine draine jusqu'à ce
   que sa promesse se règle ou que son jeton se déclenche. L'`ExecutionTimeout` du bac à sable
   (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même et couvre désormais un
-  run entier piloté par le CLR, comme il couvrait déjà un script entier. Un `RunAsync` annulé
-  laisse à la boucle un court délai de grâce pour se dérouler — ses blocs `finally`,
-  `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR possède.
+  run entier piloté par le CLR, comme il couvrait déjà un script entier (`MemoryLimitBytes`
+  aussi). Un `RunAsync` annulé laisse à la boucle un court délai de grâce pour se dérouler —
+  ses blocs `finally`, `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR
+  possède. Un run qu'un corps ouvre sans `signal` propre — `crew.runAgent`, le `run` d'une
+  sous-crew — est l'enfant du run qui l'a ouvert : annulé avec lui, déroulé dans son
+  déroulement. Le parent est la tentative ouverte la plus récente encore ouverte sur le
+  moteur, exact en imbrication séquentielle et au mieux sous des runs entrelacés sur une même
+  boucle d'événements ; `{ signal: ctx.signal }` est la forme explicite.
 
 ## Limites V1
 

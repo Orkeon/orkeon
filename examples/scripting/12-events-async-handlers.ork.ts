@@ -7,7 +7,7 @@
 // inside an event-loop job and drained the handler there, where nothing could pump. And a
 // second `crew.run()` after a first one settled: the same call, from inside the first run's
 // continuation. Both settle now that one thread drains the engine and every callback into
-// the script -- the delivery loop, the crew loop -- is JavaScript under it (SCR-25).
+// the script — the delivery loop, the crew loop — is JavaScript under it (SCR-25).
 //
 // Runs with no API key:
 //
@@ -17,7 +17,7 @@ type Finding = { from: string; fact: string };
 const digest: string[] = [];
 
 // A reporter checks its finding with the LLM (an await), THEN publishes it. On a sequential
-// topic `await publish()` resolves only once every handler has run -- including the one
+// topic `await publish()` resolves only once every handler has run — including the one
 // below that awaits the LLM itself.
 const reporter = (name: string, finding: string) => agentBuilder()
     .name(name)
@@ -33,7 +33,7 @@ const reporter = (name: string, finding: string) => agentBuilder()
 const fieldTeam = crewBuilder()
     .name("field-team")
     // Subscribe from the crew hook, not from an agent body: the hook's ctx lives for the
-    // whole run, whereas an agent's ctx is released when its body returns -- a handler that
+    // whole run, whereas an agent's ctx is released when its body returns — a handler that
     // closed over it would be talking to a finished agent by the time the next one publishes.
     .onCrewStart((ctx) => {
         ctx.events.topic<Finding>("findings").subscribe(async (ev) => {
@@ -57,7 +57,7 @@ const desk = crewBuilder()
         .build())
     .build();
 
-// Two runs in sequence. The second starts from the first one's continuation -- the shape a
+// Two runs in sequence. The second starts from the first one's continuation — the shape a
 // script takes as soon as it has more than one crew.
 const field = await fieldTeam.run();
 const closed = await desk.run();
