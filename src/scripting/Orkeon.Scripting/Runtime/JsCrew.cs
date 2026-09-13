@@ -1,4 +1,3 @@
-using System.Buffers;
 using Jint;
 using Jint.Native;
 using JsValueExt = Jint.JsValueExtensions;
@@ -30,8 +29,6 @@ namespace Orkeon.Scripting.Runtime;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1708", Justification = "The camelCase JS-surface methods (add/remove/findById…) intentionally mirror their C# PascalCase peers and collide case-only by design — this type is bound into the Jint engine where JS callers require the camelCase names.")]
 public sealed partial class JsCrew
 {
-    private static readonly SearchValues<char> HostExceptionDelimiters = SearchValues.Create(" \n\r\t");
-
     private readonly Engine _engine;
     private readonly List<JsAgent> _agents;
     private readonly List<object> _tasks;
@@ -363,15 +360,15 @@ public sealed partial class JsCrew
 
     /// <summary>
     /// Body promises must survive multi-second host awaits (LLM HTTP round-trips, slow
-    /// tools, …). Jint's <c>UnwrapIfPromiseAsync</c> bakes in a 10 s ceiling that we
-    /// can't raise from outside the engine. The synchronous <c>UnwrapIfPromise(TimeSpan)</c>
-    /// overload accepts a custom timeout — 30 minutes exceeds any realistic single-agent
-    /// body. We dispatch to a background thread via <c>Task.Run</c> so the caller's
-    /// await semantics are preserved.
+    /// tools, …). The synchronous <c>UnwrapIfPromise(TimeSpan)</c> overload takes its own
+    /// ceiling — 30 minutes exceeds any realistic single-agent body — where
+    /// <c>UnwrapIfPromiseAsync</c> applies the engine's <c>Options.Constraints.PromiseTimeout</c>
+    /// (10 s by default, which this engine keeps). The drain runs inline on the calling
+    /// thread; see <see cref="UnwrapPromise"/> for why it must.
     /// </summary>
     private static readonly TimeSpan BodyPromiseTimeout = TimeSpan.FromMinutes(30);
 
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1849", Justification = "Blocking here is the point: this thread already owns the engine (crew.run() was called from the script), and UnwrapIfPromise drains the engine's continuations while it waits. UnwrapIfPromiseAsync would resume the pump on a pool thread, putting a second thread inside a Jint engine that is neither thread-safe nor re-entrant — measured: 1 full-suite run in 6 failed that way, and forcing a dedicated thread made it 4 in 4. It also bakes in a 10s ceiling this call must not have.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1849", Justification = "Blocking here is the point: this thread already owns the engine (crew.run() was called from the script), and UnwrapIfPromise drains the engine's continuations while it waits. UnwrapIfPromiseAsync would resume the pump on a pool thread, putting a second thread inside a Jint engine that is neither thread-safe nor re-entrant — measured: 1 full-suite run in 6 failed that way, and forcing a dedicated thread made it 4 in 4.")]
     private static Task<object?> UnwrapPromise(JsValue promise, CancellationToken ct)
     {
         ct.ThrowIfCancellationRequested();
@@ -404,9 +401,10 @@ public sealed partial class JsCrew
 
     /// <summary>
     /// Walks <paramref name="ex"/> looking for a typed CLR exception thrown by a host
-    /// delegate inside JS (e.g. the state-mutation set-trap). Jint wraps these in
-    /// <c>JavaScriptException</c> / <c>PromiseRejectedException</c>; this helper lets
-    /// the original CLR type surface to <c>Assert.ThrowsAsync&lt;T&gt;</c>.
+    /// delegate inside JS (e.g. the state-mutation set-trap, bridged by
+    /// <see cref="JsHostError"/>). Jint surfaces these as a <c>JavaScriptException</c> or a
+    /// <c>PromiseRejectedException</c> whose Error carries the CLR exception; this helper
+    /// lets the original CLR type surface to <c>Assert.ThrowsAsync&lt;T&gt;</c>.
     /// </summary>
     private static bool TryUnwrapTypedHostException(Exception ex, out Exception typed)
     {
@@ -416,19 +414,6 @@ public sealed partial class JsCrew
             if (cur is Exceptions.StateMutationOutsideWithException sm) { typed = sm; return true; }
             if (cur is Exceptions.RecursiveAgentInvocationException ra) { typed = ra; return true; }
             if (cur is Orkeon.Domain.Autonomous.BudgetExhaustedException be) { typed = be; return true; }
-            // The set-trap originally threw a JS Error whose message embedded the typed
-            // marker; reconstruct the typed exception when that's the only signal left.
-            var msg = cur.Message ?? string.Empty;
-            const string marker = "StateMutationOutsideWithError:";
-            var idx = msg.IndexOf(marker, StringComparison.Ordinal);
-            if (idx >= 0)
-            {
-                var prop = msg[(idx + marker.Length)..].Trim();
-                var end = prop.AsSpan().IndexOfAny(HostExceptionDelimiters);
-                if (end > 0) prop = prop[..end];
-                typed = new Exceptions.StateMutationOutsideWithException(prop);
-                return true;
-            }
         }
         typed = null!;
         return false;
