@@ -22,12 +22,20 @@ configured, so they are runnable without API keys.
 | `08-rag.ork.ts` | First-class `rag.ingest` / `rag.query` over the RAG subsystem (offline) |
 | `09-tools-and-act.ork.ts` | The three tool surfaces, then `ctx.llm.act` — the tool-calling loop |
 | `10-inputs-and-memory.ork.ts` | `globalThis.inputs`, agent state, crew memory, `ErrorAction.retry` |
+| `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
+| `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
 
 Every file above ends with `await crew.run()` — the **procedural** shape, where each agent's
 `.body()` runs and tasks are ignored. [`crew-review-desk/`](crew-review-desk/README.md) is
 the other one: a three-agent crew with tasks, a dependency chain and a deliverable, handed
 off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is
 arranged to prevent.
+
+Every numbered file but `08-rag` (which needs the RAG backend) is also run by the test suite
+against a provider that really suspends — `Task.Delay` before every answer, the way an HTTP
+provider behaves — not only against the echo. `11` and `12` exist because the two shapes they
+use, an await before `crew.run()` and a topic handler that awaits, once hung under exactly
+that provider.
 
 `08-rag.ork.ts` ingests a corpus shipped in `data/08-rag/` and needs two extra
 flags for the full offline experience — a writable `/output` mount (persists
