@@ -233,7 +233,7 @@ Orkeon.Scripting.Orchestration.JsStateGraph.runStream.get -> Jint.Native.JsValue
 Orkeon.Scripting.Orchestration.JsStateMachine
 Orkeon.Scripting.Orchestration.JsStateMachine.current.get -> string!
 Orkeon.Scripting.Orchestration.JsStateMachine.name.get -> string!
-Orkeon.Scripting.Orchestration.JsStateMachine.send.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
+Orkeon.Scripting.Orchestration.JsStateMachine.send.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsAgentContext
 Orkeon.Scripting.Runtime.JsAgentContext.Dispose() -> void
 Orkeon.Scripting.Runtime.JsAgentContext.lock.get -> Jint.Native.JsValue!

@@ -1,6 +1,7 @@
 using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Orchestration;
 
@@ -9,12 +10,46 @@ namespace Orkeon.Scripting.Orchestration;
 /// global. Maps the literal declaration to a runtime instance with state lookup,
 /// transition guards, and entry/exit hooks.
 /// </summary>
+/// <remarks>
+/// <para><c>send</c> is a JS async function, not a CLR one (SCR-25 T2). A guard or a hook may
+/// return a promise (<c>fsm.d.ts</c>), and awaiting it from CLR meant resuming on a thread-pool
+/// thread while the agent body that called <c>send</c> was being drained synchronously on
+/// another: the async side's wake-up was lost against that drain, and the next hook plus its
+/// context object were built off the engine thread. With the loop in JS every hook runs as a
+/// promise reaction on whichever thread drains the loop, and the CLR only supplies three
+/// synchronous helpers — <c>lookup</c>, <c>current</c> and <c>commit</c> — that never invoke a
+/// script callback and re-enter the engine only synchronously, through the
+/// <see cref="JsHostError"/> bridge when they fail.</para>
+/// <para>The helpers that can fail go through <see cref="JsHostError"/>: a raw CLR exception
+/// thrown inside an async JS function skips <c>catch</c> and <c>finally</c> and leaves the
+/// promise pending, whereas a bridged one rejects it like a script throw.</para>
+/// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of StateMachine in Typings/fsm.d.ts; that declaration is the contract scripts read.
 public sealed class JsStateMachine
 {
+    /// <summary>
+    /// The transition loop. The context objects are JS literals so nothing is converted after
+    /// an await; a falsy guard result vetoes the transition and neither hook fires; an unknown
+    /// event (<c>lookup</c> returns null) is ignored and <c>send</c> resolves to the current state.
+    /// </summary>
+    private const string SendFactorySource = """
+        (lookup, current, commit) => async function send(eventName, payload) {
+            const t = lookup(eventName);
+            if (!t) return current();
+            const ctx = { state: current(), payload };
+            if (t.guard && !(await t.guard(ctx))) return current();
+            if (t.onExit) await t.onExit(ctx);
+            commit(t.target);
+            const entered = { state: current(), payload };
+            if (t.onEntry) await t.onEntry(entered);
+            return current();
+        }
+        """;
+
     private readonly Engine _engine;
     private readonly Dictionary<string, JsFsmState> _states;
+    private JsValue? _sendJs;
 
     public string name { get; }
     public string current { get; private set; }
@@ -27,38 +62,58 @@ public sealed class JsStateMachine
         _states = states;
     }
 
-    public Func<string, JsValue?, Task<string>> send => async (eventName, payload) =>
+    public JsValue send => _sendJs ??= BuildSendFunction();
+
+    private JsValue BuildSendFunction()
+    {
+        Func<string?, JsFsmTransitionView?> lookup = eventName => JsHostError.Guard(_engine, () => Lookup(eventName));
+        Func<string> readCurrent = () => current;
+        Action<string> commit = target => JsHostError.Guard(_engine, () => Commit(target));
+        var factory = _engine.Evaluate(SendFactorySource);
+        return _engine.Invoke(factory, [lookup, readCurrent, commit]);
+    }
+
+    /// <summary>
+    /// Resolves <paramref name="eventName"/> against the current state: the transition it
+    /// triggers with the hooks that frame it, or <see langword="null"/> for an event the state
+    /// does not declare.
+    /// </summary>
+    private JsFsmTransitionView? Lookup(string? eventName)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
-        if (!_states.TryGetValue(current, out var src))
+        if (!_states.TryGetValue(current, out var source))
             throw new InvalidOperationException($"Unknown FSM state '{current}'.");
-        if (!src.Transitions.TryGetValue(eventName, out var transition))
-            return current; // ignore unknown events
+        if (!source.Transitions.TryGetValue(eventName, out var transition))
+            return null;
+        var onEntry = _states.TryGetValue(transition.Target, out var target) ? target.OnEntry : null;
+        return new JsFsmTransitionView(transition.Target, transition.Guard, source.OnExit, onEntry);
+    }
 
-        var ctxObj = JsValue.FromObject(_engine, new { state = current, payload = payload ?? JsValue.Undefined });
-        if (transition.Guard is not null)
-        {
-            var guardResult = _engine.Invoke(transition.Guard, [ctxObj]);
-            if (guardResult.IsPromise())
-                guardResult = await guardResult.UnwrapIfPromiseAsync(CancellationToken.None).ConfigureAwait(false);
-            if (!guardResult.AsBoolean()) return current;
-        }
-
-        await InvokeHookAsync(src.OnExit, ctxObj).ConfigureAwait(false);
-        if (!_states.ContainsKey(transition.Target))
-            throw new InvalidScriptException($"FSM transition target '{transition.Target}' is not declared.");
-        current = transition.Target;
-        var newCtx = JsValue.FromObject(_engine, new { state = current, payload = payload ?? JsValue.Undefined });
-        await InvokeHookAsync(_states[current].OnEntry, newCtx).ConfigureAwait(false);
-        return current;
-    };
-
-    private async Task InvokeHookAsync(JsValue? hook, JsValue ctx)
+    private void Commit(string target)
     {
-        if (hook is null || hook.IsUndefined() || hook.IsNull()) return;
-        var raw = _engine.Invoke(hook, [ctx]);
-        if (raw.IsPromise())
-            await raw.UnwrapIfPromiseAsync(CancellationToken.None).ConfigureAwait(false);
+        if (!_states.ContainsKey(target))
+            throw new InvalidScriptException($"FSM transition target '{target}' is not declared.");
+        current = target;
+    }
+}
+
+/// <summary>
+/// What the <c>send</c> trampoline reads off a resolved transition. The hooks are handed to
+/// JS as they were declared; an absent one reads as <c>undefined</c>.
+/// </summary>
+internal sealed class JsFsmTransitionView
+{
+    public string target { get; }
+    public JsValue guard { get; }
+    public JsValue onExit { get; }
+    public JsValue onEntry { get; }
+
+    public JsFsmTransitionView(string target, JsValue? guard, JsValue? onExit, JsValue? onEntry)
+    {
+        this.target = target;
+        this.guard = guard ?? JsValue.Undefined;
+        this.onExit = onExit ?? JsValue.Undefined;
+        this.onEntry = onEntry ?? JsValue.Undefined;
     }
 }
 
