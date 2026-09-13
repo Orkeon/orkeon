@@ -39,7 +39,7 @@ public sealed class JsLlmFacadeActSystemTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>());
 
         var options = EvalOptions(engine, "({ system: \"You are the coding agent.\" })");
-        var result = await facade.act("hello", options);
+        var result = await facade.ActAsync(engine, "hello", options);
 
         Assert.Equal("done", result.Get("output").AsString());
         var turn1 = provider.MessagesPerCall[0];
@@ -62,7 +62,7 @@ public sealed class JsLlmFacadeActSystemTests
         });
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>());
 
-        await facade.act("hello", null);
+        await facade.ActAsync(engine, "hello", null);
 
         var turn1 = provider.MessagesPerCall[0];
         Assert.Single(turn1);
@@ -81,7 +81,7 @@ public sealed class JsLlmFacadeActSystemTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>());
 
         var options = EvalOptions(engine, "({ system: \"   \" })");
-        await facade.act("hello", options);
+        await facade.ActAsync(engine, "hello", options);
 
         Assert.Single(provider.MessagesPerCall[0]);
         Assert.Equal("user", provider.MessagesPerCall[0][0].Role);
@@ -102,7 +102,7 @@ public sealed class JsLlmFacadeActSystemTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool });
 
         var options = EvalOptions(engine, "({ system: \"stay on task\" })");
-        var result = await facade.act("go", options);
+        var result = await facade.ActAsync(engine, "go", options);
 
         Assert.Equal("final", result.Get("output").AsString());
         Assert.Equal(2, provider.MessagesPerCall.Count);

@@ -82,7 +82,7 @@ public sealed class JsLlmFacadeCallConfigTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var opts = await engine.EvaluateAsync("({ maxIterations: 1, llm: { model: 'turn-model' } })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.act("do the thing", opts);
+        await facade.ActAsync(engine, "do the thing", opts);
 
         AssertCredentialsSurvived(provider.LastConfig);
         Assert.Equal("turn-model", provider.LastConfig!.Model);
@@ -97,7 +97,7 @@ public sealed class JsLlmFacadeCallConfigTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
         var opts = await engine.EvaluateAsync("({ maxIterations: 1 })", cancellationToken: TestContext.Current.CancellationToken);
-        await facade.act("do the thing", opts);
+        await facade.ActAsync(engine, "do the thing", opts);
 
         // No LLM setting in the bag ⇒ no per-call config; act() falls back to BaseConfig itself.
         Assert.Equal("boot-model", provider.LastConfig!.Model);

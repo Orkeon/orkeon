@@ -38,7 +38,7 @@ public sealed class JsLlmFacadeActTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool });
 
-        var result = await facade.act("please echo hi", null);
+        var result = await facade.ActAsync(engine, "please echo hi", null);
 
         Assert.Equal("Done: hi", result.Get("output").AsString());
         Assert.Equal(1, tool.CallCount);
@@ -59,7 +59,7 @@ public sealed class JsLlmFacadeActTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null);
 
-        var result = await facade.act("hello", null);
+        var result = await facade.ActAsync(engine, "hello", null);
 
         Assert.Equal("just an answer", result.Get("output").AsString());
         Assert.False(provider.LastConfigHadTools);

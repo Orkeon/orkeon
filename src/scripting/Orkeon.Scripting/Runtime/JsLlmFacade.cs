@@ -1,11 +1,13 @@
 using System.Diagnostics;
 using System.Text.Json;
+using System.Threading.Channels;
 using Orkeon.Constants.Llm;
 using Jint;
 using Jint.Native;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Telemetry;
 using ToolCallMode = Orkeon.Domain.Tools.Protocol.ToolCallMode;
 using ProtocolToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
@@ -63,7 +65,6 @@ public sealed partial class JsLlmFacade
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
         embed = EmbedAsync;
-        act = ActAsync;
     }
 
     /// <summary>
@@ -277,7 +278,49 @@ public sealed partial class JsLlmFacade
     /// </remarks>
     private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, StreamObservations observations)
     {
-        var enumerator = source.GetAsyncEnumerator(_ct);
+        var (next, ret) = AsyncIteratorCallbacks(source, _ct);
+
+        // `usage` / `reasoningChunks` are getters onto the CLR observations object,
+        // so the script reads them when IT is executing (after the loop) instead of
+        // the stream calling into the engine from another thread.
+        var factory = _engine.Evaluate(StreamIterableFactorySource);
+        return _engine.Invoke(factory, next, ret, observations);
+    }
+
+    private const string StreamIterableFactorySource = """
+        (next, ret, obs) => ({
+            [Symbol.asyncIterator]() { return { next: next, return: ret }; },
+            get usage() { return obs.usage; },
+            get reasoningChunks() { return obs.reasoningChunks; }
+        })
+        """;
+
+    /// <summary>
+    /// The bare async-iterable protocol over a CLR sequence: what <c>stream()</c> returns
+    /// minus its side-channel getters. The factory is evaluated once per facade and invoked
+    /// once per sequence; <see cref="ActSession.deltas"/> is built with it.
+    /// </summary>
+    private const string AsyncIterableFactorySource = """
+        (next, ret) => ({ [Symbol.asyncIterator]() { return { next: next, return: ret }; } })
+        """;
+
+    private JsValue? _asyncIterableFactory;
+
+    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, CancellationToken ct)
+    {
+        var (next, ret) = AsyncIteratorCallbacks(source, ct);
+        _asyncIterableFactory ??= _engine.Evaluate(AsyncIterableFactorySource);
+        return _engine.Invoke(_asyncIterableFactory, next, ret);
+    }
+
+    /// <summary>
+    /// The <c>next</c> / <c>return</c> pair of one async iterator over <paramref name="source"/>,
+    /// enumerated under <paramref name="ct"/>. Both resolve a CLR <see cref="IteratorResult"/>.
+    /// </summary>
+    private static (Func<Task<object>> next, Func<Task<object>> ret) AsyncIteratorCallbacks(
+        IAsyncEnumerable<string> source, CancellationToken ct)
+    {
+        var enumerator = source.GetAsyncEnumerator(ct);
         var disposed = false;
 
         async Task<object> DisposeOnceAsync()
@@ -314,15 +357,7 @@ public sealed partial class JsLlmFacade
         // enumerator, otherwise an abandoned stream leaks the underlying HTTP read.
         var ret = new Func<Task<object>>(DisposeOnceAsync);
 
-        // `usage` / `reasoningChunks` are getters onto the CLR observations object,
-        // so the script reads them when IT is executing (after the loop) instead of
-        // the stream calling into the engine from another thread.
-        var factory = _engine.Evaluate(
-            "(function (next, ret, obs) { return { [Symbol.asyncIterator]() { "
-            + "return { next: next, return: ret }; }, "
-            + "get usage() { return obs.usage; }, "
-            + "get reasoningChunks() { return obs.reasoningChunks; } }; })");
-        return _engine.Invoke(factory, next, ret, observations);
+        return (next, ret);
     }
 
     /// <summary>
@@ -599,35 +634,147 @@ public sealed partial class JsLlmFacade
     /// is hit. Uses the provider's <see cref="ILlmProvider.BaseConfig"/> so the configured
     /// model/credentials are preserved while the tool schemas are added per call.
     /// </summary>
-    public Func<string, JsValue?, Task<object>> act { get; }
+    /// <remarks>
+    /// An async JS function built once per facade from <see cref="ActFactorySource"/>, not a
+    /// CLR delegate. The loop itself runs no JS and stays CLR (<see cref="RunActAsync"/>), but
+    /// its one contact point with the script — the <c>onDelta</c> callback — cannot be invoked
+    /// from the streaming continuation: that is a thread-pool thread, while the body may be
+    /// draining the engine on another (measured by thread id, SCR-25 scenario 10, and Jint
+    /// guards nothing on <c>Engine.Invoke</c>). So the deltas cross over as data, through a
+    /// channel the script pulls from exactly like <c>stream()</c>, and the callback is driven
+    /// by a JS pump — promise reactions on whichever thread drains, the only one allowed inside
+    /// the engine.
+    /// </remarks>
+    public JsValue act => _actJs ??= BuildActFunction();
 
-    private async Task<object> ActAsync(string prompt, JsValue? options)
+    private JsValue? _actJs;
+
+    // `beginAct` is synchronous and Guard-bridged: it reads the options while the script is
+    // still executing (a JsValue is never read after an await) and hands back the session.
+    // `s.run()` is the loop as a Task whose result is a CLR object, settled on the engine's own
+    // loop; `s.deltas` an async iterable over the delta channel. The pump is awaited in
+    // `finally` so that every delta is delivered before `act` settles and a pump failure is
+    // never an unhandled rejection. A callback that throws abandons the run (`s.abort()`,
+    // observed at the next delta or iteration) instead of letting the loop pay for turns nobody
+    // consumes; the run's cancellation is then superseded by the callback's own error, which
+    // `await pump` rethrows from the finally.
+    private const string ActFactorySource = """
+        (beginAct) => async function act(prompt, options) {
+            const onDelta = options && typeof options.onDelta === "function" ? options.onDelta : null;
+            const s = beginAct(prompt, options, onDelta !== null);
+            const pump = onDelta
+                ? (async () => {
+                    try { for await (const d of s.deltas) onDelta(d); }
+                    catch (e) { s.abort(); throw e; }
+                })()
+                : null;
+            try { return await s.run(); }
+            finally { if (pump) await pump; }
+        }
+        """;
+
+    private JsValue BuildActFunction()
     {
-        var maxIterations = ResolveMaxIterations(options);
-        var permissionMode = ResolvePermissionMode(options);
-        var onDelta = ResolveOnDelta(options);
-        if (_provider is null)
-            return new { output = $"<undefined-llm:act:{prompt}>", iterations = 0 };
+        Func<string, JsValue?, bool, ActSession> beginAct = (prompt, options, streamDeltas) =>
+            JsHostError.Guard(_engine, () => new ActSession(this, prompt, options, streamDeltas));
+        var factory = _engine.Evaluate(ActFactorySource);
+        return _engine.Invoke(factory, beginAct);
+    }
 
-        var baseCfg = ConfigFrom(options) ?? _provider.BaseConfig ?? LlmConfig.Default();
-        var toolSchemas = _tools.Count > 0 ? _tools.Select(t => t.Schema).ToList() : null;
+    /// <summary>
+    /// The CLR half of one <c>act</c> call. Built synchronously by <c>beginAct</c> while the
+    /// script executes, so every option is parsed before the first await and the loop never
+    /// touches a <see cref="JsValue"/> again. The members the trampoline calls are the public
+    /// lowercase ones; the rest is internal, which Jint does not expose to the script.
+    /// </summary>
+    private sealed class ActSession
+    {
+        private readonly JsLlmFacade _facade;
+        private readonly Channel<string>? _deltas;
+        private JsValue? _deltasJs;
+        private volatile bool _aborted;
 
-        // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
-        // (OpenAICompatibleProviderBase.PrependConfiguredSystemMessage / Anthropic
-        // SeparateSystemMessages both give the in-list message precedence).
-        var system = ResolveSystem(options);
-        var messages = new List<LlmMessage>(capacity: 2);
-        if (system is not null)
-            messages.Add(LlmMessage.System(system));
-        messages.Add(new LlmMessage { Role = "user", Content = prompt });
+        public ActSession(JsLlmFacade facade, string prompt, JsValue? options, bool streamDeltas)
+        {
+            _facade = facade;
+            Prompt = prompt;
+            MaxIterations = ResolveMaxIterations(options);
+            PermissionMode = ResolvePermissionMode(options);
+            Config = facade.ConfigFrom(options) ?? facade._provider?.BaseConfig ?? LlmConfig.Default();
+            ToolSchemas = facade._tools.Count > 0 ? facade._tools.Select(t => t.Schema).ToList() : null;
 
+            // A conversation-level system message wins over any LlmConfig.SystemMessage fallback
+            // (OpenAICompatibleProviderBase.PrependConfiguredSystemMessage / Anthropic
+            // SeparateSystemMessages both give the in-list message precedence).
+            var system = ResolveSystem(options);
+            if (system is not null)
+                Messages.Add(LlmMessage.System(system));
+            Messages.Add(new LlmMessage { Role = "user", Content = prompt });
+
+            // One reader (the pump), one writer (the streaming continuation), never bounded:
+            // the writer must not block on a script that is slow to consume.
+            if (streamDeltas)
+                _deltas = Channel.CreateUnbounded<string>(new UnboundedChannelOptions { SingleReader = true, SingleWriter = true });
+
+            run = () => facade.RunActAsync(this);
+        }
+
+        internal string Prompt { get; }
+        internal int MaxIterations { get; }
+        internal string PermissionMode { get; }
+        internal LlmConfig Config { get; }
+        internal IReadOnlyList<Orkeon.Domain.Tools.Protocol.ToolSchema>? ToolSchemas { get; }
+        internal List<LlmMessage> Messages { get; } = new(capacity: 2);
+        internal bool StreamsDeltas => _deltas is not null;
+
+        /// <summary>The loop, as a Task of a CLR object — Jint settles it on the engine's own loop.</summary>
+        public Func<Task<object>> run { get; }
+
+        /// <summary>
+        /// The content deltas as a JS async iterable, built on first access — by the script,
+        /// on the draining thread. Without a channel it completes at once.
+        /// </summary>
+        public JsValue deltas => _deltasJs ??= _facade.AsAsyncIterable(
+            // No cancellation token on purpose: run's finally completes the channel in every
+            // outcome, so the read always ends — and an interrupt must not reject the pump,
+            // whose failure would supersede the graceful { interrupted: true } result.
+            _deltas?.Reader.ReadAllAsync() ?? AsyncEnumerable.Empty<string>(), CancellationToken.None);
+
+        /// <summary>Abandons the run: the pump's callback threw. Cannot throw, so needs no bridge.</summary>
+        public void abort() => _aborted = true;
+
+        internal void ThrowIfAborted()
+        {
+            if (_aborted)
+                throw new OperationCanceledException("ctx.llm.act: the onDelta callback failed; the run was abandoned.");
+        }
+
+        internal void OfferDelta(string delta) => _deltas?.Writer.TryWrite(delta);
+
+        internal void CompleteDeltas() => _deltas?.Writer.TryComplete();
+    }
+
+    /// <summary>
+    /// The LLM ⇄ tool loop behind <see cref="act"/>: pre-flight budget gate, one chat turn, the
+    /// tool call it returns (through the permission gate), the result fed back — until the model
+    /// answers without a tool call, the iteration cap, or an interrupt. Runs no JS: its results
+    /// are CLR objects, and the deltas it observes go to the native sink and the session's
+    /// channel, never to the script directly.
+    /// </summary>
+    private async Task<object> RunActAsync(ActSession session)
+    {
         var completedIterations = 0;
         try
         {
-            for (var i = 0; i < maxIterations; i++)
+            if (_provider is null)
+                return new { output = $"<undefined-llm:act:{session.Prompt}>", iterations = 0 };
+
+            var messages = session.Messages;
+            for (var i = 0; i < session.MaxIterations; i++)
             {
                 completedIterations = i;
                 _ct.ThrowIfCancellationRequested();
+                session.ThrowIfAborted();
                 // Pre-flight gate: refuse to pay for another LLM turn once any budget
                 // dimension is spent. Throws BudgetExhaustedException (surfaced typed to the
                 // host via JsCrew.TryUnwrapTypedHostException).
@@ -635,10 +782,10 @@ public sealed partial class JsLlmFacade
                 using var activity = StartChatActivity("act");
                 activity?.SetTag("orkeon.llm.act.iteration", i);
 
-                var cfg = toolSchemas is null
-                    ? baseCfg
-                    : baseCfg with { Tools = toolSchemas, ToolMode = ToolCallMode.Auto };
-                var resp = await SendChatAsync(messages.ToArray(), cfg, onDelta).ConfigureAwait(false);
+                var cfg = session.ToolSchemas is null
+                    ? session.Config
+                    : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
+                var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
                 _budget?.RecordTokens(resp.TokensUsed);
                 ReportUsage(resp, "act", promptMessages: messages);
 
@@ -649,7 +796,7 @@ public sealed partial class JsLlmFacade
                 var (toolName, toolArgs) = call.Value;
                 activity?.SetTag("orkeon.llm.act.tool", toolName);
 
-                var resultText = await ResolveToolResultAsync(toolName, toolArgs, permissionMode, activity).ConfigureAwait(false);
+                var resultText = await ResolveToolResultAsync(toolName, toolArgs, session.PermissionMode, activity).ConfigureAwait(false);
 
                 // Omit the assistant tool-call turn (empty content) to avoid the strict tool-role
                 // protocol; feed the result back as a plain user turn. The tool schemas stay in
@@ -671,29 +818,35 @@ public sealed partial class JsLlmFacade
                 interrupted = true,
             };
         }
+        finally
+        {
+            // Return, interrupt, throw or cancellation: the pump reading `deltas` must always
+            // see the end of the channel, or `act` would never settle.
+            session.CompleteDeltas();
+        }
 
         return new
         {
             output = "(max tool-call iterations reached without a final answer)",
-            iterations = maxIterations,
+            iterations = session.MaxIterations,
             exhausted = true,
         };
     }
 
     /// <summary>
-    /// One chat turn for the tool-call loop. When the caller supplied onDelta — or the host
-    /// registered a native delta sink (F5 L3, e.g. the REPL's incremental renderer) — and the
-    /// provider streams, consume the SSE chat path: content deltas feed the sink (plain C# call)
-    /// and the JS callback (sequentially, on this single enumeration — the Jint engine is never
-    /// entered concurrently), and the Completed event yields a response iso-shape with ChatAsync.
+    /// One chat turn for the tool-call loop. When the script asked for deltas (<c>onDelta</c>) —
+    /// or the host registered a native delta sink (F5 L3, e.g. the REPL's incremental
+    /// renderer) — and the provider streams, consume the SSE chat path: content deltas feed the
+    /// sink (plain C# call) and the session's channel (read by the script's pump, on the
+    /// engine's thread), and the Completed event yields a response iso-shape with ChatAsync.
     /// Otherwise falls back to the buffered <see cref="ILlmProvider.ChatAsync"/>.
     /// </summary>
-    private async Task<LlmResponse> SendChatAsync(LlmMessage[] messages, LlmConfig cfg, JsValue? onDelta)
+    private async Task<LlmResponse> SendChatAsync(LlmMessage[] messages, LlmConfig cfg, ActSession session)
     {
-        if ((onDelta is not null || _deltaSink is not null) &&
+        if ((session.StreamsDeltas || _deltaSink is not null) &&
             _provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider streamingProvider &&
             streamingProvider.SupportsStreaming)
-            return await ChatViaStreamAsync(streamingProvider, messages, cfg, onDelta).ConfigureAwait(false);
+            return await ChatViaStreamAsync(streamingProvider, messages, cfg, session).ConfigureAwait(false);
         return await _provider!.ChatAsync(messages, cfg, _ct).ConfigureAwait(false);
     }
 
@@ -791,17 +944,18 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// Consumes the streamed chat completion: every content delta feeds the host's native
-    /// delta sink (when registered) and the JS <paramref name="onDelta"/> callback (when
-    /// supplied), and the terminal event's response replaces the buffered <c>ChatAsync</c>
-    /// result. Callbacks run sequentially on this single enumeration; both consumers must
-    /// stay cheap (rendering, logging). The sink's turn terminator is only emitted when at
-    /// least one delta was rendered, so tool-call-only turns leave the console untouched.
+    /// delta sink (when registered) and the session's channel (when the script asked for
+    /// deltas), and the terminal event's response replaces the buffered <c>ChatAsync</c>
+    /// result. Nothing here enters the engine — this is a thread-pool continuation, and the
+    /// script's callback is driven from JS by the pump that reads the channel. The sink must
+    /// stay cheap (rendering, logging). Its turn terminator is only emitted when at least one
+    /// delta was rendered, so tool-call-only turns leave the console untouched.
     /// </summary>
     private async Task<LlmResponse> ChatViaStreamAsync(
         Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider provider,
         LlmMessage[] messages,
         LlmConfig cfg,
-        JsValue? onDelta)
+        ActSession session)
     {
         LlmResponse? final = null;
         var sankDeltas = false;
@@ -809,13 +963,15 @@ public sealed partial class JsLlmFacade
         {
             if (ev.Kind == LlmStreamEventKind.ContentDelta && !string.IsNullOrEmpty(ev.Delta))
             {
+                // An abandoned run stops mid-stream: leaving the enumeration disposes it, and
+                // with it the provider's HTTP read.
+                session.ThrowIfAborted();
                 if (_deltaSink is not null)
                 {
                     _deltaSink.OnDelta(ev.Delta);
                     sankDeltas = true;
                 }
-                if (onDelta is not null)
-                    _engine.Invoke(onDelta, ev.Delta);
+                session.OfferDelta(ev.Delta);
             }
             else if (ev.Kind == LlmStreamEventKind.Completed)
             {
@@ -825,17 +981,6 @@ public sealed partial class JsLlmFacade
         if (sankDeltas)
             _deltaSink!.OnTurnCompleted();
         return final ?? new LlmResponse { Content = "" };
-    }
-
-    /// <summary>
-    /// Reads the optional <c>onDelta</c> act option: a JS function invoked with each streamed
-    /// content delta. Null when absent or not callable (the loop then uses buffered ChatAsync).
-    /// </summary>
-    private static JsValue? ResolveOnDelta(JsValue? options)
-    {
-        if (options is null || options.IsUndefined() || options.IsNull() || !options.IsObject()) return null;
-        var fn = options.Get("onDelta");
-        return fn is Jint.Native.Function.Function ? fn : null;
     }
 
     /// <summary>

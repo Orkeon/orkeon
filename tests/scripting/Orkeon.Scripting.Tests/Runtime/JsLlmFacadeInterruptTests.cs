@@ -1,4 +1,5 @@
 using Jint;
+using Jint.Runtime;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
@@ -7,8 +8,9 @@ namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
 /// F1.5: <c>ctx.llm.interrupt()</c> — a local interrupt settles <c>act</c> gracefully with
-/// <c>{ interrupted: true }</c>, while host-token cancellation keeps its hard
-/// <see cref="OperationCanceledException"/> semantics.
+/// <c>{ interrupted: true }</c>, while host-token cancellation keeps its hard semantics: the
+/// call rejects, and the crew's root pump turns that rejection into the host's
+/// <see cref="OperationCanceledException"/>.
 /// </summary>
 public sealed class JsLlmFacadeInterruptTests
 {
@@ -22,7 +24,7 @@ public sealed class JsLlmFacadeInterruptTests
         facade.interrupt();
         Assert.True(facade.isInterrupted);
 
-        var result = await facade.act("hello", null);
+        var result = await facade.ActAsync(engine, "hello", null);
 
         Assert.True(result.Get("interrupted").AsBoolean());
         Assert.Equal("(interrupted)", result.Get("output").AsString());
@@ -49,14 +51,14 @@ public sealed class JsLlmFacadeInterruptTests
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
         facadeRef = facade;
 
-        var result = await facade.act("loop", null);
+        var result = await facade.ActAsync(engine, "loop", null);
 
         Assert.True(result.Get("interrupted").AsBoolean());
         Assert.Equal(1, provider.ChatCalls);
     }
 
     [Fact]
-    public async Task Host_cancellation_still_throws_OperationCanceledException()
+    public async Task Host_cancellation_still_rejects_act_instead_of_settling_gracefully()
     {
         using var engine = new Engine();
         using var hostCts = new CancellationTokenSource();
@@ -65,7 +67,11 @@ public sealed class JsLlmFacadeInterruptTests
 
         await hostCts.CancelAsync();
 
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => facade.act("hello", null));
+        // The loop's Task is cancelled, which Jint's task bridge reports as its own
+        // ExecutionCanceledException on the rejection — never the graceful { interrupted }
+        // result. JsCrew.UnwrapPromise maps a rejection under a cancelled token to the host's
+        // OperationCanceledException; that rule is the crew's, not the facade's.
+        await Assert.ThrowsAsync<ExecutionCanceledException>(() => facade.ActAsync(engine, "hello", null));
         Assert.Equal(0, provider.ChatCalls);
     }
 
