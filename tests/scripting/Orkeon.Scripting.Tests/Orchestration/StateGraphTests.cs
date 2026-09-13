@@ -278,10 +278,12 @@ public sealed class StateGraphTests
     }
 
     [Fact]
-    public async Task StateGraph_runStream_abandoned_early_still_ends_the_run()
+    public async Task StateGraph_runStream_break_stops_the_walk_and_leaves_the_graph_reusable()
     {
         // `break` inside `for await` closes the generator: the walk must stop after the hop
-        // that was consumed, and the graph must stay usable for a full run afterwards.
+        // that was consumed — no further node runs — and the graph must stay usable for a
+        // full run afterwards. The handle release in the generator's `finally` is not
+        // observable from here (each run gets its own); what is observed is the walk.
         var engine = NewEngine();
         var visited = new List<string>();
         engine.SetValue("__visit", new Action<string>(visited.Add));
@@ -294,7 +296,6 @@ public sealed class StateGraphTests
                     c: (s) => { __visit("c"); return s; },
                 },
                 edges: { [START]: "a", a: "b", b: "c", c: END },
-                graphConfig: { maxTotalDurationSeconds: 30 },
             });
             """);
         var breakAfterFirst = Fn(engine, """

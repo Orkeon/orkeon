@@ -22,17 +22,18 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 /// <remarks>
 /// <para>What the skipped scenarios have in common (SCR-25): a CLR continuation calls back
-/// into the engine — a node function, an agent body, a state transform, a topic handler, an
-/// FSM hook, a lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one
-/// draining the event loop, or it drains synchronously from inside a job. Jint's loop is
-/// exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a
-/// job cannot pump ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>).
-/// Mixing a synchronous drain (<c>JsCrew.UnwrapPromise</c>) with an asynchronous one
+/// into the engine — an agent body, a state transform, a topic handler, an FSM hook, a
+/// lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one draining the
+/// event loop, or it drains synchronously from inside a job. Jint's loop is exclusive per drain
+/// but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a job cannot pump
+/// ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>). Mixing a
+/// synchronous drain (<c>JsCrew.UnwrapPromise</c>) with an asynchronous one
 /// (<c>JsStateMachine.send</c>) loses the async side's wake-up, and a synchronous drain reached
-/// from inside a job never settles.</para>
-/// <para>Two scenarios (<c>runStream</c> on a graph and on a crew) are not races: they pin the
-/// shape the rewrite must produce — a JS async generator, since Jint does not expose an
-/// <c>IAsyncEnumerable</c> as an async iterable.</para>
+/// from inside a job never settles. The state-graph scenarios are live: its traversal loop is a
+/// JS trampoline since SCR-25 T1.</para>
+/// <para>One scenario (<c>runStream</c> on a crew) is not a race: it pins the shape the rewrite
+/// must produce — a JS async generator, since Jint does not expose an <c>IAsyncEnumerable</c>
+/// as an async iterable — the shape the graph's <c>runStream</c> already has.</para>
 /// <para>A 20 s guard turns the runtime's 30-minute body timeout into a failure.</para>
 /// </remarks>
 public sealed class EngineThreadingContractTests

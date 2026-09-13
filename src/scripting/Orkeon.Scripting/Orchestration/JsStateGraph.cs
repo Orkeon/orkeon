@@ -42,9 +42,15 @@ public sealed record JsGraphConfig(
 /// synchronous helpers — the budget, the edge table, the node table, the cancellation.</para>
 /// <para>Every helper that can fail throws through <see cref="JsHostError"/>: a raw CLR exception
 /// from a delegate would skip the trampoline's <c>finally</c>, leave its promise pending and
-/// erupt out of the drainer. The bridged Error carries the typed exception on <c>clr</c>, so the
-/// crew boundary still maps a cancellation to <see cref="OperationCanceledException"/> and a
-/// budget overrun to <see cref="InvalidOperationException"/> with the same messages as before.</para>
+/// erupt out of the drainer. The bridged Error carries the typed exception on <c>clr</c>, with
+/// the same messages as before — <see cref="InvalidOperationException"/> for a budget overrun,
+/// <see cref="InvalidScriptException"/> for an undeclared node or edge,
+/// <see cref="OperationCanceledException"/> for a cancelled run — and
+/// <see cref="JsHostError.Unwrap"/> recovers it from the rejected value. The crew boundary
+/// (<c>JsCrew.UnwrapPromise</c>) maps a cancellation of the crew's own token to a bare
+/// <see cref="OperationCanceledException"/>; every other rejection, a <c>maxTotalDuration</c>
+/// deadline included, reaches a C# caller as Jint's <c>PromiseRejectedException</c> carrying
+/// that Error.</para>
 /// </remarks>
 #pragma warning disable IDE1006
 #pragma warning disable CS1591 // JS-interop mirror of StateGraph in Typings/graph.d.ts; that declaration is the contract scripts read.
@@ -52,60 +58,48 @@ public sealed class JsStateGraph
 {
     /// <summary>
     /// The factory the trampolines come from. Called once per graph with the CLR helpers; the
-    /// object it returns holds the two script-facing functions. <c>stop</c> is the promise of
-    /// one run's cancellation (ambient token or <c>maxTotalDuration</c>), and every await on
-    /// script code races it, so a slow node or edge is abandoned when the run is cancelled and
-    /// not at the next hop — what the CLR loop's token-observing await used to do. The task
-    /// behind it faults on a pool thread, where nothing can build a bridged Error, so its
-    /// rejection is re-raised through <c>throwIfCancelled</c> on the engine thread and the run
-    /// rejects with the same typed <see cref="OperationCanceledException"/> as a hop check. The
-    /// check at the top of each hop covers the synchronous case, where the race would never see
-    /// the rejection first.
+    /// object it returns holds the two script-facing functions. <c>runStream</c> owns the
+    /// traversal: one hop per iteration, the handle from <c>begin()</c> released in its
+    /// <c>finally</c> — reached on completion, on a throw, and when the consumer breaks out.
+    /// <c>run</c> is that stream consumed to its last state. <c>stop</c> is the promise of one
+    /// run's cancellation (ambient token or <c>maxTotalDuration</c>), and every await on script
+    /// code races it, so a slow node or edge is abandoned when the run is cancelled and not at
+    /// the next hop — what the CLR loop's token-observing await used to do. The task behind it
+    /// faults on a pool thread, where nothing can build a bridged Error, so its rejection is
+    /// re-raised through <c>throwIfCancelled</c> on the engine thread and the run rejects with
+    /// the same typed <see cref="OperationCanceledException"/> as a hop check. The check at the
+    /// top of each hop covers the synchronous case, where the race would never see the
+    /// rejection first.
     /// </summary>
     private const string TrampolineSource = """
-        (begin, end, cancelled, edge, resolveTarget, node, enforceBudget, throwIfCancelled, START, END) => {
-            const start = () => {
-                const run = begin();
-                const stop = cancelled(run).catch(() => { throwIfCancelled(run); });
-                const wait = (value) => Promise.race([value, stop]);
-                const next = async (from, state) => {
-                    const e = edge(from);
-                    return resolveTarget(from, typeof e === "function" ? await wait(e(state)) : e);
-                };
-                const step = async (current, state) => {
-                    throwIfCancelled(run);
-                    enforceBudget(run, current);
-                    return await wait(node(current)(state));
-                };
-                return { run, next, step };
+        (begin, end, cancellation, edge, resolveTarget, node, enforceBudget, throwIfCancelled, START, END) => {
+            async function* runStream(initial) {
+                const handle = begin();
+                try {
+                    const stop = cancellation(handle).catch(() => { throwIfCancelled(handle); });
+                    const wait = (value) => Promise.race([value, stop]);
+                    const next = async (from, state) => {
+                        const e = edge(from);
+                        return resolveTarget(from, typeof e === "function" ? await wait(e(state)) : e);
+                    };
+                    let state = initial;
+                    let current = await next(START, state);
+                    while (current !== END) {
+                        throwIfCancelled(handle);
+                        enforceBudget(handle, current);
+                        const from = current;
+                        state = await wait(node(current)(state));
+                        current = await next(current, state);
+                        yield { fromNode: from, toNode: current === END ? "END" : current, state };
+                    }
+                } finally { end(handle); }
+            }
+            const run = async (initial) => {
+                let state = initial;
+                for await (const hop of runStream(initial)) state = hop.state;
+                return state;
             };
-            return {
-                async run(initial) {
-                    const t = start();
-                    try {
-                        let state = initial;
-                        let current = await t.next(START, state);
-                        while (current !== END) {
-                            state = await t.step(current, state);
-                            current = await t.next(current, state);
-                        }
-                        return state;
-                    } finally { end(t.run); }
-                },
-                async *runStream(initial) {
-                    const t = start();
-                    try {
-                        let state = initial;
-                        let current = await t.next(START, state);
-                        while (current !== END) {
-                            const from = current;
-                            state = await t.step(current, state);
-                            current = await t.next(current, state);
-                            yield { fromNode: from, toNode: current === END ? "END" : current, state };
-                        }
-                    } finally { end(t.run); }
-                },
-            };
+            return { run, runStream };
         }
         """;
 
@@ -149,7 +143,7 @@ public sealed class JsStateGraph
         Func<GraphRun> begin = () => JsHostError.Guard(_engine,
             () => new GraphRun(_config.MaxTotalDuration, _ambientCt?.Invoke() ?? CancellationToken.None));
         Action<GraphRun> end = run => run.Dispose();
-        Func<GraphRun, Task<JsValue>> cancelled = run => run.Cancelled;
+        Func<GraphRun, Task<JsValue>> cancellation = run => run.Cancellation;
         Func<string, JsValue> edge = from => JsHostError.Guard(_engine, () => ResolveEdge(from));
         Func<string, JsValue, string> resolveTarget = (from, target) => JsHostError.Guard(_engine, () => ResolveTarget(from, target));
         Func<string, JsValue> node = current => JsHostError.Guard(_engine, () => ResolveNode(current));
@@ -158,7 +152,7 @@ public sealed class JsStateGraph
 
         var factory = _engine.Evaluate(TrampolineFactory);
         return _engine.Invoke(factory,
-            [begin, end, cancelled, edge, resolveTarget, node, enforceBudget, throwIfCancelled, GraphSentinels.Start, GraphSentinels.End]);
+            [begin, end, cancellation, edge, resolveTarget, node, enforceBudget, throwIfCancelled, GraphSentinels.Start, GraphSentinels.End]);
     }
 
     private JsValue ResolveNode(string current)
@@ -249,7 +243,7 @@ public sealed class JsStateGraph
         }
 
         public CancellationToken Token { get; }
-        public Task<JsValue> Cancelled => _cancelled.Task;
+        public Task<JsValue> Cancellation => _cancelled.Task;
         public Dictionary<string, int> Visits { get; } = new(StringComparer.Ordinal);
         public HashSet<string> SeenOnce { get; } = new(StringComparer.Ordinal);
         public int RetryCycles { get; set; }
