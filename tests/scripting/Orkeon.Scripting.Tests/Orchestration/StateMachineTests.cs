@@ -190,10 +190,7 @@ public sealed class StateMachineTests
                         onExit: (c) => { __seen.push("exit:" + c.state + ":" + c.payload.id); },
                         transitions: { go: { target: "b", guard: (c) => { __seen.push("guard:" + c.state + ":" + c.payload.id); return true; } } }
                     },
-                    b: {
-                        onEntry: (c) => { __seen.push("enter:" + c.state + ":" + c.payload.id); },
-                        transitions: { back: { target: "a" } }
-                    },
+                    b: { onEntry: (c) => { __seen.push("enter:" + c.state + ":" + c.payload.id); } },
                 }
             });
             """);

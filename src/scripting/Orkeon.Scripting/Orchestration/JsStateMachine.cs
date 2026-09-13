@@ -17,8 +17,9 @@ namespace Orkeon.Scripting.Orchestration;
 /// another: the async side's wake-up was lost against that drain, and the next hook plus its
 /// context object were built off the engine thread. With the loop in JS every hook runs as a
 /// promise reaction on whichever thread drains the loop, and the CLR only supplies three
-/// synchronous helpers — <c>lookup</c>, <c>current</c> and <c>commit</c> — that never call back
-/// into the engine.</para>
+/// synchronous helpers — <c>lookup</c>, <c>current</c> and <c>commit</c> — that never invoke a
+/// script callback and re-enter the engine only synchronously, through the
+/// <see cref="JsHostError"/> bridge when they fail.</para>
 /// <para>The helpers that can fail go through <see cref="JsHostError"/>: a raw CLR exception
 /// thrown inside an async JS function skips <c>catch</c> and <c>finally</c> and leaves the
 /// promise pending, whereas a bridged one rejects it like a script throw.</para>
@@ -66,10 +67,10 @@ public sealed class JsStateMachine
     private JsValue BuildSendFunction()
     {
         Func<string?, JsFsmTransitionView?> lookup = eventName => JsHostError.Guard(_engine, () => Lookup(eventName));
-        Func<string> current = () => this.current;
+        Func<string> readCurrent = () => current;
         Action<string> commit = target => JsHostError.Guard(_engine, () => Commit(target));
         var factory = _engine.Evaluate(SendFactorySource);
-        return _engine.Invoke(factory, [lookup, current, commit]);
+        return _engine.Invoke(factory, [lookup, readCurrent, commit]);
     }
 
     /// <summary>
