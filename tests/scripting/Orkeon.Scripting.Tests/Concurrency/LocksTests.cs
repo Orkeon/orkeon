@@ -225,23 +225,28 @@ public sealed class LocksTests
     }
 
     /// <summary>
-    /// The holder sleeps far longer than the run is allowed to live. Far, not merely longer:
-    /// both ends are timers, and when the thread pool is starved (the contention harness of
-    /// <c>EngineThreadingContractTests</c> blocks 24 pool threads at once — a 150 ms timer was
-    /// measured firing 18 s late) every timer that has fallen due fires in list order, so a
-    /// sleep that could fall due inside the stall would let the body finish before the cancel
-    /// and the test would see no exception at all.
+    /// A waiter queued on a named lock is released by the run's cancellation, and the run
+    /// rejects as cancelled. The cancel is raised from inside the holding section rather than
+    /// by a wall-clock timer: under the contention harness of <c>EngineThreadingContractTests</c>
+    /// (24 scripts at once) a 150 ms timer was measured firing 18 s late, which let the holder
+    /// finish first and the test see no exception at all.
     /// </summary>
     [Fact]
     public async Task ctx_lock_signal_cancellation_releases_waiter()
     {
         var engine = NewEngine();
         InstallSleep(engine);
+        // Cancelled from inside the first section, once it holds "X" and the second lock call
+        // is queued on the semaphore. A wall-clock timer loses that race when the pool is
+        // saturated — the threading contract tests run 24 scripts at once — and the 5 s
+        // sleep then completes before the timer callback ever gets a thread.
+        using var cts = new CancellationTokenSource();
+        engine.SetValue("__cancel", new Action(cts.Cancel));
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => {
                     await Promise.all([
-                        ctx.lock("X", async () => { await __sleep(120000, ctx.signal); }),
+                        ctx.lock("X", async () => { __cancel(); await __sleep(5000, ctx.signal); }),
                         ctx.lock("X", async () => { return "should-not-run"; }),
                     ]);
                     return "done";
@@ -249,7 +254,6 @@ public sealed class LocksTests
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(150);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => crew.RunAsync(null, cts.Token));
     }
