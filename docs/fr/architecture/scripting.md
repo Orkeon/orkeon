@@ -151,7 +151,7 @@ désormais une règle, que les reproducteurs de
   draine, quel qu'il soit.
 - **Un rappel CLR ne rentre jamais dans le moteur après un `await`.** Un délégué exposé au
   script peut rendre une valeur synchrone, une `Task` dont le résultat est une valeur CLR
-  (Jint la règle sur la boucle), ou une promesse JS obtenue synchronement. Il n'appelle
+  (Jint la règle sur la boucle), ou une promesse JS obtenue de manière synchrone. Il n'appelle
   jamais `Invoke`, `Evaluate`, `FromObject` ni `SetValue` depuis une continuation, et ne
   draine jamais depuis l'intérieur d'un job.
 - **Une aide CLR signale un échec par un throw JavaScript.** `JsHostError` enveloppe

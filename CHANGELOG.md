@@ -22,7 +22,7 @@ body's first `await` — and was delivered when it came before; FSM `onEntry`/`o
 await the model timed out; an async `onAgentStart` reached through `ctx.spawn` timed out; an
 async `onCrewStart` never returned; `act`'s `onDelta` ran on a pool thread while the body was
 drained on another; and `for await` over `runStream` threw *The value is not iterable*. The
-fourteen reproducers of `EngineThreadingContractTests` pin the family; all of them run.
+fifteen reproducers of `EngineThreadingContractTests` pin the family; all of them run.
 
 The fix is one rule, applied everywhere: **every loop that calls back into script code lives
 in JavaScript**. `crew.run`/`runAgent`/`runStream`, `stateGraph.run`/`runStream`,
@@ -53,7 +53,8 @@ changes for scripts:
 - Cancellation bypasses `onError`: a cancelled run rethrows without consulting the policy
   (it used to consult it with code `unknown`, then throw at the next step anyway). And
   `err.code` for a failure that arrived as a faulted `Task` maps from the innermost CLR
-  exception (`receive_timeout`, `state_mutation`, …) instead of `unknown` for the wrapper.
+  exception (`receive_timeout` for a `ctx.receive({ timeout })` that expired, …) instead of
+  `unknown` for the wrapper.
 - An async `onAgentStart`/`onAgentStop` that rejects is logged as a warning; it no longer
   throws out of `crew.add`, `ctx.spawn` or `crew.remove`, which stay synchronous and never
   drain the hook.
