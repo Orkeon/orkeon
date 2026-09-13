@@ -1,5 +1,4 @@
 using Jint;
-using Jint.Runtime;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Scripting.Runtime;
@@ -58,7 +57,7 @@ public sealed class JsLlmFacadeInterruptTests
     }
 
     [Fact]
-    public async Task Host_cancellation_still_rejects_act_instead_of_settling_gracefully()
+    public async Task Host_cancellation_still_throws_OperationCanceledException()
     {
         using var engine = new Engine();
         using var hostCts = new CancellationTokenSource();
@@ -67,22 +66,80 @@ public sealed class JsLlmFacadeInterruptTests
 
         await hostCts.CancelAsync();
 
-        // The loop's Task is cancelled, which Jint's task bridge reports as its own
-        // ExecutionCanceledException on the rejection — never the graceful { interrupted }
-        // result. JsCrew.UnwrapPromise maps a rejection under a cancelled token to the host's
-        // OperationCanceledException; that rule is the crew's, not the facade's.
-        await Assert.ThrowsAsync<ExecutionCanceledException>(() => facade.ActAsync(engine, "hello", null));
+        // The loop's Task is cancelled and act rejects — never the graceful { interrupted }
+        // result; seen from the host (ActAsHostAsync applies the root pump's rule) that is
+        // the host's own OperationCanceledException, whatever Jint's task bridge rendered the
+        // rejection as. Proven by mutation: a loop settling host cancellation as a local
+        // interrupt returns a value here and fails the assertion.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => facade.ActAsHostAsync(engine, "hello", null, hostCts.Token));
         Assert.Equal(0, provider.ChatCalls);
     }
+
+    /// <summary>
+    /// The same contract end to end, through the crew that owns the rule: a host cancelled while
+    /// <c>act</c> is in flight comes out of <c>crew.RunAsync</c> as the host's
+    /// <see cref="OperationCanceledException"/>, never as a settled <c>{ interrupted: true }</c>
+    /// the script could keep working from.
+    /// </summary>
+    [Fact]
+    public async Task Host_cancellation_during_act_surfaces_as_OperationCanceledException_from_the_crew()
+    {
+        using var hostCts = new CancellationTokenSource();
+        // The provider suspends before it cancels the host and asks for a tool, so the crew is
+        // already draining the body when the loop hits its next cancellation check and the
+        // rejection is what the root pump maps. The crew also checks its token before it
+        // starts draining; a scheduler that parks the test thread across the provider's whole
+        // suspension would let that check answer first — the same exception, so the test can
+        // only lose its reach, never fail for the wrong reason.
+        var provider = new CountingProvider(_ =>
+        {
+            hostCts.Cancel();
+            return new LlmResponse
+            {
+                Content = "",
+                RawResponseBody = "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
+                                  "{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"missing_tool\",\"arguments\":\"{}\"}}]}}]}",
+            };
+        }, suspendFirst: true);
+        using var engine = new Orkeon.Scripting.JsEngineFactory(llmProvider: provider).Create();
+        var crew = BuildCrew(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (_input, ctx) => {
+                    const r = await ctx.llm.act("loop");
+                    return "settled:" + JSON.stringify(r);
+                })
+                .build();
+            crewBuilder().name("c").withAgent(a).build();
+            """);
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => crew.RunAsync(null, hostCts.Token));
+        Assert.Equal(1, provider.ChatCalls);
+    }
+
+    private static JsCrew BuildCrew(Engine engine, string script)
+        => (JsCrew)engine.Evaluate(script).ToObject()!;
 
     // ── fakes ────────────────────────────────────────────────────────────────
 
     private sealed class CountingProvider : ILlmProvider
     {
         private readonly Func<LlmMessage[], LlmResponse> _respond;
+        private readonly bool _suspendFirst;
         public int ChatCalls { get; private set; }
 
-        public CountingProvider(Func<LlmMessage[], LlmResponse> respond) => _respond = respond;
+        /// <param name="respond">The answer to every chat call.</param>
+        /// <param name="suspendFirst">
+        /// Suspend for a moment before answering, so the call is a real suspension and whatever
+        /// the callback does (cancel the host, say) happens while the crew is draining the body
+        /// — not before the crew's own token check, which would settle the case without the
+        /// loop ever being involved. A yield alone is not enough: the pool continuation wins
+        /// the race to that check.
+        /// </param>
+        public CountingProvider(Func<LlmMessage[], LlmResponse> respond, bool suspendFirst = false)
+        {
+            _respond = respond;
+            _suspendFirst = suspendFirst;
+        }
 
         public string Name => "fake";
         public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
@@ -90,11 +147,13 @@ public sealed class JsLlmFacadeInterruptTests
         public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
             => Task.FromResult(_respond(Array.Empty<LlmMessage>()));
 
-        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
+        public async Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
         {
             ct.ThrowIfCancellationRequested();
+            if (_suspendFirst)
+                await Task.Delay(100, ct);
             ChatCalls++;
-            return Task.FromResult(_respond(messages));
+            return _respond(messages);
         }
     }
 }

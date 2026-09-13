@@ -283,9 +283,15 @@ public sealed partial class JsLlmFacade
         // `usage` / `reasoningChunks` are getters onto the CLR observations object,
         // so the script reads them when IT is executing (after the loop) instead of
         // the stream calling into the engine from another thread.
-        var factory = _engine.Evaluate(StreamIterableFactorySource);
-        return _engine.Invoke(factory, next, ret, observations);
+        _streamIterableFactory ??= _engine.Evaluate(StreamIterableFactorySource);
+        return _engine.Invoke(_streamIterableFactory, next, ret, observations);
     }
+
+    // Both factories are constants: evaluated once per facade (by the script, on the
+    // draining thread — the getters that reach them are synchronous) and invoked once per
+    // sequence. A script streaming in a loop must not re-parse the same source every turn.
+    private JsValue? _streamIterableFactory;
+    private JsValue? _asyncIterableFactory;
 
     private const string StreamIterableFactorySource = """
         (next, ret, obs) => ({
@@ -297,14 +303,11 @@ public sealed partial class JsLlmFacade
 
     /// <summary>
     /// The bare async-iterable protocol over a CLR sequence: what <c>stream()</c> returns
-    /// minus its side-channel getters. The factory is evaluated once per facade and invoked
-    /// once per sequence; <see cref="ActSession.deltas"/> is built with it.
+    /// minus its side-channel getters. <see cref="ActSession.deltas"/> is built with it.
     /// </summary>
     private const string AsyncIterableFactorySource = """
         (next, ret) => ({ [Symbol.asyncIterator]() { return { next: next, return: ret }; } })
         """;
-
-    private JsValue? _asyncIterableFactory;
 
     private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, CancellationToken ct)
     {
@@ -651,6 +654,8 @@ public sealed partial class JsLlmFacade
 
     // `beginAct` is synchronous and Guard-bridged: it reads the options while the script is
     // still executing (a JsValue is never read after an await) and hands back the session.
+    // `onDelta` is read exactly once, as the CLR side used to: a getter or a Proxy on the
+    // options object observes one read per call, not two.
     // `s.run()` is the loop as a Task whose result is a CLR object, settled on the engine's own
     // loop; `s.deltas` an async iterable over the delta channel. The pump is awaited in
     // `finally` so that every delta is delivered before `act` settles and a pump failure is
@@ -660,7 +665,8 @@ public sealed partial class JsLlmFacade
     // `await pump` rethrows from the finally.
     private const string ActFactorySource = """
         (beginAct) => async function act(prompt, options) {
-            const onDelta = options && typeof options.onDelta === "function" ? options.onDelta : null;
+            const cb = options ? options.onDelta : undefined;
+            const onDelta = typeof cb === "function" ? cb : null;
             const s = beginAct(prompt, options, onDelta !== null);
             const pump = onDelta
                 ? (async () => {

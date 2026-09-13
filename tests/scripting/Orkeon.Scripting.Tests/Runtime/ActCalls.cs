@@ -17,8 +17,10 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// function and settles the promise. A rejection carrying a CLR exception is rethrown as that
 /// exception, the way <c>JsCrew.UnwrapPromise</c> surfaces it to a host: the loop's own faulted
 /// Task (its aggregate unwrapped), or Jint's <see cref="ExecutionCanceledException"/> for a
-/// cancelled one — which the root pumps, not this helper, turn into the host's
-/// <see cref="OperationCanceledException"/>.
+/// cancelled one. What the root pump adds on top — a rejection under a cancelled host token is
+/// the host's <see cref="OperationCanceledException"/>, whatever Jint rendered it as — is
+/// <see cref="ActAsHostAsync"/>, kept under its own name so the token-less call sites do not
+/// read as forgetting a token.
 /// </remarks>
 internal static class ActCalls
 {
@@ -33,6 +35,24 @@ internal static class ActCalls
         {
             ExceptionDispatchInfo.Capture(clr is AggregateException { InnerExceptions.Count: 1 } agg ? agg.InnerExceptions[0] : clr).Throw();
             throw;
+        }
+    }
+
+    /// <summary>
+    /// <see cref="ActAsync"/> as the host sees it: the rule <c>JsCrew.UnwrapPromise</c> applies at
+    /// the root, where any rejection under a cancelled <paramref name="hostToken"/> is the host's
+    /// <see cref="OperationCanceledException"/>. A settled result is never touched, so a loop that
+    /// settled host cancellation gracefully still fails an assertion that expects the throw.
+    /// </summary>
+    public static async Task<JsValue> ActAsHostAsync(this JsLlmFacade facade, Engine engine, string prompt, JsValue? options, CancellationToken hostToken)
+    {
+        try
+        {
+            return await ActAsync(facade, engine, prompt, options);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException && hostToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException("act rejected under a cancelled host token.", ex, hostToken);
         }
     }
 }
