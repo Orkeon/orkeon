@@ -32,6 +32,9 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
 {
     private static readonly TimeSpan SettleGuard = TimeSpan.FromSeconds(20);
 
+    /// <summary>Time given to a cancelled drain to surface its cancellation before the wait itself gives up.</summary>
+    private static readonly TimeSpan ReleaseSlack = TimeSpan.FromSeconds(5);
+
     /// <summary>The one file of the catalogue this class cannot run, and why — see the class remarks.</summary>
     private const string RagExample = "08-rag.ork.ts";
 
@@ -132,7 +135,14 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
         Assert.Equal(2, digest.Length);
         Assert.StartsWith("[north] R:Turn this into a digest line: R:", digest[0], StringComparison.Ordinal);
         Assert.StartsWith("[south] R:Turn this into a digest line: R:", digest[1], StringComparison.Ordinal);
-        Assert.StartsWith("R:Write a two-line summary of:", Assert.IsType<string>(map["summary"]), StringComparison.Ordinal);
+
+        // The digest lines above only prove that both handlers ran before the script ended. The
+        // editor's prompt is what pins that each publish waited for its handler: the second crew
+        // built it from the digest as it stood when the first run settled, and a delivery loop that
+        // stopped awaiting handlers would have left the south line (3 ms away) out of it.
+        Assert.Equal(
+            "R:Write a two-line summary of:\n" + digest[0] + "\n" + digest[1],
+            Assert.IsType<string>(map["summary"]));
     }
 
     /// <summary>
@@ -157,14 +167,21 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
             llmProvider: new SlowProvider());
         var host = new ScriptHost(fs, transpiler, factory);
 
+        // The guard token reaches the root pump: a script that hangs on an idle wait of the drain
+        // releases its pool thread and the engine gate when the guard fires, instead of running on
+        // orphaned until the process exits. The WaitAsync keeps the failure deterministic for a drain
+        // that never reaches an idle wait (a regression to the nested pump of before SCR-25).
+        using var guard = CancellationTokenSource.CreateLinkedTokenSource(ct);
+        guard.CancelAfter(SettleGuard);
         object? result;
         try
         {
-            result = await host.RunFromFileAsync(physicalPath, $"/script/{fileName}", ct).WaitAsync(SettleGuard, ct);
+            result = await host.RunFromFileAsync(physicalPath, $"/script/{fileName}", guard.Token)
+                .WaitAsync(SettleGuard + ReleaseSlack, ct);
         }
-        catch (TimeoutException)
+        catch (Exception ex) when (guard.IsCancellationRequested && !ct.IsCancellationRequested)
         {
-            Assert.Fail($"HANG: {fileName} did not settle within {SettleGuard.TotalSeconds:0} s against a provider that suspends.");
+            Assert.Fail($"HANG: {fileName} did not settle within {SettleGuard.TotalSeconds:0} s against a provider that suspends ({ex.GetType().Name}).");
             throw;
         }
 

@@ -3,9 +3,9 @@
 // A script whose FIRST top-level await is not `crew.run()`: it reads its brief from disk,
 // then runs the crew on what it read.
 //
-// The order matters more than it looks. Files 01 to 10 start their crew from the script's
-// synchronous prefix; this one starts it from a promise continuation, after the file read has
-// settled. Before SCR-25 that second shape never returned -- the crew's synchronous drain was
+// The order matters more than it looks. The other files that run a crew start it from the
+// script's synchronous prefix; this one starts it from a promise continuation, after the file
+// read has settled. Before SCR-25 that second shape never returned -- the crew's synchronous drain was
 // reached from inside an event-loop job it could not pump, and the script sat on a 30-minute
 // ceiling. One thread drains the engine now and the crew loop is JavaScript under it, so a
 // crew started after an await behaves exactly like one started before it.
