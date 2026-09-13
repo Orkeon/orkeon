@@ -1,5 +1,9 @@
+using System.Runtime.CompilerServices;
+using Jint;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Scripting.Runtime;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Scripting.Tests.Runtime;
@@ -18,13 +22,17 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 /// <remarks>
 /// <para>What the skipped scenarios have in common (SCR-25): a CLR continuation calls back
-/// into the engine — a node function, an agent body, a state transform — from a thread
-/// that is not the one draining the event loop, or it drains synchronously from inside a
-/// job. Jint's loop is exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a
-/// drain nested inside a job cannot pump ("Nested inside a job it cannot pump", Jint
-/// <c>Engine.DrainEventLoopUntil</c>). Mixing a synchronous drain (<c>JsCrew.UnwrapPromise</c>)
-/// with an asynchronous one (<c>JsStateGraph.run</c>) loses the async side's wake-up, and
-/// a synchronous drain reached from inside a job never settles.</para>
+/// into the engine — a node function, an agent body, a state transform, a topic handler, an
+/// FSM hook, a lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one
+/// draining the event loop, or it drains synchronously from inside a job. Jint's loop is
+/// exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a
+/// job cannot pump ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>).
+/// Mixing a synchronous drain (<c>JsCrew.UnwrapPromise</c>) with an asynchronous one
+/// (<c>JsStateGraph.run</c>, <c>JsStateMachine.send</c>) loses the async side's wake-up, and a
+/// synchronous drain reached from inside a job never settles.</para>
+/// <para>Two scenarios (<c>runStream</c> on a graph and on a crew) are not races: they pin the
+/// shape the rewrite must produce — a JS async generator, since Jint does not expose an
+/// <c>IAsyncEnumerable</c> as an async iterable.</para>
 /// <para>A 20 s guard turns the runtime's 30-minute body timeout into a failure.</para>
 /// </remarks>
 public sealed class EngineThreadingContractTests
@@ -46,6 +54,41 @@ public sealed class EngineThreadingContractTests
         {
             await Task.Delay(3, ct).ConfigureAwait(false);
             return new LlmResponse { Content = "R:" + messages[^1].Content };
+        }
+    }
+
+    /// <summary>
+    /// A provider whose chat stream yields each delta after a real suspension, so the
+    /// <c>onDelta</c> callback of <c>ctx.llm.act</c> is reached from a thread-pool continuation.
+    /// </summary>
+    private sealed class SlowStreamingProvider : ILlmProvider, IStreamingLlmProvider
+    {
+        public string Name => "slow-streaming";
+        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "slow" };
+        public bool SupportsStreaming => true;
+
+        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(new LlmResponse { Content = "R:" + prompt });
+
+        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(new LlmResponse { Content = "R:" + messages[^1].Content });
+
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(
+            string prompt, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            await Task.Delay(3, ct).ConfigureAwait(false);
+            yield return "R:" + prompt;
+        }
+
+        public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+            LlmMessage[] messages, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            for (var i = 0; i < 3; i++)
+            {
+                await Task.Delay(3, ct).ConfigureAwait(false);
+                yield return LlmStreamEvent.Content("d" + i);
+            }
+            yield return LlmStreamEvent.Complete(new LlmResponse { Content = "d0d1d2" });
         }
     }
 
@@ -79,6 +122,14 @@ public sealed class EngineThreadingContractTests
             try { Directory.Delete(dir, recursive: true); } catch (IOException) { }
         }
     }
+
+    /// <summary>
+    /// The engine-level harness: the crew is built by evaluating <paramref name="js"/> (its
+    /// last expression) and run from the calling thread, which is then the only drainer — the
+    /// shape of the <c>globalThis.crew</c> handoff. Used when a scenario needs a CLR helper
+    /// planted on the engine before the script runs.
+    /// </summary>
+    private static JsCrew BuildCrew(Engine engine, string js) => (JsCrew)engine.Evaluate(js).ToObject()!;
 
     private static Task Contend(int n, Func<Task> one)
         => Task.WhenAll(Enumerable.Range(0, n).Select(_ => Task.Run(one)));
@@ -230,6 +281,203 @@ public sealed class EngineThreadingContractTests
                 """);
             Assert.Equal("R:second", r["output"]);
         });
+    }
+
+    /// <summary>
+    /// <c>topic.publish</c> reached after an await in the body runs from inside a job, and
+    /// <c>JsEventTopic.DispatchSequential</c> drains the handler's promise synchronously
+    /// there: a handler that awaits anything — here a bare microtask, no provider involved —
+    /// never resumes (10 s timeout). The events tests pass only because their handlers
+    /// contain no await at all.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Topic_publish_after_an_await_delivers_to_a_handler_that_suspends()
+    {
+        var r = await RunScriptAsync("""
+            const seen = [];
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("x");
+                    t.subscribe(async (ev) => { await Promise.resolve(); seen.push(ev.value); });
+                    await Promise.resolve();
+                    await t.publish("v");
+                    return String(seen.length);
+                }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { n: res.output };
+            """);
+        Assert.Equal("1", r["n"]);
+    }
+
+    /// <summary>
+    /// The control for the previous scenario: the same handler, suspending on the provider,
+    /// delivered by a <c>publish</c> that precedes any await in the body — the drain is not
+    /// nested in a job there, so it pumps. Position-dependent behaviour is the defect.
+    /// </summary>
+    [Fact]
+    public async Task Topic_publish_before_any_await_delivers_to_a_handler_that_suspends()
+    {
+        var r = await RunScriptAsync("""
+            const seen = [];
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("x");
+                    t.subscribe(async (ev) => { const x = await ctx.llm.complete(ev.value); seen.push(x); });
+                    await t.publish("v");
+                    return seen.join(",");
+                }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { out: res.output };
+            """);
+        Assert.Equal("R:v", r["out"]);
+    }
+
+    /// <summary>
+    /// FSM hooks that suspend (<c>fsm.d.ts</c> allows <c>Promise</c> from guards and hooks),
+    /// sent from a body: <c>JsStateMachine.send</c> awaits them asynchronously while the body
+    /// is drained synchronously — the wake-up is lost (10 s timeout in
+    /// <c>AwaitPromiseSettlementAsync</c>), and the <c>onEntry</c> hook plus its context
+    /// object would be built on a pool thread once <c>onExit</c> resumed there.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Fsm_hooks_that_suspend_settle_from_a_body()
+    {
+        var r = await RunScriptAsync("""
+            const log = [];
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const fsm = stateMachine({
+                        name: "m", initial: "a",
+                        states: {
+                            a: { onExit: async (c) => { log.push(await ctx.llm.complete("exit")); }, transitions: { go: { target: "b" } } },
+                            b: { onEntry: async (c) => { log.push(await ctx.llm.complete("entry")); } },
+                        },
+                    });
+                    const cur = await fsm.send("go");
+                    return cur + "|" + log.join(",");
+                }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { out: res.output };
+            """);
+        Assert.Equal("b|R:exit,R:entry", r["out"]);
+    }
+
+    /// <summary>
+    /// <c>ctx.spawn</c> after an await in the body attaches the agent from inside a job, and
+    /// <c>JsCrew.InvokeAgentLifecycleHook</c> drains an async <c>onAgentStart</c> synchronously
+    /// there (10 s timeout). <c>agent.d.ts</c> declares the hook as <c>Promise&lt;void&gt; | void</c>.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Spawn_after_an_await_runs_a_suspending_onAgentStart()
+    {
+        var r = await RunScriptAsync("""
+            const log = [];
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    await Promise.resolve();
+                    ctx.spawn(agentBuilder().name("child").role("C").goal("g")
+                        .onAgentStart(async (c) => { await Promise.resolve(); log.push("started"); }));
+                    return log.join(",");
+                }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { out: res.output };
+            """);
+        Assert.Equal("started", r["out"]);
+    }
+
+    /// <summary>
+    /// An async <c>onCrewStart</c> hook with <c>crew.run()</c> after a top-level await:
+    /// <c>JsCrew.InvokeCrewHook</c> drains it with <c>UnwrapIfPromise(ct)</c> — no timeout at
+    /// all, only the run's own cancellation. The 1.5 s run timeout bounds the scenario; without
+    /// it the script never returns.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Crew_start_hook_that_suspends_settles_when_run_follows_a_top_level_await()
+    {
+        var r = await RunScriptAsync("""
+            const warm = await Promise.resolve("warm");
+            const worker = agentBuilder().name("w").role("W").goal("g").body((input, ctx) => "ok").build();
+            const crew = crewBuilder().name("c").withAgent(worker)
+                .onCrewStart(async (c) => { await Promise.resolve(); })
+                .build();
+            const res = await crew.run({ timeout: 1500 });
+            result = { out: res.output };
+            """);
+        Assert.Equal("ok", r["out"]);
+    }
+
+    /// <summary>
+    /// <c>ctx.llm.act</c> with <c>onDelta</c> against a provider that streams: each delta is a
+    /// thread-pool continuation, and <c>JsLlmFacade.ChatViaStreamAsync</c> invokes the JS
+    /// callback right there — on a thread that is not the one draining the engine. Measured by
+    /// thread id, so it fails deterministically instead of racing.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Act_onDelta_runs_on_the_thread_that_drains_the_engine()
+    {
+        var engine = new JsEngineFactory(llmProvider: new SlowStreamingProvider()).Create();
+        engine.SetValue("__tid", new Func<int>(() => Environment.CurrentManagedThreadId));
+        var crew = BuildCrew(engine, """
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const t0 = __tid();
+                    const tids = [];
+                    const r = await ctx.llm.act("p", { onDelta: (d) => { tids.push(__tid()); } });
+                    return t0 + "|" + tids.join(",") + "|" + r.output;
+                }).build();
+            crewBuilder().name("c").withAgent(worker).build();
+            """);
+
+        var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
+            .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+
+        var parts = res.output!.Split('|');
+        Assert.Equal("d0d1d2", parts[2]);
+        Assert.All(parts[1].Split(','), tid => Assert.Equal(parts[0], tid));
+    }
+
+    /// <summary>
+    /// <c>graph.runStream</c> is declared <c>AsyncIterable</c> in <c>graph.d.ts</c>, but the
+    /// runtime hands JS an <c>IAsyncEnumerable</c>, which Jint does not expose as an async
+    /// iterable: <c>for await</c> fails with "The value is not iterable". The trampoline
+    /// rewrite (SCR-25 T1) produces a JS async generator instead.
+    /// </summary>
+    [Fact(Skip = Scr25)]
+    public async Task Graph_runStream_is_consumable_with_for_await()
+    {
+        var r = await RunScriptAsync("""
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => {
+                    const g = stateGraph({ name: "g", nodes: { a: (s) => s, b: (s) => s }, edges: { [START]: "a", a: "b", b: END } });
+                    let n = 0;
+                    for await (const s of g.runStream({})) n++;
+                    return String(n);
+                }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { n: res.output };
+            """);
+        Assert.Equal("2", r["n"]);
+    }
+
+    /// <summary>Same as the graph: <c>crew.runStream</c> is not iterable from JS (SCR-25 T4).</summary>
+    [Fact(Skip = Scr25)]
+    public async Task Crew_runStream_is_consumable_with_for_await()
+    {
+        var r = await RunScriptAsync("""
+            const inner = crewBuilder().name("inner").withAgent(
+                agentBuilder().name("i").role("W").goal("g").body((input, ctx) => "ok").build()).build();
+            const worker = agentBuilder().name("w").role("W").goal("g")
+                .body(async (input, ctx) => { let n = 0; for await (const e of inner.runStream()) n++; return String(n); }).build();
+            const crew = crewBuilder().name("c").withAgent(worker).build();
+            const res = await crew.run();
+            result = { n: res.output };
+            """);
+        Assert.Equal("2", r["n"]);
     }
 }
 #pragma warning restore xUnit1004
