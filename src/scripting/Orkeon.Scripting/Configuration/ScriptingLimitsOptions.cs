@@ -65,6 +65,12 @@ public sealed record ScriptingLimitsOptions
     /// a thread. Trusted long-running design-spec runs must <strong>opt in</strong>
     /// explicitly by raising <c>Orkeon:Scripting:Limits:ExecutionTimeout</c> in
     /// appsettings. The strict default stays tight.
+    ///
+    /// One window per root pump: a crew run the CLR drives (the <c>globalThis.crew</c>
+    /// handoff through <c>ScriptHost</c>, <c>JsCrew.RunAsync</c>) runs under it from the
+    /// invocation of the run function to its last settled promise, the way a script
+    /// already did — not once per agent body — so a host driving a run longer than this
+    /// raises the limit.
     /// </summary>
     public TimeSpan ExecutionTimeout { get; init; } = TimeSpan.FromSeconds(30);
 }

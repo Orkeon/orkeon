@@ -125,6 +125,55 @@ La voie nominale pour le travail long est le cycle à ticket : `runCrewAsync(nam
 retourne un ticket immédiatement et livre le résumé du crew au callback
 `completed(result)` d'un `defineAsyncCommand`.
 
+## Modèle de threading
+
+Un moteur Jint n'est pas lié à un thread, mais il n'a qu'un **seul draineur** : un thread à
+la fois exécute les jobs de sa boucle d'événements, et un drain lancé depuis l'intérieur
+d'un job ne peut pas pomper — il attendrait des jobs que seul le thread qu'il bloque pourrait
+exécuter. La famille de défauts que SCR-25 a supprimée (un run de crew qui pendait après
+n'importe quel `await` de tête, un graphe d'états dont les nœuds suspendent qui expirait
+depuis un corps, des appels `ctx.state.with` concurrents qui faisaient planter le moteur, un
+handler de topic ou un hook FSM qui suspend, un callback `onDelta` sur un thread du pool, un
+`runStream` non itérable) venait toute de code CLR qui rentrait dans le moteur du mauvais
+côté : après un `await`, ou en drainant depuis l'intérieur d'un job. Le runtime suit
+désormais une règle, que les reproducteurs de
+`tests/scripting/Orkeon.Scripting.Tests/Runtime/EngineThreadingContractTests.cs` fixent :
+
+- **Toute boucle qui rappelle du code de script vit en JavaScript.** Le run de crew
+  (`crew.run`, `crew.runAgent`, `crew.runStream`), le graphe d'états (`run`, `runStream`), la
+  machine à états (`send`), `ctx.state.with`, la livraison des topics (`publish`, le `lock`
+  de l'événement) et le côté script de `ctx.llm.act` sont des fonctions async — des
+  générateurs async pour les flux, pour que `for await` fonctionne dessus — construites une
+  fois depuis une fabrique JavaScript. Le CLR ne fournit que des aides synchrones (prendre
+  l'instantané des agents, ouvrir une tentative, enregistrer un résultat) et des `Task` que
+  la boucle attend (l'acquisition d'un sémaphore, un délai de retry, l'annulation du run).
+  Chaque ligne de ces boucles s'exécute comme une réaction de promesse sur le thread qui
+  draine, quel qu'il soit.
+- **Un rappel CLR ne rentre jamais dans le moteur après un `await`.** Un délégué exposé au
+  script peut rendre une valeur synchrone, une `Task` dont le résultat est une valeur CLR
+  (Jint la règle sur la boucle), ou une promesse JS obtenue synchronement. Il n'appelle
+  jamais `Invoke`, `Evaluate`, `FromObject` ni `SetValue` depuis une continuation, et ne
+  draine jamais depuis l'intérieur d'un job.
+- **Une aide CLR signale un échec par un throw JavaScript.** `JsHostError` enveloppe
+  l'exception dans une `Error` qui la porte sur `clr` (son nom de type sur `clrType`) : le
+  `catch` et le `finally` du script s'exécutent, la boucle libère ce qu'elle tient, et le
+  côté CLR retrouve l'exception typée depuis la valeur rejetée.
+- **Le CLR ne pilote le moteur qu'à trois pompes racines**, chacune moteur au repos, sous le
+  verrou par moteur, sur un seul thread pour toute l'évaluation — le préfixe synchrone et
+  chaque job qui suit : `ScriptHost` pour le script lui-même, `JsCrew.RunAsync` pour le
+  handoff `globalThis.crew` et pour les hôtes C#, `JsTool.CallAsync` pour un outil script
+  appelé par l'orchestrateur. Depuis C#, `JsCrew.run`, `runAgent` et `runStream` sont les
+  fonctions JS elles-mêmes (`JsValue`) ; `RunAsync` est l'entrée CLR, et elle refuse de
+  démarrer depuis un rappel CLR que le script a invoqué — depuis un script, appelez
+  `crew.run()`.
+- **L'annulation est la seule borne d'une attente ; `ExecutionTimeout` borne l'exécution.**
+  Aucun timeout de promesse ne subsiste dans le runtime : une pompe racine draine jusqu'à ce
+  que sa promesse se règle ou que son jeton se déclenche. L'`ExecutionTimeout` du bac à sable
+  (temps mural, `Orkeon:Scripting:Limits`) borne l'évaluation elle-même et couvre désormais un
+  run entier piloté par le CLR, comme il couvrait déjà un script entier. Un `RunAsync` annulé
+  laisse à la boucle un court délai de grâce pour se dérouler — ses blocs `finally`,
+  `onCrewError` — avant d'abandonner le run et de libérer ce que le CLR possède.
+
 ## Limites V1
 
 - `concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
