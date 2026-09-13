@@ -61,10 +61,155 @@ public sealed class AgentContextTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var thrown = await Assert.ThrowsAnyAsync<Exception>(
+        // The set trap throws through the host error bridge (a JS throw); the CLR side
+        // recovers the typed exception from a synchronous body as well as from a rejection.
+        var thrown = await Assert.ThrowsAsync<StateMutationOutsideWithException>(
             () => crew.RunAsync(null, CancellationToken.None));
-        // After SCR-12 §1 the CLR-typed exception surfaces directly through the unwrap.
+        Assert.Equal("counter", thrown.PropertyName);
         Assert.Contains("StateMutationOutsideWith", thrown.ToString());
+    }
+
+    [Fact]
+    public async Task AgentContext_direct_state_mutation_in_an_async_body_rejects_with_the_typed_exception()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ counter: 0 }))
+                .body(async (input, ctx) => {
+                    await Promise.resolve();
+                    ctx.state.counter = 99;
+                    return ctx.state.counter;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var thrown = await Assert.ThrowsAsync<StateMutationOutsideWithException>(
+            () => crew.RunAsync(null, CancellationToken.None));
+        Assert.Equal("counter", thrown.PropertyName);
+    }
+
+    /// <summary>
+    /// A CLR exception that is not bridged runs neither <c>catch</c> nor <c>finally</c> in the
+    /// script (measured, see <c>JsHostError</c>); the set trap is bridged, so a body can recover
+    /// from its own mistake and the mutex-guarded path still works afterwards.
+    /// </summary>
+    [Fact]
+    public async Task AgentContext_direct_state_mutation_is_catchable_by_the_body_and_runs_its_finally()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ counter: 1 }))
+                .body(async (input, ctx) => {
+                    const log = [];
+                    try { ctx.state.counter = 99; log.push("unreachable"); }
+                    catch (e) { log.push("caught:" + e.clrType + ":" + (e instanceof Error)); }
+                    finally { log.push("finally"); }
+                    await ctx.state.with(prev => ({ counter: prev.counter + 1 }));
+                    return log.join(",") + "|" + ctx.state.counter;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, CancellationToken.None);
+
+        Assert.Equal("caught:StateMutationOutsideWithException:true,finally|2", result.tasks[0].output!.ToString());
+    }
+
+    [Fact]
+    public async Task AgentContext_state_with_resolves_to_the_new_state_view_carrying_with()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ counter: 0 }))
+                .body(async (input, ctx) => {
+                    const before = ctx.state;
+                    const next = await ctx.state.with(prev => ({ counter: prev.counter + 5 }));
+                    const again = await next.with(prev => ({ counter: prev.counter + 1 }));
+                    return [next.counter, again.counter, ctx.state.counter, before.counter,
+                            next === ctx.state, again === ctx.state, typeof ctx.stateWith].join(",");
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, CancellationToken.None);
+
+        // The view is replaced after each commit (the old one still reads its own snapshot),
+        // the resolved value is the new view, and the mutator is also reachable as ctx.stateWith.
+        Assert.Equal("5,6,6,0,false,true,function", result.tasks[0].output!.ToString());
+    }
+
+    /// <summary>
+    /// The transform receives the raw state, not the read-only view: it may build the next
+    /// state in place (chapter 05's <c>state.count += 1</c>) without tripping the set trap.
+    /// </summary>
+    [Fact]
+    public async Task AgentContext_state_with_hands_the_transform_the_raw_state()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ counter: 0 }))
+                .body(async (input, ctx) => {
+                    await ctx.state.with(s => { s.counter += 1; return s; });
+                    await ctx.stateWith(async s => { await Promise.resolve(); s.counter += 1; return s; });
+                    return ctx.state.counter;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, CancellationToken.None);
+
+        Assert.Equal(2d, Convert.ToDouble(result.tasks[0].output));
+    }
+
+    /// <summary>
+    /// A state the view cannot wrap (a primitive) fails at commit as a JS throw the script
+    /// can catch; the state is untouched and the mutex is released.
+    /// </summary>
+    [Fact]
+    public async Task AgentContext_state_with_returning_a_primitive_rejects_and_leaves_state_and_mutex_intact()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ counter: 7 }))
+                .body(async (input, ctx) => {
+                    let caught = "none";
+                    try { await ctx.state.with(() => 5); }
+                    catch (e) { caught = e instanceof TypeError ? "TypeError" : String(e); }
+                    const after = ctx.state.counter;
+                    await ctx.state.with(prev => ({ counter: prev.counter + 1 }));
+                    return caught + "," + after + "," + ctx.state.counter;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, CancellationToken.None);
+
+        Assert.Equal("TypeError,7,8", result.tasks[0].output!.ToString());
+    }
+
+    [Fact]
+    public async Task AgentContext_state_with_undefined_state_is_reached_through_stateWith()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const before = typeof ctx.state;
+                    const next = await ctx.stateWith(prev => ({ seeded: prev === undefined }));
+                    return before + "," + next.seeded + "," + ctx.state.seeded + "," + typeof ctx.state.with;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, CancellationToken.None);
+
+        // No state → no view (undefined comes back as is); the first commit installs one.
+        Assert.Equal("undefined,true,true,function", result.tasks[0].output!.ToString());
     }
 
     [Fact]
