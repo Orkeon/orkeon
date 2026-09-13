@@ -441,10 +441,15 @@ public sealed partial class JsCrew
     /// </summary>
     private static Exception? NextInner(Exception cur)
     {
+        // A promise rejected with a bridged Error (JsHostError.Wrap) or with a wrapped CLR
+        // exception (a faulted Task) carries the host exception on the rejected value; a
+        // JavaScriptException thrown through a synchronous Invoke carries it on its Error.
         if (cur is Jint.Runtime.PromiseRejectedException pre &&
-            pre.RejectedValue is not null &&
-            pre.RejectedValue.ToObject() is Exception rejected)
+            JsHostError.Unwrap(pre.RejectedValue) is { } rejected)
             return rejected;
+        if (cur is Jint.Runtime.JavaScriptException jse &&
+            JsHostError.Unwrap(jse.Error) is { } thrown)
+            return thrown;
         if (cur is AggregateException agg && agg.InnerExceptions.Count >= 1)
             return agg.InnerExceptions[0];
         return cur.InnerException;
