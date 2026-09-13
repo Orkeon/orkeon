@@ -1,16 +1,53 @@
 using Jint;
 using Jint.Native;
+using Jint.Runtime;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Orchestration;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
 namespace Orkeon.Scripting.Tests.Orchestration;
 
+/// <summary>
+/// The graph is exercised through the surface a script sees — <c>run</c> and <c>runStream</c>
+/// are JS functions (SCR-25 T1) — invoked with the engine at rest, so the test thread is the
+/// only drainer. A rejection whose Error carries a CLR exception (<see cref="JsHostError"/>)
+/// is rethrown typed, the way the crew boundary surfaces it to a script's caller.
+/// </summary>
 public sealed class StateGraphTests
 {
     private static Engine NewEngine() => new JsEngineFactory().Create();
     private static T Eval<T>(Engine engine, string js) => (T)engine.Evaluate(js).ToObject()!;
+    private static JsValue Fn(Engine engine, string js) => engine.Evaluate(js);
+
+    private static async Task<JsValue> RunAsync(Engine engine, JsStateGraph graph, JsValue input)
+    {
+        var promise = engine.Invoke(graph.run, input);
+        try
+        {
+            return await promise.UnwrapIfPromiseAsync(TestContext.Current.CancellationToken);
+        }
+        catch (PromiseRejectedException ex) when (JsHostError.Unwrap(ex.RejectedValue) is { } clr)
+        {
+            throw clr;
+        }
+    }
+
+    /// <summary>Consumes <c>runStream</c> the way a script does, with <c>for await</c>, and returns the hops.</summary>
+    private static async Task<List<JsValue>> StreamAsync(Engine engine, JsStateGraph graph, JsValue input)
+    {
+        var collect = Fn(engine, """
+            async (graph, input) => {
+                const hops = [];
+                for await (const hop of graph.runStream(input)) hops.push(hop);
+                return hops;
+            }
+            """);
+        var promise = engine.Invoke(collect, graph, input);
+        var hops = await promise.UnwrapIfPromiseAsync(TestContext.Current.CancellationToken);
+        return [.. hops.AsArray()];
+    }
 
     [Fact]
     public async Task StateGraph_linear_path_runs_to_END_returning_final_state()
@@ -32,7 +69,7 @@ public sealed class StateGraphTests
             """);
 
         var input = await engine.EvaluateAsync("({ hits: 0 })", cancellationToken: TestContext.Current.CancellationToken);
-        var result = await graph.run(input);
+        var result = await RunAsync(engine, graph, input);
 
         Assert.Equal(11d, Convert.ToDouble(result.Get("hits").ToObject()));
     }
@@ -59,12 +96,40 @@ public sealed class StateGraphTests
             """);
 
         var bigInput = await engine.EvaluateAsync("({ value: 42 })", cancellationToken: TestContext.Current.CancellationToken);
-        var bigResult = await graph.run(bigInput);
+        var bigResult = await RunAsync(engine, graph, bigInput);
         Assert.Equal("BIG", bigResult.Get("label").AsString());
 
         var smallInput = await engine.EvaluateAsync("({ value: 5 })", cancellationToken: TestContext.Current.CancellationToken);
-        var smallResult = await graph.run(smallInput);
+        var smallResult = await RunAsync(engine, graph, smallInput);
         Assert.Equal("SMALL", smallResult.Get("label").AsString());
+    }
+
+    [Fact]
+    public async Task StateGraph_async_conditional_edge_is_awaited()
+    {
+        // graph.d.ts lets an edge return a Promise<GraphNode>; the trampoline awaits it like a
+        // node. The CLR loop it replaces drained it synchronously (a hang from inside a job).
+        var engine = NewEngine();
+        var graph = Eval<JsStateGraph>(engine, """
+            stateGraph({
+                name: "async-edge",
+                nodes: {
+                    classify: (s) => ({ ...s, kind: s.value > 10 ? "big" : "small" }),
+                    big: (s) => ({ ...s, label: "BIG" }),
+                    small: (s) => ({ ...s, label: "SMALL" }),
+                },
+                edges: {
+                    [START]: "classify",
+                    classify: async (s) => { await Promise.resolve(); return s.kind; },
+                    big: END,
+                    small: END,
+                }
+            });
+            """);
+
+        var input = await engine.EvaluateAsync("({ value: 42 })", cancellationToken: TestContext.Current.CancellationToken);
+        var result = await RunAsync(engine, graph, input);
+        Assert.Equal("BIG", result.Get("label").AsString());
     }
 
     [Fact]
@@ -103,6 +168,23 @@ public sealed class StateGraphTests
     }
 
     [Fact]
+    public async Task StateGraph_conditional_edge_to_undeclared_node_rejects_typed_at_run_time()
+    {
+        var engine = NewEngine();
+        var graph = Eval<JsStateGraph>(engine, """
+            stateGraph({
+                name: "x",
+                nodes: { a: (s) => s },
+                edges: { [START]: "a", a: (s) => "ghost" },
+            });
+            """);
+
+        var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
+        var ex = await Assert.ThrowsAsync<InvalidScriptException>(() => RunAsync(engine, graph, input));
+        Assert.Contains("ghost", ex.Message);
+    }
+
+    [Fact]
     public async Task StateGraph_runStream_yields_one_chunk_per_transition()
     {
         var engine = NewEngine();
@@ -117,10 +199,8 @@ public sealed class StateGraphTests
             });
             """);
 
-        var chunks = new List<object>();
         var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
-        await foreach (var c in graph.runStream(input, CancellationToken.None))
-            chunks.Add(c);
+        var chunks = await StreamAsync(engine, graph, input);
 
         Assert.Equal(2, chunks.Count);
     }
@@ -146,7 +226,7 @@ public sealed class StateGraphTests
 
         var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => graph.run(input));
+            () => RunAsync(engine, graph, input));
         Assert.Contains("maxTransitions", ex.Message);
     }
 
@@ -183,20 +263,55 @@ public sealed class StateGraphTests
             });
             """);
 
-        var chunks = new List<object>();
         var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
-        await foreach (var c in graph.runStream(input, CancellationToken.None))
-            chunks.Add(c);
+        var chunks = await StreamAsync(engine, graph, input);
 
         Assert.Equal(2, chunks.Count);
-        dynamic first = chunks[0];
-        dynamic second = chunks[1];
-        Assert.Equal("a", (string)first.fromNode);
-        Assert.Equal("b", (string)first.toNode);
-        Assert.NotNull(first.state);
-        Assert.Equal("b", (string)second.fromNode);
-        Assert.Equal("END", (string)second.toNode);
-        Assert.NotNull(second.state);
+        var first = chunks[0];
+        var second = chunks[1];
+        Assert.Equal("a", first.Get("fromNode").AsString());
+        Assert.Equal("b", first.Get("toNode").AsString());
+        Assert.Equal("A", first.Get("state").Get("step").AsString());
+        Assert.Equal("b", second.Get("fromNode").AsString());
+        Assert.Equal("END", second.Get("toNode").AsString());
+        Assert.Equal("B", second.Get("state").Get("step").AsString());
+    }
+
+    [Fact]
+    public async Task StateGraph_runStream_abandoned_early_still_ends_the_run()
+    {
+        // `break` inside `for await` closes the generator: the walk must stop after the hop
+        // that was consumed, and the graph must stay usable for a full run afterwards.
+        var engine = NewEngine();
+        var visited = new List<string>();
+        engine.SetValue("__visit", new Action<string>(visited.Add));
+        var graph = Eval<JsStateGraph>(engine, """
+            stateGraph({
+                name: "early",
+                nodes: {
+                    a: (s) => { __visit("a"); return s; },
+                    b: (s) => { __visit("b"); return s; },
+                    c: (s) => { __visit("c"); return s; },
+                },
+                edges: { [START]: "a", a: "b", b: "c", c: END },
+                graphConfig: { maxTotalDurationSeconds: 30 },
+            });
+            """);
+        var breakAfterFirst = Fn(engine, """
+            async (graph) => {
+                let hops = 0;
+                for await (const hop of graph.runStream({})) { hops++; break; }
+                return hops;
+            }
+            """);
+
+        var hops = await engine.Invoke(breakAfterFirst, graph).UnwrapIfPromiseAsync(TestContext.Current.CancellationToken);
+        Assert.Equal(1, (int)hops.AsNumber());
+        Assert.Equal(["a"], visited);
+
+        var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
+        await RunAsync(engine, graph, input);
+        Assert.Equal(["a", "a", "b", "c"], visited);
     }
 
     [Fact]
@@ -239,6 +354,33 @@ public sealed class StateGraphTests
     }
 
     [Fact]
+    public async Task StateGraph_maxTotalDuration_abandons_a_slow_node_and_rejects_typed()
+    {
+        // The wall-clock bound is the graph's own token, not the crew's: the run must stop
+        // waiting on the node at the deadline (the node sleeps five times longer) and reject
+        // with the OperationCanceledException the deadline raised, not settle on the next hop.
+        var engine = NewEngine();
+        engine.SetValue("__sleep", new Func<double, Task<JsValue>>(async ms =>
+        {
+            await Task.Delay(TimeSpan.FromMilliseconds(ms)).ConfigureAwait(false);
+            return JsValue.Undefined;
+        }));
+        var graph = Eval<JsStateGraph>(engine, """
+            stateGraph({
+                name: "deadline",
+                nodes: { slow: async (s) => { await __sleep(1000); return s; } },
+                edges: { [START]: "slow", slow: END },
+                graphConfig: { maxTotalDurationSeconds: 0.2 },
+            });
+            """);
+
+        var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
+        var started = System.Diagnostics.Stopwatch.StartNew();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RunAsync(engine, graph, input));
+        Assert.True(started.ElapsedMilliseconds < 900, $"the run waited out the node: {started.ElapsedMilliseconds} ms");
+    }
+
+    [Fact]
     public async Task StateGraph_circuit_breaker_preset_blocks_runaway()
     {
         // 'Strict' preset has maxStateVisits=3, so the loop on 'a' should abort well
@@ -258,7 +400,7 @@ public sealed class StateGraphTests
 
         var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => graph.run(input));
+            () => RunAsync(engine, graph, input));
         // The Strict preset trips its first breaker (maxRetryCycles=1) well before
         // maxTransitions=50 would. Either retry-cycle or state-visit triggering proves
         // the preset was actually applied — they are the differentiating fields vs the

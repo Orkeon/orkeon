@@ -28,8 +28,8 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a
 /// job cannot pump ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>).
 /// Mixing a synchronous drain (<c>JsCrew.UnwrapPromise</c>) with an asynchronous one
-/// (<c>JsStateGraph.run</c>, <c>JsStateMachine.send</c>) loses the async side's wake-up, and a
-/// synchronous drain reached from inside a job never settles.</para>
+/// (<c>JsStateMachine.send</c>) loses the async side's wake-up, and a synchronous drain reached
+/// from inside a job never settles.</para>
 /// <para>Two scenarios (<c>runStream</c> on a graph and on a crew) are not races: they pin the
 /// shape the rewrite must produce — a JS async generator, since Jint does not expose an
 /// <c>IAsyncEnumerable</c> as an async iterable.</para>
@@ -171,60 +171,68 @@ public sealed class EngineThreadingContractTests
     }
 
     /// <summary>
-    /// A graph whose nodes really suspend, run from a body: the body is drained synchronously,
-    /// the graph waits asynchronously, and the async side's wake-up is lost (10 s timeout).
-    /// Deterministic, no contention needed.
+    /// A graph whose nodes really suspend, run from a body. With a CLR traversal loop the body
+    /// was drained synchronously while the graph waited asynchronously, and the async side's
+    /// wake-up was lost (10 s timeout, deterministic). The loop now lives in JS
+    /// (<c>JsStateGraph</c>, SCR-25 T1): every node result is a promise reaction on the thread
+    /// draining the body.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task State_graph_with_suspending_nodes_runs_from_a_body()
     {
-        var r = await RunScriptAsync("""
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const g = stateGraph({
-                        name: "g",
-                        nodes: {
-                            a: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("a")) + "|" }),
-                            b: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("b")) + "|" }),
-                            c: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("c")) + "|" }),
-                        },
-                        edges: { [START]: "a", a: "b", b: "c", c: END },
-                    });
-                    const out = await g.run({ log: "" });
-                    return out.log;
-                })
-                .build();
-            const res = await crewBuilder().name("c").withAgent(worker).build().run();
-            result = { log: res.output };
-            """);
-        Assert.Equal("R:a|R:b|R:c|", r["log"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const g = stateGraph({
+                            name: "g",
+                            nodes: {
+                                a: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("a")) + "|" }),
+                                b: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("b")) + "|" }),
+                                c: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("c")) + "|" }),
+                            },
+                            edges: { [START]: "a", a: "b", b: "c", c: END },
+                        });
+                        const out = await g.run({ log: "" });
+                        return out.log;
+                    })
+                    .build();
+                const res = await crewBuilder().name("c").withAgent(worker).build().run();
+                result = { log: res.output };
+                """);
+            Assert.Equal("R:a|R:b|R:c|", r["log"]);
+        });
     }
 
     /// <summary>
     /// Same graph, <c>g.run()</c> reached after an await in the body — from inside a job. A
-    /// synchronous graph drain (the fix that makes the previous scenario pass) hangs here,
-    /// which is why the fix has to be a JS trampoline and not a change of unwrap.
+    /// synchronous graph drain (the fix that would make the previous scenario pass on its own)
+    /// hangs here, which is why the fix is a JS trampoline and not a change of unwrap.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task State_graph_run_after_an_await_in_the_body_settles()
     {
-        var r = await RunScriptAsync("""
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const first = await ctx.llm.complete("first");
-                    const g = stateGraph({
-                        name: "g",
-                        nodes: { a: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("a")) + "|" }) },
-                        edges: { [START]: "a", a: END },
-                    });
-                    const out = await g.run({ log: first + "|" });
-                    return out.log;
-                })
-                .build();
-            const res = await crewBuilder().name("c").withAgent(worker).build().run();
-            result = { log: res.output };
-            """);
-        Assert.Equal("R:first|R:a|", r["log"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const first = await ctx.llm.complete("first");
+                        const g = stateGraph({
+                            name: "g",
+                            nodes: { a: async (s) => ({ ...s, log: s.log + (await ctx.llm.complete("a")) + "|" }) },
+                            edges: { [START]: "a", a: END },
+                        });
+                        const out = await g.run({ log: first + "|" });
+                        return out.log;
+                    })
+                    .build();
+                const res = await crewBuilder().name("c").withAgent(worker).build().run();
+                result = { log: res.output };
+                """);
+            Assert.Equal("R:first|R:a|", r["log"]);
+        });
     }
 
     /// <summary>
@@ -441,27 +449,30 @@ public sealed class EngineThreadingContractTests
     }
 
     /// <summary>
-    /// <c>graph.runStream</c> is declared <c>AsyncIterable</c> in <c>graph.d.ts</c>, but the
-    /// runtime hands JS an <c>IAsyncEnumerable</c>, which Jint does not expose as an async
-    /// iterable: <c>for await</c> fails with "The value is not iterable". The trampoline
-    /// rewrite (SCR-25 T1) produces a JS async generator instead.
+    /// <c>graph.runStream</c> is declared <c>AsyncIterable</c> in <c>graph.d.ts</c>. The runtime
+    /// used to hand JS an <c>IAsyncEnumerable</c>, which Jint does not expose as an async
+    /// iterable (<c>for await</c> failed with "The value is not iterable"); it is a JS async
+    /// generator since SCR-25 T1.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task Graph_runStream_is_consumable_with_for_await()
     {
-        var r = await RunScriptAsync("""
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const g = stateGraph({ name: "g", nodes: { a: (s) => s, b: (s) => s }, edges: { [START]: "a", a: "b", b: END } });
-                    let n = 0;
-                    for await (const s of g.runStream({})) n++;
-                    return String(n);
-                }).build();
-            const crew = crewBuilder().name("c").withAgent(worker).build();
-            const res = await crew.run();
-            result = { n: res.output };
-            """);
-        Assert.Equal("2", r["n"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const g = stateGraph({ name: "g", nodes: { a: (s) => s, b: (s) => s }, edges: { [START]: "a", a: "b", b: END } });
+                        let n = 0;
+                        for await (const s of g.runStream({})) n++;
+                        return String(n);
+                    }).build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { n: res.output };
+                """);
+            Assert.Equal("2", r["n"]);
+        });
     }
 
     /// <summary>Same as the graph: <c>crew.runStream</c> is not iterable from JS (SCR-25 T4).</summary>

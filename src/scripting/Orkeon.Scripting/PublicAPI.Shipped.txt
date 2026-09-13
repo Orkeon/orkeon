@@ -228,8 +228,8 @@ Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTransitions.get -> int
 Orkeon.Scripting.Orchestration.JsGraphConfig.MaxTransitions.init -> void
 Orkeon.Scripting.Orchestration.JsStateGraph
 Orkeon.Scripting.Orchestration.JsStateGraph.name.get -> string!
-Orkeon.Scripting.Orchestration.JsStateGraph.run.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
-Orkeon.Scripting.Orchestration.JsStateGraph.runStream(Jint.Native.JsValue! initial, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<object!>!
+Orkeon.Scripting.Orchestration.JsStateGraph.run.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Orchestration.JsStateGraph.runStream.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Orchestration.JsStateMachine
 Orkeon.Scripting.Orchestration.JsStateMachine.current.get -> string!
 Orkeon.Scripting.Orchestration.JsStateMachine.name.get -> string!
