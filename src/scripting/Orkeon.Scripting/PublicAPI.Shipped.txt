@@ -250,10 +250,9 @@ Orkeon.Scripting.Runtime.JsCrew.findByRole(string! role) -> System.Collections.G
 Orkeon.Scripting.Runtime.JsCrew.has(Orkeon.Scripting.Builders.JsAgent! agent) -> bool
 Orkeon.Scripting.Runtime.JsCrew.name.get -> string!
 Orkeon.Scripting.Runtime.JsCrew.remove(Orkeon.Scripting.Builders.JsAgent! agent) -> void
-Orkeon.Scripting.Runtime.JsCrew.run() -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
-Orkeon.Scripting.Runtime.JsCrew.run(Jint.Native.JsValue? options) -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
-Orkeon.Scripting.Runtime.JsCrew.runAgent(Orkeon.Scripting.Builders.JsAgent! agent, Jint.Native.JsValue? input) -> System.Threading.Tasks.Task<object?>!
-Orkeon.Scripting.Runtime.JsCrew.runStream(Jint.Native.JsValue? options = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<object!>!
+Orkeon.Scripting.Runtime.JsCrew.run.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.runAgent.get -> Jint.Native.JsValue!
+Orkeon.Scripting.Runtime.JsCrew.runStream.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsCrewProxy
 Orkeon.Scripting.Runtime.JsCrewProxy.findById(string! id) -> Orkeon.Scripting.Builders.JsAgent?
 Orkeon.Scripting.Runtime.JsCrewProxy.findByName(string! name) -> Orkeon.Scripting.Builders.JsAgent?

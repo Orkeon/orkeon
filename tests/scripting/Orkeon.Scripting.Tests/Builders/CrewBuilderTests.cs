@@ -163,20 +163,21 @@ public sealed class CrewBuilderTests
         await Assert.ThrowsAsync<OperationCanceledException>(() => crew.RunAsync(null, cts.Token));
     }
 
+    /// <summary>
+    /// <c>crew.runStream</c> is a JS async generator (SCR-25 T4), consumed the way a script does —
+    /// <c>for await</c> — one <c>agent.start</c>/<c>agent.stop</c> pair per agent, in declaration order.
+    /// </summary>
     [Fact]
     public async Task Crew_runStream_yields_one_start_and_stop_per_agent()
     {
         var engine = NewEngine();
-        var crew = Eval<JsCrew>(engine, """
+        var types = await engine.EvaluateAsync("""
             const a = agentBuilder().name("A").role("R").goal("G").body(() => "x").build();
             const b = agentBuilder().name("B").role("R").goal("G").body(() => "y").build();
-            crewBuilder().withAgent(a).withAgent(b).build();
-            """);
+            const crew = crewBuilder().withAgent(a).withAgent(b).build();
+            (async () => { const t = []; for await (const e of crew.runStream()) t.push(e.type + ":" + e.payload.name); return t.join(","); })()
+            """, cancellationToken: TestContext.Current.CancellationToken);
 
-        var events = new List<object>();
-        await foreach (var ev in crew.runStream(null, CancellationToken.None))
-            events.Add(ev);
-
-        Assert.Equal(4, events.Count);
+        Assert.Equal("agent.start:A,agent.stop:A,agent.start:B,agent.stop:B", types.AsString());
     }
 }

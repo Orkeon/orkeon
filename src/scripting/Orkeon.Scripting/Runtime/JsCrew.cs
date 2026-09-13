@@ -3,12 +3,11 @@ using Jint.Native;
 using JsValueExt = Jint.JsValueExtensions;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Scripting.Builders;
-using Orkeon.Scripting.ErrorPolicy;
 using Orkeon.Scripting.Exceptions;
 using Orkeon.Scripting.Internal;
-using Orkeon.Scripting.Telemetry;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -19,10 +18,18 @@ namespace Orkeon.Scripting.Runtime;
 /// <c>findById</c>) and enforces mono-crew membership.
 /// </summary>
 /// <remarks>
-/// SCR-04 minimal: <c>run</c> walks the agents in declaration order and invokes each
-/// agent's <c>body</c> (when supplied), capturing string-coerced outputs. Real
-/// orchestration (LLM calls, hierarchical manager, autonomous budget) is wired in via
-/// <c>ICrewOrchestrationService</c> in later tasks.
+/// <para>The run loop lives in JavaScript (SCR-25 T4). <see cref="run"/>, <see cref="runAgent"/> and
+/// <see cref="runStream"/> are JS functions built once per crew from the run module in
+/// <c>JsCrew.Run.cs</c>: they walk the agents in declaration order, take each agent's instance
+/// semaphore, build its <see cref="JsAgentContext"/>, invoke its <c>body</c>, apply its
+/// <c>onError</c> policy and await the crew hooks — all as promise reactions on whichever thread is
+/// draining the engine. The CLR supplies synchronous helpers (bridged through
+/// <see cref="JsHostError"/>, so a failure is a JavaScript throw) and three awaited tasks — the
+/// cancellation, the semaphore acquisition, a retry delay — and never calls back into the engine
+/// after an await. A CLR caller drives the loop only through <see cref="RunAsync"/>, a root pump on
+/// an engine at rest.</para>
+/// <para>Real orchestration (LLM calls, hierarchical manager, autonomous budget) is wired in via
+/// <c>ICrewOrchestrationService</c> on the declarative shape (<c>globalThis.crew</c> handoff).</para>
 /// </remarks>
 #pragma warning disable IDE1006 // Method names match the JS surface
 #pragma warning disable CS1591 // JS-interop mirror of Crew in Typings/crew.d.ts; that declaration is the contract scripts read (the CLR-facing RunAsync carries its own doc).
@@ -82,14 +89,11 @@ public sealed partial class JsCrew
     internal JsMemoryScope CrewMemory => _crewMemory;
 
     /// <summary>
-    /// Typed budget for the crew run currently in flight (see <see cref="RunAsync"/>).
-    /// Null outside a run — lifecycle hooks fired by add/remove and direct
-    /// <c>runAgent</c> calls are intentionally unbudgeted.
+    /// Builds the shared runtime environment record handed to execution contexts. The budget is the
+    /// run's own (<see cref="CrewRunScope.Budget"/>): lifecycle hooks fired by add/remove and
+    /// <c>runAgent</c> contexts are intentionally unbudgeted and pass <c>null</c>.
     /// </summary>
-    private Orkeon.Domain.Autonomous.AgentExecutionBudget? _currentRunBudget;
-
-    /// <summary>Builds the shared runtime environment record handed to execution contexts.</summary>
-    private JsExecutionEnvironment CreateEnvironment(JsAgent agent, CancellationToken ct) => new()
+    internal JsExecutionEnvironment CreateEnvironment(JsAgent agent, AgentExecutionBudget? budget, CancellationToken ct) => new()
     {
         Engine = _engine,
         Self = agent,
@@ -100,7 +104,7 @@ public sealed partial class JsCrew
         Ct = ct,
         LlmProvider = _llmProvider,
         BuiltInTools = _builtInTools,
-        Budget = _currentRunBudget,
+        Budget = budget,
         PermissionGate = _permissionGate,
         DeltaSink = _deltaSink,
         UsageSink = _usageSink,
@@ -131,6 +135,9 @@ public sealed partial class JsCrew
 
     public IReadOnlyList<JsAgent> agents => _agents;
 
+    /// <summary>The agents a run walks: taken once at its start, so a spawned agent runs in the next run and a removed one still runs in this one.</summary>
+    internal JsAgent[] SnapshotAgents() => _agents.ToArray();
+
     public void add(JsAgent agent) => Add(agent);
 
     internal void Add(JsAgent agent)
@@ -144,7 +151,7 @@ public sealed partial class JsCrew
         {
             _agents.Add(agent);
             agent.CurrentCrew = this;
-            InvokeAgentLifecycleHook(agent, agent.Builder.OnAgentStartHandler);
+            InvokeAgentLifecycleHook(agent, agent.Builder.OnAgentStartHandler, "onAgentStart");
         }
     }
 
@@ -158,43 +165,43 @@ public sealed partial class JsCrew
         // Auto-cleanup: drop every topic subscription registered while this agent was
         // executing. Queues are crew-scoped and intentionally kept.
         _eventBroker?.DetachAgent(agent.id);
-        InvokeAgentLifecycleHook(agent, agent.Builder.OnAgentStopHandler);
+        InvokeAgentLifecycleHook(agent, agent.Builder.OnAgentStopHandler, "onAgentStop");
         if (ReferenceEquals(agent.CurrentCrew, this))
             agent.CurrentCrew = null;
     }
 
-    private void InvokeAgentLifecycleHook(JsAgent agent, JsValue? hook)
+    /// <summary>
+    /// Chapter 05: the hook is "invoked synchronously". What it returns is left to settle under
+    /// whichever pump is active — never drained: from <c>ctx.spawn</c> inside a body this runs inside
+    /// an event-loop job, where a drain cannot pump (SCR-25 §2.3). A rejection is observed and logged;
+    /// a synchronous call site has nowhere else to put it. Called by <see cref="Add"/> (the
+    /// constructor's initial composition included) and <see cref="Remove"/>, on the engine thread —
+    /// inside <c>build()</c>'s prefix, inside a body's job, or from a C# caller with the engine at
+    /// rest — so the <c>Invoke</c> calls are legal under the rule.
+    /// </summary>
+    /// <remarks>
+    /// A hook that awaits real host work in a script that never pumps again (a purely synchronous
+    /// script with no run, or <see cref="Remove"/> called from C# with the engine at rest and no
+    /// later pump) has its tail run at the next pump on that engine, or never; its rejection is still
+    /// logged when it settles.
+    /// </remarks>
+    private void InvokeAgentLifecycleHook(JsAgent agent, JsValue? hook, string hookName)
     {
         if (hook is null || hook.IsUndefined() || hook.IsNull()) return;
-        var ctx = new JsExecutionContext(CreateEnvironment(agent, CancellationToken.None));
-        var result = _engine.Invoke(hook, [ctx]);
-        if (result.IsPromise()) result.UnwrapIfPromise();
+        var ctx = new JsExecutionContext(CreateEnvironment(agent, budget: null, CancellationToken.None));
+        var raw = _engine.Invoke(hook, [ctx]);
+        if (!raw.IsPromise()) return;
+        Action<JsValue> onRejected = reason => JsHostError.Guard(_engine,
+            () => LogLifecycleHookRejected(_logger, hookName, agent.name, name, DisplayMessage(reason)));
+        _engine.Invoke(Observe, [raw, onRejected]);
     }
+
+    [LoggerMessage(EventId = 2, Level = LogLevel.Warning, Message = "Lifecycle hook {Hook} of agent '{Agent}' in crew '{Crew}' rejected: {Reason}")]
+    private static partial void LogLifecycleHookRejected(ILogger logger, string hook, string agent, string crew, string reason);
 
     internal JsValue? _onCrewStart;
     internal JsValue? _onCrewComplete;
     internal JsValue? _onCrewError;
-
-    private void InvokeCrewHook(JsValue? hook, JsCrewResult? result, Exception? error, CancellationToken ct)
-    {
-        if (hook is null || hook.IsUndefined() || hook.IsNull()) return;
-        var anchor = _agents.FirstOrDefault();
-        if (anchor is null) return;
-        var ctx = new JsExecutionContext(CreateEnvironment(anchor, ct));
-        // Peel Jint promise/aggregate wrappers so the JS hook receives the
-        // actionable inner message instead of "Promise was rejected with value
-        // System.AggregateException ...". See JsExceptionUnwrap.
-        var displayedError = error is null ? null : JsExceptionUnwrap.UnwrapToInnermost(error).Message;
-        object[] args;
-        if (error is not null)
-            args = [ctx, displayedError!];
-        else if (result is not null)
-            args = [ctx, result];
-        else
-            args = [ctx];
-        var raw = _engine.Invoke(hook, args);
-        if (raw.IsPromise()) raw.UnwrapIfPromise(ct);
-    }
 
     public bool has(JsAgent agent) => _agents.Contains(agent);
 
@@ -207,72 +214,90 @@ public sealed partial class JsCrew
     public IReadOnlyList<JsAgent> findByRole(string role)
         => _agents.Where(a => string.Equals(a.Domain.Role.Value, role, StringComparison.Ordinal)).ToList();
 
-    public Task<JsCrewResult> run() => RunAsync(null, CancellationToken.None);
-
-    public Task<JsCrewResult> run(JsValue? options) => RunAsync(options, CancellationToken.None);
-
     /// <summary>
-    /// Internal entry point used by tests and host integrations that already have a
-    /// <see cref="CancellationToken"/>.
+    /// The CLR entry point (ScriptHost's <c>globalThis.crew</c> handoff, hosts, tests): a root pump. The
+    /// engine must be at rest — the whole run, the synchronous prefix of the JS run function and every
+    /// event-loop job, is driven from one pool thread, and the per-engine gate serializes it against any
+    /// other root pump on this engine (another <see cref="RunAsync"/>, a <see cref="JsTool.CallAsync"/>,
+    /// a <see cref="ScriptHost"/> evaluation). From a script, call <c>crew.run()</c>; from a CLR delegate
+    /// the script invoked, this throws (same thread) or deadlocks on the gate (another thread) — never
+    /// call it from inside a body.
     /// </summary>
+    /// <remarks>
+    /// What a caller receives, in precedence order: an <see cref="OperationCanceledException"/> (exact
+    /// type) whenever the run's linked token — <paramref name="externalCt"/>, <c>options.signal</c>,
+    /// <c>options.timeout</c> — is cancelled, whatever the JavaScript rejected with; the typed host
+    /// exception a bridged or wrapped rejection carries (<see cref="StateMutationOutsideWithException"/>,
+    /// <see cref="RecursiveAgentInvocationException"/>, <see cref="BudgetExhaustedException"/>);
+    /// otherwise Jint's <c>PromiseRejectedException</c> carrying the rejected value. A bad
+    /// <c>timeout</c> option is a <see cref="FormatException"/>, raised before the loop starts.
+    /// </remarks>
     public async Task<JsCrewResult> RunAsync(JsValue? options, CancellationToken externalCt)
     {
-        var (signal, timeout) = CrewRunOptions.From(options);
-        using var timeoutCts = timeout is null ? null : new CancellationTokenSource(timeout.Value);
-        using var linked = CancellationTokenSource.CreateLinkedTokenSource(
-            externalCt, signal ?? CancellationToken.None, timeoutCts?.Token ?? CancellationToken.None);
-
-        using var crewActivity = ScriptingActivitySource.Instance.StartActivity(ScriptingActivitySource.CrewRunSpan);
-        crewActivity?.SetTag("orkeon.crew.name", name);
-        crewActivity?.SetTag("orkeon.crew.process", Process);
-
-        // One typed budget instance per crew run, shared by every agent of the run  —
-        // created here (not at build time) so the wall-time clock starts with the run.
-        _currentRunBudget = JsBudgetBridge.FromSpec(Budget);
-
-        WarnOnceAboutDeclarativeOnlyDeclarations();
-
-        InvokeCrewHook(_onCrewStart, result: null, error: null, linked.Token);
-
-        var taskResults = new List<JsTaskResult>(_agents.Count);
-        var aggregate = string.Empty;
-
-        // Snapshot the agent list so spawned agents (added via ctx.spawn) don't break
-        // iteration. Spawned agents become available to subsequent crew.run() calls.
-        var snapshot = _agents.ToList();
+        if (JsEngineGate.IsDrainingOnThisThread(_engine))
+        {
+            throw new InvalidOperationException(
+                $"JsCrew.RunAsync is a root pump and needs the engine at rest, but crew '{name}' was asked to run from " +
+                "inside this engine's own event loop (a CLR callback the script invoked). Call crew.run() from the script instead.");
+        }
+        externalCt.ThrowIfCancellationRequested();
+        var gate = JsEngineGate.For(_engine);
         try
         {
-            foreach (var agent in snapshot)
-            {
-                linked.Token.ThrowIfCancellationRequested();
-                var start = DateTime.UtcNow;
-                object? output = null;
-                if (agent.Builder.BodyFunction is not null && !agent.Builder.BodyFunction.IsUndefined())
-                {
-                    using var agentActivity = ScriptingActivitySource.Instance.StartActivity(
-                        Orkeon.Constants.Llm.GenAiAttributes.SpanName(ScriptingActivitySource.AgentRunSpan, agent.name));
-                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.OperationName, Orkeon.Constants.Llm.GenAiAttributes.OperationInvokeAgent);
-                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.AgentName, agent.name);
-                    agentActivity?.SetTag(Orkeon.Constants.Llm.GenAiAttributes.AgentId, agent.id);
-                    output = await RunAgentBodyWithErrorPolicyAsync(agent, linked.Token).ConfigureAwait(false);
-                }
-                var duration = (DateTime.UtcNow - start).TotalMilliseconds;
-                taskResults.Add(new JsTaskResult(agent.name, output, duration));
-                if (output is not null) aggregate = output.ToString() ?? aggregate;
-            }
-
-            var crewResult = new JsCrewResult(aggregate, new Dictionary<string, object?>(), taskResults);
-            InvokeCrewHook(_onCrewComplete, crewResult, error: null, linked.Token);
-            return crewResult;
+            await gate.WaitAsync(externalCt).ConfigureAwait(false);
         }
-        catch (Exception ex)
+        catch (OperationCanceledException)
         {
-            InvokeCrewHook(_onCrewError, result: null, error: ex, linked.Token);
-            throw;
+            // The exact type, not the TaskCanceledException the wait raises: callers assert on it.
+            throw new OperationCanceledException(externalCt);
+        }
+        try
+        {
+            // No token on Task.Run: a cancelled one would surface as TaskCanceledException, and every
+            // cancellation path of this run is normalised inside Pump.
+            return await Task.Run(() => Pump(options, externalCt)).ConfigureAwait(false);
         }
         finally
         {
-            _currentRunBudget = null;
+            gate.Release();
+        }
+    }
+
+    /// <summary>
+    /// Synchronous by design: one pool thread parses the options, invokes the JS run function and drains
+    /// the engine until its promise settles or the run is abandoned. Draining on the run token itself
+    /// would abandon the drain at the first idle wait after cancellation, before any JS <c>finally</c>
+    /// or <c>onCrewError</c> ran; draining unbounded would hang on an unwind nobody settles. So the
+    /// drain token is the run token plus <see cref="CrewRunScope.CancellationGrace"/>.
+    /// </summary>
+    private JsCrewResult Pump(JsValue? options, CancellationToken externalCt)
+    {
+        using var draining = JsEngineGate.MarkDraining(_engine);
+        var (signal, timeout) = CrewRunOptions.From(options);
+        using var scope = new CrewRunScope(this, CrewRunKind.Run, signal, timeout, ownedByHost: true, externalCt);
+        try
+        {
+            var promise = _engine.Invoke(RunFromHost, [scope]);
+            var settled = JsValueExt.UnwrapIfPromise(promise, scope.AbandonToken);
+            return (JsCrewResult)settled.ToObject()!;
+        }
+        catch (Exception ex) when (scope.Token.IsCancellationRequested)
+        {
+            // Whatever the JS rejected with — a bridged OperationCanceledException, Jint's
+            // ExecutionCanceledException for a cancelled task, the drain's own cancellation at the
+            // grace — the caller sees the cancellation.
+            throw new OperationCanceledException("The crew run was cancelled.", ex, scope.Token);
+        }
+        catch (Exception ex) when (TryUnwrapTypedHostException(ex, out var typed))
+        {
+            throw typed;
+        }
+        finally
+        {
+            // A normal run already ended its scope in JS; this releases leftovers only when the pump
+            // gave up first (grace expired, sandbox TimeoutException / MemoryLimitExceededException, a
+            // raw throw from a non-bridged binding).
+            scope.Abandon();
         }
     }
 
@@ -289,7 +314,7 @@ public sealed partial class JsCrew
     /// of the work the script describes. Once per instance, not once per run: the condition
     /// is fixed at build time, so a crew run in a loop would repeat an unchanging fact.
     /// </remarks>
-    private void WarnOnceAboutDeclarativeOnlyDeclarations()
+    internal void WarnOnceAboutDeclarativeOnlyDeclarations()
     {
         if (_warnedAboutDeclarativeOnly) return;
         _warnedAboutDeclarativeOnly = true;
@@ -322,82 +347,11 @@ public sealed partial class JsCrew
     [LoggerMessage(EventId = 1, Level = LogLevel.Warning, Message = "Procedural crew script: {Detail}")]
     private static partial void LogProceduralShapeIgnores(ILogger logger, string detail);
 
-    public Task<object?> runAgent(JsAgent agent, JsValue? input)
-    {
-        ArgumentNullException.ThrowIfNull(agent);
-        if (!has(agent))
-            throw new AgentNotInThisCrewException(agent.name, name);
-        return RunAgentCoreAsync(agent, input);
-    }
+    internal void LogRunAbandoned(int openAttempts, int openSteps, int heldSemaphores)
+        => LogRunAbandoned(_logger, name, openAttempts, openSteps, heldSemaphores);
 
-    private async Task<object?> RunAgentCoreAsync(JsAgent agent, JsValue? input)
-    {
-        if (agent.Builder.BodyFunction is null || agent.Builder.BodyFunction.IsUndefined()) return null;
-        var result = _engine.Invoke(agent.Builder.BodyFunction, [input ?? JsValue.Undefined, JsValue.Undefined]);
-        return result.IsPromise() ? await UnwrapPromise(result, CancellationToken.None).ConfigureAwait(false) : result.ToObject();
-    }
-
-    /// <summary>
-    /// Skeleton stream emitting an <c>agent.start</c>/<c>agent.stop</c> pair per agent.
-    /// Full streaming semantics land in SCR-17 alongside <c>stateGraph.runStream</c>.
-    /// </summary>
-    public async IAsyncEnumerable<object> runStream(JsValue? options = null,
-        [System.Runtime.CompilerServices.EnumeratorCancellation] CancellationToken ct = default)
-    {
-        foreach (var agent in _agents)
-        {
-            ct.ThrowIfCancellationRequested();
-            yield return new { type = "agent.start", payload = new { name = agent.name }, at = DateTime.UtcNow.Ticks };
-            object? output = null;
-            if (agent.Builder.BodyFunction is not null && !agent.Builder.BodyFunction.IsUndefined())
-            {
-                var result = _engine.Invoke(agent.Builder.BodyFunction, [JsValue.Undefined, JsValue.Undefined]);
-                output = result.IsPromise() ? await UnwrapPromise(result, ct).ConfigureAwait(false) : result.ToObject();
-            }
-            yield return new { type = "agent.stop", payload = new { name = agent.name, output }, at = DateTime.UtcNow.Ticks };
-        }
-    }
-
-    /// <summary>
-    /// Body promises must survive multi-second host awaits (LLM HTTP round-trips, slow
-    /// tools, …). The synchronous <c>UnwrapIfPromise(TimeSpan)</c> overload takes its own
-    /// ceiling — 30 minutes exceeds any realistic single-agent body — where
-    /// <c>UnwrapIfPromiseAsync</c> applies the engine's <c>Options.Constraints.PromiseTimeout</c>
-    /// (10 s by default, which this engine keeps). The drain runs inline on the calling
-    /// thread; see <see cref="UnwrapPromise"/> for why it must.
-    /// </summary>
-    private static readonly TimeSpan BodyPromiseTimeout = TimeSpan.FromMinutes(30);
-
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA1849", Justification = "Blocking here is the point: this thread already owns the engine (crew.run() was called from the script), and UnwrapIfPromise drains the engine's continuations while it waits. UnwrapIfPromiseAsync would resume the pump on a pool thread, putting a second thread inside a Jint engine that is neither thread-safe nor re-entrant — measured: 1 full-suite run in 6 failed that way, and forcing a dedicated thread made it 4 in 4.")]
-    private static Task<object?> UnwrapPromise(JsValue promise, CancellationToken ct)
-    {
-        ct.ThrowIfCancellationRequested();
-        try
-        {
-            // Inline, on the calling thread — NOT on a pool thread. `crew.run()` is invoked
-            // from the script, so this thread is already inside `engine.Evaluate`; settling the
-            // body's promise means re-entering that same engine, and a Jint engine is neither
-            // thread-safe nor re-entrant. `UnwrapIfPromise` drains the engine's continuations
-            // while it waits, which is precisely the pump this thread owes the engine — moving
-            // it onto another thread put two threads inside one engine and produced everything
-            // but the cause (a body resuming with its parameters unbound, a result that never
-            // settles).
-            var settled = JsValueExt.UnwrapIfPromise(promise, BodyPromiseTimeout);
-            return Task.FromResult(settled.ToObject());
-        }
-        catch (OperationCanceledException) when (ct.IsCancellationRequested)
-        {
-            throw new OperationCanceledException(ct);
-        }
-        catch (Jint.Runtime.PromiseRejectedException) when (ct.IsCancellationRequested)
-        {
-            throw new OperationCanceledException(ct);
-        }
-        catch (Exception ex) when (TryUnwrapTypedHostException(ex, out var typed))
-        {
-            throw typed;
-        }
-    }
+    [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "Crew '{Crew}' run abandoned by its host before its JavaScript loop ended; released from the host: {OpenAttempts} open attempt(s), {OpenSteps} open agent step(s), {HeldSemaphores} held semaphore(s).")]
+    private static partial void LogRunAbandoned(ILogger logger, string crew, int openAttempts, int openSteps, int heldSemaphores);
 
     /// <summary>
     /// Walks <paramref name="ex"/> looking for a typed CLR exception thrown by a host
@@ -443,140 +397,30 @@ public sealed partial class JsCrew
     private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _instanceSemaphores =
         new(StringComparer.Ordinal);
 
-    private SemaphoreSlim GetInstanceSemaphore(JsAgent agent)
+    internal SemaphoreSlim GetInstanceSemaphore(JsAgent agent)
         => _instanceSemaphores.GetOrAdd(agent.id, _ => new SemaphoreSlim(1, 1));
 
-    private async Task<object?> RunAgentBodyWithErrorPolicyAsync(JsAgent agent, CancellationToken ct)
-    {
-        var sem = GetInstanceSemaphore(agent);
-        var attempt = 1;
-        while (true)
-        {
-            ct.ThrowIfCancellationRequested();
-            await sem.WaitAsync(ct).ConfigureAwait(false);
-            try
-            {
-                var initialState = ResolveInitialState(agent);
-                using var ctx = new JsAgentContext(CreateEnvironment(agent, ct), initialState);
-                BeginBrokerScope(agent, ct);
-                try
-                {
-                    var result = InvokeBody(agent, ctx);
-                    return result.IsPromise() ? await UnwrapPromise(result, ct).ConfigureAwait(false) : result.ToObject();
-                }
-                catch (Exception ex) when (agent.Builder.OnErrorHandler is not null && !agent.Builder.OnErrorHandler.IsUndefined())
-                {
-                    var (outcome, value) = await ApplyErrorPolicyAsync(agent, ex, attempt, ctx, ct).ConfigureAwait(false);
-                    switch (outcome)
-                    {
-                        case ErrorPolicyOutcome.Return: return value;
-                        case ErrorPolicyOutcome.Retry: attempt++; continue;
-                        default: throw; // Fail / retry budget exhausted: preserve original exception
-                    }
-                }
-            }
-            finally
-            {
-                EndBrokerScope();
-                sem.Release();
-            }
-        }
-    }
-
     /// <summary>
-    /// Runs the body up to its first await. A synchronous body that trips a bridged host
-    /// error (the state set-trap, <see cref="JsHostError"/>) throws it here as a
-    /// <see cref="Jint.Runtime.JavaScriptException"/>, before any promise exists; the typed
-    /// CLR exception is recovered the same way <see cref="UnwrapPromise"/> does for a rejection.
+    /// Attributes what happens next to <paramref name="agent"/> — <see cref="JsEventTopic.subscribe"/>
+    /// records the subscriber, <c>stateGraph.run()</c> picks up the ambient token — and returns what
+    /// was current, so <see cref="EndBrokerScope"/> can hand attribution back to a body that called
+    /// <c>runAgent</c> rather than clear it. The context constructor has already created the broker.
     /// </summary>
-    private JsValue InvokeBody(JsAgent agent, JsAgentContext ctx)
+    internal BrokerScopeMemento BeginBrokerScope(JsAgent agent, CancellationToken ct)
     {
-        try
-        {
-            return _engine.Invoke(agent.Builder.BodyFunction!, [JsValue.Undefined, ctx]);
-        }
-        catch (Exception ex) when (TryUnwrapTypedHostException(ex, out var typed))
-        {
-            throw typed;
-        }
-    }
-
-    // Track who is currently executing so JsEventTopic.subscribe can attribute
-    // the new subscription to this agent (used by Remove auto-cleanup) and so
-    // stateGraph.run() can pick up the ambient CT.
-    private void BeginBrokerScope(JsAgent agent, CancellationToken ct)
-    {
-        var broker = _eventBroker;
-        if (broker is null) return;
+        var broker = EventBroker;
+        var previous = new BrokerScopeMemento(broker.CurrentAgentId, broker.CurrentCt);
         broker.CurrentAgentId = agent.id;
         broker.CurrentCt = ct;
+        return previous;
     }
 
-    private void EndBrokerScope()
+    internal void EndBrokerScope(BrokerScopeMemento previous)
     {
         var broker = _eventBroker;
         if (broker is null) return;
-        broker.CurrentAgentId = null;
-        broker.CurrentCt = CancellationToken.None;
-    }
-
-    private enum ErrorPolicyOutcome { Return, Retry, Rethrow }
-
-    /// <summary>
-    /// Applies the agent's onError policy. Returns <see cref="ErrorPolicyOutcome.Return"/>
-    /// with the value to surface, <see cref="ErrorPolicyOutcome.Retry"/> to re-run the body,
-    /// or <see cref="ErrorPolicyOutcome.Rethrow"/> when the policy is Fail or the retry
-    /// budget is exhausted (the caller rethrows the original exception to preserve its type).
-    /// </summary>
-    private async Task<(ErrorPolicyOutcome Outcome, object? Value)> ApplyErrorPolicyAsync(
-        JsAgent agent, Exception ex, int attempt, JsAgentContext ctx, CancellationToken ct)
-    {
-        var action = InvokeOnError(agent, ex, attempt, ctx);
-        switch (action.kind)
-        {
-            case JsErrorActionKind.Skip:
-                return (ErrorPolicyOutcome.Return, null);
-            case JsErrorActionKind.Fallback:
-                return (ErrorPolicyOutcome.Return, action.fallbackValue?.ToObject());
-            case JsErrorActionKind.Retry:
-                if (action.max is int m && attempt >= m)
-                    return (ErrorPolicyOutcome.Rethrow, null);
-                if (action.delay is TimeSpan d && d > TimeSpan.Zero)
-                    await Task.Delay(d, ct).ConfigureAwait(false);
-                return (ErrorPolicyOutcome.Retry, null);
-            default:
-                return (ErrorPolicyOutcome.Rethrow, null);
-        }
-    }
-
-    private JsErrorAction InvokeOnError(JsAgent agent, Exception ex, int attempt, JsAgentContext ctx)
-    {
-        var inner = ex is Jint.Runtime.JavaScriptException jse
-            ? new InvalidOperationException(jse.Message, jse)
-            : ex;
-        var code = ErrorCodeMapper.MapToCode(inner);
-        var errCtx = new JsErrorContext(code, inner.Message, inner, attempt,
-            new JsAgentRef(agent.id, agent.name));
-        var raw = _engine.Invoke(agent.Builder.OnErrorHandler!, [errCtx, ctx]);
-        var unwrapped = raw.IsPromise() ? raw.UnwrapIfPromise() : raw;
-        var clr = unwrapped.ToObject();
-        return clr is JsErrorAction action
-            ? action
-            : new JsErrorAction(JsErrorActionKind.Fail);
-    }
-
-    private JsValue ResolveInitialState(JsAgent agent)
-    {
-        var factory = agent.Builder.StateFactory;
-        if (factory is null || factory.IsUndefined() || factory.IsNull())
-            return JsValue.Undefined;
-        // A non-callable factory is a plain seed value — use it directly. Only invoke
-        // when it is actually a function, so a genuine error thrown by a user-supplied
-        // factory propagates instead of being silently swallowed (was: broad catch).
-        if (factory is not Jint.Native.Function.Function)
-            return factory;
-        var result = _engine.Invoke(factory, Array.Empty<object>());
-        return result.IsPromise() ? result.UnwrapIfPromise() : result;
+        broker.CurrentAgentId = previous.AgentId;
+        broker.CurrentCt = previous.Ct;
     }
 }
 #pragma warning restore CS1591
