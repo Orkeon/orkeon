@@ -239,7 +239,7 @@ Orkeon.Scripting.Runtime.JsAgentContext.Dispose() -> void
 Orkeon.Scripting.Runtime.JsAgentContext.lock.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsAgentContext.spawn.get -> System.Func<Orkeon.Scripting.Builders.JsAgentBuilder!, Orkeon.Scripting.Builders.JsAgent!>!
 Orkeon.Scripting.Runtime.JsAgentContext.state.get -> Jint.Native.JsValue!
-Orkeon.Scripting.Runtime.JsAgentContext.stateWith.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsAgentContext.stateWith.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsCrew
 Orkeon.Scripting.Runtime.JsCrew.RunAsync(Jint.Native.JsValue? options, System.Threading.CancellationToken externalCt) -> System.Threading.Tasks.Task<Orkeon.Scripting.Runtime.JsCrewResult!>!
 Orkeon.Scripting.Runtime.JsCrew.add(Orkeon.Scripting.Builders.JsAgent! agent) -> void

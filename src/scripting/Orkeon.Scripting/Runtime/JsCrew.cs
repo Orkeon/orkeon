@@ -476,7 +476,7 @@ public sealed partial class JsCrew
                 BeginBrokerScope(agent, ct);
                 try
                 {
-                    var result = _engine.Invoke(agent.Builder.BodyFunction!, [JsValue.Undefined, ctx]);
+                    var result = InvokeBody(agent, ctx);
                     return result.IsPromise() ? await UnwrapPromise(result, ct).ConfigureAwait(false) : result.ToObject();
                 }
                 catch (Exception ex) when (agent.Builder.OnErrorHandler is not null && !agent.Builder.OnErrorHandler.IsUndefined())
@@ -495,6 +495,24 @@ public sealed partial class JsCrew
                 EndBrokerScope();
                 sem.Release();
             }
+        }
+    }
+
+    /// <summary>
+    /// Runs the body up to its first await. A synchronous body that trips a bridged host
+    /// error (the state set-trap, <see cref="JsHostError"/>) throws it here as a
+    /// <see cref="Jint.Runtime.JavaScriptException"/>, before any promise exists; the typed
+    /// CLR exception is recovered the same way <see cref="UnwrapPromise"/> does for a rejection.
+    /// </summary>
+    private JsValue InvokeBody(JsAgent agent, JsAgentContext ctx)
+    {
+        try
+        {
+            return _engine.Invoke(agent.Builder.BodyFunction!, [JsValue.Undefined, ctx]);
+        }
+        catch (Exception ex) when (TryUnwrapTypedHostException(ex, out var typed))
+        {
+            throw typed;
         }
     }
 

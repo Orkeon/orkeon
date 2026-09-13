@@ -229,29 +229,34 @@ public sealed class EngineThreadingContractTests
 
     /// <summary>
     /// The concurrency the DSL spec promises for <c>ctx.stateWith</c> (chapter 05): five
-    /// transforms under one <c>Promise.all</c>, each suspending. The contended callers resume
-    /// on pool threads and invoke their transform there — NullReferenceException inside the
-    /// engine, or a 10 s timeout, depending on the interleaving.
+    /// transforms under one <c>Promise.all</c>, each suspending. The CLR closure this replaced
+    /// resumed the contended callers on pool threads and invoked their transform there —
+    /// NullReferenceException inside the engine, or a 10 s timeout, depending on the
+    /// interleaving. The trampoline (SCR-25 T3) runs every transform as a promise reaction on
+    /// the draining thread; 24× under contention is the acceptance criterion.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task Concurrent_stateWith_with_suspending_transforms_serializes()
     {
-        var r = await RunScriptAsync("""
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .withState(() => ({ n: 0 }))
-                .body(async (input, ctx) => {
-                    await Promise.all([1,2,3,4,5].map(i => ctx.stateWith(async (s) => {
-                        const x = await ctx.llm.complete("s" + i);
-                        return { n: s.n + 1, last: x };
-                    })));
-                    return String(ctx.state.n);
-                })
-                .build();
-            const crew = crewBuilder().name("c").withAgent(worker).build();
-            const res = await crew.run();
-            result = { n: res.output };
-            """);
-        Assert.Equal("5", r["n"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .withState(() => ({ n: 0 }))
+                    .body(async (input, ctx) => {
+                        await Promise.all([1,2,3,4,5].map(i => ctx.stateWith(async (s) => {
+                            const x = await ctx.llm.complete("s" + i);
+                            return { n: s.n + 1, last: x };
+                        })));
+                        return String(ctx.state.n);
+                    })
+                    .build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { n: res.output };
+                """);
+            Assert.Equal("5", r["n"]);
+        });
     }
 
     /// <summary>

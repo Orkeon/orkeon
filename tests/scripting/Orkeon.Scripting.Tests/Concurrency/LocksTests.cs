@@ -224,6 +224,14 @@ public sealed class LocksTests
         Assert.Equal(ExpectedSerializedOrder, trace);
     }
 
+    /// <summary>
+    /// The holder sleeps far longer than the run is allowed to live. Far, not merely longer:
+    /// both ends are timers, and when the thread pool is starved (the contention harness of
+    /// <c>EngineThreadingContractTests</c> blocks 24 pool threads at once — a 150 ms timer was
+    /// measured firing 18 s late) every timer that has fallen due fires in list order, so a
+    /// sleep that could fall due inside the stall would let the body finish before the cancel
+    /// and the test would see no exception at all.
+    /// </summary>
     [Fact]
     public async Task ctx_lock_signal_cancellation_releases_waiter()
     {
@@ -233,8 +241,36 @@ public sealed class LocksTests
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => {
                     await Promise.all([
-                        ctx.lock("X", async () => { await __sleep(5000, ctx.signal); }),
+                        ctx.lock("X", async () => { await __sleep(120000, ctx.signal); }),
                         ctx.lock("X", async () => { return "should-not-run"; }),
+                    ]);
+                    return "done";
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        using var cts = new CancellationTokenSource(150);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => crew.RunAsync(null, cts.Token));
+    }
+
+    /// <summary>
+    /// The state mutex is acquired with the run's signal, like a named lock: a transform
+    /// queued behind a holder that never returns is released by cancellation, and the run
+    /// rejects as cancelled rather than waiting on the holder.
+    /// </summary>
+    [Fact]
+    public async Task state_with_signal_cancellation_releases_waiter()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .withState(() => ({ n: 0 }))
+                .body(async (input, ctx) => {
+                    await Promise.all([
+                        ctx.state.with(async (s) => { await __sleep(120000, ctx.signal); return s; }),
+                        ctx.state.with((s) => ({ n: s.n + 1 })),
                     ]);
                     return "done";
                 }).build();
@@ -260,11 +296,11 @@ public sealed class LocksTests
             crewBuilder().withAgent(a).build();
             """);
 
-        var ex = await Assert.ThrowsAnyAsync<Exception>(
+        // The set trap throws through the host error bridge; the crew recovers the typed CLR
+        // exception from the bridged JS Error and surfaces it as itself.
+        var ex = await Assert.ThrowsAsync<StateMutationOutsideWithException>(
             () => crew.RunAsync(null, CancellationToken.None));
-        // After SCR-12 §1, the typed CLR exception bubbles up either directly or via the
-        // exception chain (Jint may wrap it in JavaScriptException / PromiseRejected).
-        var chain = ChainText(ex);
-        Assert.Contains(nameof(StateMutationOutsideWithException), chain);
+        Assert.Equal("n", ex.PropertyName);
+        Assert.Contains(nameof(StateMutationOutsideWithException), ChainText(ex));
     }
 }

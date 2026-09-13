@@ -3,6 +3,7 @@ using Jint;
 using Jint.Native;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -16,12 +17,50 @@ namespace Orkeon.Scripting.Runtime;
 #pragma warning disable CS1591 // JS-interop mirror of AgentContext in Typings/context.d.ts; that declaration is the contract scripts read.
 public sealed class JsAgentContext : JsExecutionContext, IDisposable
 {
+    // The loop that calls back into JS lives in JS (SCR-25): the CLR only hands it
+    // synchronous helpers and one Task (the mutex acquisition, settled on the engine's own
+    // loop). The transform therefore runs as a promise reaction on whichever thread drains
+    // the engine, never on the pool thread that won a contended mutex, and `commit` rebuilds
+    // the proxy from that same thread. The former CLR closure awaited the mutex, then invoked
+    // the transform and rebuilt the proxy from its continuation — a second thread inside the
+    // engine as soon as two `with` calls overlapped (NullReferenceException or a
+    // PromiseTimeout under `Promise.all`).
+    private const string StateWithFactorySource = """
+        (acquire, release, current, commit, state) => async function stateWith(transform) {
+            await acquire();
+            try {
+                const next = await transform(current());
+                commit(next);
+                return state();
+            } finally { release(); }
+        }
+        """;
+
+    // `with` is the trampoline above; any other set is refused through the host error
+    // bridge, so the script's catch/finally run and the CLR side still recovers the typed
+    // StateMutationOutsideWithException (JsCrew.TryUnwrapTypedHostException).
+    private const string StateProxyFactorySource = """
+        (current, withFn, reject) => new Proxy(current, {
+            get(target, prop) {
+                if (prop === 'with') return withFn;
+                return target[prop];
+            },
+            set(target, prop, value) {
+                reject(String(prop));
+                return true;
+            }
+        })
+        """;
+
     private readonly Engine _engineRef;
     private readonly JsAgent _self;
     private readonly JsCrew _crewRef;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
     private readonly SemaphoreSlim _stateMutex = new(1, 1);
     private JsValue _stateRaw;
+    private JsValue? _stateWithJs;
+    private JsValue? _stateProxyFactory;
+    private Action<string>? _rejectStateMutation;
 
     public JsValue state { get; private set; }
 
@@ -34,34 +73,46 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         _crewRef = environment.Crew;
         _stateRaw = initialState ?? JsValue.Undefined;
         memory.agent = new JsMemoryScope();
-        state = BuildStateProxy();
+        state = BuildStateProxy(_stateRaw);
     }
 
-    public Func<JsValue, Task<JsValue>> stateWith => async transform =>
+    /// <summary>
+    /// The one mutator of <see cref="state"/>: a JS async function (built once per context)
+    /// that serialises transforms on the agent's state mutex and resolves to the new state
+    /// proxy. Reached as <c>ctx.state.with(...)</c> and as <c>ctx.stateWith(...)</c>.
+    /// </summary>
+    public JsValue stateWith => _stateWithJs ??= BuildStateWithFunction();
+
+    private JsValue BuildStateWithFunction()
     {
-        await _stateMutex.WaitAsync(signal).ConfigureAwait(false);
-        try
+        Func<Task<JsValue>> acquire = async () =>
         {
-            var result = _engineRef.Invoke(transform, [_stateRaw]);
-            var unwrapped = result.IsPromise()
-                ? await result.UnwrapIfPromiseAsync(signal).ConfigureAwait(false)
-                : result;
-            _stateRaw = unwrapped;
-            state = BuildStateProxy();
-            return state;
-        }
-        finally
+            await _stateMutex.WaitAsync(signal).ConfigureAwait(false);
+            return JsValue.Undefined;
+        };
+        // Every synchronous helper that can throw is bridged (JsHostError): a CLR exception
+        // that unwinds through the script skips its catch and finally and leaves the promise
+        // pending, so the mutex would stay held. A state the proxy cannot wrap (a primitive)
+        // is already a JS throw — the TypeError of the proxy factory — and passes through.
+        Action release = () => JsHostError.Guard(_engineRef, () => _stateMutex.Release());
+        Func<JsValue> current = () => _stateRaw;
+        Action<JsValue> commit = next => JsHostError.Guard(_engineRef, () =>
         {
-            _stateMutex.Release();
-        }
-    };
+            var proxy = BuildStateProxy(next);
+            _stateRaw = next;
+            state = proxy;
+        });
+        Func<JsValue> stateAccessor = () => state;
+        var factory = _engineRef.Evaluate(StateWithFactorySource);
+        return _engineRef.Invoke(factory, [acquire, release, current, commit, stateAccessor]);
+    }
 
     private JsValue? _lockJs;
     // Implemented in JS rather than C# to avoid nesting `UnwrapIfPromise` inside an
     // engine callback: Jint's `EventLoop.RunAvailableContinuations` is guarded by an
     // `_isProcessing` CAS, so a re-entrant unwrap from a C# delegate that is itself
-    // running as part of an outer pump can't drain microtasks and dead-locks until the
-    // 10s `PromiseTimeout` expires. The JS wrapper only awaits real Tasks (acquire) and
+    // running as part of an outer pump can't drain microtasks and dead-locks until
+    // `PromiseTimeout` expires. The JS wrapper only awaits real Tasks (acquire) and
     // chains directly on the user callback's promise via the outer pump.
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
@@ -98,34 +149,18 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         return spawned;
     };
 
-    private JsValue BuildStateProxy()
+    /// <summary>
+    /// The read-only view of <paramref name="raw"/> the body sees: a Proxy whose <c>with</c>
+    /// is <see cref="stateWith"/> and whose every other set is refused. <c>undefined</c> and
+    /// <c>null</c> have nothing to wrap and come back as they are.
+    /// </summary>
+    private JsValue BuildStateProxy(JsValue raw)
     {
-        if (_stateRaw.IsUndefined() || _stateRaw.IsNull()) return _stateRaw;
+        if (raw.IsUndefined() || raw.IsNull()) return raw;
 
-        // Build a JS Proxy that delegates `with` to our C# stateWith closure and rejects
-        // any other set. The trap calls a host function that throws the typed CLR
-        // exception so callers can `Assert.ThrowsAsync<StateMutationOutsideWithException>`
-        // instead of string-matching a JS Error.
-        var withCallback = JsValue.FromObject(_engineRef, stateWith);
-        Action<string> reject = prop => throw new StateMutationOutsideWithException(prop);
-        _engineRef.SetValue("__currentState", _stateRaw);
-        _engineRef.SetValue("__withCallback", withCallback);
-        _engineRef.SetValue("__rejectStateMutation", reject);
-        var script = """
-            (function() {
-                return new Proxy(__currentState, {
-                    get(target, prop) {
-                        if (prop === 'with') return __withCallback;
-                        return target[prop];
-                    },
-                    set(target, prop, value) {
-                        __rejectStateMutation(String(prop));
-                        return true;
-                    }
-                });
-            })()
-            """;
-        return _engineRef.Evaluate(script);
+        _stateProxyFactory ??= _engineRef.Evaluate(StateProxyFactorySource);
+        _rejectStateMutation ??= prop => throw JsHostError.Wrap(_engineRef, new StateMutationOutsideWithException(prop));
+        return _engineRef.Invoke(_stateProxyFactory, [raw, stateWith, _rejectStateMutation]);
     }
 
     /// <summary>Releases the agent-scoped lock semaphores, the state mutex and the llm interrupt source.</summary>
