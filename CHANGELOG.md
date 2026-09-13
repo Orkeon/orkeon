@@ -7,6 +7,73 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
+
+A Jint engine has one event loop and one drainer at a time, and the runtime kept
+re-entering it from the wrong side: C# loops that invoked script functions after an
+`await`, or blocked on a promise from inside one of the engine's own jobs. Measured through
+`ScriptHost` against a provider that really suspends (`Task.Delay(3)`, the shape of every
+HTTP provider): a crew run placed after *any* top-level `await` hung — a file read or a tool
+call before `crew.run()` was enough, and the second of two sequential runs hung too; a state
+graph whose nodes suspend timed out at 10 s from a body, and hung outright when `run()`
+followed an `await`; five concurrent `ctx.state.with` crashed the engine or timed out; a
+topic handler that awaits so much as a microtask timed out when `publish()` came after the
+body's first `await` — and was delivered when it came before; FSM `onEntry`/`onExit` that
+await the model timed out; an async `onAgentStart` reached through `ctx.spawn` timed out; an
+async `onCrewStart` never returned; `act`'s `onDelta` ran on a pool thread while the body was
+drained on another; and `for await` over `runStream` threw *The value is not iterable*. The
+fifteen reproducers of `EngineThreadingContractTests` pin the family; all of them run.
+
+The fix is one rule, applied everywhere: **every loop that calls back into script code lives
+in JavaScript**. `crew.run`/`runAgent`/`runStream`, `stateGraph.run`/`runStream`,
+`stateMachine.send`, `ctx.state.with`, `topic.publish`, the event's `lock` and `ctx.llm.act`
+are async functions (generators for the streams) built from a JavaScript factory; the CLR
+hands them synchronous helpers and `Task`s to await, and never re-enters the engine from a
+continuation. A helper that fails throws *in JavaScript* (`JsHostError`: an `Error` carrying
+the CLR exception on `clr`), so the script's `catch`/`finally` run and the typed exception
+comes back out. The CLR drives the engine at three root pumps only — `ScriptHost` for the
+script, `JsCrew.RunAsync` for the `globalThis.crew` handoff, `JsTool.CallAsync` for a script
+tool the orchestrator calls — each on an engine at rest, under the per-engine gate, one
+thread for the whole evaluation, bounded by its cancellation token: the three 30-minute
+promise ceilings (`BodyPromiseTimeout`, `ToolPromiseTimeout`, `LoadPromiseTimeout`) are gone.
+The model is written up in `docs/architecture/scripting.md` (EN + FR).
+
+**Breaking for C# callers.** `JsCrew.run`, `runAgent` and `runStream`, `JsStateGraph.run`
+and `runStream`, `JsStateMachine.send`, `JsAgentContext.stateWith`, `JsEventTopic.publish`,
+`JsPublishedEvent.lock` and `JsLlmFacade.act` are `JsValue` properties now — the JS functions
+themselves, not CLR methods. A host runs a crew through `JsCrew.RunAsync(options, ct)`; the
+script surface and the typings are unchanged. What one loop doing the work of several
+changes for scripts:
+
+- An `onCrewStart` that throws fails the run and reaches `onCrewError` (it ran outside the
+  error path before); a run started on an already-cancelled `signal` skips `onCrewStart`,
+  and `onCrewError` still runs (a C# caller with a cancelled token gets
+  `OperationCanceledException` before any hook). An `onCrewError` that throws itself is
+  logged and the *original* error is what the caller receives — it used to replace it.
+- Cancellation bypasses `onError`: a cancelled run rethrows without consulting the policy
+  (it used to consult it with code `unknown`, then throw at the next step anyway). And
+  `err.code` for a failure that arrived as a faulted `Task` maps from the innermost CLR
+  exception (`receive_timeout` for a `ctx.receive({ timeout })` that expired, …) instead of
+  `unknown` for the wrapper.
+- An async `onAgentStart`/`onAgentStop` that rejects is logged as a warning; it no longer
+  throws out of `crew.add`, `ctx.spawn` or `crew.remove`, which stay synchronous and never
+  drain the hook.
+- `crew.runAgent` runs its target under the instance semaphore, with an `AgentContext` and
+  the agent's own `onError` policy; it accepts a name or an `Agent`, honours `opts`
+  (`signal`, `timeout`), and throws `RecursiveAgentInvocationException` when called on the
+  agent whose body is executing instead of deadlocking on the semaphore that body holds. It
+  used to invoke `body(input, undefined)` bare.
+- `crew.runStream` *is* the run, observed as a stream: same semaphore, contexts, hooks and
+  spans as `run`; `at` is epoch milliseconds (`Date.now()`) instead of .NET ticks; `break`
+  out of the `for await` ends the run without firing `onCrewComplete` or `onCrewError`.
+- `ExecutionTimeout` (`Orkeon:Scripting:Limits`, 30 s by default) spans a whole CLR-driven
+  run — the `globalThis.crew` handoff through `ScriptHost.RunAsync`, `JsCrew.RunAsync` — as
+  it already spanned a whole script; it used to re-arm per agent body. A host driving a
+  longer run raises the limit, as a long script already required.
+- `ScriptHost.RunAsync` and `JsTool.CallAsync` propagate cancellation as
+  `OperationCanceledException` — a 30-minute wait that ignored the token, and a failed
+  `ToolCallResponse`, before.
+
 ### Fixed — the quickstart's first CI run failed, and three things came out of it
 
 The first run of `quickstart.yml` on a GitHub runner did everything the README says —

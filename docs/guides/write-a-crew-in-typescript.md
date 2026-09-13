@@ -272,7 +272,9 @@ knowing before you are surprised by them:
   Nothing at run time will tell you a type was wrong — which is why the tsconfig above matters.
 - **There is no Node and no DOM.** No `fs`, no `fetch`, no `process`. File access goes through
   tools; `ctx.signal` is a .NET cancellation token, not an `AbortSignal`.
-- **One thread, no event loop.** A host call that waits blocks the whole script.
+- **One thread, no timers.** Promises and `await` work — every continuation runs on the one
+  thread that drives the script — but there is no `setTimeout`, and a host call that waits
+  blocks the whole script.
 - **`import` works between your own files**, resolved relative to the script.
 
 ## Ten errors and what they mean

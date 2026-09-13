@@ -280,8 +280,9 @@ vaut mieux connaître avant d'en être surpris :
 - **Il n'y a ni Node ni DOM.** Pas de `fs`, pas de `fetch`, pas de `process`. L'accès aux
   fichiers passe par les outils ; `ctx.signal` est un jeton d'annulation .NET, pas un
   `AbortSignal`.
-- **Un seul thread, pas de boucle d'événements.** Un appel hôte qui attend bloque tout le
-  script.
+- **Un seul thread, pas de timers.** Les promesses et `await` fonctionnent — chaque
+  continuation s'exécute sur l'unique thread qui pilote le script — mais il n'y a pas de
+  `setTimeout`, et un appel hôte qui attend bloque tout le script.
 - **`import` fonctionne entre vos propres fichiers**, résolu relativement au script.
 
 ## Dix erreurs et ce qu'elles veulent dire

@@ -126,6 +126,50 @@ The nominal path for long work is the ticket cycle: `runCrewAsync(name, input?)`
 returns a ticket immediately and delivers the crew summary to a
 `defineAsyncCommand`'s `completed(result)` callback.
 
+## Threading model
+
+A Jint engine is not bound to a thread, but it is **single-drainer**: one thread at a time
+runs its event-loop jobs, and a drain started from inside a job cannot pump — it would wait
+on jobs that only the thread it is blocking could run. The family of defects SCR-25 removed
+(a crew run that hung after any top-level `await`, a state graph with suspending nodes that
+timed out from a body, concurrent `ctx.state.with` calls that crashed the engine, a topic
+handler or an FSM hook that suspends, an `onDelta` callback on a pool thread, `runStream`
+not iterable) all came from CLR code re-entering the engine from the wrong side: after an
+`await`, or by draining from inside a job. The runtime now follows one rule, and the
+reproducers in `tests/scripting/Orkeon.Scripting.Tests/Runtime/EngineThreadingContractTests.cs`
+pin it:
+
+- **Every loop that calls back into script code lives in JavaScript.** The crew run
+  (`crew.run`, `crew.runAgent`, `crew.runStream`), the state graph (`run`, `runStream`), the
+  state machine (`send`), `ctx.state.with`, topic delivery (`publish`, the event's `lock`)
+  and the script-facing side of `ctx.llm.act` are async functions — async generators for the
+  streams, so `for await` works on them — built once from a JavaScript factory. The CLR
+  supplies only synchronous helpers (snapshot the agents, open an attempt, record a result)
+  and `Task`s the loop awaits (a semaphore acquisition, a retry delay, the run's cancellation).
+  Every line of those loops runs as a promise reaction on whichever thread is draining.
+- **A CLR callback never re-enters the engine after an `await`.** A delegate exposed to the
+  script may return a value synchronously, a `Task` whose result is a CLR value (Jint settles
+  it on the loop), or a JS promise obtained synchronously. It never calls `Invoke`,
+  `Evaluate`, `FromObject` or `SetValue` from a continuation, and never drains from inside a
+  job.
+- **A CLR helper reports failure as a JavaScript throw.** `JsHostError` wraps the exception in
+  an `Error` that carries it on `clr` (its type name on `clrType`), so the script's `catch`
+  and `finally` run, the loop releases what it holds, and the CLR side recovers the typed
+  exception from the rejected value.
+- **The CLR drives the engine at three root pumps only**, each with the engine at rest, under
+  the per-engine gate, on one thread for the whole evaluation — the synchronous prefix and
+  every job after it: `ScriptHost` for the script itself, `JsCrew.RunAsync` for the
+  `globalThis.crew` handoff and for C# hosts, `JsTool.CallAsync` for a script tool the
+  orchestrator calls. From C#, `JsCrew.run`, `runAgent` and `runStream` are the JS functions
+  themselves (`JsValue`); `RunAsync` is the CLR entry, and it refuses to start from inside a
+  CLR callback the script invoked — from a script, call `crew.run()`.
+- **Cancellation is the only bound on a wait; `ExecutionTimeout` bounds execution.** No
+  promise timeout remains in the runtime: a root pump drains until its promise settles or its
+  token fires. The sandbox's `ExecutionTimeout` (wall-clock, `Orkeon:Scripting:Limits`) bounds
+  the evaluation itself and now spans a whole CLR-driven run, as it already spanned a whole
+  script. A cancelled `RunAsync` leaves the loop a short grace to unwind — its `finally`
+  blocks, `onCrewError` — before it abandons the run and releases what the CLR owns.
+
 ## V1 limits
 
 - `concurrency(N)` capped at 1 (mutex). N-holders semaphore is V1.5.
