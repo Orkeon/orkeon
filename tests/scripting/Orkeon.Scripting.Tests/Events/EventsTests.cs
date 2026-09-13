@@ -310,6 +310,61 @@ public sealed class EventsTests
     }
 
     [Fact]
+    public async Task Topic_subscribe_refuses_a_non_function_where_it_is_called()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("alerts");
+                    await Promise.resolve();
+                    try { t.subscribe(undefined); return "accepted"; }
+                    catch (e) { return e.clrType + ":" + e.message; }
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        // Named after the call that was wrong, caught by the script although subscribe was
+        // reached from a job (after the await), and nothing was registered.
+        Assert.Equal(
+            $"{nameof(InvalidScriptException)}:topic('alerts').subscribe(handler) requires a function.",
+            result.tasks[0].output!.ToString());
+        Assert.Equal(0, crew.EventBroker.topic("alerts").HandlerCount);
+    }
+
+    [Fact]
+    public async Task Event_lock_waiter_is_released_when_the_publishing_body_is_cancelled()
+    {
+        var engine = NewEngine();
+        engine.SetValue("__seen", new List<object>());
+        using var cts = new CancellationTokenSource();
+        engine.SetValue("__cancel", new Action(cts.Cancel));
+        // The first handler takes "x" and keeps it while cancelling the run; the second is
+        // queued on the same name. Its wait must end with the body's token — the lock is
+        // never handed over — and the run must surface the cancellation.
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("p", { mode: "parallel" });
+                    t.subscribe(async (ev) => { await ev.lock("x", async () => { __cancel(); await new Promise(() => {}); }); });
+                    t.subscribe(async (ev) => { await ev.lock("x", () => { __seen.push("h2"); }); });
+                    await t.publish("v");
+                    return "delivered";
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        // Run on the pool so the guard can fire: the body's drain blocks the calling thread.
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => Task.Run(() => crew.RunAsync(null, cts.Token))
+                .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken));
+
+        Assert.Empty((List<object>)engine.GetValue("__seen").ToObject()!);
+    }
+
+    [Fact]
     public async Task Queue_concurrent_push_pop_serializes_correctly()
     {
         // Direct C# stress test: 10 producers + 10 consumers running in parallel against

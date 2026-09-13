@@ -32,6 +32,13 @@ public sealed class JsPublishedEvent
     /// </summary>
     internal JsValue[] Handlers { get; init; } = [];
 
+    /// <summary>
+    /// The token of the body that published this event: a handler queued on
+    /// <c>lock(name, fn)</c> is released — its promise rejected — when that body is cancelled,
+    /// exactly as <c>ctx.lock</c> honours <c>ctx.signal</c>.
+    /// </summary>
+    internal CancellationToken Cancellation { get; init; } = CancellationToken.None;
+
     internal JsPublishedEvent(
         Engine engine,
         JsValue value,
@@ -49,7 +56,9 @@ public sealed class JsPublishedEvent
 
     // Implemented in JS — see the comment on JsAgentContext.@lock for the rationale. The
     // locks are the topic's, shared by every event it publishes, so two parallel handlers of
-    // the same event serialize on a name exactly as chapter 06 promises.
+    // the same event serialize on a name exactly as chapter 06 promises. A cancelled wait is
+    // a cancelled Task: Jint rejects the acquire promise on the loop, so the waiter unwinds
+    // as a JS rejection and never invokes its callback.
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private const string LockFactorySource = """
@@ -66,7 +75,7 @@ public sealed class JsPublishedEvent
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(name);
             var sem = _locks.GetOrAdd(name, _ => new SemaphoreSlim(1, 1));
-            await sem.WaitAsync().ConfigureAwait(false);
+            await sem.WaitAsync(Cancellation).ConfigureAwait(false);
             return JsValue.Undefined;
         };
         Action<string> release = name =>

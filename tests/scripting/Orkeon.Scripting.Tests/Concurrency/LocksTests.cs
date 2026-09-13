@@ -229,11 +229,17 @@ public sealed class LocksTests
     {
         var engine = NewEngine();
         InstallSleep(engine);
+        // Cancelled from inside the first section, once it holds "X" and the second lock call
+        // is queued on the semaphore. A wall-clock timer loses that race when the pool is
+        // saturated — the threading contract tests run 24 scripts at once — and the 5 s
+        // sleep then completes before the timer callback ever gets a thread.
+        using var cts = new CancellationTokenSource();
+        engine.SetValue("__cancel", new Action(cts.Cancel));
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => {
                     await Promise.all([
-                        ctx.lock("X", async () => { await __sleep(5000, ctx.signal); }),
+                        ctx.lock("X", async () => { __cancel(); await __sleep(5000, ctx.signal); }),
                         ctx.lock("X", async () => { return "should-not-run"; }),
                     ]);
                     return "done";
@@ -241,7 +247,6 @@ public sealed class LocksTests
             crewBuilder().withAgent(a).build();
             """);
 
-        using var cts = new CancellationTokenSource(150);
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
             () => crew.RunAsync(null, cts.Token));
     }

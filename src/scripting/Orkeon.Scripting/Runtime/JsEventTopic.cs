@@ -1,6 +1,8 @@
 using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
+using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -36,6 +38,12 @@ public sealed class JsEventTopic
     public JsSubscription subscribe(JsValue handler)
     {
         ArgumentNullException.ThrowIfNull(handler);
+        // Refused here, where the script can see which topic and which call it was, rather
+        // than by the delivery loop as a bare TypeError on `handlers[i]` at publish time.
+        // Bridged: a body past its first await calls this from an event-loop job, where a raw
+        // CLR throw would skip the script's catch and finally (see JsHostError).
+        if (handler is not Jint.Native.Function.Function)
+            throw JsHostError.Wrap(_engine, new InvalidScriptException($"topic('{_name}').subscribe(handler) requires a function."));
         var agentId = Broker?.CurrentAgentId;
         lock (_lock) _handlers.Add((handler, agentId));
         return new JsSubscription(() =>
@@ -105,7 +113,13 @@ public sealed class JsEventTopic
             lock (_lock) snapshot = _handlers.Select(h => h.Handler).ToArray();
             return snapshot.Length == 0
                 ? null
-                : new JsPublishedEvent(_engine, value, snapshot.Length, _eventLocks) { Handlers = snapshot };
+                : new JsPublishedEvent(_engine, value, snapshot.Length, _eventLocks)
+                {
+                    Handlers = snapshot,
+                    // The body publishing the event is the one whose cancellation must release a
+                    // handler queued on `ev.lock` — the publish promise is part of that body.
+                    Cancellation = Broker?.CurrentCt ?? CancellationToken.None,
+                };
         };
         Func<JsPublishedEvent, JsValue[]> handlersOf = ev => ev.Handlers;
         Action<JsPublishedEvent, int> setHandlerCount = (ev, count) => ev.handlerCount = count;
