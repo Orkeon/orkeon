@@ -236,6 +236,80 @@ public sealed class EventsTests
     }
 
     [Fact]
+    public async Task Topic_publish_rejects_with_the_handler_error_and_stops_the_sequential_chain()
+    {
+        var engine = NewEngine();
+        engine.SetValue("__seen", new List<object>());
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("alerts");
+                    t.subscribe(async (event) => { await Promise.resolve(); throw new Error("bad:" + event.value); });
+                    t.subscribe(async (event) => { __seen.push("h2"); });
+                    try { await t.publish("x"); return "not-rejected"; }
+                    catch (e) { return (e instanceof Error) + ":" + e.message; }
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("true:bad:x", result.tasks[0].output!.ToString());
+        Assert.Empty((List<object>)engine.GetValue("__seen").ToObject()!);
+    }
+
+    [Fact]
+    public async Task Topic_mode_parallel_awaits_every_suspending_handler_and_ignores_stopPropagation()
+    {
+        var engine = NewEngine();
+        engine.SetValue("__seen", new List<object>());
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("p", { mode: "parallel" });
+                    t.subscribe(async (ev) => { ev.stopPropagation(); await Promise.resolve(); __seen.push("h1:" + ev.handlerCount); });
+                    t.subscribe(async (ev) => { ev.markHandled(); await Promise.resolve(); await Promise.resolve(); __seen.push("h2:" + ev.handlerCount); });
+                    t.subscribe((ev) => { __seen.push("h3:" + ev.handlerCount + "/" + ev.maxHandlers); });
+                    await t.publish("x");
+                    return __seen.length;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        // All three handlers are started before any of them resumes, so the suspending ones
+        // observe the final count; the synchronous third one sees itself as the third.
+        Assert.Equal(3d, Convert.ToDouble(result.tasks[0].output));
+        var seen = ((List<object>)engine.GetValue("__seen").ToObject()!).Select(o => o.ToString()).ToList();
+        Assert.Equal(["h3:3/3", "h1:3", "h2:3"], seen);
+    }
+
+    [Fact]
+    public async Task Topic_sequential_handlers_see_their_delivery_position_after_suspending()
+    {
+        var engine = NewEngine();
+        engine.SetValue("__seen", new List<object>());
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    const t = ctx.events.topic("s", { mode: "sequential" });
+                    t.subscribe(async (ev) => { await Promise.resolve(); __seen.push("h1:" + ev.handlerCount + "/" + ev.maxHandlers); });
+                    t.subscribe(async (ev) => { await Promise.resolve(); __seen.push("h2:" + ev.handlerCount + "/" + ev.maxHandlers); });
+                    await t.publish("x");
+                    return __seen.length;
+                }).build();
+            crewBuilder().withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2d, Convert.ToDouble(result.tasks[0].output));
+        var seen = ((List<object>)engine.GetValue("__seen").ToObject()!).Select(o => o.ToString()).ToList();
+        Assert.Equal(["h1:1/2", "h2:2/2"], seen);
+    }
+
+    [Fact]
     public async Task Queue_concurrent_push_pop_serializes_correctly()
     {
         // Direct C# stress test: 10 producers + 10 consumers running in parallel against
@@ -291,12 +365,16 @@ public sealed class EventsTests
         await crew.RunAsync(null, CancellationToken.None);
         Assert.Equal(1, Convert.ToInt32(engine.GetValue("__count").ToObject()));
 
-        // Remove A then publish again from C#: count must stay at 1 because the
-        // subscription has been auto-detached.
+        // Remove A then publish again, calling the topic's JS publish function with the
+        // engine at rest (this thread is the only drainer): count must stay at 1 because
+        // the subscription has been auto-detached.
         var agentA = crew.findByName("A")!;
         crew.Remove(agentA);
-        await crew.EventBroker.topic("alerts").publish(Jint.Native.JsValue.FromObject(engine, "after-remove"));
+        var topic = crew.EventBroker.topic("alerts");
+        var published = engine.Invoke(topic.publish, Jint.Native.JsValue.FromObject(engine, "after-remove"));
+        await published.UnwrapIfPromiseAsync(TestContext.Current.CancellationToken);
 
+        Assert.Equal(0, topic.HandlerCount);
         Assert.Equal(1, Convert.ToInt32(engine.GetValue("__count").ToObject()));
     }
 }

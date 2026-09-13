@@ -280,7 +280,7 @@ Orkeon.Scripting.Runtime.JsEventQueue.push(Jint.Native.JsValue! item) -> void
 Orkeon.Scripting.Runtime.JsEventTopic
 Orkeon.Scripting.Runtime.JsEventTopic.mode.get -> string!
 Orkeon.Scripting.Runtime.JsEventTopic.name.get -> string!
-Orkeon.Scripting.Runtime.JsEventTopic.publish.get -> System.Func<Jint.Native.JsValue!, System.Threading.Tasks.Task!>!
+Orkeon.Scripting.Runtime.JsEventTopic.publish.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsEventTopic.subscribe(Jint.Native.JsValue! handler) -> Orkeon.Scripting.Runtime.JsSubscription!
 Orkeon.Scripting.Runtime.JsExecutionContext
 Orkeon.Scripting.Runtime.JsExecutionContext.broadcast.get -> System.Action<Jint.Native.JsValue!>!
@@ -331,7 +331,7 @@ Orkeon.Scripting.Runtime.JsMemoryScope.search.get -> System.Func<string!, int, S
 Orkeon.Scripting.Runtime.JsMemoryScope.store.get -> System.Func<string!, object?, System.Threading.Tasks.Task!>!
 Orkeon.Scripting.Runtime.JsPublishedEvent
 Orkeon.Scripting.Runtime.JsPublishedEvent.handlerCount.get -> int
-Orkeon.Scripting.Runtime.JsPublishedEvent.lock.get -> System.Func<string!, Jint.Native.JsValue!, System.Threading.Tasks.Task<Jint.Native.JsValue!>!>!
+Orkeon.Scripting.Runtime.JsPublishedEvent.lock.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsPublishedEvent.markHandled() -> void
 Orkeon.Scripting.Runtime.JsPublishedEvent.maxHandlers.get -> int
 Orkeon.Scripting.Runtime.JsPublishedEvent.stopPropagation() -> void

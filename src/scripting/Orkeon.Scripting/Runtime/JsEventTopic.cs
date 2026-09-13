@@ -18,6 +18,7 @@ public sealed class JsEventTopic
     private readonly List<(JsValue Handler, string? AgentId)> _handlers = new();
     private readonly object _lock = new();
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _eventLocks = new(StringComparer.Ordinal);
+    private JsValue? _publishJs;
 
     /// <summary>Optional back-reference set by the broker so subscribe can attribute the agent.</summary>
     internal JsEventBroker? Broker { get; set; }
@@ -54,49 +55,64 @@ public sealed class JsEventTopic
             _handlers.RemoveAll(h => string.Equals(h.AgentId, agentId, StringComparison.Ordinal));
     }
 
-    public Func<JsValue, Task> publish => async value =>
-    {
-        JsValue[] snapshot;
-        lock (_lock) snapshot = _handlers.Select(h => h.Handler).ToArray();
-        if (snapshot.Length == 0) return;
+    // Implemented in JS (SCR-25 T5): the delivery loop calls back into the handlers, so it
+    // has to live where the handlers live. Driven from C#, publish invoked each handler and
+    // drained its promise synchronously, which cannot pump when publish is reached from
+    // inside an event-loop job — i.e. after any await in the calling body — and the
+    // asynchronous alternative would resume on a pool thread and invoke JS there. As an
+    // async JS function, every handler runs as a promise reaction on whichever thread drains
+    // the loop, and the CLR side only provides synchronous helpers: the handler snapshot,
+    // the delivery counter, the stop flag.
+    public JsValue publish => _publishJs ??= BuildPublishFunction();
 
-        var ev = new JsPublishedEvent(_engine, value, snapshot.Length, _eventLocks);
-
-        if (_parallel)
-        {
-            DispatchParallel(snapshot, ev);
-            await Task.CompletedTask.ConfigureAwait(false);
-            return;
+    /// <summary>
+    /// The topic's delivery loop. <c>begin</c> snapshots the subscribers and mints the event
+    /// (<c>null</c> when nobody listens — the classic pub/sub loss, chapter 06); the loop then
+    /// hands the event to each handler, sequentially with <c>stopPropagation()</c> /
+    /// <c>markHandled()</c> short-circuiting the chain, or all at once under
+    /// <c>Promise.all</c>, where the parallel mode's <c>handlerCount</c> advances as each
+    /// handler is started. A handler that throws or rejects rejects publish.
+    /// </summary>
+    private const string PublishFactorySource = """
+        (parallel, begin, handlersOf, setHandlerCount, shouldStop) => async function publish(value) {
+            const ev = begin(value);
+            if (ev === null) return;
+            const handlers = handlersOf(ev);
+            if (parallel) {
+                const pending = [];
+                for (let i = 0; i < handlers.length; i++) {
+                    setHandlerCount(ev, i + 1);
+                    pending.push(handlers[i](ev));
+                }
+                await Promise.all(pending);
+                return;
+            }
+            for (let i = 0; i < handlers.length; i++) {
+                setHandlerCount(ev, i + 1);
+                await handlers[i](ev);
+                if (shouldStop(ev)) break;
+            }
         }
+        """;
 
-        DispatchSequential(snapshot, ev);
-    };
-
-    private void DispatchParallel(JsValue[] snapshot, JsPublishedEvent ev)
+    private JsValue BuildPublishFunction()
     {
-        // Dispatch every handler synchronously on the engine thread (Jint is
-        // single-threaded so concurrent _engine.Invoke would race). Collect any
-        // returned promises and let them resolve together via the JS event loop —
-        // that is where actual parallelism shows up when handlers await I/O.
-        var pending = new List<JsValue>();
-        for (var i = 0; i < snapshot.Length; i++)
+        // None of these helpers has a failure path of its own, so none needs the JsHostError
+        // bridge: they read and write plain fields of an event this topic minted.
+        Func<JsValue, JsPublishedEvent?> begin = value =>
         {
-            ev.handlerCount = i + 1;
-            var raw = _engine.Invoke(snapshot[i], [ev]);
-            if (raw.IsPromise()) pending.Add(raw);
-        }
-        foreach (var p in pending) p.UnwrapIfPromise();
-    }
+            JsValue[] snapshot;
+            lock (_lock) snapshot = _handlers.Select(h => h.Handler).ToArray();
+            return snapshot.Length == 0
+                ? null
+                : new JsPublishedEvent(_engine, value, snapshot.Length, _eventLocks) { Handlers = snapshot };
+        };
+        Func<JsPublishedEvent, JsValue[]> handlersOf = ev => ev.Handlers;
+        Action<JsPublishedEvent, int> setHandlerCount = (ev, count) => ev.handlerCount = count;
+        Func<JsPublishedEvent, bool> shouldStop = ev => ev.ShouldStop;
 
-    private void DispatchSequential(JsValue[] snapshot, JsPublishedEvent ev)
-    {
-        for (var i = 0; i < snapshot.Length; i++)
-        {
-            ev.handlerCount = i + 1;
-            var result = _engine.Invoke(snapshot[i], [ev]);
-            if (result.IsPromise()) result.UnwrapIfPromise();
-            if (ev.ShouldStop) break;
-        }
+        var factory = _engine.Evaluate(PublishFactorySource);
+        return _engine.Invoke(factory, [_parallel, begin, handlersOf, setHandlerCount, shouldStop]);
     }
 }
 

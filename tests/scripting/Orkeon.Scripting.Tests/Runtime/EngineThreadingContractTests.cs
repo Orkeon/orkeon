@@ -22,8 +22,8 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 /// <remarks>
 /// <para>What the skipped scenarios have in common (SCR-25): a CLR continuation calls back
-/// into the engine — a node function, an agent body, a state transform, a topic handler, an
-/// FSM hook, a lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one
+/// into the engine — a node function, an agent body, a state transform, an FSM hook, a
+/// lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one
 /// draining the event loop, or it drains synchronously from inside a job. Jint's loop is
 /// exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a
 /// job cannot pump ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>).
@@ -284,54 +284,62 @@ public sealed class EngineThreadingContractTests
     }
 
     /// <summary>
-    /// <c>topic.publish</c> reached after an await in the body runs from inside a job, and
-    /// <c>JsEventTopic.DispatchSequential</c> drains the handler's promise synchronously
-    /// there: a handler that awaits anything — here a bare microtask, no provider involved —
-    /// never resumes (10 s timeout). The events tests pass only because their handlers
-    /// contain no await at all.
+    /// <c>topic.publish</c> reached after an await in the body runs from inside a job. Until
+    /// SCR-25 T5 the topic drained each handler's promise synchronously there, and a handler
+    /// that awaits anything — here a bare microtask, no provider involved — never resumed
+    /// (10 s timeout); the events tests passed only because their handlers contain no await
+    /// at all. Delivery is now a JS async function, so the position of the publish in the
+    /// body no longer matters.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task Topic_publish_after_an_await_delivers_to_a_handler_that_suspends()
     {
-        var r = await RunScriptAsync("""
-            const seen = [];
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const t = ctx.events.topic("x");
-                    t.subscribe(async (ev) => { await Promise.resolve(); seen.push(ev.value); });
-                    await Promise.resolve();
-                    await t.publish("v");
-                    return String(seen.length);
-                }).build();
-            const crew = crewBuilder().name("c").withAgent(worker).build();
-            const res = await crew.run();
-            result = { n: res.output };
-            """);
-        Assert.Equal("1", r["n"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const seen = [];
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const t = ctx.events.topic("x");
+                        t.subscribe(async (ev) => { await Promise.resolve(); seen.push(ev.value); });
+                        await Promise.resolve();
+                        await t.publish("v");
+                        return String(seen.length);
+                    }).build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { n: res.output };
+                """);
+            Assert.Equal("1", r["n"]);
+        });
     }
 
     /// <summary>
     /// The control for the previous scenario: the same handler, suspending on the provider,
-    /// delivered by a <c>publish</c> that precedes any await in the body — the drain is not
-    /// nested in a job there, so it pumps. Position-dependent behaviour is the defect.
+    /// delivered by a <c>publish</c> that precedes any await in the body. It passed before
+    /// the rewrite too — the drain was not nested in a job there — and it must keep passing
+    /// now that both positions go through the same JS delivery loop.
     /// </summary>
     [Fact]
     public async Task Topic_publish_before_any_await_delivers_to_a_handler_that_suspends()
     {
-        var r = await RunScriptAsync("""
-            const seen = [];
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const t = ctx.events.topic("x");
-                    t.subscribe(async (ev) => { const x = await ctx.llm.complete(ev.value); seen.push(x); });
-                    await t.publish("v");
-                    return seen.join(",");
-                }).build();
-            const crew = crewBuilder().name("c").withAgent(worker).build();
-            const res = await crew.run();
-            result = { out: res.output };
-            """);
-        Assert.Equal("R:v", r["out"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const seen = [];
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const t = ctx.events.topic("x");
+                        t.subscribe(async (ev) => { const x = await ctx.llm.complete(ev.value); seen.push(x); });
+                        await t.publish("v");
+                        return seen.join(",");
+                    }).build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { out: res.output };
+                """);
+            Assert.Equal("R:v", r["out"]);
+        });
     }
 
     /// <summary>

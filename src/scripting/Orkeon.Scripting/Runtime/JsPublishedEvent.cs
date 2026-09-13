@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
 
@@ -15,7 +16,8 @@ public sealed class JsPublishedEvent
     private readonly Engine _engine;
     private bool _stopPropagation;
     private bool _handled;
-    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _locks;
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks;
+    private JsValue? _lockJs;
 
     public JsValue value { get; }
     public int handlerCount { get; internal set; }
@@ -23,11 +25,18 @@ public sealed class JsPublishedEvent
 
     internal bool ShouldStop => _stopPropagation || _handled;
 
+    /// <summary>
+    /// The subscribers this event is delivered to, frozen by <see cref="JsEventTopic.publish"/>
+    /// at publish time so that a handler subscribing or unsubscribing mid-delivery does not
+    /// alter the current round.
+    /// </summary>
+    internal JsValue[] Handlers { get; init; } = [];
+
     internal JsPublishedEvent(
         Engine engine,
         JsValue value,
         int maxHandlers,
-        System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> locks)
+        ConcurrentDictionary<string, SemaphoreSlim> locks)
     {
         _engine = engine;
         this.value = value;
@@ -38,22 +47,35 @@ public sealed class JsPublishedEvent
     public void markHandled() => _handled = true;
     public void stopPropagation() => _stopPropagation = true;
 
-    public Func<string, JsValue, Task<JsValue>> @lock => async (lockName, fn) =>
+    // Implemented in JS — see the comment on JsAgentContext.@lock for the rationale. The
+    // locks are the topic's, shared by every event it publishes, so two parallel handlers of
+    // the same event serialize on a name exactly as chapter 06 promises.
+    public JsValue @lock => _lockJs ??= BuildLockFunction();
+
+    private const string LockFactorySource = """
+        (acquire, release) => async function lock(name, fn) {
+            await acquire(name);
+            try { return await fn(); }
+            finally { release(name); }
+        }
+        """;
+
+    private JsValue BuildLockFunction()
     {
-        var sem = _locks.GetOrAdd(lockName, _ => new SemaphoreSlim(1, 1));
-        await sem.WaitAsync().ConfigureAwait(false);
-        try
+        Func<string, Task<JsValue>> acquire = async name =>
         {
-            var result = _engine.Invoke(fn, Array.Empty<object>());
-            return result.IsPromise()
-                ? await result.UnwrapIfPromiseAsync(CancellationToken.None).ConfigureAwait(false)
-                : result;
-        }
-        finally
+            ArgumentException.ThrowIfNullOrWhiteSpace(name);
+            var sem = _locks.GetOrAdd(name, _ => new SemaphoreSlim(1, 1));
+            await sem.WaitAsync().ConfigureAwait(false);
+            return JsValue.Undefined;
+        };
+        Action<string> release = name =>
         {
-            sem.Release();
-        }
-    };
+            if (_locks.TryGetValue(name, out var sem)) sem.Release();
+        };
+        var factory = _engine.Evaluate(LockFactorySource);
+        return _engine.Invoke(factory, [acquire, release]);
+    }
 }
 #pragma warning restore CS1591
 #pragma warning restore IDE1006
