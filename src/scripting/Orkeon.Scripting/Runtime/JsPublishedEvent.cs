@@ -1,6 +1,7 @@
 using System.Collections.Concurrent;
 using Jint;
 using Jint.Native;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -54,20 +55,12 @@ public sealed class JsPublishedEvent
     public void markHandled() => _handled = true;
     public void stopPropagation() => _stopPropagation = true;
 
-    // Implemented in JS — see the comment on JsAgentContext.@lock for the rationale. The
-    // locks are the topic's, shared by every event it publishes, so two parallel handlers of
-    // the same event serialize on a name exactly as chapter 06 promises. A cancelled wait is
-    // a cancelled Task: Jint rejects the acquire promise on the loop, so the waiter unwinds
-    // as a JS rejection and never invokes its callback.
+    // The shared named-lock trampoline (JsTrampolineFactories.Lock). The locks are the
+    // topic's, shared by every event it publishes, so two parallel handlers of the same event
+    // serialize on a name exactly as chapter 06 promises. A cancelled wait is a cancelled
+    // Task: Jint rejects the acquire promise on the loop, so the waiter unwinds as a JS
+    // rejection and never invokes its callback.
     public JsValue @lock => _lockJs ??= BuildLockFunction();
-
-    private const string LockFactorySource = """
-        (acquire, release) => async function lock(name, fn) {
-            await acquire(name);
-            try { return await fn(); }
-            finally { release(name); }
-        }
-        """;
 
     private JsValue BuildLockFunction()
     {
@@ -82,8 +75,7 @@ public sealed class JsPublishedEvent
         {
             if (_locks.TryGetValue(name, out var sem)) sem.Release();
         };
-        var factory = _engine.Evaluate(LockFactorySource);
-        return _engine.Invoke(factory, [acquire, release]);
+        return _engine.Invoke(JsTrampolineFactories.Lock.For(_engine), [acquire, release]);
     }
 }
 #pragma warning restore CS1591

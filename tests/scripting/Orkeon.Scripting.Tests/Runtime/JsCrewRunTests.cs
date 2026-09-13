@@ -197,10 +197,11 @@ public sealed class JsCrewRunTests
     }
 
     /// <summary>
-    /// A run the host abandoned — a raw CLR throw from a non-bridged member inside the body erupts
+    /// A run the host abandoned — a raw CLR throw from a non-bridged delegate inside the body erupts
     /// from the drain — has its stranded chain unwound under the engine's next drain. That chain
     /// fires no crew hook: the failure was the host's to report, and the next run's own hooks are
-    /// the only ones it sees.
+    /// the only ones it sees. <c>crew.add</c> is bridged since SCR-25 T7, so the raw throw comes from a
+    /// host-installed delegate — the shape a host binding can still produce.
     /// </summary>
     [Fact]
     public async Task Abandoned_run_fires_no_crew_hook_under_a_later_drain()
@@ -208,12 +209,13 @@ public sealed class JsCrewRunTests
         var engine = NewEngine();
         var log = InstallLog(engine);
         engine.SetValue("quick", false);
+        engine.SetValue("__raw", new Action(() => throw new InvalidOperationException("raw host failure")));
         var crew = Eval<JsCrew>(engine, """
             const a = agentBuilder().name("A").role("R").goal("G")
                 .body(async (input, ctx) => {
                     if (quick) { __log("body"); return "fast"; }
                     await Promise.resolve();
-                    crew.add(agentBuilder().name("A").role("R").goal("G").build());
+                    __raw();
                     return "unreachable";
                 }).build();
             const crew = crewBuilder().name("abandoned").withAgent(a)
@@ -223,7 +225,8 @@ public sealed class JsCrewRunTests
             crew;
             """);
 
-        await Assert.ThrowsAsync<DuplicateAgentNameException>(() => crew.RunAsync(null, Ct));
+        var raw = await Assert.ThrowsAsync<InvalidOperationException>(() => crew.RunAsync(null, Ct));
+        Assert.Equal("raw host failure", raw.Message);
         Assert.Empty(log);
 
         engine.SetValue("quick", true);
@@ -399,6 +402,40 @@ public sealed class JsCrewRunTests
             () => crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct));
 
         Assert.Contains("A", ex.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>crew.add</c> and <c>crew.remove</c> reached from a body past its first await — inside an
+    /// event-loop job — are JavaScript throws (SCR-25 T7): the body's <c>catch</c> sees the typed
+    /// exception on <c>clrType</c> and the run completes, where a raw CLR throw skipped the catch and
+    /// abandoned the run.
+    /// </summary>
+    [Fact]
+    public async Task Duplicate_add_and_foreign_remove_inside_a_body_after_an_await_are_caught_by_the_body()
+    {
+        var engine = NewEngine();
+        var crew = Eval<JsCrew>(engine, """
+            const foreign = agentBuilder().name("F").role("R").goal("G").build();
+            crewBuilder().name("other").withAgent(foreign).build();
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .body(async (input, ctx) => {
+                    await Promise.resolve();
+                    const seen = [];
+                    try { crew.add(agentBuilder().name("A").role("R").goal("G").build()); seen.push("add:no-throw"); }
+                    catch (e) { seen.push("add:" + e.clrType); }
+                    try { crew.remove(foreign); seen.push("remove:no-throw"); }
+                    catch (e) { seen.push("remove:" + e.clrType); }
+                    finally { seen.push("finally"); }
+                    return seen.join(",");
+                }).build();
+            const crew = crewBuilder().name("bridged").withAgent(a).build();
+            crew;
+            """);
+
+        var result = await crew.RunAsync(null, Ct).WaitAsync(TimeSpan.FromSeconds(5), Ct);
+
+        Assert.Equal($"add:{nameof(DuplicateAgentNameException)},remove:{nameof(AgentNotInThisCrewException)},finally", result.output);
+        Assert.Single(crew.agents);
     }
 
     /// <summary>An agent of another crew is refused with the typed exception on the rejected value's <c>clr</c>.</summary>

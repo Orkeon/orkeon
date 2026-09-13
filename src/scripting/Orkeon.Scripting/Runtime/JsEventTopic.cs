@@ -81,7 +81,7 @@ public sealed class JsEventTopic
     /// <c>Promise.all</c>, where the parallel mode's <c>handlerCount</c> advances as each
     /// handler is started. A handler that throws or rejects rejects publish.
     /// </summary>
-    private const string PublishFactorySource = """
+    internal const string PublishFactorySource = """
         (parallel, begin, handlersOf, setHandlerCount, shouldStop) => async function publish(value) {
             const ev = begin(value);
             if (ev === null) return;
@@ -125,7 +125,7 @@ public sealed class JsEventTopic
         Action<JsPublishedEvent, int> setHandlerCount = (ev, count) => ev.handlerCount = count;
         Func<JsPublishedEvent, bool> shouldStop = ev => ev.ShouldStop;
 
-        var factory = _engine.Evaluate(PublishFactorySource);
+        var factory = JsTrampolineFactories.Publish.For(_engine);
         return _engine.Invoke(factory, [_parallel, begin, handlersOf, setHandlerCount, shouldStop]);
     }
 }

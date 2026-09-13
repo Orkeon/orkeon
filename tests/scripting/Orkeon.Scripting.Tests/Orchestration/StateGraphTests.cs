@@ -357,9 +357,14 @@ public sealed class StateGraphTests
     [Fact]
     public async Task StateGraph_maxTotalDuration_abandons_a_slow_node_and_rejects_typed()
     {
-        // The wall-clock bound is the graph's own token, not the crew's: the run must stop
-        // waiting on the node at the deadline (the node sleeps five times longer) and reject
-        // with the OperationCanceledException the deadline raised, not settle on the next hop.
+        // The wall-clock bound is the graph's own token, not the crew's: the run must stop waiting
+        // on the node at the deadline and reject with the OperationCanceledException the deadline
+        // raised, not settle on the next hop. The node sleeps 60 s — far longer than any stall a
+        // saturated pool can add (a 200 ms deadline was once measured firing late enough for a 1 s
+        // node to finish first under the 24-script contention harness) — so the rejection alone
+        // proves the deadline ended the run; the 30 s ceiling turns a run that waited the node out
+        // into a failure instead of a minute-long wait. The sleep is not cancelled: the race in the
+        // trampoline abandons the node, and its Task completes on its own afterwards.
         var engine = NewEngine();
         engine.SetValue("__sleep", new Func<double, Task<JsValue>>(async ms =>
         {
@@ -369,16 +374,15 @@ public sealed class StateGraphTests
         var graph = Eval<JsStateGraph>(engine, """
             stateGraph({
                 name: "deadline",
-                nodes: { slow: async (s) => { await __sleep(1000); return s; } },
+                nodes: { slow: async (s) => { await __sleep(60000); return s; } },
                 edges: { [START]: "slow", slow: END },
                 graphConfig: { maxTotalDurationSeconds: 0.2 },
             });
             """);
 
         var input = await engine.EvaluateAsync("({})", cancellationToken: TestContext.Current.CancellationToken);
-        var started = System.Diagnostics.Stopwatch.StartNew();
-        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => RunAsync(engine, graph, input));
-        Assert.True(started.ElapsedMilliseconds < 900, $"the run waited out the node: {started.ElapsedMilliseconds} ms");
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(
+            () => RunAsync(engine, graph, input).WaitAsync(TimeSpan.FromSeconds(30), TestContext.Current.CancellationToken));
     }
 
     [Fact]

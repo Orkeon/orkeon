@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Jint;
 using Jint.Native;
 using Jint.Runtime;
@@ -31,7 +30,9 @@ internal static class JsHostError
 {
     private const string ClrProperty = "clr";
 
-    private static readonly ConditionalWeakTable<Engine, JsValue> Factories = new();
+    /// <summary>The Error factory; evaluated per engine by <see cref="JsTrampolineFactories.HostError"/>.</summary>
+    internal const string FactorySource =
+        "(message, clr, clrType) => { const err = new Error(message); err.clr = clr; err.clrType = clrType; return err; }";
 
     /// <summary>
     /// A JavaScript throw of <paramref name="exception"/>: an <c>Error</c> with the CLR message,
@@ -45,8 +46,7 @@ internal static class JsHostError
         if (exception is JavaScriptException already)
             return already;
 
-        var factory = Factories.GetValue(engine, static e => e.Evaluate(
-            "(message, clr, clrType) => { const err = new Error(message); err.clr = clr; err.clrType = clrType; return err; }"));
+        var factory = JsTrampolineFactories.HostError.For(engine);
         var error = engine.Invoke(factory, exception.Message, exception, exception.GetType().Name);
         return new JavaScriptException(error);
     }

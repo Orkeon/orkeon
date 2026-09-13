@@ -25,7 +25,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     // the transform and rebuilt the proxy from its continuation — a second thread inside the
     // engine as soon as two `with` calls overlapped (NullReferenceException or a
     // PromiseTimeout under `Promise.all`).
-    private const string StateWithFactorySource = """
+    internal const string StateWithFactorySource = """
         (acquire, release, current, commit, state) => async function stateWith(transform) {
             await acquire();
             try {
@@ -39,7 +39,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     // `with` is the trampoline above; any other set is refused through the host error
     // bridge, so the script's catch/finally run and the CLR side still recovers the typed
     // StateMutationOutsideWithException (JsCrew.TryUnwrapTypedHostException).
-    private const string StateProxyFactorySource = """
+    internal const string StateProxyFactorySource = """
         (current, withFn, reject) => new Proxy(current, {
             get(target, prop) {
                 if (prop === 'with') return withFn;
@@ -59,7 +59,6 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     private readonly SemaphoreSlim _stateMutex = new(1, 1);
     private JsValue _stateRaw;
     private JsValue? _stateWithJs;
-    private JsValue? _stateProxyFactory;
     private Action<string>? _rejectStateMutation;
 
     public JsValue state { get; private set; }
@@ -103,17 +102,13 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
             state = proxy;
         });
         Func<JsValue> stateAccessor = () => state;
-        var factory = _engineRef.Evaluate(StateWithFactorySource);
+        var factory = JsTrampolineFactories.StateWith.For(_engineRef);
         return _engineRef.Invoke(factory, [acquire, release, current, commit, stateAccessor]);
     }
 
     private JsValue? _lockJs;
-    // Implemented in JS rather than C# to avoid nesting `UnwrapIfPromise` inside an
-    // engine callback: Jint's `EventLoop.RunAvailableContinuations` is guarded by an
-    // `_isProcessing` CAS, so a re-entrant unwrap from a C# delegate that is itself
-    // running as part of an outer pump can't drain microtasks and dead-locks until
-    // `PromiseTimeout` expires. The JS wrapper only awaits real Tasks (acquire) and
-    // chains directly on the user callback's promise via the outer pump.
+    // The shared named-lock trampoline (JsTrampolineFactories.Lock) over this context's
+    // semaphore table, acquired with the run's signal.
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private JsValue BuildLockFunction()
@@ -129,14 +124,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         {
             if (_locks.TryGetValue(name, out var sem)) sem.Release();
         };
-        var factory = _engineRef.Evaluate("""
-            (acquire, release) => async function lock(name, fn) {
-                await acquire(name);
-                try { return await fn(); }
-                finally { release(name); }
-            }
-            """);
-        return _engineRef.Invoke(factory, [acquire, release]);
+        return _engineRef.Invoke(JsTrampolineFactories.Lock.For(_engineRef), [acquire, release]);
     }
 
     // Synchronous for the script (context.d.ts: `spawn(): Agent`) and bridged: a body past its
@@ -162,9 +150,8 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
     {
         if (raw.IsUndefined() || raw.IsNull()) return raw;
 
-        _stateProxyFactory ??= _engineRef.Evaluate(StateProxyFactorySource);
         _rejectStateMutation ??= prop => throw JsHostError.Wrap(_engineRef, new StateMutationOutsideWithException(prop));
-        return _engineRef.Invoke(_stateProxyFactory, [raw, stateWith, _rejectStateMutation]);
+        return _engineRef.Invoke(JsTrampolineFactories.StateProxy.For(_engineRef), [raw, stateWith, _rejectStateMutation]);
     }
 
     /// <summary>Releases the agent-scoped lock semaphores, the state mutex and the llm interrupt source.</summary>

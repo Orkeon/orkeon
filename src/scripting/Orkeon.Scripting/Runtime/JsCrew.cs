@@ -138,7 +138,13 @@ public sealed partial class JsCrew
     /// <summary>The agents a run walks: taken once at its start, so a spawned agent runs in the next run and a removed one still runs in this one.</summary>
     internal JsAgent[] SnapshotAgents() => _agents.ToArray();
 
-    public void add(JsAgent agent) => Add(agent);
+    // The script-facing members are bridged (JsHostError): a body past its first await calls them
+    // from an event-loop job, where a raw CLR throw — an agent already in a crew, a duplicate name,
+    // an agent of another crew — would skip the script's catch and finally, leave the run's promise
+    // pending and erupt from the pump. The PascalCase members stay raw for C# callers (the
+    // constructor's initial composition, ctx.spawn's own bridge). A lifecycle hook's synchronous
+    // JavaScript throw passes through unchanged.
+    public void add(JsAgent agent) => JsHostError.Guard(_engine, () => Add(agent));
 
     internal void Add(JsAgent agent)
     {
@@ -155,7 +161,7 @@ public sealed partial class JsCrew
         }
     }
 
-    public void remove(JsAgent agent) => Remove(agent);
+    public void remove(JsAgent agent) => JsHostError.Guard(_engine, () => Remove(agent));
 
     internal void Remove(JsAgent agent)
     {

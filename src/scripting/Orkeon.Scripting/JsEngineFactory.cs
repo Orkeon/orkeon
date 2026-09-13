@@ -123,6 +123,11 @@ public sealed class JsEngineFactory
             .LimitRecursion(_limits.RecursionLimit)
             .TimeoutInterval(_limits.ExecutionTimeout));
 
+        // Every JS trampoline factory is evaluated now, with the engine at rest and its job queue
+        // empty: an Evaluate drains queued jobs on its way out, which a lazy evaluation from a
+        // script's synchronous prefix must not do (SCR-25 T7, JsTrampolineFactories).
+        Internal.JsTrampolineFactories.Prepare(engine);
+
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);

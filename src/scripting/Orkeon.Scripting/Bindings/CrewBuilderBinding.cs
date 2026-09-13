@@ -33,10 +33,6 @@ public static class CrewBuilderBinding
     {
         ArgumentNullException.ThrowIfNull(engine);
         var tools = builtInTools as IReadOnlyList<IBaseTool> ?? builtInTools?.ToArray();
-        // The crew run module's factory is evaluated here, once per engine, while the engine is at
-        // rest and its job queue empty: an Evaluate drains queued jobs on its way out, which a lazy
-        // evaluation from a script's synchronous prefix must not do (SCR-25 T4).
-        Orkeon.Scripting.Runtime.JsCrew.RunModuleFactory(engine);
         engine.SetValue(GlobalName, new Func<JsCrewBuilder>(() => new JsCrewBuilder(engine, logger, llmProvider, tools, permissionGate, deltaSink, usageSink)));
     }
 }

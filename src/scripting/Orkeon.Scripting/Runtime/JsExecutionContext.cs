@@ -213,7 +213,7 @@ public sealed class JsCrewProxy
     public bool has(JsAgent agent) => _crew.has(agent);
     public string name => _crew.name;
 
-    // Implemented in JS — see comment on JsAgentContext.@lock for the rationale.
+    // The shared named-lock trampoline (JsTrampolineFactories.Lock) over the crew's lock table.
     public JsValue @lock => _lockJs ??= BuildLockFunction();
 
     private JsValue BuildLockFunction()
@@ -229,14 +229,7 @@ public sealed class JsCrewProxy
         {
             _crew.GetCrewLock(name).Release();
         };
-        var factory = _engineRef.Evaluate("""
-            (acquire, release) => async function lock(name, fn) {
-                await acquire(name);
-                try { return await fn(); }
-                finally { release(name); }
-            }
-            """);
-        return _engineRef.Invoke(factory, [acquire, release]);
+        return _engineRef.Invoke(JsTrampolineFactories.Lock.For(_engineRef), [acquire, release]);
     }
 }
 

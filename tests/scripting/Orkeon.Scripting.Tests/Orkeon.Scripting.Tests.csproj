@@ -15,6 +15,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
+    <!-- SCR-25 T7: the engine threading guard (Architecture/EngineThreadingGuardTests) walks the
+         scripting sources with Roslyn. -->
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
   </ItemGroup>
 
   <ItemGroup>

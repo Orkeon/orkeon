@@ -283,17 +283,12 @@ public sealed partial class JsLlmFacade
         // `usage` / `reasoningChunks` are getters onto the CLR observations object,
         // so the script reads them when IT is executing (after the loop) instead of
         // the stream calling into the engine from another thread.
-        _streamIterableFactory ??= _engine.Evaluate(StreamIterableFactorySource);
-        return _engine.Invoke(_streamIterableFactory, next, ret, observations);
+        return _engine.Invoke(JsTrampolineFactories.StreamIterable.For(_engine), next, ret, observations);
     }
 
-    // Both factories are constants: evaluated once per facade (by the script, on the
-    // draining thread — the getters that reach them are synchronous) and invoked once per
-    // sequence. A script streaming in a loop must not re-parse the same source every turn.
-    private JsValue? _streamIterableFactory;
-    private JsValue? _asyncIterableFactory;
-
-    private const string StreamIterableFactorySource = """
+    // Both factories are evaluated once per engine (JsTrampolineFactories) and invoked once per
+    // sequence: a script streaming in a loop must not re-parse the same source every turn.
+    internal const string StreamIterableFactorySource = """
         (next, ret, obs) => ({
             [Symbol.asyncIterator]() { return { next: next, return: ret }; },
             get usage() { return obs.usage; },
@@ -305,15 +300,14 @@ public sealed partial class JsLlmFacade
     /// The bare async-iterable protocol over a CLR sequence: what <c>stream()</c> returns
     /// minus its side-channel getters. <see cref="ActSession.deltas"/> is built with it.
     /// </summary>
-    private const string AsyncIterableFactorySource = """
+    internal const string AsyncIterableFactorySource = """
         (next, ret) => ({ [Symbol.asyncIterator]() { return { next: next, return: ret }; } })
         """;
 
     private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, CancellationToken ct)
     {
         var (next, ret) = AsyncIteratorCallbacks(source, ct);
-        _asyncIterableFactory ??= _engine.Evaluate(AsyncIterableFactorySource);
-        return _engine.Invoke(_asyncIterableFactory, next, ret);
+        return _engine.Invoke(JsTrampolineFactories.AsyncIterable.For(_engine), next, ret);
     }
 
     /// <summary>
@@ -663,7 +657,7 @@ public sealed partial class JsLlmFacade
     // observed at the next delta or iteration) instead of letting the loop pay for turns nobody
     // consumes; the run's cancellation is then superseded by the callback's own error, which
     // `await pump` rethrows from the finally.
-    private const string ActFactorySource = """
+    internal const string ActFactorySource = """
         (beginAct) => async function act(prompt, options) {
             const cb = options ? options.onDelta : undefined;
             const onDelta = typeof cb === "function" ? cb : null;
@@ -683,7 +677,7 @@ public sealed partial class JsLlmFacade
     {
         Func<string, JsValue?, bool, ActSession> beginAct = (prompt, options, streamDeltas) =>
             JsHostError.Guard(_engine, () => new ActSession(this, prompt, options, streamDeltas));
-        var factory = _engine.Evaluate(ActFactorySource);
+        var factory = JsTrampolineFactories.Act.For(_engine);
         return _engine.Invoke(factory, beginAct);
     }
 

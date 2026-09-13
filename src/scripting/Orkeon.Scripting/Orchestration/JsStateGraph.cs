@@ -71,7 +71,7 @@ public sealed class JsStateGraph
     /// top of each hop covers the synchronous case, where the race would never see the
     /// rejection first.
     /// </summary>
-    private const string TrampolineSource = """
+    internal const string TrampolineSource = """
         (begin, end, cancellation, edge, resolveTarget, node, enforceBudget, throwIfCancelled, START, END) => {
             async function* runStream(initial) {
                 const handle = begin();
@@ -102,8 +102,6 @@ public sealed class JsStateGraph
             return { run, runStream };
         }
         """;
-
-    private static readonly Prepared<Acornima.Ast.Script> TrampolineFactory = Engine.PrepareScript(TrampolineSource);
 
     private readonly Engine _engine;
     private readonly Dictionary<string, JsValue> _nodes;
@@ -150,7 +148,7 @@ public sealed class JsStateGraph
         Action<GraphRun, string> enforceBudget = (run, current) => JsHostError.Guard(_engine, () => EnforceBudget(run, current));
         Action<GraphRun> throwIfCancelled = run => JsHostError.Guard(_engine, () => run.Token.ThrowIfCancellationRequested());
 
-        var factory = _engine.Evaluate(TrampolineFactory);
+        var factory = JsTrampolineFactories.Graph.For(_engine);
         return _engine.Invoke(factory,
             [begin, end, cancellation, edge, resolveTarget, node, enforceBudget, throwIfCancelled, GraphSentinels.Start, GraphSentinels.End]);
     }

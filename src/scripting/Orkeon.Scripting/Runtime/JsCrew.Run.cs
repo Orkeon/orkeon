@@ -1,4 +1,3 @@
-using System.Runtime.CompilerServices;
 using Jint;
 using Jint.Native;
 using Jint.Runtime;
@@ -23,7 +22,7 @@ public sealed partial class JsCrew
     /// of it runs as a promise reaction on the thread draining the engine, whichever it is; nothing
     /// calls back into the CLR from any other thread, and nothing drains.
     /// </summary>
-    private const string RunModuleSource = """
+    internal const string RunModuleSource = """
         (h) => {
             "use strict";
             // `h` is the crew's CrewRunHelpers: synchronous CLR helpers, each a JavaScript throw on
@@ -186,19 +185,6 @@ public sealed partial class JsCrew
         }
         """;
 
-    private static readonly Prepared<Acornima.Ast.Script> RunModule = Engine.PrepareScript(RunModuleSource);
-
-    private static readonly ConditionalWeakTable<Engine, JsValue> Factories = new();
-
-    /// <summary>
-    /// The factory function, evaluated ONCE per engine. <c>CrewBuilderBinding.Register</c> calls this
-    /// while the engine is at rest and its queue empty; the lazy fallback exists for bare engines in
-    /// tests. Never evaluate it from a script's synchronous prefix: <c>Evaluate</c> drains queued jobs
-    /// on its way out, which a mid-statement nested evaluation must not do. <c>Invoke</c> has no such
-    /// drain, so the per-crew instantiation below is legal anywhere on the engine thread.
-    /// </summary>
-    internal static JsValue RunModuleFactory(Engine engine) => Factories.GetValue(engine, static e => e.Evaluate(RunModule));
-
     private JsValue? _runModule;
 
     /// <summary>JS <c>async (options?) =&gt; CrewResult</c>; see the class remarks.</summary>
@@ -214,7 +200,13 @@ public sealed partial class JsCrew
 
     private JsValue Observe => RunModuleInstance.Get("observe");
 
-    private JsValue RunModuleInstance => _runModule ??= _engine.Invoke(RunModuleFactory(_engine), [BuildRunModule()]);
+    /// <summary>
+    /// The module, instantiated once per crew by an <c>Invoke</c> of the factory — legal anywhere on
+    /// the engine thread, in a script's prefix and inside a job alike. The factory itself was evaluated
+    /// by <see cref="JsTrampolineFactories"/> with the engine at rest: <c>Evaluate</c> drains queued jobs
+    /// on its way out, which a mid-statement nested evaluation must not do.
+    /// </summary>
+    private JsValue RunModuleInstance => _runModule ??= _engine.Invoke(JsTrampolineFactories.CrewRunModule.For(_engine), [BuildRunModule()]);
 
     /// <summary>
     /// The helper record the module destructures. Every synchronous body is bridged — uniformly,

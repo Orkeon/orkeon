@@ -200,33 +200,25 @@ public sealed partial class ScriptHost
 
         var engine = _engineFactory.Create();
 
-        // Pre-execution globals hook: expose a structured `inputs` global before the script
-        // runs (SPEC §6 option (a); generalises the pending --inputs work in RunCommand.cs). The
-        // caller hands us a JSON string; we parse it inside the engine so `inputs.foo` is a
-        // native JS object with proper property access, not a CLR interop wrapper.
-        if (!string.IsNullOrWhiteSpace(inputsJson))
-        {
-            engine.SetValue("__orkeonInputsJson", inputsJson);
-            engine.Evaluate("globalThis.inputs = JSON.parse(__orkeonInputsJson);");
-            LogInputsInjected(virtualPath, inputsJson!.Length);
-        }
-
         var gate = Runtime.JsEngineGate.For(engine);
         await gate.WaitAsync(ct).ConfigureAwait(false);
         JsValue completion;
         try
         {
             // Root pump. The pool thread Task.Run hands us is the only thread that ever runs this script's
-            // JavaScript: the evaluation (with the top-level-await fallback) and every event-loop job the drain
-            // runs afterwards. One thread is what lets a span started before the script's first await parent the
-            // spans of the jobs after it (Activity.Current is an AsyncLocal), what keeps a span a synchronous
-            // crew.run() prefix starts off the caller's context, and what keeps the sandbox's per-thread memory
-            // accounting on one thread. `await crew.run()` inside the script is plain JS under this pump. The host
-            // token is the only bound: on cancellation the script is abandoned mid-flight and the engine discarded
-            // with it — nothing outlives the engine, so no cooperative grace is needed here.
+            // JavaScript: the `inputs` injection, the evaluation (with the top-level-await fallback) and every
+            // event-loop job the drain runs afterwards. One thread is what lets a span started before the
+            // script's first await parent the spans of the jobs after it (Activity.Current is an AsyncLocal),
+            // what keeps a span a synchronous crew.run() prefix starts off the caller's context, and what keeps
+            // the sandbox's per-thread memory accounting on one thread. `await crew.run()` inside the script is
+            // plain JS under this pump. The host token is the only bound: on cancellation the script is
+            // abandoned mid-flight and the engine discarded with it — nothing outlives the engine, so no
+            // cooperative grace is needed here.
             completion = await Task.Run(() =>
             {
                 using var draining = Runtime.JsEngineGate.MarkDraining(engine);
+                if (!string.IsNullOrWhiteSpace(inputsJson))
+                    InjectInputs(engine, virtualPath, inputsJson);
                 var value = EvaluateWithTopLevelAwaitFallback(engine, js, virtualPath);
                 return value.IsPromise() ? Jint.JsValueExtensions.UnwrapIfPromise(value, ct) : value;
             }, ct).ConfigureAwait(false);
@@ -241,6 +233,20 @@ public sealed partial class ScriptHost
         }
 
         return (engine, completion);
+    }
+
+    /// <summary>
+    /// Pre-execution globals hook: exposes a structured <c>inputs</c> global before the script runs
+    /// (SPEC section 6 option (a)). The caller hands us a JSON string; it is parsed inside the engine
+    /// so <c>inputs.foo</c> is a native JS object with proper property access, not a CLR interop
+    /// wrapper. Runs inside the root pump, on the thread that then evaluates the script: the engine
+    /// is at rest and its queue empty, and no CLR continuation ever enters the engine.
+    /// </summary>
+    private void InjectInputs(Jint.Engine engine, string virtualPath, string inputsJson)
+    {
+        engine.SetValue("__orkeonInputsJson", inputsJson);
+        engine.Evaluate("globalThis.inputs = JSON.parse(__orkeonInputsJson);");
+        LogInputsInjected(virtualPath, inputsJson.Length);
     }
 
     /// <summary>

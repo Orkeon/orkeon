@@ -33,7 +33,7 @@ public sealed class JsStateMachine
     /// an await; a falsy guard result vetoes the transition and neither hook fires; an unknown
     /// event (<c>lookup</c> returns null) is ignored and <c>send</c> resolves to the current state.
     /// </summary>
-    private const string SendFactorySource = """
+    internal const string SendFactorySource = """
         (lookup, current, commit) => async function send(eventName, payload) {
             const t = lookup(eventName);
             if (!t) return current();
@@ -69,7 +69,7 @@ public sealed class JsStateMachine
         Func<string?, JsFsmTransitionView?> lookup = eventName => JsHostError.Guard(_engine, () => Lookup(eventName));
         Func<string> readCurrent = () => current;
         Action<string> commit = target => JsHostError.Guard(_engine, () => Commit(target));
-        var factory = _engine.Evaluate(SendFactorySource);
+        var factory = JsTrampolineFactories.FsmSend.For(_engine);
         return _engine.Invoke(factory, [lookup, readCurrent, commit]);
     }
 

@@ -1,6 +1,8 @@
 using Jint;
+using Jint.Runtime;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
@@ -59,31 +61,38 @@ public sealed class CrewBuilderTests
         Assert.NotNull(ex);
     }
 
+    /// <summary>
+    /// <c>crew.add</c> is a JavaScript throw (SCR-25 T7): the script sees an <c>Error</c> its
+    /// <c>catch</c> can handle, and the typed exception rides on it for the CLR side.
+    /// </summary>
     [Fact]
     public void Crew_add_agent_already_in_another_crew_throws_AgentAlreadyInCrewException()
     {
         var engine = NewEngine();
 
-        var ex = Assert.Throws<AgentAlreadyInCrewException>(() => engine.Evaluate("""
+        var thrown = Assert.Throws<JavaScriptException>(() => engine.Evaluate("""
             const a = agentBuilder().name("A").role("R").goal("G").build();
             const c1 = crewBuilder().name("c1").withAgent(a).build();
             const c2 = crewBuilder().name("c2").build();
             c2.add(a);
             """));
+        var ex = Assert.IsType<AgentAlreadyInCrewException>(JsHostError.Unwrap(thrown.Error));
         Assert.Equal("c1", ex.CrewName);
     }
 
+    /// <summary>Same bridge for <c>crew.remove</c>.</summary>
     [Fact]
     public void Crew_remove_agent_from_other_crew_throws_AgentNotInThisCrewException()
     {
         var engine = NewEngine();
 
-        var ex = Assert.Throws<AgentNotInThisCrewException>(() => engine.Evaluate("""
+        var thrown = Assert.Throws<JavaScriptException>(() => engine.Evaluate("""
             const a = agentBuilder().name("A").role("R").goal("G").build();
             const c1 = crewBuilder().name("c1").withAgent(a).build();
             const c2 = crewBuilder().name("c2").build();
             c2.remove(a);
             """));
+        var ex = Assert.IsType<AgentNotInThisCrewException>(JsHostError.Unwrap(thrown.Error));
         Assert.Equal("c2", ex.CrewName);
     }
 
