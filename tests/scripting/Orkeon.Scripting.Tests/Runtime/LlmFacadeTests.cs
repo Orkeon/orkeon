@@ -128,11 +128,11 @@ public sealed class LlmFacadeTests
     [Fact]
     public async Task act_returns_result_when_provider_does_not_request_a_tool_call()
     {
-        var (_, provider) = NewFacade(out var facade);
+        var (engine, provider) = NewFacade(out var facade);
         // act drives the conversation through ChatAsync; no tool_calls in the body → final answer.
         provider.RespondToChatWith(new LlmResponse { Content = "final answer" });
 
-        var result = await facade.act("solve x", null);
+        var result = await facade.ActAsync(engine, "solve x", null);
 
         Assert.Equal("final answer", result.Get("output").AsString());
         Assert.Equal(1, Convert.ToInt32(result.Get("iterations").ToObject()));
@@ -149,7 +149,7 @@ public sealed class LlmFacadeTests
         provider.RespondToChatWith(new LlmResponse { Content = "", RawResponseBody = toolCallBody });
 
         var opts = await engine.EvaluateAsync("({ maxIterations: 3 })", cancellationToken: TestContext.Current.CancellationToken);
-        var result = await facade.act("p", opts);
+        var result = await facade.ActAsync(engine, "p", opts);
 
         Assert.True(result.Get("exhausted").AsBoolean());
         Assert.Equal(3, Convert.ToInt32(result.Get("iterations").ToObject()));

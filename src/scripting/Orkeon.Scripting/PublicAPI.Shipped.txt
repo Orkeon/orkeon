@@ -302,7 +302,7 @@ Orkeon.Scripting.Runtime.JsLlmConfig.provider.get -> string!
 Orkeon.Scripting.Runtime.JsLlmConfig.temperature.get -> double?
 Orkeon.Scripting.Runtime.JsLlmConfig.with(Jint.Native.JsValue! overrides) -> Orkeon.Scripting.Runtime.JsLlmConfig!
 Orkeon.Scripting.Runtime.JsLlmFacade
-Orkeon.Scripting.Runtime.JsLlmFacade.act.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
+Orkeon.Scripting.Runtime.JsLlmFacade.act.get -> Jint.Native.JsValue!
 Orkeon.Scripting.Runtime.JsLlmFacade.chat.get -> System.Func<Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<object!>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.complete.get -> System.Func<string!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!
 Orkeon.Scripting.Runtime.JsLlmFacade.decide.get -> System.Func<string!, Jint.Native.JsValue!, Jint.Native.JsValue?, System.Threading.Tasks.Task<string!>!>!

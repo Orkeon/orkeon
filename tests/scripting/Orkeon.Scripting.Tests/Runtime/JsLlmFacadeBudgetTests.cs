@@ -38,7 +38,7 @@ public sealed class JsLlmFacadeBudgetTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget);
 
-        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.act("loop forever", null));
+        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "loop forever", null));
 
         Assert.Equal(BudgetDimension.ToolCalls, ex.Dimension);
         // Exactly one paid tool call and one LLM turn: the second iteration's pre-flight
@@ -59,7 +59,7 @@ public sealed class JsLlmFacadeBudgetTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, budget);
 
-        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.act("hello", null));
+        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "hello", null));
 
         Assert.Equal(BudgetDimension.Tokens, ex.Dimension);
     }
@@ -82,7 +82,7 @@ public sealed class JsLlmFacadeBudgetTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, tools: null, budget);
 
-        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.act("hello", null));
+        var ex = await Assert.ThrowsAsync<BudgetExhaustedException>(() => facade.ActAsync(engine, "hello", null));
 
         Assert.Equal(BudgetDimension.WallTime, ex.Dimension);
         Assert.Equal(0, provider.ChatCalls);
@@ -102,7 +102,7 @@ public sealed class JsLlmFacadeBudgetTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget);
 
-        var result = await facade.act("please echo hi", null);
+        var result = await facade.ActAsync(engine, "please echo hi", null);
 
         Assert.Equal("Done", result.Get("output").AsString());
         Assert.Equal(1, budget.CurrentToolCalls);

@@ -41,7 +41,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
 
-        var result = await facade.act("write something", null);
+        var result = await facade.ActAsync(engine, "write something", null);
 
         Assert.Equal("understood, stopping", result.Get("output").AsString());
         Assert.Equal(0, tool.CallCount); // the tool was never executed
@@ -67,7 +67,7 @@ public sealed class JsLlmFacadeActPermissionTests
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
 
         var options = EvalOptions(engine, "({ permissionMode: \"acceptEdits\" })");
-        var result = await facade.act("read something", options);
+        var result = await facade.ActAsync(engine, "read something", options);
 
         Assert.Equal("done", result.Get("output").AsString());
         Assert.Equal(1, tool.CallCount);
@@ -90,7 +90,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget, gate);
 
-        await facade.act("write", null);
+        await facade.ActAsync(engine, "write", null);
 
         Assert.Equal(0, budget.CurrentToolCalls);
     }
@@ -110,7 +110,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: gate);
 
-        await facade.act("probe", null);
+        await facade.ActAsync(engine, "probe", null);
 
         Assert.Equal(ToolAccess.Read, gate.LastDeclaredAccess);
     }
@@ -129,7 +129,7 @@ public sealed class JsLlmFacadeActPermissionTests
         var facade = new JsLlmFacade(
             engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(), budget: null, permissionGate: gate);
 
-        var result = await facade.act("probe", null);
+        var result = await facade.ActAsync(engine, "probe", null);
 
         Assert.Equal("done", result.Get("output").AsString());
         Assert.Equal(ToolAccess.Unspecified, gate.LastDeclaredAccess);
@@ -151,7 +151,7 @@ public sealed class JsLlmFacadeActPermissionTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None, new IBaseTool[] { tool });
 
-        var result = await facade.act("write", null);
+        var result = await facade.ActAsync(engine, "write", null);
 
         Assert.Equal("done", result.Get("output").AsString());
         Assert.Equal(1, tool.CallCount);

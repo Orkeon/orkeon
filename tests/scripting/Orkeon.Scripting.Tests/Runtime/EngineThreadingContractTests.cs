@@ -474,32 +474,38 @@ public sealed class EngineThreadingContractTests
 
     /// <summary>
     /// <c>ctx.llm.act</c> with <c>onDelta</c> against a provider that streams: each delta is a
-    /// thread-pool continuation, and <c>JsLlmFacade.ChatViaStreamAsync</c> invokes the JS
-    /// callback right there — on a thread that is not the one draining the engine. Measured by
-    /// thread id, so it fails deterministically instead of racing.
+    /// thread-pool continuation, and the callback used to be invoked right there — on a thread
+    /// that is not the one draining the engine. Since SCR-25 T6 the deltas cross a channel and a
+    /// JS pump drives the callback, so it runs where the body runs. Measured by thread id, so a
+    /// regression fails deterministically instead of racing; contended anyway, since the pool
+    /// thread the stream resumes on is the one a regression would surface.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task Act_onDelta_runs_on_the_thread_that_drains_the_engine()
     {
-        var engine = new JsEngineFactory(llmProvider: new SlowStreamingProvider()).Create();
-        engine.SetValue("__tid", new Func<int>(() => Environment.CurrentManagedThreadId));
-        var crew = BuildCrew(engine, """
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const t0 = __tid();
-                    const tids = [];
-                    const r = await ctx.llm.act("p", { onDelta: (d) => { tids.push(__tid()); } });
-                    return t0 + "|" + tids.join(",") + "|" + r.output;
-                }).build();
-            crewBuilder().name("c").withAgent(worker).build();
-            """);
+        await Contend(24, async () =>
+        {
+            var engine = new JsEngineFactory(llmProvider: new SlowStreamingProvider()).Create();
+            engine.SetValue("__tid", new Func<int>(() => Environment.CurrentManagedThreadId));
+            var crew = BuildCrew(engine, """
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const t0 = __tid();
+                        const tids = [];
+                        const r = await ctx.llm.act("p", { onDelta: (d) => { tids.push(__tid()); } });
+                        return t0 + "|" + tids.join(",") + "|" + r.output;
+                    }).build();
+                crewBuilder().name("c").withAgent(worker).build();
+                """);
 
-        var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
-            .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
+            var res = await crew.RunAsync(null, TestContext.Current.CancellationToken)
+                .WaitAsync(TimeSpan.FromSeconds(20), TestContext.Current.CancellationToken);
 
-        var parts = res.output!.Split('|');
-        Assert.Equal("d0d1d2", parts[2]);
-        Assert.All(parts[1].Split(','), tid => Assert.Equal(parts[0], tid));
+            var parts = res.output!.Split('|');
+            Assert.Equal("d0d1d2", parts[2]);
+            Assert.Equal(3, parts[1].Split(',').Length);
+            Assert.All(parts[1].Split(','), tid => Assert.Equal(parts[0], tid));
+        });
     }
 
     /// <summary>

@@ -1,4 +1,5 @@
 using Jint;
+using Jint.Runtime;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.SharedKernel;
@@ -13,9 +14,9 @@ namespace Orkeon.Scripting.Tests.Runtime;
 
 /// <summary>
 /// <c>ctx.llm.stream</c> streams per-chunk when the provider implements
-/// <see cref="IStreamingLlmProvider"/>, and the <c>onDelta</c> act option receives each
-/// content delta before the loop resumes with the assembled final response — composing
-/// with the budget (F1) and permission gate (F2) unchanged.
+/// <see cref="IStreamingLlmProvider"/>, and the <c>onDelta</c> act option receives every
+/// content delta — driven from JS by the pump that reads the delta channel, delivered before
+/// <c>act</c> settles — composing with the budget (F1) and permission gate (F2) unchanged.
 /// </summary>
 public sealed class JsLlmFacadeStreamTests
 {
@@ -71,7 +72,7 @@ public sealed class JsLlmFacadeStreamTests
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
-        var result = await facade.act("go", options);
+        var result = await facade.ActAsync(engine, "go", options);
 
         Assert.Equal("partial answer", result.Get("output").AsString());
         var deltas = (List<object>)engine.GetValue("__deltas").ToObject()!;
@@ -105,7 +106,7 @@ public sealed class JsLlmFacadeStreamTests
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d), permissionMode: \"acceptEdits\" })");
-        var result = await facade.act("read then answer", options);
+        var result = await facade.ActAsync(engine, "read then answer", options);
 
         Assert.Equal("done", result.Get("output").AsString());
         Assert.Equal(1, tool.CallCount);
@@ -114,6 +115,56 @@ public sealed class JsLlmFacadeStreamTests
         Assert.Equal("acceptEdits", gate.LastMode);
         var deltas = (List<object>)engine.GetValue("__deltas").ToObject()!;
         Assert.Equal(new object[] { "done" }, deltas.ToArray());
+    }
+
+    [Fact]
+    public async Task Act_onDelta_that_throws_rejects_act_with_its_error_and_abandons_the_run()
+    {
+        // A stream that never ends: act settles only if the run is abandoned once the callback
+        // fails. The rejection is the callback's own error (the run's cancellation is superseded
+        // by it), and leaving the stream mid-flight released the provider's enumeration.
+        using var engine = new Engine();
+        var provider = new EndlessStreamingProvider();
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+
+        var options = BuildOptions(engine, "({ onDelta: d => { throw new Error('cb-boom:' + d); } })");
+        var rejected = await Assert.ThrowsAsync<PromiseRejectedException>(
+            () => facade.ActAsync(engine, "go", options).WaitAsync(TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken));
+
+        Assert.Equal("cb-boom:d0", rejected.RejectedValue.Get("message").AsString());
+        Assert.True(provider.Released);
+    }
+
+    [Fact]
+    public async Task Act_interrupted_mid_stream_still_delivers_its_deltas_and_settles_gracefully()
+    {
+        // The pump reads the channel without the interrupt token on purpose: what streamed
+        // before the interrupt reaches onDelta, and act resolves { interrupted: true } — the
+        // pump's own cancellation would otherwise supersede that result from the finally.
+        using var engine = new Engine();
+        JsLlmFacade? facadeRef = null;
+        var toolCallBody =
+            "{\"choices\":[{\"message\":{\"role\":\"assistant\",\"content\":\"\",\"tool_calls\":[" +
+            "{\"id\":\"c1\",\"type\":\"function\",\"function\":{\"name\":\"missing_tool\",\"arguments\":\"{}\"}}]}}]}";
+        var provider = new FakeStreamingProvider(
+            generateChunks: NoChunks,
+            // The turn ends with a tool call, so the loop would iterate again: the interrupt
+            // raised at the end of the stream is what stops it, at the next iteration's check.
+            turns: [new StreamedTurn(Deltas: ["par", "tial"], Final: new LlmResponse { Content = "", RawResponseBody = toolCallBody })])
+        {
+            OnStreamEnd = () => facadeRef!.interrupt(),
+        };
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
+        facadeRef = facade;
+
+        engine.SetValue("__deltas", new List<object>());
+        var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
+        var result = await facade.ActAsync(engine, "go", options);
+
+        Assert.True(result.Get("interrupted").AsBoolean());
+        Assert.Equal(1, provider.ChatStreamingCalls);
+        var deltas = (List<object>)engine.GetValue("__deltas").ToObject()!;
+        Assert.Equal(new object[] { "par", "tial" }, deltas.ToArray());
     }
 
     [Fact]
@@ -129,7 +180,7 @@ public sealed class JsLlmFacadeStreamTests
 
         var facade = new JsLlmFacade(engine, provider, CancellationToken.None);
 
-        var result = await facade.act("go", null);
+        var result = await facade.ActAsync(engine, "go", null);
 
         Assert.Equal("buffered", result.Get("output").AsString());
         Assert.Equal(0, provider.ChatStreamingCalls);
@@ -151,7 +202,7 @@ public sealed class JsLlmFacadeStreamTests
             engine, provider, CancellationToken.None, tools: null, budget: null,
             permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
-        var result = await facade.act("go", null);
+        var result = await facade.ActAsync(engine, "go", null);
 
         Assert.Equal("Hello", result.Get("output").AsString());
         Assert.Equal(1, provider.ChatStreamingCalls);
@@ -175,7 +226,7 @@ public sealed class JsLlmFacadeStreamTests
 
         engine.SetValue("__deltas", new List<object>());
         var options = BuildOptions(engine, "({ onDelta: d => __deltas.push(d) })");
-        var result = await facade.act("go", options);
+        var result = await facade.ActAsync(engine, "go", options);
 
         Assert.Equal("ab", result.Get("output").AsString());
         Assert.Equal(["a", "b"], sink.Deltas);
@@ -206,7 +257,7 @@ public sealed class JsLlmFacadeStreamTests
             engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null,
             permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
-        var result = await facade.act("read then answer", null);
+        var result = await facade.ActAsync(engine, "read then answer", null);
 
         Assert.Equal("done", result.Get("output").AsString());
         Assert.Equal(1, tool.CallCount);
@@ -225,7 +276,7 @@ public sealed class JsLlmFacadeStreamTests
             engine, provider, CancellationToken.None, tools: null, budget: null,
             permissionGate: null, observability: new JsLlmObservability { DeltaSink = sink });
 
-        var result = await facade.act("go", null);
+        var result = await facade.ActAsync(engine, "go", null);
 
         Assert.Equal("buffered answer", result.Get("output").AsString());
         Assert.Empty(sink.Deltas);
@@ -425,6 +476,9 @@ public sealed class JsLlmFacadeStreamTests
         public int GenerateStreamingCalls { get; private set; }
         public LlmResponse BufferedResponse { get; set; } = new() { Content = "buffered" };
 
+        /// <summary>Runs after a turn's last delta, before its terminal event.</summary>
+        public Action? OnStreamEnd { get; init; }
+
         public FakeStreamingProvider(string[] generateChunks, StreamedTurn[] turns)
         {
             _generateChunks = generateChunks;
@@ -472,8 +526,51 @@ public sealed class JsLlmFacadeStreamTests
                 yield return LlmStreamEvent.Reasoning(reasoning);
             foreach (var delta in turn.Deltas)
                 yield return LlmStreamEvent.Content(delta);
+            OnStreamEnd?.Invoke();
             yield return LlmStreamEvent.Complete(turn.Final);
             await Task.CompletedTask;
+        }
+    }
+
+    /// <summary>
+    /// A chat stream that never completes: one delta per millisecond until the enumeration is
+    /// disposed — which <see cref="Released"/> records, the way an abandoned HTTP read would be.
+    /// </summary>
+    private sealed class EndlessStreamingProvider : ILlmProvider, IStreamingLlmProvider
+    {
+        public string Name => "endless";
+        public LlmConfig? BaseConfig => LlmConfig.Default() with { Model = "fake-model" };
+        public bool SupportsStreaming => true;
+        public bool Released { get; private set; }
+
+        public Task<LlmResponse> GenerateAsync(string prompt, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(new LlmResponse { Content = "never" });
+
+        public Task<LlmResponse> ChatAsync(LlmMessage[] messages, LlmConfig? config = null, CancellationToken ct = default)
+            => Task.FromResult(new LlmResponse { Content = "never" });
+
+        public async IAsyncEnumerable<string> GenerateStreamingAsync(
+            string prompt, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            yield return "never";
+            await Task.CompletedTask;
+        }
+
+        public async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
+            LlmMessage[] messages, LlmConfig? config = null, [EnumeratorCancellation] CancellationToken ct = default)
+        {
+            try
+            {
+                for (var i = 0; ; i++)
+                {
+                    await Task.Delay(1, ct).ConfigureAwait(false);
+                    yield return LlmStreamEvent.Content("d" + i);
+                }
+            }
+            finally
+            {
+                Released = true;
+            }
         }
     }
 

@@ -95,7 +95,7 @@ public sealed class JsLlmFacadeUsageSinkTests
             WithUsage("", 50, 5, raw: ToolCallBody("probe_tool")),
             WithUsage("final", 60, 6)), sink, new IBaseTool[] { new EchoTool("probe_tool") });
 
-        var result = await facade.act("go", null);
+        var result = await facade.ActAsync(engine, "go", null);
 
         Assert.Equal("final", result.Get("output").AsString());
         Assert.Equal(2, sink.Events.Count);
@@ -120,7 +120,7 @@ public sealed class JsLlmFacadeUsageSinkTests
                 AgentName = "assistant",
             });
 
-        var result = await facade.act("go", null);
+        var result = await facade.ActAsync(engine, "go", null);
 
         Assert.Equal("streamed final", result.Get("output").AsString());
         var e = Assert.Single(sink.Events);
