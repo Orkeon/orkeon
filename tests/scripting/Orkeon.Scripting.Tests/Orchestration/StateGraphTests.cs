@@ -359,9 +359,9 @@ public sealed class StateGraphTests
     {
         // The wall-clock bound is the graph's own token, not the crew's: the run must stop waiting
         // on the node at the deadline and reject with the OperationCanceledException the deadline
-        // raised, not settle on the next hop. The node sleeps 60 s — far longer than any stall a
-        // saturated pool can add (a 200 ms deadline was once measured firing late enough for a 1 s
-        // node to finish first under the 24-script contention harness) — so the rejection alone
+        // raised, not settle on the next hop. No elapsed-time assertion: an earlier form of this test
+        // (a 1 s node, a < 900 ms bound on the run) failed once under a parallel run, so the node now
+        // sleeps 60 s — far longer than any stall a saturated pool can add — and the rejection alone
         // proves the deadline ended the run; the 30 s ceiling turns a run that waited the node out
         // into a failure instead of a minute-long wait. The sleep is not cancelled: the race in the
         // trampoline abandons the node, and its Task completes on its own afterwards.
