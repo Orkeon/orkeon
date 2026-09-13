@@ -22,14 +22,14 @@ namespace Orkeon.Scripting.Tests.Runtime;
 /// </summary>
 /// <remarks>
 /// <para>What the skipped scenarios have in common (SCR-25): a CLR continuation calls back
-/// into the engine — a node function, an agent body, a state transform, a topic handler, an
-/// FSM hook, a lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one
-/// draining the event loop, or it drains synchronously from inside a job. Jint's loop is
+/// into the engine — a node function, an agent body, a state transform, a topic handler, a
+/// lifecycle hook, an <c>onDelta</c> callback — from a thread that is not the one draining
+/// the event loop, or it drains synchronously from inside a job. Jint's loop is
 /// exclusive per drain but has no guard on <c>Engine.Invoke</c>, and a drain nested inside a
 /// job cannot pump ("Nested inside a job it cannot pump", Jint <c>Engine.DrainEventLoopUntil</c>).
 /// Mixing a synchronous drain (<c>JsCrew.UnwrapPromise</c>) with an asynchronous one
-/// (<c>JsStateGraph.run</c>, <c>JsStateMachine.send</c>) loses the async side's wake-up, and a
-/// synchronous drain reached from inside a job never settles.</para>
+/// (<c>JsStateGraph.run</c>) loses the async side's wake-up, and a synchronous drain reached
+/// from inside a job never settles.</para>
 /// <para>Two scenarios (<c>runStream</c> on a graph and on a crew) are not races: they pin the
 /// shape the rewrite must produce — a JS async generator, since Jint does not expose an
 /// <c>IAsyncEnumerable</c> as an async iterable.</para>
@@ -336,33 +336,75 @@ public sealed class EngineThreadingContractTests
 
     /// <summary>
     /// FSM hooks that suspend (<c>fsm.d.ts</c> allows <c>Promise</c> from guards and hooks),
-    /// sent from a body: <c>JsStateMachine.send</c> awaits them asynchronously while the body
-    /// is drained synchronously — the wake-up is lost (10 s timeout in
-    /// <c>AwaitPromiseSettlementAsync</c>), and the <c>onEntry</c> hook plus its context
-    /// object would be built on a pool thread once <c>onExit</c> resumed there.
+    /// sent from a body. <c>JsStateMachine.send</c> used to await them from CLR while the body
+    /// was drained synchronously — the wake-up was lost (10 s timeout in
+    /// <c>AwaitPromiseSettlementAsync</c>), and the <c>onEntry</c> hook plus its context object
+    /// were built on a pool thread once <c>onExit</c> resumed there. <c>send</c> is a JS
+    /// trampoline now (SCR-25 T2): every hook is a promise reaction on the body's drain.
     /// </summary>
-    [Fact(Skip = Scr25)]
+    [Fact]
     public async Task Fsm_hooks_that_suspend_settle_from_a_body()
     {
-        var r = await RunScriptAsync("""
-            const log = [];
-            const worker = agentBuilder().name("w").role("W").goal("g")
-                .body(async (input, ctx) => {
-                    const fsm = stateMachine({
-                        name: "m", initial: "a",
-                        states: {
-                            a: { onExit: async (c) => { log.push(await ctx.llm.complete("exit")); }, transitions: { go: { target: "b" } } },
-                            b: { onEntry: async (c) => { log.push(await ctx.llm.complete("entry")); } },
-                        },
-                    });
-                    const cur = await fsm.send("go");
-                    return cur + "|" + log.join(",");
-                }).build();
-            const crew = crewBuilder().name("c").withAgent(worker).build();
-            const res = await crew.run();
-            result = { out: res.output };
-            """);
-        Assert.Equal("b|R:exit,R:entry", r["out"]);
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const log = [];
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const fsm = stateMachine({
+                            name: "m", initial: "a",
+                            states: {
+                                a: { onExit: async (c) => { log.push(await ctx.llm.complete("exit")); }, transitions: { go: { target: "b" } } },
+                                b: { onEntry: async (c) => { log.push(await ctx.llm.complete("entry")); } },
+                            },
+                        });
+                        const cur = await fsm.send("go");
+                        return cur + "|" + log.join(",");
+                    }).build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { out: res.output };
+                """);
+            Assert.Equal("b|R:exit,R:entry", r["out"]);
+        });
+    }
+
+    /// <summary>
+    /// An FSM guard that suspends on the provider (<c>fsm.d.ts</c>: <c>Promise&lt;boolean&gt;</c>),
+    /// sent after an await in the body — from inside a job. The trampoline awaits the guard in
+    /// JS: one resolving true lets the transition through, one resolving false vetoes it, and
+    /// on a veto neither hook fires and <c>send</c> resolves to the unchanged state.
+    /// </summary>
+    [Fact]
+    public async Task Fsm_guard_that_suspends_is_awaited()
+    {
+        await Contend(24, async () =>
+        {
+            var r = await RunScriptAsync("""
+                const log = [];
+                const worker = agentBuilder().name("w").role("W").goal("g")
+                    .body(async (input, ctx) => {
+                        const first = await ctx.llm.complete("first");
+                        const machine = (expected) => stateMachine({
+                            name: "m", initial: "a",
+                            states: {
+                                a: {
+                                    onExit: (c) => { log.push("exit:" + expected); },
+                                    transitions: { go: { target: "b", guard: async (c) => (await ctx.llm.complete("g")) === expected } },
+                                },
+                                b: { onEntry: (c) => { log.push("entry:" + expected); } },
+                            },
+                        });
+                        const allowed = await machine("R:g").send("go");
+                        const vetoed = await machine("R:other").send("go");
+                        return first + "|" + allowed + "|" + vetoed + "|" + log.join(",");
+                    }).build();
+                const crew = crewBuilder().name("c").withAgent(worker).build();
+                const res = await crew.run();
+                result = { out: res.output };
+                """);
+            Assert.Equal("R:first|b|a|exit:R:g,entry:R:g", r["out"]);
+        });
     }
 
     /// <summary>
