@@ -47,7 +47,7 @@ public sealed record JsGraphConfig(
 /// <see cref="InvalidScriptException"/> for an undeclared node or edge,
 /// <see cref="OperationCanceledException"/> for a cancelled run — and
 /// <see cref="JsHostError.Unwrap"/> recovers it from the rejected value. The crew boundary
-/// (<c>JsCrew.UnwrapPromise</c>) maps a cancellation of the crew's own token to a bare
+/// (<c>JsCrew.RunAsync</c>) maps a cancellation of the crew's own token to a bare
 /// <see cref="OperationCanceledException"/>; every other rejection, a <c>maxTotalDuration</c>
 /// deadline included, reaches a C# caller as Jint's <c>PromiseRejectedException</c> carrying
 /// that Error.</para>

@@ -62,7 +62,7 @@ public sealed class OtelTests
             var engine = new JsEngineFactory().Create();
             var crew = (JsCrew)(await engine.EvaluateAsync("""
                 const a = agentBuilder().name("Worker-Otel").role("R").goal("G").body(() => "ok").build();
-                crewBuilder().withAgent(a).build();
+                crewBuilder().name("parent-otel").withAgent(a).build();
                 """, cancellationToken: TestContext.Current.CancellationToken)).ToObject()!;
 
             await crew.RunAsync(null, CancellationToken.None);
@@ -71,6 +71,13 @@ public sealed class OtelTests
                 .Where(s => s.OperationName.StartsWith(ScriptingActivitySource.AgentRunSpan, StringComparison.Ordinal))
                 .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "gen_ai.agent.name" && kv.Value == "Worker-Otel"));
             Assert.NotNull(agentSpan);
+            // The agent span is an explicit child of its run's crew span (SCR-25 T4), not of whatever
+            // Activity.Current happened to be on the draining thread.
+            var crewSpan = Snapshot(spans)
+                .Where(s => s.OperationName == ScriptingActivitySource.CrewRunSpan)
+                .FirstOrDefault(s => s.Tags.Any(kv => kv.Key == "orkeon.crew.name" && kv.Value == "parent-otel"));
+            Assert.NotNull(crewSpan);
+            Assert.Equal(crewSpan!.SpanId, agentSpan!.ParentSpanId);
         }
         finally { listener.Dispose(); }
     }

@@ -25,12 +25,11 @@ namespace Orkeon.Scripting.Runtime;
 /// re-entrantly and returns the raw result — a value or a Promise the script awaits itself,
 /// settled by Jint's own event loop. No gate, no pump.</description></item>
 /// <item><description><b>From the orchestrator</b> (<see cref="CallAsync"/>): the engine is at rest
-/// (the script finished evaluating when the crew loaded), but a <c>process: parallel</c> crew
-/// can fire several tool calls at once — the per-engine <see cref="JsEngineGate"/> serializes
-/// them on the single-threaded engine. Promise results are settled with the same
-/// <c>UnwrapIfPromise(TimeSpan)</c> pattern as <see cref="JsCrew"/>: Jint's
-/// <c>UnwrapIfPromiseAsync</c> bakes in a 10 s ceiling, which an I/O-bound tool
-/// (an <c>httpApi</c> call in its body) outlives routinely.</description></item>
+/// (the script finished evaluating when the crew loaded); a <c>process: parallel</c> crew can fire
+/// several tool calls at once, and the per-engine <see cref="JsEngineGate"/> serialises them. A
+/// promise result is settled by a root pump — one pool thread draining the loop with
+/// <c>UnwrapIfPromise(cancellationToken)</c> — bounded by the call's token, not by a timeout; the
+/// same shape as <see cref="JsCrew.RunAsync"/>.</description></item>
 /// </list>
 /// </remarks>
 #pragma warning disable IDE1006
@@ -54,9 +53,6 @@ public sealed class JsTool : ITool
 
     /// <summary>Whether <c>.withSchema(...)</c> was called on the builder.</summary>
     internal bool HasExplicitSchema { get; }
-
-    /// <summary>Mirror of <see cref="JsCrew"/>'s body-promise ceiling, for the same reason.</summary>
-    private static readonly TimeSpan ToolPromiseTimeout = TimeSpan.FromMinutes(30);
 
     private readonly Engine _engine;
     private readonly JsValue _executeCallback;
@@ -89,7 +85,7 @@ public sealed class JsTool : ITool
     // ---- Pipeline-facing members ----
 
     /// <inheritdoc />
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any failure of the user-supplied JS execute callback (Jint JavaScriptException or CLR error) is converted to an unsuccessful ToolCallResponse carrying the message, so a buggy script tool cannot crash the host.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Tool-execution fault barrier: any failure of the user-supplied JS execute callback (Jint JavaScriptException or CLR error) is converted to an unsuccessful ToolCallResponse carrying the message, so a buggy script tool cannot crash the host. A cancellation of the call's own token is let through, consistent with the gate wait and the Task.Run around it.")]
     public Task<ToolCallResponse> CallAsync(ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(request);
@@ -97,25 +93,31 @@ public sealed class JsTool : ITool
 
         async Task<ToolCallResponse> CallCoreAsync()
         {
+            if (JsEngineGate.IsDrainingOnThisThread(_engine))
+            {
+                throw new InvalidOperationException(
+                    $"JsTool.CallAsync is a root pump and needs the engine at rest, but tool '{Name}' was asked to run from " +
+                    "inside this engine's own event loop (a CLR callback the script invoked). Call the tool's execute from the script instead.");
+            }
             var gate = JsEngineGate.For(_engine);
             await gate.WaitAsync(cancellationToken).ConfigureAwait(false);
             try
             {
-                // Task.Run mirrors JsCrew.UnwrapPromise: the synchronous
-                // UnwrapIfPromise(TimeSpan) pumps the engine's event loop, and
-                // dispatching it off the caller preserves await semantics.
+                // Root pump: the invoke and the drain on one pool thread, the drain bounded by the
+                // call's token; dispatching it off the caller preserves await semantics.
                 return await Task.Run(() =>
                 {
+                    using var draining = JsEngineGate.MarkDraining(_engine);
                     try
                     {
                         var input = JsValue.FromObject(_engine, request.Parameters);
                         var result = _engine.Invoke(_executeCallback, [input, JsValue.Undefined]);
                         var settled = result.IsPromise()
-                            ? JsValueExt.UnwrapIfPromise(result, ToolPromiseTimeout)
+                            ? JsValueExt.UnwrapIfPromise(result, cancellationToken)
                             : result;
                         return new ToolCallResponse(true, settled.ToObject(), null);
                     }
-                    catch (Exception ex)
+                    catch (Exception ex) when (ex is not OperationCanceledException || !cancellationToken.IsCancellationRequested)
                     {
                         return new ToolCallResponse(false, null, ex.Message);
                     }

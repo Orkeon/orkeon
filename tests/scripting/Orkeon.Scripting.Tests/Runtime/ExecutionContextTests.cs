@@ -1,6 +1,7 @@
 using Jint;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Runtime;
 using static Orkeon.Tests.Shared.Assertions.AssertEx;
 
@@ -202,10 +203,10 @@ public sealed class ExecutionContextTests
             Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance,
             CancellationToken.None);
 
-        // delegate is now synchronous (returns the body's promise to JS rather
-        // than unwrapping it in C#), so the detached-self guard throws on the
-        // synchronous invocation, not as a faulted Task.
-        Assert.Throws<AgentNotInCrewException>(() => ctx.@delegate(target, null!));
+        // delegate is synchronous and bridged (JsHostError): the detached-self guard throws a JavaScript Error
+        // carrying the typed CLR exception, so an async body's catch/finally run.
+        var js = Assert.Throws<Jint.Runtime.JavaScriptException>(() => ctx.@delegate(target, null!));
+        Assert.IsType<AgentNotInCrewException>(JsHostError.Unwrap(js.Error));
     }
 
     [Fact]

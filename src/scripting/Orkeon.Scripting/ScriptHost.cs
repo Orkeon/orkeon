@@ -85,10 +85,12 @@ public sealed partial class ScriptHost
 
         var (engine, completion) = await EvaluateAsync(physicalPath, virtualPath, ct, inputsJson).ConfigureAwait(false);
 
-        // Convention: scripts that build a crew but can't (or shouldn't) `await crew.run()`
-        // at the top level — because of Jint's re-entrant promise-unwrap dead-lock — can
-        // hand off via `globalThis.crew = crewBuilder()…build()`. ScriptHost then invokes
-        // `RunAsync` directly on the CLR object, side-stepping the JS event loop entirely.
+        // Convention: a script that ends with `globalThis.crew = crewBuilder()…build()` hands its crew to the host
+        // instead of running it. This is the declarative shape's contract — `orkeon run` detects the handoff on the
+        // source (CrewHandoffDetector) and routes the script to RunnerExecution.LoadCrewFromFileAsync +
+        // JsCrewConfigurationAdapter, where tasks, process and manager are honoured and bodies are not. This host
+        // has no orchestrator: it runs the exported crew procedurally through JsCrew.RunAsync, a root pump reached
+        // with the engine at rest now that the script's own evaluation has drained.
         var crewGlobal = engine.GetValue("crew");
         if (!crewGlobal.IsUndefined() && !crewGlobal.IsNull())
         {
@@ -209,13 +211,48 @@ public sealed partial class ScriptHost
             LogInputsInjected(virtualPath, inputsJson!.Length);
         }
 
-        // Jint runs source in script mode, which forbids top-level `await`. We try the
-        // raw source first (keeps `var result = 42` style scripts working as documented)
-        // and fall back to an async-IIFE wrap when the parser rejects top-level await.
+        var gate = Runtime.JsEngineGate.For(engine);
+        await gate.WaitAsync(ct).ConfigureAwait(false);
         JsValue completion;
         try
         {
-            completion = engine.Evaluate(js);
+            // Root pump. The pool thread Task.Run hands us is the only thread that ever runs this script's
+            // JavaScript: the evaluation (with the top-level-await fallback) and every event-loop job the drain
+            // runs afterwards. One thread is what lets a span started before the script's first await parent the
+            // spans of the jobs after it (Activity.Current is an AsyncLocal), what keeps a span a synchronous
+            // crew.run() prefix starts off the caller's context, and what keeps the sandbox's per-thread memory
+            // accounting on one thread. `await crew.run()` inside the script is plain JS under this pump. The host
+            // token is the only bound: on cancellation the script is abandoned mid-flight and the engine discarded
+            // with it — nothing outlives the engine, so no cooperative grace is needed here.
+            completion = await Task.Run(() =>
+            {
+                using var draining = Runtime.JsEngineGate.MarkDraining(engine);
+                var value = EvaluateWithTopLevelAwaitFallback(engine, js, virtualPath);
+                return value.IsPromise() ? Jint.JsValueExtensions.UnwrapIfPromise(value, ct) : value;
+            }, ct).ConfigureAwait(false);
+        }
+        catch (Jint.Runtime.PromiseRejectedException ex)
+        {
+            throw new InvalidOperationException($"Script rejected with: {ex.RejectedValue}", ex);
+        }
+        finally
+        {
+            gate.Release();
+        }
+
+        return (engine, completion);
+    }
+
+    /// <summary>
+    /// Jint runs source in script mode, which forbids top-level <c>await</c>. The raw source is tried
+    /// first (keeps <c>var result = 42</c> style scripts working as documented) with a fallback to an
+    /// async-IIFE wrap when the parser rejects top-level await.
+    /// </summary>
+    private JsValue EvaluateWithTopLevelAwaitFallback(Jint.Engine engine, string js, string virtualPath)
+    {
+        try
+        {
+            return engine.Evaluate(js);
         }
         catch (Exception ex) when (
             (ex is Jint.Runtime.JavaScriptException || ex is Acornima.ParseErrorException)
@@ -224,41 +261,9 @@ public sealed partial class ScriptHost
         {
             LogTopLevelAwaitWrap(virtualPath);
             var wrapped = "(async function __orkeonMain(){\n" + js + "\n})();";
-            completion = engine.Evaluate(wrapped);
+            return engine.Evaluate(wrapped);
         }
-
-        if (completion.IsPromise())
-        {
-            try
-            {
-                // Jint.JsValueExtensions.UnwrapIfPromiseAsync bakes in a hard 10s
-                // ceiling that cannot be lifted from outside the engine — long
-                // top-level scripts (async pre-computation with many tool calls)
-                // get rejected with "Timeout of 00:00:10 reached". We use the
-                // synchronous UnwrapIfPromise(TimeSpan) overload via Task.Run
-                // so the caller's await semantics are preserved while the
-                // host-time budget actually matches LoadTimeout.
-                completion = await Task.Run(
-                    () => Jint.JsValueExtensions.UnwrapIfPromise(completion, LoadPromiseTimeout),
-                    ct).ConfigureAwait(false);
-            }
-            catch (Jint.Runtime.PromiseRejectedException ex)
-            {
-                throw new InvalidOperationException(
-                    $"Script rejected with: {ex.RejectedValue}", ex);
-            }
-        }
-
-        return (engine, completion);
     }
-
-    /// <summary>
-    /// Maximum wall-time the host waits for a top-level async script body
-    /// (the IIFE wrap that holds top-level <c>await</c>s) to settle. Mirrors
-    /// the equivalent constant in <see cref="Runtime.JsCrew"/> so a long
-    /// pre-computation phase never trips the default Jint 10s limit.
-    /// </summary>
-    private static readonly TimeSpan LoadPromiseTimeout = TimeSpan.FromMinutes(30);
 
     // --- source-generated logging ---
 

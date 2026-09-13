@@ -139,7 +139,11 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
         return _engineRef.Invoke(factory, [acquire, release]);
     }
 
-    public Func<JsAgentBuilder, JsAgent> spawn => builder =>
+    // Synchronous for the script (context.d.ts: `spawn(): Agent`) and bridged: a body past its
+    // first await calls this from an event-loop job, where a raw CLR throw — the recursion
+    // guard, a duplicate name, an agent already in a crew — would skip the script's catch and
+    // finally. A lifecycle hook's own synchronous JavaScript throw passes through unchanged.
+    public Func<JsAgentBuilder, JsAgent> spawn => builder => JsHostError.Guard(_engineRef, () =>
     {
         ArgumentNullException.ThrowIfNull(builder);
         var spawned = builder.build();
@@ -147,7 +151,7 @@ public sealed class JsAgentContext : JsExecutionContext, IDisposable
             throw new RecursiveAgentInvocationException(spawned.name);
         _crewRef.Add(spawned);
         return spawned;
-    };
+    });
 
     /// <summary>
     /// The read-only view of <paramref name="raw"/> the body sees: a Proxy whose <c>with</c>

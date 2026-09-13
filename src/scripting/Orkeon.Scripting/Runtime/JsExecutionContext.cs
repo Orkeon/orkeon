@@ -4,6 +4,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Scripting.Builders;
 using Orkeon.Scripting.Exceptions;
+using Orkeon.Scripting.Internal;
 
 namespace Orkeon.Scripting.Runtime;
 
@@ -97,9 +98,8 @@ public class JsExecutionContext
 
     // Returns the delegated body's result — a *promise* for an async body —
     // straight back to JS, instead of unwrapping it in C#. The caller's
-    // `await ctx.delegate(...)` then settles it under the SAME single outer pump
-    // that already drives the crew run (JsCrew.UnwrapPromise), never a nested
-    // blocking pump.
+    // `await ctx.delegate(...)` then settles it under the SAME single pump
+    // that already drives the run, never a nested blocking pump.
     //
     // Why this matters: the Jint engine is single-threaded and non-reentrant.
     // The previous implementation awaited the body via
@@ -110,14 +110,16 @@ public class JsExecutionContext
     // burned the full 30-min ceiling ("Timeout of 00:30:00 reached") and the
     // crew promise rejected after writing only a handful of files. Handing the
     // raw promise back to JS removes the nested pump entirely: N delegated bodies
-    // settle on the one engine thread under the outer pump, with no reentrancy
-    // and no artificial settle ceiling. This makes concurrent delegation safe.
+    // settle on the one engine thread under the pump that drives the run, with no
+    // reentrancy and no artificial settle ceiling. This makes concurrent delegation safe.
     //
     // The signature is synchronous (returns JsValue, not Task<JsValue>): the
-    // guards throw synchronously at the call site and a JS `await` on the
+    // guards throw synchronously at the call site — bridged (JsHostError), so a
+    // body past its first await, inside an event-loop job, sees them as a
+    // JavaScript throw its catch and finally run for — and a JS `await` on the
     // returned promise does the waiting. A delegated body that rejects surfaces
-    // through the outer pump as a normal promise rejection.
-    public Func<JsAgent, JsValue, JsValue> @delegate => (target, input) =>
+    // through the pump as a normal promise rejection.
+    public Func<JsAgent, JsValue, JsValue> @delegate => (target, input) => JsHostError.Guard(_engine, () =>
     {
         ArgumentNullException.ThrowIfNull(target);
         EnsureSelfInCrew();
@@ -127,14 +129,14 @@ public class JsExecutionContext
         _ct.ThrowIfCancellationRequested();
         var inputJs = input ?? JsValue.Undefined;
         return _engine.Invoke(target.Builder.BodyFunction, [inputJs, JsValue.Undefined]);
-    };
+    });
 
-    public Action<JsAgent, JsValue> send => (target, message) =>
+    public Action<JsAgent, JsValue> send => (target, message) => JsHostError.Guard(_engine, () =>
     {
         ArgumentNullException.ThrowIfNull(target);
         EnsureSelfInCrew();
         _channel.Send(target.name, message);
-    };
+    });
 
     public Func<JsValue?, Task<object?>> receive => async options =>
     {
@@ -152,11 +154,11 @@ public class JsExecutionContext
         return await _channel.ReceiveAsync(_self.name, timeout, _ct).ConfigureAwait(false);
     };
 
-    public Action<JsValue> broadcast => message =>
+    public Action<JsValue> broadcast => message => JsHostError.Guard(_engine, () =>
     {
         EnsureSelfInCrew();
         _channel.Broadcast(_self.name, message, _crew.agents.Select(a => a.name));
-    };
+    });
 
     private void EnsureSelfInCrew()
     {

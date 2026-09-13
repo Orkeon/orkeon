@@ -20,10 +20,13 @@ public sealed class JsEventBroker
     internal JsEventBroker(Engine engine) { _engine = engine; }
 
     /// <summary>
-    /// Set by <see cref="JsCrew"/> while a body is executing so that
-    /// <see cref="JsEventTopic.subscribe"/> can attribute the new subscription to the
-    /// agent that called it. The per-agent mutex + the Jint engine being single-threaded
-    /// guarantees at most one body is active at any moment.
+    /// Set by <see cref="JsCrew"/> for the duration of a body attempt so that
+    /// <see cref="JsEventTopic.subscribe"/> can attribute the new subscription to the agent that
+    /// called it, and restored to its previous value when the attempt closes (a nested
+    /// <c>runAgent</c> hands attribution back to the body that called it). One crew-wide value: two
+    /// runs of one crew interleaved on one event loop (<c>Promise.all([crew.run(), crew.run()])</c>)
+    /// share it, so the attribution — and the <c>runAgent</c> re-entrance guard built on it — is
+    /// best-effort under such interleaving.
     /// </summary>
     internal string? CurrentAgentId { get; set; }
 

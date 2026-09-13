@@ -1,5 +1,7 @@
 using Jint;
+using Microsoft.Extensions.Logging;
 using Orkeon.Scripting.Runtime;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Scripting.Tests.Lifecycle;
 
@@ -116,5 +118,40 @@ public sealed class HooksTests
 
         Assert.Equal("ok", result.tasks[0].output!.ToString());
         Assert.False(engine.GetValue("__errInvoked").AsBoolean());
+    }
+
+    /// <summary>
+    /// A lifecycle hook is invoked synchronously and what it returns is observed, never drained
+    /// (SCR-25 T4): an async <c>onAgentStart</c> that rejects — at build time, and from
+    /// <c>ctx.spawn</c> inside a body — is logged once, naming the hook, the agent and the crew, and
+    /// neither the attach nor the run fails because of it.
+    /// </summary>
+    [Fact]
+    public async Task Rejected_lifecycle_hook_is_logged_and_the_run_completes()
+    {
+        using var factory = new RecordingLoggerFactory();
+        var engine = new JsEngineFactory(loggerFactory: factory).Create();
+        var crew = Eval<JsCrew>(engine, """
+            const a = agentBuilder().name("A").role("R").goal("G")
+                .onAgentStart(async (ctx) => { await Promise.resolve(); throw new Error("start-rejected"); })
+                .body((input, ctx) => {
+                    ctx.spawn(agentBuilder().name("Child").role("R").goal("G")
+                        .onAgentStart(async (c) => { await Promise.resolve(); throw new Error("child-rejected"); }));
+                    return "ok";
+                })
+                .build();
+            crewBuilder().name("hooked").withAgent(a).build();
+            """);
+
+        var result = await crew.RunAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", result.output);
+        var rejected = factory.Logger.Entries
+            .Where(e => e.Level == LogLevel.Warning && e.Message.Contains("onAgentStart", StringComparison.Ordinal))
+            .Select(e => e.Message)
+            .ToList();
+        Assert.Equal(2, rejected.Count);
+        Assert.Contains(rejected, m => m.Contains("'A'", StringComparison.Ordinal) && m.Contains("'hooked'", StringComparison.Ordinal) && m.Contains("start-rejected", StringComparison.Ordinal));
+        Assert.Contains(rejected, m => m.Contains("'Child'", StringComparison.Ordinal) && m.Contains("'hooked'", StringComparison.Ordinal) && m.Contains("child-rejected", StringComparison.Ordinal));
     }
 }

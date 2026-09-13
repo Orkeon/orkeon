@@ -117,6 +117,11 @@ public sealed class LocksTests
         Assert.Equal("ok", result.tasks[0].output!.ToString());
     }
 
+    /// <summary>
+    /// Two CLR-driven runs of one engine are serialized whole by the engine gate (each
+    /// <c>RunAsync</c> is a root pump); the instance semaphore inside one engine is what
+    /// <see cref="Concurrency_1_serializes_two_runs_started_from_the_script"/> exercises.
+    /// </summary>
     [Fact]
     public async Task Concurrency_1_serializes_concurrent_calls_to_same_instance()
     {
@@ -139,8 +144,36 @@ public sealed class LocksTests
             crew.RunAsync(null, CancellationToken.None));
 
         var trace = (List<object>)engine.GetValue("__counters").ToObject()!;
-        // Strict alternation enter/exit/enter/exit proves the mutex serialised the two
-        // bodies — no overlap (no enter/enter or exit/exit pair).
+        // Strict alternation enter/exit/enter/exit proves the two bodies did not overlap
+        // (no enter/enter or exit/exit pair).
+        Assert.Equal(ExpectedAlternation, trace);
+    }
+
+    /// <summary>
+    /// Two runs of one crew started from the script interleave on one event loop
+    /// (<c>Promise.all</c>), each with its own scope; the agent's instance semaphore is what
+    /// keeps its two bodies from overlapping.
+    /// </summary>
+    [Fact]
+    public async Task Concurrency_1_serializes_two_runs_started_from_the_script()
+    {
+        var engine = NewEngine();
+        InstallSleep(engine);
+        engine.SetValue("__counters", new List<object>());
+
+        await engine.EvaluateAsync("""
+            const a = agentBuilder().name("A").role("R").goal("G").concurrency(1)
+                .body(async (input, ctx) => {
+                    __counters.push("enter");
+                    await __sleep(40);
+                    __counters.push("exit");
+                    return "ok";
+                }).build();
+            const crew = crewBuilder().withAgent(a).build();
+            Promise.all([crew.run(), crew.run()]);
+            """, cancellationToken: TestContext.Current.CancellationToken);
+
+        var trace = (List<object>)engine.GetValue("__counters").ToObject()!;
         Assert.Equal(ExpectedAlternation, trace);
     }
 
