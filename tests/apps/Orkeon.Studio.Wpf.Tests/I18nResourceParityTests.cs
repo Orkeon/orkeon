@@ -145,10 +145,12 @@ public sealed partial class I18nResourceParityTests
     /// </summary>
     private static readonly Dictionary<string, int> TranslationDebtCeiling = new(StringComparer.Ordinal)
     {
-        ["Strings.fr.resx"] = 47,
-        ["Strings.es.resx"] = 34,
-        ["Strings.de.resx"] = 35,
-        ["Strings.zh-Hans.resx"] = 28,
+        // LLM-09: raised by the two product names it adds (« OpenRouter », « Mammouth AI »
+        // — the irreducible floor named above), and set to the measured count, not above it.
+        ["Strings.fr.resx"] = 49,
+        ["Strings.es.resx"] = 35,
+        ["Strings.de.resx"] = 36,
+        ["Strings.zh-Hans.resx"] = 30,
     };
 
     [Theory]

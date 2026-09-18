@@ -130,6 +130,8 @@ once by `OpenAICompatibleProviderBase` — see the
 | **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. |
 | `deepseek-reasoner` (R1) | ⚠️ | May refuse `response_format` with HTTP 400. Test before production. The error surfaces as a typed `APIError` through the existing pipeline — no crash. |
 | **MiniMax** | `None` | Accepted but non-binding — measured 2026-08-30 (schema ignored, `json_object` fenced in markdown); a declared format produces the structured capability warning. |
+| **OpenRouter** † | `JsonSchema` | Documented per endpoint (2026-09-18, not campaigned); the provider does not send `provider.require_parameters`, so a schema may be ignored by an endpoint that lacks it — the first campaign's question. |
+| **Mammouth AI** † | `None` | Undocumented on the proxy (2026-09-18, not campaigned); a declared format produces the structured capability warning until a campaign measures it. |
 
 ## How it travels through the orchestrator
 

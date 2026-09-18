@@ -1,0 +1,28 @@
+{
+  "_comment": "Settings template - OpenRouter (model marketplace, OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.openrouter.local.json), then fill in your key. The ${OPENROUTER_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. Identifiers are vendor/model and the vendor prefix is mandatory; suffixes :free / :nitro (throughput) / :floor (price) travel in the identifier. openrouter/auto is usable but drifts (the served model changes without notice) - the response's served_model metadata says who answered. The factory auto-detects OpenRouterLlmProvider from the openrouter.ai host. Cheap text-only alternative: deepseek/deepseek-v4-flash. Not campaigned yet (LLM-09, 2026-09-18).",
+  "_models": [
+    "google/gemini-3.7-flash - the fleet's Gemini default under its marketplace id; ctx 1,048,576, 0.75 / 3.75 $/M in/out, text+image+video+file+audio, reasoning + response_format (json_schema) + tools (public catalog GET /api/v1/models, 2026-09-18)",
+    "deepseek/deepseek-v4-flash - reasoning model, cheap text-only alternative for the transport comparison (M7/M8)",
+    "openai/gpt-5.6-sol - no temperature in supported_parameters: the per-model constraint (only 1) travels through the aggregator",
+    "openrouter/auto - router alias, price -1 (variable): refused as a default, fine by explicit configuration",
+    "Source: https://openrouter.ai/api/v1/models (public, no key) - 445 entries on 2026-09-18"
+  ],
+  "Llm": {
+    "BaseUrl": "https://openrouter.ai/api/v1",
+    "Model": "google/gemini-3.7-flash",
+    "ApiKey": "${OPENROUTER_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

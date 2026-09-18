@@ -40,6 +40,10 @@ declare global {
         const azureOpenai: LlmProvider;
         const grok: LlmProvider;
         const minimax: LlmProvider;
+        /** OpenRouter (marketplace): `vendor/model` identifiers; default `google/gemini-3.7-flash`. */
+        const openrouter: LlmProvider;
+        /** Mammouth AI (subscription proxy): the vendors' bare identifiers; default `gemini-3.7-flash`. */
+        const mammouth: LlmProvider;
 
         /**
          * The configured provider, already resolved — a value, not a factory. Comes from

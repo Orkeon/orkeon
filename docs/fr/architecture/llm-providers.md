@@ -22,6 +22,8 @@ Fournisseurs implémentés :
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Grok (x.AI) | `GrokLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | MiniMax | `MiniMaxLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| OpenRouter (agrégateur) | `OpenRouterLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Mammouth AI (agrégateur) | `MammouthLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`.
 
@@ -43,9 +45,15 @@ provider une chance d'adapter une charge utile refusée en 4xx et de la ré-éme
 fois (chemins generate et chat ; le streaming ne réessaie jamais). Kimi s'en sert pour le
 `invalid temperature: only 1 is allowed for this model` de Moonshot — la valeur imposée est
 lue dans le refus lui-même (quels modèles l'exigent est décidé côté serveur, une liste en
-dur dériverait) et la substitution est journalisée en avertissement structuré. Les 14
-providers sont des `IStreamingLlmProvider`, et `RateLimitedLlmProvider`
-décore n'importe lequel d'entre eux. La matrice par provider vit dans
+dur dériverait) et la substitution est journalisée en avertissement structuré. Deux
+coutures de dialecte supplémentaires servent les agrégateurs (LLM-09) : `ReasoningFieldName`
+nomme le champ vendeur où la trace de raisonnement est lue (`reasoning_content` par défaut,
+`reasoning` chez OpenRouter — la clé de métadonnée Orkeon reste `reasoning_content`), et
+`usage.cost` devient la métadonnée `cost` partout où un vendeur facture dans la réponse. Un
+chunk portant un `error` racine après le HTTP 200 termine un flux comme un refus pré-flux —
+métadonnée `error` sur le flux chat, `HttpRequestException` sur le flux texte — jamais
+comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`, et
+`RateLimitedLlmProvider` décore n'importe lequel d'entre eux. La matrice par provider vit dans
 [le comparatif des providers](../reference/llm-providers-comparison.md).
 
 ## Valider un fournisseur contre son API réelle

@@ -58,6 +58,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
             LlmProviderKeys.MiniMax => CreateMiniMaxProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
+            LlmProviderKeys.OpenRouter => CreateOpenRouterProvider(config),
+            LlmProviderKeys.Mammouth => CreateMammouthProvider(config),
             _ => CreateOpenAIProvider(config) // Default to OpenAI
         };
     }
@@ -87,6 +89,8 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             LlmProviderKeys.Grok or LlmProviderKeys.XaiAlias => CreateGrokProvider(config),
             LlmProviderKeys.MiniMax => CreateMiniMaxProvider(config),
             LlmProviderKeys.Zai or LlmProviderKeys.GlmAlias or LlmProviderKeys.ZhipuAlias => CreateZaiProvider(config),
+            LlmProviderKeys.OpenRouter => CreateOpenRouterProvider(config),
+            LlmProviderKeys.Mammouth => CreateMammouthProvider(config),
             _ => throw new NotSupportedException($"Provider type '{providerType}' is not supported.")
         };
     }
@@ -161,6 +165,11 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         // Z.AI (Zhipu GLM): match the full host, not the bare "z.ai" substring
         // (which would also hit any *z.ai domain), plus the mainland bigmodel.cn twin.
         (LlmProviderKeys.Zai, ["api.z.ai", "bigmodel.cn"], null),
+        // The two aggregators (LLM-09, D-02): reached by host or by an explicit provider key.
+        // Neither host contains "openai", "anthropic" or "localhost", so the generic rules
+        // below never claim them.
+        (LlmProviderKeys.OpenRouter, ["openrouter.ai"], null),
+        (LlmProviderKeys.Mammouth, ["mammouth.ai"], null),
     ];
 
     private static string? InferFromKnownHostPatterns(string url)
@@ -224,6 +233,14 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
             return LlmProviderKeys.Grok;
         if (m.StartsWith(LlmProviderKeys.MiniMax, StringComparison.Ordinal))
             return LlmProviderKeys.MiniMax;
+        // OpenRouter's own router slugs (openrouter/auto, openrouter/free) exist nowhere else.
+        // A plain `vendor/model` identifier is NOT a claim: HuggingFace and Together use the
+        // same shape, so `anthropic/claude-sonnet-5` without a base URL keeps its historical
+        // route (the OpenAI default), and the vendor prefixes this method already matches
+        // (`deepseek/…`, `qwen/…`) keep going to the direct vendor (D-02, §9). Mammouth's
+        // identifiers are the vendors' own bare strings and are never inferred from.
+        if (m.StartsWith(LlmProviderKeys.OpenRouter + "/", StringComparison.Ordinal))
+            return LlmProviderKeys.OpenRouter;
 
         return null;
     }
@@ -372,4 +389,12 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     /// <summary>Creates Z.AI (Zhipu GLM) provider instance.</summary>
     private LlmProviderAdapter CreateZaiProvider(LlmConfig config)
         => Adapt<ZaiLlmProvider>(logger => new ZaiLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates OpenRouter provider instance.</summary>
+    private LlmProviderAdapter CreateOpenRouterProvider(LlmConfig config)
+        => Adapt<OpenRouterLlmProvider>(logger => new OpenRouterLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
+
+    /// <summary>Creates Mammouth AI provider instance.</summary>
+    private LlmProviderAdapter CreateMammouthProvider(LlmConfig config)
+        => Adapt<MammouthLlmProvider>(logger => new MammouthLlmProvider(config, _httpClientFactory, _openAiStrategy, logger));
 }

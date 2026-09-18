@@ -994,4 +994,17 @@
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
+  <!-- LLM-09 -->
+  <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
+    <value>OpenRouter</value>
+  </data>
+  <data name="Studio.Settings.OpenRouterDesc" xml:space="preserve">
+    <value>place de marché de 445 modèles, identifiants vendeur/modèle</value>
+  </data>
+  <data name="Studio.Settings.MammouthTitle" xml:space="preserve">
+    <value>Mammouth AI</value>
+  </data>
+  <data name="Studio.Settings.MammouthDesc" xml:space="preserve">
+    <value>abonnement multi-modèles français, proxy LiteLLM</value>
+  </data>
 </root>

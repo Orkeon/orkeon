@@ -12,7 +12,8 @@
   *.local.json or *.secrets.json (both gitignored).
 .PARAMETER Provider
   Provider key, or several separated by commas: openai, anthropic, ollama, azure,
-  together, qwen, deepseek, kimi, mistral, huggingface, zai, gemini, grok, minimax.
+  together, qwen, deepseek, kimi, mistral, huggingface, zai, gemini, grok, minimax,
+  openrouter, mammouth.
 .PARAMETER All
   Run every provider declared in the configuration. Requires -Config.
 .PARAMETER Parallel

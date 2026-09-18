@@ -2200,4 +2200,17 @@
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
+  <!-- LLM-09 -->
+  <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
+    <value>OpenRouter</value>
+  </data>
+  <data name="Studio.Settings.OpenRouterDesc" xml:space="preserve">
+    <value>mercado de 445 modelos, identificadores proveedor/modelo</value>
+  </data>
+  <data name="Studio.Settings.MammouthTitle" xml:space="preserve">
+    <value>Mammouth AI</value>
+  </data>
+  <data name="Studio.Settings.MammouthDesc" xml:space="preserve">
+    <value>suscripción multimodelo francesa, proxy LiteLLM</value>
+  </data>
 </root>

@@ -227,6 +227,43 @@
         "The default model sees: M9 is exercised on it, with no companion vision campaign."
       ]
     },
-    "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" }
+    "google": { "label": "Google Gemini", "matrix": "§6.13", "aliasOf": "gemini" },
+    "openrouter": {
+      "label": "OpenRouter",
+      "matrix": "§6.17",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "defaultModel": "google/gemini-3.7-flash",
+      "notes": [
+        "Sixteenth sheet, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
+        "Marketplace: 445 models from 60 vendors on 2026-09-18, `vendor/model` identifiers are mandatory (`anthropic/claude-sonnet-5`), suffixes `:free` / `:nitro` / `:floor`, router slugs `openrouter/auto` (refused as a default: the served model drifts, price -1). The default is the fleet's Gemini default under its marketplace id — one model, three transports: a red here with a green in direct (2026-08-30) is a fact about the transport.",
+        "Cheap text-only alternative for the transport comparison: `deepseek/deepseek-v4-flash` on M7/M8.",
+        "Question 1 — the `sk-or-v1-` key prefix is documented by secondary sources only: confirm it on the first key before the factory infers from it (the `xai-` pattern); the inference line waits for that.",
+        "Question 2 — `message.reasoning` / `delta.reasoning` really populated on a reasoning model (`deepseek/deepseek-v4-flash`), and the shape of `reasoning_details[]` for a later sheet.",
+        "Question 3 — `usage.cost` present on the buffered path AND in the final `usage` chunk of a stream (it arrives unasked; `stream_options.include_usage` is documented deprecated, no effect).",
+        "Question 4 — M8: a `json_schema` WITHOUT `provider.require_parameters` — does OpenRouter route to an endpoint that ignores it (the MiniMax case)? If so the JsonSchema declaration is too optimistic and D-09 reopens for that one field.",
+        "Question 5 — M10: `prompt_tokens_details.cached_tokens` and `cache_write_tokens` on the second request over an 8k prefix.",
+        "Question 6 — `: OPENROUTER PROCESSING` keep-alive comment lines observed at least once in the `LlmLoggingDelegatingHandler` logs, with no effect on the content.",
+        "Question 7 — the `model` echoed behind `openrouter/auto` (one request, for the documentation)."
+      ]
+    },
+    "mammouth": {
+      "label": "Mammouth AI",
+      "matrix": "§6.18",
+      "apiKeyEnv": "MAMMOUTH_API_KEY",
+      "defaultModel": "gemini-3.7-flash",
+      "notes": [
+        "Sixteenth sheet's twin, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson applies in full until a live M1 is archived.",
+        "French multi-model subscription (12 / 24 / 72 € per month with 2 / 4 / 10 $ of API credits included, pay-as-you-go from the API settings); the API is, on three concordant clues, a LiteLLM proxy — what is undocumented is PROBABLY passed through to the upstream. Bare vendor identifiers (`gpt-5.6-sol`, `claude-sonnet-5`, `gemini-3.7-flash`): always name the provider by baseUrl or by key, never by model name.",
+        "The included credits (2 $ on Starter) cover a full campaign of the harness on `gemini-3.7-flash` (M1–M10, M12, M13). `mammouth-recommended` is refused as a default (routed alias). Cheap text-only alternative: `deepseek-v4-flash` on M5/M7/M8.",
+        "Question 1 — `tools`: passed through (M5 green) or ignored (M6, the text fallback, takes over)?",
+        "Question 2 — `response_format`: refused, accepted-non-binding (MiniMax) or binding — and with a schema? The declaration rises accordingly, as Gemini's did.",
+        "Question 3 — `reasoning_effort`: accepted? And in WHICH field does the trace come back — LiteLLM often normalises to `reasoning_content`, in which case EffortOnly is declared without a line of parsing.",
+        "Question 4 — M9 on the default (`gemini-3.7-flash` sees in direct).",
+        "Question 5 — M10: does the proxy relay `prompt_tokens_details.cached_tokens`?",
+        "Question 6 — M12: the shape of the 429 and the presence of `Retry-After` (quotas are not published).",
+        "Question 7 — the shape of the key: for the documentation, never for an inference, and for `LogSanitizer` — if it is neither `sk-…` nor covered by the `Bearer` pattern alone, its prefix joins `VendorPrefixedKeyPattern` and `LogSanitizerTests`.",
+        "Question 8 — `mammouth-recommended`: which model answers (`model` echo), one request."
+      ]
+    }
   }
 }

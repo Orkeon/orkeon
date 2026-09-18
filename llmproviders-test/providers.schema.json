@@ -32,7 +32,8 @@
           "openai", "anthropic", "ollama", "azure", "azure-openai",
           "together", "togetherai", "qwen", "deepseek", "kimi", "moonshot",
           "mistral", "huggingface", "hf", "zai", "glm", "zhipu",
-          "gemini", "google", "grok", "xai", "minimax"
+          "gemini", "google", "grok", "xai", "minimax",
+          "openrouter", "mammouth"
         ]
       },
       "additionalProperties": { "$ref": "#/$defs/provider" }

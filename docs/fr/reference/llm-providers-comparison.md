@@ -2,9 +2,11 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-08-30, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
+> État au 2026-09-18, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
 > et des `LlmProviderCapabilities` déclarées par chaque fournisseur.
-> Légende : ✓ supporté · ✗ absent · ◐ partiel/générique.
+> Légende : ✓ supporté · ✗ absent · ◐ partiel/générique · † non campagné (déclaré depuis la
+> documentation du vendeur, en attente de la première campagne en exécution réelle — les
+> détails datés sont dans [la version anglaise](../../reference/llm-providers-comparison.md)).
 
 | Fournisseur | Classe de base | Streaming SSE | Tool calling natif | Chat multi-tours (rôles tool) | Message système | top_p / stop | Grammaire GBNF | response_format | thinking | Vision | reasoning_content round-trip | Cache prompt | Métriques timing | Résilience Polly | Sanitization clé API |
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
@@ -21,6 +23,8 @@
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (accepté mais non contraignant — mesuré) | ✗ (toujours actif, inline, extrait) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema (par endpoint) | ✓ budget (objet `reasoning`) | ✓ (par modèle) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposé) | ✓ | ✓ |
+| **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (non documenté) | ✗ (non documenté) | ✓ (par modèle) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
 ## Comment lire les colonnes de capacités
@@ -93,6 +97,34 @@ API parlent leur propre dialecte.
   12 modes est passée contre `api.x.ai` via le dialecte OpenAI générique avant même que la
   classe du provider existe (2026-08-30, archivée sous `llmproviders-test/custom-endpoints/`).
   Les clés portent le préfixe `xai-`, que la factory infère.
+- **OpenRouter** † : la place de marché (445 modèles de 60 vendeurs le 2026-09-18) derrière
+  une seule clé, intégrée documentation d'abord (LLM-09) — aucune campagne archivée encore.
+  Les identifiants sont `vendeur/modèle` (préfixe obligatoire), avec les suffixes `:free` /
+  `:nitro` / `:floor` et le slug routeur `openrouter/auto` (utilisable, refusé comme défaut :
+  le modèle servi dérive — la métadonnée `served_model` dit qui a répondu). La trace de
+  raisonnement revient dans `reasoning`, jamais `reasoning_content` (hook `ReasoningFieldName`
+  du socle) ; le thinking voyage dans l'objet de requête `reasoning` (`enabled` / `effort` /
+  `max_tokens`, la déclaration Budget est donc celle du transport — OpenRouter convertit
+  effort et budget l'un en l'autre selon le modèle) ; le coût réel arrive dans `usage.cost`
+  (métadonnée `cost`) avec sa ventilation `upstream_inference_cost` / `is_byok` /
+  `cache_write_tokens` / `reasoning_tokens` ; deux en-têtes d'attribution constants
+  (`HTTP-Referer`, `X-OpenRouter-Title`) nomment Orkeon. `json_schema` est honoré par endpoint
+  et le provider n'envoie pas `provider.require_parameters` : savoir si un schéma peut être
+  ignoré en silence ailleurs est la question de la première campagne. Le routage avancé
+  (`provider {…}`, `models[]`, `plugins[]`) n'est pas exposé. Le préfixe de clé `sk-or-v1-`
+  n'est documenté que par des sources secondaires : la factory n'en infère rien encore.
+- **Mammouth AI** † : l'abonnement multi-modèles français dont les crédits API inclus pilotent
+  Orkeon, intégré documentation d'abord (LLM-09) — aucune campagne archivée encore. À trois
+  indices concordants (2026-09-18) l'API est un proxy LiteLLM ; rien dans le provider n'en
+  dépend. Les identifiants sont les chaînes nues des vendeurs (`gpt-5.6-sol`,
+  `claude-sonnet-5`, `gemini-3.7-flash`) : le provider se cible par hôte (`api.mammouth.ai`)
+  ou par `"Provider": "mammouth"` et n'est jamais inféré d'un nom de modèle — la même chaîne
+  sans base URL continue d'aller chez le vendeur. Seuls `messages`, `model`, `temperature`,
+  `max_tokens`, `top_p` et `stream` sont documentés : `response_format` et le thinking
+  restent non déclarés (avertissement structuré, jamais un drop silencieux) tant que la
+  première campagne ne les a pas mesurés — la règle MiniMax ; la vision est déclarée depuis la
+  liste `text, image` du vendeur. Les tarifs sont les bornes hautes du vendeur
+  (`gemini-3.7-flash` à 1,5 / 7,5 $/M, le double du direct).
 - **Clés identity-linked Anthropic** : refusent toute requête sans en-tête
   `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId`
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.

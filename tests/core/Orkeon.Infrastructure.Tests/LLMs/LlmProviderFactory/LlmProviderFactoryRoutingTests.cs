@@ -117,4 +117,44 @@ public class LlmProviderFactoryRoutingTests
     {
         Assert.Equal(expectedProvider, RoutedProviderName(model, baseUrl));
     }
+
+    // ── LLM-09: the two aggregators (D-02) ──────────────────────────────────
+
+    /// <summary>
+    /// An aggregator is reached by host or by an explicit provider key — never by a model
+    /// name that belongs to a vendor. The negative pins are the load-bearing ones: a
+    /// <c>vendor/model</c> identifier is not an OpenRouter claim (HuggingFace and Together
+    /// use the same shape), a bare Mammouth identifier is the vendor's own string, and the
+    /// pre-existing vendor-prefix inference keeps ignoring the <c>/</c> (§9 — a transverse
+    /// decision, documented and pinned as is, not fixed here).
+    /// </summary>
+    [Theory]
+    // Hosts.
+    [InlineData(null, "https://openrouter.ai/api/v1", "openrouter")]
+    [InlineData(null, "https://api.mammouth.ai/v1", "mammouth")]
+    // OpenRouter's own router slugs exist nowhere else: the one unambiguous model prefix.
+    [InlineData("openrouter/auto", null, "openrouter")]
+    // Negative pin: the vendor/model shape is not a claim — the historical OpenAI default.
+    [InlineData("anthropic/claude-sonnet-5", null, "OpenAI")]
+    // Negative pin: a bare Mammouth identifier without a host is still an OpenAI identifier.
+    [InlineData("gpt-4.1", null, "OpenAI")]
+    // The host wins over the model prefix (existing rule, pinned for these two cases).
+    [InlineData("gemini-3.7-flash", "https://api.mammouth.ai/v1", "mammouth")]
+    [InlineData("google/gemini-3.7-flash", "https://openrouter.ai/api/v1", "openrouter")]
+    // Pre-existing behaviour, pinned as is: the vendor-prefix inference ignores the `/`, so an
+    // OpenRouter identifier with a matched vendor prefix and no base URL goes to that vendor.
+    [InlineData("deepseek/deepseek-v4-flash", null, "deepseek")]
+    public void ShouldRouteAggregatorsByHostOrExplicitKey_NeverByAVendorModelName(
+        string? model, string? baseUrl, string expectedProvider)
+    {
+        Assert.Equal(expectedProvider, RoutedProviderName(model, baseUrl));
+    }
+
+    [Theory]
+    [InlineData("openrouter")]
+    [InlineData("mammouth")]
+    public void ShouldRouteToTheAggregator_WhenTheProviderKeyIsExplicit(string providerKey)
+    {
+        Assert.Equal(providerKey, CreateFactory().Create(providerKey, LlmConfig.Create("gemini-3.7-flash")).Name);
+    }
 }

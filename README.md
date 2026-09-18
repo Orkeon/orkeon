@@ -21,7 +21,7 @@ Orkeon puts the boundary in front of the model, not behind it:
 - **A sandbox for code**, an **execution budget** for autonomy — tool calls, depth, wall time, tokens, spawned agents — and **circuit breakers** for loops. The agent runs out of permission before it runs out of ideas.
 - **A Roslyn analyzer for your own code.** [`Orkeon.Compliance.Vfs`](docs/architecture/vfs-compliance.md) is a standalone NuGet package with no Orkeon dependency: add it to any C# project and every direct `System.IO` call is a compile error — the line an agent (or a colleague) would have slipped in does not build.
 
-Around that boundary sits a complete agent-team framework: crews of agents with roles, goals and tools, six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, autonomous), 14 LLM providers, memory, RAG, semantic code analysis — typed end to end, Clean Architecture, .NET 10.
+Around that boundary sits a complete agent-team framework: crews of agents with roles, goals and tools, six orchestration strategies (sequential, hierarchical, parallel, consensual, graph, autonomous), 16 LLM providers, memory, RAG, semantic code analysis — typed end to end, Clean Architecture, .NET 10.
 
 ## Try it in two minutes — no API key
 
@@ -215,7 +215,7 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 | Capability | Details |
 |---|---|
 | **79 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
-| **14 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI), and MiniMax — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
+| **16 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) and MiniMax, plus two aggregators — OpenRouter (one key, a 445-model marketplace) and Mammouth AI (a subscription's included credits) — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url`) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
 | **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — one `IMemoryProvider` port, composable decorators |
 | **6 orchestration strategies** | Sequential, Hierarchical, Parallel, Consensual (Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount voting strategies), Graph (LangGraph-style), Autonomous (multi-dimensional execution budget) — see the [process-type guide](docs/orchestration/process-types.md) |
@@ -290,7 +290,7 @@ live with the first tagged release and always documents a tagged version.
 
 - **Three authoring surfaces, one engine** — the same crew can be a YAML file an analyst edits, a TypeScript script a developer iterates on (both run with zero rebuild), or C# embedded in your product. No rewrite when you graduate from one to the next.
 - **Orchestration beyond pipelines** — six strategies, including LangGraph-style state graphs with conditional edges and a fully autonomous mode where agents delegate, spawn, and communicate under a multi-dimensional execution budget (tool calls, depth, wall time, tokens, spawns).
-- **Batteries included** — 79 tools, 14 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
+- **Batteries included** — 79 tools, 16 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
 - **Local-first** — every example runs against a model on your own machine (Docker Model Runner, Ollama, or llama.cpp embedded in the container image). No API key required to evaluate it.
 - **The boundary is the product** — a rights-audited virtual filesystem in front of every file access, a Roslyn analyzer that refuses raw `System.IO` in your own code, execution budgets and circuit breakers for autonomy, checkpoint and resume for long runs. Rate limiting, monitoring and the rest are one `AddOrkeonXxx()` away.
 - **Typed all the way down** — no `Dictionary<string, object>` plumbing; source generators keep the typed surface boilerplate-free.
@@ -299,7 +299,7 @@ live with the first tagged release and always documents a tagged version.
 
 ## Project Status
 
-The current version is **1.0.0-rc.3** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 14, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax).
+The current version is **1.0.0-rc.3** on .NET 10 — the V1 release candidate (`src/Directory.Build.props` is the single source of truth; the Release badge above and `git tag` say what is tagged). Recent milestones: the NuGet distribution consolidated into a single `Orkeon` package (plus `Orkeon.Tools` and a few opt-ins — see the [publication matrix](docs/reference/publication-matrix.md)); the `orkeon` CLI and the `orkeon-runners` container image with 105 bundled examples and local-model workflows; FSM and Graph orchestration; the Autonomous process with execution budgets; the TypeScript scripting DSL; RaggableTree semantic code analysis (15 agent tools); the plugin system; checkpoint/resume; dual-era MCP client and server; A2A task persistence; a mechanically frozen public API surface; and the LLM provider fleet grown to 16 — fourteen vendors, each under real-execution campaign proof (latest arrivals: Google Gemini, Grok/x.AI, MiniMax), plus the two aggregators OpenRouter and Mammouth AI, integrated documentation-first and awaiting their first campaign.
 
 Every pull request is gated in CI:
 

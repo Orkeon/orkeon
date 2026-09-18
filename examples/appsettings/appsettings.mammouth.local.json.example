@@ -1,0 +1,28 @@
+{
+  "_comment": "Settings template - Mammouth AI (French multi-model subscription; the API is a LiteLLM proxy on 2026-09-18, OpenAI-compatible endpoint). Copy this file WITHOUT the .example suffix (-> appsettings.mammouth.local.json), then fill in your key. The ${MAMMOUTH_API_KEY} placeholder is NOT expanded automatically: replace it with the plain key, or leave it and override at runtime via the ORKEON_Llm__ApiKey=... environment variable. BaseUrl comes FIRST on purpose: Mammouth serves the vendors' own bare identifiers (gpt-5.6-sol, claude-sonnet-5, gemini-3.7-flash), so the same Model without this BaseUrl goes to the vendor directly - with a Mammouth key, that is a remote 401. The factory auto-detects MammouthLlmProvider from the api.mammouth.ai host and Studio shows the detected provider next to the URL. Cheap text-only alternative: deepseek-v4-flash. Not campaigned yet (LLM-09, 2026-09-18).",
+  "_models": [
+    "gemini-3.7-flash - the fleet's Gemini default under its bare id; 1.5 / 7.5 $/M in/out (twice the direct and OpenRouter price - a market fact, not a reason to change the default)",
+    "deepseek-v4-flash - 0.14 / 0.28 $/M, cheap text-only alternative for the transport comparison (M5/M7/M8)",
+    "gpt-4.1-mini - 0.40 / 1.60 $/M; claude-haiku-4-5 - 1 / 5 $/M; gpt-5.6-sol - 5 / 30 $/M",
+    "mammouth-recommended - routed alias (1,048,576 / 128,000; 0.15 / 0.50 $/M): refused as a default, fine by explicit configuration",
+    "Source: https://api.mammouth.ai/public/models (public, no key; the model explorer reads the same URL) - 98 entries on 2026-09-18, upper-bound prices per the vendor. The authenticated twin GET /v1/models is what `orkeon llm models -p mammouth` calls."
+  ],
+  "Llm": {
+    "BaseUrl": "https://api.mammouth.ai/v1",
+    "Model": "gemini-3.7-flash",
+    "ApiKey": "${MAMMOUTH_API_KEY}",
+    "Temperature": 0.2,
+    "MaxTokens": 24576,
+    "TimeoutSeconds": 600
+  },
+  "RateLimiting": {
+    "MaxConcurrentRequests": 16,
+    "GlobalRequestsPerMinute": 300,
+    "ProviderRequestsPerMinute": 300,
+    "AgentRequestsPerMinute": 10,
+    "QueueLimit": 512
+  },
+  "LlmLogging": {
+    "FullEmbeddingLog": false
+  }
+}

@@ -157,6 +157,12 @@ public static class LlmPresets
     /// <summary>Canonical key of the MiniMax provider.</summary>
     public const string MiniMax = LlmProviderKeys.MiniMax;
 
+    /// <summary>Canonical key of the OpenRouter aggregator (LLM-09).</summary>
+    public const string OpenRouter = LlmProviderKeys.OpenRouter;
+
+    /// <summary>Canonical key of the Mammouth AI aggregator (LLM-09).</summary>
+    public const string Mammouth = LlmProviderKeys.Mammouth;
+
     /// <summary>HuggingFace Inference Providers router.</summary>
     public const string HuggingFace = LlmProviderKeys.HuggingFace;
 
@@ -264,6 +270,14 @@ public static class LlmPresets
             new(Zai, strings[StudioStringKeys.ProviderZaiTitle], strings[StudioStringKeys.ProviderZaiDescription],
                 LlmProviderEndpoints.Zai, LlmProviderDefaultModels.Zai, RequiresApiKey: true,
                 "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey"),
+            // LLM-09: the two aggregators. Mammouth's exact API-settings page is to be
+            // confirmed with the first key; the vendor documents "from the API settings".
+            new(OpenRouter, strings[StudioStringKeys.ProviderOpenRouterTitle], strings[StudioStringKeys.ProviderOpenRouterDescription],
+                LlmProviderEndpoints.OpenRouter, LlmProviderDefaultModels.OpenRouter, RequiresApiKey: true,
+                "OPENROUTER_API_KEY", LlmPresetKind.Cloud, "openrouter.ai/keys"),
+            new(Mammouth, strings[StudioStringKeys.ProviderMammouthTitle], strings[StudioStringKeys.ProviderMammouthDescription],
+                LlmProviderEndpoints.Mammouth, LlmProviderDefaultModels.Mammouth, RequiresApiKey: true,
+                "MAMMOUTH_API_KEY", LlmPresetKind.Cloud, "mammouth.ai"),
             new(Custom, strings[StudioStringKeys.PresetCustomTitle], strings[StudioStringKeys.ProviderCustomShortDescription],
                 null, null, RequiresApiKey: true, DefaultApiKeyEnv, LlmPresetKind.Other),
             new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.ProviderNoneShortDescription],

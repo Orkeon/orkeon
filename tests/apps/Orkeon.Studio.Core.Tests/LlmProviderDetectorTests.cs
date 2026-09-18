@@ -40,6 +40,10 @@ public sealed class LlmProviderDetectorTests
     // both hosts to "minimax", so Studio must not report "custom" for one of them.
     [InlineData("https://api.minimax.io/v1", "minimax")]
     [InlineData("https://api.minimaxi.com/v1", "minimax")]
+    // The two aggregators (LLM-09): the detected name next to the URL is the guard against
+    // a Mammouth config whose bare model name would otherwise read as the vendor's.
+    [InlineData("https://openrouter.ai/api/v1", "openrouter")]
+    [InlineData("https://api.mammouth.ai/v1", "mammouth")]
     [InlineData("https://my-deployment.openai.azure.com/", "azure-openai")]
     public void Known_cloud_hosts_are_detected(string baseUrl, string expected) =>
         Assert.Equal(expected, LlmProviderDetector.Detect(baseUrl));

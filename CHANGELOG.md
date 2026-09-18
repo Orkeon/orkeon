@@ -7,6 +7,66 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- LLM-09 -->
+### Added — OpenRouter and Mammouth AI, the fifteenth and sixteenth providers — two aggregators, the one exception to the scope freeze (LLM-09)
+
+The scope freeze said "no 15th provider — point `Orkeon:Llm:BaseUrl` at the endpoint", and
+that fallback works today for both. What it cannot do is what the owner lifted the freeze for
+on 2026-09-18: declare capabilities (the fallback inherits OpenAI's, so an option the
+aggregator ignores is a silent drop), read what the aggregator writes, and be recognised by
+Studio, `orkeon doctor` and the campaign kit. Both arrive documentation-first, the MiniMax
+way: every declaration is sourced from the vendor's documentation and from cold calls dated
+2026-09-18, marked campaign-pending in the code, the comparison table (two † rows) and the
+campaign catalogue — the compiled defaults are claims until a live M1 is archived.
+`OpenRouterLlmProvider` (`openrouter.ai/api/v1`, key `openrouter`, `OPENROUTER_API_KEY`,
+default `google/gemini-3.7-flash` — the fleet's Gemini default under the marketplace's
+mandatory `vendor/model` id, so a red behind the aggregator with a green in direct is a fact
+about the transport; `openrouter/auto` refused as a default because it drifts) declares
+`JsonSchema` / `Budget` / vision, reads its `reasoning` field, writes the thinking controls
+as the `reasoning` request object (`enabled` / `effort` / `max_tokens`, the base's
+`thinking` block and first-level `reasoning_effort` removed so one intention is not sent
+twice), exposes `usage.cost` and its breakdown (`upstream_inference_cost`, `is_byok`,
+`cache_write_tokens`, `reasoning_tokens`) and the served `model` as `served_model`, and
+sends the two constant attribution headers `HTTP-Referer` (spelled as the vendor documents
+it) and `X-OpenRouter-Title`. `MammouthLlmProvider` (`api.mammouth.ai/v1`, key `mammouth`,
+`MAMMOUTH_API_KEY`, default `gemini-3.7-flash` — the same model under the bare id the
+proxy serves) declares nothing the vendor does not document (`response_format` and thinking
+stay `None` with the structured warning, vision follows the vendor's `text, image` list) and
+overrides no behaviour. Routing is by host or explicit key for both, plus the unambiguous
+`openrouter/` model prefix; a `vendor/model` id alone is not an OpenRouter claim (HuggingFace
+and Together use the shape), a bare Mammouth id is the vendor's own string, and the
+pre-existing vendor-prefix inference that ignores the `/` is pinned as is — eight routing
+rows, negative pins included. The `sk-or-v1-` key prefix is documented by secondary sources
+only, so the factory does not infer from it until the first key confirms it. Full fleet
+integration otherwise: satellite constants and both `PublicAPI.Unshipped.txt`, factory,
+`llm.openrouter` / `llm.mammouth` in the scripting DSL (with `Orkeon:DefaultLlmProvider`
+resolving their own models rather than the platform default), doctor, `orkeon llm
+probe|models`, Studio cards and detection in five locales, the campaign catalogue with the
+questions each first campaign must settle, example settings, and the counts 14 → 16 under
+the claims gate. The scope freeze is rewritten in `CONTRIBUTING.md`, `CONTRIBUTING.fr.md`
+and `docs/reference/limitations.md` (EN/FR): sixteen providers, two of them aggregators, no
+17th — the rule stands for everything else.
+
+### Changed — the OpenAI-compatible base reads what an aggregator writes, and never ends a failed stream cleanly (LLM-09)
+
+Three changes on `OpenAICompatibleProviderBase`, all generic. The reasoning field is a
+dialect hook: `ReasoningFieldName` (default `reasoning_content`) names the field the buffered
+parser and the stream accumulator read the trace from, and an overload
+`ExtractReasoningContent(JsonElement, Builder, string fieldName)` joins the frozen
+two-argument one, which delegates to it — DeepSeek, Z.AI and MiniMax parse exactly as before,
+their tests untouched; the Orkeon metadata key stays `reasoning_content` whatever the vendor
+calls the field. `usage.cost` becomes the `cost` metadata (double) on the buffered path and
+from the final usage chunk of a stream — exposed, not accounted for: `CostBudgetManager`
+keeps estimating from the pricing registry. And a chunk carrying a root-level `error` after
+the HTTP 200 — OpenRouter's documented mid-stream failure shape, and the shape any compatible
+vendor writes — used to be skipped as "no choices": the chat stream completed *cleanly* with
+truncated content, and the token stream ended normally. Each path now ends the way its
+pre-stream refusal does: `ChatStreamingAsync` completes with the `error` / `error_type`
+metadata over the content received so far (no reassembled tool calls), `GenerateStreamingAsync`
+throws the `HttpRequestException` `StreamingRejectionAsync` throws, carrying the vendor's code
+as the status when it is an HTTP one. Secrets in the vendor's message are redacted; a
+`"error": null` on a healthy chunk is not an error.
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

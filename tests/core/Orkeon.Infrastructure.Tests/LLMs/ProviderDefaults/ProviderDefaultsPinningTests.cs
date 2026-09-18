@@ -37,6 +37,10 @@ public class ProviderDefaultsPinningTests
         { nameof(ZaiLlmProvider), "glm-5.2" },
         { nameof(GrokLlmProvider), "grok-4.6" },
         { nameof(MiniMaxLlmProvider), "MiniMax-M2" },
+        // LLM-09: one model, three transports — the fleet's Gemini default under each
+        // aggregator's own identifier shape (D-03).
+        { nameof(OpenRouterLlmProvider), "google/gemini-3.7-flash" },
+        { nameof(MammouthLlmProvider), "gemini-3.7-flash" },
     };
 
     public static TheoryData<string, string> PinnedDefaultBaseUrls() => new()
@@ -51,6 +55,8 @@ public class ProviderDefaultsPinningTests
         { nameof(TogetherAiLlmProvider), "https://api.together.xyz/v1" },
         { nameof(HuggingFaceLlmProvider), "https://router.huggingface.co/v1" },
         { nameof(ZaiLlmProvider), "https://api.z.ai/api/paas/v4" },
+        { nameof(OpenRouterLlmProvider), "https://openrouter.ai/api/v1" },
+        { nameof(MammouthLlmProvider), "https://api.mammouth.ai/v1" },
     };
 
     // ── The two providers outside OpenAICompatibleProviderBase ──────────────
@@ -77,7 +83,7 @@ public class ProviderDefaultsPinningTests
         Assert.Equal(LlmDefaults.DefaultModelName, LlmConfig.Default().Model);
     }
 
-    // ── The ten OpenAI-compatible providers ─────────────────────────────────
+    // ── The OpenAI-compatible providers ─────────────────────────────────────
 
     [Theory]
     [MemberData(nameof(PinnedDefaultModels))]
@@ -128,6 +134,8 @@ public class ProviderDefaultsPinningTests
         { "xai", "grok-4.6" },
         { "minimax", "MiniMax-M2" },
         { "zhipu", "glm-5.2" },
+        { "openrouter", "google/gemini-3.7-flash" },
+        { "mammouth", "gemini-3.7-flash" },
     };
 
     /// <summary>

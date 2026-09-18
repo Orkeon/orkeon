@@ -530,6 +530,19 @@ public static class StudioStringKeys
     /// <summary>Provider card description: MiniMax.</summary>
     public const string ProviderMiniMaxDescription = "Studio.Settings.MiniMaxDesc";
 
+    // LLM-09
+    /// <summary>Provider card title: OpenRouter.</summary>
+    public const string ProviderOpenRouterTitle = "Studio.Settings.OpenRouterTitle";
+
+    /// <summary>Provider card description: OpenRouter.</summary>
+    public const string ProviderOpenRouterDescription = "Studio.Settings.OpenRouterDesc";
+
+    /// <summary>Provider card title: Mammouth AI.</summary>
+    public const string ProviderMammouthTitle = "Studio.Settings.MammouthTitle";
+
+    /// <summary>Provider card description: Mammouth AI.</summary>
+    public const string ProviderMammouthDescription = "Studio.Settings.MammouthDesc";
+
 
     /// <summary>"HuggingFace"</summary>
     public const string ProviderHuggingFaceTitle = "Studio.Settings.HuggingFaceTitle";
@@ -1403,6 +1416,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProviderGrokDescription] = "x.AI",
         [StudioStringKeys.ProviderMiniMaxTitle] = "MiniMax",
         [StudioStringKeys.ProviderMiniMaxDescription] = "M2 family, intl + mainland endpoints",
+        // LLM-09
+        [StudioStringKeys.ProviderOpenRouterTitle] = "OpenRouter",
+        [StudioStringKeys.ProviderOpenRouterDescription] = "445-model marketplace, vendor/model ids",
+        [StudioStringKeys.ProviderMammouthTitle] = "Mammouth AI",
+        [StudioStringKeys.ProviderMammouthDescription] = "French multi-model subscription, LiteLLM proxy",
         [StudioStringKeys.ProviderHuggingFaceTitle] = "HuggingFace",
         [StudioStringKeys.ProviderHuggingFaceDescription] = "multi-model router",
         [StudioStringKeys.ProviderKimiTitle] = "Kimi",

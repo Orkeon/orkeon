@@ -12,7 +12,8 @@ namespace Orkeon.Scripting.Bindings;
 /// <summary>
 /// Registers the global <c>llm</c> namespace on a Jint engine. Exposes provider
 /// factories (<c>llm.openai</c>, <c>llm.anthropic</c>, <c>llm.ollama</c>,
-/// <c>llm.azureOpenai</c>, <c>llm.grok</c>, <c>llm.minimax</c>) and the resolved <c>llm.default</c>
+/// <c>llm.azureOpenai</c>, <c>llm.grok</c>, <c>llm.minimax</c>, <c>llm.openrouter</c>,
+/// <c>llm.mammouth</c>) and the resolved <c>llm.default</c>
 /// derived from the DI-bound <see cref="ILlmProvider"/> (preferred) or from the
 /// <c>Orkeon:DefaultLlmProvider</c> configuration key (fallback).
 /// </summary>
@@ -77,6 +78,12 @@ public sealed partial class JsLlmNamespace
     private const string AzureOpenAiDefaultModel = "gpt-4o-mini";
     private const string GrokDefaultModel = "grok-4.6";
     private const string MiniMaxDefaultModel = "MiniMax-M2";
+    // LLM-09: the two aggregators serve the fleet's Gemini default under their own identifier
+    // shape — `vendor/model` on OpenRouter, the bare vendor string on Mammouth. Without these
+    // cases a script configured on either would inherit LlmConfig.Default()'s gpt-5.6-sol,
+    // which OpenRouter refuses outright (no vendor prefix).
+    private const string OpenRouterDefaultModel = "google/gemini-3.7-flash";
+    private const string MammouthDefaultModel = "gemini-3.7-flash";
 
     internal JsLlmNamespace(IConfiguration? config, ILogger logger, ILlmProvider? defaultProvider = null)
     {
@@ -97,6 +104,10 @@ public sealed partial class JsLlmNamespace
     public Func<JsValue?, JsLlmConfig> grok => opts => Build("grok", opts, GrokDefaultModel);
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.minimax on the global `llm` object set via engine.SetValue.")]
     public Func<JsValue?, JsLlmConfig> minimax => opts => Build("minimax", opts, MiniMaxDefaultModel);
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.openrouter on the global `llm` object set via engine.SetValue.")]
+    public Func<JsValue?, JsLlmConfig> openrouter => opts => Build("openrouter", opts, OpenRouterDefaultModel);
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Performance", "CA1822", Justification = "instance member required by the Jint JS binding surface — exposed as llm.mammouth on the global `llm` object set via engine.SetValue.")]
+    public Func<JsValue?, JsLlmConfig> mammouth => opts => Build("mammouth", opts, MammouthDefaultModel);
 
     public JsLlmConfig @default
     {
@@ -167,6 +178,8 @@ public sealed partial class JsLlmNamespace
             "azureopenai" => Build("azureOpenai", null, AzureOpenAiDefaultModel),
             "grok" => Build("grok", null, GrokDefaultModel),
             "minimax" => Build("minimax", null, MiniMaxDefaultModel),
+            "openrouter" => Build("openrouter", null, OpenRouterDefaultModel),
+            "mammouth" => Build("mammouth", null, MammouthDefaultModel),
             _ => new JsLlmConfig(providerName, LlmConfig.Default()),
         };
 #pragma warning restore CA1308

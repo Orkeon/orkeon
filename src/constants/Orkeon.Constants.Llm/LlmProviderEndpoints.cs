@@ -83,6 +83,22 @@ public static class LlmProviderEndpoints
     public const string MiniMaxChinaHost = "api.minimaxi.com";
 
     /// <summary>
+    /// OpenRouter API base URL (OpenAI-compatible, Bearer auth; chat on
+    /// <c>/chat/completions</c>, the public catalog on <c>/models</c>). From
+    /// openrouter.ai/docs/api-reference/overview and a cold call on 2026-09-18 — the first
+    /// campaign has not run yet (LLM-09 §6).
+    /// </summary>
+    public const string OpenRouter = "https://openrouter.ai/api/v1";
+
+    /// <summary>
+    /// Mammouth AI API base URL (OpenAI-compatible, Bearer auth; chat on
+    /// <c>/chat/completions</c>, the catalog on <c>/models</c> behind the key). From
+    /// info.mammouth.ai/docs/api-quick-start and a cold call on 2026-09-18 — the first
+    /// campaign has not run yet (LLM-09 §6).
+    /// </summary>
+    public const string Mammouth = "https://api.mammouth.ai/v1";
+
+    /// <summary>
     /// OpenAI's API root as the EMBEDDING clients address it — no <c>/v1</c> suffix and a
     /// trailing slash, because they append their own path. Deliberately distinct from
     /// <see cref="OpenAI"/>, which is the chat base URL: the two are not interchangeable, and

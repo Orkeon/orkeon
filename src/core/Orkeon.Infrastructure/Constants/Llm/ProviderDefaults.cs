@@ -45,6 +45,8 @@ public static class ProviderDefaults
         [LlmProviderKeys.Zai] = LlmProviderDefaultModels.Zai,
         [LlmProviderKeys.GlmAlias] = LlmProviderDefaultModels.Zai,
         [LlmProviderKeys.ZhipuAlias] = LlmProviderDefaultModels.Zai,
+        [LlmProviderKeys.OpenRouter] = LlmProviderDefaultModels.OpenRouter,
+        [LlmProviderKeys.Mammouth] = LlmProviderDefaultModels.Mammouth,
     };
 
     /// <summary>Resolves a provider's default model from its factory key.</summary>
