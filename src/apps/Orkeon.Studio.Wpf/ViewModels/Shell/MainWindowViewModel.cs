@@ -113,7 +113,11 @@ public sealed class MainWindowViewModel : ObservableObject
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
                 loadTeams: () => TeamCatalog.List(teamsHome)),
-            Mode);
+            Mode,
+            // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
+            // folders, read from the sidecars and written nowhere — a team's folders are vouched
+            // for by living inside it, and the global appsettings never learns them.
+            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings));
 
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
@@ -208,6 +212,17 @@ public sealed class MainWindowViewModel : ObservableObject
         Teams.ModifyRequested += (sender, e) => _ = ModifyGuarded(e);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
+        // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
+        // team list. Every change to the teams on disk — an adoption, an import, a deletion or
+        // a duplication from a card, a save of the folders modal — ends in Teams.Refresh(),
+        // which rebuilds the cards from an empty list; that Reset fires once per rebuild, after
+        // the disk has changed, and the section re-reads the sidecars on it. One signal for
+        // every gesture, including the two card actions that raise no event of their own.
+        Teams.Teams.CollectionChanged += (_, e) =>
+        {
+            if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+                Settings.TeamFolders.Refresh();
+        };
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>

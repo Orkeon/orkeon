@@ -172,7 +172,10 @@ internal static class StudioFixture
                     Description = "Assemble la note de la semaine à partir des archives.",
                     Profile = "Local",
                 },
-                [new("archives", "/archives", "ro"), new("sortie", "/output", "rw")],
+                // Writes into its own output/ (STUDIO-14): the sidecar carries the team-relative
+                // entry, and Settings › Authorized folders lists it in the read-only
+                // « Team folders » section — the seed is what the stop photographs.
+                [new("archives", "/archives", "ro"), MountSeed.InTeam("/output", "rw")],
                 ["lecteur.yaml", "synthetiseur.yaml", "editeur.yaml"],
                 ["lire.yaml", "synthetiser.yaml"]),
             new(

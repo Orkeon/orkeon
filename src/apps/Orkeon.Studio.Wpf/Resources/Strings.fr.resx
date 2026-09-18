@@ -1012,6 +1012,19 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>écriture, sans suppression</value>
   </data>
+  <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
+  <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
+    <value>DOSSIERS DES ÉQUIPES</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersIntro" xml:space="preserve">
+    <value>Ces dossiers appartiennent à leurs équipes : créés dans le dossier de l'équipe à l'adoption, ils sont autorisés par cela seul, et rien n'est écrit ici dans les réglages. Pour les changer, passez par « Mes équipes » › « Changer les dossiers ».</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersEmpty" xml:space="preserve">
+    <value>Aucune équipe adoptée ne garde encore de dossier en son sein.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersRow" xml:space="preserve">
+    <value>{0} · {1} → {2}</value>
+  </data>
   <!-- LLM-09 -->
   <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
     <value>OpenRouter</value>

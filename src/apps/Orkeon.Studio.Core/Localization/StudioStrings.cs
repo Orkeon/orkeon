@@ -655,6 +655,22 @@ public static class StudioStringKeys
     /// <summary>"write, no delete" — the badge of a read-write-no-delete mount row.</summary>
     public const string RightsBadgeReadWriteNoDelete = "Studio.Settings.RightsBadgeRwnd";
 
+    // STUDIO-14 settings — the read-only « Team folders » section of Settings › Authorized
+    // folders (WPF Config/TeamFoldersViewModel, D-13): a team's own folders, vouched for by
+    // living inside the team and never written to the settings file (P-1).
+
+    /// <summary>"TEAM FOLDERS" — the section's eyebrow (uppercase: WPF has no text-transform).</summary>
+    public const string TeamFoldersTitle = "Studio.Settings.TeamFoldersTitle";
+
+    /// <summary>"These folders belong to their teams … change them from « My teams »."</summary>
+    public const string TeamFoldersIntro = "Studio.Settings.TeamFoldersIntro";
+
+    /// <summary>"No adopted team keeps a folder of its own yet."</summary>
+    public const string TeamFoldersEmpty = "Studio.Settings.TeamFoldersEmpty";
+
+    /// <summary>"{0} · {1} → {2}" — team name, virtual path, sub-folder inside the team.</summary>
+    public const string TeamFoldersRow = "Studio.Settings.TeamFoldersRow";
+
     // ---- Run target prerequisites (Core Targets/RunTargetRequirements) ---
 
     /// <summary>"This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;' …"</summary>
@@ -1507,6 +1523,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RightsBadgeReadOnly] = "read",
         [StudioStringKeys.RightsBadgeReadWrite] = "write",
         [StudioStringKeys.RightsBadgeReadWriteNoDelete] = "write, no delete",
+
+        // STUDIO-14 settings
+        [StudioStringKeys.TeamFoldersTitle] = "TEAM FOLDERS",
+        [StudioStringKeys.TeamFoldersIntro] =
+            "These folders belong to their teams: created inside the team folder at adoption, they are " +
+            "allowed by that alone, and nothing here is written to the settings. To change them, go to " +
+            "« My teams » › « Change the folders ».",
+        [StudioStringKeys.TeamFoldersEmpty] = "No adopted team keeps a folder of its own yet.",
+        [StudioStringKeys.TeamFoldersRow] = "{0} · {1} → {2}",
 
         [StudioStringKeys.TargetDirectoryRunNotice] =
             "This is a multi-file crew directory: running it uses 'orkeon run <directory>', which " +

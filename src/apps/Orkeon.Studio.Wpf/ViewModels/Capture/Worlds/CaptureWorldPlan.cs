@@ -13,10 +13,23 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// two segments.
 /// </para>
 /// </summary>
-/// <param name="Folder">Folder name under the world's data directory; empty for one that is absent.</param>
+/// <param name="Folder">
+/// Folder name under the world's data directory; empty for one that is absent. For an
+/// <see cref="InsideTeam"/> seed, the sub-folder inside the team instead (<c>output</c>).
+/// </param>
 /// <param name="VirtualPath">The name the agents use.</param>
 /// <param name="Rights">Docker-style rights, <c>ro</c> or <c>rw</c>.</param>
-internal sealed record MountSeed(string Folder, string VirtualPath, string Rights);
+/// <param name="InsideTeam">
+/// True for a folder the team keeps inside itself (STUDIO-14): the writer spells it
+/// team-relative in the sidecar — <c>./output:/output:rw</c> — and the save creates it under
+/// the team. Only a team seed may carry it: such a folder is never declared in the settings (P-1).
+/// </param>
+internal sealed record MountSeed(string Folder, string VirtualPath, string Rights, bool InsideTeam = false)
+{
+    /// <summary>A folder the team keeps inside itself, behind <paramref name="virtualPath"/>.</summary>
+    public static MountSeed InTeam(string virtualPath, string rights) =>
+        new(TeamMountPaths.FolderFor(virtualPath), virtualPath, rights, InsideTeam: true);
+}
 
 /// <summary>One adopted team to write to disk.</summary>
 /// <param name="Slug">Folder name under the teams root.</param>

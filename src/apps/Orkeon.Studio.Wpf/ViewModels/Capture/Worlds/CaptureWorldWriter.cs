@@ -123,7 +123,14 @@ internal static class CaptureWorldWriter
     /// <summary>The settings file, with every declared folder resolved to a real path.</summary>
     private static string Settings(CaptureWorldPlan plan, string data)
     {
-        var mounts = plan.DeclaredMounts.Select(mount => MountString(mount, data)).ToArray();
+        // A team's own folder is never declared in the settings (STUDIO-14, P-1): a plan that
+        // tried would photograph the very duplication the design rules out.
+        var mounts = plan.DeclaredMounts
+            .Select(mount => mount.InsideTeam
+                ? throw new InvalidOperationException(
+                    $"'{mount.VirtualPath}' is an in-team folder; the settings never declare one (STUDIO-14, P-1).")
+                : MountString(mount, data))
+            .ToArray();
         var sections = new List<string>
         {
             $"  \"Llm\": {plan.LlmJson}",
@@ -149,9 +156,13 @@ internal static class CaptureWorldWriter
         foreach (var task in team.TaskFileNames)
             File.WriteAllText(Path.Combine(crew, "tasks", task), TaskYaml(task));
 
+        // An in-team seed is written the way adoption writes it — team-relative — and the
+        // production save creates the folder under the team, as it does for a real one.
         var metadata = team.Metadata with
         {
-            Mounts = [.. team.Mounts.Select(mount => MountString(mount, data))],
+            Mounts = [.. team.Mounts.Select(mount => mount.InsideTeam
+                ? TeamMountPaths.InsideTeam(mount.VirtualPath, Rights(mount))
+                : MountString(mount, data))],
         };
         TeamCatalog.SaveMetadata(directory, metadata);
     }
@@ -206,6 +217,12 @@ internal static class CaptureWorldWriter
     private static string MountString(MountSeed mount, string data) =>
         Orkeon.Domain.FileSystem.FileSystemMount.Quote(Path.Combine(data, mount.Folder))
         + ":" + mount.VirtualPath + ":" + mount.Rights;
+
+    /// <summary>The seed's rights token as the enum <see cref="TeamMountPaths.InsideTeam"/> takes.</summary>
+    private static Orkeon.Studio.Core.FileSystem.MountRights Rights(MountSeed mount) =>
+        Orkeon.Studio.Core.FileSystem.MountRightsTokens.TryParse(mount.Rights, out var rights)
+            ? rights
+            : throw new InvalidOperationException($"'{mount.Rights}' is not a rights token (ro, rw, rwnd).");
 
     private static string AgentYaml(string fileName) => string.Create(
         CultureInfo.InvariantCulture,

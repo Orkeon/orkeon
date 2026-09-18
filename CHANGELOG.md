@@ -33,6 +33,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   helper for the convention, and `FolderPolicy` names the step-1 choice the wizard gains
   next (Later / InsideTeam / ExistingFolders).
 
+<!-- STUDIO-14 settings -->
+### Added — Studio: Settings › Authorized folders lists each team's own folders, read-only (STUDIO-14, lot 6)
+
+- A team's own folders (`./input`, `./output`…) are vouched for by living inside the team
+  and are never written to the global `Orkeon:FileSystem:Mounts` — that would duplicate the
+  sidecar in a file every team shares and put one team's private folders in the list every
+  other team picks from. The settings screen now shows them all the same: the folders tab
+  ends, in both modes, with a read-only « Team folders » section (`TeamFoldersViewModel`,
+  `SettingsScreenViewModel.TeamFolders`) — one line per in-team folder of each adopted team,
+  « Veille concurrentielle · /output → output » with the one-word rights badge, read from the
+  sidecars (team-relative entries, and the absolute-under-the-team spelling of an older
+  sidecar), never a disk path. No command, nothing written; the hint says these folders are
+  changed from « My teams ». The section follows every change to the team list (adoption,
+  import, deletion, duplication, the folders modal) and re-reads the sidecars when the tab
+  opens. Keys `Studio.Settings.TeamFolders{Title,Intro,Empty,Row}` in the five cultures; the
+  capture seed gives `rapport-hebdo` an in-team `./output:/output:rw`, photographed by
+  `reglages-dossiers`.
+
 ### Fixed — Studio: team cards bounded, the rights badge in one word, the closed rights list says its label (STUDIO-16)
 
 - A team created from a long brief — a README pasted into the name field — filled the

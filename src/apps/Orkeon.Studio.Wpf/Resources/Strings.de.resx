@@ -2218,6 +2218,19 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>Schreiben, ohne Löschen</value>
   </data>
+  <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
+  <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
+    <value>ORDNER DER TEAMS</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersIntro" xml:space="preserve">
+    <value>Diese Ordner gehören ihren Teams: bei der Übernahme im Team-Ordner angelegt, sind sie allein dadurch erlaubt, und nichts davon wird in die Einstellungen geschrieben. Zum Ändern gehen Sie zu « Meine Teams » › « Ordner ändern ».</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersEmpty" xml:space="preserve">
+    <value>Noch kein übernommenes Team hat einen eigenen Ordner.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersRow" xml:space="preserve">
+    <value>{0} · {1} → {2}</value>
+  </data>
   <!-- LLM-09 -->
   <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
     <value>OpenRouter</value>

@@ -1,6 +1,8 @@
 using Orkeon.Studio.Core.Configuration;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -183,6 +185,223 @@ public sealed class SettingsScreenTests
 
         Assert.True(screen.IsFoldersTab);
     }
+
+    // ── the read-only « Team folders » section (STUDIO-14, D-13 / P-1) ──
+
+    private static SettingsScreenViewModel Screen(UiModeViewModel mode, TeamFoldersViewModel teamFolders)
+    {
+        var (profiles, _, _, _) = Build();
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        return new SettingsScreenViewModel(config, profiles, mode, teamFolders);
+    }
+
+    private static string SeedTeam(string root, string slug, string name, params string[] mounts)
+    {
+        var directory = Path.Combine(root, slug);
+        Directory.CreateDirectory(directory);
+        TeamCatalog.SaveMetadata(directory, new StudioTeamMetadata
+        {
+            Name = name,
+            Mounts = mounts.Length > 0 ? mounts : null,
+        });
+        return directory;
+    }
+
+    /// <summary>
+    /// A team's own folders are vouched for by living inside the team and are never written to
+    /// the settings file — so the settings screen shows them from the sidecars, for information:
+    /// the teams' in-team entries make rows, a folder outside the team is the settings' own
+    /// business, and nothing on the section can write anywhere.
+    /// </summary>
+    [Fact]
+    public void The_folders_tab_lists_the_in_team_folders_of_adopted_teams_read_only()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-settings-{Guid.NewGuid():N}");
+        try
+        {
+            var veille = SeedTeam(root, "veille", "Veille concurrentielle",
+                "./input:/workspace:ro", "./output:/output:rw", Path.Combine("/data", "docs") + ":/docs:ro");
+            SeedTeam(root, "rapport", "Rapport hebdo", "./rapports:/rapports:rw");
+            var sidecar = File.ReadAllBytes(Path.Combine(veille, StudioTeamMetadata.FileName));
+
+            var screen = Screen(new UiModeViewModel(), new TeamFoldersViewModel(() => TeamCatalog.List(root)));
+            screen.ShowFoldersCommand.Execute(null);
+
+            Assert.True(screen.IsFoldersTab);
+            Assert.True(screen.TeamFolders.HasRows);
+            Assert.Equal(
+                ["Rapport hebdo · /rapports → rapports", "Veille concurrentielle · /workspace → input", "Veille concurrentielle · /output → output"],
+                screen.TeamFolders.Rows.Select(r => r.Label));
+            var output = screen.TeamFolders.Rows.Single(r => r.VirtualPath == "/output");
+            Assert.Equal("Veille concurrentielle", output.TeamName);
+            Assert.Equal("output", output.Folder);
+            Assert.True(output.IsReadWrite);
+            Assert.Equal("write", output.RightsBadge);
+            Assert.Equal("Read / write (create and delete allowed)", output.RightsLabel);
+            Assert.False(screen.TeamFolders.Rows.Single(r => r.VirtualPath == "/workspace").IsReadWrite);
+            // The folder outside the team is not the section's to list — nor does any row
+            // carry a disk path (ADR-008).
+            Assert.DoesNotContain(screen.TeamFolders.Rows, r => r.VirtualPath == "/docs");
+            Assert.All(screen.TeamFolders.Rows, r => Assert.DoesNotContain(root, r.Label, StringComparison.Ordinal));
+
+            // Read-only: no command on the section, no entry in the settings document, the
+            // sidecar byte for byte what it was.
+            Assert.DoesNotContain(
+                typeof(TeamFoldersViewModel).GetProperties(),
+                p => typeof(System.Windows.Input.ICommand).IsAssignableFrom(p.PropertyType));
+            Assert.Empty(screen.Config.Mounts.Mounts);
+            Assert.Equal(sidecar, File.ReadAllBytes(Path.Combine(veille, StudioTeamMetadata.FileName)));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_team_without_in_team_folders_adds_no_row()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-settings-{Guid.NewGuid():N}");
+        try
+        {
+            SeedTeam(root, "veille", "Veille", Path.Combine("/data", "docs") + ":/docs:ro", Path.Combine("/data", "sortie") + ":/output:rw");
+            SeedTeam(root, "contrats", "Contrats");
+            Directory.CreateDirectory(Path.Combine(root, "sans-sidecar"));
+
+            var screen = Screen(new UiModeViewModel(), new TeamFoldersViewModel(() => TeamCatalog.List(root)));
+            screen.ShowFoldersCommand.Execute(null);
+
+            Assert.Empty(screen.TeamFolders.Rows);
+            Assert.True(screen.TeamFolders.IsEmpty);
+            Assert.False(screen.TeamFolders.HasRows);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// Through the shell: an adoption writes <c>./output:/output:rw</c> into the sidecar and
+    /// the section shows the row without anyone visiting the folders tab first — a team
+    /// adopted a minute ago must not be missing from the one screen that lists the folders.
+    /// </summary>
+    [Fact]
+    public async Task An_adoption_refreshes_the_team_folders_section()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-settings-{Guid.NewGuid():N}");
+        var promoted = Path.Combine(root, "ma-veille");
+        try
+        {
+            var processes = new FakeProcessLauncher();
+            var shell = Shell(processes, root);
+            Assert.Empty(shell.Settings.TeamFolders.Rows);
+
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"r"},"iteration":1}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            var wizard = shell.CreateTeam;
+            wizard.Need = "une veille documentaire";
+            wizard.FrequencyChoices[1].SelectCommand.Execute(null);
+            wizard.SourceChoices[0].SelectCommand.Execute(null);
+            wizard.OutputChoices[0].SelectCommand.Execute(null);
+            await wizard.ComposeCommand.ExecuteAsync();
+            wizard.TeamName = "Ma veille";
+            Assert.True(wizard.CanSaveTeam);
+
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh","install":""}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await wizard.SaveTeamCommand.ExecuteAsync();
+
+            Assert.True(wizard.IsSaved);
+            Assert.Equal(["./output:/output:rw"], TeamCatalog.Describe(promoted).Metadata!.Mounts);
+            var row = Assert.Single(shell.Settings.TeamFolders.Rows);
+            Assert.Equal("Ma veille · /output → output", row.Label);
+            Assert.Equal("write", row.RightsBadge);
+            // And nothing reached the settings document (P-1).
+            Assert.Empty(shell.Config.Mounts.Mounts);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The two card gestures that raise no event of their own still reach the section: the
+    /// duplicate's own copy of the folder appears, and a deleted team's row goes.
+    /// </summary>
+    [Fact]
+    public void Duplicating_and_deleting_a_team_from_its_card_refresh_the_team_folders_section()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-settings-{Guid.NewGuid():N}");
+        try
+        {
+            SeedTeam(root, "veille", "Veille", "./output:/output:rw");
+            var shell = Shell(new FakeProcessLauncher(), root);
+            Assert.Equal(["Veille · /output → output"], shell.Settings.TeamFolders.Rows.Select(r => r.Label));
+
+            shell.Teams.Teams.Single().DuplicateCommand.Execute(null);
+
+            Assert.Equal(
+                ["Veille · /output → output", "Veille (copy) · /output → output"],
+                shell.Settings.TeamFolders.Rows.Select(r => r.Label));
+
+            var original = shell.Teams.Teams.Single(card => card.Summary.Slug == "veille");
+            original.AskDeleteCommand.Execute(null);
+            original.ConfirmDeleteCommand.Execute(null);
+
+            Assert.Equal(["Veille (copy) · /output → output"], shell.Settings.TeamFolders.Rows.Select(r => r.Label));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static ProcessOutputLine Out(string json) =>
+        ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, json);
+
+    /// <summary>A shell over a real teams root, the engine scripted, an assistant profile elected so the wizard is open.</summary>
+    private static MainWindowViewModel Shell(FakeProcessLauncher processes, string teamsRoot)
+    {
+        var shell = new MainWindowViewModel(
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+                ForgeClient = new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                ProfileStore = new InMemoryModelProfileStore(),
+                LlmProbe = new FakeLlmEndpointProbe(),
+                KeyStore = new FakeApiKeyStore(),
+            },
+            forgeWorkspace: "/ws",
+            teamsRoot: teamsRoot);
+        shell.Settings.Profiles.CommitEdit(Ollama("Local"), previousName: null);
+        shell.Settings.Profiles.StudioProfileName = "Local";
+        return shell;
+    }
+
     [Fact]
     public void A_novice_creates_a_deepseek_setting_in_two_gestures_card_then_key()
     {
