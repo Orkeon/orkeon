@@ -53,6 +53,7 @@ orkeon forge "résumer chaque matin les nouvelles offres de mon fournisseur"   #
 orkeon forge                                   # ouvrir sur l'entretien
 orkeon forge list                              # lister les sessions du workspace
 orkeon forge resume <slug>                     # reprendre une session exactement là où elle s'est arrêtée
+orkeon forge resume <slug> --read <dir>        # l'essayer sur les documents de <dir>
 orkeon forge resume <slug> --adopt             # garder l'équipe telle quelle, sans essai
 orkeon forge promote <slug> --to <dir>         # sortir une session prête en dossier ordinaire
 ```
@@ -71,12 +72,13 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 | `--adopt` | *(resume)* Garde l'équipe telle qu'elle a été générée, sans essai : une session mise en pause par `--dry` passe directement à Ready. Entièrement hors ligne — pas d'hôte, pas de LLM, pas de dossier d'exécution, zéro jeton. Ce qui est sauté, ce sont les **preuves** que produit un essai, jamais un contrôle : à cette pause le crew est rendu et validé, et la promotion n'a jamais consommé d'artefact d'essai (`verdict.json` est facultatif et `FORGE.md` écrit « aucun verdict enregistré »). Refusé partout ailleurs, avec `FORGE-INVALID-STATE`. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | Le budget (défaut 3 itérations ; `0` = jetons/temps illimités). Une reprise peut le relever ; la consommation est toujours reportée. |
 | `--settings <path>` | Mêmes sémantiques qu'`orkeon run` — **forme longue uniquement** : le parseur du forge est artisanal et ne définit aucun alias court. |
+| `--read <dir>` | *(nouvelle session, resume)* Le dossier que l'essai lit en `/workspace`, à la place du répertoire de travail. Le répertoire de travail garde tous ses autres rôles — la session vit toujours sous son `.orkeon/forge/<slug>/`, les settings se résolvent toujours à côté : `--read` déplace les documents, pas l'atelier. Un dossier inexistant est refusé avec le code 1 avant toute création de session (`--read names no directory`) ; `promote` refuse l'option, puisqu'il ne monte rien. Un dossier de lecture hors du répertoire de travail est automatiquement mis en liste blanche pour les outils fichiers, comme `orkeon run` le fait pour le dossier de son script — les montages du forge sont ses trois racines à lui, il n'y a donc pas de `--allow-external-mounts` ici. C'est ainsi qu'Orkeon Studio essaie une équipe sur le dossier choisi à sa première étape. |
 | `--pack <dir>` | Surcharge le pack de prompts embarqué. |
 | `--to <dir>` | *(promote)* Dossier de destination ; doit être inexistant ou vide. |
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Génère les artefacts de planification sous `schedule/` — XML de tâche Windows, timer systemd, ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur. |
 | `--with-settings` | *(promote)* Copie le fichier de settings résolu dans le dossier. Off par défaut — un settings porte souvent des clés API et le dossier est fait pour être partagé. |
 
-Le bac à sable : l'essai tourne in-process avec les écritures confinées au dossier de la session (`/output` pour les livrables, `/forge` pour ses fichiers de travail), l'espace de travail monté en lecture seule, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
+Le bac à sable : l'essai tourne in-process avec les écritures confinées au dossier de la session (`/output` pour les livrables, `/forge` pour ses fichiers de travail), le répertoire de travail — ou le dossier `--read` — monté en lecture seule en `/workspace`, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
 
 Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, et `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien. `orkeon run <dir>/crew` le lance — depuis l'intérieur de `<dir>`, et sans les `--mount` que fournit `run.sh`, si bien qu'une équipe qui produit des livrables n'écrit rien par cette voie ; le lanceur Studio détecte le dossier et pose les montages lui-même.
 

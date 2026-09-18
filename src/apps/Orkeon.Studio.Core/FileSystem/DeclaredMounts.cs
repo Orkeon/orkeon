@@ -1,5 +1,6 @@
 using Orkeon.Compliance.Vfs;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.FileSystem;
 
@@ -8,8 +9,9 @@ namespace Orkeon.Studio.Core.FileSystem;
 /// answer: is this folder one this machine allows?
 /// <para>
 /// The settings hold the allow-list. A team associates entries from it; it never declares its
-/// own. Two things follow, and both live here rather than in a front-end, so the WPF screens
-/// and the TUIs cannot answer them differently.
+/// own — its own folders live inside it, recorded team-relative (<see cref="TeamMountPaths"/>),
+/// and are vouched for by that alone. Two things follow, and both live here rather than in a
+/// front-end, so the WPF screens and the TUIs cannot answer them differently.
 /// </para>
 /// </summary>
 [SuppressVfsCompliance(
@@ -67,10 +69,10 @@ public static class DeclaredMounts
     {
         ArgumentNullException.ThrowIfNull(declaredMounts);
 
-        if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+        if (!MountDefinition.TryParse(mountString, out _, out _))
             return false;
 
-        return IsDeclared(mountString, declaredMounts) || IsInsideTeam(mount.PhysicalPath, teamDirectory);
+        return IsDeclared(mountString, declaredMounts) || IsInsideTeam(mountString, teamDirectory);
     }
 
     /// <summary>
@@ -106,7 +108,7 @@ public static class DeclaredMounts
                 continue;
             }
 
-            if (IsDeclared(mountString, declaredMounts) || IsInsideTeam(mount.PhysicalPath, teamDirectory))
+            if (IsDeclared(mountString, declaredMounts) || IsInsideTeam(mountString, teamDirectory))
                 continue;
 
             blocking.Add(mount.VirtualPath);
@@ -148,10 +150,28 @@ public static class DeclaredMounts
         }
     }
 
-    private static bool IsInsideTeam(string physicalPath, string? teamDirectory)
+    /// <summary>
+    /// Whether the folder behind <paramref name="mountString"/> is the team's own: recorded
+    /// team-relative (<c>./output:/output:rw</c>), or absolute under
+    /// <paramref name="teamDirectory"/> — the spelling of an older sidecar.
+    /// <para>
+    /// A team-relative entry is inside the team by construction, so it answers true even
+    /// without a team directory: a row the wizard binds "inside the team" is vouched for
+    /// before the folder exists, and before the team does. A <c>./</c> entry that escapes
+    /// (<c>./../x</c>) is not team-relative at all and is vouched for by nothing.
+    /// </para>
+    /// </summary>
+    public static bool IsInsideTeam(string mountString, string? teamDirectory)
     {
-        if (teamDirectory is not { Length: > 0 } || physicalPath is not { Length: > 0 })
+        if (TeamMountPaths.IsTeamRelative(mountString))
+            return TeamMountPaths.TryGetRelativeFolder(mountString, out _);
+
+        if (teamDirectory is not { Length: > 0 }
+            || !MountDefinition.TryParse(mountString, out var mount, out _)
+            || mount.PhysicalPath is not { Length: > 0 } physicalPath)
+        {
             return false;
+        }
 
         try
         {

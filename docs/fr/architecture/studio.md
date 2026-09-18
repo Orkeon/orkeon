@@ -70,6 +70,30 @@ l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autr
 dossier, le dit et ne peut pas être choisie — deux montages sur une même racine
 ne sont pas fusionnés par le runtime, l'un est perdu.
 
+**Une équipe est un dossier qu'on emporte.** Le sidecar enregistre les dossiers
+propres de l'équipe relativement à elle : un segment physique qui commence par
+`./` — `./input:/workspace:ro`, `./output:/output:rw`, `./rapports:/rapports:rw` —
+nomme un dossier dans le dossier de l'équipe ; un seul segment, `/` sur les deux
+OS, jamais `..`, jamais cité. Une entrée absolue est un dossier de l'utilisateur,
+hors équipe, et reste ce qu'elle est ; une entrée illisible passe inchangée, dans
+les deux sens. Le runtime résout un chemin physique relatif contre le cwd du
+processus et rien d'autre, aussi `TeamCatalog` est-il le seul endroit qui connaît
+la convention (`TeamMountPaths`, dans Core, en est l'unique aide) : il résout les
+entrées relatives en chemins absolus quand il décrit une équipe (`Describe`,
+`DescribeTarget`, donc `List` — le brut reste sur `Metadata.Mounts`), et relativise
+à l'entrée (`SaveMetadata`, `SaveMounts`), en créant chaque dossier relatif à ce
+moment — l'unique point où un dossier d'équipe est matérialisé, à l'adoption comme
+à chaque modification ultérieure. Les cartes, le lanceur et la modale des dossiers
+reçoivent des chemins absolus comme avant et n'en savent rien. Une duplication, un
+export et un import copient les entrées telles quelles et les résolvent sous la
+copie ; un ancien sidecar qui portait des chemins absolus sous son propre dossier
+est réécrit relatif au passage — plus d'étape de « rebase », parce qu'une copie est
+une sauvegarde, pas une couche de compatibilité. `DeclaredMounts.IsInsideTeam`
+répond de toute entrée `./` avant même que le dossier de l'équipe existe (relatif
+*est* dans l'équipe, par construction), et `MountValidator` saute le test
+d'existence d'une telle entrée tant qu'on ne lui dit pas sous quel dossier d'équipe
+regarder.
+
 Le bloc du wizard est **une ligne par point de montage** (lot 3) : le nom que
 les agents adressent, qui l'adresse — provenance, jamais permission — et le
 dossier derrière, ou « Choisir le dossier… » quand il n'y en a pas encore. Ce

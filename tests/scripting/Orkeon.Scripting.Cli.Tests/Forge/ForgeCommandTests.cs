@@ -258,4 +258,112 @@ public sealed class ForgeCommandTests : IDisposable
         Assert.Contains("--adopt only applies", console.Stderr, StringComparison.Ordinal);
     }
 
+    [Fact]
+    public async Task Read_needs_a_directory()
+    {
+        using var console = new TestConsole();
+
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(["une veille", "--read"], _workspace));
+        Assert.Contains("--read needs a directory", console.Stderr, StringComparison.Ordinal);
+
+        // A following option is not a directory either.
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(["une veille", "--read", "--dry"], _workspace));
+        Assert.Empty(ForgeSession.List(_workspace));
+    }
+
+    /// <summary>
+    /// <c>promote</c> mounts nothing, so a read folder there would be ignored — and this
+    /// parser never ignores an option silently.
+    /// </summary>
+    [Fact]
+    public async Task Read_outside_a_new_session_or_a_resume_is_a_usage_error()
+    {
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(
+            ["promote", "demo", "--to", Path.Combine(_workspace, "out"), "--read", _workspace], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--read only applies", console.Stderr, StringComparison.Ordinal);
+
+        // Where it applies, the parser takes it: the refusal that follows is about the
+        // folder, not the option.
+        var options = ForgeCommandOptions.Parse(["resume", "demo", "--read", "/data/notes"]);
+        Assert.Null(options.Error);
+        Assert.Equal("/data/notes", options.ReadDirectory);
+        Assert.Equal("demo", options.ResumeSlug);
+        Assert.Null(ForgeCommandOptions.Parse(["une", "veille", "--read", "/data/notes"]).Error);
+    }
+
+    /// <summary>
+    /// A mistyped read folder is refused before anything moves: no session is created for
+    /// it, and no host boots to discover an absent mount base the hard way.
+    /// </summary>
+    [Fact]
+    public async Task A_read_directory_that_does_not_exist_is_refused_before_any_host_boots()
+    {
+        var missing = Path.Combine(_workspace, "nulle-part");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--read", missing], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("--read names no directory", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains(missing, console.Stderr, StringComparison.Ordinal);
+        // No host: the LLM refusal that a booted host would have produced is absent.
+        Assert.DoesNotContain("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+        Assert.Empty(ForgeSession.List(_workspace));
+
+        // A resume refuses the same way, before the session is even looked up.
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(["resume", "ghost", "--read", missing], _workspace));
+        Assert.DoesNotContain("ghost", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>--read</c> moves the documents, not the atelier: the read folder becomes the
+    /// trial's <c>/workspace</c>, while the session keeps living under the workspace's own
+    /// forge root — and the settings keep resolving next to the workspace.
+    /// </summary>
+    [Fact]
+    public async Task Read_replaces_the_workspace_mount_and_leaves_the_session_root_under_the_workspace()
+    {
+        var documents = Path.Combine(Path.GetTempPath(), "orkeon-forge-read-" + Guid.NewGuid().ToString("N"));
+        Directory.CreateDirectory(documents);
+        try
+        {
+            var session = ForgeSession.Create(_workspace, "une veille");
+
+            var plan = ForgeCommand.BuildMountPlan(_workspace, documents, session);
+
+            Assert.Equal(
+                [
+                    $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(documents)}:/workspace:ro",
+                    $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(session.Directory)}:/forge:rw",
+                    $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(Path.Combine(session.Directory, TestStage.OutputDirectoryName))}:/output:rw",
+                ],
+                plan.CliMounts);
+            Assert.StartsWith(ForgeSession.RootFor(_workspace), session.Directory, StringComparison.Ordinal);
+            // A folder outside the process cwd is whitelisted for the file tools, like the
+            // script directory of `orkeon run`: the mount alone would register and then deny.
+            Assert.True(plan.AllowExternalMounts);
+
+            // Without --read, the workspace itself is read, as before, and nothing is whitelisted.
+            var defaultPlan = ForgeCommand.BuildMountPlan(_workspace, null, session);
+            Assert.Equal($"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(_workspace)}:/workspace:ro", defaultPlan.CliMounts[0]);
+            Assert.Equal(plan.CliMounts.Skip(1), defaultPlan.CliMounts.Skip(1));
+            Assert.False(defaultPlan.AllowExternalMounts);
+
+            // End to end, the cycle reaches the host with that plan: it refuses for want of an
+            // LLM, and the session it created sits under the workspace, not under the documents.
+            using var console = new TestConsole();
+            Assert.Equal(1, await ForgeCommand.DispatchAsync(["resume", session.Document.Slug, "--read", documents], _workspace));
+            Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+            Assert.Single(ForgeSession.List(_workspace));
+            Assert.Empty(ForgeSession.List(documents));
+        }
+        finally
+        {
+            Directory.Delete(documents, recursive: true);
+        }
+    }
 }

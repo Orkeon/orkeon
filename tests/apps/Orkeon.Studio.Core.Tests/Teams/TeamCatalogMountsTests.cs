@@ -154,4 +154,138 @@ public sealed class TeamCatalogMountsTests : IDisposable
         Assert.Equal("", TeamCatalog.NormalizePath("  "));
         Assert.Equal("\0bad", TeamCatalog.NormalizePath("\0bad"));
     }
+
+    /// <summary>
+    /// The sidecar records a team's own folders relative to it (<c>./output:/output:rw</c>,
+    /// STUDIO-14); the catalog resolves them ONCE, at its boundary, so the cards, the launcher
+    /// and the folders modal keep receiving absolute paths and never learn the convention.
+    /// The raw entries stay readable on the metadata.
+    /// </summary>
+    [Fact]
+    public void Describe_resolves_relative_sidecar_folders_under_the_team()
+    {
+        var team = NewTeam("veille");
+        File.WriteAllText(
+            Path.Combine(team, StudioTeamMetadata.FileName),
+            """{"name":"Veille","mounts":["./input:/workspace:ro","./output:/output:rw","/data/docs:/docs:ro"]}""");
+
+        var summary = TeamCatalog.Describe(team);
+        var target = TeamCatalog.DescribeTarget(team);
+
+        Assert.Equal(
+            [
+                $"{Path.Combine(team, "input")}:/workspace:ro",
+                $"{Path.Combine(team, "output")}:/output:rw",
+                "/data/docs:/docs:ro",
+            ],
+            summary.Mounts);
+        Assert.Equal(summary.Mounts, target.Mounts);
+        Assert.Equal(summary.Mounts, Assert.Single(TeamCatalog.List(_root)).Mounts);
+        Assert.Equal(
+            ["./input:/workspace:ro", "./output:/output:rw", "/data/docs:/docs:ro"],
+            summary.Metadata!.Mounts);
+    }
+
+    [Fact]
+    public void SaveMounts_rewrites_an_absolute_in_team_folder_to_relative()
+    {
+        var team = NewTeam("veille");
+
+        TeamCatalog.SaveMounts(team, [$"{Path.Combine(team, "output")}:/output:rw", "/data/docs:/docs:ro"]);
+
+        var sidecar = File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName));
+        Assert.Contains("\"./output:/output:rw\"", sidecar, StringComparison.Ordinal);
+        Assert.Contains("\"/data/docs:/docs:ro\"", sidecar, StringComparison.Ordinal);
+        Assert.DoesNotContain(Path.Combine(team, "output"), sidecar, StringComparison.Ordinal);
+        // Read back resolved: what the launcher lays on the run is the absolute path.
+        Assert.Equal(
+            [$"{Path.Combine(team, "output")}:/output:rw", "/data/docs:/docs:ro"],
+            TeamCatalog.Describe(team).Mounts);
+    }
+
+    /// <summary>
+    /// The one place an in-team folder is materialised: the wizard binds rows "inside the
+    /// team" before any folder exists, and the save creates them — every later edit too,
+    /// idempotently, so an <c>input/</c> already holding documents is left alone.
+    /// </summary>
+    [Fact]
+    public void SaveMetadata_creates_the_in_team_folders_it_records()
+    {
+        var team = NewTeam("veille");
+        Directory.CreateDirectory(Path.Combine(team, "input"));
+        File.WriteAllText(Path.Combine(team, "input", "notes.md"), "kept");
+
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Veille",
+            Mounts = ["./input:/workspace:ro", "./output:/output:rw", "./rapports:/rapports:rw", "/data/docs:/docs:ro"],
+        });
+
+        Assert.True(Directory.Exists(Path.Combine(team, "output")));
+        Assert.True(Directory.Exists(Path.Combine(team, "rapports")));
+        Assert.Equal("kept", File.ReadAllText(Path.Combine(team, "input", "notes.md")));
+        // A folder outside the team is the user's own: nothing is created for it, anywhere
+        // near the team.
+        Assert.False(Directory.Exists(Path.Combine(team, "data")));
+        Assert.Equal(
+            ["input", "output", "rapports"],
+            Directory.EnumerateDirectories(team).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+    }
+
+    [Fact]
+    public void A_duplicated_team_keeps_relative_folders_verbatim_and_resolves_them_under_the_copy()
+    {
+        var team = NewTeam("veille");
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Veille",
+            Mounts = ["./output:/output:rw", $"{Path.Combine(_root, "documents")}:/docs:ro"],
+        });
+
+        var copy = TeamCatalog.Duplicate(team);
+
+        Assert.NotNull(copy);
+        var copied = TeamCatalog.Describe(copy);
+        Assert.Equal(["./output:/output:rw", $"{Path.Combine(_root, "documents")}:/docs:ro"], copied.Metadata!.Mounts);
+        Assert.Equal(
+            [$"{Path.Combine(copy, "output")}:/output:rw", $"{Path.Combine(_root, "documents")}:/docs:ro"],
+            copied.Mounts);
+        Assert.True(Directory.Exists(Path.Combine(copy, "output")));
+    }
+
+    /// <summary>
+    /// A sidecar written before the convention carries absolute paths under its own folder.
+    /// Every copy — duplicate, export, import — rewrites them relative to the copy, so the
+    /// copy writes into its own folder and never into the original's: a copy is a safeguard,
+    /// not a compatibility layer, and the rewrite is what makes it one.
+    /// </summary>
+    [Fact]
+    public void An_older_absolute_sidecar_is_rewritten_relative_on_copy()
+    {
+        var team = NewTeam("veille");
+        Directory.CreateDirectory(Path.Combine(team, "output"));
+        File.WriteAllText(
+            Path.Combine(team, StudioTeamMetadata.FileName),
+            System.Text.Json.JsonSerializer.Serialize(new StudioTeamMetadata
+            {
+                Name = "Veille",
+                Mounts = [$"{Path.Combine(team, "output")}:/output:rw", "/data/docs:/docs:ro"],
+            }));
+
+        var duplicated = TeamCatalog.Duplicate(team)!;
+        var exported = TeamCatalog.ExportTo(team, Path.Combine(_root, "partage"))!;
+        var imported = TeamCatalog.Import(exported, Path.Combine(_root, "imports"))!;
+
+        foreach (var copy in new[] { duplicated, exported, imported })
+        {
+            var described = TeamCatalog.Describe(copy);
+            Assert.Equal(["./output:/output:rw", "/data/docs:/docs:ro"], described.Metadata!.Mounts);
+            Assert.Equal([$"{Path.Combine(copy, "output")}:/output:rw", "/data/docs:/docs:ro"], described.Mounts);
+        }
+
+        // The original is untouched by its copies.
+        Assert.Equal(
+            [$"{Path.Combine(team, "output")}:/output:rw", "/data/docs:/docs:ro"],
+            TeamCatalog.Describe(team).Metadata!.Mounts);
+    }
 }

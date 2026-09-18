@@ -2,7 +2,6 @@ using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
-using Orkeon.Studio.Core.FileSystem;
 
 namespace Orkeon.Studio.Core.Teams;
 
@@ -37,6 +36,12 @@ public sealed record StudioTeamMetadata
     /// The folders this team may see, as mount strings (<c>physical:virtual:rights</c>).
     /// A Studio-side concept, like <see cref="Profile"/>: Studio lays them on its launches
     /// as <c>--mount</c> arguments; a bare <c>orkeon run</c> in a terminal does not read them.
+    /// <para>
+    /// Raw, as written in the file. A physical segment starting with <c>./</c> is relative to
+    /// the team folder (<see cref="TeamMountPaths"/>): <c>./output:/output:rw</c> is the
+    /// team's own <c>output/</c>, wherever the folder is carried. The catalog resolves these
+    /// to absolute paths when it describes a team; nothing outside it has to.
+    /// </para>
     /// </summary>
     [JsonPropertyName("mounts")]
     public IReadOnlyList<string>? Mounts { get; init; }
@@ -57,7 +62,11 @@ public sealed record TargetDescription
     /// <summary>Agent definitions counted in a multi-file team directory; null when unknown.</summary>
     public int? AgentCount { get; init; }
 
-    /// <summary>The team's sidecar mount strings; empty for anything that is not an adopted team.</summary>
+    /// <summary>
+    /// The team's mount strings, resolved: a team-relative sidecar entry comes back bound
+    /// under the team folder, absolute and ready to ride a launch as <c>--mount</c>. Empty for
+    /// anything that is not an adopted team.
+    /// </summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 }
 
@@ -89,8 +98,13 @@ public sealed record TeamSummary
     /// <summary>The need, in the user's words, when recorded.</summary>
     public string? Description => Metadata?.Description;
 
-    /// <summary>The team's mount strings; empty when none are recorded.</summary>
-    public IReadOnlyList<string> Mounts => Metadata?.Mounts ?? [];
+    /// <summary>
+    /// The team's mount strings, resolved: a team-relative sidecar entry (<c>./output</c>)
+    /// comes back bound under <see cref="Path"/>, absolute, so the cards, the launcher and
+    /// the folders modal keep receiving what they always did. The raw entries stay in
+    /// <see cref="Metadata"/>. Empty when none are recorded.
+    /// </summary>
+    public IReadOnlyList<string> Mounts { get; init; } = [];
 
     /// <summary>Agent definitions counted on disk; null when the folder shows none.</summary>
     public int? AgentCount { get; init; }
@@ -153,6 +167,10 @@ public static partial class TeamCatalog
             Slug = slug,
             Path = teamDirectory,
             Metadata = metadata,
+            // Resolved once, here, at the catalog's boundary: the runtime would resolve a
+            // relative physical path against the process cwd, and no launcher should have
+            // to know the sidecar's convention.
+            Mounts = TeamMountPaths.ResolveAll(teamDirectory, metadata?.Mounts),
             AgentCount = CountAgents(teamDirectory),
         };
     }
@@ -238,7 +256,9 @@ public static partial class TeamCatalog
                 Description = metadata?.Description,
                 Profile = metadata?.Profile,
                 AgentCount = agentCount,
-                Mounts = metadata?.Mounts ?? [],
+                Mounts = directory is { Length: > 0 }
+                    ? TeamMountPaths.ResolveAll(directory, metadata?.Mounts)
+                    : [],
             };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -270,22 +290,71 @@ public static partial class TeamCatalog
         }
     }
 
-    /// <summary>Writes the sidecar; a failed write is silently accepted (the team folder itself is the value).</summary>
+    /// <summary>
+    /// Writes the sidecar; a failed write is silently accepted (the team folder itself is
+    /// the value).
+    /// <para>
+    /// The one place the sidecar's folder convention is applied on the way in: a mount whose
+    /// folder sits inside the team is written team-relative (<c>./output:/output:rw</c>),
+    /// whatever spelling the caller handed over, and every team-relative folder is created —
+    /// this is the single point where an in-team folder is materialised, at adoption and at
+    /// every later edit alike. Idempotent: an <c>input/</c> that already holds documents is
+    /// left as it is.
+    /// </para>
+    /// </summary>
     public static void SaveMetadata(string teamDirectory, StudioTeamMetadata metadata)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(metadata);
 
+        var relativized = Relativized(metadata, teamDirectory);
         try
         {
             Directory.CreateDirectory(teamDirectory);
+            CreateTeamFolders(teamDirectory, relativized.Mounts);
             File.WriteAllText(
                 Path.Combine(teamDirectory, StudioTeamMetadata.FileName),
-                JsonSerializer.Serialize(metadata, Options));
+                JsonSerializer.Serialize(relativized, Options));
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             // The promoted folder is the deliverable; losing the sidecar loses only comfort.
+        }
+    }
+
+    /// <summary>
+    /// The metadata with every mount under <paramref name="directory"/> rewritten
+    /// team-relative. A null list stays null, so a team without folders keeps the sidecar
+    /// it had.
+    /// </summary>
+    private static StudioTeamMetadata Relativized(StudioTeamMetadata metadata, string directory) =>
+        metadata.Mounts is { Count: > 0 } mounts
+            ? metadata with { Mounts = TeamMountPaths.RelativizeAll(directory, mounts) }
+            : metadata;
+
+    /// <summary>
+    /// Creates the folder behind each team-relative entry — tolerant like the rest of this
+    /// catalog: a folder the disk refuses is reported by the launch that needs it, with the
+    /// real error, not here.
+    /// </summary>
+    private static void CreateTeamFolders(string teamDirectory, IReadOnlyList<string>? mounts)
+    {
+        if (mounts is null)
+            return;
+
+        foreach (var mount in mounts)
+        {
+            if (!TeamMountPaths.TryGetRelativeFolder(mount, out var folder))
+                continue;
+
+            try
+            {
+                Directory.CreateDirectory(Path.Combine(teamDirectory, folder));
+            }
+            catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+            {
+                // Tolerant by design, like every other I/O in this catalog.
+            }
         }
     }
 
@@ -342,10 +411,13 @@ public static partial class TeamCatalog
 
             // A verbatim sidecar would show two cards under the same display name — and in
             // novice mode the slug that tells them apart is hidden. The copy names itself.
+            // Its folders travel with it: a team-relative entry is copied verbatim and resolves
+            // under the copy; an absolute entry under the SOURCE (an older sidecar) is rewritten
+            // relative on the way, so the copy writes into its own folder, never the original's.
             if (TryReadMetadata(destination) is { } metadata)
             {
                 var copySlug = Path.GetFileName(destination);
-                SaveMetadata(destination, RebaseMounts(metadata, teamDirectory, destination) with
+                SaveMetadata(destination, Relativized(metadata, teamDirectory) with
                 {
                     Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
                 });
@@ -396,8 +468,10 @@ public static partial class TeamCatalog
                 CopyTree(directory, Path.Combine(destination, Path.GetFileName(Path.TrimEndingDirectorySeparator(directory))));
             }
 
+            // Same rule as a duplicate: the exported folder works on another machine because
+            // its own folders are recorded relative to it.
             if (TryReadMetadata(destination) is { } exported)
-                SaveMetadata(destination, RebaseMounts(exported, teamDirectory, destination));
+                SaveMetadata(destination, Relativized(exported, teamDirectory));
 
             return destination;
         }
@@ -442,8 +516,10 @@ public static partial class TeamCatalog
 
                 CopyTree(sourcePath, destination);
 
+                // An older sidecar carrying absolute paths under its source folder is rewritten
+                // relative on import — a copy is a safeguard, not a compatibility layer.
                 if (TryReadMetadata(destination) is { } imported)
-                    SaveMetadata(destination, RebaseMounts(imported, sourcePath, destination));
+                    SaveMetadata(destination, Relativized(imported, sourcePath));
             }
             else
             {
@@ -605,53 +681,6 @@ public static partial class TeamCatalog
         {
             return null;
         }
-    }
-
-    /// <summary>
-    /// Moves the sidecar's own folders with the folder. A team's write roots are bound to
-    /// directories INSIDE it (<c>&lt;team&gt;/output:/output:rw</c>, derived from the blueprint at
-    /// adoption), so a copy that kept them verbatim would have the new team writing into the
-    /// old one — or, once exported to another machine, pointing at a path that does not exist.
-    /// Mounts outside the folder are the user's own choices and are left alone.
-    /// </summary>
-    private static StudioTeamMetadata RebaseMounts(
-        StudioTeamMetadata metadata, string sourceDirectory, string destinationDirectory)
-    {
-        if (metadata.Mounts is not { Count: > 0 } mounts)
-            return metadata;
-
-        var source = Path.TrimEndingDirectorySeparator(Path.GetFullPath(sourceDirectory));
-        var destination = Path.TrimEndingDirectorySeparator(Path.GetFullPath(destinationDirectory));
-
-        var rebased = new List<string>(mounts.Count);
-        var changed = false;
-        foreach (var mountString in mounts)
-        {
-            if (!MountDefinition.TryParse(mountString, out var mount, out _)
-                || mount.PhysicalPath is not { Length: > 0 } physical)
-            {
-                rebased.Add(mountString);
-                continue;
-            }
-
-            var full = Path.GetFullPath(physical);
-            // Strictly under, via the one containment predicate: the local copy hardcoded a
-            // per-OS comparison of its own and knew nothing of AltDirectorySeparatorChar.
-            if (full.Length <= source.Length
-                || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(full, source))
-            {
-                rebased.Add(mountString);
-                continue;
-            }
-
-            rebased.Add((mount with
-            {
-                PhysicalPath = Path.Combine(destination, full[(source.Length + 1)..]),
-            }).ToMountString());
-            changed = true;
-        }
-
-        return changed ? metadata with { Mounts = rebased } : metadata;
     }
 
     private static void CopyTree(string source, string destination)

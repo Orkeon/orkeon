@@ -82,6 +82,15 @@ internal sealed record ForgeCommandOptions
     /// <summary><c>--pack</c>: directory overriding the embedded pack files.</summary>
     public string? PackDirectory { get; init; }
 
+    /// <summary>
+    /// <c>--read &lt;dir&gt;</c>: the folder the trial reads as <c>/workspace</c>, in place of
+    /// the workspace itself. The workspace keeps every other role — the sessions live under
+    /// it, the settings resolve next to it — so a client can point a trial at the documents
+    /// the team is meant to read without moving its sessions there. Null: the workspace, as
+    /// before.
+    /// </summary>
+    public string? ReadDirectory { get; init; }
+
     /// <summary>What made the parse fail, when it did.</summary>
     public string? Error { get; init; }
 
@@ -99,6 +108,7 @@ internal sealed record ForgeCommandOptions
         ["--max-seconds"] = "--max-seconds needs a non-negative integer (0 = unlimited).",
         ["--settings"] = "--settings needs a path.",
         ["--pack"] = "--pack needs a directory.",
+        ["--read"] = "--read needs a directory.",
     };
 
     /// <summary>Parses the <c>forge</c> arguments; unknown options fail loudly, never silently.</summary>
@@ -200,6 +210,7 @@ internal sealed record ForgeCommandOptions
         "--max-tokens" => WithMaxTokens(options, value, invalid),
         "--max-seconds" => WithMaxSeconds(options, value, invalid),
         "--settings" => options with { SettingsPath = value },
+        "--read" => options with { ReadDirectory = value },
         _ => options with { PackDirectory = value },
     };
 
@@ -237,6 +248,10 @@ internal sealed record ForgeCommandOptions
             return options with { Error = "--adopt only applies to `forge resume`." };
         if (options.Adopt && options.Edit)
             return options with { Error = "--adopt and --edit are two different answers to the same pause." };
+        // `promote` and `list` mount nothing: a read folder there would be silently ignored,
+        // and this parser never ignores an option silently.
+        if (options.ReadDirectory is not null && (options.PromoteSlug is not null || options.List))
+            return options with { Error = "--read only applies to a new session or to `forge resume`." };
 
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };
     }
@@ -258,6 +273,7 @@ internal sealed record ForgeCommandOptions
 /// <c>orkeon forge</c> — the Atelier (SPEC-ORKEON-FORGE): need → generated crew →
 /// sandboxed test → diagnosis → verdict → promotion, the interview carried by the pack
 /// crew and the cycle by the engine. <c>--dry</c> stops after Validate;
+/// <c>--read &lt;dir&gt;</c> points the trial's <c>/workspace</c> at a folder of documents;
 /// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder.
 /// </summary>
 internal static class ForgeCommand
@@ -328,6 +344,17 @@ internal static class ForgeCommand
 
     private static async Task<int> RunCycleAsync(string workspace, ForgeCommandOptions options)
     {
+        // A read folder that does not exist is a typo, and the cheapest refusal there is:
+        // before the session is even opened, so a mistyped path leaves no stray session
+        // behind and no host boots to discover an absent mount base the hard way.
+        var readRoot = options.ReadDirectory is { } readDirectory ? Path.GetFullPath(readDirectory) : null;
+        if (readRoot is not null && !Directory.Exists(readRoot))
+        {
+            await Console.Error.WriteLineAsync($"orkeon forge: --read names no directory: '{readRoot}'.")
+                .ConfigureAwait(false);
+            return ExitError;
+        }
+
         // Open or create the session first: it is cheap, offline, and `resume` must be
         // able to say "no such session" before any host boots.
         var resumed = options.ResumeSlug is not null;
@@ -336,7 +363,7 @@ internal static class ForgeCommand
             return openExitCode;
 
         // The engine host: same settings chain as `orkeon run` (explicit --settings →
-        // next to the workspace → global), the workspace readable, the session writable,
+        // next to the workspace → global), the read folder readable, the session writable,
         // and the forge's own services on top.
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace);
         var box = new ForgeSubmissionBox();
@@ -345,8 +372,7 @@ internal static class ForgeCommand
 
         // The sandbox's write surface: /output lands inside the session, snapshotted per
         // run by the test stage. Everything else the crew sees is read-only.
-        var outputDirectory = Path.Combine(session.Directory, TestStage.OutputDirectoryName);
-        Directory.CreateDirectory(outputDirectory);
+        Directory.CreateDirectory(OutputDirectoryOf(session));
 
         // Forge accepts no --mount, so its settings file is the only place these three roots
         // can be claimed from — and that is precisely the input the reserved-root guard never
@@ -361,19 +387,7 @@ internal static class ForgeCommand
 
         using var host = RunnerHost.Build(
             settingsPath,
-            new RunnerMountPlan
-            {
-                CliMounts =
-                [
-                    // Quoted, like every other spec the framework builds: a session or
-                    // workspace path carrying a ':' or ';' would otherwise split into the wrong
-                    // segments and the forge would die at host build with a grammar error about
-                    // a path the user never typed.
-                    $"{FileSystemMount.Quote(workspace)}:{RunnerVirtualRoots.Workspace}:ro",
-                    $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
-                    $"{FileSystemMount.Quote(outputDirectory)}:{RunnerVirtualRoots.Output}:rw",
-                ],
-            },
+            BuildMountPlan(workspace, readRoot, session),
             // stdout carries the --events jsonl protocol. The default preset writes
             // warnings there, so one line like «Access denied by registry for virtual path
             // '.'» lands in the middle of the event stream and every consumer has to guess
@@ -474,6 +488,53 @@ internal static class ForgeCommand
         await AnnounceDryPauseAsync(session, options, result).ConfigureAwait(false);
         return result.ExitCode;
     }
+
+    /// <summary>
+    /// The VFS surface of a cycle: the read folder as <c>/workspace</c> (read-only), the
+    /// session as <c>/forge</c> and the session's output folder as <c>/output</c> (both
+    /// writable). <paramref name="readRoot"/> is <c>--read</c>, resolved; null reads the
+    /// workspace itself, the default. The workspace keeps every other role whatever is read:
+    /// the session stays under <see cref="ForgeSession.RootFor"/> of the workspace and the
+    /// settings still resolve next to it — <c>--read</c> moves the documents, not the atelier.
+    /// <para>
+    /// A read folder outside the process working directory is whitelisted the way
+    /// <c>orkeon run</c> whitelists its script directory and <c>orkeon rag</c> its corpus:
+    /// the mounts register either way, but the path validator behind every file tool refuses
+    /// a physical path outside the cwd unless the plan allows it — and the plan is the forge's
+    /// own three roots, nothing a user typed, so allowing it grants exactly those.
+    /// </para>
+    /// <para>
+    /// Built here, apart from the host, so it can be asserted without an LLM.
+    /// </para>
+    /// </summary>
+    internal static RunnerMountPlan BuildMountPlan(string workspace, string? readRoot, ForgeSession session)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
+        ArgumentNullException.ThrowIfNull(session);
+
+        // Containment, not spelling, like the run and rag verbs: ~/proj-old is not inside ~/proj.
+        var readsOutsideCwd = readRoot is not null
+            && !PhysicalPathContainment.IsUnder(readRoot, Directory.GetCurrentDirectory());
+
+        return new RunnerMountPlan
+        {
+            CliMounts =
+            [
+                // Quoted, like every other spec the framework builds: a session, workspace or
+                // read-folder path carrying a ':' or ';' would otherwise split into the wrong
+                // segments and the forge would die at host build with a grammar error about
+                // a path the user never typed.
+                $"{FileSystemMount.Quote(readRoot ?? workspace)}:{RunnerVirtualRoots.Workspace}:ro",
+                $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
+                $"{FileSystemMount.Quote(OutputDirectoryOf(session))}:{RunnerVirtualRoots.Output}:rw",
+            ],
+            AllowExternalMounts = readsOutsideCwd,
+        };
+    }
+
+    /// <summary>Where the trial bench writes <c>/output</c>: inside the session, snapshotted per run.</summary>
+    private static string OutputDirectoryOf(ForgeSession session) =>
+        Path.Combine(session.Directory, TestStage.OutputDirectoryName);
 
     /// <summary>
     /// Opens the session <c>resume</c> names, or creates a new one. A refusal is reported on
