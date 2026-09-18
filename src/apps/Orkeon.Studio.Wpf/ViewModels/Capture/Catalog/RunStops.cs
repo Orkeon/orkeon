@@ -28,11 +28,13 @@ internal static class RunStops
             Category = CaptureCategory.Run,
             Screen = CaptureScreen.Run,
             Because = "A team card on the launcher: the sidecar-backed name, the meta line and the "
-                    + "progress card waiting to be started.",
+                    + "progress card waiting to be started. The team is the one whose sidecar is a "
+                    + "pasted README, so the shot proves the name holds one line and the meta line "
+                    + "carries the derived summary, not the page (STUDIO-16).",
             Covers = ["Launch.HasTeamCard"],
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c =>
-                c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"))),
+                c.Shell.Launch.Target.Select(c.World.TeamDirectory(StudioFixture.PastedReadmeTeamSlug))),
         },
 
         new()

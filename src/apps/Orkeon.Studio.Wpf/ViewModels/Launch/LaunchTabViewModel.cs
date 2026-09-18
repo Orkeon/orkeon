@@ -619,8 +619,12 @@ public sealed class LaunchTabViewModel : ObservableObject
         RefreshPreview();
     }
 
-    /// <summary>Display name of the selected team (sidecar-backed, file name otherwise).</summary>
-    public string? TeamHeadline => _team.Name;
+    /// <summary>
+    /// Display name of the selected team (sidecar-backed, file name otherwise) — one line,
+    /// whatever the sidecar says (STUDIO-16, D-01): a TextBlock renders line breaks even
+    /// without wrapping, and a pasted page in <c>name</c> used to fill the whole card.
+    /// </summary>
+    public string? TeamHeadline => _team.Name is { Length: > 0 } name ? TeamCatalog.NormalizeName(name) : _team.Name;
 
     /// <summary>"3 agents · setting X" — only the parts the catalog can honestly assert.</summary>
     public string? TeamMetaLine
@@ -642,8 +646,10 @@ public sealed class LaunchTabViewModel : ObservableObject
                 }
             }
 
-            if (_team.Description is { Length: > 0 } description)
-                parts.Add(description);
+            // The derived one-paragraph summary, never the whole need (STUDIO-16, D-03): the
+            // need is the user's brief, pages long when a README was pasted.
+            if (_team.Summary is { Length: > 0 } summary)
+                parts.Add(summary);
             if (_team.Profile is { Length: > 0 } profile)
                 parts.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunMetaProfile], profile));
             return parts.Count > 0 ? string.Join(" · ", parts) : null;

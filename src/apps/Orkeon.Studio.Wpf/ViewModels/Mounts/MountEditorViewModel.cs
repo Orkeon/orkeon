@@ -90,7 +90,7 @@ public sealed class MountEditorViewModel : ObservableObject
         {
             if (SetProperty(ref _rights, value))
             {
-                OnPropertyChanged(nameof(RightsLabel));
+                OnPropertiesChanged(nameof(RightsLabel), nameof(RightsBadge));
                 RaiseEdited();
             }
         }
@@ -107,6 +107,14 @@ public sealed class MountEditorViewModel : ObservableObject
 
     /// <summary>The explicit wording of the selected rights, e.g. "Read only".</summary>
     public string RightsLabel => MountRightsTokens.GetLabel(Rights, _strings);
+
+    /// <summary>
+    /// The one-word reading of the selected rights, e.g. "write" — what the mount list's badge
+    /// shows (STUDIO-16, D-05). The badge used to carry <see cref="RightsLabel"/>, fifty-two
+    /// characters that took the whole row and pushed the virtual name out of it; the label is
+    /// the badge's tooltip now.
+    /// </summary>
+    public string RightsBadge => MountRightsTokens.GetBadge(Rights, _strings);
 
     /// <summary>Whether <see cref="VirtualPath"/> satisfies the Domain rule, checked as the user types.</summary>
     public bool IsVirtualPathValid => MountDefinition.IsValidVirtualPath(VirtualPath);
@@ -175,7 +183,7 @@ public sealed class MountEditorViewModel : ObservableObject
     /// </summary>
     public void RefreshCulture()
     {
-        OnPropertiesChanged(nameof(RightsChoices), nameof(RightsLabel));
+        OnPropertiesChanged(nameof(RightsChoices), nameof(RightsLabel), nameof(RightsBadge));
 
         foreach (var item in Overrides)
             item.RefreshCulture();

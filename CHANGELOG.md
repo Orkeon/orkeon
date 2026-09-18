@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Studio: team cards bounded, the rights badge in one word, the closed rights list says its label (STUDIO-16)
+
+- A team created from a long brief — a README pasted into the name field — filled the
+  Run screen's team card and the "My teams" card with the whole page: a WPF `TextBlock`
+  renders line breaks even without wrapping and has no `MaxLines`. The name is now one
+  line everywhere it is displayed (run card, team card and its tooltip, launch history)
+  through `TeamCatalog.NormalizeName` — first line, Markdown stripped, cut at a word
+  under 64 characters, the slug's cap, never empty — and adoption writes that normal
+  form into the sidecar for every name, typed or proposed; the "Team name" field shows
+  it live; import normalizes the name of the sidecar it copies. `ShortName` (48
+  characters, applied only to a proposed title) is gone, replaced by the Core rule.
+- The Run screen's meta line appended the whole `description` after the agent count and
+  the folders — the actual text of the owner's capture, a README in the muted 12 px of
+  the meta line, not the bold headline — and the "My teams" card showed it unbounded.
+  Both now read `TeamSummary.Summary` / `TargetDescription.Summary`: the first
+  paragraph without markup, cut at a word under 240 characters
+  (`TeamCatalog.Summarize`), derived at read time and never stored — the sidecar keeps
+  the whole need. On "My teams" the block is folded to three lines with a "Show more" /
+  "Show less" link shown only when the folded card hides something; unfolded, it shows
+  the whole need.
+- In Settings › Authorized folders, the rights badge of a mount row carried the full
+  52-character label and pushed the virtual name out of the list; the selected
+  writable row was seven lines tall with the badge floating in its middle — the badge
+  measured first took the whole row, the name was measured at width zero and, wrapping
+  (`MonoText`), broke `/output` into one character per line. The row now puts the name
+  first, never shrunk, and the badge last in one word (`MountEditorViewModel.RightsBadge`,
+  `MountRightsTokens.GetBadge`, keys `Studio.Settings.RightsBadgeRo/Rw/Rwnd` in the
+  five cultures) with the full label as its tooltip.
+- The three `DisplayMemberPath` drop-downs (the two rights lists, the trial screen's
+  team picker) showed `MountRightsChoice { Rights = ReadWrite, … }` once closed: the
+  global `ComboBox` template bound `SelectionBoxItemTemplate` but not the item template
+  selector `DisplayMemberPath` goes through. The template now binds
+  `ContentTemplateSelector` and `ContentStringFormat` like the stock one; a XAML guard
+  (`ComboBoxTemplateConformityTests`) pins the four bindings.
+- The capture seed gains a team whose sidecar is a pasted README (multi-line name,
+  forty-line need), photographed by `executer-carte-equipe` and `equipes-liste`;
+  `reglages-dossiers-selection` now selects the writable mount.
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

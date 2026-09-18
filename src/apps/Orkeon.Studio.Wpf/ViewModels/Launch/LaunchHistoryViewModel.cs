@@ -81,14 +81,18 @@ public sealed class LaunchHistoryEntryViewModel
         CultureInfo.InvariantCulture,
         $"{StartedAt.ToLocalTime():yyyy-MM-dd HH:mm} — {Target} [{Outcome}]");
 
-    /// <summary>The team's short name — the card title (the full path stays expert detail).</summary>
+    /// <summary>
+    /// The team's short name — the card title (the full path stays expert detail). One line,
+    /// through the same normalisation as every other team name (STUDIO-16, D-01).
+    /// </summary>
     public string TeamName
     {
         get
         {
             var trimmed = Target.TrimEnd('/', '\\');
             var name = System.IO.Path.GetFileNameWithoutExtension(trimmed);
-            return name is { Length: > 0 } ? name : Target;
+            var display = name is { Length: > 0 } ? name : Target;
+            return display.Length > 0 ? Orkeon.Studio.Core.Teams.TeamCatalog.NormalizeName(display) : display;
         }
     }
 

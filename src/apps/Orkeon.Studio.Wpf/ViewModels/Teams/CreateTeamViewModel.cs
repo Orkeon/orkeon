@@ -1330,13 +1330,39 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     // ── step 4 : Adopter ──
 
-    /// <summary>The team's name; prefilled from the brief's goal.</summary>
+    /// <summary>
+    /// The team's name; prefilled from the brief's goal. The field shows the value adoption
+    /// will write (STUDIO-16, D-04): a pasted page collapses to its first line, markup
+    /// stripped, cut at a word under 64 — live. A keystroke is never fought: while the text
+    /// and its normal form differ only by surrounding whitespace (the space before the next
+    /// word), the text stays as typed; a character typed past the cap is refused the way
+    /// MaxLength would, rather than cutting the word being typed; an empty field stays
+    /// empty — the fallback on the slug belongs to the write.
+    /// </summary>
     public string TeamName
     {
         get => _teamName;
         set
         {
-            if (SetProperty(ref _teamName, value))
+            var text = value ?? "";
+            TeamCatalog.TryNormalizeName(text, out var normalized);
+            var shown = string.Equals(text.Trim(), normalized, StringComparison.Ordinal) ? text : normalized;
+            if (shown.Length < _teamName.Length
+                && text.StartsWith(_teamName, StringComparison.Ordinal)
+                && !text.Contains('\n', StringComparison.Ordinal))
+            {
+                shown = _teamName;
+            }
+
+            var changed = SetProperty(ref _teamName, shown);
+            if (!changed && !string.Equals(shown, text, StringComparison.Ordinal))
+            {
+                // The box pushed a text the model already held in normal form: it still has to
+                // be told, or it keeps showing the page while the model holds the line.
+                OnPropertyChanged(nameof(TeamName));
+            }
+
+            if (changed)
             {
                 OnPropertyChanged(nameof(CanSaveTeam));
                 SaveTeamCommand.RaiseCanExecuteChanged();
@@ -1407,22 +1433,6 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (SetProperty(ref _adoptProfileName, value))
                 OnPropertyChanged(nameof(AdoptProfileSummary));
         }
-    }
-
-    /// <summary>
-    /// A goal-length title cut to a display name (v3 W-07): the engine now demands a
-    /// short <c>crew.name</c>, but an older session's title may still be the goal
-    /// sentence — trim at a word boundary, never mid-word.
-    /// </summary>
-    internal static string ShortName(string title)
-    {
-        const int MaxLength = 48;
-        var trimmed = title.Trim();
-        if (trimmed.Length <= MaxLength)
-            return trimmed;
-
-        var cut = trimmed.LastIndexOf(' ', MaxLength);
-        return (cut > 0 ? trimmed[..cut] : trimmed[..MaxLength]).TrimEnd(',', ';', ':', '.');
     }
 
     /// <summary>The selected profile's one-line origin, for the step-4 card (v3 W-07).</summary>
@@ -1812,7 +1822,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                     var mounts = WithDerivedWriteMounts(promotion.Path);
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
-                        Name = _teamName.Trim(),
+                        Name = TeamCatalog.NormalizeName(_teamName),   // one line, <= 64, no markup (STUDIO-16, D-04)
                         Description = description,
                         Profile = AdoptProfileName,
                         Schedule = schedule,
@@ -2070,8 +2080,10 @@ public sealed class CreateTeamViewModel : ObservableObject
             return;
         }
 
+        // An older session's title may still be the goal sentence (v3 W-07): the same
+        // one-line rule as adoption cuts it at a word, never mid-word (STUDIO-16, D-04).
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
-            TeamName = ShortName(title);
+            TeamName = TeamCatalog.NormalizeName(title);
 
         // The generic something-went-wrong line must not replace the sentence that says WHAT.
         // A failed session used to overwrite the engine's own error — the one line with

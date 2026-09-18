@@ -2200,4 +2200,20 @@
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
   </data>
+  <!-- STUDIO-16: the folded team description and the one-word rights badges of the mount list -->
+  <data name="Studio.Teams.ShowMore" xml:space="preserve">
+    <value>Ver más</value>
+  </data>
+  <data name="Studio.Teams.ShowLess" xml:space="preserve">
+    <value>Ver menos</value>
+  </data>
+  <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
+    <value>lectura</value>
+  </data>
+  <data name="Studio.Settings.RightsBadgeRw" xml:space="preserve">
+    <value>escritura</value>
+  </data>
+  <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
+    <value>escritura, sin borrado</value>
+  </data>
 </root>

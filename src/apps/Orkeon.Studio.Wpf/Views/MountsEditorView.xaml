@@ -88,13 +88,16 @@
           </ListBox.ItemContainerStyle>
           <ListBox.ItemTemplate>
             <DataTemplate>
+              <!-- The name FIRST, docked left, the badge LAST as the fill child (STUDIO-16, D-05).
+                   The other order stretched the selected row of snap_13: a badge measured first
+                   with the 52-character label had its DesiredSize clamped to the whole row
+                   (FrameworkElement.MeasureCore: the parent wins when over-constrained), the
+                   name was then measured at width 0 and — TextWrapping=Wrap inherited from
+                   MonoText — broke «/output» into seven one-character lines, one row seven
+                   lines tall with the badge floating in its middle and no name at all. -->
               <DockPanel LastChildFill="True">
-                <Border DockPanel.Dock="Right" Style="{StaticResource BadgeOk}" Margin="6,0,0,0" VerticalAlignment="Center"
-                        Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
-                  <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" Text="{Binding RightsLabel, Mode=OneWay}"/>
-                </Border>
                 <!-- an unparseable entry keeps its raw text visible instead of a blank, healthy-looking row -->
-                <TextBlock TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
+                <TextBlock DockPanel.Dock="Left" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis" VerticalAlignment="Center">
                   <TextBlock.Style>
                     <Style TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
                       <Setter Property="FontSize" Value="11"/>
@@ -108,6 +111,14 @@
                     </Style>
                   </TextBlock.Style>
                 </TextBlock>
+                <!-- One word, bounded, the full label in the tooltip: the name never shrinks. -->
+                <Border Style="{StaticResource BadgeOk}" Margin="6,0,0,0" MaxWidth="160"
+                        HorizontalAlignment="Right" VerticalAlignment="Center"
+                        ToolTip="{Binding RightsLabel, Mode=OneWay}"
+                        Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" TextTrimming="CharacterEllipsis"
+                             Text="{Binding RightsBadge, Mode=OneWay}"/>
+                </Border>
               </DockPanel>
             </DataTemplate>
           </ListBox.ItemTemplate>

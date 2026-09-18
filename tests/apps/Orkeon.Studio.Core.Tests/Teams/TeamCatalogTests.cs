@@ -144,6 +144,121 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Equal("Cloud", TeamCatalog.ProfileFor(Path.Combine(team, "crew.yaml")));       // a file inside it
         Assert.Null(TeamCatalog.ProfileFor(Path.Combine(_root, "not-a-team")));               // anything else
     }
+
+    // ---- STUDIO-16: the display normalisation of names and needs ----------------------
+
+    /// <summary>The page a user pastes into a name or a need: headings, list, code, links.</summary>
+    private const string PastedPage = """
+        # Extraire les factures fournisseurs déposées en `docs/`, classées par mois et par fournisseur, avec un **contrôle** des doublons
+
+        > Un README entier.
+
+        ## Fonctionnement
+
+        - lit chaque PDF
+        - en extrait le [fournisseur](https://exemple.test) et la date
+
+        ```json
+        { "montant": 12 }
+        ```
+        """;
+
+    [Fact]
+    public void NormalizeName_keeps_the_first_line_and_cuts_at_a_word_under_64()
+    {
+        var name = TeamCatalog.NormalizeName(PastedPage);
+
+        // The first line only, its heading marker, code spans and stars gone, cut at a word
+        // — never mid-word, never a trailing comma — under the slug's cap.
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", name);
+        Assert.True(name.Length <= TeamCatalog.MaxNameLength, $"too long: {name.Length}");
+
+        // v3 W-07's goal-length title, at the slug's cap now rather than 48.
+        Assert.Equal("Veille documentaire", TeamCatalog.NormalizeName("  Veille documentaire  "));
+        Assert.Equal(
+            "Résumer en un seul passage les nouveautés d'un site, à partir",
+            TeamCatalog.NormalizeName(
+                "Résumer en un seul passage les nouveautés d'un site, à partir des fichiers enregistrés"));
+        // A short name is untouched, trailing punctuation included: only a cut trims it.
+        Assert.Equal("Veille docs.", TeamCatalog.NormalizeName("Veille docs."));
+    }
+
+    [Fact]
+    public void NormalizeName_strips_markdown_and_never_returns_empty()
+    {
+        Assert.Equal("Tri des factures", TeamCatalog.NormalizeName("## **Tri** des `factures`"));
+        Assert.Equal("Veille sur un site", TeamCatalog.NormalizeName("- Veille sur [un site](https://x.test)"));
+        Assert.Equal("Rapport hebdo", TeamCatalog.NormalizeName("\n\n_Rapport_ <b>hebdo</b>\nsecond line"));
+        Assert.Equal("snake_case stays", TeamCatalog.NormalizeName("snake_case stays"));
+
+        // Nothing left once the markup is gone: the slug stands in, and the slug is never empty.
+        Assert.Equal("equipe", TeamCatalog.NormalizeName("### "));
+        Assert.Equal("equipe", TeamCatalog.NormalizeName("   "));
+        Assert.Equal("equipe", TeamCatalog.NormalizeName(""));
+        Assert.False(TeamCatalog.TryNormalizeName("```", out var nothing));
+        Assert.Equal("", nothing);
+    }
+
+    [Fact]
+    public void Summarize_returns_the_first_paragraph_without_markup_under_240()
+    {
+        // Prose beats the title: the heading is skipped when a paragraph follows it.
+        Assert.Equal("Un README entier.", TeamCatalog.Summarize(PastedPage));
+
+        // A single paragraph of 3 000 characters and no line break: cut at a word, ellipsis.
+        var longLine = string.Join(' ', Enumerable.Repeat("facture fournisseur", 300));
+        var summary = TeamCatalog.Summarize(longLine);
+        Assert.True(summary.Length <= TeamCatalog.MaxSummaryLength, $"too long: {summary.Length}");
+        Assert.EndsWith("…", summary, StringComparison.Ordinal);
+        Assert.EndsWith("fournisseur…", summary, StringComparison.Ordinal);   // a whole word before the ellipsis
+
+        // A heading alone stands in when nothing else says anything; code and rules never do.
+        Assert.Equal("Titre seul", TeamCatalog.Summarize("# Titre seul\n\n```\ncode\n```\n\n---"));
+        Assert.Equal("", TeamCatalog.Summarize("```\nonly code\n```"));
+        // The lines of one paragraph are joined, as Markdown renders them.
+        Assert.Equal("Première ligne seconde ligne", TeamCatalog.Summarize("Première ligne\nseconde ligne\n\nautre paragraphe"));
+    }
+
+    [Fact]
+    public void Describe_exposes_a_summary_next_to_the_whole_description()
+    {
+        var team = Path.Combine(_root, "factures");
+        Directory.CreateDirectory(team);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Factures", Description = PastedPage });
+
+        var summary = TeamCatalog.Describe(team);
+        var target = TeamCatalog.DescribeTarget(team);
+
+        // Derived at read time, never stored: the sidecar keeps the whole need.
+        Assert.Equal(PastedPage, summary.Description);
+        Assert.Equal("Un README entier.", summary.Summary);
+        Assert.Equal("Un README entier.", target.Summary);
+        Assert.DoesNotContain("\"summary\"", File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName)), StringComparison.Ordinal);
+
+        Assert.Null(TeamCatalog.Describe(Path.Combine(_root, "no-sidecar")).Summary);
+    }
+
+    [Fact]
+    public void Import_normalizes_the_name_of_a_hand_written_sidecar()
+    {
+        var source = Path.Combine(_root, "incoming", "factures");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: factures");
+        File.WriteAllText(
+            Path.Combine(source, StudioTeamMetadata.FileName),
+            System.Text.Json.JsonSerializer.Serialize(new StudioTeamMetadata { Name = PastedPage, Description = PastedPage, Profile = "Local" }));
+        var teams = Path.Combine(_root, "teams");
+
+        var destination = TeamCatalog.Import(source, teams);
+
+        Assert.NotNull(destination);
+        var imported = TeamCatalog.Describe(destination!);
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", imported.Name);
+        // The copy is rewritten, the source never is; the need travels whole.
+        Assert.Equal(PastedPage, imported.Description);
+        Assert.Equal("Local", imported.Profile);
+        Assert.Equal(PastedPage, TeamCatalog.Describe(source).Name);
+    }
 }
 
 /// <summary>What the Run screen's team card can honestly say about a target (audit 05/14).</summary>
