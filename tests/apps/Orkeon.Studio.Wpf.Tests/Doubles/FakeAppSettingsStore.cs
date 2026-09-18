@@ -14,6 +14,9 @@ public sealed class FakeAppSettingsStore : IAppSettingsStore
 
     public string? LoadError { get; set; }
 
+    /// <summary>When set, a save throws it instead of writing — a locked or read-only file.</summary>
+    public Exception? SaveFault { get; set; }
+
     public bool Exists(string path) => Files.ContainsKey(path);
 
     public Task<(AppSettingsDocument? Document, string? ErrorMessage)> TryLoadAsync(
@@ -33,6 +36,9 @@ public sealed class FakeAppSettingsStore : IAppSettingsStore
 
     public Task SaveAsync(AppSettingsDocument document, string path, CancellationToken cancellationToken = default)
     {
+        if (SaveFault is { } fault)
+            throw fault;
+
         LastSavedJson = document.ToJson();
         Files[path] = LastSavedJson;
         SavedPaths.Add(path);

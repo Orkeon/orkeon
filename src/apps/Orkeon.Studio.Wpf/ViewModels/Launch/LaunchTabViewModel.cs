@@ -648,6 +648,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     {
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
         Mounts.SetTeamMounts(_team.Mounts);
+        Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
         RunCommand.RaiseCanExecuteChanged();
@@ -855,6 +856,23 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private string? TeamDirectory() => DeclaredMounts.TeamDirectoryOf(Target.SelectedPath, _directories);
 
+    /// <summary>
+    /// Whether one of the team's folders is a real folder outside the team (STUDIO-14, D-12).
+    /// <para>
+    /// The engine whitelists a <c>--mount</c> base path for the file tools only under
+    /// <c>--allow-external-mounts</c>; a team's own <c>./output</c>, resolved under the team
+    /// folder — which is the launch's working directory — needs no such flag, a declared folder
+    /// elsewhere on the disk does. So the flag follows the sidecar instead of waiting for the
+    /// user to find an expert checkbox: it goes on when a team folder reaches outside the team
+    /// and off when none does. The checkbox itself stays, for the per-launch mounts.
+    /// </para>
+    /// </summary>
+    private bool ReachesOutsideTheTeam()
+    {
+        var teamDirectory = TeamDirectory();
+        return _team.Mounts.Any(mount => !DeclaredMounts.IsInsideTeam(mount, teamDirectory));
+    }
+
     private void RaiseRunStateChanged()
     {
         OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
@@ -867,6 +885,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Options.Target = Target.Target;
         _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
         Mounts.SetTeamMounts(_team.Mounts);
+        Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
         RunCommand.RaiseCanExecuteChanged();

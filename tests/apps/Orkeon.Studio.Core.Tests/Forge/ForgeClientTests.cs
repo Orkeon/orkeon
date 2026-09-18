@@ -47,6 +47,34 @@ public class ForgeClientTests
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", Adopt = true }));
     }
 
+    /// <summary>
+    /// STUDIO-14 D-09: the trial reads the folder the wizard's first step bound, through the
+    /// engine's <c>--read</c>. Emitted only when a folder is known — the golden argv above
+    /// carries no <c>--read</c>, so an older engine never meets the option for a team that
+    /// reads nothing.
+    /// </summary>
+    [Fact]
+    public void The_argv_carries_the_read_root_when_one_is_known()
+    {
+        Assert.Equal(
+            ["forge", "resume", "veille", "--events", "jsonl", "--read", "/data/notes"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", ReadDirectory = "/data/notes" }));
+
+        Assert.Equal(
+            ["forge", "je veux une veille", "--events", "jsonl", "--read", "/data/notes", "--dry"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest
+            {
+                Need = "je veux une veille",
+                ReadDirectory = "/data/notes",
+                Dry = true,
+            }));
+
+        // Blank is "unknown", not an empty folder name the engine would refuse.
+        Assert.DoesNotContain(
+            "--read",
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", ReadDirectory = "  " }));
+    }
+
     [Fact]
     public async Task Protocol_lines_become_events_and_everything_else_stays_visible_raw()
     {

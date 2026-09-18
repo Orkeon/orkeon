@@ -1075,4 +1075,47 @@
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Not imported — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Maximum response (tokens, optional)</value></data>
   <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Empty: the engine default (4096). Reasoning models spend that budget thinking — give them 16384 or more.</value></data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>Where are your folders?</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>Existing folders</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>Created inside the team</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>Your documents</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>The results</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>inside the team: {0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>Create inside the team</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>Create every folder inside the team</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>An existing folder is declared in Settings › Authorized folders on the way; a folder created inside the team travels with it. You can still change this at the next step.</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>The trial runs on an empty folder — drop your documents into input/ once the team is adopted.</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>Open the folder</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>Opens the working session — the folder the assistant is writing in.</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>Opens the folder of the adopted team.</value>
+  </data>
 </root>

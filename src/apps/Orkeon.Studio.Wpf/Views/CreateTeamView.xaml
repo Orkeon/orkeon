@@ -7,6 +7,109 @@
              xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
              xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
              xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
+  <UserControl.Resources>
+    <!-- One line of the team's folders (F-01, lot 3; STUDIO-14): the name the agents address,
+         who addresses it, and the folder behind it — a disk path, an «inside the team» label,
+         or the two buttons that answer it. Shared by the step-1 rows and the Composer's. -->
+    <DataTemplate x:Key="MountRowTemplate">
+      <Border Margin="0,0,0,6" Padding="10,7" CornerRadius="8"
+              Background="{DynamicResource PaperSunkBrush}">
+        <Border.Style>
+          <Style TargetType="Border">
+            <Style.Triggers>
+              <!-- Red is for a physical folder genuinely outside the settings'
+                   authorized list — never for a root with no folder behind it. -->
+              <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
+                <Setter Property="BorderThickness" Value="1"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Border.Style>
+        <DockPanel LastChildFill="True">
+          <!-- Foreground is a Setter, not a local value: a local value beats
+               every style trigger, so setting it inline would have made the
+               red below unreachable — the trigger would sit there looking
+               correct and never fire once. -->
+          <controls:LucideIcon DockPanel.Dock="Left" Size="12" VerticalAlignment="Center" Margin="0,0,8,0">
+            <controls:LucideIcon.Style>
+              <Style TargetType="controls:LucideIcon">
+                <Setter Property="Kind" Value="folder-open"/>
+                <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
+                    <Setter Property="Kind" Value="pencil"/>
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </controls:LucideIcon.Style>
+          </controls:LucideIcon>
+          <!-- Removing a bound folder gives the mount point back to the blueprint;
+               removing a bare implied root drops it, which the banner then explains. A
+               step-1 row is a question, not an implied root: it is answered or left, never
+               dropped (IsDroppable). -->
+          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
+                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                  Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                  CommandParameter="{Binding MountString}"
+                  Visibility="{Binding IsBound, Converter={StaticResource BooleanToVisibility}}">
+            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
+          </Button>
+          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
+                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
+                  Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                  CommandParameter="{Binding VirtualPath}"
+                  Visibility="{Binding IsDroppable, Converter={StaticResource BooleanToVisibility}}">
+            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
+          </Button>
+          <!-- STUDIO-14 (D-08): the other answer to an unanswered row — its own folder inside
+               the team, created at adoption, recorded team-relative. -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
+                  Command="{Binding DataContext.CreateInsideTeamCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                  CommandParameter="{Binding VirtualPath}"
+                  Content="{Binding [Studio.Create.CreateInsideTeam], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding CanCreateInsideTeam, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- The folder behind the mount point, or the gesture that names one. -->
+          <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center"
+                  Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
+                  CommandParameter="{Binding VirtualPath}"
+                  Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
+                  Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}"/>
+          <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="11"
+                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240"
+                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Folder}"
+                     ToolTip="{Binding Folder}"
+                     Visibility="{Binding IsRealFolder, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- A folder inside the team (STUDIO-14, D-08): a label — «inside the team: output» —
+               in prose, in the accent colour, never a disk path. -->
+          <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                      Visibility="{Binding IsInsideTeam, Converter={StaticResource BooleanToVisibility}}">
+            <controls:LucideIcon Kind="folder" Size="11" Margin="0,0,5,0" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource AccentBrush}"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="11.5" VerticalAlignment="Center"
+                       Foreground="{DynamicResource AccentBrush}" Text="{Binding Folder}"/>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal">
+            <!-- The step-1 rows carry a plain-words title («Your documents») before the name
+                 the agents use; the Composer's rows have no title. -->
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,8,0" VerticalAlignment="Center"
+                       Text="{Binding Title}"
+                       Visibility="{Binding HasTitle, Converter={StaticResource BooleanToVisibility}}"/>
+            <TextBlock Style="{StaticResource ToolChipText}" VerticalAlignment="Center"
+                       Text="{Binding VirtualPath}"/>
+            <!-- Who addresses it. Provenance, not permission: the runtime mounts
+                 one flat list, so no agent is confined to its own folder. -->
+            <TextBlock Style="{StaticResource ToolChipText}" Margin="7,0,0,0" VerticalAlignment="Center"
+                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Agents}"
+                       Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
+          </StackPanel>
+        </DockPanel>
+      </Border>
+    </DataTemplate>
+  </UserControl.Resources>
   <StackPanel>
 
     <!-- header -->
@@ -69,6 +172,21 @@
           <TextBlock Style="{StaticResource Hint}" Margin="9,0,0,0" VerticalAlignment="Center"
                      Text="{Binding EngineLabel}"
                      Visibility="{Binding HasEngineVersion, Converter={StaticResource BooleanToVisibility}}"/>
+          <!-- STUDIO-14 (D-15): « Open the folder » — the working session while the team is
+               being made, the adopted team afterwards; the tooltip says which. In both modes
+               at every step, present whenever an opener is wired (the team cards' rule), live
+               as soon as the engine answered. -->
+          <Button Style="{StaticResource ChipAction}" Margin="12,0,0,0" VerticalAlignment="Center"
+                  Command="{Binding OpenFolderCommand}"
+                  ToolTip="{Binding OpenFolderTooltip}" ToolTipService.ShowOnDisabled="True"
+                  Visibility="{Binding HasShellOpener, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="folder-open" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <TextBlock VerticalAlignment="Center"
+                         Text="{Binding [Studio.Create.OpenFolder], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
         </StackPanel>
       </StackPanel>
     </DockPanel>
@@ -388,6 +506,25 @@
                      VerticalScrollBarVisibility="Auto"
                      Text="{Binding Outcome, UpdateSourceTrigger=PropertyChanged}"/>
 
+            <!-- STUDIO-14 (D-06): where the folders live. Not a brief precision — it answers the
+                 two rows under it, the only roots a team can address before it has a blueprint:
+                 «Existing folders» opens the disk picker from each row and declares the pick on
+                 the way; «Created inside the team» answers both team-relative; «Later» leaves
+                 them to the Composer step, as before. Composing never waits for this answer. -->
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" Text="{Binding [Studio.Create.QFolders], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding FolderPolicyChoices}" Margin="0,4,0,6">
+              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
+                       Text="{Binding [Studio.Create.FoldersPolicyHint], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding StepOneRows}" ItemTemplate="{StaticResource MountRowTemplate}"
+                          Visibility="{Binding HasStepOneRows, Converter={StaticResource BooleanToVisibility}}"/>
+
             <DockPanel Margin="0,14,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ComposeCommand}">
                 <StackPanel Orientation="Horizontal">
@@ -464,94 +601,31 @@
                      none yet. Two rows of chips could show WHAT the team would mount and never
                      WHERE, so an implied root could only be answered at adoption, by a folder
                      created inside the team and left empty. -->
-                <ItemsControl ItemsSource="{Binding MountRows}">
-                  <ItemsControl.ItemTemplate>
-                    <DataTemplate>
-                      <Border Margin="0,0,0,6" Padding="10,7" CornerRadius="8"
-                              Background="{DynamicResource PaperSunkBrush}">
-                        <Border.Style>
-                          <Style TargetType="Border">
-                            <Style.Triggers>
-                              <!-- Red is for a physical folder genuinely outside the settings'
-                                   authorized list — never for a root with no folder behind it. -->
-                              <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
-                                <Setter Property="BorderBrush" Value="{DynamicResource DangerBrush}"/>
-                                <Setter Property="BorderThickness" Value="1"/>
-                              </DataTrigger>
-                            </Style.Triggers>
-                          </Style>
-                        </Border.Style>
-                        <DockPanel LastChildFill="True">
-                          <!-- Foreground is a Setter, not a local value: a local value beats
-                               every style trigger, so setting it inline would have made the
-                               red below unreachable — the trigger would sit there looking
-                               correct and never fire once. -->
-                          <controls:LucideIcon DockPanel.Dock="Left" Size="12" VerticalAlignment="Center" Margin="0,0,8,0">
-                            <controls:LucideIcon.Style>
-                              <Style TargetType="controls:LucideIcon">
-                                <Setter Property="Kind" Value="folder-open"/>
-                                <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
-                                <Style.Triggers>
-                                  <DataTrigger Binding="{Binding IsReadWrite}" Value="True">
-                                    <Setter Property="Kind" Value="pencil"/>
-                                  </DataTrigger>
-                                  <DataTrigger Binding="{Binding IsUndeclared}" Value="True">
-                                    <Setter Property="Foreground" Value="{DynamicResource DangerBrush}"/>
-                                  </DataTrigger>
-                                </Style.Triggers>
-                              </Style>
-                            </controls:LucideIcon.Style>
-                          </controls:LucideIcon>
-                          <!-- Removing a bound folder gives the mount point back to the blueprint;
-                               removing a bare implied root drops it, which the banner then explains. -->
-                          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
-                                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
-                                  Command="{Binding DataContext.RemoveTeamMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                                  CommandParameter="{Binding MountString}"
-                                  Visibility="{Binding IsBound, Converter={StaticResource BooleanToVisibility}}">
-                            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
-                          </Button>
-                          <Button DockPanel.Dock="Right" Width="18" Height="18" Margin="8,0,0,0" Cursor="Hand"
-                                  Background="Transparent" BorderThickness="0" VerticalAlignment="Center"
-                                  Command="{Binding DataContext.RemoveDerivedMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                                  CommandParameter="{Binding VirtualPath}"
-                                  Visibility="{Binding IsBound, Converter={StaticResource InverseBooleanToVisibility}}">
-                            <controls:LucideIcon Kind="x" Size="11" Foreground="{DynamicResource InkFaintBrush}"/>
-                          </Button>
-                          <!-- The folder behind the mount point, or the gesture that names one. -->
-                          <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center"
-                                  Command="{Binding DataContext.BindMountCommand, RelativeSource={RelativeSource AncestorType=views:CreateTeamView}}"
-                                  CommandParameter="{Binding VirtualPath}"
-                                  Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"
-                                  Visibility="{Binding CanChooseFolder, Converter={StaticResource BooleanToVisibility}}"/>
-                          <TextBlock DockPanel.Dock="Right" Style="{StaticResource MonoText}" FontSize="11"
-                                     VerticalAlignment="Center" TextTrimming="CharacterEllipsis" MaxWidth="240"
-                                     Foreground="{DynamicResource InkMutedBrush}" Text="{Binding Folder}"
-                                     ToolTip="{Binding Folder}"
-                                     Visibility="{Binding HasFolder, Converter={StaticResource BooleanToVisibility}}"/>
-                          <StackPanel Orientation="Horizontal">
-                            <TextBlock Style="{StaticResource ToolChipText}" VerticalAlignment="Center"
-                                       Text="{Binding VirtualPath}"/>
-                            <!-- Who addresses it. Provenance, not permission: the runtime mounts
-                                 one flat list, so no agent is confined to its own folder. -->
-                            <TextBlock Style="{StaticResource ToolChipText}" Margin="7,0,0,0" VerticalAlignment="Center"
-                                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Agents}"
-                                       Visibility="{Binding HasAgents, Converter={StaticResource BooleanToVisibility}}"/>
-                          </StackPanel>
-                        </DockPanel>
-                      </Border>
-                    </DataTemplate>
-                  </ItemsControl.ItemTemplate>
-                </ItemsControl>
-                <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,2,0,0"
-                        Command="{Binding AllowFolderCommand}">
-                  <StackPanel Orientation="Horizontal">
-                    <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                         VerticalAlignment="Center" Margin="0,0,6,0"/>
-                    <TextBlock VerticalAlignment="Center"
-                               Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
-                  </StackPanel>
-                </Button>
+                <ItemsControl ItemsSource="{Binding MountRows}" ItemTemplate="{StaticResource MountRowTemplate}"/>
+                <WrapPanel Margin="0,2,0,0">
+                  <Button Style="{StaticResource ChipAction}" Margin="0,0,8,4"
+                          Command="{Binding AllowFolderCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                      <TextBlock VerticalAlignment="Center"
+                                 Text="{Binding [Studio.Create.AllowFolder], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                  <!-- STUDIO-14 (D-08): every unanswered row at once — the step-1 choice, offered
+                       again here for the roots step 1 could not foresee. Shown while a row is
+                       left to answer; greyed the moment none is. -->
+                  <Button Style="{StaticResource ChipAction}" Margin="0,0,8,4"
+                          Command="{Binding CreateAllInsideTeamCommand}"
+                          Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="folder" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                           VerticalAlignment="Center" Margin="0,0,6,0"/>
+                      <TextBlock VerticalAlignment="Center"
+                                 Text="{Binding [Studio.Create.CreateAllInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                </WrapPanel>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
                            Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
@@ -785,6 +859,14 @@
             </StackPanel>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,5,0,0"
                        Text="{Binding [Studio.Create.TrySub], Source={x:Static services:I18n.Instance}}"/>
+            <!-- STUDIO-14 (§10): under «Created inside the team» the read root is a folder that
+                 does not exist before the adoption, so the trial reads the engine's default —
+                 said here, with where the documents go afterwards, rather than discovered from
+                 a verdict about an empty folder. -->
+            <TextBlock Style="{StaticResource Hint}" FontSize="12" TextWrapping="Wrap" Margin="0,5,0,0"
+                       Foreground="{DynamicResource WarningBrush}"
+                       Text="{Binding [Studio.Create.TrialInsideTeam], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding TrialReadsInsideTeam, Converter={StaticResource BooleanToVisibility}}"/>
             <ItemsControl ItemsSource="{Binding Activity}" Margin="0,12,0,0">
               <ItemsControl.ItemTemplate>
                 <DataTemplate>

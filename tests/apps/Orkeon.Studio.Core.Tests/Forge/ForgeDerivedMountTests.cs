@@ -47,7 +47,7 @@ public sealed class ForgeDerivedMountTests
     /// <para>
     /// Neither implementation got this right and they failed differently. Studio deduped only
     /// against read-WRITE entries, so a read-only <c>/workspace</c> stood beside a read-write
-    /// one: two chips for one root, and <c>WithDerivedWriteMounts</c> keeps the read-only
+    /// one: two chips for one root, and <c>SidecarMounts</c> keeps the read-only
     /// one — the chip promising a write was a lie. The CLI deduped on the name alone and
     /// dropped the write entirely, so the run reported success and produced nothing. Every
     /// case here used either a reading tool OR a deliverable under a different root; none

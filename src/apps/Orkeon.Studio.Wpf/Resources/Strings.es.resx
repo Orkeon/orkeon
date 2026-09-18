@@ -2291,4 +2291,47 @@
   <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
     <value>Vacío: el valor predeterminado del motor (4096). Los modelos de razonamiento gastan ese presupuesto pensando — deles 16384 o más.</value>
   </data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>¿Dónde están sus carpetas?</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>Carpetas existentes</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>Creadas dentro del equipo</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>Más tarde</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>Sus documentos</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>Los resultados</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>dentro del equipo: {0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>Crear dentro del equipo</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>Crear todas las carpetas dentro del equipo</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>Una carpeta existente se declara de paso en Ajustes › Carpetas autorizadas; una carpeta creada dentro del equipo viaja con él. Aún podrá cambiarlo en el paso siguiente.</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>El ensayo corre sobre una carpeta vacía — deposite sus documentos en input/ una vez adoptado el equipo.</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>Abrir la carpeta</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>Abre la sesión de trabajo — la carpeta en la que escribe el asistente.</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>Abre la carpeta del equipo adoptado.</value>
+  </data>
 </root>

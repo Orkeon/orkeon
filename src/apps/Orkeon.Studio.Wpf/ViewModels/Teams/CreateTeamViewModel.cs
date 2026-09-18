@@ -170,11 +170,23 @@ public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : E
 /// The team mount this row stands for, for removal; empty on a row the blueprint implies and
 /// nothing backs yet — such a row has nothing to remove but its own root.
 /// </param>
-/// <param name="IsUndeclared">Whether the bound folder is outside the settings' authorized list.</param>
+/// <param name="IsUndeclared">
+/// Whether the bound folder is vouched for by nothing: neither declared in the settings nor the
+/// team's own (STUDIO-14, D-08 — a folder inside the team never reads red).
+/// </param>
 /// <param name="IsUnreadable">
 /// Whether the entry behind this row is a mount string the parser refuses. Such a row has no
 /// virtual spelling of its own (ADR-008), so it names no mount point that could be answered:
 /// all it can offer is its own removal.
+/// </param>
+/// <param name="IsInsideTeam">
+/// Whether the folder behind it is the team's own — recorded team-relative (<c>./output</c>),
+/// created at adoption. <paramref name="Folder"/> is then a label («inside the team: output»),
+/// never a disk path; <paramref name="MountString"/> keeps the relative entry, for the ✕.
+/// </param>
+/// <param name="Title">
+/// The row's plain-words name on the first step («Your documents», «The results»); empty on
+/// the Composer step, where the virtual path and its agents are the name.
 /// </param>
 public sealed record MountRow(
     string VirtualPath,
@@ -183,7 +195,9 @@ public sealed record MountRow(
     string Folder = "",
     string MountString = "",
     bool IsUndeclared = false,
-    bool IsUnreadable = false)
+    bool IsUnreadable = false,
+    bool IsInsideTeam = false,
+    string Title = "")
 {
     /// <summary>Whether the row can say who addresses this mount point.</summary>
     public bool HasAgents => Agents.Length > 0;
@@ -191,8 +205,14 @@ public sealed record MountRow(
     /// <summary>Whether a folder is bound behind it.</summary>
     public bool HasFolder => Folder.Length > 0;
 
+    /// <summary>Whether the folder behind it is a real one on this machine — shown as a path, mono.</summary>
+    public bool IsRealFolder => HasFolder && !IsInsideTeam;
+
     /// <summary>Whether the row stands for a folder the user bound, rather than a bare implied root.</summary>
     public bool IsBound => MountString.Length > 0;
+
+    /// <summary>Whether the row carries a step-1 title.</summary>
+    public bool HasTitle => Title.Length > 0;
 
     /// <summary>
     /// Whether the row offers « Choisir le dossier… ». An unreadable entry does not: its
@@ -200,6 +220,41 @@ public sealed record MountRow(
     /// bind the picked folder behind that message.
     /// </summary>
     public bool CanChooseFolder => !HasFolder && !IsUnreadable;
+
+    /// <summary>
+    /// Whether the row offers « Create inside the team » (D-08): the same rows that offer a
+    /// folder to choose — unanswered, and readable.
+    /// </summary>
+    public bool CanCreateInsideTeam => !HasFolder && !IsUnreadable;
+
+    /// <summary>
+    /// Whether the row's ✕ drops an agent-implied root: a bare row of the Composer step. A
+    /// step-1 row is a question, not a root the blueprint implied — it is answered or left,
+    /// never dropped.
+    /// </summary>
+    public bool IsDroppable => !IsBound && !HasTitle;
+}
+
+/// <summary>
+/// What a row's « Choose the folder… » asks of the shell under the existing-folders policy
+/// (STUDIO-14, D-10): the disk picker, opened on the row's rights, whose choice is declared in
+/// the settings on the way and bound behind the row.
+/// </summary>
+/// <param name="targetVirtualPath">The mount point to bind; null to add the folder as picked.</param>
+/// <param name="rights">The rights the team takes on it — the row's, never the picker's default.</param>
+public sealed class PickFolderRequestedEventArgs(string? targetVirtualPath, MountRights rights) : EventArgs
+{
+    /// <summary>The mount point to bind; null to add the folder as picked.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public string? TargetVirtualPath { get; } = targetVirtualPath;
+
+    /// <summary>The rights the team takes on the folder.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public MountRights Rights { get; } = rights;
 }
 
 /// <summary>
@@ -229,6 +284,12 @@ public sealed record CreateTeamDependencies
 
     /// <summary>The window's conversation; a private thread when null.</summary>
     public ChatThreadViewModel? Chat { get; init; }
+
+    /// <summary>
+    /// Opens a folder in the OS explorer (STUDIO-14, D-15); the header offers no « Open the
+    /// folder » when null, the same rule as the team cards.
+    /// </summary>
+    public IShellOpener? ShellOpener { get; init; }
 }
 
 /// <summary>
@@ -247,8 +308,13 @@ public sealed class CreateTeamViewModel : ObservableObject
     private readonly HashSet<string> _droppedDerivedRoots = new(StringComparer.Ordinal);
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
+    private readonly IShellOpener? _shellOpener;
     private readonly string _workspace;
     private readonly string _teamsRoot;
+    /// <summary>The step-1 answer to «where are your folders?» (STUDIO-14, D-06).</summary>
+    private FolderPolicy _folderPolicy = FolderPolicy.Later;
+    /// <summary>The derived roots the last sync saw — the derived-set change is what D-07 reacts to.</summary>
+    private IReadOnlyList<string> _seenDerivedRoots = [];
     private ForgeSessionModel _model = new();
     private int _runGeneration;
     private string? _saveError;
@@ -280,6 +346,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         _client = wired.Client ?? ForgeClient.ForCurrentMachine();
         _dispatcher = wired.Dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = wired.Strings ?? EnglishStudioStrings.Instance;
+        _shellOpener = wired.ShellOpener;
         _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         _teamsRoot = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
 
@@ -291,8 +358,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         RawLog = new RunLogViewModel(_strings);
         AgentEditor = new AgentEditorViewModel(_strings);
         AddAgentCommand = new RelayCommand(() => EditAgent(null), () => CanEditAgents);
-        AllowFolderCommand = new RelayCommand(() => RequestAllowFolder(null));
+        AllowFolderCommand = new RelayCommand(AllowFolder);
         BindMountCommand = new RelayCommand(BindMount, IsStringParameter);
+        // STUDIO-14: the disk picker from the wizard (D-10), the in-team answers (D-08) and
+        // the header's folder (D-15).
+        PickFolderCommand = new RelayCommand(PickFolder, IsStringParameter);
+        CreateInsideTeamCommand = new RelayCommand(CreateInsideTeam, IsStringParameter);
+        CreateAllInsideTeamCommand = new RelayCommand(
+            CreateAllInsideTeam,
+            () => MountRows.Any(row => row.CanCreateInsideTeam));
+        OpenFolderCommand = new RelayCommand(OpenFolder, () => CanOpenFolder);
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
         RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
@@ -320,6 +395,16 @@ public sealed class CreateTeamViewModel : ObservableObject
             (StudioStringKeys.WizardOutputTable, "table"),
             (StudioStringKeys.WizardOutputMessage, "message"),
             (StudioStringKeys.WizardOutputOther, "other"));
+        // The fourth question (STUDIO-14, D-06): not a brief precision — it answers the two
+        // rows below it, and «Later» is the default because choosing must be possible, never
+        // due. CanCompose does not read it.
+        FolderPolicyChoices =
+        [
+            PolicyChoice(StudioStringKeys.WizardFoldersExisting, FolderPolicy.ExistingFolders),
+            PolicyChoice(StudioStringKeys.WizardFoldersInside, FolderPolicy.InsideTeam),
+            PolicyChoice(StudioStringKeys.WizardFoldersLater, FolderPolicy.Later),
+        ];
+        SyncPolicyChips();
 
         // Bound after the choice groups exist: the recap and the brief chips read them.
         Chat.Bind(
@@ -382,10 +467,234 @@ public sealed class CreateTeamViewModel : ObservableObject
     private void RequestAllowFolder(string? targetVirtualPath) =>
         AllowFolderRequested?.Invoke(this, new AllowFolderRequestedEventArgs(targetVirtualPath));
 
+    /// <summary>Asks the shell for the disk picker — on the row's rights, bound behind <paramref name="targetVirtualPath"/>.</summary>
+    private void RequestPickFolder(string? targetVirtualPath, MountRights rights) =>
+        PickFolderRequested?.Invoke(this, new PickFolderRequestedEventArgs(targetVirtualPath, rights));
+
+    /// <summary>
+    /// A row's « Choose the folder… » (D-10): the disk picker under the existing-folders
+    /// policy and from step 1 — where the question IS «which real folder» — the list of
+    /// declared folders otherwise, the second way in.
+    /// </summary>
     private void BindMount(object? parameter)
     {
-        if (parameter is string virtualPath)
+        if (parameter is not string virtualPath)
+            return;
+
+        if (_folderPolicy == FolderPolicy.ExistingFolders || IsStep1)
+            RequestPickFolder(virtualPath, RowRights(virtualPath));
+        else
             RequestAllowFolder(virtualPath);
+    }
+
+    /// <summary>
+    /// « Allow a folder », the Composer step's untargeted button: the disk picker under the
+    /// existing-folders policy — the same door as the rows — and the declared list otherwise.
+    /// </summary>
+    private void AllowFolder()
+    {
+        if (_folderPolicy == FolderPolicy.ExistingFolders)
+            RequestPickFolder(null, MountRights.ReadOnly);
+        else
+            RequestAllowFolder(null);
+    }
+
+    private void PickFolder(object? parameter)
+    {
+        if (parameter is string virtualPath)
+            RequestPickFolder(virtualPath, RowRights(virtualPath));
+    }
+
+    /// <summary>
+    /// « Create inside the team » on one row (D-08): the root is bound to its own folder
+    /// inside the team, team-relative — nothing is created on disk before the adoption, which
+    /// is where <c>TeamCatalog.SaveMetadata</c> materialises every relative entry.
+    /// </summary>
+    private void CreateInsideTeam(object? parameter)
+    {
+        if (parameter is not string virtualPath)
+            return;
+
+        BindInsideTeam(virtualPath, RowRights(virtualPath));
+        RefreshMountSurfaces();
+    }
+
+    /// <summary>« Create every folder inside the team »: every row still offering it, in one gesture.</summary>
+    private void CreateAllInsideTeam()
+    {
+        foreach (var row in MountRows.Where(row => row.CanCreateInsideTeam).ToList())
+            BindInsideTeam(row.VirtualPath, row.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly);
+
+        RefreshMountSurfaces();
+    }
+
+    /// <summary>
+    /// The rights a row takes on the folder that will answer it: the entry already bound
+    /// there, else what the blueprint says of the root, else the canonical rule (<c>/output</c>
+    /// is written to, <c>/workspace</c> is read).
+    /// </summary>
+    private MountRights RowRights(string virtualPath)
+    {
+        if (BoundEntry(virtualPath) is { } entry
+            && MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
+        {
+            return mount.Rights;
+        }
+
+        if (_model.DerivedMounts.FirstOrDefault(d => string.Equals(d.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } derived)
+            return derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
+
+        return string.Equals(virtualPath, TeamMountPaths.WriteRoot, StringComparison.Ordinal)
+            ? MountRights.ReadWrite
+            : MountRights.ReadOnly;
+    }
+
+    /// <summary>« Open the folder » (D-15): the adopted team once there is one, the working session before.</summary>
+    private void OpenFolder()
+    {
+        if (FolderToOpen() is { } folder)
+            _shellOpener?.Open(folder);
+    }
+
+    private WizardChoice PolicyChoice(string labelKey, FolderPolicy policy) =>
+        new(policy.ToString(), _strings[labelKey], _ => SetFolderPolicy(policy));
+
+    /// <summary>
+    /// Applies a step-1 answer, whether or not it is the current one: picking «Created inside
+    /// the team» again after a row was emptied is a way of asking for the rows back.
+    /// </summary>
+    private void SetFolderPolicy(FolderPolicy policy)
+    {
+        _folderPolicy = policy;
+        SyncPolicyChips();
+        ApplyFolderPolicy();
+        OnPropertyChanged(nameof(FolderPolicy));
+    }
+
+    private void SyncPolicyChips()
+    {
+        foreach (var choice in FolderPolicyChoices)
+            choice.IsSelected = string.Equals(choice.Key, _folderPolicy.ToString(), StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// The policy, applied to the two canonical roots and to nothing else (D-06): «inside the
+    /// team» binds both team-relative, «later» empties both, «existing folders» empties an
+    /// in-team answer so the row offers the disk picker again — a real folder already picked
+    /// stays. Any other root on the list is another question's business.
+    /// </summary>
+    private void ApplyFolderPolicy()
+    {
+        foreach (var (root, rights) in CanonicalRoots)
+        {
+            switch (_folderPolicy)
+            {
+                case FolderPolicy.InsideTeam:
+                    BindInsideTeam(root, rights);
+                    break;
+                case FolderPolicy.ExistingFolders:
+                    if (BoundEntry(root) is { } entry && DeclaredMounts.IsInsideTeam(entry, _reopenedTeamPath))
+                        RemoveBinding(root);
+                    break;
+                default:
+                    RemoveBinding(root);
+                    break;
+            }
+        }
+
+        RefreshMountSurfaces();
+    }
+
+    /// <summary>The two roots a team can address before it has a blueprint, with the rights each takes.</summary>
+    private static readonly (string Root, MountRights Rights)[] CanonicalRoots =
+    [
+        (TeamMountPaths.ReadRoot, MountRights.ReadOnly),
+        (TeamMountPaths.WriteRoot, MountRights.ReadWrite),
+    ];
+
+    private static bool IsCanonicalRoot(string? virtualPath) =>
+        virtualPath is not null && CanonicalRoots.Any(c => string.Equals(c.Root, virtualPath, StringComparison.Ordinal));
+
+    /// <summary>The team-mount entry bound behind <paramref name="virtualPath"/>, if any.</summary>
+    private string? BoundEntry(string virtualPath) =>
+        TeamMounts.FirstOrDefault(entry => string.Equals(VirtualPathOf(entry), virtualPath, StringComparison.Ordinal));
+
+    private static string? VirtualPathOf(string mountString) =>
+        MountDefinition.TryParse(mountString, out var mount, out _) ? mount?.VirtualPath : null;
+
+    /// <summary>Takes every binding off <paramref name="virtualPath"/> — a mount point takes one folder.</summary>
+    private void RemoveBinding(string virtualPath)
+    {
+        foreach (var existing in TeamMounts.ToList())
+        {
+            if (string.Equals(VirtualPathOf(existing), virtualPath, StringComparison.Ordinal))
+                TeamMounts.Remove(existing);
+        }
+    }
+
+    /// <summary>
+    /// Binds <paramref name="virtualPath"/> to its own folder inside the team, team-relative
+    /// (<c>./output:/output:rw</c>), replacing whatever answered it; a dropped root is un-dropped
+    /// by being answered. No refresh: the callers batch theirs.
+    /// </summary>
+    private void BindInsideTeam(string virtualPath, MountRights rights)
+    {
+        RemoveBinding(virtualPath);
+        _droppedDerivedRoots.Remove(virtualPath);
+        TeamMounts.Add(TeamMountPaths.InsideTeam(virtualPath, rights));
+    }
+
+    /// <summary>
+    /// Keeps the answers of the two canonical roots and drops every other entry (D-07): the
+    /// rest belonged to the blueprint being replaced, the step-1 answers belong to the user.
+    /// </summary>
+    private void KeepOnlyStepOneMounts()
+    {
+        foreach (var entry in TeamMounts.ToList())
+        {
+            if (!IsCanonicalRoot(VirtualPathOf(entry)))
+                TeamMounts.Remove(entry);
+        }
+    }
+
+    /// <summary>
+    /// Forgets the step-1 answers — the two roots and the policy behind them. Resuming or
+    /// reopening opens ANOTHER creation: a stale step-1 choice must not leak into the sidecar
+    /// of a team the user came to edit (D-07).
+    /// </summary>
+    private void ClearStepOneFolders()
+    {
+        foreach (var (root, _) in CanonicalRoots)
+            RemoveBinding(root);
+
+        _folderPolicy = FolderPolicy.Later;
+        SyncPolicyChips();
+        OnPropertyChanged(nameof(FolderPolicy));
+    }
+
+    /// <summary>
+    /// The step-1 answer, kept for the roots step 1 could not foresee (D-07): when the set of
+    /// derived roots changes — every <c>blueprint.ready</c> brings one — «Created inside the
+    /// team» answers each root neither claimed nor dropped the way it answered the first two.
+    /// The other two policies answer nothing by themselves; the row offers « Choose the
+    /// folder… » and « Create inside the team » instead. Snapshotted on the virtual paths so
+    /// the same set, synced again, binds nothing twice and re-answers no row the user emptied.
+    /// </summary>
+    private void AnswerNewDerivedRoots()
+    {
+        var derivedRoots = _model.DerivedMounts.Select(d => d.VirtualPath).ToList();
+        if (derivedRoots.SequenceEqual(_seenDerivedRoots, StringComparer.Ordinal))
+            return;
+
+        _seenDerivedRoots = derivedRoots;
+        if (_folderPolicy != FolderPolicy.InsideTeam)
+            return;
+
+        foreach (var derived in _model.DerivedMounts)
+        {
+            if (BoundEntry(derived.VirtualPath) is null && !_droppedDerivedRoots.Contains(derived.VirtualPath))
+                BindInsideTeam(derived.VirtualPath, derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly);
+        }
     }
 
     private void PickAdoptProfile(object? parameter)
@@ -699,6 +1008,50 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>The "what the team must produce" chips.</summary>
     public IReadOnlyList<WizardChoice> OutputChoices { get; }
 
+    // ── step 1 : where the folders live (STUDIO-14, D-06) ──
+
+    /// <summary>The «where are your folders?» chips: existing folders, created inside the team, later.</summary>
+    public IReadOnlyList<WizardChoice> FolderPolicyChoices { get; }
+
+    /// <summary>
+    /// The step-1 answer. Setting it applies it to the two canonical rows (and only them);
+    /// <see cref="FolderPolicy.Later"/> by default — choosing must be possible, never due, so
+    /// <see cref="CanCompose"/> never reads it.
+    /// </summary>
+    public FolderPolicy FolderPolicy
+    {
+        get => _folderPolicy;
+        set => SetFolderPolicy(value);
+    }
+
+    /// <summary>
+    /// The two rows step 1 can answer — <c>/workspace</c> read («Your documents») and
+    /// <c>/output</c> written («The results»), the only roots a blueprint can imply before it
+    /// exists. Same shape as the Composer's rows, so the same template shows them; under
+    /// «existing folders» each offers the disk picker, under «inside the team» each reads
+    /// «inside the team: input / output».
+    /// </summary>
+    public IReadOnlyList<MountRow> StepOneRows =>
+    [
+        StepOneRow(TeamMountPaths.ReadRoot, MountRights.ReadOnly, StudioStringKeys.WizardReadRootTitle),
+        StepOneRow(TeamMountPaths.WriteRoot, MountRights.ReadWrite, StudioStringKeys.WizardWriteRootTitle),
+    ];
+
+    /// <summary>Whether the two rows show: «later» behaves as before, with no rows at all.</summary>
+    public bool HasStepOneRows => _folderPolicy != FolderPolicy.Later;
+
+    private MountRow StepOneRow(string virtualPath, MountRights rights, string titleKey)
+    {
+        var title = _strings[titleKey];
+        if (BoundEntry(virtualPath) is { } entry
+            && MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
+        {
+            return BoundRow(entry, mount, _declaredMounts(), title);
+        }
+
+        return new MountRow(virtualPath, rights == MountRights.ReadWrite, Agents: AgentsOf(virtualPath), Title: title);
+    }
+
     /// <summary>Free description of the expected result; required when the format is free.</summary>
     public string Outcome
     {
@@ -879,7 +1232,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// The mounts the blueprint itself implies (v3 W-04). They ARE recorded in the sidecar at
-    /// adoption (<see cref="WithDerivedWriteMounts"/>), bound to folders inside the team: this
+    /// adoption (<see cref="SidecarMounts"/>), bound to folders inside the team: this
     /// doc used to say the opposite, which is how removing an explicit <c>/output</c> chip
     /// could look like a choice and be undone at save without a word.
     /// </summary>
@@ -919,13 +1272,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                 }
 
                 claimed.Add(mount.VirtualPath);
-                rows.Add(new MountRow(
-                    mount.VirtualPath,
-                    mount.Rights == MountRights.ReadWrite,
-                    Agents: AgentsOf(mount.VirtualPath),
-                    Folder: mount.PhysicalPath,
-                    MountString: mountString,
-                    IsUndeclared: !MountLabels.IsDeclared(mountString, declared)));
+                rows.Add(BoundRow(mountString, mount, declared, title: ""));
             }
 
             foreach (var derived in _model.DerivedMounts)
@@ -941,6 +1288,45 @@ public sealed class CreateTeamViewModel : ObservableObject
 
             return rows;
         }
+    }
+
+    /// <summary>
+    /// The row of one bound entry. A folder inside the team (D-08) shows a label — «inside the
+    /// team: output» — never a disk path, and is vouched for by that alone: red is for a folder
+    /// neither declared in the settings nor the team's own (<see cref="DeclaredMounts.IsVouchedFor"/>,
+    /// the launcher's rule, so the wizard cannot disagree with the Run screen about one folder).
+    /// </summary>
+    private MountRow BoundRow(string mountString, MountDefinition mount, IReadOnlyList<string> declared, string title)
+    {
+        var insideTeam = DeclaredMounts.IsInsideTeam(mountString, _reopenedTeamPath);
+        var folder = insideTeam && InsideTeamFolderName(mountString) is { } name
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardInsideTeamFolder], name)
+            : mount.PhysicalPath;
+
+        return new MountRow(
+            mount.VirtualPath,
+            mount.Rights == MountRights.ReadWrite,
+            Agents: AgentsOf(mount.VirtualPath),
+            Folder: folder,
+            MountString: mountString,
+            IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declared, _reopenedTeamPath),
+            IsInsideTeam: insideTeam,
+            Title: title);
+    }
+
+    /// <summary>
+    /// The folder name a team-relative entry names (<c>output</c> for <c>./output:/output:rw</c>);
+    /// an older sidecar's absolute path under the reopened team is read the same way.
+    /// </summary>
+    private string? InsideTeamFolderName(string mountString)
+    {
+        if (TeamMountPaths.TryGetRelativeFolder(mountString, out var folder))
+            return folder;
+
+        return _reopenedTeamPath is { Length: > 0 } team
+            && TeamMountPaths.TryGetRelativeFolder(TeamMountPaths.Relativize(team, mountString), out var relativized)
+            ? relativized
+            : null;
     }
 
     /// <summary>Whether the card has any line to show at all.</summary>
@@ -961,10 +1347,22 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// created empty, and nothing ever copies anything into it. The promoted card says so;
     /// the screen that generates the team never did, and its own tasks read «find under
     /// /workspace the folder containing the notes». Saying it here is saying it in time.
+    /// A read root answered «inside the team» keeps the warning (D-08): the folder it gets
+    /// is created empty all the same.
     /// </para>
     /// </summary>
     public bool NeedsInputFolder =>
-        MountRows.Any(r => r is { HasFolder: false, IsReadWrite: false, IsUnreadable: false });
+        MountRows.Any(r => r is { IsReadWrite: false, IsUnreadable: false } && (!r.HasFolder || r.IsInsideTeam));
+
+    /// <summary>
+    /// Whether the trial has nothing to read yet (STUDIO-14, §10): the read root is bound
+    /// inside a team that does not exist before the adoption, so the engine reads its default
+    /// folder. The step-3 card says so, and where the documents go afterwards.
+    /// </summary>
+    public bool TrialReadsInsideTeam =>
+        _reopenedTeamPath is null
+        && BoundEntry(TeamMountPaths.ReadRoot) is { } entry
+        && TeamMountPaths.IsTeamRelative(entry);
 
     /// <summary>
     /// The virtual roots the blueprint addresses and the user dropped anyway. Nothing will be
@@ -1011,10 +1409,27 @@ public sealed class CreateTeamViewModel : ObservableObject
     public event EventHandler<AllowFolderRequestedEventArgs>? AllowFolderRequested;
 
     /// <summary>
+    /// Raised by the same two gestures under the existing-folders policy, and from step 1
+    /// (STUDIO-14, D-10): the shell opens the DISK picker on the row's rights, declares the
+    /// picked folder in the settings on the way and binds it behind the row. One gesture; the
+    /// settings stay the source of the rights; the declared list stays the other way in.
+    /// </summary>
+    public event EventHandler<PickFolderRequestedEventArgs>? PickFolderRequested;
+
+    /// <summary>
     /// The gesture that answers ONE mount point: it takes the row's virtual path and comes
     /// back with the folder the user picked, bound to that name.
     /// </summary>
     public RelayCommand BindMountCommand { get; }
+
+    /// <summary>The disk picker on one row, whatever the policy — the parameter is the row's virtual path.</summary>
+    public RelayCommand PickFolderCommand { get; }
+
+    /// <summary>« Create inside the team » on one row (D-08) — the parameter is the row's virtual path.</summary>
+    public RelayCommand CreateInsideTeamCommand { get; }
+
+    /// <summary>« Create every folder inside the team » — every row still unanswered, at once.</summary>
+    public RelayCommand CreateAllInsideTeamCommand { get; }
 
     /// <summary>
     /// Binds <paramref name="mount"/>'s folder and rights behind <paramref name="targetVirtualPath"/>,
@@ -1033,14 +1448,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         ArgumentException.ThrowIfNullOrWhiteSpace(targetVirtualPath);
         ArgumentNullException.ThrowIfNull(mount);
 
-        foreach (var existing in TeamMounts.ToList())
-        {
-            if (MountDefinition.TryParse(existing, out var parsed, out _)
-                && string.Equals(parsed?.VirtualPath, targetVirtualPath, StringComparison.Ordinal))
-            {
-                TeamMounts.Remove(existing);
-            }
-        }
+        RemoveBinding(targetVirtualPath);
 
         // Answering a root the blueprint implied un-drops it: the user just said what sits
         // behind it, which is the opposite of dropping it.
@@ -1050,33 +1458,32 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The mount strings the sidecar records: the folders the user allowed, plus the write
-    /// roots the blueprint itself addresses, bound to folders inside the team.
+    /// The mount strings the sidecar records: the folders the user bound — real ones, and the
+    /// team-relative answers of « inside the team » — plus every root the blueprint addresses
+    /// and nothing answered, bound to its own folder inside the team the same way
+    /// (<c>./output:/output:rw</c>, <c>./input:/workspace:ro</c>).
     /// <para>
     /// Studio launches an adopted team with its own <c>--mount</c> arguments rather than
     /// through <c>run.sh</c>, so recording only what the user picked left the team without
     /// the very <c>/output</c> its agents were told to write to: the trial passed, the run
-    /// then reported success and produced nothing. A folder the user allowed for the same
-    /// virtual root wins — an explicit choice beats a derived one.
+    /// then reported success and produced nothing. A folder the user bound for the same
+    /// virtual root wins — an explicit choice beats a derived one — and a root the user
+    /// dropped stays dropped: re-adding it here is exactly the silent undo this method was
+    /// written to stop doing to an explicit choice.
+    /// </para>
+    /// <para>
+    /// No team directory here (STUDIO-14, D-08): the entries are relative to the team
+    /// wherever it lands, and <c>TeamCatalog.SaveMetadata</c> creates each relative folder
+    /// when it writes the sidecar — the read one on <c>input/</c>, never on the team's root,
+    /// the way <c>forge promote</c> binds it and for the same reason (an appsettings.json
+    /// copied into the team holds API keys).
     /// </para>
     /// </summary>
-    /// <summary>
-    /// Folder inside an adopted team backing the derived read mount. It is the folder
-    /// <c>forge promote</c> creates — Studio adopts by running that very command, so the
-    /// name has to match it, and Studio.Wpf cannot reference the CLI to prove it: both
-    /// suites assert the literal instead (<c>ForgePromoteTests</c>, <c>CreateTeamWizardTests</c>).
-    /// </summary>
-    internal const string ReadFolderName = "input";
-
-    internal List<string> WithDerivedWriteMounts(string teamDirectory)
+    internal List<string> SidecarMounts()
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
-
         var mounts = new List<string>(TeamMounts);
-        // A root the user dropped stays dropped. Re-adding it here is exactly the silent undo
-        // this method was written to stop doing to an explicit choice.
         var claimed = mounts
-            .Select(m => MountDefinition.TryParse(m, out var parsed, out _) ? parsed?.VirtualPath : null)
+            .Select(VirtualPathOf)
             .Where(virtualPath => virtualPath is not null)
             .ToHashSet(StringComparer.Ordinal);
 
@@ -1085,21 +1492,40 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (_droppedDerivedRoots.Contains(derived.VirtualPath) || !claimed.Add(derived.VirtualPath))
                 continue;
 
-            // The read mount lands on `input/`, not on the team's root — `forge promote`
-            // binds it the same way, and for the same reason: an appsettings.json copied
-            // into the team holds API keys, and a read mount over the root would hand them
-            // to any agent with a file tool.
-            var folder = derived.IsReadWrite ? derived.VirtualPath.TrimStart('/') : ReadFolderName;
-
-            mounts.Add(new MountDefinition
-            {
-                PhysicalPath = System.IO.Path.Combine(teamDirectory, folder),
-                VirtualPath = derived.VirtualPath,
-                Rights = derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly,
-            }.ToMountString());
+            mounts.Add(TeamMountPaths.InsideTeam(
+                derived.VirtualPath,
+                derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly));
         }
 
         return mounts;
+    }
+
+    /// <summary>
+    /// The folder the trial reads as <c>/workspace</c> (D-09), or null for the engine's
+    /// default: the physical path of the <see cref="TeamMounts"/> entry bound behind the read
+    /// root — a real folder as it is; a team-relative answer resolved under the team folder
+    /// when one is known (a reopened team retries on its own <c>input/</c>, filled since),
+    /// and null before the team exists, when there is nothing to read yet. A root the
+    /// blueprint merely implies names no folder: the argv stays the one it always was.
+    /// </summary>
+    private string? ReadRoot()
+    {
+        if (BoundEntry(TeamMountPaths.ReadRoot) is not { } entry)
+            return null;
+
+        if (TeamMountPaths.IsTeamRelative(entry))
+        {
+            if (_reopenedTeamPath is not { Length: > 0 } team)
+                return null;
+
+            // Resolved by the catalog's own helper — the one place that knows the convention —
+            // and read back through the parser, which unquotes what the resolution quoted.
+            entry = TeamMountPaths.Resolve(team, entry);
+        }
+
+        return MountDefinition.TryParse(entry, out var mount, out _) && mount?.PhysicalPath is { Length: > 0 } physical
+            ? physical
+            : null;
     }
 
     /// <summary>
@@ -1110,11 +1536,15 @@ public sealed class CreateTeamViewModel : ObservableObject
     private void RefreshMountSurfaces()
     {
         RestoreDerivedMountsCommand.RaiseCanExecuteChanged();
+        CreateAllInsideTeamCommand.RaiseCanExecuteChanged();
         OnPropertiesChanged(
             nameof(HasTeamMounts),
             nameof(MountRows),
             nameof(HasMountRows),
+            nameof(StepOneRows),
+            nameof(HasStepOneRows),
             nameof(NeedsInputFolder),
+            nameof(TrialReadsInsideTeam),
             nameof(HasUndeclaredTeamMounts),
             nameof(HasDerivedMounts),
             nameof(DroppedDerivedRoots),
@@ -1191,6 +1621,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = slug,
             WorkingDirectory = _workspace,
+            ReadDirectory = ReadRoot(),
             Dry = true,
             EditedBlueprintJson = amendedBlueprintJson,
             EnvironmentOverrides = AssistantEnvironment(),
@@ -1473,6 +1904,13 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Where the team landed.</summary>
     public string? SavedPath => _model.Promotion?.Path;
 
+    /// <summary>
+    /// The folder of the team being edited — a reopened card, or a team adopted here and
+    /// reopened for a re-try; null while the team does not exist yet. The shell reads it to
+    /// tell a folder picked inside the team from one to declare (STUDIO-14, D-10).
+    /// </summary>
+    internal string? ReopenedTeamPath => _reopenedTeamPath;
+
     /// <summary>The scheduling command — displayed, never executed by Studio.</summary>
     public string? InstallCommand => _model.Promotion?.Install;
 
@@ -1526,6 +1964,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (IsEngineRunning)
             return;
 
+        // Another creation than the one under way: its step-1 answers stay with it (D-07).
+        ClearStepOneFolders();
         ResetProjection();
         ForgeSessionHydrator.Hydrate(_model, solution.Directory);
         SessionActivated?.Invoke(this, EventArgs.Empty);
@@ -1545,6 +1985,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = solution.Slug,
             WorkingDirectory = _workspace,
+            ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
     }
@@ -1563,6 +2004,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (IsEngineRunning)
             return;
 
+        // Another creation than the one under way: its step-1 answers stay with it (D-07).
+        ClearStepOneFolders();
         ResetProjection();
         _reopenedTeamPath = team.Path;
         ForgeSessionHydrator.Hydrate(_model, session.Directory);
@@ -1571,7 +2014,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (team.Profile is { Length: > 0 } profile)
             AdoptProfileName = profile;
         SeedSchedule(team.Schedule);
-        foreach (var mount in team.Mounts)
+        // The sidecar's own spelling, not the catalog's resolved one: a team-relative entry
+        // (./output) is what makes a row read «inside the team», and what the re-adoption
+        // writes back as it is (STUDIO-14, D-07).
+        foreach (var mount in team.Metadata?.Mounts ?? team.Mounts)
             TeamMounts.Add(mount);
         RefreshMountSurfaces();
 
@@ -1584,6 +2030,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = session.Slug,
             WorkingDirectory = _workspace,
+            ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
     }
@@ -1615,6 +2062,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = slug,
             WorkingDirectory = _workspace,
+            // The re-try reads the adopted team's own input/ (D-09): the folder exists now.
+            ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
     }
@@ -1663,6 +2112,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             Need = brief,
             WorkingDirectory = _workspace,
+            // The folder step 1 bound behind /workspace, when there is one (D-09).
+            ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
             // The Composer pause (owner, 2026-08-24): generate and validate, then STOP.
             // The trial is the user's click on "try the team", never a side effect
@@ -1684,6 +2135,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = slug,
             WorkingDirectory = _workspace,
+            // The trial reads the folder step 1 bound, or a reopened team's input/ (D-09, P-2).
+            ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
     }
@@ -1701,6 +2154,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             ResumeSlug = slug,
             WorkingDirectory = _workspace,
+            ReadDirectory = ReadRoot(),
             Adopt = true,
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
@@ -1837,7 +2291,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                     var description = _need.Trim() is { Length: > 0 } need
                         ? need
                         : TeamCatalog.Describe(promotion.Path).Description ?? "";
-                    var mounts = WithDerivedWriteMounts(promotion.Path);
+                    var mounts = SidecarMounts();
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
                         Name = TeamCatalog.NormalizeName(_teamName),   // one line, <= 64, no markup (STUDIO-16, D-04)
@@ -1883,6 +2337,8 @@ public sealed class CreateTeamViewModel : ObservableObject
     private void Restart()
     {
         _client.RequestCancellation();
+        // The step-1 answers belong to the creation being abandoned too, policy included.
+        ClearStepOneFolders();
         ResetProjection();
         // The conversation belongs to the creation being abandoned — unlike ResetProjection,
         // which also runs at the START of a compose and must leave the interview's answers
@@ -1901,13 +2357,16 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private void ResetProjection()
     {
-        // A new session starts from a clean slate: the previous team's folders were
-        // approved for THAT team, never for the next one; the old engine command lies. The
-        // dropped roots go with them — they were dropped from the previous blueprint.
-        TeamMounts.Clear();
+        // A new session starts from a clean slate: the previous blueprint's folders were
+        // approved for THAT blueprint, never for the next one; the old engine command lies.
+        // The two step-1 answers survive (D-07) — they are the user's, not the blueprint's;
+        // Restart, Resume and Reopen clear them first. The dropped roots go with the rest —
+        // they were dropped from the previous blueprint.
+        KeepOnlyStepOneMounts();
         _droppedDerivedRoots.Clear();
-        RefreshMountSurfaces();
+        _seenDerivedRoots = [];
         _reopenedTeamPath = null;
+        RefreshMountSurfaces();
         _autoRetryPending = false;
         EngineCommandLine = null;
         OnPropertyChanged(nameof(EngineCommandLine));
@@ -2163,7 +2622,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         // for the same reason. This used to be raised only by user gestures, so the chips
         // appeared when the user happened to touch something else — while HasDerivedMounts,
         // being in the batch below, re-evaluated and showed the hint that explains them.
+        AnswerNewDerivedRoots();
         RefreshMountSurfaces();
+        OnPropertiesChanged(nameof(CanOpenFolder), nameof(OpenFolderTooltip));
+        OpenFolderCommand.RaiseCanExecuteChanged();
 
         OnPropertiesChanged(
             nameof(Rationale), nameof(Tools), nameof(HasTools), nameof(HasProposal),
@@ -2313,6 +2775,36 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         return group;
     }
+
+    // ── STUDIO-14 — « Open the folder » (D-15) ───────────────────────────────
+    // The one gesture the wizard never had: opening what it is working on. The folder exists
+    // as soon as the engine answered — the session, which holds the generated crew/ — and it
+    // becomes the team the moment one is adopted or reopened. The header offers it in both
+    // modes at every step; the team cards keep their own button.
+
+    /// <summary>« Open the folder » — the adopted team, else the working session.</summary>
+    public RelayCommand OpenFolderCommand { get; }
+
+    /// <summary>Whether the header shows the button at all: an opener was wired, as for the team cards.</summary>
+    public bool HasShellOpener => _shellOpener is not null;
+
+    /// <summary>Whether there is a folder to open — a session or a team is known, and an opener is wired.</summary>
+    public bool CanOpenFolder => HasShellOpener && FolderToOpen() is not null;
+
+    /// <summary>Which of the two folders opens, said on the button: the working session, or the adopted team.</summary>
+    public string OpenFolderTooltip => _strings[TeamFolderToOpen() is not null
+        ? StudioStringKeys.WizardOpenFolderTeam
+        : StudioStringKeys.WizardOpenFolderSession];
+
+    /// <summary>The team folder, once there is one: adopted here, or reopened from a card.</summary>
+    private string? TeamFolderToOpen() =>
+        SavedPath is { Length: > 0 } saved ? saved
+        : _reopenedTeamPath is { Length: > 0 } reopened ? reopened
+        : null;
+
+    /// <summary>The folder the button opens: the team once there is one, the session before.</summary>
+    private string? FolderToOpen() =>
+        TeamFolderToOpen() ?? (SessionDirectory is { Length: > 0 } session ? session : null);
 
     // ── STUDIO-13 — failure card ─────────────────────────────────────────────
     // What "Compose the team" (or the save) could not do, said under the stepper in both

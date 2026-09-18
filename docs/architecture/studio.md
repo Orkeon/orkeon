@@ -57,16 +57,18 @@ Three refusals keep the panel honest, and each is pinned by a test. A silent run
 An adopted team's folders are part of the team: the sidecar `studio-team.json`
 records them as mount strings (`mounts`), next to the display name, profile and
 schedule. The "My teams" cards show them as chips; « Change the folders »
-edits them in the team-mounts modal. A team never declares a folder, it
-associates one already declared: both team gestures — the wizard's « This team's
-folders » block and « Allow another folder… » on an adopted team
-— open the « Add an allowed folder » chooser, a checkbox list of the
-folders held in « Settings › Authorized folders » (`Orkeon:FileSystem:Mounts`).
-The picked entries are carried over verbatim, **rights included**: the settings
-are the single place a folder and its rights are decided, and a team that could
-widen them would make that declaration a suggestion. A row the team already
-carries, or whose virtual root another folder already spends, says so and
-cannot be picked — a team's own list, like the settings', names each root once.
+edits them in the team-mounts modal. A team associates a folder the settings
+declare: « Allow another folder… » on an adopted team, and the wizard's « This
+team's folders » block under the « Later » policy, open the « Add an allowed
+folder » chooser, a checkbox list of the folders held in « Settings › Authorized
+folders » (`Orkeon:FileSystem:Mounts`). The picked entries are carried over
+verbatim, **rights included**: the settings are the single place a folder and its
+rights are decided, and a team that could widen them would make that declaration
+a suggestion. A row the team already carries, or whose virtual root another
+folder already spends, says so and cannot be picked — a team's own list, like the
+settings', names each root once. The one gesture that declares from the wizard is
+the disk pick of « Existing folders » below, and it declares in the settings on
+the way — the settings stay the source of the rights.
 
 **A team is a folder one carries.** The sidecar records the team's own folders
 relative to it: a physical segment that starts with `./` — `./input:/workspace:ro`,
@@ -90,6 +92,62 @@ a safeguard, not a compatibility layer. `DeclaredMounts.IsInsideTeam` vouches fo
 construction), and `MountValidator` skips the existence check of such an entry until
 it is told which team folder to look under.
 
+**Where the folders live is asked at step 1.** A fourth question, « Where are
+your folders? », answers the two roots a team can address before it has a
+blueprint — `/workspace` read (« Your documents ») and `/output` written (« The
+results »), the only ones `DeriveMounts` can produce without one — and composing
+never waits for it (`FolderPolicy`, `Later` by default). « Existing folders »
+shows the two rows; « Choose the folder… » on either opens the **disk picker** on
+the row's rights (read-only for the documents, read-and-write for the results),
+and the pick is declared in « Settings › Authorized folders » unless the settings
+already hold that folder, saved, then bound behind the row under the row's
+rights — one gesture, the status line says which of the two things happened, and
+a refused save still binds (`MainWindowViewModel.DeclareAndBindAsync`). A folder
+picked inside the reopened team itself is bound and never declared: it is the
+team's own, and the save relativizes it. « Created inside the team » answers both
+rows team-relative on the spot — `./input:/workspace:ro`, `./output:/output:rw`,
+read « inside the team: input / output » — and nothing is created on disk before
+the adoption. « Later » behaves as before: no rows, the Composer step asks. The
+chip moves the two canonical roots and nothing else; composing keeps them
+(`KeepOnlyStepOneMounts` — the rest belonged to the blueprint being replaced),
+« Restart », a resume and « Modify » on a card forget them and the policy with
+them, so a stale step-1 choice never leaks into the sidecar of another team.
+
+The wizard's block on the Composer step is **one line per mount point** (lot 3):
+the name the agents address, who addresses it — provenance, never permission —
+and the folder behind it, or two buttons when there is none yet. « Choose the
+folder… » opens the chooser **targeted at that virtual path** (the disk picker
+under « Existing folders »): the picked entry keeps its folder and its rights,
+and only the name the agents use for it is the team's to choose. A targeted open
+takes ONE folder and judges its rows where the pick will LAND, not on the root
+the settings happened to declare — otherwise every folder the team already uses
+elsewhere would refuse itself. « Create inside the team » is the other answer,
+per row, and « Create every folder inside the team » answers every unanswered
+row at once; under the « Created inside the team » policy a root a later
+blueprint adds — `/rapports` beside `/output`, which step 1 could not foresee —
+is answered the same way as it appears (`AnswerNewDerivedRoots`), unless the
+user dropped it. A row inside the team shows the label, never a disk path, and
+**never reads red**: `DeclaredMounts.IsVouchedFor` — declared in the settings,
+or the team's own — is the rule of the wizard, of the "My teams" cards and of
+the launcher alike. Without those gestures an agent-implied root could only ever
+be answered at adoption, by a folder created inside the team and left empty:
+which is why the card also says, while there is still time, that a reading team
+with no folder chosen — or one answered « inside the team », whose `input/` is
+created just as empty — will be given its own empty `input/` and that nothing
+copies documents into it.
+
+**The trial reads where the documents are.** `orkeon forge … --read <dir>`
+mounts `<dir>` as `/workspace`, read-only, in place of the working directory and
+changes nothing else — the session stays under the forge home, the settings still
+resolve next to it. The wizard passes the folder bound behind `/workspace` on
+every engine invocation (`ForgeStartRequest.ReadDirectory`, the seven sites; the
+promotion keeps the workspace alone): a real folder as it is, a team-relative
+answer resolved under the team folder once there is one — a reopened team
+retries on its own `input/`, filled since — and nothing before the team exists,
+where the argv is exactly what it was before the option and step 3 says the trial
+runs on an empty folder. An engine that predates `--read` only ever meets it when
+a folder is known, and then refuses it out loud on the failure card.
+
 **A team's own folders are vouched for by living inside the team, and never written
 to the global settings.** Two allow-lists would be one too many: declaring a team's
 `output/` in `Orkeon:FileSystem:Mounts` would duplicate the sidecar in a file shared by
@@ -112,19 +170,6 @@ cards, and it re-reads the sidecars on that signal and again when the folders ta
 opens — so it never shows a team that is gone, and never misses one adopted a minute
 ago.
 
-The wizard's block is **one line per mount point** (lot 3): the name the agents
-address, who addresses it — provenance, never permission — and the folder behind
-it, or « Choose the folder… » when there is none yet. That button opens the same
-chooser **targeted at that virtual path**: the picked entry keeps its folder and
-its rights, and only the name the agents use for it is the team's to choose. A
-targeted open takes ONE folder and judges its rows where the pick will LAND, not
-on the root the settings happened to declare — otherwise every folder the team
-already uses elsewhere would refuse itself. Without that gesture an
-agent-implied root could only ever be answered at adoption, by a folder created
-inside the team and left empty: which is why the card also says, while there is
-still time, that a reading team with no folder chosen will be given its own empty
-`input/` and that nothing copies documents into it.
-
 Declaring is the settings' own gesture, and the chooser's « Declare a new
 folder… » is one door to it: it closes and lands on « Settings › Authorized
 folders », on that tab and not merely on that screen. One door, so a folder
@@ -133,12 +178,12 @@ novice card is where the shared « Allow a folder » picker still opens
 (path + browse, a one-level tree with "already allowed" notes, rights as two
 radio rows, and an expert preview of the exact mount string).
 
-A team folder the settings do **not** declare reads red — on the wizard's chips,
-the "My teams" cards and the team-mounts modal alike. It is not an error:
-a team's `/output` and `/input` are created inside the team at adoption and are
-never declared. It is the one thing a row cannot say by naming a virtual path,
-and a team reaching outside the machine's authorized folders should not have to
-be discovered by reading a sidecar.
+A team folder that nothing vouches for — neither declared in the settings nor the
+team's own — reads red, on the wizard's rows, the "My teams" cards and the
+team-mounts modal alike. A team's `./input` and `./output` are the team's own:
+created inside it at adoption, never declared, never red. Red is the one thing a
+row cannot say by naming a virtual path, and a team reaching outside the machine's
+authorized folders should not have to be discovered by reading a sidecar.
 
 A team reaching outside the settings does not launch. « Run » refuses a team
 carrying a folder that no settings entry allows: the run button is disabled and
@@ -154,14 +199,20 @@ adopted team unlaunchable.
 The folders the blueprint implies are removable like any other. They used to be
 informative chips with no ✕ — "edit an agent to change them" — which left a team
 carrying a root its owner did not want with no way to say so. Dropping one now
-sticks: `WithDerivedWriteMounts` no longer re-adds it, the same silent undo that
-method exists to prevent. The screen warns and names the dropped roots, because
-nothing will be bound to them and the agents writing there will fail; a single
-« Restore » is the way back from a wrong ✕. At launch, Studio lays the sidecar's
-mounts on the run as `--mount` arguments ahead of the per-launch ones, so the
-chips and the command cannot disagree — **except the entries the settings already
-hold**, same folder, same name, same rights: those are in force from the settings
-alone, and passing them again is noise (`LaunchMountPlan.WithoutSettingsDuplicates`).
+sticks: `SidecarMounts` no longer re-adds it, the same silent undo that method
+exists to prevent. The screen warns and names the dropped roots, because nothing
+will be bound to them and the agents writing there will fail; a single
+« Restore » is the way back from a wrong ✕. What `SidecarMounts` records is
+team-relative for every in-team answer and every root the blueprint addresses
+that nothing answered (`./output:/output:rw`, `./input:/workspace:ro`); the save
+creates the folders. At launch, Studio lays the sidecar's mounts on the run as
+`--mount` arguments ahead of the per-launch ones, so the chips and the command
+cannot disagree — **except the entries the settings already hold**, same folder,
+same name, same rights: those are in force from the settings alone, and passing
+them again is noise (`LaunchMountPlan.WithoutSettingsDuplicates`). The
+`--allow-external-mounts` flag follows the sidecar too: a team folder outside the
+team turns it on, a team whose folders all resolve under it — the launch's working
+directory — needs none, and the expert checkbox stays for the per-launch mounts.
 The engine places every `--mount` **by virtual root** (`RunnerHost`): a team folder
 under a name the settings spend on another folder replaces that settings entry for
 the run, and a folder under a new name is appended after the declared ones. The
@@ -190,6 +241,12 @@ examples catalogue importable: « Import » runs that detector on the source bef
 copying anything, and a folder it cannot resolve is refused with the detector's
 message in the status line rather than landing in « My teams » as a card nothing
 can run.
+
+**« Open the folder », at every step, in both modes.** The wizard's header offers
+it as soon as the engine answered: the working session — which holds the generated
+`crew/` — before the adoption, the adopted (or reopened) team afterwards, and the
+tooltip says which. Same `IShellOpener` port as the team cards, gated the same way:
+no opener wired, no button.
 
 ### The blueprint, edited by hand
 

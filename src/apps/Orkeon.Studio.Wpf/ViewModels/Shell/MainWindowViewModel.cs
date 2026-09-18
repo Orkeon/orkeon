@@ -23,6 +23,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// </summary>
 public sealed class MainWindowViewModel : ObservableObject
 {
+    private readonly IStudioStrings _strings;
     private int _selectedTabIndex;
 
     /// <summary>
@@ -130,6 +131,9 @@ public sealed class MainWindowViewModel : ObservableObject
                 TeamsRoot = teamsRoot,
                 DeclaredMounts = declaredMounts,
                 Chat = this.Chat,
+                // « Open the folder » in the wizard's header (STUDIO-14, D-15) — the same
+                // opener the team cards use, gated the same way.
+                ShellOpener = shellOpener,
             });
 
         Teams = new TeamsViewModel(new TeamsDependencies
@@ -175,7 +179,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 onSaved: () => { Teams.Refresh(); Launch.RefreshTeamDescription(); });
         Launch.RunRecorded += (_, _) => _ = Teams.LoadLastRunsAsync();
         Teams.TestRequested += (_, e) => { Test.Launcher.Target.Select(e.Path); TestRequested?.Invoke(this, EventArgs.Empty); };
-        var effectiveStrings = strings ?? Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance;
+        var effectiveStrings = strings ?? EnglishStudioStrings.Instance;
+        _strings = effectiveStrings;
         Teams.ExportDestinationPicker = () =>
             picker?.PickFolder(effectiveStrings[Orkeon.Studio.Core.Localization.StudioStringKeys.DialogExportDestination]);
         TeamMounts.AddRequested += (_, _) =>
@@ -190,6 +195,15 @@ public sealed class MainWindowViewModel : ObservableObject
                     ? mount => CreateTeam.BindTeamMount(target, mount)
                     : CreateTeam.AddTeamMount,
                 e.TargetVirtualPath);
+        // STUDIO-14 (D-10): « Existing folders » at step 1 asks for a REAL folder, so the wizard
+        // opens the disk picker itself — on the row's rights — and the pick is declared in the
+        // settings on the way, then bound behind the row. One gesture; the settings stay the
+        // source of the rights; the declared list above stays the other way in.
+        CreateTeam.PickFolderRequested += (_, e) =>
+            FolderPicker.Open(
+                [.. Config.Mounts.CurrentMountStrings, .. CreateTeam.TeamMounts],
+                mount => _ = DeclareAndBindAsync(e.TargetVirtualPath, e.Rights, mount),
+                initialRights: e.Rights);
         // The settings ARE the declaration screen: theirs is the one button that still opens
         // the disk picker directly.
         Config.Mounts.FolderPickRequested += (_, _) =>
@@ -380,6 +394,49 @@ public sealed class MainWindowViewModel : ObservableObject
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
         {
             CreateTeam.ReportStatus(ex.Message);
+        }
+    }
+
+    /// <summary>
+    /// The wizard's disk pick, in five steps (STUDIO-14, D-10): a folder inside the reopened
+    /// team is not declared — it is the team's own and the save relativizes it; any other
+    /// folder is declared unless the settings already hold it (by physical folder — a second
+    /// pick of one folder under other rights adds no second entry); the settings are saved
+    /// every time, because the novice auto-save may be in flight and a second identical write
+    /// is harmless and makes the outcome true; the team binds the folder under the ROW's
+    /// rights — the settings entry keeps the picker's; and the wizard's status line says
+    /// which of the two things happened, a refused save included: the folder is bound and
+    /// counts as declared for the verdicts (the editor's live list vouches for it), so the
+    /// sentence is the only trace of the refusal.
+    /// </summary>
+    private async Task DeclareAndBindAsync(string? targetVirtualPath, MountRights rights, MountDefinition mount)
+    {
+        var bound = mount with { Rights = rights };
+        if (DeclaredMounts.IsInsideTeam(mount.ToMountString(), CreateTeam.ReopenedTeamPath))
+        {
+            Bind(targetVirtualPath, bound);
+            return;
+        }
+
+        if (!DeclaredMounts.IsDeclared(mount.ToMountString(), Config.Mounts.CurrentMountStrings))
+            Config.Mounts.AddPickedMount(mount);
+
+        var saved = await Config.SaveAsync().ConfigureAwait(true);
+        Bind(targetVirtualPath, bound);
+
+        var folder = System.IO.Path.GetFileName(mount.PhysicalPath.TrimEnd('/', '\\')) is { Length: > 0 } name
+            ? name
+            : mount.PhysicalPath;
+        CreateTeam.ReportStatus(saved
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersDeclared], folder)
+            : string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersNotSaved], folder, Config.StatusMessage));
+
+        void Bind(string? target, MountDefinition picked)
+        {
+            if (target is { } virtualPath)
+                CreateTeam.BindTeamMount(virtualPath, picked);
+            else
+                CreateTeam.AddTeamMount(picked);
         }
     }
 

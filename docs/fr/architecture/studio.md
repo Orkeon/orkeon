@@ -58,17 +58,19 @@ Les dossiers d'une équipe adoptée font partie de l'équipe : le sidecar
 `studio-team.json` les enregistre en mount-strings (`mounts`), à côté du nom,
 du réglage et de la programmation. Les cartes de « Mes équipes » les montrent en
 chips ; « Changer les dossiers » les édite dans la modale des dossiers d'équipe.
-Une équipe ne déclare jamais un dossier, elle en associe un déjà déclaré : les
-deux gestes côté équipe — le bloc « Dossiers de cette équipe » du wizard et
-« Autoriser un autre dossier… » sur une équipe adoptée — ouvrent le sélecteur
-« Ajouter un dossier autorisé », une liste à cocher des dossiers tenus dans
-« Réglages › Dossiers autorisés » (`Orkeon:FileSystem:Mounts`). Les entrées
-choisies sont reportées telles quelles, **droits compris** : les réglages sont
-le seul endroit où un dossier et ses droits se décident, et une équipe capable
-de les élargir ferait de cette déclaration une suggestion. Une ligne que
-l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autre
-dossier, le dit et ne peut pas être choisie — la liste d'une équipe, comme celle
-des réglages, nomme chaque racine une seule fois.
+Une équipe associe un dossier que les réglages déclarent : « Autoriser un autre
+dossier… » sur une équipe adoptée, et le bloc « Dossiers de cette équipe » du
+wizard sous la politique « Plus tard », ouvrent le sélecteur « Ajouter un dossier
+autorisé », une liste à cocher des dossiers tenus dans « Réglages › Dossiers
+autorisés » (`Orkeon:FileSystem:Mounts`). Les entrées choisies sont reportées
+telles quelles, **droits compris** : les réglages sont le seul endroit où un
+dossier et ses droits se décident, et une équipe capable de les élargir ferait de
+cette déclaration une suggestion. Une ligne que l'équipe porte déjà, ou dont la
+racine virtuelle est déjà prise par un autre dossier, le dit et ne peut pas être
+choisie — la liste d'une équipe, comme celle des réglages, nomme chaque racine une
+seule fois. Le seul geste qui déclare depuis le wizard est le choix disque de
+« Des dossiers existants » ci-dessous, et il déclare dans les réglages au passage
+— les réglages restent la source des droits.
 
 **Une équipe est un dossier qu'on emporte.** Le sidecar enregistre les dossiers
 propres de l'équipe relativement à elle : un segment physique qui commence par
@@ -93,6 +95,67 @@ répond de toute entrée `./` avant même que le dossier de l'équipe existe (re
 *est* dans l'équipe, par construction), et `MountValidator` saute le test
 d'existence d'une telle entrée tant qu'on ne lui dit pas sous quel dossier d'équipe
 regarder.
+
+**Où vivent les dossiers se demande à l'étape 1.** Une quatrième question,
+« Où sont vos dossiers ? », répond aux deux racines qu'une équipe peut adresser
+avant d'avoir un blueprint — `/workspace` en lecture (« Vos documents ») et
+`/output` en écriture (« Les résultats »), les seules que `DeriveMounts` puisse
+produire sans lui — et composer n'attend jamais cette réponse (`FolderPolicy`,
+`Later` par défaut). « Des dossiers existants » affiche les deux lignes ;
+« Choisir le dossier… » sur l'une ou l'autre ouvre le **sélecteur disque** sur
+les droits de la ligne (lecture seule pour les documents, lecture et écriture
+pour les résultats), et le dossier choisi est déclaré dans « Réglages › Dossiers
+autorisés » sauf si les réglages le tiennent déjà, sauvegardé, puis lié derrière
+la ligne avec les droits de la ligne — un seul geste, la ligne d'état dit
+laquelle des deux choses s'est produite, et une sauvegarde refusée lie quand même
+(`MainWindowViewModel.DeclareAndBindAsync`). Un dossier choisi dans l'équipe
+rouverte elle-même est lié et jamais déclaré : c'est le sien, et la sauvegarde le
+relativise. « Créés dans l'équipe » répond aux deux lignes relativement à
+l'équipe, sur-le-champ — `./input:/workspace:ro`, `./output:/output:rw`, lues
+« dans l'équipe : input / output » — et rien n'est créé sur le disque avant
+l'adoption. « Plus tard » se comporte comme avant : pas de lignes, l'étape
+Composer demande. La puce déplace les deux racines canoniques et rien d'autre ;
+composer les garde (`KeepOnlyStepOneMounts` — le reste appartenait au blueprint
+remplacé), « Recommencer », une reprise et « Modifier » sur une carte les
+oublient, politique comprise, pour qu'un choix d'étape 1 périmé ne fuie jamais
+dans le sidecar d'une autre équipe.
+
+Le bloc du wizard à l'étape Composer est **une ligne par point de montage**
+(lot 3) : le nom que les agents adressent, qui l'adresse — provenance, jamais
+permission — et le dossier derrière, ou deux boutons quand il n'y en a pas
+encore. « Choisir le dossier… » ouvre le sélecteur **ciblé sur ce chemin
+virtuel** (le sélecteur disque sous « Des dossiers existants ») : l'entrée retenue
+garde son dossier et ses droits, et seul le nom que les agents lui donnent
+revient à l'équipe. Une ouverture ciblée prend UN dossier et juge ses lignes là
+où le choix va **atterrir**, pas sur la racine que les réglages ont déclarée —
+sans quoi chaque dossier déjà employé ailleurs se refuserait lui-même. « Créer
+dans l'équipe » est l'autre réponse, par ligne, et « Créer tous les dossiers dans
+l'équipe » répond d'un coup à toutes les lignes sans réponse ; sous la politique
+« Créés dans l'équipe », une racine qu'un blueprint ultérieur ajoute —
+`/rapports` à côté de `/output`, que l'étape 1 ne pouvait pas deviner — reçoit la
+même réponse dès qu'elle apparaît (`AnswerNewDerivedRoots`), sauf si
+l'utilisateur l'a retirée. Une ligne dans l'équipe montre le libellé, jamais un
+chemin disque, et **ne lit jamais rouge** : `DeclaredMounts.IsVouchedFor` —
+déclaré dans les réglages, ou propre à l'équipe — est la règle du wizard, des
+cartes « Mes équipes » et du lanceur à la fois. Sans ces gestes, une racine
+impliquée par les agents ne pouvait être répondue qu'à l'adoption, par un dossier
+créé dans l'équipe et laissé vide : c'est pourquoi la carte dit aussi, tant qu'il
+est temps, qu'une équipe qui lit sans dossier choisi — ou avec une réponse « dans
+l'équipe », dont l'`input/` est créé tout aussi vide — recevra son propre
+`input/` vide et que rien n'y copiera vos documents.
+
+**L'essai lit là où sont les documents.** `orkeon forge … --read <dir>` monte
+`<dir>` en `/workspace`, en lecture seule, à la place du dossier de travail et ne
+change rien d'autre — la session reste sous le forge home, les réglages se
+résolvent toujours à côté. Le wizard passe le dossier lié derrière `/workspace` à
+chaque invocation du moteur (`ForgeStartRequest.ReadDirectory`, les sept sites ;
+la promotion garde le workspace seul) : un dossier réel tel quel, une réponse
+relative à l'équipe résolue sous le dossier de l'équipe dès qu'il existe — une
+équipe rouverte ré-essaie sur son propre `input/`, rempli depuis — et rien avant
+que l'équipe existe, où l'argv est exactement celui d'avant l'option et où
+l'étape 3 dit que l'essai tourne sur un dossier vide. Un moteur antérieur à
+`--read` ne le rencontre que quand un dossier est connu, et le refuse alors à
+voix haute sur la carte d'échec.
 
 **Les dossiers propres d'une équipe sont autorisés du fait qu'ils vivent dans
 l'équipe, et ne sont jamais écrits dans les réglages globaux.** Deux listes
@@ -119,20 +182,6 @@ reconstruire les cartes, et elle relit les sidecars sur ce signal puis à chaque
 ouverture de l'onglet des dossiers — de sorte qu'elle ne montre jamais une équipe
 disparue, ni n'oublie une équipe adoptée il y a une minute.
 
-Le bloc du wizard est **une ligne par point de montage** (lot 3) : le nom que
-les agents adressent, qui l'adresse — provenance, jamais permission — et le
-dossier derrière, ou « Choisir le dossier… » quand il n'y en a pas encore. Ce
-bouton ouvre le même sélecteur **ciblé sur ce chemin virtuel** : l'entrée
-retenue garde son dossier et ses droits, et seul le nom que les agents lui
-donnent revient à l'équipe. Une ouverture ciblée prend UN dossier et juge ses
-lignes là où le choix va **atterrir**, pas sur la racine que les réglages ont
-déclarée — sans quoi chaque dossier déjà employé ailleurs se refuserait
-lui-même. Sans ce geste, une racine impliquée par les agents ne pouvait être
-répondue qu'à l'adoption, par un dossier créé dans l'équipe et laissé vide :
-c'est pourquoi la carte dit aussi, tant qu'il est temps, qu'une équipe qui lit
-sans dossier choisi recevra son propre `input/` vide et que rien n'y copiera
-vos documents.
-
 Déclarer reste le geste des réglages, et « Déclarer un nouveau dossier… » est
 une porte vers eux : le sélecteur se ferme et l'écran bascule sur
 « Réglages › Dossiers autorisés », sur cet onglet et pas seulement sur cet
@@ -142,13 +191,13 @@ s'ouvre encore le sélecteur partagé « Autoriser un dossier » (chemin +
 Parcourir, arborescence à un niveau avec la note « déjà autorisé », droits en
 deux lignes radio, aperçu expert du mount-string exact).
 
-Un dossier d'équipe que les réglages ne déclarent **pas** apparaît en rouge —
-sur les puces du wizard, les cartes de « Mes équipes » et la modale des
-dossiers d'équipe. Ce n'est pas une erreur : le `/output` et le `/input` d'une
-équipe sont créés dans l'équipe elle-même à l'adoption et ne sont jamais
-déclarés. C'est la seule chose qu'une ligne ne peut pas dire en nommant un
-chemin virtuel, et une équipe qui sort des dossiers autorisés de la machine ne
-devrait pas se découvrir en lisant un sidecar.
+Un dossier d'équipe dont rien ne répond — ni déclaré dans les réglages, ni
+propre à l'équipe — apparaît en rouge, sur les lignes du wizard, les cartes de
+« Mes équipes » et la modale des dossiers d'équipe. Le `./input` et le `./output`
+d'une équipe sont les siens : créés dans l'équipe à l'adoption, jamais déclarés,
+jamais rouges. Le rouge est la seule chose qu'une ligne ne peut pas dire en
+nommant un chemin virtuel, et une équipe qui sort des dossiers autorisés de la
+machine ne devrait pas se découvrir en lisant un sidecar.
 
 Une équipe qui sort des réglages ne se lance pas. « Exécuter » refuse une équipe
 portant un dossier qu'aucune entrée des réglages n'autorise : le bouton de
@@ -165,16 +214,23 @@ lancer.
 Les dossiers déduits du blueprint sont supprimables comme les autres. C'étaient
 des puces informatives sans croix — « modifiez un agent pour les changer » — ce
 qui laissait une équipe porter une racine dont son propriétaire ne voulait pas,
-sans moyen de le dire. Une suppression tient désormais : `WithDerivedWriteMounts`
-ne la réajoute plus, exactement l'annulation silencieuse que cette méthode
-existe pour empêcher. L'écran avertit et nomme les racines abandonnées, parce
-que rien ne leur sera associé et que les agents qui y écrivent échoueront ; un
-« Rétablir » unique est le chemin de retour après une croix de trop.
-Au lancement, Studio pose les mounts du sidecar sur le run
-en arguments `--mount`, devant ceux du lancement — les chips et la commande ne
-peuvent pas diverger — **sauf les entrées que les réglages tiennent déjà**, même
-dossier, même nom, mêmes droits : celles-là sont en vigueur par les seuls
-réglages, et les repasser est du bruit (`LaunchMountPlan.WithoutSettingsDuplicates`).
+sans moyen de le dire. Une suppression tient désormais : `SidecarMounts` ne la
+réajoute plus, exactement l'annulation silencieuse que cette méthode existe pour
+empêcher. L'écran avertit et nomme les racines abandonnées, parce que rien ne
+leur sera associé et que les agents qui y écrivent échoueront ; un « Rétablir »
+unique est le chemin de retour après une croix de trop. Ce que `SidecarMounts`
+enregistre est relatif à l'équipe pour chaque réponse « dans l'équipe » et chaque
+racine que le blueprint adresse sans réponse (`./output:/output:rw`,
+`./input:/workspace:ro`) ; la sauvegarde crée les dossiers. Au lancement, Studio
+pose les mounts du sidecar sur le run en arguments `--mount`, devant ceux du
+lancement — les chips et la commande ne peuvent pas diverger — **sauf les entrées
+que les réglages tiennent déjà**, même dossier, même nom, mêmes droits :
+celles-là sont en vigueur par les seuls réglages, et les repasser est du bruit
+(`LaunchMountPlan.WithoutSettingsDuplicates`). Le drapeau
+`--allow-external-mounts` suit lui aussi le sidecar : un dossier d'équipe hors de
+l'équipe l'allume, une équipe dont tous les dossiers se résolvent sous elle — le
+dossier de travail du lancement — n'en a pas besoin, et la case expert reste pour
+les montages du lancement.
 Le moteur place chaque `--mount` **par racine virtuelle** (`RunnerHost`) : un
 dossier d'équipe sous un nom que les réglages dépensent pour un autre dossier
 remplace cette entrée des réglages pour le run, et un dossier sous un nom neuf
@@ -206,6 +262,12 @@ qui rend tout le catalogue d'exemples importable : « Importer » exécute ce
 détecteur sur la source avant de copier quoi que ce soit, et un dossier qu'il ne
 résout pas est refusé avec le message du détecteur dans la ligne d'état, au lieu
 d'atterrir dans « Mes équipes » comme une carte que rien ne peut lancer.
+
+**« Ouvrir le dossier », à toute étape, dans les deux modes.** L'en-tête du
+wizard l'offre dès que le moteur a répondu : la session de travail — qui contient
+le `crew/` généré — avant l'adoption, l'équipe adoptée (ou rouverte) ensuite, et
+l'infobulle dit laquelle. Même port `IShellOpener` que les cartes d'équipe,
+gardé de la même façon : pas d'ouvreur câblé, pas de bouton.
 
 ### Le blueprint, édité à la main
 

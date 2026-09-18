@@ -58,10 +58,11 @@ internal static class ModalStops
             Name = "modale-declarer-dossier",
             Category = CaptureCategory.Modal,
             Screen = CaptureScreen.SettingsFolders,
-            Because = "The disk tree, opened from the ONE screen that declares a folder. There is "
+            Because = "The disk tree, opened from the screen that declares a folder. There is "
                     + "deliberately no way to reach it from the team chooser — «Déclarer un "
                     + "dossier» closes the chooser and sends the user here instead — so the two "
-                    + "scrims are never up at once, and this is the picker's only door.",
+                    + "scrims are never up at once. The wizard's «Des dossiers existants» "
+                    + "(STUDIO-14) is the picker's other door, and declares on the way too.",
             Covers = ["FolderPicker.IsOpen"],
             CoversFalse = ["AllowedFolders.IsOpen"],
             Arrange = CaptureAction.Sync(static c => c.Shell.Config.Mounts.AllowFolderCommand.Execute(null)),

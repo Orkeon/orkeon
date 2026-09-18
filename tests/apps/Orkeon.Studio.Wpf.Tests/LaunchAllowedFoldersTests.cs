@@ -179,6 +179,53 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
     }
 
     /// <summary>
+    /// STUDIO-14 D-12. The engine whitelists a <c>--mount</c> base path for the file tools only
+    /// under <c>--allow-external-mounts</c>, and a team reading a declared folder elsewhere on
+    /// the disk was refused file by file unless the user found the expert checkbox. The flag
+    /// now follows the sidecar: a team folder outside the team turns it on.
+    /// </summary>
+    [Fact]
+    public void A_team_folder_outside_the_team_turns_allow_external_mounts_on()
+    {
+        // A declared folder, under the team's own name for it: laid as --mount, and outside the team.
+        var team = NewTeam("veille", "/data/docs:/sources:ro");
+        var tab = Launcher(team, "/data/docs:/docs:ro");
+
+        Assert.True(tab.Mounts.AllowExternalMounts);
+        var arguments = tab.BuildArguments();
+        Assert.Contains("/data/docs:/sources:ro", arguments);
+        Assert.Contains("--allow-external-mounts", arguments);
+        // Not a refusal: the folder is declared, the flag is what lets the tools reach it.
+        Assert.False(tab.IsBlockedByUndeclaredFolders);
+    }
+
+    /// <summary>
+    /// The other half of D-12: a team-relative folder (<c>./output</c>) resolves under the team,
+    /// which is the launch's working directory, so the tools reach it without any flag. The
+    /// launch carries the resolved absolute path, never the <c>./</c> spelling — the runtime
+    /// would resolve that against its own cwd and nothing else.
+    /// </summary>
+    [Fact]
+    public void A_relative_in_team_folder_launches_absolute_and_needs_no_flag()
+    {
+        var team = NewTeam("veille", "./output:/output:rw", "./input:/workspace:ro");
+        var tab = Launcher(team);
+
+        Assert.False(tab.Mounts.AllowExternalMounts);
+        Assert.False(tab.IsBlockedByUndeclaredFolders);
+
+        var arguments = tab.BuildArguments().ToList();
+        Assert.DoesNotContain("--allow-external-mounts", arguments);
+        var mountIndex = arguments.IndexOf("--mount");
+        Assert.True(mountIndex >= 0);
+        var mountValues = arguments.Skip(mountIndex + 1).TakeWhile(a => !a.StartsWith("--", StringComparison.Ordinal)).ToList();
+        Assert.Equal(
+            [$"{Path.Combine(team, "output")}:/output:rw", $"{Path.Combine(team, "input")}:/workspace:ro"],
+            mountValues);
+        Assert.DoesNotContain(mountValues, m => m.StartsWith("./", StringComparison.Ordinal));
+    }
+
+    /// <summary>
     /// Replay is refused for the same reason a fresh run is.
     /// <para>
     /// A replay deliberately re-runs a RECORDED argument list, so that it cannot drift from what

@@ -1075,4 +1075,47 @@
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Non importé — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Réponse maximale (jetons, optionnel)</value></data>
   <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Vide : la valeur par défaut du moteur (4096). Les modèles raisonneurs dépensent ce budget à réfléchir — donnez-leur 16384 ou plus.</value></data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>Où sont vos dossiers ?</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>Des dossiers existants</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>Créés dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>Plus tard</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>Vos documents</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>Les résultats</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>dans l'équipe : {0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>Créer dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>Créer tous les dossiers dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>Un dossier existant est déclaré au passage dans Réglages › Dossiers autorisés ; un dossier créé dans l'équipe voyage avec elle. Vous pourrez encore changer à l'étape suivante.</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>L'essai tourne sur un dossier vide — déposez vos documents dans input/ une fois l'équipe adoptée.</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>Ouvrir le dossier</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>Ouvre la session de travail — le dossier où l'assistant écrit.</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>Ouvre le dossier de l'équipe adoptée.</value>
+  </data>
 </root>

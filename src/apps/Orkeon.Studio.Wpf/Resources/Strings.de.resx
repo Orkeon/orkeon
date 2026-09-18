@@ -2291,4 +2291,47 @@
   <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
     <value>Leer: der Standardwert der Engine (4096). Reasoning-Modelle verbrauchen dieses Budget beim Nachdenken — geben Sie ihnen 16384 oder mehr.</value>
   </data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>Wo liegen Ihre Ordner?</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>Vorhandene Ordner</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>Im Team angelegt</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>Später</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>Ihre Dokumente</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>Die Ergebnisse</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>im Team: {0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>Im Team anlegen</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>Alle Ordner im Team anlegen</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>Ein vorhandener Ordner wird dabei unter Einstellungen › Erlaubte Ordner eingetragen; ein im Team angelegter Ordner reist mit dem Team. Im nächsten Schritt lässt sich das noch ändern.</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>Der Versuch läuft auf einem leeren Ordner — legen Sie Ihre Dokumente nach der Übernahme in input/ ab.</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>Ordner öffnen</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>Öffnet die Arbeitssitzung — den Ordner, in den der Assistent schreibt.</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>Öffnet den Ordner des übernommenen Teams.</value>
+  </data>
 </root>

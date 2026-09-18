@@ -26,7 +26,8 @@ public class CreateTeamWizardTests
         string? teamsRoot = null,
         bool withAssistant = true,
         Func<IReadOnlyList<string>>? declaredMounts = null,
-        bool cliInstalled = true)
+        bool cliInstalled = true,
+        Orkeon.Studio.Wpf.ViewModels.Mvvm.IShellOpener? shellOpener = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -55,6 +56,7 @@ public class CreateTeamWizardTests
                 WorkspaceDirectory = "/ws",
                 TeamsRoot = teamsRoot ?? "/teams",
                 DeclaredMounts = declaredMounts,
+                ShellOpener = shellOpener,
             });
         return (vm, processes, profiles);
     }
@@ -726,16 +728,17 @@ public class CreateTeamWizardTests
         var teamDirectory = Path.Combine(root, "veille");
         try
         {
-            var bound = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
-            Assert.EndsWith(":/output:rw", bound, StringComparison.Ordinal);
-            Assert.StartsWith(Path.Combine(teamDirectory, "output"), bound, StringComparison.Ordinal);
+            // Team-relative, with no team directory in sight: the entry is the same wherever
+            // the team lands, and the save is what binds it under the folder.
+            var bound = Assert.Single(vm.SidecarMounts());
+            Assert.Equal("./output:/output:rw", bound);
 
             // The sidecar carries the in-team folder relative to the team, and the save
             // creates it; the catalog hands it back absolute, under the team.
             TeamCatalog.SaveMetadata(teamDirectory, new StudioTeamMetadata { Name = "Veille", Mounts = [bound] });
             var team = TeamCatalog.Describe(teamDirectory);
             Assert.Equal(["./output:/output:rw"], team.Metadata!.Mounts);
-            Assert.Equal([bound], team.Mounts);
+            Assert.Equal([$"{Path.Combine(teamDirectory, "output")}:/output:rw"], team.Mounts);
             Assert.True(Directory.Exists(Path.Combine(teamDirectory, "output")));
 
             // An explicit choice for the same root beats the derived binding — and, being
@@ -747,7 +750,7 @@ public class CreateTeamWizardTests
                 Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
             });
 
-            var chosen = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
+            var chosen = Assert.Single(vm.SidecarMounts());
             Assert.StartsWith(Path.Combine("/data", "sorties"), chosen, StringComparison.Ordinal);
             TeamCatalog.SaveMetadata(teamDirectory, new StudioTeamMetadata { Name = "Veille", Mounts = [chosen] });
             Assert.Equal([chosen], TeamCatalog.Describe(teamDirectory).Metadata!.Mounts);
@@ -789,11 +792,10 @@ public class CreateTeamWizardTests
         var teamDirectory = Path.Combine(root, "veille");
         try
         {
-            var mounts = vm.WithDerivedWriteMounts(teamDirectory);
+            var mounts = vm.SidecarMounts();
 
-            var read = Assert.Single(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
-            Assert.StartsWith(Path.Combine(teamDirectory, "input"), read, StringComparison.Ordinal);
-            Assert.Contains(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+            Assert.Contains("./input:/workspace:ro", mounts);
+            Assert.Contains("./output:/output:rw", mounts);
 
             // In the sidecar, both are the team's own folders, relative to it — and both
             // exist once it is written (STUDIO-14).
@@ -855,7 +857,7 @@ public class CreateTeamWizardTests
         // Removed: the mount point is back to unanswered, which is what the save records.
         Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/output", IsBound: false });
         Assert.Contains(
-            vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
+            vm.SidecarMounts(),
             m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
     }
 
@@ -865,7 +867,7 @@ public class CreateTeamWizardTests
     /// <para>
     /// They used to be informative chips with no ✕ — "edit an agent to change them" — which
     /// left a team carrying a root its owner did not want with no way to say so. Dropping one
-    /// now sticks: <see cref="CreateTeamViewModel.WithDerivedWriteMounts"/> no longer re-adds
+    /// now sticks: <see cref="CreateTeamViewModel.SidecarMounts"/> no longer re-adds
     /// it, which is the same silent undo that method exists to prevent. The screen warns,
     /// because nothing will be bound to that root and the agents writing there will fail.
     /// </para>
@@ -893,7 +895,7 @@ public class CreateTeamWizardTests
         Assert.True(vm.HasDroppedDerivedRoots);
         Assert.Contains("/output", vm.DroppedDerivedWarning, StringComparison.Ordinal);
 
-        var mounts = vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille"));
+        var mounts = vm.SidecarMounts();
         Assert.DoesNotContain(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
         Assert.Contains(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
 
@@ -902,7 +904,7 @@ public class CreateTeamWizardTests
         vm.RestoreDerivedMountsCommand.Execute(null);
         Assert.False(vm.HasDroppedDerivedRoots);
         Assert.Contains(
-            vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille")),
+            vm.SidecarMounts(),
             m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
     }
 
@@ -993,7 +995,7 @@ public class CreateTeamWizardTests
         Assert.False(vm.NeedsInputFolder);
 
         // And the save records the user's folder, not the empty one inside the team.
-        var mounts = vm.WithDerivedWriteMounts(Path.Combine("/teams", "veille"));
+        var mounts = vm.SidecarMounts();
         Assert.Contains(mounts, m => m.StartsWith(Path.Combine("/data", "notes"), StringComparison.Ordinal)
             && m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
         Assert.DoesNotContain(mounts, m => m.Contains(Path.Combine("veille", "input"), StringComparison.Ordinal));
@@ -1083,6 +1085,733 @@ public class CreateTeamWizardTests
         var row = Assert.Single(vm.MountRows);
         Assert.Equal("/data/second", row.Folder);
         Assert.Single(vm.TeamMounts);
+    }
+
+    // ── STUDIO-14: where a team's folders live — the step-1 policy, the in-team answers, the
+    //    relative sidecar, the trial's read root and the header's « Open the folder » ──
+
+    private static readonly string SessionStarted =
+        """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}""";
+
+    private static readonly string Paused =
+        """{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}""";
+
+    /// <summary>A blueprint whose agent reads and whose task writes under <paramref name="deliverableRoot"/>.</summary>
+    private static string ReadingWritingBlueprint(string deliverableRoot = "/output") =>
+        $$"""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"{{deliverableRoot}}/rapport.md"}],"rationale":"r"},"iteration":1}""";
+
+    private static WizardChoice Policy(CreateTeamViewModel vm, FolderPolicy policy) =>
+        vm.FolderPolicyChoices.Single(c => c.Key == policy.ToString());
+
+    /// <summary>
+    /// D-06/D-07. «Created inside the team» answers both canonical rows team-relative, before any
+    /// blueprint exists, and composing — which used to clear every folder — keeps them: they
+    /// are the user's answers, not the previous blueprint's.
+    /// </summary>
+    [Fact]
+    public async Task Choosing_inside_the_team_at_step_one_seeds_both_roots_relative_and_they_survive_the_compose()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+
+        // Later by default, nothing to show, and the compose button does not wait for an answer.
+        Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
+        Assert.True(Policy(vm, FolderPolicy.Later).IsSelected);
+        Assert.False(vm.HasStepOneRows);
+        Assert.True(vm.CanCompose);
+
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+
+        Assert.Equal(FolderPolicy.InsideTeam, vm.FolderPolicy);
+        Assert.True(vm.HasStepOneRows);
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+        var rows = vm.StepOneRows;
+        Assert.Equal(["Your documents", "The results"], rows.Select(r => r.Title));
+        Assert.Equal(["/workspace", "/output"], rows.Select(r => r.VirtualPath));
+        Assert.All(rows, r => Assert.True(r.IsInsideTeam));
+        Assert.All(rows, r => Assert.False(r.IsUndeclared));
+        Assert.Equal(["inside the team: input", "inside the team: output"], rows.Select(r => r.Folder));
+        Assert.True(vm.CanCompose);
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        // The compose kept both answers, and the Composer's rows show them answered.
+        Assert.Equal(2, vm.Step);
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+        Assert.All(vm.MountRows, r => Assert.True(r.IsInsideTeam));
+        Assert.Equal(["/workspace", "/output"], vm.MountRows.Select(r => r.VirtualPath));
+        // The trial has nothing to read yet — the folder is born at adoption — and the argv
+        // says nothing about it: no --read for a folder that does not exist.
+        Assert.True(vm.TrialReadsInsideTeam);
+        Assert.DoesNotContain("--read", processes.Requests[0].Arguments);
+    }
+
+    /// <summary>
+    /// D-06/D-10. «Existing folders» shows the two rows unanswered and their « Choose the
+    /// folder… » asks the shell for the DISK picker — not the declared list — on the row's
+    /// rights: read-only for «Your documents», read-and-write for «The results».
+    /// </summary>
+    [Fact]
+    public void Choosing_existing_folders_at_step_one_asks_the_disk_picker_with_the_rows_rights()
+    {
+        var (vm, _, _) = Build();
+        var picks = new List<(string? Target, Orkeon.Studio.Core.FileSystem.MountRights Rights)>();
+        var chooserOpened = 0;
+        vm.PickFolderRequested += (_, e) => picks.Add((e.TargetVirtualPath, e.Rights));
+        vm.AllowFolderRequested += (_, _) => chooserOpened++;
+
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+
+        Assert.True(vm.HasStepOneRows);
+        Assert.Empty(vm.TeamMounts);
+        Assert.All(vm.StepOneRows, r => Assert.True(r.CanChooseFolder));
+        Assert.All(vm.StepOneRows, r => Assert.False(r.IsDroppable));
+
+        vm.BindMountCommand.Execute("/workspace");
+        vm.BindMountCommand.Execute("/output");
+
+        Assert.Equal(
+            [("/workspace", Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly), ("/output", Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite)],
+            picks);
+        Assert.Equal(0, chooserOpened);
+
+        // What the shell binds back lands on the row, and reads as a real folder.
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/factures", VirtualPath = "/factures",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+        var documents = vm.StepOneRows.Single(r => r.VirtualPath == "/workspace");
+        Assert.Equal("/data/factures", documents.Folder);
+        Assert.False(documents.IsInsideTeam);
+        Assert.True(documents.IsBound);
+    }
+
+    /// <summary>D-06. «Later» is today's behaviour: no rows, nothing bound, the Composer step asks.</summary>
+    [Fact]
+    public async Task The_later_policy_leaves_the_rows_unanswered_as_before()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
+
+        Assert.False(vm.HasStepOneRows);
+        Assert.Empty(vm.TeamMounts);
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        // The Composer's rows are the bare implied roots, and « Choose the folder… » still
+        // opens the declared list — the second way in, unchanged.
+        Assert.Empty(vm.TeamMounts);
+        Assert.All(vm.MountRows, r => Assert.False(r.IsBound));
+        string? asked = null;
+        vm.AllowFolderRequested += (_, e) => asked = e.TargetVirtualPath;
+        vm.BindMountCommand.Execute("/workspace");
+        Assert.Equal("/workspace", asked);
+        Assert.True(vm.NeedsInputFolder);
+    }
+
+    /// <summary>
+    /// D-06. The policy chip touches the two canonical roots and nothing else: a third folder
+    /// the user bound stays through every switch; «later» empties the two, «inside the team»
+    /// rewrites the two — even over a real folder — and «existing folders» empties an in-team
+    /// answer so the row offers the picker again.
+    /// </summary>
+    [Fact]
+    public void Switching_the_policy_rewrites_only_the_two_canonical_rows()
+    {
+        var (vm, _, _) = Build();
+        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/archives", VirtualPath = "/archives",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+        Assert.Equal(["/data/archives:/archives:ro", "/data/notes:/workspace:ro"], vm.TeamMounts);
+
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        Assert.Equal(["/data/archives:/archives:ro", "./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
+        Assert.All(vm.StepOneRows, r => Assert.True(r.CanChooseFolder));
+
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
+        Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
+        Assert.False(vm.HasStepOneRows);
+    }
+
+    /// <summary>
+    /// D-07. Step 1 knows two roots; a blueprint may address a third. Under «inside the team»
+    /// the third root is answered the way the first two were, as it appears — the user's
+    /// answer, kept for the roots step 1 could not foresee. A root the user dropped stays dropped.
+    /// </summary>
+    [Fact]
+    public async Task Under_inside_team_a_new_deliverable_root_gets_its_own_in_team_row()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint("/rapports")), Out(Paused)]);
+        await Compose(vm);
+
+        Assert.Contains("./rapports:/rapports:rw", vm.TeamMounts);
+        var rapports = vm.MountRows.Single(r => r.VirtualPath == "/rapports");
+        Assert.True(rapports.IsInsideTeam);
+        Assert.True(rapports.IsReadWrite);
+        Assert.Equal("inside the team: rapports", rapports.Folder);
+        Assert.False(rapports.IsUndeclared);
+        // The step-1 /output answer is still there, unclaimed by this blueprint and untouched.
+        Assert.Contains("./output:/output:rw", vm.TeamMounts);
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./rapports:/rapports:rw"], vm.SidecarMounts());
+
+        // Dropping the root sticks: the same blueprint synced again re-answers nothing.
+        vm.RemoveTeamMountCommand.Execute("./rapports:/rapports:rw");
+        vm.RemoveDerivedMountCommand.Execute("/rapports");
+        Assert.DoesNotContain(vm.SidecarMounts(), m => m.EndsWith(":/rapports:rw", StringComparison.Ordinal));
+    }
+
+    /// <summary>D-08. The global button answers every row still offering it, in one gesture.</summary>
+    [Fact]
+    public async Task Create_all_inside_the_team_answers_every_unbound_row()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        Assert.True(vm.CreateAllInsideTeamCommand.CanExecute(null));
+        Assert.Equal(2, vm.MountRows.Count(r => r.CanCreateInsideTeam));
+
+        vm.CreateAllInsideTeamCommand.Execute(null);
+
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+        Assert.All(vm.MountRows, r => Assert.True(r.IsInsideTeam));
+        Assert.All(vm.MountRows, r => Assert.False(r.CanCreateInsideTeam));
+        Assert.All(vm.MountRows, r => Assert.False(r.CanChooseFolder));
+        // Nothing left to answer: the button greys out rather than pretending.
+        Assert.False(vm.CreateAllInsideTeamCommand.CanExecute(null));
+    }
+
+    /// <summary>
+    /// D-08. The per-row button answers that row only, and a READ root answered inside the team
+    /// keeps the input/ warning: the folder it gets is created empty all the same.
+    /// </summary>
+    [Fact]
+    public async Task Create_this_one_inside_the_team_answers_one_row_and_keeps_the_input_warning()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+        Assert.True(vm.NeedsInputFolder);
+
+        vm.CreateInsideTeamCommand.Execute("/workspace");
+
+        Assert.Equal(["./input:/workspace:ro"], vm.TeamMounts);
+        var documents = vm.MountRows.Single(r => r.VirtualPath == "/workspace");
+        Assert.True(documents.IsInsideTeam);
+        Assert.False(documents.IsReadWrite);
+        Assert.Equal("inside the team: input", documents.Folder);
+        Assert.Equal("./input:/workspace:ro", documents.MountString);
+        // The other row is untouched and still offers both answers.
+        var results = vm.MountRows.Single(r => r.VirtualPath == "/output");
+        Assert.True(results.CanCreateInsideTeam);
+        Assert.True(results.CanChooseFolder);
+        // An input/ created at adoption is an empty input/: the warning stays.
+        Assert.True(vm.NeedsInputFolder);
+
+        // A real folder behind the read root is what silences it.
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+        Assert.False(vm.NeedsInputFolder);
+    }
+
+    /// <summary>
+    /// D-08. A folder inside the team is vouched for by that alone, before the folder exists and
+    /// before the team does — it never reads red, on a fresh creation or a reopened one; a real
+    /// folder the settings do not declare still does.
+    /// </summary>
+    [Fact]
+    public async Task An_in_team_row_never_reads_undeclared()
+    {
+        var (vm, processes, _) = Build(declaredMounts: () => []);
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        Assert.All(vm.StepOneRows, r => Assert.False(r.IsUndeclared));
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        Assert.All(vm.MountRows, r => Assert.False(r.IsUndeclared));
+        Assert.False(vm.HasUndeclaredTeamMounts);
+
+        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/elsewhere/archives", VirtualPath = "/archives",
+        });
+        Assert.True(vm.MountRows.Single(r => r.VirtualPath == "/archives").IsUndeclared);
+        Assert.True(vm.HasUndeclaredTeamMounts);
+        Assert.Equal(2, vm.MountRows.Count(r => r.IsInsideTeam && !r.IsUndeclared));
+    }
+
+    /// <summary>
+    /// The adoption writes <c>./input:/workspace:ro</c> / <c>./output:/output:rw</c> into the
+    /// sidecar for the in-team answers, and the save creates the folders under the team —
+    /// the team is a folder one carries.
+    /// </summary>
+    [Fact]
+    public async Task Adoption_writes_relative_paths_for_in_team_folders()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var promoted = Path.Combine(root, "veille-docs");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: root);
+            FillStepOne(vm);
+            Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+            processes.OutputToEmit.AddRange(
+            [
+                Out(SessionStarted),
+                Out(ReadingWritingBlueprint()),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await Compose(vm);
+            vm.TeamName = "Veille docs";
+            Assert.True(vm.CanSaveTeam);
+
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.True(vm.IsSaved);
+            var team = TeamCatalog.Describe(promoted);
+            Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], team.Metadata!.Mounts);
+            Assert.Equal(
+                [$"{Path.Combine(promoted, "input")}:/workspace:ro", $"{Path.Combine(promoted, "output")}:/output:rw"],
+                team.Mounts);
+            Assert.True(Directory.Exists(Path.Combine(promoted, "input")));
+            Assert.True(Directory.Exists(Path.Combine(promoted, "output")));
+            // The header's button now opens the team, not the session.
+            Assert.Equal(promoted, vm.SavedPath);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static async Task<(string Root, string TeamDir, string SessionDir)> WriteReopenableTeam(string mountsJson)
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-reopen-" + Guid.NewGuid().ToString("N"));
+        var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille");
+        var teamDir = Path.Combine(root, "teams", "veille-docs");
+        Directory.CreateDirectory(sessionDir);
+        Directory.CreateDirectory(teamDir);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
+            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}]}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "studio-team.json"),
+            $$"""{"name":"Veille docs","description":"le besoin","profile":"Local","mounts":{{mountsJson}}}""", TestContext.Current.CancellationToken);
+        return (root, teamDir, sessionDir);
+    }
+
+    private static ForgeSolutionSummary ReopenedSession(string sessionDir, string teamDir) => new()
+    {
+        Slug = "veille", State = "Promoted", Status = "Promoted",
+        Directory = sessionDir, PromotedTo = teamDir,
+    };
+
+    /// <summary>
+    /// D-07. «Modifier» seeds the rows from the sidecar's OWN spelling: a team-relative entry
+    /// reads «inside the team», never red, and is what the re-adoption writes back as it is.
+    /// </summary>
+    [Fact]
+    public async Task A_reopened_teams_relative_folders_read_as_inside_the_team()
+    {
+        var (root, teamDir, sessionDir) = await WriteReopenableTeam("""["./input:/workspace:ro","./output:/output:rw","/data/docs:/docs:ro"]""");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"SESSION","format":"yaml","resumed":true}""".Replace("SESSION", System.Text.Json.JsonSerializer.Serialize(sessionDir).Trim('"'), StringComparison.Ordinal)),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+
+            Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "/data/docs:/docs:ro"], vm.TeamMounts);
+            var documents = vm.MountRows.Single(r => r.VirtualPath == "/workspace");
+            Assert.True(documents.IsInsideTeam);
+            Assert.False(documents.IsUndeclared);
+            Assert.Equal("inside the team: input", documents.Folder);
+            Assert.Equal("./input:/workspace:ro", documents.MountString);
+            Assert.True(vm.MountRows.Single(r => r.VirtualPath == "/output").IsInsideTeam);
+            // The real folder outside the team keeps its own verdict.
+            var docs = vm.MountRows.Single(r => r.VirtualPath == "/docs");
+            Assert.False(docs.IsInsideTeam);
+            Assert.True(docs.IsUndeclared);
+            Assert.Equal("/data/docs", docs.Folder);
+            // Reopened: the read root is inside a team that EXISTS, so the trial has a folder.
+            Assert.False(vm.TrialReadsInsideTeam);
+            Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// D-09 (P-2). The folder step 1 bound behind <c>/workspace</c> is what the trial reads:
+    /// the compose and the resume both carry <c>--read</c> with it.
+    /// </summary>
+    [Fact]
+    public async Task The_trial_reads_the_folder_bound_at_step_one()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        {
+            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+        });
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        var compose = processes.Requests[0].Arguments.ToList();
+        Assert.Equal("/data/notes", compose[compose.IndexOf("--read") + 1]);
+        Assert.Contains("--dry", compose);
+
+        processes.OutputToEmit.Clear();
+        processes.OutputToEmit.Add(Out(Paused));
+        await vm.TryTeamCommand.ExecuteAsync();
+
+        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl", "--read", "/data/notes"], processes.Requests[^1].Arguments);
+        Assert.False(vm.TrialReadsInsideTeam);
+    }
+
+    /// <summary>
+    /// D-09. A reopened team's <c>./input</c> resolves under the team folder, which exists —
+    /// the re-try reads the documents dropped there since the adoption.
+    /// </summary>
+    [Fact]
+    public async Task A_reopened_team_retries_against_its_own_input_folder()
+    {
+        var (root, teamDir, sessionDir) = await WriteReopenableTeam("""["./input:/workspace:ro","./output:/output:rw"]""");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+
+            Assert.Equal(
+                ["forge", "resume", "veille", "--events", "jsonl", "--read", Path.Combine(teamDir, "input")],
+                processes.Requests[0].Arguments);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>D-07. «Recommencer» forgets the two answers and the chip behind them.</summary>
+    [Fact]
+    public async Task Restart_forgets_the_step_one_folders_and_the_policy()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+        Assert.True(vm.RestartCommand.CanExecute(null));
+
+        vm.RestartCommand.Execute(null);
+
+        Assert.Empty(vm.TeamMounts);
+        Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
+        Assert.True(Policy(vm, FolderPolicy.Later).IsSelected);
+        Assert.False(vm.HasStepOneRows);
+    }
+
+    /// <summary>
+    /// D-07. «Modifier» on a card opens ANOTHER creation: the step-1 answers of the one under
+    /// way must not leak into the sidecar of the team the user came to edit — nor its policy,
+    /// which would answer that team's new roots on its own.
+    /// </summary>
+    [Fact]
+    public async Task Reopening_a_team_drops_the_step_one_folders_of_the_creation_under_way()
+    {
+        var (root, teamDir, sessionDir) = await WriteReopenableTeam("""["/data/docs:/docs:ro"]""");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            FillStepOne(vm);
+            Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+            Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+
+            Assert.Equal(["/data/docs:/docs:ro"], vm.TeamMounts);
+            Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
+            // The reopened team's own derived roots were NOT answered by the stale policy.
+            Assert.Equal(["/data/docs:/docs:ro", "./input:/workspace:ro", "./output:/output:rw"], vm.SidecarMounts());
+            Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/workspace", IsBound: false });
+            // No step-1 folder, no --read: the argv is the one the golden test pins.
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[0].Arguments);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    // ── D-15: « Open the folder » ──
+
+    /// <summary>
+    /// The folder exists as soon as the engine answered — the session, which holds the generated
+    /// crew/ — and it becomes the team the moment one is adopted; the tooltip says which.
+    /// </summary>
+    [Fact]
+    public async Task The_open_folder_button_targets_the_session_before_adoption_and_the_team_after()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var promoted = Path.Combine(root, "veille-docs");
+        try
+        {
+            var opener = new RecordingShellOpener();
+            var (vm, processes, _) = Build(teamsRoot: root, shellOpener: opener);
+            Assert.True(vm.HasShellOpener);
+            Assert.False(vm.CanOpenFolder);
+
+            processes.OutputToEmit.AddRange(
+            [
+                Out(SessionStarted),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            FillStepOne(vm);
+            await Compose(vm);
+
+            Assert.True(vm.CanOpenFolder);
+            Assert.True(vm.OpenFolderCommand.CanExecute(null));
+            Assert.Equal("Opens the working session — the folder the assistant is writing in.", vm.OpenFolderTooltip);
+            vm.OpenFolderCommand.Execute(null);
+            Assert.Equal(["/ws/.orkeon/forge/veille"], opener.Opened);
+
+            vm.TeamName = "Veille docs";
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.Add(Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""));
+            await vm.SaveTeamCommand.ExecuteAsync();
+            Assert.True(vm.IsSaved);
+
+            Assert.Equal("Opens the folder of the adopted team.", vm.OpenFolderTooltip);
+            vm.OpenFolderCommand.Execute(null);
+            Assert.Equal(["/ws/.orkeon/forge/veille", promoted], opener.Opened);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void Without_a_session_there_is_no_folder_to_open()
+    {
+        var opener = new RecordingShellOpener();
+        var (vm, _, _) = Build(shellOpener: opener);
+        FillStepOne(vm);
+
+        Assert.True(vm.HasShellOpener);
+        Assert.False(vm.CanOpenFolder);
+        Assert.False(vm.OpenFolderCommand.CanExecute(null));
+        vm.OpenFolderCommand.Execute(null);
+        Assert.Empty(opener.Opened);
+    }
+
+    [Fact]
+    public async Task Without_a_shell_opener_the_button_is_absent()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(Paused)]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        Assert.NotNull(vm.SessionDirectory);
+        Assert.False(vm.HasShellOpener);
+        Assert.False(vm.CanOpenFolder);
+        Assert.False(vm.OpenFolderCommand.CanExecute(null));
+    }
+
+    // ── D-10, at the shell: the disk picker that declares on the way ──
+
+    private static (MainWindowViewModel Shell, FakeAppSettingsStore Store) Shell(
+        FakeDirectoryProbe directories, string? teamsRoot = null)
+    {
+        var store = new FakeAppSettingsStore();
+        var shell = new MainWindowViewModel(
+            new StudioServices
+            {
+                SettingsStore = store,
+                Directories = directories,
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+                ForgeClient = new ForgeClient(
+                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            },
+            globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
+            forgeWorkspace: "/ws",
+            teamsRoot: teamsRoot ?? "/nowhere/teams");
+        return (shell, store);
+    }
+
+    /// <summary>
+    /// P-3. One gesture: the wizard's « Choose the folder… » under «existing folders» opens the
+    /// disk picker on the row's rights; confirming declares the folder in the settings, saves
+    /// them, and binds the folder behind the row — and the status line says so.
+    /// </summary>
+    [Fact]
+    public void Picking_a_folder_from_the_wizard_declares_it_in_the_settings_saves_and_binds_it()
+    {
+        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        var wizard = shell.CreateTeam;
+        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
+
+        wizard.BindMountCommand.Execute("/output");
+
+        // The disk picker, not the declared list — opened on the row's rights.
+        Assert.True(shell.FolderPicker.IsOpen);
+        Assert.False(shell.AllowedFolders.IsOpen);
+        Assert.True(shell.FolderPicker.IsReadWrite);
+
+        shell.FolderPicker.Path = "/data/factures";
+        Assert.True(shell.FolderPicker.CanConfirm);
+        shell.FolderPicker.ConfirmCommand.Execute(null);
+
+        Assert.False(shell.FolderPicker.IsOpen);
+        Assert.Equal(["/data/factures:/factures:rw"], shell.Config.Mounts.CurrentMountStrings);
+        // Written to the settings file — by the novice auto-save on the edit and by the
+        // explicit save behind the pick; the second, identical write is what makes the
+        // outcome true whatever the auto-save's timing.
+        Assert.NotEmpty(store.SavedPaths);
+        Assert.All(store.SavedPaths, path => Assert.Equal("/home/user/.config/Orkeon/appsettings.json", path));
+        Assert.Contains("/data/factures:/factures:rw", store.LastSavedJson, StringComparison.Ordinal);
+        Assert.Equal(["/data/factures:/output:rw"], wizard.TeamMounts);
+        var row = wizard.StepOneRows.Single(r => r.VirtualPath == "/output");
+        Assert.Equal("/data/factures", row.Folder);
+        Assert.False(row.IsUndeclared);
+        Assert.Equal("“factures” added to the authorized folders", wizard.StatusMessage);
+    }
+
+    /// <summary>
+    /// A folder the settings already hold — under any rights — is not declared a second time;
+    /// the team still binds it, under the ROW's rights, not the settings entry's.
+    /// </summary>
+    [Fact]
+    public void A_folder_already_declared_is_not_declared_twice_but_still_bound_with_the_rows_rights()
+    {
+        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        shell.Config.Mounts.Load(["/data/factures:/factures:ro"]);
+        var wizard = shell.CreateTeam;
+        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
+
+        wizard.BindMountCommand.Execute("/output");
+        shell.FolderPicker.Path = "/data/factures";
+        shell.FolderPicker.ConfirmCommand.Execute(null);
+
+        Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
+        Assert.NotEmpty(store.SavedPaths);   // saved all the same: an auto-save may be in flight
+        Assert.Equal(["/data/factures:/output:rw"], wizard.TeamMounts);
+        Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+    }
+
+    /// <summary>
+    /// A folder inside the reopened team is the team's own: bound, never declared — the save
+    /// relativizes it, and the settings never learn one team's private folders.
+    /// </summary>
+    [Fact]
+    public async Task A_folder_inside_the_reopened_team_is_bound_without_being_declared()
+    {
+        var (root, teamDir, sessionDir) = await WriteReopenableTeam("""["/data/docs:/docs:ro"]""");
+        try
+        {
+            var input = Path.Combine(teamDir, "input");
+            var (shell, store) = Shell(new FakeDirectoryProbe(teamDir, input), teamsRoot: Path.Combine(root, "teams"));
+            var wizard = shell.CreateTeam;
+            await wizard.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+
+            wizard.PickFolderCommand.Execute("/workspace");
+            Assert.True(shell.FolderPicker.IsOpen);
+            Assert.True(shell.FolderPicker.IsReadOnly);
+            shell.FolderPicker.Path = input;
+            shell.FolderPicker.ConfirmCommand.Execute(null);
+
+            Assert.Empty(shell.Config.Mounts.CurrentMountStrings);
+            Assert.Empty(store.SavedPaths);
+            Assert.Contains($"{input}:/workspace:ro", wizard.TeamMounts);
+            var row = wizard.MountRows.Single(r => r.VirtualPath == "/workspace");
+            Assert.True(row.IsInsideTeam);
+            Assert.False(row.IsUndeclared);
+            Assert.Equal("inside the team: input", row.Folder);
+            // And the sidecar spelling is the relative one, wherever the team goes.
+            Assert.Contains("./input:/workspace:ro", TeamMountPaths.RelativizeAll(teamDir, wizard.SidecarMounts()));
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A settings save the machine refuses does not lose the pick: the folder is bound, the
+    /// editor's live list vouches for it, and the sentence is the only trace of the refusal.
+    /// </summary>
+    [Fact]
+    public void A_refused_settings_save_still_binds_and_says_so()
+    {
+        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        store.SaveFault = new IOException("disk full");
+        var wizard = shell.CreateTeam;
+        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
+
+        wizard.BindMountCommand.Execute("/workspace");
+        shell.FolderPicker.Path = "/data/factures";
+        shell.FolderPicker.ConfirmCommand.Execute(null);
+
+        Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
+        Assert.Empty(store.SavedPaths);
+        Assert.Equal(["/data/factures:/workspace:ro"], wizard.TeamMounts);
+        Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/workspace").IsUndeclared);
+        Assert.StartsWith("“factures” added, but the settings could not be saved — ", wizard.StatusMessage, StringComparison.Ordinal);
+        Assert.Contains("disk full", wizard.StatusMessage, StringComparison.Ordinal);
     }
 
     // ── STUDIO-13: the failures of "Compose the team" are said, with the technical part copyable ──
