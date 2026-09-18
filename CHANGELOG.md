@@ -30,8 +30,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `DeclaredMounts.IsInsideTeam` is public and vouches for a `./` entry before the team folder
   exists; `MountValidator.Validate` takes an optional `teamDirectory` and skips the existence
   check of a relative entry until one is known. `TeamMountPaths` (Studio.Core) is the one
-  helper for the convention, and `FolderPolicy` names the step-1 choice the wizard gains
-  next (Later / InsideTeam / ExistingFolders).
+  helper for the convention, and `FolderPolicy` names the step-1 choice the wizard asks
+  (Later / InsideTeam / ExistingFolders — the wizard entry below).
 
 <!-- STUDIO-14 settings -->
 ### Added — Studio: Settings › Authorized folders lists each team's own folders, read-only (STUDIO-14, lot 6)
@@ -269,7 +269,8 @@ technical journal only the expert mode displays.
   is («the detail is in the card below»), true in both modes.
 - Capture campaign: a stop `etape1-echec-moteur` (both modes, both themes, language sweep)
   photographs the card by taking the CLI away from the seeded machine and clicking — the
-  owner's own recipe, through the real locator; 49 stops, 258 shots.
+  owner's own recipe, through the real locator; with the three STUDIO-14 stops the
+  catalogue is pinned at 52 stops, 282 shots.
 - Tests: `A_missing_engine_is_said_on_step_1_with_a_copyable_report`,
   `A_non_zero_exit_without_stderr_still_shows_a_failure_card`,
   `An_unrecoverable_engine_error_names_its_code_and_message`,

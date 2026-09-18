@@ -36,8 +36,8 @@ internal static class StudioRunInfo
         "                detected and only the options that apply to it stay enabled.",
         "  Settings      'auto' lets the CLI's own resolution chain pick the appsettings.json,",
         "                or give an explicit path (--settings).",
-        "  Mounts        launch-only mounts (--mount); each one replaces the appsettings mount",
-        "                at the same index rather than merging with it.",
+        "  Mounts        launch-only mounts (--mount); one on a root the appsettings already",
+        "                declare replaces that entry for this run, one on a new root is added.",
         "  Validate      a dry run (--validate): the crew is loaded strictly, nothing is kicked off.",
         "  Run / Esc     start the run, or ask the running process to stop (exit code 130).",
         string.Empty);

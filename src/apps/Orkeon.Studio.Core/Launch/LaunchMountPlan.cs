@@ -7,8 +7,10 @@ namespace Orkeon.Studio.Core.Launch;
 /// <summary>
 /// What of a team's folders a launch has to say on the command line at all (STUDIO-15 D-05).
 /// <para>
-/// A team never declares a folder, it associates one the settings already declare — and the
-/// chooser records the settings entry verbatim in the sidecar. Laid on the run as
+/// A team never declares its own folders — they live inside it and are vouched for by that —
+/// and an outside folder is one the settings declare: the chooser records the settings entry
+/// verbatim in the sidecar, and the wizard's disk picker declares the folder on the way before
+/// binding it under the row's rights (STUDIO-14 D-10). Laid on the run as
 /// <c>--mount</c>, that entry meets its own twin from the settings: the runner now treats the
 /// pair as one mount (the <c>--mount</c> replaces the settings entry by root, D-01), but
 /// passing a machine default back to the machine is noise on the command line and, on an
