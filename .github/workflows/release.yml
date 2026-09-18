@@ -719,7 +719,7 @@ jobs:
             artifacts/installers/orkeon*.msi
             artifacts/installers/*.sbom.cdx.json
 
-      - uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
+      - uses: softprops/action-gh-release@efb35369e0ad2afab669f228072c1b0d510eae64 # v3.0.3
         with:
           # `orkeon*.msi`, not `*.msi`: the checksum manifest for the MSI channel is
           # itself named SHA256SUMS.msi, so a bare `*.msi` swallows it AND the line
