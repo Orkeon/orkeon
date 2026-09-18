@@ -2216,4 +2216,17 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>Schreiben, ohne Löschen</value>
   </data>
+  <!-- LLM-09 -->
+  <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
+    <value>OpenRouter</value>
+  </data>
+  <data name="Studio.Settings.OpenRouterDesc" xml:space="preserve">
+    <value>Marktplatz mit 445 Modellen, Kennungen im Format Anbieter/Modell</value>
+  </data>
+  <data name="Studio.Settings.MammouthTitle" xml:space="preserve">
+    <value>Mammouth AI</value>
+  </data>
+  <data name="Studio.Settings.MammouthDesc" xml:space="preserve">
+    <value>französisches Multi-Modell-Abonnement, LiteLLM-Proxy</value>
+  </data>
 </root>

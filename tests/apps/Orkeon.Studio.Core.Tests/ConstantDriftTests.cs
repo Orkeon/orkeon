@@ -71,6 +71,8 @@ public sealed class ConstantDriftTests
             [LlmPresets.Gemini] = LlmEndpoints.Gemini,
             [LlmPresets.Grok] = LlmEndpoints.Grok,
             [LlmPresets.MiniMax] = LlmEndpoints.MiniMax,
+            [LlmPresets.OpenRouter] = LlmEndpoints.OpenRouter,
+            [LlmPresets.Mammouth] = LlmEndpoints.Mammouth,
             [LlmPresets.HuggingFace] = LlmEndpoints.HuggingFace,
             [LlmPresets.Kimi] = LlmEndpoints.Kimi,
             [LlmPresets.Mistral] = LlmEndpoints.Mistral,

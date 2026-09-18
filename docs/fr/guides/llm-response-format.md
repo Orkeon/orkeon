@@ -130,6 +130,8 @@ traduit une fois par `OpenAICompatibleProviderBase` — voir le
 | **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
 | `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
 | **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
+| **OpenRouter** † | `JsonSchema` | Documenté par endpoint (2026-09-18, non campagné) ; le provider n'envoie pas `provider.require_parameters`, un schéma peut donc être ignoré par un endpoint qui ne le supporte pas — la question de la première campagne. |
+| **Mammouth AI** † | `None` | Non documenté sur le proxy (2026-09-18, non campagné) ; un format déclaré produit l'avertissement structuré de capacité tant qu'une campagne ne l'a pas mesuré. |
 
 ## Comment ça circule dans l'orchestrateur
 

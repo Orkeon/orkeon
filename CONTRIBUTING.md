@@ -218,13 +218,18 @@ public async Task Agent_Should_Execute_Task_Successfully()
 
 ### The scope is frozen
 
-Orkeon already ships 14 LLM providers, 79 built-in tools, 6 memory stores, two
-RAG pipelines, RaggableTree, a scripting DSL, plugins, MCP, A2A and a Studio —
-maintained by one person. Until real users ask for more, **the functional
-surface does not grow**:
+Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators), 79
+built-in tools, 6 memory stores, two RAG pipelines, RaggableTree, a scripting
+DSL, plugins, MCP, A2A and a Studio — maintained by one person. Until real users
+ask for more, **the functional surface does not grow**:
 
-- no 15th LLM provider — the OpenAI-compatible base covers any endpoint that
-  speaks that dialect; point `Orkeon:Llm:BaseUrl` at it;
+- no 17th LLM provider — the OpenAI-compatible base covers any endpoint that
+  speaks that dialect; point `Orkeon:Llm:BaseUrl` at it. The two aggregators
+  (OpenRouter, Mammouth AI) are the one motivated exception, decided by the
+  owner on 2026-09-18: an aggregator declares capabilities of its own, writes
+  fields the base does not read (`reasoning`, `usage.cost`), and has to be
+  recognised by the tooling — none of which a `BaseUrl` gives. The rule
+  stands for everything else;
 - no new built-in tool — write yours in a `.ork.ts` script or a plugin, both
   are first-class and need no change here;
 - no new memory store, language adapter, or orchestration mode.

@@ -1010,4 +1010,17 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>write, no delete</value>
   </data>
+  <!-- LLM-09 -->
+  <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
+    <value>OpenRouter</value>
+  </data>
+  <data name="Studio.Settings.OpenRouterDesc" xml:space="preserve">
+    <value>445-model marketplace, vendor/model ids</value>
+  </data>
+  <data name="Studio.Settings.MammouthTitle" xml:space="preserve">
+    <value>Mammouth AI</value>
+  </data>
+  <data name="Studio.Settings.MammouthDesc" xml:space="preserve">
+    <value>French multi-model subscription, LiteLLM proxy</value>
+  </data>
 </root>

@@ -30,6 +30,28 @@ public static class HttpDefaults
     /// <summary>Azure OpenAI API key request header name.</summary>
     public const string AzureApiKeyHeader = "api-key";
 
+    // ── OpenRouter ──────────────────────────────────────────────────────────
+
+    /// <summary>
+    /// OpenRouter's application-attribution header naming the app's URL — literally
+    /// <c>HTTP-Referer</c>, as the vendor documents it, not the standard <c>Referer</c> that
+    /// <c>HttpRequestHeaders.Referrer</c> would emit (LLM-09, D-06).
+    /// </summary>
+    public const string OpenRouterRefererHeader = "HTTP-Referer";
+
+    /// <summary>OpenRouter's application-attribution header naming the app (<c>X-OpenRouter-Title</c>).</summary>
+    public const string OpenRouterTitleHeader = "X-OpenRouter-Title";
+
+    /// <summary>
+    /// The URL Orkeon attributes its OpenRouter traffic to. Constant, not configurable: it is
+    /// neither a secret nor a preference but the application's identity in OpenRouter's
+    /// public app ranking.
+    /// </summary>
+    public const string OpenRouterReferer = "https://github.com/Orkeon/orkeon";
+
+    /// <summary>The application title Orkeon attributes its OpenRouter traffic to.</summary>
+    public const string OpenRouterTitle = "Orkeon";
+
     // ── Content types ───────────────────────────────────────────────────────
 
     /// <summary>JSON content-type header value.</summary>

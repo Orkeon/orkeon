@@ -224,14 +224,19 @@ public async Task Agent_Should_Execute_Task_Successfully()
 
 ### Le périmètre est gelé
 
-Orkeon embarque déjà 14 fournisseurs LLM, 79 outils intégrés, 6 stores de
-mémoire, deux pipelines RAG, RaggableTree, un DSL de scripting, des plugins,
-MCP, A2A et un Studio — maintenus par une seule personne. Tant que de vrais
-utilisateurs n'en demandent pas davantage, **la surface fonctionnelle ne
-grandit pas** :
+Orkeon embarque déjà 16 fournisseurs LLM (quatorze vendeurs et deux
+agrégateurs), 79 outils intégrés, 6 stores de mémoire, deux pipelines RAG,
+RaggableTree, un DSL de scripting, des plugins, MCP, A2A et un Studio —
+maintenus par une seule personne. Tant que de vrais utilisateurs n'en
+demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
 
-- pas de 15ᵉ fournisseur LLM — la base compatible OpenAI couvre tout endpoint
-  qui parle ce dialecte ; pointez `Orkeon:Llm:BaseUrl` dessus ;
+- pas de 17ᵉ fournisseur LLM — la base compatible OpenAI couvre tout endpoint
+  qui parle ce dialecte ; pointez `Orkeon:Llm:BaseUrl` dessus. Les deux
+  agrégateurs (OpenRouter, Mammouth AI) sont l'unique exception motivée, actée
+  par le propriétaire le 2026-09-18 : un agrégateur déclare ses propres
+  capacités, écrit des champs que le socle ne lit pas (`reasoning`,
+  `usage.cost`) et doit être reconnu par l'outillage — rien de ce qu'une
+  `BaseUrl` apporte. La règle vaut pour tout le reste ;
 - pas de nouvel outil intégré — écrivez le vôtre dans un script `.ork.ts` ou
   un plugin, tous deux de premier rang et sans modification ici ;
 - pas de nouveau store de mémoire, adaptateur de langage ou mode d'orchestration.

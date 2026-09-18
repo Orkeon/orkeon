@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Polly;
+using System.Diagnostics.CodeAnalysis;
 using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -80,6 +81,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// overridden provider by provider (LLM-02).
     /// </remarks>
     protected virtual bool SupportsVisionContent => Capabilities.Vision;
+
+    /// <summary>
+    /// Wire name of the reasoning trace, in a buffered <c>choices[].message</c> and in a
+    /// streamed <c>choices[].delta</c>. The compatible family writes
+    /// <c>reasoning_content</c> (DeepSeek, Z.AI, the LiteLLM-normalised proxies); OpenRouter
+    /// writes <c>reasoning</c> and never the former (LLM-09), so the field read here is a
+    /// dialect detail one provider overrides rather than a second copy of the parser. The
+    /// Orkeon-side metadata key stays <c>reasoning_content</c> whatever the vendor calls the
+    /// field: it names a concept, not a wire field.
+    /// </summary>
+    protected virtual string ReasoningFieldName => "reasoning_content";
 
     private readonly IToolCallingStrategy? _toolCallingStrategy;
 
@@ -245,6 +257,18 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
             {
                 using var doc = JsonDocument.Parse(data);
+
+                // A vendor that fails AFTER the 200 (OpenRouter: an upstream 502 arrives as an
+                // SSE event carrying a root-level `error`) used to end this sequence normally,
+                // truncated content and all — the silence StreamingRejectionAsync removed for
+                // the pre-stream refusal, reintroduced one chunk later. Same channel, same
+                // exception: the sequence has no metadata, so it fails (D-07).
+                if (TryReadStreamError(doc.RootElement, out var streamError))
+                {
+                    LogMidStreamError(ProviderDisplayName, streamError.Label, streamError.SanitizedMessage);
+                    throw MidStreamRejection(streamError);
+                }
+
                 var choices = doc.RootElement.GetProperty("choices");
                 foreach (var choice in choices.EnumerateArray())
                 {
@@ -266,14 +290,19 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     /// <summary>
     /// Streams a multi-message chat completion over SSE: emits
-    /// <c>delta.content</c> as content deltas, <c>delta.reasoning_content</c> (DeepSeek
-    /// thinking mode) as reasoning deltas, accumulates <c>delta.tool_calls</c> fragments by
-    /// index, captures the final usage chunk (<c>stream_options.include_usage</c>), and
-    /// terminates with a <see cref="LlmStreamEventKind.Completed"/> event whose response is
-    /// equivalent to the non-streaming <see cref="ChatAsync"/> result — including a
-    /// synthesized OpenAI-shaped <see cref="LlmResponse.RawResponseBody"/> when the model
-    /// streamed tool calls, so tool-call parsers work unchanged. Providers that ignore
-    /// <c>stream_options</c> yield a Completed event with zero usage (degraded but safe).
+    /// <c>delta.content</c> as content deltas, the <see cref="ReasoningFieldName"/> delta
+    /// (<c>reasoning_content</c> in DeepSeek thinking mode, <c>reasoning</c> on OpenRouter)
+    /// as reasoning deltas, accumulates <c>delta.tool_calls</c> fragments by index, captures
+    /// the final usage chunk (<c>stream_options.include_usage</c>, with <c>usage.cost</c>
+    /// when the vendor bills in it), and terminates with a
+    /// <see cref="LlmStreamEventKind.Completed"/> event whose response is equivalent to the
+    /// non-streaming <see cref="ChatAsync"/> result — including a synthesized OpenAI-shaped
+    /// <see cref="LlmResponse.RawResponseBody"/> when the model streamed tool calls, so
+    /// tool-call parsers work unchanged. Providers that ignore <c>stream_options</c> yield a
+    /// Completed event with zero usage (degraded but safe). A chunk carrying a root-level
+    /// <c>error</c> ends the stream the way a pre-stream refusal does: the Completed event
+    /// carries the <c>error</c> metadata and whatever content arrived before it, never a
+    /// clean completion (D-07).
     /// </summary>
     public override async IAsyncEnumerable<LlmStreamEvent> ChatStreamingAsync(
         LlmMessage[] messages,
@@ -323,8 +352,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
             await foreach (var data in ReadSseStreamAsync(response, cancellationToken).ConfigureAwait(false))
             {
-                foreach (var ev in ParseChatStreamChunk(data, state))
+                foreach (var ev in ParseChatStreamChunk(data, state, ReasoningFieldName))
                     yield return ev;
+
+                // The vendor said the stream failed (`finish_reason: "error"` travels with it):
+                // nothing after that chunk is an answer, so the read stops here.
+                if (state.Error is not null)
+                    break;
             }
         }
         finally
@@ -347,7 +381,26 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         public int? CompletionTokens { get; set; }
         public int? CacheHitTokens { get; set; }
         public int? CacheMissTokens { get; set; }
+        /// <summary>Vendor-reported cost of the call, from <c>usage.cost</c> (OpenRouter bills in it).</summary>
+        public double? Cost { get; set; }
+        /// <summary>The root-level <c>error</c> a chunk carried, when the stream failed after the 200.</summary>
+        public StreamError? Error { get; set; }
     }
+
+    /// <summary>
+    /// A root-level <c>error</c> read out of a stream chunk — the shape OpenRouter documents
+    /// for a failure that happens after the HTTP 200 (<c>{"error":{"code":502,"message":…}}</c>
+    /// with <c>finish_reason: "error"</c>), and the one any OpenAI-compatible vendor that
+    /// fails mid-stream writes.
+    /// </summary>
+    /// <param name="Label">The vendor's <c>error.code</c>, else its <c>error.type</c>, else <c>mid-stream</c>.</param>
+    /// <param name="SanitizedMessage">The vendor's <c>error.message</c>, secrets redacted.</param>
+    /// <param name="StatusCode">
+    /// <c>error.code</c> when it is an HTTP status (OpenRouter mirrors the upstream status
+    /// there); null for a vendor-specific code, so a reader that separates "refused" from
+    /// "never reached the API" on the status is not misled.
+    /// </param>
+    private sealed record StreamError(string Label, string SanitizedMessage, HttpStatusCode? StatusCode);
 
     private sealed class StreamedToolCall
     {
@@ -361,7 +414,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// delta events to emit. Malformed chunks are skipped (defensive: a single bad frame
     /// must not kill the stream).
     /// </summary>
-    private static List<LlmStreamEvent> ParseChatStreamChunk(string data, ChatStreamState state)
+    private static List<LlmStreamEvent> ParseChatStreamChunk(string data, ChatStreamState state, string reasoningFieldName)
     {
         var events = new List<LlmStreamEvent>(1);
         JsonDocument doc;
@@ -382,13 +435,21 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             if (root.TryGetProperty("usage", out var usage) && usage.ValueKind == JsonValueKind.Object)
                 AccumulateUsage(usage, state);
 
+            // A failure after the 200 travels as a chunk with a root-level `error`. It used to
+            // be skipped as "no choices" and the stream completed cleanly, truncated (D-07).
+            if (TryReadStreamError(root, out var error))
+            {
+                state.Error = error;
+                return events;
+            }
+
             if (!root.TryGetProperty("choices", out var choices) || choices.ValueKind != JsonValueKind.Array)
                 return events;
 
             foreach (var choice in choices.EnumerateArray())
             {
                 if (choice.TryGetProperty("delta", out var delta) && delta.ValueKind == JsonValueKind.Object)
-                    AccumulateDelta(delta, state, events);
+                    AccumulateDelta(delta, state, events, reasoningFieldName);
             }
         }
 
@@ -404,9 +465,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ?? TryReadNestedInt(usage, "prompt_tokens_details", "cached_tokens")
             ?? state.CacheHitTokens;
         state.CacheMissTokens = TryReadInt(usage, "prompt_cache_miss_tokens") ?? state.CacheMissTokens;
+        state.Cost = TryReadDouble(usage, "cost") ?? state.Cost;
     }
 
-    private static void AccumulateDelta(JsonElement delta, ChatStreamState state, List<LlmStreamEvent> events)
+    private static void AccumulateDelta(
+        JsonElement delta, ChatStreamState state, List<LlmStreamEvent> events, string reasoningFieldName)
     {
         if (delta.TryGetProperty("content", out var content) && content.ValueKind == JsonValueKind.String)
         {
@@ -418,7 +481,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             }
         }
 
-        if (delta.TryGetProperty("reasoning_content", out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
+        if (delta.TryGetProperty(reasoningFieldName, out var reasoning) && reasoning.ValueKind == JsonValueKind.String)
         {
             var token = reasoning.GetString();
             if (!string.IsNullOrEmpty(token))
@@ -431,6 +494,76 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (delta.TryGetProperty("tool_calls", out var toolCalls) && toolCalls.ValueKind == JsonValueKind.Array)
             AccumulateToolCallFragments(toolCalls, state);
     }
+
+    /// <summary>
+    /// Reads a root-level <c>error</c> out of a stream chunk. Accepts the object form every
+    /// OpenAI-compatible vendor writes (<c>{message, code?, type?}</c>) and a bare string;
+    /// a <c>null</c> error is not an error.
+    /// </summary>
+    private static bool TryReadStreamError(JsonElement root, [NotNullWhen(true)] out StreamError? error)
+    {
+        error = null;
+        if (root.ValueKind != JsonValueKind.Object
+            || !root.TryGetProperty("error", out var element)
+            || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+        {
+            return false;
+        }
+
+        string message;
+        string? code = null;
+        if (element.ValueKind == JsonValueKind.Object)
+        {
+            message = element.TryGetProperty("message", out var m) && m.ValueKind == JsonValueKind.String
+                ? m.GetString() ?? ""
+                : element.GetRawText();
+            code = ReadErrorCode(element);
+        }
+        else
+        {
+            message = element.ValueKind == JsonValueKind.String ? element.GetString() ?? "" : element.GetRawText();
+        }
+
+        error = new StreamError(
+            code ?? "mid-stream",
+            LogSanitizer.SanitizeString(message),
+            AsHttpStatus(code));
+        return true;
+    }
+
+    /// <summary>The vendor's <c>error.code</c> (number or string), else its <c>error.type</c>.</summary>
+    private static string? ReadErrorCode(JsonElement error)
+    {
+        if (error.TryGetProperty("code", out var code))
+        {
+            if (code.ValueKind == JsonValueKind.Number)
+                return code.GetRawText();
+            if (code.ValueKind == JsonValueKind.String && code.GetString() is { Length: > 0 } text)
+                return text;
+        }
+
+        return error.TryGetProperty("type", out var type) && type.ValueKind == JsonValueKind.String
+            ? type.GetString()
+            : null;
+    }
+
+    /// <summary>An error code that is an HTTP status, or null when it is anything else.</summary>
+    private static HttpStatusCode? AsHttpStatus(string? code) =>
+        int.TryParse(code, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out var status)
+        && status is >= 400 and <= 599
+            ? (HttpStatusCode)status
+            : null;
+
+    /// <summary>
+    /// The token stream's form of a mid-stream error: the exception
+    /// <see cref="HttpLlmProviderBase.StreamingRejectionAsync(HttpResponseMessage, string, CancellationToken)"/> throws for a pre-stream refusal, with the same
+    /// wording, because an <c>IAsyncEnumerable&lt;string&gt;</c> has no metadata channel.
+    /// </summary>
+    private HttpRequestException MidStreamRejection(StreamError error) =>
+        new(
+            $"{ProviderDisplayName} API error: {error.Label} - {error.SanitizedMessage}",
+            inner: null,
+            statusCode: error.StatusCode);
 
     private static void AccumulateToolCallFragments(JsonElement toolCalls, ChatStreamState state)
     {
@@ -474,6 +607,21 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             metadata.Add("reasoning_content", state.Reasoning.ToString());
         else if (!string.IsNullOrEmpty(dialectReasoning))
             metadata.Add("reasoning_content", dialectReasoning);
+        if (state.Cost is { } cost)
+            metadata.Add("cost", cost);
+
+        // The chat stream's form of a mid-stream error: the response CreateApiErrorResponse
+        // builds for a 4xx — `error` + `error_type` — over the partial content, so a caller
+        // that checks `error` (as it must for a pre-stream refusal) sees this one too. The
+        // half-received tool calls are not reassembled: nothing in a failed stream is an
+        // instruction.
+        if (state.Error is { } error)
+        {
+            LogMidStreamError(ProviderDisplayName, error.Label, error.SanitizedMessage);
+            metadata
+                .AddError($"{ProviderDisplayName} API error: {error.Label} - {error.SanitizedMessage}")
+                .AddErrorType("APIError");
+        }
 
         return new LlmResponse
         {
@@ -486,7 +634,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
                 ?? (state.CacheHitTokens is { } streamedHit ? DeriveCacheMiss(streamedHit, state.PromptTokens) : null),
             Model = effectiveConfig.Model,
             Metadata = metadata.Build().ToDictionary(),
-            RawResponseBody = state.ToolCalls.Count > 0 ? SynthesizeChatBody(state) : null,
+            RawResponseBody = state.Error is null && state.ToolCalls.Count > 0 ? SynthesizeChatBody(state) : null,
         };
     }
 
@@ -1219,6 +1367,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         var extractedReasoning = string.IsNullOrEmpty(reasoningFromChunks) ? reasoningFromDialect : reasoningFromChunks;
         if (!string.IsNullOrEmpty(extractedReasoning))
             metadata.Add("reasoning_content", extractedReasoning);
+        // The one vendor of the fleet that bills in the response (OpenRouter, in credits/USD)
+        // writes it here; everyone else leaves the key absent. Exposed, not accounted for:
+        // CostBudgetManager keeps estimating from the pricing registry (D-08).
+        if (TryReadDouble(usage, "cost") is { } cost)
+            metadata.Add("cost", cost);
 
         return new LlmResponse
         {
@@ -1341,6 +1494,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         return TryReadInt(nested, propertyName);
     }
 
+    private static double? TryReadDouble(JsonElement element, string propertyName)
+    {
+        if (!element.TryGetProperty(propertyName, out var prop)) return null;
+        if (prop.ValueKind != JsonValueKind.Number) return null;
+        return prop.TryGetDouble(out var value) ? value : null;
+    }
+
     /// <summary>
     /// Derives the cache-miss side from a read-only cache metric: providers that report only
     /// <c>cached_tokens</c> (OpenAI, Z.AI) imply <c>miss = prompt_tokens - cached_tokens</c>.
@@ -1361,7 +1521,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     {
         ArgumentNullException.ThrowIfNull(doc);
         if (Capabilities.Thinking != ThinkingSupport.None)
-            ExtractReasoningContent(doc.RootElement, metadata);
+            ExtractReasoningContent(doc.RootElement, metadata, ReasoningFieldName);
     }
 
     /// <summary>
@@ -1369,8 +1529,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// reasoning models — into the metadata bag when present.
     /// </summary>
     protected static void ExtractReasoningContent(JsonElement root, LlmResponseMetadata.Builder metadata)
+        => ExtractReasoningContent(root, metadata, "reasoning_content");
+
+    /// <summary>
+    /// Reads <c>choices[0].message.{fieldName}</c> — the visible thinking trace of reasoning
+    /// models, under the name this dialect gives it (<see cref="ReasoningFieldName"/>) — into
+    /// the metadata bag, under the Orkeon key <c>reasoning_content</c>, when present.
+    /// </summary>
+    protected static void ExtractReasoningContent(JsonElement root, LlmResponseMetadata.Builder metadata, string fieldName)
     {
         ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentException.ThrowIfNullOrWhiteSpace(fieldName);
         if (!root.TryGetProperty("choices", out var choices))
             return;
 
@@ -1381,7 +1550,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (!firstChoice.TryGetProperty("message", out var message))
             return;
 
-        if (message.TryGetProperty("reasoning_content", out var reasoning)
+        if (message.TryGetProperty(fieldName, out var reasoning)
+            && reasoning.ValueKind == JsonValueKind.String
             && reasoning.GetString() is { Length: > 0 } reasoningText)
         {
             metadata.Add("reasoning_content", reasoningText);
@@ -1542,6 +1712,9 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
 
     [LoggerMessage(Level = LogLevel.Error, Message = "{ProviderName} streaming error: {StatusCode}")]
     private partial void LogStreamingError(HttpStatusCode statusCode, string providerName);
+
+    [LoggerMessage(Level = LogLevel.Error, Message = "{ProviderName} stream failed after the response started ({Code}): {Error}")]
+    private partial void LogMidStreamError(string providerName, string code, string error);
 
     /// <summary>
     /// The end of the silence (LLM-02): an option the caller declared that this provider

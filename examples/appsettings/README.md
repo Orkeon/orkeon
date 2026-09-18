@@ -17,12 +17,17 @@ or drop an `appsettings.json` next to the crew's `config.yaml`.
 | `appsettings.gemini.local.json.example` | Google Gemini (OpenAI-compatible endpoint, `gemini-3.7-flash`). |
 | `appsettings.grok.local.json.example` | Grok / x.AI (OpenAI-compatible endpoint, `grok-4.6`). |
 | `appsettings.minimax.local.json.example` | MiniMax (OpenAI-compatible endpoint, `MiniMax-M2`; intl + mainland hosts). |
+| `appsettings.openrouter.local.json.example` | OpenRouter (model marketplace, `vendor/model` ids, `google/gemini-3.7-flash`). |
+| `appsettings.mammouth.local.json.example` | Mammouth AI (French subscription, LiteLLM proxy, bare vendor ids — `BaseUrl` first, `gemini-3.7-flash`). |
 | `appsettings.glm-medium.local.json.example` | Z.AI GLM-5.2 with `Thinking.Effort = medium`. |
 | `appsettings.local.json.example` | Neutral template (defaults to DeepSeek); edit `BaseUrl`/`Model`/`ApiKey` for any provider. |
 
 The provider is **auto-detected from the `Llm.BaseUrl` host** — there is no `Provider`
 key. `api.deepseek.com` → DeepSeek, `api.z.ai` → Z.AI GLM, `api.openai.com` → OpenAI,
-`.../engines/...` (Docker Model Runner) → OpenAI-compatible, etc.
+`openrouter.ai` → OpenRouter, `api.mammouth.ai` → Mammouth, `.../engines/...` (Docker
+Model Runner) → OpenAI-compatible, etc. The two aggregators are the case where the host
+matters most: Mammouth serves the vendors' own model names, so a `Model` copied from
+another profile without its `BaseUrl` talks to that vendor, not to Mammouth.
 
 ## Inside the `orkeon-runners` container image
 

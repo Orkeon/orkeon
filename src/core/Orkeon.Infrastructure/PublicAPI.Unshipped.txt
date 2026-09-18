@@ -14,3 +14,33 @@ const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider = "gen_ai
 *REMOVED*const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "orkeon.tool.name" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "gen_ai.tool.name" -> string!
 const Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.InitialContextVariable = "initial_context" -> string!
+static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractReasoningContent(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata, string! fieldName) -> void
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ReasoningFieldName.get -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterReferer = "https://github.com/Orkeon/orkeon" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterRefererHeader = "HTTP-Referer" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterTitle = "Orkeon" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterTitleHeader = "X-OpenRouter-Title" -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Mammouth = "https://api.mammouth.ai/v1" -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.OpenRouter = "https://openrouter.ai/api/v1" -> string!
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ConfigureHttpClient(System.Net.Http.HttpClient! client, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ReasoningFieldName.get -> string!

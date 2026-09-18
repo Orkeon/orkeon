@@ -66,7 +66,7 @@ Options:
   -p, --provider <keys>  one key, or several separated by commas
                          openai | anthropic | ollama | azure | together | qwen
                          | deepseek | kimi | mistral | huggingface | zai
-                         | gemini | grok | minimax
+                         | gemini | grok | minimax | openrouter | mammouth
       --all              every provider declared in the configuration (needs --config)
       --parallel         run the selected providers concurrently. Each provider's own models
                          still run one after another: they share its rate limit, and racing

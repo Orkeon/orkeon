@@ -15,7 +15,7 @@ internal sealed class LlmProbeCommandOptions
 {
     /// <summary>Provider key, as accepted by <c>LlmProviderFactory</c>.</summary>
     [Option('p', "provider", Required = true,
-        HelpText = "Provider: openai | anthropic | ollama | azure | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok | minimax.")]
+        HelpText = "Provider: openai | anthropic | ollama | azure | together | qwen | deepseek | kimi | mistral | huggingface | zai | gemini | grok | minimax | openrouter | mammouth.")]
     public string Provider { get; set; } = "";
 
     /// <summary>Model identifier; defaults to the provider's own default when omitted.</summary>

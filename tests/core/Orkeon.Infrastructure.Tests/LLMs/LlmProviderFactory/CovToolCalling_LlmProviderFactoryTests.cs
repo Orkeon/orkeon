@@ -45,6 +45,8 @@ public class CovToolCalling_LlmProviderFactoryTests
     [InlineData("moonshot")]
     [InlineData("huggingface")]
     [InlineData("hf")]
+    [InlineData("openrouter")]
+    [InlineData("mammouth")]
     public void Create_ExplicitType_AllProviders(string providerType)
     {
         var provider = NewFactory().Create(providerType, LlmConfig.Create("some-model"));
@@ -68,6 +70,8 @@ public class CovToolCalling_LlmProviderFactoryTests
     [InlineData("https://router.hf.co/v1")]                       // huggingface
     [InlineData("https://api.anthropic.com/v1")]                  // anthropic
     [InlineData("http://localhost:11434")]                        // ollama
+    [InlineData("https://openrouter.ai/api/v1")]                  // openrouter
+    [InlineData("https://api.mammouth.ai/v1")]                    // mammouth
     public void Create_InfersFromBaseUrl(string baseUrl)
     {
         var config = LlmConfig.Create("custom-model") with { BaseUrl = new Uri(baseUrl) };

@@ -93,6 +93,10 @@ public static class LlmProviderDetector
         Add(LlmProviderEndpoints.Gemini, LlmProviderKeys.Gemini);
         Add(LlmProviderEndpoints.Grok, LlmProviderKeys.Grok);
         Add(LlmProviderEndpoints.MiniMax, LlmProviderKeys.MiniMax);
+        // The two aggregators (LLM-09): the detected provider shown next to the URL is the
+        // visual guard against a Mammouth config talking to the vendor the model name suggests.
+        Add(LlmProviderEndpoints.OpenRouter, LlmProviderKeys.OpenRouter);
+        Add(LlmProviderEndpoints.Mammouth, LlmProviderKeys.Mammouth);
 
         // The mainland-China Moonshot twin, documented on LlmEndpoints.Kimi.
         hosts[LlmProviderEndpoints.KimiChinaHost] = "kimi";

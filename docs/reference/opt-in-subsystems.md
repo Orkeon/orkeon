@@ -283,7 +283,7 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   (`AddOrkeonFileSystem(configuration)` in real hosts).
 - **Known limits**: vision payload composition is capability-driven
   (`LlmProviderCapabilities.Vision`, translated once by `OpenAICompatibleProviderBase`)
-  — **all 14 providers** declare it (DeepSeek since the 2026-08-30 campaign measured
+  — **all 16 providers** declare it (DeepSeek since the 2026-08-30 campaign measured
   `deepseek-v4-flash-vision-exp`); a provider without the capability degrades
   multi-modal messages to their text fallback
   (`LlmMessage.Content`). Supported image formats: png, jpeg, gif, webp.

@@ -2,8 +2,9 @@
 
 # LLM provider validation campaigns
 
-This folder carries the **real-execution evidence** for Orkeon's 14 LLM providers: the
-scripts that launch the campaigns, and the archived report of each one.
+This folder carries the **real-execution evidence** for Orkeon's 16 LLM providers (fourteen
+vendors and two aggregators): the scripts that launch the campaigns, and the archived report
+of each one.
 
 > **Why this folder exists.** The repository holds ~400 unit tests on the LLM providers,
 > and **every one of them talks to a mocked HTTP handler**. A mock proves that Orkeon sends
@@ -58,7 +59,7 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 
 | Option | Role |
 |---|---|
-| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax` |
+| `--provider <keys>` | One key, or several separated by commas — `openai`, `anthropic`, `ollama`, `azure`, `together`, `qwen`, `deepseek`, `kimi`, `mistral`, `huggingface`, `zai`, `gemini`, `grok`, `minimax`, `openrouter`, `mammouth` |
 | `--all` | Every provider declared in the JSON |
 | `--parallel` | Runs the selected providers simultaneously (see below) |
 | `--model <id\|glob>` | An identifier, or a pattern (`gpt-5.6-*`, `*flash*`) |
@@ -140,6 +141,7 @@ provider's SDK, declared in `lib/catalog.json`:
 | `together` · `togetherai` | `TOGETHER_API_KEY` | `huggingface` · `hf` | `HF_TOKEN` |
 | `ollama` | *none* | `zai` · `glm` · `zhipu` | `ZAI_API_KEY` |
 | `gemini` · `google` | `GEMINI_API_KEY` | `grok` · `xai` | `XAI_API_KEY` |
+| `openrouter` | `OPENROUTER_API_KEY` | `mammouth` | `MAMMOUTH_API_KEY` |
 
 `--api-key-env` wins, then the `apiKeyEnv` field of the configuration, then this table, and
 finally `ORKEON_LLM_API_KEY`. The default used to be `ORKEON_LLM_API_KEY` for all thirteen:
@@ -167,6 +169,8 @@ JSON > the catalog's `defaultModel`.
 | `gemini` | `gemini-3.7-flash` | *(the default sees)* |
 | `grok` | `grok-4.6` | *(the default sees)* |
 | `minimax` | `MiniMax-M2` | *(no companion: the VL family is documented but absent from the platform's `/models`)* |
+| `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* |
+| `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* |
 
 These identifiers come from the §6.x sections of the matrix, **not from the defaults compiled
 into the providers**: six of those are flagged there as withdrawn or wrong (G-01 to G-04,

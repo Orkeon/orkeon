@@ -79,6 +79,31 @@ public static class LlmProviderDefaultModels
     public const string HuggingFace = "meta-llama/Llama-3.1-8B-Instruct";
 
     /// <summary>
+    /// OpenRouter — the fleet's Gemini default under its marketplace identifier
+    /// (<c>vendor/model</c> is mandatory there). One model, three transports (LLM-09, D-03):
+    /// direct Gemini is campaigned (11/0/1 on 2026-08-30), and the same model behind the
+    /// aggregator isolates the transport — a red here with a green in direct is a fact about
+    /// OpenRouter, not about the model. Present in the public catalog on 2026-09-18 with
+    /// reasoning, <c>response_format</c> + schema, tools, vision and free
+    /// <c>temperature</c>. <c>openrouter/auto</c> is refused as a default: an alias that
+    /// drifts (the served model changes without notice, price -1) gives a verdict nobody
+    /// can reproduce. Compiled from documentation only: a default is a claim until a
+    /// campaign has archived an M1 on it — the Mistral lesson.
+    /// </summary>
+    public const string OpenRouter = "google/gemini-3.7-flash";
+
+    /// <summary>
+    /// Mammouth AI — the fleet's Gemini default under its bare identifier (Mammouth serves
+    /// the vendors' own strings, no vendor prefix). Same one-model-three-transports rationale
+    /// as <see cref="OpenRouter"/>; listed on <c>api.mammouth.ai/public/models</c> on
+    /// 2026-09-18 at 1.5 / 7.5 $/M (twice the direct price — a market fact, not a reason to
+    /// change the default). <c>mammouth-recommended</c> is refused as a default for the same
+    /// reason as <c>openrouter/auto</c>. Compiled from documentation only: a default is a
+    /// claim until a campaign has archived an M1 on it — the Mistral lesson, verbatim.
+    /// </summary>
+    public const string Mammouth = "gemini-3.7-flash";
+
+    /// <summary>
     /// Docker Model Runner. Parity with the committed <c>examples/appsettings/appsettings.json</c>,
     /// which <c>orkeon init</c> writes and Studio offers.
     /// </summary>

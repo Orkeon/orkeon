@@ -86,6 +86,18 @@ public static class LlmProviderKeys
     public const string XaiAlias = "xai";
 
     /// <summary>
+    /// OpenRouter — the model marketplace (445 models from 60 vendors on 2026-09-18), one of
+    /// the two aggregators the scope freeze was lifted for (LLM-09, D-00). No alias.
+    /// </summary>
+    public const string OpenRouter = "openrouter";
+
+    /// <summary>
+    /// Mammouth AI — the French multi-model subscription whose API credits drive Orkeon, the
+    /// other aggregator of LLM-09. No alias.
+    /// </summary>
+    public const string Mammouth = "mammouth";
+
+    /// <summary>
     /// Docker Model Runner's llama.cpp OpenAI-compatible endpoint. Detected from a URL rather
     /// than written by a user, and driven through the OpenAI dialect.
     /// </summary>
@@ -101,14 +113,16 @@ public static class LlmProviderKeys
     public const string Custom = "custom";
 
     /// <summary>
-    /// The fourteen canonical keys, aliases excluded, in the order the documentation lists the
-    /// providers. A set rather than fourteen comparisons: a provider added to the factory and
-    /// forgotten in the tooling is the omission that pairwise checks do not see.
+    /// The sixteen canonical keys, aliases excluded, in the order the documentation lists the
+    /// providers — fourteen vendors and the two aggregators. A set rather than sixteen
+    /// comparisons: a provider added to the factory and forgotten in the tooling is the
+    /// omission that pairwise checks do not see.
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
         OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral,
         DeepSeek, Kimi, Qwen, Together, HuggingFace, Zai, Gemini, Grok, MiniMax,
+        OpenRouter, Mammouth,
     ];
 
     /// <summary>

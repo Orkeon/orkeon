@@ -22,6 +22,8 @@ Implemented providers:
 | Google Gemini | `GeminiLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Grok (x.AI) | `GrokLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | MiniMax | `MiniMaxLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| OpenRouter (aggregator) | `OpenRouterLlmProvider` | `Orkeon.Infrastructure.LLMs` |
+| Mammouth AI (aggregator) | `MammouthLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
 Generic adapters (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) are available in `Orkeon.Infrastructure.LLMs.Adapters` to integrate other providers compatible with the `IChatClient` interface.
 
@@ -43,8 +45,14 @@ a payload the API rejected with a 4xx and re-send it once (generate and chat pat
 streaming never retries). Kimi uses it for Moonshot's `invalid temperature: only 1 is
 allowed for this model` — the mandated value is read from the rejection itself (which
 models mandate it is decided server-side, a hard-coded list would drift) and the
-substitution is logged as a structured warning. All 14 providers are
-`IStreamingLlmProvider`s, and `RateLimitedLlmProvider` decorates any of them. The
+substitution is logged as a structured warning. Two more dialect seams serve the
+aggregators (LLM-09): `ReasoningFieldName` names the vendor field the reasoning trace is
+read from (`reasoning_content` by default, `reasoning` on OpenRouter — the Orkeon metadata
+key stays `reasoning_content`), and `usage.cost` becomes the `cost` metadata wherever a
+vendor bills in the response. A chunk carrying a root-level `error` after the HTTP 200
+ends a stream the way a pre-stream refusal does — `error` metadata on the chat stream, an
+`HttpRequestException` on the token stream — never as a clean completion. All 16 providers
+are `IStreamingLlmProvider`s, and `RateLimitedLlmProvider` decorates any of them. The
 per-provider matrix lives in [the provider comparison](../reference/llm-providers-comparison.md).
 
 ## Validating a provider against its real API

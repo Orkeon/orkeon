@@ -66,6 +66,41 @@ public sealed class LlmDefaultsTests
     }
 
     [Fact]
+    public void llm_openrouter_returns_provider_named_openrouter_with_its_marketplace_default_model()
+    {
+        var built = Eval<JsLlmConfig>(null, null, """llm.openrouter({});""");
+
+        // LLM-09: the fleet's Gemini default under the marketplace's mandatory vendor prefix.
+        Assert.Equal("openrouter", built.provider);
+        Assert.Equal("google/gemini-3.7-flash", built.model);
+    }
+
+    [Fact]
+    public void llm_mammouth_returns_provider_named_mammouth_with_its_bare_default_model()
+    {
+        var built = Eval<JsLlmConfig>(null, null, """llm.mammouth({});""");
+
+        // LLM-09: the same model, under the bare identifier the proxy serves it as.
+        Assert.Equal("mammouth", built.provider);
+        Assert.Equal("gemini-3.7-flash", built.model);
+    }
+
+    [Theory]
+    [InlineData("openrouter", "google/gemini-3.7-flash")]
+    [InlineData("mammouth", "gemini-3.7-flash")]
+    public void llm_default_resolves_an_aggregator_with_its_own_model_not_the_platform_default(
+        string providerKey, string expectedModel)
+    {
+        // Without a switch case the fallback is LlmConfig.Default(): gpt-5.6-sol, which
+        // OpenRouter refuses outright (no vendor prefix).
+        var cfg = Cfg(("Orkeon:DefaultLlmProvider", providerKey));
+        var def = Eval<JsLlmConfig>(cfg, null, "llm.default");
+
+        Assert.Equal(providerKey, def.provider);
+        Assert.Equal(expectedModel, def.model);
+    }
+
+    [Fact]
     public void llm_default_resolves_OpenAI_when_configured()
     {
         var cfg = Cfg(("Orkeon:DefaultLlmProvider", "openai"));

@@ -14,7 +14,7 @@
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <PackageId>Orkeon</PackageId>
-    <Description>Build and orchestrate AI agent teams in .NET — the complete Orkeon framework in one package: agents, crews and six orchestration modes, 14 LLM providers, 6 memory stores, staged RAG pipeline, and semantic codebase analysis.</Description>
+    <Description>Build and orchestrate AI agent teams in .NET — the complete Orkeon framework in one package: agents, crews and six orchestration modes, 16 LLM providers, 6 memory stores, staged RAG pipeline, and semantic codebase analysis.</Description>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <OrkeonFreezePublicApi>false</OrkeonFreezePublicApi>
     <IncludeBuildOutput>false</IncludeBuildOutput>

@@ -128,7 +128,7 @@ Options (`Orkeon:MultiModal`): `Enabled`, `MaxImageSizeBytes` (20 MB by default)
 
 | Capability | Supported |
 |---|---|
-| Vision providers (capability `Vision = true`) | All 14: Anthropic, OpenAI, Azure OpenAI, DeepSeek (per model, `deepseek-v4-flash-vision-exp`), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model, VL family), Mistral, Ollama (native `images`), Qwen, TogetherAI, Z.AI |
+| Vision providers (capability `Vision = true`) | All 16: Anthropic, OpenAI, Azure OpenAI, DeepSeek (per model, `deepseek-v4-flash-vision-exp`), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model, VL family), Mistral, Ollama (native `images`), Qwen, TogetherAI, Z.AI, OpenRouter (per model, not campaigned) and Mammouth AI (per model, from the vendor's `text, image` list — not campaigned) |
 | Provider without the capability | Degradation to the `LlmMessage.Content` text fallback, with a structured warning naming the dropped parts |
 | Image MIME types | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
 | Image sources | Raw bytes (base64), http(s) URL, base64 data URL |

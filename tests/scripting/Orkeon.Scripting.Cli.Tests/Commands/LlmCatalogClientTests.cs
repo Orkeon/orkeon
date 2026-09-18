@@ -27,6 +27,17 @@ public sealed class LlmCatalogClientTests
     private const string TogetherBody =
         """[{"id":"meta-llama/Llama-3.3-70B-Instruct-Turbo"},{"id":"Qwen/Qwen2.5-72B"}]""";
 
+    /// <summary>
+    /// OpenRouter's public catalogue (measured 2026-09-18): the OpenAI envelope, ids in
+    /// <c>vendor/model</c> form with routing suffixes and the router's own slugs.
+    /// </summary>
+    private const string OpenRouterBody =
+        """{"data":[{"id":"google/gemini-3.7-flash","name":"Google: Gemini 3.7 Flash","context_length":1048576},{"id":"openrouter/auto"},{"id":"deepseek/deepseek-v4-flash:free"}]}""";
+
+    /// <summary>Mammouth's catalogue shape (its public twin, measured 2026-09-18): bare vendor ids.</summary>
+    private const string MammouthBody =
+        """{"object":"list","data":[{"id":"gemini-3.7-flash","object":"model","owned_by":"openai"},{"id":"mammouth-recommended","object":"model","owned_by":"openai"}]}""";
+
     private static async Task<IReadOnlyList<string>> ListAsync(
         StubHttpMessageHandler handler, string provider, string? apiKey = "unused-in-tests")
     {
@@ -66,6 +77,40 @@ public sealed class LlmCatalogClientTests
         Assert.Equal(["gpt-4", "gpt-5.6-luna", "gpt-5.6-sol"], models);
         var request = Assert.Single(handler.Requests);
         Assert.Equal("https://api.openai.com/v1/models", request.RequestUri?.ToString());
+        Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+    }
+
+    /// <summary>
+    /// The marketplace ids travel as-is — the vendor prefix, the <c>:free</c> suffix and the
+    /// router slug are all part of the identifier a campaign or a config must write (LLM-09).
+    /// </summary>
+    [Fact]
+    public async Task ShouldReadTheOpenRouterCatalogue_KeepingTheVendorPrefixedIds()
+    {
+        using var handler = new StubHttpMessageHandler(OpenRouterBody);
+
+        var models = await ListAsync(handler, "openrouter");
+
+        Assert.Equal(["deepseek/deepseek-v4-flash:free", "google/gemini-3.7-flash", "openrouter/auto"], models);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("https://openrouter.ai/api/v1/models", request.RequestUri?.ToString());
+        Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
+    }
+
+    /// <summary>
+    /// Mammouth's authenticated <c>/v1/models</c> is called like every OpenAI-compatible
+    /// catalogue — never its public twin (D-10), and the bare vendor ids come back as such.
+    /// </summary>
+    [Fact]
+    public async Task ShouldReadTheMammouthCatalogue_FromTheAuthenticatedEndpoint()
+    {
+        using var handler = new StubHttpMessageHandler(MammouthBody);
+
+        var models = await ListAsync(handler, "mammouth");
+
+        Assert.Equal(["gemini-3.7-flash", "mammouth-recommended"], models);
+        var request = Assert.Single(handler.Requests);
+        Assert.Equal("https://api.mammouth.ai/v1/models", request.RequestUri?.ToString());
         Assert.Equal("Bearer", request.Headers.Authorization?.Scheme);
     }
 

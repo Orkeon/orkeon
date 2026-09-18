@@ -123,7 +123,7 @@ The project follows Clean Architecture with clear separation of concerns:
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with the full attribute surface
 - ✅ 79 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XLSX (read/write), XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
-- ✅ 14 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax
+- ✅ 16 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax, plus the two aggregators OpenRouter and Mammouth AI (LLM-09 — documentation-first, campaign-pending)
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
 - ✅ Tool validation framework with security, rate limiting, telemetry
@@ -196,6 +196,8 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ TogetherAI LLM provider implementation (`TogetherAiLlmProvider`)
 - ✅ HuggingFace LLM provider implementation (`HuggingFaceLlmProvider`)
 - ✅ Z.AI (Zhipu GLM) LLM provider implementation (`ZaiLlmProvider`, thinking + context-cache metrics)
+- ✅ OpenRouter LLM provider implementation (`OpenRouterLlmProvider`, model marketplace — `vendor/model` ids, `reasoning` field + request object, `usage.cost`, attribution headers; documented 2026-09-18, not campaigned yet)
+- ✅ Mammouth AI LLM provider implementation (`MammouthLlmProvider`, French subscription proxy — bare vendor ids, reached by host or key only; documented 2026-09-18, not campaigned yet)
 - ✅ SQLite memory provider (`SqliteMemoryProvider`, Microsoft.Data.Sqlite — persistent storage, cosine vector search; wire with type `"sqlite"` in `MemoryProviderFactory`)
 - ✅ File system tools implementations
 - ✅ ChromaDB vector store (`ChromaDbMemoryProvider`)
@@ -204,7 +206,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 ### Key Architectural Components
 
-**LLM Integration**: 14 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, Gemini, Grok, MiniMax), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
+**LLM Integration**: 16 providers implemented (OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, Gemini, Grok, MiniMax, and the two aggregators OpenRouter and Mammouth AI), all extending `HttpLlmProviderBase`. Simple HTTP-based providers. Full HTTP exchange logging via `LlmLoggingDelegatingHandler` (headers + payload, sanitized).
 
 Each provider declares an `LlmProviderCapabilities` (Domain value object, exposed on `ILlmProvider`) stating what its API really supports: `ResponseFormat` (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`. `OpenAICompatibleProviderBase` writes the OpenAI dialect once from that declaration; Anthropic (`output_config`, `thinking: adaptive`, `cache_control`), Ollama (`format`, `think`, `images`) and Qwen (`enable_thinking`, `thinking_budget`) override the hook for their own. **An option declared on a provider that cannot honour it produces a structured warning — never a silent drop.** Add a capability to the record and every provider that declares it inherits the translation.
 
@@ -435,7 +437,7 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 ### Infrastructure Layer (Outer Circle)
 - Implementations of Application interfaces (adapters)
 - External service integrations:
-  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Gemini, Grok, MiniMax, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI)
+  - LLM Providers (OpenAI, Ollama, Anthropic, AzureOpenAI, Gemini, Grok, MiniMax, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI, OpenRouter, Mammouth AI)
   - Memory Stores (Redis, SQLite, InMemory, ChromaDB, Pinecone, LanceDB)
   - File System access
   - HTTP clients

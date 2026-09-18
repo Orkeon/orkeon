@@ -16,9 +16,12 @@ namespace Orkeon.Scripting.Cli.Commands;
 /// upstream while the constant in the repo stayed put.
 /// </para>
 /// <para>
-/// Four dialects cover the fourteen providers. Azure has none in deployment mode — deployments
+/// Four dialects cover the sixteen providers. Azure has none in deployment mode — deployments
 /// are names an operator chose, not a public catalogue — and says so with a typed error rather
-/// than returning an empty list that would read as "this provider serves nothing".
+/// than returning an empty list that would read as "this provider serves nothing". The two
+/// aggregators answer the OpenAI shape too: OpenRouter's <c>/models</c> is public (the key is
+/// sent anyway), Mammouth's sits behind the key — its public twin <c>/public/models</c> is a
+/// documentation source, not a code path (LLM-09, D-10).
 /// </para>
 /// </remarks>
 internal static class LlmCatalogClient
@@ -31,6 +34,7 @@ internal static class LlmCatalogClient
         "gemini", "google",
         "grok", "xai",
         "minimax",
+        "openrouter", "mammouth",
     };
 
     /// <summary>Default base URL per provider key, mirroring what the factory would use.</summary>
@@ -55,6 +59,8 @@ internal static class LlmCatalogClient
         ["grok"] = LlmEndpoints.Grok,
         ["xai"] = LlmEndpoints.Grok,
         ["minimax"] = LlmEndpoints.MiniMax,
+        ["openrouter"] = LlmEndpoints.OpenRouter,
+        ["mammouth"] = LlmEndpoints.Mammouth,
         ["ollama"] = LlmEndpoints.OllamaDefault,
     };
 

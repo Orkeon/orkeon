@@ -97,6 +97,8 @@ internal static class DoctorCommand
         ["TogetherAiLlmProvider"] = "together",
         ["HuggingFaceLlmProvider"] = "huggingface",
         ["ZaiLlmProvider"] = "zai",
+        ["OpenRouterLlmProvider"] = "openrouter",
+        ["MammouthLlmProvider"] = "mammouth",
         // AzureOpenAILlmProvider intentionally absent: deployments, no public catalogue.
     };
 

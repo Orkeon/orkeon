@@ -36,6 +36,7 @@ public class ProviderCapabilityPayloadTests
         nameof(QwenLlmProvider), nameof(HuggingFaceLlmProvider), nameof(ZaiLlmProvider),
         nameof(DeepSeekLlmProvider), nameof(AnthropicLlmProvider), nameof(OllamaLlmProvider),
         nameof(GrokLlmProvider), nameof(MiniMaxLlmProvider), nameof(GeminiLlmProvider),
+        nameof(OpenRouterLlmProvider), nameof(MammouthLlmProvider),
     ];
 
     // ── The declaration itself ──────────────────────────────────────────────
@@ -81,6 +82,7 @@ public class ProviderCapabilityPayloadTests
     [InlineData(nameof(ZaiLlmProvider))]
     [InlineData(nameof(DeepSeekLlmProvider))]
     [InlineData(nameof(GrokLlmProvider))]
+    [InlineData(nameof(OpenRouterLlmProvider))]
     public async Task ShouldSendJsonObjectConstraint_OnTheOpenAiCompatibleFamily(string providerTypeName)
     {
         var body = await ProviderProbe.CapturePayloadAsync(providerTypeName, config => config with
@@ -145,6 +147,7 @@ public class ProviderCapabilityPayloadTests
     [InlineData(nameof(GrokLlmProvider))]
     [InlineData(nameof(TogetherAiLlmProvider))]
     [InlineData(nameof(MistralLlmProvider))]
+    [InlineData(nameof(OpenRouterLlmProvider))]
     public async Task ShouldSendTheSchema_WhenTheProviderValidatesOne(string providerTypeName)
     {
         var body = await ProviderProbe.CapturePayloadAsync(providerTypeName, config => config with
@@ -163,6 +166,24 @@ public class ProviderCapabilityPayloadTests
         Assert.Equal("string",
             schema.GetProperty("schema").GetProperty("properties").GetProperty("answer")
                 .GetProperty("type").GetString());
+    }
+
+    /// <summary>
+    /// The aggregator declared from documentation alone (LLM-09, D-04): what the vendor does
+    /// not document is reported, never written — the MiniMax rule, until a campaign measures it.
+    /// </summary>
+    [Theory]
+    [InlineData(nameof(MiniMaxLlmProvider))]
+    [InlineData(nameof(MammouthLlmProvider))]
+    public async Task ShouldReportAResponseFormat_WhereNothingIsDeclared(string providerTypeName)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
+        {
+            ResponseFormat = LlmResponseFormat.JsonObject(),
+        });
+
+        Assert.False(probe.Body.TryGetProperty("response_format", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("response_format", StringComparison.Ordinal));
     }
 
     /// <summary>
@@ -222,6 +243,42 @@ public class ProviderCapabilityPayloadTests
         });
 
         Assert.Equal("high", body.GetProperty("reasoning_effort").GetString());
+    }
+
+    /// <summary>
+    /// OpenRouter's dialect carries the whole thinking intention in one <c>reasoning</c>
+    /// object (LLM-09, D-04) — the first-level <c>reasoning_effort</c> is removed so the same
+    /// effort is not sent twice, and the DeepSeek/GLM block is never written.
+    /// </summary>
+    [Fact]
+    public async Task ShouldSendTheReasoningObject_OnOpenRouter()
+    {
+        var body = await ProviderProbe.CapturePayloadAsync(nameof(OpenRouterLlmProvider), config => config with
+        {
+            Thinking = new LlmThinkingConfig { Enabled = true, Effort = "low", BudgetTokens = 2048 },
+        });
+
+        var reasoning = body.GetProperty("reasoning");
+        Assert.True(reasoning.GetProperty("enabled").GetBoolean());
+        Assert.Equal("low", reasoning.GetProperty("effort").GetString());
+        Assert.Equal(2048, reasoning.GetProperty("max_tokens").GetInt32());
+        Assert.False(body.TryGetProperty("thinking", out _));
+        Assert.False(body.TryGetProperty("reasoning_effort", out _));
+    }
+
+    [Theory]
+    [InlineData(nameof(MiniMaxLlmProvider))]
+    [InlineData(nameof(MammouthLlmProvider))]
+    public async Task ShouldReportAThinkingOption_WhereNothingIsDeclared(string providerTypeName)
+    {
+        var probe = await ProviderProbe.CapturePayloadWithLogAsync(providerTypeName, config => config with
+        {
+            Thinking = new LlmThinkingConfig { Effort = "high" },
+        });
+
+        Assert.False(probe.Body.TryGetProperty("reasoning_effort", out _));
+        Assert.False(probe.Body.TryGetProperty("thinking", out _));
+        Assert.Contains(probe.Warnings, w => w.Contains("thinking", StringComparison.Ordinal));
     }
 
     /// <summary>

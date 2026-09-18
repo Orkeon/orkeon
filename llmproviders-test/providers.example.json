@@ -97,6 +97,18 @@
       "_comment": "Google's OpenAI compatibility endpoint, not Vertex AI. M8 is fully exercised there since 2026-08-30 (json_object and json_schema accepted, schema validated server-side).",
       "apiKeyEnv": "GEMINI_API_KEY",
       "models": ["gemini-3.7-flash"]
+    },
+
+    "openrouter": {
+      "_comment": "Marketplace, vendor/model ids are mandatory. Not campaigned yet (LLM-09): the same model as the direct Gemini campaign, so a red here is a fact about the transport. Cheap text-only alternative: deepseek/deepseek-v4-flash.",
+      "apiKeyEnv": "OPENROUTER_API_KEY",
+      "models": ["google/gemini-3.7-flash"]
+    },
+
+    "mammouth": {
+      "_comment": "LiteLLM proxy, bare vendor ids — the key names the provider, never the model. Not campaigned yet (LLM-09): the included subscription credits cover a full run on gemini-3.7-flash.",
+      "apiKeyEnv": "MAMMOUTH_API_KEY",
+      "models": ["gemini-3.7-flash"]
     }
   }
 }

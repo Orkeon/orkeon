@@ -2,9 +2,10 @@
 
 # LLM Provider Comparison — Orkeon
 
-> Status as of 2026-08-30, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
+> Status as of 2026-09-18, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
 > and from each provider's declared `LlmProviderCapabilities`.
-> Legend: ✓ supported · ✗ absent · ◐ partial/generic.
+> Legend: ✓ supported · ✗ absent · ◐ partial/generic · † not campaigned (declared from the
+> vendor's documentation, pending the first real-execution campaign).
 
 | Provider | Base class | SSE streaming | Native tool calling | Multi-turn chat (tool roles) | System message | top_p / stop | GBNF grammar | response_format | thinking | Vision | reasoning_content round-trip | Prompt cache | Timing metrics | Polly resilience | API key sanitization |
 |---|---|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|:--:|
@@ -21,6 +22,8 @@
 | **Grok (x.AI)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **MiniMax** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (accepted but non-binding — measured) | ✗ (always-on inline, split out) | ✓ | ✓ | ◐ auto | ✗ | ✓ | ✓ |
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
+| **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema (per endpoint) | ✓ budget (`reasoning` object) | ✓ (per model) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposed) | ✓ | ✓ |
+| **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (undocumented) | ✗ (undocumented) | ✓ (per model) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
 
 ## How to read the capability columns
@@ -85,6 +88,33 @@ their own dialect.
   passed against `api.x.ai` through the generic OpenAI dialect before the provider class
   existed (2026-08-30, archived under `llmproviders-test/custom-endpoints/`). Keys carry the
   `xai-` prefix, which the factory infers.
+- **OpenRouter** †: the model marketplace (445 models from 60 vendors on 2026-09-18) behind
+  one key, integrated documentation-first (LLM-09) — no campaign archived yet. Identifiers
+  are `vendor/model` (mandatory prefix), with the `:free` / `:nitro` / `:floor` suffixes and
+  the `openrouter/auto` router slug (usable, refused as a default: the served model drifts —
+  the `served_model` metadata says who answered). The reasoning trace comes back as
+  `reasoning`, never `reasoning_content` (a `ReasoningFieldName` hook on the base); thinking
+  travels as the `reasoning` request object (`enabled` / `effort` / `max_tokens`, so the
+  Budget declaration is one of the transport — OpenRouter converts effort and budget into
+  each other per model); the real charge arrives in `usage.cost` (the `cost` metadata) with
+  its `upstream_inference_cost` / `is_byok` / `cache_write_tokens` / `reasoning_tokens`
+  breakdown; two constant attribution headers (`HTTP-Referer`, `X-OpenRouter-Title`) name
+  Orkeon. `json_schema` is honoured per endpoint and the provider does not send
+  `provider.require_parameters`: whether a schema can be silently ignored elsewhere is the
+  first campaign's question. The advanced routing body (`provider {…}`, `models[]`,
+  `plugins[]`) is not exposed. The `sk-or-v1-` key prefix is documented by secondary sources
+  only, so the factory does not infer from it yet.
+- **Mammouth AI** †: the French multi-model subscription whose included API credits drive
+  Orkeon, integrated documentation-first (LLM-09) — no campaign archived yet. On three
+  concordant clues (2026-09-18) the API is a LiteLLM proxy; nothing in the provider depends on
+  it. Identifiers are the vendors' own bare strings (`gpt-5.6-sol`, `claude-sonnet-5`,
+  `gemini-3.7-flash`), so the provider is reached by host (`api.mammouth.ai`) or by
+  `"Provider": "mammouth"` and never inferred from a model name — the same string without a
+  base URL keeps going to the vendor. Only `messages`, `model`, `temperature`, `max_tokens`,
+  `top_p` and `stream` are documented: `response_format` and thinking stay undeclared
+  (structured warning, never a silent drop) until the first campaign measures them — the
+  MiniMax rule; vision is declared from the vendor's own `text, image` model list. Prices are
+  the vendor's upper bounds (`gemini-3.7-flash` at 1.5 / 7.5 $/M, twice the direct price).
 - **Anthropic identity-linked keys**: refuse every request without an `anthropic-workspace-id`
   header (2026-08-30). Set `LlmConfig.WorkspaceId` (CLI: `--workspace-id`); classic keys need
   nothing.
