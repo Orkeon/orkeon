@@ -1,1 +1,9 @@
 #nullable enable
+Orkeon.Domain.Task.TaskExecutionOrder
+static Orkeon.Domain.Task.TaskExecutionOrder.Resolve<TTask>(System.Collections.Generic.IReadOnlyList<TTask>! tasks) -> Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>!
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.ForcedTaskIds.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.HasCycle.get -> bool
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.Tasks.get -> System.Collections.Generic.IReadOnlyList<TTask>!
+*REMOVED*static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null) -> Orkeon.Domain.Crew.CrewOutput!
+static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null, string? output = null) -> Orkeon.Domain.Crew.CrewOutput!

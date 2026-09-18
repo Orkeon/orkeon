@@ -151,6 +151,13 @@
                      Text="{Binding [Studio.Settings.ProfileEmpty], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Profiles.IsEmpty, Converter={StaticResource BooleanToVisibility}}"/>
 
+          <!-- STUDIO-12 C6: a profile file that exists but cannot be read is said out loud —
+               it used to load as the empty set, the same screen as a first run. -->
+          <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" TextWrapping="Wrap"
+                     Foreground="{DynamicResource WarningBrush}"
+                     Text="{Binding Profiles.LoadError}"
+                     Visibility="{Binding Profiles.HasLoadError, Converter={StaticResource BooleanToVisibility}}"/>
+
           <ItemsControl ItemsSource="{Binding Profiles.Profiles}" Margin="0,10,0,0">
             <ItemsControl.ItemTemplate>
               <DataTemplate>

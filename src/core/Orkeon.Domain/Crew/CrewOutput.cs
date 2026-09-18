@@ -96,16 +96,19 @@ public sealed record CrewOutput
     }
 
     /// <summary>
-    /// Creates a failed crew output.
+    /// Creates a failed crew output. <paramref name="output"/> carries the text the crew did
+    /// produce before or despite the failure (the last task's answer, partial results) — the
+    /// runner prints it, so the reader gets the evidence along with the reason.
     /// </summary>
     public static CrewOutput CreateFailure(
         string error,
         IEnumerable<TaskOutput> taskOutputs,
         TimeSpan executionTime,
-        CrewMetadata? metadata = null)
+        CrewMetadata? metadata = null,
+        string? output = null)
     {
         return new CrewOutput(
-            output: string.Empty,
+            output: output ?? string.Empty,
             structuredOutput: null,
             taskOutputs,
             success: false,

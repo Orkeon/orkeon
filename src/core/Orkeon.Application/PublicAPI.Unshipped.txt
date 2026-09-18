@@ -10,3 +10,6 @@ static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Llm -> System
 static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Memory -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Task -> System.Diagnostics.ActivitySource!
 static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Tool -> System.Diagnostics.ActivitySource!
+Orkeon.Application.Interfaces.Services.AgentExitReason.EmptyFinalAnswer = 5 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Interfaces.Services.CrewOutput.Error.get -> string?
+Orkeon.Application.Interfaces.Services.CrewOutput.Error.init -> void

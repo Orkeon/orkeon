@@ -208,6 +208,7 @@ public sealed class TargetSelectionViewModel : ObservableObject
         RunTargetKind.ScriptFile => _strings[StudioStringKeys.TargetKindScriptFile],
         RunTargetKind.MultiFileCrewDirectory => _strings[StudioStringKeys.TargetKindCrewDirectory],
         RunTargetKind.ScriptDirectory => _strings[StudioStringKeys.TargetKindScriptDirectory],
+        RunTargetKind.SingleFileCrewDirectory => _strings[StudioStringKeys.TargetKindSingleFileCrewDirectory],
         _ => kind.ToString(),
     };
 

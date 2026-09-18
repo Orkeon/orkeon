@@ -270,7 +270,7 @@
   <data name="Studio.Run.HubMessages" xml:space="preserve"><value>Hub messages</value></data>
   <data name="Studio.Run.None" xml:space="preserve"><value>No target selected.</value></data>
   <data name="Studio.Run.Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
-  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} script(s) found: pick the one to run.</value></data>
+  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} definition file(s) found: pick the one to run.</value></data>
   <data name="Studio.Run.DetectionFailed" xml:space="preserve"><value>Detection failed.</value></data>
   <data name="Studio.Run.KindYamlFile" xml:space="preserve"><value>YAML crew file</value></data>
   <data name="Studio.Run.KindScriptFile" xml:space="preserve"><value>Scripting crew file</value></data>
@@ -1056,4 +1056,10 @@
   <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
     <value>Open the settings</value>
   </data>
+  <!-- STUDIO-12 -->
+  <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve"><value>Team folder holding one YAML crew file</value></data>
+  <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.</value></data>
+  <data name="Studio.Import.Refused" xml:space="preserve"><value>Not imported — {0}</value></data>
+  <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Maximum response (tokens, optional)</value></data>
+  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Empty: the engine default (4096). Reasoning models spend that budget thinking — give them 16384 or more.</value></data>
 </root>

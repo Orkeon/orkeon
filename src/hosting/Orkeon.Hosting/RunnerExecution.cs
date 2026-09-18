@@ -537,7 +537,7 @@ public static partial class RunnerExecution
 
         try
         {
-            return (await KickoffLoadedCrewAsync(host, bootstrap, opts, cts.Token).ConfigureAwait(false), null);
+            return await KickoffLoadedCrewAsync(host, bootstrap, opts, cts.Token).ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -578,8 +578,12 @@ public static partial class RunnerExecution
     /// and this one as the ordered sequence it runs; every failure it does not answer for
     /// itself propagates to that barrier.
     /// </summary>
-    /// <returns>Exit code: 0 = success, 1 = malformed <c>--var</c>, 2 = crew load or LLM failure.</returns>
-    private static async Task<int> KickoffLoadedCrewAsync(
+    /// <returns>
+    /// Exit code — 0 = success, 1 = malformed <c>--var</c>, 2 = crew load, LLM or crew failure —
+    /// and, for a crew that ran and did not succeed, the reason the caller writes as the last
+    /// stderr line once the host is disposed.
+    /// </returns>
+    private static async Task<(int ExitCode, string? Failure)> KickoffLoadedCrewAsync(
         IHost host,
         HostBootstrap bootstrap,
         RunnerOptionsBase opts,
@@ -607,23 +611,32 @@ public static partial class RunnerExecution
             // a configuration mistake, so it is left to the unreachable-endpoint handler.
             await Console.Error.WriteLineAsync($"ERROR: {ex.Message}").ConfigureAwait(false);
             await ReportCrewConfigurationErrorAsync(logger, ex, opts.Verbose).ConfigureAwait(false);
-            return 2;
+            return (2, null);
         }
 
         var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
         var input = await TryParseCrewInputAsync(opts).ConfigureAwait(false);
         if (input is null)
-            return 1;
+            return (1, null);
 
         if (!await EnsureLlmEndpointReachableAsync(host, logger, ct).ConfigureAwait(false))
-            return 2;
+            return (2, null);
 
         LogKickingOffCrew(logger, crew.Goal);
         var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
 
         PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
-        return 0;
+        if (!output.Succeeded)
+        {
+            // The crew ran and failed: exit 2, the reason handed back so the caller writes it
+            // as the last stderr line once the host — and its console logger queue — is
+            // disposed. KickoffAsync never throws, so this exit code was 0 for every crew
+            // failure: an empty deliverable went green (STUDIO-12 C5a).
+            return (2, output.Error ?? output.FinalOutput);
+        }
+
+        return (0, null);
     }
 
     /// <summary>

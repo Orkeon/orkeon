@@ -270,7 +270,7 @@
   <data name="Studio.Run.HubMessages" xml:space="preserve"><value>Messages du hub</value></data>
   <data name="Studio.Run.None" xml:space="preserve"><value>Aucune cible sélectionnée.</value></data>
   <data name="Studio.Run.Resolved" xml:space="preserve"><value>{0} — orkeon run {1}</value></data>
-  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} script(s) trouvé(s) : choisissez celui à exécuter.</value></data>
+  <data name="Studio.Run.PickScript" xml:space="preserve"><value>{0} fichier(s) de définition trouvé(s) : choisissez celui à exécuter.</value></data>
   <data name="Studio.Run.DetectionFailed" xml:space="preserve"><value>Échec de la détection.</value></data>
   <data name="Studio.Run.KindYamlFile" xml:space="preserve"><value>Fichier d'équipe YAML</value></data>
   <data name="Studio.Run.KindScriptFile" xml:space="preserve"><value>Fichier d'équipe scripté</value></data>
@@ -1056,4 +1056,10 @@
   <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
     <value>Ouvrir les réglages</value>
   </data>
+  <!-- STUDIO-12 -->
+  <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve"><value>Dossier d'équipe contenant une définition YAML mono-fichier</value></data>
+  <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être lu — {0}. Corrigez-le ou supprimez-le ; d'ici là, la liste démarre vide et la prochaine modification l'écrasera.</value></data>
+  <data name="Studio.Import.Refused" xml:space="preserve"><value>Non importé — {0}</value></data>
+  <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Réponse maximale (jetons, optionnel)</value></data>
+  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Vide : la valeur par défaut du moteur (4096). Les modèles raisonneurs dépensent ce budget à réfléchir — donnez-leur 16384 ou plus.</value></data>
 </root>

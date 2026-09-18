@@ -11,6 +11,26 @@ namespace Orkeon.Application.Crew.Execution;
 internal static class FinalAnswerPolicy
 {
     /// <summary>
+    /// The reason carried by every <see cref="Interfaces.Services.AgentExitReason.EmptyFinalAnswer"/>
+    /// exit: what happened, and the one setting that usually explains it. It reaches the task
+    /// result, the crew failure, AUTO_SUMMARY.md and the runner's last stderr line, so it is
+    /// written for the person reading those, not for a parser.
+    /// </summary>
+    internal const string EmptyFinalAnswerReason =
+        "The agent produced no final answer: the model returned empty text, and empty text again " +
+        "on the tool-free retry. A reasoning model that spends its whole response budget thinking " +
+        "answers this way — raise Llm:MaxTokens (16384 or more for reasoning models).";
+
+    /// <summary>
+    /// The reason carried when every iteration went to tool calls and the tool-free synthesis
+    /// retry came back empty: the iteration budget is the cause, the empty answer its symptom.
+    /// </summary>
+    internal const string MaxIterationsWithoutAnswerReason =
+        "The agent did not produce a final answer within the allowed iterations: every iteration " +
+        "went to tool calls, and the tool-free retry came back empty. Raise the agent's " +
+        "max_iterations, or narrow the task.";
+
+    /// <summary>
     /// Builds the "produce the final deliverable now" nudge sent on the no-tools retry.
     /// Positive framing + explicit syntactic anchor — prior wording ("Do not call any tool")
     /// was too weak for DeepSeek thinking-mode models that had spent dozens of turns calling

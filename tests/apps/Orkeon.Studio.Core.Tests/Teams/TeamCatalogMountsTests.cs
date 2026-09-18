@@ -263,6 +263,8 @@ public sealed class TeamCatalogMountsTests : IDisposable
     public void An_older_absolute_sidecar_is_rewritten_relative_on_copy()
     {
         var team = NewTeam("veille");
+        // A single-file crew, so the import below recognises a team (an empty folder is refused).
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), "name: veille");
         Directory.CreateDirectory(Path.Combine(team, "output"));
         File.WriteAllText(
             Path.Combine(team, StudioTeamMetadata.FileName),
@@ -274,7 +276,7 @@ public sealed class TeamCatalogMountsTests : IDisposable
 
         var duplicated = TeamCatalog.Duplicate(team)!;
         var exported = TeamCatalog.ExportTo(team, Path.Combine(_root, "partage"))!;
-        var imported = TeamCatalog.Import(exported, Path.Combine(_root, "imports"))!;
+        var imported = TeamCatalog.Import(exported, Path.Combine(_root, "imports"), out _)!;
 
         foreach (var copy in new[] { duplicated, exported, imported })
         {

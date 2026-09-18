@@ -731,7 +731,7 @@
     <value>{0} — orkeon run {1}</value>
   </data>
   <data name="Studio.Run.PickScript" xml:space="preserve">
-    <value>{0} Skript(e) gefunden: Wählen Sie das auszuführende.</value>
+    <value>{0} Definitionsdatei(en) gefunden: Wählen Sie die auszuführende.</value>
   </data>
   <data name="Studio.Run.DetectionFailed" xml:space="preserve">
     <value>Erkennung fehlgeschlagen.</value>
@@ -2261,5 +2261,21 @@
   </data>
   <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
     <value>Einstellungen öffnen</value>
+  </data>
+  <!-- STUDIO-12 -->
+  <data name="Studio.Run.KindSingleFileCrewDirectory" xml:space="preserve">
+    <value>Team-Ordner mit einer YAML-Definition in einer einzigen Datei</value>
+  </data>
+  <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve">
+    <value>Die Datei der Modellprofile konnte nicht gelesen werden — {0}. Korrigieren oder löschen Sie sie; bis dahin startet die Liste leer und die nächste Änderung überschreibt sie.</value>
+  </data>
+  <data name="Studio.Import.Refused" xml:space="preserve">
+    <value>Nicht importiert — {0}</value>
+  </data>
+  <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve">
+    <value>Maximale Antwort (Tokens, optional)</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
+    <value>Leer: der Standardwert der Engine (4096). Reasoning-Modelle verbrauchen dieses Budget beim Nachdenken — geben Sie ihnen 16384 oder mehr.</value>
   </data>
 </root>

@@ -25,6 +25,15 @@ public enum RunTargetKind
 
     /// <summary>A directory holding the conventional <c>crew.ork.ts</c> entry point.</summary>
     ScriptDirectory,
+
+    /// <summary>
+    /// A directory holding one single-file YAML crew — a team folder whose whole definition
+    /// is a <c>config.yaml</c> or <c>crew.yaml</c> (every <c>examples/</c> crew), at its root
+    /// or under its promoted <c>crew/</c> nesting (STUDIO-12 C1). The run path is the file;
+    /// the directory stays the selected path, so the sidecar and the launch directory are
+    /// the team's.
+    /// </summary>
+    SingleFileCrewDirectory,
 }
 
 /// <summary>Which family of CLI options a target accepts.</summary>
@@ -60,9 +69,10 @@ public sealed record RunTarget
     public IReadOnlyList<string> Markers { get; init; } = [];
 
     /// <summary>Option family this target accepts.</summary>
-    public RunTargetDialect Dialect => Kind is RunTargetKind.YamlFile or RunTargetKind.MultiFileCrewDirectory
-        ? RunTargetDialect.Yaml
-        : RunTargetDialect.Script;
+    public RunTargetDialect Dialect =>
+        Kind is RunTargetKind.YamlFile or RunTargetKind.MultiFileCrewDirectory or RunTargetKind.SingleFileCrewDirectory
+            ? RunTargetDialect.Yaml
+            : RunTargetDialect.Script;
 
     /// <summary>
     /// True when the run path is a directory, so the launch needs a CLI that dispatches
@@ -89,8 +99,12 @@ public sealed record RunTarget
     {
         get
         {
-            if (Kind is RunTargetKind.MultiFileCrewDirectory or RunTargetKind.ScriptDirectory)
+            if (Kind is RunTargetKind.MultiFileCrewDirectory
+                or RunTargetKind.ScriptDirectory
+                or RunTargetKind.SingleFileCrewDirectory)
+            {
                 return SelectedPath;
+            }
 
             var directory = Path.GetDirectoryName(SelectedPath);
             return string.IsNullOrEmpty(directory) ? null : directory;

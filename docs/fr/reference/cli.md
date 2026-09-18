@@ -11,7 +11,7 @@ orkeon doctor
 
 Les binaires de release et les installeurs (zip/MSI Windows, paquet Debian, tarballs macOS) embarquent le même CLI, autonome — aucun SDK .NET requis. Voir [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md).
 
-**Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation) · `2` erreur runtime inattendue · `130` annulé par Ctrl+C. Sur un code `2`, la **dernière ligne de stderr** est `ERROR: <message>` — la phrase qui dit pourquoi, que l'échec vienne de l'équipe ou d'un service que le host n'a pas pu construire au démarrage ; le type de l'exception et sa trace de pile ne sont journalisés qu'en `--verbose 2` (ou `ORKEON_DEBUG=1`).
+**Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation) · `2` le run a échoué — une erreur runtime inattendue, un service que le host n'a pas pu construire au démarrage, ou une équipe qui a tourné sans réussir (une tâche sans réponse finale, un disjoncteur déclenché, un consensus non atteint) · `130` annulé par Ctrl+C. Sur un code `2`, la **dernière ligne de stderr** est `ERROR: <raison>` — la phrase qui dit pourquoi ; le type de l'exception et sa trace de pile ne sont journalisés qu'en `--verbose 2` (ou `ORKEON_DEBUG=1`).
 
 ## `orkeon run`
 

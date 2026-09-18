@@ -153,11 +153,10 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         if (agents.Count == 0)
             throw new InvalidOperationException("No agents available for consensual execution");
 
-        // Execute each task with consensus, using plan ordering if available
-        var plannedTasks = plan.GetTasksInOrder().ToList();
-        var taskIds = plannedTasks.Count > 0
-            ? plannedTasks.Select(pt => pt.TaskId)
-            : crew.Tasks;
+        // Execute each task with consensus: the plan's order when it carries one, the
+        // declared order sorted on the tasks' dependencies otherwise (STUDIO-12 C2).
+        var taskIds = await CrewTaskSequencer.ResolveAsync(
+            crew, plan, _taskRepository, _logger, ct).ConfigureAwait(false);
 
         foreach (var taskId in taskIds)
         {

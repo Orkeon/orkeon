@@ -21,7 +21,8 @@ namespace Orkeon.Infrastructure.Crew.Strategies;
 
 /// <summary>
 /// Sequential process strategy implementation.
-/// Executes tasks one after another in the order they are defined.
+/// Executes tasks one after another: in the plan's order when the crew was planned, otherwise
+/// in the declared order sorted on the tasks' dependencies (<see cref="CrewTaskSequencer"/>).
 /// </summary>
 public sealed partial class SequentialProcessStrategy : IProcessStrategy
 {
@@ -122,8 +123,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
             _delegationProvider.UpdateExecutionContext(context);
 
-            var taskIds = GetOrderedTaskIds(crew, plan);
+            var taskIds = await CrewTaskSequencer.ResolveAsync(
+                crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             var agentIndex = 0;
+            var failures = new List<string>();
 
             foreach (var taskId in taskIds)
             {
@@ -150,6 +153,12 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 _delegationProvider.UpdateExecutionContext(context);
                 LogTaskCompletedSuccess(taskId, taskSnapshot.Success);
 
+                if (!taskResult.Success)
+                {
+                    failures.Add(
+                        $"Task {taskId} ({agent.Role}) failed: {taskResult.Error ?? taskResult.LastError ?? "unknown error"}");
+                }
+
                 if (_hooks.HasHook)
                 {
                     taskSnapshots.Add(taskSnapshot);
@@ -160,17 +169,39 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             var totalTime = DateTime.UtcNow - startTime;
             var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
 
-            LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
             LogTotalTokensUsed(crew.Id, tokenTally.TotalTokens);
+
+            var metadata = tokenTally
+                .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
+                .Build();
+
+            // A pipeline with a failed step is a failed pipeline: the crew used to report
+            // success whatever its tasks did, so an empty deliverable went green all the way
+            // to the runner's exit code (STUDIO-12 C5a). The reason names every failed task.
+            if (failures.Count > 0)
+            {
+                var reason = string.Join("; ", failures);
+                LogSequentialExecutionFailedForCrew(crew.Id, failures.Count, reason);
+
+                await _hooks.CrewFailedAsync(
+                    CrewHookDispatcher.Snapshot(
+                        crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed, reason),
+                    null, CancellationToken.None).ConfigureAwait(false);
+
+                return DomainCrewOutput.CreateFailure(
+                    error: reason,
+                    taskOutputs: domainResults,
+                    executionTime: totalTime,
+                    metadata: metadata,
+                    output: finalOutput);
+            }
+
+            LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
 
             await _hooks.CrewCompletedAsync(
                 CrewHookDispatcher.Snapshot(
                     crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Completed),
                 CancellationToken.None).ConfigureAwait(false);
-
-            var metadata = tokenTally
-                .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
-                .Build();
 
             return DomainCrewOutput.CreateSuccess(
                 output: finalOutput,
@@ -277,14 +308,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         return agents;
     }
 
-    private static IEnumerable<TaskId> GetOrderedTaskIds(DomainCrew crew, DomainExecutionPlan plan)
-    {
-        var plannedTasks = plan.GetTasksInOrder().ToList();
-        return plannedTasks.Count > 0
-            ? plannedTasks.Select(pt => pt.TaskId)
-            : crew.Tasks;
-    }
-
     private static string GetRawOutput(Orkeon.Application.Interfaces.Services.TaskResult result)
     {
         if (!string.IsNullOrEmpty(result.Output))
@@ -328,6 +351,9 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Sequential execution completed for crew {CrewId} in {Duration}")]
     private partial void LogSequentialExecutionCompletedForCrew(CrewId crewId, TimeSpan duration);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Sequential execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
+    private partial void LogSequentialExecutionFailedForCrew(CrewId crewId, int failedTasks, string reason);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Total tokens used for crew {CrewId}: {TokensUsed}")]
     private partial void LogTotalTokensUsed(CrewId crewId, int tokensUsed);

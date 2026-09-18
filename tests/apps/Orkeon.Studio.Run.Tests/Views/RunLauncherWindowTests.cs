@@ -95,7 +95,7 @@ public class RunLauncherWindowTests
 
         window.SelectTargetForTest("/crews/many");
 
-        Assert.Contains("2 script(s) found", window.TargetStatusText, StringComparison.Ordinal);
+        Assert.Contains("2 definition file(s) found", window.TargetStatusText, StringComparison.Ordinal);
     }
 
     [Fact]

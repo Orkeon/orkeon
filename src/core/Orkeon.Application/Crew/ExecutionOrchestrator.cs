@@ -278,12 +278,19 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 // file_write tool-call flow; no resolver is invoked for them.
                 var fqnOutcome = await ResolveDeliverableIfDeclaredAsync(task, finalOutput, cancellationToken).ConfigureAwait(false);
 
+                // Success is the exit reason, and a failed exit names its reason in Error —
+                // the strategies, AUTO_SUMMARY and the runner read Error, and it used to stay
+                // null on every non-Completed exit ("Task failed: unknown error").
+                var succeeded = loopResult.ExitReason == AgentExitReason.Completed;
                 return new TaskResult(
-                    Success: loopResult.ExitReason == AgentExitReason.Completed,
+                    Success: succeeded,
                     Output: finalOutput,
                     StructuredOutput: structuredOutput,
                     ToolsUsed: toolsUsed,
                     ExecutionTime: DateTime.UtcNow - startTime,
+                    Error: succeeded
+                        ? null
+                        : loopResult.LastError ?? $"Agent exited with reason {loopResult.ExitReason}",
                     TokensUsed: loopResult.TokensUsed)
                 {
                     ExitReason = loopResult.ExitReason,

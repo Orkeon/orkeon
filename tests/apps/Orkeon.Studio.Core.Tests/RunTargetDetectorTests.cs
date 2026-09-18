@@ -389,4 +389,106 @@ public sealed class RunTargetDetectorTests
         Assert.Equal(RunTargetDetectionStatus.Failed, detection.Status);
         Assert.Equal(RunTargetCodes.NoCandidate, detection.ErrorCode);
     }
+
+    // ── STUDIO-12 C1: a folder holding a single-file crew is a team ───────────────────
+
+    /// <summary>
+    /// Every <c>examples/</c> crew is one <c>config.yaml</c> with <c>agents:</c> and
+    /// <c>tasks:</c> inline. A folder holding exactly that used to fail with "pick a .yaml
+    /// file inside it instead" — so it could be neither adopted nor run as a team.
+    /// </summary>
+    [Fact]
+    public void A_folder_holding_one_yaml_file_resolves_to_that_file_and_stays_the_selected_path()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/examples/factures")
+            .WithFiles("/examples/factures/config.yaml", "/examples/factures/README.md", "/examples/factures/run.sh");
+
+        var detection = Detector(probe).Detect("/examples/factures");
+
+        Assert.True(detection.IsResolved);
+        var target = detection.Target!;
+        Assert.Equal(RunTargetKind.SingleFileCrewDirectory, target.Kind);
+        Assert.Equal("/examples/factures/config.yaml", target.RunPath);
+        Assert.Equal("/examples/factures", target.SelectedPath);
+        Assert.Equal("/examples/factures", target.WorkingDirectory);
+        Assert.Equal(RunTargetDialect.Yaml, target.Dialect);
+        Assert.False(target.RequiresDirectoryRunSupport);
+    }
+
+    [Theory]
+    [InlineData("crew.yaml", "notes.yaml", "crew.yaml")]
+    [InlineData("config.yaml", "notes.yaml", "config.yaml")]
+    [InlineData("crew.yaml", "config.yaml", "crew.yaml")]
+    public void Several_yaml_files_resolve_to_the_conventional_crew_file(string first, string second, string expected)
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/several")
+            .WithFiles("/crews/several/" + first, "/crews/several/" + second);
+
+        var detection = Detector(probe).Detect("/crews/several");
+
+        Assert.True(detection.IsResolved);
+        Assert.Equal(RunTargetKind.SingleFileCrewDirectory, detection.Target!.Kind);
+        Assert.Equal("/crews/several/" + expected, detection.Target.RunPath);
+    }
+
+    [Fact]
+    public void Several_arbitrary_yaml_files_are_offered_as_candidates_the_way_scripts_are()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/loose")
+            .WithFiles("/crews/loose/veille.yaml", "/crews/loose/revue.yml");
+
+        var detection = Detector(probe).Detect("/crews/loose");
+
+        Assert.Equal(RunTargetDetectionStatus.NeedsSelection, detection.Status);
+        Assert.Equal(["/crews/loose/revue.yml", "/crews/loose/veille.yaml"], detection.Candidates.Select(Norm));
+    }
+
+    [Fact]
+    public void A_promoted_team_folder_holding_a_single_file_crew_resolves_through_its_crew_sub_folder()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/factures", "/teams/factures/crew", "/teams/factures/output")
+            .WithFiles("/teams/factures/crew/config.yaml", "/teams/factures/studio-team.json");
+
+        var target = Detector(probe).Detect("/teams/factures").Target;
+
+        Assert.NotNull(target);
+        Assert.Equal(RunTargetKind.SingleFileCrewDirectory, target.Kind);
+        Assert.Equal("/teams/factures/crew/config.yaml", target.RunPath);
+        Assert.Equal("/teams/factures", target.SelectedPath);
+        Assert.Equal("/teams/factures", target.WorkingDirectory);
+    }
+
+    [Fact]
+    public void A_promoted_multi_file_team_folder_still_resolves_to_its_crew_sub_folder()
+    {
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/teams/veille", "/teams/veille/crew", "/teams/veille/crew/agents", "/teams/veille/crew/tasks")
+            .WithFiles("/teams/veille/crew/config.yaml", "/teams/veille/studio-team.json");
+
+        var target = Detector(probe).Detect("/teams/veille").Target;
+
+        Assert.NotNull(target);
+        Assert.Equal(RunTargetKind.MultiFileCrewDirectory, target.Kind);
+        Assert.Equal("/teams/veille/crew", target.RunPath);
+        Assert.Equal("/teams/veille", target.SelectedPath);
+    }
+
+    [Fact]
+    public void The_scripts_of_a_folder_still_win_over_a_lone_yaml_file()
+    {
+        // A script next to a lone YAML file is the shape scripts had before: the YAML rule
+        // applies only to a folder holding no marker and no script at all.
+        var probe = new FakeTargetProbe()
+            .WithDirectories("/crews/scripted")
+            .WithFiles("/crews/scripted/crew.ork.ts", "/crews/scripted/inputs.yaml");
+
+        var target = Detector(probe).Detect("/crews/scripted").Target;
+
+        Assert.NotNull(target);
+        Assert.Equal(RunTargetKind.ScriptDirectory, target.Kind);
+    }
 }

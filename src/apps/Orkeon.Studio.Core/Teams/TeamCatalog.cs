@@ -497,12 +497,28 @@ public static partial class TeamCatalog
 
     /// <summary>
     /// Copies an external team (a folder, or a single crew file) into the teams root under
-    /// a unique slug. Returns the new team folder, or null when the disk refused.
+    /// a unique slug. Returns the new team folder, or null when nothing was copied —
+    /// <paramref name="refusal"/> then says why when the source itself was the reason: a
+    /// folder the launcher's own detector cannot resolve to a crew definition is refused
+    /// before a byte is copied, with the detector's message, instead of landing in the
+    /// catalogue as a team nothing can run (STUDIO-12 C1). A disk that refused leaves
+    /// <paramref name="refusal"/> null, as before.
     /// </summary>
-    public static string? Import(string sourcePath, string root)
+    public static string? Import(string sourcePath, string root, out string? refusal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
+
+        // STUDIO-12 C1 — the source must be something orkeon run accepts, read with the same
+        // detector the launcher uses, before anything is copied.
+        var detection = new Targets.RunTargetDetector().Detect(sourcePath);
+        if (detection.Status != Targets.RunTargetDetectionStatus.Resolved)
+        {
+            refusal = detection.Error
+                ?? $"'{sourcePath}' holds several crew definitions ({string.Join(", ", detection.Candidates)}): pick one of them.";
+            return null;
+        }
+        refusal = null;
 
         try
         {

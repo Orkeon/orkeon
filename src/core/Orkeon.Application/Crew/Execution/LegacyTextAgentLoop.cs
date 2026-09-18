@@ -82,6 +82,17 @@ internal sealed class LegacyTextAgentLoop
                 // No structured tool calls — use single-turn fallback with simple tool name matching
                 var (fallbackOutput, fallbackToolUsage) = await ProcessResponseLegacy(response, agent, invocation.Context, cancellationToken).ConfigureAwait(false);
                 toolsUsed.AddRange(fallbackToolUsage);
+
+                // An empty text is not a final answer: it used to exit Completed here and the
+                // task went green with no deliverable (STUDIO-12 C5a).
+                if (string.IsNullOrWhiteSpace(fallbackOutput))
+                {
+                    ExecutionLog.LogEmptyFinalAnswer(_logger, agent.Role, task.Id);
+                    return new AgentLoopResult(string.Empty, 0,
+                        AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 1,
+                        LastError: FinalAnswerPolicy.EmptyFinalAnswerReason);
+                }
+
                 ExecutionLog.LogLegacyFinalAnswer(_logger, agent.Role, iteration + 1);
                 return new AgentLoopResult(fallbackOutput, 0,
                     AgentExitReason.Completed, IterationsUsed: iteration + 1);

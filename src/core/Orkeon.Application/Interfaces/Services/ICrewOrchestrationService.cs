@@ -144,6 +144,14 @@ public record CrewOutput(
     /// and a hosted run reported every timeout as Completed.
     /// </summary>
     public bool Succeeded { get; init; } = true;
+
+    /// <summary>
+    /// Why the crew failed, when <see cref="Succeeded"/> is false: the strategy's failure
+    /// reason (a task that failed, a circuit breaker, a consensus that was not reached) or
+    /// the exception message the fault barrier caught. Null on success. The runner prints
+    /// it as its last stderr line and exits non-zero on it (STUDIO-12 C5a).
+    /// </summary>
+    public string? Error { get; init; }
 }
 
 /// <summary>

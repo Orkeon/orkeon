@@ -46,8 +46,9 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(source, "name: revue");
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams);
+        var destination = TeamCatalog.Import(source, teams, out var refusal);
 
+        Assert.Null(refusal);
         Assert.NotNull(destination);
         Assert.Equal(Path.Combine(teams, "revue-contrats"), destination);
         Assert.True(File.Exists(Path.Combine(destination!, "revue-contrats.yaml")));
@@ -61,8 +62,8 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: revue");
         var teams = Path.Combine(_root, "teams");
 
-        var first = TeamCatalog.Import(source, teams);
-        var second = TeamCatalog.Import(source, teams);
+        var first = TeamCatalog.Import(source, teams, out _);
+        var second = TeamCatalog.Import(source, teams, out _);
 
         Assert.Equal(Path.Combine(teams, "revue"), first);
         Assert.Equal(Path.Combine(teams, "revue-2"), second);
@@ -112,8 +113,65 @@ public sealed class TeamCatalogTests : IDisposable
         Directory.CreateDirectory(teams);
         File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: x");
 
-        Assert.Null(TeamCatalog.Import(source, teams));
+        Assert.Null(TeamCatalog.Import(source, teams, out _));
         Assert.Empty(Directory.EnumerateDirectories(teams));
+    }
+
+    // ── STUDIO-12 C1: a folder holding a single-file crew is a team; anything else is refused ──
+
+    [Fact]
+    public void Importing_a_folder_holding_a_single_file_crew_makes_a_playable_team()
+    {
+        // The shape of every examples/ crew: one config.yaml, agents: and tasks: inline.
+        var source = Path.Combine(_root, "incoming", "factures");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "config.yaml"), "name: factures\nagents: {}\ntasks: {}\n");
+        File.WriteAllText(Path.Combine(source, "README.md"), "how to run\n");
+        var teams = Path.Combine(_root, "teams");
+
+        var destination = TeamCatalog.Import(source, teams, out var refusal);
+
+        Assert.Null(refusal);
+        Assert.NotNull(destination);
+        Assert.True(File.Exists(Path.Combine(destination!, "config.yaml")));
+
+        // What landed is a team the launcher's detector resolves — not a folder it refuses.
+        var detection = new Orkeon.Studio.Core.Targets.RunTargetDetector().Detect(destination);
+        Assert.True(detection.IsResolved);
+        Assert.Equal(Orkeon.Studio.Core.Targets.RunTargetKind.SingleFileCrewDirectory, detection.Target!.Kind);
+        Assert.Equal(Path.Combine(destination, "config.yaml"), detection.Target.RunPath);
+    }
+
+    [Fact]
+    public void Importing_a_folder_that_holds_no_crew_definition_is_refused_before_any_copy()
+    {
+        // Copied verbatim, this folder used to land in "My teams" as a card nothing could run:
+        // the CLI then answered "holds no recognized crew layout".
+        var source = Path.Combine(_root, "incoming", "notes");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "README.md"), "nothing runnable here\n");
+        var teams = Path.Combine(_root, "teams");
+
+        var destination = TeamCatalog.Import(source, teams, out var refusal);
+
+        Assert.Null(destination);
+        Assert.NotNull(refusal);
+        Assert.Contains("holds no crew definition", refusal, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(teams));
+    }
+
+    [Fact]
+    public void Importing_a_file_the_cli_does_not_run_is_refused_with_the_detector_message()
+    {
+        var source = Path.Combine(_root, "incoming", "notes.md");
+        Directory.CreateDirectory(Path.GetDirectoryName(source)!);
+        File.WriteAllText(source, "not a crew\n");
+        var teams = Path.Combine(_root, "teams");
+
+        Assert.Null(TeamCatalog.Import(source, teams, out var refusal));
+        Assert.NotNull(refusal);
+        Assert.Contains(".ork.ts", refusal, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(teams));
     }
 
     [Fact]
@@ -249,8 +307,9 @@ public sealed class TeamCatalogTests : IDisposable
             System.Text.Json.JsonSerializer.Serialize(new StudioTeamMetadata { Name = PastedPage, Description = PastedPage, Profile = "Local" }));
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams);
+        var destination = TeamCatalog.Import(source, teams, out var refusal);
 
+        Assert.Null(refusal);
         Assert.NotNull(destination);
         var imported = TeamCatalog.Describe(destination!);
         Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", imported.Name);

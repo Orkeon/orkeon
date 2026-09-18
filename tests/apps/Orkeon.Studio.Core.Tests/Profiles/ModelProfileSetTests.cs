@@ -109,7 +109,7 @@ public sealed class ModelProfileSetTests
     }
 
     [Fact]
-    public async Task The_file_store_round_trips_and_a_corrupt_file_reads_as_empty()
+    public async Task The_file_store_round_trips_and_a_corrupt_file_reads_as_empty_with_its_reason()
     {
         var path = Path.Combine(Path.GetTempPath(), $"orkeon-profile-tests-{Guid.NewGuid():N}.json");
         try
@@ -120,17 +120,22 @@ public sealed class ModelProfileSetTests
             await store.SaveAsync(set, TestContext.Current.CancellationToken);
             var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
-            Assert.Equal("Local rapide", loaded.DefaultProfile);
-            Assert.Equal("Local rapide", loaded.StudioProfile);
-            Assert.Equal("Ollama · qwen2.5:14b", loaded.Profiles[0].Summary);
+            Assert.False(loaded.Failed);
+            Assert.Equal("Local rapide", loaded.Set.DefaultProfile);
+            Assert.Equal("Local rapide", loaded.Set.StudioProfile);
+            Assert.Equal("Ollama · qwen2.5:14b", loaded.Set.Profiles[0].Summary);
 
             // The key never travels: the file names no secret, only the endpoint and the model.
             var raw = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
             Assert.DoesNotContain("ApiKey", raw, StringComparison.OrdinalIgnoreCase);
 
+            // STUDIO-12 C6: a file that fails to parse is still the empty set — but it says
+            // so, instead of passing for a first run.
             await File.WriteAllTextAsync(path, "{ not json", TestContext.Current.CancellationToken);
             var corrupt = await store.LoadAsync(TestContext.Current.CancellationToken);
-            Assert.Empty(corrupt.Profiles);
+            Assert.Empty(corrupt.Set.Profiles);
+            Assert.True(corrupt.Failed);
+            Assert.Contains(path, corrupt.Error!, StringComparison.Ordinal);
         }
         finally
         {
@@ -139,15 +144,60 @@ public sealed class ModelProfileSetTests
     }
 
     [Fact]
-    public async Task A_missing_file_reads_as_the_empty_set()
+    public async Task A_missing_file_reads_as_the_empty_set_without_an_error()
     {
         var store = new ModelProfileFileStore(
             Path.Combine(Path.GetTempPath(), $"orkeon-none-{Guid.NewGuid():N}.json"));
 
         var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
 
-        Assert.Empty(loaded.Profiles);
-        Assert.Null(loaded.DefaultProfile);
+        Assert.False(loaded.Failed);
+        Assert.Empty(loaded.Set.Profiles);
+        Assert.Null(loaded.Set.DefaultProfile);
+    }
+
+    /// <summary>
+    /// STUDIO-12 C6: the file is documented as hand-editable and "profiles" is what people
+    /// type; a camelCase file used to load zero profiles, silently. Writes stay PascalCase.
+    /// </summary>
+    [Fact]
+    public async Task A_hand_written_camel_case_file_loads_its_profiles()
+    {
+        var path = Path.Combine(Path.GetTempPath(), $"orkeon-camel-{Guid.NewGuid():N}.json");
+        try
+        {
+            await File.WriteAllTextAsync(path, """
+                {
+                  "profiles": [
+                    { "name": "kimi", "provider": "Kimi", "model": "kimi-k3", "baseUrl": "https://api.moonshot.ai/v1", "temperature": 1, "maxTokens": 32768 }
+                  ],
+                  "defaultProfile": "kimi",
+                  "studioProfile": "kimi"
+                }
+                """, TestContext.Current.CancellationToken);
+            var store = new ModelProfileFileStore(path);
+
+            var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+
+            Assert.False(loaded.Failed);
+            var profile = Assert.Single(loaded.Set.Profiles);
+            Assert.Equal("kimi", profile.Name);
+            Assert.Equal("kimi-k3", profile.Model);
+            Assert.Equal(1, profile.Temperature);
+            Assert.Equal(32768, profile.MaxTokens);
+            Assert.Equal("kimi", loaded.Set.DefaultProfile);
+            Assert.Same(profile, loaded.Set.Studio);
+
+            // The next write is PascalCase, as before.
+            await store.SaveAsync(loaded.Set, TestContext.Current.CancellationToken);
+            var raw = await File.ReadAllTextAsync(path, TestContext.Current.CancellationToken);
+            Assert.Contains("\"Profiles\"", raw, StringComparison.Ordinal);
+            Assert.Contains("\"MaxTokens\"", raw, StringComparison.Ordinal);
+        }
+        finally
+        {
+            File.Delete(path);
+        }
     }
 
     [Fact]
@@ -208,6 +258,22 @@ public sealed class ProfileTemperatureTests
             .ContainsKey("ORKEON_Llm__TimeoutSeconds"));
     }
 
+    /// <summary>
+    /// STUDIO-12 C5b: the response budget rides the launch too. The engine default (4096)
+    /// is what a reasoning model spends thinking before it writes a word.
+    /// </summary>
+    [Fact]
+    public void The_pinned_max_tokens_ride_the_launch_and_a_non_positive_value_does_not()
+    {
+        var profile = new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", MaxTokens = 32768 };
+
+        Assert.Equal("32768", profile.EnvironmentOverrides()["ORKEON_Llm__MaxTokens"]);
+        Assert.False((profile with { MaxTokens = null }).EnvironmentOverrides()
+            .ContainsKey("ORKEON_Llm__MaxTokens"));
+        Assert.False((profile with { MaxTokens = 0 }).EnvironmentOverrides()
+            .ContainsKey("ORKEON_Llm__MaxTokens"));
+    }
+
     [Fact]
     public async Task The_temperature_round_trips_through_the_file_store()
     {
@@ -217,13 +283,14 @@ public sealed class ProfileTemperatureTests
             var store = new ModelProfileFileStore(path);
             await store.SaveAsync(new ModelProfileSet
             {
-                Profiles = [new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", Temperature = 1, TimeoutSeconds = 180 }],
+                Profiles = [new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", Temperature = 1, TimeoutSeconds = 180, MaxTokens = 32768 }],
             }, TestContext.Current.CancellationToken);
 
-            var loaded = await store.LoadAsync(TestContext.Current.CancellationToken);
+            var loaded = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set;
 
             Assert.Equal(1, loaded.Profiles[0].Temperature);
             Assert.Equal(180, loaded.Profiles[0].TimeoutSeconds);
+            Assert.Equal(32768, loaded.Profiles[0].MaxTokens);
         }
         finally
         {

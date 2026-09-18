@@ -214,6 +214,45 @@ technical journal only the expert mode displays.
   `An_exception_during_the_launch_becomes_a_failure_card_rather_than_a_fault`,
   `Stopping_the_engine_raises_no_failure_card`.
 
+<!-- STUDIO-12 -->
+### Fixed — the team journey on a real crew: order, empty answers, single-file teams (STUDIO-12)
+
+- **Task order follows `dependencies`, in every layout.** Without a plan, the sequential
+  strategy — and the hierarchical, consensual, graph and autonomous modes, which hand
+  their tasks out one after another — now runs the crew's tasks in a stable topological
+  order on their declared dependencies (`TaskExecutionOrder` in the Domain,
+  `CrewTaskSequencer` in Infrastructure): a task runs after every task it depends on, and
+  the declared order is kept wherever the dependencies allow it. The multi-file layout
+  lists tasks in the ordinal order of their file names, so `consolidate.yaml` ran before
+  the `extract.yaml` it depends on — silently, with a green run. An unknown dependency is
+  ignored; a cycle keeps the declared order for the tasks caught in it and logs a warning.
+  The orchestrator no longer synthesises a "plan" from `crew.Tasks` when planning is off.
+- **An empty final answer is never a green run.** A model that answers with empty text —
+  and empty text again on the tool-free retry — exits `AgentExitReason.EmptyFinalAnswer`
+  (new member) in the three agent loops, including on the very first turn, which used to
+  pass as `Completed`; the task fails with the reason in `TaskResult.Error` (a failed exit
+  used to leave it null), a sequential crew with a failed task reports failure with the
+  reason (`CrewOutput.Error`, new; `CrewHookStatus.Failed` → AUTO_SUMMARY.md and the
+  `error` run event), and the one-shot runner exits **2** with `ERROR: <reason>` as its
+  last stderr line — it returned 0 for every crew failure, so `run.finished` said
+  `success:true` over an empty output mount. The reason names `Llm:MaxTokens`, the
+  setting that usually explains it for a reasoning model.
+- **Studio: `MaxTokens` on the model profile.** `ModelProfile.MaxTokens` (null = the
+  engine default, 4096), emitted as `ORKEON_Llm__MaxTokens`, round-tripped by the store
+  and editable in the profile editor next to temperature and timeout, with a hint that a
+  reasoning model needs 16384 or more.
+- **Studio: the profile store reads case-insensitively and says when a file is unreadable.**
+  A hand-written camelCase `studio-model-profiles.json` loaded zero profiles, silently;
+  a file that fails to parse was indistinguishable from an empty one. `LoadAsync` now
+  returns a `ModelProfileLoadResult` whose `Error` the settings screen shows.
+- **Studio: a folder holding a single-file crew is a team.** The target detector resolves
+  a folder with no layout marker and no script but one `*.yaml`/`*.yml` file as that file
+  (`RunTargetKind.SingleFileCrewDirectory`: run path = the file, selected path = the
+  folder, at the root or under the promoted `crew/` nesting); several YAML files resolve
+  to `crew.yaml` then `config.yaml`, else are offered as candidates. `TeamCatalog.Import`
+  runs the detector before copying and refuses, with the detector's message, a source it
+  cannot resolve — it used to copy any folder verbatim into a team nothing could run.
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

@@ -143,7 +143,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 ? new Dictionary<string, string>(inputVariables)
                 : [];
 
-            foreach (var taskId in crew.Tasks)
+            // The crew's tasks are handed out one after another, so the order is the
+            // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
+            var taskIds = await CrewTaskSequencer.ResolveAsync(
+                crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+
+            foreach (var taskId in taskIds)
             {
                 cancellationToken.ThrowIfCancellationRequested();
                 budget.AssertWallTime();

@@ -276,7 +276,7 @@ internal sealed class RunLauncherWindow : Window
                 ? $"{target.ShapeDescription} — runs: {target.Target!.RunPath}{Environment.NewLine}{requirement}"
                 : $"{target.ShapeDescription} — runs: {target.Target!.RunPath}",
             TargetSelectionState.NeedsSelection =>
-                $"{target.Candidates.Count} script(s) found — press 'Choose…' to pick one.",
+                $"{target.Candidates.Count} definition file(s) found — press 'Choose…' to pick one.",
             TargetSelectionState.Failed => target.Error ?? "This path holds no crew definition.",
             _ => "No target selected.",
         };

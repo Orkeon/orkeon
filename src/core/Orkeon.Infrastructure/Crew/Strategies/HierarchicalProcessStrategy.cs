@@ -122,7 +122,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             // own assign/review LLM usage is not surfaced by IManagerAgent and stays unmetered.
             var tokenTally = new TokenUsageTally();
 
-            foreach (var taskId in crew.Tasks)
+            // The manager hands the tasks out one after another, so the order is the
+            // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
+            var taskIds = await CrewTaskSequencer.ResolveAsync(
+                crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
+
+            foreach (var taskId in taskIds)
             {
                 cancellationToken.ThrowIfCancellationRequested();
 

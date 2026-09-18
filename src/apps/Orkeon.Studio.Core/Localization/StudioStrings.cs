@@ -1103,7 +1103,7 @@ public static class StudioStringKeys
     /// <summary>"{0} — orkeon run {1}"</summary>
     public const string TargetResolved = "Studio.Run.Resolved";
 
-    /// <summary>"{0} script(s) found: pick the one to run."</summary>
+    /// <summary>"{0} definition file(s) found: pick the one to run."</summary>
     public const string TargetPickScript = "Studio.Run.PickScript";
 
     /// <summary>"Detection failed."</summary>
@@ -1226,6 +1226,17 @@ public static class StudioStringKeys
 
     /// <summary>"The save failed — the engine refused the promotion."</summary>
     public const string WizardFailurePromoteRefused = "Studio.Create.FailurePromoteRefused";
+
+    // STUDIO-12 — single-file crew folders, unreadable profile file, import refusals ----
+
+    /// <summary>"Team folder holding one YAML crew file"</summary>
+    public const string TargetKindSingleFileCrewDirectory = "Studio.Run.KindSingleFileCrewDirectory";
+
+    /// <summary>"The model profiles file could not be read — {0}. Fix or delete it; …"</summary>
+    public const string ProfileFileUnreadable = "Studio.Settings.ProfileFileUnreadable";
+
+    /// <summary>"Not imported — {0}"</summary>
+    public const string ImportRefused = "Studio.Import.Refused";
 }
 
 /// <summary>
@@ -1665,7 +1676,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",
-        [StudioStringKeys.TargetPickScript] = "{0} script(s) found: pick the one to run.",
+        [StudioStringKeys.TargetPickScript] = "{0} definition file(s) found: pick the one to run.",
         [StudioStringKeys.TargetDetectionFailed] = "Detection failed.",
         [StudioStringKeys.TargetKindYamlFile] = "YAML crew file",
         [StudioStringKeys.TargetKindScriptFile] = "Scripting crew file",
@@ -1707,6 +1718,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardFailureEngineStopped] = "The engine stopped (exit code {0}).",
         [StudioStringKeys.WizardFailureUnknown] = "Something went wrong before the engine could answer.",
         [StudioStringKeys.WizardFailurePromoteRefused] = "The save failed — the engine refused the promotion.",
+        // STUDIO-12
+        [StudioStringKeys.TargetKindSingleFileCrewDirectory] = "Team folder holding one YAML crew file",
+        [StudioStringKeys.ProfileFileUnreadable] = "The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.",
+        [StudioStringKeys.ImportRefused] = "Not imported — {0}",
     };
 
     /// <summary>Every declared key with its English text, for the front-ends' drift tests.</summary>
