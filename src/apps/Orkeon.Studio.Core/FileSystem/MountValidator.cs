@@ -1,5 +1,6 @@
 using Orkeon.Constants.Configuration;
 using System.Globalization;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Validation;
 
 namespace Orkeon.Studio.Core.FileSystem;
@@ -25,9 +26,11 @@ public sealed class MountValidator
     /// True in the mount editor, where saving an empty list makes the runtime refuse to
     /// boot; false when the launcher merely adds mounts on top of an existing file.
     /// </param>
+    /// <param name="teamDirectory">See the structured overload.</param>
     public IReadOnlyList<ValidationMessage> Validate(
         IReadOnlyList<string> mountStrings,
-        bool requireAtLeastOne = true)
+        bool requireAtLeastOne = true,
+        string? teamDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(mountStrings);
 
@@ -42,16 +45,23 @@ public sealed class MountValidator
                 messages.Add(FormatError(mountStrings[i], error, i));
         }
 
-        messages.AddRange(Validate(parsed, requireAtLeastOne));
+        messages.AddRange(Validate(parsed, requireAtLeastOne, teamDirectory));
         return messages;
     }
 
     /// <summary>Validates already-structured mount definitions (the editor's own list).</summary>
     /// <param name="mounts">Definitions to validate.</param>
     /// <param name="requireAtLeastOne">See the raw-string overload.</param>
+    /// <param name="teamDirectory">
+    /// The team folder a team-relative entry (<c>./output:/output:rw</c>) resolves under.
+    /// With one, the folder's existence is checked there; without one — the team is not
+    /// adopted yet, its folders are born at adoption — the existence check is skipped for
+    /// such entries. Every other entry is checked exactly as before, whatever is passed.
+    /// </param>
     public IReadOnlyList<ValidationMessage> Validate(
         IReadOnlyList<MountDefinition> mounts,
-        bool requireAtLeastOne = true)
+        bool requireAtLeastOne = true,
+        string? teamDirectory = null)
     {
         ArgumentNullException.ThrowIfNull(mounts);
 
@@ -100,7 +110,7 @@ public sealed class MountValidator
                 continue;
             }
 
-            if (!_directories.Exists(mount.PhysicalPath))
+            if (!Exists(mount, serialized, teamDirectory))
             {
                 messages.Add(ValidationMessage.Error(
                     ValidationCodes.MountPathMissing,
@@ -117,6 +127,22 @@ public sealed class MountValidator
 
     /// <summary>Configuration path of the mount list, used as the message path.</summary>
     private const string MountsSectionPath = ConfigurationKeys.FileSystemMounts;
+
+    /// <summary>
+    /// Whether the mount's folder exists, as the runtime will find it. A team-relative entry
+    /// is looked for under the team folder when one is known — that is where the catalog
+    /// resolves it before a launch — and is taken on trust when none is: that folder does not
+    /// exist yet, it is created at adoption, and a missing-path error on a wizard row would
+    /// name a mistake nobody made.
+    /// </summary>
+    private bool Exists(MountDefinition mount, string serialized, string? teamDirectory)
+    {
+        if (!TeamMountPaths.TryGetRelativeFolder(serialized, out var folder))
+            return _directories.Exists(mount.PhysicalPath);
+
+        return teamDirectory is not { Length: > 0 }
+            || _directories.Exists(Path.Combine(teamDirectory, folder));
+    }
 
     private static IEnumerable<ValidationMessage> FindVirtualPathCollisions(IReadOnlyList<MountDefinition> mounts)
     {

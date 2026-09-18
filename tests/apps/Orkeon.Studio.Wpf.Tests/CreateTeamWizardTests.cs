@@ -622,7 +622,9 @@ public class CreateTeamWizardTests
     /// Recording only the folders the user picked left the team without the /output its own
     /// agents were told to write to: the trial passed, the launch then reported success and
     /// wrote nothing. The write roots the blueprint addresses are bound to folders inside
-    /// the team; a folder the user allowed for the same root wins.
+    /// the team; a folder the user allowed for the same root wins. What the sidecar records
+    /// for an in-team folder is the team-relative spelling, <c>./output:/output:rw</c>, and
+    /// the save is what creates the folder (STUDIO-14).
     /// </summary>
     [Fact]
     public async Task Adoption_records_the_write_folders_the_blueprint_addresses()
@@ -639,21 +641,41 @@ public class CreateTeamWizardTests
 
         Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/output" && m.IsReadWrite);
 
-        var teamDirectory = Path.Combine("/teams", "veille");
-        var bound = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
-        Assert.EndsWith(":/output:rw", bound, StringComparison.Ordinal);
-        Assert.StartsWith(Path.Combine(teamDirectory, "output"), bound, StringComparison.Ordinal);
-
-        // An explicit choice for the same root beats the derived binding.
-        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var teamDirectory = Path.Combine(root, "veille");
+        try
         {
-            PhysicalPath = Path.Combine("/data", "sorties"),
-            VirtualPath = "/output",
-            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
-        });
+            var bound = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
+            Assert.EndsWith(":/output:rw", bound, StringComparison.Ordinal);
+            Assert.StartsWith(Path.Combine(teamDirectory, "output"), bound, StringComparison.Ordinal);
 
-        var chosen = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
-        Assert.StartsWith(Path.Combine("/data", "sorties"), chosen, StringComparison.Ordinal);
+            // The sidecar carries the in-team folder relative to the team, and the save
+            // creates it; the catalog hands it back absolute, under the team.
+            TeamCatalog.SaveMetadata(teamDirectory, new StudioTeamMetadata { Name = "Veille", Mounts = [bound] });
+            var team = TeamCatalog.Describe(teamDirectory);
+            Assert.Equal(["./output:/output:rw"], team.Metadata!.Mounts);
+            Assert.Equal([bound], team.Mounts);
+            Assert.True(Directory.Exists(Path.Combine(teamDirectory, "output")));
+
+            // An explicit choice for the same root beats the derived binding — and, being
+            // outside the team, is recorded as it is.
+            vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
+            {
+                PhysicalPath = Path.Combine("/data", "sorties"),
+                VirtualPath = "/output",
+                Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite,
+            });
+
+            var chosen = Assert.Single(vm.WithDerivedWriteMounts(teamDirectory));
+            Assert.StartsWith(Path.Combine("/data", "sorties"), chosen, StringComparison.Ordinal);
+            TeamCatalog.SaveMetadata(teamDirectory, new StudioTeamMetadata { Name = "Veille", Mounts = [chosen] });
+            Assert.Equal([chosen], TeamCatalog.Describe(teamDirectory).Metadata!.Mounts);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>
@@ -682,12 +704,30 @@ public class CreateTeamWizardTests
 
         Assert.Contains(vm.DerivedMounts, m => m.VirtualPath == "/workspace" && !m.IsReadWrite);
 
-        var teamDirectory = Path.Combine("/teams", "veille");
-        var mounts = vm.WithDerivedWriteMounts(teamDirectory);
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var teamDirectory = Path.Combine(root, "veille");
+        try
+        {
+            var mounts = vm.WithDerivedWriteMounts(teamDirectory);
 
-        var read = Assert.Single(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
-        Assert.StartsWith(Path.Combine(teamDirectory, "input"), read, StringComparison.Ordinal);
-        Assert.Contains(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+            var read = Assert.Single(mounts, m => m.EndsWith(":/workspace:ro", StringComparison.Ordinal));
+            Assert.StartsWith(Path.Combine(teamDirectory, "input"), read, StringComparison.Ordinal);
+            Assert.Contains(mounts, m => m.EndsWith(":/output:rw", StringComparison.Ordinal));
+
+            // In the sidecar, both are the team's own folders, relative to it — and both
+            // exist once it is written (STUDIO-14).
+            TeamCatalog.SaveMetadata(teamDirectory, new StudioTeamMetadata { Name = "Veille", Mounts = mounts });
+            var recorded = TeamCatalog.Describe(teamDirectory).Metadata!.Mounts!;
+            Assert.Contains("./input:/workspace:ro", recorded);
+            Assert.Contains("./output:/output:rw", recorded);
+            Assert.True(Directory.Exists(Path.Combine(teamDirectory, "input")));
+            Assert.True(Directory.Exists(Path.Combine(teamDirectory, "output")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
     }
 
     /// <summary>

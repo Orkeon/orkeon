@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-14 -->
+### Added — team folders travel with the team, and the forge trial reads where the documents are (STUDIO-14, lots 0 and 1)
+
+- `orkeon forge … --read <dir>` (new session and `resume`): the trial mounts `<dir>` as
+  `/workspace`, read-only, in place of the working directory — which keeps every other role:
+  the session still lives under its `.orkeon/forge/<slug>/`, the settings still resolve next
+  to it. A folder that does not exist is refused before any session is created (`--read names
+  no directory`, exit 1); `promote` refuses the option, since it mounts nothing. A read folder
+  outside the process working directory is whitelisted for the file tools the way `orkeon run`
+  whitelists its script directory — the forge's mounts are its own three roots. This is the
+  engine hook Orkeon Studio's wizard uses to try a team on the folder chosen at its first step.
+- Studio's team sidecar (`studio-team.json`) records a team's own folders **relative to the
+  team**: a physical segment starting with `./` (`./input:/workspace:ro`,
+  `./output:/output:rw`) is a folder inside the team folder, so a team copied, exported or
+  moved keeps writing into its own folder without a rebase step. `TeamCatalog` resolves the
+  entries once, at its boundary (`Describe`, `DescribeTarget` and `List` return absolute
+  paths; the raw entries stay on `Metadata.Mounts`), relativizes on every save (`SaveMetadata`,
+  `SaveMounts`) and creates each relative folder there — the single point where an in-team
+  folder is materialised. Duplicate, export and import copy the entries verbatim and rewrite
+  an older absolute in-team path relative on the way; `TeamCatalog.RebaseMounts` is removed.
+  `DeclaredMounts.IsInsideTeam` is public and vouches for a `./` entry before the team folder
+  exists; `MountValidator.Validate` takes an optional `teamDirectory` and skips the existence
+  check of a relative entry until one is known. `TeamMountPaths` (Studio.Core) is the one
+  helper for the convention, and `FolderPolicy` names the step-1 choice the wizard gains
+  next (Later / InsideTeam / ExistingFolders).
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

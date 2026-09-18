@@ -124,4 +124,43 @@ public sealed class MountValidatorTests
         Assert.Empty(validator.Validate(["/srv/data:/workspace:ro"]));
         Assert.Equal(CreatedDirectories, probe.Created);
     }
+
+    /// <summary>
+    /// A team-relative entry (<c>./output:/output:rw</c>, STUDIO-14) names a folder that is
+    /// born at adoption. Before the team exists there is nothing to probe, and probing the
+    /// spelling against Studio's own working directory would report a mistake nobody made.
+    /// Every other entry is checked exactly as before.
+    /// </summary>
+    [Fact]
+    public void Should_SkipExistence_When_TheEntryIsTeamRelativeAndNoTeamFolderIsKnown()
+    {
+        var validator = new MountValidator(new FakeDirectoryProbe("/srv/data"));
+
+        var messages = validator.Validate(
+            ["./output:/output:rw", "./input:/workspace:ro", "/srv/data:/docs:ro", "/nope:/x:ro"],
+            requireAtLeastOne: false);
+
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountPathMissing, message.Code);
+        Assert.Contains("/nope", message.Text, StringComparison.Ordinal);
+        Assert.Empty(validator.Validate([Mount("./output", "/output", MountRights.ReadWrite)]));
+    }
+
+    [Fact]
+    public void Should_CheckExistenceUnderTheTeamFolder_When_OneIsGiven()
+    {
+        var team = Path.Combine("/teams", "veille");
+        var validator = new MountValidator(new FakeDirectoryProbe(Path.Combine(team, "output")));
+
+        Assert.Empty(validator.Validate(["./output:/output:rw"], requireAtLeastOne: false, teamDirectory: team));
+
+        var messages = validator.Validate(["./input:/workspace:ro"], requireAtLeastOne: false, teamDirectory: team);
+
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountPathMissing, message.Code);
+        Assert.Contains("./input", message.Text, StringComparison.Ordinal);
+        // The structured overload takes the same folder.
+        Assert.Empty(validator.Validate([Mount("./output", "/output", MountRights.ReadWrite)], teamDirectory: team));
+        Assert.Single(validator.Validate([Mount("./input", "/workspace")], teamDirectory: team));
+    }
 }

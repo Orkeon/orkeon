@@ -53,6 +53,7 @@ orkeon forge "summarize my supplier's new offers every morning"   # start from a
 orkeon forge                                   # start with the interview
 orkeon forge list                              # list the workspace's sessions
 orkeon forge resume <slug>                     # pick a session up exactly where it stopped
+orkeon forge resume <slug> --read <dir>        # try it on the documents in <dir>
 orkeon forge resume <slug> --adopt             # keep the team as generated, without a trial
 orkeon forge promote <slug> --to <dir>         # ship a ready session as an ordinary folder
 ```
@@ -71,12 +72,13 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | `--adopt` | *(resume)* Take the team as generated, without running a trial: a session paused by `--dry` goes straight to Ready. Fully offline — no host, no LLM, no run directory, zero tokens. It skips the **evidence** a trial produces, never a check: the crew is rendered and validated at that pause, and promotion never consumed a trial artefact (`verdict.json` is optional and `FORGE.md` says «no verdict recorded»). Refused anywhere else, with `FORGE-INVALID-STATE`. |
 | `--max-iterations <n>` / `--max-tokens <n>` / `--max-seconds <n>` | The budget (default 3 iterations; `0` = unlimited tokens/time). Resuming may raise it; consumption always carries over. |
 | `--settings <path>` | Same semantics as `orkeon run` — **long form only**: the forge parser is bespoke and defines no short aliases. |
+| `--read <dir>` | *(new session, resume)* The folder the trial reads as `/workspace`, in place of the working directory. The working directory keeps every other role — the session still lives under its `.orkeon/forge/<slug>/`, the settings still resolve next to it: `--read` moves the documents, not the atelier. A folder that does not exist is refused with exit 1 before any session is created (`--read names no directory`); `promote` refuses the option, since it mounts nothing. A read folder outside the working directory is whitelisted for the file tools automatically, the way `orkeon run` whitelists its script directory — the forge's mounts are its own three roots, so there is no `--allow-external-mounts` here. This is how Orkeon Studio tries a team on the folder chosen at its first step. |
 | `--pack <dir>` | Override the embedded prompt pack. |
 | `--to <dir>` | *(promote)* Destination folder; must not exist or be empty. |
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Generate schedule artifacts under `schedule/` — Windows task XML, systemd timer, cron line. The install command is **displayed, never executed**: Orkeon has no scheduler. |
 | `--with-settings` | *(promote)* Copy the resolved settings file into the folder. Off by default — a settings file usually carries API keys and the folder is made to be shared. |
 
-The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the workspace mounted read-only, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
+The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the working directory — or the `--read` folder — mounted read-only as `/workspace`, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
 
 The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, and `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
 

@@ -130,4 +130,33 @@ public sealed class DeclaredMountsTests
 
         Assert.Equal(["/x"], blocking);
     }
+
+    /// <summary>
+    /// A team-relative entry (<c>./output:/output:rw</c>, STUDIO-14) is inside the team by
+    /// construction: the wizard binds such a row before the team folder exists, and it must
+    /// read as vouched for — never red, never blocking — with no team directory to compare
+    /// against, and with one alike.
+    /// </summary>
+    [Fact]
+    public void A_team_relative_folder_is_vouched_for_even_before_the_team_exists()
+    {
+        Assert.True(DeclaredMounts.IsInsideTeam("./output:/output:rw", teamDirectory: null));
+        Assert.True(DeclaredMounts.IsInsideTeam("./input:/workspace:ro", Team));
+        Assert.True(DeclaredMounts.IsVouchedFor("./output:/output:rw", [], teamDirectory: null));
+        Assert.Empty(DeclaredMounts.BlockingFolders(
+            ["./input:/workspace:ro", "./output:/output:rw"], [], teamDirectory: null));
+
+        // The older absolute spelling is still recognised, but only against a known folder.
+        Assert.True(DeclaredMounts.IsInsideTeam($"{Path.Combine(Team, "output")}:/output:rw", Team));
+        Assert.False(DeclaredMounts.IsInsideTeam($"{Path.Combine(Team, "output")}:/output:rw", teamDirectory: null));
+    }
+
+    [Fact]
+    public void A_relative_folder_escaping_the_team_is_not_vouched_for()
+    {
+        Assert.False(DeclaredMounts.IsInsideTeam("./../x:/x:ro", Team));
+        Assert.False(DeclaredMounts.IsInsideTeam("./../x:/x:ro", teamDirectory: null));
+        Assert.False(DeclaredMounts.IsVouchedFor("./../x:/x:ro", [], Team));
+        Assert.Equal(["/x"], DeclaredMounts.BlockingFolders(["./../x:/x:ro"], [], Team));
+    }
 }

@@ -69,6 +69,28 @@ carries, or whose virtual root another folder already spends, says so and
 cannot be picked — two mounts on one root is not a merge the runtime performs,
 it is one it drops.
 
+**A team is a folder one carries.** The sidecar records the team's own folders
+relative to it: a physical segment that starts with `./` — `./input:/workspace:ro`,
+`./output:/output:rw`, `./rapports:/rapports:rw` — names a folder inside the team
+folder; one segment, `/` on both OSes, never `..`, never quoted. An absolute entry
+is a folder of the user's, outside the team, and stays what it is; an entry nobody
+can parse passes through untouched, both ways. The runtime resolves a relative
+physical path against the process cwd and nothing else, so `TeamCatalog` is the
+only place that knows the convention (`TeamMountPaths` in Core is its one helper):
+it resolves relative entries to absolute paths when it describes a team
+(`Describe`, `DescribeTarget`, hence `List` — the raw strings stay on
+`Metadata.Mounts`), and relativizes on the way in (`SaveMetadata`, `SaveMounts`),
+creating each relative folder there — the single point where an in-team folder is
+materialised, at adoption and at every later edit alike. The cards, the launcher
+and the folders modal receive absolute paths as before and never learn it. A
+duplicate, an export and an import copy the entries verbatim and resolve them under
+the copy; an older sidecar that recorded absolute paths under its own folder is
+rewritten relative on the way — there is no rebase step any more, because a copy is
+a safeguard, not a compatibility layer. `DeclaredMounts.IsInsideTeam` vouches for a
+`./` entry even before the team folder exists (relative *is* inside the team, by
+construction), and `MountValidator` skips the existence check of such an entry until
+it is told which team folder to look under.
+
 The wizard's block is **one line per mount point** (lot 3): the name the agents
 address, who addresses it — provenance, never permission — and the folder behind
 it, or « Choose the folder… » when there is none yet. That button opens the same
