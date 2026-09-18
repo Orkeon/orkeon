@@ -190,9 +190,42 @@
                              Text="{Binding Slug}"
                              Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
                 </StackPanel>
+                <!-- The need (STUDIO-16, D-02/D-03): the derived summary folded, the whole text
+                     unfolded. WPF has no MaxLines, so the folded block is bounded in height —
+                     MaxHeight = 3 x LineHeight, the line height pinned so the bound does not
+                     move with the font — with the ellipsis on the third line. -->
                 <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="0,5,0,0"
-                           Text="{Binding Description}"
-                           Visibility="{Binding HasDescription, Converter={StaticResource BooleanToVisibility}}"/>
+                           TextTrimming="CharacterEllipsis" LineHeight="17" LineStackingStrategy="BlockLineHeight"
+                           Text="{Binding DescriptionDisplay}"
+                           Visibility="{Binding HasDescription, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsDescriptionExpanded}" Value="False">
+                          <Setter Property="MaxHeight" Value="51"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+                <!-- « Voir plus » / « Voir moins » — only when the folded card hides something. -->
+                <Button Style="{StaticResource LinkBtn}" HorizontalAlignment="Left" Margin="0,3,0,0"
+                        Foreground="{DynamicResource AccentBrush}"
+                        Command="{Binding ToggleDescriptionCommand}"
+                        Visibility="{Binding DescriptionOverflows, Converter={StaticResource BooleanToVisibility}}">
+                  <TextBlock>
+                    <TextBlock.Style>
+                      <Style TargetType="TextBlock">
+                        <Setter Property="Text" Value="{Binding [Studio.Teams.ShowMore], Source={x:Static services:I18n.Instance}}"/>
+                        <Style.Triggers>
+                          <DataTrigger Binding="{Binding IsDescriptionExpanded}" Value="True">
+                            <Setter Property="Text" Value="{Binding [Studio.Teams.ShowLess], Source={x:Static services:I18n.Instance}}"/>
+                          </DataTrigger>
+                        </Style.Triggers>
+                      </Style>
+                    </TextBlock.Style>
+                  </TextBlock>
+                </Button>
                 <!-- Dossiers : chips + « Changer les dossiers » (F-02) -->
                 <WrapPanel Margin="0,9,0,0">
                   <TextBlock FontSize="11.5" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center" Margin="0,0,7,4">

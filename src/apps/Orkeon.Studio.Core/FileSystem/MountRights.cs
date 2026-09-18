@@ -148,6 +148,31 @@ public static class MountRightsTokens
         }];
     }
 
+    // STUDIO-16 — the one-word badge (D-05): what a list row shows, the label being its tooltip.
+
+    /// <summary>Returns the one-word badge of a rights value (English) — "read", "write", "write, no delete".</summary>
+    [SuppressMessage("Design", "CA1024", Justification = "Lookup over the string port, not a property-backed value.")]
+    public static string GetBadge(MountRights rights) => GetBadge(rights, EnglishStudioStrings.Instance);
+
+    /// <summary>
+    /// Returns the one-word badge of a rights value through a culture port (STUDIO-16). A list
+    /// row of ~220 device-independent pixels cannot carry the 52-character label of
+    /// <see cref="GetLabel(MountRights, IStudioStrings)"/> next to a name; the badge says the
+    /// right in a word and the label goes in the tooltip.
+    /// </summary>
+    public static string GetBadge(MountRights rights, IStudioStrings strings)
+    {
+        ArgumentNullException.ThrowIfNull(strings);
+
+        return strings[rights switch
+        {
+            MountRights.ReadOnly => StudioStringKeys.RightsBadgeReadOnly,
+            MountRights.ReadWrite => StudioStringKeys.RightsBadgeReadWrite,
+            MountRights.ReadWriteNoDelete => StudioStringKeys.RightsBadgeReadWriteNoDelete,
+            _ => throw new ArgumentOutOfRangeException(nameof(rights)),
+        }];
+    }
+
     /// <summary>
     /// Position of <paramref name="rights"/> in <see cref="Choices"/> — the index a
     /// drop-down or a choice list has to be set to. Unknown values fall back to the first

@@ -80,6 +80,7 @@ public sealed class TeamCardViewModel : ObservableObject
     private DateTimeOffset? _lastRun;
     private RunOutcome? _lastOutcome;
     private bool _isConfirmingDelete;
+    private bool _isDescriptionExpanded;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -120,6 +121,7 @@ public sealed class TeamCardViewModel : ObservableObject
         // the tooltip saying why. Resolved at card build; Refresh() rebuilds the cards.
         CanModify = owner.FindSessionFor(summary) is not null;
         ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify);
+        ToggleDescriptionCommand = new RelayCommand(() => IsDescriptionExpanded = !IsDescriptionExpanded);
     }
 
     /// <summary>« Modifier » — reopens the wizard at step 2 on this team (W-09).</summary>
@@ -143,17 +145,56 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>The team folder, as the catalog read it.</summary>
     public TeamSummary Summary { get; }
 
-    /// <summary>Display name.</summary>
-    public string Name => Summary.Name;
+    /// <summary>
+    /// Display name — one line, whatever the sidecar says (STUDIO-16, D-01): a WPF TextBlock
+    /// renders line breaks even without wrapping, so a pasted page in <c>name</c> used to
+    /// become a forty-line card title. The tooltip carries this, never the raw text.
+    /// </summary>
+    public string Name => TeamCatalog.NormalizeName(Summary.Name);
 
     /// <summary>Folder name — expert only.</summary>
     public string Slug => Summary.Slug;
 
-    /// <summary>The need, in the user's words; empty for a folder without a sidecar.</summary>
+    /// <summary>The need, whole, in the user's words; empty for a folder without a sidecar.</summary>
     public string? Description => Summary.Description;
+
+    /// <summary>The need cut to one paragraph — what the folded card shows (STUDIO-16, D-03).</summary>
+    public string? DescriptionSummary => Summary.Summary;
 
     /// <summary>Whether a description exists.</summary>
     public bool HasDescription => Summary.Description is { Length: > 0 };
+
+    /// <summary>
+    /// What the card's description block shows: the summary folded, the whole need unfolded
+    /// (STUDIO-16, D-02). The view bounds the folded block to three lines on top of this.
+    /// </summary>
+    public string? DescriptionDisplay => _isDescriptionExpanded ? Description : DescriptionSummary;
+
+    /// <summary>
+    /// Whether the folded card hides part of the need — the summary is not the whole text
+    /// once whitespace is collapsed: a second paragraph, a cut at 240 characters, markup
+    /// stripped. The « Voir plus » link exists only then: a short need has no toggle.
+    /// </summary>
+    public bool DescriptionOverflows =>
+        Description is { Length: > 0 } description
+        && !string.Equals(
+            DescriptionSummary,
+            string.Join(' ', description.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries)),
+            StringComparison.Ordinal);
+
+    /// <summary>Whether the card shows the whole need rather than its summary.</summary>
+    public bool IsDescriptionExpanded
+    {
+        get => _isDescriptionExpanded;
+        set
+        {
+            if (SetProperty(ref _isDescriptionExpanded, value))
+                OnPropertyChanged(nameof(DescriptionDisplay));
+        }
+    }
+
+    /// <summary>« Voir plus » / « Voir moins » — unfolds and folds the need.</summary>
+    public RelayCommand ToggleDescriptionCommand { get; }
 
     /// <summary>Name of the team's model profile, when one was chosen.</summary>
     public string? Profile => Summary.Profile;

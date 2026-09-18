@@ -631,6 +631,17 @@ public static class StudioStringKeys
     /// <summary>"Read / write without delete"</summary>
     public const string RightsReadWriteNoDelete = "Studio.Settings.ReadWriteNoDelete";
 
+    // STUDIO-16 — the one-word rights badges of the mount list (Core FileSystem/MountRightsTokens.GetBadge)
+
+    /// <summary>"read" — the badge of a read-only mount row; the label above is its tooltip.</summary>
+    public const string RightsBadgeReadOnly = "Studio.Settings.RightsBadgeRo";
+
+    /// <summary>"write" — the badge of a read-write mount row.</summary>
+    public const string RightsBadgeReadWrite = "Studio.Settings.RightsBadgeRw";
+
+    /// <summary>"write, no delete" — the badge of a read-write-no-delete mount row.</summary>
+    public const string RightsBadgeReadWriteNoDelete = "Studio.Settings.RightsBadgeRwnd";
+
     // ---- Run target prerequisites (Core Targets/RunTargetRequirements) ---
 
     /// <summary>"This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;' …"</summary>
@@ -1451,6 +1462,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RightsReadOnly] = "Read only",
         [StudioStringKeys.RightsReadWrite] = "Read / write (create and delete allowed)",
         [StudioStringKeys.RightsReadWriteNoDelete] = "Read / write without delete",
+
+        // STUDIO-16
+        [StudioStringKeys.RightsBadgeReadOnly] = "read",
+        [StudioStringKeys.RightsBadgeReadWrite] = "write",
+        [StudioStringKeys.RightsBadgeReadWriteNoDelete] = "write, no delete",
 
         [StudioStringKeys.TargetDirectoryRunNotice] =
             "This is a multi-file crew directory: running it uses 'orkeon run <directory>', which " +

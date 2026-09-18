@@ -249,7 +249,12 @@ Chacune est un dossier ordinaire et autonome (définition de la crew, `run.cmd`/
 le sidecar `studio-team.json` avec nom, besoin, réglage, programmation et dossiers) —
 copiable, partageable, supprimable, exécutable avec `orkeon run <dossier>` seul.
 L'adoption *déplace* le résultat d'une session de la racine d'état vers la racine des
-documents ; c'est la frontière entre un brouillon et un livrable.
+documents ; c'est la frontière entre un brouillon et un livrable. Dans le sidecar,
+`name` est normalisé à l'écriture (une ligne, balisage Markdown retiré, coupé au mot
+sous 64 caractères — le plafond du slug ; l'import applique la même règle à la copie
+qu'il fait) tandis que `description` est le besoin entier, intact : le résumé d'un
+paragraphe qu'affichent les cartes est dérivé à la lecture (`TeamCatalog.Summarize`)
+et jamais stocké.
 
 ## Comment Studio est livré
 

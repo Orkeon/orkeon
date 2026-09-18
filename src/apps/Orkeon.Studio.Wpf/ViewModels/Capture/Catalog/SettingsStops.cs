@@ -51,10 +51,12 @@ internal static class SettingsStops
             Modes = CaptureModes.Expert,
             Because = "The expert mount editor with a row selected: the right pane and its "
                     + "separator only exist once something is picked, so the unselected shot shows "
-                    + "half the screen.",
+                    + "half the screen. The selected row is the writable one, whose long rights "
+                    + "label used to stretch the row and hide the name (STUDIO-16): the badge says "
+                    + "one word, the closed rights list says the label.",
             Covers = ["Config.Mounts.SelectedMount"],
             Arrange = CaptureAction.Sync(static c =>
-                c.Shell.Config.Mounts.SelectedMount = c.Shell.Config.Mounts.Mounts[0]),
+                c.Shell.Config.Mounts.SelectedMount = c.Shell.Config.Mounts.Mounts[1]),
             Teardown = CaptureAction.Sync(static c => c.Shell.Config.Mounts.SelectedMount = null),
         },
 

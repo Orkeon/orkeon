@@ -560,16 +560,92 @@ public class CreateTeamWizardTests
         }
     }
 
+    /// <summary>The README a user pastes into the name field: headings, a quote, a list.</summary>
+    private const string PastedPage = """
+        # Extraire les factures fournisseurs déposées en `docs/`, classées par mois et par fournisseur, avec un **contrôle** des doublons
+
+        > Un README entier.
+
+        - lit chaque PDF
+        - en extrait le fournisseur et la date
+        """;
+
     [Fact]
-    public void A_goal_length_title_is_cut_to_a_display_name_at_a_word_boundary()
+    public async Task Adoption_writes_a_normalized_name_even_when_the_user_pasted_a_page()
     {
-        // v3 W-07: the engine now demands a short crew.name, but an older session's
-        // title may still be the goal sentence — never mid-word, never trailing comma.
-        Assert.Equal("Veille documentaire", CreateTeamViewModel.ShortName("  Veille documentaire  "));
-        Assert.Equal(
-            "Résumer en un seul passage les nouveautés d'un",
-            CreateTeamViewModel.ShortName(
-                "Résumer en un seul passage les nouveautés d'un site, à partir des fichiers enregistrés"));
+        // STUDIO-16 (D-04): the sidecar's name is one line, under 64, without markup, whatever
+        // the field holds — the run card, the my-teams card and the history read it as a title.
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: root);
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            vm.Need = PastedPage;
+            vm.FrequencyChoices[1].SelectCommand.Execute(null);
+            vm.SourceChoices[0].SelectCommand.Execute(null);
+            vm.OutputChoices[0].SelectCommand.Execute(null);
+            await Compose(vm);
+
+            vm.TeamName = PastedPage;
+            Assert.True(vm.CanSaveTeam);
+            var promoted = Path.Combine(root, TeamCatalog.Slugify(vm.TeamName));
+
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.cmd"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.True(vm.IsSaved);
+            var summary = TeamCatalog.Describe(promoted);
+            Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", summary.Name);
+            Assert.True(summary.Name.Length <= TeamCatalog.MaxNameLength);
+            // The need stays whole: it is the archive of what was asked, the summary is derived.
+            Assert.Equal(PastedPage, summary.Description);
+            Assert.Equal("Un README entier.", summary.Summary);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void The_name_field_shows_the_normalized_value_live_without_fighting_a_keystroke()
+    {
+        var (vm, _, _) = Build();
+
+        // A pasted page collapses to its first line at once, markup gone, cut at a word.
+        vm.TeamName = PastedPage;
+        Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", vm.TeamName);
+
+        // Typing is never fought: the space before the next word stays, and so does the
+        // leading one; the write trims them. A character past the cap is refused whole,
+        // the way MaxLength would, rather than costing the word being typed.
+        vm.TeamName = "Ma veille ";
+        Assert.Equal("Ma veille ", vm.TeamName);
+        vm.TeamName = "  Ma veille";
+        Assert.Equal("  Ma veille", vm.TeamName);
+        var atTheCap = new string('a', 60) + " bcd";
+        vm.TeamName = atTheCap;
+        Assert.Equal(atTheCap, vm.TeamName);
+        vm.TeamName = atTheCap + "e";
+        Assert.Equal(atTheCap, vm.TeamName);
+
+        // An empty field stays empty — the fallback on the slug belongs to the write — and
+        // a lone marker is nothing to keep.
+        vm.TeamName = "";
+        Assert.Equal("", vm.TeamName);
+        vm.TeamName = "#";
+        Assert.Equal("", vm.TeamName);
+        Assert.False(vm.CanSaveTeam);
     }
 
     [Fact]

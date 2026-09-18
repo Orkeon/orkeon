@@ -53,8 +53,15 @@ public sealed record TargetDescription
     /// <summary>Display name: the sidecar's, else the file-system name; empty when unknown.</summary>
     public string? Name { get; init; }
 
-    /// <summary>The sidecar's one-line need, when present.</summary>
+    /// <summary>The sidecar's need, whole, when present.</summary>
     public string? Description { get; init; }
+
+    /// <summary>
+    /// The need cut to one paragraph for a card (STUDIO-16): derived from
+    /// <see cref="Description"/> at read time through <see cref="TeamCatalog.Summarize"/>,
+    /// never stored.
+    /// </summary>
+    public string? Summary => Description is null ? null : TeamCatalog.Summarize(Description);
 
     /// <summary>The model profile recorded by adoption, when present.</summary>
     public string? Profile { get; init; }
@@ -97,6 +104,13 @@ public sealed record TeamSummary
 
     /// <summary>The need, in the user's words, when recorded.</summary>
     public string? Description => Metadata?.Description;
+
+    /// <summary>
+    /// The need cut to one paragraph for the card (STUDIO-16): derived from
+    /// <see cref="Description"/> at read time through <see cref="TeamCatalog.Summarize"/>,
+    /// never stored — the sidecar keeps the whole need, it is the archive of it.
+    /// </summary>
+    public string? Summary => Description is null ? null : TeamCatalog.Summarize(Description);
 
     /// <summary>
     /// The team's mount strings, resolved: a team-relative sidecar entry (<c>./output</c>)
@@ -519,7 +533,7 @@ public static partial class TeamCatalog
                 // An older sidecar carrying absolute paths under its source folder is rewritten
                 // relative on import — a copy is a safeguard, not a compatibility layer.
                 if (TryReadMetadata(destination) is { } imported)
-                    SaveMetadata(destination, Relativized(imported, sourcePath));
+                    SaveMetadata(destination, WithNormalizedName(Relativized(imported, sourcePath)));
             }
             else
             {
@@ -647,6 +661,180 @@ public static partial class TeamCatalog
 
     /// <summary>Longest slug <see cref="Slugify"/> produces.</summary>
     public const int MaxSlugLength = 64;
+
+    #region STUDIO-16 — display normalisation
+
+    /// <summary>Longest display name <see cref="NormalizeName"/> produces — the slug's own cap.</summary>
+    public const int MaxNameLength = MaxSlugLength;
+
+    /// <summary>Longest summary <see cref="Summarize"/> produces, ellipsis included.</summary>
+    public const int MaxSummaryLength = 240;
+
+    /// <summary>
+    /// The one-line display name a free text becomes (STUDIO-16, D-04): its first line that
+    /// says something, Markdown markup stripped, cut at a word boundary to
+    /// <see cref="MaxNameLength"/> — the slug's cap — and never empty: a text that strips to
+    /// nothing falls back on its slug. Applied at write (adoption, import) and at display
+    /// (cards, headline, history) alike, because a WPF TextBlock renders line breaks even
+    /// without wrapping and has no MaxLines — a pasted page used to become a forty-line title.
+    /// </summary>
+    public static string NormalizeName(string name) =>
+        TryNormalizeName(name, out var normalized)
+            ? normalized
+            : Slugify(string.IsNullOrWhiteSpace(name) ? "equipe" : name);
+
+    /// <summary>
+    /// <see cref="NormalizeName"/> without the slug fallback: false, with an empty
+    /// <paramref name="normalized"/>, when the text strips to nothing. The live form of a
+    /// field being typed in, where an empty field has to stay empty.
+    /// </summary>
+    public static bool TryNormalizeName(string name, out string normalized)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+
+        var line = Lines(name).Select(StripMarkup).FirstOrDefault(l => l.Length > 0) ?? "";
+        normalized = CutAtWord(line, MaxNameLength);
+        return normalized.Length > 0;
+    }
+
+    /// <summary>
+    /// The one-paragraph reading of a need (STUDIO-16, D-03): the first paragraph that says
+    /// something once Markdown markup is stripped — fenced code, rules and a heading-only
+    /// paragraph followed by prose are skipped, the heading standing in only when nothing
+    /// else does — its lines joined, cut at a word boundary to <see cref="MaxSummaryLength"/>
+    /// with an ellipsis. Derived at read time, never stored: the sidecar keeps the whole need,
+    /// it is the archive of it. Empty for a text that says nothing.
+    /// </summary>
+    public static string Summarize(string text)
+    {
+        ArgumentNullException.ThrowIfNull(text);
+
+        string? heading = null;
+        var lines = new List<string>();
+        var inFence = false;
+
+        // Joins the pending lines into one paragraph; a heading is remembered as the fallback
+        // rather than returned, prose wins over a title.
+        string? Flush(bool asHeading)
+        {
+            if (lines.Count == 0)
+                return null;
+
+            var joined = string.Join(' ', lines.Select(StripMarkup).Where(l => l.Length > 0));
+            lines.Clear();
+            if (joined.Length == 0)
+                return null;
+            if (!asHeading)
+                return joined;
+
+            heading ??= joined;
+            return null;
+        }
+
+        foreach (var raw in Lines(text))
+        {
+            var line = raw.Trim();
+            if (line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith("~~~", StringComparison.Ordinal))
+            {
+                if (Flush(asHeading: false) is { } beforeFence)
+                    return CutSummary(beforeFence);
+                inFence = !inFence;
+                continue;
+            }
+
+            if (inFence)
+                continue;
+
+            if (line.Length == 0 || RulePattern().IsMatch(line))
+            {
+                if (Flush(asHeading: false) is { } paragraph)
+                    return CutSummary(paragraph);
+                continue;
+            }
+
+            if (line.StartsWith('#'))
+            {
+                // A heading is a block of its own, blank line after it or not.
+                if (Flush(asHeading: false) is { } paragraph)
+                    return CutSummary(paragraph);
+                lines.Add(line);
+                Flush(asHeading: true);
+                continue;
+            }
+
+            lines.Add(line);
+        }
+
+        return CutSummary(Flush(asHeading: false) ?? heading ?? "");
+    }
+
+    /// <summary>
+    /// The sidecar with its name normalized (D-04) — applied where a sidecar is rewritten
+    /// anyway (import), never in place: a sidecar already in the teams root is the user's,
+    /// and the bounded display is enough for it.
+    /// </summary>
+    private static StudioTeamMetadata WithNormalizedName(StudioTeamMetadata metadata) =>
+        metadata.Name is { Length: > 0 } name ? metadata with { Name = NormalizeName(name) } : metadata;
+
+    private static string CutSummary(string text) =>
+        text.Length <= MaxSummaryLength ? text : CutAtWord(text, MaxSummaryLength - 1) + "…";
+
+    /// <summary>
+    /// Cuts at the last space inside the window when one is reasonably close, the way the
+    /// slug does; a single window-length word is cut hard. Trailing punctuation left by the
+    /// cut goes with it — never a trailing comma.
+    /// </summary>
+    private static string CutAtWord(string text, int maxLength)
+    {
+        if (text.Length <= maxLength)
+            return text;
+
+        var cut = text.LastIndexOf(' ', maxLength);
+        return text[..(cut >= maxLength / 2 ? cut : maxLength)].TrimEnd(',', ';', ':', '.', ' ');
+    }
+
+    private static string[] Lines(string text) =>
+        text.Replace("\r\n", "\n", StringComparison.Ordinal).Replace('\r', '\n').Split('\n');
+
+    /// <summary>
+    /// One line without its Markdown: heading, quote and list markers, images and links
+    /// reduced to their text, HTML tags, backticks and emphasis stars dropped, emphasis
+    /// underscores unwrapped (a snake_case word keeps its own), whitespace runs collapsed.
+    /// </summary>
+    private static string StripMarkup(string line)
+    {
+        var text = LeadingMarkerPattern().Replace(line.Trim(), "");
+        text = ImagePattern().Replace(text, "$1");
+        text = LinkPattern().Replace(text, "$1");
+        text = HtmlTagPattern().Replace(text, "");
+        text = text.Replace("`", "", StringComparison.Ordinal).Replace("*", "", StringComparison.Ordinal);
+        text = UnderscoreEmphasisPattern().Replace(text, "$1");
+        return WhitespaceRunPattern().Replace(text, " ").Trim();
+    }
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"^(?:#{1,6}\s*|>\s*|[-+]\s+|\d+[.)]\s+)+")]
+    private static partial System.Text.RegularExpressions.Regex LeadingMarkerPattern();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"!\[([^\]]*)\]\([^)]*\)")]
+    private static partial System.Text.RegularExpressions.Regex ImagePattern();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\[([^\]]*)\]\([^)]*\)")]
+    private static partial System.Text.RegularExpressions.Regex LinkPattern();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"<[A-Za-z/!][^>]*>")]
+    private static partial System.Text.RegularExpressions.Regex HtmlTagPattern();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"(?<![\p{L}\p{N}])_{1,2}(\S(?:.*?\S)?)_{1,2}(?![\p{L}\p{N}])")]
+    private static partial System.Text.RegularExpressions.Regex UnderscoreEmphasisPattern();
+
+    [System.Text.RegularExpressions.GeneratedRegex(@"\s+")]
+    private static partial System.Text.RegularExpressions.Regex WhitespaceRunPattern();
+
+    /// <summary>A thematic break or a setext underline: three or more of one rule character.</summary>
+    [System.Text.RegularExpressions.GeneratedRegex(@"^(?:-\s*){3,}$|^(?:\*\s*){3,}$|^(?:_\s*){3,}$|^={3,}$")]
+    private static partial System.Text.RegularExpressions.Regex RulePattern();
+
+    #endregion
 
     /// <summary>
     /// One canonical spelling for a path used as a dictionary key (matching a history

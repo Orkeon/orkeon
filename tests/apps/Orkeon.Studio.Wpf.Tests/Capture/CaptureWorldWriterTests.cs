@@ -55,13 +55,21 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
     {
         var teams = TeamCatalog.List(_worlds.Seeded.TeamsRoot);
 
-        Assert.Equal(3, teams.Count);
+        Assert.Equal(4, teams.Count);
         Assert.Contains(teams, team => team.Name == "Veille concurrentielle");
 
         // The agent count is read off the crew folder, not stored: a team folder that the real
         // detector does not recognise would report null here.
         var veille = teams.Single(team => team.Slug == "veille-concurrentielle");
         Assert.Equal(4, veille.AgentCount);
+
+        // The pasted-README team (STUDIO-16) is written RAW — a multi-line name, a forty-line
+        // need — so the shots prove the display bounds it; the catalogue derives the summary.
+        var pasted = teams.Single(team => team.Slug == StudioFixture.PastedReadmeTeamSlug);
+        Assert.Contains('\n', pasted.Name);
+        Assert.True(pasted.Description!.Split('\n').Length >= 40, "the seeded need must be forty lines long");
+        Assert.DoesNotContain('\n', TeamCatalog.NormalizeName(pasted.Name));
+        Assert.StartsWith("Chaque matin, les factures", pasted.Summary, StringComparison.Ordinal);
     }
 
     [Fact]

@@ -74,6 +74,66 @@ public sealed class MountEditorViewModelTests
         Assert.Equal(["ro", "rw", "rwnd"], new MountEditorViewModel().RightsChoices.Select(c => c.Token));
     }
 
+    /// <summary>A port answering a French table for the badges and the labels.</summary>
+    private sealed class FrenchRightsStrings : Orkeon.Studio.Core.Localization.IStudioStrings
+    {
+        private static readonly Dictionary<string, string> French = new(StringComparer.Ordinal)
+        {
+            [Orkeon.Studio.Core.Localization.StudioStringKeys.RightsBadgeReadWrite] = "écriture",
+            [Orkeon.Studio.Core.Localization.StudioStringKeys.RightsReadWrite] = "Lecture / écriture (création et suppression autorisées)",
+        };
+
+        public string this[string key] =>
+            French.GetValueOrDefault(key, Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance[key]);
+
+        public event EventHandler? CultureChanged { add { } remove { } }
+    }
+
+    [Fact]
+    public void The_rights_badge_is_one_word_and_the_label_is_the_tooltip()
+    {
+        // STUDIO-16 (D-05): the list row shows the right in a word; the 52-character label
+        // that used to take the whole row and push the name out is the badge's tooltip.
+        var mount = new MountEditorViewModel { PhysicalPath = "/data", VirtualPath = "/output", Rights = MountRights.ReadWrite };
+
+        Assert.Equal("write", mount.RightsBadge);
+        Assert.Equal("Read / write (create and delete allowed)", mount.RightsLabel);
+        Assert.Equal("read", new MountEditorViewModel { Rights = MountRights.ReadOnly }.RightsBadge);
+        Assert.Equal("write, no delete", new MountEditorViewModel { Rights = MountRights.ReadWriteNoDelete }.RightsBadge);
+
+        // The badge moves with the rights, and with the culture.
+        var raised = new List<string>();
+        mount.PropertyChanged += (_, e) => raised.Add(e.PropertyName!);
+        mount.Rights = MountRights.ReadOnly;
+        Assert.Contains(nameof(MountEditorViewModel.RightsBadge), raised);
+        raised.Clear();
+        mount.RefreshCulture();
+        Assert.Contains(nameof(MountEditorViewModel.RightsBadge), raised);
+
+        var french = new MountEditorViewModel(new FrenchRightsStrings()) { Rights = MountRights.ReadWrite };
+        Assert.Equal("écriture", french.RightsBadge);
+        Assert.Equal("Lecture / écriture (création et suppression autorisées)", french.RightsLabel);
+
+        // And the row template wires it that way: the badge shows RightsBadge, its tooltip is
+        // RightsLabel, and the name comes first so the badge can never shrink it.
+        var xaml = File.ReadAllText(Path.Combine(WpfSourceRoot(), "Views", "MountsEditorView.xaml"));
+        var row = xaml[xaml.IndexOf("<ListBox.ItemTemplate>", StringComparison.Ordinal)..xaml.IndexOf("</ListBox.ItemTemplate>", StringComparison.Ordinal)];
+        Assert.Contains("Text=\"{Binding RightsBadge, Mode=OneWay}\"", row, StringComparison.Ordinal);
+        Assert.Contains("ToolTip=\"{Binding RightsLabel, Mode=OneWay}\"", row, StringComparison.Ordinal);
+        Assert.DoesNotContain("Text=\"{Binding RightsLabel", row, StringComparison.Ordinal);
+        Assert.True(
+            row.IndexOf("{Binding VirtualPath, Mode=OneWay}", StringComparison.Ordinal)
+                < row.IndexOf("{Binding RightsBadge, Mode=OneWay}", StringComparison.Ordinal),
+            "the virtual name must be the first child of the row, the badge the last");
+        Assert.Contains("TextWrapping=\"NoWrap\"", row, StringComparison.Ordinal);
+    }
+
+    private static string WpfSourceRoot([System.Runtime.CompilerServices.CallerFilePath] string thisFile = "")
+    {
+        var testsDir = Path.GetDirectoryName(thisFile)!;
+        return Path.GetFullPath(Path.Combine(testsDir, "..", "..", "..", "src", "apps", "Orkeon.Studio.Wpf"));
+    }
+
     [Fact]
     public void Should_RaiseEdited_When_AnOverrideChanges()
     {

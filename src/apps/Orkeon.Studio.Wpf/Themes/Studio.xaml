@@ -730,8 +730,14 @@
                 </ControlTemplate>
               </ToggleButton.Template>
             </ToggleButton>
+            <!-- The four bindings of the stock template, not two (STUDIO-16, D-06): DisplayMemberPath
+                 reaches the closed box through the item TEMPLATE SELECTOR, and without it the box
+                 fell back on ToString() — «MountRightsChoice { Rights = ReadWrite, … }» on the
+                 rights lists, the record on the team picker. -->
             <ContentPresenter Content="{TemplateBinding SelectionBoxItem}"
                               ContentTemplate="{TemplateBinding SelectionBoxItemTemplate}"
+                              ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
+                              ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                               IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"/>
             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    StaysOpen="False" PopupAnimation="Fade" VerticalOffset="4">

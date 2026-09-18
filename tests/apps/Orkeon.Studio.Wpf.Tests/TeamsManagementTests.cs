@@ -98,6 +98,108 @@ public sealed class TeamsManagementTests
         Assert.False(ForgeSessionCatalog.Delete(missing));
     }
 
+    /// <summary>A need pasted as a whole README: a title, a paragraph, a list, a code block.</summary>
+    private const string LongNeed = """
+        # Extraction des factures
+
+        Chaque matin, les factures déposées dans `docs/` sont lues une à une, puis classées
+        dans `sortie/` par mois et par fournisseur, avec un **contrôle** des doublons.
+
+        ## Règles
+
+        - une facture sans date est mise de côté
+        - un doublon n'est jamais écrasé
+
+        ```json
+        { "doublon": false }
+        ```
+        """;
+
+    [Fact]
+    public void A_long_description_is_folded_and_unfolds_on_demand()
+    {
+        // STUDIO-16 (D-02/D-03): the card shows the derived summary folded and the whole
+        // need unfolded; the toggle exists because the summary is not the whole text.
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var directory = Path.Combine(root, "factures");
+            Directory.CreateDirectory(directory);
+            TeamCatalog.SaveMetadata(directory, new StudioTeamMetadata
+            {
+                Name = "# Extraction des factures\n\nun README entier dans le nom",
+                Description = LongNeed,
+            });
+
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
+            var card = Assert.Single(teams.Teams);
+
+            // The name is one line, whatever the sidecar says (D-01).
+            Assert.Equal("Extraction des factures", card.Name);
+
+            Assert.True(card.HasDescription);
+            Assert.True(card.DescriptionOverflows);
+            Assert.False(card.IsDescriptionExpanded);
+            Assert.Equal(card.DescriptionSummary, card.DescriptionDisplay);
+            Assert.StartsWith("Chaque matin, les factures déposées dans docs/", card.DescriptionSummary, StringComparison.Ordinal);
+            Assert.DoesNotContain("```", card.DescriptionSummary!, StringComparison.Ordinal);
+
+            var raised = new List<string>();
+            card.PropertyChanged += (_, e) => raised.Add(e.PropertyName!);
+            card.ToggleDescriptionCommand.Execute(null);
+
+            Assert.True(card.IsDescriptionExpanded);
+            Assert.Equal(LongNeed, card.DescriptionDisplay);
+            Assert.Contains(nameof(TeamCardViewModel.DescriptionDisplay), raised);
+
+            card.ToggleDescriptionCommand.Execute(null);
+            Assert.False(card.IsDescriptionExpanded);
+            Assert.Equal(card.DescriptionSummary, card.DescriptionDisplay);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_short_description_offers_no_toggle()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var directory = Path.Combine(root, "veille");
+            Directory.CreateDirectory(directory);
+            TeamCatalog.SaveMetadata(directory, new StudioTeamMetadata
+            {
+                Name = "Veille",
+                Description = "Relit la presse du secteur chaque matin et résume ce qui a bougé.",
+            });
+
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
+            var card = Assert.Single(teams.Teams);
+
+            Assert.True(card.HasDescription);
+            Assert.False(card.DescriptionOverflows);
+            Assert.Equal(card.Description, card.DescriptionDisplay);
+
+            // A folder without a sidecar has no description at all, and no toggle either.
+            var bare = Path.Combine(root, "nu");
+            Directory.CreateDirectory(bare);
+            teams.Refresh();
+            var bareCard = teams.Teams.Single(c => c.Slug == "nu");
+            Assert.False(bareCard.HasDescription);
+            Assert.False(bareCard.DescriptionOverflows);
+            Assert.Null(bareCard.DescriptionDisplay);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void An_empty_screen_offers_both_ways_out()
     {

@@ -221,20 +221,25 @@
           <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" FontSize="12" Margin="0,0,10,0"
                   VerticalAlignment="Center" Click="OnChangeTeam"
                   Content="{Binding [Studio.Run.ChangeTeam], Source={x:Static services:I18n.Instance}}"/>
-          <StackPanel Orientation="Horizontal">
-            <Border Width="34" Height="34" CornerRadius="10" Background="{DynamicResource AccentWeakBrush}"
+          <!-- A DockPanel, not a horizontal StackPanel: the text column needs a finite width for
+               the headline's ellipsis and the meta line's wrap to mean anything (STUDIO-16). -->
+          <DockPanel>
+            <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" Background="{DynamicResource AccentWeakBrush}"
                     VerticalAlignment="Center">
               <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
                                    HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Border>
             <StackPanel Margin="12,0,0,0" VerticalAlignment="Center">
+              <!-- One line (D-01): the name is normalized upstream, and the ellipsis with a
+                   MaxWidth bounds what a wide sidecar name would still do — never TextWrapping. -->
               <TextBlock FontSize="14" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                         Text="{Binding TeamHeadline}"/>
-              <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,2,0,0"
+                         MaxWidth="560" HorizontalAlignment="Left" TextTrimming="CharacterEllipsis"
+                         ToolTip="{Binding TeamHeadline}" Text="{Binding TeamHeadline}"/>
+              <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" Margin="0,2,0,0" TextWrapping="Wrap"
                          Text="{Binding TeamMetaLine}"
                          Visibility="{Binding TeamMetaLine, Converter={StaticResource StringPresentToVisibility}}"/>
             </StackPanel>
-          </StackPanel>
+          </DockPanel>
         </DockPanel>
 
         <!-- The run is refused: this team reaches outside « Réglages › Dossiers autorisés ».

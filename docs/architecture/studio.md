@@ -235,7 +235,11 @@ ordinary, self-contained folder (crew definition, `run.cmd`/`run.sh`, the
 `studio-team.json` sidecar with name, need, profile, schedule and mounts) — copiable,
 shareable, deletable, runnable with `orkeon run <folder>` alone. Adoption *moves* a
 session's result from the state root to the documents root; that is the boundary
-between a draft and a deliverable.
+between a draft and a deliverable. In the sidecar, `name` is normalized at write
+(one line, Markdown stripped, cut at a word under 64 characters — the slug's cap;
+import applies the same rule to the copy it makes) while `description` is the whole
+need, untouched: the one-paragraph summary the cards show is derived at read time
+(`TeamCatalog.Summarize`) and never stored.
 
 ## How Studio ships
 

@@ -43,6 +43,74 @@ internal static class StudioFixture
     /// <summary>The team whose sidecar names a folder the settings do not declare.</summary>
     public const string BlockedTeamSlug = "tri-factures";
 
+    /// <summary>
+    /// The team whose sidecar carries a pasted README (STUDIO-16): a name of several lines,
+    /// headings and code included, and a need forty lines long — what a team created from a
+    /// long brief really looks like on disk. The run card, the my-teams card and the history
+    /// have to show it on one line, and the description folded.
+    /// </summary>
+    public const string PastedReadmeTeamSlug = "extraction-factures";
+
+    /// <summary>The sidecar name of <see cref="PastedReadmeTeamSlug"/>: a whole README.</summary>
+    public const string PastedReadmeName = """
+        # Extraction des factures fournisseurs déposées en `docs/`, classées par mois et par fournisseur, avec un **contrôle** des doublons
+
+        > Un README entier collé dans le champ « Nom de l'équipe ».
+
+        ## Ce que fait l'équipe
+
+        - lit chaque PDF déposé
+        - en extrait le fournisseur, la date et le montant
+        """;
+
+    /// <summary>The sidecar need of <see cref="PastedReadmeTeamSlug"/>: forty lines of README.</summary>
+    public const string PastedReadmeDescription = """
+        # Extraction des factures fournisseurs
+
+        Chaque matin, les factures déposées dans `docs/` sont lues une à une : le fournisseur,
+        la date, le montant hors taxes et la TVA sont extraits, puis chaque facture est classée
+        dans `sortie/` par mois et par fournisseur, avec un contrôle des doublons.
+
+        ## Fonctionnement
+
+        1. Un **lecteur** parcourt `docs/` et ne retient que les PDF non encore traités.
+        2. Un **extracteur** lit chaque document et remplit une fiche structurée.
+        3. Un **vérificateur** compare la fiche aux factures déjà classées.
+        4. Un **archiviste** range le fichier et tient le journal du jour.
+
+        ## Fiche produite
+
+        ```json
+        {
+          "fournisseur": "Papeterie Lemoine",
+          "date": "2026-08-27",
+          "montant_ht": 184.20,
+          "tva": 36.84,
+          "doublon": false
+        }
+        ```
+
+        ## Règles
+
+        - Une facture sans date lisible est mise de côté dans `sortie/a-verifier/`.
+        - Un doublon n'est jamais écrasé : le second exemplaire est signalé dans le journal.
+        - Les montants sont relus deux fois quand la TVA ne tombe pas juste.
+        - Rien n'est supprimé de `docs/` : l'archiviste copie, il ne déplace pas.
+
+        ## Dossiers
+
+        | Dossier | Rôle |
+        |---|---|
+        | `docs/` | les factures déposées, en lecture |
+        | `sortie/` | le classement produit, en écriture |
+
+        ## Planification
+
+        L'équipe tourne à sept heures ; un lancement à la main reste possible depuis Studio.
+        Le journal de la veille est relu avant de commencer, pour reprendre ce qui a été mis
+        de côté.
+        """;
+
     /// <summary>The wizard's need and outcome, worded once so several stops agree.</summary>
     public const string Need = "Je veux résumer chaque matin les nouveautés de mes concurrents.";
 
@@ -119,6 +187,20 @@ internal static class StudioFixture
                 [new("comptabilite", "/factures", "rw")],
                 ["trieur.yaml", "verificateur.yaml"],
                 ["classer.yaml"]),
+            new(
+                PastedReadmeTeamSlug,
+                new StudioTeamMetadata
+                {
+                    // Written raw on purpose: this is the sidecar a long brief left behind
+                    // before adoption normalized the name, and the display has to cope with it.
+                    Name = PastedReadmeName,
+                    Description = PastedReadmeDescription,
+                    Profile = "Local",
+                    Schedule = "daily@07:00",
+                },
+                [new("docs", "/docs", "ro"), new("sortie", "/output", "rw")],
+                ["lecteur.yaml", "extracteur.yaml", "verificateur.yaml", "archiviste.yaml"],
+                ["lire.yaml", "extraire.yaml", "verifier.yaml", "classer.yaml"]),
         ],
         History =
         [

@@ -25,8 +25,10 @@ internal static class TeamsStops
             Name = "equipes-liste",
             Category = CaptureCategory.Teams,
             Screen = CaptureScreen.Teams,
-            Because = "Three adopted teams with their meta lines, their last-run chips, and the one "
-                    + "whose sidecar names a folder the settings never declared.",
+            Because = "Four adopted teams with their meta lines, their last-run chips, the one "
+                    + "whose sidecar names a folder the settings never declared, and the one whose "
+                    + "sidecar is a pasted README — its name on one line, its need folded behind "
+                    + "a « Voir plus » (STUDIO-16).",
             CoversFalse = ["Teams.IsEmpty"],
             SweepsLanguages = true,
         },

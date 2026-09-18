@@ -2,6 +2,7 @@ using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
@@ -836,6 +837,40 @@ public sealed class LaunchScreenFacetsTests
 
         Assert.True(tab.HasTeamCard);
         Assert.Equal("veille", tab.TeamHeadline);
+    }
+
+    [Fact]
+    public void The_team_headline_is_the_normalized_name()
+    {
+        // STUDIO-16 (D-01/D-03): a sidecar whose name is a pasted README gives a one-line
+        // headline, and the meta line carries the derived summary of the need, not the page.
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-headline-{Guid.NewGuid():N}");
+        try
+        {
+            var team = Path.Combine(root, "factures");
+            Directory.CreateDirectory(team);
+            TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+            {
+                Name = "# Extraction des **factures**\n\n> un README entier\n\n- ligne\n- ligne",
+                Description = "# Titre\n\nChaque matin, les factures sont lues.\n\nSecond paragraphe, jamais sur la carte.",
+                Mounts = ["C:/docs:/docs:ro"],
+            });
+            // The probe sees the agents folder, so the target resolves as a multi-file crew.
+            var tab = Build(new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents")));
+
+            tab.Target.Select(team);
+
+            Assert.True(tab.HasTeamCard);
+            Assert.Equal("Extraction des factures", tab.TeamHeadline);
+            Assert.Contains("Chaque matin, les factures sont lues.", tab.TeamMetaLine, StringComparison.Ordinal);
+            Assert.DoesNotContain("Second paragraphe", tab.TeamMetaLine, StringComparison.Ordinal);
+            Assert.DoesNotContain('\n', tab.TeamMetaLine!);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
     }
 
     [Fact]
