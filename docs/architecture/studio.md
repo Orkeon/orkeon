@@ -90,6 +90,28 @@ a safeguard, not a compatibility layer. `DeclaredMounts.IsInsideTeam` vouches fo
 construction), and `MountValidator` skips the existence check of such an entry until
 it is told which team folder to look under.
 
+**A team's own folders are vouched for by living inside the team, and never written
+to the global settings.** Two allow-lists would be one too many: declaring a team's
+`output/` in `Orkeon:FileSystem:Mounts` would duplicate the sidecar in a file shared by
+every team, and put one team's private folders in the list every other team picks
+from. So the rule is implicit — `DeclaredMounts.IsVouchedFor`: declared in the
+settings, *or* inside the team — and it is the one the launcher answers
+(`BlockingFolders` never counts a team's own `/output` or `/workspace`). The settings
+screen still has to show these folders, or the one screen that claims to list what
+the agents can see would be missing the folders every adopted team writes into. So
+« Settings › Authorized folders » ends, in both modes, with a read-only « Team
+folders » section (`TeamFoldersViewModel`): one line per in-team folder of each
+adopted team — « Veille concurrentielle · /output → output » with the one-word rights
+badge — read from the sidecars' raw entries, the `./` ones and the absolute
+under-the-team spelling of an older sidecar alike, never a folder outside the team,
+never a disk path. No command, no ✕, nothing written: its hint says these folders
+belong to their teams and are changed from « My teams » › « Change the folders ».
+The section follows the team list — an adoption, an import, a deletion or a
+duplication from a card, a save of the folders modal all end in a rebuild of the
+cards, and it re-reads the sidecars on that signal and again when the folders tab
+opens — so it never shows a team that is gone, and never misses one adopted a minute
+ago.
+
 The wizard's block is **one line per mount point** (lot 3): the name the agents
 address, who addresses it — provenance, never permission — and the folder behind
 it, or « Choose the folder… » when there is none yet. That button opens the same

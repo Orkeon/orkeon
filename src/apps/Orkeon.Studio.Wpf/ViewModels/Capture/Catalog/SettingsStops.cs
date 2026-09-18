@@ -39,7 +39,10 @@ internal static class SettingsStops
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsFolders,
             Because = "Four declared folders, one of which does not exist on disk — the red row is a "
-                    + "real verdict from a real probe, not a simulated one.",
+                    + "real verdict from a real probe, not a simulated one — and, under them, the "
+                    + "read-only « Team folders » section listing the output/ a seeded team keeps "
+                    + "inside itself (STUDIO-14).",
+            Covers = ["Settings.TeamFolders.HasRows"],
             SweepsLanguages = true,
         },
 

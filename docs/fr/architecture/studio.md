@@ -94,6 +94,31 @@ répond de toute entrée `./` avant même que le dossier de l'équipe existe (re
 d'existence d'une telle entrée tant qu'on ne lui dit pas sous quel dossier d'équipe
 regarder.
 
+**Les dossiers propres d'une équipe sont autorisés du fait qu'ils vivent dans
+l'équipe, et ne sont jamais écrits dans les réglages globaux.** Deux listes
+d'autorisation, c'est une de trop : déclarer l'`output/` d'une équipe dans
+`Orkeon:FileSystem:Mounts` dupliquerait le sidecar dans un fichier partagé entre
+toutes les équipes, et mettrait les dossiers privés d'une équipe dans la liste où
+toutes les autres piochent. La règle est donc implicite —
+`DeclaredMounts.IsVouchedFor` : déclaré dans les réglages, *ou* dans l'équipe — et
+c'est celle que le lanceur applique (`BlockingFolders` ne compte jamais le `/output`
+ou le `/workspace` propre d'une équipe). L'écran des réglages doit pourtant montrer
+ces dossiers, sans quoi le seul écran qui prétend lister ce que les agents peuvent
+voir ignorerait les dossiers dans lesquels toute équipe adoptée écrit. Aussi
+« Réglages › Dossiers autorisés » se termine-t-il, dans les deux modes, par une
+section « Dossiers des équipes » en lecture seule (`TeamFoldersViewModel`) : une
+ligne par dossier d'équipe de chaque équipe adoptée — « Veille concurrentielle ·
+/output → output » avec le badge de droits en un mot — lue dans les entrées brutes
+des sidecars, les `./` comme la graphie absolue sous l'équipe d'un ancien sidecar,
+jamais un dossier hors équipe, jamais un chemin disque. Aucune commande, aucune
+croix, rien d'écrit : son aide dit que ces dossiers appartiennent à leurs équipes et
+se changent depuis « Mes équipes » › « Changer les dossiers ». La section suit la
+liste des équipes — une adoption, un import, une suppression ou une duplication
+depuis une carte, un enregistrement de la modale des dossiers finissent tous par
+reconstruire les cartes, et elle relit les sidecars sur ce signal puis à chaque
+ouverture de l'onglet des dossiers — de sorte qu'elle ne montre jamais une équipe
+disparue, ni n'oublie une équipe adoptée il y a une minute.
+
 Le bloc du wizard est **une ligne par point de montage** (lot 3) : le nom que
 les agents adressent, qui l'adresse — provenance, jamais permission — et le
 dossier derrière, ou « Choisir le dossier… » quand il n'y en a pas encore. Ce

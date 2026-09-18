@@ -27,8 +27,16 @@ public sealed class SettingsScreenViewModel : ObservableObject
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
 
-    /// <summary>Builds the screen over the settings editor and the profile tab.</summary>
-    public SettingsScreenViewModel(ConfigTabViewModel config, ModelProfilesViewModel profiles, UiModeViewModel mode)
+    /// <summary>
+    /// Builds the screen over the settings editor and the profile tab. <paramref name="teamFolders"/>
+    /// is the read-only « Team folders » section of the folders tab (STUDIO-14); left out, the
+    /// section lists nothing — the shell passes one over the team catalog.
+    /// </summary>
+    public SettingsScreenViewModel(
+        ConfigTabViewModel config,
+        ModelProfilesViewModel profiles,
+        UiModeViewModel mode,
+        TeamFoldersViewModel? teamFolders = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -36,6 +44,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
         Config = config;
         Profiles = profiles;
+        TeamFolders = teamFolders ?? new TeamFoldersViewModel(() => []);
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
 
@@ -50,7 +59,13 @@ public sealed class SettingsScreenViewModel : ObservableObject
         };
 
         ShowModelCommand = new RelayCommand(() => ActiveTab = ModelTab);
-        ShowFoldersCommand = new RelayCommand(() => ActiveTab = FoldersTab);
+        // The folders tab re-reads the teams' own folders on arrival: the section is a view
+        // over the sidecars, and a team adopted or deleted since the last visit must show.
+        ShowFoldersCommand = new RelayCommand(() =>
+        {
+            TeamFolders.Refresh();
+            ActiveTab = FoldersTab;
+        });
         ShowLimitsCommand = new RelayCommand(() => ActiveTab = LimitsTab);
         ShowJsonCommand = new RelayCommand(() => ActiveTab = JsonTab);
     }
@@ -60,6 +75,13 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>The model-profiles tab content.</summary>
     public ModelProfilesViewModel Profiles { get; }
+
+    /// <summary>
+    /// The read-only « Team folders » section of the folders tab (STUDIO-14, D-13): the
+    /// folders each adopted team keeps inside itself, vouched for by that alone and never
+    /// written to the settings file. Shown in both modes, under the declared folders.
+    /// </summary>
+    public TeamFoldersViewModel TeamFolders { get; }
 
     /// <summary>The window-wide mode switch, for the view's expert/novice visibilities.</summary>
     public UiModeViewModel Mode => _mode;

@@ -378,6 +378,47 @@
           </ItemsControl>
         </StackPanel>
       </Border>
+
+      <!-- STUDIO-14 (D-13, P-1): the teams' own folders, read-only, after the declared ones in
+           BOTH modes — under the novice list, under the expert editor and its mount strings.
+           Created inside each team at adoption and vouched for by that alone, they are never
+           written to Orkeon:FileSystem:Mounts; this section says where they are and offers no
+           gesture on them — « My teams » › « Change the folders » is where they change. -->
+      <Border Style="{StaticResource Well}" Margin="0,14,0,0" Padding="13,10">
+        <StackPanel>
+          <StackPanel Orientation="Horizontal" Margin="0,0,0,5">
+            <controls:LucideIcon Kind="folder" Size="11" Foreground="{DynamicResource InkFaintBrush}"
+                                 Margin="0,0,6,0" VerticalAlignment="Center"/>
+            <TextBlock Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
+                       Text="{Binding [Studio.Settings.TeamFoldersTitle], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,8"
+                     Text="{Binding [Studio.Settings.TeamFoldersIntro], Source={x:Static services:I18n.Instance}}"/>
+          <TextBlock Style="{StaticResource Hint}"
+                     Text="{Binding [Studio.Settings.TeamFoldersEmpty], Source={x:Static services:I18n.Instance}}"
+                     Visibility="{Binding TeamFolders.Rows.Count, Converter={StaticResource ZeroToVisibility}}"/>
+          <ItemsControl ItemsSource="{Binding TeamFolders.Rows}">
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <!-- The line first, the badge last as the fill child, the STUDIO-16 way: one
+                     word, bounded, the full rights label in its tooltip — the name never shrinks. -->
+                <DockPanel LastChildFill="True" Margin="0,0,0,4">
+                  <TextBlock DockPanel.Dock="Left" Style="{StaticResource MonoText}" FontSize="11"
+                             Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"
+                             TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                             Text="{Binding Label, Mode=OneWay}"/>
+                  <Border Style="{StaticResource BadgeOk}" Margin="8,0,0,0" MaxWidth="160"
+                          HorizontalAlignment="Right" VerticalAlignment="Center"
+                          ToolTip="{Binding RightsLabel, Mode=OneWay}">
+                    <TextBlock Style="{StaticResource BadgeText}" FontSize="9.5" TextTrimming="CharacterEllipsis"
+                               Text="{Binding RightsBadge, Mode=OneWay}"/>
+                  </Border>
+                </DockPanel>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
+      </Border>
     </StackPanel>
 
     <!-- ══ LIMITES & JOURNAUX (expert) ══ -->

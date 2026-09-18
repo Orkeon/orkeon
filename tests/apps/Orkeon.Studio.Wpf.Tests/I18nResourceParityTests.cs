@@ -147,10 +147,12 @@ public sealed partial class I18nResourceParityTests
     {
         // LLM-09: raised by the two product names it adds (« OpenRouter », « Mammouth AI »
         // — the irreducible floor named above), and set to the measured count, not above it.
-        ["Strings.fr.resx"] = 49,
-        ["Strings.es.resx"] = 35,
-        ["Strings.de.resx"] = 36,
-        ["Strings.zh-Hans.resx"] = 30,
+        // STUDIO-14 settings: raised by one for the pure format pattern of the team-folder row
+        // (« {0} · {1} → {2} », no words in it — the same floor), measured, not above it.
+        ["Strings.fr.resx"] = 50,
+        ["Strings.es.resx"] = 36,
+        ["Strings.de.resx"] = 37,
+        ["Strings.zh-Hans.resx"] = 31,
     };
 
     [Theory]

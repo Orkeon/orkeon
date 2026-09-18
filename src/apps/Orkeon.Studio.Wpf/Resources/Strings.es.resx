@@ -2218,6 +2218,19 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>escritura, sin borrado</value>
   </data>
+  <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
+  <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
+    <value>CARPETAS DE LOS EQUIPOS</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersIntro" xml:space="preserve">
+    <value>Estas carpetas pertenecen a sus equipos: creadas dentro de la carpeta del equipo al adoptarlo, están permitidas solo por eso, y nada de esto se escribe en los ajustes. Para cambiarlas, vaya a « Mis equipos » › « Cambiar las carpetas ».</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersEmpty" xml:space="preserve">
+    <value>Ningún equipo adoptado conserva todavía una carpeta propia.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersRow" xml:space="preserve">
+    <value>{0} · {1} → {2}</value>
+  </data>
   <!-- LLM-09 -->
   <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
     <value>OpenRouter</value>

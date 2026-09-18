@@ -2218,6 +2218,19 @@
   <data name="Studio.Settings.RightsBadgeRwnd" xml:space="preserve">
     <value>读写，不可删除</value>
   </data>
+  <!-- STUDIO-14 settings: the read-only « Team folders » section of the folders tab -->
+  <data name="Studio.Settings.TeamFoldersTitle" xml:space="preserve">
+    <value>团队文件夹</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersIntro" xml:space="preserve">
+    <value>这些文件夹属于各自的团队：采用时在团队文件夹内创建，仅凭这一点即被允许，此处不会向配置写入任何内容。要更改它们，请前往「我的团队」›「更改文件夹」。</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersEmpty" xml:space="preserve">
+    <value>尚无已采用的团队拥有自己的文件夹。</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersRow" xml:space="preserve">
+    <value>{0} · {1} → {2}</value>
+  </data>
   <!-- LLM-09 -->
   <data name="Studio.Settings.OpenRouterTitle" xml:space="preserve">
     <value>OpenRouter</value>
