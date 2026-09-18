@@ -37,6 +37,12 @@ internal sealed class CaptureWorld
     /// <summary>The child process that never starts.</summary>
     public required ScriptedOrkeonCli Cli { get; init; }
 
+    /// <summary>
+    /// The machine's answer to «is the binary there» — the seam a stop flips to photograph
+    /// this same machine without its CLI (STUDIO-13), and flips back.
+    /// </summary>
+    public required ScriptedExecutableProbe Machine { get; init; }
+
     /// <summary>Binary resolution over this world's machine.</summary>
     public required OrkeonBinaryLocator Locator { get; init; }
 

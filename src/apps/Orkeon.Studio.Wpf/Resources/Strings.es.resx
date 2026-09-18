@@ -812,7 +812,7 @@
     <value>Su solución está lista.</value>
   </data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve">
-    <value>Algo ha salido mal — abra los detalles para la parte técnica.</value>
+    <value>Algo ha salido mal — el detalle está en la tarjeta de abajo.</value>
   </data>
   <data name="Studio.Create.StatusStopped" xml:space="preserve">
     <value>Detenido — retómelo cuando quiera desde «Mis soluciones».</value>
@@ -2230,5 +2230,36 @@
   </data>
   <data name="Studio.Settings.MammouthDesc" xml:space="preserve">
     <value>suscripción multimodelo francesa, proxy LiteLLM</value>
+  </data>
+  <!-- STUDIO-13: the wizard's failure card -->
+  <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
+    <value>El motor orkeon no se encuentra en esta máquina.</value>
+  </data>
+  <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
+    <value>El motor se negó a continuar.</value>
+  </data>
+  <data name="Studio.Create.FailureEngineStopped" xml:space="preserve">
+    <value>El motor se detuvo (código de salida {0}).</value>
+  </data>
+  <data name="Studio.Create.FailureUnknown" xml:space="preserve">
+    <value>Algo ha salido mal antes de que el motor pudiera responder.</value>
+  </data>
+  <data name="Studio.Create.FailurePromoteRefused" xml:space="preserve">
+    <value>El guardado ha fallado — el motor rechazó la promoción.</value>
+  </data>
+  <data name="Studio.Create.FailureCopyReport" xml:space="preserve">
+    <value>Copiar el informe</value>
+  </data>
+  <data name="Studio.Create.FailureCopied" xml:space="preserve">
+    <value>¡Copiado!</value>
+  </data>
+  <data name="Studio.Create.FailureRetry" xml:space="preserve">
+    <value>Reintentar</value>
+  </data>
+  <data name="Studio.Create.FailureOpenDiagnostic" xml:space="preserve">
+    <value>Abrir el diagnóstico</value>
+  </data>
+  <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
+    <value>Abrir los ajustes</value>
   </data>
 </root>

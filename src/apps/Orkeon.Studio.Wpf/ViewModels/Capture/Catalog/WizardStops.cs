@@ -50,6 +50,41 @@ internal static class WizardStops
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
 
+        // STUDIO-13
+        new()
+        {
+            Name = "etape1-echec-moteur",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "« Composer l'équipe » on a machine whose CLI is gone: the failure card under "
+                    + "the status line — the novice sentence, the locator's own text in mono, the "
+                    + "copy, retry and diagnostic buttons — and the user still on step 1, knowing why. "
+                    + "The owner's recipe (rename orkeon.exe, click) replayed on the seeded machine, "
+                    + "through the real locator: no simulated exception anywhere.",
+            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasFailure", "CreateTeam.FailureOffersDiagnostic", "CreateTeam.FailureOffersRetry"],
+            CoversFalse = ["CreateTeam.IsEngineRunning", "CreateTeam.FailureOffersSettings"],
+            SweepsLanguages = true,
+            Arrange = static async c =>
+            {
+                var wizard = c.Shell.CreateTeam;
+                wizard.Need = StudioFixture.Need;
+                wizard.Outcome = StudioFixture.Outcome;
+                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
+                wizard.SourceChoices[0].SelectCommand.Execute(null);
+                wizard.OutputChoices[0].SelectCommand.Execute(null);
+
+                // The binary goes missing from the machine the pass stands on, and the click is
+                // the real gesture: the locator answers NotStarted, the card says so.
+                c.World.Machine.IsInstalled = false;
+                await wizard.ComposeCommand.ExecuteAsync();
+            },
+            Teardown = CaptureAction.Sync(static c =>
+            {
+                c.World.Machine.IsInstalled = true;
+                c.Shell.CreateTeam.RestartCommand.Execute(null);
+            }),
+        },
+
         new()
         {
             Name = "etape1-sans-assistant",

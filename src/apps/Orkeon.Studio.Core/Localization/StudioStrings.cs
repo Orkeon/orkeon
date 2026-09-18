@@ -1190,7 +1190,7 @@ public static class StudioStringKeys
     /// <summary>"Your solution is ready."</summary>
     public const string ForgeStatusReady = "Studio.Create.StatusReady";
 
-    /// <summary>"Something went wrong — open the details for the technical part."</summary>
+    /// <summary>"Something went wrong — the detail is in the card below."</summary>
     public const string ForgeStatusFailed = "Studio.Create.StatusFailed";
 
     /// <summary>"Stopped — you can pick it up again from My solutions."</summary>
@@ -1207,6 +1207,25 @@ public static class StudioStringKeys
 
     /// <summary>"Choose where to store the solution"</summary>
     public const string ForgeStorePickTitle = "Studio.Create.StorePickTitle";
+
+    // ---- STUDIO-13: the wizard's failure card, one headline per family --------
+    // The action labels ("Copy the report", "Try again", "Open the diagnostic", "Open the
+    // settings", "Copied!") are view strings and live in the resx only.
+
+    /// <summary>"The orkeon engine was not found on this machine."</summary>
+    public const string WizardFailureEngineMissing = "Studio.Create.FailureEngineMissing";
+
+    /// <summary>"The engine refused to go on."</summary>
+    public const string WizardFailureConfigRefused = "Studio.Create.FailureConfigRefused";
+
+    /// <summary>"The engine stopped (exit code {0})."</summary>
+    public const string WizardFailureEngineStopped = "Studio.Create.FailureEngineStopped";
+
+    /// <summary>"Something went wrong before the engine could answer."</summary>
+    public const string WizardFailureUnknown = "Studio.Create.FailureUnknown";
+
+    /// <summary>"The save failed — the engine refused the promotion."</summary>
+    public const string WizardFailurePromoteRefused = "Studio.Create.FailurePromoteRefused";
 }
 
 /// <summary>
@@ -1675,12 +1694,19 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ForgeStatusTrying] = "Trying it on your example…",
         [StudioStringKeys.ForgeStatusJudging] = "Checking the result against what you asked…",
         [StudioStringKeys.ForgeStatusReady] = "Your solution is ready.",
-        [StudioStringKeys.ForgeStatusFailed] = "Something went wrong — open the details for the technical part.",
+        [StudioStringKeys.ForgeStatusFailed] = "Something went wrong — the detail is in the card below.",
         [StudioStringKeys.ForgeStatusStopped] = "Stopped — you can pick it up again from My solutions.",
         [StudioStringKeys.ForgeAttempt] = "Attempt {0}",
         [StudioStringKeys.ForgeCheckUnverified] = "I could not check this automatically — judge for yourself.",
         [StudioStringKeys.ForgeResultScore] = "The try is done (score {0}).",
         [StudioStringKeys.ForgeStorePickTitle] = "Choose where to store the solution",
+
+        // STUDIO-13: the wizard's failure card, one headline per family
+        [StudioStringKeys.WizardFailureEngineMissing] = "The orkeon engine was not found on this machine.",
+        [StudioStringKeys.WizardFailureConfigRefused] = "The engine refused to go on.",
+        [StudioStringKeys.WizardFailureEngineStopped] = "The engine stopped (exit code {0}).",
+        [StudioStringKeys.WizardFailureUnknown] = "Something went wrong before the engine could answer.",
+        [StudioStringKeys.WizardFailurePromoteRefused] = "The save failed — the engine refused the promotion.",
     };
 
     /// <summary>Every declared key with its English text, for the front-ends' drift tests.</summary>

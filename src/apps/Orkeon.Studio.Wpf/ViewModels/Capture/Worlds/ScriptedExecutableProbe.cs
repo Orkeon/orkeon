@@ -11,12 +11,26 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// diagnostic that cannot answer, the Tester screen that refuses. None of it is photographable
 /// against a real probe on a developer's machine, where the binary is always there.
 /// </para>
+/// <para>
+/// The binary can also go missing mid-campaign (<see cref="IsInstalled"/>): the owner's own
+/// recipe for the wizard's failure card is to rename <c>orkeon.exe</c> on a machine that has
+/// everything else, and a stop replays exactly that on the seeded machine, then puts it back.
+/// </para>
 /// </summary>
 /// <param name="binaryDirectory">Directory the binary is reported in; null for a machine without one.</param>
 internal sealed class ScriptedExecutableProbe(string? binaryDirectory) : IExecutableProbe
 {
     /// <summary>The file names <see cref="OrkeonBinaryLocator"/> looks for.</summary>
     private static readonly string[] BinaryNames = ["orkeon", "orkeon.exe"];
+
+    /// <summary>
+    /// Whether the binary answers right now. False from the start on a machine without one;
+    /// a stop may turn it off on a machine that has one — and must turn it back on.
+    /// </summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public bool IsInstalled { get; set; } = binaryDirectory is { Length: > 0 };
 
     /// <inheritdoc />
     [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
@@ -33,7 +47,8 @@ internal sealed class ScriptedExecutableProbe(string? binaryDirectory) : IExecut
 
     /// <inheritdoc />
     public bool FileExists(string path) =>
-        binaryDirectory is { Length: > 0 }
+        IsInstalled
+        && binaryDirectory is { Length: > 0 }
         && BinaryNames.Contains(Path.GetFileName(path), StringComparer.OrdinalIgnoreCase)
         && string.Equals(
             Path.TrimEndingDirectorySeparator(Path.GetDirectoryName(path) ?? ""),

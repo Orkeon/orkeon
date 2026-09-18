@@ -74,8 +74,9 @@ public sealed class CapturePlannerTests
     {
         var plan = CapturePlanner.Plan(CaptureCatalog.All, CaptureMatrix.Default);
 
-        Assert.Equal(48, CaptureCatalog.All.Count);
-        Assert.Equal(250, plan.Count);
+        // STUDIO-13: +1 stop (etape1-echec-moteur, both modes, both themes, language sweep) = +8 shots.
+        Assert.Equal(49, CaptureCatalog.All.Count);
+        Assert.Equal(258, plan.Count);
     }
 
     [Fact]
