@@ -365,6 +365,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         GoStep4Command = new RelayCommand(() => GoStep(4));
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
+        OpenDiagnosticCommand = new RelayCommand(() => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
         PickAssistantCommand = new RelayCommand(PickAssistant);
 
         Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
@@ -1181,25 +1182,19 @@ public sealed class CreateTeamViewModel : ObservableObject
         });
     }
 
-    /// <summary>The dry-pause edit's engine run; the race with another launch is said, never thrown.</summary>
-    private async Task EditAtPauseAsync(string slug, string amendedBlueprintJson)
-    {
-        try
+    /// <summary>
+    /// The dry-pause edit's engine run. The race with another launch is said, never thrown:
+    /// <see cref="RunEngineAsync"/> turns it into the failure card (STUDIO-13).
+    /// </summary>
+    private Task EditAtPauseAsync(string slug, string amendedBlueprintJson) =>
+        RunEngineAsync(new ForgeStartRequest
         {
-            await RunEngineAsync(new ForgeStartRequest
-            {
-                ResumeSlug = slug,
-                WorkingDirectory = _workspace,
-                Dry = true,
-                EditedBlueprintJson = amendedBlueprintJson,
-                EnvironmentOverrides = AssistantEnvironment(),
-            }).ConfigureAwait(false);
-        }
-        catch (InvalidOperationException)
-        {
-            _dispatcher.Post(() => StatusMessage = _strings[StudioStringKeys.WizardAssistantNotRunning]);
-        }
-    }
+            ResumeSlug = slug,
+            WorkingDirectory = _workspace,
+            Dry = true,
+            EditedBlueprintJson = amendedBlueprintJson,
+            EnvironmentOverrides = AssistantEnvironment(),
+        });
 
     /// <summary>The proposal's plain-words rationale.</summary>
     public string? Rationale => _model.Proposal?.Rationale;
@@ -1735,6 +1730,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         Profiles.Set.Studio?.EnvironmentOverrides(Environment.GetEnvironmentVariable)
         ?? new Dictionary<string, string>(StringComparer.Ordinal);
 
+    [SuppressMessage("Design", "CA1031",
+        Justification = "The launch's own fault barrier (STUDIO-13): an exception here used to reach " +
+                        "the command's FaultHandler and a MessageBox in the real app, and nothing at " +
+                        "all in a test — the failure card is where it belongs, with the technical " +
+                        "detail copyable. Cancellation keeps its path: it is the user's own Stop.")]
     private async Task RunEngineAsync(ForgeStartRequest request)
     {
         // OnEvent and OnRaw already discard anything from a superseded run; the finally
@@ -1745,6 +1745,8 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         IsEngineRunning = true;
         _lastStderr = null;
+        // A card left over from the previous run would contradict this one (STUDIO-13, D-05).
+        Failure = null;
         // « COMMANDE DE L'ESSAI » (F-09, expert): the engine invocation, replayable in a
         // terminal — the honest equivalent of a command preview for a forge-driven trial.
         EngineCommandLine = Orkeon.Studio.Core.Launch.CommandLineDisplay.Format(
@@ -1753,7 +1755,18 @@ public sealed class CreateTeamViewModel : ObservableObject
         try
         {
             var result = await _client.RunAsync(request, OnEvent, OnRaw, CancellationToken.None).ConfigureAwait(false);
-            _dispatcher.Post(() => FinishRun(result));
+            _dispatcher.Post(() => FinishRun(result, EngineCommandLine));
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // STUDIO-13: an exception is a failure the screen must say — «A forge session is
+            // already running.» included. It used to land in a MessageBox at best.
+            var commandLine = EngineCommandLine;
+            _dispatcher.Post(() =>
+            {
+                if (generation == _runGeneration)
+                    FailWith(WizardFailureKind.Unknown, $"{exception.GetType().Name}: {exception.Message}", commandLine, exitCode: null);
+            });
         }
         finally
         {
@@ -1795,13 +1808,18 @@ public sealed class CreateTeamViewModel : ObservableObject
         IsEngineRunning = true;
         _lastStderr = null;
         _saveError = null;
+        Failure = null;
+        // STUDIO-13: the promote invocation, for the failure card's report — EngineCommandLine
+        // keeps naming the last forge cycle, which is what the expert step-3 card shows.
+        var commandLine = Orkeon.Studio.Core.Launch.CommandLineDisplay.Format(
+            ForgeArgumentsBuilder.BuildPromote(slug, destination, schedule));
         try
         {
             var result = await _client.PromoteAsync(slug, destination, schedule, _workspace, OnEvent, OnRaw)
                 .ConfigureAwait(false);
             _dispatcher.Post(() =>
             {
-                FinishRun(result);
+                FinishRun(result, commandLine);
                 if (_model.Promotion is { } promotion)
                 {
                     // A re-adoption has no step-1 need: the sidecar's description must
@@ -1830,6 +1848,15 @@ public sealed class CreateTeamViewModel : ObservableObject
                         CultureInfo.CurrentCulture,
                         _strings[StudioStringKeys.WizardPromoteFailed],
                         _lastStderr ?? string.Create(CultureInfo.InvariantCulture, $"exit {result.ExitCode}"));
+                    // STUDIO-13: the same card as step 1, with the promote command line and the
+                    // whole stderr — the status line above keeps its one-line sentence.
+                    FailWith(
+                        WizardFailureKind.PromoteRefused,
+                        StderrText() is { Length: > 0 } stderr
+                            ? stderr
+                            : string.Create(CultureInfo.InvariantCulture, $"No `promoted` event came back (exit {result.ExitCode})."),
+                        commandLine,
+                        result.ExitCode);
                 }
             });
         }
@@ -1879,6 +1906,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         _runGeneration++;
         _model = new ForgeSessionModel();
         _saveError = null;
+        Failure = null;
         RawLog.Clear();
         Activity.Clear();
         Checklist.Clear();
@@ -2006,11 +2034,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         });
     }
 
-    private void FinishRun(ProcessRunResult result)
+    private void FinishRun(ProcessRunResult result, string? commandLine)
     {
         if (result.Outcome == RunOutcome.NotStarted)
         {
-            StatusMessage = result.Description;
+            // STUDIO-13: the locator's text is the card's technical detail; the status line
+            // carries the sentence a novice can read instead of a truncated English paragraph.
+            StatusMessage = FailWith(WizardFailureKind.EngineMissing, result.Description, commandLine, exitCode: null).Headline;
             return;
         }
 
@@ -2018,6 +2048,33 @@ public sealed class CreateTeamViewModel : ObservableObject
         // still leaves its reason on stderr, and that reason outranks the generic sentence.
         if (result.ExitCode != 0 && _lastStderr is { } stderr)
             StatusMessage = stderr;
+
+        // "Stop" is the user's own gesture, not a failure: the stopped sentence keeps it.
+        if (result.WasCancelled || result.Outcome == RunOutcome.Cancelled)
+            return;
+
+        // STUDIO-13: a non-zero exit — with or without stderr — and a session that reported
+        // «failed» both get the card. An unrecoverable engine error already raised it from
+        // SyncFromModel; the exit code and the whole stderr join it rather than replace it.
+        var failed = result.ExitCode != 0
+            || string.Equals(_model.FinishedStatus, "failed", StringComparison.Ordinal);
+        if (!failed)
+            return;
+
+        if (Failure is { Kind: WizardFailureKind.ConfigRefused })
+        {
+            FailWith(WizardFailureKind.ConfigRefused, ConfigRefusedDetail(), commandLine, result.ExitCode);
+            return;
+        }
+
+        var wholeStderr = StderrText();
+        var failure = FailWith(
+            WizardFailureKind.EngineStopped,
+            wholeStderr.Length > 0 ? wholeStderr : result.Description,
+            commandLine,
+            result.ExitCode);
+        if (wholeStderr.Length == 0)
+            StatusMessage = failure.Headline;
     }
 
     private void GoStep(int step)
@@ -2038,6 +2095,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             _surfacedError = error;
             StatusMessage = error.Message is { Length: > 0 } ? $"{error.Code}: {error.Message}" : error.Code;
+            // STUDIO-13: an unrecoverable one is the end of the run, and the card says so with
+            // the code and the message; FinishRun adds the exit code and the whole stderr.
+            if (!error.Recoverable)
+                FailWith(WizardFailureKind.ConfigRefused, ConfigRefusedDetail(), EngineCommandLine, exitCode: null);
         }
 
         // The milestone drives the stepper; the user may look back, never skip ahead.
@@ -2240,4 +2301,126 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         return group;
     }
+
+    // ── STUDIO-13 — failure card ─────────────────────────────────────────────
+    // What "Compose the team" (or the save) could not do, said under the stepper in both
+    // modes: a novice sentence per family, the engine's raw words in mono, a copyable report
+    // and a way out. Fed by FinishRun (the engine never started, or exited non-zero),
+    // SyncFromModel (an unrecoverable engine error), the catch in RunEngineAsync (an
+    // exception) and SaveTeamAsync (a refused promotion); cleared by ResetProjection and at
+    // the start of every run, so a card never outlives the run it describes (D-05). The
+    // status line keeps its own sentence: the card is added, nothing is taken away (D-08).
+
+    private WizardFailure? _failure;
+    private bool _failureReportCopied;
+
+    /// <summary>Raised by "Open the diagnostic" — the shell shows the diagnostic screen.</summary>
+    public event EventHandler? OpenDiagnosticRequested;
+
+    /// <summary>The failure the card shows; null while nothing failed.</summary>
+    public WizardFailure? Failure
+    {
+        get => _failure;
+        private set
+        {
+            if (!SetProperty(ref _failure, value))
+                return;
+
+            FailureReportCopied = false;
+            OnPropertiesChanged(
+                nameof(HasFailure), nameof(CanCopyFailureReport), nameof(FailureRetryCommand),
+                nameof(FailureOffersRetry), nameof(FailureOffersDiagnostic), nameof(FailureOffersSettings));
+        }
+    }
+
+    /// <summary>The card's visibility.</summary>
+    public bool HasFailure => _failure is not null;
+
+    /// <summary>There is something to copy as soon as a failure stands.</summary>
+    public bool CanCopyFailureReport => _failure is not null;
+
+    /// <summary>The "copied!" feedback of the copy button; the view resets it after ~1.6 s.</summary>
+    public bool FailureReportCopied
+    {
+        get => _failureReportCopied;
+        set => SetProperty(ref _failureReportCopied, value);
+    }
+
+    /// <summary>
+    /// "Try again": the compose at step 1, the save at step 4 (D-02). Bound live rather
+    /// than captured with the failure, so a card that stays visible follows the same gate as
+    /// the button it stands in for.
+    /// </summary>
+    public AsyncRelayCommand FailureRetryCommand
+    {
+        get => _failure?.Kind == WizardFailureKind.PromoteRefused ? SaveTeamCommand : ComposeCommand;
+    }
+
+    /// <summary>
+    /// Whether the card offers "Try again". A failure that left the user with a session
+    /// under way — a trial that crashed at step 3 — does not: composing again would start a
+    /// NEW session over the one on disk, which is not a retry, and the session stays
+    /// resumable from "My teams".
+    /// </summary>
+    public bool FailureOffersRetry =>
+        _failure is { } failure && (failure.Kind == WizardFailureKind.PromoteRefused || MaxStep == 1);
+
+    /// <summary>Whether the card offers "Open the diagnostic" — the doctor names what is missing or unreachable.</summary>
+    public bool FailureOffersDiagnostic =>
+        _failure?.Kind is WizardFailureKind.EngineMissing or WizardFailureKind.EngineStopped or WizardFailureKind.Unknown;
+
+    /// <summary>Whether the card offers "Open the settings" — the engine refused what the settings gave it.</summary>
+    public bool FailureOffersSettings => _failure?.Kind is WizardFailureKind.ConfigRefused;
+
+    /// <summary>Jumps to the diagnostic screen (the failure card's button).</summary>
+    public RelayCommand OpenDiagnosticCommand { get; }
+
+    /// <summary>
+    /// The copyable report of the failure on screen: the command line, the exit code, the
+    /// engine's error, the detail the card shows and the whole journal (D-03). Empty while
+    /// nothing failed.
+    /// </summary>
+    public string BuildFailureReport() => _failure?.BuildReport() ?? "";
+
+    /// <summary>The whole stderr of the current run, oldest line first (D-04) — never the last line alone.</summary>
+    private string StderrText() =>
+        string.Join(Environment.NewLine, RawLog.Lines.Where(line => line.IsError).Select(line => line.Text));
+
+    /// <summary>The engine's own code and message, then whatever it printed on stderr.</summary>
+    private string ConfigRefusedDetail()
+    {
+        var stderr = StderrText();
+        if (_model.LastError is not { } error)
+            return stderr;
+
+        var head = error.Message is { Length: > 0 } ? $"{error.Code}: {error.Message}" : error.Code;
+        return stderr.Length > 0 ? head + Environment.NewLine + Environment.NewLine + stderr : head;
+    }
+
+    /// <summary>Raises (or updates) the card from the current run's journal and engine error.</summary>
+    private WizardFailure FailWith(WizardFailureKind kind, string detail, string? commandLine, int? exitCode)
+    {
+        var failure = new WizardFailure(
+            kind,
+            FailureHeadline(kind, exitCode),
+            detail,
+            commandLine,
+            exitCode,
+            StderrText(),
+            _model.LastError,
+            RawLog.BuildText());
+        Failure = failure;
+        return failure;
+    }
+
+    /// <summary>The novice sentence of a family, in the user's language (D-02, D-06).</summary>
+    private string FailureHeadline(WizardFailureKind kind, int? exitCode) => kind switch
+    {
+        WizardFailureKind.EngineMissing => _strings[StudioStringKeys.WizardFailureEngineMissing],
+        WizardFailureKind.ConfigRefused => _strings[StudioStringKeys.WizardFailureConfigRefused],
+        WizardFailureKind.EngineStopped => string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardFailureEngineStopped], exitCode),
+        WizardFailureKind.PromoteRefused => _strings[StudioStringKeys.WizardFailurePromoteRefused],
+        _ => _strings[StudioStringKeys.WizardFailureUnknown],
+    };
 }

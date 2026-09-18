@@ -16,6 +16,13 @@ public sealed class FakeProcessLauncher : IProcessLauncher
 
     public bool HonourCancellation { get; set; }
 
+    /// <summary>
+    /// When set, the launch throws this instead of running — the shape of a spawn that fails
+    /// before any child exists (a locked working directory, a launcher refusing a second
+    /// session). The request is still recorded.
+    /// </summary>
+    public Exception? Fault { get; set; }
+
     public ProcessLaunchRequest? LastRequest => Requests.Count > 0 ? Requests[^1] : null;
 
     /// <summary>What the caller wrote to stdin, when the request wired <c>OnInputReady</c>.</summary>
@@ -53,6 +60,9 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         CancellationToken cancellationToken = default)
     {
         Requests.Add(request);
+
+        if (Fault is { } fault)
+            return Task.FromException<ProcessRunResult>(fault);
 
         _onOutput = onOutput;
         try

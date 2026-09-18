@@ -28,6 +28,30 @@ public partial class CreateTeamView : UserControl
         }
     }
 
+    /// <summary>
+    /// STUDIO-13: copies the failure card's report — command line, exit code, engine error,
+    /// the whole stderr — then shows "Copied!" for ~1.6 s, the diagnostic screen's pattern.
+    /// </summary>
+    private void OnCopyFailureReport(object sender, RoutedEventArgs e)
+    {
+        if (DataContext is CreateTeamViewModel { CanCopyFailureReport: true } wizard)
+        {
+            try
+            {
+                Clipboard.SetDataObject(wizard.BuildFailureReport(), copy: false);
+
+                wizard.FailureReportCopied = true;
+                var timer = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromSeconds(1.6) };
+                timer.Tick += (_, _) => { wizard.FailureReportCopied = false; timer.Stop(); };
+                timer.Start();
+            }
+            catch (System.Runtime.InteropServices.ExternalException)
+            {
+                // The clipboard stayed busy: nothing to surface, the button can be pressed again.
+            }
+        }
+    }
+
     /// <summary>Copies the rendered crew YAML of the generated-definition card.</summary>
     private void OnCopyDefinition(object sender, RoutedEventArgs e)
     {

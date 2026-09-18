@@ -76,6 +76,7 @@ internal static class CaptureWorldWriter
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
             .Answer("forge", 0, [.. plan.ForgeStream]);
+        var machine = new ScriptedExecutableProbe(binaryDirectory);
 
         return new CaptureWorld
         {
@@ -86,7 +87,8 @@ internal static class CaptureWorldWriter
             ForgeWorkspace = config,
             DataDirectory = data,
             Cli = cli,
-            Locator = new OrkeonBinaryLocator(new ScriptedExecutableProbe(binaryDirectory)),
+            Machine = machine,
+            Locator = new OrkeonBinaryLocator(machine),
             HistoryStore = new LaunchHistoryFileStore(historyPath),
             ProfileStore = profileStore,
         };

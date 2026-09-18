@@ -810,7 +810,7 @@
     <value>Ihre Lösung ist fertig.</value>
   </data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve">
-    <value>Etwas ist schiefgegangen — öffnen Sie die Details für den technischen Teil.</value>
+    <value>Etwas ist schiefgegangen — die Einzelheiten stehen in der Karte darunter.</value>
   </data>
   <data name="Studio.Create.StatusStopped" xml:space="preserve">
     <value>Angehalten — Sie können jederzeit unter «Meine Lösungen» weitermachen.</value>
@@ -2199,5 +2199,36 @@
   </data>
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
+  </data>
+  <!-- STUDIO-13: the wizard's failure card -->
+  <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
+    <value>Die orkeon-Engine wurde auf diesem Rechner nicht gefunden.</value>
+  </data>
+  <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
+    <value>Die Engine hat sich geweigert, fortzufahren.</value>
+  </data>
+  <data name="Studio.Create.FailureEngineStopped" xml:space="preserve">
+    <value>Die Engine hat angehalten (Exit-Code {0}).</value>
+  </data>
+  <data name="Studio.Create.FailureUnknown" xml:space="preserve">
+    <value>Etwas ist schiefgegangen, bevor die Engine antworten konnte.</value>
+  </data>
+  <data name="Studio.Create.FailurePromoteRefused" xml:space="preserve">
+    <value>Das Speichern ist fehlgeschlagen — die Engine hat die Übernahme abgelehnt.</value>
+  </data>
+  <data name="Studio.Create.FailureCopyReport" xml:space="preserve">
+    <value>Bericht kopieren</value>
+  </data>
+  <data name="Studio.Create.FailureCopied" xml:space="preserve">
+    <value>Kopiert!</value>
+  </data>
+  <data name="Studio.Create.FailureRetry" xml:space="preserve">
+    <value>Erneut versuchen</value>
+  </data>
+  <data name="Studio.Create.FailureOpenDiagnostic" xml:space="preserve">
+    <value>Diagnose öffnen</value>
+  </data>
+  <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
+    <value>Einstellungen öffnen</value>
   </data>
 </root>

@@ -194,6 +194,10 @@ public sealed class MainWindowViewModel : ObservableObject
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.
         AllowedFolders.OpenSettingsRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
+        // STUDIO-13: « Ouvrir le diagnostic » on the wizard's failure card re-runs the doctor
+        // on arrival — a verdict taken at startup could still say «everything is in place»
+        // over an engine that just failed. The window brings the screen forward itself.
+        CreateTeam.OpenDiagnosticRequested += (_, _) => Config.Diagnostic.RunCommand.Execute(null);
         Launch.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
         Test.Launcher.OpenAllowedFoldersRequested += (_, _) => Settings.ShowFoldersCommand.Execute(null);
 

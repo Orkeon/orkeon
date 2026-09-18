@@ -295,7 +295,7 @@
   <data name="Studio.Create.StatusTrying" xml:space="preserve"><value>J&#x27;essaie sur votre exemple…</value></data>
   <data name="Studio.Create.StatusJudging" xml:space="preserve"><value>Je vérifie le résultat par rapport à votre demande…</value></data>
   <data name="Studio.Create.StatusReady" xml:space="preserve"><value>Votre solution est prête.</value></data>
-  <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Quelque chose s&#x27;est mal passé — ouvrez les détails pour la partie technique.</value></data>
+  <data name="Studio.Create.StatusFailed" xml:space="preserve"><value>Quelque chose s'est mal passé — le détail est dans la carte ci-dessous.</value></data>
   <data name="Studio.Create.StatusStopped" xml:space="preserve"><value>Arrêté — reprenez quand vous voulez depuis « Mes solutions ».</value></data>
   <data name="Studio.Create.Attempt" xml:space="preserve"><value>Essai {0}</value></data>
   <data name="Studio.Create.CheckUnverified" xml:space="preserve"><value>Je n&#x27;ai pas pu vérifier ce point automatiquement — jugez sur pièce.</value></data>
@@ -993,5 +993,36 @@
   </data>
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
+  </data>
+  <!-- STUDIO-13: the wizard's failure card -->
+  <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
+    <value>Le moteur orkeon est introuvable sur cette machine.</value>
+  </data>
+  <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
+    <value>Le moteur a refusé de continuer.</value>
+  </data>
+  <data name="Studio.Create.FailureEngineStopped" xml:space="preserve">
+    <value>Le moteur s'est arrêté (code de sortie {0}).</value>
+  </data>
+  <data name="Studio.Create.FailureUnknown" xml:space="preserve">
+    <value>Quelque chose s'est mal passé avant que le moteur ne réponde.</value>
+  </data>
+  <data name="Studio.Create.FailurePromoteRefused" xml:space="preserve">
+    <value>L'enregistrement a échoué — le moteur a refusé la promotion.</value>
+  </data>
+  <data name="Studio.Create.FailureCopyReport" xml:space="preserve">
+    <value>Copier le rapport</value>
+  </data>
+  <data name="Studio.Create.FailureCopied" xml:space="preserve">
+    <value>Copié !</value>
+  </data>
+  <data name="Studio.Create.FailureRetry" xml:space="preserve">
+    <value>Réessayer</value>
+  </data>
+  <data name="Studio.Create.FailureOpenDiagnostic" xml:space="preserve">
+    <value>Ouvrir le diagnostic</value>
+  </data>
+  <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
+    <value>Ouvrir les réglages</value>
   </data>
 </root>

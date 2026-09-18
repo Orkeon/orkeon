@@ -810,7 +810,7 @@
     <value>您的方案已就绪。</value>
   </data>
   <data name="Studio.Create.StatusFailed" xml:space="preserve">
-    <value>出了点问题——展开详情查看技术部分。</value>
+    <value>出了点问题——详情见下方卡片。</value>
   </data>
   <data name="Studio.Create.StatusStopped" xml:space="preserve">
     <value>已停止——随时可以从「我的方案」继续。</value>
@@ -2199,5 +2199,36 @@
   </data>
   <data name="Studio.Create.DraftJoinerPattern" xml:space="preserve">
     <value>{0} · {1}</value>
+  </data>
+  <!-- STUDIO-13: the wizard's failure card -->
+  <data name="Studio.Create.FailureEngineMissing" xml:space="preserve">
+    <value>在这台机器上找不到 orkeon 引擎。</value>
+  </data>
+  <data name="Studio.Create.FailureConfigRefused" xml:space="preserve">
+    <value>引擎拒绝继续。</value>
+  </data>
+  <data name="Studio.Create.FailureEngineStopped" xml:space="preserve">
+    <value>引擎已停止（退出码 {0}）。</value>
+  </data>
+  <data name="Studio.Create.FailureUnknown" xml:space="preserve">
+    <value>引擎尚未应答就出了问题。</value>
+  </data>
+  <data name="Studio.Create.FailurePromoteRefused" xml:space="preserve">
+    <value>保存失败——引擎拒绝了此次提升。</value>
+  </data>
+  <data name="Studio.Create.FailureCopyReport" xml:space="preserve">
+    <value>复制报告</value>
+  </data>
+  <data name="Studio.Create.FailureCopied" xml:space="preserve">
+    <value>已复制！</value>
+  </data>
+  <data name="Studio.Create.FailureRetry" xml:space="preserve">
+    <value>重试</value>
+  </data>
+  <data name="Studio.Create.FailureOpenDiagnostic" xml:space="preserve">
+    <value>打开诊断</value>
+  </data>
+  <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
+    <value>打开配置</value>
   </data>
 </root>

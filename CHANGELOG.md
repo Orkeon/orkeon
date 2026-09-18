@@ -7,6 +7,47 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: a failed « Composer l'équipe » is said, with the technical part copyable (STUDIO-13)
+
+In novice mode the creation wizard kept its promise of a screen without machinery right up to
+the first failure, where it showed nothing at all: no `orkeon` binary, an `appsettings.json`
+the engine refuses, a non-zero exit — a click, a spinner, then step 1 again, with the reason
+on a grey one-line status (truncated, untranslated) or nowhere, and the whole stderr in a
+technical journal only the expert mode displays.
+
+- `CreateTeamViewModel` carries one failure model, `WizardFailure` (`Kind`, `Headline`,
+  `Detail`, `CommandLine`, `ExitCode`, `Stderr`, `EngineError`, `Journal`), exposed as
+  `Failure` / `HasFailure`, with `BuildFailureReport()`, `CanCopyFailureReport` and
+  `FailureReportCopied` on the diagnostic screen's pattern. Five families, classified on the
+  run outcome, the engine's `error` event and the exit code: `EngineMissing` (the locator found
+  no binary — `NotStarted`), `ConfigRefused` (an `error` event with `recoverable: false`, a
+  `FORGE-*` code), `EngineStopped` (non-zero exit, with or without stderr — and a session that
+  reported `failed`), `Unknown` (an exception out of the launch, which used to reach a
+  `MessageBox` at best — `RunEngineAsync` now catches it, cancellation excepted) and
+  `PromoteRefused` (step 4, no `promoted` event). « Arrêter » never produces one.
+- The report is the `orkeon forge` command line, the exit code, the engine's code and message,
+  the detail the card shows and the whole journal — the WHOLE stderr, where the status line
+  only ever kept the last line.
+- `CreateTeamView` shows the card under the status line in **both** modes, bordered in the
+  danger colour on the assistant gate card's pattern: the novice sentence of the family
+  (localized, five cultures), the engine's own text in mono (wrapped, bounded, scrollable,
+  never translated), and « Copier le rapport » (« Copié ! » for 1.6 s), « Réessayer »
+  (the compose at step 1, the save at step 4) and, by family, « Ouvrir le diagnostic » (the
+  doctor re-runs on arrival) or « Ouvrir les réglages ». It clears on the next composition and
+  at the start of every run; the status line, the expert journal and the fault `MessageBox`
+  of the other commands are untouched. `Studio.Create.StatusFailed` now says where the detail
+  is («the detail is in the card below»), true in both modes.
+- Capture campaign: a stop `etape1-echec-moteur` (both modes, both themes, language sweep)
+  photographs the card by taking the CLI away from the seeded machine and clicking — the
+  owner's own recipe, through the real locator; 49 stops, 258 shots.
+- Tests: `A_missing_engine_is_said_on_step_1_with_a_copyable_report`,
+  `A_non_zero_exit_without_stderr_still_shows_a_failure_card`,
+  `An_unrecoverable_engine_error_names_its_code_and_message`,
+  `The_failure_report_carries_the_command_line_the_exit_code_and_the_whole_stderr`,
+  `A_new_compose_clears_the_previous_failure`, `A_refused_promotion_uses_the_same_failure_card`,
+  `An_exception_during_the_launch_becomes_a_failure_card_rather_than_a_fault`,
+  `Stopping_the_engine_raises_no_failure_card`.
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

@@ -25,7 +25,8 @@ public class CreateTeamWizardTests
     private static (CreateTeamViewModel Vm, FakeProcessLauncher Processes, ModelProfilesViewModel Profiles) Build(
         string? teamsRoot = null,
         bool withAssistant = true,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        bool cliInstalled = true)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -39,9 +40,13 @@ public class CreateTeamWizardTests
         }
 
         var processes = new FakeProcessLauncher();
+        // A machine without the CLI is the first-run machine, not an edge: the wizard's
+        // failure card (STUDIO-13) is what it shows instead of a spinner and step 1 again.
         var client = new ForgeClient(
             processes,
-            new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled()));
+            new OrkeonBinaryLocator(cliInstalled
+                ? FakeExecutableProbe.WithOrkeonInstalled()
+                : new FakeExecutableProbe("/opt/orkeon")));
         var vm = new CreateTeamViewModel(
             profiles,
             new CreateTeamDependencies
@@ -962,6 +967,238 @@ public class CreateTeamWizardTests
         var row = Assert.Single(vm.MountRows);
         Assert.Equal("/data/second", row.Folder);
         Assert.Single(vm.TeamMounts);
+    }
+
+    // ── STUDIO-13: the failures of "Compose the team" are said, with the technical part copyable ──
+
+    private static ProcessOutputLine Err(string text) =>
+        ProcessOutputLine.Now(ProcessOutputChannel.StandardError, text);
+
+    /// <summary>
+    /// The owner's screenshot: no CLI, a click, a spinner, then step 1 again with nothing but
+    /// a grey truncated line. The card says the engine is missing, in the user's language,
+    /// keeps the locator's own text raw, and the report a novice pastes carries it whole.
+    /// </summary>
+    [Fact]
+    public async Task A_missing_engine_is_said_on_step_1_with_a_copyable_report()
+    {
+        var (vm, processes, _) = Build(cliInstalled: false);
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.Empty(processes.Requests);   // nothing was ever spawned
+        Assert.True(vm.HasFailure);
+        Assert.Equal(WizardFailureKind.EngineMissing, vm.Failure!.Kind);
+        Assert.Equal("The orkeon engine was not found on this machine.", vm.Failure.Headline);
+        Assert.Contains("was not located on this machine", vm.Failure.Detail, StringComparison.Ordinal);
+        Assert.Null(vm.Failure.ExitCode);
+        Assert.True(vm.CanCopyFailureReport);
+        Assert.Contains("was not located on this machine", vm.BuildFailureReport(), StringComparison.Ordinal);
+        Assert.Contains("orkeon forge", vm.BuildFailureReport(), StringComparison.Ordinal);
+        // The status line carries the sentence, not the locator's paragraph; the user stays
+        // on step 1 and knows why; the ways out are the diagnostic and a retry.
+        Assert.Equal(vm.Failure.Headline, vm.StatusMessage);
+        Assert.Equal(1, vm.Step);
+        Assert.False(vm.IsEngineRunning);
+        Assert.True(vm.FailureOffersDiagnostic);
+        Assert.False(vm.FailureOffersSettings);
+        Assert.True(vm.FailureOffersRetry);
+        Assert.Same(vm.ComposeCommand, vm.FailureRetryCommand);
+    }
+
+    /// <summary>
+    /// Exit 1 with no line on either channel used to produce nothing at all: SyncFromModel
+    /// only repainted the failed sentence on a `session.finished {failed}` that never came.
+    /// </summary>
+    [Fact]
+    public async Task A_non_zero_exit_without_stderr_still_shows_a_failure_card()
+    {
+        var (vm, processes, _) = Build();
+        processes.ExitCode = 1;
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.True(vm.HasFailure);
+        Assert.Equal(WizardFailureKind.EngineStopped, vm.Failure!.Kind);
+        Assert.Equal("The engine stopped (exit code 1).", vm.Failure.Headline);
+        Assert.Equal(1, vm.Failure.ExitCode);
+        Assert.Equal("", vm.Failure.Stderr);
+        // With nothing on stderr, the exit-code description is the technical detail.
+        Assert.Contains("exit code 1", vm.Failure.Detail, StringComparison.Ordinal);
+        Assert.Equal(vm.Failure.Headline, vm.StatusMessage);
+        Assert.Contains("exit 1", vm.BuildFailureReport(), StringComparison.Ordinal);
+        Assert.Equal(1, vm.Step);
+    }
+
+    [Fact]
+    public async Task An_unrecoverable_engine_error_names_its_code_and_message()
+    {
+        var (vm, processes, _) = Build();
+        processes.ExitCode = 2;
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"error","code":"FORGE-STAGE-FAILED","message":"the blueprint stage failed twice","recoverable":false}"""),
+            Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"failed","exitCode":2}"""),
+        ]);
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.True(vm.HasFailure);
+        Assert.Equal(WizardFailureKind.ConfigRefused, vm.Failure!.Kind);
+        Assert.NotNull(vm.Failure.EngineError);
+        Assert.Equal("FORGE-STAGE-FAILED", vm.Failure.EngineError.Code);
+        Assert.Equal("the blueprint stage failed twice", vm.Failure.EngineError.Message);
+        // The exit code joined the card the error raised, instead of a second card replacing it.
+        Assert.Equal(2, vm.Failure.ExitCode);
+        Assert.Contains("FORGE-STAGE-FAILED: the blueprint stage failed twice", vm.Failure.Detail, StringComparison.Ordinal);
+        Assert.Contains("FORGE-STAGE-FAILED: the blueprint stage failed twice", vm.BuildFailureReport(), StringComparison.Ordinal);
+        // The engine refused what the settings gave it: the way out is the settings screen.
+        Assert.True(vm.FailureOffersSettings);
+        Assert.False(vm.FailureOffersDiagnostic);
+        // The status line still carries the engine's own words (review D3), untouched.
+        Assert.Equal("FORGE-STAGE-FAILED: the blueprint stage failed twice", vm.StatusMessage);
+    }
+
+    /// <summary>
+    /// The old status line kept the LAST stderr line only. The report keeps them all, in
+    /// order, under the command line a terminal could replay and the exit code.
+    /// </summary>
+    [Fact]
+    public async Task The_failure_report_carries_the_command_line_the_exit_code_and_the_whole_stderr()
+    {
+        var (vm, processes, _) = Build();
+        processes.ExitCode = 2;
+        processes.OutputToEmit.AddRange(
+        [
+            Err("orkeon forge: no LLM is configured (FORGE-LLM-UNAVAILABLE)"),
+            Err("  run `orkeon init`, or pass --settings"),
+            Err("  nothing was written"),
+        ]);
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        var report = vm.BuildFailureReport();
+        Assert.Contains("orkeon forge", report, StringComparison.Ordinal);
+        Assert.Contains("--dry", report, StringComparison.Ordinal);
+        Assert.Contains("exit 2", report, StringComparison.Ordinal);
+        Assert.Contains("no LLM is configured (FORGE-LLM-UNAVAILABLE)", report, StringComparison.Ordinal);
+        Assert.Contains("run `orkeon init`, or pass --settings", report, StringComparison.Ordinal);
+        Assert.Contains("nothing was written", report, StringComparison.Ordinal);
+        Assert.Equal(WizardFailureKind.EngineStopped, vm.Failure!.Kind);
+        Assert.Equal(3, vm.Failure.Stderr.Split(Environment.NewLine).Length);
+        Assert.Equal(vm.EngineCommandLine, vm.Failure.CommandLine);
+        // The status line keeps its habit — the last stderr line — and the card shows them all.
+        Assert.Equal("  nothing was written", vm.StatusMessage);
+        Assert.StartsWith("orkeon forge: no LLM is configured", vm.Failure.Detail, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_new_compose_clears_the_previous_failure()
+    {
+        var (vm, processes, _) = Build();
+        processes.ExitCode = 1;
+        FillStepOne(vm);
+        await Compose(vm);
+        Assert.True(vm.HasFailure);
+
+        processes.ExitCode = 0;
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        await Compose(vm);
+
+        Assert.False(vm.HasFailure);
+        Assert.Null(vm.Failure);
+        Assert.Equal("", vm.BuildFailureReport());
+        // A success status is never hidden behind a stale card (D-05).
+        Assert.Equal("Stopped — you can pick it up again from My solutions.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public async Task A_refused_promotion_uses_the_same_failure_card()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: root);
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            FillStepOne(vm);
+            await Compose(vm);
+            vm.TeamName = "Ma veille";
+            Assert.False(vm.HasFailure);
+
+            // The engine refuses out loud and exits non-zero, without a `promoted` event.
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.Add(Err("orkeon forge promote: the destination already exists"));
+            processes.ExitCode = 1;
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.False(vm.IsSaved);
+            Assert.True(vm.HasFailure);
+            Assert.Equal(WizardFailureKind.PromoteRefused, vm.Failure!.Kind);
+            Assert.Equal(1, vm.Failure.ExitCode);
+            Assert.Equal("orkeon forge promote: the destination already exists", vm.Failure.Detail);
+            Assert.Contains("forge promote veille --to", vm.Failure.CommandLine, StringComparison.Ordinal);
+            Assert.Contains("the destination already exists", vm.BuildFailureReport(), StringComparison.Ordinal);
+            // "Try again" at step 4 is the save itself; the status line keeps its sentence.
+            Assert.True(vm.FailureOffersRetry);
+            Assert.Same(vm.SaveTeamCommand, vm.FailureRetryCommand);
+            Assert.Contains("refused the promotion", vm.StatusMessage, StringComparison.Ordinal);
+            Assert.Equal(4, vm.Step);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// An exception out of the launch used to reach the command's FaultHandler — a MessageBox
+    /// in the real app, nothing at all here. It is a failure like the others, on the card.
+    /// </summary>
+    [Fact]
+    public async Task An_exception_during_the_launch_becomes_a_failure_card_rather_than_a_fault()
+    {
+        var (vm, processes, _) = Build();
+        processes.Fault = new InvalidOperationException("A forge session is already running.");
+        FillStepOne(vm);
+
+        await Compose(vm);   // would have thrown out of the command before STUDIO-13
+
+        Assert.True(vm.HasFailure);
+        Assert.Equal(WizardFailureKind.Unknown, vm.Failure!.Kind);
+        Assert.Equal("InvalidOperationException: A forge session is already running.", vm.Failure.Detail);
+        Assert.Null(vm.Failure.ExitCode);
+        Assert.False(vm.IsEngineRunning);
+        Assert.True(vm.FailureOffersDiagnostic);
+        Assert.Contains("A forge session is already running.", vm.BuildFailureReport(), StringComparison.Ordinal);
+    }
+
+    /// <summary>"Stop" is the user's own gesture; a stopped run is not a failure.</summary>
+    [Fact]
+    public async Task Stopping_the_engine_raises_no_failure_card()
+    {
+        var (vm, processes, _) = Build();
+        processes.HonourCancellation = true;
+        processes.WhileRunning = () => vm.StopCommand.Execute(null);
+        FillStepOne(vm);
+
+        await Compose(vm);
+
+        Assert.False(vm.HasFailure);
+        Assert.False(vm.IsEngineRunning);
     }
 }
 
