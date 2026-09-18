@@ -84,7 +84,8 @@ public static partial class RunnerExecution
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
 
-        if (!EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath)
+        if (!EnsureVirtualRootsAreUnique(cliMounts, target.SettingsPath)
+            || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
                 cliMounts, target.SettingsPath,
                 target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
@@ -93,6 +94,13 @@ public static partial class RunnerExecution
             errorCode = 1;
             return false;
         }
+
+        // Announced only once every guard has passed: "Using settings" reads as the run going
+        // ahead with that file, and a refusal that arrived after it read as a run that had
+        // started and crashed — the one-line diagnostics above are the whole answer.
+        if (target.SettingsPath != null)
+            Console.Error.WriteLine($"Using settings: {target.SettingsPath}");
+
         cliMounts.Insert(0, $"{FileSystemMount.Quote(target.ConfigDir)}:{target.VirtualRoot}:ro");
 
         var internalMounts = CreateLlmLogMounts(llmLogPath);
@@ -205,9 +213,8 @@ public static partial class RunnerExecution
         if (inspection.IsCrewDirectory)
             configPath = Path.TrimEndingDirectorySeparator(configPath);
         var configDir = inspection.IsCrewDirectory ? configPath : Path.GetDirectoryName(configPath)!;
+        // Resolved here, announced by TryBuildHost once the mount guards have passed.
         var settingsPath = RunnerSettings.ResolveSettingsPath(opts.SettingsPath, configDir);
-        if (settingsPath != null)
-            Console.Error.WriteLine($"Using settings: {settingsPath}");
 
         // The crew-config loader (YamlCrewDefinitionLoader) reads the YAML through
         // IFileSystemService, so configDir must be visible to the VFS registry — under a
@@ -350,6 +357,72 @@ public static partial class RunnerExecution
     }
 
     /// <summary>
+    /// Refuses two mounts claiming one virtual root from the same source: two <c>--mount</c>
+    /// arguments, or two entries of the settings file (both of its mount sections, since the
+    /// registry's duplicate check spans them). Without this the collision surfaces as a raw
+    /// <see cref="InvalidOperationException"/> ("Duplicate virtual paths") thrown out of a DI
+    /// factory at kickoff — after "Using settings", under a stack trace — where one line and
+    /// an exit code 1 before any host boots say what to fix (STUDIO-15 D-02).
+    /// <para>
+    /// A <c>--mount</c> on a root the settings declare is NOT a duplicate: the host places a
+    /// command-line mount by root and it replaces that settings entry for the run
+    /// (<c>RunnerHost</c>, D-01). Only a root claimed twice from the same source has no
+    /// answer but "keep one".
+    /// </para>
+    /// <para>
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree"/>: the settings file
+    /// is read HERE from <paramref name="settingsPath"/>, so no caller can forget it.
+    /// </para>
+    /// </summary>
+    /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
+    /// <param name="settingsPath">Resolved settings file whose declared mounts are checked
+    /// against each other, or <see langword="null"/> when the command resolves none.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    public static bool EnsureVirtualRootsAreUnique(
+        IEnumerable<string> userMounts,
+        string? settingsPath)
+    {
+        ArgumentNullException.ThrowIfNull(userMounts);
+
+        return RootsAreClaimedOnce(userMounts, "mounted twice on the command line")
+            && RootsAreClaimedOnce(
+                RunnerSettings.ReadDeclaredMounts(settingsPath), $"declared twice in {settingsPath}");
+    }
+
+    /// <summary>
+    /// One source's mounts, each root claimed at most once. Malformed strings are left to the
+    /// mount parser, which reports them at host build time with its own precise message.
+    /// </summary>
+    private static bool RootsAreClaimedOnce(IEnumerable<string> mountStrings, string howItWasClaimed)
+    {
+        var firstClaim = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var mountString in mountStrings)
+        {
+            string virtualPath;
+            try
+            {
+                virtualPath = FileSystemMount.Parse(mountString).VirtualPath;
+            }
+            catch (Exception ex) when (ex is FormatException or ArgumentException)
+            {
+                continue;
+            }
+
+            // Ordinal, like the registry — with the trailing slash dropped, so '/output/' and
+            // '/output' read as the one root they are.
+            var root = virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+            if (firstClaim.TryAdd(root, mountString))
+                continue;
+
+            Console.Error.WriteLine(
+                $"ERROR: '{root}' is {howItWasClaimed}: {firstClaim[root]} and {mountString}. Keep one.");
+            return false;
+        }
+
+        return true;
+    }
+
+    /// <summary>
     /// Refuses a mount whose host-side base path does not exist, whether it was written as a
     /// <c>--mount</c> argument or declared in the settings file. Without this the missing
     /// directory surfaces as a raw <see cref="DirectoryNotFoundException"/> thrown out of the
@@ -438,11 +511,23 @@ public static partial class RunnerExecution
         if (!TryBuildHost(opts, loggerCategory, configureServices, out var bootstrap, out var errorCode))
             return errorCode;
 
+        // The failure line is written AFTER the host is disposed: disposing flushes the
+        // console logger's queue, so "ERROR: <message>" is the last thing on stderr — the
+        // sentence exit code 2 promises ("the last stderr lines say why") — rather than a
+        // line the logger's own output then buries (STUDIO-15 D-03).
+        var (exitCode, failure) = await RunWithHostAsync(bootstrap!).ConfigureAwait(false);
+        if (failure is not null)
+            await Console.Error.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
+        return exitCode;
+        }
+
+        async Task<(int ExitCode, string? Failure)> RunWithHostAsync(HostBootstrap bootstrap)
+        {
         // `using`, because the sandbox session directory is deleted by SandboxSession.Dispose,
         // which the container runs on host disposal. Without it every `orkeon run` left a
         // directory under the ephemeral root for a later process's janitor to collect — and
         // the diagnostics flows next door already dispose theirs.
-        using var host = bootstrap!.Host;
+        using var host = bootstrap.Host;
         var logger = bootstrap.Logger;
 
         // Internal CTS linked to the external one (if any). Cancelling either path stops
@@ -452,12 +537,12 @@ public static partial class RunnerExecution
 
         try
         {
-            return await KickoffLoadedCrewAsync(host, bootstrap, opts, cts.Token).ConfigureAwait(false);
+            return (await KickoffLoadedCrewAsync(host, bootstrap, opts, cts.Token).ConfigureAwait(false), null);
         }
         catch (OperationCanceledException)
         {
             LogCrewExecutionCanceled(logger);
-            return 130;
+            return (130, null);
         }
         catch (Exception ex) when (IsConnectionRefused(ex))
         {
@@ -468,12 +553,20 @@ public static partial class RunnerExecution
             var endpoint = ResolveConfiguredLlmEndpoint(host);
             await Console.Error.WriteLineAsync(BuildUnreachableLlmMessage(endpoint)).ConfigureAwait(false);
             LogLlmEndpointUnreachable(logger, endpoint ?? "(default)");
-            return 2;
+            return (2, null);
         }
         catch (Exception ex)
         {
-            LogCrewExecutionFailed(logger, ex);
-            return 2;
+            // The message is the diagnostic; the type and the stack are debugging noise that
+            // used to be the whole Error line — one line of ~3000 characters whose only
+            // actionable words were the first ten. They stay one opt-in away: --verbose 2
+            // (the Debug entry below) or ORKEON_DEBUG=1, the switch the crew-load path and
+            // the scripting CLI's fault barrier already honour.
+            LogCrewExecutionFailed(logger, ex.Message);
+            LogCrewExecutionFailureDetail(logger, ex);
+            if (RunnerEnvironment.DebugDiagnostics)
+                await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
+            return (2, ex.Message);
         }
         }
     }
@@ -962,7 +1055,7 @@ public static partial class RunnerExecution
 
     /// <summary>
     /// Applies a verbosity preset shared by all runners.
-    /// 1 = warnings only except Orkeon Application/Tools/Infrastructure at Information.
+    /// 1 = warnings only except Orkeon Hosting/Application/Tools/Infrastructure at Information.
     /// 2 = Debug everywhere, Infrastructure capped at Information.
     /// </summary>
     public static void ConfigureVerboseLogging(ILoggingBuilder b, int verbosity)
@@ -992,6 +1085,10 @@ public static partial class RunnerExecution
         {
             case 1:
                 b.SetMinimumLevel(LogLevel.Warning);
+                // The host's own decisions — which LLM endpoint was resolved, which settings
+                // mount a --mount replaced — are what an operator reading a -v 1 log needs
+                // first; Studio launches at this level.
+                b.AddFilter("Orkeon.Hosting", LogLevel.Information);
                 b.AddFilter("Orkeon.Application.Crew.ExecutionOrchestrator", LogLevel.Information);
                 b.AddFilter("Orkeon.Application.Agent", LogLevel.Information);
                 b.AddFilter("Orkeon.Tools", LogLevel.Information);
@@ -1141,8 +1238,11 @@ public static partial class RunnerExecution
     [LoggerMessage(EventId = 4, Level = LogLevel.Warning, Message = "Crew execution was canceled (SIGTERM/SIGINT); hook should have written AUTO_SUMMARY.md")]
     private static partial void LogCrewExecutionCanceled(ILogger logger);
 
-    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Crew execution failed")]
-    private static partial void LogCrewExecutionFailed(ILogger logger, Exception ex);
+    [LoggerMessage(EventId = 5, Level = LogLevel.Error, Message = "Crew execution failed: {Reason}")]
+    private static partial void LogCrewExecutionFailed(ILogger logger, string reason);
+
+    [LoggerMessage(EventId = 15, Level = LogLevel.Debug, Message = "Crew execution failure detail")]
+    private static partial void LogCrewExecutionFailureDetail(ILogger logger, Exception ex);
 
     [LoggerMessage(EventId = 12, Level = LogLevel.Error, Message = "LLM endpoint unreachable (connection refused): {Endpoint}")]
     private static partial void LogLlmEndpointUnreachable(ILogger logger, string endpoint);

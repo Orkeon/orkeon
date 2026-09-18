@@ -189,10 +189,11 @@ public class LaunchOptionsModelTests
     }
 
     [Fact]
-    public void Launch_mounts_land_after_the_mount_the_runner_injects_itself()
+    public void Launch_mounts_replace_the_settings_entry_on_the_same_root_and_land_after_the_rest()
     {
-        // The runner mounts the crew's own directory before every --mount, so index 0 is never
-        // the user's: their first mount replaces the appsettings entry at index 1.
+        // A launch mount on a root the settings declare takes that entry's place; the runner's
+        // own crew mount is on a root the settings can never declare, so it is appended after
+        // every settings entry.
         var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe("/data")));
         model.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
 
@@ -200,15 +201,17 @@ public class LaunchOptionsModelTests
             YamlTarget(),
             ["/old:/config:ro", "/out:/workspace:rw"]);
 
-        Assert.Equal(2, effective.Count);
+        Assert.Equal(3, effective.Count);
 
-        Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
-        Assert.True(effective[0].OverridesSettings);
-        Assert.Equal("/old:/config:ro", effective[0].ReplacedSettingsMount);
+        Assert.Equal(MountOrigin.Settings, effective[0].Origin);
+        Assert.False(effective[0].OverridesSettings);
 
         Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
         Assert.True(effective[1].OverridesSettings);
         Assert.Equal("/out:/workspace:rw", effective[1].ReplacedSettingsMount);
+
+        Assert.Equal(MountOrigin.AutoInjected, effective[2].Origin);
+        Assert.False(effective[2].OverridesSettings);
     }
 
     /// <summary>
@@ -235,8 +238,8 @@ public class LaunchOptionsModelTests
     [Fact]
     public void The_override_rule_is_stated_for_the_ui()
     {
-        Assert.Contains("replaces", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
-        Assert.Contains("never merged", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
+        Assert.Contains("replaces that settings entry", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
+        Assert.Contains("appended after every declared entry", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
         Assert.Contains("--allow-external-mounts", LaunchOptionsModel.ExternalMountsExplanation, StringComparison.Ordinal);
     }
 

@@ -79,7 +79,7 @@ public sealed class LaunchOptionsModel
     /// <summary>The launch mounts as the strings <c>--mount</c> receives.</summary>
     public IReadOnlyList<string> MountStrings => [.. _mounts.Select(mount => mount.ToMountString())];
 
-    /// <summary>Why command-line mounts are not merged with the appsettings ones.</summary>
+    /// <summary>How command-line mounts are placed against the appsettings ones — by virtual root.</summary>
     public static string MountOverrideExplanation => MountOverrideSemantics.Explanation;
 
     /// <summary>What ticking <c>--allow-external-mounts</c> actually opens up.</summary>
@@ -120,7 +120,8 @@ public sealed class LaunchOptionsModel
     /// <summary>
     /// The mount list the runtime will really see, given the mounts already declared in the
     /// selected appsettings file. The target is required because the runner injects its own
-    /// mounts ahead of every <c>--mount</c>, which is what decides the index each one occupies.
+    /// mount ahead of every <c>--mount</c>: it is the first entry appended after the declared
+    /// ones, so every <c>--mount</c> on a new root lands one index further.
     /// </summary>
     public IReadOnlyList<EffectiveMount> ComputeEffectiveMounts(
         RunTarget target,

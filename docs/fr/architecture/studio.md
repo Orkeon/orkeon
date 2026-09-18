@@ -67,8 +67,8 @@ choisies sont reportées telles quelles, **droits compris** : les réglages sont
 le seul endroit où un dossier et ses droits se décident, et une équipe capable
 de les élargir ferait de cette déclaration une suggestion. Une ligne que
 l'équipe porte déjà, ou dont la racine virtuelle est déjà prise par un autre
-dossier, le dit et ne peut pas être choisie — deux montages sur une même racine
-ne sont pas fusionnés par le runtime, l'un est perdu.
+dossier, le dit et ne peut pas être choisie — la liste d'une équipe, comme celle
+des réglages, nomme chaque racine une seule fois.
 
 **Une équipe est un dossier qu'on emporte.** Le sidecar enregistre les dossiers
 propres de l'équipe relativement à elle : un segment physique qui commence par
@@ -147,7 +147,22 @@ que rien ne leur sera associé et que les agents qui y écrivent échoueront ; u
 « Rétablir » unique est le chemin de retour après une croix de trop.
 Au lancement, Studio pose les mounts du sidecar sur le run
 en arguments `--mount`, devant ceux du lancement — les chips et la commande ne
-peuvent pas diverger. Limite assumée : un `orkeon run` nu en terminal ne lit pas
+peuvent pas diverger — **sauf les entrées que les réglages tiennent déjà**, même
+dossier, même nom, mêmes droits : celles-là sont en vigueur par les seuls
+réglages, et les repasser est du bruit (`LaunchMountPlan.WithoutSettingsDuplicates`).
+Le moteur place chaque `--mount` **par racine virtuelle** (`RunnerHost`) : un
+dossier d'équipe sous un nom que les réglages dépensent pour un autre dossier
+remplace cette entrée des réglages pour le run, et un dossier sous un nom neuf
+s'ajoute après les entrées déclarées. La table des montages effectifs de l'écran
+Exécuter prédit exactement cela — une ligne par racine, origine *appsettings*
+pour ce que les réglages fournissent, `--mount (remplace « … »)` pour un
+remplacement — et la phrase au-dessus énonce la règle (`MountOverrideSemantics`).
+Avant cela, la copie conforme du sélecteur rencontrait sa jumelle des réglages et
+toute équipe adoptée utilisant un dossier autorisé échouait au démarrage sur
+« Duplicate virtual paths » ; les dossiers déclarés dans les réglages sont aussi
+mis en liste blanche pour `PathValidator` sans aucun drapeau, si bien qu'une
+équipe lisant un dossier autorisé hors de son propre dossier n'est plus refusée
+fichier par fichier. Limite assumée : un `orkeon run` nu en terminal ne lit pas
 le sidecar — comme le champ `profile`, c'est le confort de Studio, pas le
 contrat du moteur.
 

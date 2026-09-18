@@ -24,7 +24,11 @@ empilent, au-dessus des sources standard de l'hôte .NET :
    surcharge `Orkeon:Rag:Profile`. Les variables sont ajoutées **après** le fichier :
    elles gagnent.
 3. **Les surcharges CLI de montage** — chaque argument `--mount` devient une entrée
-   mémoire `Orkeon:FileSystem:Mounts:<i>` (précédence maximale).
+   mémoire `Orkeon:FileSystem:Mounts:<i>` (précédence maximale), placée **par racine
+   virtuelle** : un `--mount` sur une racine que le tableau déclaré (couches 1 + 2) tient
+   déjà est écrit à l'index de cette entrée et la remplace pour le run ; un `--mount` sur
+   une racine neuve est ajouté après le plus haut index déclaré. Le montage `/crew` (ou
+   `/script`) du runner et les `InternalMounts` sont toujours ajoutés.
 
 Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolution de
 secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
@@ -131,7 +135,7 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 | `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:Sandbox` | Montage sandbox du système de fichiers (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
-| `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)) ; surchargé par le CLI `--mount` | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Un `--mount` CLI sur la même racine virtuelle **remplace** l'entrée pour ce run ; sur une racine neuve il est ajouté (jamais fusionné, jamais perdu). Une racine déclarée deux fois dans le fichier est refusée avant tout host (`… declared twice in <settings>. Keep one.`). Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il reste donc accessible même hors du répertoire de travail du processus | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`InternalMounts`) | Même grammaire que `Mounts`, enregistrés en `MountVisibility.Internal` : résolubles par le VFS, **absents de `list_mounts`, de la table de montages du prompt agent et des messages de refus d'accès**. C'est là qu'un hôte met ce que le VFS doit atteindre et qu'aucun agent n'a à adresser — le répertoire `--llm-log` y vit ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Autorise interpréteurs/git mutant dans `ShellCommandTool` (**équivalent RCE**, avertissement émis) | `AddOrkeonCodeTools()` | config seule |
 | `Orkeon:Tools:Shell:ExtraAllowedCommands` / `AllowedCommands` | Allowlist shell : additive / remplacement complet (le remplacement annule `AllowInterpreters`) | idem | config seule |

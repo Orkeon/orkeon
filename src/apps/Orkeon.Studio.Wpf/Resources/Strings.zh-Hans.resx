@@ -581,14 +581,15 @@
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve">
     <value>这是一个多文件团队目录：运行它需要「orkeon run &lt;目录&gt;」，要求 Orkeon &gt;= {0}。随 Studio 安装的 CLI 支持该功能。</value>
   </data>
+  <!-- STUDIO-15：挂载规则按虚拟根匹配，不再按索引 -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>运行器先注入自己的挂载——团队的配置目录挂载为「/crew」（.ork.ts 团队则把脚本目录挂载为「/script」）——然后追加每个 --mount 参数，并把整份列表写入「Orkeon:FileSystem:Mounts:{index}」。因此索引 0 的 appsettings 挂载总是被自动注入的挂载取代，第一个 --mount 取代索引 1 的 appsettings 挂载，两份列表永不合并。超出最后写入索引的 appsettings 条目继续生效。LLM 日志目录单独挂载，对智能体不可见，也不会造成任何偏移。</value>
+    <value>运行器先插入自己的挂载——团队的配置目录挂载为「/crew」（.ork.ts 团队则把脚本目录挂载为「/script」）——然后按虚拟根把每个 --mount 参数放入「Orkeon:FileSystem:Mounts」：若 appsettings 已声明该根，本次运行中该 --mount 取代那条 appsettings 条目；若是新的根，则追加到所有已声明条目之后。没有任何 --mount 提及的 appsettings 条目继续生效。LLM 日志目录单独挂载，对智能体不可见，也不会造成任何偏移。</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts 还会把每个 --mount 基础路径加入「PathSecurity:AdditionalAllowedDirectories」白名单，使挂载可以指向工作目录之外（效果等同于 ORKEON_ALLOW_EXTERNAL_MOUNTS=1）。</value>
   </data>
   <data name="Studio.Settings.ThisLaunch" xml:space="preserve">
-    <value> 本次启动运行器注入 {0} 个挂载（{1}），因此第一个 --mount 占用「{2}」。</value>
+    <value> 本次启动运行器插入 {0} 个自己的挂载（{1}），追加在 appsettings 条目之后；每个指向新根的 --mount 排在其后。</value>
   </data>
   <data name="Studio.Settings.NewDocument" xml:space="preserve">
     <value>新的空文档。选择一个预设来填写 Llm 部分。</value>
@@ -653,8 +654,9 @@
   <data name="Studio.Settings.EffectiveNone" xml:space="preserve">
     <value>{0} 个生效挂载；没有替换任何 appsettings 条目。</value>
   </data>
+  <!-- STUDIO-15：按根替换，不再按索引 -->
   <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve">
-    <value>{0} 个生效挂载；按索引替换了 {1} 个 appsettings 条目。</value>
+    <value>{0} 个生效挂载；{1} 个 appsettings 条目被同一根上的启动挂载替换。</value>
   </data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve">
     <value>自动（由运行器注入）</value>

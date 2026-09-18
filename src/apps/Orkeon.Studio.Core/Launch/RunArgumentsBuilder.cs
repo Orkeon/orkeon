@@ -171,9 +171,10 @@ public static class RunArgumentsBuilder
         if (target.Dialect == RunTargetDialect.Yaml)
             messages.AddRange(ValidateVariables(effective.Variables));
 
-        // The configuration key is NOT Mounts:{i}: the runner injects its own mounts first, so
-        // the user's i-th --mount lands that many slots further down the array.
-        var autoInjected = MountAutoInjection.For(target, effective).Count;
+        // Reported against the option, not a configuration key: the runner places each
+        // --mount by virtual root — after every settings entry for a new root, in place of the
+        // settings entry for a declared one — so the key an entry will occupy is not known
+        // from the arguments alone (MountOverrideSemantics).
         for (var i = 0; i < effective.Mounts.Count; i++)
         {
             if (string.IsNullOrWhiteSpace(effective.Mounts[i]))
@@ -181,7 +182,7 @@ public static class RunArgumentsBuilder
                 messages.Add(ValidationMessage.Error(
                     LaunchCodes.EmptyMount,
                     string.Create(CultureInfo.InvariantCulture, $"The --mount entry at index {i} is empty."),
-                    MountOverrideSemantics.ConfigurationKey(autoInjected + i)));
+                    RunOptionAvailability.ToCommandLineName(RunOption.Mounts)));
             }
         }
 

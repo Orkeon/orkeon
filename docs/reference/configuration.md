@@ -21,7 +21,11 @@ of the standard .NET host sources:
    `ORKEON_Llm__ApiKey` overrides `Llm:ApiKey`, `ORKEON_Orkeon__Rag__Profile` overrides
    `Orkeon:Rag:Profile`. Env vars are added **after** the file, so they win.
 3. **CLI mount overrides** — each `--mount` argument becomes an in-memory
-   `Orkeon:FileSystem:Mounts:<i>` entry (highest precedence).
+   `Orkeon:FileSystem:Mounts:<i>` entry (highest precedence), placed **by virtual root**:
+   a `--mount` on a root the declared array (layers 1 + 2) already holds is written at
+   that entry's index and replaces it for the run; a `--mount` on a new root is appended
+   after the highest declared index. The runner's own `/crew` (or `/script`) mount and the
+   `InternalMounts` are always appended.
 
 The same `ORKEON_` prefix also feeds `EnvironmentSecretProvider` (secret lookup, e.g.
 `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
@@ -126,7 +130,7 @@ requires the opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjecti
 | `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Auth providers | Infrastructure | — (registered by `AddOrkeonInfrastructure()`; the section gates behavior) |
 | `Orkeon:CodeSandbox` (+ `:Docker`) | Secure code interpreter sandbox | Infrastructure | — (registered by `AddOrkeonInfrastructure()`; the section gates behavior) |
 | `Orkeon:Sandbox` | Sandbox file-system mount (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
-| `Orkeon:FileSystem` (`Mounts`) | VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)); overridden by CLI `--mount` | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:FileSystem` (`Mounts`) | VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)). A CLI `--mount` on the same virtual root **replaces** the entry for that run; on a new root it is appended (never merged, never dropped). One root declared twice in the file is refused before any host builds (`… declared twice in <settings>. Keep one.`). Every declared entry's base path is **whitelisted for `PathValidator`** without `--allow-external-mounts` — a declared folder is the machine owner's intent, so it is reachable even when it lies outside the process working directory | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`InternalMounts`) | Same grammar as `Mounts`, registered `MountVisibility.Internal`: resolvable by the VFS, **absent from `list_mounts`, from the agent prompt's mount table and from access-denied messages**. Where a host puts what the VFS must reach and no agent has any business addressing — the `--llm-log` directory lives here ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Allow interpreters/mutating git in `ShellCommandTool` (**RCE-equivalent**, warning emitted) | `AddOrkeonCodeTools()` | config-only |
 | `Orkeon:Tools:Shell:ExtraAllowedCommands` / `AllowedCommands` | Shell allowlist: additive / full replacement (replacement cancels `AllowInterpreters`) | idem | config-only |

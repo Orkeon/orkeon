@@ -231,7 +231,7 @@ public class RunLauncherViewModelTests
     }
 
     [Fact]
-    public void A_launch_mount_is_shown_as_replacing_the_settings_mount_of_the_same_index()
+    public void A_launch_mount_is_shown_as_replacing_the_settings_mount_of_the_same_root()
     {
         var fixture = new LauncherFixture().WithInstalledCli();
         fixture.Directories.Create("/data");
@@ -245,21 +245,27 @@ public class RunLauncherViewModelTests
         launcher.Target.Select(crew);
         launcher.Options.UseAutomaticSettings = false;
         launcher.Options.ExplicitSettingsPath = "/etc/orkeon/appsettings.json";
-        launcher.Options.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/workspace" });
+        launcher.Options.AddMount(new MountDefinition { PhysicalPath = "/data", VirtualPath = "/output" });
         launcher.RefreshSettingsMounts();
 
         var effective = launcher.EffectiveMounts;
 
-        // Index 0 belongs to the mount the runner injects for the crew directory; the user's
-        // first --mount therefore lands on index 1 and masks the settings entry there.
+        // The settings entries keep their indices; the --mount on /output takes the place of
+        // the settings entry on that root, and the runner's own crew mount — on a root the
+        // settings can never declare — is appended after them (STUDIO-15 D-04).
+        Assert.Equal(3, effective.Count);
         Assert.Equal("Orkeon:FileSystem:Mounts:0", effective[0].ConfigurationKey);
-        Assert.Equal(MountOrigin.AutoInjected, effective[0].Origin);
-        Assert.Equal("/old:/config:ro", effective[0].ReplacedSettingsMount);
+        Assert.Equal(MountOrigin.Settings, effective[0].Origin);
+        Assert.Equal("/old:/config:ro", effective[0].Value);
 
         Assert.Equal("Orkeon:FileSystem:Mounts:1", effective[1].ConfigurationKey);
         Assert.Equal(MountOrigin.CommandLine, effective[1].Origin);
         Assert.True(effective[1].OverridesSettings);
         Assert.Equal("/out:/output:rw", effective[1].ReplacedSettingsMount);
+
+        Assert.Equal("Orkeon:FileSystem:Mounts:2", effective[2].ConfigurationKey);
+        Assert.Equal(MountOrigin.AutoInjected, effective[2].Origin);
+        Assert.Null(effective[2].ReplacedSettingsMount);
     }
 
     [Fact]

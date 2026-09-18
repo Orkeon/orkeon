@@ -217,9 +217,10 @@
   <data name="Studio.Settings.RightsReadWrite" xml:space="preserve"><value>Read / write (create and delete allowed)</value></data>
   <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve"><value>Read / write without delete</value></data>
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve"><value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value></data>
-  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>The runner injects its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each --mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So the appsettings mount at index 0 is always replaced by the auto-injected one, the first --mount replaces the appsettings mount at index 1, and the two lists are never merged. Appsettings entries past the last written index stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value></data>
+  <!-- STUDIO-15: the mount rule is by virtual root, no longer by index -->
+  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>The runner inserts its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each --mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the appsettings already declare, the --mount replaces that settings entry for this run; on a new root, it is appended after every declared entry. Settings entries no --mount names stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value></data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
-  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.</value></data>
+  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> For this launch the runner inserts {0} mount(s) of its own ({1}), appended after the settings entries; every --mount on a new root lands after them.</value></data>
 
   <!-- STUDIO-11 tranche 2: ViewModel-fabricated strings -->
   <data name="Studio.Settings.NewDocument" xml:space="preserve"><value>New empty document. Pick a preset to fill in the Llm section.</value></data>
@@ -243,7 +244,8 @@
   <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve"><value>Select a crew first: the runner injects its own mounts ahead of every --mount, so which configuration key each mount occupies depends on the crew being launched.</value></data>
   <data name="Studio.Settings.ExternalWarning" xml:space="preserve"><value>Security: this lets a mount point anywhere on the machine, outside the working directory. Only enable it for a path you chose deliberately.</value></data>
   <data name="Studio.Settings.EffectiveNone" xml:space="preserve"><value>{0} effective mount(s); no appsettings entry is replaced.</value></data>
-  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} effective mount(s); {1} appsettings entry(ies) replaced by index.</value></data>
+  <!-- STUDIO-15: by root, not by index -->
+  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} effective mount(s); {1} appsettings entry(ies) replaced by a launch mount on the same root.</value></data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve"><value>auto (injected by the runner)</value></data>
   <data name="Studio.Settings.OriginReplaces" xml:space="preserve"><value>{0} (replaces «{1}»)</value></data>
   <data name="Studio.Run.BinaryNotLocated" xml:space="preserve"><value>The orkeon CLI has not been located yet.</value></data>
