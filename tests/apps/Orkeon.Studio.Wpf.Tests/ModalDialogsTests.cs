@@ -79,6 +79,29 @@ public sealed class ModalDialogsTests
         Assert.False(picker.CanConfirm);
     }
 
+    /// <summary>
+    /// STUDIO-14 D-10: the wizard's « The results » row opens the picker on read-and-write, so
+    /// the folder the team writes to is not declared read-only by a default nobody looked at.
+    /// Read-only stays the default for every other caller.
+    /// </summary>
+    [Fact]
+    public void Open_can_start_on_read_and_write()
+    {
+        var picker = Picker(out _);
+        MountDefinition? picked = null;
+
+        picker.Open([], m => picked = m, "/data/projets/veille", initialRights: MountRights.ReadWrite);
+        Assert.True(picker.IsReadWrite);
+        Assert.False(picker.IsReadOnly);
+        Assert.EndsWith(":rw", picker.MountPreview, StringComparison.Ordinal);
+        picker.ConfirmCommand.Execute(null);
+        Assert.Equal(MountRights.ReadWrite, picked!.Rights);
+
+        // The next open does not inherit it: the default is the caller's to name each time.
+        picker.Open([], m => picked = m, "/data/projets/veille");
+        Assert.True(picker.IsReadOnly);
+    }
+
     // ── Team mounts ──
 
     [Fact]

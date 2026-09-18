@@ -92,9 +92,16 @@ public sealed class FolderPickerViewModel : ObservableObject
     /// <summary>
     /// Shows the modal. <paramref name="existingMounts"/> (mount strings) drive the
     /// already-allowed notes and the virtual-path uniqueness; <paramref name="onPicked"/>
-    /// receives the confirmed mount.
+    /// receives the confirmed mount. <paramref name="initialRights"/> is the rights row the
+    /// modal opens on — read-only by default; the wizard's « The results » row opens it on
+    /// read-and-write (STUDIO-14, D-10), so the folder the team writes to is not declared
+    /// read-only by a default nobody looked at.
     /// </summary>
-    public void Open(IReadOnlyList<string> existingMounts, Action<MountDefinition> onPicked, string? initialPath = null)
+    public void Open(
+        IReadOnlyList<string> existingMounts,
+        Action<MountDefinition> onPicked,
+        string? initialPath = null,
+        MountRights initialRights = MountRights.ReadOnly)
     {
         ArgumentNullException.ThrowIfNull(existingMounts);
         ArgumentNullException.ThrowIfNull(onPicked);
@@ -109,7 +116,9 @@ public sealed class FolderPickerViewModel : ObservableObject
         _mountedPhysical = [.. parsed.Select(m => m.PhysicalPath.TrimEnd('/', '\\'))];
         _mountedVirtual = [.. parsed.Select(m => m.VirtualPath)];
         _onPicked = onPicked;
-        _isReadOnly = true;
+        // The picker knows two rows; anything wider than read-and-write is the expert
+        // form's business and opens on the writable row.
+        _isReadOnly = initialRights == MountRights.ReadOnly;
         _path = initialPath is { Length: > 0 }
             ? initialPath
             : Environment.GetFolderPath(Environment.SpecialFolder.UserProfile);

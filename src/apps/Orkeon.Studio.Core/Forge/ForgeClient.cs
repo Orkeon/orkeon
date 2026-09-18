@@ -19,6 +19,15 @@ public sealed record ForgeStartRequest
     /// <summary>Explicit settings path, same semantics as <c>orkeon run</c>.</summary>
     public string? SettingsPath { get; init; }
 
+    /// <summary>
+    /// <c>--read &lt;dir&gt;</c>: the folder the trial reads as <c>/workspace</c> (STUDIO-14,
+    /// D-09) — the one the wizard's first step bound, or a reopened team's own <c>input/</c>.
+    /// Null keeps the engine's default (the working directory), and the argv of a session
+    /// with nothing to read is exactly what it was before the option existed: an older
+    /// engine only ever sees <c>--read</c> when there is a folder to name.
+    /// </summary>
+    public string? ReadDirectory { get; init; }
+
     /// <summary>Arbitrate without a human — Studio keeps the human, so false by default.</summary>
     public bool Auto { get; init; }
 
@@ -108,6 +117,14 @@ public static class ForgeArgumentsBuilder
         {
             arguments.Add("--settings");
             arguments.Add(request.SettingsPath);
+        }
+
+        // Only when a folder is known: without one the argv is the pre-STUDIO-14 one, so an
+        // engine that predates the option keeps working for every team that reads nothing.
+        if (!string.IsNullOrWhiteSpace(request.ReadDirectory))
+        {
+            arguments.Add("--read");
+            arguments.Add(request.ReadDirectory);
         }
 
         if (request.Auto)

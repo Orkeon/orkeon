@@ -1226,6 +1226,52 @@ public static class StudioStringKeys
 
     /// <summary>"The save failed — the engine refused the promotion."</summary>
     public const string WizardFailurePromoteRefused = "Studio.Create.FailurePromoteRefused";
+
+    // STUDIO-14 wizard — where a team's folders live: the step-1 policy chips, the two
+    // canonical rows, the in-team label of a row, the step-2 buttons, the step-3 note and
+    // the header's « Open the folder » (D-06, D-08, D-15).
+
+    /// <summary>"Where are your folders?" — the fourth step-1 question.</summary>
+    public const string WizardQFolders = "Studio.Create.QFolders";
+
+    /// <summary>"Existing folders" — the chip that opens the disk picker.</summary>
+    public const string WizardFoldersExisting = "Studio.Create.FoldersExisting";
+
+    /// <summary>"Created inside the team" — the chip that binds the two roots team-relative.</summary>
+    public const string WizardFoldersInside = "Studio.Create.FoldersInside";
+
+    /// <summary>"Later" — the chip that leaves the rows for the Composer step.</summary>
+    public const string WizardFoldersLater = "Studio.Create.FoldersLater";
+
+    /// <summary>"Your documents" — title of the read root's row.</summary>
+    public const string WizardReadRootTitle = "Studio.Create.ReadRootTitle";
+
+    /// <summary>"The results" — title of the write root's row.</summary>
+    public const string WizardWriteRootTitle = "Studio.Create.WriteRootTitle";
+
+    /// <summary>"inside the team: {0}" — what a team-relative row shows in place of a disk path.</summary>
+    public const string WizardInsideTeamFolder = "Studio.Create.InsideTeamFolder";
+
+    /// <summary>"Create inside the team" — the per-row action of the Composer step.</summary>
+    public const string WizardCreateInsideTeam = "Studio.Create.CreateInsideTeam";
+
+    /// <summary>"Create every folder inside the team" — the Composer step's global action.</summary>
+    public const string WizardCreateAllInsideTeam = "Studio.Create.CreateAllInsideTeam";
+
+    /// <summary>The sentence under the policy chips, saying what each choice implies.</summary>
+    public const string WizardFoldersPolicyHint = "Studio.Create.FoldersPolicyHint";
+
+    /// <summary>The step-3 note when the read root is inside a team that does not exist yet.</summary>
+    public const string WizardTrialInsideTeam = "Studio.Create.TrialInsideTeam";
+
+    /// <summary>"Open the folder" — the header button (D-15).</summary>
+    public const string WizardOpenFolder = "Studio.Create.OpenFolder";
+
+    /// <summary>The tooltip of the header button before adoption: the working session opens.</summary>
+    public const string WizardOpenFolderSession = "Studio.Create.OpenFolderSession";
+
+    /// <summary>The tooltip of the header button after adoption: the team folder opens.</summary>
+    public const string WizardOpenFolderTeam = "Studio.Create.OpenFolderTeam";
 }
 
 /// <summary>
@@ -1707,6 +1753,22 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardFailureEngineStopped] = "The engine stopped (exit code {0}).",
         [StudioStringKeys.WizardFailureUnknown] = "Something went wrong before the engine could answer.",
         [StudioStringKeys.WizardFailurePromoteRefused] = "The save failed — the engine refused the promotion.",
+
+        // STUDIO-14 wizard: where a team's folders live
+        [StudioStringKeys.WizardQFolders] = "Where are your folders?",
+        [StudioStringKeys.WizardFoldersExisting] = "Existing folders",
+        [StudioStringKeys.WizardFoldersInside] = "Created inside the team",
+        [StudioStringKeys.WizardFoldersLater] = "Later",
+        [StudioStringKeys.WizardReadRootTitle] = "Your documents",
+        [StudioStringKeys.WizardWriteRootTitle] = "The results",
+        [StudioStringKeys.WizardInsideTeamFolder] = "inside the team: {0}",
+        [StudioStringKeys.WizardCreateInsideTeam] = "Create inside the team",
+        [StudioStringKeys.WizardCreateAllInsideTeam] = "Create every folder inside the team",
+        [StudioStringKeys.WizardFoldersPolicyHint] = "An existing folder is declared in Settings › Authorized folders on the way; a folder created inside the team travels with it. You can still change this at the next step.",
+        [StudioStringKeys.WizardTrialInsideTeam] = "The trial runs on an empty folder — drop your documents into input/ once the team is adopted.",
+        [StudioStringKeys.WizardOpenFolder] = "Open the folder",
+        [StudioStringKeys.WizardOpenFolderSession] = "Opens the working session — the folder the assistant is writing in.",
+        [StudioStringKeys.WizardOpenFolderTeam] = "Opens the folder of the adopted team.",
     };
 
     /// <summary>Every declared key with its English text, for the front-ends' drift tests.</summary>

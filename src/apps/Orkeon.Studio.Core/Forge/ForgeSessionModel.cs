@@ -613,7 +613,7 @@ public sealed class ForgeSessionModel
     /// trial bench itself mounts.
     /// <para>
     /// The same derivation as <c>ForgePromoter.DeliverableMounts</c> on the CLI side, and it
-    /// has to stay the same: these mounts are not only chips — <c>WithDerivedWriteMounts</c>
+    /// has to stay the same: these mounts are not only chips — <c>SidecarMounts</c>
     /// writes them into an adopted team's sidecar, so a root refused by the CLI's copy and
     /// accepted here produces a team Studio can launch and the runner refuses. The guards
     /// below arrived on the CLI copy alone; <c>ForgeDerivedMountTests</c> now pins the pair.
@@ -691,7 +691,7 @@ public sealed class ForgeSessionModel
     /// <summary>
     /// One root, one mount, write wins. Deduping only against read-WRITE entries let a
     /// read-only /workspace stand beside a read-write one: two chips for one root, and
-    /// WithDerivedWriteMounts keeps the read-only one, so the chip promising a write was a
+    /// SidecarMounts keeps the read-only one, so the chip promising a write was a
     /// lie. The CLI deduped on the name alone and lost the write entirely. Both now hold
     /// this same rule.
     /// </summary>

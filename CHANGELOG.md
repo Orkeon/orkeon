@@ -33,6 +33,52 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   helper for the convention, and `FolderPolicy` names the step-1 choice the wizard gains
   next (Later / InsideTeam / ExistingFolders).
 
+<!-- STUDIO-14 wizard -->
+### Added — Studio wizard: where the folders live, asked at step 1; « Create inside the team »; the trial reads the chosen folder; « Open the folder » (STUDIO-14, lots 2–5 and 8)
+
+- Step 1 « Describe » gains a fourth question, « Where are your folders? », with three chips
+  and no obligation — composing never waits for it. « Existing folders » shows the two rows a
+  team can address before it has a blueprint (« Your documents » `/workspace` read, « The
+  results » `/output` written); « Choose the folder… » on either opens the **disk picker** on
+  the row's rights (read-and-write for the results), and the pick is declared in Settings ›
+  Authorized folders unless already held, saved, then bound behind the row under the row's
+  rights — one gesture, the status line says which happened, a refused save still binds. A
+  folder picked inside the reopened team is bound and never declared. « Created inside the
+  team » answers both rows team-relative on the spot (`./input:/workspace:ro`,
+  `./output:/output:rw`), read « inside the team: input / output », nothing created before
+  the adoption. « Later » behaves as before. The chips move the two canonical roots only;
+  composing keeps them; « Restart », a resume and « Modify » forget them, policy included.
+- Step 2 « Compose » re-shows the step-1 answers, editable as before, and gains « Create every
+  folder inside the team » beside « Allow a folder » plus a per-row « Create inside the
+  team ». Under the inside-the-team policy a root a later blueprint adds is answered the same
+  way as it appears, unless dropped. A row inside the team shows a label, never a disk path,
+  and never reads red: `DeclaredMounts.IsVouchedFor` (declared, or the team's own) is now the
+  rule of the wizard's rows and of the "My teams" cards, as it already was of the launcher —
+  a team's own `/output` no longer reads red on its card. The `input/` warning stays for a
+  read root answered inside the team: that `input/` is created just as empty.
+- The adoption records team-relative entries for every in-team answer and every root the
+  blueprint addresses that nothing answered (`CreateTeamViewModel.SidecarMounts()`, replacing
+  `WithDerivedWriteMounts(teamDirectory)` — no team directory needed any more; the save
+  creates the folders). « Modify » on a card seeds the rows from the sidecar's own spelling,
+  so `./output` reads « inside the team » and is written back as it is.
+- The trial reads where the documents are: every engine invocation of the wizard carries
+  `--read <dir>` (`ForgeStartRequest.ReadDirectory`, `ForgeArgumentsBuilder`) with the folder
+  bound behind `/workspace` — a real folder as it is, a reopened team's own `input/` resolved
+  under the team — and nothing before the team exists, where the argv is unchanged and step 3
+  says the trial runs on an empty folder. An engine that predates `--read` meets it only when
+  a folder is known, and then refuses it on the failure card (STUDIO-13).
+- The Run screen turns `--allow-external-mounts` on by itself when a team folder is a real
+  folder outside the team, and off when every team folder resolves under it — the launch's
+  working directory needs no flag (STUDIO-12 C4, Studio half); the expert checkbox stays for
+  the per-launch mounts.
+- « Open the folder » in the wizard's header, in both modes at every step: the working
+  session — which holds the generated `crew/` — before the adoption, the adopted (or
+  reopened) team afterwards, the tooltip says which; present whenever a shell opener is
+  wired, like the team cards' button (`CreateTeamDependencies.ShellOpener`).
+- `FolderPickerViewModel.Open` takes an `initialRights`; three capture stops
+  (`etape1-dossiers-existants`, `etape1-dossiers-equipe`, `etape2-dossiers-dans-equipe`);
+  fourteen new `Studio.Create.*` strings in the five languages.
+
 ### Fixed — Studio: team cards bounded, the rights badge in one word, the closed rights list says its label (STUDIO-16)
 
 - A team created from a long brief — a README pasted into the name field — filled the

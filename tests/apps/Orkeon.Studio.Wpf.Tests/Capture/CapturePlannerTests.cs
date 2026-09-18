@@ -75,8 +75,10 @@ public sealed class CapturePlannerTests
         var plan = CapturePlanner.Plan(CaptureCatalog.All, CaptureMatrix.Default);
 
         // STUDIO-13: +1 stop (etape1-echec-moteur, both modes, both themes, language sweep) = +8 shots.
-        Assert.Equal(49, CaptureCatalog.All.Count);
-        Assert.Equal(258, plan.Count);
+        // STUDIO-14 wizard: +3 stops (the two step-1 folder policies and the step-2
+        // "create inside the team" state — both modes, both themes, language sweep) = +24 shots.
+        Assert.Equal(52, CaptureCatalog.All.Count);
+        Assert.Equal(282, plan.Count);
     }
 
     [Fact]

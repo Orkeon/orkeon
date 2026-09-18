@@ -1056,4 +1056,47 @@
   <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
     <value>Ouvrir les réglages</value>
   </data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>Où sont vos dossiers ?</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>Des dossiers existants</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>Créés dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>Plus tard</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>Vos documents</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>Les résultats</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>dans l'équipe : {0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>Créer dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>Créer tous les dossiers dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>Un dossier existant est déclaré au passage dans Réglages › Dossiers autorisés ; un dossier créé dans l'équipe voyage avec elle. Vous pourrez encore changer à l'étape suivante.</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>L'essai tourne sur un dossier vide — déposez vos documents dans input/ une fois l'équipe adoptée.</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>Ouvrir le dossier</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>Ouvre la session de travail — le dossier où l'assistant écrit.</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>Ouvre le dossier de l'équipe adoptée.</value>
+  </data>
 </root>

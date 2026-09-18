@@ -50,6 +50,65 @@ internal static class WizardStops
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
 
+        // STUDIO-14 wizard — where the folders live, answered at step 1 (D-06) and at step 2 (D-08).
+        new()
+        {
+            Name = "etape1-dossiers-existants",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "«Des dossiers existants» at step 1: the two rows — «Vos documents» read, «Les "
+                    + "résultats» written — one answered with a real folder the settings declare, the "
+                    + "other still offering «Choisir le dossier…» and «Créer dans l'équipe». The real "
+                    + "folder is the seeded docs/, so the row reads declared, not red.",
+            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasStepOneRows", "CreateTeam.CanCompose"],
+            CoversFalse = ["CreateTeam.HasUndeclaredTeamMounts"],
+            SweepsLanguages = true,
+            Arrange = CaptureAction.Sync(static c =>
+            {
+                var wizard = c.Shell.CreateTeam;
+                wizard.Need = StudioFixture.Need;
+                wizard.Outcome = StudioFixture.Outcome;
+                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
+                wizard.SourceChoices[0].SelectCommand.Execute(null);
+                wizard.OutputChoices[0].SelectCommand.Execute(null);
+                wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.ExistingFolders;
+                // What the disk picker binds back once confirmed: the seeded, declared docs/.
+                wizard.BindTeamMount(
+                    Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot,
+                    new Orkeon.Studio.Core.FileSystem.MountDefinition
+                    {
+                        PhysicalPath = System.IO.Path.Combine(c.World.DataDirectory, "docs"),
+                        VirtualPath = "/docs",
+                        Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
+                    });
+            }),
+            Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
+        },
+
+        new()
+        {
+            Name = "etape1-dossiers-equipe",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "«Créés dans l'équipe» at step 1: both rows answered «dans l'équipe : input» / "
+                    + "«dans l'équipe : output» — the accent label in place of a disk path, no red "
+                    + "anywhere, and nothing created before the adoption.",
+            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasStepOneRows", "CreateTeam.HasTeamMounts"],
+            CoversFalse = ["CreateTeam.HasUndeclaredTeamMounts"],
+            SweepsLanguages = true,
+            Arrange = CaptureAction.Sync(static c =>
+            {
+                var wizard = c.Shell.CreateTeam;
+                wizard.Need = StudioFixture.Need;
+                wizard.Outcome = StudioFixture.Outcome;
+                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
+                wizard.SourceChoices[0].SelectCommand.Execute(null);
+                wizard.OutputChoices[0].SelectCommand.Execute(null);
+                wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.InsideTeam;
+            }),
+            Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
+        },
+
         // STUDIO-13
         new()
         {
@@ -110,6 +169,25 @@ internal static class WizardStops
             SweepsLanguages = true,
             Arrange = static async c =>
                 await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug)),
+        },
+
+        // STUDIO-14 wizard (D-08)
+        new()
+        {
+            Name = "etape2-dossiers-dans-equipe",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "The Composer after «Créer tous les dossiers dans l'équipe»: every implied root "
+                    + "answered «dans l'équipe : …», the button gone with nothing left to answer, and "
+                    + "the input/ warning still standing — an input/ created at adoption is created empty.",
+            Covers = ["CreateTeam.IsStep2", "CreateTeam.HasProposal", "CreateTeam.HasTeamMounts", "CreateTeam.NeedsInputFolder"],
+            CoversFalse = ["CreateTeam.HasDerivedMounts", "CreateTeam.HasUndeclaredTeamMounts"],
+            SweepsLanguages = true,
+            Arrange = static async c =>
+            {
+                await c.Shell.CreateTeam.ResumeAsync(Session(c, StudioFixture.DryPauseSessionSlug));
+                c.Shell.CreateTeam.CreateAllInsideTeamCommand.Execute(null);
+            },
         },
 
         new()

@@ -89,12 +89,14 @@ public sealed class TeamCardViewModel : ObservableObject
         Summary = summary;
 
         // Never the raw string: it carries the physical folder, and a team card is an
-        // agent-facing surface like any other (ADR-008).
+        // agent-facing surface like any other (ADR-008). Red is for a folder vouched for by
+        // nothing — neither declared nor the team's own (STUDIO-14, D-08): a team's /output
+        // used to read red on its own card while the launcher let it through without a word.
         MountChips = [.. summary.Mounts.Select(mountString =>
         {
             var (label, readWrite) = MountLabels.Describe(mountString, strings);
             return new TeamMountChip(
-                label, readWrite, IsUndeclared: !MountLabels.IsDeclared(mountString, declaredMounts));
+                label, readWrite, IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declaredMounts, summary.Path));
         })];
         ScheduleDisplay = summary.Schedule switch
         {

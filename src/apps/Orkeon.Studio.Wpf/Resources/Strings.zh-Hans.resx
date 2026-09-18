@@ -2262,4 +2262,47 @@
   <data name="Studio.Create.FailureOpenSettings" xml:space="preserve">
     <value>打开配置</value>
   </data>
+  <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
+  <data name="Studio.Create.QFolders" xml:space="preserve">
+    <value>您的文件夹在哪里？</value>
+  </data>
+  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
+    <value>已有的文件夹</value>
+  </data>
+  <data name="Studio.Create.FoldersInside" xml:space="preserve">
+    <value>在团队内创建</value>
+  </data>
+  <data name="Studio.Create.FoldersLater" xml:space="preserve">
+    <value>稍后决定</value>
+  </data>
+  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
+    <value>您的文档</value>
+  </data>
+  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
+    <value>结果</value>
+  </data>
+  <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
+    <value>团队内：{0}</value>
+  </data>
+  <data name="Studio.Create.CreateInsideTeam" xml:space="preserve">
+    <value>在团队内创建此文件夹</value>
+  </data>
+  <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
+    <value>在团队内创建所有文件夹</value>
+  </data>
+  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
+    <value>已有的文件夹会顺带登记到「设置 › 授权文件夹」；在团队内创建的文件夹随团队一起移动。下一步仍可更改。</value>
+  </data>
+  <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
+    <value>试运行在一个空文件夹上进行——团队采纳后，请把您的文档放入 input/。</value>
+  </data>
+  <data name="Studio.Create.OpenFolder" xml:space="preserve">
+    <value>打开文件夹</value>
+  </data>
+  <data name="Studio.Create.OpenFolderSession" xml:space="preserve">
+    <value>打开工作会话——助手正在写入的文件夹。</value>
+  </data>
+  <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
+    <value>打开已采纳团队的文件夹。</value>
+  </data>
 </root>
