@@ -3,6 +3,7 @@ using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
 
@@ -31,7 +32,8 @@ public enum MountOrigin
 /// <param name="Value">The mount string in force.</param>
 /// <param name="Origin">Which of the three sources won.</param>
 /// <param name="ReplacedSettingsMount">
-/// The appsettings entry this masks, when there was one at the same index.
+/// The appsettings entry this takes the place of, when the settings declared the same
+/// virtual root: the runner writes a <c>--mount</c> at that entry's own index.
 /// </param>
 public sealed record EffectiveMount(
     int Index,
@@ -42,7 +44,7 @@ public sealed record EffectiveMount(
     /// <summary>Configuration key this entry occupies.</summary>
     public string ConfigurationKey => MountOverrideSemantics.ConfigurationKey(Index);
 
-    /// <summary>True when a settings entry was silently replaced by a higher-priority one.</summary>
+    /// <summary>True when a settings entry on the same root was replaced by a higher-priority one.</summary>
     public bool OverridesSettings => Origin != MountOrigin.Settings && ReplacedSettingsMount is not null;
 }
 
@@ -50,8 +52,9 @@ public sealed record EffectiveMount(
 /// The mounts the runner inserts <em>ahead of</em> every <c>--mount</c> argument, in the order
 /// it inserts them. There is exactly one: the crew's configuration directory as <c>/crew:ro</c>
 /// (<c>RunnerExecution.TryBuildHost</c>), or the script's directory as <c>/script:ro</c> on the
-/// scripting path (<c>RunCommand</c>). This offset is why the user's first <c>--mount</c> does
-/// not land on <c>Orkeon:FileSystem:Mounts:0</c>.
+/// scripting path (<c>RunCommand</c>). Its root is reserved — the settings can never declare
+/// it — so it is always appended after the declared entries, and every <c>--mount</c> on a
+/// new root lands after it.
 /// <para>
 /// The LLM exchange log is <em>not</em> here: since ADR-008 it is registered as an internal
 /// mount under its own configuration key, so it no longer shifts anything the user wrote.
@@ -169,12 +172,14 @@ public sealed record MountAutoInjection
 
 /// <summary>
 /// What <c>--mount</c> really does at launch. The runner builds ONE list — its own
-/// auto-injected mounts first, then every <c>--mount</c> argument in order — and writes that
-/// whole list as the configuration overrides <c>Orkeon:FileSystem:Mounts:{i}</c>
-/// (<c>RunnerHost.ConfigureAppConfiguration</c>). Two consequences a UI must not hide: the
-/// appsettings entry at index 0 is <em>always</em> masked by the auto-injected mount, and the
-/// user's first <c>--mount</c> lands at index 1, replacing whatever the appsettings array held
-/// there. The lists are never merged.
+/// auto-injected mount first, then every <c>--mount</c> argument in order — and places each
+/// entry of it in <c>Orkeon:FileSystem:Mounts</c> <em>by virtual root</em>
+/// (<c>RunnerHost.ConfigureAppConfiguration</c>, STUDIO-15 D-01): on a root the appsettings
+/// already declare, the entry is written at that declaration's index and replaces it for the
+/// run; on a new root it is appended after the highest declared index. Settings entries no
+/// launch mount names stay in force. Two consequences a UI must not hide: a team folder the
+/// settings already declare under the same name is not a collision, it is the same mount
+/// twice; and the same root bound to another folder is a replacement the table has to show.
 /// </summary>
 public static class MountOverrideSemantics
 {
@@ -186,13 +191,13 @@ public static class MountOverrideSemantics
 
     /// <summary>UI-ready statement of the override rule, independent of any one launch.</summary>
     public const string Explanation =
-        "The runner injects its own mount first — the crew's configuration directory as " +
-        "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each " +
-        "--mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So " +
-        "the appsettings mount at index 0 is always replaced by the auto-injected one, the " +
-        "first --mount replaces the appsettings mount at index 1, and the two lists are never " +
-        "merged. Appsettings entries past the last written index stay in force. The LLM log " +
-        "directory is mounted separately, hidden from agents, and shifts nothing.";
+        "The runner inserts its own mount first — the crew's configuration directory as " +
+        "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each " +
+        "--mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the " +
+        "appsettings already declare, the --mount replaces that settings entry for this run; " +
+        "on a new root, it is appended after every declared entry. Settings entries no --mount " +
+        "names stay in force. The LLM log directory is mounted separately, hidden from agents, " +
+        "and shifts nothing.";
 
     /// <summary>UI-ready statement of what <c>--allow-external-mounts</c> adds.</summary>
     public const string ExternalMountsExplanation =
@@ -215,8 +220,8 @@ public static class MountOverrideSemantics
     }
 
     /// <summary>
-    /// <see cref="Explanation"/> followed by the mounts this particular launch injects and the
-    /// index its first <c>--mount</c> will therefore occupy.
+    /// <see cref="Explanation"/> followed by the mounts this particular launch injects — the
+    /// ones every <c>--mount</c> on a new root lands after.
     /// </summary>
     public static string Explain(MountAutoInjection autoInjection) =>
         Explain(autoInjection, EnglishStudioStrings.Instance);
@@ -231,8 +236,7 @@ public static class MountOverrideSemantics
             CultureInfo.InvariantCulture,
             strings[StudioStringKeys.MountSemanticsThisLaunch],
             autoInjection.Count,
-            string.Join(", ", autoInjection.Mounts),
-            ConfigurationKey(autoInjection.Count));
+            string.Join(", ", autoInjection.Mounts));
     }
 
     /// <summary>Configuration key of the mount at the given index.</summary>
@@ -243,15 +247,18 @@ public static class MountOverrideSemantics
     }
 
     /// <summary>
-    /// The mount list the runtime will see for this launch: the auto-injected entries first,
-    /// then the command-line ones, then whatever appsettings entries the two did not reach.
+    /// The mount list the runtime will see for this launch, in the order of the final array:
+    /// the appsettings entries at their own indices — each replaced in place by the launch
+    /// mount that claims the same virtual root, if any — then the launch mounts on new roots,
+    /// appended in the order the runner writes them (the auto-injected one, then every
+    /// <c>--mount</c>). Mirrors <c>RunnerHost.ConfigureAppConfiguration</c> entry for entry.
     /// </summary>
     /// <param name="commandLineMounts">The <c>--mount</c> arguments, in order.</param>
     /// <param name="settingsMounts">The appsettings <c>Orkeon:FileSystem:Mounts</c> array, in order.</param>
     /// <param name="autoInjection">
     /// The mounts the runner inserts ahead of <paramref name="commandLineMounts"/> — build it
-    /// with <see cref="MountAutoInjection.For"/>. Required: without it the indices are wrong by
-    /// one or two, which is exactly the mistake this type exists to prevent.
+    /// with <see cref="MountAutoInjection.For"/>. Required: it is the first entry appended
+    /// after the declared ones, so without it every appended index is wrong by one.
     /// </param>
     public static IReadOnlyList<EffectiveMount> ComputeEffectiveMounts(
         IReadOnlyList<string> commandLineMounts,
@@ -262,22 +269,52 @@ public static class MountOverrideSemantics
         ArgumentNullException.ThrowIfNull(settingsMounts);
         ArgumentNullException.ThrowIfNull(autoInjection);
 
-        var written = autoInjection.Count + commandLineMounts.Count;
-        var count = Math.Max(written, settingsMounts.Count);
-        var effective = new List<EffectiveMount>(count);
-
-        for (var index = 0; index < count; index++)
+        var effective = new List<EffectiveMount>(settingsMounts.Count + autoInjection.Count + commandLineMounts.Count);
+        var indexByRoot = new Dictionary<string, int>(StringComparer.Ordinal);
+        for (var index = 0; index < settingsMounts.Count; index++)
         {
-            var fromSettings = index < settingsMounts.Count ? settingsMounts[index] : null;
+            effective.Add(new EffectiveMount(index, settingsMounts[index], MountOrigin.Settings));
 
-            if (index < autoInjection.Count)
-                effective.Add(new EffectiveMount(index, autoInjection.Mounts[index], MountOrigin.AutoInjected, fromSettings));
-            else if (index < written)
-                effective.Add(new EffectiveMount(index, commandLineMounts[index - autoInjection.Count], MountOrigin.CommandLine, fromSettings));
-            else
-                effective.Add(new EffectiveMount(index, fromSettings!, MountOrigin.Settings));
+            // The first declaration of a root is the one a launch mount replaces — the same
+            // choice the runner makes; a root declared twice is refused before any host boots.
+            if (TryGetVirtualRoot(settingsMounts[index]) is { } root)
+                indexByRoot.TryAdd(root, index);
+        }
+
+        var launchMounts = autoInjection.Mounts
+            .Select(mount => (Value: mount, Origin: MountOrigin.AutoInjected))
+            .Concat(commandLineMounts.Select(mount => (Value: mount, Origin: MountOrigin.CommandLine)));
+
+        foreach (var (value, origin) in launchMounts)
+        {
+            if (TryGetVirtualRoot(value) is { } root && indexByRoot.TryGetValue(root, out var index))
+            {
+                // Written at the declared entry's own key. A second launch mount on the same
+                // root overwrites that key again (the runner's last write wins), and the row
+                // keeps naming the settings entry the root was taken from.
+                var replaced = effective[index].Origin == MountOrigin.Settings
+                    ? effective[index].Value
+                    : effective[index].ReplacedSettingsMount;
+                effective[index] = new EffectiveMount(index, value, origin, replaced);
+                continue;
+            }
+
+            effective.Add(new EffectiveMount(effective.Count, value, origin));
         }
 
         return effective;
+    }
+
+    /// <summary>
+    /// The virtual root a mount string claims, without its trailing slash, or null for a
+    /// string the parser refuses — which the runner then reports with its own message, and
+    /// which this prediction files as an appended entry, the way the runner writes it.
+    /// </summary>
+    private static string? TryGetVirtualRoot(string mountString)
+    {
+        if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+            return null;
+
+        return mount.VirtualPath.Length > 1 ? mount.VirtualPath.TrimEnd('/') : mount.VirtualPath;
     }
 }

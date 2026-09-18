@@ -27,7 +27,7 @@ public sealed class EffectiveMountViewModel
     /// <summary>The underlying Core record.</summary>
     public EffectiveMount Mount { get; }
 
-    /// <summary>Its position, which is what decides the override.</summary>
+    /// <summary>Its position in the final array.</summary>
     public int Index => Mount.Index;
 
     /// <summary>The mount string that will be in force.</summary>
@@ -39,16 +39,15 @@ public sealed class EffectiveMountViewModel
     /// <summary>Whether it comes from the command line or from the file.</summary>
     public MountOrigin Origin => Mount.Origin;
 
-    /// <summary>Whether it replaces an appsettings entry at the same index.</summary>
+    /// <summary>Whether it replaces the appsettings entry declared on the same virtual root.</summary>
     public bool OverridesSettings => Mount.OverridesSettings;
 
-    /// <summary>The appsettings entry that is being shadowed, when there is one.</summary>
+    /// <summary>The appsettings entry that is being replaced, when there is one.</summary>
     public string? ReplacedSettingsMount => Mount.ReplacedSettingsMount;
 
     /// <summary>
     /// The origin column, phrased for the table. The runner's own entries are named as such
-    /// rather than folded into "appsettings": the user never wrote them, and they are what
-    /// shifts the index of every <c>--mount</c>.
+    /// rather than folded into "appsettings": the user never wrote them.
     /// </summary>
     public string OriginDisplay => OverridesSettings
         ? string.Format(
@@ -65,13 +64,14 @@ public sealed class EffectiveMountViewModel
 }
 
 /// <summary>
-/// The launch-time mount panel of spec §5.2: the mounts already declared in the selected appsettings
-/// shown read-only, the per-launch mounts edited with the §4.5 form, and the effective table that
-/// spells out the index-based override.
+/// The launch-time mount panel of spec §5.2: the mounts already declared in the appsettings the
+/// launch will use, shown read-only, the per-launch mounts edited with the §4.5 form, and the
+/// effective table that spells out the by-root override.
 /// <para>
-/// The override is the point of the panel. <c>--mount</c> arguments are injected as
-/// <c>Orkeon:FileSystem:Mounts:{i}</c>, so they replace the file entry at the same index instead of
-/// being merged with it, and a launcher that let the user assume a merge would be actively misleading.
+/// The override is the point of the panel. A <c>--mount</c> on a virtual root the appsettings
+/// already declare replaces that entry for the run; on a new root it is appended
+/// (<see cref="MountOverrideSemantics"/>), and a launcher that showed anything else would be
+/// showing a mount list the runtime never sees.
 /// </para>
 /// </summary>
 public sealed class LaunchMountsViewModel : ObservableObject
@@ -105,23 +105,28 @@ public sealed class LaunchMountsViewModel : ObservableObject
     /// <summary>Raised when the panel changes, so the command-line preview can be rebuilt.</summary>
     public event EventHandler? Changed;
 
-    /// <summary>The mounts already in the selected appsettings — informational, not editable here.</summary>
+    /// <summary>
+    /// The mounts already in force from the appsettings the launch will use — informational,
+    /// not editable here, and what a team entry is deduplicated against.
+    /// </summary>
     public ObservableCollection<string> SettingsMounts { get; } = [];
 
     /// <summary>
-    /// The adopted team's own mounts, from its sidecar — laid on the launch ahead of the
-    /// per-launch entries, through the same single <c>--mount</c> flag. What the team card's
-    /// chips show is exactly this list, so the display and the run cannot disagree.
+    /// The adopted team's own mounts, from its sidecar. What the team card's chips show is
+    /// exactly this list. Laid on the launch ahead of the per-launch entries, through the
+    /// same single <c>--mount</c> flag — except the entries the settings already hold
+    /// (<see cref="LaunchMountPlan.WithoutSettingsDuplicates"/>): those are in force
+    /// without a word from Studio.
     /// </summary>
     public ObservableCollection<string> TeamMounts { get; } = [];
 
     /// <summary>The per-launch mounts, edited with the same form as the appsettings editor.</summary>
     public MountsEditorViewModel LaunchMounts { get; }
 
-    /// <summary>What each index will actually resolve to once the two lists are combined.</summary>
+    /// <summary>What each index will actually resolve to once the lists are combined by root.</summary>
     public ObservableCollection<EffectiveMountViewModel> EffectiveMounts { get; } = [];
 
-    /// <summary>The sentence explaining the index-based override, shown above the table.</summary>
+    /// <summary>The sentence explaining the by-root override, shown above the table.</summary>
     public string OverrideExplanation => MountOverrideSemantics.ExplanationFor(_strings);
 
     /// <summary>The sentence explaining what <c>--allow-external-mounts</c> additionally permits.</summary>
@@ -141,8 +146,12 @@ public sealed class LaunchMountsViewModel : ObservableObject
         }
     }
 
-    /// <summary>The <c>--mount</c> arguments this panel contributes: team mounts first, then the per-launch ones.</summary>
-    public IReadOnlyList<string> ToMountArguments() => [.. TeamMounts, .. LaunchMounts.ToRawEntries()];
+    /// <summary>
+    /// The <c>--mount</c> arguments this panel contributes: the team mounts the settings do not
+    /// already hold (STUDIO-15 D-05), then the per-launch ones.
+    /// </summary>
+    public IReadOnlyList<string> ToMountArguments() =>
+        [.. LaunchMountPlan.WithoutSettingsDuplicates([.. TeamMounts], [.. SettingsMounts]), .. LaunchMounts.ToRawEntries()];
 
     /// <summary>Publishes the selected team's sidecar mounts (empty for a non-team target).</summary>
     public void SetTeamMounts(IReadOnlyList<string> mounts)
@@ -159,10 +168,15 @@ public sealed class LaunchMountsViewModel : ObservableObject
         RecomputeEffectiveMounts();
     }
 
-    /// <summary>Publishes the mounts read from the appsettings the launch will use.</summary>
+    /// <summary>Publishes the mounts in force from the appsettings the launch will use.</summary>
     public void SetSettingsMounts(IReadOnlyList<string> mounts)
     {
         ArgumentNullException.ThrowIfNull(mounts);
+
+        // Same guard as the team mounts: the tab republishes on every refresh, and recomputing
+        // on an unchanged list would re-raise Changed — the event the tab reacts to.
+        if (SettingsMounts.SequenceEqual(mounts, StringComparer.Ordinal))
+            return;
 
         SettingsMounts.Clear();
         foreach (var mount in mounts)
@@ -202,7 +216,7 @@ public sealed class LaunchMountsViewModel : ObservableObject
         return left.Mounts.SequenceEqual(right.Mounts, StringComparer.Ordinal);
     }
 
-    /// <summary>Recomputes the effective table from the two lists.</summary>
+    /// <summary>Recomputes the effective table from the settings, team and launch lists.</summary>
     public void RecomputeEffectiveMounts()
     {
         EffectiveMounts.Clear();
@@ -220,7 +234,7 @@ public sealed class LaunchMountsViewModel : ObservableObject
         Changed?.Invoke(this, EventArgs.Empty);
     }
 
-    /// <summary>How many appsettings entries are shadowed by a launch mount.</summary>
+    /// <summary>How many appsettings entries a launch mount on the same root replaces.</summary>
     public int OverriddenCount => EffectiveMounts.Count(m => m.OverridesSettings);
 
     /// <summary>The one-line verdict above the effective table.</summary>

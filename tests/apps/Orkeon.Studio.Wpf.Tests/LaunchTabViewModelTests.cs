@@ -247,8 +247,8 @@ public sealed class LaunchMountsViewModelTests
         var mounts = new LaunchMountsViewModel(new FakeDirectoryProbe(existingDirectories))
         {
             // What the tab publishes once a crew is resolved: the runner's own mount for the
-            // crew's directory, which occupies index 0 before any --mount is appended.
-            AutoInjection = new MountAutoInjection { Mounts = ["/crews:/crews:ro"] },
+            // crew's directory, appended after the settings entries before any --mount.
+            AutoInjection = new MountAutoInjection { Mounts = ["/crews:/crew:ro"] },
         };
 
         return mounts;
@@ -269,41 +269,63 @@ public sealed class LaunchMountsViewModelTests
     }
 
     [Fact]
-    public void Should_ShowTheAutoInjectedMountMaskingTheFirstSettingsEntry()
+    public void Should_ShowTheSettingsEntriesInPlace_And_TheAutoInjectedMountAfterThem()
     {
-        // The runner writes its own mount at index 0, so the first appsettings entry is masked
-        // whatever the user does — a launcher that hid that would be showing a mount list the
-        // runtime never sees.
+        // The runner's own mount is on a root the settings can never declare, so it is
+        // appended after every settings entry and replaces none of them — a launcher that
+        // showed it masking the first entry would be showing a mount list the runtime never sees.
         var mounts = Panel("/a");
 
         mounts.SetSettingsMounts(["/a:/workspace:ro", "/a:/output:rw"]);
 
-        Assert.Equal(2, mounts.EffectiveMounts.Count);
-        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[0].Origin);
-        Assert.True(mounts.EffectiveMounts[0].OverridesSettings);
-        Assert.Equal("/a:/workspace:ro", mounts.EffectiveMounts[0].ReplacedSettingsMount);
+        Assert.Equal(3, mounts.EffectiveMounts.Count);
+        Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[0].Origin);
         Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[1].Origin);
-        Assert.Equal(1, mounts.OverriddenCount);
+        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[2].Origin);
+        Assert.False(mounts.EffectiveMounts[2].OverridesSettings);
+        Assert.Equal(0, mounts.OverriddenCount);
     }
 
     [Fact]
-    public void Should_ReplaceBySameIndex_When_ALaunchMountIsAdded()
+    public void Should_ReplaceBySameRoot_When_ALaunchMountIsAdded()
     {
-        // The override is positional, not a merge — this is the semantic the panel has to
-        // display, and the position starts after the mounts the runner injects itself.
+        // The override is by virtual root, not positional — this is the semantic the panel
+        // has to display: a launch mount on a root the settings declare takes that entry's
+        // place, at that entry's own index.
         var mounts = Panel("/a", "/b");
         mounts.SetSettingsMounts(["/a:/workspace:ro", "/a:/output:rw", "/a:/extra:ro"]);
 
         var added = mounts.LaunchMounts.AddMount();
         added.PhysicalPath = "/b";
+        added.VirtualPath = "/output";
 
-        Assert.Equal(3, mounts.EffectiveMounts.Count);
-        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[0].Origin);
+        Assert.Equal(4, mounts.EffectiveMounts.Count);
+        Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[0].Origin);
         Assert.Equal(MountOrigin.CommandLine, mounts.EffectiveMounts[1].Origin);
         Assert.True(mounts.EffectiveMounts[1].OverridesSettings);
         Assert.Equal("/a:/output:rw", mounts.EffectiveMounts[1].ReplacedSettingsMount);
         Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[2].Origin);
-        Assert.Equal(2, mounts.OverriddenCount);
+        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[3].Origin);
+        Assert.Equal(1, mounts.OverriddenCount);
+        Assert.Contains("replaces", mounts.EffectiveMounts[1].OriginDisplay, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_AppendAfterEverySettingsEntry_When_ALaunchMountNamesANewRoot()
+    {
+        var mounts = Panel("/a", "/b");
+        mounts.SetSettingsMounts(["/a:/workspace:ro"]);
+
+        var added = mounts.LaunchMounts.AddMount();
+        added.PhysicalPath = "/b";
+        added.VirtualPath = "/scratch";
+
+        Assert.Equal(3, mounts.EffectiveMounts.Count);
+        Assert.Equal(MountOrigin.Settings, mounts.EffectiveMounts[0].Origin);
+        Assert.Equal(MountOrigin.AutoInjected, mounts.EffectiveMounts[1].Origin);
+        Assert.Equal(MountOrigin.CommandLine, mounts.EffectiveMounts[2].Origin);
+        Assert.Equal("Orkeon:FileSystem:Mounts:2", mounts.EffectiveMounts[2].ConfigurationKey);
+        Assert.Equal(0, mounts.OverriddenCount);
     }
 
     [Fact]
@@ -792,7 +814,8 @@ public sealed class LaunchScreenFacetsTests
     private static LaunchTabViewModel Build(
         FakeTargetProbe? targetProbe = null,
         FakeExecutableProbe? executables = null,
-        RecordingShellOpener? shellOpener = null)
+        RecordingShellOpener? shellOpener = null,
+        string[]? declaredMounts = null)
         => new(new LaunchTabDependencies
         {
             ProcessRunner = new OrkeonProcessRunner(
@@ -802,6 +825,7 @@ public sealed class LaunchScreenFacetsTests
             Directories = new FakeDirectoryProbe(),
             SettingsStore = new FakeAppSettingsStore(),
             ShellOpener = shellOpener,
+            DeclaredMounts = declaredMounts is null ? null : () => declaredMounts,
         });
 
     [Fact]
@@ -896,9 +920,11 @@ public sealed class LaunchScreenFacetsTests
     {
         var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
         var opener = new RecordingShellOpener();
-        var tab = Build(probe, shellOpener: opener);
+        // The settings in force come from the declared list (Settings > Allowed folders) in
+        // automatic settings mode: that is what the tab publishes to the mount panel.
+        var tab = Build(probe, shellOpener: opener, declaredMounts: ["/srv/docs:/workspace:ro", "/srv/out:/output:rw"]);
         tab.Target.Select("/crews/team.yaml");
-        tab.Mounts.SetSettingsMounts(["/srv/docs:/workspace:ro", "/srv/out:/output:rw"]);
+        Assert.Equal(["/srv/docs:/workspace:ro", "/srv/out:/output:rw"], tab.Mounts.SettingsMounts);
 
         // No run yet: nothing to open.
         Assert.False(tab.CanOpenResult);

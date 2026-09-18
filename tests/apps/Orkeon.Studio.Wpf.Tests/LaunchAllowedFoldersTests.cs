@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -127,6 +128,54 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
         tab.OpenAllowedFoldersCommand.Execute(null);
 
         Assert.Equal(1, asked);
+    }
+
+    /// <summary>
+    /// STUDIO-15 D-05. The chooser copies the settings entry verbatim into the sidecar, so an
+    /// adopted team carries the machine's own defaults: laid as <c>--mount</c> they met their
+    /// twin from the settings and the run failed on "Duplicate virtual paths". An entry the
+    /// settings already hold is in force without a word from Studio; only the team's own
+    /// folders go on the command line.
+    /// </summary>
+    [Fact]
+    public void The_launch_command_never_carries_a_settings_entry_twice()
+    {
+        var team = NewTeam(
+            "veille",
+            "/data/docs:/docs:ro",
+            $"{Path.Combine(_root, "veille", "output")}:/output:rw");
+        var tab = Launcher(team, "/data/docs:/docs:ro", "/data/archives:/archives:ro");
+
+        Assert.Equal(["/data/docs:/docs:ro", "/data/archives:/archives:ro"], tab.Mounts.SettingsMounts);
+        var arguments = tab.BuildArguments().ToList();
+        var mountIndex = arguments.IndexOf("--mount");
+        Assert.True(mountIndex >= 0);
+        var mountValues = arguments.Skip(mountIndex + 1).TakeWhile(a => !a.StartsWith("--", StringComparison.Ordinal));
+        Assert.Equal([$"{Path.Combine(_root, "veille", "output")}:/output:rw"], mountValues);
+        Assert.DoesNotContain("/data/docs:/docs:ro", arguments);
+    }
+
+    /// <summary>
+    /// D-04. A team may associate a declared folder under a name the settings spend on another
+    /// folder: that is a replacement the runner performs by root, and the table says so.
+    /// </summary>
+    [Fact]
+    public void The_effective_mounts_table_names_the_settings_entry_a_team_folder_replaces()
+    {
+        var team = NewTeam("veille", "/data/docs:/archives:ro");
+        var tab = Launcher(team, "/data/docs:/docs:ro", "/data/archives:/archives:ro");
+
+        // Laid: the settings hold the folder under another name, so this is the team's own mount.
+        Assert.Contains("/data/docs:/archives:ro", tab.BuildArguments());
+
+        var rows = tab.Mounts.EffectiveMounts;
+        var replaced = Assert.Single(rows, r => r.OverridesSettings);
+        Assert.Equal("/data/docs:/archives:ro", replaced.Value);
+        Assert.Equal("/data/archives:/archives:ro", replaced.ReplacedSettingsMount);
+        Assert.Contains("/data/archives:/archives:ro", replaced.OriginDisplay, StringComparison.Ordinal);
+        // One row per root: the declared /docs entry stays, as the settings' own.
+        Assert.Single(rows, r => r.Value == "/data/docs:/docs:ro" && r.Origin == MountOrigin.Settings);
+        Assert.Equal(1, tab.Mounts.OverriddenCount);
     }
 
     /// <summary>

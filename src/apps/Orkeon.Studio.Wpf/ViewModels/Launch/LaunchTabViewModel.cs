@@ -48,6 +48,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
+    /// <summary>The pinned settings file the panel's settings mounts were read from; null for the live declared list.</summary>
+    private string? _settingsMountsSource;
     private string? _commandLinePreview;
     private string? _statusMessage;
     private ProcessRunResult? _lastResult;
@@ -278,12 +280,27 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Reads the mounts declared in the appsettings the launch will use, so the effective-mount table
-    /// can show what the <c>--mount</c> arguments actually replace.
+    /// Publishes the mounts in force from the appsettings the launch will use, so the
+    /// effective-mount table shows what the <c>--mount</c> arguments actually replace and a
+    /// team folder the settings already hold is not laid a second time (STUDIO-15 D-05).
+    /// <para>
+    /// A pinned <c>--settings</c> file is read as is. In automatic mode the CLI walks its own
+    /// resolution chain, whose last step is the per-user file <c>orkeon init</c> writes — the
+    /// very file « Settings › Authorized folders » edits, read live through the same seam
+    /// the launch refusal uses. An adopted team lives under the teams root, where no closer
+    /// file exists, so that list is what the run will find; a crew kept next to its own
+    /// appsettings.json is the expert's arrangement, and pinning that file shows exactly it.
+    /// </para>
     /// </summary>
     public async Task RefreshSettingsMountsAsync(CancellationToken cancellationToken = default)
     {
-        if (Options.EffectiveSettingsPath is not { Length: > 0 } path || !_settingsStore.Exists(path))
+        if (Options.EffectiveSettingsPath is not { Length: > 0 } path)
+        {
+            Mounts.SetSettingsMounts(_declaredMounts());
+            return;
+        }
+
+        if (!_settingsStore.Exists(path))
         {
             Mounts.SetSettingsMounts([]);
             return;
@@ -291,6 +308,28 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         var (document, _) = await _settingsStore.TryLoadAsync(path, cancellationToken);
         Mounts.SetSettingsMounts(document?.Mounts.RawEntries ?? []);
+    }
+
+    /// <summary>
+    /// Keeps the panel's settings mounts current before the command line is rebuilt: the
+    /// declared list is cheap and read every time; a pinned file is read once per pin
+    /// (<see cref="_settingsMountsSource"/>), not on every keystroke of every other field.
+    /// </summary>
+    private void PublishSettingsMounts()
+    {
+        var path = Options.EffectiveSettingsPath;
+        if (path is not { Length: > 0 })
+        {
+            _settingsMountsSource = null;
+            Mounts.SetSettingsMounts(_declaredMounts());
+            return;
+        }
+
+        if (string.Equals(path, _settingsMountsSource, StringComparison.Ordinal))
+            return;
+
+        _settingsMountsSource = path;
+        _ = RefreshSettingsMountsAsync();
     }
 
     /// <summary>
@@ -856,8 +895,12 @@ public sealed class LaunchTabViewModel : ObservableObject
 
     private void RefreshPreview()
     {
-        // The mount table's indices depend on the mounts the runner injects ahead of the --mount
-        // arguments, which depend on the target and on whether LLM logging is on.
+        // The settings in force decide which team mounts go on the command line at all, so
+        // they are refreshed before the arguments are built.
+        PublishSettingsMounts();
+
+        // The mount table's appended rows depend on the mount the runner injects ahead of the
+        // --mount arguments, which depends on the target and on whether LLM logging is on.
         Mounts.AutoInjection = Target.Target is { } target
             ? MountAutoInjection.For(target, BuildOptions())
             : null;

@@ -1,1 +1,2 @@
 #nullable enable
+static Orkeon.Hosting.RunnerExecution.EnsureVirtualRootsAreUnique(System.Collections.Generic.IEnumerable<string!>! userMounts, string? settingsPath) -> bool

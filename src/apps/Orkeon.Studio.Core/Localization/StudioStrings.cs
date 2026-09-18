@@ -638,13 +638,16 @@ public static class StudioStringKeys
 
     // ---- Mount override semantics (Core Launch/MountOverrideSemantics) ---
 
-    /// <summary>The full statement of the index-based <c>--mount</c> override rule.</summary>
+    // STUDIO-15: the rule is by virtual root (a --mount replaces the settings entry on the
+    // same root, is appended on a new one), no longer by index.
+
+    /// <summary>The full statement of the by-root <c>--mount</c> override rule.</summary>
     public const string MountSemanticsExplanation = "Studio.Settings.Explanation";
 
     /// <summary>The statement of what <c>--allow-external-mounts</c> adds.</summary>
     public const string MountSemanticsExternalMounts = "Studio.Settings.ExternalMounts";
 
-    /// <summary>" For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'."</summary>
+    /// <summary>" For this launch the runner inserts {0} mount(s) of its own ({1}), appended after the settings entries; every --mount on a new root lands after them."</summary>
     public const string MountSemanticsThisLaunch = "Studio.Settings.ThisLaunch";
 
     // ---- Config tab (WPF ViewModel statuses) ------------------------------
@@ -724,8 +727,8 @@ public static class StudioStringKeys
     /// <summary>"{0} effective mount(s); no appsettings entry is replaced."</summary>
     public const string MountsEffectiveNone = "Studio.Settings.EffectiveNone";
 
-    /// <summary>"{0} effective mount(s); {1} appsettings entry(ies) replaced by index."</summary>
-    public const string MountsEffectiveReplaced = "Studio.Settings.EffectiveReplaced";
+    /// <summary>"{0} effective mount(s); {1} appsettings entry(ies) replaced by a launch mount on the same root."</summary>
+    public const string MountsEffectiveReplaced = "Studio.Settings.EffectiveReplaced"; // STUDIO-15: by root, not by index
 
     /// <summary>"auto (injected by the runner)"</summary>
     public const string MountsOriginAuto = "Studio.Settings.OriginAuto";
@@ -1456,20 +1459,22 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "This is a multi-file crew directory: running it uses 'orkeon run <directory>', which " +
             "requires Orkeon >= {0}. The CLI installed alongside Studio supports this.",
 
+        // STUDIO-15: the by-root rule (D-04).
         [StudioStringKeys.MountSemanticsExplanation] =
-            "The runner injects its own mount first — the crew's configuration directory as " +
-            "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then appends each " +
-            "--mount argument, and writes the whole list as 'Orkeon:FileSystem:Mounts:{index}'. So " +
-            "the appsettings mount at index 0 is always replaced by the auto-injected one, the " +
-            "first --mount replaces the appsettings mount at index 1, and the two lists are never " +
-            "merged. Appsettings entries past the last written index stay in force. The LLM log " +
-            "directory is mounted separately, hidden from agents, and shifts nothing.",
+            "The runner inserts its own mount first — the crew's configuration directory as " +
+            "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each " +
+            "--mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the " +
+            "appsettings already declare, the --mount replaces that settings entry for this run; " +
+            "on a new root, it is appended after every declared entry. Settings entries no --mount " +
+            "names stay in force. The LLM log directory is mounted separately, hidden from agents, " +
+            "and shifts nothing.",
         [StudioStringKeys.MountSemanticsExternalMounts] =
             "--allow-external-mounts additionally whitelists each --mount base path under " +
             "'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working " +
             "directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).",
         [StudioStringKeys.MountSemanticsThisLaunch] =
-            " For this launch the runner injects {0} mount(s) ({1}), so the first --mount occupies '{2}'.",
+            " For this launch the runner inserts {0} mount(s) of its own ({1}), appended after the " +
+            "settings entries; every --mount on a new root lands after them.",
 
         [StudioStringKeys.ConfigNewDocument] = "New empty document. Pick a preset to fill in the Llm section.",
         [StudioStringKeys.ConfigNoFileSelected] = "No file selected.",
@@ -1502,8 +1507,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "Security: this lets a mount point anywhere on the machine, outside the working directory. " +
             "Only enable it for a path you chose deliberately.",
         [StudioStringKeys.MountsEffectiveNone] = "{0} effective mount(s); no appsettings entry is replaced.",
+        // STUDIO-15: by root, not by index.
         [StudioStringKeys.MountsEffectiveReplaced] =
-            "{0} effective mount(s); {1} appsettings entry(ies) replaced by index.",
+            "{0} effective mount(s); {1} appsettings entry(ies) replaced by a launch mount on the same root.",
         [StudioStringKeys.MountsOriginAuto] = "auto (injected by the runner)",
         [StudioStringKeys.MountsOriginReplaces] = "{0} (replaces «{1}»)",
 

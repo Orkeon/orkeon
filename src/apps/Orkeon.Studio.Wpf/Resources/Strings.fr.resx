@@ -217,9 +217,10 @@
   <data name="Studio.Settings.RightsReadWrite" xml:space="preserve"><value>Lecture / écriture (création et suppression autorisées)</value></data>
   <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve"><value>Lecture / écriture sans suppression</value></data>
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve"><value>Ceci est un dossier d'équipe multi-fichiers : son exécution passe par « orkeon run &lt;dossier&gt; », qui requiert Orkeon &gt;= {0}. Le CLI installé avec Studio le prend en charge.</value></data>
-  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner injecte d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis ajoute chaque argument --mount, et écrit la liste entière sous « Orkeon:FileSystem:Mounts:{index} ». Le montage appsettings d'index 0 est donc toujours remplacé par le montage auto-injecté, le premier --mount remplace le montage appsettings d'index 1, et les deux listes ne sont jamais fusionnées. Les entrées appsettings au-delà du dernier index écrit restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
+  <!-- STUDIO-15 : la règle des montages est par racine virtuelle, plus par index -->
+  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner insère d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis place chaque argument --mount selon sa racine virtuelle dans « Orkeon:FileSystem:Mounts » : sur une racine que les réglages déclarent déjà, le --mount remplace ce réglage pour cette exécution ; sur une racine neuve, il s'ajoute après toutes les entrées déclarées. Les réglages qu'aucun --mount ne nomme restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts ajoute en plus chaque chemin de base --mount à la liste blanche « PathSecurity:AdditionalAllowedDirectories », permettant aux montages de pointer hors du répertoire de travail (même effet que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
-  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner injecte {0} montage(s) ({1}), donc le premier --mount occupe « {2} ».</value></data>
+  <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner insère {0} montage(s) à lui ({1}), ajouté(s) après les entrées des réglages ; tout --mount sur une racine neuve vient ensuite.</value></data>
 
   <!-- STUDIO-11 tranche 2 : chaînes fabriquées par les ViewModels -->
   <data name="Studio.Settings.NewDocument" xml:space="preserve"><value>Nouveau document vide. Choisissez un preset pour remplir la section Llm.</value></data>
@@ -243,7 +244,8 @@
   <data name="Studio.Settings.SelectCrewFirst" xml:space="preserve"><value>Sélectionnez d'abord une équipe : le runner injecte ses propres montages avant chaque --mount, la clé de configuration occupée par chaque montage dépend donc de l'équipe lancée.</value></data>
   <data name="Studio.Settings.ExternalWarning" xml:space="preserve"><value>Sécurité : ceci permet à un montage de pointer n'importe où sur la machine, hors du répertoire de travail. N'activez que pour un chemin choisi délibérément.</value></data>
   <data name="Studio.Settings.EffectiveNone" xml:space="preserve"><value>{0} montage(s) effectif(s) ; aucune entrée appsettings n'est remplacée.</value></data>
-  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} montage(s) effectif(s) ; {1} entrée(s) appsettings remplacée(s) par index.</value></data>
+  <!-- STUDIO-15 : par racine, plus par index -->
+  <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve"><value>{0} montage(s) effectif(s) ; {1} entrée(s) appsettings remplacée(s) par un montage de lancement sur la même racine.</value></data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve"><value>auto (injecté par le runner)</value></data>
   <data name="Studio.Settings.OriginReplaces" xml:space="preserve"><value>{0} (remplace « {1} »)</value></data>
   <data name="Studio.Run.BinaryNotLocated" xml:space="preserve"><value>Le CLI orkeon n'a pas encore été localisé.</value></data>

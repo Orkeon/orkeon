@@ -787,9 +787,14 @@ internal static partial class RunCommand
             return false;
         }
 
-        // Same guard as the YAML runner's TryBuildHost: a user mount claiming a root this
-        // runner needs would otherwise surface as a duplicate-virtual-path exception thrown
-        // out of a DI factory, not as the configuration mistake it is.
+        // Same guards as the YAML runner's TryBuildHost: two --mount arguments on one root, or
+        // a user mount claiming a root this runner needs, would otherwise surface as a
+        // duplicate-virtual-path exception thrown out of a DI factory, not as the
+        // configuration mistake it is. A --mount on a root the settings declare is not a
+        // duplicate: the host replaces that settings entry by name (STUDIO-15 D-01).
+        if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath))
+            return false;
+
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath,
                 RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))

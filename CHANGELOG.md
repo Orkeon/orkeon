@@ -7,6 +7,48 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-15 -->
+### Changed — a `--mount` is placed by virtual root against the settings (STUDIO-15, STUDIO-12 C3/C4)
+
+- **`RunnerHost` places every `--mount` by virtual root.** On a root the declared
+  `Orkeon:FileSystem:Mounts` array (settings file *and* `ORKEON_` environment) already holds,
+  the `--mount` is written at that entry's index and replaces it for the run — logged as
+  `mount /x: --mount replaces the settings entry`; on a new root it is appended after the
+  highest declared index. A settings entry and a `--mount` naming the same root used to reach
+  `FileSystemRegistry` as two mounts and fail every such run at kickoff with `Duplicate virtual
+  paths` out of a DI factory — which is exactly what Studio's team flow produced by design,
+  since a team associates a folder the settings already declare, verbatim. `InternalMounts`
+  keep appending. Only a case that failed changes outcome.
+- **`RunnerExecution.EnsureVirtualRootsAreUnique`** (public, wired in the YAML runner's
+  `TryBuildHost` and in `orkeon run`'s script path): two `--mount` on one root, or a settings
+  file declaring one root twice, exit 1 with one actionable line (`ERROR: '/x' is mounted
+  twice on the command line: <a> and <b>. Keep one.` / `… declared twice in <settings>`)
+  before any host is built. `Using settings: …` is now printed once every mount guard has
+  passed, so a refusal never reads as a run that started.
+- **A DI-factory failure at kickoff ends stderr with `ERROR: <message>`** as the last line
+  (the sentence exit code 2 promises); the `Crew execution failed` log entry carries the
+  message only, and the exception with its stack trace moves to a `Debug` entry (`--verbose 2`,
+  or `ORKEON_DEBUG=1` on stderr).
+- **A mount declared in the settings is always whitelisted for `PathValidator`** (STUDIO-12
+  C4): its base path joins `PathSecurity:AdditionalAllowedDirectories` without any flag — a
+  declared folder is the machine owner's explicit intent. Until now such a folder outside the
+  process working directory was mounted and every access refused as "outside the allowed
+  workspace directory", and `--allow-external-mounts` could not rescue it since it only
+  whitelists `--mount` arguments — which it still does, and only that.
+- **Studio predicts the by-root rule** (`MountOverrideSemantics.ComputeEffectiveMounts`,
+  the `Studio.Settings.Explanation` / `ThisLaunch` / `EffectiveReplaced` strings in the five
+  languages): the effective-mounts table shows one row per root, the settings entries in
+  place, `--mount (replaces «…»)` on a replacement, and the runner's own `/crew` mount
+  appended after the declared entries — instead of the index-0 masking that never happened.
+  An empty `--mount` entry is reported against the `--mount` option rather than a
+  configuration key the arguments alone cannot know.
+- **Studio never lays a settings entry twice** (`LaunchMountPlan.WithoutSettingsDuplicates`):
+  a team folder the settings already hold — same folder, same name, same rights — stays off
+  the command line; the same folder under another name, or with other rights, is laid and
+  shown as the replacement it is. The Run screen's settings-mounts list now follows the
+  settings the run will find: the pinned `--settings` file, or « Settings › Authorized
+  folders » in automatic mode.
+
 ### Changed — the scripting runtime runs its loops in JavaScript (SCR-25)
 
 A Jint engine has one event loop and one drainer at a time, and the runtime kept

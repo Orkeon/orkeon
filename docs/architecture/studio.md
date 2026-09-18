@@ -66,8 +66,7 @@ The picked entries are carried over verbatim, **rights included**: the settings
 are the single place a folder and its rights are decided, and a team that could
 widen them would make that declaration a suggestion. A row the team already
 carries, or whose virtual root another folder already spends, says so and
-cannot be picked — two mounts on one root is not a merge the runtime performs,
-it is one it drops.
+cannot be picked — a team's own list, like the settings', names each root once.
 
 The wizard's block is **one line per mount point** (lot 3): the name the agents
 address, who addresses it — provenance, never permission — and the folder behind
@@ -116,9 +115,22 @@ method exists to prevent. The screen warns and names the dropped roots, because
 nothing will be bound to them and the agents writing there will fail; a single
 « Restore » is the way back from a wrong ✕. At launch, Studio lays the sidecar's
 mounts on the run as `--mount` arguments ahead of the per-launch ones, so the
-chips and the command cannot disagree. Deliberate limit: a bare `orkeon run` in
-a terminal does not read the sidecar — like the `profile` field, this is
-Studio's comfort, not the engine's contract.
+chips and the command cannot disagree — **except the entries the settings already
+hold**, same folder, same name, same rights: those are in force from the settings
+alone, and passing them again is noise (`LaunchMountPlan.WithoutSettingsDuplicates`).
+The engine places every `--mount` **by virtual root** (`RunnerHost`): a team folder
+under a name the settings spend on another folder replaces that settings entry for
+the run, and a folder under a new name is appended after the declared ones. The
+Run screen's effective-mounts table predicts exactly that — one row per root,
+origin *appsettings* for what the settings provide, `--mount (replaces «…»)` for a
+replacement — and the sentence above it states the rule
+(`MountOverrideSemantics`). Before this, the chooser's verbatim copy met its own
+twin from the settings and every adopted team that used an allowed folder failed
+at kickoff on "Duplicate virtual paths"; the settings' declared folders are also
+whitelisted for `PathValidator` without any flag, so a team reading an allowed
+folder outside its own directory is no longer refused file by file. Deliberate
+limit: a bare `orkeon run` in a terminal does not read the sidecar — like the
+`profile` field, this is Studio's comfort, not the engine's contract.
 
 ### The blueprint, edited by hand
 

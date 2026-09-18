@@ -262,16 +262,17 @@ public sealed class RunArgumentsBuilderTests
     }
 
     [Fact]
-    public void An_empty_mount_entry_is_refused_and_points_at_its_configuration_key()
+    public void An_empty_mount_entry_is_refused_and_points_at_the_mount_option()
     {
         var options = new RunLaunchOptions { Mounts = ["/srv/data:/workspace:ro", "  "] };
 
         var message = Assert.Single(RunArgumentsBuilder.Validate(YamlTarget(), options));
 
         Assert.Equal(LaunchCodes.EmptyMount, message.Code);
-        // The second --mount, but the THIRD configuration key: the runner writes its own
-        // auto-injected mount at index 0 before appending the user's.
-        Assert.Equal("Orkeon:FileSystem:Mounts:2", message.Path);
+        Assert.Contains("index 1", message.Text, StringComparison.Ordinal);
+        // The option, not a configuration key: the runner places each --mount by virtual
+        // root, against settings entries the arguments alone do not know.
+        Assert.Equal("--mount", message.Path);
     }
 
     [Fact]

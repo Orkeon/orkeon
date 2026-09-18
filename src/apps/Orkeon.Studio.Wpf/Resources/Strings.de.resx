@@ -581,14 +581,15 @@
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve">
     <value>Dies ist ein Team-Verzeichnis aus mehreren Dateien: Die Ausführung läuft über «orkeon run &lt;Verzeichnis&gt;» und verlangt Orkeon &gt;= {0}. Die neben Studio installierte CLI unterstützt das.</value>
   </data>
+  <!-- STUDIO-15: die Mount-Regel gilt je virtueller Wurzel, nicht mehr je Index -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>Der Runner injiziert zuerst seinen eigenen Mount — das Konfigurationsverzeichnis des Teams als «/crew» (bei einem .ork.ts-Team das Skriptverzeichnis als «/script») — hängt dann jedes --mount-Argument an und schreibt die gesamte Liste als «Orkeon:FileSystem:Mounts:{index}». Der appsettings-Mount an Index 0 wird also immer durch den automatisch injizierten ersetzt, das erste --mount ersetzt den appsettings-Mount an Index 1, und die beiden Listen werden nie zusammengeführt. appsettings-Einträge jenseits des zuletzt geschriebenen Index bleiben in Kraft. Das LLM-Log-Verzeichnis wird separat gemountet, ist für Agenten unsichtbar und verschiebt nichts.</value>
+    <value>Der Runner fügt zuerst seinen eigenen Mount ein — das Konfigurationsverzeichnis des Teams als «/crew» (bei einem .ork.ts-Team das Skriptverzeichnis als «/script») — und ordnet dann jedes --mount-Argument nach seiner virtuellen Wurzel in «Orkeon:FileSystem:Mounts» ein: auf einer Wurzel, die appsettings bereits deklariert, ersetzt das --mount diesen appsettings-Eintrag für diesen Lauf; auf einer neuen Wurzel wird es hinter allen deklarierten Einträgen angehängt. appsettings-Einträge, die kein --mount nennt, bleiben in Kraft. Das LLM-Log-Verzeichnis wird separat gemountet, ist für Agenten unsichtbar und verschiebt nichts.</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts setzt zusätzlich jeden --mount-Basispfad auf die Whitelist «PathSecurity:AdditionalAllowedDirectories», sodass Mounts außerhalb des Arbeitsverzeichnisses zeigen dürfen (gleiche Wirkung wie ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
   </data>
   <data name="Studio.Settings.ThisLaunch" xml:space="preserve">
-    <value> Für diesen Start injiziert der Runner {0} Mount(s) ({1}), das erste --mount belegt also «{2}».</value>
+    <value> Für diesen Start fügt der Runner {0} eigene(n) Mount(s) ein ({1}), angehängt hinter den appsettings-Einträgen; jedes --mount auf einer neuen Wurzel folgt danach.</value>
   </data>
   <data name="Studio.Settings.NewDocument" xml:space="preserve">
     <value>Neues leeres Dokument. Wählen Sie ein Preset, um den Llm-Abschnitt zu füllen.</value>
@@ -653,8 +654,9 @@
   <data name="Studio.Settings.EffectiveNone" xml:space="preserve">
     <value>{0} effektive Mount(s); kein appsettings-Eintrag wird ersetzt.</value>
   </data>
+  <!-- STUDIO-15: je Wurzel, nicht je Index -->
   <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve">
-    <value>{0} effektive Mount(s); {1} appsettings-Eintrag/-Einträge nach Index ersetzt.</value>
+    <value>{0} effektive Mount(s); {1} appsettings-Eintrag/-Einträge durch einen Start-Mount auf derselben Wurzel ersetzt.</value>
   </data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve">
     <value>automatisch (vom Runner injiziert)</value>

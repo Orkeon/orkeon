@@ -104,9 +104,16 @@ public static partial class RunnerHost
         Action<IHostBuilder>? configureBuilder = null)
     {
         ArgumentNullException.ThrowIfNull(mounts);
+
+        // Collected while the configuration is composed, logged once the host exists: no
+        // logger is available inside ConfigureAppConfiguration, and the replacement of a
+        // settings entry by a --mount is exactly the kind of decision an operator reading the
+        // log must be able to see (STUDIO-15 D-01).
+        var replacedRoots = new List<string>();
         var builder = Host.CreateDefaultBuilder()
             .ConfigureAppConfiguration((_, b) =>
-                ConfigureAppConfiguration(b, settingsPath, mounts.CliMounts, mounts.InternalMounts, mounts.AllowExternalMounts))
+                ConfigureAppConfiguration(
+                    b, settingsPath, mounts.CliMounts, mounts.InternalMounts, mounts.AllowExternalMounts, replacedRoots))
             .ConfigureServices((context, services) =>
                 ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
 
@@ -114,9 +121,27 @@ public static partial class RunnerHost
 
         var host = builder.Build();
 
+        LogMountReplacements(host, replacedRoots);
         WarnIfLlmNotConfigured(host);
         ActivateTelemetry(host);
         return host;
+    }
+
+    /// <summary>
+    /// One <c>Information</c> line per settings entry a <c>--mount</c> took the place of. The
+    /// run's own intent won over the machine's default, and the log says so by root name —
+    /// the same words for every runner, the daemon included.
+    /// </summary>
+    private static void LogMountReplacements(IHost host, List<string> replacedRoots)
+    {
+        if (replacedRoots.Count == 0)
+            return;
+
+        var logger = host.Services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Orkeon.Hosting.RunnerHost");
+        foreach (var root in replacedRoots)
+            LogMountReplacesSettingsEntry(logger, root);
     }
 
     /// <summary>
@@ -175,55 +200,217 @@ public static partial class RunnerHost
     private static partial void LogLlmResolved(
         ILogger logger, string model, string baseUrl, string temperature, string timeoutSeconds);
 
+    [LoggerMessage(EventId = 3, Level = LogLevel.Information, Message =
+        "mount {VirtualPath}: --mount replaces the settings entry")]
+    private static partial void LogMountReplacesSettingsEntry(ILogger logger, string virtualPath);
+
+    /// <summary>The configuration section <c>--allow-external-mounts</c> extends.</summary>
+    private const string PathSecurityWhitelistSection = "PathSecurity:AdditionalAllowedDirectories";
+
+    /// <summary>
+    /// Composes the configuration a runner host reads its mounts from: the settings file, the
+    /// <c>ORKEON_</c> environment, then this method's own in-memory source, which is added
+    /// last and therefore wins on an identical key.
+    /// <para>
+    /// A <c>--mount</c> is placed <b>by virtual root</b> (STUDIO-15 D-01). On a root the
+    /// declared array — settings file AND environment, read from the builder's own snapshot —
+    /// already holds, it is written at that entry's index: the mount of this run replaces the
+    /// machine's default for that root, which is the most specific intent there is. On a new
+    /// root it is appended after the highest declared index, so nothing the operator declared
+    /// is lost. Two earlier shapes of this method each got one of those halves wrong: writing
+    /// from index 0 replaced the operator's first entry on every run (the crew mount is always
+    /// there), and appending unconditionally produced "Duplicate virtual paths" out of a DI
+    /// factory the moment a settings entry and a <c>--mount</c> named the same root — which
+    /// is exactly what Studio's team flow produces by design, since a team associates a folder
+    /// the settings already declare.
+    /// </para>
+    /// <para>
+    /// <c>InternalMounts</c> keep appending: they ride their own key so they can carry
+    /// Internal visibility (the mount-string grammar has no room for it), and configuration
+    /// rather than a hosted service because the runners never start the host — an
+    /// IHostedService would silently never fire under <c>--validate</c> or <c>--list-tools</c>.
+    /// </para>
+    /// <para>
+    /// A mount the settings declare is the machine owner's explicit intent, so its base path
+    /// is always whitelisted for <c>PathValidator</c> (STUDIO-12 C4): until then such a folder
+    /// was mounted and every access to it refused as "outside the workspace root", with no
+    /// flag able to rescue it — <c>--allow-external-mounts</c> only ever whitelisted the
+    /// <c>--mount</c> arguments, and still does exactly that, and only that.
+    /// </para>
+    /// </summary>
+    /// <param name="builder">The host's configuration builder.</param>
+    /// <param name="settingsPath">Resolved appsettings.json path, or null.</param>
+    /// <param name="cliMounts">The agent-facing mounts, the crew mount included.</param>
+    /// <param name="internalMounts">The runner's own Internal mounts.</param>
+    /// <param name="allowExternalMounts">Whether <c>--allow-external-mounts</c> was given.</param>
+    /// <param name="replacedRoots">Receives the virtual root of every settings entry a
+    /// <c>--mount</c> took the place of, for the caller to log once a logger exists.</param>
     private static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
         string? settingsPath,
         IReadOnlyList<string> cliMounts,
         IReadOnlyList<string> internalMounts,
-        bool allowExternalMounts)
+        bool allowExternalMounts,
+        List<string> replacedRoots)
     {
         if (settingsPath != null && File.Exists(settingsPath))
             builder.AddJsonFile(settingsPath, optional: true);
 
         builder.AddEnvironmentVariables("ORKEON_");
 
-        if (cliMounts.Count == 0 && internalMounts.Count == 0)
-            return;
+        var overrides = new Dictionary<string, string?>();
+        using var declared = DeclaredConfiguration.Snapshot(builder);
 
-        var mountOverrides = new Dictionary<string, string?>();
-
-        // Every one of these three keys appends. See HighestDeclaredIndex: this source wins on
-        // an identical key, so starting at 0 does not add a mount, it REPLACES one.
-        var declaredMounts = HighestDeclaredIndex(builder, ConfigurationKeys.FileSystemMounts);
-        for (var i = 0; i < cliMounts.Count; i++)
-            mountOverrides[$"Orkeon:FileSystem:Mounts:{declaredMounts + i}"] = cliMounts[i];
-
-        // Infrastructure mounts ride their own key so they can carry Internal visibility
-        // (the mount-string grammar has no room for it). Configuration rather than a hosted
-        // service: the runners never start the host, so an IHostedService would silently
-        // never fire under --validate or --list-tools.
-        var declaredInternal = HighestDeclaredIndex(builder, ConfigurationKeys.FileSystemInternalMounts);
-        for (var i = 0; i < internalMounts.Count; i++)
-            mountOverrides[$"Orkeon:FileSystem:InternalMounts:{declaredInternal + i}"] = internalMounts[i];
-
-        // When --allow-external-mounts is set, whitelist each mount's base path
-        // in PathSecurity:AdditionalAllowedDirectories so PathValidator accepts them.
-        // The flag "additionally whitelists" (its own documented wording), so the entries
-        // continue AFTER whatever appsettings.json declares: this in-memory source is added
-        // last and wins on an identical key, so starting the count at 0 silently REPLACED
-        // the operator's first allowed directory instead of adding to it.
-        if (allowExternalMounts)
+        var declaredMounts = declared.Entries(ConfigurationKeys.FileSystemMounts);
+        var replacedIndices = new HashSet<int>();
+        var nextMountIndex = NextIndex(declaredMounts);
+        foreach (var mount in cliMounts)
         {
-            var whitelisted = HighestDeclaredIndex(builder, "PathSecurity:AdditionalAllowedDirectories");
-            foreach (var mount in cliMounts.Concat(internalMounts))
+            var root = TryGetVirtualRoot(mount);
+            var declaredIndex = root is null ? null : IndexOfRoot(declaredMounts, root);
+            if (declaredIndex is { } index)
             {
-                var basePath = ExtractMountBasePath(mount);
-                if (basePath != null)
-                    mountOverrides[$"PathSecurity:AdditionalAllowedDirectories:{whitelisted++}"] = basePath;
+                overrides[$"{ConfigurationKeys.FileSystemMounts}:{index}"] = mount;
+                if (replacedIndices.Add(index))
+                    replacedRoots.Add(root!);
+            }
+            else
+            {
+                overrides[$"{ConfigurationKeys.FileSystemMounts}:{nextMountIndex++}"] = mount;
             }
         }
 
-        builder.AddInMemoryCollection(mountOverrides);
+        var declaredInternal = declared.Entries(ConfigurationKeys.FileSystemInternalMounts);
+        var nextInternalIndex = NextIndex(declaredInternal);
+        foreach (var mount in internalMounts)
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
+
+        // The whitelist "additionally" extends what the settings declare (the flag's own
+        // documented wording), so every entry continues AFTER the declared ones: starting the
+        // count at 0 silently replaced the operator's first allowed directory instead of
+        // adding to it.
+        var nextWhitelistIndex = NextIndex(declared.Entries(PathSecurityWhitelistSection));
+        foreach (var (index, value) in declaredMounts)
+        {
+            // A declared entry a --mount replaced is no longer mounted; whitelisting its base
+            // would open a folder nothing reaches, so only the entries still in force count.
+            if (!replacedIndices.Contains(index) && TryExtractMountBasePath(value) is { } declaredBase)
+                overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = declaredBase;
+        }
+
+        foreach (var (_, value) in declaredInternal)
+        {
+            if (TryExtractMountBasePath(value) is { } declaredBase)
+                overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = declaredBase;
+        }
+
+        // --allow-external-mounts: the --mount arguments (and the runner's own internal
+        // mounts) may point outside the working directory. Unchanged: a folder named on the
+        // command line is still gated behind the explicit opt-in.
+        if (allowExternalMounts)
+        {
+            foreach (var mount in cliMounts.Concat(internalMounts))
+            {
+                if (TryExtractMountBasePath(mount) is { } basePath)
+                    overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = basePath;
+            }
+        }
+
+        if (overrides.Count > 0)
+            builder.AddInMemoryCollection(overrides);
+    }
+
+    /// <summary>
+    /// The index a new entry of an indexed section lands on: one past the highest declared
+    /// index, not the count. Configuration is a sparse key/value space and an operator may
+    /// legitimately have declared 0 and 2.
+    /// </summary>
+    private static int NextIndex(List<(int Index, string? Value)> entries) =>
+        entries.Count == 0 ? 0 : entries.Max(entry => entry.Index) + 1;
+
+    /// <summary>
+    /// The lowest declared index whose entry claims <paramref name="root"/>, or null. A root
+    /// declared twice is refused before any host by <c>RunnerExecution.EnsureVirtualRootsAreUnique</c>;
+    /// here the first declaration is the one a <c>--mount</c> replaces, so the answer is
+    /// deterministic for the callers that build a host without that guard.
+    /// </summary>
+    private static int? IndexOfRoot(List<(int Index, string? Value)> entries, string root)
+    {
+        foreach (var (index, value) in entries)
+        {
+            if (value is not null && string.Equals(TryGetVirtualRoot(value), root, StringComparison.Ordinal))
+                return index;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// The virtual root a mount string claims, without its trailing slash, or null when the
+    /// string is not a well-formed mount — the parser reports those at host build time with
+    /// its own precise message. Ordinal, like the registry's own duplicate check.
+    /// </summary>
+    private static string? TryGetVirtualRoot(string mountString)
+    {
+        try
+        {
+            var virtualPath = FileSystemMount.Parse(mountString).VirtualPath;
+            return virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
+        }
+        catch (Exception ex) when (ex is FormatException or ArgumentException)
+        {
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// The entries the sources added so far declare — settings file and <c>ORKEON_</c>
+    /// environment alike — read from one snapshot of the builder. What this class adds must
+    /// be placed against what is really declared, never against the file alone: an
+    /// <c>ORKEON_Orkeon__FileSystem__Mounts__0</c> is a declared mount too.
+    /// </summary>
+    private sealed class DeclaredConfiguration : IDisposable
+    {
+        private readonly IConfigurationRoot? _snapshot;
+
+        private DeclaredConfiguration(IConfigurationRoot? snapshot) => _snapshot = snapshot;
+
+        public void Dispose() => (_snapshot as IDisposable)?.Dispose();
+
+        /// <summary>
+        /// Builds the sources added so far. An unreadable settings file yields an empty
+        /// snapshot: the real Build() a few lines later reports it properly, and placing
+        /// everything from index 0 is correct whenever nothing was declared — which is the
+        /// case that just failed to parse.
+        /// </summary>
+        public static DeclaredConfiguration Snapshot(IConfigurationBuilder builder)
+        {
+            try
+            {
+                return new DeclaredConfiguration(builder.Build());
+            }
+            catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException)
+            {
+                return new DeclaredConfiguration(null);
+            }
+        }
+
+        /// <summary>The numerically-keyed children of <paramref name="section"/>, by ascending index.</summary>
+        public List<(int Index, string? Value)> Entries(string section)
+        {
+            if (_snapshot is null)
+                return [];
+
+            var entries = new List<(int Index, string? Value)>();
+            foreach (var child in _snapshot.GetSection(section).GetChildren())
+            {
+                if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index))
+                    entries.Add((index, child.Value));
+            }
+
+            entries.Sort((a, b) => a.Index.CompareTo(b.Index));
+            return entries;
+        }
     }
 
     private static void ConfigureRunnerServices(
@@ -384,55 +571,24 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// The absolute physical base path a mount string declares. The grammar (drive letters,
-    /// escaped separators) is the domain type's business, not this file's.
+    /// The absolute physical base path a mount string declares, or null when the string is
+    /// not a well-formed mount or names a path the platform refuses to resolve — both are
+    /// reported by the mount parser or the registry at host build time, with their own
+    /// message. The grammar (drive letters, escaped separators) is the domain type's business,
+    /// not this file's.
     /// </summary>
-    private static string? ExtractMountBasePath(string mountString) =>
-        FileSystemMount.TryGetBasePath(mountString) is { } basePath
-            ? Path.GetFullPath(basePath)
-            : null;
-
-    /// <summary>
-    /// How many entries the sources added so far already declare under
-    /// <paramref name="section"/>, so what this class adds APPENDS rather than overwrites.
-    /// Reads the highest index rather than the count: configuration is a sparse key/value
-    /// space and an operator may legitimately have declared 0 and 2.
-    /// <para>
-    /// The in-memory source below is added last and wins on an identical key, so writing
-    /// <c>…:0</c> silently replaces the operator's first entry. That was fixed for the
-    /// path-security whitelist and left in place for the two mount lists, where it is worse:
-    /// <c>cliMounts</c> is never empty after the runner inserts the crew mount at index 0, so
-    /// an <c>appsettings.json</c> declaring <c>Orkeon:FileSystem:Mounts</c> lost its first
-    /// entry on EVERY run, and every tool touching that mount then failed "path not found"
-    /// with nothing saying the mount had been dropped. <c>orkeon-host</c> lost one per crew
-    /// directory. The brand-new <c>InternalMounts</c> key had inherited the same shape.
-    /// </para>
-    /// </summary>
-    private static int HighestDeclaredIndex(IConfigurationBuilder builder, string section)
+    private static string? TryExtractMountBasePath(string? mountString)
     {
-        IConfigurationRoot? snapshot = null;
+        if (mountString is null || FileSystemMount.TryGetBasePath(mountString) is not { } basePath)
+            return null;
+
         try
         {
-            snapshot = builder.Build();
-            var highest = -1;
-            foreach (var child in snapshot.GetSection(section).GetChildren())
-            {
-                if (int.TryParse(child.Key, CultureInfo.InvariantCulture, out var index) && index > highest)
-                    highest = index;
-            }
-
-            return highest + 1;
+            return Path.GetFullPath(basePath);
         }
-        catch (Exception ex) when (ex is InvalidDataException or FormatException or IOException)
+        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
         {
-            // An unreadable settings file: the real Build() a few lines later reports it
-            // properly. Whitelisting from 0 is what this code did before and stays correct
-            // whenever nothing was declared — which is the case that just failed to parse.
-            return 0;
-        }
-        finally
-        {
-            (snapshot as IDisposable)?.Dispose();
+            return null;
         }
     }
 

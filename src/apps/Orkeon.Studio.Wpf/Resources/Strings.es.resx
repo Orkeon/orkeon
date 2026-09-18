@@ -581,14 +581,15 @@
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve">
     <value>Esto es un directorio de equipo multiarchivo: su ejecución pasa por «orkeon run &lt;directorio&gt;», que requiere Orkeon &gt;= {0}. La CLI instalada junto a Studio lo admite.</value>
   </data>
+  <!-- STUDIO-15: la regla de montaje es por raíz virtual, ya no por índice -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>El runner inyecta primero su propio montaje — el directorio de configuración del equipo como «/crew» (el directorio del script como «/script» para un equipo .ork.ts) — luego añade cada argumento --mount y escribe la lista completa como «Orkeon:FileSystem:Mounts:{index}». Por tanto, el montaje de appsettings en el índice 0 siempre queda reemplazado por el inyectado automáticamente, el primer --mount reemplaza el montaje de appsettings del índice 1, y las dos listas nunca se fusionan. Las entradas de appsettings más allá del último índice escrito siguen vigentes. El directorio de registros LLM se monta aparte, oculto a los agentes, y no desplaza nada.</value>
+    <value>El runner inserta primero su propio montaje — el directorio de configuración del equipo como «/crew» (el directorio del script como «/script» para un equipo .ork.ts) — y luego coloca cada argumento --mount según su raíz virtual en «Orkeon:FileSystem:Mounts»: en una raíz que appsettings ya declara, el --mount reemplaza esa entrada de appsettings para esta ejecución; en una raíz nueva, se añade después de todas las entradas declaradas. Las entradas de appsettings que ningún --mount nombra siguen vigentes. El directorio de registros LLM se monta aparte, oculto a los agentes, y no desplaza nada.</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts añade además cada ruta base de --mount a la lista blanca «PathSecurity:AdditionalAllowedDirectories», permitiendo que los montajes apunten fuera del directorio de trabajo (mismo efecto que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
   </data>
   <data name="Studio.Settings.ThisLaunch" xml:space="preserve">
-    <value> Para este lanzamiento el runner inyecta {0} montaje(s) ({1}), por lo que el primer --mount ocupa «{2}».</value>
+    <value> Para este lanzamiento el runner inserta {0} montaje(s) propio(s) ({1}), añadido(s) después de las entradas de appsettings; todo --mount sobre una raíz nueva va detrás.</value>
   </data>
   <data name="Studio.Settings.NewDocument" xml:space="preserve">
     <value>Nuevo documento vacío. Elija un preset para rellenar la sección Llm.</value>
@@ -653,8 +654,9 @@
   <data name="Studio.Settings.EffectiveNone" xml:space="preserve">
     <value>{0} montaje(s) efectivo(s); no se reemplaza ninguna entrada de appsettings.</value>
   </data>
+  <!-- STUDIO-15: por raíz, no por índice -->
   <data name="Studio.Settings.EffectiveReplaced" xml:space="preserve">
-    <value>{0} montaje(s) efectivo(s); {1} entrada(s) de appsettings reemplazada(s) por índice.</value>
+    <value>{0} montaje(s) efectivo(s); {1} entrada(s) de appsettings reemplazada(s) por un montaje de lanzamiento en la misma raíz.</value>
   </data>
   <data name="Studio.Settings.OriginAuto" xml:space="preserve">
     <value>automático (inyectado por el runner)</value>
