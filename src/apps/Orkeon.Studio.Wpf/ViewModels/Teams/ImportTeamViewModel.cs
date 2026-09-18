@@ -17,6 +17,16 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 public sealed record ImportCheckViewModel(string Title, string Detail, string Tone);
 
 /// <summary>
+/// The import seam — <see cref="TeamCatalog.Import"/> by default: copies the source into the
+/// teams root and returns the new team folder, or null with <paramref name="refusal"/> set
+/// when the source was refused (null when the disk was the reason).
+/// </summary>
+/// <param name="sourcePath">The folder or file to import.</param>
+/// <param name="root">The teams root.</param>
+/// <param name="refusal">Why the source was refused, when it was.</param>
+public delegate string? ImportTeamAction(string sourcePath, string root, out string? refusal);
+
+/// <summary>
 /// The "Importer" screen (design v3): point at a shared team — a folder, a YAML crew, an
 /// <c>.ork.ts</c> script — Studio recognizes it with the launcher's own detector, scans it
 /// for pasted secrets, and copies it into the teams root only on your say-so. Nothing is
@@ -28,7 +38,7 @@ public sealed class ImportTeamViewModel : ObservableObject
     private readonly string _teamsRoot;
     private readonly IStudioStrings _strings;
     private readonly Func<string, IReadOnlyList<string>> _scanSecrets;
-    private readonly Func<string, string, string?> _import;
+    private readonly ImportTeamAction _import;
     private string? _statusMessage;
 
     /// <summary>Builds the screen; every collaborator is optional so tests inject doubles.</summary>
@@ -38,7 +48,7 @@ public sealed class ImportTeamViewModel : ObservableObject
         IStudioStrings? strings = null,
         string? teamsRoot = null,
         Func<string, IReadOnlyList<string>>? scanSecrets = null,
-        Func<string, string, string?>? import = null)
+        ImportTeamAction? import = null)
     {
         _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
         _strings = strings ?? EnglishStudioStrings.Instance;
@@ -107,6 +117,7 @@ public sealed class ImportTeamViewModel : ObservableObject
             RunTargetKind.YamlFile => StudioStringKeys.TargetKindYamlFile,
             RunTargetKind.ScriptFile => StudioStringKeys.TargetKindScriptFile,
             RunTargetKind.MultiFileCrewDirectory => StudioStringKeys.TargetKindCrewDirectory,
+            RunTargetKind.SingleFileCrewDirectory => StudioStringKeys.TargetKindSingleFileCrewDirectory,
             _ => StudioStringKeys.TargetKindScriptDirectory,
         };
         var described = TeamCatalog.DescribeTarget(target.SelectedPath);
@@ -155,12 +166,15 @@ public sealed class ImportTeamViewModel : ObservableObject
         if (Target.Target is not { } target)
             return;
 
-        var destination = _import(target.SelectedPath, _teamsRoot);
+        var destination = _import(target.SelectedPath, _teamsRoot, out var refusal);
         if (destination is null)
         {
             // A silent null would read as "nothing happened" — which is also what a
-            // successful click looks like to someone who missed the card refresh.
-            StatusMessage = _strings[StudioStringKeys.ImportFailed];
+            // successful click looks like to someone who missed the card refresh. A refused
+            // source says why (STUDIO-12 C1); a disk failure keeps the generic line.
+            StatusMessage = refusal is { Length: > 0 }
+                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportRefused], refusal)
+                : _strings[StudioStringKeys.ImportFailed];
             return;
         }
 

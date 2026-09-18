@@ -78,6 +78,22 @@ public class LegacyTextAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheModelAnswersWithNothing()
+    {
+        // STUDIO-12 C5a: an empty single-turn answer used to exit Completed — a green task with no deliverable.
+        var agent = BuildAgent(5);
+        var (loop, provider) = BuildLoop();
+        provider.Enqueue("");
+
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
+        Assert.Equal(1, result.IterationsUsed);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ReportsAMissingTool_InTheToolResults()
     {
         var agent = BuildAgent(5, new SpyTool("other_tool"));

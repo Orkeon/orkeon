@@ -11,7 +11,7 @@ orkeon doctor
 
 Les binaires de release et les installeurs (zip/MSI Windows, paquet Debian, tarballs macOS) embarquent le même CLI, autonome — aucun SDK .NET requis. Voir [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md).
 
-**Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation) · `2` erreur runtime inattendue · `130` annulé par Ctrl+C.
+**Codes de sortie** (stables) : `0` OK · `1` erreur de script/config (fichier manquant, script invalide, échec de validation) · `2` le run a échoué — une erreur runtime inattendue, ou une équipe qui a tourné sans réussir (une tâche sans réponse finale, un disjoncteur déclenché, un consensus non atteint) : la dernière ligne de stderr est `ERROR: <raison>` · `130` annulé par Ctrl+C.
 
 ## `orkeon run`
 

@@ -48,7 +48,7 @@ public sealed class SettingsScreenTests
         // The first preset seeded the endpoint; electing the default writes it to the document.
         Assert.NotNull(llm.Model);
         Assert.NotNull(llm.BaseUrl);
-        var persisted = await store.LoadAsync(TestContext.Current.CancellationToken);
+        var persisted = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set;
         Assert.Single(persisted.Profiles);
     }
 
@@ -421,7 +421,7 @@ public sealed class AssistantElectionTests
         Assert.Equal(0, resets); // the ComboBox's ItemsSource was never disturbed
         Assert.Equal("DeepSeek", profiles.StudioProfileName);
         Assert.True(profiles.HasStudioProfile);
-        Assert.Equal("DeepSeek", (await store.LoadAsync(TestContext.Current.CancellationToken)).StudioProfile);
+        Assert.Equal("DeepSeek", (await store.LoadAsync(TestContext.Current.CancellationToken)).Set.StudioProfile);
     }
 }
 
@@ -456,8 +456,101 @@ public sealed class EditorTemperatureTests
         Assert.Equal(180, profiles.Editor.ParsedTimeoutSeconds);
 
         profiles.Editor.SaveCommand.Execute(null);
-        var saved = (await store.LoadAsync(TestContext.Current.CancellationToken)).Profiles[0];
+        var saved = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set.Profiles[0];
         Assert.Equal(0.7, saved.Temperature);
         Assert.Equal(180, saved.TimeoutSeconds);
+    }
+
+    /// <summary>
+    /// STUDIO-12 C5b: the response budget is editable from the profile — the novice path —
+    /// not only from the expert Settings tab. Empty leaves the engine default; a typed value
+    /// that does not parse blocks the save instead of vanishing.
+    /// </summary>
+    [Fact]
+    public async Task The_max_tokens_field_round_trips_and_an_unparseable_value_blocks_the_save()
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet
+        {
+            Profiles = [new ModelProfile { Name = "Kimi K3", Provider = "Kimi", BaseUrl = "https://api.moonshot.ai/v1", Model = "kimi-k3" }],
+            DefaultProfile = "Kimi K3",
+        }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        var profiles = new ModelProfilesViewModel(store, config.Llm);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        Assert.Equal("", profiles.Editor!.MaxTokensText); // null = the engine default
+
+        profiles.Editor.MaxTokensText = "lots";
+        Assert.Null(profiles.Editor.ParsedMaxTokens);
+        Assert.False(profiles.Editor.CanSave);
+
+        profiles.Editor.MaxTokensText = "32768";
+        Assert.Equal(32768, profiles.Editor.ParsedMaxTokens);
+        Assert.True(profiles.Editor.CanSave);
+
+        profiles.Editor.SaveCommand.Execute(null);
+        var saved = (await store.LoadAsync(TestContext.Current.CancellationToken)).Set.Profiles[0];
+        Assert.Equal(32768, saved.MaxTokens);
+        Assert.Equal("32768", saved.EnvironmentOverrides()["ORKEON_Llm__MaxTokens"]);
+
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        Assert.Equal("32768", profiles.Editor!.MaxTokensText);
+    }
+}
+
+/// <summary>
+/// STUDIO-12 C6: a profile file that exists but cannot be read is said on the screen. It
+/// used to load as the empty set — a first-run screen over a hand-written file, and the
+/// next change overwrote that file.
+/// </summary>
+public sealed class ProfileLoadErrorTests
+{
+    private sealed class UnreadableProfileStore : IModelProfileStore
+    {
+        public Task<ModelProfileLoadResult> LoadAsync(CancellationToken cancellationToken = default) =>
+            Task.FromResult(new ModelProfileLoadResult(ModelProfileSet.Empty, "studio-model-profiles.json: '{' is invalid after a value."));
+
+        public Task SaveAsync(ModelProfileSet profiles, CancellationToken cancellationToken = default) => Task.CompletedTask;
+    }
+
+    [Fact]
+    public async Task An_unreadable_file_is_named_on_the_screen_instead_of_passing_for_a_first_run()
+    {
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        var profiles = new ModelProfilesViewModel(new UnreadableProfileStore(), config.Llm);
+
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.True(profiles.IsEmpty);
+        Assert.True(profiles.HasLoadError);
+        Assert.Contains("studio-model-profiles.json", profiles.LoadError!, StringComparison.Ordinal);
+        Assert.Contains("could not be read", profiles.LoadError, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task A_clean_load_shows_no_error_line()
+    {
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        var profiles = new ModelProfilesViewModel(new InMemoryModelProfileStore(), config.Llm);
+
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(profiles.HasLoadError);
+        Assert.Null(profiles.LoadError);
     }
 }

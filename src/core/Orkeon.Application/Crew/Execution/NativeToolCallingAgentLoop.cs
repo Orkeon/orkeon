@@ -92,8 +92,7 @@ internal sealed class NativeToolCallingAgentLoop
             if (string.IsNullOrEmpty(response.RawResponseBody))
             {
                 // No raw body means no native tool calling support — return text
-                return new AgentLoopResult(response.Content, 0,
-                    AgentExitReason.Completed, IterationsUsed: iteration + 1);
+                return FinalAnswer(agent, task, response.Content, iteration);
             }
 
             using var doc = System.Text.Json.JsonDocument.Parse(response.RawResponseBody);
@@ -102,8 +101,7 @@ internal sealed class NativeToolCallingAgentLoop
             if (parsedCalls.Count == 0)
             {
                 // No tool calls — this is the final text answer
-                return new AgentLoopResult(response.Content, 0,
-                    AgentExitReason.Completed, IterationsUsed: iteration + 1);
+                return FinalAnswer(agent, task, response.Content, iteration);
             }
 
             AppendAssistantToolCallMessage(messages, response, doc.RootElement);
@@ -136,6 +134,22 @@ internal sealed class NativeToolCallingAgentLoop
             AgentExitReason.MaxIterationsReached,
             IterationsUsed: maxIter,
             LastError: "Agent did not produce a final answer within the allowed iterations");
+    }
+
+    /// <summary>
+    /// The loop's final answer — or, when the model answered with nothing, the
+    /// <see cref="AgentExitReason.EmptyFinalAnswer"/> failure: an empty text used to exit
+    /// Completed here and the task went green with no deliverable (STUDIO-12 C5a).
+    /// </summary>
+    private AgentLoopResult FinalAnswer(DomainAgent agent, Domain.Task.CrewTask task, string text, int iteration)
+    {
+        if (!string.IsNullOrWhiteSpace(text))
+            return new AgentLoopResult(text, 0, AgentExitReason.Completed, IterationsUsed: iteration + 1);
+
+        ExecutionLog.LogEmptyFinalAnswer(_logger, agent.Role, task.Id);
+        return new AgentLoopResult(string.Empty, 0,
+            AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 1,
+            LastError: FinalAnswerPolicy.EmptyFinalAnswerReason);
     }
 
     /// <summary>

@@ -124,7 +124,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             ? new Dictionary<string, string>(inputVariables)
             : [];
 
-        var taskIds = GetOrderedTaskIds(crew, plan).ToList();
+        var taskIds = await CrewTaskSequencer.ResolveAsync(
+            crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
         // Resolve the effective graph config off the crew (P2-O-01): per-crew GraphConfig wins,
         // then a crew-level circuit-breaker config, then this strategy's fallback defaults. The
@@ -479,14 +480,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             if (agent != null) agents.Add(agent);
         }
         return agents;
-    }
-
-    private static IEnumerable<TaskId> GetOrderedTaskIds(DomainCrew crew, DomainExecutionPlan plan)
-    {
-        var plannedTasks = plan.GetTasksInOrder().ToList();
-        return plannedTasks.Count > 0
-            ? plannedTasks.Select(pt => pt.TaskId)
-            : crew.Tasks;
     }
 
     private static string GetRawOutput(TaskResult result)

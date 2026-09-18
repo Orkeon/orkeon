@@ -96,6 +96,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string? _connectionTestResult;
     private string _temperatureText = "";
     private string _timeoutText = "";
+    private string _maxTokensText = "";
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -121,6 +122,9 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : "";
         _timeoutText = profile.TimeoutSeconds is { } timeout
             ? timeout.ToString(CultureInfo.InvariantCulture)
+            : "";
+        _maxTokensText = profile.MaxTokens is { } maxTokens
+            ? maxTokens.ToString(CultureInfo.InvariantCulture)
             : "";
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
 
@@ -300,7 +304,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
              && (string.IsNullOrWhiteSpace(_baseUrl) || string.IsNullOrWhiteSpace(_model)))
         // A typed tuning value that does not parse must block the save, not vanish silently.
         && (_temperatureText.Trim().Length == 0 || ParsedTemperature is not null)
-        && (_timeoutText.Trim().Length == 0 || ParsedTimeoutSeconds is not null);
+        && (_timeoutText.Trim().Length == 0 || ParsedTimeoutSeconds is not null)
+        && (_maxTokensText.Trim().Length == 0 || ParsedMaxTokens is not null);
 
     /// <summary>True while the typed name already belongs to another profile.</summary>
     public bool NameCollision => _owner.IsNameTaken(_name.Trim(), PreviousName);
@@ -377,6 +382,27 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             ? value
             : null;
 
+    /// <summary>
+    /// The pinned maximum response length in tokens, as typed — empty for the engine's
+    /// default (4096). A reasoning model spends that budget thinking and answers with
+    /// nothing once it is gone: 16384 or more is the working value for one (STUDIO-12 C5b).
+    /// </summary>
+    public string MaxTokensText
+    {
+        get => _maxTokensText;
+        set
+        {
+            if (SetProperty(ref _maxTokensText, value ?? ""))
+                SaveCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>The typed token budget, or null when empty, unparseable, or non-positive.</summary>
+    public int? ParsedMaxTokens =>
+        int.TryParse(_maxTokensText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
+            ? value
+            : null;
+
     /// <summary>The typed temperature, or null when empty or unparseable.</summary>
     public double? ParsedTemperature =>
         double.TryParse(_temperatureText.Trim().Replace(',', '.'),
@@ -400,6 +426,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             BaseUrl = _baseUrl,
             Temperature = ParsedTemperature,
             TimeoutSeconds = ParsedTimeoutSeconds,
+            MaxTokens = ParsedMaxTokens,
             KeyEnvName = RequiresApiKey ? ApiKeyEnvName : null,
         }, PreviousName);
     }
@@ -503,6 +530,7 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private ModelProfileSet _set = ModelProfileSet.Empty;
     private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
     private ModelProfileEditorViewModel? _editor;
+    private string? _loadError;
 
     /// <summary>Builds the tab over its seams.</summary>
     public ModelProfilesViewModel(
@@ -566,6 +594,25 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>True while the set holds no profile at all — the empty-state hint shows.</summary>
     public bool IsEmpty => _set.Profiles.Count == 0;
 
+    /// <summary>
+    /// Why the profile file could not be read, when it exists and could not be; null after a
+    /// clean load. A file that fails to parse used to load as the empty set — the same screen
+    /// as a first run, over a file the user had hand-written (STUDIO-12 C6). The next change
+    /// overwrites that file, so the line says so.
+    /// </summary>
+    public string? LoadError
+    {
+        get => _loadError;
+        private set
+        {
+            if (SetProperty(ref _loadError, value))
+                OnPropertyChanged(nameof(HasLoadError));
+        }
+    }
+
+    /// <summary>Whether the unreadable-file line shows.</summary>
+    public bool HasLoadError => _loadError is not null;
+
     /// <summary>Deleting is allowed only while more than one profile remains.</summary>
     public bool CanDelete => _set.Profiles.Count > 1;
 
@@ -589,7 +636,11 @@ public sealed class ModelProfilesViewModel : ObservableObject
     /// <summary>Loads the persisted set. Called once, from the window's deferred initialize.</summary>
     public async Task InitializeAsync(CancellationToken cancellationToken = default)
     {
-        _set = await _store.LoadAsync(cancellationToken).ConfigureAwait(true);
+        var loaded = await _store.LoadAsync(cancellationToken).ConfigureAwait(true);
+        _set = loaded.Set;
+        LoadError = loaded.Error is { } error
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileFileUnreadable], error)
+            : null;
         Rebuild();
     }
 

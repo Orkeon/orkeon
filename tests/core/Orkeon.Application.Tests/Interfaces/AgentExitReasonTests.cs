@@ -10,16 +10,17 @@ public class AgentExitReasonTests
     [Fact]
     public void AgentExitReason_Enum_HasExpectedValues()
     {
-        // Assert — all 5 values exist and have expected integer values
+        // Assert — all 6 values exist and have expected integer values
         Assert.Equal(0, (int)AgentExitReason.Completed);
         Assert.Equal(1, (int)AgentExitReason.MaxIterationsReached);
         Assert.Equal(2, (int)AgentExitReason.CircuitBreakerTripped);
         Assert.Equal(3, (int)AgentExitReason.Cancelled);
         Assert.Equal(4, (int)AgentExitReason.BudgetExhausted);
+        Assert.Equal(5, (int)AgentExitReason.EmptyFinalAnswer); // STUDIO-12 C5a
 
-        // There should be exactly 5 values
+        // There should be exactly 6 values
         var values = Enum.GetValues<AgentExitReason>();
-        Assert.Equal(5, values.Length);
+        Assert.Equal(6, values.Length);
     }
 
     [Theory]
@@ -28,6 +29,7 @@ public class AgentExitReasonTests
     [InlineData(AgentExitReason.CircuitBreakerTripped, "CircuitBreakerTripped")]
     [InlineData(AgentExitReason.Cancelled, "Cancelled")]
     [InlineData(AgentExitReason.BudgetExhausted, "BudgetExhausted")]
+    [InlineData(AgentExitReason.EmptyFinalAnswer, "EmptyFinalAnswer")]
     public void AgentExitReason_ToString_ReturnsExpectedName(AgentExitReason reason, string expectedName)
     {
         Assert.Equal(expectedName, reason.ToString());

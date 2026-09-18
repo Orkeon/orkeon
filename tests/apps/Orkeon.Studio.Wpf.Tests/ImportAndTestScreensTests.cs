@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -23,7 +24,12 @@ public sealed class ImportAndTestScreensTests
             probe,
             teamsRoot: "/teams",
             scanSecrets: _ => ["revue.yaml"],
-            import: (source, root) => { imported = $"{root}:{source}"; return "/teams/revue"; });
+            import: (string source, string root, out string? refusal) =>
+            {
+                imported = $"{root}:{source}";
+                refusal = null;
+                return "/teams/revue";
+            });
 
         vm.Target.SelectedPath = "/shared/revue.yaml";
         vm.Target.DetectCommand.Execute(null);
@@ -39,6 +45,56 @@ public sealed class ImportAndTestScreensTests
         Assert.Equal("/teams:/shared/revue.yaml", imported);
         Assert.Equal("/teams/revue", landed);
         Assert.Equal("/teams/revue", vm.StatusMessage);
+    }
+
+    /// <summary>
+    /// STUDIO-12 C1: a source the catalogue refuses — a folder the detector cannot resolve
+    /// to a crew definition — is said in the status line with the detector's own words,
+    /// instead of the generic "check access to the source" line.
+    /// </summary>
+    [Fact]
+    public void A_refused_source_shows_the_refusal_in_the_status_line()
+    {
+        var probe = new FakeTargetProbe();
+        probe.Files.Add("/shared/revue.yaml");
+        var vm = new ImportTeamViewModel(
+            probe,
+            teamsRoot: "/teams",
+            scanSecrets: _ => [],
+            import: (string _, string _, out string? refusal) =>
+            {
+                refusal = "'/shared/revue.yaml' holds no crew definition.";
+                return null;
+            });
+        var landed = false;
+        vm.TeamImported += (_, _) => landed = true;
+
+        vm.Target.Select("/shared/revue.yaml");
+        vm.ImportCommand.Execute(null);
+
+        Assert.False(landed);
+        Assert.Equal("Not imported — '/shared/revue.yaml' holds no crew definition.", vm.StatusMessage);
+    }
+
+    [Fact]
+    public void A_disk_that_refused_keeps_the_generic_failure_line()
+    {
+        var probe = new FakeTargetProbe();
+        probe.Files.Add("/shared/revue.yaml");
+        var vm = new ImportTeamViewModel(
+            probe,
+            teamsRoot: "/teams",
+            scanSecrets: _ => [],
+            import: (string _, string _, out string? refusal) =>
+            {
+                refusal = null;
+                return null;
+            });
+
+        vm.Target.Select("/shared/revue.yaml");
+        vm.ImportCommand.Execute(null);
+
+        Assert.Equal(EnglishStudioStrings.Instance[StudioStringKeys.ImportFailed], vm.StatusMessage);
     }
 
     [Fact]

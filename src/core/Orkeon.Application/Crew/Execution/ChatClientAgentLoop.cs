@@ -186,10 +186,12 @@ internal sealed class ChatClientAgentLoop
             }
 
             // Empty-final-message retry: MiniMax (and some other providers) occasionally emit
-            // tool_calls across several iterations and then terminate with no assistant text.
-            // The deliverable resolver then persists an empty file. Force one retry with
-            // tool_choice disabled so the model must produce text.
-            if (string.IsNullOrWhiteSpace(responseText) && iteration > 0)
+            // tool_calls across several iterations and then terminate with no assistant text,
+            // and a reasoning model whose budget went into thinking answers empty on its very
+            // first turn. Force one retry with tool_choice disabled so the model must produce
+            // text; an answer that stays empty is a failed task, never a green one (STUDIO-12
+            // C5a — the first-turn case used to exit Completed with an empty deliverable).
+            if (string.IsNullOrWhiteSpace(responseText))
             {
                 var (result, _) = await HandleEmptyResponseAsync(
                     new RetryLoopContext(agent, messages, options, maxIter, task.Id),
@@ -469,8 +471,10 @@ internal sealed class ChatClientAgentLoop
     }
 
     /// <summary>
-    /// Handles an empty assistant response mid-loop by retrying once with tool_choice disabled.
-    /// Returns (result, extra tokens consumed by the retry).
+    /// Handles an empty assistant response by retrying once with tool_choice disabled.
+    /// Returns (result, extra tokens consumed by the retry). A retry that stays empty exits
+    /// <see cref="AgentExitReason.EmptyFinalAnswer"/> — a failed task with its reason, never
+    /// a completed one with an empty output.
     /// </summary>
     private async System.Threading.Tasks.Task<(AgentLoopResult Result, int ExtraTokens)> HandleEmptyResponseAsync(
         RetryLoopContext loop,
@@ -490,10 +494,10 @@ internal sealed class ChatClientAgentLoop
                 AgentExitReason.Completed, IterationsUsed: iteration + 2), retryText.Tokens);
         }
 
-        ExecutionLog.LogMaxIterationsReached(_logger, loop.MaxIter, loop.TaskId);
+        ExecutionLog.LogEmptyFinalAnswer(_logger, loop.Agent.Role, loop.TaskId);
         return (new AgentLoopResult(string.Empty, totalTokensUsed + retryText.Tokens,
-            AgentExitReason.Completed, IterationsUsed: iteration + 2,
-            LastError: "empty_final_message_after_retry"), retryText.Tokens);
+            AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 2,
+            LastError: FinalAnswerPolicy.EmptyFinalAnswerReason), retryText.Tokens);
     }
 
     /// <summary>
@@ -534,10 +538,14 @@ internal sealed class ChatClientAgentLoop
                 AgentExitReason.Completed, IterationsUsed: maxIter);
         }
 
+        // Every iteration went to tool calls and the synthesis retry came back empty: the
+        // iteration budget is the cause, the empty answer its symptom. Already a failed exit
+        // before STUDIO-12; only the reason changed, from a code to a sentence the summary
+        // and the runner's last stderr line can carry.
         ExecutionLog.LogMaxIterationsReached(_logger, maxIter, taskId);
         return new AgentLoopResult(string.Empty, totalTokensUsed,
             AgentExitReason.MaxIterationsReached, IterationsUsed: maxIter,
-            LastError: "empty_final_message_after_retry");
+            LastError: FinalAnswerPolicy.MaxIterationsWithoutAnswerReason);
     }
 
     /// <summary>

@@ -89,6 +89,7 @@ public sealed class TargetSelectionModel
         RunTargetKind.ScriptFile => "Scripting DSL file",
         RunTargetKind.MultiFileCrewDirectory => "Multi-file crew directory",
         RunTargetKind.ScriptDirectory => $"Script directory ({RunTargetDetector.CrewScriptFileName})",
+        RunTargetKind.SingleFileCrewDirectory => "Team folder holding one YAML crew file",
         _ => kind.ToString(),
     };
 

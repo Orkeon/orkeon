@@ -327,9 +327,73 @@ public class ChatClientAgentLoopTests
         var result = await loop.ExecuteAsync(
             agent, BuildTask(), "sys", "user", [], 99, TestContext.Current.CancellationToken);
 
+        // The iteration budget is the cause and the empty answer its symptom: a failed exit
+        // as before, with a reason written for the summary rather than a code (STUDIO-12 C5a).
         Assert.Equal(AgentExitReason.MaxIterationsReached, result.ExitReason);
-        Assert.Equal("empty_final_message_after_retry", result.LastError);
+        Assert.Equal(FinalAnswerPolicy.MaxIterationsWithoutAnswerReason, result.LastError);
         Assert.Equal(string.Empty, result.Output);
+    }
+
+    // ── STUDIO-12 C5a: an empty final text is never a completed task ─────────────────
+
+    [Fact]
+    public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheRetryAfterAnEmptyTurnStaysEmpty()
+    {
+        var tool = new SpyTool("worker", result: "did work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+
+        client.EnqueueFunctionCall("call-1", "worker");
+        client.EnqueueText(""); // empty final turn
+        client.EnqueueText(""); // the tool-free retry stays empty
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        // Used to exit Completed with an empty output and LastError = "empty_final_message_after_retry":
+        // task.completed success:true, run.finished success:true, exit code 0, no deliverable.
+        Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
+        Assert.Equal(3, client.Requests.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task RetriesToolFree_WhenTheVeryFirstTurnComesBackEmpty()
+    {
+        // A reasoning model whose budget went into thinking answers empty on its first turn.
+        // That turn used to be accepted as the final answer — Completed, empty output, no
+        // LastError at all. It gets the same tool-free retry as a later empty turn.
+        var agent = BuildAgent(5);
+        var (loop, client) = BuildLoop();
+
+        client.EnqueueText("");
+        client.EnqueueText("the answer, at last");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.Completed, result.ExitReason);
+        Assert.Equal("the answer, at last", result.Output);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheFirstTurnAndItsRetryAreBothEmpty()
+    {
+        var agent = BuildAgent(5);
+        var (loop, client) = BuildLoop();
+
+        client.EnqueueText("");
+        client.EnqueueText("   ");
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
+        Assert.Equal(2, client.Requests.Count);
     }
 
     [Fact]

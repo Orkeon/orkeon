@@ -14,7 +14,12 @@ namespace Orkeon.Studio.Core.Targets;
 ///   they are what the CLI will run when handed the directory;</description></item>
 ///   <item><description>a directory holding <c>crew.ork.ts</c> — the scripting convention
 ///   (<c>ScriptHostFacadeOptions.CrewFileName</c>), or else its <c>*.ork.ts</c>/<c>*.ork.js</c>
-///   files offered as candidates.</description></item>
+///   files offered as candidates;</description></item>
+///   <item><description>a directory holding neither, but one single-file YAML crew — the
+///   shape of every <c>examples/</c> crew and of a team folder adopted from one: the file is
+///   the run target and the directory stays the selected path. Several YAML files resolve
+///   to <c>crew.yaml</c>, then <c>config.yaml</c>, and are otherwise offered as candidates
+///   the way scripts are (STUDIO-12 C1).</description></item>
 /// </list>
 /// A directory holding a YAML layout <em>and</em> any scripting entry point is refused as
 /// ambiguous, exactly as <c>CrewDirectoryLayout.Inspect</c> refuses it: the CLI applies no
@@ -64,6 +69,24 @@ public sealed class RunTargetDetector
     private static readonly string[] ScriptSearchPatterns = [.. ScriptSuffixes.Select(suffix => "*" + suffix)];
 
     private static readonly string[] YamlExtensions = [".yaml", ".yml"];
+
+    /// <summary>Globs used to list the YAML files of a directory.</summary>
+    private static readonly string[] YamlSearchPatterns = [.. YamlExtensions.Select(extension => "*" + extension)];
+
+    /// <summary>
+    /// Among several YAML files at the root of a directory, the ones that name the crew by
+    /// convention, most conventional first — the same pair the loader reads a multi-file
+    /// crew's settings from.
+    /// </summary>
+    private static readonly string[] PreferredCrewFileNames = ["crew.yaml", "config.yaml"];
+
+    /// <summary>
+    /// The entity files of the flat legacy layout. One of them next to a <c>crew.yaml</c> is
+    /// an incomplete triplet, not a single-file crew: that <c>crew.yaml</c> carries only the
+    /// settings, and running it alone would load an empty crew.
+    /// </summary>
+    private static readonly string[] FlatEntityFileNames = [.. FlatLayoutFileNames.Where(name =>
+        !string.Equals(name, "crew.yaml", StringComparison.OrdinalIgnoreCase))];
 
     private readonly ITargetProbe _probe;
 
@@ -173,14 +196,42 @@ public sealed class RunTargetDetector
                 return RunTargetDetection.Resolved(directory, inner with { SelectedPath = directory });
         }
 
+        // A single-file crew — the shape of every examples/ crew, and of a team folder adopted
+        // from one: a config.yaml or crew.yaml carrying agents: and tasks: inline. The file is
+        // what the CLI runs; the directory stays the selected path, so the sidecar beside it
+        // and the launch directory keep working the way they do for a promoted team.
+        var yamlFiles = ListYamlFiles(directory);
+        if (yamlFiles.Count == 1 && !IsFlatEntityFile(yamlFiles[0]))
+            return ResolveSingleFileCrewDirectory(directory, yamlFiles[0]);
+
+        if (yamlFiles.Count > 1 && !yamlFiles.Exists(IsFlatEntityFile))
+        {
+            var preferred = PreferredCrewFileNames
+                .Select(name => yamlFiles.Find(file => string.Equals(
+                    Path.GetFileName(file), name, StringComparison.OrdinalIgnoreCase)))
+                .FirstOrDefault(match => match is not null);
+
+            return preferred is not null
+                ? ResolveSingleFileCrewDirectory(directory, preferred)
+                : RunTargetDetection.NeedsSelection(directory, yamlFiles);
+        }
+
         return RunTargetDetection.Failed(
             directory,
             RunTargetCodes.NoCandidate,
             $"'{directory}' holds no crew definition: no '{AgentsDirectoryName}/' or '{TasksDirectoryName}/' "
             + $"sub-folder, no '{string.Join(" + ", FlatLayoutFileNames)}' triplet, no '{CrewScriptFileName}', "
-            + $"no {DescribeScriptPatterns()} file. "
+            + $"no {DescribeScriptPatterns()} file, no single .yaml/.yml crew file. "
             + "Pick a .yaml or .ork.ts file inside it instead.");
     }
+
+    private static RunTargetDetection ResolveSingleFileCrewDirectory(string directory, string crewFile) =>
+        RunTargetDetection.Resolved(directory, new RunTarget
+        {
+            Kind = RunTargetKind.SingleFileCrewDirectory,
+            SelectedPath = directory,
+            RunPath = crewFile,
+        });
 
     /// <summary>
     /// Resolves a directory holding a YAML layout <em>and</em> at least one script. Only the
@@ -281,6 +332,21 @@ public sealed class RunTargetDetector
             .Where(HasScriptSuffix)
             .Distinct(StringComparer.Ordinal)
             .OrderBy(file => file, StringComparer.Ordinal)];
+
+    /// <summary>
+    /// The YAML files directly under <paramref name="directory"/>, filtered on the real
+    /// extension for the same reason as the scripts, ordinally sorted so the choice is
+    /// deterministic.
+    /// </summary>
+    private List<string> ListYamlFiles(string directory) =>
+        [.. YamlSearchPatterns
+            .SelectMany(pattern => _probe.EnumerateFiles(directory, pattern))
+            .Where(IsYamlFile)
+            .Distinct(StringComparer.Ordinal)
+            .OrderBy(file => file, StringComparer.Ordinal)];
+
+    private static bool IsFlatEntityFile(string path) =>
+        FlatEntityFileNames.Any(name => string.Equals(Path.GetFileName(path), name, StringComparison.OrdinalIgnoreCase));
 
     private static bool IsConventionalCrewScript(string path) =>
         string.Equals(Path.GetFileName(path), CrewScriptFileName, StringComparison.OrdinalIgnoreCase);

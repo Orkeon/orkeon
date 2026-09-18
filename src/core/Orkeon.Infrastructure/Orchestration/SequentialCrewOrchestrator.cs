@@ -162,7 +162,10 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 TaskOutputs: domainOutput.TaskOutputs?.Select(ConvertTaskOutput).ToList() ?? [],
                 Duration: stopwatch.Elapsed,
                 TokensUsed: ExtractTokenUsage(domainOutput))
-            { Succeeded = domainOutput.Success };
+            {
+                Succeeded = domainOutput.Success,
+                Error = domainOutput.Success ? null : domainOutput.Error,
+            };
         }
         catch (Exception ex)
         {
@@ -180,7 +183,7 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
                 TaskOutputs: [],
                 Duration: stopwatch.Elapsed,
                 TokensUsed: null) // failed before telemetry could be collected
-            { Succeeded = false };
+            { Succeeded = false, Error = ex.Message };
         }
         }
     }
@@ -258,7 +261,12 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         IReadOnlyDictionary<string, string> stringVariables,
         CancellationToken cancellationToken)
     {
-        var defaultPlan = plan ?? DomainExecutionPlan.Create(crew.Tasks);
+        // No planning, no plan: an empty one hands the order to the strategy, which sorts the
+        // crew's tasks on their declared dependencies (CrewTaskSequencer). Synthesising a
+        // plan from crew.Tasks here froze the declared order — the ordinal file-name order in
+        // the multi-file layout — into a "plan" the strategies then honoured over the
+        // dependencies (STUDIO-12 C2).
+        var defaultPlan = plan ?? DomainExecutionPlan.Create();
 
         return crew.ProcessType.Value switch
         {

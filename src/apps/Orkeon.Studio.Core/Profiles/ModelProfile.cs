@@ -46,6 +46,14 @@ public sealed record ModelProfile
     /// </summary>
     public int? TimeoutSeconds { get; init; }
 
+    /// <summary>
+    /// Maximum response length in tokens this profile pins, or null for the engine's
+    /// default (4096). A reasoning model spends that budget thinking before it writes a
+    /// word, and an exhausted budget comes back as an empty answer — pin 16384 or more for
+    /// one (STUDIO-12 C5b).
+    /// </summary>
+    public int? MaxTokens { get; init; }
+
     /// <summary>Endpoint base URL.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "User-typed form value round-tripped verbatim into a JSON string field; " +
@@ -91,6 +99,8 @@ public sealed record ModelProfile
             overrides["ORKEON_Llm__Temperature"] = temperature.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (TimeoutSeconds is { } timeout and > 0)
             overrides["ORKEON_Llm__TimeoutSeconds"] = timeout.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (MaxTokens is { } maxTokens and > 0)
+            overrides["ORKEON_Llm__MaxTokens"] = maxTokens.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (KeyEnvName is { Length: > 0 } name
             && environment(name) is { } key
             && !string.IsNullOrWhiteSpace(key))

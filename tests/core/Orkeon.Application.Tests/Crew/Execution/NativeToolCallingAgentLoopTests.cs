@@ -70,6 +70,38 @@ public class NativeToolCallingAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheTextAnswerIsEmpty()
+    {
+        // STUDIO-12 C5a: an empty text used to exit Completed here — a green task with no deliverable.
+        var agent = BuildAgent();
+        var (loop, provider, _) = BuildLoop(agent);
+        provider.EnqueueText("   ");
+
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheRawBodyCarriesNeitherCallsNorText()
+    {
+        var agent = BuildAgent();
+        var (loop, provider, _) = BuildLoop(agent);
+        provider.Enqueue(new LlmResponse
+        {
+            Content = "",
+            RawResponseBody = """{"choices":[{"message":{"content":""}}]}""",
+        });
+
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
+        Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task ReturnsText_WhenTheRawBodyCarriesNoToolCalls()
     {
         var agent = BuildAgent();

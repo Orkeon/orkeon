@@ -530,6 +530,15 @@ public static partial class RunnerExecution
         var output = await orchestrator.KickoffAsync(crew.Id, input, ct).ConfigureAwait(false);
 
         PrintCrewOutput(output, opts.MachineReadableStdout ? Console.Error : Console.Out);
+        if (!output.Succeeded)
+        {
+            // The crew ran and failed: exit 2 with the reason as the last stderr line, the
+            // way a failed load does. KickoffAsync never throws, so this exit code was 0 for
+            // every crew failure — an empty deliverable went green (STUDIO-12 C5a).
+            await Console.Error.WriteLineAsync($"ERROR: {output.Error ?? output.FinalOutput}").ConfigureAwait(false);
+            return 2;
+        }
+
         return 0;
     }
 

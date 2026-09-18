@@ -66,6 +66,8 @@ The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `
 
 Tasks execute **one by one, in the order** defined by the `ExecutionPlan`. Each task receives the results of the previous tasks as context. Agent assignment is round-robin (unless explicitly assigned via `task.AssignedAgent`).
 
+**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is.
+
 ### Internal mechanism
 
 ```

@@ -66,6 +66,8 @@ Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur 
 
 Les tâches s'exécutent **une par une, dans l'ordre** défini par l'`ExecutionPlan`. Chaque tâche reçoit en contexte les résultats des tâches précédentes. L'assignation agent se fait en round-robin (sauf assignation explicite via `task.AssignedAgent`).
 
+**Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche s'exécute après chaque tâche dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew sans aucune dépendance s'exécute exactement comme elle est écrite. Cela vaut dans tous les layouts : le layout multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichiers, donc sans ce tri `consolider.yaml` s'exécutait avant l'`extraire.yaml` dont il dépend. Une dépendance qui nomme un id de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dans le cycle et un avertissement les nomme. La même règle ordonne les modes hiérarchique, consensuel, graphe et autonome, qui distribuent eux aussi leurs tâches une par une ; le mode parallèle garde sa propre sémantique (des **vagues** de dépendances, et un cycle est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel.
+
 ### Mécanisme interne
 
 ```

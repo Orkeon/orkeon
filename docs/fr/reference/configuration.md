@@ -50,7 +50,12 @@ l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
-`Thinking:{Enabled,Effort}` pour les providers à raisonnement. Sans section `Llm`, le
+`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `MaxTokens` vaut
+**4096** par défaut — tout le budget de réponse, qu'un modèle raisonneur dépense à
+réfléchir avant d'écrire un mot : donnez à un tel modèle 16384 ou plus, sinon ses
+réponses reviennent vides (et une réponse finale vide fait échouer la tâche au lieu de
+passer pour une tâche accomplie). Un profil de modèle Studio l'épingle en
+`ORKEON_Llm__MaxTokens`. Sans section `Llm`, le
 runtime dégrade vers le provider écho et avertit une fois. Voir
 [Providers LLM](../architecture/llm-providers.md) ; des gabarits vivent dans
 `examples/appsettings/*.json.example`.

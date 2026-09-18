@@ -11,7 +11,7 @@ orkeon doctor
 
 The release binaries and installers (Windows zip/MSI, Debian package, macOS tarballs) also ship the same CLI, self-contained — no .NET SDK required. See [Three ways to run Orkeon](../getting-started/three-ways-to-run-orkeon.md).
 
-**Exit codes** (stable): `0` OK · `1` script/config error (missing file, invalid script, validation failure) · `2` unexpected runtime error · `130` cancelled with Ctrl+C.
+**Exit codes** (stable): `0` OK · `1` script/config error (missing file, invalid script, validation failure) · `2` the run failed — an unexpected runtime error, or a crew that ran and did not succeed (a task without a final answer, a tripped circuit breaker, a consensus not reached): the last stderr line is `ERROR: <reason>` · `130` cancelled with Ctrl+C.
 
 ## `orkeon run`
 

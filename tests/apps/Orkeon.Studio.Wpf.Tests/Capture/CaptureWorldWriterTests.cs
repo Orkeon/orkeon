@@ -100,7 +100,7 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
         var history = await _worlds.Seeded.HistoryStore.LoadAsync(TestContext.Current.CancellationToken);
         Assert.Equal(7, history.Entries.Count);
 
-        var profiles = await _worlds.Seeded.ProfileStore.LoadAsync(TestContext.Current.CancellationToken);
+        var profiles = (await _worlds.Seeded.ProfileStore.LoadAsync(TestContext.Current.CancellationToken)).Set;
         Assert.Equal(4, profiles.Profiles.Count);
         Assert.NotNull(profiles.Studio);
     }

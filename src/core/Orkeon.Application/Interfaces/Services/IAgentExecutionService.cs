@@ -114,7 +114,16 @@ public enum AgentExitReason
     Cancelled,
 
     /// <summary>The <c>AgentExecutionBudget</c> was exhausted (Autonomous mode).</summary>
-    BudgetExhausted
+    BudgetExhausted,
+
+    /// <summary>
+    /// The loop ended without any final assistant text — the model answered with nothing,
+    /// and with nothing again on the tool-free retry. Never a success: an empty deliverable
+    /// used to exit as <see cref="Completed"/> and the run went green with no file in the
+    /// output mount (STUDIO-12 C5a). The typical cause is a reasoning model whose response
+    /// budget (<c>Llm:MaxTokens</c>) went entirely into thinking.
+    /// </summary>
+    EmptyFinalAnswer
 }
 
 /// <summary>
