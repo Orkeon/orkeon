@@ -1118,4 +1118,14 @@
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Ouvre le dossier de l'équipe adoptée.</value>
   </data>
+  <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
+  <data name="Studio.Create.AddRootHint" xml:space="preserve">
+    <value>Ajoutez autant de dossiers que le besoin en appelle : un nom que les agents utiliseront (factures, archives…), en lecture ou en écriture — puis répondez à chacun comme aux deux premiers, par un dossier réel ou créé dans l'équipe. Nommez-les dans votre besoin pour que l'équipe s'en serve.</value>
+  </data>
+  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
+    <value>en écriture</value>
+  </data>
+  <data name="Studio.Create.AddRoot" xml:space="preserve">
+    <value>Ajouter le dossier</value>
+  </data>
 </root>

@@ -109,6 +109,36 @@
         </DockPanel>
       </Border>
     </DataTemplate>
+    <!-- Any number of folders, named by the user (owner review of 2026-09-19): a name the
+         agents will use, read or written, makes a row answered like the two canonical ones —
+         a real folder through the disk picker, or a folder created inside the team. Shown on
+         step 1 with the policy rows and on the Composer step with the blueprint's own roots. -->
+    <DataTemplate x:Key="AddNamedRootForm">
+      <StackPanel Margin="0,4,0,0">
+        <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,6"
+                   Text="{Binding [Studio.Create.AddRootHint], Source={x:Static services:I18n.Instance}}"/>
+        <WrapPanel>
+          <TextBox Style="{StaticResource Input}" Width="220" Margin="0,0,10,4" VerticalAlignment="Center"
+                   Text="{Binding NewRootName, UpdateSourceTrigger=PropertyChanged}">
+            <TextBox.InputBindings>
+              <KeyBinding Key="Return" Command="{Binding AddNamedRootCommand}"/>
+            </TextBox.InputBindings>
+          </TextBox>
+          <CheckBox Margin="0,0,10,4" VerticalAlignment="Center"
+                    IsChecked="{Binding NewRootIsReadWrite}"
+                    Content="{Binding [Studio.Create.AddRootWrite], Source={x:Static services:I18n.Instance}}"/>
+          <Button Style="{StaticResource ChipAction}" Margin="0,0,0,4" VerticalAlignment="Center"
+                  Command="{Binding AddNamedRootCommand}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
+              <TextBlock VerticalAlignment="Center"
+                         Text="{Binding [Studio.Create.AddRoot], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+        </WrapPanel>
+      </StackPanel>
+    </DataTemplate>
   </UserControl.Resources>
   <StackPanel>
 
@@ -524,6 +554,8 @@
                        Text="{Binding [Studio.Create.FoldersPolicyHint], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding StepOneRows}" ItemTemplate="{StaticResource MountRowTemplate}"
                           Visibility="{Binding HasStepOneRows, Converter={StaticResource BooleanToVisibility}}"/>
+            <ContentControl Focusable="False" Content="{Binding}" ContentTemplate="{StaticResource AddNamedRootForm}"
+                            Visibility="{Binding HasStepOneRows, Converter={StaticResource BooleanToVisibility}}"/>
 
             <DockPanel Margin="0,14,0,0">
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ComposeCommand}">
@@ -626,6 +658,7 @@
                     </StackPanel>
                   </Button>
                 </WrapPanel>
+                <ContentControl Focusable="False" Content="{Binding}" ContentTemplate="{StaticResource AddNamedRootForm}"/>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
                            Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>

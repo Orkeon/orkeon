@@ -119,6 +119,17 @@ composer les garde (`KeepOnlyStepOneMounts` — le reste appartenait au blueprin
 remplacé), « Recommencer », une reprise et « Modifier » sur une carte les
 oublient, politique comprise, pour qu'un choix d'étape 1 périmé ne fuie jamais
 dans le sidecar d'une autre équipe.
+Les deux lignes sont un point de départ, pas une limite (relecture du propriétaire
+du 2026-09-19) : « Ajouter le dossier » nomme autant de points de montage que le
+besoin en appelle — un nom que les agents utiliseront (`/factures`, `/archives`),
+en lecture ou en écriture — et chacun devient une ligne comme les canoniques,
+répondue des deux mêmes façons (« Créés dans l'équipe » répond sur-le-champ à une
+nouvelle), listée à l'étape Composer à côté des racines du blueprint, conservée
+d'une composition à l'autre, et créée dans l'équipe à l'adoption si elle reste
+sans réponse. Lesquelles les agents adressent est l'affaire du blueprint : le
+besoin doit les nommer. Un nom est normalisé comme le sélecteur le dérive d'un
+dossier (minuscules, un seul segment) ; un nom que le runner réserve ou qu'une
+ligne porte déjà ne peut pas être ajouté.
 
 Le bloc du wizard à l'étape Composer est **une ligne par point de montage**
 (lot 3) : le nom que les agents adressent, qui l'adresse — provenance, jamais

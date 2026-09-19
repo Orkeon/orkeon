@@ -315,6 +315,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     private FolderPolicy _folderPolicy = FolderPolicy.Later;
     /// <summary>The derived roots the last sync saw — the derived-set change is what D-07 reacts to.</summary>
     private IReadOnlyList<string> _seenDerivedRoots = [];
+    /// <summary>
+    /// The mount points the user named beyond the two canonical roots (owner review of
+    /// 2026-09-19): as many as the need calls for, each a row answered like the canonical
+    /// ones, kept across compositions, created inside the team at adoption when left unanswered.
+    /// </summary>
+    private readonly List<NamedRoot> _namedRoots = [];
+    private string _newRootName = "";
+    private bool _newRootIsReadWrite;
     private ForgeSessionModel _model = new();
     private int _runGeneration;
     private string? _saveError;
@@ -368,6 +376,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             CreateAllInsideTeam,
             () => MountRows.Any(row => row.CanCreateInsideTeam));
         OpenFolderCommand = new RelayCommand(OpenFolder, () => CanOpenFolder);
+        AddNamedRootCommand = new RelayCommand(AddNamedRoot, () => CanAddNamedRoot);
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
         RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
@@ -541,6 +550,10 @@ public sealed class CreateTeamViewModel : ObservableObject
             return mount.Rights;
         }
 
+        // A mount point the user named carries the rights the user gave it.
+        if (_namedRoots.FirstOrDefault(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } named)
+            return named.Rights;
+
         if (_model.DerivedMounts.FirstOrDefault(d => string.Equals(d.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } derived)
             return derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
 
@@ -652,7 +665,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         foreach (var entry in TeamMounts.ToList())
         {
-            if (!IsCanonicalRoot(VirtualPathOf(entry)))
+            if (!IsStepOneRoot(VirtualPathOf(entry)))
                 TeamMounts.Remove(entry);
         }
     }
@@ -666,6 +679,12 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         foreach (var (root, _) in CanonicalRoots)
             RemoveBinding(root);
+
+        foreach (var named in _namedRoots)
+            RemoveBinding(named.VirtualPath);
+        _namedRoots.Clear();
+        NewRootName = "";
+        OnPropertyChanged(nameof(NamedRoots));
 
         _folderPolicy = FolderPolicy.Later;
         SyncPolicyChips();
@@ -717,7 +736,21 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private void DropDerivedMount(object? parameter)
     {
-        if (parameter is string virtualPath && _droppedDerivedRoots.Add(virtualPath))
+        if (parameter is not string virtualPath)
+            return;
+
+        // The ✕ of an unanswered row: a mount point the user named is forgotten (owner
+        // review of 2026-09-19), a root the blueprint implies is dropped, with its banner —
+        // and a root that is both goes in one gesture.
+        var forgotten = _namedRoots.RemoveAll(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal)) > 0;
+        var dropped = _droppedDerivedRoots.Add(virtualPath);
+        if (forgotten)
+        {
+            RemoveBinding(virtualPath);
+            OnPropertyChanged(nameof(NamedRoots));
+        }
+
+        if (forgotten || dropped)
             RefreshMountSurfaces();
     }
 
@@ -1031,18 +1064,34 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// «existing folders» each offers the disk picker, under «inside the team» each reads
     /// «inside the team: input / output».
     /// </summary>
-    public IReadOnlyList<MountRow> StepOneRows =>
-    [
-        StepOneRow(TeamMountPaths.ReadRoot, MountRights.ReadOnly, StudioStringKeys.WizardReadRootTitle),
-        StepOneRow(TeamMountPaths.WriteRoot, MountRights.ReadWrite, StudioStringKeys.WizardWriteRootTitle),
-    ];
-
-    /// <summary>Whether the two rows show: «later» behaves as before, with no rows at all.</summary>
-    public bool HasStepOneRows => _folderPolicy != FolderPolicy.Later;
-
-    private MountRow StepOneRow(string virtualPath, MountRights rights, string titleKey)
+    public IReadOnlyList<MountRow> StepOneRows
     {
-        var title = _strings[titleKey];
+        get
+        {
+            var rows = new List<MountRow>();
+            if (_folderPolicy != FolderPolicy.Later)
+            {
+                rows.Add(StepOneRow(TeamMountPaths.ReadRoot, MountRights.ReadOnly, _strings[StudioStringKeys.WizardReadRootTitle]));
+                rows.Add(StepOneRow(TeamMountPaths.WriteRoot, MountRights.ReadWrite, _strings[StudioStringKeys.WizardWriteRootTitle]));
+            }
+
+            // The mount points the user named, after the two canonical ones, in the order
+            // they were added — a row each, answered the same two ways.
+            foreach (var named in _namedRoots)
+                rows.Add(StepOneRow(named.VirtualPath, named.Rights, title: ""));
+
+            return rows;
+        }
+    }
+
+    /// <summary>
+    /// Whether the folder rows and the add form show: «later» with nothing named behaves as
+    /// before, with no rows at all; a mount point the user named shows under every policy.
+    /// </summary>
+    public bool HasStepOneRows => _folderPolicy != FolderPolicy.Later || _namedRoots.Count > 0;
+
+    private MountRow StepOneRow(string virtualPath, MountRights rights, string title)
+    {
         if (BoundEntry(virtualPath) is { } entry
             && MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
         {
@@ -1050,6 +1099,120 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
 
         return new MountRow(virtualPath, rights == MountRights.ReadWrite, Agents: AgentsOf(virtualPath), Title: title);
+    }
+
+    // ── any number of folders, named by the user (owner review of 2026-09-19) ──────────
+    // The two canonical rows were a start, not a limit: a team addresses as many mount
+    // points as its need names. A name — the one the agents will use — and the rights make
+    // a row like the canonical ones, answered the same two ways (a real folder, or one
+    // created inside the team), kept across compositions, shown on the Composer step with
+    // the blueprint's own roots, and created inside the team at adoption when left
+    // unanswered. Which of them the agents address is the blueprint's business: the need
+    // has to name them.
+
+    /// <summary>The name of the mount point being added («factures»); cleared once added.</summary>
+    public string NewRootName
+    {
+        get => _newRootName;
+        set
+        {
+            if (!SetProperty(ref _newRootName, value ?? ""))
+                return;
+
+            OnPropertyChanged(nameof(CanAddNamedRoot));
+            AddNamedRootCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>Whether the mount point being added is written to; read-only until ticked.</summary>
+    public bool NewRootIsReadWrite
+    {
+        get => _newRootIsReadWrite;
+        set => SetProperty(ref _newRootIsReadWrite, value);
+    }
+
+    /// <summary>
+    /// Whether <see cref="NewRootName"/> names a mount point that can be added: well-formed
+    /// (<see cref="TryNormalizeRootName"/>), not reserved by the runner, and not a row already
+    /// — canonical, named, bound or implied by the blueprint.
+    /// </summary>
+    public bool CanAddNamedRoot => TryNormalizeRootName(_newRootName, out var root) && !RootIsTaken(root);
+
+    /// <summary>« Add the folder »: the typed name becomes a row, under every policy.</summary>
+    public RelayCommand AddNamedRootCommand { get; }
+
+    /// <summary>The mount points the user named, in the order they were added.</summary>
+    public IReadOnlyList<string> NamedRoots => [.. _namedRoots.Select(named => named.VirtualPath)];
+
+    private void AddNamedRoot()
+    {
+        if (!TryNormalizeRootName(_newRootName, out var root) || RootIsTaken(root))
+            return;
+
+        var named = new NamedRoot(root, _newRootIsReadWrite);
+        _namedRoots.Add(named);
+        _droppedDerivedRoots.Remove(root);
+        // «Created inside the team» answers a new mount point the way it answered the first
+        // two; the other policies leave the row to its two buttons.
+        if (_folderPolicy == FolderPolicy.InsideTeam)
+            BindInsideTeam(root, named.Rights);
+
+        NewRootName = "";
+        OnPropertyChanged(nameof(NamedRoots));
+        RefreshMountSurfaces();
+    }
+
+    /// <summary>Counts a root bound by another gesture among the named ones, once.</summary>
+    private void RememberNamedRoot(string virtualPath, bool isReadWrite)
+    {
+        if (IsCanonicalRoot(virtualPath) || IsNamedRoot(virtualPath))
+            return;
+
+        _namedRoots.Add(new NamedRoot(virtualPath, isReadWrite));
+        OnPropertyChanged(nameof(NamedRoots));
+    }
+
+    private bool IsNamedRoot(string? virtualPath) =>
+        virtualPath is not null
+        && _namedRoots.Any(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal));
+
+    /// <summary>A root that belongs to the user, not to the blueprint: canonical or named.</summary>
+    private bool IsStepOneRoot(string? virtualPath) => IsCanonicalRoot(virtualPath) || IsNamedRoot(virtualPath);
+
+    /// <summary>
+    /// A typed name as the virtual root it means: trimmed, its slashes shed, lowercased the
+    /// way the picker derives a name from a folder, one segment without the characters the
+    /// mount grammar spends (':' ';' whitespace), valid for the runtime and not one of the
+    /// roots it reserves (<see cref="MountDefinition.IsValidVirtualPath"/>).
+    /// </summary>
+    private static bool TryNormalizeRootName(string? text, out string root)
+    {
+        root = "";
+        var name = (text ?? "").Trim().Trim('/', '\\').Trim();
+        if (name.Length == 0 || name.Any(c => char.IsWhiteSpace(c) || c is ':' or ';' or '/' or '\\'))
+            return false;
+
+#pragma warning disable CA1308 // virtual roots are lowercase by convention, not a normalization round-trip
+        var candidate = "/" + name.ToLowerInvariant();
+#pragma warning restore CA1308
+        if (!MountDefinition.IsValidVirtualPath(candidate))
+            return false;
+
+        root = candidate;
+        return true;
+    }
+
+    /// <summary>A root already asked about: canonical, named, bound, or implied by the blueprint.</summary>
+    private bool RootIsTaken(string root) =>
+        IsCanonicalRoot(root)
+        || IsNamedRoot(root)
+        || BoundEntry(root) is not null
+        || _model.DerivedMounts.Any(derived => string.Equals(derived.VirtualPath, root, StringComparison.Ordinal));
+
+    /// <summary>A mount point the user named, with the rights it takes on whatever answers it.</summary>
+    private sealed record NamedRoot(string VirtualPath, bool IsReadWrite)
+    {
+        public MountRights Rights => IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
     }
 
     /// <summary>Free description of the expected result; required when the format is free.</summary>
@@ -1286,6 +1449,19 @@ public sealed class CreateTeamViewModel : ObservableObject
                     Agents: string.Join(", ", derived.Agents ?? [])));
             }
 
+            // A mount point the user named and has not answered yet keeps its row here too
+            // (owner review of 2026-09-19): still a question, with the same two answers.
+            foreach (var named in _namedRoots)
+            {
+                if (claimed.Contains(named.VirtualPath)
+                    || rows.Any(row => string.Equals(row.VirtualPath, named.VirtualPath, StringComparison.Ordinal)))
+                {
+                    continue;
+                }
+
+                rows.Add(new MountRow(named.VirtualPath, named.IsReadWrite, Agents: AgentsOf(named.VirtualPath)));
+            }
+
             return rows;
         }
     }
@@ -1497,6 +1673,16 @@ public sealed class CreateTeamViewModel : ObservableObject
                 derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly));
         }
 
+        // A mount point the user named and left unanswered gets the default a derived one
+        // gets: its own folder inside the team (owner review of 2026-09-19).
+        foreach (var named in _namedRoots)
+        {
+            if (!claimed.Add(named.VirtualPath))
+                continue;
+
+            mounts.Add(TeamMountPaths.InsideTeam(named.VirtualPath, named.Rights));
+        }
+
         return mounts;
     }
 
@@ -1537,12 +1723,15 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         RestoreDerivedMountsCommand.RaiseCanExecuteChanged();
         CreateAllInsideTeamCommand.RaiseCanExecuteChanged();
+        AddNamedRootCommand.RaiseCanExecuteChanged();
         OnPropertiesChanged(
             nameof(HasTeamMounts),
             nameof(MountRows),
             nameof(HasMountRows),
             nameof(StepOneRows),
             nameof(HasStepOneRows),
+            nameof(NamedRoots),
+            nameof(CanAddNamedRoot),
             nameof(NeedsInputFolder),
             nameof(TrialReadsInsideTeam),
             nameof(HasUndeclaredTeamMounts),
@@ -1560,6 +1749,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         // Claiming a root un-drops it, whichever gesture claimed it: the banner otherwise
         // went on warning that nothing would be bound to a root the user had just bound.
         _droppedDerivedRoots.Remove(mount.VirtualPath);
+        // At step 1 a folder added as picked is one of the user's own mount points: it
+        // survives the compose like the named ones (owner review of 2026-09-19).
+        if (IsStep1)
+            RememberNamedRoot(mount.VirtualPath, mount.Rights != MountRights.ReadOnly);
         RefreshMountSurfaces();
     }
 

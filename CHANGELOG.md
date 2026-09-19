@@ -66,6 +66,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `./output:/output:rw`), read « inside the team: input / output », nothing created before
   the adoption. « Later » behaves as before. The chips move the two canonical roots only;
   composing keeps them; « Restart », a resume and « Modify » forget them, policy included.
+- The two rows are a start, not a limit (owner review of 2026-09-19): « Add the folder » names
+  as many further mount points as the need calls for — a name the agents will use, read or
+  written — each a row answered the same two ways (« Created inside the team » answers a new
+  one on the spot), shown on the Composer step next to the blueprint's roots, kept across
+  compositions, created inside the team at adoption when left unanswered; a folder added at
+  step 1 through the picker counts as one of them. A reserved or already-used name cannot be
+  added. Keys `Studio.Create.AddRoot`, `AddRootWrite`, `AddRootHint` in the five languages;
+  the `etape1-dossiers-existants` stop photographs a third, user-named row.
 - Step 2 « Compose » re-shows the step-1 answers, editable as before, and gains « Create every
   folder inside the team » beside « Allow a folder » plus a per-row « Create inside the
   team ». Under the inside-the-team policy a root a later blueprint adds is answered the same

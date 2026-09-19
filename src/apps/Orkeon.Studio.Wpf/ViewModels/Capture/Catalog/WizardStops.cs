@@ -59,7 +59,9 @@ internal static class WizardStops
             Because = "«Des dossiers existants» at step 1: the two rows — «Vos documents» read, «Les "
                     + "résultats» written — one answered with a real folder the settings declare, the "
                     + "other still offering «Choisir le dossier…» and «Créer dans l'équipe». The real "
-                    + "folder is the seeded docs/, so the row reads declared, not red.",
+                    + "folder is the seeded docs/, so the row reads declared, not red. A third row the "
+                    + "user named («archives») and the form that names one more: as many mount points "
+                    + "as the need calls for, never just two.",
             Covers = ["CreateTeam.IsStep1", "CreateTeam.HasStepOneRows", "CreateTeam.CanCompose"],
             CoversFalse = ["CreateTeam.HasUndeclaredTeamMounts"],
             SweepsLanguages = true,
@@ -72,6 +74,9 @@ internal static class WizardStops
                 wizard.SourceChoices[0].SelectCommand.Execute(null);
                 wizard.OutputChoices[0].SelectCommand.Execute(null);
                 wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.ExistingFolders;
+                // A mount point of the user's own, beyond the two canonical rows.
+                wizard.NewRootName = "archives";
+                wizard.AddNamedRootCommand.Execute(null);
                 // What the disk picker binds back once confirmed: the seeded, declared docs/.
                 wizard.BindTeamMount(
                     Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot,

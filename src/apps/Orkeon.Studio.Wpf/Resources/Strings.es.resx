@@ -2334,4 +2334,14 @@
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Abre la carpeta del equipo adoptado.</value>
   </data>
+  <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
+  <data name="Studio.Create.AddRootHint" xml:space="preserve">
+    <value>Añada tantas carpetas como pida la necesidad: un nombre que usarán los agentes (facturas, archivos…), de lectura o de escritura — y responda a cada una como a las dos primeras, con una carpeta real o creada dentro del equipo. Nómbrelas en su necesidad para que el equipo las use.</value>
+  </data>
+  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
+    <value>con escritura</value>
+  </data>
+  <data name="Studio.Create.AddRoot" xml:space="preserve">
+    <value>Añadir la carpeta</value>
+  </data>
 </root>

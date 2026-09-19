@@ -2334,4 +2334,14 @@
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>Öffnet den Ordner des übernommenen Teams.</value>
   </data>
+  <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
+  <data name="Studio.Create.AddRootHint" xml:space="preserve">
+    <value>Fügen Sie so viele Ordner hinzu, wie der Bedarf verlangt: einen Namen, den die Agenten verwenden (rechnungen, archiv…), lesend oder schreibend — und beantworten Sie jeden wie die beiden ersten, mit einem echten Ordner oder einem im Team angelegten. Nennen Sie sie in Ihrem Bedarf, damit das Team sie nutzt.</value>
+  </data>
+  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
+    <value>beschreibbar</value>
+  </data>
+  <data name="Studio.Create.AddRoot" xml:space="preserve">
+    <value>Ordner hinzufügen</value>
+  </data>
 </root>

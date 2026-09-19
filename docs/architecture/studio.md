@@ -112,6 +112,16 @@ chip moves the two canonical roots and nothing else; composing keeps them
 (`KeepOnlyStepOneMounts` — the rest belonged to the blueprint being replaced),
 « Restart », a resume and « Modify » on a card forget them and the policy with
 them, so a stale step-1 choice never leaks into the sidecar of another team.
+The two rows are a start, not a limit (owner review of 2026-09-19): « Add the
+folder » names as many further mount points as the need calls for — a name the
+agents will use (`/factures`, `/archives`), read or written — and each becomes a
+row like the canonical ones, answered the same two ways (« Created inside the
+team » answers a new one on the spot), listed on the Composer step next to the
+blueprint's own roots, kept across compositions, and created inside the team at
+adoption when left unanswered. Which of them the agents address is the
+blueprint's business: the need has to name them. A name is normalized the way the
+picker derives one from a folder (lowercased, one segment), and a name the runner
+reserves or a row already carries cannot be added.
 
 The wizard's block on the Composer step is **one line per mount point** (lot 3):
 the name the agents address, who addresses it — provenance, never permission —

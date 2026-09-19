@@ -2334,4 +2334,14 @@
   <data name="Studio.Create.OpenFolderTeam" xml:space="preserve">
     <value>打开已采纳团队的文件夹。</value>
   </data>
+  <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
+  <data name="Studio.Create.AddRootHint" xml:space="preserve">
+    <value>按需要添加任意数量的文件夹：一个供智能体使用的名称（如 factures、archives），可读或可写——然后像前两个一样为每个文件夹作答：指定真实文件夹，或在团队内创建。请在需求中提及它们，团队才会使用。</value>
+  </data>
+  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
+    <value>可写入</value>
+  </data>
+  <data name="Studio.Create.AddRoot" xml:space="preserve">
+    <value>添加文件夹</value>
+  </data>
 </root>

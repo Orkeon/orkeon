@@ -1242,12 +1242,18 @@ public class CreateTeamWizardTests
 
         Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
         Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
-        Assert.All(vm.StepOneRows, r => Assert.True(r.CanChooseFolder));
+        // The two canonical rows are unanswered again; the folder added at step 1 is the
+        // user's own third row (owner review of 2026-09-19), answered, and untouched.
+        Assert.Equal(["/workspace", "/output", "/archives"], vm.StepOneRows.Select(r => r.VirtualPath));
+        Assert.All(vm.StepOneRows.Where(r => r.HasTitle), r => Assert.True(r.CanChooseFolder));
+        Assert.Equal("/data/archives", vm.StepOneRows[2].Folder);
 
         Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
         Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
         Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
-        Assert.False(vm.HasStepOneRows);
+        // «Later» takes the two canonical rows away and leaves the user's own.
+        Assert.True(vm.HasStepOneRows);
+        Assert.Equal(["/archives"], vm.StepOneRows.Select(r => r.VirtualPath));
     }
 
     /// <summary>
@@ -1545,17 +1551,169 @@ public class CreateTeamWizardTests
         var (vm, processes, _) = Build();
         FillStepOne(vm);
         Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        // A mount point the user named goes with the creation being abandoned too.
+        vm.NewRootName = "archives";
+        vm.AddNamedRootCommand.Execute(null);
         processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./archives:/archives:ro"], vm.TeamMounts);
         Assert.True(vm.RestartCommand.CanExecute(null));
 
         vm.RestartCommand.Execute(null);
 
         Assert.Empty(vm.TeamMounts);
+        Assert.Empty(vm.NamedRoots);
         Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
         Assert.True(Policy(vm, FolderPolicy.Later).IsSelected);
         Assert.False(vm.HasStepOneRows);
+    }
+
+    /// <summary>
+    /// Owner review of 2026-09-19: the two canonical rows were a start, not a limit. A team
+    /// addresses as many mount points as its need names, and step 1 takes them by name — a
+    /// row each, answered like the canonical ones, kept across the compose.
+    /// </summary>
+    [Fact]
+    public async Task Any_number_of_folders_can_be_named_at_step_one_and_they_survive_the_compose()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+
+        // Two more mount points, typed as the user types them: a slash, a capital, a space.
+        vm.NewRootName = " /Factures ";
+        Assert.True(vm.CanAddNamedRoot);
+        vm.AddNamedRootCommand.Execute(null);
+        vm.NewRootName = "rapports";
+        vm.NewRootIsReadWrite = true;
+        vm.AddNamedRootCommand.Execute(null);
+
+        Assert.Equal("", vm.NewRootName);
+        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
+        var rows = vm.StepOneRows;
+        Assert.Equal(["/workspace", "/output", "/factures", "/rapports"], rows.Select(r => r.VirtualPath));
+        var factures = rows[2];
+        Assert.False(factures.HasTitle);
+        Assert.False(factures.HasFolder);
+        Assert.False(factures.IsReadWrite);
+        Assert.True(factures.CanChooseFolder);
+        Assert.True(factures.CanCreateInsideTeam);
+        Assert.True(factures.IsDroppable);
+        Assert.True(rows[3].IsReadWrite);
+        Assert.True(vm.CanCompose);
+
+        // Answered the two ways the canonical rows are: a real folder, a folder inside the team.
+        vm.BindTeamMount("/factures", new Orkeon.Studio.Core.FileSystem.MountDefinition { PhysicalPath = "/data/factures", VirtualPath = "/x", Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly });
+        vm.CreateInsideTeamCommand.Execute("/rapports");
+        Assert.Equal(["/data/factures:/factures:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
+        Assert.True(vm.StepOneRows[3].IsInsideTeam);
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        // Both answers survived the compose, next to the blueprint's own roots.
+        Assert.Equal(2, vm.Step);
+        Assert.Equal(["/data/factures:/factures:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
+        Assert.Contains(vm.MountRows, r => r.VirtualPath == "/factures" && r.Folder == "/data/factures");
+        Assert.Contains(vm.MountRows, r => r.VirtualPath == "/rapports" && r.IsInsideTeam);
+        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
+    }
+
+    /// <summary>Under «Created inside the team» a newly named mount point is answered inside at once.</summary>
+    [Fact]
+    public void A_folder_named_under_inside_the_team_is_answered_inside_at_once()
+    {
+        var (vm, _, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+
+        vm.NewRootName = "archives";
+        vm.AddNamedRootCommand.Execute(null);
+
+        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./archives:/archives:ro"], vm.TeamMounts);
+        Assert.All(vm.StepOneRows, r => Assert.True(r.IsInsideTeam));
+        Assert.Equal("inside the team: archives", vm.StepOneRows[2].Folder);
+        Assert.False(vm.HasUndeclaredTeamMounts);
+    }
+
+    /// <summary>
+    /// A named mount point left unanswered is a question the Composer step still shows, and
+    /// adoption answers it the way it answers a derived root: its own folder inside the team.
+    /// </summary>
+    [Fact]
+    public async Task A_named_folder_left_unanswered_stays_a_row_and_is_created_inside_the_team_at_adoption()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        vm.NewRootName = "rapports";
+        vm.NewRootIsReadWrite = true;
+        vm.AddNamedRootCommand.Execute(null);
+
+        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        await Compose(vm);
+
+        var row = Assert.Single(vm.MountRows, r => r.VirtualPath == "/rapports");
+        Assert.False(row.HasFolder);
+        Assert.True(row.CanCreateInsideTeam);
+        Assert.Contains("./rapports:/rapports:rw", vm.SidecarMounts());
+    }
+
+    /// <summary>An empty, reserved, malformed or already-asked name cannot be added.</summary>
+    [Fact]
+    public void A_folder_name_that_is_empty_reserved_malformed_or_already_a_row_cannot_be_added()
+    {
+        var (vm, _, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+
+        foreach (var name in new[] { "", "   ", "/", "crew", "llm-logs", "output", "Workspace", "mes factures", "a:b", "x/y" })
+        {
+            vm.NewRootName = name;
+            Assert.False(vm.CanAddNamedRoot, name);
+            Assert.False(vm.AddNamedRootCommand.CanExecute(null), name);
+        }
+
+        vm.NewRootName = "factures";
+        vm.AddNamedRootCommand.Execute(null);
+        vm.NewRootName = "/Factures/";
+        Assert.False(vm.CanAddNamedRoot);
+        Assert.Equal(["/factures"], vm.NamedRoots);
+    }
+
+    /// <summary>
+    /// The ✕ of an unanswered named row forgets the mount point; the ✕ of its answer keeps
+    /// the question; «Later» hides the canonical rows and never a named one (« Restart »
+    /// forgets them all — asserted with the step-1 folders above).
+    /// </summary>
+    [Fact]
+    public void Dropping_a_named_folder_forgets_it_and_later_keeps_it_visible()
+    {
+        var (vm, _, _) = Build();
+        FillStepOne(vm);
+        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        vm.NewRootName = "factures";
+        vm.AddNamedRootCommand.Execute(null);
+        vm.NewRootName = "rapports";
+        vm.AddNamedRootCommand.Execute(null);
+        vm.CreateInsideTeamCommand.Execute("/rapports");
+
+        // The answer goes, the question stays.
+        vm.RemoveTeamMountCommand.Execute("./rapports:/rapports:ro");
+        Assert.Empty(vm.TeamMounts);
+        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
+        Assert.Equal(4, vm.StepOneRows.Count);
+
+        // The question goes.
+        vm.RemoveDerivedMountCommand.Execute("/factures");
+        Assert.Equal(["/rapports"], vm.NamedRoots);
+        Assert.Equal(["/workspace", "/output", "/rapports"], vm.StepOneRows.Select(r => r.VirtualPath));
+
+        // «Later» hides the two canonical rows, never a named one.
+        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
+        Assert.True(vm.HasStepOneRows);
+        Assert.Equal(["/rapports"], vm.StepOneRows.Select(r => r.VirtualPath));
+        Assert.Empty(vm.TeamMounts);
     }
 
     /// <summary>
