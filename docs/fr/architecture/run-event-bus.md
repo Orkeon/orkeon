@@ -44,6 +44,7 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 | `kind` | Charge utile | Quand |
 |---|---|---|
 | `run.started` | `target`, `stream` | Le run commence. |
+| `task.started` | `taskId`, `agentRole` | Une tâche commence, dans les six modes d'orchestration — au moment où son agent est choisi, avant qu'on ne lui demande quoi que ce soit. Entre ce kind et son `task.completed`, un observateur montre la tâche en cours ; la charge utile est volontairement mince, rien n'a encore été mesuré. Un CLI plus ancien ne dit rien ici, et un client ne doit pas refuser un `task.completed` dont il n'a jamais vu le départ. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Chaque tâche se termine, **dans les six modes d'orchestration** — échec et annulation compris (voir `error`). `tokens` et `toolCalls` valent `0` quand le mode ne les mesure pas, jamais absents. |
 | `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
@@ -119,8 +120,9 @@ Un échange minimal :
 → {"v":2,"seq":1,"ts":"…","kind":"run.started","target":"crew.yaml","stream":false}
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publier le rapport ?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
-→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
-→ {"v":2,"seq":4,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
+→ {"v":2,"seq":3,"ts":"…","kind":"task.started","taskId":"t1","agentRole":"writer"}
+→ {"v":2,"seq":4,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
+→ {"v":2,"seq":5,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
 ```
 
 Deux règles à respecter en construisant votre client. **Ignorez un `kind` que vous ne connaissez pas** — un Orkeon plus récent en dit plus qu'un client plus ancien n'en comprend, et planter sur une ligne non lue est pire qu'en afficher un peu moins. Et **gardez ce que vous n'avez pas su analyser** : une ligne non protocolaire reste quelque chose que le run a dit, et la perdre perd le diagnostic.
@@ -129,7 +131,7 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 
 ## 7. Qui lit ceci aujourd'hui
 
-- **Orkeon Studio**, dont l'écran « Lancer » montre progression, coût et questions du run au lieu d'un défilement — voir [Studio](studio.md). L'écran « Lancer » occupe aussi le siège du hub : le `send` d'un agent vers `client://studio` (marqué `expectsReply`) apparaît comme un panneau de demande auquel l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — l'écran donne simplement à un humain la chance de parler avant.
+- **Orkeon Studio**, dont l'écran « Lancer » montre la progression — la tâche en cours et l'outil au travail, depuis `task.started` et `tool.called`, autant que les tâches terminées — le coût et les questions du run au lieu d'un défilement — voir [Studio](studio.md). L'écran « Lancer » occupe aussi le siège du hub : le `send` d'un agent vers `client://studio` (marqué `expectsReply`) apparaît comme un panneau de demande auquel l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — l'écran donne simplement à un humain la chance de parler avant.
 - `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence en ~460 lignes, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
 
 La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge), donc un client qui lit l'un lit l'autre.

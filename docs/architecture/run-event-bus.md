@@ -44,6 +44,7 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 | `kind` | Payload | When |
 |---|---|---|
 | `run.started` | `target`, `stream` | The run begins. |
+| `task.started` | `taskId`, `agentRole` | A task begins, in every orchestration mode — the moment its agent is chosen and before it is asked anything. Between this and the matching `task.completed` a watcher shows the task as in progress; the payload is deliberately thin because nothing has been measured yet. An older CLI says nothing here, and a client must not refuse a `task.completed` it never saw started. |
 | `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Each task finishes, in every orchestration mode — failure and cancellation included (see `error`). `tokens` and `toolCalls` are `0` when the mode does not track them, never absent. |
 | `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
@@ -119,8 +120,9 @@ A minimal exchange:
 → {"v":2,"seq":1,"ts":"…","kind":"run.started","target":"crew.yaml","stream":false}
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publish the report?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
-→ {"v":2,"seq":3,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
-→ {"v":2,"seq":4,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
+→ {"v":2,"seq":3,"ts":"…","kind":"task.started","taskId":"t1","agentRole":"writer"}
+→ {"v":2,"seq":4,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
+→ {"v":2,"seq":5,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
 ```
 
 Two rules worth building against. **Ignore a `kind` you do not know** — a newer Orkeon says more than an older client understands, and crashing on an unread line is worse than showing a little less. And **keep what you could not parse**: a line that is not protocol is still something the run said, and losing it loses the diagnosis.
@@ -129,7 +131,7 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 
 ## 7. What reads this today
 
-- **Orkeon Studio**, whose Launch screen shows progress, cost and the run's questions instead of scrollback — see [Studio](studio.md). The Launch screen also staffs the hub seat: an agent's `send` to `client://studio` (marked `expectsReply`) appears as a request panel the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the screen just gives a human the chance to speak before it.
+- **Orkeon Studio**, whose Launch screen shows progress — the task in progress and the tool at work, from `task.started` and `tool.called`, as well as the tasks done — cost and the run's questions instead of scrollback — see [Studio](studio.md). The Launch screen also staffs the hub seat: an agent's `send` to `client://studio` (marked `expectsReply`) appears as a request panel the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the screen just gives a human the chance to speak before it.
 - `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client in ~460 lines with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
 
 The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream, so a client that reads one reads both.

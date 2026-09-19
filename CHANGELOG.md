@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-17 -->
+### Added — Studio: the Run screen shows the task in progress, pulses while it runs, stamps its journal and starts each launch clean (STUDIO-17)
+
+- **`task.started` joins the run event stream** (`orkeon run --events jsonl`): every
+  orchestration mode announces a task the moment its agent is chosen, through a new
+  `ICrewExecutionHook.OnTaskStartedAsync` (`TaskStartSnapshot`: task, agent role, start
+  time) dispatched by `CrewHookDispatcher` like the completions. The payload is deliberately
+  thin — nothing has been measured yet. The envelope stays at `v: 2`: an older client ignores
+  the kind, and a client must not refuse a `task.completed` it never saw started. The
+  hierarchical mode's `task.completed` now carries the agent's **role** under `agentRole`,
+  as every other mode does, instead of the agent's GUID.
+- **The Run screen shows what is running now.** `RunProgressModel` folds `task.started` /
+  `task.completed` into an in-flight list and `tool.called` / `tool.returned` into the tool
+  at work; the card gets a row per running task — agent, turning glyph, « since HH:mm:ss »
+  from the run's own clock — an activity line naming the tool, a summary that says
+  « N finished, M in progress », and the number of tool calls on every finished row. The
+  « running » badge pulses while the child process lives (a Style-scoped storyboard with
+  no `TargetName`; `CapturePose` holds it at full opacity for the screenshot campaign).
+- **Every launch starts clean.** The journal and the previous run's verdict — exit badge,
+  result row, « Open the result » — are cleared once per click, so a « validate first »
+  launch keeps both passes in one journal. « Clear the journal » stays; « Copy » is how a
+  journal survives.
+- **The technical journal is timestamped.** Each line shows the local time Studio read it,
+  and the copied text leads every line with it. The CLI's own log lines keep their
+  millisecond prefix.
+- **The engine names the cause of an empty first turn.** The warning « produced empty final
+  message after N iterations » now carries the request's `max_tokens` and says that the
+  tool-free retry cannot call tools and that a reasoning model needs `Llm:MaxTokens` 16384
+  or more. Owner recette 2026-09-19: a `kimi-k3` profile without `MaxTokens` (engine default
+  4096) spent the budget reasoning, answered empty, and the tool-free retry narrated the
+  `.docx` instead of writing it — a green run with no file. The remedy is the profile's
+  *Max tokens* field; the journal now says so at the moment it happens.
+
 <!-- LLM catalogue review 2026-09-19 -->
 ### Changed — the DeepSeek default follows the vendor's rename, vendor prices refreshed, catalogues reviewed (2026-09-19)
 
