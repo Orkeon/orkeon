@@ -209,13 +209,16 @@ public partial class AzureOpenAILlmProvider : OpenAICompatibleProviderBase
         var client = CreateHttpClient(effectiveConfig);
         var endpoint = BuildEndpoint(effectiveConfig);
 
-        var requestPayload = new
+        var requestPayload = new Dictionary<string, object>
         {
-            messages = new[] { new { role = "user", content = prompt } },
-            temperature = effectiveConfig.Temperature,
-            max_tokens = effectiveConfig.MaxTokens,
-            stream = true
+            ["messages"] = new[] { new { role = "user", content = prompt } },
+            ["temperature"] = effectiveConfig.Temperature,
+            ["stream"] = true,
         };
+        // The cap is resolved like everywhere else (LLM-10): pinned, else the deployment's
+        // documented maximum, else the fallback; left out when the vendor documents no cap.
+        if (effectiveConfig.ResolveMaxTokens(Name, DefaultModel) is { } cap)
+            requestPayload["max_tokens"] = cap;
 
         var json = JsonSerializer.Serialize(requestPayload, JsonOptions);
 

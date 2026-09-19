@@ -161,7 +161,7 @@ public partial class YamlCrewExporter
         {
             Model = llmConfig.Model,
             Temperature = llmConfig.Temperature != LlmDefaults.DefaultTemperature ? llmConfig.Temperature : null,
-            MaxTokens = llmConfig.MaxTokens != 4096 ? llmConfig.MaxTokens : null,
+            MaxTokens = llmConfig.MaxTokens,   // only a pinned cap is written; null was never one
         };
     }
 

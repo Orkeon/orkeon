@@ -30,7 +30,7 @@ public class LlmConfigTests
         Assert.Null(config.ApiKey);
         Assert.Null(config.BaseUrl);
         Assert.Equal(0.7, config.Temperature, precision: 1);
-        Assert.Equal(4096, config.MaxTokens);
+        Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
         Assert.Equal(1.0, config.TopP, precision: 1);
         Assert.Equal(0.0, config.FrequencyPenalty, precision: 1);
         Assert.Equal(0.0, config.PresencePenalty, precision: 1);
@@ -53,7 +53,7 @@ public class LlmConfigTests
         Assert.Equal(ModelGpt35Turbo, config.Model);
         Assert.Null(config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
-        Assert.Equal(4096, config.MaxTokens);
+        Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
     }
 
     [Fact]
@@ -66,7 +66,7 @@ public class LlmConfigTests
         Assert.Equal(ModelClaude3, config.Model);
         Assert.Equal(TestApiKey, config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
-        Assert.Equal(4096, config.MaxTokens);
+        Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
     }
 
     [Fact]
@@ -352,7 +352,7 @@ public class LlmConfigTests
         Assert.Equal(ModelDefault, config.Model);
         Assert.Null(config.ApiKey);
         Assert.Equal(0.7, config.Temperature, precision: 1);
-        Assert.Equal(4096, config.MaxTokens);
+        Assert.Null(config.MaxTokens);   // nothing pinned: the wire gets the model's documented maximum (LLM-10)
         Assert.Equal(30, config.TimeoutSeconds);
         Assert.Equal(LlmDefaults.DefaultMaxRetries, config.MaxRetries); // 10 — drives the HTTP retry budget (Llm:MaxRetries)
     }

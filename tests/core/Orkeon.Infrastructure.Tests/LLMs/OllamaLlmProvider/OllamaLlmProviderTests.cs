@@ -720,6 +720,27 @@ public class OllamaLlmProviderTests
     }
 
     [Fact]
+    public async Task ShouldOmitNumPredict_WhenNothingPinsTheCap()
+    {
+        // LLM-10: a local runtime's maximum is its window — Ollama's num_predict defaults to
+        // -1 (infinite generation), so an unpinned cap writes nothing rather than 4096.
+        using var handler = new TestHttpMessageHandler();
+        handler.SetupResponse(HttpStatusCode.OK, CreateOllamaSuccessResponse("Response"));
+
+        var httpClient = new HttpClient(handler);
+        var httpClientFactory = new TestHttpClientFactory();
+        httpClientFactory.RegisterClient("OllamaLlmProvider", httpClient);
+
+        var config = LlmConfig.Create(ModelLlama2) with { MaxRetries = 0 };
+        using var provider = new OllamaLlmProvider(config, httpClientFactory);
+
+        await provider.GenerateAsync(TestPrompt, cancellationToken: TestContext.Current.CancellationToken);
+
+        var payload = JsonDocument.Parse(Assert.Single(handler.RequestContents));
+        Assert.False(payload.RootElement.GetProperty("options").TryGetProperty("num_predict", out _));
+    }
+
+    [Fact]
     public async Task ShouldOmitNumPredict_WhenGenerateAsyncWithMaxTokensZero()
     {
         // Arrange

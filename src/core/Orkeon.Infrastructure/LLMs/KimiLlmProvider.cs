@@ -55,29 +55,31 @@ public partial class KimiLlmProvider : OpenAICompatibleProviderBase
     /// Self-heals the one rejection Moonshot answers with a hard constraint: when the API
     /// says only a specific temperature is allowed for the resolved model, the request is
     /// re-sent once with that value — and the substitution is logged as a warning, never
-    /// applied silently (the capability doctrine).
+    /// applied silently (the capability doctrine). Any other rejection is handed to the
+    /// base, which knows one more: a catalogue output cap the endpoint refused (LLM-10 —
+    /// Moonshot bounds the cap by <c>window − prompt</c>).
     /// </summary>
     protected override bool TryAdaptRejectedPayload(
-        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody)
+        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody, LlmConfig effectiveConfig)
     {
         ArgumentNullException.ThrowIfNull(payload);
 
         if (statusCode != HttpStatusCode.BadRequest || errorBody is null)
-            return false;
+            return base.TryAdaptRejectedPayload(payload, statusCode, errorBody ?? string.Empty, effectiveConfig);
 
         var match = TemperatureConstraint().Match(errorBody);
         if (!match.Success
             || !double.TryParse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture, out var mandated))
         {
-            return false;
+            return base.TryAdaptRejectedPayload(payload, statusCode, errorBody, effectiveConfig);
         }
 
         // Never loop: if the mandated value is already what we sent, the rejection is
-        // about something else — surface it.
+        // about something else — the base may still know it; otherwise it surfaces.
         if (payload.TryGetValue("temperature", out var current)
             && current is double sent && sent.Equals(mandated))
         {
-            return false;
+            return base.TryAdaptRejectedPayload(payload, statusCode, errorBody, effectiveConfig);
         }
 
         LogTemperatureMandated(mandated, payload.TryGetValue("model", out var model) ? model : DefaultModel);

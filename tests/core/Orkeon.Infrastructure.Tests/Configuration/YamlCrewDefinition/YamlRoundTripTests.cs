@@ -270,10 +270,9 @@ public class YamlRoundTripTests
                     Backstory = "Agent with default parameters",
                     LlmConfig = LlmConfig.Default() with {
                         Model = ModelGpt35Turbo,
-                        // Temperature=0.7 and MaxTokens=4096 are defaults;
-                        // the exporter omits them, loader restores defaults
+                        // Temperature=0.7 is the default and MaxTokens is unpinned (null);
+                        // the exporter omits both, the loader restores them (LLM-10)
                         Temperature = 0.7,
-                        MaxTokens = 4096
                     }
                 }
             ],

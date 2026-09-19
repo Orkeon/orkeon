@@ -479,7 +479,10 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         {
             ["model"] = config.Model ?? LlmProviderDefaultModels.Anthropic,
             ["messages"] = messages,
-            ["max_tokens"] = config.MaxTokens > 0 ? config.MaxTokens : 4096,
+            // Required by the Messages API: the pinned value, else the model's documented
+            // maximum (128K on the 5 generation), else the engine fallback (LLM-10).
+            ["max_tokens"] = config.ResolveMaxTokens(Name, LlmProviderDefaultModels.Anthropic)
+                ?? Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens,
             ["temperature"] = config.Temperature
         };
 

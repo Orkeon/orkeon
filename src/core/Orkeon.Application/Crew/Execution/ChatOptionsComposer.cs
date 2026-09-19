@@ -125,7 +125,10 @@ internal sealed class ChatOptionsComposer
         // chat client's own defaults still apply when the YAML omits a field.
         if (llm.Temperature != Domain.Constants.Llm.LlmDefaults.DefaultTemperature)
             options.Temperature = (float)llm.Temperature;
-        if (llm.MaxTokens > 0 && llm.MaxTokens != Domain.Constants.Llm.LlmDefaults.DefaultContextWindowTokens)
+        // A pinned cap is forwarded whatever its value; an unpinned one is null and stays
+        // with the provider, which resolves the model's documented maximum (LLM-10). The
+        // first version compared against the old 4096 default to guess which was which.
+        if (llm.MaxTokens is > 0)
             options.MaxOutputTokens = llm.MaxTokens;
         if (llm.TopP != 1.0)
             options.TopP = (float)llm.TopP;

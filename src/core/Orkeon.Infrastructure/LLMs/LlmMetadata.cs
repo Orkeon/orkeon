@@ -102,14 +102,19 @@ public sealed partial class OllamaRequestOptions
         [DictionaryEntry("temperature")]
         public partial Builder AddTemperature(double temperature);
 
-        /// <summary>Sets the maximum number of tokens to predict.</summary>
-        /// <param name="maxTokens">The maximum token count.</param>
+        /// <summary>
+        /// Sets the maximum number of tokens to predict. Nothing pinned (null or non-positive)
+        /// writes nothing: Ollama then generates until the model stops or its window is full
+        /// (<c>num_predict</c> defaults to -1, "infinite generation"), which is a local
+        /// runtime's own maximum (LLM-10).
+        /// </summary>
+        /// <param name="maxTokens">The pinned token count, or null.</param>
         /// <returns>This builder.</returns>
-        public Builder AddNumPredict(int maxTokens)
+        public Builder AddNumPredict(int? maxTokens)
         {
-            if (maxTokens > 0)
+            if (maxTokens is > 0)
             {
-                _items["num_predict"] = LlmMetadataValue.From(maxTokens);
+                _items["num_predict"] = LlmMetadataValue.From(maxTokens.Value);
             }
             return this;
         }

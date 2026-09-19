@@ -44,8 +44,14 @@ public sealed record LlmConfig
     public Uri? BaseUrl { get; init; }
     /// <summary>Gets the sampling temperature (0.0 to 1.0).</summary>
     public double Temperature { get; init; } = LlmDefaults.DefaultTemperature;
-    /// <summary>Gets the maximum number of tokens to generate.</summary>
-    public int MaxTokens { get; init; } = LlmDefaults.DefaultContextWindowTokens;
+    /// <summary>
+    /// The output cap pinned on this configuration, or null when nothing pins one — the
+    /// request then carries the model's documented maximum, and 4096 only for a model the
+    /// catalogue does not know (LLM-10, <see cref="ResolveMaxTokens"/>). Set from
+    /// <c>Llm:MaxTokens</c>, a Studio profile or a crew's <c>max_tokens</c>; never defaulted
+    /// here, so "pinned" and "left to the model" stay distinguishable all the way to the wire.
+    /// </summary>
+    public int? MaxTokens { get; init; }
     /// <summary>Gets the nucleus sampling probability.</summary>
     public double TopP { get; init; } = 1.0;
     /// <summary>Gets the frequency penalty.</summary>
@@ -140,6 +146,30 @@ public sealed record LlmConfig
         ApiKey = apiKey;
     }
 
+    /// <summary>
+    /// The output cap a request carries, or null when the field must be left out. Three
+    /// sources, in order: the value pinned on this config (any positive <see cref="MaxTokens"/>);
+    /// the model's documented maximum from <see cref="LlmModelOutputLimits"/> (on this
+    /// provider first, then by model id); the engine fallback
+    /// <see cref="LlmDefaults.FallbackMaxOutputTokens"/> for a model the catalogue does not
+    /// know. A model the vendor documents as unbounded yields null: the endpoint then
+    /// generates up to its window.
+    /// </summary>
+    /// <param name="provider">The provider key, for a catalogue entry that only holds on that endpoint.</param>
+    /// <param name="defaultModel">The provider's default model, when this config names none.</param>
+    public int? ResolveMaxTokens(string? provider = null, string? defaultModel = null)
+    {
+        if (MaxTokens is > 0)
+            return MaxTokens;
+
+        return LlmModelOutputLimits.MaxOutputTokens(Model ?? defaultModel, provider) switch
+        {
+            null => LlmDefaults.FallbackMaxOutputTokens,
+            LlmModelOutputLimits.Unbounded => null,
+            var documented => documented,
+        };
+    }
+
     /// <summary>Creates a new <see cref="LlmConfig"/> with the specified model and optional API key.</summary>
     /// <param name="model">The model identifier (must not be null or empty).</param>
     /// <param name="apiKey">The API key (deprecated; prefer secret-based resolution).</param>
@@ -159,7 +189,7 @@ public sealed record LlmConfig
     public static LlmConfig CreateValidated(
         string model,
         double temperature = LlmDefaults.DefaultTemperature,
-        int maxTokens = LlmDefaults.DefaultContextWindowTokens,
+        int? maxTokens = null,
         double topP = 1.0,
         double frequencyPenalty = 0.0,
         double presencePenalty = 0.0,
@@ -173,7 +203,8 @@ public sealed record LlmConfig
         if (temperature < 0.0 || temperature > 2.0)
             throw new ArgumentOutOfRangeException(nameof(temperature),
                 $"Temperature must be between 0.0 and 2.0, but was {temperature}.");
-        ArgumentOutOfRangeException.ThrowIfNegativeOrZero(maxTokens);
+        if (maxTokens is <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maxTokens), "MaxTokens must be positive when pinned; leave it null for the model's documented maximum.");
         if (topP < 0.0 || topP > 1.0)
             throw new ArgumentOutOfRangeException(nameof(topP),
                 $"TopP must be between 0.0 and 1.0, but was {topP}.");

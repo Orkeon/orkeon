@@ -37,6 +37,20 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
         Vision = true,
     };
 
+    /// <summary>
+    /// Together documents no per-model output cap: the context window is the bound, and by
+    /// default a request whose prompt plus <c>max_tokens</c> exceed it is refused
+    /// (<c>context_length_exceeded_behavior: "error"</c>). <c>"truncate"</c> clamps
+    /// <c>max_tokens</c> to <c>window − prompt</c> instead — the prompt is never cut — which is
+    /// what lets the catalogue name the window itself as a model's cap (LLM-10).
+    /// </summary>
+    protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        base.ApplyProviderSpecificOptions(payload, effectiveConfig);
+        payload["context_length_exceeded_behavior"] = "truncate";
+    }
+
     /// <summary>Initializes a new instance of <see cref="TogetherAiLlmProvider"/>.</summary>
     public TogetherAiLlmProvider(
         LlmConfig config,

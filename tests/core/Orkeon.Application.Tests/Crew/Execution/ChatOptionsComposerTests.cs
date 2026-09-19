@@ -173,6 +173,30 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task LeavesTheCapToTheProvider_WhenTheAgentConfigPinsNone()
+    {
+        // LLM-10: an unpinned cap is null and stays null — the provider then sends the model's
+        // documented maximum. The first version guessed "unpinned" from the value 4096.
+        var agent = BuildAgent(LlmConfig.Create("planner-model"));
+        var composer = BuildComposer();
+
+        var (options, _) = await composer.BuildChatOptionsAsync(agent, BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Null(options.MaxOutputTokens);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ForwardsAPinnedCap_EvenWhenItEqualsTheOldEngineDefault()
+    {
+        var agent = BuildAgent(LlmConfig.Create("planner-model") with { MaxTokens = 4096 });
+        var composer = BuildComposer();
+
+        var (options, _) = await composer.BuildChatOptionsAsync(agent, BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Equal(4096, options.MaxOutputTokens);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task DoesNotForwardAnything_WhenTheAgentHasNoLlmConfig()
     {
         var composer = BuildComposer();

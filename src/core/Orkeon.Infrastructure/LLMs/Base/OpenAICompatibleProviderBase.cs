@@ -208,7 +208,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             if (attempt == 0 && (int)response.StatusCode is >= 400 and < 500)
             {
                 var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-                if (TryAdaptRejectedPayload(requestPayload, response.StatusCode, body))
+                if (TryAdaptRejectedPayload(requestPayload, response.StatusCode, body, effectiveConfig))
                     continue;
             }
 
@@ -821,7 +821,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
 
             if (attempt == 0 && (int)response.StatusCode is >= 400 and < 500
-                && TryAdaptRejectedPayload(payload, response.StatusCode, body))
+                && TryAdaptRejectedPayload(payload, response.StatusCode, body, effectiveConfig))
             {
                 continue;
             }
@@ -850,8 +850,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ["model"] = effectiveConfig.Model ?? DefaultModel,
             ["messages"] = messagesList,
             ["temperature"] = effectiveConfig.Temperature,
-            [MaxTokensFieldName] = effectiveConfig.MaxTokens
         };
+        WriteOutputCap(payload, effectiveConfig);
 
         ApplyOptions(payload, effectiveConfig);
         ApplyTools(payload, effectiveConfig);
@@ -1036,20 +1036,72 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     /// <summary>
+    /// Writes the output cap under <see cref="MaxTokensFieldName"/>: the pinned value, else the
+    /// model's documented maximum on this provider, else the engine fallback — or nothing at
+    /// all when the vendor documents no cap (LLM-10, <see cref="LlmConfig.ResolveMaxTokens"/>).
+    /// </summary>
+    private void WriteOutputCap(Dictionary<string, object> payload, LlmConfig config)
+    {
+        if (config.ResolveMaxTokens(Name, DefaultModel) is { } cap)
+            payload[MaxTokensFieldName] = cap;
+    }
+
+    /// <summary>
     /// One chance to adapt the payload after the API rejected it with a 4xx. Return
     /// <see langword="true"/> to have the same logical request re-sent once with the
-    /// mutated <paramref name="payload"/>; <see langword="false"/> (the default) surfaces
-    /// the error unchanged. For constraints only the server can state — e.g. Moonshot's
+    /// mutated <paramref name="payload"/>; <see langword="false"/> surfaces the error
+    /// unchanged. For constraints only the server can state — e.g. Moonshot's
     /// <c>invalid temperature: only 1 is allowed for this model</c>, which depends on the
-    /// model actually resolved server-side. Called at most once per request; the override
+    /// model actually resolved server-side. Called at most once per request; an override
     /// must log a structured warning for whatever it changes (never a silent mutation),
-    /// and the streaming paths never retry.
+    /// and the streaming paths never retry. The base adaptation is
+    /// <see cref="TryDropCatalogueOutputCap"/>; an override that finds nothing of its own
+    /// defers to it.
     /// </summary>
     /// <param name="payload">The payload that was rejected, mutable in place.</param>
     /// <param name="statusCode">The rejection's HTTP status.</param>
     /// <param name="errorBody">The response body, exactly as the API wrote it.</param>
+    /// <param name="effectiveConfig">The configuration the payload was built from.</param>
     protected virtual bool TryAdaptRejectedPayload(
-        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody) => false;
+        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody, LlmConfig effectiveConfig) =>
+        TryDropCatalogueOutputCap(payload, statusCode, errorBody, effectiveConfig);
+
+    /// <summary>
+    /// The catalogue's output cap was refused: the request is re-sent once without the field,
+    /// so the endpoint applies its own default, and the substitution is logged (LLM-10). Only
+    /// for a cap the catalogue chose — a value the user pinned is theirs to fix, and its
+    /// rejection surfaces unchanged. The match is on the field's name in the vendor's own
+    /// wording (Qwen "Range of max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini
+    /// "maxOutputTokens", DeepSeek's 422 on the same field), never on the status alone.
+    /// </summary>
+    protected bool TryDropCatalogueOutputCap(
+        Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody, LlmConfig effectiveConfig)
+    {
+        ArgumentNullException.ThrowIfNull(payload);
+        ArgumentNullException.ThrowIfNull(effectiveConfig);
+
+        if (effectiveConfig.MaxTokens is > 0)
+            return false;
+        if ((int)statusCode is not (400 or 422))
+            return false;
+        if (!payload.TryGetValue(MaxTokensFieldName, out var sent) || !MentionsOutputCap(errorBody))
+            return false;
+
+        LogCatalogueOutputCapRefused(ProviderDisplayName, sent, payload.TryGetValue("model", out var model) ? model : DefaultModel);
+        payload.Remove(MaxTokensFieldName);
+        return true;
+    }
+
+    private static bool MentionsOutputCap(string? errorBody) =>
+        errorBody is not null
+        && (errorBody.Contains("max_tokens", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("max_completion_tokens", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("maxOutputTokens", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("max_output_tokens", StringComparison.OrdinalIgnoreCase));
+
+    [LoggerMessage(Level = LogLevel.Warning, Message =
+        "{Provider} refused the catalogue's output cap {MaxTokens} for model {Model}; retrying once without the field so the endpoint applies its own default. Pin Llm:MaxTokens to choose the cap, and tell the catalogue (LlmModelOutputLimits).")]
+    private partial void LogCatalogueOutputCapRefused(string provider, object maxTokens, object model);
 
     /// <summary>
     /// Translates <see cref="LlmThinkingConfig"/> into the OpenAI dialect, bounded by the
@@ -1265,8 +1317,8 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             ["model"] = config.Model ?? DefaultModel,
             ["messages"] = messages,
             ["temperature"] = config.Temperature,
-            [MaxTokensFieldName] = config.MaxTokens
         };
+        WriteOutputCap(payload, config);
 
         if (AlwaysEmitTopP || config.TopP != 1.0)
         {

@@ -45,3 +45,11 @@ override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ReasoningFieldName.get -> string!
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
+Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryDropCatalogueOutputCap(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
+override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
+*REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int? maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!

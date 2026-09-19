@@ -31,3 +31,6 @@ const Orkeon.Constants.Llm.LlmProviderKeys.Mammouth = "mammouth" -> string!
 const Orkeon.Constants.Llm.LlmProviderKeys.OpenRouter = "openrouter" -> string!
 *REMOVED*const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-v4-flash" -> string!
 const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-flash" -> string!
+Orkeon.Constants.Llm.LlmModelOutputLimits
+const Orkeon.Constants.Llm.LlmModelOutputLimits.Unbounded = 0 -> int
+static Orkeon.Constants.Llm.LlmModelOutputLimits.MaxOutputTokens(string? model, string? provider = null) -> int?

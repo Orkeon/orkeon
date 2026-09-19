@@ -681,7 +681,8 @@ public static partial class RunnerHost
             // culture-sensitive read turns that into 7 on a comma-decimal locale (fr-FR).
             Temperature = double.TryParse(llmSection["Temperature"], System.Globalization.NumberStyles.Float,
                 System.Globalization.CultureInfo.InvariantCulture, out var t) ? t : 0.7,
-            MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : 4096,
+            // Absent = not pinned: the provider sends the model's documented maximum (LLM-10).
+            MaxTokens = int.TryParse(llmSection["MaxTokens"], out var m) ? m : null,
             TimeoutSeconds = int.TryParse(llmSection["TimeoutSeconds"], out var ts) ? ts : 30,
             Thinking = ReadThinkingConfig(llmSection),
         };

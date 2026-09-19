@@ -42,7 +42,7 @@ var llmConfig = LlmConfig.Create(llmSection["Model"] ?? "gpt-4") with
     ApiKey = llmSection["ApiKey"],
 #pragma warning restore CS0618
     Temperature = double.TryParse(llmSection["Temperature"], out var temp) ? temp : 0.7,
-    MaxTokens = int.TryParse(llmSection["MaxTokens"], out var mt) ? mt : 4096
+    MaxTokens = int.TryParse(llmSection["MaxTokens"], out var mt) ? mt : null   // absent = the model's documented maximum
 };
 services.AddSingleton<Orkeon.Domain.SharedKernel.ILlmProvider>(sp =>
     new OpenAIProvider(llmConfig, sp.GetRequiredService<IHttpClientFactory>(),

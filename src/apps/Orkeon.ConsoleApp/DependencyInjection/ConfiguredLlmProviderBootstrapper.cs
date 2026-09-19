@@ -68,7 +68,7 @@ internal static class ConfiguredLlmProviderBootstrapper
             BaseUrl = section["BaseUrl"] is { } baseUrl ? new Uri(baseUrl) : defaults.BaseUrl,
             ApiKey = section["ApiKey"] ?? defaults.ApiKey,
             Temperature = section.GetValue("Temperature", defaults.Temperature),
-            MaxTokens = section.GetValue("MaxTokens", defaults.MaxTokens),
+            MaxTokens = section.GetValue<int?>("MaxTokens"),   // absent = the model's documented maximum (LLM-10)
             TimeoutSeconds = section.GetValue("TimeoutSeconds", defaults.TimeoutSeconds),
             MaxRetries = Math.Max(0, section.GetValue("MaxRetries", defaults.MaxRetries)),
             Thinking = ReadThinkingConfig(section),

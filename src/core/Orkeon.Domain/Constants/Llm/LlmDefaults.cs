@@ -25,6 +25,14 @@ public static class LlmDefaults
     /// </summary>
     public const int DefaultMaxTokens = 4_000;
 
+    /// <summary>
+    /// The output cap a request carries when nothing pins one <b>and</b> the model is unknown
+    /// to <see cref="Orkeon.Constants.Llm.LlmModelOutputLimits"/> (4 096). A known model gets
+    /// its documented maximum instead (LLM-10); this is the floor for the rest, kept where it
+    /// was so an unknown model behaves exactly as before.
+    /// </summary>
+    public const int FallbackMaxOutputTokens = 4_096;
+
     // ── Temperature ─────────────────────────────────────────────────────
 
     /// <summary>

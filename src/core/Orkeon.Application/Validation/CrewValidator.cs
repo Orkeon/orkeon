@@ -165,7 +165,7 @@ public partial class CrewValidator
         if (llmConfig.TopP is < 0.0 or > 1.0)
             errors.Add(Inv.Format($"DomainAgent {agentRole} has an invalid LLM top_p {llmConfig.TopP} (expected 0.0 to 1.0)"));
 
-        if (llmConfig.MaxTokens <= 0)
+        if (llmConfig.MaxTokens is <= 0)
             errors.Add(Inv.Format($"DomainAgent {agentRole} has an invalid LLM max_tokens {llmConfig.MaxTokens} (expected a positive value)"));
 
         if (llmConfig.FrequencyPenalty is < -2.0 or > 2.0)

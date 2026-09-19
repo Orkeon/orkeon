@@ -7,3 +7,9 @@ Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.HasCycle.get -> bool
 Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.Tasks.get -> System.Collections.Generic.IReadOnlyList<TTask>!
 *REMOVED*static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null) -> Orkeon.Domain.Crew.CrewOutput!
 static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null, string? output = null) -> Orkeon.Domain.Crew.CrewOutput!
+const Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens = 4096 -> int
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.get -> int
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.get -> int?
+*REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int maxTokens = 4096, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveMaxTokens(string? provider = null, string? defaultModel = null) -> int?

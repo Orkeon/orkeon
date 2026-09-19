@@ -95,7 +95,7 @@ public sealed partial class YamlCrewMapper
                     ? LlmConfig.Create(effectiveLlm.Model ?? LlmDefaults.DefaultModelName) with
                     {
                         Temperature = effectiveLlm.Temperature ?? LlmDefaults.DefaultTemperature,
-                        MaxTokens = effectiveLlm.MaxTokens ?? 4096,
+                        MaxTokens = effectiveLlm.MaxTokens,   // null = the model's documented maximum (LLM-10)
                         TopP = effectiveLlm.TopP ?? 1.0,
                         Thinking = MapThinking(effectiveLlm.Thinking),
                         ResponseFormat = MapResponseFormat(effectiveLlm.ResponseFormat, effectiveLlm.ResponseSchema),

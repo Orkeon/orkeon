@@ -35,8 +35,6 @@ public static class TestLlmConstants
     // --- Default configuration ---
     public const double DefaultTemperature = 0.7;
     public const double DefaultTopP = 0.95;
-    public const int DefaultMaxTokens = 4096;
-    public const int HighMaxTokens = 8192;
     public const int DefaultTimeoutSeconds = 30;
 
     // --- Test API keys ---

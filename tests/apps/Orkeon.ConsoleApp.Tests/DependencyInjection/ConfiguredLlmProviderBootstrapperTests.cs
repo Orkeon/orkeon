@@ -63,6 +63,16 @@ public sealed class ConfiguredLlmProviderBootstrapperTests
     }
 
     [Fact]
+    public void An_absent_MaxTokens_binds_to_null_so_the_provider_resolves_the_models_maximum()
+    {
+        // LLM-10: the binder must not invent a cap — null is what lets the provider send the
+        // model's documented maximum instead of the old blanket 4096.
+        var config = BindAndCapture(("Llm:Model", "kimi-k3"));
+
+        Assert.Null(config.MaxTokens);
+    }
+
+    [Fact]
     public void The_other_documented_keys_still_bind()
     {
         var config = BindAndCapture(

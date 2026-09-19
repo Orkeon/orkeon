@@ -501,12 +501,15 @@ internal sealed class ChatClientAgentLoop
     }
 
     /// <summary>
-    /// The output cap the request carried, for the empty-answer warning. A null means the
-    /// adapter fell back to the settings' <c>Llm:MaxTokens</c> (4096 unless configured) — the
-    /// loop cannot see that value, so it says where it comes from rather than guessing it.
+    /// The output cap the request carried, for the empty-answer warning. A null means nothing
+    /// pinned one at this level: the provider then sends the settings' <c>Llm:MaxTokens</c>
+    /// when set, else the model's documented maximum, else 4096 for a model the catalogue
+    /// does not know (LLM-10) — the loop cannot see which, so it says where the value comes
+    /// from rather than guessing it.
     /// </summary>
     private static string DescribeMaxTokens(ChatOptions options) =>
-        options.MaxOutputTokens?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "settings default";
+        options.MaxOutputTokens?.ToString(System.Globalization.CultureInfo.InvariantCulture)
+        ?? "the settings value or the model's documented maximum";
 
     /// <summary>
     /// Handles the post-loop path when all iterations were consumed by tool calls with no final text.
