@@ -12,7 +12,6 @@
     "Model": "google/gemini-3.7-flash",
     "ApiKey": "${OPENROUTER_API_KEY}",
     "Temperature": 0.2,
-    "MaxTokens": 24576,
     "TimeoutSeconds": 600
   },
   "RateLimiting": {

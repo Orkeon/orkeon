@@ -644,6 +644,78 @@ public sealed class AssistantElectionTests
     }
 }
 
+/// <summary>
+/// LLM-10: the hint under the response-budget field says what an empty field means for THIS
+/// model — the documented maximum, no cap at all, a local runtime, or the 4096 fallback with
+/// the invitation to pin — and follows the model and the provider as they are edited.
+/// </summary>
+public sealed class EditorMaxTokensHintTests
+{
+    private static async Task<ModelProfilesViewModel> OpenAsync(ModelProfile profile)
+    {
+        var store = new InMemoryModelProfileStore();
+        await store.SaveAsync(new ModelProfileSet { Profiles = [profile], DefaultProfile = profile.Name }, TestContext.Current.CancellationToken);
+
+        var config = new ConfigTabViewModel(new StudioServices
+        {
+            SettingsStore = new FakeAppSettingsStore(),
+            Directories = new FakeDirectoryProbe(),
+        });
+        var profiles = new ModelProfilesViewModel(store, config.Llm);
+        await profiles.InitializeAsync(TestContext.Current.CancellationToken);
+        profiles.BeginEdit(profiles.Set.Profiles[0]);
+        return profiles;
+    }
+
+    private static string Formatted(int tokens) => tokens.ToString("N0", System.Globalization.CultureInfo.CurrentCulture);
+
+    [Fact]
+    public async Task A_documented_model_names_its_maximum_and_an_unknown_one_says_4096()
+    {
+        var profiles = await OpenAsync(new ModelProfile { Name = "Kimi K3", Provider = "Kimi", BaseUrl = "https://api.moonshot.ai/v1", Model = "kimi-k3" });
+        var editor = profiles.Editor!;
+
+        Assert.Contains(Formatted(131_072), editor.MaxTokensHint, StringComparison.Ordinal);
+
+        var raised = new List<string>();
+        editor.PropertyChanged += (_, e) => raised.Add(e.PropertyName ?? "");
+        editor.Model = "kimi-k9-nobody-documented";
+
+        Assert.Contains("4096", editor.MaxTokensHint, StringComparison.Ordinal);
+        Assert.Contains(nameof(ModelProfileEditorViewModel.MaxTokensHint), raised);
+    }
+
+    [Fact]
+    public async Task A_vendor_without_a_documented_cap_and_a_local_runtime_send_none()
+    {
+        var profiles = await OpenAsync(new ModelProfile { Name = "Any", Provider = "Kimi", Model = "kimi-k3" });
+        var editor = profiles.Editor!;
+
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Mistral);
+        Assert.DoesNotContain("4096", editor.MaxTokensHint, StringComparison.Ordinal);
+        Assert.Contains("window", editor.MaxTokensHint, StringComparison.Ordinal);
+
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Ollama);
+        editor.Model = "some-local-model:7b";
+        Assert.Contains("local runtime", editor.MaxTokensHint, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task An_entry_bound_to_one_provider_does_not_leak_to_another()
+    {
+        var profiles = await OpenAsync(new ModelProfile { Name = "Any", Provider = "Kimi", Model = "kimi-k3" });
+        var editor = profiles.Editor!;
+
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Together);
+        editor.Model = "Qwen/Qwen3.5-9B";
+        Assert.Contains(Formatted(262_144), editor.MaxTokensHint, StringComparison.Ordinal);
+
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.HuggingFace);
+        editor.Model = "Qwen/Qwen3.5-9B";
+        Assert.Contains("4096", editor.MaxTokensHint, StringComparison.Ordinal);
+    }
+}
+
 /// <summary>The editor's pinned-temperature field: tolerant parse, saved on the profile.</summary>
 public sealed class EditorTemperatureTests
 {

@@ -259,8 +259,8 @@ public sealed class ProfileTemperatureTests
     }
 
     /// <summary>
-    /// STUDIO-12 C5b: the response budget rides the launch too. The engine default (4096)
-    /// is what a reasoning model spends thinking before it writes a word.
+    /// STUDIO-12 C5b: the response budget rides the launch too — a pin only; an empty field
+    /// leaves the engine to send the model's documented maximum (LLM-10).
     /// </summary>
     [Fact]
     public void The_pinned_max_tokens_ride_the_launch_and_a_non_positive_value_does_not()

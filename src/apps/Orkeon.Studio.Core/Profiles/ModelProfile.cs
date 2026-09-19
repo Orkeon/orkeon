@@ -47,10 +47,11 @@ public sealed record ModelProfile
     public int? TimeoutSeconds { get; init; }
 
     /// <summary>
-    /// Maximum response length in tokens this profile pins, or null for the engine's
-    /// default (4096). A reasoning model spends that budget thinking before it writes a
-    /// word, and an exhausted budget comes back as an empty answer — pin 16384 or more for
-    /// one (STUDIO-12 C5b).
+    /// Maximum response length in tokens this profile pins, or null to leave the cap to the
+    /// engine: the model's documented maximum, or 4096 for a model the catalogue does not
+    /// know (LLM-10). Before that, the engine sent 4096 for every model — a budget a reasoning
+    /// model spends thinking before it writes a word, which came back as an empty answer
+    /// (STUDIO-12 C5b, owner recette 2026-09-19).
     /// </summary>
     public int? MaxTokens { get; init; }
 

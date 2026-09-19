@@ -9,7 +9,6 @@
     "BaseUrl": "https://api.x.ai/v1",
     "ApiKey": "${XAI_API_KEY}",
     "Temperature": 0.2,
-    "MaxTokens": 24576,
     "TimeoutSeconds": 600
   },
   "RateLimiting": {

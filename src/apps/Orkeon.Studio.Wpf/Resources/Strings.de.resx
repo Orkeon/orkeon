@@ -2300,8 +2300,17 @@
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve">
     <value>Maximale Antwort (Tokens, optional)</value>
   </data>
-  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
-    <value>Leer: der Standardwert der Engine (4096). Reasoning-Modelle verbrauchen dieses Budget beim Nachdenken — geben Sie ihnen 16384 oder mehr.</value>
+  <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve">
+    <value>Leer: das dokumentierte Maximum des Modells, {0} Tokens — als Antwortgrenze gesendet.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnbounded" xml:space="preserve">
+    <value>Leer: der Anbieter dokumentiert keine Grenze für dieses Modell — die Anfrage trägt keine, das Modell schreibt bis zu seinem Fenster.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve">
+    <value>Leer: lokale Laufzeit — keine Grenze wird gesendet, das Modell schreibt bis zu seinem Kontext.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve">
+    <value>Leer: dieses Modell steht nicht im Katalog, die Engine sendet daher 4096. Tragen Sie das dokumentierte Maximum des Modells ein — ein Reasoning-Modell braucht 16384 oder mehr.</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
   <data name="Studio.Create.QFolders" xml:space="preserve">

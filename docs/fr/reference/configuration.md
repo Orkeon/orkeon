@@ -54,12 +54,20 @@ l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
-`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `MaxTokens` vaut
-**4096** par défaut — tout le budget de réponse, qu'un modèle raisonneur dépense à
-réfléchir avant d'écrire un mot : donnez à un tel modèle 16384 ou plus, sinon ses
-réponses reviennent vides (et une réponse finale vide fait échouer la tâche au lieu de
-passer pour une tâche accomplie). Un profil de modèle Studio l'épingle en
-`ORKEON_Llm__MaxTokens`. Sans section `Llm`, le
+`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `MaxTokens` est un
+**épinglage** : absent, la requête porte le **maximum de sortie documenté** du modèle,
+lu dans le catalogue `LlmModelOutputLimits` (128K sur `gpt-5.6-sol` et la génération Claude 5,
+384K sur `deepseek-flash`, 131 072 sur les familles GLM-5 et Qwen 3.7/3.8, 65 536 sur Gemini 3.x
+Flash — voir la [table des plafonds](llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle-llm-10)),
+aucun plafond quand le fournisseur n'en documente pas (Mistral, un Ollama local), et **4096
+seulement pour un modèle inconnu du catalogue** — la valeur que le moteur envoyait pour tous
+les modèles, qu'un modèle raisonneur dépense à réfléchir avant d'écrire un mot et qui revient
+vide (une réponse finale vide fait échouer la tâche au lieu de passer pour une tâche
+accomplie). Épinglez-le quand le modèle n'est pas au catalogue ou pour un plafond plus serré ;
+un profil de modèle Studio l'épingle en `ORKEON_Llm__MaxTokens`, et l'éditeur de profil dit ce
+qu'un champ vide signifie pour le modèle choisi. Un plafond du catalogue que le point d'accès
+refuse est rejoué une fois sans le champ, avec un avertissement qui nomme le modèle. Sans
+section `Llm`, le
 runtime dégrade vers le provider écho et avertit une fois. Voir
 [Providers LLM](../architecture/llm-providers.md) ; des gabarits vivent dans
 `examples/appsettings/*.json.example`.

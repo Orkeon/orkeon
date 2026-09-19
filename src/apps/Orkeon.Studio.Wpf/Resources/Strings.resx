@@ -1078,7 +1078,10 @@
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.</value></data>
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Not imported — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Maximum response (tokens, optional)</value></data>
-  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Empty: the engine default (4096). Reasoning models spend that budget thinking — give them 16384 or more.</value></data>
+  <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve"><value>Empty: the model's documented maximum, {0} tokens — sent as the response cap.</value></data>
+  <data name="Studio.Settings.MaxTokensHintUnbounded" xml:space="preserve"><value>Empty: the vendor documents no cap for this model — the request carries none and the model writes up to its window.</value></data>
+  <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve"><value>Empty: a local runtime — no cap is sent, the model writes up to its context.</value></data>
+  <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve"><value>Empty: this model is not in the catalogue, so the engine sends 4096. Type the model's documented maximum — a reasoning model needs 16384 or more.</value></data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
   <data name="Studio.Create.QFolders" xml:space="preserve">
     <value>Where are your folders?</value>

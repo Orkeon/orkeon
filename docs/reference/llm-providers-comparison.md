@@ -152,6 +152,45 @@ name; otherwise a newer model is a **candidate** until a campaign has archived a
 `ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, Sonnet 5
 at 2 / 10, Fable 5.1 / Fable 5 and Haiku 4.5.
 
+## Output caps — the documented maximum per model (LLM-10)
+
+A request carries an output cap (`max_tokens`, `max_completion_tokens` at OpenAI, `num_predict`
+at Ollama). The engine used to send **4096 for every model**; a reasoning model spends that
+budget thinking and answers empty, the tool-free retry that follows narrates the deliverable
+instead of writing it, and the run goes green with no file (owner recette 2026-09-19,
+`kimi-k3`). Since LLM-10 the cap left unpinned is **the model's documented maximum**, from the
+`LlmModelOutputLimits` catalogue in `Orkeon.Constants.Llm`; a pinned value (`Llm:MaxTokens`, a
+Studio profile, a crew's `max_tokens`) always wins; a model the catalogue does not know keeps
+the 4096 fallback. Only documented figures go in, each read on 2026-09-19:
+
+| Provider | Model | Cap sent | Source | Note |
+|---|---|---|---|---|
+| OpenAI (and Azure deployments of the same ids) | `gpt-5.6-sol`, `gpt-6-astra` | 128 000 | developers.openai.com/api/docs/models | reasoning counts inside the cap |
+| Anthropic | `claude-sonnet-5`, `claude-opus-5`, `claude-fable-5-1` (dated variants follow the family) | 128 000 | platform.claude.com/docs/en/about-claude/models/overview | thinking counts inside `max_tokens`; the field is required, an unknown Claude gets 4096 |
+| Gemini | `gemini-3.7-flash`, `gemini-3.8-flash` (also under `google/…` on OpenRouter and bare on Mammouth) | 65 536 | ai.google.dev/gemini-api/docs/models | includes thought tokens; 65 537 is a 400 |
+| DeepSeek | `deepseek-flash` (and the retired `deepseek-v4-flash*` names it routes) | 393 216 | api-docs.deepseek.com/api/create-chat-completion | "1 to 384K"; 384 000 on Mammouth |
+| Kimi | `kimi-k3` | 131 072 | platform.kimi.ai/docs/guide/kimi-k3-quickstart | the vendor's own `max_completion_tokens` default; real bound 1M − prompt |
+| Kimi | `kimi-k2.6` | 131 072 | platform.kimi.ai/docs/guide/troubleshooting | **a pin, not a documented cap**: the bound is 256K − prompt; a rejection drops the field on the retry |
+| Qwen | `qwen3.7-plus`, `qwen3.8-flash`, `qwen3.8-max` | 131 072 | alibabacloud.com/help/en/model-studio | the chain of thought has its own `thinking_budget`; 65 500 on Mammouth |
+| Z.AI | `glm-5.2`, `glm-5.3`, `glm-5.3-flash` | 131 072 | docs.z.ai/guides/overview/concept-param | schema maximum; default 65 536 |
+| Z.AI | `glm-4.6v-flash` | 32 768 | docs.z.ai/guides/vlm/glm-4.6v | — |
+| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | "128k (including CoT)"; **M3 is absent** — the vendor publishes no output figure (512k appears only as a benchmark setting; 512 000 on Mammouth) |
+| xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | no per-model cap; the vendor's own default when unset, reasoning excluded |
+| Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **none** | docs.mistral.ai/api/endpoint/chat | no output cap, only "prompt + max_tokens ≤ context": the field is left out and the model writes to its window |
+| Together | `meta-llama/Llama-3.3-70B-Instruct-Turbo` 131 072 · `zai-org/GLM-5.3-Flash` 1 048 575 · `Qwen/Qwen3.5-9B` 262 144 · `deepseek-ai/DeepSeek-V4.1-Flash` 1 000 000 | the window | docs.together.ai/docs/serverless-models | the provider sends `context_length_exceeded_behavior: truncate`, which clamps the cap to window − prompt; these entries hold on Together only |
+| Ollama | any | **none** (`num_predict` left out) | docs.ollama.com/modelfile | `-1, infinite generation` is the runtime's default: a local model writes to its context |
+| HuggingFace, Docker Model Runner, anything else | — | 4096 (fallback) | — | the router's bound is the routed provider's context, which differs per route; pin `Llm:MaxTokens` |
+
+Two things the catalogue is honest about. Where the vendor bounds the cap by `window − prompt`
+(Kimi, Together without the clamp, Mistral), a fixed value near the window fails on any real
+prompt — so those rows are either a pin, a clamp, or nothing. And a cap the endpoint refuses
+(Qwen "Range of max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini
+`maxOutputTokens`, DeepSeek's 422) is **retried once without the field** when it came from the
+catalogue, with a warning naming the model — a pinned value is the user's, and its rejection
+surfaces unchanged. The Studio profile editor reads the same catalogue: the hint under the
+« Maximum response » field says what an empty field means for the chosen model, and invites a
+pin when the model is unknown.
+
 ## Per-model mandatory parameter values
 
 Some models refuse a request unless a parameter carries one specific value. This is a

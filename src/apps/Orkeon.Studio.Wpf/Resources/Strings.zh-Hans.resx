@@ -2300,8 +2300,17 @@
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve">
     <value>最大回复（令牌，可选）</value>
   </data>
-  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
-    <value>留空：引擎默认值（4096）。推理模型会把这一预算用于思考 — 请给它们 16384 或更多。</value>
+  <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve">
+    <value>留空：模型的文档最大值 {0} 个令牌——作为回复上限发送。</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnbounded" xml:space="preserve">
+    <value>留空：供应商未为此模型记录任何上限——请求不携带上限，模型可写满其窗口。</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve">
+    <value>留空：本地运行时——不发送上限，模型可写满其上下文。</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve">
+    <value>留空：此模型不在目录中，引擎将发送 4096。请填写模型文档中的最大值——推理模型需要 16384 或更多。</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
   <data name="Studio.Create.QFolders" xml:space="preserve">

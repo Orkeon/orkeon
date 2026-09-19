@@ -1078,7 +1078,10 @@
   <data name="Studio.Settings.ProfileFileUnreadable" xml:space="preserve"><value>Le fichier des profils de modèle n'a pas pu être lu — {0}. Corrigez-le ou supprimez-le ; d'ici là, la liste démarre vide et la prochaine modification l'écrasera.</value></data>
   <data name="Studio.Import.Refused" xml:space="preserve"><value>Non importé — {0}</value></data>
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve"><value>Réponse maximale (jetons, optionnel)</value></data>
-  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve"><value>Vide : la valeur par défaut du moteur (4096). Les modèles raisonneurs dépensent ce budget à réfléchir — donnez-leur 16384 ou plus.</value></data>
+  <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve"><value>Vide : le maximum documenté du modèle, {0} jetons — envoyé comme plafond de réponse.</value></data>
+  <data name="Studio.Settings.MaxTokensHintUnbounded" xml:space="preserve"><value>Vide : le fournisseur ne documente aucun plafond pour ce modèle — la requête n'en porte pas, le modèle écrit jusqu'à sa fenêtre.</value></data>
+  <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve"><value>Vide : runtime local — aucun plafond envoyé, le modèle écrit jusqu'à son contexte.</value></data>
+  <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve"><value>Vide : ce modèle n'est pas au catalogue, le moteur envoie donc 4096. Indiquez le maximum documenté du modèle — un modèle raisonneur en veut 16384 ou plus.</value></data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
   <data name="Studio.Create.QFolders" xml:space="preserve">
     <value>Où sont vos dossiers ?</value>

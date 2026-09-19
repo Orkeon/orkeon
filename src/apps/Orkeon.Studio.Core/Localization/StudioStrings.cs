@@ -1266,6 +1266,20 @@ public static class StudioStringKeys
     /// <summary>"Not imported — {0}"</summary>
     public const string ImportRefused = "Studio.Import.Refused";
 
+    // LLM-10 — what an empty response budget means for the profile's model ----------------
+
+    /// <summary>"Empty: the model's documented maximum, {0} tokens — sent as the response cap."</summary>
+    public const string ProfileMaxTokensHintKnown = "Studio.Settings.MaxTokensHintKnown";
+
+    /// <summary>"Empty: the vendor documents no cap for this model — …"</summary>
+    public const string ProfileMaxTokensHintUnbounded = "Studio.Settings.MaxTokensHintUnbounded";
+
+    /// <summary>"Empty: a local runtime — no cap is sent, …"</summary>
+    public const string ProfileMaxTokensHintLocal = "Studio.Settings.MaxTokensHintLocal";
+
+    /// <summary>"Empty: this model is not in the catalogue, so the engine sends 4096. …"</summary>
+    public const string ProfileMaxTokensHintUnknown = "Studio.Settings.MaxTokensHintUnknown";
+
     // STUDIO-14 wizard — where a team's folders live: the step-1 policy chips, the two
     // canonical rows, the in-team label of a row, the step-2 buttons, the step-3 note and
     // the header's « Open the folder » (D-06, D-08, D-15).
@@ -1809,6 +1823,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TargetKindSingleFileCrewDirectory] = "Team folder holding one YAML crew file",
         [StudioStringKeys.ProfileFileUnreadable] = "The model profiles file could not be read — {0}. Fix or delete it; until then the list starts empty and the next change overwrites it.",
         [StudioStringKeys.ImportRefused] = "Not imported — {0}",
+        // LLM-10
+        [StudioStringKeys.ProfileMaxTokensHintKnown] = "Empty: the model's documented maximum, {0} tokens — sent as the response cap.",
+        [StudioStringKeys.ProfileMaxTokensHintUnbounded] = "Empty: the vendor documents no cap for this model — the request carries none and the model writes up to its window.",
+        [StudioStringKeys.ProfileMaxTokensHintLocal] = "Empty: a local runtime — no cap is sent, the model writes up to its context.",
+        [StudioStringKeys.ProfileMaxTokensHintUnknown] = "Empty: this model is not in the catalogue, so the engine sends 4096. Type the model's documented maximum — a reasoning model needs 16384 or more.",
 
         // STUDIO-14 wizard: where a team's folders live
         [StudioStringKeys.WizardQFolders] = "Where are your folders?",

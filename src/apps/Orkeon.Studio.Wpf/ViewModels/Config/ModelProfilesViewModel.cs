@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Presets;
@@ -184,6 +185,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowLocalNote));
             OnPropertyChanged(nameof(ShowNoneNote));
             OnPropertyChanged(nameof(ShowTestRow));
+            OnPropertyChanged(nameof(MaxTokensHint));   // an entry can hold on one provider only (LLM-10)
             OnPropertyChanged(nameof(CanSave));
             SaveCommand.RaiseCanExecuteChanged();
         }
@@ -211,8 +213,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         get => _model;
         set
         {
-            if (SetProperty(ref _model, value))
-                SaveCommand.RaiseCanExecuteChanged();
+            if (!SetProperty(ref _model, value))
+                return;
+
+            OnPropertyChanged(nameof(MaxTokensHint));   // the hint follows the model, not the provider
+            SaveCommand.RaiseCanExecuteChanged();
         }
     }
 
@@ -383,9 +388,10 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             : null;
 
     /// <summary>
-    /// The pinned maximum response length in tokens, as typed — empty for the engine's
-    /// default (4096). A reasoning model spends that budget thinking and answers with
-    /// nothing once it is gone: 16384 or more is the working value for one (STUDIO-12 C5b).
+    /// The pinned maximum response length in tokens, as typed — empty leaves the cap to the
+    /// engine, which sends the model's documented maximum (LLM-10); <see cref="MaxTokensHint"/>
+    /// says what that is for this model. Before LLM-10 the engine sent 4096 for every model, a
+    /// budget a reasoning model spends thinking before it writes a word (STUDIO-12 C5b).
     /// </summary>
     public string MaxTokensText
     {
@@ -394,6 +400,33 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         {
             if (SetProperty(ref _maxTokensText, value ?? ""))
                 SaveCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// What an empty response-budget field means for this profile (LLM-10): the model's
+    /// documented maximum when the catalogue knows it, no cap at all for a vendor that
+    /// documents none or for a local runtime, and the 4096 fallback — with the invitation to
+    /// pin — for a model the catalogue does not know. Provider-aware: an entry can hold on one
+    /// endpoint only (Together clamps to its window; HuggingFace's router does not).
+    /// </summary>
+    public string MaxTokensHint
+    {
+        get
+        {
+            var providerKey = _selectedProvider?.Name;
+            if (string.Equals(providerKey, LlmProviderKeys.Ollama, StringComparison.OrdinalIgnoreCase))
+                return _strings[StudioStringKeys.ProfileMaxTokensHintLocal];
+
+            return LlmModelOutputLimits.MaxOutputTokens(_model, providerKey) switch
+            {
+                null => _strings[StudioStringKeys.ProfileMaxTokensHintUnknown],
+                LlmModelOutputLimits.Unbounded => _strings[StudioStringKeys.ProfileMaxTokensHintUnbounded],
+                { } documented => string.Format(
+                    CultureInfo.CurrentCulture,
+                    _strings[StudioStringKeys.ProfileMaxTokensHintKnown],
+                    documented.ToString("N0", CultureInfo.CurrentCulture)),
+            };
         }
     }
 

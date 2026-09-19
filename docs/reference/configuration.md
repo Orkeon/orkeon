@@ -49,11 +49,19 @@ order: base-URL host patterns (e.g. `deepseek.com` → DeepSeek, `api.x.ai` → 
 `/engines/` → Docker Model Runner/OpenAI-compatible), then model-name patterns, then
 API-key shape; default `openai`. Keys: `Model`, `BaseUrl`, `ApiKey` (prefer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, and
-`Thinking:{Enabled,Effort}` for thinking-capable providers. `MaxTokens` defaults to
-**4096** — the whole response budget, which a reasoning model spends thinking before it
-writes a word: give such a model 16384 or more, or its answers come back empty (and an
-empty final answer fails the task rather than passing for a completed one). A Studio model
-profile pins it as `ORKEON_Llm__MaxTokens`. Without an `Llm` section the
+`Thinking:{Enabled,Effort}` for thinking-capable providers. `MaxTokens` is a **pin**: left
+out, the request carries the model's **documented maximum output** from the
+`LlmModelOutputLimits` catalogue (128K on `gpt-5.6-sol` and the Claude 5 generation, 384K on
+`deepseek-flash`, 131 072 on the GLM-5 and Qwen 3.7/3.8 families, 65 536 on Gemini 3.x Flash —
+see the [output caps table](llm-providers-comparison.md#output-caps--the-documented-maximum-per-model-llm-10)),
+no cap at all where the vendor documents none (Mistral, a local Ollama), and **4096 only for a
+model the catalogue does not know** — the value the engine used to send for every model, which
+a reasoning model spends thinking before it writes a word and answers empty (an empty final
+answer fails the task rather than passing for a completed one). Pin it when the model is not in
+the catalogue or when you want a tighter cap; a Studio model profile pins it as
+`ORKEON_Llm__MaxTokens`, and the profile editor says what an empty field means for the chosen
+model. A catalogue cap the endpoint refuses is retried once without the field, with a warning
+naming the model. Without an `Llm` section the
 runtime degrades to the echo provider and warns once. See
 [LLM providers](../architecture/llm-providers.md); templates live in
 `examples/appsettings/*.json.example`.

@@ -9,7 +9,6 @@
     "BaseUrl": "https://generativelanguage.googleapis.com/v1beta/openai",
     "ApiKey": "${GEMINI_API_KEY}",
     "Temperature": 0.2,
-    "MaxTokens": 24576,
     "TimeoutSeconds": 600
   },
   "RateLimiting": {

@@ -2300,8 +2300,17 @@
   <data name="Studio.Settings.ProfileLblMaxTokens" xml:space="preserve">
     <value>Respuesta máxima (tokens, opcional)</value>
   </data>
-  <data name="Studio.Settings.MaxTokensHint" xml:space="preserve">
-    <value>Vacío: el valor predeterminado del motor (4096). Los modelos de razonamiento gastan ese presupuesto pensando — deles 16384 o más.</value>
+  <data name="Studio.Settings.MaxTokensHintKnown" xml:space="preserve">
+    <value>Vacío: el máximo documentado del modelo, {0} tokens — enviado como tope de respuesta.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnbounded" xml:space="preserve">
+    <value>Vacío: el proveedor no documenta ningún tope para este modelo — la solicitud no lleva ninguno y el modelo escribe hasta su ventana.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve">
+    <value>Vacío: runtime local — no se envía ningún tope, el modelo escribe hasta su contexto.</value>
+  </data>
+  <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve">
+    <value>Vacío: este modelo no está en el catálogo, así que el motor envía 4096. Indique el máximo documentado del modelo — un modelo razonador necesita 16384 o más.</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
   <data name="Studio.Create.QFolders" xml:space="preserve">

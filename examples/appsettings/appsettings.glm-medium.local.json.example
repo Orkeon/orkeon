@@ -9,7 +9,6 @@
     "BaseUrl": "https://api.z.ai/api/paas/v4",
     "ApiKey": "${ZAI_API_KEY}",
     "Temperature": 0.2,
-    "MaxTokens": 131072,
     "TimeoutSeconds": 600,
     "Thinking": {
       "Effort": "medium"

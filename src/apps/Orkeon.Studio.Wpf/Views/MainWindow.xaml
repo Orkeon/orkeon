@@ -557,8 +557,9 @@
             </Grid>
 
             <!-- pinned temperature, response budget & timeout: empty = the engine decides.
-                 Some models mandate a temperature (Kimi K3: 1); reasoning models spend the
-                 default 4096-token budget thinking and need more than the default 30 s to
+                 Some models mandate a temperature (Kimi K3: 1); an empty response budget is
+                 the model's documented maximum (LLM-10) and the hint under the field says what
+                 that is for this model; reasoning models need more than the default 30 s to
                  answer (STUDIO-12 C5b). -->
             <Grid Margin="0,14,0,0"
                   Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
@@ -578,7 +579,7 @@
                 <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
                          Text="{Binding MaxTokensText, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.MaxTokensHint], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding MaxTokensHint}"/>
               </StackPanel>
               <StackPanel Grid.Column="4">
                 <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblTimeout], Source={x:Static services:I18n.Instance}}"/>

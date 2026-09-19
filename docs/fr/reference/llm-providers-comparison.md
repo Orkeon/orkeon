@@ -163,6 +163,47 @@ sinon un modèle plus récent est un **candidat** tant qu'une campagne n'a pas a
 `ModelPricingRegistry` suit les mêmes pages : la famille GPT-5.6 et `gpt-6-astra`, Sonnet 5 à
 2 / 10, Fable 5.1 / Fable 5 et Haiku 4.5.
 
+## Plafonds de sortie — le maximum documenté par modèle (LLM-10)
+
+Une requête porte un plafond de sortie (`max_tokens`, `max_completion_tokens` chez OpenAI,
+`num_predict` chez Ollama). Le moteur envoyait **4096 pour tous les modèles** ; un modèle
+raisonneur dépense ce budget à réfléchir et répond vide, la relance sans outils qui suit raconte
+le livrable au lieu de l'écrire, et le run passe vert sans fichier (recette propriétaire du
+2026-09-19, `kimi-k3`). Depuis LLM-10, le plafond non épinglé est **le maximum documenté du
+modèle**, lu dans le catalogue `LlmModelOutputLimits` d'`Orkeon.Constants.Llm` ; une valeur
+épinglée (`Llm:MaxTokens`, un profil Studio, le `max_tokens` d'une crew) gagne toujours ; un
+modèle inconnu du catalogue garde le repli 4096. N'y entrent que des chiffres documentés, chacun
+lu le 2026-09-19 :
+
+| Fournisseur | Modèle | Plafond envoyé | Source | Note |
+|---|---|---|---|---|
+| OpenAI (et les déploiements Azure des mêmes ids) | `gpt-5.6-sol`, `gpt-6-astra` | 128 000 | developers.openai.com/api/docs/models | le raisonnement compte dans le plafond |
+| Anthropic | `claude-sonnet-5`, `claude-opus-5`, `claude-fable-5-1` (les variantes datées suivent la famille) | 128 000 | platform.claude.com/docs/en/about-claude/models/overview | la réflexion compte dans `max_tokens` ; le champ est obligatoire, un Claude inconnu reçoit 4096 |
+| Gemini | `gemini-3.7-flash`, `gemini-3.8-flash` (aussi sous `google/…` chez OpenRouter et nu chez Mammouth) | 65 536 | ai.google.dev/gemini-api/docs/models | jetons de réflexion inclus ; 65 537 fait un 400 |
+| DeepSeek | `deepseek-flash` (et les noms retirés `deepseek-v4-flash*` qu'il route) | 393 216 | api-docs.deepseek.com/api/create-chat-completion | « 1 à 384K » ; 384 000 chez Mammouth |
+| Kimi | `kimi-k3` | 131 072 | platform.kimi.ai/docs/guide/kimi-k3-quickstart | le défaut `max_completion_tokens` du fournisseur ; borne réelle 1M − prompt |
+| Kimi | `kimi-k2.6` | 131 072 | platform.kimi.ai/docs/guide/troubleshooting | **un épinglage, pas un plafond documenté** : la borne est 256K − prompt ; un rejet retire le champ au rejeu |
+| Qwen | `qwen3.7-plus`, `qwen3.8-flash`, `qwen3.8-max` | 131 072 | alibabacloud.com/help/en/model-studio | la chaîne de pensée a son propre `thinking_budget` ; 65 500 chez Mammouth |
+| Z.AI | `glm-5.2`, `glm-5.3`, `glm-5.3-flash` | 131 072 | docs.z.ai/guides/overview/concept-param | maximum du schéma ; défaut 65 536 |
+| Z.AI | `glm-4.6v-flash` | 32 768 | docs.z.ai/guides/vlm/glm-4.6v | — |
+| MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | « 128k (CoT compris) » ; **M3 est absent** — le fournisseur ne publie aucun chiffre de sortie (512k n'apparaît que comme réglage de benchmark ; 512 000 chez Mammouth) |
+| xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | pas de plafond par modèle ; le défaut du fournisseur quand le champ manque, raisonnement exclu |
+| Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **aucun** | docs.mistral.ai/api/endpoint/chat | pas de plafond de sortie, seulement « prompt + max_tokens ≤ contexte » : le champ est omis et le modèle écrit jusqu'à sa fenêtre |
+| Together | `meta-llama/Llama-3.3-70B-Instruct-Turbo` 131 072 · `zai-org/GLM-5.3-Flash` 1 048 575 · `Qwen/Qwen3.5-9B` 262 144 · `deepseek-ai/DeepSeek-V4.1-Flash` 1 000 000 | la fenêtre | docs.together.ai/docs/serverless-models | le provider envoie `context_length_exceeded_behavior: truncate`, qui ramène le plafond à fenêtre − prompt ; ces entrées ne valent que chez Together |
+| Ollama | tous | **aucun** (`num_predict` omis) | docs.ollama.com/modelfile | `-1, génération infinie` est le défaut du runtime : un modèle local écrit jusqu'à son contexte |
+| HuggingFace, Docker Model Runner, tout le reste | — | 4096 (repli) | — | la borne du routeur est le contexte du fournisseur routé, qui change selon la route ; épinglez `Llm:MaxTokens` |
+
+Deux choses que le catalogue dit franchement. Là où le fournisseur borne le plafond par
+« fenêtre − prompt » (Kimi, Together sans la troncature, Mistral), une valeur fixe proche de la
+fenêtre échoue sur tout vrai prompt — ces lignes sont donc un épinglage, une troncature, ou
+rien. Et un plafond que le point d'accès refuse (Qwen « Range of max_tokens », Kimi « prompt
+tokens + max_tokens exceeds », Gemini `maxOutputTokens`, le 422 de DeepSeek) est **rejoué une
+fois sans le champ** quand il vient du catalogue, avec un avertissement qui nomme le modèle —
+une valeur épinglée appartient à l'utilisateur, et son rejet remonte tel quel. L'éditeur de
+profil de Studio lit le même catalogue : l'indication sous le champ « Réponse maximale » dit ce
+qu'un champ vide signifie pour le modèle choisi, et invite à épingler quand le modèle est
+inconnu.
+
 ## Valeurs de paramètres obligatoires, par modèle
 
 Certains modèles refusent une requête tant qu'un paramètre ne porte pas une valeur précise.

@@ -7,6 +7,40 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- LLM-10 -->
+### Changed — the output cap defaults to the model's documented maximum, not 4096 (LLM-10)
+
+- **`LlmConfig.MaxTokens` is a pin, nullable, null by default.** Nothing pinned means the
+  request carries the model's **documented maximum output** from the new
+  `Orkeon.Constants.Llm.LlmModelOutputLimits` catalogue (each entry with its vendor page and
+  the date it was read, 2026-09-19): 128 000 on `gpt-5.6-sol` / `gpt-6-astra` and the Claude 5
+  generation, 393 216 on `deepseek-flash`, 131 072 on `kimi-k3` (the vendor's own default),
+  the GLM-5 and Qwen 3.7/3.8 families and `MiniMax-M2`, 65 536 on Gemini 3.x Flash, 128 000
+  on `grok-4.6`; **no cap at all** where the vendor documents none (Mistral: prompt plus
+  `max_tokens` may not exceed the window, so the field is left out; Ollama: `num_predict` is
+  left out, the runtime generates to its context); the window itself on Together, whose
+  provider now sends `context_length_exceeded_behavior: truncate`; and **4096 only for a model
+  the catalogue does not know** — the value the engine used to send for every model, which a
+  reasoning model spent thinking and answered empty (owner recette 2026-09-19, `kimi-k3`: two
+  green runs, one deliverable). A pinned value — `Llm:MaxTokens`, `ORKEON_Llm__MaxTokens`, a
+  Studio profile, a crew's `max_tokens` — always wins, including an explicit 4096, which the
+  old `!= 4096` sentinels could not tell from "unset". Resolution lives in one place,
+  `LlmConfig.ResolveMaxTokens(provider, defaultModel)`. Unverified figures stay out: MiniMax-M3
+  (no vendor figure), HuggingFace's router (per routed provider).
+- **A catalogue cap the endpoint refuses is retried once without the field**, with a warning
+  naming the model (`OpenAICompatibleProviderBase.TryDropCatalogueOutputCap`, matched on the
+  field's name in the vendor's own wording); a pinned value's rejection surfaces unchanged.
+  `TryAdaptRejectedPayload` now receives the effective config; Kimi's temperature self-heal
+  defers to it.
+- **Studio's profile editor says what an empty « Maximum response » means for the chosen
+  model** — the documented maximum, no cap, a local runtime, or « not in the catalogue: 4096,
+  pin it » — and follows the model and provider as they are edited (four keys in the five
+  resx replace the static hint). `orkeon init` writes no `MaxTokens`; the example settings
+  templates drop theirs where the model is in the catalogue.
+- Breaking in the public API: `LlmConfig.MaxTokens` is `int?`, `CreateValidated(maxTokens)`
+  takes `int?` (null = unpinned), `OllamaRequestOptions.Builder.AddNumPredict(int?)`, and the
+  YAML exporter writes `maxTokens` only when pinned.
+
 <!-- STUDIO-17 -->
 ### Added — Studio: the Run screen shows the task in progress, pulses while it runs, stamps its journal and starts each launch clean (STUDIO-17)
 
