@@ -41,6 +41,10 @@
   Name of the environment variable holding the API key.
 .PARAMETER MaxModels
   Cap on the number of models a wildcard may expand to. Default 5.
+.PARAMETER Candidates
+  After each provider's default, also run the successors the catalogue records as
+  candidateModels (review of 2026-09-19), same modes — the campaign that can promote one of
+  them to default. Automatic path only: an explicit -Model is already a choice.
 .PARAMETER DryRun
   Resolve and print the plan; place no call and write nothing.
 .PARAMETER NoRecap
@@ -66,6 +70,7 @@
 param(
     [string]$Provider = '',
     [switch]$All,
+    [switch]$Candidates,
     [string]$Model = '',
     [string]$Modes = '',
     [string]$Config = '',
@@ -195,6 +200,25 @@ function Get-CatalogField {
 }
 
 function Get-CatalogKeyEnv { param([string]$ProviderKey) Get-CatalogField $ProviderKey 'apiKeyEnv' }
+
+# The successors a catalogue review recorded for a provider's default.
+function Get-CatalogCandidates {
+    param([string]$ProviderKey)
+
+    $path = Join-Path $KitDir 'lib/catalog.json'
+    if (-not (Test-Path -LiteralPath $path)) { return @() }
+    if (-not $script:Catalog) {
+        $script:Catalog = Get-Content -Raw -LiteralPath $path | ConvertFrom-Json
+    }
+
+    $entry = $script:Catalog.providers.PSObject.Properties[$ProviderKey]
+    if (-not $entry) { return @() }
+    if ($entry.Value.aliasOf) {
+        $entry = $script:Catalog.providers.PSObject.Properties[$entry.Value.aliasOf]
+        if (-not $entry) { return @() }
+    }
+    return @($entry.Value.candidateModels | ForEach-Object { "$($_.id)" } | Where-Object { $_ })
+}
 
 # A parameter value one MODEL demands, from the per-model registry. Per model and not per
 # provider on purpose: gpt-5.6-sol demands temperature 1 and reasoning_effort none while
@@ -463,6 +487,18 @@ function Invoke-Provider {
             if ($vision -and ($models -notcontains $vision)) {
                 Write-Log "  ↳ $ProviderKey declares a vision model — running M9 on $vision as well"
                 Invoke-Campaign $ProviderKey $vision 'M9' $keyEnv $base $version $workspace
+            }
+        }
+
+        # The catalogue's candidates — the successors the review of 2026-09-19 recorded for
+        # the default — run after it, all modes, only when asked: a campaign is what promotes
+        # a candidate to default, and it must be one the caller chose to pay for. Automatic
+        # path only, like the vision companion.
+        if ($Candidates -and (-not $Model)) {
+            foreach ($candidate in (Get-CatalogCandidates $ProviderKey)) {
+                if ($models -contains $candidate) { continue }
+                Write-Log "  ↳ $ProviderKey : candidate $candidate (-Candidates)"
+                Invoke-Campaign $ProviderKey $candidate $modeList $keyEnv $base $version $workspace
             }
         }
     }

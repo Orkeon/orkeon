@@ -24,6 +24,7 @@ CATALOG="$KIT_DIR/lib/catalog.json"
 
 PROVIDER=""
 ALL=0
+CANDIDATES=0
 MODEL=""
 MODES=""
 CONFIG=""
@@ -81,6 +82,9 @@ Options:
       --workspace-id <w> workspace id for workspace-scoped keys (Anthropic identity-linked)
   -k, --api-key-env <V>  name of the environment variable holding the API key
       --max-models <n>   cap on how far a wildcard may expand (default 5)
+      --candidates       after each provider's default, also run the successors the catalogue
+                         records as candidateModels (review of 2026-09-19), same modes — the
+                         campaign that can promote one of them to default. Automatic path only
       --dry-run          resolve and print the plan; place no call, write nothing
       --no-recap         skip the index rebuild — for parallel runs; rebuild once at the end
                          with lib/recap.sh <out>
@@ -108,6 +112,7 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     -p|--provider)    PROVIDER="$2"; shift 2 ;;
     --all)            ALL=1; shift ;;
+    --candidates)     CANDIDATES=1; shift ;;
     -m|--model)       MODEL="$2"; shift 2 ;;
     --modes)          MODES="$2"; shift 2 ;;
     -c|--config)      CONFIG="$2"; shift 2 ;;
@@ -189,6 +194,14 @@ catalog_field() {
 }
 
 catalog_key_env() { catalog_field "$1" "apiKeyEnv"; }
+
+# The successors a catalogue review recorded for a provider's default, one id per line.
+catalog_candidates() {
+  local provider="$1" canonical
+  [[ -f "$CATALOG" ]] || return 0
+  canonical=$(jq -r --arg p "$provider" '.providers[$p].aliasOf // $p' "$CATALOG")
+  jq -r --arg p "$canonical" '.providers[$p].candidateModels[]?.id // empty' "$CATALOG"
+}
 
 # A parameter value one MODEL demands, from the per-model registry. Per model and not per
 # provider on purpose: gpt-5.6-sol demands temperature 1 and reasoning_effort none while
@@ -438,6 +451,20 @@ run_provider() {
       log "  ↳ $provider declares a vision model — running M9 on $vision as well"
       run_one "$provider" "$vision" "M9" "$key_env" "$base_url" "$api_version" "$workspace_id"
     fi
+  fi
+
+  # The catalogue's candidates — the successors the review of 2026-09-19 recorded for the
+  # default — run after it, all modes, only when asked: a campaign is what promotes a
+  # candidate to default, and it must be one the caller chose to pay for. Automatic path only,
+  # like the vision companion: an explicit --model is already a choice.
+  if [[ "$CANDIDATES" -eq 1 && -z "$MODEL" ]]; then
+    local candidate
+    while IFS= read -r candidate; do
+      [[ -n "$candidate" ]] || continue
+      printf '%s\n' "${models[@]}" | grep -qxF "$candidate" && continue
+      log "  ↳ $provider: candidate $candidate (--candidates)"
+      run_one "$provider" "$candidate" "$modes" "$key_env" "$base_url" "$api_version" "$workspace_id"
+    done < <(catalog_candidates "$provider")
   fi
 
   [[ -z "$key_value" ]] || unset "$key_env"

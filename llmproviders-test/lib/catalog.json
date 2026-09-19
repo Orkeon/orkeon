@@ -11,7 +11,12 @@
     "provider: gpt-4o-mini, same provider, rejects reasoning_effort outright — a provider-level",
     "pin would break its campaign. Only MEASURED values go in, dated in the notes; the",
     "human-readable twin is the 'Per-model mandatory parameter values' section of",
-    "docs/reference/llm-providers-comparison.md."
+    "docs/reference/llm-providers-comparison.md.",
+    "",
+    "candidateModels records, PER PROVIDER, the successors a dated catalogue review (2026-09-19) found on the",
+    "vendor's own API for the default — each with the reason it is a candidate and the red it is expected to",
+    "show. `run-campaign.sh --candidates` (`-Candidates`) runs them after the default, same modes, on the automatic",
+    "path only. A campaign is what promotes a candidate to default; the review alone never does."
   ],
 
   "modes": {
@@ -37,6 +42,9 @@
       "matrix": "§6.1",
       "apiKeyEnv": "OPENAI_API_KEY",
       "defaultModel": "gpt-5.6-sol",
+      "candidateModels": [
+        { "id": "gpt-6-astra", "why": "Top tier above Sol (10 / 50 $/M, 2026-09-04). Effort low\u2026max with no `none`: the modes that pair function tools with reasoning measure whether Sol's `reasoning_effort: none` workaround is unnecessary or impossible there." }
+      ],
       "requiredParams": {
         "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" }
       },
@@ -53,8 +61,12 @@
       "matrix": "§6.2",
       "apiKeyEnv": "ANTHROPIC_API_KEY",
       "defaultModel": "claude-sonnet-5",
+      "candidateModels": [
+        { "id": "claude-fable-5-1", "why": "New top tier (2026-09-01, 10 / 50 $/M). Thinking always on, forced `tool_choice` refused, temperature pinned like Sonnet 5 (requiredParams)." }
+      ],
       "requiredParams": {
-        "claude-sonnet-5": { "temperature": 1 }
+        "claude-sonnet-5": { "temperature": 1 },
+        "claude-fable-5-1": { "temperature": 1 }
       },
       "notes": [
         "Own dialect (Messages API): this is the provider carrying the most specific code.",
@@ -80,6 +92,9 @@
       "label": "Ollama",
       "matrix": "§6.5",
       "defaultModel": "llama3.2",
+      "candidateModels": [
+        { "id": "qwen3.5:4b", "why": "Same size class as llama3.2 with tools + thinking. Needs `ollama pull qwen3.5:4b` first \u2014 models are pre-provisioned, this script pulls nothing." }
+      ],
       "visionModel": "llava",
       "notes": [
         "Zero cost: this is the campaign that serves as the kit's shakedown before any spending.",
@@ -93,6 +108,10 @@
       "matrix": "§6.6",
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "candidateModels": [
+        { "id": "zai-org/GLM-5.3-Flash", "why": "Together's own replacement target (2026-09-14 removals): 1M context, tools + JSON, 0.15 / 0.50 $/M \u2014 a seventh of the default's price." },
+        { "id": "Qwen/Qwen3.5-9B", "why": "Together's replacement for gpt-oss-20b: 262K, tools + JSON, 0.17 / 0.25 $/M." }
+      ],
       "notes": [
         "The default `Llama-3.3-70B-Instruct-Turbo` is text-only: its red M9 is the D-03 proof (2026-08-30 campaign). No declarable vision companion: the 4 vision models tested (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) are all non-serverless on the measured tier — paid dedicated endpoint required, failure report archived as proof.",
         "Endpoint and default model up to date. One M1–M5 pass is enough.",
@@ -117,8 +136,12 @@
       "matrix": "§6.8",
       "apiKeyEnv": "MOONSHOT_API_KEY",
       "defaultModel": "kimi-k2.6",
+      "candidateModels": [
+        { "id": "kimi-k3", "why": "Flagship (1M, 3 / 15 $/M). Temperature pinned to 1 (requiredParams); top_p, n and both penalties fixed; no `thinking` field accepted \u2014 the M7 toggle is expected red until the dialect learns it." }
+      ],
       "requiredParams": {
-        "kimi-k2.6": { "temperature": 1 }
+        "kimi-k2.6": { "temperature": 1 },
+        "kimi-k3": { "temperature": 1 }
       },
       "notes": [
         "`kimi-k2.6` **refuses any temperature other than 1** (`invalid temperature: only 1 is allowed for this model`) — the catalog pins it for this model (requiredParams), and the report header carries the value actually used. A Kimi verdict is not reproducible in the same sense as a verdict at temperature 0.",
@@ -133,6 +156,10 @@
       "matrix": "§6.9",
       "apiKeyEnv": "DASHSCOPE_API_KEY",
       "defaultModel": "qwen3.7-plus",
+      "candidateModels": [
+        { "id": "qwen3.8-flash", "why": "The cheap tier of the 3.8 generation: 1M, image + video input, 0.16 / 0.47 $/M." },
+        { "id": "qwen3.8-max", "why": "The top tier, alias of `qwen3.8-max-0902`." }
+      ],
       "notes": [
         "Distinct international endpoint: `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` (G-12 closed).",
         "The only provider where the thinking budget is wired (`thinking_budget`): M7 is richer here than elsewhere. Validated live on 2026-08-30 (12/12, reasoning trace returned).",
@@ -160,6 +187,9 @@
       "matrix": "§6.11",
       "apiKeyEnv": "HF_TOKEN",
       "defaultModel": "meta-llama/Llama-3.1-8B-Instruct",
+      "candidateModels": [
+        { "id": "Qwen/Qwen3.5-9B", "why": "Tools on three routed providers where the default has them on one of four: the routing-dependent reds of the 2026-09-07 sweep are what this run should stop showing." }
+      ],
       "visionModel": "Qwen/Qwen3-VL-30B-A3B-Instruct",
       "notes": [
         "The router resolves the identifier to the partner (the campaign M9 answers under the name `Meta-Llama-3.1-8B-Instruct-Turbo`): the default is text-only, its red M9 is the D-03 proof, the companion `Qwen3-VL-30B-A3B-Instruct` brings the complement.",
@@ -175,6 +205,10 @@
       "matrix": "§6.12",
       "apiKeyEnv": "ZAI_API_KEY",
       "defaultModel": "glm-5.2",
+      "candidateModels": [
+        { "id": "glm-5.3", "why": "2026-08-18, same price as 5.2. Thinking cannot be disabled: an M7 toggle-off red is model-level, not a transport fact." },
+        { "id": "glm-5.3-flash", "why": "0.15 / 0.50 $/M with image + video input \u2014 would also retire the `glm-4.6v-flash` vision companion." }
+      ],
       "visionModel": "glm-4.6v-flash",
       "notes": [
         "Traceability debt of its own: the only existing proof is a dated configuration comment. This campaign must produce an **archived output** for it.",
@@ -204,6 +238,9 @@
       "matrix": "§6.16",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "defaultModel": "MiniMax-M2",
+      "candidateModels": [
+        { "id": "MiniMax-M3", "why": "1M context, image + video input, same 0.30 / 1.20 $/M as M2. Whether the `<think>` block still arrives inline on the OpenAI-compatible endpoint is the campaign's question." }
+      ],
       "notes": [
         "Fifteenth sheet, WITHOUT execution proof: integrated on 2026-08-30 from the vendor documentation, no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
         "Two regional endpoints with separate accounts: `api.minimax.io` (international, default) and `api.minimaxi.com` (mainland China) — same pattern as Kimi.",
@@ -217,6 +254,9 @@
       "matrix": "§6.13",
       "apiKeyEnv": "GEMINI_API_KEY",
       "defaultModel": "gemini-3.7-flash",
+      "candidateModels": [
+        { "id": "gemini-3.8-flash", "why": "GA 2026-09-02, same 0.75 / 3.75 $/M as 3.7 Flash until 2026-12-31; the vendor labels 3.7 previous generation. First candidate for a default bump, on the three transports at once." }
+      ],
       "notes": [
         "Arrived **after** the 2026-07-27 audit: it carries no inherited G-xx gap, and its §6.13 sheet was opened without a campaign. This one is its first real execution proof.",
         "**OpenAI-compatibility** endpoint (`generativelanguage.googleapis.com/v1beta/openai`) — neither the native Gemini API nor Vertex AI. The host carried by the report header is what confirms it.",
@@ -232,6 +272,9 @@
       "matrix": "§6.17",
       "apiKeyEnv": "OPENROUTER_API_KEY",
       "defaultModel": "google/gemini-3.7-flash",
+      "candidateModels": [
+        { "id": "google/gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 the transport question is the same." }
+      ],
       "notes": [
         "Sixteenth sheet, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson (compiled default never served) applies in full until a live M1 is archived.",
         "Marketplace: 445 models from 60 vendors on 2026-09-18, `vendor/model` identifiers are mandatory (`anthropic/claude-sonnet-5`), suffixes `:free` / `:nitro` / `:floor`, router slugs `openrouter/auto` (refused as a default: the served model drifts, price -1). The default is the fleet's Gemini default under its marketplace id — one model, three transports: a red here with a green in direct (2026-08-30) is a fact about the transport.",
@@ -250,6 +293,9 @@
       "matrix": "§6.18",
       "apiKeyEnv": "MAMMOUTH_API_KEY",
       "defaultModel": "gemini-3.7-flash",
+      "candidateModels": [
+        { "id": "gemini-3.8-flash", "why": "Follows the direct Gemini candidate \u2014 what the proxy lets through is the question." }
+      ],
       "notes": [
         "Sixteenth sheet's twin, WITHOUT execution proof: integrated on 2026-09-18 from the vendor documentation and cold calls (LLM-09), no key available. The first campaign is the pending proof — the Mistral lesson applies in full until a live M1 is archived.",
         "French multi-model subscription (12 / 24 / 72 € per month with 2 / 4 / 10 $ of API credits included, pay-as-you-go from the API settings); the API is, on three concordant clues, a LiteLLM proxy — what is undocumented is PROBABLY passed through to the upstream. Bare vendor identifiers (`gpt-5.6-sol`, `claude-sonnet-5`, `gemini-3.7-flash`): always name the provider by baseUrl or by key, never by model name.",

@@ -70,6 +70,7 @@ On Windows, `run-campaign.ps1` exposes exactly the same options.
 | `--workspace-id <w>` | Workspace of the requests, for workspace-scoped keys — Anthropic's identity-linked keys require it (also declarable per provider: `workspaceId` in the JSON) |
 | `--api-key-env <VAR>` | Variable carrying the key |
 | `--max-models <n>` | Wildcard cap (default 5; `providers.example.json` lowers it to 3) |
+| `--candidates` | After each provider's default, also runs the successors the catalog records as `candidateModels` (review of 2026-09-19), same modes — the campaign that can promote one of them to default. Automatic path only |
 | `--dry-run` | Resolves and prints the plan, calls nothing |
 | `--no-recap` | Does not rebuild the index — for parallel launches |
 | `--timeout <s>` | Per-request deadline, default **180 s** (a cold local model has to load first) |
@@ -153,24 +154,24 @@ Without `--model`, each provider gets **its own** model, not a generic one. Reso
 from the most explicit to the most general: `--model` > the `models` list of the campaign
 JSON > the catalog's `defaultModel`.
 
-| Provider | Default | Vision model |
-|---|---|---|
-| `openai` | `gpt-5.6-sol` | |
-| `anthropic` | `claude-sonnet-5` | |
-| `azure` | *(none — see below)* | |
-| `ollama` | `llama3.2` | `llava` |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless only — see catalog)* |
-| `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
-| `kimi` | `kimi-k2.6` | |
-| `qwen` | `qwen3.7-plus` | |
-| `mistral` | `mistral-medium-2604` | |
-| `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` |
-| `zai` | `glm-5.2` | `glm-4.6v-flash` |
-| `gemini` | `gemini-3.7-flash` | *(the default sees)* |
-| `grok` | `grok-4.6` | *(the default sees)* |
-| `minimax` | `MiniMax-M2` | *(no companion: the VL family is documented but absent from the platform's `/models`)* |
-| `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* |
-| `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* |
+| Provider | Default | Vision model | Candidate (`--candidates`, review of 2026-09-19) |
+|---|---|---|---|
+| `openai` | `gpt-5.6-sol` | | `gpt-6-astra` |
+| `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1` |
+| `azure` | *(none — see below)* | | |
+| `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless only — see catalog)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
+| `deepseek` | `deepseek-flash` *(renamed 2026-09-19, replay the campaign)* | *(the default sees)* | |
+| `kimi` | `kimi-k2.6` | | `kimi-k3` |
+| `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
+| `mistral` | `mistral-medium-2604` | | |
+| `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | `Qwen/Qwen3.5-9B` |
+| `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash` |
+| `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
+| `grok` | `grok-4.6` | *(the default sees)* | |
+| `minimax` | `MiniMax-M2` | *(no companion: the VL family is documented but absent from the platform's `/models`)* | `MiniMax-M3` |
+| `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* | `google/gemini-3.8-flash` |
+| `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* | `gemini-3.8-flash` |
 
 These identifiers come from the §6.x sections of the matrix, **not from the defaults compiled
 into the providers**: six of those are flagged there as withdrawn or wrong (G-01 to G-04,
