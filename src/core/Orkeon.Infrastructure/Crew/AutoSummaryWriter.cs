@@ -48,6 +48,13 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
     }
 
     /// <inheritdoc />
+    public System.Threading.Tasks.Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
+    {
+        // The summary is written at the end from the completed snapshots; a start changes nothing here.
+        return System.Threading.Tasks.Task.CompletedTask;
+    }
+
+    /// <inheritdoc />
     public System.Threading.Tasks.Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
         // Individual task snapshots are accumulated by SequentialProcessStrategy  —

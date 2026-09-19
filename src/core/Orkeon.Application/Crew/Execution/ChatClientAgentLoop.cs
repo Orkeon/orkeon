@@ -483,7 +483,7 @@ internal sealed class ChatClientAgentLoop
         int totalTokensUsed,
         CancellationToken cancellationToken)
     {
-        ExecutionLog.LogEmptyFinalMessageRetrying(_logger, loop.Agent.Role, iteration + 1);
+        ExecutionLog.LogEmptyFinalMessageRetrying(_logger, loop.Agent.Role, iteration + 1, DescribeMaxTokens(loop.Options));
 
         var retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken).ConfigureAwait(false);
 
@@ -499,6 +499,14 @@ internal sealed class ChatClientAgentLoop
             AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 2,
             LastError: FinalAnswerPolicy.EmptyFinalAnswerReason), retryText.Tokens);
     }
+
+    /// <summary>
+    /// The output cap the request carried, for the empty-answer warning. A null means the
+    /// adapter fell back to the settings' <c>Llm:MaxTokens</c> (4096 unless configured) — the
+    /// loop cannot see that value, so it says where it comes from rather than guessing it.
+    /// </summary>
+    private static string DescribeMaxTokens(ChatOptions options) =>
+        options.MaxOutputTokens?.ToString(System.Globalization.CultureInfo.InvariantCulture) ?? "settings default";
 
     /// <summary>
     /// Handles the post-loop path when all iterations were consumed by tool calls with no final text.
@@ -527,7 +535,7 @@ internal sealed class ChatClientAgentLoop
                 LastError: "Agent did not produce a final answer within the allowed iterations");
         }
 
-        ExecutionLog.LogEmptyFinalMessageRetrying(_logger, agent.Role, maxIter);
+        ExecutionLog.LogEmptyFinalMessageRetrying(_logger, agent.Role, maxIter, DescribeMaxTokens(options));
 
         var retry = await RetryWithoutToolsAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
         totalTokensUsed += retry.Tokens;

@@ -21,6 +21,9 @@ internal static class RunEventKinds
     /// <summary>Opening event: what is about to run.</summary>
     public const string RunStarted = Orkeon.Constants.Protocol.RunEventKinds.RunStarted;
 
+    /// <summary>One task of the crew started - its agent's turn begins.</summary>
+    public const string TaskStarted = Orkeon.Constants.Protocol.RunEventKinds.TaskStarted;
+
     /// <summary>One task of the crew completed - the granularity <c>ICrewExecutionHook</c> gives.</summary>
     public const string TaskCompleted = Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted;
 
@@ -123,6 +126,27 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public long? CacheMissTokens
     {
         get { lock (_gate) { return _cacheMeasured ? _cacheMissTokens : null; } }
+    }
+
+    /// <inheritdoc />
+    public async Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
+
+        // Which task and whose turn — nothing else is known yet, and the stream says only
+        // what it knows. Between this line and the matching task.completed a watcher shows
+        // the task as in progress (STUDIO-17).
+        _events.Emit(
+            RunEventKinds.TaskStarted,
+            new OrkeonEventScope { AgentId = snapshot.AgentRole },
+            new
+            {
+                taskId = snapshot.TaskId,
+                agentRole = snapshot.AgentRole,
+            });
+
+        if (_inner is not null)
+            await _inner.OnTaskStartedAsync(snapshot, ct).ConfigureAwait(false);
     }
 
     /// <inheritdoc />

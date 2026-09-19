@@ -120,6 +120,27 @@ tasks:
 
     [Theory]
     [MemberData(nameof(Modes))]
+    public async Task Every_mode_announces_a_task_before_it_reports_it_finished(string mode)
+    {
+        // STUDIO-17: the run screen shows a task as in progress between these two notifications.
+        // A mode that only reported completions left the screen unable to tell a working run
+        // from a stalled one — so every mode has to announce the start, and announce it first.
+        var (_, _, _, hook) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(hook.CompletedTasks);
+        Assert.Equal(hook.CompletedTasks.Order(), hook.StartedTasks.Order());
+
+        var timeline = hook.Timeline.ToList();
+        foreach (var taskId in hook.CompletedTasks)
+        {
+            Assert.True(
+                timeline.IndexOf($"started:{taskId}") < timeline.IndexOf($"completed:{taskId}"),
+                $"{mode}: task {taskId} was reported finished before it was announced. Timeline: {string.Join(", ", timeline)}");
+        }
+    }
+
+    [Theory]
+    [MemberData(nameof(Modes))]
     public async Task Kickoff_DrivesTheLlm(string mode)
     {
         var (_, stub, chat, _) = await RunAsync(CrewYaml(mode), TestContext.Current.CancellationToken);
@@ -214,19 +235,49 @@ tasks:
     {
         private readonly Lock _gate = new();
         private readonly List<string> _tasks = [];
+        private readonly List<string> _started = [];
+        private readonly List<string> _order = [];
 
         public IReadOnlyList<string> CompletedTasks
         {
             get { lock (_gate) { return [.. _tasks]; } }
         }
 
+        /// <summary>Task ids whose start was announced, in order.</summary>
+        public IReadOnlyList<string> StartedTasks
+        {
+            get { lock (_gate) { return [.. _started]; } }
+        }
+
+        /// <summary>Every task notification as "started:id" / "completed:id", in arrival order.</summary>
+        public IReadOnlyList<string> Timeline
+        {
+            get { lock (_gate) { return [.. _order]; } }
+        }
+
         public int CrewCompletions { get; private set; }
 
         public int CrewFailures { get; private set; }
 
+        public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
+        {
+            lock (_gate)
+            {
+                _started.Add(snapshot.TaskId);
+                _order.Add($"started:{snapshot.TaskId}");
+            }
+
+            return Task.CompletedTask;
+        }
+
         public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
         {
-            lock (_gate) { _tasks.Add(snapshot.TaskId); }
+            lock (_gate)
+            {
+                _tasks.Add(snapshot.TaskId);
+                _order.Add($"completed:{snapshot.TaskId}");
+            }
+
             return Task.CompletedTask;
         }
 

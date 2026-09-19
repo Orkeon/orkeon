@@ -44,3 +44,4 @@ override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ExtractResponseMetadat
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ReasoningFieldName.get -> string!
+Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!

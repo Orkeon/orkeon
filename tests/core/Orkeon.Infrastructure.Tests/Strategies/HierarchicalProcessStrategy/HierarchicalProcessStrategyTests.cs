@@ -896,6 +896,8 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
         public int CrewFailures { get; private set; }
         public int CrewCompletions { get; private set; }
 
+        public Task OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
+
         public Task OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
 
         public Task OnCrewCompletedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot snapshot, CancellationToken ct)

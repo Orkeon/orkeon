@@ -21,6 +21,9 @@ public static class RunEventKinds
     /// <summary>The run began; carries the target and whether deltas were asked for.</summary>
     public const string RunStarted = Orkeon.Constants.Protocol.RunEventKinds.RunStarted;
 
+    /// <summary>One task started; carries its identifier and agent — what is in progress now.</summary>
+    public const string TaskStarted = Orkeon.Constants.Protocol.RunEventKinds.TaskStarted;
+
     /// <summary>One task finished; carries its identifier, agent, outcome and duration.</summary>
     public const string TaskCompleted = Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted;
 

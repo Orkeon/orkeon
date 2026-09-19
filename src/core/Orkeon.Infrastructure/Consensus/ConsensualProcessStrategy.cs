@@ -171,6 +171,11 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
             LogStartingConsensualExecutionForTask(taskId);
 
+            // Consensus has no single author: the vote is the agent, on the start as on the end.
+            await _hooks.TaskStartedAsync(
+                CrewHookDispatcher.Started(task.Id.Value.ToString(), "consensus"), ct)
+                .ConfigureAwait(false);
+
             // The loop is sequential, so the tally's delta around one task IS what the
             // whole vote cost — every agent, every round — not just the winning
             // execution the task result carries (review, RC2-FEAT-06 lot 7).

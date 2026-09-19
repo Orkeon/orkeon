@@ -297,6 +297,9 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         CancellationToken cancellationToken)
     {
         LogStartingParallelExecutionOfTask(task.Id, agent.Id);
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), cancellationToken)
+            .ConfigureAwait(false);
 
         var result = await _executionService.ExecuteTaskAsync(
             agent, task, context, cancellationToken).ConfigureAwait(false);

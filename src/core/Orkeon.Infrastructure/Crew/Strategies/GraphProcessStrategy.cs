@@ -346,6 +346,12 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
             .ConfigureAwait(false);
 
+        // Completions are reported when the graph settles (NotifyResultsAsync); the start is
+        // the one per-task moment this mode can announce live.
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(taskId.Value.ToString(), agent.Role.Value), ct)
+            .ConfigureAwait(false);
+
         var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 
         AppendTaskOutputs(state, task, agent, executionResult);

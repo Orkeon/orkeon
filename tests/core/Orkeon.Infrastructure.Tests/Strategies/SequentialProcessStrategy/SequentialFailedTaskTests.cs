@@ -118,6 +118,8 @@ public sealed class SequentialFailedTaskTests : IDisposable
         public int Completions { get; private set; }
         public List<CrewExecutionSnapshot> Failures { get; } = [];
 
+        public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
+
         public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct) => Task.CompletedTask;
 
         public Task OnCrewCompletedAsync(CrewExecutionSnapshot snapshot, CancellationToken ct)

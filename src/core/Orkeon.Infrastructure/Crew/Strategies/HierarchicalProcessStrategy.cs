@@ -150,7 +150,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 var snapshot = new TaskExecutionSnapshot
                 {
                     TaskId = taskId.Value.ToString(),
-                    AgentRole = appOutput.AgentId ?? string.Empty,
+                    // The role, not the agent's GUID the output carries: the start event names
+                    // the role and a watcher pairs the two by it (STUDIO-17).
+                    AgentRole = workerAgents.FirstOrDefault(a => a.Id.ToString() == appOutput.AgentId)?.Role.Value
+                        ?? appOutput.AgentId ?? string.Empty,
                     Success = domainOutput.Success,
                     Duration = domainOutput.ExecutionTime,
                     CompletedAt = DateTimeOffset.UtcNow,
@@ -230,6 +233,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             LogAssignedAgentNotFound(assignment.AssignedAgent);
             return (null, null, null);
         }
+
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(taskId.Value.ToString(), assignedAgent.Role.Value), cancellationToken)
+            .ConfigureAwait(false);
 
         var (domainOutput, appOutput) = await ExecuteWithRevisionLoopAsync(
             assignedAgent, task, taskId, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);

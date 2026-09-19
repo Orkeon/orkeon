@@ -327,6 +327,11 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
         LogAgentClaimedTask(agent.Id, task.Id, assignment.Reason);
 
+        // Completions are reported when the run settles; the claim is the live moment.
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), cancellationToken)
+            .ConfigureAwait(false);
+
         try
         {
             budget.RecordToolCall(); // count the LLM call for assignment

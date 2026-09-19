@@ -18,6 +18,10 @@ internal sealed class ForgeRunObserver : ICrewExecutionHook
     public void Attach(ForgeEventWriter events) => _events = events;
 
     /// <inheritdoc />
+    public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct) =>
+        Task.CompletedTask;   // the forge stream keeps its own vocabulary; the trial reports finished tasks only
+
+    /// <inheritdoc />
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
         _events?.Emit("task.completed", new

@@ -14,11 +14,21 @@ internal sealed class RecordingHook : ICrewExecutionHook
     /// <summary>Task ids seen, in order.</summary>
     public List<string> Tasks { get; } = [];
 
+    /// <summary>Task ids whose start was relayed, in order.</summary>
+    public List<string> Started { get; } = [];
+
     /// <summary>How many times the crew-completed callback fired.</summary>
     public int Completions { get; private set; }
 
     /// <summary>How many times the crew-failed callback fired.</summary>
     public int Failures { get; private set; }
+
+    /// <inheritdoc />
+    public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct)
+    {
+        Started.Add(snapshot.TaskId);
+        return Task.CompletedTask;
+    }
 
     /// <inheritdoc />
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
@@ -82,6 +92,34 @@ public sealed class RunEventsTests : IDisposable
             Tasks = ImmutableList<TaskExecutionSnapshot>.Empty,
             Status = CrewHookStatus.Completed,
         };
+
+    private static TaskStartSnapshot Started(string taskId, string role = "Writer") =>
+        new()
+        {
+            TaskId = taskId,
+            AgentRole = role,
+            StartedAt = DateTimeOffset.UnixEpoch,
+        };
+
+    [Fact]
+    public async Task A_started_task_lands_on_the_stream_before_anything_is_known_about_it()
+    {
+        // STUDIO-17: the one moment a watcher can show as "in progress". The payload is
+        // deliberately thin — no duration, no tokens, no verdict — because none exists yet.
+        var inner = new RecordingHook();
+        var observer = new RunEventObserver(Writer(), inner, stream: false);
+
+        await observer.OnTaskStartedAsync(Started("collect", "Web Researcher"), TestContext.Current.CancellationToken);
+
+        var e = Assert.Single(Events());
+        Assert.Equal("task.started", e.GetProperty("kind").GetString());
+        Assert.Equal("Web Researcher", e.GetProperty("agentId").GetString());   // envelope
+        Assert.Equal("collect", e.GetProperty("taskId").GetString());           // payload
+        Assert.Equal("Web Researcher", e.GetProperty("agentRole").GetString());
+        Assert.False(e.TryGetProperty("success", out _));
+        Assert.False(e.TryGetProperty("durationMs", out _));
+        Assert.Equal(["collect"], inner.Started);   // relayed, like every other callback
+    }
 
     [Fact]
     public async Task A_completed_task_lands_on_the_stream_with_its_identity_in_the_envelope()

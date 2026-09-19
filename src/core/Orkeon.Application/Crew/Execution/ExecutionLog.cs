@@ -80,8 +80,12 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Debug, Message = "ChatClient iteration {Iteration} for [{AgentRole}] → final response in {ElapsedMs}ms")]
     internal static partial void LogChatClientFinalResponse(ILogger logger, object agentRole, int iteration, long elapsedMs);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}] produced empty final message after {Iterations} iterations; retrying once with tool_choice=none")]
-    internal static partial void LogEmptyFinalMessageRetrying(ILogger logger, object agentRole, int iterations);
+    // The cap is named because it is the usual cause (STUDIO-17): a reasoning model spends the
+    // whole output budget thinking and answers empty, and the tool-free retry that follows can
+    // only narrate a deliverable it was supposed to write with a tool. The journal has to say so
+    // at the moment it happens, not leave the reader to infer it from a green run with no file.
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Agent [{AgentRole}] produced empty final message after {Iterations} iterations (max_tokens {MaxTokens}); retrying once without tools — a reasoning model needs Llm:MaxTokens 16384 or more, and the retry cannot call tools")]
+    internal static partial void LogEmptyFinalMessageRetrying(ILogger logger, object agentRole, int iterations, string maxTokens);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}] produced no final answer for task {TaskId}, even after the tool-free retry: the task fails. Raise Llm:MaxTokens for a reasoning model (16384 or more)")]
     internal static partial void LogEmptyFinalAnswer(ILogger logger, object agentRole, object taskId);

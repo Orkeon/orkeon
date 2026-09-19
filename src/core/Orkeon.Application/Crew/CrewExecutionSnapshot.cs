@@ -3,6 +3,23 @@ using System.Collections.Immutable;
 namespace Orkeon.Application.Crew;
 
 /// <summary>
+/// What a crew knows about a task the moment it starts it: which one, who runs it, since when.
+/// Deliberately thin — nothing has been measured yet — so a watcher can show the task as in
+/// progress without the strategy pretending to know how it will go (STUDIO-17).
+/// </summary>
+public sealed record TaskStartSnapshot
+{
+    /// <summary>Task identifier string.</summary>
+    public required string TaskId { get; init; }
+
+    /// <summary>Role of the agent about to execute the task.</summary>
+    public required string AgentRole { get; init; }
+
+    /// <summary>UTC timestamp when the task started.</summary>
+    public required DateTimeOffset StartedAt { get; init; }
+}
+
+/// <summary>
 /// Immutable snapshot of a single completed task captured during crew execution.
 /// </summary>
 public sealed record TaskExecutionSnapshot

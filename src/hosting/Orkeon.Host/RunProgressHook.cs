@@ -20,6 +20,10 @@ internal sealed class RunProgressHook : ICrewExecutionHook
     public Action<string>? OnProgress { get; set; }
 
     /// <inheritdoc />
+    public Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct) =>
+        Task.CompletedTask;   // the conversation gets one line per finished step; a start would double the chatter
+
+    /// <inheritdoc />
     public Task OnTaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(snapshot);

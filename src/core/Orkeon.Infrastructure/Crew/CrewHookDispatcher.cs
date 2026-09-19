@@ -32,6 +32,25 @@ internal sealed partial class CrewHookDispatcher
     /// <summary>Whether anything is listening — lets a caller skip building a snapshot for nobody.</summary>
     internal bool HasHook => _hook is not null;
 
+    /// <summary>
+    /// Notifies that one task is starting (STUDIO-17). Dispatched by every mode at the moment
+    /// the task and its agent are both known and nothing has been asked yet — the point a
+    /// watcher shows as "in progress" until the matching <see cref="TaskCompletedAsync"/>.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty start hook is logged and must not break the crew execution pipeline.")]
+    internal async Task TaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct = default)
+    {
+        if (_hook is null) return;
+        try
+        {
+            await _hook.OnTaskStartedAsync(snapshot, ct).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            LogTaskStartedFailed(ex);
+        }
+    }
+
     /// <summary>Notifies that one task finished, successfully or not.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort hook dispatch: a faulty completion hook is logged and must not break the crew execution pipeline.")]
     internal async Task TaskCompletedAsync(TaskExecutionSnapshot snapshot, CancellationToken ct = default)
@@ -77,6 +96,15 @@ internal sealed partial class CrewHookDispatcher
         }
     }
 
+    /// <summary>The start snapshot every mode reports the same way, stamped now.</summary>
+    internal static TaskStartSnapshot Started(string taskId, string agentRole) =>
+        new()
+        {
+            TaskId = taskId,
+            AgentRole = agentRole,
+            StartedAt = DateTimeOffset.UtcNow,
+        };
+
     /// <summary>Builds the crew-level snapshot every mode reports the same way.</summary>
     internal static CrewExecutionSnapshot Snapshot(
         string crewId,
@@ -93,6 +121,9 @@ internal sealed partial class CrewHookDispatcher
             Status = status,
             FailureReason = failureReason,
         };
+
+    [LoggerMessage(EventId = 9404, Level = LogLevel.Warning, Message = "ICrewExecutionHook.OnTaskStartedAsync threw; ignored.")]
+    private partial void LogTaskStartedFailed(Exception ex);
 
     [LoggerMessage(EventId = 9401, Level = LogLevel.Warning, Message = "ICrewExecutionHook.OnTaskCompletedAsync threw; ignored.")]
     private partial void LogTaskCompletedFailed(Exception ex);

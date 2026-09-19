@@ -144,6 +144,12 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
                     .ConfigureAwait(false);
 
+                // The task is about to run: say so before asking the agent anything, so a
+                // watcher shows it in progress instead of discovering it only once finished.
+                await _hooks.TaskStartedAsync(
+                    CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), CancellationToken.None)
+                    .ConfigureAwait(false);
+
                 Orkeon.Application.Interfaces.Services.TaskResult taskResult;
                 (context, var taskSnapshot, taskResult) = await ExecuteSingleTaskAsync(
                     task, agent, context, applicationOutputs, domainResults, cancellationToken)

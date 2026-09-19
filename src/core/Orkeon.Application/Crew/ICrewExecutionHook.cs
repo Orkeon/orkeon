@@ -8,6 +8,15 @@ namespace Orkeon.Application.Crew;
 public interface ICrewExecutionHook
 {
     /// <summary>
+    /// Called each time a task starts inside a crew run, before its agent is asked anything.
+    /// Every orchestration mode dispatches it, so a watcher can show what is in progress
+    /// rather than only what has finished (STUDIO-17).
+    /// </summary>
+    /// <param name="snapshot">Which task, which agent, since when.</param>
+    /// <param name="ct">Cancellation token.</param>
+    System.Threading.Tasks.Task OnTaskStartedAsync(TaskStartSnapshot snapshot, CancellationToken ct);
+
+    /// <summary>
     /// Called each time a task completes (successfully or not) inside a crew run.
     /// </summary>
     /// <param name="snapshot">Snapshot of the completed task.</param>

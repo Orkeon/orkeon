@@ -23,6 +23,13 @@ public static class RunEventKinds
     /// <summary>Opening event: what is about to run, and whether deltas were asked for.</summary>
     public const string RunStarted = "run.started";
 
+    /// <summary>
+    /// One task of the crew started: its agent's turn begins. Between this and the matching
+    /// <see cref="TaskCompleted"/> a watcher shows the task as in progress - the moment the
+    /// screen could not tell apart from a run that had stalled (STUDIO-17).
+    /// </summary>
+    public const string TaskStarted = "task.started";
+
     /// <summary>One task of the crew completed - the granularity <c>ICrewExecutionHook</c> gives.</summary>
     public const string TaskCompleted = "task.completed";
 
@@ -68,7 +75,7 @@ public static class RunEventKinds
     /// </summary>
     public static IReadOnlyList<string> All { get; } =
     [
-        RunStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
+        RunStarted, TaskStarted, TaskCompleted, CostUpdated, LlmDelta, RunFinished, Error,
         InputNeeded, InputGiven, ToolCalled, ToolReturned, DelegationStarted,
         AgentSpawned, HubMessage,
     ];
