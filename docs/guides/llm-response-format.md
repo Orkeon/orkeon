@@ -32,7 +32,7 @@ The fusion is done **once** in `LlmConfigResolver.Resolve(baseConfig, taskOverri
 
 ```yaml
 llm:
-  model: deepseek-v4-flash
+  model: deepseek-flash
   response_format: json_object   # every agent of this crew now replies in JSON
 ```
 
@@ -43,7 +43,7 @@ agents:
   extractor:
     role: "Invoice extractor"
     llm:
-      model: deepseek-v4-flash
+      model: deepseek-flash
       response_format: json_object   # only this agent forces JSON
 ```
 
@@ -68,7 +68,7 @@ The `llm_override:` block accepts the same fields as agent-level `llm:` minus th
 const extractor = agentBuilder()
     .name("extractor")
     .role("Invoice extractor")
-    .llm({ provider: "deepseek", model: "deepseek-v4-flash" })
+    .llm({ provider: "deepseek", model: "deepseek-flash" })
     .withResponseFormat("json_object")
     .build();
 
@@ -127,7 +127,7 @@ once by `OpenAICompatibleProviderBase` — see the
 | OpenAI, Azure OpenAI, Grok, Gemini, Mistral, TogetherAI | `JsonSchema` | Server-side schema validation. |
 | **Anthropic** | `JsonSchema` | Own dialect (`output_config`) — schema-only, no bare `json_object`. |
 | **Ollama** | `JsonSchema` | Own dialect (`format`). |
-| **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. |
+| **DeepSeek** (`deepseek-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | Well-formed JSON guaranteed; a schema is downgraded with a warning. |
 | `deepseek-reasoner` (R1) | ⚠️ | May refuse `response_format` with HTTP 400. Test before production. The error surfaces as a typed `APIError` through the existing pipeline — no crash. |
 | **MiniMax** | `None` | Accepted but non-binding — measured 2026-08-30 (schema ignored, `json_object` fenced in markdown); a declared format produces the structured capability warning. |
 | **OpenRouter** † | `JsonSchema` | Documented per endpoint (2026-09-18, not campaigned); the provider does not send `provider.require_parameters`, so a schema may be ignored by an endpoint that lacks it — the first campaign's question. |

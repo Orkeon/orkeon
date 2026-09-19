@@ -7,6 +7,35 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- LLM catalogue review 2026-09-19 -->
+### Changed — the DeepSeek default follows the vendor's rename, vendor prices refreshed, catalogues reviewed (2026-09-19)
+
+- **`LlmProviderDefaultModels.DeepSeek` is `deepseek-flash`.** DeepSeek retired V4 Flash and
+  V4 Flash Vision Exp on 2026-09-10 with the V4.1 Flash release: `deepseek-v4-flash` and
+  `deepseek-v4-flash-vision-exp` are legacy names the API "temporarily" routes to V4.1 Flash,
+  and `deepseek-flash` is the vendor's own id for the Flash tier — 1M context, 384K output,
+  thinking on by default, native vision. Every DeepSeek configuration that names no model
+  follows; the campaign kit, the `orkeon init` template, the Studio DeepSeek card, the
+  examples and the guides name the new id, and the kit's `visionModel` companion is gone (the
+  default sees). The 2026-09-07 campaign measured V4 Flash under the old name and is to be
+  replayed. This is the only default that changes: every other default is served today, and
+  the newer models found are recorded as candidates pending a campaign — the Mistral lesson.
+- **`ModelPricingRegistry` follows the vendors' pricing pages (read 2026-09-19).** OpenAI:
+  `gpt-5.6-sol` 4 / 20 $/M (promotional through 2026-11-21; was 5 / 30), `gpt-5.6-terra`
+  2 / 12, `gpt-5.6-luna` 0.20 / 1.20, `gpt-6-astra` 10 / 50 added (its 2× billing above 272K
+  input tokens is not expressible in a flat registry). Anthropic: `claude-sonnet-5` 2 / 10 (the
+  rise to 3 / 15 was cancelled), `claude-fable-5-1` and `claude-fable-5` 10 / 50,
+  `claude-haiku-4-5` 1 / 5 added.
+- **Catalogue review of the 16 providers.** `docs/reference/llm-providers-comparison.md` gains
+  a "Defaults and newer models" section (EN/FR) and the `LlmProviderDefaultModels` comments
+  carry the dated findings: `gpt-6-astra` (no `none` effort, so the function-tools workaround
+  cannot follow it), `claude-fable-5-1`, `gemini-3.8-flash` (GA 2026-09-02, same price until
+  2026-12-31), the `glm-5.3` family (thinking cannot be disabled), `qwen3.8-max` /
+  `qwen3.8-flash` (no `qwen3.8-plus`), `kimi-k3` (fixed sampling, always reasons),
+  `MiniMax-M3`, Together's `zai-org/GLM-5.3-Flash`, HuggingFace's `Qwen/Qwen3.5-9B` (the
+  current default has tool support on one routed provider out of four), Ollama's small
+  tools + thinking models. Nothing new for chat at Mistral and xAI.
+
 <!-- STUDIO-14 -->
 ### Added — team folders travel with the team, and the forge trial reads where the documents are (STUDIO-14, lots 0 and 1)
 

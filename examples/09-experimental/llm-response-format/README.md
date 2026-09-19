@@ -12,7 +12,7 @@ Both expect the same effective DeepSeek payload:
 
 ```json
 {
-  "model": "deepseek-v4-flash",
+  "model": "deepseek-flash",
   "messages": [ … ],
   "response_format": { "type": "json_object" }
 }

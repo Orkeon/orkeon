@@ -288,7 +288,7 @@ tâche, le coût estimé.
 - **Limites connues** : la composition des payloads vision est pilotée par capacité
   (`LlmProviderCapabilities.Vision`, traduite une fois par `OpenAICompatibleProviderBase`)
   — **les 16 providers** la déclarent (DeepSeek depuis la campagne du 2026-08-30 qui a
-  mesuré `deepseek-v4-flash-vision-exp`) ; un provider sans la capacité dégrade les
+  mesuré `deepseek-v4-flash-vision-exp`, natif sur `deepseek-flash` depuis V4.1) ; un provider sans la capacité dégrade les
   messages multi-modaux vers leur repli texte
   (`LlmMessage.Content`). Formats image supportés : png, jpeg, gif, webp.
   Les parts audio/fichier ne sont envoyées par aucun provider et lèvent une

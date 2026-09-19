@@ -2,7 +2,7 @@
 
 # LLM Provider Comparison — Orkeon
 
-> Status as of 2026-09-18, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
+> Status as of 2026-09-19, derived from the source code (`src/core/Orkeon.Infrastructure/LLMs/`)
 > and from each provider's declared `LlmProviderCapabilities`.
 > Legend: ✓ supported · ✗ absent · ◐ partial/generic · † not campaigned (declared from the
 > vendor's documentation, pending the first real-execution campaign).
@@ -72,9 +72,12 @@ their own dialect.
   (2026-08-18) and undeclared then; measured live on 2026-08-30, the surface accepts
   `json_object` and `json_schema` and enforces the schema server-side, so the provider now
   declares `JsonSchema`.
-- **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30). Per
-  provider vs per model as everywhere (D-03): the default `deepseek-v4-flash` stays text-only
-  and answers an image with the vendor's own error.
+- **DeepSeek vision**: arrived with `deepseek-v4-flash-vision-exp` (measured 2026-08-30) and
+  is native on the Flash tier since V4.1 Flash (2026-09-10): the default `deepseek-flash`
+  sees, the experimental companion is retired. Per provider vs per model as everywhere
+  (D-03): `deepseek-v4-pro` stays text-only and answers an image with the vendor's own error.
+  `deepseek-v4-flash` is a retired model's name the API "temporarily" routes to V4.1 Flash —
+  the default moved to the vendor's own id on 2026-09-19.
 - **MiniMax**: campaign-backed since 2026-08-30 (7/2/3, same day it was integrated). The
   reasoning arrives INLINE — every reply opens with a `<think>` block inside `content`, no
   separate field — and the dialect splits it out to `reasoning_content`, re-inlining it on
@@ -119,6 +122,35 @@ their own dialect.
   header (2026-08-30). Set `LlmConfig.WorkspaceId` (CLI: `--workspace-id`); classic keys need
   nothing.
 - **Polly** and **API key sanitization**: provided by `HttpLlmProviderBase` → active everywhere.
+
+## Defaults and newer models — catalogue review of 2026-09-19
+
+Every vendor's own model and pricing pages were read on 2026-09-19, alongside the public
+catalogues of the two aggregators (OpenRouter, 447 models; Mammouth, 100). The rule is the
+one `LlmProviderDefaultModels` states: a default changes only when the vendor retires the
+name; otherwise a newer model is a **candidate** until a campaign has archived an M1 on it.
+
+| Provider | Default (code) | Served on 2026-09-19 | Newer on the vendor's API | Verdict |
+|---|---|---|---|---|
+| OpenAI | `gpt-5.6-sol` | yes — 4 / 20 $/M through 2026-11-21, the replacement target of both 2026 deprecation waves | `gpt-6-astra` (10 / 50, effort `low`…`max` with no `none`, 2× billing above 272K input tokens) | stays: the function-tools workaround (`reasoning_effort: none`) has no equivalent on Astra; `gpt-6-astra-pro` is an aggregator label, not an OpenAI id |
+| Anthropic | `claude-sonnet-5` | yes — 2 / 10 $/M made permanent, active until at least 2027-06-30 | `claude-fable-5-1` (2026-09-01, 10 / 50, thinking always on, forced `tool_choice` refused) | stays; `claude-opus-5-fast` is a `speed` flag, not an id; `temperature` / `top_p` / `top_k` return 400 on every model from Opus 4.7 on |
+| Azure OpenAI | deployment | — | — | nothing to default to |
+| Ollama | `llama3.2` | yes — 3B, text only, no thinking, a year old | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (tools + thinking, same size class) | stays: a new default means a pull on every machine |
+| Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | yes — 1.04 / 1.04 $/M, not scheduled | `zai-org/GLM-5.3-Flash` (1M, tools + JSON, 0.15 / 0.50), `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash`; Llama 4 left serverless | candidate GLM-5.3-Flash, a seventh of the price — campaign first |
+| DeepSeek | `deepseek-flash` (was `deepseek-v4-flash`) | yes — V4.1 Flash, 0.30 / 1.20 $/M peak, native vision | it is the newest | **changed 2026-09-19**: the old name is a retired model "temporarily" routed here; the 2026-09-07 campaign is to be replayed |
+| Kimi | `kimi-k2.6` | yes — 0.95 / 4.00 $/M, no retirement date | `kimi-k3` (July 2026, 1M, 3 / 15, fixed sampling, no `thinking` field, always reasons) | stays; `kimi-k2.5` and `moonshot-v1-*` retired 2026-08-31; docs now on `platform.kimi.ai` |
+| Qwen | `qwen3.7-plus` | yes — still the Plus tier, one of the three recommended models | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash`; no `qwen3.8-plus` | stays; the 3.8 generation adds `preserve_thinking` |
+| Mistral AI | `mistral-medium-2604` | yes — 1.50 / 7.50 $/M, not deprecated | nothing for chat since April (OCR 4.1 only) | stays; `devstral-*` / magistral ids sit in the deprecated table |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | yes — but tools on one of its four routed providers, and `:fastest` may pick another | `Qwen/Qwen3.5-9B` (tools on three providers, from 0.10 / 0.15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidate Qwen3.5-9B — the routing explains the moving reds of the 09-07 sweep; campaign first |
+| Z.AI | `glm-5.2` | yes — still under "Latest Models", 1.40 / 4.40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0.15 / 0.50, image + video), `glm-5.3-flashx` | stays: the 5.3 family cannot disable thinking, the `Toggle` declaration needs a per-model guard first |
+| Google Gemini | `gemini-3.7-flash` | yes — "previous generation", no shutdown date, 0.75 / 3.75 $/M until 2026-12-31 then 1.50 / 7.50 | `gemini-3.8-flash` (GA 2026-09-02, same price, `minimal` thinking rejected) | first candidate for a bump, on the three transports at once — campaign first |
+| Grok (x.AI) | `grok-4.6` | yes — recommended, 2 / 6 $/M below 200K prompt tokens, 4 / 12 above | none | stays |
+| MiniMax | `MiniMax-M2` | yes — listed as legacy, no retirement date | `MiniMax-M3` (2026-06-01, 1M, image + video input, same 0.30 / 1.20) | stays: M3's reasoning format on the OpenAI-compatible endpoint is undocumented — the campaign decides |
+| OpenRouter | `google/gemini-3.7-flash` | yes | `google/gemini-3.8-flash` (2026-09-02, same price) | follows the direct default |
+| Mammouth AI | `gemini-3.7-flash` | yes | `gemini-3.8-flash` | follows the direct default |
+
+`ModelPricingRegistry` follows the same pages: the GPT-5.6 family and `gpt-6-astra`, Sonnet 5
+at 2 / 10, Fable 5.1 / Fable 5 and Haiku 4.5.
 
 ## Per-model mandatory parameter values
 

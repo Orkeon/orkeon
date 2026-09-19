@@ -28,7 +28,7 @@ public class ProviderDefaultsPinningTests
     {
         { nameof(OpenAIProvider), "gpt-5.6-sol" },
         { nameof(AzureOpenAILlmProvider), "gpt-5.6-sol" },
-        { nameof(DeepSeekLlmProvider), "deepseek-v4-flash" },
+        { nameof(DeepSeekLlmProvider), "deepseek-flash" },
         { nameof(KimiLlmProvider), "kimi-k2.6" },
         { nameof(QwenLlmProvider), "qwen3.7-plus" },
         { nameof(MistralLlmProvider), "mistral-medium-2604" },
@@ -121,7 +121,7 @@ public class ProviderDefaultsPinningTests
         { "ollama", "llama3.2" },
         { "together", "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
         { "togetherai", "meta-llama/Llama-3.3-70B-Instruct-Turbo" },
-        { "deepseek", "deepseek-v4-flash" },
+        { "deepseek", "deepseek-flash" },
         { "kimi", "kimi-k2.6" },
         { "moonshot", "kimi-k2.6" },
         { "qwen", "qwen3.7-plus" },

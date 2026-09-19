@@ -104,13 +104,12 @@
       "label": "DeepSeek",
       "matrix": "§6.7",
       "apiKeyEnv": "DEEPSEEK_API_KEY",
-      "defaultModel": "deepseek-v4-flash",
-      "visionModel": "deepseek-v4-flash-vision-exp",
+      "defaultModel": "deepseek-flash",
       "notes": [
         "To **revalidate** despite the age of its proof: LLM-01 changed its default model and LLM-02 refactored it onto the capabilities base.",
         "M7 must confirm the `reasoning_content` round-trip — without it the API returns a 400.",
         "M8 must confirm the “word *json* absent from the prompt” guard.",
-        "Long the only provider in the fleet without a vision model, until `deepseek-v4-flash-vision-exp` (measured 2026-08-30: it reads a base64 image). The default `deepseek-v4-flash` stays text-only: its red M9 is the D-03 proof, the vision companion brings the complementary fact."
+        "Long the only provider in the fleet without a vision model, until `deepseek-v4-flash-vision-exp` (measured 2026-08-30: it reads a base64 image). Since V4.1 Flash (2026-09-10) vision is native on the Flash tier: the default `deepseek-flash` sees and the experimental companion is retired — M9 runs on the default, no `visionModel`. `deepseek-v4-flash` and `deepseek-v4-flash-vision-exp` name retired models the API temporarily routes to V4.1 Flash (vendor pricing page, 2026-09-19); the 2026-09-07 campaign under the old name is to be replayed on `deepseek-flash`."
       ]
     },
     "kimi": {

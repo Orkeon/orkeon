@@ -34,9 +34,11 @@ public class DeepSeekLlmProvider : OpenAICompatibleProviderBase
     /// previous turn's <c>reasoning_content</c> to be replayed. Vision arrived with
     /// <c>deepseek-v4-flash-vision-exp</c> (measured live 2026-08-30: it reads a base64
     /// <c>image_url</c> part and answers about it), ending DeepSeek's run as the one
-    /// provider in the fleet with no vision model. As everywhere, the declaration is per
-    /// provider while reality is per model (D-03): the default <c>deepseek-v4-flash</c> is
-    /// text-only and answers an image with the vendor's own error, not a silent downgrade.
+    /// provider in the fleet with no vision model; since V4.1 Flash (2026-09-10) the Flash
+    /// tier itself sees, so the default <c>deepseek-flash</c> carries it natively and the
+    /// experimental companion is retired. As everywhere, the declaration is per provider
+    /// while reality is per model (D-03): <c>deepseek-v4-pro</c> is text-only and answers an
+    /// image with the vendor's own error, not a silent downgrade.
     /// </summary>
     public override LlmProviderCapabilities Capabilities { get; } = new()
     {

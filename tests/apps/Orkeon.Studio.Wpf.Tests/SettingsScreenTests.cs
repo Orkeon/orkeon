@@ -414,7 +414,7 @@ public sealed class SettingsScreenTests
         // One click on the DeepSeek card: endpoint and model are filled, the key block opens.
         editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.DeepSeek);
         Assert.Equal("https://api.deepseek.com", editor.BaseUrl);
-        Assert.Equal("deepseek-v4-flash", editor.Model);
+        Assert.Equal("deepseek-flash", editor.Model);
         Assert.True(editor.RequiresApiKey);
         Assert.Equal("DEEPSEEK_API_KEY", editor.ApiKeyEnvName);
         Assert.False(editor.HasStoredKey);

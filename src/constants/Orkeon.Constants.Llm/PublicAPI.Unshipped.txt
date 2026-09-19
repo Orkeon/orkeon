@@ -29,3 +29,5 @@ const Orkeon.Constants.Llm.LlmProviderEndpoints.Mammouth = "https://api.mammouth
 const Orkeon.Constants.Llm.LlmProviderEndpoints.OpenRouter = "https://openrouter.ai/api/v1" -> string!
 const Orkeon.Constants.Llm.LlmProviderKeys.Mammouth = "mammouth" -> string!
 const Orkeon.Constants.Llm.LlmProviderKeys.OpenRouter = "openrouter" -> string!
+*REMOVED*const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-v4-flash" -> string!
+const Orkeon.Constants.Llm.LlmProviderDefaultModels.DeepSeek = "deepseek-flash" -> string!

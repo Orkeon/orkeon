@@ -115,7 +115,7 @@ public sealed class AgentCreateOptions
     /// field-by-field basis (Experiment 07 friction #7). When set, the runtime applies its
     /// Model / Temperature / MaxTokens / TopP / Thinking to the agent's chat requests so
     /// hierarchical crews can pick e.g. <c>deepseek-v4-pro</c> for the planner and
-    /// <c>deepseek-v4-flash</c> for classification agents within the same crew.
+    /// <c>deepseek-flash</c> for classification agents within the same crew.
     /// </summary>
     public LlmConfig? LlmConfig { get; init; }
 }

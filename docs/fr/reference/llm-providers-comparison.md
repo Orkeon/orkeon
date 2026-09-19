@@ -2,7 +2,7 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-09-18, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
+> État au 2026-09-19, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
 > et des `LlmProviderCapabilities` déclarées par chaque fournisseur.
 > Légende : ✓ supporté · ✗ absent · ◐ partiel/générique · † non campagné (déclaré depuis la
 > documentation du vendeur, en attente de la première campagne en exécution réelle — les
@@ -80,9 +80,13 @@ API parlent leur propre dialecte.
   (2026-08-18) et non déclaré alors ; mesuré en réel le 2026-08-30, la surface accepte
   `json_object` et `json_schema` et valide le schéma côté serveur — le provider déclare
   désormais `JsonSchema`.
-- **Vision DeepSeek** : arrivée avec `deepseek-v4-flash-vision-exp` (mesuré 2026-08-30).
-  Déclaré par fournisseur, réel par modèle comme partout (D-03) : le défaut
-  `deepseek-v4-flash` reste texte seul et répond à une image par l'erreur du vendeur.
+- **Vision DeepSeek** : arrivée avec `deepseek-v4-flash-vision-exp` (mesuré 2026-08-30),
+  native sur le palier Flash depuis V4.1 Flash (2026-09-10) : le défaut `deepseek-flash`
+  voit, le compagnon expérimental est retiré. Déclaré par fournisseur, réel par modèle
+  comme partout (D-03) : `deepseek-v4-pro` reste texte seul et répond à une image par
+  l'erreur du vendeur. `deepseek-v4-flash` est le nom d'un modèle retiré que l'API route
+  « temporairement » vers V4.1 Flash — le défaut est passé à l'identifiant du vendeur le
+  2026-09-19.
 - **MiniMax** : adossé à sa campagne depuis le 2026-08-30 (7/2/3, le jour même de son
   intégration). Le raisonnement arrive EN LIGNE — chaque réponse ouvre sur un bloc
   `<think>` dans `content`, sans champ séparé — et le dialecte l'extrait vers
@@ -129,6 +133,35 @@ API parlent leur propre dialecte.
   `anthropic-workspace-id` (2026-08-30). Renseigner `LlmConfig.WorkspaceId`
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.
 - **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
+
+## Défauts et modèles plus récents — revue des catalogues du 2026-09-19
+
+Les pages modèles et tarifs de chaque vendeur ont été lues le 2026-09-19, avec les catalogues
+publics des deux agrégateurs (OpenRouter, 447 modèles ; Mammouth, 100). La règle est celle
+qu'énonce `LlmProviderDefaultModels` : un défaut ne change que si le vendeur retire le nom ;
+sinon un modèle plus récent est un **candidat** tant qu'une campagne n'a pas archivé un M1.
+
+| Provider | Défaut (code) | Servi le 2026-09-19 | Plus récent sur l'API du vendeur | Verdict |
+|---|---|---|---|---|
+| OpenAI | `gpt-5.6-sol` | oui — 4 / 20 $/M jusqu'au 2026-11-21, cible de remplacement des deux vagues de dépréciation 2026 | `gpt-6-astra` (10 / 50, effort `low`…`max` sans `none`, facturation ×2 au-delà de 272K tokens d'entrée) | reste : le contournement des outils (`reasoning_effort: none`) n'a pas d'équivalent sur Astra ; `gpt-6-astra-pro` est une étiquette d'agrégateur, pas un id OpenAI |
+| Anthropic | `claude-sonnet-5` | oui — 2 / 10 $/M rendu définitif, actif au moins jusqu'au 2027-06-30 | `claude-fable-5-1` (2026-09-01, 10 / 50, thinking toujours actif, `tool_choice` forcé refusé) | reste ; `claude-opus-5-fast` est un drapeau `speed`, pas un id ; `temperature` / `top_p` / `top_k` renvoient 400 sur tout modèle à partir d'Opus 4.7 |
+| Azure OpenAI | déploiement | — | — | rien à défauter |
+| Ollama | `llama3.2` | oui — 3B, texte seul, sans thinking, vieux d'un an | `qwen3.5:4b`, `gemma4:e4b`, `granite4.2:3b` (outils + thinking, même gabarit) | reste : un nouveau défaut impose un pull sur chaque machine |
+| Together AI | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | oui — 1,04 / 1,04 $/M, pas de retrait programmé | `zai-org/GLM-5.3-Flash` (1M, outils + JSON, 0,15 / 0,50), `Qwen/Qwen3.5-9B`, `deepseek-ai/DeepSeek-V4.1-Flash` ; Llama 4 a quitté le serverless | candidat GLM-5.3-Flash, sept fois moins cher — campagne d'abord |
+| DeepSeek | `deepseek-flash` (était `deepseek-v4-flash`) | oui — V4.1 Flash, 0,30 / 1,20 $/M en pointe, vision native | c'est le plus récent | **changé le 2026-09-19** : l'ancien nom est un modèle retiré routé « temporairement » ici ; la campagne du 2026-09-07 est à rejouer |
+| Kimi | `kimi-k2.6` | oui — 0,95 / 4,00 $/M, sans date de retrait | `kimi-k3` (juillet 2026, 1M, 3 / 15, échantillonnage figé, pas de champ `thinking`, raisonne toujours) | reste ; `kimi-k2.5` et `moonshot-v1-*` retirés le 2026-08-31 ; docs désormais sur `platform.kimi.ai` |
+| Qwen | `qwen3.7-plus` | oui — toujours le palier Plus, l'un des trois modèles recommandés | `qwen3.8-max` (= `qwen3.8-max-0902`), `qwen3.8-flash` ; pas de `qwen3.8-plus` | reste ; la génération 3.8 ajoute `preserve_thinking` |
+| Mistral AI | `mistral-medium-2604` | oui — 1,50 / 7,50 $/M, non déprécié | rien pour le chat depuis avril (OCR 4.1 seulement) | reste ; les ids `devstral-*` / magistral sont dans la table des dépréciés |
+| HuggingFace | `meta-llama/Llama-3.1-8B-Instruct` | oui — mais outils sur un seul de ses quatre fournisseurs routés, et `:fastest` peut en choisir un autre | `Qwen/Qwen3.5-9B` (outils sur trois fournisseurs, dès 0,10 / 0,15), `zai-org/GLM-5.3-Flash`, `deepseek-ai/DeepSeek-V4.1-Flash` | candidat Qwen3.5-9B — le routage explique les rouges mouvants du sweep du 09-07 ; campagne d'abord |
+| Z.AI | `glm-5.2` | oui — toujours sous « Latest Models », 1,40 / 4,40 $/M | `glm-5.3` (2026-08-18), `glm-5.3-flash` (0,15 / 0,50, image + vidéo), `glm-5.3-flashx` | reste : la famille 5.3 ne peut pas désactiver le thinking, la déclaration `Toggle` demande d'abord une garde par modèle |
+| Google Gemini | `gemini-3.7-flash` | oui — « génération précédente », sans date d'arrêt, 0,75 / 3,75 $/M jusqu'au 2026-12-31 puis 1,50 / 7,50 | `gemini-3.8-flash` (GA 2026-09-02, même prix, thinking `minimal` refusé) | premier candidat à une montée, sur les trois transports à la fois — campagne d'abord |
+| Grok (x.AI) | `grok-4.6` | oui — recommandé, 2 / 6 $/M sous 200K tokens de prompt, 4 / 12 au-delà | aucun | reste |
+| MiniMax | `MiniMax-M2` | oui — listé « legacy », sans date de retrait | `MiniMax-M3` (2026-06-01, 1M, entrée image + vidéo, mêmes 0,30 / 1,20) | reste : le format de raisonnement de M3 sur l'endpoint OpenAI-compatible n'est pas documenté — la campagne tranchera |
+| OpenRouter | `google/gemini-3.7-flash` | oui | `google/gemini-3.8-flash` (2026-09-02, même prix) | suit le défaut direct |
+| Mammouth AI | `gemini-3.7-flash` | oui | `gemini-3.8-flash` | suit le défaut direct |
+
+`ModelPricingRegistry` suit les mêmes pages : la famille GPT-5.6 et `gpt-6-astra`, Sonnet 5 à
+2 / 10, Fable 5.1 / Fable 5 et Haiku 4.5.
 
 ## Valeurs de paramètres obligatoires, par modèle
 

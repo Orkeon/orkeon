@@ -160,7 +160,7 @@ JSON > the catalog's `defaultModel`.
 | `azure` | *(none — see below)* | |
 | `ollama` | `llama3.2` | `llava` |
 | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless only — see catalog)* |
-| `deepseek` | `deepseek-v4-flash` | `deepseek-v4-flash-vision-exp` |
+| `deepseek` | `deepseek-flash` | *(the default sees)* |
 | `kimi` | `kimi-k2.6` | |
 | `qwen` | `qwen3.7-plus` | |
 | `mistral` | `mistral-medium-2604` | |

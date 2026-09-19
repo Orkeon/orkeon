@@ -1,11 +1,11 @@
 {
-  "_comment": "Generic (default) settings template — points at DeepSeek V4 Flash. Copy this file WITHOUT the .example suffix (-> appsettings.local.json), then fill in your key, or switch BaseUrl/Model/ApiKey to another provider. The ${DEEPSEEK_API_KEY} placeholder is NOT expanded automatically: replace it, or override via ORKEON_Llm__ApiKey=... The provider is auto-detected from the BaseUrl host.",
+  "_comment": "Generic (default) settings template — points at DeepSeek Flash (V4.1). Copy this file WITHOUT the .example suffix (-> appsettings.local.json), then fill in your key, or switch BaseUrl/Model/ApiKey to another provider. The ${DEEPSEEK_API_KEY} placeholder is NOT expanded automatically: replace it, or override via ORKEON_Llm__ApiKey=... The provider is auto-detected from the BaseUrl host.",
   "_models": [
-    "deepseek-v4-flash — 1M ctx, 384K max output, non-thinking + thinking (default) modes",
+    "deepseek-flash    — V4.1 Flash: 1M ctx, 384K max output, thinking on by default, native vision (deepseek-v4-flash / deepseek-v4-flash-vision-exp name retired models still routed here; deepseek-chat / deepseek-reasoner retired 2026-07-24)",
     "deepseek-v4-pro   — 1M ctx, advanced reasoning"
   ],
   "Llm": {
-    "Model": "deepseek-v4-flash",
+    "Model": "deepseek-flash",
     "BaseUrl": "https://api.deepseek.com",
     "ApiKey": "${DEEPSEEK_API_KEY}",
     "Temperature": 0.2,

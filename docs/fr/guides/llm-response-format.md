@@ -32,7 +32,7 @@ La fusion est faite **une seule fois** dans `LlmConfigResolver.Resolve(baseConfi
 
 ```yaml
 llm:
-  model: deepseek-v4-flash
+  model: deepseek-flash
   response_format: json_object   # every agent of this crew now replies in JSON
 ```
 
@@ -43,7 +43,7 @@ agents:
   extractor:
     role: "Invoice extractor"
     llm:
-      model: deepseek-v4-flash
+      model: deepseek-flash
       response_format: json_object   # only this agent forces JSON
 ```
 
@@ -68,7 +68,7 @@ Le bloc `llm_override:` accepte les mêmes champs que le `llm:` au niveau agent,
 const extractor = agentBuilder()
     .name("extractor")
     .role("Invoice extractor")
-    .llm({ provider: "deepseek", model: "deepseek-v4-flash" })
+    .llm({ provider: "deepseek", model: "deepseek-flash" })
     .withResponseFormat("json_object")
     .build();
 
@@ -127,7 +127,7 @@ traduit une fois par `OpenAICompatibleProviderBase` — voir le
 | OpenAI, Azure OpenAI, Grok, Gemini, Mistral, TogetherAI | `JsonSchema` | Validation de schéma côté serveur. |
 | **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schema-only, pas de `json_object` nu. |
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
-| **DeepSeek** (`deepseek-v4-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
+| **DeepSeek** (`deepseek-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
 | `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
 | **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
 | **OpenRouter** † | `JsonSchema` | Documenté par endpoint (2026-09-18, non campagné) ; le provider n'envoie pas `provider.require_parameters`, un schéma peut donc être ignoré par un endpoint qui ne le supporte pas — la question de la première campagne. |

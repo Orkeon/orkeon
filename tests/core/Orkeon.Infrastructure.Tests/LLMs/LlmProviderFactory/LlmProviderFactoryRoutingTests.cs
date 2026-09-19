@@ -98,6 +98,7 @@ public class LlmProviderFactoryRoutingTests
     [InlineData("llama3.2", null, "ollama")]
     [InlineData("codellama", null, "ollama")]
     [InlineData("deepseek-v4-flash", null, "deepseek")]
+    [InlineData("deepseek-flash", null, "deepseek")]
     [InlineData("qwen3.7-plus", null, "qwen")]
     [InlineData("glm-5.2", null, "zai")]
     // Gemini (PUB-15): model-prefix and OpenAI-compatible host routing.

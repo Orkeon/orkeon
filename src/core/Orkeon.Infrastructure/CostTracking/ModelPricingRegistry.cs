@@ -108,13 +108,17 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
 
     private void RegisterDefaultPricings()
     {
-        // OpenAI models
+        // OpenAI models — vendor pricing page read 2026-09-19. Sol is 4 / 20 "at least
+        // through November 21, 2026" (the post-promotion price is not published); Terra and
+        // Luna are their list prices. GPT-6 Astra bills input beyond 272K tokens twice — a
+        // flat registry cannot express that, so a long-context call there is under-counted.
+        Register("gpt-6-astra", 10.00m, 50.00m);
         // The bare "gpt-5.6" alias points at Sol; register it so the alias is priced too.
         // Prefix matching takes the longest key, so the three explicit variants still win.
-        Register("gpt-5.6", 5.00m, 30.00m);
-        Register("gpt-5.6-sol", 5.00m, 30.00m);
-        Register("gpt-5.6-terra", 2.50m, 15.00m);
-        Register("gpt-5.6-luna", 1.00m, 6.00m);
+        Register("gpt-5.6", 4.00m, 20.00m);
+        Register("gpt-5.6-sol", 4.00m, 20.00m);
+        Register("gpt-5.6-terra", 2.00m, 12.00m);
+        Register("gpt-5.6-luna", 0.20m, 1.20m);
         Register("gpt-4o", 2.50m, 10.00m);
         Register("gpt-4o-mini", 0.15m, 0.60m);
         Register("gpt-4-turbo", 10.00m, 30.00m);
@@ -126,9 +130,14 @@ public sealed partial class ModelPricingRegistry : IModelPricingRegistry
         Register("o1-mini", 3.00m, 12.00m);
         Register("o3-mini", 1.10m, 4.40m);
 
-        // Anthropic models
+        // Anthropic models — vendor pricing page read 2026-09-19. Sonnet 5's introductory
+        // 2 / 10 became its standard price (the rise to 3 / 15 announced for 2026-09-01 was
+        // cancelled); Fable 5.1 and Fable 5 share the top tier.
+        Register("claude-fable-5-1", 10.00m, 50.00m);
+        Register("claude-fable-5", 10.00m, 50.00m);
         Register("claude-opus-5", 5.00m, 25.00m);
-        Register("claude-sonnet-5", 3.00m, 15.00m);
+        Register("claude-sonnet-5", 2.00m, 10.00m);
+        Register("claude-haiku-4-5", 1.00m, 5.00m);
         Register("claude-opus-4", 15.00m, 75.00m);
         Register("claude-sonnet-4", 3.00m, 15.00m);
         Register("claude-3-opus", 15.00m, 75.00m);
