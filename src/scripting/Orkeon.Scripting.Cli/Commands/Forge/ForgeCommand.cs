@@ -374,13 +374,17 @@ internal static class ForgeCommand
         // run by the test stage. Everything else the crew sees is read-only.
         Directory.CreateDirectory(OutputDirectoryOf(session));
 
-        // Forge accepts no --mount, so its settings file is the only place these three roots
-        // can be claimed from — and that is precisely the input the reserved-root guard never
-        // saw. Every other entry point calls it, on its command-line mounts; this one has to
-        // call it on what the settings declare, or the collision comes back from a DI factory
-        // as "Duplicate virtual paths" and reads as a crash instead of the mistake it is.
-        if (!RunnerExecution.EnsureReservedRootsAreFree(
-                [], settingsPath, [.. RunnerVirtualRoots.ForgeReserved]))
+        // Forge accepts no --mount: its three roots are its own CliMounts, and the host places
+        // a CliMount by virtual root against the settings (STUDIO-15 D-01) — a settings entry
+        // on /workspace, /forge or /output is replaced for the trial, and logged as such. So
+        // they are NOT reserved here, and must not be: /output is an ordinary mount for a run,
+        // and the name Studio gives a team's write folder, so a settings file naming it is the
+        // normal case on every Studio machine, not a mistake. Refusing it — as the guard that
+        // predated D-01 did — stopped the wizard's first trial on the very folder the user had
+        // just associated. The one root the forge does not mount itself is /sandbox: the file
+        // system registers it internally in every host, a settings entry there still reaches
+        // the registry's duplicate check, and only this guard turns that crash into one line.
+        if (!RunnerExecution.EnsureReservedRootsAreFree([], settingsPath, RunnerVirtualRoots.Sandbox))
         {
             return 1;
         }
@@ -402,6 +406,11 @@ internal static class ForgeCommand
                 logging.Services.Configure<Microsoft.Extensions.Logging.Console.ConsoleLoggerOptions>(
                     o => o.LogToStandardErrorThreshold = LogLevel.Trace);
                 logging.SetMinimumLevel(LogLevel.Warning);
+                // The host's own decisions stay visible above that floor: the LLM it resolved,
+                // and a settings entry one of the forge's mounts replaced (D-01) — the trial
+                // writes into the session's bench, not into the folder the settings name as
+                // /output, and the log is where that is said.
+                logging.AddFilter("Orkeon.Hosting.RunnerHost", LogLevel.Information);
             },
             configureServices: (_, services) =>
             {

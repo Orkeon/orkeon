@@ -53,14 +53,17 @@ public static class RunnerVirtualRoots
 
     /// <summary>
     /// The workspace a command reads its input corpus from, read-only. Conventional rather than
-    /// reserved: <c>rag</c> and the forge inject it when nobody claimed it, and an ordinary run
-    /// may declare its own.
+    /// reserved: <c>rag</c> injects it when nobody claimed it, the forge mounts it itself and
+    /// places it by root against the settings (a settings entry on it is replaced for the
+    /// trial), and an ordinary run may declare its own.
     /// </summary>
     public const string Workspace = "/workspace";
 
     /// <summary>
     /// Where a run writes what it produces, writable. Conventional, like <see cref="Workspace"/>
     /// - the summary writer and the forge bench both use it, and a crew may declare its own.
+    /// The forge places its bench on it the way it places <see cref="Workspace"/>, so a settings
+    /// file naming <c>/output</c> - Studio's own name for a team's write folder - forges unchanged.
     /// </summary>
     public const string Output = "/output";
 
@@ -73,17 +76,4 @@ public static class RunnerVirtualRoots
     /// test could not see.
     /// </summary>
     public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, Sandbox];
-
-    /// <summary>
-    /// What the forge reserves, which is NOT <see cref="All"/> and must not be conflated with
-    /// it. The forge mounts the workspace, its session and the trial bench's output for itself,
-    /// so a settings file claiming one of those is a mistake there - while <c>/output</c> is a
-    /// perfectly ordinary mount for a normal run, which is why it is absent from
-    /// <see cref="All"/>.
-    /// <para>
-    /// <see cref="Sandbox"/> is in this set because <c>AddOrkeonFileSystem</c> mounts it
-    /// unconditionally, in every host including the forge's.
-    /// </para>
-    /// </summary>
-    public static IReadOnlyList<string> ForgeReserved { get; } = [Workspace, Forge, Output, Sandbox];
 }

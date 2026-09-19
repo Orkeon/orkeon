@@ -115,41 +115,6 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
-    /// A settings file that claims one of the three roots forge mounts for itself is a
-    /// configuration mistake, and has to read as one.
-    /// <para>
-    /// Forge accepts no <c>--mount</c>, so its settings file is the ONLY place its roots can
-    /// be claimed from — and that was exactly the case the reserved-root guard never covered:
-    /// every other entry point calls it, on its command-line mounts. The team composer writes
-    /// <c>/output</c> into the settings the moment a team produces a deliverable, so creating
-    /// a team and then composing it was enough to reach it, and what came back was
-    /// "Duplicate virtual paths: /output" thrown out of a DI factory.
-    /// </para>
-    /// </summary>
-    [Fact]
-    public async Task A_settings_declared_output_mount_is_refused_rather_than_crashing_the_host_build()
-    {
-        Directory.CreateDirectory(_workspace);
-        var deliverables = Path.Combine(_workspace, "livrables");
-        Directory.CreateDirectory(deliverables);
-        var claim = System.Text.Json.JsonSerializer.Serialize(
-            Orkeon.Domain.FileSystem.FileSystemMount.Quote(deliverables) + ":/output:rw");
-        await File.WriteAllTextAsync(
-            Path.Combine(_workspace, "appsettings.json"),
-            "{ \"Llm\": { \"Provider\": \"ollama\", \"Model\": \"llama3.2\" },"
-            + " \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ " + claim + " ] } } }",
-            TestContext.Current.CancellationToken);
-
-        using var console = new TestConsole();
-
-        var exitCode = await ForgeCommand.DispatchAsync([], _workspace);
-
-        Assert.Equal(1, exitCode);
-        Assert.Contains("/output", console.Stderr, StringComparison.Ordinal);
-        Assert.Contains("reserved", console.Stderr, StringComparison.Ordinal);
-        Assert.DoesNotContain("Duplicate virtual paths", console.Stderr, StringComparison.Ordinal);
-    }
-    /// <summary>
     /// <c>resume --adopt</c> end to end: the dry pause goes to Ready, offline, and the
     /// stream closes on «ready» so a client knows the wizard may save the team.
     /// </summary>
@@ -365,5 +330,73 @@ public sealed class ForgeCommandTests : IDisposable
         {
             Directory.Delete(documents, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// A settings file naming <c>/output</c> or <c>/workspace</c> is the normal case, not a
+    /// mistake: <c>/output</c> is an ordinary mount for a run and the name Studio gives a
+    /// team's write folder, declared in the allowed folders the moment the wizard associates
+    /// one. The forge's own mounts are placed by root against it (STUDIO-15 D-01), so each
+    /// entry is replaced for the trial, said so in the log, and the cycle goes on to the host
+    /// — which here refuses for want of an LLM, the proof that nothing refused it earlier.
+    /// <para>
+    /// The forge used to refuse such a file as a mistake, because before D-01 the entry and
+    /// the forge's own mount reached the registry as two mounts and the run died with
+    /// "Duplicate virtual paths: /output" out of a DI factory. That refusal outlived its
+    /// reason: the team composer writes <c>/output</c> into the settings the moment a team
+    /// produces a deliverable, and the wizard declares the folder associated at step 1 under
+    /// that very name — so it stopped the first trial of every Studio team on a real folder.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_settings_file_naming_the_forge_roots_is_placed_by_root_not_refused()
+    {
+        var documents = Directory.CreateDirectory(Path.Combine(_workspace, "factures")).FullName;
+        var output = Directory.CreateDirectory(Path.Combine(_workspace, "sortie")).FullName;
+        var settings = WriteSettings(
+            $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(documents)}:/workspace:ro",
+            $"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(output)}:/output:rw");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.DoesNotContain("reserved by the runner", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("mount /workspace: --mount replaces the settings entry", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("mount /output: --mount replaces the settings entry", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("Duplicate virtual paths", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// <c>/sandbox</c> stays reserved: the forge does not mount it — the file system registers
+    /// it internally in every host — so nothing places a settings entry claiming it, and the
+    /// refusal is the one line the guard exists for, before any host boots.
+    /// </summary>
+    [Fact]
+    public async Task A_settings_file_claiming_the_sandbox_root_is_still_refused_before_any_host()
+    {
+        var folder = Directory.CreateDirectory(Path.Combine(_workspace, "bac")).FullName;
+        var settings = WriteSettings($"{Orkeon.Domain.FileSystem.FileSystemMount.Quote(folder)}:/sandbox:rw");
+        using var console = new TestConsole();
+
+        var exitCode = await ForgeCommand.DispatchAsync(["une", "veille", "--settings", settings, "--dry"], _workspace);
+
+        Assert.Equal(1, exitCode);
+        Assert.Contains("reserved by the runner", console.Stderr, StringComparison.Ordinal);
+        Assert.Contains("/sandbox", console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("FORGE-LLM-UNAVAILABLE", console.Stderr, StringComparison.Ordinal);
+    }
+
+    /// <summary>A settings file declaring <paramref name="mounts"/> and no LLM, under the workspace.</summary>
+    private string WriteSettings(params string[] mounts)
+    {
+        Directory.CreateDirectory(_workspace);
+        var path = Path.Combine(_workspace, "trial-settings.json");
+        File.WriteAllText(path, System.Text.Json.JsonSerializer.Serialize(new
+        {
+            Orkeon = new { FileSystem = new { Mounts = mounts } },
+        }));
+        return path;
     }
 }

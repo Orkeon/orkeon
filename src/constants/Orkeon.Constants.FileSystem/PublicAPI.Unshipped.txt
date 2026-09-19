@@ -1,1 +1,2 @@
 #nullable enable
+*REMOVED*static Orkeon.Constants.FileSystem.RunnerVirtualRoots.ForgeReserved.get -> System.Collections.Generic.IReadOnlyList<string!>!

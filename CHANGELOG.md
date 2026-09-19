@@ -33,6 +33,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   helper for the convention, and `FolderPolicy` names the step-1 choice the wizard asks
   (Later / InsideTeam / ExistingFolders — the wizard entry below).
 
+<!-- STUDIO-14 recette -->
+### Fixed — the forge trial no longer refuses a settings file that names `/output` or `/workspace` (STUDIO-14, owner recette)
+
+- `orkeon forge` refused any settings file whose `Orkeon:FileSystem:Mounts` named
+  `/workspace`, `/forge` or `/output` (`ERROR: '/output' is a virtual root reserved by the
+  runner…`, exit 1). That guard predates STUDIO-15: since a `--mount` is placed by virtual
+  root, the forge's own three mounts replace such an entry for the trial, and the
+  `Duplicate virtual paths` crash the guard pre-empted cannot happen. Studio's wizard hit it
+  on its first real team — the folder associated at step 1 is declared in the allowed folders
+  as `/output`, the Studio convention for a team's write folder, and the trial refused to
+  start. The forge now reserves `/sandbox` alone (the one root it does not mount itself); a
+  settings entry on `/workspace`, `/forge` or `/output` is replaced for the trial and logged as
+  `mount /output: --mount replaces the settings entry`, a line the forge now lets through to
+  stderr. `RunnerVirtualRoots.ForgeReserved` is removed.
+
 <!-- STUDIO-14 settings -->
 ### Added — Studio: Settings › Authorized folders lists each team's own folders, read-only (STUDIO-14, lot 6)
 
