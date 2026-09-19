@@ -697,6 +697,18 @@
   <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>{0} tarea(s) terminada(s).</value>
   </data>
+  <data name="Studio.Run.TasksProgress" xml:space="preserve">
+    <value>{0} tarea(s) terminada(s), {1} en curso.</value>
+  </data>
+  <data name="Studio.Run.TaskSince" xml:space="preserve">
+    <value>desde {0}</value>
+  </data>
+  <data name="Studio.Run.ToolActive" xml:space="preserve">
+    <value>Herramienta {0} en curso…</value>
+  </data>
+  <data name="Studio.Run.ToolCalls" xml:space="preserve">
+    <value>{0} llamada(s) a herramientas</value>
+  </data>
   <data name="Studio.Run.Succeeded" xml:space="preserve">
     <value>Terminado con éxito.</value>
   </data>

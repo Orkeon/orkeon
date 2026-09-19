@@ -516,15 +516,29 @@
       </Border.Style>
       <StackPanel>
         <DockPanel Margin="0,0,0,8">
-          <Border DockPanel.Dock="Right" VerticalAlignment="Center">
+          <Border x:Name="RunBadge" DockPanel.Dock="Right" VerticalAlignment="Center">
             <Border.Style>
               <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
                 <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
                 <Setter Property="TextElement.Foreground" Value="{DynamicResource InkFaintBrush}"/>
                 <Style.Triggers>
+                  <!-- Pulsing while the child process lives (STUDIO-17): a still «running» badge
+                       could not be told from a stalled run. No Storyboard.TargetName — a Style has
+                       no namescope — so the animation addresses the badge itself; CapturePose
+                       holds it at full opacity for the screenshot campaign. -->
                   <DataTrigger Binding="{Binding RunBadgeTone}" Value="running">
                     <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
                     <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                    <DataTrigger.EnterActions>
+                      <BeginStoryboard Name="RunBadgePulse">
+                        <Storyboard RepeatBehavior="Forever" AutoReverse="True">
+                          <DoubleAnimation Storyboard.TargetProperty="Opacity" From="1" To="0.35" Duration="0:0:0.7"/>
+                        </Storyboard>
+                      </BeginStoryboard>
+                    </DataTrigger.EnterActions>
+                    <DataTrigger.ExitActions>
+                      <StopStoryboard BeginStoryboardName="RunBadgePulse"/>
+                    </DataTrigger.ExitActions>
                   </DataTrigger>
                   <DataTrigger Binding="{Binding RunBadgeTone}" Value="ok">
                     <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
@@ -563,6 +577,10 @@
                            Text="{Binding Duration}"/>
                 <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
                            Text="{Binding Tokens}"/>
+                <!-- The calls the task made — a zero on a task meant to write a file is the
+                     diagnosis a green run hides (STUDIO-17). -->
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
+                           Text="{Binding ToolCalls}"/>
                 <StackPanel Orientation="Horizontal">
                   <controls:LucideIcon Size="13" Margin="0,0,7,0">
                     <controls:LucideIcon.Style>
@@ -584,6 +602,47 @@
             </DataTemplate>
           </ItemsControl.ItemTemplate>
         </ItemsControl>
+
+        <!-- What is running now (STUDIO-17): the task the run announced and has not yet reported
+             finished. The spinner turns while the process lives; the time is the run's own clock;
+             nothing here is inferred. TargetName is fine here — a DataTemplate has a namescope. -->
+        <ItemsControl ItemsSource="{Binding Progress.RunningTasks}"
+                      Visibility="{Binding Progress.HasRunningTasks, Converter={StaticResource BooleanToVisibility}}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <DockPanel Margin="0,2">
+                <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" Margin="10,0,0,0"
+                           Text="{Binding Since}"/>
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="loader-circle" Size="13" Margin="0,0,7,0"
+                                       Foreground="{DynamicResource AccentBrush}"
+                                       RenderTransformOrigin="0.5,0.5">
+                    <controls:LucideIcon.RenderTransform>
+                      <RotateTransform x:Name="RunningSpin"/>
+                    </controls:LucideIcon.RenderTransform>
+                    <controls:LucideIcon.Triggers>
+                      <EventTrigger RoutedEvent="FrameworkElement.Loaded">
+                        <BeginStoryboard>
+                          <Storyboard RepeatBehavior="Forever">
+                            <DoubleAnimation Storyboard.TargetName="RunningSpin" Storyboard.TargetProperty="Angle"
+                                             From="0" To="360" Duration="0:0:1"/>
+                          </Storyboard>
+                        </BeginStoryboard>
+                      </EventTrigger>
+                    </controls:LucideIcon.Triggers>
+                  </controls:LucideIcon>
+                  <TextBlock FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                             Text="{Binding Title}"/>
+                </StackPanel>
+              </DockPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+
+        <!-- The tool at work, straight from tool.called / tool.returned. -->
+        <TextBlock Style="{StaticResource Hint}" Margin="20,2,0,0"
+                   Visibility="{Binding Progress.HasActivity, Converter={StaticResource BooleanToVisibility}}"
+                   Text="{Binding Progress.ActivityLine}"/>
 
         <!-- The text the model is generating (the "stream" option). -->
         <Border Margin="0,10,0,0" Padding="10" CornerRadius="8"
@@ -783,6 +842,12 @@
             </ListBox.ItemsPanel>
             <ListBox.ItemTemplate>
               <DataTemplate>
+                <StackPanel Orientation="Horizontal">
+                  <!-- When Studio read the line (STUDIO-17): a long run has to say when it last
+                       spoke. Local time, to the second. The CLI's own log lines keep their
+                       millisecond prefix — same clock, a few milliseconds apart. -->
+                  <TextBlock Text="{Binding Time}" Opacity="0.55" Margin="0,0,10,0"
+                             Foreground="{DynamicResource ConsoleFgBrush}"/>
                 <TextBlock Text="{Binding Text}">
                   <TextBlock.Style>
                     <!-- The console palette has four brushes and used two of them: the
@@ -806,6 +871,7 @@
                     </Style>
                   </TextBlock.Style>
                 </TextBlock>
+                </StackPanel>
               </DataTemplate>
             </ListBox.ItemTemplate>
           </ListBox>

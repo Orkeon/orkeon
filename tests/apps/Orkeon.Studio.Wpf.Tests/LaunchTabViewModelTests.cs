@@ -397,6 +397,20 @@ public sealed class RunLogViewModelTests
         Assert.Empty(log.Lines);
         Assert.Equal(0, log.DroppedLines);
     }
+
+    [Fact]
+    public void Should_StampEachLine_WithTheTimeItWasRead()
+    {
+        // STUDIO-17: captured since the first version, shown at last. Local time, to the second.
+        var log = new RunLogViewModel();
+        var read = new DateTimeOffset(2026, 9, 19, 8, 32, 19, TimeSpan.Zero);
+
+        log.Append(new ProcessOutputLine(ProcessOutputChannel.StandardOutput, "Using settings: x", read));
+
+        var line = Assert.Single(log.Lines);
+        Assert.Equal(read.ToLocalTime().ToString("HH:mm:ss", System.Globalization.CultureInfo.InvariantCulture), line.Time);
+        Assert.Matches("^[0-9]{2}:[0-9]{2}:[0-9]{2}$", line.Time);
+    }
 }
 
 public sealed class LaunchTabViewModelTests
@@ -564,6 +578,56 @@ public sealed class LaunchTabViewModelTests
 
         Assert.Contains("""{"kind":"reply","correlationId":"r-1","payload":{"answer":42}}""", launcher.InputLines);
         Assert.Contains("""{"kind":"reply","correlationId":"r-2","payload":"yes, go"}""", launcher.InputLines);
+    }
+
+    [Fact]
+    public async Task A_second_launch_starts_from_a_clean_journal_and_no_stale_verdict()
+    {
+        // STUDIO-17: the journal used to accumulate across runs, and the previous run's verdict
+        // — exit badge, result row, « Open the result » — stayed on screen while the new run
+        // was in flight. Every launch now begins clean; « Copy » is how a journal survives.
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var (tab, launcher, _) = Build(probe);
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, "first run"));
+        tab.Target.Select("/crews/team.yaml");
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+        Assert.True(tab.HasResult);
+        Assert.Contains(tab.Log.Lines, l => l.Text == "first run");
+
+        launcher.OutputToEmit.Clear();
+        launcher.OutputToEmit.Add(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, "second run"));
+        bool? hadResultWhileRunning = null;
+        int? linesWhileRunning = null;
+        launcher.WhileRunning = () =>
+        {
+            hadResultWhileRunning = tab.HasResult;
+            linesWhileRunning = tab.Log.Lines.Count;
+        };
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.False(hadResultWhileRunning);
+        Assert.Equal(1, linesWhileRunning);   // the echoed command line, nothing older
+        Assert.DoesNotContain(tab.Log.Lines, l => l.Text == "first run");
+        Assert.Contains(tab.Log.Lines, l => l.Text == "second run");
+        Assert.True(tab.HasResult);
+    }
+
+    [Fact]
+    public async Task A_validate_first_launch_keeps_both_passes_in_one_journal()
+    {
+        // The clean start is per click, not per pass: the dry run's verdict must still be
+        // readable next to the real run it protected.
+        var probe = new FakeTargetProbe().WithFile("/crews/team.yaml");
+        var (tab, launcher, _) = Build(probe);
+        tab.Target.Select("/crews/team.yaml");
+        tab.Options.ValidateFirst = true;
+
+        await tab.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, launcher.Requests.Count);
+        Assert.Equal(2, tab.Log.Lines.Count(l => l.IsCommand));
     }
 
     [Fact]
@@ -1031,6 +1095,10 @@ public sealed class JournalCopyTests
         log.Append(ProcessOutputLine.Now(ProcessOutputChannel.StandardError, "WARN something"));
 
         Assert.True(log.CanCopy);
-        Assert.Equal($"task 1 done{Environment.NewLine}WARN something", log.BuildText());
+
+        // Each line leads with the time it was read (STUDIO-17): a pasted journal has to say when.
+        Assert.Equal(
+            $"{log.Lines[0].Time}  task 1 done{Environment.NewLine}{log.Lines[1].Time}  WARN something",
+            log.BuildText());
     }
 }

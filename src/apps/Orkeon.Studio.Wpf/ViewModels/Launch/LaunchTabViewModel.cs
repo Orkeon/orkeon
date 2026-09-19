@@ -381,8 +381,11 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>Runs the crew with <c>--validate</c> (spec §5.2).</summary>
-    public Task<ProcessRunResult?> ValidateAsync(CancellationToken cancellationToken = default) =>
-        LaunchAsync(validate: true, cancellationToken);
+    public Task<ProcessRunResult?> ValidateAsync(CancellationToken cancellationToken = default)
+    {
+        BeginLaunch();
+        return LaunchAsync(validate: true, cancellationToken);
+    }
 
     /// <summary>
     /// Runs the crew for real (spec §5.3). With the dry-run-first option (mock,
@@ -391,6 +394,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public async Task<ProcessRunResult?> RunAsync(CancellationToken cancellationToken = default)
     {
+        BeginLaunch();
+
         if (Options.ValidateFirst)
         {
             var validation = await LaunchAsync(validate: true, cancellationToken).ConfigureAwait(true);
@@ -492,6 +497,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
+        BeginLaunch();
         LoadIntoForm(entry);
 
         return await ExecuteAsync(
@@ -513,6 +519,20 @@ public sealed class LaunchTabViewModel : ObservableObject
     private IReadOnlyDictionary<string, string> EnvironmentFor(string targetPath) =>
         _environmentForTarget?.Invoke(targetPath)
         ?? new Dictionary<string, string>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// A launch starts from a clean screen (STUDIO-17). The journal used to accumulate across
+    /// runs, and the previous run's verdict — exit badge, result row, « Open the result » —
+    /// stayed on screen for the whole of the next run, so a reader could take the old outcome
+    /// for the new one. Called once per user gesture, not per pass: a « validate first »
+    /// launch keeps its dry run and its real run in one journal. « Clear the journal » stays
+    /// for the rest; « Copy » is how a journal survives the next click.
+    /// </summary>
+    private void BeginLaunch()
+    {
+        Log.Clear();
+        LastResult = null;
+    }
 
     private async Task<ProcessRunResult> ExecuteAsync(
         RunLaunchRequest request,

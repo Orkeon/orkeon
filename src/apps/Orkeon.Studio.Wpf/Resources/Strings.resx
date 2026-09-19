@@ -259,6 +259,10 @@
   <data name="Studio.Run.Running" xml:space="preserve"><value>Running…</value></data>
   <data name="Studio.Run.NothingYet" xml:space="preserve"><value>Nothing reported yet.</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve"><value>{0} task(s) finished.</value></data>
+  <data name="Studio.Run.TasksProgress" xml:space="preserve"><value>{0} task(s) finished, {1} in progress.</value></data>
+  <data name="Studio.Run.TaskSince" xml:space="preserve"><value>since {0}</value></data>
+  <data name="Studio.Run.ToolActive" xml:space="preserve"><value>Tool {0} running…</value></data>
+  <data name="Studio.Run.ToolCalls" xml:space="preserve"><value>{0} tool call(s)</value></data>
   <data name="Studio.Run.Succeeded" xml:space="preserve"><value>Finished successfully.</value></data>
   <data name="Studio.Run.Failed" xml:space="preserve"><value>Finished with a failure.</value></data>
   <data name="Studio.Run.Cost" xml:space="preserve"><value>{0} tokens · {1}</value></data>

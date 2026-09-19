@@ -210,9 +210,10 @@ public sealed partial class CaptureCatalogConformityTests : IAsyncLifetime
 
         Assert.NotEmpty(targets);
 
-        // Three of these are posed by their GLYPH rather than by name — one rule covers every
+        // Four of these are posed by their GLYPH rather than by name — one rule covers every
         // loader-circle in the app, present and future — so the pose file names the glyph instead.
-        var posedStructurally = new[] { "EngineSpin", "TrialSpin", "ProgressSpin" };
+        // RunningSpin is the Run screen's in-progress row (STUDIO-17), a loader-circle like the others.
+        var posedStructurally = new[] { "EngineSpin", "TrialSpin", "ProgressSpin", "RunningSpin" };
 
         var unposed = targets
             .Distinct(StringComparer.Ordinal)

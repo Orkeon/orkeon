@@ -41,6 +41,43 @@ public sealed class RunTaskViewModel
     public string Tokens => Task.Tokens is { } tokens
         ? tokens.ToString("N0", CultureInfo.CurrentCulture)
         : string.Empty;
+
+    /// <summary>
+    /// How many tools the task called, or an empty label when the run did not say. A zero is
+    /// shown as a zero: a task meant to write a file and reporting no call is the diagnosis
+    /// the owner's second run lacked (STUDIO-17).
+    /// </summary>
+    public string ToolCalls => Task.ToolCalls is { } calls
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunProgressToolCalls], calls)
+        : string.Empty;
+}
+
+/// <summary>One task the run has started and not yet finished, as the progress panel shows it (STUDIO-17).</summary>
+public sealed class RunningTaskViewModel
+{
+    private readonly IStudioStrings _strings;
+
+    /// <summary>Wraps what the run said when it started the task.</summary>
+    public RunningTaskViewModel(RunTaskInFlight task, IStudioStrings? strings = null)
+    {
+        ArgumentNullException.ThrowIfNull(task);
+        Task = task;
+        _strings = strings ?? EnglishStudioStrings.Instance;
+    }
+
+    /// <summary>The underlying Core record.</summary>
+    public RunTaskInFlight Task { get; }
+
+    /// <summary>The agent whose turn it is, or the task's identifier when the run named no agent.</summary>
+    public string Title => Task.AgentRole ?? Task.TaskId ?? "—";
+
+    /// <summary>"since HH:mm:ss", local time, from the run's own clock; empty when the start carried none.</summary>
+    public string Since => Task.StartedAt is { } started
+        ? string.Format(
+            CultureInfo.CurrentCulture,
+            _strings[StudioStringKeys.RunProgressTaskSince],
+            started.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture))
+        : string.Empty;
 }
 
 /// <summary>
@@ -79,6 +116,20 @@ public sealed class RunProgressViewModel : ObservableObject
 
     /// <summary>Tasks the run has finished, in the order it reported them.</summary>
     public ObservableCollection<RunTaskViewModel> Tasks { get; } = [];
+
+    /// <summary>Tasks the run has started and not yet finished, oldest first (STUDIO-17).</summary>
+    public ObservableCollection<RunningTaskViewModel> RunningTasks { get; } = [];
+
+    /// <summary>Whether anything is in progress — gates the running rows.</summary>
+    public bool HasRunningTasks => RunningTasks.Count > 0;
+
+    /// <summary>"Tool X running…" while a tool call is open; empty otherwise.</summary>
+    public string ActivityLine => _model.ActiveToolName is { } tool
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunProgressToolActive], tool)
+        : string.Empty;
+
+    /// <summary>Whether a tool is at work — gates the activity line.</summary>
+    public bool HasActivity => _model.ActiveToolName is not null;
 
     /// <summary>Sends the typed answer to the waiting question.</summary>
     public RelayCommand AnswerCommand { get; }
@@ -175,8 +226,19 @@ public sealed class RunProgressViewModel : ObservableObject
                 return chips.Count > 0 ? $"{verdict} {string.Join(" · ", chips)}" : verdict;
             }
 
-            if (Tasks.Count == 0)
+            if (Tasks.Count == 0 && RunningTasks.Count == 0)
                 return _strings[StudioStringKeys.RunProgressNothingYet];
+
+            // A task in progress is news: "nothing reported yet" would be false once the run
+            // has said whose turn it is (STUDIO-17).
+            if (RunningTasks.Count > 0)
+            {
+                return string.Format(
+                    CultureInfo.CurrentCulture,
+                    _strings[StudioStringKeys.RunProgressTasksProgress],
+                    Tasks.Count,
+                    RunningTasks.Count);
+            }
 
             return string.Format(
                 CultureInfo.CurrentCulture,
@@ -210,6 +272,7 @@ public sealed class RunProgressViewModel : ObservableObject
         _answer = answer;
         _reply = reply;
         Tasks.Clear();
+        RunningTasks.Clear();
         HubMessages.Clear();
         AnswerText = string.Empty;
         ReplyText = string.Empty;
@@ -234,13 +297,22 @@ public sealed class RunProgressViewModel : ObservableObject
         for (var index = before; index < _model.Tasks.Count; index++)
             Tasks.Add(new RunTaskViewModel(_model.Tasks[index], _strings));
 
+        // The in-flight list is short and changes only on a start or a close: rebuilding it
+        // is cheaper to reason about than diffing it.
+        if (orkeonEvent!.Kind is RunEventKinds.TaskStarted or RunEventKinds.TaskCompleted or RunEventKinds.RunFinished)
+        {
+            RunningTasks.Clear();
+            foreach (var running in _model.RunningTasks)
+                RunningTasks.Add(new RunningTaskViewModel(running, _strings));
+        }
+
         for (var index = hubBefore; index < _model.HubMessages.Count; index++)
             HubMessages.Add(Describe(_model.HubMessages[index]));
 
         // A delta arrives per token, on the UI thread. Re-raising the eleven labels plus the
         // command state for each one would mean thousands of change notifications per
         // response, and generated text is the only thing a delta can move.
-        if (string.Equals(orkeonEvent!.Kind, RunEventKinds.LlmDelta, StringComparison.Ordinal))
+        if (string.Equals(orkeonEvent.Kind, RunEventKinds.LlmDelta, StringComparison.Ordinal))
         {
             OnPropertyChanged(nameof(GeneratedText));
             OnPropertyChanged(nameof(HasGeneratedText));
@@ -326,6 +398,9 @@ public sealed class RunProgressViewModel : ObservableObject
         OnPropertyChanged(nameof(AgentRequestFrom));
         OnPropertyChanged(nameof(AgentRequestPayload));
         OnPropertyChanged(nameof(HasHubMessages));
+        OnPropertyChanged(nameof(HasRunningTasks));
+        OnPropertyChanged(nameof(ActivityLine));
+        OnPropertyChanged(nameof(HasActivity));
         AnswerCommand.RaiseCanExecuteChanged();
         ReplyCommand.RaiseCanExecuteChanged();
     }

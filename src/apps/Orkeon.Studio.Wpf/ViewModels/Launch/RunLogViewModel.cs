@@ -1,6 +1,5 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
-using System.Text;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -60,6 +59,13 @@ public sealed class LogLineViewModel
     /// <summary>When it was read.</summary>
     public DateTimeOffset TimestampUtc => Line.TimestampUtc;
 
+    /// <summary>
+    /// When it was read, as the journal shows it: local time to the second (STUDIO-17). The
+    /// stamp was captured from the first version on and never displayed; a seven-minute run
+    /// gave no way to tell when the process last spoke.
+    /// </summary>
+    public string Time => TimestampUtc.ToLocalTime().ToString("HH:mm:ss", CultureInfo.InvariantCulture);
+
     /// <inheritdoc />
     public override string ToString() => Text;
 }
@@ -92,13 +98,14 @@ public sealed class RunLogViewModel : ObservableObject
     public bool CanCopy => Lines.Count > 0;
 
     /// <summary>
-    /// The whole journal as plain text for the clipboard, oldest first, exactly as the
-    /// CLI printed it. WPF text blocks are not selectable; this is how the operator gets
-    /// the log out of the window. A truncation note leads when lines were dropped.
+    /// The whole journal as plain text for the clipboard, oldest first, each line led by the
+    /// time it was read — what a bug report needs. WPF text blocks are not selectable; this
+    /// is how the operator gets the log out of the window. A truncation note leads when
+    /// lines were dropped.
     /// </summary>
     public string BuildText()
     {
-        var lines = Lines.Select(l => l.Text);
+        var lines = Lines.Select(l => $"{l.Time}  {l.Text}");
         return DroppedLines > 0
             ? string.Join(Environment.NewLine, lines.Prepend(Summary))
             : string.Join(Environment.NewLine, lines);
@@ -167,15 +174,5 @@ public sealed class RunLogViewModel : ObservableObject
         Lines.Clear();
         DroppedLines = 0;
         OnPropertyChanged(nameof(Summary));
-    }
-
-    /// <summary>The whole buffer as text, for a copy-to-clipboard action.</summary>
-    public string ToText()
-    {
-        var builder = new StringBuilder();
-        foreach (var line in Lines)
-            builder.AppendLine(line.Text);
-
-        return builder.ToString();
     }
 }

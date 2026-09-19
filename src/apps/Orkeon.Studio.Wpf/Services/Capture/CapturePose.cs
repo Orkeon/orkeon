@@ -1,4 +1,5 @@
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Media;
 using System.Windows.Shapes;
@@ -41,7 +42,21 @@ internal static class CapturePose
         PoseSweep(visuals);
         PoseHalo(visuals);
         PoseDots(visuals);
+        PoseRunBadge(visuals);
         PoseOpenPopups(visuals);
+    }
+
+    /// <summary>
+    /// The Run screen's «running» badge, which pulses while the child process lives (STUDIO-17).
+    /// Held at full opacity: a badge caught mid-fade would read as a disabled state.
+    /// </summary>
+    private static void PoseRunBadge(IEnumerable<DependencyObject> visuals)
+    {
+        foreach (var badge in visuals.OfType<Border>().Where(b => b.Name == "RunBadge"))
+        {
+            badge.BeginAnimation(UIElement.OpacityProperty, null);
+            badge.Opacity = 1;
+        }
     }
 
     /// <summary>

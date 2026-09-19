@@ -259,6 +259,10 @@
   <data name="Studio.Run.Running" xml:space="preserve"><value>Exécution…</value></data>
   <data name="Studio.Run.NothingYet" xml:space="preserve"><value>Rien de rapporté pour l'instant.</value></data>
   <data name="Studio.Run.TasksDone" xml:space="preserve"><value>{0} tâche(s) terminée(s).</value></data>
+  <data name="Studio.Run.TasksProgress" xml:space="preserve"><value>{0} tâche(s) terminée(s), {1} en cours.</value></data>
+  <data name="Studio.Run.TaskSince" xml:space="preserve"><value>depuis {0}</value></data>
+  <data name="Studio.Run.ToolActive" xml:space="preserve"><value>Outil {0} en cours…</value></data>
+  <data name="Studio.Run.ToolCalls" xml:space="preserve"><value>{0} appel(s) d'outil</value></data>
   <data name="Studio.Run.Succeeded" xml:space="preserve"><value>Terminé avec succès.</value></data>
   <data name="Studio.Run.Failed" xml:space="preserve"><value>Terminé en échec.</value></data>
   <data name="Studio.Run.Cost" xml:space="preserve"><value>{0} jetons · {1}</value></data>

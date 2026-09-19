@@ -1,6 +1,13 @@
+using System.Globalization;
 using Orkeon.Studio.Core.Events;
 
 namespace Orkeon.Studio.Core.Run;
+
+/// <summary>
+/// One task the run has started and not yet reported finished (STUDIO-17). Deliberately thin:
+/// the start says which task, whose turn, and when — nothing has been measured yet.
+/// </summary>
+public sealed record RunTaskInFlight(string? TaskId, string? AgentRole, DateTimeOffset? StartedAt);
 
 /// <summary>One task the run has finished.</summary>
 public sealed record RunTaskProgress(
@@ -58,11 +65,26 @@ public sealed record RunAgentRequest(string CorrelationId, string? From, string?
 public sealed class RunProgressModel
 {
     private readonly List<RunTaskProgress> _tasks = [];
+    private readonly List<RunTaskInFlight> _running = [];
+    private readonly List<(string Key, string Tool)> _activeTools = [];
     private readonly List<RunHubMessage> _hubMessages = [];
     private readonly System.Text.StringBuilder _generated = new();
 
     /// <summary>Tasks finished so far, in the order the run reported them.</summary>
     public IReadOnlyList<RunTaskProgress> Tasks => _tasks;
+
+    /// <summary>
+    /// Tasks started and not yet finished, oldest first — what a screen shows as "in progress"
+    /// (STUDIO-17). Empty on an older CLI that announces no starts: the screen then shows
+    /// finished tasks only, as it always did, rather than a guess.
+    /// </summary>
+    public IReadOnlyList<RunTaskInFlight> RunningTasks => _running;
+
+    /// <summary>
+    /// The tool most recently called and not yet returned, or null when no tool is at work.
+    /// Straight from <c>tool.called</c> / <c>tool.returned</c>, paired by correlation id.
+    /// </summary>
+    public string? ActiveToolName => _activeTools.Count > 0 ? _activeTools[^1].Tool : null;
 
     /// <summary>Messages the run's hub relayed to this process, oldest first.</summary>
     public IReadOnlyList<RunHubMessage> HubMessages => _hubMessages;
@@ -132,14 +154,38 @@ public sealed class RunProgressModel
                 Streaming = orkeonEvent.GetBool("stream") ?? false;
                 break;
 
+            case RunEventKinds.TaskStarted:
+                // The run's own clock, when it parses; null otherwise — a screen shows "since
+                // HH:mm:ss" or nothing, never a time it made up.
+                _running.Add(new RunTaskInFlight(
+                    orkeonEvent.GetString("taskId"),
+                    orkeonEvent.GetString("agentRole"),
+                    ReadTimestamp(orkeonEvent)));
+                break;
+
             case RunEventKinds.TaskCompleted:
-                _tasks.Add(new RunTaskProgress(
+                var finished = new RunTaskProgress(
                     orkeonEvent.GetString("taskId"),
                     orkeonEvent.GetString("agentRole"),
                     orkeonEvent.GetBool("success") ?? false,
                     orkeonEvent.GetInt64("durationMs") ?? 0,
                     orkeonEvent.GetInt64("tokens"),
-                    (int?)orkeonEvent.GetInt64("toolCalls")));
+                    (int?)orkeonEvent.GetInt64("toolCalls"));
+                _tasks.Add(finished);
+                Settle(finished.TaskId, finished.AgentRole);
+                break;
+
+            case RunEventKinds.ToolCalled:
+                if (orkeonEvent.GetString("toolName") is not { Length: > 0 } calledTool)
+                    return;   // a call that names no tool is nothing a screen can show
+
+                _activeTools.Add((ToolKey(orkeonEvent), calledTool));
+                break;
+
+            case RunEventKinds.ToolReturned:
+                if (!ToolReturned(orkeonEvent))
+                    return;   // a return nothing was waiting for changes nothing
+
                 break;
 
             case RunEventKinds.CostUpdated:
@@ -226,6 +272,8 @@ public sealed class RunProgressModel
                 FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
                 _questions.Clear();       // nobody is left to answer them
                 _agentRequests.Clear();   // the asking agents are gone with the run
+                _running.Clear();         // nothing is in progress once the run has ended
+                _activeTools.Clear();
                 break;
 
             default:
@@ -263,6 +311,66 @@ public sealed class RunProgressModel
         _agentRequests.RemoveAt(0);
         Changed?.Invoke(this, EventArgs.Empty);
     }
+
+    /// <summary>
+    /// Ends the in-flight entry a close refers to. By task and agent first; by task alone next
+    /// — the graph and autonomous modes announce the start under the agent's role and report
+    /// the close under the mode's name; the oldest start last, for a close naming nothing known.
+    /// A close on an older CLI that announced no start finds the list empty and changes it not.
+    /// </summary>
+    private void Settle(string? taskId, string? agentRole)
+    {
+        if (_running.Count == 0)
+            return;
+
+        var index = _running.FindIndex(t => Same(t.TaskId, taskId) && Same(t.AgentRole, agentRole));
+        if (index < 0)
+            index = _running.FindIndex(t => Same(t.TaskId, taskId));
+        if (index < 0)
+            index = 0;
+
+        _running.RemoveAt(index);
+    }
+
+    private static bool Same(string? left, string? right) =>
+        string.Equals(left, right, StringComparison.Ordinal);
+
+    /// <summary>A call's identity on the wire: its correlation id, or its sequence number when it carries none.</summary>
+    private static string ToolKey(OrkeonEvent orkeonEvent) =>
+        orkeonEvent.CorrelationId is { Length: > 0 } id
+            ? id
+            : orkeonEvent.Seq.ToString(CultureInfo.InvariantCulture);
+
+    /// <summary>Pairs a return with its call — by correlation id, else the latest call of that tool. False when nothing matched.</summary>
+    private bool ToolReturned(OrkeonEvent orkeonEvent)
+    {
+        if (orkeonEvent.CorrelationId is { Length: > 0 } id)
+        {
+            var byId = _activeTools.FindLastIndex(t => string.Equals(t.Key, id, StringComparison.Ordinal));
+            if (byId >= 0)
+            {
+                _activeTools.RemoveAt(byId);
+                return true;
+            }
+        }
+
+        var name = orkeonEvent.GetString("toolName");
+        var byName = _activeTools.FindLastIndex(t => string.Equals(t.Tool, name, StringComparison.Ordinal));
+        if (byName < 0)
+            return false;
+
+        _activeTools.RemoveAt(byName);
+        return true;
+    }
+
+    private static DateTimeOffset? ReadTimestamp(OrkeonEvent orkeonEvent) =>
+        DateTimeOffset.TryParse(
+            orkeonEvent.GetString("ts"),
+            CultureInfo.InvariantCulture,
+            DateTimeStyles.AssumeUniversal | DateTimeStyles.AdjustToUniversal,
+            out var when)
+            ? when
+            : null;
 
     private static RunQuestion? ReadQuestion(OrkeonEvent orkeonEvent)
     {

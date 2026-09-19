@@ -247,6 +247,99 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void A_started_task_is_in_progress_until_the_run_reports_it_finished()
+    {
+        // STUDIO-17: the moment the screen used to be blind to. The start carries the run's own
+        // clock; nothing about the task is guessed.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-19T10:31:02Z","kind":"task.started","taskId":"t1","agentRole":"analyst"}""");
+
+        var running = Assert.Single(model.RunningTasks);
+        Assert.Equal("t1", running.TaskId);
+        Assert.Equal("analyst", running.AgentRole);
+        Assert.Equal(new DateTimeOffset(2026, 9, 19, 10, 31, 2, TimeSpan.Zero), running.StartedAt);
+        Assert.Empty(model.Tasks);
+
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":1200,"tokens":340,"toolCalls":2}"""));
+
+        Assert.Empty(model.RunningTasks);
+        Assert.Single(model.Tasks);
+    }
+
+    [Fact]
+    public void A_close_that_names_the_task_but_not_the_agent_still_settles_it()
+    {
+        // Graph and autonomous modes announce the start under the agent's role and report the
+        // close under the mode's name; the task id is what pairs them.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.started","taskId":"t1","agentRole":"analyst"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"task.started","taskId":"t2","agentRole":"writer"}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"graph","success":true,"durationMs":10}""");
+
+        Assert.Equal("t2", Assert.Single(model.RunningTasks).TaskId);
+    }
+
+    [Fact]
+    public void A_start_time_that_does_not_parse_is_absent_rather_than_invented()
+    {
+        var model = Fold("""{"v":2,"seq":1,"ts":"t","kind":"task.started","taskId":"t1","agentRole":"analyst"}""");
+
+        Assert.Null(Assert.Single(model.RunningTasks).StartedAt);
+    }
+
+    [Fact]
+    public void A_close_without_a_start_still_counts_as_a_finished_task()
+    {
+        // An older CLI announces no starts; its completions must not be refused.
+        var model = Fold("""{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":10}""");
+
+        Assert.Single(model.Tasks);
+        Assert.Empty(model.RunningTasks);
+    }
+
+    [Fact]
+    public void The_tool_at_work_is_named_until_it_returns()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader","argsSummary":"path"}""");
+        Assert.Equal("pdf_reader", model.ActiveToolName);
+
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","correlationId":"k-2","kind":"tool.called","toolName":"docx_writer"}"""));
+        Assert.Equal("docx_writer", model.ActiveToolName);   // the latest call is the one at work
+
+        model.Apply(Parse("""{"v":2,"seq":3,"ts":"t","correlationId":"k-2","kind":"tool.returned","toolName":"docx_writer","success":true,"durationMs":5}"""));
+        Assert.Equal("pdf_reader", model.ActiveToolName);
+
+        model.Apply(Parse("""{"v":2,"seq":4,"ts":"t","correlationId":"k-1","kind":"tool.returned","toolName":"pdf_reader","success":false,"durationMs":5}"""));
+        Assert.Null(model.ActiveToolName);
+    }
+
+    [Fact]
+    public void A_return_nothing_was_waiting_for_announces_nothing()
+    {
+        var model = new RunProgressModel();
+        var announcements = 0;
+        model.Changed += (_, _) => announcements++;
+
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"t","correlationId":"k-9","kind":"tool.returned","toolName":"pdf_reader","success":true,"durationMs":5}"""));
+
+        Assert.Equal(0, announcements);
+        Assert.Null(model.ActiveToolName);
+    }
+
+    [Fact]
+    public void The_end_of_the_run_leaves_nothing_in_progress()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.started","taskId":"t1","agentRole":"analyst"}""",
+            """{"v":2,"seq":2,"ts":"t","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"run.finished","success":false,"exitCode":1}""");
+
+        Assert.Empty(model.RunningTasks);
+        Assert.Null(model.ActiveToolName);
+    }
+
+    [Fact]
     public void An_unknown_kind_changes_nothing_and_announces_nothing()
     {
         // A newer CLI may say more than this build understands. Showing a little less beats

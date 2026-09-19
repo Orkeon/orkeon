@@ -852,6 +852,18 @@ public static class StudioStringKeys
     /// <summary>"{0} task(s) finished."</summary>
     public const string RunProgressTasksDone = "Studio.Run.TasksDone";
 
+    /// <summary>"{0} task(s) finished, {1} in progress."</summary>
+    public const string RunProgressTasksProgress = "Studio.Run.TasksProgress";
+
+    /// <summary>"since {0}"</summary>
+    public const string RunProgressTaskSince = "Studio.Run.TaskSince";
+
+    /// <summary>"Tool {0} running…"</summary>
+    public const string RunProgressToolActive = "Studio.Run.ToolActive";
+
+    /// <summary>"{0} tool call(s)"</summary>
+    public const string RunProgressToolCalls = "Studio.Run.ToolCalls";
+
     /// <summary>"Finished successfully."</summary>
     public const string RunProgressSucceeded = "Studio.Run.Succeeded";
 
@@ -1659,6 +1671,10 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.LaunchRunning] = "Running…",
         [StudioStringKeys.RunProgressNothingYet] = "Nothing reported yet.",
         [StudioStringKeys.RunProgressTasksDone] = "{0} task(s) finished.",
+        [StudioStringKeys.RunProgressTasksProgress] = "{0} task(s) finished, {1} in progress.",
+        [StudioStringKeys.RunProgressTaskSince] = "since {0}",
+        [StudioStringKeys.RunProgressToolActive] = "Tool {0} running…",
+        [StudioStringKeys.RunProgressToolCalls] = "{0} tool call(s)",
         [StudioStringKeys.RunProgressSucceeded] = "Finished successfully.",
         [StudioStringKeys.RunProgressFailed] = "Finished with a failure.",
         [StudioStringKeys.RunProgressCost] = "{0} tokens · {1}",

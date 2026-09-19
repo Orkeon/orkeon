@@ -44,6 +44,55 @@ public class RunProgressViewModelTests
     }
 
     [Fact]
+    public void A_running_task_has_a_row_until_it_finishes()
+    {
+        // STUDIO-17: the row the screen lacked — between the start and the close, the panel
+        // used to show either "nothing reported yet" or only the tasks already done.
+        var panel = Watching();
+        panel.TryApply("""{"v":2,"seq":1,"ts":"2026-09-19T10:31:02Z","kind":"task.started","taskId":"t1","agentRole":"analyst"}""");
+
+        var running = Assert.Single(panel.RunningTasks);
+        Assert.Equal("analyst", running.Title);
+        Assert.StartsWith("since ", running.Since, StringComparison.Ordinal);
+        Assert.EndsWith(":02", running.Since, StringComparison.Ordinal);
+        Assert.True(panel.HasRunningTasks);
+        Assert.Equal("0 task(s) finished, 1 in progress.", panel.Summary);
+
+        panel.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":1500,"tokens":340,"toolCalls":0}""");
+
+        Assert.Empty(panel.RunningTasks);
+        Assert.False(panel.HasRunningTasks);
+        Assert.Equal("1 task(s) finished.", panel.Summary);
+        Assert.Equal("0 tool call(s)", Assert.Single(panel.Tasks).ToolCalls);
+    }
+
+    [Fact]
+    public void A_start_with_no_readable_time_shows_no_time()
+    {
+        var panel = Watching();
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"task.started","taskId":"t1"}""");
+
+        var running = Assert.Single(panel.RunningTasks);
+        Assert.Equal("t1", running.Title);
+        Assert.Empty(running.Since);
+    }
+
+    [Fact]
+    public void The_tool_at_work_is_a_line_of_its_own()
+    {
+        var panel = Watching();
+        Assert.False(panel.HasActivity);
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"t","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""");
+        Assert.True(panel.HasActivity);
+        Assert.Equal("Tool pdf_reader running…", panel.ActivityLine);
+
+        panel.TryApply("""{"v":2,"seq":2,"ts":"t","correlationId":"k-1","kind":"tool.returned","toolName":"pdf_reader","success":true,"durationMs":3}""");
+        Assert.False(panel.HasActivity);
+        Assert.Empty(panel.ActivityLine);
+    }
+
+    [Fact]
     public void A_silent_run_says_so_instead_of_implying_progress()
     {
         // "No news" is not "going well", and the summary has to keep them apart.
@@ -122,12 +171,15 @@ public class RunProgressViewModelTests
         var panel = Watching();
         panel.TryApply("""{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"t1","success":true,"durationMs":10}""");
         panel.TryApply("""{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"payload":{}}""");
+        panel.TryApply("""{"v":2,"seq":3,"ts":"t","kind":"task.started","taskId":"t2","agentRole":"writer"}""");
         Assert.Single(panel.Tasks);
+        Assert.Single(panel.RunningTasks);
         Assert.True(panel.HasAgentRequest);
 
         panel.Reset((_, _) => true);
 
         Assert.Empty(panel.Tasks);
+        Assert.Empty(panel.RunningTasks);
         Assert.Empty(panel.CostSummary);
         Assert.False(panel.IsAsking);
         Assert.False(panel.HasAgentRequest);

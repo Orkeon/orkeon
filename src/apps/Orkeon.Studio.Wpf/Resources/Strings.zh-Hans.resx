@@ -697,6 +697,18 @@
   <data name="Studio.Run.TasksDone" xml:space="preserve">
     <value>已完成 {0} 项任务。</value>
   </data>
+  <data name="Studio.Run.TasksProgress" xml:space="preserve">
+    <value>已完成 {0} 项任务，{1} 项进行中。</value>
+  </data>
+  <data name="Studio.Run.TaskSince" xml:space="preserve">
+    <value>自 {0}</value>
+  </data>
+  <data name="Studio.Run.ToolActive" xml:space="preserve">
+    <value>工具 {0} 运行中…</value>
+  </data>
+  <data name="Studio.Run.ToolCalls" xml:space="preserve">
+    <value>{0} 次工具调用</value>
+  </data>
   <data name="Studio.Run.Succeeded" xml:space="preserve">
     <value>已成功完成。</value>
   </data>
