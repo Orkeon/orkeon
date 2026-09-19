@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-18 -->
+### Fixed — Studio opens on the per-user settings file (STUDIO-18)
+
+- **The window loads `%APPDATA%\Orkeon\appsettings.json` at startup** (`$XDG_CONFIG_HOME/Orkeon/appsettings.json`
+  elsewhere) — the file `orkeon init` writes and the last step of the CLI's resolution
+  chain. « Settings › Authorized folders » used to open **empty** on a file declaring two
+  folders: the editor started on an empty document, and only the expert's *Load* button
+  ever read the file. The location stays *Global* (the same file under its own name); a
+  machine without the file starts empty with no message; an unreadable file is reported on
+  the status line and nothing is saved over it (`ConfigTabViewModel.InitializeAsync`).
+- **A novice edit no longer clobbers the file.** The auto-save wrote the empty document plus
+  the one edited key over a file that also held the `Llm` section, dropping it; the loaded
+  document keeps every key Studio does not model, as the expert's Load/Save cycle always did.
+- **Declaring a folder reaches every verdict at once.** The team cards' red chips and the Run
+  screen's refusal were computed on an adoption, a target pick or a restart only; every edit
+  of the declared list now refreshes them, and the cards built before the file was read are
+  rebuilt once it is.
+- The screenshot campaign no longer loads the settings file itself (`CaptureShellBuilder.PrepareAsync`):
+  the shell does, as the real window does.
+
 <!-- LLM-10 -->
 ### Changed — the output cap defaults to the model's documented maximum, not 4096 (LLM-10)
 

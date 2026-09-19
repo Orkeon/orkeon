@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
@@ -182,5 +183,93 @@ public sealed class MainWindowViewModelTests
     public void Should_NameItselfOrkeonStudio()
     {
         Assert.Equal("Orkeon Studio", MainWindowViewModel.Title);
+    }
+
+    // ── STUDIO-18: the window opens on the per-user settings file ──
+
+    private const string GlobalPath = "/home/user/.config/Orkeon/appsettings.json";
+
+    private static MainWindowViewModel BuildOver(FakeAppSettingsStore store, string root, params string[] existingFolders) =>
+        new(new StudioServices
+            {
+                SettingsStore = store,
+                Directories = new FakeDirectoryProbe(existingFolders),
+                TargetProbe = new FakeTargetProbe(),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    new FakeProcessLauncher(),
+                    new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
+            globalPathOverride: GlobalPath,
+            forgeWorkspace: Path.Combine(root, "forge"),
+            teamsRoot: Path.Combine(root, "teams"));
+
+    private static string TempRoot() =>
+        Directory.CreateDirectory(Path.Combine(Path.GetTempPath(), $"orkeon-shell-{Guid.NewGuid():N}")).FullName;
+
+    private static void SaveTeam(string root, string slug, params string[] mounts)
+    {
+        var team = Path.Combine(root, "teams", slug);
+        Directory.CreateDirectory(team);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = slug, Mounts = mounts });
+    }
+
+    [Fact]
+    public async Task Should_OpenOnThePerUserFile_So_TheFoldersItDeclaresVouchForTheTeams()
+    {
+        // The owner's file declared two folders; « Settings › Authorized folders » opened empty
+        // and a team using one of them read red on its card, because nothing loaded the file.
+        var root = TempRoot();
+        try
+        {
+            SaveTeam(root, "factures", "/data/factures:/workspace:ro");
+            var store = new FakeAppSettingsStore();
+            store.Files[GlobalPath] = """
+            { "Orkeon": { "FileSystem": { "Mounts": ["/data/factures:/workspace:ro", "/data/out:/output:rw"] } } }
+            """;
+            var window = BuildOver(store, root, "/data/factures", "/data/out");
+
+            // Built, not yet initialised: the card was computed on an empty declared list.
+            Assert.True(Assert.Single(Assert.Single(window.Teams.Teams).MountChips).IsUndeclared);
+
+            await window.InitializeAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(2, window.Settings.Config.Mounts.Mounts.Count);
+            Assert.True(window.Settings.Config.Location.IsGlobal);
+            Assert.True(DeclaredMounts.IsDeclared("/data/factures:/docs:ro", window.Config.Mounts.CurrentMountStrings));
+            Assert.False(Assert.Single(Assert.Single(window.Teams.Teams).MountChips).IsUndeclared);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public async Task Should_RefreshTheCardsAndTheLauncher_When_AFolderIsDeclaredInTheSettings()
+    {
+        // The verdicts are read live from the settings editor, but a card computes its chips
+        // when it is built: declaring a folder used to leave the card red until a restart.
+        var root = TempRoot();
+        try
+        {
+            SaveTeam(root, "factures", "/data/factures:/workspace:ro");
+            var window = BuildOver(new FakeAppSettingsStore(), root, "/data/factures");
+            await window.InitializeAsync(TestContext.Current.CancellationToken);
+            Assert.True(Assert.Single(Assert.Single(window.Teams.Teams).MountChips).IsUndeclared);
+
+            window.Config.Mounts.AddPickedMount(new MountDefinition
+            {
+                PhysicalPath = "/data/factures",
+                VirtualPath = "/factures",
+            });
+
+            Assert.False(Assert.Single(Assert.Single(window.Teams.Teams).MountChips).IsUndeclared);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 }

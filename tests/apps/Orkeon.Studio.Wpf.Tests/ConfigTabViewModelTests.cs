@@ -1,3 +1,4 @@
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -272,6 +273,90 @@ public sealed class ConfigTabViewModelTests
         }
     }
 
+    // ── STUDIO-18: the window opens on the per-user file ──
+
+    [Fact]
+    public async Task Should_OpenOnTheGlobalFile_When_TheMachineHasOne()
+    {
+        // « Settings › Authorized folders » opened empty on a file declaring two folders: the
+        // window opened on an empty document, and only the expert's Load button read the file.
+        var store = new FakeAppSettingsStore();
+        store.Files[GlobalPath] = """
+        {
+          "Llm": { "Model": "kimi-k3", "BaseUrl": "https://api.moonshot.ai/v1" },
+          "Orkeon": { "FileSystem": { "Mounts": ["/data/factures:/workspace:ro", "/data/out:/output:rw"] } }
+        }
+        """;
+        var tab = Build(store, new FakeDirectoryProbe("/data/factures", "/data/out"));
+
+        await tab.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(["/data/factures:/workspace:ro", "/data/out:/output:rw"], tab.Mounts.CurrentMountStrings);
+        Assert.Equal("kimi-k3", tab.Llm.Model);
+        Assert.Equal(GlobalPath, tab.LoadedPath);
+        Assert.False(tab.IsDirty);
+        Assert.Contains(GlobalPath, tab.StatusMessage!, StringComparison.Ordinal);
+        // The same file under its own name — not "a custom path" pointing at the global one.
+        Assert.True(tab.Location.IsGlobal);
+        Assert.Equal(GlobalPath, tab.Location.EffectivePath);
+    }
+
+    [Fact]
+    public async Task Should_StayOnAnEmptyDocument_When_TheMachineHasNoGlobalFile()
+    {
+        // A fresh machine is not an error: nothing has written the file yet.
+        var tab = Build(new FakeAppSettingsStore());
+
+        await tab.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(tab.Mounts.Mounts);
+        Assert.Null(tab.LoadedPath);
+        Assert.Null(tab.StatusMessage);
+        Assert.False(tab.IsDirty);
+    }
+
+    [Fact]
+    public async Task Should_SayWhy_When_TheGlobalFileCannotBeRead()
+    {
+        var store = new FakeAppSettingsStore();
+        store.Files[GlobalPath] = "{ not json";
+        var tab = Build(store);
+
+        await tab.InitializeAsync(TestContext.Current.CancellationToken);
+
+        Assert.Empty(tab.Mounts.Mounts);
+        Assert.Null(tab.LoadedPath);
+        Assert.False(string.IsNullOrWhiteSpace(tab.StatusMessage));
+    }
+
+    [Fact]
+    public async Task Should_KeepTheFilesOtherKeys_When_AFolderIsAllowedAfterStartup()
+    {
+        // The clobber the startup load closes: the first novice edit used to write the empty
+        // document plus the mount array over a file that also held the Llm section.
+        var store = new FakeAppSettingsStore();
+        store.Files[GlobalPath] = """
+        {
+          "Llm": { "Model": "kimi-k3", "BaseUrl": "https://api.moonshot.ai/v1" },
+          "Orkeon": { "FileSystem": { "Mounts": ["/data/factures:/workspace:ro"] } }
+        }
+        """;
+        var tab = Build(store, new FakeDirectoryProbe("/data/factures", "/data/out"));
+        await tab.InitializeAsync(TestContext.Current.CancellationToken);
+
+        tab.Mounts.AddPickedMount(new MountDefinition
+        {
+            PhysicalPath = "/data/out",
+            VirtualPath = "/output",
+            Rights = MountRights.ReadWrite,
+        });
+        Assert.True(await tab.SaveAsync(TestContext.Current.CancellationToken));
+
+        Assert.Equal([GlobalPath], store.SavedPaths);
+        Assert.Contains("\"kimi-k3\"", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.Contains("/data/factures:/workspace:ro", store.LastSavedJson!, StringComparison.Ordinal);
+        Assert.Contains("/data/out:/output:rw", store.LastSavedJson!, StringComparison.Ordinal);
+    }
 }
 
 /// <summary>The one refusal a novice actually meets: no authorized folder yet.</summary>

@@ -60,23 +60,20 @@ internal static class CaptureShellBuilder
     }
 
     /// <summary>
-    /// The work a shell needs before it can be photographed: its own deferred loaders, and the
-    /// settings document.
-    /// <para>
-    /// The settings have to be asked for. Nothing in Studio loads them at startup — the shell
-    /// initialises the launcher, the profiles, the doctor and the team list, and not the
-    /// configuration — yet the declared folders are read LIVE from it everywhere: the wizard's
-    /// mount rows, the team cards' chips, the folder chooser, and the refusal to launch a team
-    /// whose folders nobody declared. Left unloaded, every screen of the collection would show a
-    /// machine that has declared nothing, and every team would read as blocked.
-    /// </para>
+    /// The work a shell needs before it can be photographed: its own deferred loaders — the
+    /// settings document among them. The world's settings file is passed to the shell as its
+    /// per-user path, and the shell opens on it exactly as the real window opens on
+    /// <c>%APPDATA%\Orkeon\appsettings.json</c> (STUDIO-18); before that fix the campaign had
+    /// to load the file itself, because nothing in Studio did. The declared folders are read
+    /// LIVE from it everywhere — the wizard's mount rows, the team cards' chips, the folder
+    /// chooser, and the refusal to launch a team whose folders nobody declared — which is why a
+    /// pristine world, with no settings file, photographs a machine that has declared nothing.
     /// </summary>
-    public static async Task PrepareAsync(MainWindowViewModel shell, CaptureWorld world, CancellationToken cancellationToken = default)
+    public static Task PrepareAsync(MainWindowViewModel shell, CaptureWorld world, CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(shell);
         ArgumentNullException.ThrowIfNull(world);
 
-        await shell.InitializeAsync(cancellationToken);
-        await shell.Config.LoadAsync(world.SettingsPath, cancellationToken);
+        return shell.InitializeAsync(cancellationToken);
     }
 }

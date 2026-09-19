@@ -237,6 +237,17 @@ public sealed class MainWindowViewModel : ObservableObject
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
                 Settings.TeamFolders.Refresh();
         };
+        // STUDIO-18: the declared folders are read live from the settings editor, but a team
+        // card computes its chips' verdicts when it is built and the launcher when its target
+        // is picked. A folder declared (or dropped) in « Settings › Authorized folders » must
+        // reach them without waiting for an adoption or a restart — the same three refreshes
+        // a save of the team-mounts modal already runs.
+        Config.Mounts.Changed += (_, _) =>
+        {
+            Teams.Refresh();
+            Launch.RefreshTeamDescription();
+            Test.Launcher.RefreshTeamDescription();
+        };
     }
 
     /// <summary>The appsettings editor (spec §4).</summary>
@@ -351,7 +362,7 @@ public sealed class MainWindowViewModel : ObservableObject
             teamsRoot: teamsRoot);
     }
 
-    /// <summary>Runs the work the window defers until it is shown: locating the CLI, loading the history, reading the model profiles.</summary>
+    /// <summary>Runs the work the window defers until it is shown: opening the per-user settings file, locating the CLI, loading the history, reading the model profiles.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031",
         Justification = "Startup fault barrier: the caller discards this task, so an unexpected " +
                         "failure in one loader must land on a status line, never vanish or kill the window.")]
@@ -359,6 +370,14 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         try
         {
+            // The settings come first, and alone (STUDIO-18): the folders they declare are read
+            // live by everything below — the launcher's verdict on a restored target, the
+            // effective-mount table — and the team cards computed theirs on an empty list when
+            // the window was built. Nothing may look before the per-user file is in.
+            await Config.InitializeAsync(cancellationToken).ConfigureAwait(true);
+            if (Config.LoadedPath is not null)
+                Teams.Refresh();
+
             await Task.WhenAll(
                 Launch.InitializeAsync(cancellationToken),
                 Test.Launcher.InitializeAsync(cancellationToken),

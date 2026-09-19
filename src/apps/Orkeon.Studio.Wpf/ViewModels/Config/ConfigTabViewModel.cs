@@ -262,6 +262,39 @@ public sealed class ConfigTabViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Opens the editor on the per-user file (<see cref="SettingsLocationViewModel.GlobalPath"/>)
+    /// when the machine has one — the file <c>orkeon init</c> writes and the one every other
+    /// screen reads live: its folders vouch for a team's mounts, its <c>Llm</c> section carries
+    /// the elected profile, and a novice edit saves the whole document back to it. The window
+    /// used to open on an empty document instead, with only the expert's Load button ever
+    /// reading the file (STUDIO-18): « Settings › Authorized folders » listed nothing of the two
+    /// folders the file declared, every team reaching outside itself read as blocked, and the
+    /// first novice edit rewrote the file with the one key the editor had just produced —
+    /// dropping every other one it held.
+    /// <para>
+    /// The location stays <see cref="SettingsLocationMode.Global"/>: this is the same file under
+    /// its own name, not a custom path. A machine without the file is a fresh one — the empty
+    /// document is the honest start, and no status line reports a file nobody has written yet.
+    /// A file that exists but cannot be read is said, and the document stays empty and clean.
+    /// </para>
+    /// </summary>
+    public async Task InitializeAsync(CancellationToken cancellationToken = default)
+    {
+        if (Location.GlobalPath is not { Length: > 0 } path || !_store.Exists(path))
+            return;
+
+        var (document, error) = await _store.TryLoadAsync(path, cancellationToken);
+        if (document is null)
+        {
+            StatusMessage = error;
+            return;
+        }
+
+        SetDocument(document, path);
+        StatusMessage = string.Format(CultureInfo.InvariantCulture, _strings[StudioStringKeys.ConfigLoaded], path);
+    }
+
+    /// <summary>
     /// Validates and, when nothing blocks, writes the document to <see cref="SettingsLocationViewModel.EffectivePath"/>.
     /// Errors block the save; warnings — WIN-01 included — do not.
     /// </summary>
