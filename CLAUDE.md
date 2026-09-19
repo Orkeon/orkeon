@@ -110,6 +110,19 @@ docker compose -f docker-compose.sonarqube.yml down     # Stop
 - Report includes: coverage per project/directory, all issues, all code smells by project, security hotspots
 - Requires `jq` for report generation (analysis works without it)
 
+## Network constraints (metered mobile connection)
+
+Bandwidth on this machine is capped. Never re-download anything that is already cached.
+
+- `dotnet build`: always pass `--no-restore`, unless a `.csproj`, `Directory.Packages.props` or lock file changed during this task.
+- `dotnet test`: always pass `--no-build` once a build has succeeded in this task.
+- `dotnet restore`: run only when a dependency actually changed. The global package cache is `/home/node/.nuget/packages` — never override it, per-project or otherwise.
+- `git clone`: always `--depth 1 --filter=blob:none`. Reuse an existing checkout rather than cloning again.
+- `npm ci`: only when `package-lock.json` changed. Otherwise use `npm install --prefer-offline`.
+- `ollama pull` is forbidden. Run `ollama list` first — models are pre-provisioned.
+- Never run `dotnet nuget locals --clear`, `docker system prune -a`, or `docker build --no-cache`, and never delete a cache directory.
+- Clean up git worktrees and temporary directories at the end of every task.
+
 ## Architecture Overview
 
 The project follows Clean Architecture with clear separation of concerns:
