@@ -635,9 +635,10 @@
                   <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Margin="7,0,0,0"
                           Command="{Binding StoreKeyCommand}"
                           Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
-                  <TextBox Style="{StaticResource InputMono}"
-                           ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
-                           Text="{Binding ApiKeyInput, UpdateSourceTrigger=PropertyChanged}"/>
+                  <!-- A key is a secret even in transit (T-31): masked while it is typed or pasted. -->
+                  <PasswordBox Style="{StaticResource InputPassword}"
+                               ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                               views:PasswordBinding.Text="{Binding ApiKeyInput}"/>
                 </DockPanel>
                 <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
                   <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"

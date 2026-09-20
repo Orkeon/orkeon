@@ -259,9 +259,9 @@
                         BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
                   <DockPanel LastChildFill="True">
                     <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                      <TextBox Style="{StaticResource InputMono}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
-                               ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
-                               Text="{Binding KeyInput, UpdateSourceTrigger=PropertyChanged}"/>
+                      <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
+                                   ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                                   views:PasswordBinding.Text="{Binding KeyInput}"/>
                       <Button Style="{StaticResource BtnGhost}" Command="{Binding StoreCommand}"
                               Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
                     </StackPanel>

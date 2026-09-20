@@ -355,27 +355,46 @@
     </Setter>
   </Style>
 
-  <!-- ══ Inputs ══ -->
+  <!-- ══ Inputs (T-31) ══
+       An editable field says so: the field surface and its franker line, distinct from the
+       sunk paper the read-only wells keep (YAML, raw JSON, journal, code) — it is that
+       contrast which makes a field readable as one. A read-only TextBox goes back to the
+       well recipe: it is a thing to read, not an invitation to write. -->
   <Style x:Key="Input" TargetType="TextBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="12.5"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
     <Setter Property="BorderThickness" Value="1"/>
     <Setter Property="Padding" Value="10,7"/>
     <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
     <Setter Property="Template">
       <Setter.Value>
         <ControlTemplate TargetType="TextBox">
           <Border x:Name="bd" Background="{TemplateBinding Background}"
                   BorderBrush="{TemplateBinding BorderBrush}"
                   BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
-            <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}" VerticalAlignment="Center"/>
+            <Grid>
+              <!-- WPF has no inset box-shadow: a hairline under the top edge, following the
+                   radius, gives the same optical dip as a native entry field. -->
+              <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
+                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      BorderBrush="{DynamicResource FieldShadowBrush}"/>
+              <!-- The alignment is the control's, not the template's: the multi-line style
+                   (T-32) stretches so a paragraph starts on its first line instead of centring. -->
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Grid>
           </Border>
           <ControlTemplate.Triggers>
             <Trigger Property="IsKeyboardFocused" Value="True">
               <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Trigger>
+            <Trigger Property="IsReadOnly" Value="True">
+              <Setter TargetName="bd" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -385,6 +404,42 @@
   <Style x:Key="InputMono" TargetType="TextBox" BasedOn="{StaticResource Input}">
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
     <Setter Property="FontSize" Value="12"/>
+  </Style>
+  <!-- The key field (T-31): the Input recipe on a PasswordBox — a style cannot be based
+       across control types, so the setters and the template are said again — in mono 12
+       like InputMono, since a key is a code. The box binds through PasswordBinding.Text. -->
+  <Style x:Key="InputPassword" TargetType="PasswordBox">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="12"/>
+    <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
+    <Setter Property="BorderThickness" Value="1"/>
+    <Setter Property="Padding" Value="10,7"/>
+    <Setter Property="CaretBrush" Value="{DynamicResource InkBrush}"/>
+    <Setter Property="VerticalContentAlignment" Value="Center"/>
+    <Setter Property="Template">
+      <Setter.Value>
+        <ControlTemplate TargetType="PasswordBox">
+          <Border x:Name="bd" Background="{TemplateBinding Background}"
+                  BorderBrush="{TemplateBinding BorderBrush}"
+                  BorderThickness="{TemplateBinding BorderThickness}" CornerRadius="9">
+            <Grid>
+              <Border Height="10" VerticalAlignment="Top" IsHitTestVisible="False"
+                      CornerRadius="9,9,0,0" BorderThickness="0,1,0,0"
+                      BorderBrush="{DynamicResource FieldShadowBrush}"/>
+              <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
+                            VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+            </Grid>
+          </Border>
+          <ControlTemplate.Triggers>
+            <Trigger Property="IsKeyboardFocused" Value="True">
+              <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+            </Trigger>
+          </ControlTemplate.Triggers>
+        </ControlTemplate>
+      </Setter.Value>
+    </Setter>
   </Style>
 
   <!-- ══ Badge: <Border Style="Badge*"><TextBlock .../></Border> ══
@@ -666,9 +721,10 @@
   </Style>
 
   <!-- ══ Implicit control styles (audit T-04): no stock Windows chrome anywhere.
-       Same recipe as Input: paper-sunk field, line-strong border, radius 9. ══ -->
+       Same recipe as Input: field surface, field line, radius 9 (T-31). ══ -->
 
   <Style TargetType="TextBox" BasedOn="{StaticResource Input}"/>
+  <Style TargetType="PasswordBox" BasedOn="{StaticResource InputPassword}"/>
 
   <Style TargetType="ComboBoxItem">
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
@@ -695,12 +751,14 @@
     </Setter>
   </Style>
 
+  <!-- The closed box is a field (T-31): field surface and line; the popup keeps the
+       surface and the ordinary line, it is a list, not a field. -->
   <Style TargetType="ComboBox">
     <Setter Property="FontFamily" Value="{StaticResource TextFont}"/>
     <Setter Property="FontSize" Value="12.5"/>
     <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
-    <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
-    <Setter Property="BorderBrush" Value="{DynamicResource LineStrongBrush}"/>
+    <Setter Property="Background" Value="{DynamicResource FieldBrush}"/>
+    <Setter Property="BorderBrush" Value="{DynamicResource FieldLineBrush}"/>
     <Setter Property="Padding" Value="10,7"/>
     <Setter Property="MinHeight" Value="38"/>
     <Setter Property="SnapsToDevicePixels" Value="True"/>
@@ -773,9 +831,10 @@
       <Setter.Value>
         <ControlTemplate TargetType="CheckBox">
           <StackPanel Orientation="Horizontal" Background="Transparent">
+            <!-- The box is a clickable surface, so it wears the field recipe (T-31). -->
             <Border x:Name="box" Width="16" Height="16" CornerRadius="4" VerticalAlignment="Center"
-                    Background="{DynamicResource PaperSunkBrush}"
-                    BorderBrush="{DynamicResource LineStrongBrush}" BorderThickness="1">
+                    Background="{DynamicResource FieldBrush}"
+                    BorderBrush="{DynamicResource FieldLineBrush}" BorderThickness="1">
               <Path x:Name="tick" Data="M3,8 L6.5,11.5 13,4.5" Stroke="{DynamicResource AccentFgBrush}"
                     StrokeThickness="2" StrokeStartLineCap="Round" StrokeEndLineCap="Round"
                     StrokeLineJoin="Round" Visibility="Collapsed" Margin="0"/>
@@ -806,9 +865,10 @@
       <Setter.Value>
         <ControlTemplate TargetType="RadioButton">
           <StackPanel Orientation="Horizontal" Background="Transparent">
+            <!-- The dot is a clickable surface too (T-31); PickRow and NavItem are rows, not fields. -->
             <Ellipse x:Name="dot" Width="15" Height="15" VerticalAlignment="Center"
-                     Fill="{DynamicResource PaperSunkBrush}"
-                     Stroke="{DynamicResource LineStrongBrush}" StrokeThickness="1.5"/>
+                     Fill="{DynamicResource FieldBrush}"
+                     Stroke="{DynamicResource FieldLineBrush}" StrokeThickness="1.5"/>
             <ContentPresenter Margin="8,0,0,0" VerticalAlignment="Center" RecognizesAccessKey="True"/>
           </StackPanel>
           <ControlTemplate.Triggers>

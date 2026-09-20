@@ -9,6 +9,11 @@
   <SolidColorBrush x:Key="SurfaceBrush"     Color="#FFFFFF"/>
   <SolidColorBrush x:Key="Surface2Brush"    Color="#F8FAF9"/>
   <SolidColorBrush x:Key="SkyBrush"         Color="#E6F1F2"/>
+  <!-- editable fields (T-31): a field must not share the sunk paper of the read-only wells,
+       or nothing says «you can type here». The shadow is the inset hairline under the top edge. -->
+  <SolidColorBrush x:Key="FieldBrush"       Color="#FFFFFF"/>
+  <SolidColorBrush x:Key="FieldLineBrush"   Color="#9FB1B0"/>
+  <SolidColorBrush x:Key="FieldShadowBrush" Color="#1416293B"/>
 
   <!-- text -->
   <SolidColorBrush x:Key="InkBrush"         Color="#16293B"/>

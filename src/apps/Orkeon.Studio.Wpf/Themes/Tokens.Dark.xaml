@@ -8,6 +8,11 @@
   <SolidColorBrush x:Key="SurfaceBrush"     Color="#16293B"/>
   <SolidColorBrush x:Key="Surface2Brush"    Color="#1D3445"/>
   <SolidColorBrush x:Key="SkyBrush"         Color="#142C38"/>
+  <!-- editable fields (T-31): on a dark ground the field is a well deeper than the surface,
+       never a white rectangle; the line stays visible against both. -->
+  <SolidColorBrush x:Key="FieldBrush"       Color="#091420"/>
+  <SolidColorBrush x:Key="FieldLineBrush"   Color="#41617A"/>
+  <SolidColorBrush x:Key="FieldShadowBrush" Color="#33000000"/>
 
   <!-- text -->
   <SolidColorBrush x:Key="InkBrush"         Color="#EAF1F3"/>

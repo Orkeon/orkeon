@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- T-31 / T-32 -->
+### Changed — Studio: editable fields look editable, multi-line fields are five lines (T-31, T-32)
+
+- **A field says «you can type here» (T-31).** Every input — text box, password box, combo
+  box, check box, radio dot — now sits on its own surface (`FieldBrush`, `FieldLineBrush`,
+  `FieldShadowBrush` in both theme dictionaries: white with a franker line in light, a well
+  deeper than the surface in dark, an inset hairline under the top edge) instead of the sunk
+  paper the read-only wells keep (YAML, raw JSON, journal, code). A read-only text box goes
+  back to the well recipe. Owner design review: nothing distinguished a field from a block
+  of text, and the user could not see where to write.
+- **The API key is masked while it is typed** — the two key fields (profile editor, API keys
+  card) are `PasswordBox`es on the new `InputPassword` style, bound through
+  `PasswordBinding.Text` (WPF keeps `Password` out of bindings on purpose; the attached
+  property carries it both ways, so the field still empties itself once the key is stored).
+
 <!-- STUDIO-20 -->
 ### Changed — Studio: adopting a team ends the wizard at a blank step 1; the saved card is gone (STUDIO-20)
 
