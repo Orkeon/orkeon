@@ -1576,6 +1576,9 @@
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>Las claves viven en sus variables de entorno de usuario, nunca en un archivo. Pegue una clave y recuérdela; el campo se vacía una vez guardada.</value>
   </data>
+  <data name="Studio.Settings.Unlimited" xml:space="preserve">
+    <value>ilimitado</value>
+  </data>
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
     <value>Claves de las herramientas</value>
   </data>

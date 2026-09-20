@@ -1576,6 +1576,9 @@
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>密钥存放在您的用户环境变量中，绝不写入文件。粘贴后记住它；保存后输入框即清空。</value>
   </data>
+  <data name="Studio.Settings.Unlimited" xml:space="preserve">
+    <value>不限</value>
+  </data>
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
     <value>工具密钥</value>
   </data>

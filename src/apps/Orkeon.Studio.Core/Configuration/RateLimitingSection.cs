@@ -9,6 +9,25 @@ public sealed class RateLimitingSection
     /// <summary>Configuration path of the section.</summary>
     public const string SectionPath = "RateLimiting";
 
+    // The engine's defaults (RateLimitingOptions), copied here so the settings screen can show
+    // them as watermarks in the empty fields (STUDIO-22); EngineDefaultsDriftTests pins each one
+    // against the original.
+
+    /// <summary>Default of <c>MaxConcurrentRequests</c>: 0, which the limiter reads as no concurrency bound.</summary>
+    public const int DefaultMaxConcurrentRequests = 0;
+
+    /// <summary>Default of <c>GlobalRequestsPerMinute</c>.</summary>
+    public const int DefaultGlobalRequestsPerMinute = 60;
+
+    /// <summary>Default of <c>ProviderRequestsPerMinute</c>.</summary>
+    public const int DefaultProviderRequestsPerMinute = 30;
+
+    /// <summary>Default of <c>AgentRequestsPerMinute</c>.</summary>
+    public const int DefaultAgentRequestsPerMinute = 20;
+
+    /// <summary>Default of <c>QueueLimit</c>.</summary>
+    public const int DefaultQueueLimit = 5;
+
     private readonly AppSettingsDocument _document;
 
     internal RateLimitingSection(AppSettingsDocument document) => _document = document;

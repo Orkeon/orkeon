@@ -1576,6 +1576,9 @@
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>Schlüssel leben in Ihren Benutzer-Umgebungsvariablen, nie in einer Datei. Schlüssel einfügen, dann merken; das Feld leert sich nach dem Speichern.</value>
   </data>
+  <data name="Studio.Settings.Unlimited" xml:space="preserve">
+    <value>unbegrenzt</value>
+  </data>
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
     <value>Schlüssel der Werkzeuge</value>
   </data>

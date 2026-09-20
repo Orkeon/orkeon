@@ -552,6 +552,7 @@
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>API keys</value></data>
   <data name="Studio.Settings.Intro" xml:space="preserve"><value>Keys live in your user environment variables, never in a file. Paste a key and remember it; the field empties once stored.</value></data>
+  <data name="Studio.Settings.Unlimited" xml:space="preserve"><value>unlimited</value></data>
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve"><value>Tool keys</value></data>
   <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve"><value>Two search tools need a key of their own. Paste it once: it lives in your user environment, never in a file.</value></data>
   <data name="Studio.Settings.ToolsTitle" xml:space="preserve"><value>Tool catalogue</value></data>

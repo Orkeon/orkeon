@@ -357,3 +357,91 @@ public sealed class McpSectionViewModelTests
         Assert.True(row.IsSse);
     }
 }
+
+/// <summary>
+/// STUDIO-22 — the limits tab: every empty field names the engine's default, and a switch bound
+/// to an absent key is a plain boolean, so one click sets it and turning it back to the default
+/// removes the key rather than spelling a value the engine already applies.
+/// </summary>
+public sealed class LimitsDefaultsTests
+{
+    [Fact]
+    public void The_rate_limiting_watermarks_are_the_engine_defaults()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var section = new RateLimitingSectionViewModel(() => document, () => { });
+
+        Assert.Equal("unlimited", section.MaxConcurrentRequestsDefault);
+        Assert.Equal("60", RateLimitingSectionViewModel.GlobalRequestsPerMinuteDefault);
+        Assert.Equal("30", RateLimitingSectionViewModel.ProviderRequestsPerMinuteDefault);
+        Assert.Equal("20", RateLimitingSectionViewModel.AgentRequestsPerMinuteDefault);
+        Assert.Equal("5", RateLimitingSectionViewModel.QueueLimitDefault);
+        Assert.Equal("fast", RagSectionViewModel.ProfileDefault);
+        Assert.Equal("3", RagSectionViewModel.CorrectiveMaxIterationsDefault);
+        Assert.Equal("unlimited", new LlmLoggingSectionViewModel(() => document, () => { }).MaxBodyLengthCharsDefault);
+    }
+
+    [Fact]
+    public void An_llm_logging_switch_reads_its_absent_key_as_on_and_one_click_turns_it_off()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var changes = 0;
+        var section = new LlmLoggingSectionViewModel(() => document, () => changes++);
+        Assert.True(section.FullEmbeddingLog);
+        Assert.True(section.LogStreamingExchanges);
+
+        section.FullEmbeddingLog = false;
+
+        Assert.False(document.GetBoolean("LlmLogging:FullEmbeddingLog"));
+        Assert.Equal(1, changes);
+
+        // Back to the default: the key goes, the file spells nothing the engine already does.
+        section.FullEmbeddingLog = true;
+        Assert.Null(document.GetNode("LlmLogging:FullEmbeddingLog"));
+        Assert.Equal(2, changes);
+
+        // Setting the default on an absent key changes nothing and marks nothing.
+        section.LogStreamingExchanges = true;
+        Assert.Equal(2, changes);
+    }
+
+    [Fact]
+    public void A_rag_switch_reads_its_absent_key_as_off_and_one_click_turns_it_on()
+    {
+        var document = AppSettingsDocument.Parse("""{ "Orkeon": { "Rag": { "WebFallback": { "Enabled": false } } } }""");
+        var changes = 0;
+        var section = new RagSectionViewModel(() => document, () => changes++);
+        Assert.False(section.HybridRetrievalEnabled);
+        Assert.False(section.WebFallbackEnabled);
+
+        section.HybridRetrievalEnabled = true;
+        Assert.True(document.GetBoolean("Orkeon:Rag:Retrieval:Hybrid:Enabled"));
+
+        section.HybridRetrievalEnabled = false;
+        Assert.Null(document.GetNode("Orkeon:Rag:Retrieval:Hybrid:Enabled"));
+
+        // An explicit false in the file reads as off; turning it on writes true.
+        section.WebFallbackEnabled = true;
+        Assert.True(document.GetBoolean("Orkeon:Rag:WebFallback:Enabled"));
+        Assert.Equal(3, changes);
+    }
+
+    /// <summary>
+    /// A check box bound to a nullable boolean starts indeterminate and swallows the first click
+    /// (null becomes false, then true): no section form may expose one.
+    /// </summary>
+    [Fact]
+    public void No_section_form_exposes_a_nullable_boolean()
+    {
+        var offenders = typeof(DocumentSectionViewModel).Assembly.GetTypes()
+            .Where(type => type.IsSubclassOf(typeof(DocumentSectionViewModel)))
+            .SelectMany(type => type.GetProperties()
+                .Where(property => property.PropertyType == typeof(bool?))
+                .Select(property => $"{type.Name}.{property.Name}"))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(offenders.Count == 0,
+            "A nullable boolean behind a check box costs the user two clicks: " + string.Join(", ", offenders));
+    }
+}

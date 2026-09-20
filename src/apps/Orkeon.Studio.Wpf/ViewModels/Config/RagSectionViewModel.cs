@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using System.Globalization;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Localization;
 
@@ -7,7 +8,9 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <summary>
 /// The <c>Orkeon:Rag</c> form (spec §4.1): store settings, the closed profile list, and the opt-in
 /// switches. The web fallback is a genuine double opt-in — the corrective policy and the transport
-/// are two separate keys — and the form says so rather than hiding one behind the other.
+/// are two separate keys — and the form says so rather than hiding one behind the other. The
+/// switches are plain booleans resolving an absent key to the engine's off (STUDIO-22): a nullable
+/// bound to a check box swallows the first click, and a switch turned back off removes its key.
 /// </summary>
 public sealed class RagSectionViewModel : DocumentSectionViewModel
 {
@@ -35,6 +38,9 @@ public sealed class RagSectionViewModel : DocumentSectionViewModel
         set => SetValue(Section.Profile, Blank(value), v => Section.Profile = v);
     }
 
+    /// <summary>The watermark of the profile list: the engine's default profile.</summary>
+    public static string ProfileDefault => RagSection.DefaultProfile;
+
     /// <summary>Whether the profile currently in the file is one the runtime knows.</summary>
     public bool HasValidProfile => Section.HasValidProfile;
 
@@ -52,32 +58,35 @@ public sealed class RagSectionViewModel : DocumentSectionViewModel
         set => SetValue(Section.ConnectionString, Blank(value), v => Section.ConnectionString = v);
     }
 
-    /// <summary>Opt-in BM25 + RRF hybrid retrieval.</summary>
-    public bool? HybridRetrievalEnabled
+    /// <summary>Opt-in BM25 + RRF hybrid retrieval (engine default: off).</summary>
+    public bool HybridRetrievalEnabled
     {
-        get => Section.HybridRetrievalEnabled;
-        set => SetValue(Section.HybridRetrievalEnabled, value, v => Section.HybridRetrievalEnabled = v);
+        get => Section.HybridRetrievalEnabled ?? RagSection.DefaultHybridRetrievalEnabled;
+        set => SetValue(HybridRetrievalEnabled, value,
+            v => Section.HybridRetrievalEnabled = v == RagSection.DefaultHybridRetrievalEnabled ? null : v);
     }
 
-    /// <summary>First half of the web-fallback opt-in: the corrective policy.</summary>
-    public bool? CorrectiveWebFallbackEnabled
+    /// <summary>First half of the web-fallback opt-in: the corrective policy (engine default: off).</summary>
+    public bool CorrectiveWebFallbackEnabled
     {
-        get => Section.CorrectiveWebFallbackEnabled;
-        set => SetValue(Section.CorrectiveWebFallbackEnabled, value, v => Section.CorrectiveWebFallbackEnabled = v);
+        get => Section.CorrectiveWebFallbackEnabled ?? RagSection.DefaultCorrectiveWebFallbackEnabled;
+        set => SetValue(CorrectiveWebFallbackEnabled, value,
+            v => Section.CorrectiveWebFallbackEnabled = v == RagSection.DefaultCorrectiveWebFallbackEnabled ? null : v);
     }
 
-    /// <summary>Second half of the web-fallback opt-in: the transport.</summary>
-    public bool? WebFallbackEnabled
+    /// <summary>Second half of the web-fallback opt-in: the transport (engine default: off).</summary>
+    public bool WebFallbackEnabled
     {
-        get => Section.WebFallbackEnabled;
-        set => SetValue(Section.WebFallbackEnabled, value, v => Section.WebFallbackEnabled = v);
+        get => Section.WebFallbackEnabled ?? RagSection.DefaultWebFallbackEnabled;
+        set => SetValue(WebFallbackEnabled, value,
+            v => Section.WebFallbackEnabled = v == RagSection.DefaultWebFallbackEnabled ? null : v);
     }
 
     /// <summary>Whether both halves of the web-fallback opt-in are on.</summary>
     public bool WebFallbackFullyEnabled => Section.WebFallbackFullyEnabled;
 
     /// <summary>The status line that makes the double opt-in explicit in the form.</summary>
-    public string WebFallbackStatus => _strings[(CorrectiveWebFallbackEnabled == true, WebFallbackEnabled == true) switch
+    public string WebFallbackStatus => _strings[(CorrectiveWebFallbackEnabled, WebFallbackEnabled) switch
     {
         (true, true) => StudioStringKeys.RagWebFallbackActive,
         (true, false) => StudioStringKeys.RagWebFallbackTransportOff,
@@ -91,6 +100,10 @@ public sealed class RagSectionViewModel : DocumentSectionViewModel
         get => Section.CorrectiveMaxIterations;
         set => SetValue(Section.CorrectiveMaxIterations, value, v => Section.CorrectiveMaxIterations = v);
     }
+
+    /// <summary>The watermark of <see cref="CorrectiveMaxIterations"/>.</summary>
+    public static string CorrectiveMaxIterationsDefault =>
+        RagSection.DefaultCorrectiveMaxIterations.ToString(CultureInfo.InvariantCulture);
 
     /// <summary>Drops the whole section from the document.</summary>
     public void RemoveSection()

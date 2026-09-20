@@ -921,6 +921,9 @@ public static class StudioStringKeys
     /// <summary>"no key detected"</summary>
     public const string ProfileKeyStatusMissing = "Studio.Settings.KeyStatusMissing";
 
+    /// <summary>"unlimited" — the watermark of a budget whose engine default is 0, meaning no bound (STUDIO-22).</summary>
+    public const string SettingsUnlimited = "Studio.Settings.Unlimited";
+
     // ── the Tools tab (STUDIO-21): the families of the catalogue and what a tool needs ──
 
     /// <summary>"Web"</summary>
@@ -1777,6 +1780,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileKeyStore] = "Remember the key",
         [StudioStringKeys.ProfileKeyStatusSet] = "key remembered",
         [StudioStringKeys.ProfileKeyStatusMissing] = "no key detected",
+        [StudioStringKeys.SettingsUnlimited] = "unlimited",
         [StudioStringKeys.ToolFamilyWeb] = "Web",
         [StudioStringKeys.ToolFamilySearch] = "Search and knowledge",
         [StudioStringKeys.ToolFamilyFiles] = "Files",

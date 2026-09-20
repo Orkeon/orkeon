@@ -388,6 +388,13 @@
                    (T-32) stretches so a paragraph starts on its first line instead of centring. -->
               <ScrollViewer x:Name="PART_ContentHost" Margin="{TemplateBinding Padding}"
                             VerticalAlignment="{TemplateBinding VerticalContentAlignment}"/>
+              <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, shown while the
+                   box is empty — an empty field is not "nothing", it is the value the engine will
+                   apply, and the box says which. No Tag, no watermark. -->
+              <TextBlock x:Name="watermark" Text="{TemplateBinding Tag}" Margin="{TemplateBinding Padding}"
+                         VerticalAlignment="{TemplateBinding VerticalContentAlignment}" IsHitTestVisible="False"
+                         Foreground="{DynamicResource InkFaintBrush}" TextTrimming="CharacterEllipsis"
+                         Visibility="Collapsed"/>
             </Grid>
           </Border>
           <ControlTemplate.Triggers>
@@ -397,6 +404,12 @@
             <Trigger Property="IsReadOnly" Value="True">
               <Setter TargetName="bd" Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
               <Setter TargetName="bd" Property="BorderBrush" Value="{DynamicResource LineFaintBrush}"/>
+            </Trigger>
+            <Trigger Property="Text" Value="">
+              <Setter TargetName="watermark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="Tag" Value="{x:Null}">
+              <Setter TargetName="watermark" Property="Visibility" Value="Collapsed"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>
@@ -816,6 +829,10 @@
                               ContentTemplateSelector="{TemplateBinding ItemTemplateSelector}"
                               ContentStringFormat="{TemplateBinding SelectionBoxItemStringFormat}"
                               IsHitTestVisible="False" Margin="10,0,26,0" VerticalAlignment="Center"/>
+            <!-- The watermark (STUDIO-22): the engine's default, carried by Tag, while nothing is picked. -->
+            <TextBlock x:Name="watermark" Text="{TemplateBinding Tag}" IsHitTestVisible="False"
+                       Margin="10,0,26,0" VerticalAlignment="Center"
+                       Foreground="{DynamicResource InkFaintBrush}" Visibility="Collapsed"/>
             <Popup IsOpen="{TemplateBinding IsDropDownOpen}" Placement="Bottom" AllowsTransparency="True"
                    StaysOpen="False" PopupAnimation="Fade" VerticalOffset="4">
               <!-- Margin leaves room for the shadow: an AllowsTransparency popup clips
@@ -833,6 +850,12 @@
           <ControlTemplate.Triggers>
             <Trigger Property="IsEnabled" Value="False">
               <Setter Property="Opacity" Value="0.45"/>
+            </Trigger>
+            <Trigger Property="SelectedItem" Value="{x:Null}">
+              <Setter TargetName="watermark" Property="Visibility" Value="Visible"/>
+            </Trigger>
+            <Trigger Property="Tag" Value="{x:Null}">
+              <Setter TargetName="watermark" Property="Visibility" Value="Collapsed"/>
             </Trigger>
           </ControlTemplate.Triggers>
         </ControlTemplate>

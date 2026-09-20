@@ -1,4 +1,5 @@
 using Orkeon.Constants.Configuration;
+using Orkeon.Domain.Constants.Rag;
 using Orkeon.Rag.Abstractions.Options;
 
 namespace Orkeon.Studio.Core.Configuration;
@@ -13,6 +14,26 @@ public sealed class RagSection
 {
     /// <summary>Configuration path of the section.</summary>
     public const string SectionPath = ConfigurationKeys.Rag;
+
+    // The engine's defaults, for the watermarks and the one-click switches of the settings
+    // screen (STUDIO-22). The profile and the iteration bound come from the RAG contracts
+    // themselves; the three switches are plain auto-properties there, off until set, which
+    // EngineDefaultsDriftTests pins.
+
+    /// <summary>Default of <c>Orkeon:Rag:Profile</c>.</summary>
+    public static string DefaultProfile => RagDefaults.DefaultProfile;
+
+    /// <summary>Default of <c>Orkeon:Rag:Corrective:MaxIterations</c>.</summary>
+    public static int DefaultCorrectiveMaxIterations => RagCorrectiveOptions.DefaultMaxIterations;
+
+    /// <summary>Default of <c>Orkeon:Rag:Retrieval:Hybrid:Enabled</c>.</summary>
+    public const bool DefaultHybridRetrievalEnabled = false;
+
+    /// <summary>Default of <c>Orkeon:Rag:Corrective:WebFallback:Enabled</c>.</summary>
+    public const bool DefaultCorrectiveWebFallbackEnabled = false;
+
+    /// <summary>Default of <c>Orkeon:Rag:WebFallback:Enabled</c>.</summary>
+    public const bool DefaultWebFallbackEnabled = false;
 
     private readonly AppSettingsDocument _document;
 

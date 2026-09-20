@@ -1,7 +1,8 @@
 <!-- The "Limites & journaux" settings tab (design v3, expert only): rate limits, the RAG
      index and the logging sections. DataContext: ConfigTabViewModel (bound as Settings.Config).
      Card titles are plain language (T-08); the literal configuration key rides each title's tooltip — technical
-     identifiers, identical in every language, hence not routed through I18n. -->
+     identifiers, identical in every language, hence not routed through I18n. Every field whose engine default is
+     a value carries it as a watermark through Tag (STUDIO-22); the switches are one-click booleans. -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.LimitsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -31,15 +32,15 @@
                      Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding RateLimiting.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblMaxConcurrent], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.MaxConcurrentRequests, UpdateSourceTrigger=LostFocus}" Tag="{Binding RateLimiting.MaxConcurrentRequestsDefault}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblGlobalRpm], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.GlobalRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.GlobalRequestsPerMinute, UpdateSourceTrigger=LostFocus}" Tag="{x:Static config:RateLimitingSectionViewModel.GlobalRequestsPerMinuteDefault}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblProviderRpm], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.ProviderRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.ProviderRequestsPerMinute, UpdateSourceTrigger=LostFocus}" Tag="{x:Static config:RateLimitingSectionViewModel.ProviderRequestsPerMinuteDefault}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblAgentRpm], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.AgentRequestsPerMinute, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.AgentRequestsPerMinute, UpdateSourceTrigger=LostFocus}" Tag="{x:Static config:RateLimitingSectionViewModel.AgentRequestsPerMinuteDefault}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblQueueLimit], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.QueueLimit, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding RateLimiting.QueueLimit, UpdateSourceTrigger=LostFocus}" Tag="{x:Static config:RateLimitingSectionViewModel.QueueLimitDefault}"/>
         </StackPanel>
       </Border>
 
@@ -55,7 +56,8 @@
                      Text="{Binding [Studio.Settings.DefaultsApply], Source={x:Static services:I18n.Instance}}"
                      Visibility="{Binding Rag.Exists, Converter={StaticResource InverseBooleanToVisibility}}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.LblRagProfile], Source={x:Static services:I18n.Instance}}"/>
-          <ComboBox ItemsSource="{x:Static config:RagSectionViewModel.KnownProfiles}" SelectedItem="{Binding Rag.Profile}"/>
+          <ComboBox ItemsSource="{x:Static config:RagSectionViewModel.KnownProfiles}" SelectedItem="{Binding Rag.Profile}"
+                    Tag="{x:Static config:RagSectionViewModel.ProfileDefault}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblRagProvider], Source={x:Static services:I18n.Instance}}"/>
           <TextBox Style="{StaticResource Input}" Text="{Binding Rag.Provider, UpdateSourceTrigger=PropertyChanged}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblRagConnection], Source={x:Static services:I18n.Instance}}"/>
@@ -71,7 +73,7 @@
                     Content="{Binding [Studio.Settings.RagWebFallback], Source={x:Static services:I18n.Instance}}"/>
           <TextBlock Style="{StaticResource Hint}" Margin="0,5,0,0" Text="{Binding Rag.WebFallbackStatus}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblCorrectiveMaxIterations], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding Rag.CorrectiveMaxIterations, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding Rag.CorrectiveMaxIterations, UpdateSourceTrigger=LostFocus}" Tag="{x:Static config:RagSectionViewModel.CorrectiveMaxIterationsDefault}"/>
         </StackPanel>
       </Border>
 
@@ -135,7 +137,7 @@
                     Foreground="{DynamicResource InkBrush}"
                     Content="{Binding [Studio.Settings.LlmLogStreaming], Source={x:Static services:I18n.Instance}}"/>
           <TextBlock Style="{StaticResource FieldLabel}" Margin="0,10,0,0" Text="{Binding [Studio.Settings.LblMaxBodyLength], Source={x:Static services:I18n.Instance}}"/>
-          <TextBox Style="{StaticResource Input}" Text="{Binding LlmLogging.MaxBodyLengthChars, UpdateSourceTrigger=LostFocus}"/>
+          <TextBox Style="{StaticResource Input}" Text="{Binding LlmLogging.MaxBodyLengthChars, UpdateSourceTrigger=LostFocus}" Tag="{Binding LlmLogging.MaxBodyLengthCharsDefault}"/>
         </StackPanel>
       </Border>
     </Grid>

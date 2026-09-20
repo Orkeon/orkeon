@@ -49,10 +49,10 @@ public sealed class ConfigTabViewModel : ObservableObject
         Picker = seams.Picker ?? NullPathPicker.Instance;
 
         Llm = new LlmSectionViewModel(() => _document, MarkDirty, seams.LlmProbe, seams.Dispatcher, _strings);
-        RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty);
+        RateLimiting = new RateLimitingSectionViewModel(() => _document, MarkDirty, _strings);
         Rag = new RagSectionViewModel(() => _document, MarkDirty, _strings);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
-        LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty);
+        LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty, _strings);
         ShellTools = new ShellToolsSectionViewModel(() => _document, MarkDirty);
         Mcp = new McpSectionViewModel(() => _document, MarkDirty, _strings);
 

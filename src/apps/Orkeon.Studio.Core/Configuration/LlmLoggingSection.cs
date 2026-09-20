@@ -9,6 +9,18 @@ public sealed class LlmLoggingSection
     /// <summary>Configuration path of the section.</summary>
     public const string SectionPath = "LlmLogging";
 
+    // The engine's defaults (LlmLoggingOptions.Default), copied for the watermarks and the
+    // one-click switches of the settings screen (STUDIO-22); pinned by EngineDefaultsDriftTests.
+
+    /// <summary>Default of <c>FullEmbeddingLog</c>.</summary>
+    public const bool DefaultFullEmbeddingLog = true;
+
+    /// <summary>Default of <c>LogStreamingExchanges</c>.</summary>
+    public const bool DefaultLogStreamingExchanges = true;
+
+    /// <summary>Default of <c>MaxBodyLengthChars</c>: 0, no truncation.</summary>
+    public const int DefaultMaxBodyLengthChars = 0;
+
     private readonly AppSettingsDocument _document;
 
     internal LlmLoggingSection(AppSettingsDocument document) => _document = document;

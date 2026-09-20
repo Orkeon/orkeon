@@ -552,6 +552,7 @@
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>Ceci est la base commune (fichier de réglages + environnement de ce shell). Une équipe qui a élu son propre réglage de modèle le reçoit par-dessus, au lancement seulement — il n'apparaît pas ici.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>Clés API</value></data>
   <data name="Studio.Settings.Intro" xml:space="preserve"><value>Les clés vivent dans vos variables d'environnement utilisateur, jamais dans un fichier. Collez une clé puis mémorisez-la ; le champ se vide une fois la clé enregistrée.</value></data>
+  <data name="Studio.Settings.Unlimited" xml:space="preserve"><value>illimité</value></data>
   <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve"><value>Clés des outils</value></data>
   <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve"><value>Deux outils de recherche ont besoin d'une clé. Collez-la une fois : elle vit dans votre environnement utilisateur, jamais dans un fichier.</value></data>
   <data name="Studio.Settings.ToolsTitle" xml:space="preserve"><value>Catalogue des outils</value></data>

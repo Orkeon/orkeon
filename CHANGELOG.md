@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-22 -->
+### Fixed — Studio: the limits tab shows the engine's defaults as watermarks, and its switches take one click (STUDIO-22)
+
+- **Every empty field of « Settings › Limits & index » now names the engine's default as a
+  watermark** — the four per-minute budgets and the queue limit (`RateLimitingOptions`: 60, 30,
+  20, 5), the concurrency bound and the log body length as « unlimited » (their engine default is
+  0, meaning no bound), the RAG profile (`fast`) and the corrective iteration bound (3). The
+  defaults are copies in Studio Core, pinned against the engine's option classes by
+  `EngineDefaultsDriftTests`. The watermark is a theme feature: any `Input` text box or `ComboBox`
+  shows its `Tag` while empty. Owner review 2026-09-20: nothing said what an empty field meant.
+- **A switch bound to an absent key took two clicks** — a check box over a nullable boolean starts
+  indeterminate and the first click only turns it to false. The five switches of the tab (the two
+  LLM-logging captures, on by default; the three RAG opt-ins, off by default) are plain booleans
+  resolving an absent key to the engine's default; setting a switch back to its default removes
+  the key. A guard refuses any nullable boolean on a section form.
+
 <!-- STUDIO-21 -->
 ### Added — Studio: Tools and MCP settings tabs; `orkeon run` connects the MCP servers the settings declare (STUDIO-21)
 
