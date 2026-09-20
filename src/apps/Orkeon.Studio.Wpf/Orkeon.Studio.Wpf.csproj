@@ -11,6 +11,7 @@
     <Nullable>enable</Nullable>
     <IsPackable>false</IsPackable>
     <NoWarn>$(NoWarn);CS1591</NoWarn>
+    <ApplicationIcon>Assets\orkeon-studio.ico</ApplicationIcon>
   </PropertyGroup>
 
   <ItemGroup>

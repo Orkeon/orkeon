@@ -46,10 +46,10 @@
       <DockPanel Margin="16,0,0,0">
         <!-- brand -->
         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
-          <!-- Orkeon mark: 3 dashed arcs + node (assets/orkeon-mark.svg transcribed; WPF dashes are in units of stroke width) -->
+          <!-- Orkeon mark: 3 dashed arcs + node (assets/orkeon-mark.svg transcribed; WPF dashes are in units of stroke width) --><!--
           <Viewbox Width="23" Height="23">
-            <!-- The mock rotates the GROUP once around its own center (rotate(-52 48 48));
-                 rotating each ring separately around a foreign center is what skewed the mark. -->
+            --><!-- The mock rotates the GROUP once around its own center (rotate(-52 48 48));
+                 rotating each ring separately around a foreign center is what skewed the mark. --><!--
             <Grid Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
               <Grid.RenderTransform>
                 <RotateTransform Angle="-52"/>
@@ -66,7 +66,12 @@
               <Ellipse Width="16" Height="16" Fill="{DynamicResource MarkBrush}"
                        HorizontalAlignment="Center" VerticalAlignment="Center"/>
             </Grid>
-          </Viewbox>
+          </Viewbox>-->
+          <!-- Icône de l'application (cadrage buste, coins arrondis détourés dans le PNG).
+               Source 64 px rendue à 23 : nette jusqu'à ~275 % de mise à l'échelle. -->
+          <Image Source="/Assets/orkeon-studio-mark.png" Width="23" Height="23"
+                 RenderOptions.BitmapScalingMode="HighQuality"
+                 VerticalAlignment="Center"/>
           <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="16.5" FontWeight="Bold"
                      Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" Margin="9,2,0,0" VerticalAlignment="Center"/>
@@ -1065,8 +1070,11 @@
             <ColumnDefinition Width="*"/>
           </Grid.ColumnDefinitions>
           <!-- illustration plate: fixed light background, the artwork is opaque -->
-          <Border Grid.Column="0" Background="{DynamicResource IllustrationPanelBrush}" CornerRadius="20,0,0,20">
-            <Image Source="/Assets/kama.png" Width="224" VerticalAlignment="Bottom" HorizontalAlignment="Center"/>
+          <Border Grid.Column="0" CornerRadius="20,0,0,20" ClipToBounds="True">
+              <Border.Background>
+                  <ImageBrush ImageSource="/Assets/kama_molecule.png" Stretch="UniformToFill"
+                              AlignmentX="Center" AlignmentY="Center"/>
+              </Border.Background>
           </Border>
           <StackPanel Grid.Column="1" Margin="28,26">
             <TextBlock Style="{StaticResource Eyebrow}"
@@ -1105,29 +1113,17 @@
             MouseLeftButtonDown="OnSplashClick"
             ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
-        <Border Background="{DynamicResource IllustrationPanelBrush}" CornerRadius="28" Padding="34,14,34,0" HorizontalAlignment="Center">
-          <Image Source="/Assets/kama.png" Width="280"/>
-        </Border>
-        <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
-          <Viewbox Width="26" Height="26" VerticalAlignment="Center">
-            <Grid Width="96" Height="96" RenderTransformOrigin="0.5,0.5">
-              <Grid.RenderTransform>
-                <RotateTransform Angle="-52"/>
-              </Grid.RenderTransform>
-              <Ellipse Width="38" Height="38" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="12.27 4.79" StrokeDashCap="Round"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              <Ellipse Width="62" Height="62" Stroke="{DynamicResource MarkBrush}" StrokeThickness="7"
-                       StrokeDashArray="20.03 7.8" StrokeDashCap="Round"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              <Ellipse Width="86" Height="86" Stroke="{DynamicResource MarkBrush}" StrokeThickness="6"
-                       StrokeDashArray="32.42 12.62" StrokeDashCap="Round"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-              <Ellipse Width="16" Height="16" Fill="{DynamicResource MarkBrush}"
-                       HorizontalAlignment="Center" VerticalAlignment="Center"/>
-            </Grid>
-          </Viewbox>
-          <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="30" FontWeight="SemiBold"
+          <Border CornerRadius="28" ClipToBounds="True" HorizontalAlignment="Center"
+                  Effect="{DynamicResource ShadowLg}">
+              <Image Source="/Assets/kama_molecule.png" Width="300"
+                     RenderOptions.BitmapScalingMode="HighQuality"/>
+          </Border>
+          <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,26,0,0">
+              <Image Source="/Assets/orkeon-studio-mark.png" Width="26" Height="26"
+                     RenderOptions.BitmapScalingMode="HighQuality"
+                     VerticalAlignment="Center"/>
+
+              <TextBlock Text="Orkeon" FontFamily="{StaticResource DisplayFont}" FontSize="30" FontWeight="SemiBold"
                      Foreground="{DynamicResource InkBrush}" Margin="11,0,0,0" VerticalAlignment="Center"/>
           <TextBlock Text="STUDIO" Style="{StaticResource Eyebrow}" FontSize="12" Margin="11,10,0,0" VerticalAlignment="Center"/>
         </StackPanel>
