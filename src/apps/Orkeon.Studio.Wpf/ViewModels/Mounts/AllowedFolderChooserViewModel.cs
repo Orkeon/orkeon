@@ -39,6 +39,7 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
         RightsLabel = strings[mount is { Rights: MountRights.ReadWrite }
             ? StudioStringKeys.RightsReadWrite
             : StudioStringKeys.RightsReadOnly];
+        RightsBadge = MountRightsTokens.GetBadge(mount?.Rights ?? MountRights.ReadOnly, strings);
     }
 
     /// <summary>The declared entry, verbatim — what the team will record.</summary>
@@ -53,8 +54,14 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
     /// <summary>The folder on this machine.</summary>
     public string PhysicalPath { get; }
 
-    /// <summary>The rights pill's text — the rights of the settings entry, never re-chosen here.</summary>
+    /// <summary>The full rights label — the pill's tooltip; the rights of the settings entry, never re-chosen here.</summary>
     public string RightsLabel { get; }
+
+    /// <summary>
+    /// The one-word rights pill (STUDIO-16): the full label used to sit in the pill and ate the
+    /// width the disk path needed, which then read as <c>C:\Users\…\orkeon\…</c>.
+    /// </summary>
+    public string RightsBadge { get; }
 
     /// <summary>The last six characters of the entry's id (VFS-90); empty for an entry without one.</summary>
     public string ShortId { get; }

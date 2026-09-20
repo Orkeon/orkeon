@@ -32,6 +32,28 @@ public sealed class AllowedFolderChooserTests
         Assert.All(chooser.Rows, row => Assert.False(row.IsChecked));
     }
 
+    /// <summary>
+    /// The owner's screenshot: the full rights label sat in the pill and ate the width the disk
+    /// path needed, which then read as «C:\Users\…\orkeon\…». The pill is one word, the full
+    /// label is its tooltip, and the row carries the tail of the entry's id so two /output rows
+    /// are told apart.
+    /// </summary>
+    [Fact]
+    public void A_row_carries_a_one_word_rights_pill_the_full_label_and_the_id_tail()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var chooser = Chooser(Docs, $"{id}|/data/out:/output:rw");
+        chooser.Open([], _ => { });
+
+        Assert.Equal("read", chooser.Rows[0].RightsBadge);
+        Assert.Equal("Read only", chooser.Rows[0].RightsLabel);
+        Assert.Equal("write", chooser.Rows[1].RightsBadge);
+        Assert.Equal("Read / write (create and delete allowed)", chooser.Rows[1].RightsLabel);
+        Assert.Equal("", chooser.Rows[0].ShortId);
+        Assert.Equal(id.ToString()[^6..], chooser.Rows[1].ShortId);
+        Assert.Equal("/data/out", chooser.Rows[1].PhysicalPath);
+    }
+
     [Fact]
     public void Checking_two_rows_adds_both_with_the_rights_the_settings_declare()
     {

@@ -762,7 +762,9 @@
                               <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
                                                    Foreground="{DynamicResource AccentFgBrush}" Visibility="Collapsed"/>
                             </Border>
-                            <Border DockPanel.Dock="Right">
+                            <!-- One word in the pill, the full label as its tooltip (STUDIO-16): the full
+                                 label ate the width and the disk path read as «C:\Users\…\orkeon\…». -->
+                            <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
                               <Border.Style>
                                 <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
                                   <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
@@ -773,7 +775,7 @@
                                   </Style.Triggers>
                                 </Style>
                               </Border.Style>
-                              <TextBlock Text="{Binding RightsLabel}">
+                              <TextBlock Text="{Binding RightsBadge}">
                                 <TextBlock.Style>
                                   <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
                                     <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
@@ -787,10 +789,14 @@
                               </TextBlock>
                             </Border>
                             <StackPanel>
-                              <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}"
-                                         Text="{Binding VirtualPath}"/>
+                              <!-- The name the agents use, then the tail of the entry's id (VFS-90): two /output
+                                   rows are told apart here, not by squinting at a truncated path. -->
+                              <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}">
+                                <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                              </TextBlock>
+                              <!-- The real folder, whole: wrapped rather than trimmed. -->
                               <TextBlock x:Name="Disk" FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                         TextTrimming="CharacterEllipsis" Text="{Binding PhysicalPath}"/>
+                                         TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
                             </StackPanel>
                           </DockPanel>
                         </Border>
@@ -973,8 +979,10 @@
                                 <controls:LucideIcon x:Name="Tick" Kind="check" Size="11"
                                                      Foreground="{DynamicResource AccentFgBrush}" Visibility="Collapsed"/>
                               </Border>
-                              <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. -->
-                              <Border DockPanel.Dock="Right">
+                              <!-- Les droits viennent des Réglages et ne se rechoisissent pas ici. One word in
+                                   the pill, the full label as its tooltip (STUDIO-16): the full label ate the
+                                   width and the disk path read as «C:\Users\…\orkeon\…». -->
+                              <Border DockPanel.Dock="Right" Margin="12,0,0,0" ToolTip="{Binding RightsLabel}">
                                 <Border.Style>
                                   <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
                                     <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
@@ -985,7 +993,7 @@
                                     </Style.Triggers>
                                   </Style>
                                 </Border.Style>
-                                <TextBlock Text="{Binding RightsLabel}">
+                                <TextBlock Text="{Binding RightsBadge}">
                                   <TextBlock.Style>
                                     <Style TargetType="TextBlock" BasedOn="{StaticResource BadgeText}">
                                       <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
@@ -998,14 +1006,23 @@
                                   </TextBlock.Style>
                                 </TextBlock>
                               </Border>
-                              <TextBlock DockPanel.Dock="Right" FontSize="11" VerticalAlignment="Center" Margin="0,0,10,0"
-                                         Foreground="{DynamicResource InkFaintBrush}" Text="{Binding UnavailableNote}"
-                                         Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
                               <StackPanel>
-                                <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}"
-                                           Text="{Binding VirtualPath}"/>
+                                <!-- The name the agents use, then the tail of the entry's id (VFS-90): two
+                                     /output rows are told apart here, not by squinting at a truncated path. -->
+                                <TextBlock Style="{StaticResource MonoText}" FontSize="12" Foreground="{DynamicResource InkBrush}">
+                                  <Run Text="{Binding VirtualPath, Mode=OneWay}"/><Run Text=" · " Foreground="{DynamicResource InkFaintBrush}"/><Run Text="{Binding ShortId, Mode=OneWay}" Foreground="{DynamicResource InkFaintBrush}"/>
+                                </TextBlock>
+                                <!-- The real folder, whole: wrapped rather than trimmed. -->
                                 <TextBlock FontSize="11.5" Foreground="{DynamicResource InkFaintBrush}" Margin="0,2,0,0"
-                                           TextTrimming="CharacterEllipsis" Text="{Binding PhysicalPath}"/>
+                                           TextWrapping="Wrap" Text="{Binding PhysicalPath}"/>
+                                <!-- Why the row cannot be picked, or that its root is shared: under the path, where
+                                     a sentence has room, not beside the pill where it squeezed the path. -->
+                                <TextBlock FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource InkFaintBrush}" Text="{Binding UnavailableNote}"
+                                           Visibility="{Binding HasNote, Converter={StaticResource BooleanToVisibility}}"/>
+                                <TextBlock FontSize="11" Margin="0,3,0,0" TextWrapping="Wrap"
+                                           Foreground="{DynamicResource InkFaintBrush}" Text="{Binding SharedRootNote}"
+                                           Visibility="{Binding HasSharedRootNote, Converter={StaticResource BooleanToVisibility}}"/>
                               </StackPanel>
                             </DockPanel>
                           </Border>

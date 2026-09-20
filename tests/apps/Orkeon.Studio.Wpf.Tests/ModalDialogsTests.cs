@@ -35,6 +35,22 @@ public sealed class ModalDialogsTests
         Assert.Equal("/teams/veille", saved.Value.Directory);
     }
 
+    /// <summary>Same fix as the chooser's: a one-word pill, the full label as tooltip, the id tail on the row.</summary>
+    [Fact]
+    public void A_team_mount_row_carries_a_one_word_rights_pill_and_the_id_tail()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var dialog = new TeamMountsDialogViewModel(saveMounts: (_, _) => { }, declaredMounts: () => [$"{id}|/data/out:/output:rw"]);
+        dialog.Open("/teams/veille", "Veille", ["./input:/workspace:ro", $"{id}|/data/out:/output:rw"]);
+
+        Assert.Equal("read", dialog.Rows[0].RightsBadge);
+        Assert.Equal("", dialog.Rows[0].ShortId);
+        Assert.Equal("write", dialog.Rows[1].RightsBadge);
+        Assert.Equal("Read / write (create and delete allowed)", dialog.Rows[1].RightsLabel);
+        Assert.Equal(id.ToString()[^6..], dialog.Rows[1].ShortId);
+        Assert.Equal("/data/out", dialog.Rows[1].PhysicalPath);
+    }
+
     [Fact]
     public void The_summary_speaks_plainly_for_none_and_for_some()
     {

@@ -33,6 +33,7 @@ public sealed class TeamMountRowViewModel : ObservableObject
         RightsLabel = strings[mount is { Rights: MountRights.ReadWrite }
             ? StudioStringKeys.RightsReadWrite
             : StudioStringKeys.RightsReadOnly];
+        RightsBadge = MountRightsTokens.GetBadge(mount?.Rights ?? MountRights.ReadOnly, strings);
         _isChecked = true;
         ShortId = shortId;
         IsUnknownId = isUnknownId;
@@ -58,6 +59,9 @@ public sealed class TeamMountRowViewModel : ObservableObject
 
     /// <summary>The rights pill's text.</summary>
     public string RightsLabel { get; }
+
+    /// <summary>The one-word rights pill (STUDIO-16); <see cref="RightsLabel"/> is its tooltip.</summary>
+    public string RightsBadge { get; }
 
     /// <summary>True for a read-only mount — the pill's quiet tone.</summary>
     public bool IsReadOnly { get; }

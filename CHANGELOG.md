@@ -38,7 +38,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   a team naming a declaration missing on this machine is refused and the import review offers
   « Authorize them as recorded »; the launch lays `--mount-id` for a declaration and `--mount`
   only for the team's own folders; the effective-mounts table says which entry of a shared
-  root is kept.
+  root is kept. The two folder modals (« Add an allowed folder », « Folders of … ») show the
+  whole disk path, a one-word rights pill with the full label as tooltip, and the tail of each
+  entry's id, so two `/output` rows are told apart.
 
 ### Changed
 
