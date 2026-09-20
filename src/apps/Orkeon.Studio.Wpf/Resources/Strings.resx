@@ -419,10 +419,7 @@
 <data name="Studio.Create.SchedAt" xml:space="preserve"><value>at</value></data>
 <data name="Studio.Create.SchedLocalTime" xml:space="preserve"><value>local time of this machine</value></data>
 <data name="Studio.Create.Save" xml:space="preserve"><value>Save to my teams</value></data>
-<data name="Studio.Create.SavedTitle" xml:space="preserve"><value>Team saved</value></data>
-<data name="Studio.Create.SavedPath" xml:space="preserve"><value>Stored in</value></data>
-<data name="Studio.Create.SavedInstall" xml:space="preserve"><value>Scheduling command (displayed, never executed for you)</value></data>
-<data name="Studio.Create.CreateAnother" xml:space="preserve"><value>Create another team</value></data>
+<data name="Studio.Create.AdoptedLine" xml:space="preserve"><value>Team “{0}” is saved in My teams.</value></data>
 <data name="Studio.Create.NotesCompose" xml:space="preserve"><value>Composition instruction</value></data>
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Trial instruction</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Adoption instruction</value></data>
@@ -595,10 +592,6 @@
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>No workshop session points at this team (imported, or its session was deleted).</value></data>
-  <data name="Studio.Create.SavedModifyTeam" xml:space="preserve"><value>Modify the team</value></data>
-  <data name="Studio.Create.SavedRetry" xml:space="preserve"><value>Run the trial again</value></data>
-  <data name="Studio.Create.SavedNotFrozen" xml:space="preserve"><value>Nothing is frozen: you can still modify an agent, run the trial again and adopt anew — the saved team will be updated, not duplicated.</value></data>
-  <data name="Studio.Create.ReopenedNote" xml:space="preserve"><value>Re-adopting regenerates run.sh and crew/ — hand edits inside those files will be lost.</value></data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve"><value>Change</value></data>
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Edit</value></data>

@@ -243,10 +243,9 @@ internal static class WizardStops
             Name = "etape4-adoption",
             Category = CaptureCategory.Wizard,
             Screen = CaptureScreen.Create,
-            Because = "The adoption form before anything is saved: the name, the profile card and "
-                    + "the schedule — the last decision the wizard asks for.",
-            Covers = ["CreateTeam.IsStep4", "CreateTeam.NotSaved"],
-            CoversFalse = ["CreateTeam.IsSaved"],
+            Because = "The adoption form: the name, the profile card and the schedule — the last "
+                    + "decision the wizard asks for, since the tunnel ends on a blank step 1 (STUDIO-20).",
+            Covers = ["CreateTeam.IsStep4"],
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c => c.Shell.CreateTeam.GoStep4Command.Execute(null)),
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),

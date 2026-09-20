@@ -996,6 +996,9 @@ public static class StudioStringKeys
     /// <summary>"The save failed — the engine refused the promotion: {0}"</summary>
     public const string WizardPromoteFailed = "Studio.Create.PromoteFailed";
 
+    /// <summary>"Team “{0}” is saved in My teams." — the one line left on a blank step 1 after an adoption (STUDIO-20).</summary>
+    public const string WizardAdoptedLine = "Studio.Create.AdoptedLine";
+
     /// <summary>"The import failed — nothing was copied. Check access to the source and try again."</summary>
     public const string ImportFailed = "Studio.Import.Failed";
 
@@ -1730,6 +1733,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",
         [StudioStringKeys.WizardAgentFallback] = "Agent",
         [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
+        [StudioStringKeys.WizardAdoptedLine] = "Team “{0}” is saved in My teams.",
         [StudioStringKeys.ImportFailed] = "The import failed — nothing was copied. Check access to the source and try again.",
         [StudioStringKeys.ComposeStageBrief] = "I am noting what you want…",
         [StudioStringKeys.ComposeStageBlueprint] = "I am composing the team…",

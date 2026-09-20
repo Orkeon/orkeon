@@ -1177,17 +1177,8 @@
   <data name="Studio.Create.Save" xml:space="preserve">
     <value>In meinen Teams speichern</value>
   </data>
-  <data name="Studio.Create.SavedTitle" xml:space="preserve">
-    <value>Team gespeichert</value>
-  </data>
-  <data name="Studio.Create.SavedPath" xml:space="preserve">
-    <value>Abgelegt in</value>
-  </data>
-  <data name="Studio.Create.SavedInstall" xml:space="preserve">
-    <value>Planungsbefehl (angezeigt, nie an Ihrer Stelle ausgeführt)</value>
-  </data>
-  <data name="Studio.Create.CreateAnother" xml:space="preserve">
-    <value>Weiteres Team erstellen</value>
+  <data name="Studio.Create.AdoptedLine" xml:space="preserve">
+    <value>Das Team „{0}“ ist unter „Meine Teams“ gespeichert.</value>
   </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>Kompositions-Anweisung</value>
@@ -1700,18 +1691,6 @@
   </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
     <value>Keine Werkstatt-Sitzung verweist auf dieses Team (importiert, oder die Sitzung wurde gelöscht).</value>
-  </data>
-  <data name="Studio.Create.SavedModifyTeam" xml:space="preserve">
-    <value>Team bearbeiten</value>
-  </data>
-  <data name="Studio.Create.SavedRetry" xml:space="preserve">
-    <value>Neuer Probelauf</value>
-  </data>
-  <data name="Studio.Create.SavedNotFrozen" xml:space="preserve">
-    <value>Nichts ist fixiert: Sie können weiter Agenten bearbeiten, neu proben und erneut übernehmen — das gespeicherte Team wird aktualisiert, nicht dupliziert.</value>
-  </data>
-  <data name="Studio.Create.ReopenedNote" xml:space="preserve">
-    <value>Die erneute Übernahme erzeugt die erstellten Dateien neu — run.sh und die YAML-Definition — von Hand vorgenommene Änderungen darin gehen verloren.</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>Ändern</value>

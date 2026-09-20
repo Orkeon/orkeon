@@ -326,7 +326,6 @@ public sealed class SettingsScreenTests
             ]);
             await wizard.SaveTeamCommand.ExecuteAsync();
 
-            Assert.True(wizard.IsSaved);
             Assert.Equal(["./output:/output:rw"], TeamCatalog.Describe(promoted).Metadata!.Mounts);
             var row = Assert.Single(shell.Settings.TeamFolders.Rows);
             Assert.Equal("Ma veille · /output → output", row.Label);

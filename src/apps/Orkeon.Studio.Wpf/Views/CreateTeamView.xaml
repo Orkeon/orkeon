@@ -1087,8 +1087,7 @@
 
       <!-- ── STEP 4 : ADOPTER ── -->
       <StackPanel Visibility="{Binding IsStep4, Converter={StaticResource BooleanToVisibility}}">
-        <Border Style="{StaticResource Card}" Margin="0,0,0,16"
-                Visibility="{Binding NotSaved, Converter={StaticResource BooleanToVisibility}}">
+        <Border Style="{StaticResource Card}">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
                        Text="{Binding [Studio.Create.AdoptTitle], Source={x:Static services:I18n.Instance}}"/>
@@ -1199,53 +1198,6 @@
                 </StackPanel>
               </Button>
             </DockPanel>
-          </StackPanel>
-        </Border>
-
-        <Border Style="{StaticResource Card}"
-                Visibility="{Binding IsSaved, Converter={StaticResource BooleanToVisibility}}">
-          <StackPanel>
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="circle-check" Size="18" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
-              <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" Margin="9,0,0,0"
-                         Text="{Binding [Studio.Create.SavedTitle], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-            <StackPanel Margin="0,14,0,0"
-                        Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
-              <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.SavedPath], Source={x:Static services:I18n.Instance}}"/>
-              <TextBlock Style="{StaticResource MonoText}" FontSize="11" Text="{Binding SavedPath}"/>
-              <StackPanel Visibility="{Binding HasInstallCommand, Converter={StaticResource BooleanToVisibility}}">
-                <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,5"
-                           Text="{Binding [Studio.Create.SavedInstall], Source={x:Static services:I18n.Instance}}"/>
-                <Border Style="{StaticResource Well}">
-                  <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="11.5" Foreground="{DynamicResource InkBrush}"
-                             TextWrapping="Wrap" Text="{Binding InstallCommand}"/>
-                </Border>
-              </StackPanel>
-            </StackPanel>
-            <!-- W-09: nothing is frozen — modify (step 2), re-try (step 3), re-adopt
-                 the SAME folder. The faint line says so in the user's words. -->
-            <TextBlock Style="{StaticResource Hint}" FontSize="11.5" TextWrapping="Wrap" Margin="0,10,0,0"
-                       Text="{Binding [Studio.Create.SavedNotFrozen], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="11" TextWrapping="Wrap" Margin="0,4,0,0"
-                       Text="{Binding [Studio.Create.ReopenedNote], Source={x:Static services:I18n.Instance}}"
-                       Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}"/>
-            <StackPanel Orientation="Horizontal" Margin="0,16,0,0">
-              <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding ReopenComposeCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="pencil" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Create.SavedModifyTeam], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-              <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0" Command="{Binding RetryTrialCommand}">
-                <StackPanel Orientation="Horizontal">
-                  <controls:LucideIcon Kind="rotate-ccw" Size="12" Margin="0,0,7,0"/>
-                  <TextBlock Text="{Binding [Studio.Create.SavedRetry], Source={x:Static services:I18n.Instance}}"/>
-                </StackPanel>
-              </Button>
-              <Button Style="{StaticResource BtnGhost}" Command="{Binding RestartCommand}"
-                      Content="{Binding [Studio.Create.CreateAnother], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
           </StackPanel>
         </Border>
       </StackPanel>

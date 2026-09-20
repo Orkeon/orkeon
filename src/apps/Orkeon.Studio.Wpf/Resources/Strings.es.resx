@@ -1177,17 +1177,8 @@
   <data name="Studio.Create.Save" xml:space="preserve">
     <value>Guardar en mis equipos</value>
   </data>
-  <data name="Studio.Create.SavedTitle" xml:space="preserve">
-    <value>Equipo guardado</value>
-  </data>
-  <data name="Studio.Create.SavedPath" xml:space="preserve">
-    <value>Guardado en</value>
-  </data>
-  <data name="Studio.Create.SavedInstall" xml:space="preserve">
-    <value>Comando de planificación (mostrado, nunca ejecutado por usted)</value>
-  </data>
-  <data name="Studio.Create.CreateAnother" xml:space="preserve">
-    <value>Crear otro equipo</value>
+  <data name="Studio.Create.AdoptedLine" xml:space="preserve">
+    <value>El equipo « {0} » está guardado en Mis equipos.</value>
   </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>Instrucción de composición</value>
@@ -1700,18 +1691,6 @@
   </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
     <value>Ninguna sesión del taller apunta a este equipo (importado, o su sesión fue eliminada).</value>
-  </data>
-  <data name="Studio.Create.SavedModifyTeam" xml:space="preserve">
-    <value>Editar el equipo</value>
-  </data>
-  <data name="Studio.Create.SavedRetry" xml:space="preserve">
-    <value>Repetir la prueba</value>
-  </data>
-  <data name="Studio.Create.SavedNotFrozen" xml:space="preserve">
-    <value>Nada queda fijado: aún puede editar un agente, repetir una prueba y adoptar de nuevo — el equipo guardado se actualiza, no se duplica.</value>
-  </data>
-  <data name="Studio.Create.ReopenedNote" xml:space="preserve">
-    <value>La re-adopción regenera los archivos producidos — run.sh y la definición YAML — las modificaciones hechas a mano dentro se perderán.</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>Cambiar</value>

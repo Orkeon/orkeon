@@ -338,9 +338,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     private string _scheduleTime = "07:30";
     private string? _adoptProfileName;
     private bool _isAdoptProfilePickerOpen;
-    private bool _isSaved;
     private string? _reopenedTeamPath;
-    private bool _autoRetryPending;
     private string? _lastStderr;
 
     /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
@@ -441,8 +439,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         ComposeCommand = new AsyncRelayCommand(ComposeAsync, () => CanCompose);
         TryTeamCommand = new AsyncRelayCommand(TryTeamAsync, () => CanTryTeam);
         AdoptWithoutTrialCommand = new AsyncRelayCommand(AdoptWithoutTrialAsync, () => CanTryTeam);
-        ReopenComposeCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 2, autoRetry: false), () => IsSaved);
-        RetryTrialCommand = new AsyncRelayCommand(() => ReopenAdoptedAsync(step: 3, autoRetry: true), () => IsSaved);
         UseExampleCommand = new RelayCommand(p => Need = p as string ?? Need);
         RestartCommand = new RelayCommand(
             Restart,
@@ -923,7 +919,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// assistant mid-thread. Leaving the wizard must never be the same as losing it.
     /// </summary>
     public bool HasDraft =>
-        !IsSaved && (_step > 1 || _need.Trim().Length > 0 || IsEngineRunning || !Chat.IsEmpty);
+        _step > 1 || _need.Trim().Length > 0 || IsEngineRunning || !Chat.IsEmpty;
 
     /// <summary>Whether the assistant is the one holding the draft up.</summary>
     public bool IsAssistantWaiting =>
@@ -2072,48 +2068,19 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Picks the team's profile from the unfolded rows and folds them back.</summary>
     public RelayCommand PickAdoptProfileCommand { get; }
 
-    /// <summary>True once the team landed in the teams folder.</summary>
-    public bool IsSaved
-    {
-        get => _isSaved;
-        private set
-        {
-            if (SetProperty(ref _isSaved, value))
-            {
-                OnPropertyChanged(nameof(NotSaved));
-                RaiseDraftChanged();
-                ReopenComposeCommand?.RaiseCanExecuteChanged();
-                RetryTrialCommand?.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>The pre-save card's visibility.</summary>
-    public bool NotSaved => !_isSaved;
-
     /// <summary>The engine invocation of the running (or last) cycle — expert step 3.</summary>
     public string? EngineCommandLine { get; private set; }
 
-    /// <summary>Where the team landed.</summary>
-    public string? SavedPath => _model.Promotion?.Path;
-
     /// <summary>
-    /// The folder of the team being edited — a reopened card, or a team adopted here and
-    /// reopened for a re-try; null while the team does not exist yet. The shell reads it to
-    /// tell a folder picked inside the team from one to declare (STUDIO-14, D-10).
+    /// The folder of the team being edited — a card reopened with « Modify »; null while the
+    /// team does not exist yet, and again once an adoption ended the tunnel (STUDIO-20). The
+    /// shell reads it to tell a folder picked inside the team from one to declare (STUDIO-14, D-10).
     /// </summary>
     internal string? ReopenedTeamPath => _reopenedTeamPath;
-
-    /// <summary>The scheduling command — displayed, never executed by Studio.</summary>
-    public string? InstallCommand => _model.Promotion?.Install;
-
-    /// <summary>Whether an install command exists to show.</summary>
-    public bool HasInstallCommand => _model.Promotion?.Install is { Length: > 0 };
 
     /// <summary>Whether the "save to my teams" command may run.</summary>
     public bool CanSaveTeam =>
         !IsEngineRunning
-        && !IsSaved
         && _model.Slug is not null
         && _teamName.Trim().Length > 0
         && (_scheduleChoice != 1 || IsValidScheduleTime(_scheduleTime))
@@ -2228,39 +2195,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         }).ConfigureAwait(false);
     }
 
-    /// <summary>The "edit the team" button on the saved card — back to step 2, state intact.</summary>
-    public AsyncRelayCommand ReopenComposeCommand { get; }
-
-    /// <summary>The "run another trial" button on the saved card — back to step 3, the trial re-runs.</summary>
-    public AsyncRelayCommand RetryTrialCommand { get; }
-
-    /// <summary>
-    /// Reopens the just-adopted session (the engine's reopen re-enters at the
-    /// arbitration); <paramref name="autoRetry"/> answers it with <c>retry</c> the moment
-    /// it arrives — "Run the trial again" means the trial runs, not "go find a button".
-    /// </summary>
-    private async Task ReopenAdoptedAsync(int step, bool autoRetry)
-    {
-        if (IsEngineRunning || _model.Slug is not { } slug || SavedPath is not { } savedPath)
-            return;
-
-        _reopenedTeamPath = savedPath;
-        _autoRetryPending = autoRetry;
-        IsSaved = false;
-        MaxStep = 4;
-        Step = step;
-        SyncFromModel();
-
-        await RunEngineAsync(new ForgeStartRequest
-        {
-            ResumeSlug = slug,
-            WorkingDirectory = _workspace,
-            // The re-try reads the adopted team's own input/ (D-09): the folder exists now.
-            ReadDirectory = ReadRoot(),
-            EnvironmentOverrides = AssistantEnvironment(),
-        }).ConfigureAwait(false);
-    }
-
     /// <summary>Projects the sidecar's schedule string back onto the step-4 radios.</summary>
     private void SeedSchedule(string? schedule)
     {
@@ -2359,7 +2293,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     public bool CanTryTeam =>
         !IsEngineRunning
-        && !IsSaved
         && _model.Slug is not null
         && string.Equals(_model.FinishedStatus, "paused", StringComparison.OrdinalIgnoreCase);
 
@@ -2438,9 +2371,6 @@ public sealed class CreateTeamViewModel : ObservableObject
                 // binary, a Stop. The thread would otherwise keep showing a question with a
                 // composer writing into a closed pipe.
                 Chat.EngineFinished(interrupted: Chat.IsStarted && !Chat.IsDone);
-                // An unconsumed auto-retry must die with its run: a crashed or stopped
-                // engine must never leave a pending decision to fire on a later one.
-                _autoRetryPending = false;
                 SyncFromModel();
             });
         }
@@ -2485,16 +2415,23 @@ public sealed class CreateTeamViewModel : ObservableObject
                         ? need
                         : TeamCatalog.Describe(promotion.Path).Description ?? "";
                     var mounts = SidecarMounts();
+                    var adopted = TeamCatalog.NormalizeName(_teamName);   // one line, <= 64, no markup (STUDIO-16, D-04)
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
-                        Name = TeamCatalog.NormalizeName(_teamName),   // one line, <= 64, no markup (STUDIO-16, D-04)
+                        Name = adopted,
                         Description = description,
                         Profile = AdoptProfileName,
                         Schedule = schedule,
                         Mounts = mounts.Count > 0 ? mounts : null,
                     });
-                    IsSaved = true;
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
+                    // The tunnel ends here (STUDIO-20): the team lives in My teams now, so the
+                    // wizard goes back to a blank step 1 — the same slate as « Start over » — and
+                    // the one line that stays says where the team went. The finally block's sync
+                    // keeps it: a fresh model has no finished status to paint over it.
+                    ResetToStepOne();
+                    StatusMessage = string.Format(
+                        CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardAdoptedLine], adopted);
                 }
                 else
                 {
@@ -2530,10 +2467,20 @@ public sealed class CreateTeamViewModel : ObservableObject
     private void Restart()
     {
         _client.RequestCancellation();
-        // The step-1 answers belong to the creation being abandoned too, policy included.
+        ResetToStepOne();
+    }
+
+    /// <summary>
+    /// Back to a blank step 1: the end of a creation, abandoned (« Start over ») or adopted
+    /// (STUDIO-20). Everything the creation owned goes — the projection, the step-1 answers
+    /// and the conversation — so the next team starts from nothing of the previous one.
+    /// </summary>
+    private void ResetToStepOne()
+    {
+        // The step-1 answers belong to the creation being ended too, policy included.
         ClearStepOneFolders();
         ResetProjection();
-        // The conversation belongs to the creation being abandoned — unlike ResetProjection,
+        // The conversation belongs to the creation being ended — unlike ResetProjection,
         // which also runs at the START of a compose and must leave the interview's answers
         // exactly where the interview put them.
         Chat.Reset();
@@ -2560,7 +2507,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         _seenDerivedRoots = [];
         _reopenedTeamPath = null;
         RefreshMountSurfaces();
-        _autoRetryPending = false;
         EngineCommandLine = null;
         OnPropertyChanged(nameof(EngineCommandLine));
         // The generation bump orphans every event the dying child still has in flight:
@@ -2574,7 +2520,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         Checklist.Clear();
         Agents.Clear();
         Decisions.Clear();
-        IsSaved = false;
         TeamName = "";
         // The adoption fields too (review, lot 7): a reopened team seeds profile and
         // schedule — without this reset they would leak into the NEXT session's sidecar.
@@ -2783,16 +2728,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         SyncDecisions();
         SyncProgress();
 
-        // "Run the trial again" answers the reopened arbitration itself (W-09): the flag is
-        // cleared BEFORE deciding — Decide re-enters this sync.
-        if (_autoRetryPending && DecisionPending
-            && _model.DecisionOptions.Contains("retry", StringComparer.Ordinal))
-        {
-            _autoRetryPending = false;
-            Decide("retry");
-            return;
-        }
-
         // An older session's title may still be the goal sentence (v3 W-07): the same
         // one-line rule as adoption cuts it at a word, never mid-word (STUDIO-16, D-04).
         if (_teamName.Length == 0 && _model.Title is { Length: > 0 } title)
@@ -2832,7 +2767,6 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(SessionSlug), nameof(SessionDirectory),
             nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
-            nameof(SavedPath), nameof(InstallCommand), nameof(HasInstallCommand),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
             nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking));
         SaveTeamCommand.RaiseCanExecuteChanged();
@@ -2989,11 +2923,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         ? StudioStringKeys.WizardOpenFolderTeam
         : StudioStringKeys.WizardOpenFolderSession];
 
-    /// <summary>The team folder, once there is one: adopted here, or reopened from a card.</summary>
+    /// <summary>The team folder, once there is one: a team reopened from its card.</summary>
     private string? TeamFolderToOpen() =>
-        SavedPath is { Length: > 0 } saved ? saved
-        : _reopenedTeamPath is { Length: > 0 } reopened ? reopened
-        : null;
+        _reopenedTeamPath is { Length: > 0 } reopened ? reopened : null;
 
     /// <summary>The folder the button opens: the team once there is one, the session before.</summary>
     private string? FolderToOpen() =>

@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-20 -->
+### Changed — Studio: adopting a team ends the wizard at a blank step 1; the saved card is gone (STUDIO-20)
+
+- **« Save to my teams » ends the tunnel.** On a successful promotion the wizard goes back to a
+  blank step 1 — the same slate as « Start over »: step-1 folders and policy, projection, name,
+  profile, schedule, mounts, conversation, notes — and one status line stays: « Team “X” is saved
+  in My teams » (`Studio.Create.AdoptedLine`, five languages). Owner review 2026-09-20: the
+  wizard used to stay parked on step 4 with a « Team saved » card. A refused promotion is
+  unchanged: step 4, the failure card.
+- **The session leaves « Sessions in progress ».** The engine writes the session `Promoted`
+  before it emits `promoted`, and the shell re-reads the catalogs on `TeamAdopted`; the two
+  saved-card buttons that resumed the session right after an adoption (« Modify the team »,
+  « Run the trial again ») are gone with the card, so nothing puts it back. « Modify » on the
+  team card (reverse lookup by `promotedTo`) stays the way to reopen an adopted team, and the
+  reopened arbitration offers `retry`. Nothing is deleted on disk.
+- **Deleted with the card**: `IsSaved`/`NotSaved`, `SavedPath`, `InstallCommand`,
+  `ReopenComposeCommand`, `RetryTrialCommand`, `ReopenAdoptedAsync` and the auto-retry flag,
+  the card's markup, eight `Studio.Create.*` strings in five languages. The expert-only
+  scheduling hint (`install` of the `promoted` event) is no longer displayed: the schedule lives
+  in the sidecar, on the team card and in the team's `schedule/` folder.
+
 <!-- STUDIO-19 -->
 ### Changed — Studio: « Allow a folder » opens the OS folder dialog directly; the in-app picker modal is gone (STUDIO-19)
 

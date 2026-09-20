@@ -1177,17 +1177,8 @@
   <data name="Studio.Create.Save" xml:space="preserve">
     <value>保存到我的团队</value>
   </data>
-  <data name="Studio.Create.SavedTitle" xml:space="preserve">
-    <value>团队已保存</value>
-  </data>
-  <data name="Studio.Create.SavedPath" xml:space="preserve">
-    <value>归档于</value>
-  </data>
-  <data name="Studio.Create.SavedInstall" xml:space="preserve">
-    <value>计划命令（仅显示，绝不代您执行）</value>
-  </data>
-  <data name="Studio.Create.CreateAnother" xml:space="preserve">
-    <value>再创建一个团队</value>
+  <data name="Studio.Create.AdoptedLine" xml:space="preserve">
+    <value>团队“{0}”已保存到我的团队。</value>
   </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>组建指令</value>
@@ -1700,18 +1691,6 @@
   </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
     <value>没有工坊会话指向该团队（可能是导入的，或其会话已被删除）。</value>
-  </data>
-  <data name="Studio.Create.SavedModifyTeam" xml:space="preserve">
-    <value>编辑团队</value>
-  </data>
-  <data name="Studio.Create.SavedRetry" xml:space="preserve">
-    <value>再次试运行</value>
-  </data>
-  <data name="Studio.Create.SavedNotFrozen" xml:space="preserve">
-    <value>一切都未定死：您仍可编辑智能体、再次试运行、重新采用——保存的团队会被更新，而不是复制。</value>
-  </data>
-  <data name="Studio.Create.ReopenedNote" xml:space="preserve">
-    <value>重新采纳会重新生成产出文件——run.sh 和 YAML 定义——其中手工修改的内容会丢失。</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>更换</value>

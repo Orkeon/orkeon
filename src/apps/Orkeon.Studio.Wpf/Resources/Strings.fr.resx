@@ -419,10 +419,7 @@
 <data name="Studio.Create.SchedAt" xml:space="preserve"><value>à</value></data>
 <data name="Studio.Create.SchedLocalTime" xml:space="preserve"><value>heure locale de cette machine</value></data>
 <data name="Studio.Create.Save" xml:space="preserve"><value>Enregistrer dans mes équipes</value></data>
-<data name="Studio.Create.SavedTitle" xml:space="preserve"><value>Équipe enregistrée</value></data>
-<data name="Studio.Create.SavedPath" xml:space="preserve"><value>Rangée dans</value></data>
-<data name="Studio.Create.SavedInstall" xml:space="preserve"><value>Commande de planification (affichée, jamais exécutée à votre place)</value></data>
-<data name="Studio.Create.CreateAnother" xml:space="preserve"><value>Créer une autre équipe</value></data>
+<data name="Studio.Create.AdoptedLine" xml:space="preserve"><value>L'équipe « {0} » est enregistrée dans Mes équipes.</value></data>
 <data name="Studio.Create.NotesCompose" xml:space="preserve"><value>Consigne de composition</value></data>
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Consigne d'essai</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Consigne d'adoption</value></data>
@@ -595,10 +592,6 @@
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe</value></data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>Aucune session d'atelier ne pointe vers cette équipe (importée, ou session supprimée).</value></data>
-  <data name="Studio.Create.SavedModifyTeam" xml:space="preserve"><value>Modifier l'équipe</value></data>
-  <data name="Studio.Create.SavedRetry" xml:space="preserve"><value>Refaire un essai</value></data>
-  <data name="Studio.Create.SavedNotFrozen" xml:space="preserve"><value>Rien n'est figé : vous pouvez encore modifier un agent, refaire un essai et adopter à nouveau — l'équipe enregistrée sera mise à jour, pas dupliquée.</value></data>
-  <data name="Studio.Create.ReopenedNote" xml:space="preserve"><value>La ré-adoption régénère les fichiers produits — run.sh et la définition YAML — les modifications faites à la main dedans seront perdues.</value></data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve"><value>Changer</value></data>
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Modifier</value></data>

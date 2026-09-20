@@ -269,7 +269,6 @@ public class CreateTeamWizardTests
             Assert.Equal(1, vm.ScheduleChoice);
             Assert.Equal("07:30", vm.ScheduleTime);
             Assert.Contains("/data/docs:/docs:ro", vm.TeamMounts);
-            Assert.False(vm.IsSaved);
             Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[0].Arguments);
 
             // Re-adoption is pinned to the ORIGINAL folder: renaming only renames.
@@ -388,8 +387,13 @@ public class CreateTeamWizardTests
         Assert.Equal("Veille documentaire", vm.TeamName);
     }
 
+    /// <summary>
+    /// The end of the tunnel (STUDIO-20): the promotion lands in the teams root with its sidecar,
+    /// the shell hears it, and the wizard is a blank step 1 again — nothing of the adopted
+    /// creation survives but the one line that says where it went.
+    /// </summary>
     [Fact]
-    public async Task Adopting_promotes_into_the_teams_root_and_writes_the_studio_sidecar()
+    public async Task Adopting_writes_the_sidecar_and_ends_the_tunnel_at_a_blank_step_one()
     {
         var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
         var promoted = Path.Combine(root, "ma-veille-quotidienne");
@@ -424,15 +428,26 @@ public class CreateTeamWizardTests
             Assert.Equal(
                 ["forge", "promote", "veille", "--to", promoted, "--events", "jsonl", "--schedule", "daily@07:30"],
                 processes.LastRequest!.Arguments);
-            Assert.True(vm.IsSaved);
             Assert.Equal(promoted, adoptedPath);
-            Assert.Equal("schtasks hint", vm.InstallCommand);
 
             // The sidecar records what the crew definition cannot say.
             var summary = TeamCatalog.Describe(promoted);
             Assert.Equal("Ma veille quotidienne", summary.Name);
             Assert.Equal("Local", summary.Profile);
             Assert.Equal("daily@07:30", summary.Schedule);
+
+            // And the wizard is back where a creation starts.
+            Assert.Equal(1, vm.Step);
+            Assert.Equal(1, vm.MaxStep);
+            Assert.Equal("", vm.TeamName);
+            Assert.Equal("", vm.Need);
+            Assert.All(vm.FrequencyChoices.Concat(vm.SourceChoices).Concat(vm.OutputChoices), choice => Assert.False(choice.IsSelected));
+            Assert.Empty(vm.TeamMounts);
+            Assert.True(vm.Chat.IsEmpty);
+            Assert.False(vm.HasDraft);
+            Assert.False(vm.CanSaveTeam);
+            Assert.False(vm.RestartCommand.CanExecute(null));
+            Assert.Equal("Team “Ma veille quotidienne” is saved in My teams.", vm.StatusMessage);
         }
         finally
         {
@@ -461,7 +476,8 @@ public class CreateTeamWizardTests
             processes.OutputToEmit.Clear();
             await vm.SaveTeamCommand.ExecuteAsync();
 
-            Assert.False(vm.IsSaved);
+            // A refusal ends nothing: the form stays, with the sentence that says why.
+            Assert.Equal(4, vm.Step);
             Assert.NotNull(vm.StatusMessage);
             Assert.Contains("refused the promotion", vm.StatusMessage, StringComparison.Ordinal);
             Assert.False(Directory.Exists(root));   // no sidecar, no folder
@@ -609,7 +625,6 @@ public class CreateTeamWizardTests
             ]);
             await vm.SaveTeamCommand.ExecuteAsync();
 
-            Assert.True(vm.IsSaved);
             var summary = TeamCatalog.Describe(promoted);
             Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", summary.Name);
             Assert.True(summary.Name.Length <= TeamCatalog.MaxNameLength);
@@ -1407,7 +1422,6 @@ public class CreateTeamWizardTests
             ]);
             await vm.SaveTeamCommand.ExecuteAsync();
 
-            Assert.True(vm.IsSaved);
             var team = TeamCatalog.Describe(promoted);
             Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], team.Metadata!.Mounts);
             Assert.Equal(
@@ -1415,8 +1429,6 @@ public class CreateTeamWizardTests
                 team.Mounts);
             Assert.True(Directory.Exists(Path.Combine(promoted, "input")));
             Assert.True(Directory.Exists(Path.Combine(promoted, "output")));
-            // The header's button now opens the team, not the session.
-            Assert.Equal(promoted, vm.SavedPath);
         }
         finally
         {
@@ -1753,10 +1765,12 @@ public class CreateTeamWizardTests
 
     /// <summary>
     /// The folder exists as soon as the engine answered — the session, which holds the generated
-    /// crew/ — and it becomes the team the moment one is adopted; the tooltip says which.
+    /// crew/ — and there is none once the team is adopted: the tunnel ended on a blank wizard
+    /// (STUDIO-20), and the team's folder is « Open » on its card. A reopened team is the other
+    /// case, in the next test.
     /// </summary>
     [Fact]
-    public async Task The_open_folder_button_targets_the_session_before_adoption_and_the_team_after()
+    public async Task The_open_folder_button_targets_the_session_before_adoption_and_goes_quiet_after()
     {
         var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
         var promoted = Path.Combine(root, "veille-docs");
@@ -1785,16 +1799,40 @@ public class CreateTeamWizardTests
             processes.OutputToEmit.Clear();
             processes.OutputToEmit.Add(Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""));
             await vm.SaveTeamCommand.ExecuteAsync();
-            Assert.True(vm.IsSaved);
 
-            Assert.Equal("Opens the folder of the adopted team.", vm.OpenFolderTooltip);
+            Assert.False(vm.CanOpenFolder);
+            Assert.False(vm.OpenFolderCommand.CanExecute(null));
             vm.OpenFolderCommand.Execute(null);
-            Assert.Equal(["/ws/.orkeon/forge/veille", promoted], opener.Opened);
+            Assert.Equal(["/ws/.orkeon/forge/veille"], opener.Opened);
         }
         finally
         {
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>A team reopened from its card is the folder the button opens, and the tooltip says so.</summary>
+    [Fact]
+    public async Task The_open_folder_button_targets_the_reopened_team()
+    {
+        var (root, teamDir, sessionDir) = await WriteReopenableTeam("""["/data/docs:/docs:ro"]""");
+        try
+        {
+            var opener = new RecordingShellOpener();
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"), shellOpener: opener);
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+
+            Assert.True(vm.CanOpenFolder);
+            Assert.Equal("Opens the folder of the adopted team.", vm.OpenFolderTooltip);
+            vm.OpenFolderCommand.Execute(null);
+            Assert.Equal([teamDir], opener.Opened);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
         }
     }
 
@@ -1829,7 +1867,8 @@ public class CreateTeamWizardTests
     // ── D-10, at the shell: the OS folder dialog that declares on the way (STUDIO-19) ──
 
     private static (MainWindowViewModel Shell, FakeAppSettingsStore Store, FakePathPicker Picker) Shell(
-        FakeDirectoryProbe directories, string? teamsRoot = null)
+        FakeDirectoryProbe directories, string? teamsRoot = null,
+        FakeProcessLauncher? forge = null, string? forgeWorkspace = null)
     {
         var store = new FakeAppSettingsStore();
         var picker = new FakePathPicker();
@@ -1844,12 +1883,96 @@ public class CreateTeamWizardTests
                     new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
                 HistoryStore = new FakeLaunchHistoryStore(),
                 ForgeClient = new ForgeClient(
-                    new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                    forge ?? new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                ProfileStore = new InMemoryModelProfileStore(),
+                LlmProbe = new FakeLlmEndpointProbe(),
+                KeyStore = new FakeApiKeyStore(),
             },
             globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
-            forgeWorkspace: "/ws",
+            forgeWorkspace: forgeWorkspace ?? "/ws",
             teamsRoot: teamsRoot ?? "/nowhere/teams");
         return (shell, store, picker);
+    }
+
+    /// <summary>
+    /// STUDIO-20, through the shell: an adoption ends the tunnel on a blank step 1, and the session
+    /// listed under « Sessions in progress » a moment earlier is gone from My teams — the engine
+    /// wrote it Promoted before saying so, and the shell re-read the catalogs on the adoption. The
+    /// session stays on disk: it is what keeps « Modify » alive on the new card.
+    /// </summary>
+    [Fact]
+    public async Task Adopting_ends_the_tunnel_and_the_session_leaves_my_teams()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var workspace = Path.Combine(root, "forge");
+        var teams = Path.Combine(root, "teams");
+        var sessionDir = Path.Combine(workspace, ".orkeon", "forge", "veille");
+        var promoted = Path.Combine(teams, "ma-veille");
+        try
+        {
+            var forge = new FakeProcessLauncher();
+            var (shell, _, _) = Shell(new FakeDirectoryProbe(), teamsRoot: teams, forge: forge, forgeWorkspace: workspace);
+            shell.Settings.Profiles.CommitEdit(
+                new ModelProfile { Name = "Local", Provider = "Ollama", Model = "qwen2.5:14b", BaseUrl = "http://localhost:11434/v1" },
+                previousName: null);
+            shell.Settings.Profiles.StudioProfileName = "Local";
+            var wizard = shell.CreateTeam;
+
+            // The composition: the engine creates its session directory and parks it Ready.
+            forge.WhileRunning = () => WriteEngineSession(sessionDir, "Ready", promotedTo: null);
+            forge.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            wizard.Need = "une veille documentaire";
+            wizard.FrequencyChoices[1].SelectCommand.Execute(null);
+            wizard.SourceChoices[0].SelectCommand.Execute(null);
+            wizard.OutputChoices[0].SelectCommand.Execute(null);
+            await wizard.ComposeCommand.ExecuteAsync();
+            Assert.Equal(4, wizard.Step);
+            shell.Teams.Refresh();
+            Assert.Equal("Veille", Assert.Single(shell.Teams.InProgress).Title);
+            Assert.Empty(shell.Teams.Teams);
+
+            // The adoption: the engine writes the session Promoted before it says `promoted`
+            // (ForgeCommand.PromoteAsync), and Studio re-reads the catalogs on the event.
+            wizard.TeamName = "Ma veille";
+            forge.WhileRunning = () => WriteEngineSession(sessionDir, "Promoted", promotedTo: promoted);
+            forge.OutputToEmit.Clear();
+            forge.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await wizard.SaveTeamCommand.ExecuteAsync();
+
+            Assert.Equal(1, wizard.Step);
+            Assert.False(wizard.HasDraft);
+            // No refresh from the test: the shell did it on the adoption.
+            Assert.Empty(shell.Teams.InProgress);
+            var card = Assert.Single(shell.Teams.Teams);
+            Assert.Equal("Ma veille", card.Name);
+            Assert.True(card.CanModify);
+            Assert.True(File.Exists(Path.Combine(sessionDir, "session.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>The engine's own write of <c>session.json</c>, in the shape the catalog reads.</summary>
+    private static void WriteEngineSession(string sessionDir, string status, string? promotedTo)
+    {
+        Directory.CreateDirectory(sessionDir);
+        var promotedField = promotedTo is null
+            ? ""
+            : $$""","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(promotedTo)}}""";
+        File.WriteAllText(
+            Path.Combine(sessionDir, "session.json"),
+            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"{{status}}","status":"{{status}}"{{promotedField}}}""");
     }
 
     private static string SelectFolderTitle => EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder];
@@ -2161,7 +2284,7 @@ public class CreateTeamWizardTests
             processes.ExitCode = 1;
             await vm.SaveTeamCommand.ExecuteAsync();
 
-            Assert.False(vm.IsSaved);
+            Assert.Equal(4, vm.Step);
             Assert.True(vm.HasFailure);
             Assert.Equal(WizardFailureKind.PromoteRefused, vm.Failure!.Kind);
             Assert.Equal(1, vm.Failure.ExitCode);
