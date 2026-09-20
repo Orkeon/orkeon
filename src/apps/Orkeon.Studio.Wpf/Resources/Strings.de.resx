@@ -910,6 +910,12 @@
   <data name="Studio.Shell.Json" xml:space="preserve">
     <value>Rohes JSON</value>
   </data>
+  <data name="Studio.Shell.Tools" xml:space="preserve">
+    <value>Werkzeuge</value>
+  </data>
+  <data name="Studio.Shell.Mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
   <data name="Studio.Settings.ModelTitle" xml:space="preserve">
     <value>Modell des Studio-Assistenten</value>
   </data>
@@ -1381,6 +1387,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>Zwei Ordner teilen denselben internen Namen.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve">
+    <value>Eine MCP-Server-Kennung ist unbrauchbar: nur Buchstaben, Ziffern, '.', '_' und '-'.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve">
+    <value>Ein MCP-Server nennt einen Transport, den die Laufzeit nicht kennt.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve">
+    <value>Ein stdio-MCP-Server nennt keinen zu startenden Befehl.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve">
+    <value>Ein HTTP-MCP-Server hat keine absolute http(s)-URL.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
+    <value>Die Umgebung eines MCP-Servers enthält ein Geheimnis im Klartext; setzen Sie es stattdessen in Ihrer Benutzerumgebung.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>Diese Option gilt nicht für das gewählte Team.</value>
   </data>
@@ -1554,6 +1575,135 @@
   </data>
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>Schlüssel leben in Ihren Benutzer-Umgebungsvariablen, nie in einer Datei. Schlüssel einfügen, dann merken; das Feld leert sich nach dem Speichern.</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
+    <value>Schlüssel der Werkzeuge</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve">
+    <value>Zwei Suchwerkzeuge brauchen einen eigenen Schlüssel. Fügen Sie ihn einmal ein: er lebt in Ihrer Benutzerumgebung, nie in einer Datei.</value>
+  </data>
+  <data name="Studio.Settings.ToolsTitle" xml:space="preserve">
+    <value>Werkzeugkatalog</value>
+  </data>
+  <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
+    <value>Jedes Werkzeug, das ein Team in einem Lauf nutzen kann, nach Familie. Die meisten brauchen nichts; die anderen sagen, was und wo.</value>
+  </data>
+  <data name="Studio.Settings.ShellTitle" xml:space="preserve">
+    <value>Shell-Befehle</value>
+  </data>
+  <data name="Studio.Settings.ShellIntro" xml:space="preserve">
+    <value>Was das Werkzeug shell_command ausführen darf. Standardmäßig eine schreibgeschützte Befehlsliste.</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve">
+    <value>Interpreter erlauben (Shells, Skript-Laufzeiten)</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpretersHint" xml:space="preserve">
+    <value>Für die Agenten ist das Remote-Codeausführung: lassen Sie es aus, außer ein Team braucht es.</value>
+  </data>
+  <data name="Studio.Settings.ShellExtra" xml:space="preserve">
+    <value>Zusätzlich zu den Standardbefehlen erlaubte Befehle, einer pro Zeile</value>
+  </data>
+  <data name="Studio.Settings.ShellReplace" xml:space="preserve">
+    <value>Vollständiger Ersatz der Standardliste, einer pro Zeile (leer: die Standardwerte gelten)</value>
+  </data>
+  <data name="Studio.Settings.McpTitle" xml:space="preserve">
+    <value>MCP-Server</value>
+  </data>
+  <data name="Studio.Settings.McpIntro" xml:space="preserve">
+    <value>Die Server, die ein Lauf vor dem Start des Teams verbindet; ihre Werkzeuge treten dem Katalog unter ihrem eigenen Namen bei. Experimentell: die Server werden bei jedem Lauf gestartet.</value>
+  </data>
+  <data name="Studio.Settings.McpEnabled" xml:space="preserve">
+    <value>Deklarierte Server verbinden</value>
+  </data>
+  <data name="Studio.Settings.McpAdd" xml:space="preserve">
+    <value>Server hinzufügen</value>
+  </data>
+  <data name="Studio.Settings.McpRemove" xml:space="preserve">
+    <value>Entfernen</value>
+  </data>
+  <data name="Studio.Settings.McpEmpty" xml:space="preserve">
+    <value>Kein Server deklariert: ein Lauf verhält sich genau wie zuvor.</value>
+  </data>
+  <data name="Studio.Settings.McpId" xml:space="preserve">
+    <value>Kennung</value>
+  </data>
+  <data name="Studio.Settings.McpTransport" xml:space="preserve">
+    <value>Transport</value>
+  </data>
+  <data name="Studio.Settings.McpCommand" xml:space="preserve">
+    <value>Befehl</value>
+  </data>
+  <data name="Studio.Settings.McpArgs" xml:space="preserve">
+    <value>Argumente, eines pro Zeile</value>
+  </data>
+  <data name="Studio.Settings.McpUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="Studio.Settings.McpEnv" xml:space="preserve">
+    <value>Umgebungsvariablen, NAME=Wert, eine pro Zeile</value>
+  </data>
+  <data name="Studio.Settings.McpEnvHint" xml:space="preserve">
+    <value>Stehen im Klartext in der Datei. Der Server erbt Ihre Benutzerumgebung: legen Sie Geheimnisse dort ab, nicht hier.</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyWeb" xml:space="preserve">
+    <value>Web</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySearch" xml:space="preserve">
+    <value>Suche und Wissen</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyFiles" xml:space="preserve">
+    <value>Dateien</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyData" xml:space="preserve">
+    <value>Daten</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
+    <value>Code</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySession" xml:space="preserve">
+    <value>Sitzung und Gedächtnis</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyEvents" xml:space="preserve">
+    <value>Ereignisse</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyAnalysis" xml:space="preserve">
+    <value>Codeanalyse</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCollaboration" xml:space="preserve">
+    <value>Zusammenarbeit</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyMounts" xml:space="preserve">
+    <value>Ordner</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsStoredKey" xml:space="preserve">
+    <value>braucht den Schlüssel {0}, oben</value>
+  </data>
+  <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
+    <value>erst vorhanden, wenn der Schlüssel {0} oben gespeichert ist</value>
+  </data>
+  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
+    <value>der Schlüssel wird beim Aufruf vom Agenten übergeben</value>
+  </data>
+  <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
+    <value>die Verbindungsparameter werden beim Aufruf vom Agenten übergeben</value>
+  </data>
+  <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve">
+    <value>Experteneinstellung unten: {0}</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
+    <value>{0} Werkzeuge, nichts einzustellen</value>
+  </data>
+  <data name="Studio.Settings.McpProblemId" xml:space="preserve">
+    <value>Eine Kennung ist erforderlich: Buchstaben, Ziffern, '.', '_' und '-'.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemCommand" xml:space="preserve">
+    <value>Ein stdio-Server braucht einen zu startenden Befehl.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemUrl" xml:space="preserve">
+    <value>Ein HTTP-Server braucht eine absolute http(s)-URL.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
+    <value>Ein anderer Server trägt diese Kennung bereits.</value>
   </data>
   <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
     <value>Noch nicht gespeichert: Geben Sie mindestens einen Ordner frei (Reiter Erlaubte Ordner) — Ihre Änderungen werden gespeichert, sobald einer vorhanden ist.</value>

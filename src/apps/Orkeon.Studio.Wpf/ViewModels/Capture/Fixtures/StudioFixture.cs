@@ -149,6 +149,8 @@ internal static class StudioFixture
         {
             ["RateLimiting"] = """{ "RequestsPerMinute": 60, "MaxConcurrent": 4 }""",
             ["Logging"] = """{ "LogLevel": { "Default": "Information" } }""",
+            // STUDIO-21: the MCP tab photographs both transports at once.
+            ["MCP"] = """{ "Servers": { "fichiers": { "Command": "npx", "Args": ["-y", "@modelcontextprotocol/server-filesystem", "/data/docs"], "Env": { "NODE_ENV": "production" } }, "distant": { "Transport": "Sse", "Url": "https://mcp.example.com/rpc" } } }""",
         },
         Teams =
         [

@@ -21,6 +21,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `StrictTools`. `McpToolProvider` also implements `IDisposable` so a host disposed
   synchronously releases the child processes. `ConfigurationKeys.McpSection` spells the
   section once for the infrastructure, the runners and Studio.
+- **Settings › Tools (both modes).** The keys the tools need — the Tavily key of `web_search`
+  (`ORKEON_TAVILY_API_KEY`) and the Brave key of `brave_search` (`BRAVE_API_KEY`) — on the same
+  rows and the same store as the API keys of the model tab; the catalogue of every tool a run
+  exposes, by family, each tool that needs something saying what (a key above, a key or the
+  connection parameters given at the call by the agent, an expert setting below); and, for the
+  expert, the `shell_command` allow-list (`Orkeon:Tools:Shell`), never written as an empty
+  array. The catalogue lives in Core (`ToolCatalog`) and a test pins it against
+  `docs/tools/inventory.md`. Owner request 2026-09-20: the settings had no place for a tool
+  key, and nothing listed the tools or what they need.
+- **Settings › MCP (expert).** The `MCP` section as cards: the switch and one card per server
+  (identifier, transport, command, arguments, environment, URL), written in place through the
+  new `McpSection` so unknown keys survive, with the row's own problem said the way the validator
+  refuses the save (`STUDIO-MCP-ID`, `-TRANSPORT`, `-COMMAND`, `-URL`, and `-ENV-SECRET` at
+  information level for a secret written in clear). `SecretRowViewModel` is its own file, public,
+  shared by the two key cards; six settings tabs, two new capture stops, fifty strings in five
+  languages.
 
 <!-- T-31 / T-32 -->
 ### Changed — Studio: editable fields look editable, multi-line fields are five lines (T-31, T-32)

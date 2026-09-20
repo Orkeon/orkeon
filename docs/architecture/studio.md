@@ -19,7 +19,7 @@ All four live under `src/apps/` and none is published on NuGet (`IsPackable=fals
 
 A library with no UI and no entry point, consumed only by the three front-ends. Its folders map to the behaviours:
 
-- **Configuration/** — a lossless `appsettings.json` editing model (`AppSettingsDocument`) plus typed sections (`LlmSection`, `LlmLoggingSection`, `LoggingSection`, `MountsSection`, `RagSection`, `RateLimitingSection`) and `LlmProviderDetector`.
+- **Configuration/** — a lossless `appsettings.json` editing model (`AppSettingsDocument`) plus typed sections (`LlmSection`, `LlmLoggingSection`, `LoggingSection`, `MountsSection`, `RagSection`, `RateLimitingSection`, and since STUDIO-21 `McpSection` and `ShellToolsSection`), `LlmProviderDetector`, and the tool catalogue (`Tools/ToolCatalog`: the tools a run exposes, by family, with what each one needs).
 - **FileSystem/** — mount editing: `MountDefinition`, `MountRights`, `MountValidator`, directory browsing.
 - **Presets/ & Llm/** — the LLM preset catalogue (`LlmPresets`, `OrkeonCliDefaults`) and endpoint probing (`ILlmEndpointProbe`/`HttpLlmEndpointProbe`, `LlmApiKeyResolver`).
 - **Targets/** — run-target detection (`RunTargetDetector`): a `config.yaml`, a multi-file crew directory, or a `.ork.ts` script.
@@ -40,7 +40,7 @@ Core's dependency list is deliberately slim: only `Orkeon.Domain` (mounts, `LlmD
 - **`orkeon-studio-run`** (TUI) — pick a target, set the run options (including `--validate` for a dry run), watch the output live, cancel if needed. `--version` and `--help` are answered headlessly before Terminal.Gui initializes, so both TUIs stay scriptable and CI-checkable.
 - **`orkeon-studio`** (WPF, Windows) — one desktop window in the v3 "volets" design: a sidebar in team-lifecycle order — **Agent teams** (Create a team, My teams, Import), **Work** (Test, Run, History), **Environment** (Settings, Diagnostic — the doctor report is copyable as plain text) — under a global **Novice/Expert** switch. Novice explains every step, shows the contextual help and hides the machinery; Expert shows everything: command lines, raw JSON, the technical journal, the expert-only Test screen. The window opens on a startup screen (Kama, the mascot, click to skip), carries an About overlay, a five-stop guided tour, light/dark themes and a hot five-language switch; it holds a 1024×768 minimum and every control is styled — no native Windows chrome. Novice screens follow the v3 mock closely: **Run** is a team card (sidecar-backed name and meta line), a plain-language progress card with a tone badge and an "open the result" action, and a technical journal folded by default; **History** is a card list with per-run duration and a localized outcome sentence; **Diagnostic** opens on a verdict card fed by a silent first doctor run at startup, with plain-language check names; **Settings** opens on the per-user file (`%APPDATA%\Orkeon\appsettings.json`, the one `orkeon init` writes), so the folders it declares, its `Llm` section and its raw JSON are on screen from the first frame; it saves itself on every novice edit (the explicit Validate/Save cycle is the expert's), writing that file back with its other keys intact, and the authorized folders are one card per mount, « Allow a folder » opening the OS folder dialog directly (STUDIO-19). It references only `Orkeon.Studio.Core`. Besides `--smoke-exit`, it accepts `--cli-dir <dir>` (names the CLI's directory, beating every other lookup) and `--capture-screens <dir>`: a headless screenshot campaign — the fidelity-remediation reference against the design mock. It builds the window over a **seeded scenario** (three adopted teams, seven past runs, four forge sessions, four model profiles, a doctor with one warning and one failure, plus a first-run machine with nothing on it and no CLI), then walks every screen and every gated state of it — the four wizard steps, the five modals, the guided tour, the assistant, empty lists beside populated ones — in both modes and **both themes**, plus a language sweep over the densest screens. Roughly 250 images over eight passes, one PNG per stop under `<lang>/<theme>/<mode>/`, the same relative path in every pass so comparing two of them is a directory diff, and a `manifest.json` carrying each image's reason, its SHA-256 and the reason for every stop that failed. The scenario lives in a throwaway temp directory: the campaign never reads or writes the operator's teams, history, settings or preferences. Exit 0, or 1 with each failed stop named on stderr.
 
-The creation wizard is the doctrine at work: "Create a team" walks Describe ▸ Compose ▸ Try ▸ Adopt over `orkeon forge --events jsonl` launched as a child process — composing runs with `--dry`, so the engine generates and validates then **pauses at the Composer step**; the trial is the user's own « Try the team » click, which resumes the session without dry (a session reopened from "My teams" at that pause lands back on Composer the same way) — the stepper is a projection of the engine's milestones, the per-step "instruction + questions" blocks travel down the ordinary `user.message` channel, the arbitration buttons are generated from the engine's own `decision.needed` options, and adoption promotes straight into the teams directory with the engine's real schedule grammar (on demand, `daily@HH:mm`, `hourly`), then hands the wizard back at a blank step 1 with one line saying the team is in My teams (STUDIO-20). A capability absent from the stream does not exist on the screen — which is exactly what keeps the terminal `orkeon forge` and the WPF wizard from drifting apart. The wizard is gated until Studio's assistant has a model profile; the unified Settings screen (AI model tab with the named profiles, authorized folders, and the expert limits/raw-file tabs) is where that election lives. When the click fails — no `orkeon` binary on the machine, a configuration the engine refuses, a non-zero exit with or without stderr, a refused promotion at step 4 — a card under the status line says so in the user's language, keeps the engine's own text raw (wrapped, bounded, scrollable, never translated) and offers « Copy the report » (command line, exit code, engine error, the whole stderr and journal), « Try again » and, by family, the diagnostic or the settings; it shows in both modes, clears on the next composition, and « Stop » never produces one.
+The creation wizard is the doctrine at work: "Create a team" walks Describe ▸ Compose ▸ Try ▸ Adopt over `orkeon forge --events jsonl` launched as a child process — composing runs with `--dry`, so the engine generates and validates then **pauses at the Composer step**; the trial is the user's own « Try the team » click, which resumes the session without dry (a session reopened from "My teams" at that pause lands back on Composer the same way) — the stepper is a projection of the engine's milestones, the per-step "instruction + questions" blocks travel down the ordinary `user.message` channel, the arbitration buttons are generated from the engine's own `decision.needed` options, and adoption promotes straight into the teams directory with the engine's real schedule grammar (on demand, `daily@HH:mm`, `hourly`), then hands the wizard back at a blank step 1 with one line saying the team is in My teams (STUDIO-20). A capability absent from the stream does not exist on the screen — which is exactly what keeps the terminal `orkeon forge` and the WPF wizard from drifting apart. The wizard is gated until Studio's assistant has a model profile; the unified Settings screen (AI model tab with the named profiles, authorized folders, the tools tab, and the expert limits, MCP and raw-file tabs) is where that election lives. When the click fails — no `orkeon` binary on the machine, a configuration the engine refuses, a non-zero exit with or without stderr, a refused promotion at step 4 — a card under the status line says so in the user's language, keeps the engine's own text raw (wrapped, bounded, scrollable, never translated) and offers « Copy the report » (command line, exit code, engine error, the whole stderr and journal), « Try again » and, by family, the diagnostic or the settings; it shows in both modes, clears on the next composition, and « Stop » never produces one.
 
 ### The Launch screen is no longer a terminal
 
@@ -334,6 +334,39 @@ an adopted team goes through « Modify » on its card, and the reopened arbitrat
 offers `retry`. Teams without a session — imported, or whose session was deleted
 — keep « Modify » disabled,
 with the reason in the tooltip.
+
+### Tools and MCP in the settings (STUDIO-21)
+
+Two tabs the settings screen lacked. **Tools**, open to both modes, is three cards. The
+tool keys: one row per key a tool needs — the Tavily key of `web_search`
+(`ORKEON_TAVILY_API_KEY`, the spelling the secret chain reads) and the Brave key of
+`brave_search` (`BRAVE_API_KEY`, read as-is by the runner host) — on the same rows and
+the same store as the API keys of the model tab (`SecretRowViewModel`, `IApiKeyStore`: the
+value goes to the user environment, never to a file, and the row says where a key is
+issued). The catalogue: every tool `orkeon run` registers, by family, each as a chip, and
+under each family one line per tool that needs something — a key remembered above, a
+tool present only once its key is (`brave_search`), a key given at the call by the agent
+(`image_generation`), connection parameters given at the call (the database and graph
+tools), an expert setting below (`shell_command`). The catalogue is declared in Core
+(`ToolCatalog`): the framework carries no "required settings" metadata and its registry
+lists names only, so the list is the `orkeon run` column of the availability matrix in
+`docs/tools/inventory.md`, and a test pins every name against that file. The expert card:
+the `shell_command` allow-list (`Orkeon:Tools:Shell`), the interpreters switch and the two
+command lists, one command per line — never written as an empty array, which the runtime
+would read as "block every command".
+
+**MCP**, expert only, is the `MCP` section: the switch, and one card per server under
+`MCP:Servers` — identifier, transport (`Stdio` or `Sse`, the runtime's spelling), command
+and arguments and environment for a stdio server, URL for an HTTP one. Every keystroke
+writes in place through `McpSection`, so a key Studio does not model survives an edit of
+the server that carries it, and a rename moves the whole node. Each row says its own
+problem the way the validator will refuse the save (`STUDIO-MCP-*`): an identifier the
+binder would mangle, a stdio server without a command, an HTTP server without an absolute
+http(s) URL; a value of the environment block that reads as a secret is reported at
+information level, since the file is clear text and the server inherits the user
+environment. The section is honoured by the runner: `orkeon run` connects the declared
+servers before the crew loads (see [MCP integration](./mcp.md)), which is what makes the
+tab worth having — until then nothing read it.
 
 ## Localization: the `IStudioStrings` port
 

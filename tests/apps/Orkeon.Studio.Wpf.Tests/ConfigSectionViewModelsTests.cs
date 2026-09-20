@@ -209,3 +209,151 @@ public sealed class LoggingSectionViewModelTests
         Assert.Contains("None", LoggingSectionViewModel.KnownLevels);
     }
 }
+
+/// <summary>STUDIO-21 — the shell allow-list form never writes the empty array the runtime reads as "block everything".</summary>
+public sealed class ShellToolsSectionViewModelTests
+{
+    private static (ShellToolsSectionViewModel Section, AppSettingsDocument Document, Func<int> Changes) Build(string json = "{}")
+    {
+        var document = AppSettingsDocument.Parse(json);
+        var changes = 0;
+        var section = new ShellToolsSectionViewModel(() => document, () => changes++);
+        return (section, document, () => changes);
+    }
+
+    [Fact]
+    public void The_switch_is_written_only_when_on_and_the_lists_one_command_per_line()
+    {
+        var (section, document, changes) = Build();
+
+        section.AllowInterpreters = true;
+        section.ExtraAllowedCommandsText = "git\r\n dotnet \n\n";
+        section.AllowedCommandsText = "";
+
+        Assert.True(document.GetBoolean("Orkeon:Tools:Shell:AllowInterpreters"));
+        Assert.Equal(["git", "dotnet"], document.GetStringArray("Orkeon:Tools:Shell:ExtraAllowedCommands"));
+        Assert.Null(document.GetNode("Orkeon:Tools:Shell:AllowedCommands"));
+        Assert.False(section.ReplacesDefaults);
+        Assert.Equal(2, changes());
+
+        section.AllowInterpreters = false;
+        Assert.Null(document.GetNode("Orkeon:Tools:Shell:AllowInterpreters"));
+    }
+
+    [Fact]
+    public void A_file_that_replaces_the_defaults_reads_back_as_lines()
+    {
+        var (section, _, _) = Build("""{ "Orkeon": { "Tools": { "Shell": { "AllowedCommands": ["ls", "cat"] } } } }""");
+
+        Assert.True(section.Exists);
+        Assert.True(section.ReplacesDefaults);
+        Assert.Equal("ls" + Environment.NewLine + "cat", section.AllowedCommandsText);
+        Assert.Equal("", section.ExtraAllowedCommandsText);
+    }
+}
+
+/// <summary>
+/// STUDIO-21 — the MCP form: rows over the servers of the file, every keystroke written in
+/// place, a fresh identifier per added server, and the row's own problem said the way the
+/// validator will refuse the save.
+/// </summary>
+public sealed class McpSectionViewModelTests
+{
+    private static (McpSectionViewModel Section, AppSettingsDocument Document, Func<int> Changes) Build(string json = "{}")
+    {
+        var document = AppSettingsDocument.Parse(json);
+        var changes = 0;
+        var section = new McpSectionViewModel(() => document, () => changes++);
+        return (section, document, () => changes);
+    }
+
+    [Fact]
+    public void Adding_a_server_writes_a_stdio_object_under_a_fresh_identifier_and_says_it_needs_a_command()
+    {
+        var (section, document, changes) = Build();
+        Assert.False(section.HasServers);
+        Assert.True(section.Enabled);
+
+        section.AddServerCommand.Execute(null);
+        section.AddServerCommand.Execute(null);
+
+        Assert.Equal(["server-1", "server-2"], section.Servers.Select(s => s.Id));
+        Assert.Equal("Stdio", document.GetString("MCP:Servers:server-1:Transport"));
+        Assert.True(section.HasServers);
+        Assert.Equal(2, changes());
+        var row = section.Servers[0];
+        Assert.True(row.HasProblem);
+        Assert.Equal("A stdio server needs a command to launch.", row.Problem);
+
+        row.Command = "npx";
+        row.ArgsText = "-y\n@modelcontextprotocol/server-filesystem\n/data";
+        row.EnvText = "NODE_ENV=production\nnot a pair\nTOKEN = abc";
+
+        Assert.False(row.HasProblem);
+        Assert.Equal("npx", document.GetString("MCP:Servers:server-1:Command"));
+        Assert.Equal(["-y", "@modelcontextprotocol/server-filesystem", "/data"], document.GetStringArray("MCP:Servers:server-1:Args"));
+        Assert.Equal("production", document.GetStringMap("MCP:Servers:server-1:Env")["NODE_ENV"]);
+        Assert.Equal("abc", document.GetStringMap("MCP:Servers:server-1:Env")["TOKEN"]);
+        Assert.Equal(5, changes());
+    }
+
+    [Fact]
+    public void Switching_to_http_asks_for_a_url_and_a_rename_moves_the_node()
+    {
+        var (section, document, _) = Build("""{ "MCP": { "Servers": { "files": { "Command": "npx", "Timeout": 7 } } } }""");
+        var row = Assert.Single(section.Servers);
+        Assert.False(row.HasProblem);
+
+        row.Transport = "Sse";
+        Assert.True(row.IsSse);
+        Assert.Equal("An HTTP server needs an absolute http(s) URL.", row.Problem);
+        row.Url = "https://mcp.example.com/rpc";
+        Assert.False(row.HasProblem);
+
+        row.IdText = "remote";
+        Assert.Equal("remote", row.Id);
+        Assert.Null(document.GetNode("MCP:Servers:files"));
+        Assert.Equal(7, document.GetInt32("MCP:Servers:remote:Timeout"));
+        Assert.Equal("https://mcp.example.com/rpc", document.GetString("MCP:Servers:remote:Url"));
+
+        // An unusable identifier stays on screen with its problem; the document keeps the last good one.
+        row.IdText = "re mote";
+        Assert.Equal("remote", row.Id);
+        Assert.Equal("An identifier is required: letters, digits, '.', '_' and '-'.", row.Problem);
+    }
+
+    [Fact]
+    public void A_duplicate_identifier_is_refused_and_removing_a_server_drops_its_node()
+    {
+        var (section, document, _) = Build("""{ "MCP": { "Enabled": false, "Servers": { "a": { "Command": "x" }, "b": { "Command": "y" } } } }""");
+        Assert.False(section.Enabled);
+        var b = section.Servers[1];
+
+        b.IdText = "a";
+        Assert.Equal("b", b.Id);
+        Assert.Equal("Another server already carries this identifier.", b.Problem);
+
+        Assert.True(section.RemoveServerCommand.CanExecute(b));
+        section.RemoveServerCommand.Execute(b);
+        Assert.Equal(["a"], section.Servers.Select(s => s.Id));
+        Assert.Null(document.GetNode("MCP:Servers:b"));
+
+        section.Enabled = true;
+        Assert.Null(document.GetNode("MCP:Enabled"));
+    }
+
+    [Fact]
+    public void Replacing_the_document_rebuilds_the_rows()
+    {
+        var document = AppSettingsDocument.CreateEmpty();
+        var section = new McpSectionViewModel(() => document, () => { });
+        Assert.Empty(section.Servers);
+
+        document = AppSettingsDocument.Parse("""{ "MCP": { "Servers": { "one": { "Transport": "sse", "Url": "http://x" } } } }""");
+        section.Refresh();
+
+        var row = Assert.Single(section.Servers);
+        Assert.Equal("Sse", row.Transport);
+        Assert.True(row.IsSse);
+    }
+}

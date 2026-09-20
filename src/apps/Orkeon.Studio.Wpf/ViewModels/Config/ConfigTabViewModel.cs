@@ -53,6 +53,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         Rag = new RagSectionViewModel(() => _document, MarkDirty, _strings);
         Logging = new LoggingSectionViewModel(() => _document, MarkDirty);
         LlmLogging = new LlmLoggingSectionViewModel(() => _document, MarkDirty);
+        ShellTools = new ShellToolsSectionViewModel(() => _document, MarkDirty);
+        Mcp = new McpSectionViewModel(() => _document, MarkDirty, _strings);
 
         Mounts = new MountsEditorViewModel(seams.Directories, Picker, requireAtLeastOne: true, _strings);
         Mounts.Changed += OnMountsChanged;
@@ -102,6 +104,12 @@ public sealed class ConfigTabViewModel : ObservableObject
 
     /// <summary>The <c>LlmLogging</c> form.</summary>
     public LlmLoggingSectionViewModel LlmLogging { get; }
+
+    /// <summary>The <c>Orkeon:Tools:Shell</c> form of the Tools tab (STUDIO-21).</summary>
+    public ShellToolsSectionViewModel ShellTools { get; }
+
+    /// <summary>The <c>MCP</c> form of the MCP tab (STUDIO-21).</summary>
+    public McpSectionViewModel Mcp { get; }
 
     /// <summary>The <c>Orkeon:FileSystem:Mounts</c> editor (spec §4.5).</summary>
     public MountsEditorViewModel Mounts { get; }
@@ -212,6 +220,8 @@ public sealed class ConfigTabViewModel : ObservableObject
         Rag.Refresh();
         Logging.Refresh();
         LlmLogging.Refresh();
+        ShellTools.Refresh();
+        Mcp.Refresh();
         Mounts.Load(_document.Mounts.RawEntries);
 
         IsDirty = false;

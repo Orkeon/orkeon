@@ -140,7 +140,7 @@ public sealed partial class CaptureCatalogConformityTests : IAsyncLifetime
 
         Assert.NotEmpty(radios);
 
-        // The four settings tabs are one nav entry, and the sidebar spells the diagnostic «Diag».
+        // The six settings tabs are one nav entry, and the sidebar spells the diagnostic «Diag».
         var mapped = Enum.GetNames<CaptureScreen>()
             .Select(name => name.StartsWith("Settings", StringComparison.Ordinal) ? "Settings" : name)
             .Select(name => name == "Diagnostic" ? "Diag" : name)

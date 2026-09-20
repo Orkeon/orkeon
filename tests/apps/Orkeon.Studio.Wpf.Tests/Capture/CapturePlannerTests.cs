@@ -79,8 +79,10 @@ public sealed class CapturePlannerTests
         // "create inside the team" state — both modes, both themes, language sweep) = +24 shots.
         // STUDIO-19: -1 stop (modale-declarer-dossier — the picker modal is gone, and the OS
         // folder dialog that replaced it cannot be photographed) = -4 shots.
-        Assert.Equal(51, CaptureCatalog.All.Count);
-        Assert.Equal(278, plan.Count);
+        // STUDIO-21: +2 stops (reglages-outils, both modes, both themes, language sweep = +8;
+        // reglages-mcp, expert only, both themes = +2).
+        Assert.Equal(53, CaptureCatalog.All.Count);
+        Assert.Equal(288, plan.Count);
     }
 
     [Fact]

@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Settings and its four tabs.</summary>
+/// <summary>Settings and its six tabs.</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>
@@ -81,6 +81,30 @@ internal static class SettingsStops
             Modes = CaptureModes.Expert,
             Because = "The raw file, its save location and the resolution chain — the expert's way "
                     + "of checking what Studio actually read.",
+        },
+
+        new()
+        {
+            Name = "reglages-outils",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsTools,
+            Because = "The Tools tab (STUDIO-21): the two tool keys, neither remembered on the seeded "
+                    + "machine, and the catalogue by family with what web_search, brave_search, "
+                    + "image_generation and the database tools need said next to their names.",
+            Covers = ["Settings.Tools.HasSecrets"],
+            SweepsLanguages = true,
+        },
+
+        new()
+        {
+            Name = "reglages-mcp",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsMcp,
+            Modes = CaptureModes.Expert,
+            Because = "The MCP tab (STUDIO-21): a stdio server with its command, arguments and "
+                    + "environment, and an HTTP server with its URL — the two transports side by "
+                    + "side under the switch that connects them.",
+            Covers = ["Config.Mcp.HasServers"],
         },
 
         new()

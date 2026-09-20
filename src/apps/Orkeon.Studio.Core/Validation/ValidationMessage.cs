@@ -76,4 +76,19 @@ public static class ValidationCodes
 
     /// <summary>Two mounts claim the same virtual path.</summary>
     public const string MountVirtualCollision = "STUDIO-MOUNT-COLLISION";
+
+    /// <summary>An MCP server identifier is empty or carries characters the binder would mangle (STUDIO-21).</summary>
+    public const string McpServerIdInvalid = "STUDIO-MCP-ID";
+
+    /// <summary>An MCP server names a transport the runtime does not know.</summary>
+    public const string McpTransportUnknown = "STUDIO-MCP-TRANSPORT";
+
+    /// <summary>A stdio MCP server has no command to launch.</summary>
+    public const string McpCommandMissing = "STUDIO-MCP-COMMAND";
+
+    /// <summary>An HTTP (sse) MCP server has no absolute http(s) URL.</summary>
+    public const string McpUrlInvalid = "STUDIO-MCP-URL";
+
+    /// <summary>An MCP server's environment block carries what looks like a secret, in clear text.</summary>
+    public const string McpEnvLooksSecret = "STUDIO-MCP-ENV-SECRET";
 }

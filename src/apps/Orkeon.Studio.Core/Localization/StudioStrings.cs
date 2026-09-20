@@ -921,6 +921,70 @@ public static class StudioStringKeys
     /// <summary>"no key detected"</summary>
     public const string ProfileKeyStatusMissing = "Studio.Settings.KeyStatusMissing";
 
+    // ── the Tools tab (STUDIO-21): the families of the catalogue and what a tool needs ──
+
+    /// <summary>"Web"</summary>
+    public const string ToolFamilyWeb = "Studio.Settings.ToolFamilyWeb";
+
+    /// <summary>"Search and knowledge"</summary>
+    public const string ToolFamilySearch = "Studio.Settings.ToolFamilySearch";
+
+    /// <summary>"Files"</summary>
+    public const string ToolFamilyFiles = "Studio.Settings.ToolFamilyFiles";
+
+    /// <summary>"Data"</summary>
+    public const string ToolFamilyData = "Studio.Settings.ToolFamilyData";
+
+    /// <summary>"Code"</summary>
+    public const string ToolFamilyCode = "Studio.Settings.ToolFamilyCode";
+
+    /// <summary>"Session and memory"</summary>
+    public const string ToolFamilySession = "Studio.Settings.ToolFamilySession";
+
+    /// <summary>"Events"</summary>
+    public const string ToolFamilyEvents = "Studio.Settings.ToolFamilyEvents";
+
+    /// <summary>"Code analysis"</summary>
+    public const string ToolFamilyAnalysis = "Studio.Settings.ToolFamilyAnalysis";
+
+    /// <summary>"Collaboration"</summary>
+    public const string ToolFamilyCollaboration = "Studio.Settings.ToolFamilyCollaboration";
+
+    /// <summary>"Folders"</summary>
+    public const string ToolFamilyMounts = "Studio.Settings.ToolFamilyMounts";
+
+    /// <summary>"needs the key {0}, above"</summary>
+    public const string ToolNeedsStoredKey = "Studio.Settings.ToolNeedsStoredKey";
+
+    /// <summary>"present only once the key {0} is remembered, above"</summary>
+    public const string ToolOnlyWithStoredKey = "Studio.Settings.ToolOnlyWithStoredKey";
+
+    /// <summary>"the key is given at the call, by the agent"</summary>
+    public const string ToolKeyAtCall = "Studio.Settings.ToolKeyAtCall";
+
+    /// <summary>"the connection parameters are given at the call, by the agent"</summary>
+    public const string ToolParametersAtCall = "Studio.Settings.ToolParametersAtCall";
+
+    /// <summary>"expert setting below: {0}"</summary>
+    public const string ToolExpertSetting = "Studio.Settings.ToolExpertSetting";
+
+    /// <summary>"{0} tools, nothing to configure"</summary>
+    public const string ToolFamilyQuietPattern = "Studio.Settings.ToolFamilyQuietPattern";
+
+    // ── the MCP tab (STUDIO-21): what a server row says about itself ──
+
+    /// <summary>"An identifier is required: letters, digits, '.', '_' and '-'."</summary>
+    public const string McpProblemId = "Studio.Settings.McpProblemId";
+
+    /// <summary>"A stdio server needs a command to launch."</summary>
+    public const string McpProblemCommand = "Studio.Settings.McpProblemCommand";
+
+    /// <summary>"An HTTP server needs an absolute http(s) URL."</summary>
+    public const string McpProblemUrl = "Studio.Settings.McpProblemUrl";
+
+    /// <summary>"Another server already carries this identifier."</summary>
+    public const string McpProblemDuplicate = "Studio.Settings.McpProblemDuplicate";
+
     /// <summary>"No key yet?"</summary>
     public const string ProfileKeyNoKeyYet = "Studio.Settings.KeyNoKeyYet";
 
@@ -1501,6 +1565,11 @@ public sealed class EnglishStudioStrings : IStudioStrings
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT"] = "A folder entry is malformed.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-PATH"] = "An allowed folder does not exist on this machine.",
         ["Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION"] = "Two folders share the same internal name.",
+        ["Studio.Diagnostics.Code.STUDIO-MCP-ID"] = "An MCP server identifier is unusable: letters, digits, '.', '_' and '-' only.",
+        ["Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT"] = "An MCP server names a transport the runtime does not know.",
+        ["Studio.Diagnostics.Code.STUDIO-MCP-COMMAND"] = "A stdio MCP server names no command to launch.",
+        ["Studio.Diagnostics.Code.STUDIO-MCP-URL"] = "An HTTP MCP server has no absolute http(s) URL.",
+        ["Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET"] = "An MCP server's environment carries a secret in clear text; set it in your user environment instead.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION"] = "This option does not apply to the selected team.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE"] = "The verbosity level is not valid.",
         ["Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR"] = "A variable is malformed (expected name=value).",
@@ -1708,6 +1777,26 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileKeyStore] = "Remember the key",
         [StudioStringKeys.ProfileKeyStatusSet] = "key remembered",
         [StudioStringKeys.ProfileKeyStatusMissing] = "no key detected",
+        [StudioStringKeys.ToolFamilyWeb] = "Web",
+        [StudioStringKeys.ToolFamilySearch] = "Search and knowledge",
+        [StudioStringKeys.ToolFamilyFiles] = "Files",
+        [StudioStringKeys.ToolFamilyData] = "Data",
+        [StudioStringKeys.ToolFamilyCode] = "Code",
+        [StudioStringKeys.ToolFamilySession] = "Session and memory",
+        [StudioStringKeys.ToolFamilyEvents] = "Events",
+        [StudioStringKeys.ToolFamilyAnalysis] = "Code analysis",
+        [StudioStringKeys.ToolFamilyCollaboration] = "Collaboration",
+        [StudioStringKeys.ToolFamilyMounts] = "Folders",
+        [StudioStringKeys.ToolNeedsStoredKey] = "needs the key {0}, above",
+        [StudioStringKeys.ToolOnlyWithStoredKey] = "present only once the key {0} is remembered, above",
+        [StudioStringKeys.ToolKeyAtCall] = "the key is given at the call, by the agent",
+        [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
+        [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
+        [StudioStringKeys.ToolFamilyQuietPattern] = "{0} tools, nothing to configure",
+        [StudioStringKeys.McpProblemId] = "An identifier is required: letters, digits, '.', '_' and '-'.",
+        [StudioStringKeys.McpProblemCommand] = "A stdio server needs a command to launch.",
+        [StudioStringKeys.McpProblemUrl] = "An HTTP server needs an absolute http(s) URL.",
+        [StudioStringKeys.McpProblemDuplicate] = "Another server already carries this identifier.",
         [StudioStringKeys.ProfileKeyNoKeyYet] = "No key yet?",
         [StudioStringKeys.ProfileKeyOnVendorSite] = "on the provider's site",
         [StudioStringKeys.ProfileKeyExpertHint] = "setx ORKEON_Llm__ApiKey \"sk-…\" — read natively by the runtime, wins over any file",

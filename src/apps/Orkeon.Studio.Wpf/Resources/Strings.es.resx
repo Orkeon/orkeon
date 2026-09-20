@@ -910,6 +910,12 @@
   <data name="Studio.Shell.Json" xml:space="preserve">
     <value>JSON bruto</value>
   </data>
+  <data name="Studio.Shell.Tools" xml:space="preserve">
+    <value>Herramientas</value>
+  </data>
+  <data name="Studio.Shell.Mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
   <data name="Studio.Settings.ModelTitle" xml:space="preserve">
     <value>Modelo del asistente de Studio</value>
   </data>
@@ -1381,6 +1387,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>Dos carpetas comparten el mismo nombre interno.</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve">
+    <value>Un identificador de servidor MCP no es utilizable: solo letras, dígitos, '.', '_' y '-'.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve">
+    <value>Un servidor MCP nombra un transporte que el motor no conoce.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve">
+    <value>Un servidor MCP stdio no nombra ningún comando que lanzar.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve">
+    <value>Un servidor MCP HTTP no tiene una URL http(s) absoluta.</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
+    <value>El entorno de un servidor MCP contiene un secreto en claro; póngalo en su entorno de usuario.</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>Esta opción no se aplica al equipo seleccionado.</value>
   </data>
@@ -1554,6 +1575,135 @@
   </data>
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>Las claves viven en sus variables de entorno de usuario, nunca en un archivo. Pegue una clave y recuérdela; el campo se vacía una vez guardada.</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
+    <value>Claves de las herramientas</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve">
+    <value>Dos herramientas de búsqueda necesitan una clave propia. Péguela una vez: vive en su entorno de usuario, nunca en un archivo.</value>
+  </data>
+  <data name="Studio.Settings.ToolsTitle" xml:space="preserve">
+    <value>Catálogo de herramientas</value>
+  </data>
+  <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
+    <value>Todas las herramientas que un equipo puede usar en una ejecución, por familia. La mayoría no necesita nada; las que sí, lo dicen, y dónde.</value>
+  </data>
+  <data name="Studio.Settings.ShellTitle" xml:space="preserve">
+    <value>Comandos de shell</value>
+  </data>
+  <data name="Studio.Settings.ShellIntro" xml:space="preserve">
+    <value>Lo que la herramienta shell_command puede ejecutar. Por defecto, una lista de comandos de solo lectura.</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve">
+    <value>Permitir intérpretes (shells, motores de scripts)</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpretersHint" xml:space="preserve">
+    <value>Para los agentes es ejecución remota de código: déjelo desactivado salvo que un equipo lo necesite.</value>
+  </data>
+  <data name="Studio.Settings.ShellExtra" xml:space="preserve">
+    <value>Comandos añadidos a los predeterminados, uno por línea</value>
+  </data>
+  <data name="Studio.Settings.ShellReplace" xml:space="preserve">
+    <value>Sustitución completa de la lista predeterminada, uno por línea (vacío: se aplican los predeterminados)</value>
+  </data>
+  <data name="Studio.Settings.McpTitle" xml:space="preserve">
+    <value>Servidores MCP</value>
+  </data>
+  <data name="Studio.Settings.McpIntro" xml:space="preserve">
+    <value>Los servidores que una ejecución conecta antes de que arranque el equipo; sus herramientas se unen al catálogo con su propio nombre. Experimental: los servidores se lanzan en cada ejecución.</value>
+  </data>
+  <data name="Studio.Settings.McpEnabled" xml:space="preserve">
+    <value>Conectar los servidores declarados</value>
+  </data>
+  <data name="Studio.Settings.McpAdd" xml:space="preserve">
+    <value>Añadir un servidor</value>
+  </data>
+  <data name="Studio.Settings.McpRemove" xml:space="preserve">
+    <value>Quitar</value>
+  </data>
+  <data name="Studio.Settings.McpEmpty" xml:space="preserve">
+    <value>Ningún servidor declarado: una ejecución se comporta exactamente como antes.</value>
+  </data>
+  <data name="Studio.Settings.McpId" xml:space="preserve">
+    <value>Identificador</value>
+  </data>
+  <data name="Studio.Settings.McpTransport" xml:space="preserve">
+    <value>Transporte</value>
+  </data>
+  <data name="Studio.Settings.McpCommand" xml:space="preserve">
+    <value>Comando</value>
+  </data>
+  <data name="Studio.Settings.McpArgs" xml:space="preserve">
+    <value>Argumentos, uno por línea</value>
+  </data>
+  <data name="Studio.Settings.McpUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="Studio.Settings.McpEnv" xml:space="preserve">
+    <value>Variables de entorno, NOMBRE=valor, una por línea</value>
+  </data>
+  <data name="Studio.Settings.McpEnvHint" xml:space="preserve">
+    <value>Se escriben en claro en el archivo. El servidor hereda su entorno de usuario: ponga los secretos allí, no aquí.</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyWeb" xml:space="preserve">
+    <value>Web</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySearch" xml:space="preserve">
+    <value>Búsqueda y conocimiento</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyFiles" xml:space="preserve">
+    <value>Archivos</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyData" xml:space="preserve">
+    <value>Datos</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
+    <value>Código</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySession" xml:space="preserve">
+    <value>Sesión y memoria</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyEvents" xml:space="preserve">
+    <value>Eventos</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyAnalysis" xml:space="preserve">
+    <value>Análisis de código</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCollaboration" xml:space="preserve">
+    <value>Colaboración</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyMounts" xml:space="preserve">
+    <value>Carpetas</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsStoredKey" xml:space="preserve">
+    <value>necesita la clave {0}, arriba</value>
+  </data>
+  <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
+    <value>presente solo cuando la clave {0} está guardada, arriba</value>
+  </data>
+  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
+    <value>la clave se da en la llamada, por el agente</value>
+  </data>
+  <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
+    <value>los parámetros de conexión se dan en la llamada, por el agente</value>
+  </data>
+  <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve">
+    <value>ajuste experto más abajo: {0}</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
+    <value>{0} herramientas, nada que configurar</value>
+  </data>
+  <data name="Studio.Settings.McpProblemId" xml:space="preserve">
+    <value>Se requiere un identificador: letras, dígitos, '.', '_' y '-'.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemCommand" xml:space="preserve">
+    <value>Un servidor stdio necesita un comando que lanzar.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemUrl" xml:space="preserve">
+    <value>Un servidor HTTP necesita una URL http(s) absoluta.</value>
+  </data>
+  <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
+    <value>Otro servidor ya lleva este identificador.</value>
   </data>
   <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
     <value>Aún no guardado: autorice al menos una carpeta (pestaña Carpetas autorizadas) — sus cambios se guardarán en cuanto haya una.</value>

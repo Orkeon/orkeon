@@ -186,6 +186,26 @@ public sealed class SettingsScreenTests
         Assert.True(screen.IsFoldersTab);
     }
 
+    /// <summary>STUDIO-21: the tool keys and the catalogue are for everyone; the MCP servers are the expert's.</summary>
+    [Fact]
+    public void The_tools_tab_is_open_to_both_modes_and_the_mcp_tab_is_the_experts()
+    {
+        var novice = Screen(new UiModeViewModel());
+        novice.ShowToolsCommand.Execute(null);
+        Assert.True(novice.IsToolsTab);
+        novice.ShowMcpCommand.Execute(null);
+        Assert.True(novice.IsModelTab);
+
+        var mode = new UiModeViewModel("expert");
+        var expert = Screen(mode);
+        expert.ShowMcpCommand.Execute(null);
+        Assert.True(expert.IsMcpTab);
+
+        mode.SetNoviceCommand.Execute(null);
+
+        Assert.True(expert.IsModelTab);
+    }
+
     // ── the read-only « Team folders » section (STUDIO-14, D-13 / P-1) ──
 
     private static SettingsScreenViewModel Screen(UiModeViewModel mode, TeamFoldersViewModel teamFolders)

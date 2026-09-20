@@ -494,65 +494,6 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 /// CLI reads when it runs outside Studio — that write goes through the ordinary dirty/save
 /// cycle of the settings screen.
 /// </summary>
-/// <summary>
-/// One API key of the settings screen's API-keys card: the environment variable a
-/// profile names, whether a value is in place, and the paste-to-remember flow. The key
-/// value itself only ever travels to <see cref="IApiKeyStore"/> — never into a file.
-/// </summary>
-public sealed class SecretRowViewModel : ObservableObject
-{
-    private readonly IApiKeyStore _keyStore;
-    private readonly IStudioStrings _strings;
-    private string _keyInput = "";
-
-    internal SecretRowViewModel(string envName, string usedBy, IApiKeyStore keyStore, IStudioStrings strings)
-    {
-        EnvName = envName;
-        UsedBy = usedBy;
-        _keyStore = keyStore;
-        _strings = strings;
-        StoreCommand = new RelayCommand(Store, () => _keyInput.Trim().Length > 0);
-    }
-
-    /// <summary>The environment variable holding the key (e.g. <c>DEEPSEEK_API_KEY</c>).</summary>
-    public string EnvName { get; }
-
-    /// <summary>The profile names that resolve this variable, comma-joined.</summary>
-    public string UsedBy { get; }
-
-    /// <summary>Whether a value is currently in place.</summary>
-    public bool HasKey => _keyStore.Peek(EnvName) is { Length: > 0 };
-
-    /// <summary>"key remembered" / "no key detected", localized.</summary>
-    public string StatusText => _strings[
-        HasKey ? StudioStringKeys.ProfileKeyStatusSet : StudioStringKeys.ProfileKeyStatusMissing];
-
-    /// <summary>The pasted key, cleared as soon as it is stored.</summary>
-    public string KeyInput
-    {
-        get => _keyInput;
-        set
-        {
-            if (SetProperty(ref _keyInput, value))
-                StoreCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    /// <summary>Stores the pasted key in the user environment and wipes the field.</summary>
-    public RelayCommand StoreCommand { get; }
-
-    private void Store()
-    {
-        var key = _keyInput.Trim();
-        if (key.Length == 0)
-            return;
-
-        _keyStore.Save(EnvName, key);
-        KeyInput = "";
-        OnPropertiesChanged(nameof(HasKey), nameof(StatusText));
-    }
-}
-
 public sealed class ModelProfilesViewModel : ObservableObject
 {
     private readonly IModelProfileStore _store;

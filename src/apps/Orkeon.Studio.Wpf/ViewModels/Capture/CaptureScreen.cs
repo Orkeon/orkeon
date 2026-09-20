@@ -36,6 +36,12 @@ internal enum CaptureScreen
     /// <summary>Settings, on the raw-JSON tab — expert only.</summary>
     SettingsJson,
 
+    /// <summary>Settings, on the tools tab (STUDIO-21).</summary>
+    SettingsTools,
+
+    /// <summary>Settings, on the MCP tab — expert only (STUDIO-21).</summary>
+    SettingsMcp,
+
     /// <summary>Diagnostic.</summary>
     Diagnostic,
 }
@@ -81,7 +87,7 @@ internal enum CaptureCategory
     /// <summary>Historique.</summary>
     History,
 
-    /// <summary>Settings and its four tabs.</summary>
+    /// <summary>Settings and its six tabs.</summary>
     Settings,
 
     /// <summary>Diagnostic.</summary>
@@ -122,6 +128,6 @@ internal static class CaptureReachability
 {
     /// <summary>True when <paramref name="screen"/> can be reached in <paramref name="mode"/>.</summary>
     public static bool IsReachableIn(CaptureScreen screen, CaptureModes mode) =>
-        screen is not (CaptureScreen.Test or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson)
+        screen is not (CaptureScreen.Test or CaptureScreen.SettingsLimits or CaptureScreen.SettingsJson or CaptureScreen.SettingsMcp)
         || mode == CaptureModes.Expert;
 }

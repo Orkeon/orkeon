@@ -1,0 +1,111 @@
+<!-- The "Outils" settings tab (STUDIO-21): the keys the tools need, the catalogue of what a run
+     exposes by family with what each tool needs, and, expert only, the shell allow-list.
+     DataContext: SettingsScreenViewModel (inherited from SettingsView). -->
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.ToolsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <StackPanel>
+
+    <!-- the keys the tools need: same rows, same store as the API keys of the model tab -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+            Visibility="{Binding Tools.HasSecrets, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="key" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.ToolKeysTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
+                   Text="{Binding [Studio.Settings.ToolKeysIntro], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding Tools.Secrets}" ItemTemplate="{StaticResource SecretRowTemplate}"/>
+      </StackPanel>
+    </Border>
+
+    <!-- the catalogue: every tool a run exposes, by family; the ones that need something say what -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="braces" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}" Text="{Binding [Studio.Settings.ToolsTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,4" TextWrapping="Wrap"
+                   Text="{Binding [Studio.Settings.ToolsIntro], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding Tools.Families}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,12,0,0">
+                <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,7" Text="{Binding Label}"/>
+                <ItemsControl ItemsSource="{Binding Tools}">
+                  <ItemsControl.ItemsPanel>
+                    <ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate>
+                  </ItemsControl.ItemsPanel>
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <!-- a tool that needs something wears the accent, so the eye lands on it before reading the lines below -->
+                      <Border Margin="0,0,6,6">
+                        <Border.Style>
+                          <Style TargetType="Border" BasedOn="{StaticResource ToolChip}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding NeedsSomething}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Border.Style>
+                        <TextBlock Style="{StaticResource ToolChipText}" Text="{Binding Name}"/>
+                      </Border>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <ItemsControl ItemsSource="{Binding Requirements}" Margin="0,2,0,0"
+                              Visibility="{Binding HasRequirements, Converter={StaticResource BooleanToVisibility}}">
+                  <ItemsControl.ItemTemplate>
+                    <DataTemplate>
+                      <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+                        <TextBlock Style="{StaticResource MonoText}" FontSize="11" Foreground="{DynamicResource InkBrush}"
+                                   VerticalAlignment="Center" Text="{Binding Name}"/>
+                        <TextBlock Style="{StaticResource Hint}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                   TextWrapping="Wrap" Text="{Binding Text}"/>
+                      </StackPanel>
+                    </DataTemplate>
+                  </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" Text="{Binding QuietLine}"
+                           Visibility="{Binding HasRequirements, Converter={StaticResource InverseBooleanToVisibility}}"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+    <!-- the shell allow-list (expert): the one tool section of the file a run reads -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+            Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="sliders-horizontal" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}" ToolTip="Orkeon:Tools:Shell"
+                     Text="{Binding [Studio.Settings.ShellTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap"
+                   Text="{Binding [Studio.Settings.ShellIntro], Source={x:Static services:I18n.Instance}}"/>
+        <CheckBox Margin="0,14,0,0" IsChecked="{Binding Config.ShellTools.AllowInterpreters}"
+                  Content="{Binding [Studio.Settings.ShellAllowInterpreters], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource Hint}" Margin="24,3,0,0" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+                   Text="{Binding [Studio.Settings.ShellAllowInterpretersHint], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                   Text="{Binding [Studio.Settings.ShellExtra], Source={x:Static services:I18n.Instance}}"/>
+        <TextBox Style="{StaticResource InputMultilineMono}"
+                 Text="{Binding Config.ShellTools.ExtraAllowedCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
+        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
+                   Text="{Binding [Studio.Settings.ShellReplace], Source={x:Static services:I18n.Instance}}"/>
+        <TextBox Style="{StaticResource InputMultilineMono}"
+                 Text="{Binding Config.ShellTools.AllowedCommandsText, UpdateSourceTrigger=PropertyChanged}"/>
+      </StackPanel>
+    </Border>
+
+  </StackPanel>
+</UserControl>

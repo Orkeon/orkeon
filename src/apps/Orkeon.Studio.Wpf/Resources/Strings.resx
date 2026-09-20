@@ -330,6 +330,8 @@
 <data name="Studio.Shell.Folders" xml:space="preserve"><value>Authorized folders</value></data>
 <data name="Studio.Shell.Limits" xml:space="preserve"><value>Limits &amp; index</value></data>
 <data name="Studio.Shell.Json" xml:space="preserve"><value>Raw JSON</value></data>
+<data name="Studio.Shell.Tools" xml:space="preserve"><value>Tools</value></data>
+<data name="Studio.Shell.Mcp" xml:space="preserve"><value>MCP</value></data>
 <data name="Studio.Settings.ModelTitle" xml:space="preserve"><value>Studio's assistant model</value></data>
 <data name="Studio.Settings.ModelHintNovice" xml:space="preserve"><value>It composes your teams and writes the trial verdicts.</value></data>
 <data name="Studio.Settings.ModelHintExpert" xml:space="preserve"><value>Used by the creation assistant, the verdicts and the answers to questions — independent from the teams' models.</value></data>
@@ -487,6 +489,11 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-FORMAT" xml:space="preserve"><value>A folder entry is malformed.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-PATH" xml:space="preserve"><value>An allowed folder does not exist on this machine.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve"><value>Two folders share the same internal name.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve"><value>An MCP server identifier is unusable: letters, digits, '.', '_' and '-' only.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve"><value>An MCP server names a transport the runtime does not know.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve"><value>A stdio MCP server names no command to launch.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve"><value>An HTTP MCP server has no absolute http(s) URL.</value></data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve"><value>An MCP server's environment carries a secret in clear text; set it in your user environment instead.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve"><value>This option does not apply to the selected team.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VERBOSE" xml:space="preserve"><value>The verbosity level is not valid.</value></data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-VAR" xml:space="preserve"><value>A variable is malformed (expected name=value).</value></data>
@@ -545,6 +552,49 @@
   <data name="Studio.Diagnostics.LlmConfigHint" xml:space="preserve"><value>This is the common base (settings file + this shell's environment). A team that elected its own model profile receives it on top, at launch only — it does not appear here.</value></data>
   <data name="Studio.Settings.SecretsTitle" xml:space="preserve"><value>API keys</value></data>
   <data name="Studio.Settings.Intro" xml:space="preserve"><value>Keys live in your user environment variables, never in a file. Paste a key and remember it; the field empties once stored.</value></data>
+  <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve"><value>Tool keys</value></data>
+  <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve"><value>Two search tools need a key of their own. Paste it once: it lives in your user environment, never in a file.</value></data>
+  <data name="Studio.Settings.ToolsTitle" xml:space="preserve"><value>Tool catalogue</value></data>
+  <data name="Studio.Settings.ToolsIntro" xml:space="preserve"><value>Every tool a team can use in a run, by family. Most need nothing; the ones that do say what, and where.</value></data>
+  <data name="Studio.Settings.ShellTitle" xml:space="preserve"><value>Shell commands</value></data>
+  <data name="Studio.Settings.ShellIntro" xml:space="preserve"><value>What the shell_command tool may run. By default, a read-only list of commands.</value></data>
+  <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve"><value>Allow interpreters (shells, scripting runtimes)</value></data>
+  <data name="Studio.Settings.ShellAllowInterpretersHint" xml:space="preserve"><value>For the agents this is remote code execution: leave it off unless a team needs it.</value></data>
+  <data name="Studio.Settings.ShellExtra" xml:space="preserve"><value>Commands added to the defaults, one per line</value></data>
+  <data name="Studio.Settings.ShellReplace" xml:space="preserve"><value>Full replacement of the default list, one per line (empty: the defaults apply)</value></data>
+  <data name="Studio.Settings.McpTitle" xml:space="preserve"><value>MCP servers</value></data>
+  <data name="Studio.Settings.McpIntro" xml:space="preserve"><value>The servers a run connects before the team starts; their tools join the catalogue under their own names. Experimental: the servers are launched at every run.</value></data>
+  <data name="Studio.Settings.McpEnabled" xml:space="preserve"><value>Connect the declared servers</value></data>
+  <data name="Studio.Settings.McpAdd" xml:space="preserve"><value>Add a server</value></data>
+  <data name="Studio.Settings.McpRemove" xml:space="preserve"><value>Remove</value></data>
+  <data name="Studio.Settings.McpEmpty" xml:space="preserve"><value>No server declared: a run behaves exactly as before.</value></data>
+  <data name="Studio.Settings.McpId" xml:space="preserve"><value>Identifier</value></data>
+  <data name="Studio.Settings.McpTransport" xml:space="preserve"><value>Transport</value></data>
+  <data name="Studio.Settings.McpCommand" xml:space="preserve"><value>Command</value></data>
+  <data name="Studio.Settings.McpArgs" xml:space="preserve"><value>Arguments, one per line</value></data>
+  <data name="Studio.Settings.McpUrl" xml:space="preserve"><value>URL</value></data>
+  <data name="Studio.Settings.McpEnv" xml:space="preserve"><value>Environment variables, NAME=value, one per line</value></data>
+  <data name="Studio.Settings.McpEnvHint" xml:space="preserve"><value>Written in clear in the file. The server inherits your user environment: put secrets there, not here.</value></data>
+  <data name="Studio.Settings.ToolFamilyWeb" xml:space="preserve"><value>Web</value></data>
+  <data name="Studio.Settings.ToolFamilySearch" xml:space="preserve"><value>Search and knowledge</value></data>
+  <data name="Studio.Settings.ToolFamilyFiles" xml:space="preserve"><value>Files</value></data>
+  <data name="Studio.Settings.ToolFamilyData" xml:space="preserve"><value>Data</value></data>
+  <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve"><value>Code</value></data>
+  <data name="Studio.Settings.ToolFamilySession" xml:space="preserve"><value>Session and memory</value></data>
+  <data name="Studio.Settings.ToolFamilyEvents" xml:space="preserve"><value>Events</value></data>
+  <data name="Studio.Settings.ToolFamilyAnalysis" xml:space="preserve"><value>Code analysis</value></data>
+  <data name="Studio.Settings.ToolFamilyCollaboration" xml:space="preserve"><value>Collaboration</value></data>
+  <data name="Studio.Settings.ToolFamilyMounts" xml:space="preserve"><value>Folders</value></data>
+  <data name="Studio.Settings.ToolNeedsStoredKey" xml:space="preserve"><value>needs the key {0}, above</value></data>
+  <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve"><value>present only once the key {0} is remembered, above</value></data>
+  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve"><value>the key is given at the call, by the agent</value></data>
+  <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve"><value>the connection parameters are given at the call, by the agent</value></data>
+  <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve"><value>expert setting below: {0}</value></data>
+  <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve"><value>{0} tools, nothing to configure</value></data>
+  <data name="Studio.Settings.McpProblemId" xml:space="preserve"><value>An identifier is required: letters, digits, '.', '_' and '-'.</value></data>
+  <data name="Studio.Settings.McpProblemCommand" xml:space="preserve"><value>A stdio server needs a command to launch.</value></data>
+  <data name="Studio.Settings.McpProblemUrl" xml:space="preserve"><value>An HTTP server needs an absolute http(s) URL.</value></data>
+  <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve"><value>Another server already carries this identifier.</value></data>
   <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copy</value></data>

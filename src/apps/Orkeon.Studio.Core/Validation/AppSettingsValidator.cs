@@ -84,7 +84,17 @@ public sealed class AppSettingsValidator
         "Orkeon:Rag:Retrieval:Hybrid:Enabled",
         "Orkeon:Rag:Corrective:WebFallback:Enabled",
         "Orkeon:Rag:WebFallback:Enabled",
+        McpSection.SectionPath + ":Enabled",
+        ShellToolsSection.SectionPath + ":AllowInterpreters",
     ];
+
+    // The words that make an environment value read as a secret: written in clear in the
+    // settings file, it is the very thing the API-key rows keep out of every file.
+    private static readonly string[] SecretWords = ["TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD"];
+
+    // The indirection spellings a value may use to NAME a variable instead of holding one;
+    // the same four the team catalog tolerates (STUDIO-16).
+    private static readonly string[] IndirectionPrefixes = ["${", "%", "env:", "ORKEON_"];
 
     private readonly MountValidator _mounts;
 
@@ -125,8 +135,92 @@ public sealed class AppSettingsValidator
         ValidateTypes(document, messages);
         ValidateRagProfile(document, messages);
         ValidateMounts(document, messages, scope);
+        ValidateMcp(document, messages);
 
         return messages;
+    }
+
+    /// <summary>
+    /// The MCP servers (STUDIO-21): the rules the runtime applies when it connects, said
+    /// before the file is written rather than at the next run. An identifier is a
+    /// configuration key, so it must survive the binder; a stdio server without a command
+    /// and an HTTP server without a URL are the two refusals <c>McpToolProvider</c> raises;
+    /// a secret written in an environment block is the same clear-text trap as an inline
+    /// API key, reported at the same level.
+    /// </summary>
+    private static void ValidateMcp(AppSettingsDocument document, List<ValidationMessage> messages)
+    {
+        var serversNode = document.GetNode(McpSection.ServersPath);
+        if (serversNode is not null and not JsonObject)
+        {
+            messages.Add(WrongType(McpSection.ServersPath, "an object of servers keyed by identifier"));
+            return;
+        }
+
+        foreach (var id in document.Mcp.ServerIds)
+        {
+            var path = $"{McpSection.ServersPath}:{id}";
+            if (!McpSection.IsValidServerId(id))
+            {
+                messages.Add(ValidationMessage.Error(
+                    ValidationCodes.McpServerIdInvalid,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"'{id}' is not a usable MCP server identifier: letters, digits, '.', '_' and '-' only."),
+                    path));
+            }
+
+            if (document.Mcp.GetServer(id) is not { } server)
+                continue;
+
+            if (!server.IsStdio && !server.IsSse)
+            {
+                messages.Add(ValidationMessage.Error(
+                    ValidationCodes.McpTransportUnknown,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"Unknown MCP transport '{server.Transport}' for server '{id}'. Known transports: {string.Join(", ", McpSection.Transports)}."),
+                    $"{path}:Transport"));
+            }
+            else if (server.IsStdio && string.IsNullOrWhiteSpace(server.Command))
+            {
+                messages.Add(ValidationMessage.Error(
+                    ValidationCodes.McpCommandMissing,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"MCP server '{id}' uses the stdio transport and names no command to launch."),
+                    $"{path}:Command"));
+            }
+            else if (server.IsSse
+                && !(Uri.TryCreate(server.Url, UriKind.Absolute, out var url)
+                    && (url.Scheme == Uri.UriSchemeHttp || url.Scheme == Uri.UriSchemeHttps)))
+            {
+                messages.Add(ValidationMessage.Error(
+                    ValidationCodes.McpUrlInvalid,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"MCP server '{id}' uses the HTTP (sse) transport and '{server.Url}' is not an absolute http(s) URL."),
+                    $"{path}:Url"));
+            }
+
+            foreach (var (name, value) in server.Env)
+            {
+                if (LooksLikeSecret(name, value))
+                {
+                    messages.Add(ValidationMessage.Information(
+                        ValidationCodes.McpEnvLooksSecret,
+                        string.Create(CultureInfo.InvariantCulture,
+                            $"'{name}' of MCP server '{id}' is written in clear text in this file. The server process inherits your user environment: set the variable there and leave it out of the file."),
+                        $"{path}:Env:{name}"));
+                }
+            }
+        }
+    }
+
+    private static bool LooksLikeSecret(string name, string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return false;
+        if (IndirectionPrefixes.Any(prefix => value.StartsWith(prefix, StringComparison.Ordinal)))
+            return false;
+
+        return SecretWords.Any(word => name.Contains(word, StringComparison.OrdinalIgnoreCase));
     }
 
     private static void ValidateLlm(AppSettingsDocument document, List<ValidationMessage> messages)

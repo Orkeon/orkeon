@@ -1,6 +1,7 @@
-<!-- The unified "Réglages" screen (design v3): one nav entry, four inner tabs — the AI model
-     (named profiles + the Studio assistant's own), the authorized folders, and the two expert
-     tabs (limits & logs, the raw file). DataContext: SettingsScreenViewModel (Settings). -->
+<!-- The unified "Réglages" screen (design v3): one nav entry, six inner tabs — the AI model
+     (named profiles + the Studio assistant's own), the authorized folders, the tools (STUDIO-21),
+     and the three expert tabs (limits & logs, the MCP servers, the raw file).
+     DataContext: SettingsScreenViewModel (Settings). -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -75,9 +76,16 @@
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowFoldersCommand}"
               Tag="{Binding IsFoldersTab}"
               Content="{Binding [Studio.Shell.Folders], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowToolsCommand}"
+              Tag="{Binding IsToolsTab}"
+              Content="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowLimitsCommand}"
               Tag="{Binding IsLimitsTab}"
               Content="{Binding [Studio.Shell.Limits], Source={x:Static services:I18n.Instance}}"
+              Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
+      <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowMcpCommand}"
+              Tag="{Binding IsMcpTab}"
+              Content="{Binding [Studio.Shell.Mcp], Source={x:Static services:I18n.Instance}}"
               Visibility="{Binding Mode.IsExpert, Converter={StaticResource BooleanToVisibility}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowJsonCommand}"
               Tag="{Binding IsJsonTab}"
@@ -252,46 +260,7 @@
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10" TextWrapping="Wrap"
                      Text="{Binding [Studio.Settings.Intro], Source={x:Static services:I18n.Instance}}"/>
-          <ItemsControl ItemsSource="{Binding Profiles.Secrets}">
-            <ItemsControl.ItemTemplate>
-              <DataTemplate>
-                <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
-                        BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
-                  <DockPanel LastChildFill="True">
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                      <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
-                                   ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
-                                   views:PasswordBinding.Text="{Binding KeyInput}"/>
-                      <Button Style="{StaticResource BtnGhost}" Command="{Binding StoreCommand}"
-                              Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
-                    </StackPanel>
-                    <StackPanel VerticalAlignment="Center">
-                      <StackPanel Orientation="Horizontal">
-                        <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" FontWeight="SemiBold"
-                                   Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
-                        <Border Margin="9,0,0,0" VerticalAlignment="Center">
-                          <Border.Style>
-                            <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
-                              <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
-                              <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
-                              <Style.Triggers>
-                                <DataTrigger Binding="{Binding HasKey}" Value="True">
-                                  <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
-                                  <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
-                                </DataTrigger>
-                              </Style.Triggers>
-                            </Style>
-                          </Border.Style>
-                          <TextBlock Style="{StaticResource BadgeText}" FontSize="10" Text="{Binding StatusText}"/>
-                        </Border>
-                      </StackPanel>
-                      <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
-                    </StackPanel>
-                  </DockPanel>
-                </Border>
-              </DataTemplate>
-            </ItemsControl.ItemTemplate>
-          </ItemsControl>
+          <ItemsControl ItemsSource="{Binding Profiles.Secrets}" ItemTemplate="{StaticResource SecretRowTemplate}"/>
         </StackPanel>
       </Border>
 
@@ -425,6 +394,13 @@
         </StackPanel>
       </Border>
     </StackPanel>
+
+    <!-- ══ OUTILS (STUDIO-21): the tool keys, the catalogue, the shell allow-list ══ -->
+    <views:ToolsView Visibility="{Binding IsToolsTab, Converter={StaticResource BooleanToVisibility}}"/>
+
+    <!-- ══ MCP (expert, STUDIO-21) ══ -->
+    <views:McpView DataContext="{Binding Config.Mcp}"
+                   Visibility="{Binding DataContext.IsMcpTab, RelativeSource={RelativeSource AncestorType=views:SettingsView}, Converter={StaticResource BooleanToVisibility}}"/>
 
     <!-- ══ LIMITES & JOURNAUX (expert) ══ -->
     <views:LimitsView DataContext="{Binding Config}"

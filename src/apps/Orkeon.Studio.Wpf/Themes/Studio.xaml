@@ -2,7 +2,9 @@
      Every brush is DynamicResource so the theme can be swapped at runtime. -->
 <ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
                     xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-                    xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls">
+                    xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+                    xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services"
+                    xmlns:views="clr-namespace:Orkeon.Studio.Wpf.Views">
 
   <!-- ══ Fonts (see Fonts/FONTS.md). Absolute pack URIs: a './Fonts/' relative form would
        resolve against THIS dictionary's base (/Themes/), where no font exists, and silently
@@ -948,5 +950,52 @@
       </Trigger>
     </Style.Triggers>
   </Style>
+
+  <!-- ══ One API-key row (STUDIO-21): the variable, its status badge, who uses it, where to get
+       one, and the paste-to-remember flow. Shared by the API-keys card of the model tab and the
+       tool-keys card of the Tools tab; the row's DataContext is a SecretRowViewModel. ══ -->
+  <DataTemplate x:Key="SecretRowTemplate">
+    <Border CornerRadius="10" Padding="13,10" Margin="0,0,0,7" BorderThickness="1"
+            BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
+      <DockPanel LastChildFill="True">
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+          <PasswordBox Style="{StaticResource InputPassword}" Width="220" VerticalAlignment="Center" Margin="0,0,8,0"
+                       ToolTip="{Binding [Studio.Settings.KeyPlaceholder], Source={x:Static services:I18n.Instance}}"
+                       views:PasswordBinding.Text="{Binding KeyInput}"/>
+          <Button Style="{StaticResource BtnGhost}" Command="{Binding StoreCommand}"
+                  Content="{Binding [Studio.Settings.KeyStore], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <StackPanel VerticalAlignment="Center">
+          <StackPanel Orientation="Horizontal">
+            <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" FontWeight="SemiBold"
+                       Foreground="{DynamicResource InkBrush}" Text="{Binding EnvName}"/>
+            <Border Margin="9,0,0,0" VerticalAlignment="Center">
+              <Border.Style>
+                <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                  <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                  <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                  <Style.Triggers>
+                    <DataTrigger Binding="{Binding HasKey}" Value="True">
+                      <Setter Property="Background" Value="{DynamicResource SuccessWeakBrush}"/>
+                      <Setter Property="TextElement.Foreground" Value="{DynamicResource SuccessBrush}"/>
+                    </DataTrigger>
+                  </Style.Triggers>
+                </Style>
+              </Border.Style>
+              <TextBlock Style="{StaticResource BadgeText}" FontSize="10" Text="{Binding StatusText}"/>
+            </Border>
+          </StackPanel>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
+          <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
+                      Visibility="{Binding HasConsoleUrl, Converter={StaticResource BooleanToVisibility}}">
+            <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
+                       Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
+                       Foreground="{DynamicResource AccentBrush}" Margin="7,0,0,0" Text="{Binding ConsoleUrl}"/>
+          </StackPanel>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+  </DataTemplate>
 
 </ResourceDictionary>

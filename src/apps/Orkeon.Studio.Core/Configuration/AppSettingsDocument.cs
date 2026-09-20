@@ -42,6 +42,8 @@ public sealed class AppSettingsDocument
         Mounts = new MountsSection(this);
         Logging = new LoggingSection(this);
         LlmLogging = new LlmLoggingSection(this);
+        Mcp = new McpSection(this);
+        ShellTools = new ShellToolsSection(this);
     }
 
     /// <summary>The mutable JSON tree backing this document — the raw-edit surface of the UIs.</summary>
@@ -64,6 +66,12 @@ public sealed class AppSettingsDocument
 
     /// <summary>Typed view over the <c>LlmLogging</c> section.</summary>
     public LlmLoggingSection LlmLogging { get; }
+
+    /// <summary>Typed view over the <c>MCP</c> section (STUDIO-21).</summary>
+    public McpSection Mcp { get; }
+
+    /// <summary>Typed view over the <c>Orkeon:Tools:Shell</c> section (STUDIO-21).</summary>
+    public ShellToolsSection ShellTools { get; }
 
     /// <summary>Creates an empty document (<c>{}</c>).</summary>
     public static AppSettingsDocument CreateEmpty() => new(new JsonObject());
@@ -277,6 +285,60 @@ public sealed class AppSettingsDocument
             array.Add(JsonValue.Create(value));
 
         SetNode(path, array);
+    }
+
+    /// <summary>
+    /// The keys of the object at the colon-separated path, in document order — the shape
+    /// of a dictionary section such as <c>MCP:Servers</c>. A missing or non-object node
+    /// yields an empty list.
+    /// </summary>
+    public IReadOnlyList<string> ObjectKeys(string path)
+    {
+        if (GetNode(path) is not JsonObject obj)
+            return [];
+
+        return [.. obj.Select(property => property.Key)];
+    }
+
+    /// <summary>
+    /// Reads an object of scalar values as a string map (the shape of an environment block
+    /// such as <c>MCP:Servers:x:Env</c>), in document order; nested objects and arrays are
+    /// skipped, and a missing or non-object node yields an empty map.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> GetStringMap(string path)
+    {
+        var map = new Dictionary<string, string>(StringComparer.Ordinal);
+        if (GetNode(path) is not JsonObject obj)
+            return map;
+
+        foreach (var (key, node) in obj)
+        {
+            if (node is JsonValue value)
+                map[key] = value.TryGetValue<string>(out var text) ? text : value.ToJsonString().Trim('"');
+        }
+
+        return map;
+    }
+
+    /// <summary>
+    /// Writes a string map as an object; an empty map removes the key, so that clearing a
+    /// block never leaves an empty object the runtime would then bind as "configured".
+    /// </summary>
+    public void SetStringMap(string path, IReadOnlyDictionary<string, string> values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+
+        if (values.Count == 0)
+        {
+            Remove(path);
+            return;
+        }
+
+        var obj = new JsonObject();
+        foreach (var (key, value) in values)
+            obj[key] = JsonValue.Create(value);
+
+        SetNode(path, obj);
     }
 
     /// <summary>

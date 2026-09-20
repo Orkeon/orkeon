@@ -149,10 +149,13 @@ public sealed partial class I18nResourceParityTests
         // — the irreducible floor named above), and set to the measured count, not above it.
         // STUDIO-14 settings: raised by one for the pure format pattern of the team-folder row
         // (« {0} · {1} → {2} », no words in it — the same floor), measured, not above it.
-        ["Strings.fr.resx"] = 50,
-        ["Strings.es.resx"] = 36,
-        ["Strings.de.resx"] = 37,
-        ["Strings.zh-Hans.resx"] = 31,
+        // STUDIO-21 settings: raised by the labels no language rewrites — « MCP », « URL »,
+        // « Transport » (fr, de), « Web », « Code » (fr, de), « Collaboration » (fr) — the same
+        // floor, measured, not above it.
+        ["Strings.fr.resx"] = 56,
+        ["Strings.es.resx"] = 39,
+        ["Strings.de.resx"] = 42,
+        ["Strings.zh-Hans.resx"] = 33,
     };
 
     [Theory]

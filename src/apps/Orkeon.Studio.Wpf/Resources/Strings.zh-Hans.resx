@@ -910,6 +910,12 @@
   <data name="Studio.Shell.Json" xml:space="preserve">
     <value>原始 JSON</value>
   </data>
+  <data name="Studio.Shell.Tools" xml:space="preserve">
+    <value>工具</value>
+  </data>
+  <data name="Studio.Shell.Mcp" xml:space="preserve">
+    <value>MCP</value>
+  </data>
   <data name="Studio.Settings.ModelTitle" xml:space="preserve">
     <value>Studio 助手的模型</value>
   </data>
@@ -1381,6 +1387,21 @@
   <data name="Studio.Diagnostics.Code.STUDIO-MOUNT-COLLISION" xml:space="preserve">
     <value>两个文件夹使用了相同的内部名称。</value>
   </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ID" xml:space="preserve">
+    <value>某个 MCP 服务器标识符不可用：仅允许字母、数字、'.'、'_' 和 '-'。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-TRANSPORT" xml:space="preserve">
+    <value>某个 MCP 服务器指定了运行时不认识的传输方式。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-COMMAND" xml:space="preserve">
+    <value>某个 stdio MCP 服务器未指定要启动的命令。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-URL" xml:space="preserve">
+    <value>某个 HTTP MCP 服务器没有绝对的 http(s) URL。</value>
+  </data>
+  <data name="Studio.Diagnostics.Code.STUDIO-MCP-ENV-SECRET" xml:space="preserve">
+    <value>某个 MCP 服务器的环境中含有明文机密；请改为在您的用户环境中设置。</value>
+  </data>
   <data name="Studio.Diagnostics.Code.STUDIO-LAUNCH-OPTION" xml:space="preserve">
     <value>该选项不适用于所选团队。</value>
   </data>
@@ -1554,6 +1575,135 @@
   </data>
   <data name="Studio.Settings.Intro" xml:space="preserve">
     <value>密钥存放在您的用户环境变量中，绝不写入文件。粘贴后记住它；保存后输入框即清空。</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysTitle" xml:space="preserve">
+    <value>工具密钥</value>
+  </data>
+  <data name="Studio.Settings.ToolKeysIntro" xml:space="preserve">
+    <value>两个搜索工具需要各自的密钥。粘贴一次即可：它保存在您的用户环境中，绝不写入文件。</value>
+  </data>
+  <data name="Studio.Settings.ToolsTitle" xml:space="preserve">
+    <value>工具目录</value>
+  </data>
+  <data name="Studio.Settings.ToolsIntro" xml:space="preserve">
+    <value>团队在运行中可使用的全部工具，按家族列出。大多数无需配置；需要配置的会说明需要什么、在哪里设置。</value>
+  </data>
+  <data name="Studio.Settings.ShellTitle" xml:space="preserve">
+    <value>Shell 命令</value>
+  </data>
+  <data name="Studio.Settings.ShellIntro" xml:space="preserve">
+    <value>shell_command 工具可以执行的内容。默认是一份只读命令列表。</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpreters" xml:space="preserve">
+    <value>允许解释器（shell、脚本运行时）</value>
+  </data>
+  <data name="Studio.Settings.ShellAllowInterpretersHint" xml:space="preserve">
+    <value>对智能体而言这等同于远程代码执行：除非某个团队需要，否则请保持关闭。</value>
+  </data>
+  <data name="Studio.Settings.ShellExtra" xml:space="preserve">
+    <value>在默认命令之外追加的命令，每行一条</value>
+  </data>
+  <data name="Studio.Settings.ShellReplace" xml:space="preserve">
+    <value>完整替换默认列表，每行一条（留空则沿用默认）</value>
+  </data>
+  <data name="Studio.Settings.McpTitle" xml:space="preserve">
+    <value>MCP 服务器</value>
+  </data>
+  <data name="Studio.Settings.McpIntro" xml:space="preserve">
+    <value>运行在团队启动前连接的服务器；其工具以各自的名称加入目录。实验性功能：每次运行都会启动这些服务器。</value>
+  </data>
+  <data name="Studio.Settings.McpEnabled" xml:space="preserve">
+    <value>连接已声明的服务器</value>
+  </data>
+  <data name="Studio.Settings.McpAdd" xml:space="preserve">
+    <value>添加服务器</value>
+  </data>
+  <data name="Studio.Settings.McpRemove" xml:space="preserve">
+    <value>移除</value>
+  </data>
+  <data name="Studio.Settings.McpEmpty" xml:space="preserve">
+    <value>尚未声明任何服务器：运行行为与之前完全一致。</value>
+  </data>
+  <data name="Studio.Settings.McpId" xml:space="preserve">
+    <value>标识符</value>
+  </data>
+  <data name="Studio.Settings.McpTransport" xml:space="preserve">
+    <value>传输方式</value>
+  </data>
+  <data name="Studio.Settings.McpCommand" xml:space="preserve">
+    <value>命令</value>
+  </data>
+  <data name="Studio.Settings.McpArgs" xml:space="preserve">
+    <value>参数，每行一个</value>
+  </data>
+  <data name="Studio.Settings.McpUrl" xml:space="preserve">
+    <value>URL</value>
+  </data>
+  <data name="Studio.Settings.McpEnv" xml:space="preserve">
+    <value>环境变量，名称=值，每行一个</value>
+  </data>
+  <data name="Studio.Settings.McpEnvHint" xml:space="preserve">
+    <value>会以明文写入文件。服务器会继承您的用户环境：请把机密放在那里，而不是这里。</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyWeb" xml:space="preserve">
+    <value>网络</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySearch" xml:space="preserve">
+    <value>搜索与知识</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyFiles" xml:space="preserve">
+    <value>文件</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyData" xml:space="preserve">
+    <value>数据</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
+    <value>代码</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilySession" xml:space="preserve">
+    <value>会话与记忆</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyEvents" xml:space="preserve">
+    <value>事件</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyAnalysis" xml:space="preserve">
+    <value>代码分析</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyCollaboration" xml:space="preserve">
+    <value>协作</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyMounts" xml:space="preserve">
+    <value>文件夹</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsStoredKey" xml:space="preserve">
+    <value>需要上方的密钥 {0}</value>
+  </data>
+  <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
+    <value>仅在上方记住密钥 {0} 后才会出现</value>
+  </data>
+  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
+    <value>密钥由智能体在调用时提供</value>
+  </data>
+  <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
+    <value>连接参数由智能体在调用时提供</value>
+  </data>
+  <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve">
+    <value>下方的专家设置：{0}</value>
+  </data>
+  <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
+    <value>{0} 个工具，无需配置</value>
+  </data>
+  <data name="Studio.Settings.McpProblemId" xml:space="preserve">
+    <value>需要标识符：字母、数字、'.'、'_' 和 '-'。</value>
+  </data>
+  <data name="Studio.Settings.McpProblemCommand" xml:space="preserve">
+    <value>stdio 服务器需要一个要启动的命令。</value>
+  </data>
+  <data name="Studio.Settings.McpProblemUrl" xml:space="preserve">
+    <value>HTTP 服务器需要绝对的 http(s) URL。</value>
+  </data>
+  <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve">
+    <value>另一个服务器已使用该标识符。</value>
   </data>
   <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve">
     <value>尚未保存：请至少授权一个文件夹（「授权文件夹」标签页）——一旦有了，您的修改就会被保存。</value>

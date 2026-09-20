@@ -119,7 +119,9 @@ public sealed class MainWindowViewModel : ObservableObject
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
             // for by living inside it, and the global appsettings never learns them.
-            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings));
+            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings),
+            // STUDIO-21: the tool keys ride the same store as the profile keys.
+            new ToolsSettingsViewModel(keyStore, strings));
 
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,

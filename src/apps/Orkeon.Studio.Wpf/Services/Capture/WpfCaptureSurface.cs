@@ -40,6 +40,8 @@ internal sealed class WpfCaptureSurface(MainWindow window, MainWindowViewModel s
             case CaptureScreen.SettingsFolders: ShowSettings(shell.Settings.ShowFoldersCommand); break;
             case CaptureScreen.SettingsLimits: ShowSettings(shell.Settings.ShowLimitsCommand); break;
             case CaptureScreen.SettingsJson: ShowSettings(shell.Settings.ShowJsonCommand); break;
+            case CaptureScreen.SettingsTools: ShowSettings(shell.Settings.ShowToolsCommand); break;
+            case CaptureScreen.SettingsMcp: ShowSettings(shell.Settings.ShowMcpCommand); break;
 
             default: throw new ArgumentOutOfRangeException(nameof(screen), screen, "unknown capture screen");
         }
