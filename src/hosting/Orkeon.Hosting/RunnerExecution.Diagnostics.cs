@@ -66,6 +66,10 @@ public static partial class RunnerExecution
                 RunnerLogging.LogMounts(cliMounts, logger);
                 LogValidatingCrew(logger, configPath);
 
+                // Same order as a kickoff (STUDIO-21): the MCP tools exist before the crew
+                // resolves its own, so --validate judges the crew a run would actually get.
+                await McpStartup.ConnectConfiguredServersAsync(host, cts.Token).ConfigureAwait(false);
+
                 var factory = host.Services.GetRequiredService<ICrewFactory>();
                 var crew = await LoadCrewAsync(
                     host, factory, virtualConfigPath, logger, cts.Token, bootstrap.IsCrewDirectory)
@@ -149,6 +153,9 @@ public static partial class RunnerExecution
                     services.AddOrkeonHumanInput();
                     configureServices?.Invoke(ctx, services);
                 });
+
+            // The manifest lists what a kickoff exposes, the MCP tools included (STUDIO-21).
+            await McpStartup.ConnectConfiguredServersAsync(host, CancellationToken.None).ConfigureAwait(false);
 
             var registry = host.Services.GetRequiredService<IToolRegistry>();
             var tools = await registry.GetAllToolsAsync().ConfigureAwait(false);

@@ -64,7 +64,8 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 
 > **Hors de ce catalogue — enregistrés par `AddOrkeonInfrastructure()` et
 > gouvernés par la configuration, pas par un geste d'enregistrement** : MCP
-> (section `MCP`, via la surcharge `IConfiguration`), le store de checkpointing
+> (section `MCP`, via la surcharge `IConfiguration`, ou l'hôte des runners dès que
+> `MCP:Servers` déclare un serveur), le store de checkpointing
 > sans paramètre (`AddOrkeonCheckpointing()` ; les variantes SQLite/Postgres
 > restent explicites), le pipeline Guardian, le moteur de Flows, Training,
 > Consensus, CostTracking, Encryption, Auth et CodeSandbox. Leurs sections de

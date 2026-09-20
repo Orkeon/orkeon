@@ -134,7 +134,8 @@ Two overloads exist and produce containers with **different** capabilities:
 > **permission gate** (`AddOrkeonPermissionGate`) — are registered by **neither**
 > of the two overloads: each is enabled explicitly via its `AddOrkeonXxx()`
 > extension. MCP, by contrast, comes with the `IConfiguration` overload (or
-> standalone `AddOrkeonMcp(configuration)`), and the **in-memory** checkpointing
+> standalone `AddOrkeonMcp(configuration)`) — and the shared runner host adds it on
+> its own when `MCP:Servers` declares a server (STUDIO-21) —, and the **in-memory** checkpointing
 > store is registered by both overloads — only its durable variant is opt-in.
 > Full catalog: [Opt-in subsystems](../reference/opt-in-subsystems.md).
 

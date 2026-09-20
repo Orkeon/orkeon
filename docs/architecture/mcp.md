@@ -76,15 +76,27 @@ services.AddOrkeonMcp(configuration);   // reads the "MCP" section
 `McpServerConfig`: `Transport` stdio/sse, `Command`/`Args` or `Url`) and registers
 `McpToolProvider` as a singleton; `McpServer` (+ `McpServerOptions` from `MCP:Server`:
 `Name`, `Version`) is registered only when `MCP:EnableServer = true`. The
-`AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself —
-but **no shipped composition root uses that overload** (`orkeon run`, `orkeon-host`
-and the REPL all call the parameterless one), so MCP is effectively a library-only
-surface: an embedding host calls `AddOrkeonMcp(configuration)` (or the config
-overload) itself.
+`AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself.
 
-There is **no hosted service**: the host resolves `McpToolProvider` and calls
+**The shared runner host honours the section on its own (STUDIO-21).** `orkeon run`
+— and every runner built on `RunnerHost` — calls `AddOrkeonMcp` when `MCP:Servers`
+declares at least one server and `MCP:Enabled` is not `false`, then connects every
+server in an explicit startup step (`McpStartup`) before the crew loads — and before
+`--validate` judges the crew and `--list-tools` prints the manifest, so the three see the
+same tool surface. A server that cannot be connected (a command that does not exist, an
+endpoint that does not answer, a handshake still pending after 30 s) costs one error line
+naming it, on the log and on stderr, and the run goes on: a crew naming one of that
+server's tools then fails at load under `StrictTools` with the ordinary «unknown tool»
+line. The tools are registered under their own names, without a server prefix; a name
+the registry already holds is skipped. Orkeon Studio writes the section from its
+«Settings › MCP» tab. The other shipped roots (`orkeon-host`, the REPL) still call the
+parameterless overload: there, and in any embedding host, MCP stays a library surface
+— the host calls `AddOrkeonMcp(configuration)` (or the config overload) itself.
+
+There is **no hosted service**: an embedding host resolves `McpToolProvider` and calls
 `ConnectServerAsync(serverId, config)` for each configured server (and
-`McpServer.RunStdioAsync()` to serve), explicitly.
+`McpServer.RunStdioAsync()` to serve), explicitly — which is exactly what the runner
+host's startup step does.
 
 ## Honest limitations
 

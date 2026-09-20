@@ -53,3 +53,4 @@ Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryDropCatalogueOut
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 *REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int? maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.Dispose() -> void

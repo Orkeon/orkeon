@@ -214,6 +214,7 @@ le REPL.
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ seulement si `BRAVE_API_KEY` est posée | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (opt-in hôte) | ❌ |
+| Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom (STUDIO-21) | ❌ |
 | `semantic_search` | ✅ (câblé par la commande run) | ❌ |
 | `human_input` | ✅ (la question remonte sur le bus d'événements du run) | ❌ |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | par agent, quand `AllowDelegation` est actif | par agent |

@@ -79,15 +79,28 @@ services.AddOrkeonMcp(configuration);   // lit la section "MCP"
 `McpServerConfig` : `Transport` stdio/sse, `Command`/`Args` ou `Url`) et enregistre
 `McpToolProvider` en singleton ; `McpServer` (+ `McpServerOptions` depuis `MCP:Server` :
 `Name`, `Version`) n'est enregistré que si `MCP:EnableServer = true`. La surcharge
-`AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp` — mais
-**aucune racine de composition livrée n'utilise cette surcharge** (`orkeon run`,
-`orkeon-host` et le REPL appellent tous la version sans paramètre) : MCP est de fait
-une surface bibliothèque — un hôte qui embarque appelle lui-même
-`AddOrkeonMcp(configuration)` (ou la surcharge config).
+`AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp`.
 
-Il n'y a **pas de hosted service** : l'hôte résout `McpToolProvider` et appelle
-explicitement `ConnectServerAsync(serverId, config)` pour chaque serveur configuré (et
-`McpServer.RunStdioAsync()` pour servir).
+**L'hôte partagé des runners honore la section de lui-même (STUDIO-21).** `orkeon run`
+— et tout runner bâti sur `RunnerHost` — appelle `AddOrkeonMcp` dès que `MCP:Servers`
+déclare au moins un serveur et que `MCP:Enabled` n'est pas `false`, puis connecte chaque
+serveur dans un pas de démarrage explicite (`McpStartup`) avant le chargement de la crew
+— et avant que `--validate` juge la crew et que `--list-tools` imprime le manifeste, pour
+que les trois voient la même surface d'outils. Un serveur qui ne peut pas être connecté
+(commande inexistante, point de terminaison muet, poignée de main toujours en attente
+après 30 s) coûte une ligne d'erreur qui le nomme, dans le journal et sur stderr, et le run
+continue : une crew qui nomme un outil de ce serveur échoue alors au chargement, sous
+`StrictTools`, avec la ligne ordinaire « unknown tool ». Les outils sont enregistrés sous
+leur propre nom, sans préfixe de serveur ; un nom déjà tenu par le registre est ignoré.
+Orkeon Studio écrit la section depuis son onglet « Réglages › MCP ». Les autres racines
+livrées (`orkeon-host`, le REPL) appellent toujours la surcharge sans paramètre : là, et
+dans tout hôte qui embarque, MCP reste une surface bibliothèque — l'hôte appelle
+lui-même `AddOrkeonMcp(configuration)` (ou la surcharge config).
+
+Il n'y a **pas de hosted service** : un hôte qui embarque résout `McpToolProvider` et
+appelle explicitement `ConnectServerAsync(serverId, config)` pour chaque serveur
+configuré (et `McpServer.RunStdioAsync()` pour servir) — exactement ce que fait le pas
+de démarrage de l'hôte des runners.
 
 ## Limites honnêtes
 

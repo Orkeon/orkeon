@@ -63,7 +63,8 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 
 > **Not in this catalog — registered by `AddOrkeonInfrastructure()` and gated by
 > configuration, not by a registration gesture**: MCP (`MCP` section, via the
-> `IConfiguration` overload), the parameterless checkpointing store
+> `IConfiguration` overload, or the runner host once `MCP:Servers` declares a server),
+> the parameterless checkpointing store
 > (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), the
 > Guardian pipeline, the Flows engine, Training, Consensus, CostTracking,
 > Encryption, Auth and CodeSandbox. Their configuration sections are mapped in

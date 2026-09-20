@@ -57,4 +57,13 @@ public static class ConfigurationKeys
     /// read as "thinking not configured" rather than reported.
     /// </summary>
     public const string ThinkingSection = "Thinking";
+
+    /// <summary>
+    /// The MCP section, at the configuration ROOT like <see cref="LlmSection"/>: the servers a
+    /// machine declares (<c>MCP:Servers:&lt;id&gt;</c>), the switch (<c>MCP:Enabled</c>) and the
+    /// optional outbound server (<c>MCP:Server</c>). Bound by the infrastructure, honoured by the
+    /// shared runner host, edited by Orkeon Studio (STUDIO-21) — three projects that cannot
+    /// reference each other, and a section whose absence reads as "no MCP" everywhere.
+    /// </summary>
+    public const string McpSection = "MCP";
 }

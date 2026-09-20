@@ -28,7 +28,9 @@ of the standard .NET host sources:
    `InternalMounts` are always appended.
 
 The same `ORKEON_` prefix also feeds `EnvironmentSecretProvider` (secret lookup, e.g.
-`OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
+`OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`; the `web_search` tool's Tavily key is
+`ORKEON_TAVILY_API_KEY`). The second stop of that chain is the `Secrets` section of the
+file (`Secrets:TAVILY_API_KEY`), the environment variable winning when both exist.
 
 **What this means in practice.** The file is the durable, shared base; everything laid
 over it is an ephemeral layer that lives and dies with one process. `orkeon doctor`'s
@@ -76,7 +78,8 @@ runtime degrades to the echo provider and warns once. See
 | `PathSecurity` | Allowed physical directories (`AdditionalAllowedDirectories`) | `AddOrkeonInfrastructure()` |
 | `Telemetry` | OpenTelemetry export | `AddOrkeonInfrastructure(configuration)` |
 | `A2A`, `A2A:Security` | A2A server/client, mTLS, auth schemes | opt-in `AddOrkeonA2A(configuration)` |
-| `MCP`, `MCP:Server` | MCP client connections + optional MCP server | — (`AddOrkeonMcp(configuration)` is called by `AddOrkeonInfrastructure(configuration)`; the `MCP` section gates it) — see [MCP integration](../architecture/mcp.md) |
+| `MCP`, `MCP:Server` | MCP client connections + optional MCP server | `RunnerHost` (`orkeon run`) when `MCP:Servers` declares at least one server and `MCP:Enabled` is not `false` — the servers are connected before the crew loads (STUDIO-21); library hosts call `AddOrkeonMcp(configuration)` or the `AddOrkeonInfrastructure(configuration)` overload — see [MCP integration](../architecture/mcp.md) |
+| `Secrets:<NAME>` | Second stop of the secret chain after `ORKEON_<NAME>` (`ConfigurationSecretProvider`), e.g. `Secrets:TAVILY_API_KEY` for `web_search` | `AddOrkeonInfrastructure()` |
 | `Evaluation` | Evaluation services | — (registered by `AddOrkeonInfrastructure()`; the section gates behavior) |
 | `RaggableTree` | Codebase indexing (embedding, excludes) | **opt-out in runner hosts**: `RunnerHost` registers it by default, `RaggableTree:Enabled = false` disables; library consumers call `AddRaggableTree(options)` explicitly |
 | `Resilience` | Retry/circuit-breaker/timeout policy knobs (`ResilienceOptions`) | bound by `AddOrkeonInfrastructure()` |

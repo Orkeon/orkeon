@@ -594,6 +594,11 @@ public static partial class RunnerExecution
 
         LogLoadingCrew(logger, bootstrap.ConfigPath);
 
+        // The MCP tools must be in the registry before the crew resolves its tools (STUDIO-21):
+        // a server that fails costs one error line and the run goes on, so a crew naming one
+        // of its tools fails at load, under StrictTools, with the usual "unknown tool" line.
+        await McpStartup.ConnectConfiguredServersAsync(host, ct).ConfigureAwait(false);
+
         var factory = host.Services.GetRequiredService<ICrewFactory>();
 
         Domain.Crew.Crew crew;

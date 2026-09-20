@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-21 -->
+### Added — Studio: Tools and MCP settings tabs; `orkeon run` connects the MCP servers the settings declare (STUDIO-21)
+
+- **`orkeon run` honours the `MCP` section.** Until now the section was bound by nobody: the
+  runners built their host without configuration, so an MCP server written in the settings
+  changed nothing. `RunnerHost` now calls `AddOrkeonMcp` when `MCP:Servers` declares at least
+  one server and `MCP:Enabled` is not `false`, and an explicit startup step (`McpStartup`)
+  connects every server before the crew loads — and before `--validate` judges it and
+  `--list-tools` prints the manifest. A server that cannot be connected (missing command,
+  silent endpoint, handshake pending after 30 s) costs one error line naming it, on the log and
+  on stderr, and the run goes on; a crew naming one of its tools then fails at load under
+  `StrictTools`. `McpToolProvider` also implements `IDisposable` so a host disposed
+  synchronously releases the child processes. `ConfigurationKeys.McpSection` spells the
+  section once for the infrastructure, the runners and Studio.
+
 <!-- T-31 / T-32 -->
 ### Changed — Studio: editable fields look editable, multi-line fields are five lines (T-31, T-32)
 

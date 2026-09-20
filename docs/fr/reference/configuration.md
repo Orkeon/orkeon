@@ -31,7 +31,10 @@ empilent, au-dessus des sources standard de l'hôte .NET :
    `/script`) du runner et les `InternalMounts` sont toujours ajoutés.
 
 Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolution de
-secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY`).
+secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY` ; la clé Tavily de l'outil
+`web_search` est `ORKEON_TAVILY_API_KEY`). Le second maillon de cette chaîne est la
+section `Secrets` du fichier (`Secrets:TAVILY_API_KEY`), la variable d'environnement
+l'emportant quand les deux existent.
 
 **Ce que cela signifie en pratique.** Le fichier est la base durable et partagée ; tout
 ce qui se pose dessus est un calque éphémère qui vit et meurt avec un processus. La
@@ -82,7 +85,8 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 | `PathSecurity` | Répertoires physiques autorisés (`AdditionalAllowedDirectories`) | `AddOrkeonInfrastructure()` |
 | `Telemetry` | Export OpenTelemetry | `AddOrkeonInfrastructure(configuration)` |
 | `A2A`, `A2A:Security` | Serveur/client A2A, mTLS, schémas d'auth | opt-in `AddOrkeonA2A(configuration)` |
-| `MCP`, `MCP:Server` | Connexions client MCP + serveur MCP optionnel | — (`AddOrkeonMcp(configuration)` est appelé par `AddOrkeonInfrastructure(configuration)` ; la section `MCP` le gouverne) — voir [Intégration MCP](../architecture/mcp.md) |
+| `MCP`, `MCP:Server` | Connexions client MCP + serveur MCP optionnel | `RunnerHost` (`orkeon run`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est pas `false` — les serveurs sont connectés avant le chargement de la crew (STUDIO-21) ; les hôtes bibliothèque appellent `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir [Intégration MCP](../architecture/mcp.md) |
+| `Secrets:<NOM>` | Second maillon de la chaîne de secrets après `ORKEON_<NOM>` (`ConfigurationSecretProvider`), p. ex. `Secrets:TAVILY_API_KEY` pour `web_search` | `AddOrkeonInfrastructure()` |
 | `Evaluation` | Services d'évaluation | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `RaggableTree` | Indexation de codebase (embedding, exclusions) | **opt-out dans les hôtes runner** : `RunnerHost` l'enregistre par défaut, `RaggableTree:Enabled = false` le désactive ; les consommateurs bibliothèque appellent `AddRaggableTree(options)` explicitement |
 | `Resilience` | Réglages retry/circuit-breaker/timeout (`ResilienceOptions`) | lié par `AddOrkeonInfrastructure()` |

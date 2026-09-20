@@ -135,7 +135,9 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 > (`AddOrkeonPlugins`) et la **permission gate** (`AddOrkeonPermissionGate`) — ne
 > sont enregistrés par **aucune** des deux surcharges : chacun s'active
 > explicitement via son extension `AddOrkeonXxx()`. MCP, lui, vient avec la
-> surcharge `IConfiguration` (ou `AddOrkeonMcp(configuration)` seul), et le store
+> surcharge `IConfiguration` (ou `AddOrkeonMcp(configuration)` seul) — et l'hôte
+> partagé des runners l'ajoute de lui-même dès que `MCP:Servers` déclare un serveur
+> (STUDIO-21) —, et le store
 > de checkpointing **in-memory** est enregistré par les deux surcharges — seule
 > sa variante durable est opt-in.
 > Catalogue complet : [Sous-systèmes opt-in](../reference/opt-in-subsystems.md).

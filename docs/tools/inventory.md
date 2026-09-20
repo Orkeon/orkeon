@@ -213,6 +213,7 @@ the REPL.
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ only if `BRAVE_API_KEY` is set | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (host opt-in) | ❌ |
+| The tools of the MCP servers `MCP:Servers` declares | ✅ connected before the crew loads, under their own names (STUDIO-21) | ❌ |
 | `semantic_search` | ✅ (wired by the run command) | ❌ |
 | `human_input` | ✅ (question surfaces on the run event bus) | ❌ |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | per agent, when `AllowDelegation` is on | per agent |

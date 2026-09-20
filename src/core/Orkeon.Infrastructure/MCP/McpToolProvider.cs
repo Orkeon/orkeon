@@ -11,12 +11,15 @@ namespace Orkeon.Infrastructure.MCP;
 /// tools in the Orkeon tool registry.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
-public partial class McpToolProvider : IAsyncDisposable
+[SuppressMessage("Design", "CA1063",
+    Justification = "The cleanup lives in DisposeAsync, which owns the disconnect sequence and the finalizer suppression; Dispose() is the synchronous bridge to it, and a Dispose(bool) split would duplicate that sequence for no native resource.")]
+public partial class McpToolProvider : IAsyncDisposable, IDisposable
 {
     private readonly IToolRegistry _toolRegistry;
     private readonly ILogger _logger;
     private readonly ILoggerFactory? _loggerFactory;
     private readonly ConcurrentDictionary<string, McpClientEntry> _clients = new();
+    private bool _disposed;
 
     private sealed record McpClientEntry(
         McpClient Client,
@@ -173,11 +176,31 @@ public partial class McpToolProvider : IAsyncDisposable
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        if (_disposed)
+            return;
+        _disposed = true;
+
         foreach (var serverId in _clients.Keys.ToList())
         {
             await DisconnectServerAsync(serverId).ConfigureAwait(false);
         }
 
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// The synchronous bridge a DI container needs: a singleton that only implements
+    /// <see cref="IAsyncDisposable"/> makes <c>ServiceProvider.Dispose()</c> throw, and the
+    /// runners dispose their host synchronously (STUDIO-21). Blocking here is the end of a
+    /// process: the stdio servers it spawned are killed with it, and there is nothing left to
+    /// starve.
+    /// </summary>
+    public void Dispose()
+    {
+        if (_disposed)
+            return;
+
+        DisposeAsync().AsTask().GetAwaiter().GetResult();
         GC.SuppressFinalize(this);
     }
 

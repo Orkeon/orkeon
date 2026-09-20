@@ -20,6 +20,7 @@ using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Telemetry;
 using Orkeon.Infrastructure.Logging;
+using Orkeon.Infrastructure.MCP;
 using Orkeon.Analysis.DependencyInjection;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Tools.Abstractions.DependencyInjection;
@@ -509,11 +510,32 @@ public static partial class RunnerHost
         if (!string.IsNullOrEmpty(braveKey))
             services.AddOrkeonBraveSearchTool(braveKey);
 
+        // The MCP servers the settings declare (STUDIO-21): bound and provided here, connected
+        // by McpStartup before the crew loads, since the runners never start the host.
+        RegisterMcp(context, services);
+
         // Tool registry from DI
         services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
 
         // Runner-specific services
         configureServices?.Invoke(context, services);
+    }
+
+    /// <summary>
+    /// The <c>MCP</c> section of the settings, when it declares servers (STUDIO-21). Until then
+    /// the section was bound by nobody: <c>orkeon run</c> built its host without configuration,
+    /// so a server written in the settings changed nothing. An absent or empty
+    /// <c>MCP:Servers</c>, or <c>MCP:Enabled = false</c>, registers nothing — exactly the
+    /// surface every run had before — and the servers are connected by
+    /// <see cref="McpStartup"/>, not by a hosted service, because the runners never start the
+    /// host.
+    /// </summary>
+    private static void RegisterMcp(HostBuilderContext context, IServiceCollection services)
+    {
+        if (!McpStartup.IsConfigured(context.Configuration))
+            return;
+
+        services.AddOrkeonMcp(context.Configuration);
     }
 
     private static void ConfigureRunnerLogging(
