@@ -583,7 +583,7 @@
   </data>
   <!-- STUDIO-15: la regla de montaje es por raíz virtual, ya no por índice -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>El runner inserta primero su propio montaje — el directorio de configuración del equipo como «/crew» (el directorio del script como «/script» para un equipo .ork.ts) — y luego coloca cada argumento --mount según su raíz virtual en «Orkeon:FileSystem:Mounts»: en una raíz que appsettings ya declara, el --mount reemplaza esa entrada de appsettings para esta ejecución; en una raíz nueva, se añade después de todas las entradas declaradas. Las entradas de appsettings que ningún --mount nombra siguen vigentes. El directorio de registros LLM se monta aparte, oculto a los agentes, y no desplaza nada.</value>
+    <value>El runner inserta primero su propio montaje — el directorio de configuración del equipo como «/crew» (el directorio del script como «/script» para un equipo .ork.ts) — y luego coloca cada argumento --mount según su raíz virtual en «Orkeon:FileSystem:Mounts»: en una raíz que los ajustes ya declaran, el --mount sustituye para esta ejecución todas las entradas de esa raíz; en una raíz nueva, se añade después de todas las entradas declaradas. Varias entradas de los ajustes pueden declarar una misma raíz si cada una lleva un identificador: un --mount-id (o el bloque mounts: del equipo) conserva una y las demás no se montan en la ejecución. Las entradas que ningún --mount nombra siguen vigentes. El directorio de registros LLM se monta aparte, oculto a los agentes, y no desplaza nada.</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts añade además cada ruta base de --mount a la lista blanca «PathSecurity:AdditionalAllowedDirectories», permitiendo que los montajes apunten fuera del directorio de trabajo (mismo efecto que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
@@ -1799,6 +1799,24 @@
   <data name="Studio.Settings.NotSaved" xml:space="preserve">
     <value>«{0}» añadido, pero no se pudieron guardar los ajustes — {1}</value>
   </data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>declarado como {0} — este punto de montaje es {1}</value></data>
+  <data name="Studio.Settings.Reused" xml:space="preserve"><value>«{0}» ya estaba autorizado; el equipo usa ahora esa entrada</value></data>
+  <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>una de {0} carpetas declaradas como {1}</value></data>
+  <data name="Studio.Settings.MountId" xml:space="preserve"><value>Identificador {0}</value></data>
+  <data name="Studio.Settings.MountIdNew" xml:space="preserve"><value>Identificador {0} — asignado al guardar</value></data>
+  <data name="Studio.Settings.CopyId" xml:space="preserve"><value>Copiar el identificador</value></data>
+  <data name="Studio.Settings.MountUsedBy" xml:space="preserve"><value>Usado por {0}</value></data>
+  <data name="Studio.Settings.RemoveReferenced" xml:space="preserve"><value>«{0}» lo usa {1}. ¿Quitarlo de todos modos? Esos equipos no arrancarán hasta que la carpeta vuelva a estar autorizada.</value></data>
+  <data name="Studio.Settings.TeamFoldersRowDeclared" xml:space="preserve"><value>{0} · {1} → {2} ({3})</value></data>
+  <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — la declaración {2} falta en esta máquina</value></data>
+  <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Esta declaración ({0}) falta en esta máquina</value></data>
+  <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>«{0}» autorizada y vinculada como {1}</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Este equipo hace referencia a declaraciones de carpeta que faltan aquí: {0}. Decláralas en Ajustes › Carpetas autorizadas o cambia las carpetas del equipo.</value></data>
+  <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (seleccionada por identificador entre {1})</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (no montada en esta ejecución)</value></data>
+  <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (una de {1} entradas — nada la selecciona)</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} carpeta(s) hacen referencia a declaraciones que faltan en esta máquina</value></data>
+  <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>Autorizarlas tal como están registradas</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
     <value>Un agente hace una sola cosa. Descríbala en una frase, y abra solo las capacidades necesarias.</value>
   </data>

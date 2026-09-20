@@ -161,7 +161,9 @@ public sealed class ConfigTabViewModelTests
 
         await tab.LoadAsync(path, TestContext.Current.CancellationToken);
 
-        Assert.Equal("/data:/workspace:rw", Assert.Single(tab.Mounts.Mounts).MountString);
+        var row = Assert.Single(tab.Mounts.Mounts);
+        Assert.Equal("/data:/workspace:rw", MountDefinition.Parse(row.MountString).WithoutId().ToMountString());
+        Assert.True(row.IsIdNew);   // an entry from before ids gets one at load, written at the next save (VFS-90)
     }
 
     [Fact]
@@ -291,7 +293,9 @@ public sealed class ConfigTabViewModelTests
 
         await tab.InitializeAsync(TestContext.Current.CancellationToken);
 
-        Assert.Equal(["/data/factures:/workspace:ro", "/data/out:/output:rw"], tab.Mounts.CurrentMountStrings);
+        Assert.Equal(
+            ["/data/factures:/workspace:ro", "/data/out:/output:rw"],
+            tab.Mounts.CurrentMountStrings.Select(m => MountDefinition.Parse(m).WithoutId().ToMountString()));
         Assert.Equal("kimi-k3", tab.Llm.Model);
         Assert.Equal(GlobalPath, tab.LoadedPath);
         Assert.False(tab.IsDirty);

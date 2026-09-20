@@ -386,6 +386,62 @@ public static class StudioStringKeys
     /// <summary>"“{0}” added, but the settings could not be saved — {1}".</summary>
     public const string AllowedFoldersNotSaved = "Studio.Settings.NotSaved";
 
+    // ---- Mount identity (VFS-90) -------------------------------------------
+
+    /// <summary>"declared as {0} — this mount point is {1}" — a chooser row greyed out on a targeted open.</summary>
+    public const string AllowedFoldersOtherRoot = "Studio.Settings.OtherRoot";
+
+    /// <summary>"“{0}” was already authorized; the team now uses that entry" — a declaration reused instead of duplicated.</summary>
+    public const string AllowedFoldersReused = "Studio.Settings.Reused";
+
+    /// <summary>"one of {0} folders declared as {1}" — a chooser row whose root several entries share.</summary>
+    public const string AllowedFoldersSharedRoot = "Studio.Settings.SharedRoot";
+
+    /// <summary>"Id {0}" — an entry's id on the settings screen.</summary>
+    public const string MountId = "Studio.Settings.MountId";
+
+    /// <summary>"Id {0} — assigned on save" — an entry that had none until this session.</summary>
+    public const string MountIdAssignedOnSave = "Studio.Settings.MountIdNew";
+
+    /// <summary>"Copy the id" — the button next to an entry's id.</summary>
+    public const string MountCopyId = "Studio.Settings.CopyId";
+
+    /// <summary>"Used by {0}" — the teams referencing an entry.</summary>
+    public const string MountUsedBy = "Studio.Settings.MountUsedBy";
+
+    /// <summary>"“{0}” is used by {1}. Remove it anyway? Those teams will not start until the folder is authorized again."</summary>
+    public const string MountRemoveReferenced = "Studio.Settings.RemoveReferenced";
+
+    /// <summary>"{0} · {1} → {2} ({3})" — a team-folders row bound to a settings entry: team, root, folder, short id.</summary>
+    public const string TeamFoldersRowDeclared = "Studio.Settings.TeamFoldersRowDeclared";
+
+    /// <summary>"{0} · {1} — declaration {2} is missing on this machine" — a team-folders row whose id nothing declares.</summary>
+    public const string TeamFoldersUnknownId = "Studio.Settings.TeamFoldersUnknownId";
+
+    /// <summary>"This declaration ({0}) is missing on this machine" — a wizard row naming an unknown id.</summary>
+    public const string WizardUnknownMountId = "Studio.Create.UnknownMountId";
+
+    /// <summary>"“{0}” authorized and bound as {1}" — the wizard declared a folder under the row's root.</summary>
+    public const string WizardDeclaredFolder = "Studio.Create.DeclaredFolder";
+
+    /// <summary>"This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders."</summary>
+    public const string RunBlockedUnknownMountId = "Studio.Run.BlockedUnknownMountId";
+
+    /// <summary>"{0} (selected by id among {1})" — an effective-mounts row kept by --mount-id.</summary>
+    public const string MountsOriginSelectedById = "Studio.Run.OriginSelectedById";
+
+    /// <summary>"{0} (not mounted for this run)" — an effective-mounts row another entry of its root displaced.</summary>
+    public const string MountsOriginNotSelected = "Studio.Run.OriginNotSelected";
+
+    /// <summary>"{0} (one of {1} entries — nothing selects it)" — an effective-mounts row the runner will refuse.</summary>
+    public const string MountsOriginConflict = "Studio.Run.OriginConflict";
+
+    /// <summary>"{0} folder(s) refer to declarations missing on this machine" — the import review.</summary>
+    public const string ImportUnknownMountIds = "Studio.Import.UnknownMountIds";
+
+    /// <summary>"Authorize them as recorded" — the import action declaring the copies under their ids.</summary>
+    public const string ImportDeclareCopies = "Studio.Import.DeclareCopies";
+
     /// <summary>"Folders of “{0}”" — the team-mounts modal title.</summary>
     public const string TeamMountsTitle = "Studio.Teams.TeamMountsTitle";
 
@@ -1448,6 +1504,26 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.AllowedFoldersBindTitle] = "Which folder sits behind {0}?",
         [StudioStringKeys.AllowedFoldersDeclared] = "“{0}” added to the authorized folders",
         [StudioStringKeys.AllowedFoldersNotSaved] = "“{0}” added, but the settings could not be saved — {1}",
+        [StudioStringKeys.AllowedFoldersOtherRoot] = "declared as {0} — this mount point is {1}",
+        [StudioStringKeys.AllowedFoldersReused] = "“{0}” was already authorized; the team now uses that entry",
+        [StudioStringKeys.AllowedFoldersSharedRoot] = "one of {0} folders declared as {1}",
+        [StudioStringKeys.MountId] = "Id {0}",
+        [StudioStringKeys.MountIdAssignedOnSave] = "Id {0} — assigned on save",
+        [StudioStringKeys.MountCopyId] = "Copy the id",
+        [StudioStringKeys.MountUsedBy] = "Used by {0}",
+        [StudioStringKeys.MountRemoveReferenced] =
+            "“{0}” is used by {1}. Remove it anyway? Those teams will not start until the folder is authorized again.",
+        [StudioStringKeys.TeamFoldersRowDeclared] = "{0} · {1} → {2} ({3})",
+        [StudioStringKeys.TeamFoldersUnknownId] = "{0} · {1} — declaration {2} is missing on this machine",
+        [StudioStringKeys.WizardUnknownMountId] = "This declaration ({0}) is missing on this machine",
+        [StudioStringKeys.WizardDeclaredFolder] = "“{0}” authorized and bound as {1}",
+        [StudioStringKeys.RunBlockedUnknownMountId] =
+            "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
+        [StudioStringKeys.MountsOriginSelectedById] = "{0} (selected by id among {1})",
+        [StudioStringKeys.MountsOriginNotSelected] = "{0} (not mounted for this run)",
+        [StudioStringKeys.MountsOriginConflict] = "{0} (one of {1} entries — nothing selects it)",
+        [StudioStringKeys.ImportUnknownMountIds] = "{0} folder(s) refer to declarations missing on this machine",
+        [StudioStringKeys.ImportDeclareCopies] = "Authorize them as recorded",
         [StudioStringKeys.TeamMountsTitle] = "Folders of “{0}”",
         [StudioStringKeys.TeamMountsNone] = "Without a folder, this team can neither read nor write any file.",
         [StudioStringKeys.TeamMountsSummary] = "{0} folders: {1}",
@@ -1725,10 +1801,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "The runner inserts its own mount first — the crew's configuration directory as " +
             "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each " +
             "--mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the " +
-            "appsettings already declare, the --mount replaces that settings entry for this run; " +
-            "on a new root, it is appended after every declared entry. Settings entries no --mount " +
-            "names stay in force. The LLM log directory is mounted separately, hidden from agents, " +
-            "and shifts nothing.",
+            "appsettings already declare, the --mount replaces every settings entry of that root for " +
+            "this run; on a new root, it is appended after every declared entry. Several settings " +
+            "entries may declare one root when each carries an id: a --mount-id (or the crew's " +
+            "mounts: block) keeps one and the others are not mounted for the run. Settings entries " +
+            "no --mount names stay in force. The LLM log directory is mounted separately, hidden " +
+            "from agents, and shifts nothing.",
         [StudioStringKeys.MountSemanticsExternalMounts] =
             "--allow-external-mounts additionally whitelists each --mount base path under " +
             "'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working " +

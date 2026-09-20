@@ -583,7 +583,7 @@
   </data>
   <!-- STUDIO-15：挂载规则按虚拟根匹配，不再按索引 -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>运行器先插入自己的挂载——团队的配置目录挂载为「/crew」（.ork.ts 团队则把脚本目录挂载为「/script」）——然后按虚拟根把每个 --mount 参数放入「Orkeon:FileSystem:Mounts」：若 appsettings 已声明该根，本次运行中该 --mount 取代那条 appsettings 条目；若是新的根，则追加到所有已声明条目之后。没有任何 --mount 提及的 appsettings 条目继续生效。LLM 日志目录单独挂载，对智能体不可见，也不会造成任何偏移。</value>
+    <value>运行器首先插入自己的挂载 — 团队的配置目录作为“/crew”（.ork.ts 团队的脚本目录作为“/script”）— 然后按虚拟根将每个 --mount 参数放入“Orkeon:FileSystem:Mounts”：在设置已声明的根上，本次运行中 --mount 会替换该根的所有设置条目；在新的根上，它会追加到所有已声明条目之后。当每个条目都带有标识时，多个设置条目可以声明同一个根：--mount-id（或团队的 mounts: 块）保留一个，其余条目在本次运行中不挂载。没有任何 --mount 指名的设置条目继续生效。LLM 日志目录单独挂载，对代理不可见，且不会移动任何内容。</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts 还会把每个 --mount 基础路径加入「PathSecurity:AdditionalAllowedDirectories」白名单，使挂载可以指向工作目录之外（效果等同于 ORKEON_ALLOW_EXTERNAL_MOUNTS=1）。</value>
@@ -1799,6 +1799,24 @@
   <data name="Studio.Settings.NotSaved" xml:space="preserve">
     <value>「{0}」已添加，但设置未能保存 — {1}</value>
   </data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>声明为 {0} — 此挂载点是 {1}</value></data>
+  <data name="Studio.Settings.Reused" xml:space="preserve"><value>“{0}”已获授权；团队现在使用该条目</value></data>
+  <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>声明为 {1} 的 {0} 个文件夹之一</value></data>
+  <data name="Studio.Settings.MountId" xml:space="preserve"><value>标识 {0}</value></data>
+  <data name="Studio.Settings.MountIdNew" xml:space="preserve"><value>标识 {0} — 保存时分配</value></data>
+  <data name="Studio.Settings.CopyId" xml:space="preserve"><value>复制标识</value></data>
+  <data name="Studio.Settings.MountUsedBy" xml:space="preserve"><value>由 {0} 使用</value></data>
+  <data name="Studio.Settings.RemoveReferenced" xml:space="preserve"><value>“{0}”正由 {1} 使用。仍要移除吗？在该文件夹重新获得授权之前，这些团队将无法启动。</value></data>
+  <data name="Studio.Settings.TeamFoldersRowDeclared" xml:space="preserve"><value>{0} · {1} → {2} ({3})</value></data>
+  <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — 此机器上缺少声明 {2}</value></data>
+  <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>此机器上缺少该声明（{0}）</value></data>
+  <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>“{0}”已授权并绑定为 {1}</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>该团队引用了此处缺少的文件夹声明：{0}。请在“设置 › 已授权文件夹”中声明它们，或更改团队的文件夹。</value></data>
+  <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0}（在 {1} 个条目中按标识选中）</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0}（本次运行未挂载）</value></data>
+  <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0}（{1} 个条目之一 — 没有任何选择）</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} 个文件夹引用了此机器上缺少的声明</value></data>
+  <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>按记录授权它们</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
     <value>一个智能体只做一件事。用一句话描述它，并只开放必需的能力。</value>
   </data>

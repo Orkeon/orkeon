@@ -238,9 +238,21 @@ public class LaunchOptionsModelTests
     [Fact]
     public void The_override_rule_is_stated_for_the_ui()
     {
-        Assert.Contains("replaces that settings entry", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
+        Assert.Contains("replaces every settings entry of that root", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
         Assert.Contains("appended after every declared entry", LaunchOptionsModel.MountOverrideExplanation, StringComparison.Ordinal);
         Assert.Contains("--allow-external-mounts", LaunchOptionsModel.ExternalMountsExplanation, StringComparison.Ordinal);
+    }
+
+    /// <summary>VFS-90: the ids a launch keeps travel to the options with the mounts.</summary>
+    [Fact]
+    public void Mount_ids_flow_to_the_launch_options()
+    {
+        var model = new LaunchOptionsModel(new MountValidator(new FakeDirectoryProbe("/a")));
+        var id = Orkeon.Domain.Common.MountId.Create().ToString();
+        model.MountIds = [id];
+
+        Assert.Equal([id], model.ToLaunchOptions(YamlTarget()).MountIds);
+        Assert.Equal([id], model.ToLaunchOptions(ScriptTarget()).MountIds);
     }
 
     [Fact]

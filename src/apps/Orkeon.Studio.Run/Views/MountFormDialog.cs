@@ -24,6 +24,7 @@ internal sealed class MountFormDialog : Window
     private readonly ListView _rights;
     private readonly TextView _overrides;
     private readonly Label _error;
+    private readonly Orkeon.Domain.Common.MountId? _existingId;
 
     internal MountFormDialog(
         MountDefinition? existing,
@@ -32,8 +33,11 @@ internal sealed class MountFormDialog : Window
     {
         _directories = directories ?? PhysicalDirectoryProbe.Instance;
         _lister = lister;
+        _existingId = existing?.Id;
 
-        Title = existing is null ? "Add a launch mount" : "Edit launch mount";
+        Title = existing is null
+            ? "Add a launch mount"
+            : existing.ShortId is { } shortId ? $"Edit launch mount [{shortId}]" : "Edit launch mount";
         X = Pos.Center();
         Y = Pos.Center();
         Width = Dim.Percent(90);
@@ -175,6 +179,8 @@ internal sealed class MountFormDialog : Window
 
         var candidate = new MountDefinition
         {
+            // An existing launch mount keeps the id it was recorded with (VFS-90); a new one has none.
+            Id = _existingId,
             PhysicalPath = (_physical.Text ?? string.Empty).Trim(),
             VirtualPath = (_virtual.Text ?? string.Empty).Trim(),
             Rights = MountRightsTokens.At(_rights.SelectedItem ?? 0),

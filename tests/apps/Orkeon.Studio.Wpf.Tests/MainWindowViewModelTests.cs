@@ -126,7 +126,10 @@ public sealed class MainWindowViewModelTests
         window.AllowedFolders.Rows.Single().IsChecked = true;
         window.AllowedFolders.ConfirmCommand.Execute(null);
 
-        Assert.Equal(["/data/out:/output:rw"], window.CreateTeam.TeamMounts);
+        // Verbatim — the settings entry itself, id included (VFS-90).
+        var bound = Assert.Single(window.CreateTeam.TeamMounts);
+        Assert.Equal("/data/out:/output:rw", MountDefinition.Parse(bound).WithoutId().ToMountString());
+        Assert.Equal(Assert.Single(window.Config.Mounts.CurrentMountStrings), bound);
     }
 
     [Fact]
@@ -150,7 +153,7 @@ public sealed class MainWindowViewModelTests
         window.Config.Mounts.AllowFolderCommand.Execute(null);
 
         Assert.Equal([EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder]], picker.Prompts);
-        Assert.Equal(["/data/docs:/docs:ro"], window.Config.Mounts.CurrentMountStrings);
+        Assert.Equal(["/data/docs:/docs:ro"], window.Config.Mounts.CurrentMountStrings.Select(m => MountDefinition.Parse(m).WithoutId().ToMountString()));
         Assert.False(window.AllowedFolders.IsOpen);
     }
 
@@ -180,8 +183,8 @@ public sealed class MainWindowViewModelTests
         window.CreateTeam.TeamMounts.Add("/elsewhere/archives:/archives:ro");
 
         var chips = window.CreateTeam.MountRows;
-        Assert.False(chips.Single(c => c.MountString.StartsWith("/data/docs", StringComparison.Ordinal)).IsUndeclared);
-        Assert.True(chips.Single(c => c.MountString.StartsWith("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
+        Assert.False(chips.Single(c => c.MountString.Contains("/data/docs", StringComparison.Ordinal)).IsUndeclared);
+        Assert.True(chips.Single(c => c.MountString.Contains("/elsewhere", StringComparison.Ordinal)).IsUndeclared);
     }
 
     [Fact]

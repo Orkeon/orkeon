@@ -24,6 +24,9 @@ public enum RunOption
     /// <summary><c>--mount</c>.</summary>
     Mounts,
 
+    /// <summary><c>--mount-id</c> (VFS-90).</summary>
+    MountIds,
+
     /// <summary><c>--allow-external-mounts</c>.</summary>
     AllowExternalMounts,
 
@@ -61,6 +64,7 @@ public static class RunOptionAvailability
     [
         RunOption.Settings,
         RunOption.Mounts,
+        RunOption.MountIds,
         RunOption.AllowExternalMounts,
         RunOption.Verbose,
         RunOption.LlmLog,
@@ -104,6 +108,7 @@ public static class RunOptionAvailability
             RunOption.Inputs => RunOptionNames.Flag(RunOptionNames.Inputs),
             RunOption.InputsFile => RunOptionNames.Flag(RunOptionNames.InputsFile),
             RunOption.Mounts => RunOptionNames.Flag(RunOptionNames.Mount),
+            RunOption.MountIds => RunOptionNames.Flag(RunOptionNames.MountId),
             RunOption.AllowExternalMounts => RunOptionNames.Flag(RunOptionNames.AllowExternalMounts),
             RunOption.Verbose => RunOptionNames.Flag(RunOptionNames.Verbose),
             RunOption.LlmLog => RunOptionNames.Flag(RunOptionNames.LlmLog),

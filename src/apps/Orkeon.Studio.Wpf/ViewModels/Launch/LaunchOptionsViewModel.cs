@@ -350,7 +350,8 @@ public sealed class LaunchOptionsViewModel : ObservableObject
     public RunLaunchOptions ToOptions(
         IReadOnlyList<string>? mounts = null,
         bool allowExternalMounts = false,
-        bool validate = false) => new()
+        bool validate = false,
+        IReadOnlyList<string>? mountIds = null) => new()
     {
         SettingsPath = EffectiveSettingsPath,
         Variables = IsYamlTarget ? [.. Variables.Select(v => v.ToVariable())] : [],
@@ -358,6 +359,7 @@ public sealed class LaunchOptionsViewModel : ObservableObject
         InputsJson = IsScriptTarget ? InputsJson : null,
         InputsFilePath = IsScriptTarget ? InputsFilePath : null,
         Mounts = mounts ?? [],
+        MountIds = mountIds ?? [],
         AllowExternalMounts = allowExternalMounts,
         Verbosity = Verbosity,
         LlmLogEnabled = LlmLogEnabled,

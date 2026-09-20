@@ -132,6 +132,15 @@
           <TextBlock Text="{Binding [Studio.Import.Add], Source={x:Static services:I18n.Instance}}"/>
         </StackPanel>
       </Button>
+      <!-- VFS-90 D-06: the candidate names folder declarations this machine does not have;
+           authorizing them as recorded — under the same ids — is what makes it launchable. -->
+      <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding DeclareCopiesCommand}"
+              Visibility="{Binding HasUnknownMounts, Converter={StaticResource BooleanToVisibility}}">
+        <StackPanel Orientation="Horizontal">
+          <controls:LucideIcon Kind="badge-check" Size="13" Margin="0,0,7,0"/>
+          <TextBlock Text="{Binding [Studio.Import.DeclareCopies], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+      </Button>
       <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Click="OnTestFirst"
               IsEnabled="{Binding Target.IsResolved}">
         <Button.Visibility>

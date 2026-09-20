@@ -156,6 +156,71 @@ public sealed class LaunchAllowedFoldersTests : IDisposable
     }
 
     /// <summary>
+    /// VFS-90: a settings declaration the team names by id goes on the command line as
+    /// <c>--mount-id</c> — no path, the machine's own entry as it stands today, even when the
+    /// sidecar's copy is stale.
+    /// </summary>
+    [Fact]
+    public void A_settings_declaration_the_team_names_is_selected_by_id_not_laid_as_a_path()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var team = NewTeam("veille", $"{id}|/old/place:/docs:ro", "./output:/output:rw");
+        var tab = Launcher(team, $"{id}|/data/docs:/docs:ro", "/data/archives:/archives:ro");
+
+        Assert.False(tab.IsBlockedByUndeclaredFolders);
+        Assert.False(tab.IsBlockedByUnknownMountIds);
+        var arguments = tab.BuildArguments().ToList();
+        var idIndex = arguments.IndexOf("--mount-id");
+        Assert.True(idIndex >= 0);
+        Assert.Equal(id.ToString(), arguments[idIndex + 1]);
+        Assert.DoesNotContain(arguments, a => a.Contains("/old/place", StringComparison.Ordinal));
+        Assert.DoesNotContain(arguments, a => a.Contains("/data/docs", StringComparison.Ordinal));
+        // The declared folder sits outside the team: the flag follows (D-12), by the entry's folder.
+        Assert.True(tab.Mounts.AllowExternalMounts);
+        // The chips and the meta line read the declaration, not the stale copy.
+        Assert.Contains($"{id}|/data/docs:/docs:ro", tab.Mounts.TeamMounts);
+    }
+
+    /// <summary>
+    /// VFS-90 D-06: a team naming a declaration this machine does not have — an import, or an
+    /// entry removed since — is refused before anything is spawned, with the id and the way out.
+    /// </summary>
+    [Fact]
+    public void A_team_naming_a_declaration_missing_here_is_refused_with_the_id()
+    {
+        var unknown = Orkeon.Domain.Common.MountId.Create();
+        var team = NewTeam("veille", $"{unknown}|/home/elsewhere/docs:/docs:ro");
+        var tab = Launcher(team, "/data/docs:/docs:ro");
+
+        Assert.True(tab.IsBlockedByUnknownMountIds);
+        Assert.Equal([unknown.ToString()], tab.UnknownTeamMountIds);
+        Assert.Contains(unknown.ToString(), tab.UnknownMountIdsMessage, StringComparison.Ordinal);
+        Assert.False(tab.RunCommand.CanExecute(null));
+        Assert.False(tab.ValidateCommand.CanExecute(null));
+        Assert.DoesNotContain(tab.BuildArguments(), a => a.Contains("/home/elsewhere", StringComparison.Ordinal));
+    }
+
+    /// <summary>
+    /// The effective table on a shared root: the entry the team selects reads as kept, the
+    /// other as not mounted — what the runner will do, said before it does it.
+    /// </summary>
+    [Fact]
+    public void The_effective_table_says_which_entry_of_a_shared_root_the_team_keeps()
+    {
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+        var team = NewTeam("veille", $"{b}|/srv/b:/output:rw");
+        var tab = Launcher(team, $"{a}|/srv/a:/output:rw", $"{b}|/srv/b:/output:rw");
+
+        var rows = tab.Mounts.EffectiveMounts.Where(r => r.Origin == MountOrigin.Settings).ToList();
+        Assert.Equal(EffectiveMountSelection.NotSelected, rows[0].Selection);
+        Assert.Equal(EffectiveMountSelection.SelectedById, rows[1].Selection);
+        Assert.Contains("selected by id among 2", rows[1].OriginDisplay, StringComparison.Ordinal);
+        Assert.Contains("not mounted for this run", rows[0].OriginDisplay, StringComparison.Ordinal);
+        Assert.Contains("--mount-id", tab.BuildArguments());
+    }
+
+    /// <summary>
     /// D-04. A team may associate a declared folder under a name the settings spend on another
     /// folder: that is a replacement the runner performs by root, and the table says so.
     /// </summary>

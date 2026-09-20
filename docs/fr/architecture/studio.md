@@ -206,7 +206,10 @@ seule sous un nom virtuel dérivé de son propre nom
 (`MountDefinition.SuggestVirtualPath`, première suggestion libre si ce nom est
 pris ou inutilisable) — le badge de droits de la carte le bascule en lecture et
 écriture. Les lignes « Des dossiers existants » du wizard ouvrent le même
-sélecteur avec les droits de la ligne et déclarent au passage ; un dossier
+sélecteur avec les droits de la ligne et déclarent le dossier choisi **sous la
+racine de la ligne**, avec un identifiant à lui, puis relient cette entrée même
+(VFS-90, D-01) — une seconde entrée sur une racine qu'un autre dossier occupe
+déjà, distinguée par son identifiant, jamais un renommage en `/docs` ; un dossier
 supplémentaire en écriture à l'étape Composer passe par une racine nommée.
 
 Un dossier d'équipe dont rien ne répond — ni déclaré dans les réglages, ni
@@ -242,31 +245,81 @@ leur sera associé et que les agents qui y écrivent échoueront ; un « Rétabl
 unique est le chemin de retour après une croix de trop. Ce que `SidecarMounts`
 enregistre est relatif à l'équipe pour chaque réponse « dans l'équipe » et chaque
 racine que le blueprint adresse sans réponse (`./output:/output:rw`,
-`./input:/workspace:ro`) ; la sauvegarde crée les dossiers. Au lancement, Studio
-pose les mounts du sidecar sur le run en arguments `--mount`, devant ceux du
-lancement — les chips et la commande ne peuvent pas diverger — **sauf les entrées
-que les réglages tiennent déjà**, même dossier, même nom, mêmes droits :
-celles-là sont en vigueur par les seuls réglages, et les repasser est du bruit
-(`LaunchMountPlan.WithoutSettingsDuplicates`). Le drapeau
-`--allow-external-mounts` suit lui aussi le sidecar : un dossier d'équipe hors de
-l'équipe l'allume, une équipe dont tous les dossiers se résolvent sous elle — le
-dossier de travail du lancement — n'en a pas besoin, et la case expert reste pour
-les montages du lancement.
-Le moteur place chaque `--mount` **par racine virtuelle** (`RunnerHost`) : un
-dossier d'équipe sous un nom que les réglages dépensent pour un autre dossier
-remplace cette entrée des réglages pour le run, et un dossier sous un nom neuf
-s'ajoute après les entrées déclarées. La table des montages effectifs de l'écran
-Exécuter prédit exactement cela — une ligne par racine, origine *appsettings*
-pour ce que les réglages fournissent, `--mount (remplace « … »)` pour un
-remplacement — et la phrase au-dessus énonce la règle (`MountOverrideSemantics`).
-Avant cela, la copie conforme du sélecteur rencontrait sa jumelle des réglages et
-toute équipe adoptée utilisant un dossier autorisé échouait au démarrage sur
-« Duplicate virtual paths » ; les dossiers déclarés dans les réglages sont aussi
-mis en liste blanche pour `PathValidator` sans aucun drapeau, si bien qu'une
-équipe lisant un dossier autorisé hors de son propre dossier n'est plus refusée
-fichier par fichier. Limite assumée : un `orkeon run` nu en terminal ne lit pas
-le sidecar — comme le champ `profile`, c'est le confort de Studio, pas le
-contrat du moteur.
+`./input:/workspace:ro`) ; la sauvegarde crée les dossiers. Au lancement, le catalogue lit le sidecar
+face aux réglages (`TeamMountResolution.Resolve`) et `LaunchMountPlan.For` dit ce
+qui atteint la ligne de commande : une déclaration des réglages que l'équipe nomme
+part en `--mount-id <ulid>` — sans chemin, l'entrée de la machine telle qu'elle
+est aujourd'hui ; les dossiers propres à l'équipe et toute copie que les réglages
+ne tiennent pas telle qu'enregistrée partent en `--mount`, devant ceux du
+lancement, pour que les chips et la commande ne puissent pas diverger ; un
+identifiant que cette machine ne déclare pas bloque le lancement (ci-dessous). Le
+drapeau `--allow-external-mounts` suit lui aussi le sidecar : un dossier d'équipe
+hors de l'équipe l'allume, une équipe dont tous les dossiers se résolvent sous
+elle — le dossier de travail du lancement — n'en a pas besoin, et la case expert
+reste pour les montages du lancement. Le moteur place chaque `--mount` **par
+racine virtuelle** (`RunnerHost`) : un dossier d'équipe sous un nom que les
+réglages dépensent pour un autre dossier remplace toutes les entrées des réglages
+de cette racine pour le run, et un dossier sous un nom neuf s'ajoute après les
+entrées déclarées. La table des montages effectifs de l'écran Exécuter prédit
+exactement cela — une ligne par entrée des réglages, origine *appsettings* pour ce
+que les réglages fournissent, `--mount (remplace « … »)` pour un remplacement,
+*sélectionné par identifiant parmi N* / *non monté pour cette exécution* pour les
+entrées d'une racine partagée — et la phrase au-dessus énonce la règle
+(`MountOverrideSemantics`). Avant cela, la copie conforme du sélecteur rencontrait
+sa jumelle des réglages et toute équipe adoptée utilisant un dossier autorisé
+échouait au démarrage sur « Duplicate virtual paths » ; les dossiers déclarés dans
+les réglages sont aussi mis en liste blanche pour `PathValidator` sans aucun
+drapeau, si bien qu'une équipe lisant un dossier autorisé hors de son propre
+dossier n'est plus refusée fichier par fichier. Limite assumée : un `orkeon run`
+nu en terminal ne lit pas le sidecar — c'est le bloc `mounts:` de la crew qu'il
+lit (VFS-90) ; comme le champ `profile`, le sidecar est le confort de Studio, pas
+le contrat du moteur.
+
+### Un montage a une identité (VFS-90)
+
+Chaque entrée de « Réglages › Dossiers autorisés » porte un **identifiant** —
+l'ULID de 26 caractères devant le `|` de sa chaîne de montage,
+`01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data\out:/output:rw` — attribué par l'éditeur au
+chargement à une entrée qui n'en a pas et écrit à l'enregistrement suivant,
+affiché sur la ligne avec une copie en un clic pour le bloc `mounts:` d'une crew
+écrite à la main. L'identifiant est ce par quoi le sidecar d'une équipe nomme ses
+déclarations, et c'est ce qui permet désormais à deux entrées de déclarer une même
+racine : la machine du propriétaire garde côte à côte le `…\09\output:/output:rw`
+de l'expérience 09 et le `…\10\output:/output:rw` de l'expérience 10, et chaque
+équipe nomme le sien. Les conséquences, écran par écran :
+
+- **L'entrée fait foi** (D-01). Le sélecteur ouvert pour un point de montage
+  n'offre que les entrées déclarées sous cette racine — une entrée déclarée comme
+  `/docs` lit « déclaré comme /docs — ce point de montage est /output » et ne peut
+  pas être choisie — et enregistre le choix tel quel, identifiant compris. Le
+  sélecteur disque déclare le dossier **sous la racine de la ligne** (une seconde
+  entrée `/output` quand une existe) et relie cette entrée ; une entrée égale —
+  même dossier, racine et droits — est réutilisée, jamais déclarée deux fois. Le
+  renommage en `/docs` pour esquiver une racine prise disparaît avec.
+- **Le sidecar garde une copie** (D-02) : `<ulid>|<dossier>:/racine:droits`,
+  portable, l'identifiant l'emportant sur la copie sur la machine qui l'a. Le
+  `./output` propre à une équipe ne porte pas d'identifiant (D-07). Un sidecar
+  écrit avant les identifiants résout ses copies par dossier, racine et droits, et
+  « Changer les dossiers » met à niveau une copie exacte vers l'entrée elle-même à
+  l'enregistrement.
+- **Les identifiants voyagent avec l'équipe** (D-06). « Dupliquer », « Exporter »
+  et « Importer » les copient tels quels. Une équipe nommant une déclaration que
+  cette machine n'a pas — un import, ou une entrée retirée depuis — lit « la
+  déclaration … manque sur cette machine » sur ses lignes et dans l'onglet des
+  dossiers, et « Exécuter » la refuse en nommant les identifiants ; la revue
+  d'import propose « Les autoriser tels qu'enregistrés », qui déclare les copies
+  **sous les mêmes identifiants** (un nouvel identifiant seulement quand cette
+  machine le dépense déjà pour autre chose).
+- **Les réglages disent qui dépend d'une entrée** : chaque ligne lit « Utilisé
+  par … » depuis les sidecars, et retirer une entrée qu'une équipe nomme demande
+  d'abord, en nommant les équipes — elles cessent de démarrer dès qu'elle
+  disparaît. `MountValidator` classe deux entrées sur une racine en information
+  (`STUDIO-MOUNT-SHARED`), une racine partagée avec une entrée sans identifiant en
+  l'erreur que le moteur lèverait, et un identifiant sur deux entrées en
+  `STUDIO-MOUNT-ID`.
+- **Les agents ne voient jamais un identifiant** : `list_mounts`, la table de
+  montages du prompt et les messages de refus d'accès ne nomment que des chemins
+  virtuels.
 
 Un dossier d'équipe peut contenir une **définition mono-fichier**. Chaque exemple
 d'`examples/` — et chaque définition écrite à la main — est un seul `config.yaml`

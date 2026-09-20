@@ -998,7 +998,7 @@ public class CreateTeamWizardTests
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
             PhysicalPath = Path.Combine("/data", "notes"),
-            VirtualPath = "/docs",
+            VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
 
@@ -1088,12 +1088,12 @@ public class CreateTeamWizardTests
 
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/first", VirtualPath = "/docs",
+            PhysicalPath = "/data/first", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/second", VirtualPath = "/docs",
+            PhysicalPath = "/data/second", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
 
@@ -1194,7 +1194,7 @@ public class CreateTeamWizardTests
         // What the shell binds back lands on the row, and reads as a real folder.
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/factures", VirtualPath = "/factures",
+            PhysicalPath = "/data/factures", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
         var documents = vm.StepOneRows.Single(r => r.VirtualPath == "/workspace");
@@ -1247,7 +1247,7 @@ public class CreateTeamWizardTests
         Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            PhysicalPath = "/data/notes", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
         Assert.Equal(["/data/archives:/archives:ro", "/data/notes:/workspace:ro"], vm.TeamMounts);
@@ -1355,7 +1355,7 @@ public class CreateTeamWizardTests
         // A real folder behind the read root is what silences it.
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            PhysicalPath = "/data/notes", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
         Assert.False(vm.NeedsInputFolder);
@@ -1512,7 +1512,7 @@ public class CreateTeamWizardTests
         Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
         vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
         {
-            PhysicalPath = "/data/notes", VirtualPath = "/notes",
+            PhysicalPath = "/data/notes", VirtualPath = "/workspace",
             Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
         });
 
@@ -1615,7 +1615,7 @@ public class CreateTeamWizardTests
         Assert.True(vm.CanCompose);
 
         // Answered the two ways the canonical rows are: a real folder, a folder inside the team.
-        vm.BindTeamMount("/factures", new Orkeon.Studio.Core.FileSystem.MountDefinition { PhysicalPath = "/data/factures", VirtualPath = "/x", Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly });
+        vm.BindTeamMount("/factures", new Orkeon.Studio.Core.FileSystem.MountDefinition { PhysicalPath = "/data/factures", VirtualPath = "/factures", Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly });
         vm.CreateInsideTeamCommand.Execute("/rapports");
         Assert.Equal(["/data/factures:/factures:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
         Assert.True(vm.StepOneRows[3].IsInsideTeam);
@@ -1996,26 +1996,34 @@ public class CreateTeamWizardTests
         Assert.Equal([SelectFolderTitle], picker.Prompts);
         Assert.False(shell.AllowedFolders.IsOpen);
 
-        Assert.Equal(["/data/factures:/factures:rw"], shell.Config.Mounts.CurrentMountStrings);
+        // Declared under the ROW's root, with an id of its own (VFS-90, D-01): the team names
+        // the declaration, so the declaration carries the name the agents use.
+        var declared = Assert.Single(shell.Config.Mounts.CurrentMountStrings);
+        var entry = Orkeon.Studio.Core.FileSystem.MountDefinition.Parse(declared);
+        Assert.NotNull(entry.Id);
+        Assert.Equal("/data/factures:/output:rw", entry.WithoutId().ToMountString());
         // Written to the settings file — by the novice auto-save on the edit and by the
         // explicit save behind the pick; the second, identical write is what makes the
         // outcome true whatever the auto-save's timing.
         Assert.NotEmpty(store.SavedPaths);
         Assert.All(store.SavedPaths, path => Assert.Equal("/home/user/.config/Orkeon/appsettings.json", path));
-        Assert.Contains("/data/factures:/factures:rw", store.LastSavedJson, StringComparison.Ordinal);
-        Assert.Equal(["/data/factures:/output:rw"], wizard.TeamMounts);
+        Assert.Contains("/data/factures:/output:rw", store.LastSavedJson, StringComparison.Ordinal);
+        // And the team binds that very entry, verbatim — id included.
+        Assert.Equal([declared], wizard.TeamMounts);
         var row = wizard.StepOneRows.Single(r => r.VirtualPath == "/output");
         Assert.Equal("/data/factures", row.Folder);
         Assert.False(row.IsUndeclared);
-        Assert.Equal("“factures” added to the authorized folders", wizard.StatusMessage);
+        Assert.Equal(entry.ShortId, row.ShortId);
+        Assert.Equal("“factures” authorized and bound as /output", wizard.StatusMessage);
     }
 
     /// <summary>
-    /// A folder the settings already hold — under any rights — is not declared a second time;
-    /// the team still binds it, under the ROW's rights, not the settings entry's.
+    /// VFS-90 D-01: a folder the settings hold under ANOTHER root gets a second declaration
+    /// under the row's root — the entry is authoritative, and a team names it rather than
+    /// re-spelling it. Two entries on one folder, told apart by their ids.
     /// </summary>
     [Fact]
-    public void A_folder_already_declared_is_not_declared_twice_but_still_bound_with_the_rows_rights()
+    public void A_folder_declared_under_another_root_gets_a_second_declaration_under_the_rows_root()
     {
         var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
         picker.FolderToReturn = "/data/factures";
@@ -2025,10 +2033,38 @@ public class CreateTeamWizardTests
 
         wizard.BindMountCommand.Execute("/output");
 
-        Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
-        Assert.NotEmpty(store.SavedPaths);   // saved all the same: an auto-save may be in flight
-        Assert.Equal(["/data/factures:/output:rw"], wizard.TeamMounts);
+        var entries = shell.Config.Mounts.CurrentMountStrings
+            .Select(Orkeon.Studio.Core.FileSystem.MountDefinition.Parse).ToList();
+        Assert.Equal(["/data/factures:/factures:ro", "/data/factures:/output:rw"], entries.Select(e => e.WithoutId().ToMountString()));
+        Assert.All(entries, e => Assert.NotNull(e.Id));
+        Assert.NotEqual(entries[0].Id, entries[1].Id);
+        Assert.NotEmpty(store.SavedPaths);
+        Assert.Equal([entries[1].ToMountString()], wizard.TeamMounts);
         Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+    }
+
+    /// <summary>
+    /// A folder the settings already hold under the row's root, with the row's rights, is
+    /// reused — given an id if it had none — never declared twice; the status line says so.
+    /// </summary>
+    [Fact]
+    public void A_folder_already_declared_under_the_rows_root_is_reused_not_declared_twice()
+    {
+        var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
+        picker.FolderToReturn = "/data/factures";
+        shell.Config.Mounts.Load(["/data/factures:/output:rw"]);
+        var wizard = shell.CreateTeam;
+        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
+
+        wizard.BindMountCommand.Execute("/output");
+
+        var declared = Assert.Single(shell.Config.Mounts.CurrentMountStrings);
+        var entry = Orkeon.Studio.Core.FileSystem.MountDefinition.Parse(declared);
+        Assert.NotNull(entry.Id);
+        Assert.Equal("/data/factures:/output:rw", entry.WithoutId().ToMountString());
+        Assert.NotEmpty(store.SavedPaths);
+        Assert.Equal([declared], wizard.TeamMounts);
+        Assert.Equal("“factures” was already authorized; the team now uses that entry", wizard.StatusMessage);
     }
 
     /// <summary>
@@ -2081,9 +2117,10 @@ public class CreateTeamWizardTests
 
         wizard.BindMountCommand.Execute("/workspace");
 
-        Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
+        var declared = Assert.Single(shell.Config.Mounts.CurrentMountStrings);
+        Assert.Equal("/data/factures:/workspace:ro", Orkeon.Studio.Core.FileSystem.MountDefinition.Parse(declared).WithoutId().ToMountString());
         Assert.Empty(store.SavedPaths);
-        Assert.Equal(["/data/factures:/workspace:ro"], wizard.TeamMounts);
+        Assert.Equal([declared], wizard.TeamMounts);
         Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/workspace").IsUndeclared);
         Assert.StartsWith("“factures” added, but the settings could not be saved — ", wizard.StatusMessage, StringComparison.Ordinal);
         Assert.Contains("disk full", wizard.StatusMessage, StringComparison.Ordinal);

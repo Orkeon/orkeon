@@ -158,6 +158,50 @@ public sealed class ImportRecognitionReportTests
         Assert.Contains("veille", import.RecognitionReport[0].Detail, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// VFS-90 D-06: a candidate naming a declaration this machine does not have gets a warning
+    /// line and an action that authorizes the folder as recorded — under the same id — so the
+    /// team names a declaration this machine has once imported.
+    /// </summary>
+    [Fact]
+    public async Task A_candidate_naming_a_missing_declaration_is_warned_and_can_be_authorized_as_recorded()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-import-{Guid.NewGuid():N}");
+        var source = Path.Combine(root, "veille");
+        Directory.CreateDirectory(Path.Combine(source, "agents"));
+        var id = Orkeon.Domain.Common.MountId.Create();
+        try
+        {
+            TeamCatalog.SaveMetadata(source, new StudioTeamMetadata { Name = "Veille", Mounts = [$"{id}|/home/them/docs:/docs:ro", "./output:/output:rw"] });
+            var declared = new List<string>();
+            var saved = 0;
+            var probe = new FakeTargetProbe().WithDirectory(source).WithDirectory(Path.Combine(source, "agents"));
+            var import = new ImportTeamViewModel(
+                probe,
+                scanSecrets: _ => [],
+                declaredMounts: () => declared,
+                declareMount: mount => declared.Add(mount.ToMountString()),
+                saveSettings: () => { saved++; return Task.FromResult(true); });
+
+            import.Target.Select(source);
+
+            Assert.True(import.HasUnknownMounts);
+            Assert.Contains(import.RecognitionReport, c => c.Tone == "warn" && c.Title.StartsWith("1 folder", StringComparison.Ordinal));
+            Assert.True(import.DeclareCopiesCommand.CanExecute(null));
+
+            await import.DeclareCopiesCommand.ExecuteAsync(null);
+
+            Assert.Equal([$"{id}|/home/them/docs:/docs:ro"], declared);
+            Assert.Equal(1, saved);
+            Assert.False(import.HasUnknownMounts);
+            Assert.DoesNotContain(import.RecognitionReport, c => c.Tone == "warn");
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public void A_pasted_key_turns_the_secret_line_into_a_warning()
     {

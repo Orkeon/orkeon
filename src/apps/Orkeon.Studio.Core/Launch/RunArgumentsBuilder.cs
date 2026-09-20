@@ -65,6 +65,7 @@ public static class RunArgumentsBuilder
     private static void AppendSharedOptions(List<string> arguments, RunLaunchOptions options)
     {
         AppendSequence(arguments, RunOption.Mounts, options.Mounts);
+        AppendSequence(arguments, RunOption.MountIds, options.MountIds);
         AppendFlag(arguments, RunOption.AllowExternalMounts, options.AllowExternalMounts);
 
         // 0 is the CLI default: a user leaving the slider alone types nothing.
@@ -183,6 +184,21 @@ public static class RunArgumentsBuilder
                     LaunchCodes.EmptyMount,
                     string.Create(CultureInfo.InvariantCulture, $"The --mount entry at index {i} is empty."),
                     RunOptionAvailability.ToCommandLineName(RunOption.Mounts)));
+            }
+        }
+
+        // The CLI refuses a malformed id in one line before any host; Studio says it first,
+        // against the option, so the launch button never fires a run that cannot start.
+        for (var i = 0; i < effective.MountIds.Count; i++)
+        {
+            if (!Orkeon.Domain.Common.MountId.TryParse(effective.MountIds[i], out _))
+            {
+                messages.Add(ValidationMessage.Error(
+                    LaunchCodes.InvalidMountId,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"The --mount-id entry at index {i} ('{effective.MountIds[i]}') is not a mount id (26 characters, the prefix before '|' in a settings entry)."),
+                    RunOptionAvailability.ToCommandLineName(RunOption.MountIds)));
             }
         }
 

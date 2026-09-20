@@ -68,9 +68,12 @@ public class MountEditorModelTests
         model.Replace(0, Workspace(MountRights.ReadWriteNoDelete));
         model.ApplyTo(document);
 
+        // Written back with the id every save assigns (VFS-90), the grammar behind it unchanged.
         Assert.Equal(
             ["/data/workspace:/workspace:rwnd", "/data/out:/output:rw"],
-            document.Mounts.RawEntries);
+            document.Mounts.RawEntries.Select(e => MountDefinition.Parse(e).WithoutId().ToMountString()));
+        Assert.All(document.Mounts.RawEntries, e => Assert.NotNull(MountDefinition.Parse(e).Id));
+        Assert.All(model.Rows, row => Assert.EndsWith("]", row.Display, StringComparison.Ordinal));
 
         model.RemoveAt(1);
         model.ApplyTo(document);

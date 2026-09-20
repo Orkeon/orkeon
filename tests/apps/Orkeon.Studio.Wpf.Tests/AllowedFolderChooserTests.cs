@@ -185,20 +185,28 @@ public sealed class AllowedFolderChooserTests
     /// </para>
     /// </summary>
     [Fact]
-    public void A_targeted_open_judges_the_rows_on_the_target_and_takes_one_folder()
+    public void A_targeted_open_offers_only_the_entries_declared_under_that_root_and_takes_one()
     {
-        var chooser = Chooser(Docs, Out);
+        // VFS-90 D-01: a team binds a DECLARATION, verbatim. Two entries are declared as
+        // /workspace — told apart by their ids — and one as /output; answering /workspace can
+        // only pick among the first two, whatever the team already spends elsewhere.
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+        var chooser = Chooser($"{a}|/data/old:/workspace:ro", $"{b}|/data/notes:/workspace:ro", Out);
         var added = new List<MountDefinition>();
 
-        // The team already spends /workspace on something else — that is the thing being
-        // replaced — AND it already carries /output, which the second row happens to be
-        // declared on. Neither may disqualify a row: what matters is where the pick LANDS,
-        // and every pick here lands on /workspace.
-        chooser.Open(["/data/old:/workspace:ro", "/data/out:/output:rw"], added.Add, targetVirtualPath: "/workspace");
+        chooser.Open(["/data/out:/output:rw"], added.Add, targetVirtualPath: "/workspace");
 
         Assert.True(chooser.IsBindingOneMount);
         Assert.Contains("/workspace", chooser.Title, StringComparison.Ordinal);
-        Assert.All(chooser.Rows, r => Assert.True(r.IsSelectable, r.UnavailableNote));
+        Assert.True(chooser.Rows[0].IsSelectable);
+        Assert.True(chooser.Rows[1].IsSelectable);
+        Assert.False(chooser.Rows[2].IsSelectable);
+        Assert.Equal("declared as /output — this mount point is /workspace", chooser.Rows[2].UnavailableNote);
+        // The rows sharing a root say so, and show the tail of their id.
+        Assert.Equal("one of 2 folders declared as /workspace", chooser.Rows[0].SharedRootNote);
+        Assert.Equal(a.ToString()[^6..], chooser.Rows[0].ShortId);
+        Assert.Null(chooser.Rows[2].SharedRootNote);
 
         // One mount point takes one folder: the second tick replaces the first.
         chooser.Rows[0].IsChecked = true;
@@ -208,24 +216,26 @@ public sealed class AllowedFolderChooserTests
 
         chooser.ConfirmCommand.Execute(null);
 
-        // The folder and the RIGHTS come from the settings, verbatim; only the name the
-        // agents use is the team's to choose — and the caller is what applies it.
+        // Verbatim: folder, rights, root AND id.
         var picked = Assert.Single(added);
-        Assert.Equal("/data/out", picked.PhysicalPath);
-        Assert.Equal(MountRights.ReadWrite, picked.Rights);
-        Assert.Equal("/output", picked.VirtualPath);
+        Assert.Equal("/data/notes", picked.PhysicalPath);
+        Assert.Equal(MountRights.ReadOnly, picked.Rights);
+        Assert.Equal("/workspace", picked.VirtualPath);
+        Assert.Equal(b, picked.Id);
         Assert.Null(chooser.TargetVirtualPath);
     }
 
     /// <summary>
-    /// The one refusal a targeted open keeps: the folder already sitting behind that very
-    /// mount point. Picking it again changes nothing, and the row says so.
+    /// The one refusal a targeted open keeps among the entries of that root: the folder
+    /// already sitting behind that very mount point. Picking it again changes nothing.
     /// </summary>
     [Fact]
     public void A_targeted_open_still_refuses_the_folder_already_behind_that_mount_point()
     {
-        var chooser = Chooser(Docs, Out);
-        chooser.Open(["/data/docs:/workspace:ro"], _ => { }, targetVirtualPath: "/workspace");
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+        var chooser = Chooser($"{a}|/data/docs:/workspace:ro", $"{b}|/data/other:/workspace:ro");
+        chooser.Open([$"{a}|/data/docs:/workspace:ro"], _ => { }, targetVirtualPath: "/workspace");
 
         Assert.False(chooser.Rows[0].IsSelectable);
         Assert.True(chooser.Rows[0].HasNote);

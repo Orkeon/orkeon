@@ -43,6 +43,13 @@ public sealed record RunLaunchOptions
     /// </summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
 
+    /// <summary>
+    /// <c>--mount-id</c>, several values after one flag: the settings entries this run keeps
+    /// when several declare one virtual root (VFS-90) — a team's folders that are settings
+    /// declarations go here, by id, with no path on the command line.
+    /// </summary>
+    public IReadOnlyList<string> MountIds { get; init; } = [];
+
     /// <summary><c>--allow-external-mounts</c>: accept mount roots outside the working directory.</summary>
     public bool AllowExternalMounts { get; init; }
 

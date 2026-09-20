@@ -136,9 +136,11 @@ public static class TeamMountPaths
 
         try
         {
-            return FileSystemMount.WithBasePath(
+            // A team-local folder carries no id (VFS-90, D-07): it is not a settings entry, so
+            // a stray prefix is dropped on the way out as well as on the way in.
+            return WithoutId(FileSystemMount.WithBasePath(
                 mountString,
-                Path.GetFullPath(Path.Combine(teamDirectory, folder)));
+                Path.GetFullPath(Path.Combine(teamDirectory, folder))));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or FormatException)
         {
@@ -159,7 +161,10 @@ public static class TeamMountPaths
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(mountString);
 
-        if (IsTeamRelative(mountString) || FileSystemMount.TryGetBasePath(mountString) is not { } physical)
+        if (IsTeamRelative(mountString))
+            return WithoutId(mountString);
+
+        if (FileSystemMount.TryGetBasePath(mountString) is not { } physical)
             return mountString;
 
         try
@@ -173,13 +178,19 @@ public static class TeamMountPaths
                 return mountString;
 
             var folder = full[(team.Length + 1)..].Replace(Path.DirectorySeparatorChar, '/');
-            return FileSystemMount.WithBasePath(mountString, RelativePrefix + folder);
+            return WithoutId(FileSystemMount.WithBasePath(mountString, RelativePrefix + folder));
         }
         catch (Exception ex) when (ex is ArgumentException or NotSupportedException or PathTooLongException or FormatException)
         {
             return mountString;
         }
     }
+
+    /// <summary>The entry less its id prefix, when it has one; verbatim otherwise (D-07).</summary>
+    private static string WithoutId(string mountString) =>
+        FileSystemMount.TryGetId(mountString) is null
+            ? mountString
+            : mountString[(mountString.IndexOf(FileSystemMount.IdSeparator, StringComparison.Ordinal) + 1)..];
 
     /// <summary><see cref="Resolve"/> over a list; empty for a null or empty list.</summary>
     public static IReadOnlyList<string> ResolveAll(string teamDirectory, IReadOnlyList<string>? mounts)

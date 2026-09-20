@@ -73,6 +73,12 @@ public sealed class LaunchOptionsModel
     /// <summary><c>--allow-external-mounts</c>.</summary>
     public bool AllowExternalMounts { get; set; }
 
+    /// <summary>
+    /// The settings entries this launch keeps by id (<c>--mount-id</c>, VFS-90) — what a team
+    /// whose folders are settings declarations contributes; typed by hand in the TUI form.
+    /// </summary>
+    public IReadOnlyList<string> MountIds { get; set; } = [];
+
     /// <summary>Mounts added for this launch only, edited with the §4.5 form.</summary>
     public IReadOnlyList<MountDefinition> Mounts => _mounts;
 
@@ -132,7 +138,8 @@ public sealed class LaunchOptionsModel
         return MountOverrideSemantics.ComputeEffectiveMounts(
             MountStrings,
             settingsMounts,
-            MountAutoInjection.For(target, ToLaunchOptions(target)));
+            MountAutoInjection.For(target, ToLaunchOptions(target)),
+            MountIds);
     }
 
     /// <summary>Appends one <c>-V</c> variable.</summary>
@@ -206,6 +213,7 @@ public sealed class LaunchOptionsModel
             InputsJson = RunOptionAvailability.IsAvailable(dialect, RunOption.Inputs) ? InputsJson : null,
             InputsFilePath = RunOptionAvailability.IsAvailable(dialect, RunOption.InputsFile) ? InputsFilePath : null,
             Mounts = MountStrings,
+            MountIds = MountIds,
             AllowExternalMounts = AllowExternalMounts,
             Verbosity = Verbosity,
             LlmLogEnabled = LlmLogEnabled,

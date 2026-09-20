@@ -4,6 +4,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 using Orkeon.Studio.Wpf.ViewModels.Services;
@@ -45,15 +46,29 @@ public sealed class EffectiveMountViewModel
     /// <summary>The appsettings entry that is being replaced, when there is one.</summary>
     public string? ReplacedSettingsMount => Mount.ReplacedSettingsMount;
 
+    /// <summary>How the entry fares among the entries of its root (VFS-90).</summary>
+    public EffectiveMountSelection Selection => Mount.Selection;
+
+    /// <summary>Whether the entry is mounted for the run.</summary>
+    public bool IsMounted => Mount.IsMounted;
+
     /// <summary>
     /// The origin column, phrased for the table. The runner's own entries are named as such
-    /// rather than folded into "appsettings": the user never wrote them.
+    /// rather than folded into "appsettings": the user never wrote them. A settings entry
+    /// sharing its root with others says whether it is the one kept (VFS-90).
     /// </summary>
-    public string OriginDisplay => OverridesSettings
-        ? string.Format(
-            CultureInfo.InvariantCulture,
-            _strings[StudioStringKeys.MountsOriginReplaces], OriginName, ReplacedSettingsMount)
-        : OriginName;
+    public string OriginDisplay => Selection switch
+    {
+        EffectiveMountSelection.SelectedById => string.Format(
+            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginSelectedById], OriginName, Mount.SharedRootCount),
+        EffectiveMountSelection.NotSelected => string.Format(
+            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginNotSelected], OriginName),
+        EffectiveMountSelection.Conflict => string.Format(
+            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginConflict], OriginName, Mount.SharedRootCount),
+        _ when OverridesSettings => string.Format(
+            CultureInfo.InvariantCulture, _strings[StudioStringKeys.MountsOriginReplaces], OriginName, ReplacedSettingsMount),
+        _ => OriginName,
+    };
 
     private string OriginName => Origin switch
     {
@@ -88,7 +103,8 @@ public sealed class LaunchMountsViewModel : ObservableObject
     {
         _strings = strings ?? EnglishStudioStrings.Instance;
 
-        LaunchMounts = new MountsEditorViewModel(directories, picker, requireAtLeastOne: false, _strings);
+        // Per-run rows are not settings entries: no id (VFS-90, D-07).
+        LaunchMounts = new MountsEditorViewModel(directories, picker, requireAtLeastOne: false, _strings, assignIds: false);
         LaunchMounts.Changed += (_, _) => RecomputeEffectiveMounts();
 
         // Recomputing rebuilds the effective rows, whose origin column is localized.
@@ -112,13 +128,21 @@ public sealed class LaunchMountsViewModel : ObservableObject
     public ObservableCollection<string> SettingsMounts { get; } = [];
 
     /// <summary>
-    /// The adopted team's own mounts, from its sidecar. What the team card's chips show is
-    /// exactly this list. Laid on the launch ahead of the per-launch entries, through the
-    /// same single <c>--mount</c> flag — except the entries the settings already hold
-    /// (<see cref="LaunchMountPlan.WithoutSettingsDuplicates"/>): those are in force
-    /// without a word from Studio.
+    /// The adopted team's mounts as they stand for this machine (effective strings — what the
+    /// team card's chips show). What of them reaches the command line is
+    /// <see cref="Plan"/>'s business (VFS-90): a settings declaration goes by id, the team's
+    /// own folders and copies as <c>--mount</c>, an unknown id blocks the launch.
     /// </summary>
     public ObservableCollection<string> TeamMounts { get; } = [];
+
+    /// <summary>The team's mounts, resolved against the settings; empty for a non-team target.</summary>
+    public IReadOnlyList<ResolvedTeamMount> ResolvedTeamMounts { get; private set; } = [];
+
+    /// <summary>What the team's folders put on the command line.</summary>
+    public LaunchMountPlan Plan { get; private set; } = LaunchMountPlan.For([]);
+
+    /// <summary>The ids the team names that this machine does not declare; non-empty blocks the launch.</summary>
+    public IReadOnlyList<string> UnknownTeamMountIds => Plan.UnknownIds;
 
     /// <summary>The per-launch mounts, edited with the same form as the appsettings editor.</summary>
     public MountsEditorViewModel LaunchMounts { get; }
@@ -147,24 +171,30 @@ public sealed class LaunchMountsViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The <c>--mount</c> arguments this panel contributes: the team mounts the settings do not
-    /// already hold (STUDIO-15 D-05), then the per-launch ones.
+    /// The <c>--mount</c> arguments this panel contributes: the team's own folders and copies
+    /// (STUDIO-15 D-05, VFS-90), then the per-launch ones.
     /// </summary>
-    public IReadOnlyList<string> ToMountArguments() =>
-        [.. LaunchMountPlan.WithoutSettingsDuplicates([.. TeamMounts], [.. SettingsMounts]), .. LaunchMounts.ToRawEntries()];
+    public IReadOnlyList<string> ToMountArguments() => [.. Plan.Mounts, .. LaunchMounts.ToRawEntries()];
 
-    /// <summary>Publishes the selected team's sidecar mounts (empty for a non-team target).</summary>
-    public void SetTeamMounts(IReadOnlyList<string> mounts)
+    /// <summary>The <c>--mount-id</c> arguments this panel contributes: the settings declarations the team names.</summary>
+    public IReadOnlyList<string> ToMountIdArguments() => Plan.MountIds;
+
+    /// <summary>Publishes the selected team's mounts, resolved against the settings (empty for a non-team target).</summary>
+    public void SetTeamMounts(IReadOnlyList<ResolvedTeamMount> mounts)
     {
         ArgumentNullException.ThrowIfNull(mounts);
 
-        if (TeamMounts.SequenceEqual(mounts, StringComparer.Ordinal))
+        var effective = mounts.Select(m => m.Effective).ToList();
+        if (TeamMounts.SequenceEqual(effective, StringComparer.Ordinal) && ResolvedTeamMounts.SequenceEqual(mounts))
             return;
 
+        ResolvedTeamMounts = mounts;
+        Plan = LaunchMountPlan.For(mounts);
         TeamMounts.Clear();
-        foreach (var mount in mounts)
+        foreach (var mount in effective)
             TeamMounts.Add(mount);
 
+        OnPropertiesChanged(nameof(ResolvedTeamMounts), nameof(Plan), nameof(UnknownTeamMountIds));
         RecomputeEffectiveMounts();
     }
 
@@ -224,7 +254,7 @@ public sealed class LaunchMountsViewModel : ObservableObject
         if (_autoInjection is { } autoInjection)
         {
             var effective = MountOverrideSemantics.ComputeEffectiveMounts(
-                ToMountArguments(), [.. SettingsMounts], autoInjection);
+                ToMountArguments(), [.. SettingsMounts], autoInjection, ToMountIdArguments());
 
             foreach (var mount in effective)
                 EffectiveMounts.Add(new EffectiveMountViewModel(mount, _strings));

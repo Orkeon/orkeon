@@ -148,31 +148,86 @@ public sealed class MountValidator
     {
         var named = mounts.Where(m => !string.IsNullOrWhiteSpace(m.VirtualPath)).ToList();
 
-        // What the runtime actually refuses at boot (FileSystemRegistry): the exact same
-        // spelling, Ordinal. Only that is a blocking error — Studio must not refuse a save
-        // the engine would accept.
-        var exact = named
-            .GroupBy(m => m.VirtualPath, StringComparer.Ordinal)
-            .Where(group => group.Count() > 1)
-            .Select(group => (Key: group.Key, Count: group.Count(), Blocking: true));
+        // An id names one entry (VFS-90): the engine refuses the file otherwise.
+        foreach (var group in named.Where(m => m.Id is not null).GroupBy(m => m.Id!))
+        {
+            var count = group.Count();
+            if (count < 2)
+                continue;
 
-        // Near-collisions ('/Data' vs '/data', '/data/' vs '/data') boot fine but read as
-        // one folder to a person — said as a warning, never as a refusal.
+            yield return ValidationMessage.Error(
+                ValidationCodes.MountIdDuplicate,
+                string.Create(CultureInfo.InvariantCulture, $"Mount id {group.Key} is carried by {count} entries; an id names one entry."),
+                group.Key.ToString());
+        }
+
+        // What the runtime refuses at boot: one root, Ordinal with the trailing slash dropped
+        // as the engine drops it, claimed by entries it cannot tell apart. Since VFS-90 two
+        // entries MAY share a root — each with an id, a team or --mount-id picks one per run —
+        // so that shape is information, not a refusal; an entry without an id among them is
+        // what the engine refuses, and so does Studio.
+        foreach (var group in named.GroupBy(m => MountDefinition.NormalizeRoot(m.VirtualPath), StringComparer.Ordinal))
+        {
+            var entries = group.ToList();
+            if (entries.Count < 2)
+                continue;
+
+            var withoutId = entries.FirstOrDefault(m => m.Id is null);
+            if (withoutId is null)
+            {
+                yield return ValidationMessage.Information(
+                    ValidationCodes.MountSharedRoot,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Virtual path '{group.Key}' is declared {entries.Count} times; a team or --mount-id picks one per run."),
+                    group.Key);
+            }
+            else
+            {
+                yield return ValidationMessage.Error(
+                    ValidationCodes.MountVirtualCollision,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Virtual path '{group.Key}' is claimed by {entries.Count} mounts and '{withoutId.ToMountString()}' has no id; give every entry an id (saving assigns one) or rename one."),
+                    group.Key);
+            }
+
+            foreach (var folder in entries
+                .GroupBy(m => MountDefinition.NormalizeFolder(m.PhysicalPath), FolderComparer)
+                .Where(f => f.Count() > 1))
+            {
+                yield return ValidationMessage.Warning(
+                    ValidationCodes.MountSharedRoot,
+                    string.Create(
+                        CultureInfo.InvariantCulture,
+                        $"Folder '{folder.Key}' is declared {folder.Count()} times under '{group.Key}'; one entry is enough."),
+                    group.Key);
+            }
+        }
+
+        // Near-collisions ('/Data' vs '/data') boot fine but read as one folder to a person —
+        // said as a warning, never as a refusal.
         var near = named
             .GroupBy(m => NormalizeVirtualPath(m.VirtualPath), StringComparer.OrdinalIgnoreCase)
-            .Where(group => group.Count() > 1 && group.Select(m => m.VirtualPath).Distinct(StringComparer.Ordinal).Count() > 1)
-            .Select(group => (Key: group.Key, Count: group.Count(), Blocking: false));
+            .Where(group => group.Count() > 1
+                && group.Select(m => MountDefinition.NormalizeRoot(m.VirtualPath)).Distinct(StringComparer.Ordinal).Count() > 1)
+            .Select(group => (Key: group.Key, Count: group.Count()));
 
-        foreach (var (key, count, blocking) in exact.Concat(near))
+        foreach (var (key, count) in near)
         {
-            var text = string.Create(
-                CultureInfo.InvariantCulture,
-                $"Virtual path '{key}' is claimed by {count} mounts; each virtual path must be unique.");
-            yield return blocking
-                ? ValidationMessage.Error(ValidationCodes.MountVirtualCollision, text, key)
-                : ValidationMessage.Warning(ValidationCodes.MountVirtualCollision, text, key);
+            yield return ValidationMessage.Warning(
+                ValidationCodes.MountVirtualCollision,
+                string.Create(
+                    CultureInfo.InvariantCulture,
+                    $"Virtual path '{key}' is claimed by {count} mounts; each virtual path must be unique."),
+                key);
         }
     }
+
+    private static readonly StringComparer FolderComparer =
+        Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison == StringComparison.OrdinalIgnoreCase
+            ? StringComparer.OrdinalIgnoreCase
+            : StringComparer.Ordinal;
 
     private static string NormalizeVirtualPath(string virtualPath)
     {

@@ -103,6 +103,9 @@ public sealed class MainWindowViewModel : ObservableObject
         });
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
+        // VFS-90: each settings row says which teams name it by id, and removing one asks
+        // first — the composition root supplies the question, the view model the facts.
+        Config.Mounts.LoadTeams = () => TeamCatalog.List(teamsHome);
         // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
         // on Windows — where the global appsettings, the model profiles and the history
         // already live): sessions are resumable app state, not documents, unlike the
@@ -119,7 +122,7 @@ public sealed class MainWindowViewModel : ObservableObject
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
             // for by living inside it, and the global appsettings never learns them.
-            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings),
+            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings, declaredMounts),
             // STUDIO-21: the tool keys ride the same store as the profile keys.
             new ToolsSettingsViewModel(keyStore, strings));
 
@@ -168,7 +171,13 @@ public sealed class MainWindowViewModel : ObservableObject
             }),
             teamsRoot);
 
-        Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
+        Import = new ImportTeamViewModel(
+            targetProbe, picker, strings, teamsRoot,
+            // VFS-90 D-06: an imported team naming declarations this machine does not have can
+            // have them authorized as recorded — under the same ids — from the review card.
+            declaredMounts: declaredMounts,
+            declareMount: Config.Mounts.AddPickedMount,
+            saveSettings: () => Config.SaveAsync());
 
         // Declaring a folder is the OS folder dialog, and that gesture belongs to the settings
         // and to the wizard's « Existing folders » rows (STUDIO-19). A team ASSOCIATES a folder
@@ -231,6 +240,7 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
                 Settings.TeamFolders.Refresh();
+                Config.Mounts.RefreshTeamReferences();
         };
         // STUDIO-18: the declared folders are read live from the settings editor, but a team
         // card computes its chips' verdicts when it is built and the launcher when its target
@@ -421,14 +431,27 @@ public sealed class MainWindowViewModel : ObservableObject
         if (picked is not { Length: > 0 })
             return;
 
-        var taken = Config.Mounts.CurrentMountStrings.Concat(CreateTeam.TeamMounts)
-            .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) ? mount.VirtualPath : null)
-            .OfType<string>();
+        // A targeted pick is declared under the ROW's root (VFS-90, D-01): the team names the
+        // declaration, so the declaration must carry the name the agents use — a second entry
+        // under a root another folder already spends is what ids exist for. Only the untargeted
+        // pick derives a name.
+        string virtualPath;
+        if (targetVirtualPath is { Length: > 0 })
+        {
+            virtualPath = targetVirtualPath;
+        }
+        else
+        {
+            var taken = Config.Mounts.CurrentMountStrings.Concat(CreateTeam.TeamMounts)
+                .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) ? mount.VirtualPath : null)
+                .OfType<string>();
+            virtualPath = MountDefinition.SuggestVirtualPath(picked, taken);
+        }
 
         await DeclareAndBindAsync(targetVirtualPath, rights, new MountDefinition
         {
             PhysicalPath = picked,
-            VirtualPath = MountDefinition.SuggestVirtualPath(picked, taken),
+            VirtualPath = virtualPath,
             Rights = rights,
         }).ConfigureAwait(true);
     }
@@ -450,21 +473,29 @@ public sealed class MainWindowViewModel : ObservableObject
         var bound = mount with { Rights = rights };
         if (DeclaredMounts.IsInsideTeam(mount.ToMountString(), CreateTeam.ReopenedTeamPath))
         {
-            Bind(targetVirtualPath, bound);
+            // The team's own folder: no id, no settings entry (D-07).
+            Bind(targetVirtualPath, bound.WithoutId());
             return;
         }
 
-        if (!DeclaredMounts.IsDeclared(mount.ToMountString(), Config.Mounts.CurrentMountStrings))
-            Config.Mounts.AddPickedMount(mount);
-
+        // The declaration the team will name (VFS-90): an equal entry is reused — and given an
+        // id if it had none — otherwise the pick is added under an id of its own, even when
+        // another entry already claims its root. The team then binds THAT entry, verbatim.
+        var (declared, reused) = Config.Mounts.EnsureDeclared(bound);
         var saved = await Config.SaveAsync().ConfigureAwait(true);
-        Bind(targetVirtualPath, bound);
+        Bind(targetVirtualPath, declared);
 
         var folder = System.IO.Path.GetFileName(mount.PhysicalPath.TrimEnd('/', '\\')) is { Length: > 0 } name
             ? name
             : mount.PhysicalPath;
         CreateTeam.ReportStatus(saved
-            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersDeclared], folder)
+            ? string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                _strings[reused
+                    ? StudioStringKeys.AllowedFoldersReused
+                    : targetVirtualPath is { Length: > 0 } ? StudioStringKeys.WizardDeclaredFolder : StudioStringKeys.AllowedFoldersDeclared],
+                folder,
+                declared.VirtualPath)
             : string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersNotSaved], folder, Config.StatusMessage));
 
         void Bind(string? target, MountDefinition picked)

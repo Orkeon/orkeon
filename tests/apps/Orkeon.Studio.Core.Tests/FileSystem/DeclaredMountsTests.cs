@@ -76,6 +76,35 @@ public sealed class DeclaredMountsTests
         Assert.False(DeclaredMounts.IsDeclared("not a mount", declared));
     }
 
+    /// <summary>VFS-90 D-01: an entry that names its declaration by id is vouched for by that entry alone.</summary>
+    [Fact]
+    public void An_entry_carrying_an_id_is_declared_by_that_id_not_by_its_folder()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        IReadOnlyList<string> declared = [$"{id}|/data/out:/output:rw", "/data/docs:/docs:ro"];
+
+        Assert.True(DeclaredMounts.IsDeclared($"{id}|/stale/copy:/output:rw", declared));
+        Assert.False(DeclaredMounts.IsDeclared($"{Orkeon.Domain.Common.MountId.Create()}|/data/docs:/docs:ro", declared));
+        Assert.True(DeclaredMounts.HasUnknownId($"{Orkeon.Domain.Common.MountId.Create()}|/data/docs:/docs:ro", declared));
+        Assert.False(DeclaredMounts.HasUnknownId("/data/docs:/docs:ro", declared));
+
+        // And a launch blocks on it, by the root the agents address.
+        Assert.Equal(["/docs"], DeclaredMounts.BlockingFolders([$"{Orkeon.Domain.Common.MountId.Create()}|/data/docs:/docs:ro"], declared, Team));
+    }
+
+    [Fact]
+    public void The_declaration_behind_a_team_mount_is_found_by_id_then_by_what_it_declares()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        IReadOnlyList<string> declared = [$"{id}|/data/out:/output:rw", "/data/docs:/docs:ro"];
+
+        Assert.Equal(id, DeclaredMounts.FindDeclared($"{id}|/stale/copy:/output:rw", declared)!.Id);
+        Assert.Equal("/data/docs", DeclaredMounts.FindDeclared("/data/docs/:/docs/:ro", declared)!.PhysicalPath);
+        // Same folder, other rights: another declaration, not this one.
+        Assert.Null(DeclaredMounts.FindDeclared("/data/docs:/docs:rw", declared));
+        Assert.Null(DeclaredMounts.FindDeclared("not a mount", declared));
+    }
+
     [Fact]
     public void A_team_using_only_declared_folders_blocks_on_nothing()
     {

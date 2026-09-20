@@ -22,8 +22,21 @@ public sealed class MountsEditorViewModel : ObservableObject
     private readonly IPathPicker _picker;
     private readonly MountValidator _validator;
     private readonly IStudioStrings _strings;
+    private readonly IClipboardService _clipboard;
     private MountEditorViewModel? _selectedMount;
     private bool _suspendValidation;
+
+    /// <summary>
+    /// Reads the adopted teams, so each row can say which teams name it by id (VFS-90) and a
+    /// removal can ask first. Null in the launcher, where the rows are the run's own.
+    /// </summary>
+    public Func<IReadOnlyList<Orkeon.Studio.Core.Teams.TeamSummary>>? LoadTeams { get; set; }
+
+    /// <summary>
+    /// Asked before removing an entry a team depends on, with the entry's folder and the teams'
+    /// names; false keeps the entry. Null removes without asking (the tests, the launcher).
+    /// </summary>
+    public Func<string, IReadOnlyList<string>, bool>? ConfirmRemoval { get; set; }
 
     /// <summary>Creates an editor over the given directory probe and browse dialogs.</summary>
     /// <param name="directories">Probes and creates the physical folders a mount points at.</param>
@@ -33,16 +46,26 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// to boot; <see langword="false"/> in the launcher, where adding no mount is normal.
     /// </param>
     /// <param name="strings">Localization port; defaults to the English strings (STUDIO-11).</param>
+    /// <param name="clipboard">The clipboard behind "copy the id" (VFS-90); in-memory when absent.</param>
+    /// <param name="assignIds">
+    /// <see langword="true"/> in the appsettings editor, where every row is a settings entry
+    /// and gets an id (VFS-90); <see langword="false"/> in the launcher, whose per-run
+    /// <c>--mount</c> rows are not settings entries and carry none.
+    /// </param>
     public MountsEditorViewModel(
         IDirectoryProbe? directories = null,
         IPathPicker? picker = null,
         bool requireAtLeastOne = true,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        IClipboardService? clipboard = null,
+        bool assignIds = true)
     {
         _directories = directories ?? PhysicalDirectoryProbe.Instance;
         _picker = picker ?? NullPathPicker.Instance;
         _validator = new MountValidator(_directories);
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _clipboard = clipboard ?? new InMemoryClipboardService();
+        AssignIds = assignIds;
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(Summary));
@@ -89,6 +112,9 @@ public sealed class MountsEditorViewModel : ObservableObject
 
     /// <summary>Whether an empty list is itself an error.</summary>
     public bool RequireAtLeastOne { get; }
+
+    /// <summary>Whether the rows are settings entries and carry an id (VFS-90).</summary>
+    public bool AssignIds { get; }
 
     /// <summary>The edited mounts, in the order they will be written.</summary>
     public ObservableCollection<MountEditorViewModel> Mounts { get; } = [];
@@ -145,8 +171,10 @@ public sealed class MountsEditorViewModel : ObservableObject
         try
         {
             Mounts.Clear();
+            // A parsed entry without an id gets one on the way in (VFS-90): it shows from the
+            // first paint, marked as new, and lands in the file at the next save.
             foreach (var entry in rawEntries)
-                Mounts.Add(MountEditorViewModel.FromRaw(entry, _strings));
+                Mounts.Add(MountEditorViewModel.FromRaw(entry, _strings, _clipboard, AssignIds));
         }
         finally
         {
@@ -154,7 +182,56 @@ public sealed class MountsEditorViewModel : ObservableObject
         }
 
         SelectedMount = Mounts.Count > 0 ? Mounts[0] : null;
+        RefreshTeamReferences();
         Validate();
+    }
+
+    /// <summary>
+    /// Re-reads which teams name each row by id. The shell calls it when the teams on disk
+    /// change; <see cref="Load"/> calls it itself.
+    /// </summary>
+    public void RefreshTeamReferences()
+    {
+        if (LoadTeams is null)
+            return;
+
+        var byId = Orkeon.Studio.Core.Teams.TeamMountReferences.ByMountId(LoadTeams());
+        foreach (var mount in Mounts)
+        {
+            mount.UsedByTeams = mount.Id is { } id && byId.TryGetValue(id, out var teams)
+                ? teams.Select(t => Orkeon.Studio.Core.Teams.TeamCatalog.NormalizeName(t.Name)).ToList()
+                : [];
+        }
+    }
+
+    /// <summary>
+    /// The declared entry a team may bind (VFS-90, D-01): an existing row that declares the
+    /// same thing — folder, root, rights — is reused (and given an id if it had none);
+    /// otherwise the mount is added as a new row under an id of its own, even when another
+    /// row already claims its root. Mirrors <c>MountsSection.EnsureDeclared</c> on the
+    /// document, for the editor's live list the verdicts read.
+    /// </summary>
+    /// <returns>The entry as the editor now holds it, and whether it already existed.</returns>
+    public (MountDefinition Declared, bool Reused) EnsureDeclared(MountDefinition mount)
+    {
+        ArgumentNullException.ThrowIfNull(mount);
+
+        foreach (var row in Mounts)
+        {
+            if (!row.IsParsed)
+                continue;
+
+            var existing = row.ToDefinition();
+            if (!existing.SameDeclaration(mount))
+                continue;
+
+            row.EnsureId();
+            return (row.ToDefinition(), true);
+        }
+
+        var added = mount.Id is not null && Mounts.All(r => !r.IsParsed || !mount.Id.Equals(r.Id)) ? mount : mount.WithFreshId();
+        AddPickedMount(added);
+        return (added, false);
     }
 
     /// <summary>The serialized entries, unparsed rows included, in list order.</summary>
@@ -180,18 +257,13 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// </summary>
     public IReadOnlyList<string> CurrentMountStrings => [.. Mounts.Select(m => m.MountString)];
 
-    /// <summary>Adds a mount the shell declares on the wizard's behalf as a new row.</summary>
+    /// <summary>Adds a mount the shell declares on the wizard's behalf as a new row, id included when it carries one.</summary>
     public void AddPickedMount(MountDefinition mount)
     {
         ArgumentNullException.ThrowIfNull(mount);
 
         // The collection hook validates and raises Changed on its own.
-        Mounts.Add(new MountEditorViewModel(_strings)
-        {
-            PhysicalPath = mount.PhysicalPath,
-            VirtualPath = mount.VirtualPath,
-            Rights = mount.Rights,
-        });
+        Mounts.Add(MountEditorViewModel.FromDefinition(mount, _strings, _clipboard, AssignIds));
     }
 
     /// <summary>
@@ -205,7 +277,7 @@ public sealed class MountsEditorViewModel : ObservableObject
         if (picked is not { Length: > 0 })
             return;
 
-        var mount = new MountEditorViewModel(_strings)
+        var mount = new MountEditorViewModel(_strings, _clipboard, AssignIds)
         {
             PhysicalPath = picked,
             VirtualPath = MountDefinition.SuggestVirtualPath(picked, Mounts.Select(m => m.VirtualPath)),
@@ -220,7 +292,7 @@ public sealed class MountsEditorViewModel : ObservableObject
     /// <summary>Appends an empty mount row, pre-filled with the first suggested virtual path.</summary>
     public MountEditorViewModel AddMount()
     {
-        var mount = new MountEditorViewModel(_strings)
+        var mount = new MountEditorViewModel(_strings, _clipboard, AssignIds)
         {
             VirtualPath = MountDefinition.SuggestedVirtualPaths[0],
         };
@@ -230,13 +302,20 @@ public sealed class MountsEditorViewModel : ObservableObject
         return mount;
     }
 
-    /// <summary>Removes a row and selects a neighbour.</summary>
+    /// <summary>
+    /// Removes a row and selects a neighbour. A row a team names by id is removed only once
+    /// <see cref="ConfirmRemoval"/> agreed (VFS-90): those teams stop starting the moment the
+    /// entry is gone, and a novice clicking ✕ on a folder has no other way of knowing.
+    /// </summary>
     public void Remove(MountEditorViewModel mount)
     {
         ArgumentNullException.ThrowIfNull(mount);
 
         var index = Mounts.IndexOf(mount);
         if (index < 0)
+            return;
+
+        if (mount.IsReferenced && ConfirmRemoval is { } confirm && !confirm(mount.PhysicalPath, mount.UsedByTeams))
             return;
 
         Mounts.RemoveAt(index);

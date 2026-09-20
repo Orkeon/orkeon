@@ -20,12 +20,17 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
         MountDefinition? mount,
         string? unavailableNote,
         AllowedFolderChooserViewModel owner,
-        IStudioStrings strings)
+        IStudioStrings strings,
+        int sharedRootCount = 1)
     {
         _owner = owner;
         MountString = mountString;
         Mount = mount;
         UnavailableNote = unavailableNote;
+        ShortId = mount?.ShortId ?? "";
+        SharedRootNote = mount is not null && sharedRootCount > 1
+            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.AllowedFoldersSharedRoot], sharedRootCount, mount.VirtualPath)
+            : null;
         // ADR-008: a mount string the parser refuses has no virtual spelling — say so rather
         // than dumping the raw string, which carries the folder on this machine.
         VirtualPath = mount?.VirtualPath ?? MountLabels.Unreadable(strings);
@@ -50,6 +55,18 @@ public sealed class AllowedFolderRowViewModel : ObservableObject
 
     /// <summary>The rights pill's text — the rights of the settings entry, never re-chosen here.</summary>
     public string RightsLabel { get; }
+
+    /// <summary>The last six characters of the entry's id (VFS-90); empty for an entry without one.</summary>
+    public string ShortId { get; }
+
+    /// <summary>Whether the row shows an id.</summary>
+    public bool HasId => ShortId.Length > 0;
+
+    /// <summary>"one of 2 folders declared as /output" when several entries share the row's root; null otherwise.</summary>
+    public string? SharedRootNote { get; }
+
+    /// <summary>Whether the row carries the shared-root note.</summary>
+    public bool HasSharedRootNote => SharedRootNote is not null;
 
     /// <summary>True for a read-only entry — the pill's quiet tone.</summary>
     public bool IsReadOnly { get; }
@@ -294,14 +311,26 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         foreach (var entry in _alreadyOnTarget)
         {
             if (MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
-                takenRoots[mount.VirtualPath] = mount.PhysicalPath.TrimEnd('/', '\\');
+                takenRoots[MountDefinition.NormalizeRoot(mount.VirtualPath)] = mount.PhysicalPath.TrimEnd('/', '\\');
+        }
+
+        var declared = _declaredMounts();
+        var rootCounts = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var entry in declared)
+        {
+            if (MountDefinition.TryParse(entry, out var mount, out _))
+            {
+                var root = MountDefinition.NormalizeRoot(mount.VirtualPath);
+                rootCounts[root] = rootCounts.GetValueOrDefault(root) + 1;
+            }
         }
 
         Rows.Clear();
-        foreach (var entry in _declaredMounts())
+        foreach (var entry in declared)
         {
             var parsed = MountDefinition.TryParse(entry, out var mount, out _) ? mount : null;
-            var row = new AllowedFolderRowViewModel(entry, parsed, UnavailableNote(parsed, takenRoots), this, _strings);
+            var shared = parsed is null ? 1 : rootCounts.GetValueOrDefault(MountDefinition.NormalizeRoot(parsed.VirtualPath), 1);
+            var row = new AllowedFolderRowViewModel(entry, parsed, UnavailableNote(parsed, takenRoots), this, _strings, shared);
 
             if (checkedBefore.Contains(entry))
                 row.CheckSilently();
@@ -318,11 +347,18 @@ public sealed class AllowedFolderChooserViewModel : ObservableObject
         if (mount is null)
             return MountLabels.Unreadable(_strings);
 
-        // Where this row would LAND. A targeted open moves every pick onto the mount point
-        // being answered, so judging the row on the root the settings happened to declare
-        // would refuse it for a collision it is not going to cause — and would refuse it
-        // most reliably on the folders the team already uses elsewhere.
-        var root = TargetVirtualPath ?? mount.VirtualPath;
+        // A targeted open binds a DECLARATION under the mount point being answered (VFS-90,
+        // D-01): the entry is recorded verbatim, so only the entries declared under that very
+        // root can answer it. An entry declared as /docs cannot become the team's /output —
+        // the disk pick declares a new entry under /output for that, with an id of its own.
+        if (TargetVirtualPath is { } target && !mount.SameRootAs(target))
+        {
+            return string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.AllowedFoldersOtherRoot], mount.VirtualPath, target);
+        }
+
+        var root = MountDefinition.NormalizeRoot(TargetVirtualPath ?? mount.VirtualPath);
         if (!takenRoots.TryGetValue(root, out var takenBy))
             return null;
 

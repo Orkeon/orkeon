@@ -186,6 +186,56 @@ public sealed class TeamCatalogMountsTests : IDisposable
             summary.Metadata!.Mounts);
     }
 
+    /// <summary>VFS-90: read against the settings, an id entry stands for the declaration as it is today.</summary>
+    [Fact]
+    public void Describe_reads_the_sidecar_against_the_settings_when_they_are_given()
+    {
+        var team = NewTeam("veille");
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var unknown = Orkeon.Domain.Common.MountId.Create();
+        File.WriteAllText(
+            Path.Combine(team, StudioTeamMetadata.FileName),
+            $$"""{"name":"Veille","mounts":["./output:/output:rw","{{id}}|/old/place:/docs:ro","{{unknown}}|/x:/x:ro"]}""");
+        string[] declared = [$"{id}|/data/docs:/docs:ro"];
+
+        var summary = TeamCatalog.Describe(team, declared);
+        var target = TeamCatalog.DescribeTarget(team, declared);
+
+        Assert.Equal(
+            [$"{Path.Combine(team, "output")}:/output:rw", $"{id}|/data/docs:/docs:ro", $"{unknown}|/x:/x:ro"],
+            summary.Mounts);
+        Assert.Equal(summary.Mounts, target.Mounts);
+        Assert.Equal(summary.Mounts, Assert.Single(TeamCatalog.List(_root, declared)).Mounts);
+        Assert.True(summary.HasUnknownMountIds);
+        Assert.Equal([unknown.ToString()], summary.UnknownMountIds);
+        Assert.Equal([unknown.ToString()], target.UnknownMountIds);
+
+        // Not consulted: the sidecar's own spelling, and no alarm.
+        var alone = TeamCatalog.Describe(team);
+        Assert.Equal($"{id}|/old/place:/docs:ro", alone.Mounts[1]);
+        Assert.False(alone.HasUnknownMountIds);
+    }
+
+    /// <summary>D-06: the ids travel with the team, verbatim.</summary>
+    [Fact]
+    public void A_duplicate_and_an_export_carry_the_ids_verbatim()
+    {
+        var team = NewTeam("veille");
+        var id = Orkeon.Domain.Common.MountId.Create();
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = "Veille",
+            Mounts = ["./output:/output:rw", $"{id}|/data/docs:/docs:ro"],
+        });
+
+        var copy = TeamCatalog.Duplicate(team)!;
+        var exported = TeamCatalog.ExportTo(team, Path.Combine(_root, "export"))!;
+
+        Assert.Equal($"{id}|/data/docs:/docs:ro", TeamCatalog.Describe(copy).Metadata!.Mounts![1]);
+        Assert.Equal($"{id}|/data/docs:/docs:ro", TeamCatalog.Describe(exported).Metadata!.Mounts![1]);
+        Assert.Equal("./output:/output:rw", TeamCatalog.Describe(exported).Metadata!.Mounts![0]);
+    }
+
     [Fact]
     public void SaveMounts_rewrites_an_absolute_in_team_folder_to_relative()
     {

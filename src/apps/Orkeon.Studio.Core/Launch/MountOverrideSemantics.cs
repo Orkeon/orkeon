@@ -27,6 +27,22 @@ public enum MountOrigin
     AutoInjected,
 }
 
+/// <summary>How a settings entry fares when several declare one virtual root (VFS-90).</summary>
+public enum EffectiveMountSelection
+{
+    /// <summary>The only entry of its root, or a launch mount: in force as it is.</summary>
+    InForce,
+
+    /// <summary>Kept because a <c>--mount-id</c> names it; the other entries of its root are not mounted.</summary>
+    SelectedById,
+
+    /// <summary>Not mounted for this run: another entry of its root was selected, or a <c>--mount</c> took the root.</summary>
+    NotSelected,
+
+    /// <summary>One of several entries of its root and nothing selects one: the runner refuses the launch (D-04) unless the crew's <c>mounts:</c> block does.</summary>
+    Conflict,
+}
+
 /// <summary>One entry of the mount list the runtime will actually see.</summary>
 /// <param name="Index">Position in <c>Orkeon:FileSystem:Mounts</c>.</param>
 /// <param name="Value">The mount string in force.</param>
@@ -46,6 +62,15 @@ public sealed record EffectiveMount(
 
     /// <summary>True when a settings entry on the same root was replaced by a higher-priority one.</summary>
     public bool OverridesSettings => Origin != MountOrigin.Settings && ReplacedSettingsMount is not null;
+
+    /// <summary>How the entry fares among the entries of its root (VFS-90).</summary>
+    public EffectiveMountSelection Selection { get; init; } = EffectiveMountSelection.InForce;
+
+    /// <summary>How many settings entries declare this entry's root; 1 for an ordinary root.</summary>
+    public int SharedRootCount { get; init; } = 1;
+
+    /// <summary>True when the entry is mounted for the run.</summary>
+    public bool IsMounted => Selection is EffectiveMountSelection.InForce or EffectiveMountSelection.SelectedById;
 }
 
 /// <summary>
@@ -194,10 +219,12 @@ public static class MountOverrideSemantics
         "The runner inserts its own mount first — the crew's configuration directory as " +
         "'/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each " +
         "--mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the " +
-        "appsettings already declare, the --mount replaces that settings entry for this run; " +
-        "on a new root, it is appended after every declared entry. Settings entries no --mount " +
-        "names stay in force. The LLM log directory is mounted separately, hidden from agents, " +
-        "and shifts nothing.";
+        "appsettings already declare, the --mount replaces every settings entry of that root for " +
+        "this run; on a new root, it is appended after every declared entry. Several settings " +
+        "entries may declare one root when each carries an id: a --mount-id (or the crew's " +
+        "mounts: block) keeps one and the others are not mounted for the run. Settings entries " +
+        "no --mount names stay in force. The LLM log directory is mounted separately, hidden " +
+        "from agents, and shifts nothing.";
 
     /// <summary>UI-ready statement of what <c>--allow-external-mounts</c> adds.</summary>
     public const string ExternalMountsExplanation =
@@ -260,10 +287,16 @@ public static class MountOverrideSemantics
     /// with <see cref="MountAutoInjection.For"/>. Required: it is the first entry appended
     /// after the declared ones, so without it every appended index is wrong by one.
     /// </param>
+    /// <param name="mountIds">
+    /// The <c>--mount-id</c> arguments (VFS-90): among several settings entries of one root,
+    /// the one carrying a named id is kept and the others are not mounted; with none, and no
+    /// <c>--mount</c> on the root, every entry of that root is a <see cref="EffectiveMountSelection.Conflict"/>.
+    /// </param>
     public static IReadOnlyList<EffectiveMount> ComputeEffectiveMounts(
         IReadOnlyList<string> commandLineMounts,
         IReadOnlyList<string> settingsMounts,
-        MountAutoInjection autoInjection)
+        MountAutoInjection autoInjection,
+        IReadOnlyList<string>? mountIds = null)
     {
         ArgumentNullException.ThrowIfNull(commandLineMounts);
         ArgumentNullException.ThrowIfNull(settingsMounts);
@@ -271,14 +304,20 @@ public static class MountOverrideSemantics
 
         var effective = new List<EffectiveMount>(settingsMounts.Count + autoInjection.Count + commandLineMounts.Count);
         var indexByRoot = new Dictionary<string, int>(StringComparer.Ordinal);
+        var indicesByRoot = new Dictionary<string, List<int>>(StringComparer.Ordinal);
         for (var index = 0; index < settingsMounts.Count; index++)
         {
             effective.Add(new EffectiveMount(index, settingsMounts[index], MountOrigin.Settings));
 
             // The first declaration of a root is the one a launch mount replaces — the same
-            // choice the runner makes; a root declared twice is refused before any host boots.
+            // choice the runner makes; the others of that root are withdrawn for the run.
             if (TryGetVirtualRoot(settingsMounts[index]) is { } root)
+            {
                 indexByRoot.TryAdd(root, index);
+                if (!indicesByRoot.TryGetValue(root, out var indices))
+                    indicesByRoot[root] = indices = [];
+                indices.Add(index);
+            }
         }
 
         var launchMounts = autoInjection.Mounts
@@ -302,8 +341,54 @@ public static class MountOverrideSemantics
             effective.Add(new EffectiveMount(effective.Count, value, origin));
         }
 
+        ApplySelection(effective, indicesByRoot, mountIds ?? []);
         return effective;
     }
+
+    /// <summary>
+    /// Mirrors <c>MountSelection.Resolve</c> on the engine side, for the rows the table
+    /// shows: a root several settings entries declare ends with one of them in force — the
+    /// first, overwritten by a <c>--mount</c>; the one a <c>--mount-id</c> names; or none, and
+    /// the runner refuses unless the crew's own <c>mounts:</c> block picks (which Studio
+    /// cannot see from here, so the rows read as a conflict rather than as a certainty).
+    /// </summary>
+    private static void ApplySelection(
+        List<EffectiveMount> effective,
+        Dictionary<string, List<int>> indicesByRoot,
+        IReadOnlyList<string> mountIds)
+    {
+        var selectedIds = new HashSet<string>(
+            mountIds.Select(id => Orkeon.Domain.Common.MountId.TryParse(id, out var parsed) ? parsed.ToString() : id),
+            StringComparer.OrdinalIgnoreCase);
+
+        foreach (var (_, indices) in indicesByRoot)
+        {
+            if (indices.Count < 2)
+                continue;
+
+            var first = indices[0];
+            if (effective[first].Origin != MountOrigin.Settings)
+            {
+                // A --mount took the root: the first entry was overwritten, the others withdrawn.
+                foreach (var index in indices.Skip(1))
+                    effective[index] = effective[index] with { Selection = EffectiveMountSelection.NotSelected, SharedRootCount = indices.Count };
+                effective[first] = effective[first] with { SharedRootCount = indices.Count };
+                continue;
+            }
+
+            var selected = indices.FirstOrDefault(
+                index => IdOf(effective[index].Value) is { } id && selectedIds.Contains(id), -1);
+            foreach (var index in indices)
+            {
+                var selection = selected < 0
+                    ? EffectiveMountSelection.Conflict
+                    : index == selected ? EffectiveMountSelection.SelectedById : EffectiveMountSelection.NotSelected;
+                effective[index] = effective[index] with { Selection = selection, SharedRootCount = indices.Count };
+            }
+        }
+    }
+
+    private static string? IdOf(string mountString) => FileSystemMount.TryGetId(mountString)?.ToString();
 
     /// <summary>
     /// The virtual root a mount string claims, without its trailing slash, or null for a

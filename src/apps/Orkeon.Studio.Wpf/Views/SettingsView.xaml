@@ -318,6 +318,21 @@
                                Foreground="{DynamicResource InkFaintBrush}">
                       <Run Text="{Binding [Studio.Settings.SeenAs], Source={x:Static services:I18n.Instance}, Mode=OneWay}"/><Run Text=" "/><Run Text="{Binding VirtualPath}"/>
                     </TextBlock>
+                    <!-- VFS-90: the entry's identity — what a team names it by — and a one-click copy
+                         for a hand-written crew's mounts: block. -->
+                    <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
+                                Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource InkFaintBrush}" Text="{Binding IdDisplay, Mode=OneWay}"/>
+                      <Button Width="22" Height="22" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnGhost}"
+                              ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                              Command="{Binding CopyIdCommand}">
+                        <controls:LucideIcon Kind="copy" Size="11"/>
+                      </Button>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" FontSize="10.5" Margin="0,3,0,0"
+                               Text="{Binding UsedByDisplay, Mode=OneWay}"
+                               Visibility="{Binding IsReferenced, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </DockPanel>
               </Border>

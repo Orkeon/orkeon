@@ -38,6 +38,19 @@ public sealed class TeamMountPathsTests
         Assert.Equal("./output:/output:rw", TeamMountPaths.Relativize(Team, "./output:/output:rw"));
     }
 
+    /// <summary>VFS-90 D-07: a team-local folder is not a settings entry and carries no id, whichever way it travels.</summary>
+    [Fact]
+    public void An_id_never_rides_a_team_local_entry()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+
+        Assert.Equal($"{Path.Combine(Team, "output")}:/output:rw", TeamMountPaths.Resolve(Team, $"{id}|./output:/output:rw"));
+        Assert.Equal("./output:/output:rw", TeamMountPaths.Relativize(Team, $"{id}|{Path.Combine(Team, "output")}:/output:rw"));
+        Assert.Equal("./output:/output:rw", TeamMountPaths.Relativize(Team, $"{id}|./output:/output:rw"));
+        // A folder outside the team keeps the id it was recorded with: it names a declaration.
+        Assert.Equal($"{id}|/data/docs:/docs:ro", TeamMountPaths.Relativize(Team, $"{id}|/data/docs:/docs:ro"));
+    }
+
     [Fact]
     public void A_folder_outside_the_team_is_left_alone_both_ways()
     {

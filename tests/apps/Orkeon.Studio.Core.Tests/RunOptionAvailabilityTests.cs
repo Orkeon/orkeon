@@ -74,6 +74,9 @@ public sealed class RunOptionAvailabilityTests
         Assert.Equal("--inputs", RunOptionAvailability.ToCommandLineName(RunOption.Inputs));
         Assert.Equal("--inputs-file", RunOptionAvailability.ToCommandLineName(RunOption.InputsFile));
         Assert.Equal("--mount", RunOptionAvailability.ToCommandLineName(RunOption.Mounts));
+        Assert.Equal("--mount-id", RunOptionAvailability.ToCommandLineName(RunOption.MountIds));
+        Assert.Contains(RunOption.MountIds, RunOptionAvailability.For(RunTargetDialect.Yaml));
+        Assert.Contains(RunOption.MountIds, RunOptionAvailability.For(RunTargetDialect.Script));
         Assert.Equal("--allow-external-mounts", RunOptionAvailability.ToCommandLineName(RunOption.AllowExternalMounts));
         Assert.Equal("--verbose", RunOptionAvailability.ToCommandLineName(RunOption.Verbose));
         Assert.Equal("--llm-log", RunOptionAvailability.ToCommandLineName(RunOption.LlmLog));

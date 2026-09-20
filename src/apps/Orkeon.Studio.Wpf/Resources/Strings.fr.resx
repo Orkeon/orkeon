@@ -218,7 +218,7 @@
   <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve"><value>Lecture / écriture sans suppression</value></data>
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve"><value>Ceci est un dossier d'équipe multi-fichiers : son exécution passe par « orkeon run &lt;dossier&gt; », qui requiert Orkeon &gt;= {0}. Le CLI installé avec Studio le prend en charge.</value></data>
   <!-- STUDIO-15 : la règle des montages est par racine virtuelle, plus par index -->
-  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner insère d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis place chaque argument --mount selon sa racine virtuelle dans « Orkeon:FileSystem:Mounts » : sur une racine que les réglages déclarent déjà, le --mount remplace ce réglage pour cette exécution ; sur une racine neuve, il s'ajoute après toutes les entrées déclarées. Les réglages qu'aucun --mount ne nomme restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
+  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>Le runner insère d'abord son propre montage — le dossier de définition de l'équipe en « /crew » (le dossier du script en « /script » pour une équipe .ork.ts) — puis place chaque argument --mount selon sa racine virtuelle dans « Orkeon:FileSystem:Mounts » : sur une racine que les réglages déclarent déjà, le --mount remplace toutes les entrées de cette racine pour cette exécution ; sur une racine neuve, il s'ajoute après toutes les entrées déclarées. Plusieurs entrées des réglages peuvent déclarer une même racine si chacune porte un identifiant : un --mount-id (ou le bloc mounts: de l'équipe) en retient une et les autres ne sont pas montées pour l'exécution. Les réglages qu'aucun --mount ne nomme restent en vigueur. Le dossier de logs LLM est monté à part, invisible pour les agents, et ne décale rien.</value></data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts ajoute en plus chaque chemin de base --mount à la liste blanche « PathSecurity:AdditionalAllowedDirectories », permettant aux montages de pointer hors du répertoire de travail (même effet que ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
   <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> Pour ce lancement le runner insère {0} montage(s) à lui ({1}), ajouté(s) après les entrées des réglages ; tout --mount sur une racine neuve vient ensuite.</value></data>
 
@@ -627,6 +627,24 @@
   <data name="Studio.Settings.Summary" xml:space="preserve"><value>{0} dossier(s) sélectionné(s)</value></data>
   <data name="Studio.Settings.Declared" xml:space="preserve"><value>« {0} » ajouté aux dossiers autorisés</value></data>
   <data name="Studio.Settings.NotSaved" xml:space="preserve"><value>« {0} » ajouté, mais les réglages n'ont pas pu être enregistrés — {1}</value></data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>déclaré comme {0} — ce point de montage est {1}</value></data>
+  <data name="Studio.Settings.Reused" xml:space="preserve"><value>« {0} » était déjà autorisé ; l'équipe utilise désormais cette entrée</value></data>
+  <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>l'un des {0} dossiers déclarés comme {1}</value></data>
+  <data name="Studio.Settings.MountId" xml:space="preserve"><value>Identifiant {0}</value></data>
+  <data name="Studio.Settings.MountIdNew" xml:space="preserve"><value>Identifiant {0} — attribué à l'enregistrement</value></data>
+  <data name="Studio.Settings.CopyId" xml:space="preserve"><value>Copier l'identifiant</value></data>
+  <data name="Studio.Settings.MountUsedBy" xml:space="preserve"><value>Utilisé par {0}</value></data>
+  <data name="Studio.Settings.RemoveReferenced" xml:space="preserve"><value>« {0} » est utilisé par {1}. Le retirer quand même ? Ces équipes ne démarreront plus tant que le dossier ne sera pas autorisé à nouveau.</value></data>
+  <data name="Studio.Settings.TeamFoldersRowDeclared" xml:space="preserve"><value>{0} · {1} → {2} ({3})</value></data>
+  <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — la déclaration {2} manque sur cette machine</value></data>
+  <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Cette déclaration ({0}) manque sur cette machine</value></data>
+  <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>« {0} » autorisé et relié comme {1}</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Cette équipe désigne des déclarations de dossier absentes ici : {0}. Déclarez-les dans Réglages › Dossiers autorisés ou changez les dossiers de l'équipe.</value></data>
+  <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (sélectionné par identifiant parmi {1})</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (non monté pour cette exécution)</value></data>
+  <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (l'une de {1} entrées — rien ne la sélectionne)</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} dossier(s) désignent des déclarations absentes de cette machine</value></data>
+  <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>Les autoriser tels qu'enregistrés</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve"><value>Un agent fait une seule chose. Décrivez-la en une phrase, puis n'ouvrez que les capacités nécessaires.</value></data>
   <data name="Studio.Create.Name" xml:space="preserve"><value>Nom</value></data>
   <data name="Studio.Create.Does" xml:space="preserve"><value>Ce qu'il fait</value></data>

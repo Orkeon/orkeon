@@ -120,9 +120,10 @@ public sealed class SettingsSectionsTests
             new MountDefinition { PhysicalPath = "/srv/out", VirtualPath = "/output", Rights = MountRights.ReadWrite },
         ]);
 
-        Assert.Equal(
-            SerializedMounts,
-            document.GetStringArray("Orkeon:FileSystem:Mounts"));
+        // Stored in the runtime's own format, plus the id every save assigns (VFS-90).
+        var stored = document.GetStringArray("Orkeon:FileSystem:Mounts");
+        Assert.Equal(SerializedMounts, stored.Select(m => MountDefinition.Parse(m).WithoutId().ToMountString()));
+        Assert.All(stored, m => Assert.NotNull(MountDefinition.Parse(m).Id));
         Assert.Equal(2, document.Mounts.Definitions.Count);
     }
 
@@ -148,6 +149,6 @@ public sealed class SettingsSectionsTests
 
         document.Mounts.RemoveAt(0);
 
-        Assert.Equal(RemainingMount, document.Mounts.RawEntries);
+        Assert.Equal(RemainingMount, document.Mounts.RawEntries.Select(m => MountDefinition.Parse(m).WithoutId().ToMountString()));
     }
 }

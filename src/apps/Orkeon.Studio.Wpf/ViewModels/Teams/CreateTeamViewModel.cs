@@ -188,6 +188,8 @@ public sealed class AllowFolderRequestedEventArgs(string? targetVirtualPath) : E
 /// The row's plain-words name on the first step («Your documents», «The results»); empty on
 /// the Composer step, where the virtual path and its agents are the name.
 /// </param>
+/// <param name="ShortId">The last six characters of the settings declaration the row names (VFS-90); empty otherwise.</param>
+/// <param name="IsUnknownId">Whether the row names a declaration this machine does not have (D-06).</param>
 public sealed record MountRow(
     string VirtualPath,
     bool IsReadWrite,
@@ -197,8 +199,13 @@ public sealed record MountRow(
     bool IsUndeclared = false,
     bool IsUnreadable = false,
     bool IsInsideTeam = false,
-    string Title = "")
+    string Title = "",
+    string ShortId = "",
+    bool IsUnknownId = false)
 {
+    /// <summary>Whether the row names a settings declaration by id (VFS-90); the last six characters are shown.</summary>
+    public bool HasId => ShortId.Length > 0;
+
     /// <summary>Whether the row can say who addresses this mount point.</summary>
     public bool HasAgents => Agents.Length > 0;
 
@@ -1471,19 +1478,28 @@ public sealed class CreateTeamViewModel : ObservableObject
     private MountRow BoundRow(string mountString, MountDefinition mount, IReadOnlyList<string> declared, string title)
     {
         var insideTeam = DeclaredMounts.IsInsideTeam(mountString, _reopenedTeamPath);
+        // A row naming a settings declaration by id shows THAT declaration's folder and rights
+        // (VFS-90, D-01): the entry is authoritative, the sidecar's copy may be stale.
+        var declaredEntry = insideTeam ? null : DeclaredMounts.FindDeclared(mountString, declared);
+        var shown = declaredEntry ?? mount;
         var folder = insideTeam && InsideTeamFolderName(mountString) is { } name
             ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardInsideTeamFolder], name)
-            : mount.PhysicalPath;
+            : shown.PhysicalPath;
+        var unknownId = !insideTeam && DeclaredMounts.HasUnknownId(mountString, declared);
 
         return new MountRow(
             mount.VirtualPath,
-            mount.Rights == MountRights.ReadWrite,
+            shown.Rights == MountRights.ReadWrite,
             Agents: AgentsOf(mount.VirtualPath),
-            Folder: folder,
+            Folder: unknownId
+                ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardUnknownMountId], mount.ShortId)
+                : folder,
             MountString: mountString,
             IsUndeclared: !DeclaredMounts.IsVouchedFor(mountString, declared, _reopenedTeamPath),
             IsInsideTeam: insideTeam,
-            Title: title);
+            Title: title,
+            ShortId: insideTeam ? "" : (declaredEntry?.ShortId ?? mount.ShortId ?? ""),
+            IsUnknownId: unknownId);
     }
 
     /// <summary>
@@ -1604,28 +1620,38 @@ public sealed class CreateTeamViewModel : ObservableObject
     public RelayCommand CreateAllInsideTeamCommand { get; }
 
     /// <summary>
-    /// Binds <paramref name="mount"/>'s folder and rights behind <paramref name="targetVirtualPath"/>,
-    /// replacing whatever was there.
+    /// Binds <paramref name="mount"/> behind <paramref name="targetVirtualPath"/>, replacing
+    /// whatever was there.
     /// <para>
-    /// The settings entry is carried over in the sense that matters — its folder and its
-    /// RIGHTS — and only the name the agents use for it is the team's to choose. A mount
-    /// point takes one folder, so an earlier binding on the same root is removed rather than
-    /// added beside: the runtime does not merge two mounts on one root, it drops one.
+    /// The entry is recorded VERBATIM — folder, root, rights and id (VFS-90, D-01): a settings
+    /// declaration is what it declares, and a team names it rather than re-spelling it. So the
+    /// entry must already be declared under the row's root; the chooser only offers such
+    /// entries, and the disk pick declares the folder under that root before binding it. A
+    /// mount point takes one folder, so an earlier binding on the same root is removed rather
+    /// than added beside: the runtime does not merge two mounts on one root.
     /// </para>
     /// </summary>
     /// <param name="targetVirtualPath">The mount point being answered.</param>
-    /// <param name="mount">The folder the user picked, as the settings declare it.</param>
+    /// <param name="mount">The entry the user picked, as the settings declare it, under that root.</param>
+    /// <exception cref="ArgumentException">The entry is declared under another root.</exception>
     public void BindTeamMount(string targetVirtualPath, MountDefinition mount)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(targetVirtualPath);
         ArgumentNullException.ThrowIfNull(mount);
+
+        if (!mount.SameRootAs(targetVirtualPath))
+        {
+            throw new ArgumentException(
+                $"'{mount.PhysicalPath}' is declared as {mount.VirtualPath}; a team binds a declaration under its own root ({targetVirtualPath}).",
+                nameof(mount));
+        }
 
         RemoveBinding(targetVirtualPath);
 
         // Answering a root the blueprint implied un-drops it: the user just said what sits
         // behind it, which is the opposite of dropping it.
         _droppedDerivedRoots.Remove(targetVirtualPath);
-        TeamMounts.Add((mount with { VirtualPath = targetVirtualPath }).ToMountString());
+        TeamMounts.Add(mount.ToMountString());
         RefreshMountSurfaces();
     }
 

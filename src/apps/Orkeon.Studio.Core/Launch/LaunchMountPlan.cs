@@ -1,82 +1,62 @@
 using Orkeon.Compliance.Vfs;
-using Orkeon.Domain.FileSystem;
-using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Launch;
 
 /// <summary>
-/// What of a team's folders a launch has to say on the command line at all (STUDIO-15 D-05).
+/// What of a team's folders a launch has to say on the command line (STUDIO-15 D-05, VFS-90).
 /// <para>
-/// A team never declares its own folders — they live inside it and are vouched for by that —
-/// and an outside folder is one the settings declare: the chooser records the settings entry
-/// verbatim in the sidecar, and the wizard's disk picker declares the folder on the way before
-/// binding it under the row's rights (STUDIO-14 D-10). Laid on the run as
-/// <c>--mount</c>, that entry meets its own twin from the settings: the runner now treats the
-/// pair as one mount (the <c>--mount</c> replaces the settings entry by root, D-01), but
-/// passing a machine default back to the machine is noise on the command line and, on an
-/// engine from before D-01, the "Duplicate virtual paths" refusal that made every adopted
-/// team unlaunchable from Studio. So an entry the settings already hold — same folder, same
-/// name, same rights — is not laid. Anything else is: the same folder under another name is
-/// a mount of its own, and the same name over another folder or with other rights is a
-/// deliberate replacement the effective-mounts table shows as such.
+/// A settings entry a team names is selected by its id — <c>--mount-id</c>, no path on the
+/// command line, the machine's own declaration in force as it stands today (D-01); an entry
+/// without an id that the settings hold as recorded needs nothing at all. The team's own
+/// folders and any copy the settings do not hold are the team's intent and go as
+/// <c>--mount</c>, which replaces every settings entry of that root for the run. An id this
+/// machine does not declare stops the launch: the team refers to a declaration that is not
+/// here, and only the person can say which folder stands behind it (D-06).
 /// </para>
 /// </summary>
 [SuppressVfsCompliance(
-    "OUT-OF-SCOPE: compares the mount strings a team recorded with the ones the settings " +
-    "declare, before any VFS mount exists. Nothing is opened — this is string comparison.")]
-public static class LaunchMountPlan
+    "OUT-OF-SCOPE: turns the mount strings a team recorded into command-line arguments, before " +
+    "any VFS mount exists. Nothing is opened — this is string arithmetic.")]
+public sealed record LaunchMountPlan
 {
-    /// <summary>
-    /// The team mounts worth laying as <c>--mount</c>: every entry of
-    /// <paramref name="teamMounts"/> except the ones <paramref name="settingsMounts"/> already
-    /// holds — same physical folder (normalized, compared the way
-    /// <see cref="PhysicalPathContainment"/> compares paths on this platform), same virtual
-    /// root (ordinal, trailing slash ignored), same rights and sub-path overrides. Order is
-    /// preserved. An entry the parser refuses passes through: the runner reports it with its
-    /// own message, and dropping it here would hide that message.
-    /// </summary>
-    public static IReadOnlyList<string> WithoutSettingsDuplicates(
-        IReadOnlyList<string> teamMounts,
-        IReadOnlyList<string> settingsMounts)
+    /// <summary>The <c>--mount-id</c> values, in team order, each once.</summary>
+    public IReadOnlyList<string> MountIds { get; init; } = [];
+
+    /// <summary>The <c>--mount</c> values, in team order.</summary>
+    public IReadOnlyList<string> Mounts { get; init; } = [];
+
+    /// <summary>The ids the team names that this machine does not declare; non-empty blocks the launch.</summary>
+    public IReadOnlyList<string> UnknownIds { get; init; } = [];
+
+    /// <summary>The plan for a team's resolved mounts (<see cref="TeamMountResolution.Resolve"/>).</summary>
+    public static LaunchMountPlan For(IReadOnlyList<ResolvedTeamMount> teamMounts)
     {
         ArgumentNullException.ThrowIfNull(teamMounts);
-        ArgumentNullException.ThrowIfNull(settingsMounts);
 
-        var declared = new List<MountDefinition>(settingsMounts.Count);
-        foreach (var entry in settingsMounts)
+        var mountIds = new List<string>();
+        var mounts = new List<string>();
+        var unknown = new List<string>();
+        foreach (var mount in teamMounts)
         {
-            if (MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
-                declared.Add(mount);
-        }
-
-        var laid = new List<string>(teamMounts.Count);
-        foreach (var entry in teamMounts)
-        {
-            if (MountDefinition.TryParse(entry, out var mount, out _) && mount is not null
-                && declared.Any(settings => IsSameMount(mount, settings)))
+            switch (mount.Source)
             {
-                continue;
+                case TeamMountSource.Settings:
+                    if (mount.SettingsEntry?.Id is { } id && !mountIds.Contains(id.ToString()))
+                        mountIds.Add(id.ToString());
+                    break;
+                case TeamMountSource.UnknownId:
+                    if (mount.Id is { } unknownId && !unknown.Contains(unknownId.ToString()))
+                        unknown.Add(unknownId.ToString());
+                    break;
+                default:
+                    // InsideTeam and Copy are the team's own intent; an unreadable entry is
+                    // passed on so the runner reports it with its own message.
+                    mounts.Add(mount.Effective);
+                    break;
             }
-
-            laid.Add(entry);
         }
 
-        return laid;
+        return new LaunchMountPlan { MountIds = mountIds, Mounts = mounts, UnknownIds = unknown };
     }
-
-    private static bool IsSameMount(MountDefinition team, MountDefinition settings) =>
-        string.Equals(NormalizeFolder(team.PhysicalPath), NormalizeFolder(settings.PhysicalPath), PhysicalPathContainment.Comparison)
-        && string.Equals(NormalizeRoot(team.VirtualPath), NormalizeRoot(settings.VirtualPath), StringComparison.Ordinal)
-        && team.Rights == settings.Rights
-        && team.Overrides.SequenceEqual(settings.Overrides);
-
-    /// <summary>
-    /// The folder as the settings and the sidecar spell it, less the trailing separator a
-    /// picker or a hand edit may have left — the same normalization
-    /// <c>DeclaredMounts.IsDeclared</c> vouches for a folder with.
-    /// </summary>
-    private static string NormalizeFolder(string path) => path.Trim().TrimEnd('/', '\\');
-
-    private static string NormalizeRoot(string virtualPath) =>
-        virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
 }

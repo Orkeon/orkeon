@@ -68,6 +68,62 @@ public sealed class MountValidatorTests
         Assert.Contains("/workspace", message.Text, StringComparison.Ordinal);
     }
 
+    /// <summary>VFS-90 D-03: two entries may share a root when both carry an id — information, never a refusal.</summary>
+    [Fact]
+    public void Two_entries_of_one_root_that_both_carry_an_id_are_information_not_an_error()
+    {
+        var validator = new MountValidator(new FakeDirectoryProbe("/a", "/b"));
+
+        var messages = validator.Validate(
+            [Mount("/a", "/output", MountRights.ReadWrite).WithFreshId(), Mount("/b", "/output/", MountRights.ReadWrite).WithFreshId()]);
+
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountSharedRoot, message.Code);
+        Assert.Equal(ValidationSeverity.Information, message.Severity);
+        Assert.Contains("declared 2 times", message.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void A_shared_root_with_an_entry_that_has_no_id_is_an_error_naming_that_entry()
+    {
+        var validator = new MountValidator(new FakeDirectoryProbe("/a", "/b"));
+
+        var messages = validator.Validate([Mount("/a", "/output").WithFreshId(), Mount("/b", "/output")]);
+
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountVirtualCollision, message.Code);
+        Assert.Equal(ValidationSeverity.Error, message.Severity);
+        Assert.Contains("'/b:/output:ro' has no id", message.Text, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void One_id_on_two_entries_is_an_error()
+    {
+        var validator = new MountValidator(new FakeDirectoryProbe("/a", "/b"));
+        var id = Orkeon.Domain.Common.MountId.Create();
+
+        var messages = validator.Validate(
+            [Mount("/a", "/workspace") with { Id = id }, Mount("/b", "/output") with { Id = id }]);
+
+        var message = Assert.Single(messages);
+        Assert.Equal(ValidationCodes.MountIdDuplicate, message.Code);
+        Assert.Equal(ValidationSeverity.Error, message.Severity);
+        Assert.Equal(id.ToString(), message.Path);
+    }
+
+    [Fact]
+    public void One_folder_declared_twice_under_one_root_is_a_warning_beside_the_information()
+    {
+        var validator = new MountValidator(new FakeDirectoryProbe("/a"));
+
+        var messages = validator.Validate(
+            [Mount("/a", "/output").WithFreshId(), Mount("/a", "/output", MountRights.ReadWrite).WithFreshId()]);
+
+        Assert.Equal(2, messages.Count);
+        Assert.Contains(messages, m => m.Severity == ValidationSeverity.Information && m.Code == ValidationCodes.MountSharedRoot);
+        Assert.Contains(messages, m => m.Severity == ValidationSeverity.Warning && m.Text.Contains("one entry is enough", StringComparison.Ordinal));
+    }
+
     [Fact]
     public void Distinct_virtual_paths_do_not_collide()
     {

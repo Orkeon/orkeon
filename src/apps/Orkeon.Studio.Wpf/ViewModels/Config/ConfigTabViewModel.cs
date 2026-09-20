@@ -56,7 +56,7 @@ public sealed class ConfigTabViewModel : ObservableObject
         ShellTools = new ShellToolsSectionViewModel(() => _document, MarkDirty);
         Mcp = new McpSectionViewModel(() => _document, MarkDirty, _strings);
 
-        Mounts = new MountsEditorViewModel(seams.Directories, Picker, requireAtLeastOne: true, _strings);
+        Mounts = new MountsEditorViewModel(seams.Directories, Picker, requireAtLeastOne: true, _strings, seams.Clipboard);
         Mounts.Changed += OnMountsChanged;
 
         Location = new SettingsLocationViewModel(Picker, globalPathOverride, _strings);

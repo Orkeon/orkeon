@@ -97,7 +97,8 @@ public sealed class TeamsLastRunTests : IDisposable
     public void Team_mounts_ride_the_launch_ahead_of_the_per_launch_entries()
     {
         var mounts = new LaunchMountsViewModel();
-        mounts.SetTeamMounts(["C:/docs:/docs:ro"]);
+        // A folder the settings do not hold: the team's own intent, laid as --mount (VFS-90).
+        mounts.SetTeamMounts(TeamMountResolution.Resolve("/teams/montee", ["C:/docs:/docs:ro"], declaredMounts: []));
         mounts.LaunchMounts.Load(["C:/extra:/extra:rw"]);
 
         Assert.Equal(["C:/docs:/docs:ro", "C:/extra:/extra:rw"], mounts.ToMountArguments());

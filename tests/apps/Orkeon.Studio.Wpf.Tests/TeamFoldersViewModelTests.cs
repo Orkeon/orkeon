@@ -44,6 +44,34 @@ public sealed class TeamFoldersViewModelTests
         Assert.True(row.IsReadWrite);
     }
 
+    /// <summary>
+    /// VFS-90: a folder the team names by id is listed with the declaration it resolves to, and
+    /// flagged when this machine has no such declaration — read against the settings the shell
+    /// passes; without them, only the in-team folders are listed, as before.
+    /// </summary>
+    [Fact]
+    public void A_declared_folder_is_listed_by_its_id_and_an_unknown_id_is_flagged()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-root");
+        var known = Orkeon.Domain.Common.MountId.Create();
+        var unknown = Orkeon.Domain.Common.MountId.Create();
+        var team = Team(root, "veille", "Veille", "./output:/output:rw", $"{known}|/old/copy:/docs:ro", $"{unknown}|/x:/x:ro");
+
+        var section = new TeamFoldersViewModel(() => [team], declaredMounts: () => [$"{known}|/data/docs:/docs:ro"]);
+
+        Assert.Equal(3, section.Rows.Count);
+        var declared = section.Rows.Single(r => r.VirtualPath == "/docs");
+        Assert.True(declared.IsDeclared);
+        Assert.Equal("/data/docs", declared.Folder);
+        Assert.Equal(known.ToString()[^6..], declared.ShortId);
+        Assert.Equal($"Veille · /docs → /data/docs ({declared.ShortId})", declared.Label);
+        var missing = section.Rows.Single(r => r.VirtualPath == "/x");
+        Assert.True(missing.IsUnknownId);
+        Assert.Equal($"Veille · /x — declaration {unknown.ToString()[^6..]} is missing on this machine", missing.Label);
+
+        Assert.Single(new TeamFoldersViewModel(() => [team]).Rows);
+    }
+
     [Fact]
     public void A_relative_entry_names_its_sub_folder_and_a_nested_one_keeps_its_slashes()
     {

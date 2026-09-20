@@ -71,10 +71,21 @@ public sealed record TargetDescription
 
     /// <summary>
     /// The team's mount strings, resolved: a team-relative sidecar entry comes back bound
-    /// under the team folder, absolute and ready to ride a launch as <c>--mount</c>. Empty for
+    /// under the team folder, absolute and ready to ride a launch as <c>--mount</c>; an entry
+    /// naming a settings declaration by id comes back as that declaration. Empty for
     /// anything that is not an adopted team.
     /// </summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
+
+    /// <summary>The sidecar's mounts read against the settings (VFS-90); resolved as copies when none were passed.</summary>
+    public IReadOnlyList<ResolvedTeamMount> ResolvedMounts { get; init; } = [];
+
+    /// <summary>The ids the sidecar names that this machine does not declare.</summary>
+    public IReadOnlyList<string> UnknownMountIds =>
+        ResolvedMounts.Where(m => m.Source == TeamMountSource.UnknownId && m.Id is not null).Select(m => m.Id!.ToString()).Distinct().ToList();
+
+    /// <summary>Whether the team refers to a declaration missing on this machine (D-06).</summary>
+    public bool HasUnknownMountIds => ResolvedMounts.Any(m => m.Source == TeamMountSource.UnknownId);
 }
 
 
@@ -116,9 +127,20 @@ public sealed record TeamSummary
     /// The team's mount strings, resolved: a team-relative sidecar entry (<c>./output</c>)
     /// comes back bound under <see cref="Path"/>, absolute, so the cards, the launcher and
     /// the folders modal keep receiving what they always did. The raw entries stay in
-    /// <see cref="Metadata"/>. Empty when none are recorded.
+    /// <see cref="Metadata"/>. An entry naming a settings declaration by id comes back as that
+    /// declaration (VFS-90). Empty when none are recorded.
     /// </summary>
     public IReadOnlyList<string> Mounts { get; init; } = [];
+
+    /// <summary>The sidecar's mounts read against the settings (VFS-90); resolved as copies when none were passed.</summary>
+    public IReadOnlyList<ResolvedTeamMount> ResolvedMounts { get; init; } = [];
+
+    /// <summary>The ids the sidecar names that this machine does not declare.</summary>
+    public IReadOnlyList<string> UnknownMountIds =>
+        ResolvedMounts.Where(m => m.Source == TeamMountSource.UnknownId && m.Id is not null).Select(m => m.Id!.ToString()).Distinct().ToList();
+
+    /// <summary>Whether the team refers to a declaration missing on this machine (D-06).</summary>
+    public bool HasUnknownMountIds => ResolvedMounts.Any(m => m.Source == TeamMountSource.UnknownId);
 
     /// <summary>Agent definitions counted on disk; null when the folder shows none.</summary>
     public int? AgentCount { get; init; }
@@ -146,8 +168,12 @@ public static partial class TeamCatalog
             Environment.GetFolderPath(Environment.SpecialFolder.UserProfile, Environment.SpecialFolderOption.Create),
             "Orkeon", "teams");
 
-    /// <summary>Lists the team folders under <paramref name="root"/>, sidecars read when present.</summary>
-    public static IReadOnlyList<TeamSummary> List(string root)
+    /// <summary>
+    /// Lists the team folders under <paramref name="root"/>, sidecars read when present.
+    /// </summary>
+    /// <param name="root">The teams directory.</param>
+    /// <param name="declaredMounts">The settings' mounts, to read each sidecar against (VFS-90); null not to consult them.</param>
+    public static IReadOnlyList<TeamSummary> List(string root, IReadOnlyList<string>? declaredMounts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
 
@@ -158,7 +184,7 @@ public static partial class TeamCatalog
 
             return Directory.EnumerateDirectories(root)
                 .Order(StringComparer.OrdinalIgnoreCase)
-                .Select(Describe)
+                .Select(directory => Describe(directory, declaredMounts))
                 .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
@@ -168,12 +194,22 @@ public static partial class TeamCatalog
     }
 
     /// <summary>Reads one team folder into its summary.</summary>
-    public static TeamSummary Describe(string teamDirectory)
+    /// <param name="teamDirectory">The team folder.</param>
+    /// <param name="declaredMounts">
+    /// The settings' mounts, to read the sidecar against (VFS-90): an entry naming one of them
+    /// by id stands for that entry as it is today. Null not to consult them — the mounts are
+    /// then the sidecar's own spelling, resolved under the team.
+    /// </param>
+    public static TeamSummary Describe(string teamDirectory, IReadOnlyList<string>? declaredMounts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
         var slug = Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory));
         var metadata = TryReadMetadata(teamDirectory);
+        // Resolved once, here, at the catalog's boundary: the runtime would resolve a
+        // relative physical path against the process cwd, and no launcher should have
+        // to know the sidecar's convention — nor which settings entry an id stands for.
+        var resolved = TeamMountResolution.Resolve(teamDirectory, metadata?.Mounts, declaredMounts);
 
         return new TeamSummary
         {
@@ -181,10 +217,8 @@ public static partial class TeamCatalog
             Slug = slug,
             Path = teamDirectory,
             Metadata = metadata,
-            // Resolved once, here, at the catalog's boundary: the runtime would resolve a
-            // relative physical path against the process cwd, and no launcher should have
-            // to know the sidecar's convention.
-            Mounts = TeamMountPaths.ResolveAll(teamDirectory, metadata?.Mounts),
+            Mounts = resolved.Select(m => m.Effective).ToList(),
+            ResolvedMounts = resolved,
             AgentCount = CountAgents(teamDirectory),
         };
     }
@@ -245,7 +279,9 @@ public static partial class TeamCatalog
     /// the sidecar's name/description/profile/mounts when one sits beside it, the
     /// file-system name otherwise, and — for a team directory — the agent count.
     /// </summary>
-    public static TargetDescription DescribeTarget(string targetPath)
+    /// <param name="targetPath">The path the launcher was pointed at: a team folder or a file inside one.</param>
+    /// <param name="declaredMounts">The settings' mounts, to read the sidecar against (VFS-90); null not to consult them.</param>
+    public static TargetDescription DescribeTarget(string targetPath, IReadOnlyList<string>? declaredMounts = null)
     {
         if (string.IsNullOrWhiteSpace(targetPath))
             return new TargetDescription();
@@ -264,15 +300,18 @@ public static partial class TeamCatalog
                 ? Path.GetFileName(targetPath.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar))
                 : Path.GetFileNameWithoutExtension(targetPath);
 
+            var resolved = directory is { Length: > 0 }
+                ? TeamMountResolution.Resolve(directory, metadata?.Mounts, declaredMounts)
+                : [];
+
             return new TargetDescription
             {
                 Name = metadata?.Name is { Length: > 0 } name ? name : fallbackName,
                 Description = metadata?.Description,
                 Profile = metadata?.Profile,
                 AgentCount = agentCount,
-                Mounts = directory is { Length: > 0 }
-                    ? TeamMountPaths.ResolveAll(directory, metadata?.Mounts)
-                    : [],
+                Mounts = resolved.Select(m => m.Effective).ToList(),
+                ResolvedMounts = resolved,
             };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)

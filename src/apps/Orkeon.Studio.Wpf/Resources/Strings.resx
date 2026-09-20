@@ -218,7 +218,7 @@
   <data name="Studio.Settings.ReadWriteNoDelete" xml:space="preserve"><value>Read / write without delete</value></data>
   <data name="Studio.Run.DirectoryRunNotice" xml:space="preserve"><value>This is a multi-file crew directory: running it uses 'orkeon run &lt;directory&gt;', which requires Orkeon &gt;= {0}. The CLI installed alongside Studio supports this.</value></data>
   <!-- STUDIO-15: the mount rule is by virtual root, no longer by index -->
-  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>The runner inserts its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each --mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the appsettings already declare, the --mount replaces that settings entry for this run; on a new root, it is appended after every declared entry. Settings entries no --mount names stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value></data>
+  <data name="Studio.Settings.Explanation" xml:space="preserve"><value>The runner inserts its own mount first — the crew's configuration directory as '/crew' (the script's directory as '/script' for a .ork.ts crew) — then places each --mount argument by its virtual root in 'Orkeon:FileSystem:Mounts': on a root the appsettings already declare, the --mount replaces every settings entry of that root for this run; on a new root, it is appended after every declared entry. Several settings entries may declare one root when each carries an id: a --mount-id (or the crew's mounts: block) keeps one and the others are not mounted for the run. Settings entries no --mount names stay in force. The LLM log directory is mounted separately, hidden from agents, and shifts nothing.</value></data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve"><value>--allow-external-mounts additionally whitelists each --mount base path under 'PathSecurity:AdditionalAllowedDirectories', letting mounts point outside the working directory (same effect as ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value></data>
   <data name="Studio.Settings.ThisLaunch" xml:space="preserve"><value> For this launch the runner inserts {0} mount(s) of its own ({1}), appended after the settings entries; every --mount on a new root lands after them.</value></data>
 
@@ -627,6 +627,24 @@
   <data name="Studio.Settings.Summary" xml:space="preserve"><value>{0} folder(s) selected</value></data>
   <data name="Studio.Settings.Declared" xml:space="preserve"><value>“{0}” added to the authorized folders</value></data>
   <data name="Studio.Settings.NotSaved" xml:space="preserve"><value>“{0}” added, but the settings could not be saved — {1}</value></data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>declared as {0} — this mount point is {1}</value></data>
+  <data name="Studio.Settings.Reused" xml:space="preserve"><value>“{0}” was already authorized; the team now uses that entry</value></data>
+  <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>one of {0} folders declared as {1}</value></data>
+  <data name="Studio.Settings.MountId" xml:space="preserve"><value>Id {0}</value></data>
+  <data name="Studio.Settings.MountIdNew" xml:space="preserve"><value>Id {0} — assigned on save</value></data>
+  <data name="Studio.Settings.CopyId" xml:space="preserve"><value>Copy the id</value></data>
+  <data name="Studio.Settings.MountUsedBy" xml:space="preserve"><value>Used by {0}</value></data>
+  <data name="Studio.Settings.RemoveReferenced" xml:space="preserve"><value>“{0}” is used by {1}. Remove it anyway? Those teams will not start until the folder is authorized again.</value></data>
+  <data name="Studio.Settings.TeamFoldersRowDeclared" xml:space="preserve"><value>{0} · {1} → {2} ({3})</value></data>
+  <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — declaration {2} is missing on this machine</value></data>
+  <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>This declaration ({0}) is missing on this machine</value></data>
+  <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>“{0}” authorized and bound as {1}</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.</value></data>
+  <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (selected by id among {1})</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (not mounted for this run)</value></data>
+  <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (one of {1} entries — nothing selects it)</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} folder(s) refer to declarations missing on this machine</value></data>
+  <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>Authorize them as recorded</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve"><value>An agent does one thing. Describe it in one sentence, then open only the capacities it needs.</value></data>
   <data name="Studio.Create.Name" xml:space="preserve"><value>Name</value></data>
   <data name="Studio.Create.Does" xml:space="preserve"><value>What it does</value></data>

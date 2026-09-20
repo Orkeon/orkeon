@@ -107,7 +107,9 @@ public class MountFormTests
         Assert.True(form.TryBuild(out var definition, out _));
         Assert.NotNull(definition);
 
-        Assert.Equal("/data/in:/workspace:ro;logs:rw", definition.ToMountString());
+        // The form gives a new mount its id from the start (VFS-90); the grammar behind it is unchanged.
+        Assert.NotNull(definition.Id);
+        Assert.Equal("/data/in:/workspace:ro;logs:rw", definition.WithoutId().ToMountString());
 
         var mount = FileSystemMount.Parse(definition.ToMountString());
         var mountOverride = Assert.Single(mount.Overrides);
@@ -150,6 +152,24 @@ public class MountFormTests
 
         Assert.True(form.TryBuild(out var definition, out _));
         Assert.NotNull(definition);
-        Assert.Equal("/data/in:/workspace:ro", definition.ToMountString());
+        Assert.Equal("/data/in:/workspace:ro", definition.WithoutId().ToMountString());
+    }
+
+    /// <summary>VFS-90: an existing entry keeps its id through the form; a new one is told its id was generated.</summary>
+    [Fact]
+    public void An_existing_id_is_carried_over_and_a_new_one_is_said_to_be_generated()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var edited = MountForm.FromDefinition(MountDefinition.Parse($"{id}|/data/in:/workspace:ro"), new FakeDirectoryProbe("/data/in"));
+        var fresh = new MountForm(new FakeDirectoryProbe("/data/in"));
+
+        Assert.Equal(id, edited.Id);
+        Assert.False(edited.IsIdGenerated);
+        Assert.Equal($"Id: {id}", edited.IdLabel);
+        Assert.True(edited.TryBuild(out var definition, out _));
+        Assert.Equal(id, definition!.Id);
+
+        Assert.True(fresh.IsIdGenerated);
+        Assert.EndsWith("— generated", fresh.IdLabel, StringComparison.Ordinal);
     }
 }

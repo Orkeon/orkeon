@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Globalization;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -48,17 +49,61 @@ public sealed class ImportTeamViewModel : ObservableObject
         IStudioStrings? strings = null,
         string? teamsRoot = null,
         Func<string, IReadOnlyList<string>>? scanSecrets = null,
-        ImportTeamAction? import = null)
+        ImportTeamAction? import = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        Action<MountDefinition>? declareMount = null,
+        Func<Task<bool>>? saveSettings = null)
     {
         _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
         _strings = strings ?? EnglishStudioStrings.Instance;
         _scanSecrets = scanSecrets ?? TeamCatalog.FindInlineSecrets;
         _import = import ?? TeamCatalog.Import;
+        _declaredMounts = declaredMounts;
+        _declareMount = declareMount;
+        _saveSettings = saveSettings;
 
         Target = new TargetSelectionViewModel(targetProbe, picker, strings);
         Target.TargetChanged += (_, _) => OnTargetChanged();
 
         ImportCommand = new RelayCommand(Import, () => Target.Target is not null);
+        DeclareCopiesCommand = new AsyncRelayCommand(DeclareCopiesAsync, () => UnknownMounts.Count > 0 && _declareMount is not null);
+    }
+
+    private readonly Func<IReadOnlyList<string>>? _declaredMounts;
+    private readonly Action<MountDefinition>? _declareMount;
+    private readonly Func<Task<bool>>? _saveSettings;
+
+    /// <summary>
+    /// The candidate's folders that name a declaration this machine does not have (VFS-90,
+    /// D-06): the exporting machine's ids. Empty when the settings were not consulted.
+    /// </summary>
+    public IReadOnlyList<ResolvedTeamMount> UnknownMounts { get; private set; } = [];
+
+    /// <summary>Whether the candidate refers to declarations missing here.</summary>
+    public bool HasUnknownMounts => UnknownMounts.Count > 0;
+
+    /// <summary>
+    /// "Authorize them as recorded": declares each unknown folder in the settings under the
+    /// SAME id the team carries (D-06), saves, and re-reads the candidate — the team then
+    /// names declarations this machine has, and the launcher stops refusing it.
+    /// </summary>
+    public AsyncRelayCommand DeclareCopiesCommand { get; }
+
+    private async Task DeclareCopiesAsync()
+    {
+        if (_declareMount is null)
+            return;
+
+        foreach (var mount in UnknownMounts)
+        {
+            if (MountDefinition.TryParse(mount.Raw, out var copy, out _))
+                _declareMount(copy);
+        }
+
+        if (_saveSettings is not null)
+            await _saveSettings().ConfigureAwait(true);
+
+        OnTargetChanged();
     }
 
     /// <summary>Raised when a team landed in the teams root.</summary>
@@ -120,7 +165,10 @@ public sealed class ImportTeamViewModel : ObservableObject
             RunTargetKind.SingleFileCrewDirectory => StudioStringKeys.TargetKindSingleFileCrewDirectory,
             _ => StudioStringKeys.TargetKindScriptDirectory,
         };
-        var described = TeamCatalog.DescribeTarget(target.SelectedPath);
+        var described = TeamCatalog.DescribeTarget(target.SelectedPath, _declaredMounts?.Invoke());
+        UnknownMounts = described.ResolvedMounts.Where(m => m.Source == TeamMountSource.UnknownId).ToList();
+        OnPropertiesChanged(nameof(UnknownMounts), nameof(HasUnknownMounts));
+        DeclareCopiesCommand.RaiseCanExecuteChanged();
         var name = described.Name ?? target.SelectedPath;
         var detail = described.AgentCount is { } agents
             ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportRecognizedAgents], name, agents)
@@ -154,6 +202,16 @@ public sealed class ImportTeamViewModel : ObservableObject
             RecognitionReport.Add(new ImportCheckViewModel(
                 _strings[StudioStringKeys.ImportMountsNone],
                 _strings[StudioStringKeys.ImportMountsNoneDetail], "info"));
+        }
+
+        // VFS-90 D-06: a folder naming a declaration this machine does not have. Said before
+        // the copy, with the way out — the launcher would otherwise refuse the team afterwards.
+        if (UnknownMounts.Count > 0)
+        {
+            RecognitionReport.Add(new ImportCheckViewModel(
+                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ImportUnknownMountIds], UnknownMounts.Count),
+                MountLabels.DescribeAll(UnknownMounts.Select(m => m.Raw).ToList(), _strings, ", "),
+                "warn"));
         }
 
         RecognitionReport.Add(new ImportCheckViewModel(

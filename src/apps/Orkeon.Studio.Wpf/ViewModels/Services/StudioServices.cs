@@ -62,4 +62,7 @@ public sealed record StudioServices
 
     /// <summary>Peeks at the API keys the profiles name, without ever reading a file.</summary>
     public IApiKeyStore? KeyStore { get; init; }
+
+    /// <summary>The clipboard behind "copy the id" on the settings' mount rows (VFS-90); in-memory when absent.</summary>
+    public IClipboardService? Clipboard { get; init; }
 }

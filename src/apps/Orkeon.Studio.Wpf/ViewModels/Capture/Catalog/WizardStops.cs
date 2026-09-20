@@ -77,15 +77,18 @@ internal static class WizardStops
                 // A mount point of the user's own, beyond the two canonical rows.
                 wizard.NewRootName = "archives";
                 wizard.AddNamedRootCommand.Execute(null);
-                // What the disk picker binds back once confirmed: the seeded, declared docs/.
-                wizard.BindTeamMount(
-                    Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot,
+                // What the disk pick binds back once confirmed: the seeded docs/, declared under
+                // the ROW's root with an id of its own (VFS-90, D-01) — the settings already
+                // hold it as /docs, and a team binds a declaration verbatim rather than
+                // re-spelling one — then bound as that very entry.
+                var (declared, _) = c.Shell.Config.Mounts.EnsureDeclared(
                     new Orkeon.Studio.Core.FileSystem.MountDefinition
                     {
                         PhysicalPath = System.IO.Path.Combine(c.World.DataDirectory, "docs"),
-                        VirtualPath = "/docs",
+                        VirtualPath = Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot,
                         Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
                     });
+                wizard.BindTeamMount(Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot, declared);
             }),
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },

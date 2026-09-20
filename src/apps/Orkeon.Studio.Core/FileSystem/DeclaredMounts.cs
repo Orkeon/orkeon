@@ -34,6 +34,12 @@ public static class DeclaredMounts
         if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
             return false;
 
+        // An entry that names its declaration by id (VFS-90) is vouched for by that entry and
+        // nothing else: the entry is authoritative (D-01), and a folder that happens to be
+        // declared under another id is another declaration.
+        if (mount.Id is { } id)
+            return Declared(declaredMounts).Any(declared => id.Equals(declared.Id));
+
         var folder = Normalize(mount.PhysicalPath);
         if (folder.Length == 0)
             return false;
@@ -51,6 +57,49 @@ public static class DeclaredMounts
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// The settings entry a team mount stands for (VFS-90): the one carrying its id when it
+    /// has one, else the one declaring the same folder, root and rights — the spelling of a
+    /// sidecar written before ids. Null when the settings hold no such entry.
+    /// </summary>
+    public static MountDefinition? FindDeclared(string mountString, IReadOnlyList<string> declaredMounts)
+    {
+        ArgumentNullException.ThrowIfNull(declaredMounts);
+
+        if (!MountDefinition.TryParse(mountString, out var mount, out _) || mount is null)
+            return null;
+
+        var declared = Declared(declaredMounts);
+        return mount.Id is { } id
+            ? declared.FirstOrDefault(entry => id.Equals(entry.Id))
+            : declared.FirstOrDefault(entry => entry.SameDeclaration(mount));
+    }
+
+    /// <summary>
+    /// Whether the mount names a declaration this machine does not have: it carries an id and
+    /// no settings entry carries the same one (a team imported from elsewhere, D-06).
+    /// </summary>
+    public static bool HasUnknownId(string mountString, IReadOnlyList<string> declaredMounts)
+    {
+        ArgumentNullException.ThrowIfNull(declaredMounts);
+
+        return MountDefinition.TryParse(mountString, out var mount, out _)
+            && mount.Id is { } id
+            && !Declared(declaredMounts).Any(entry => id.Equals(entry.Id));
+    }
+
+    private static List<MountDefinition> Declared(IReadOnlyList<string> declaredMounts)
+    {
+        var declared = new List<MountDefinition>(declaredMounts.Count);
+        foreach (var entry in declaredMounts)
+        {
+            if (MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
+                declared.Add(mount);
+        }
+
+        return declared;
     }
 
     /// <summary>

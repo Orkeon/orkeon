@@ -26,10 +26,12 @@ internal sealed record MountRow(int Index, string Raw, MountDefinition? Definiti
             var overrides = Definition.Overrides.Count == 0
                 ? ""
                 : string.Create(CultureInfo.InvariantCulture, $"  (+{Definition.Overrides.Count} sub-path override(s))");
+            // The id's tail, the way the WPF rows show it (VFS-90): enough to tell two /output apart.
+            var id = Definition.ShortId is { } shortId ? string.Create(CultureInfo.InvariantCulture, $"  [{shortId}]") : "";
 
             return string.Create(
                 CultureInfo.InvariantCulture,
-                $"{Definition.VirtualPath}  [{MountRightsTokens.ToToken(Definition.Rights)}]  <- {Definition.PhysicalPath}{overrides}");
+                $"{Definition.VirtualPath}  [{MountRightsTokens.ToToken(Definition.Rights)}]  <- {Definition.PhysicalPath}{overrides}{id}");
         }
     }
 }
@@ -96,7 +98,12 @@ internal sealed class MountEditorModel
         if (_entries.Count == 0 && !SectionExisted)
             return;
 
+        // Written as edited, then every parsable entry without an id gets one (VFS-90): a file
+        // from before ids is complete after its first save, unparsable entries untouched.
         document.Mounts.SetRaw(_entries);
+        document.Mounts.WithIdsAssigned();
+        _entries.Clear();
+        _entries.AddRange(document.Mounts.RawEntries);
         SectionExisted = true;
     }
 

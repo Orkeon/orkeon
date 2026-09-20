@@ -154,6 +154,21 @@ public sealed class AppSettingsValidatorTests
         Assert.Null(Find(Validator().Validate(document), ValidationCodes.UnknownRagProfile));
     }
 
+    /// <summary>VFS-90 D-03: two settings entries of one root, each with an id, are a valid file.</summary>
+    [Fact]
+    public void Two_entries_of_one_root_with_ids_validate_without_an_error()
+    {
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+        var document = AppSettingsDocument.Parse(
+            $$"""{ "Llm": { "Model": "m" }, "Orkeon": { "FileSystem": { "Mounts": [ "{{a}}|/srv/a:/output:rw", "{{b}}|/srv/b:/output:rw" ] } } }""");
+
+        var messages = Validator("/srv/a", "/srv/b").Validate(document, ValidationScope.Saving);
+
+        Assert.DoesNotContain(messages, m => m.Severity == ValidationSeverity.Error);
+        Assert.NotNull(Find(messages, ValidationCodes.MountSharedRoot));
+    }
+
     [Fact]
     public void A_document_without_mounts_warns_rather_than_fails()
     {

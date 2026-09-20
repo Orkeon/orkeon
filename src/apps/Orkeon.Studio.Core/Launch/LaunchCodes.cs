@@ -18,6 +18,9 @@ public static class LaunchCodes
     /// <summary>A <c>--mount</c> entry is empty.</summary>
     public const string EmptyMount = "STUDIO-LAUNCH-MOUNT";
 
+    /// <summary>A <c>--mount-id</c> value that is empty or not a mount id (VFS-90).</summary>
+    public const string InvalidMountId = "STUDIO-LAUNCH-MOUNT-ID";
+
     /// <summary>Both <c>--inputs</c> and <c>--inputs-file</c> are set.</summary>
     public const string ConflictingInputs = "STUDIO-LAUNCH-INPUTS";
 

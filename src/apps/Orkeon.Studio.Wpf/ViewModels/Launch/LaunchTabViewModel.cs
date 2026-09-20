@@ -431,13 +431,14 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     private RunLaunchOptions BuildOptions(bool validate = false) =>
-        Options.ToOptions(Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate);
+        Options.ToOptions(Mounts.ToMountArguments(), Mounts.AllowExternalMounts, validate, Mounts.ToMountIdArguments());
 
     // A launch is an invocation of the orkeon CLI, so an absent CLI is a refusal, not a
     // late failure: a live Run button that answers a click with «the tool was not located»
     // is a button that lied about being available. The banner says what is wrong; the
     // commands must agree with it.
-    private bool CanLaunch() => IsBinaryAvailable && !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders;
+    private bool CanLaunch() =>
+        IsBinaryAvailable && !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders && !IsBlockedByUnknownMountIds;
 
     private async Task<ProcessRunResult?> LaunchAsync(bool validate, CancellationToken cancellationToken)
     {
@@ -666,11 +667,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public void RefreshTeamDescription()
     {
-        _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
-        Mounts.SetTeamMounts(_team.Mounts);
+        _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
-            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
+            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
+            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         // Replay is gated on the same refusal, so it has to be told when the refusal changes -
@@ -742,6 +744,24 @@ public sealed class LaunchTabViewModel : ObservableObject
                 CultureInfo.CurrentCulture,
                 _strings[StudioStringKeys.RunBlockedUndeclared],
                 string.Join(", ", UndeclaredTeamFolders))
+            : "";
+
+    /// <summary>
+    /// The folder declarations the team names by id that this machine does not have (VFS-90,
+    /// D-06): a team imported from elsewhere, or an entry removed from the settings since.
+    /// </summary>
+    public IReadOnlyList<string> UnknownTeamMountIds => Mounts.UnknownTeamMountIds;
+
+    /// <summary>Whether the run is refused because the team refers to a declaration missing here.</summary>
+    public bool IsBlockedByUnknownMountIds => UnknownTeamMountIds.Count > 0;
+
+    /// <summary>The refusal, naming the ids and the two ways out.</summary>
+    public string UnknownMountIdsMessage =>
+        IsBlockedByUnknownMountIds
+            ? string.Format(
+                CultureInfo.CurrentCulture,
+                _strings[StudioStringKeys.RunBlockedUnknownMountId],
+                string.Join(", ", UnknownTeamMountIds))
             : "";
 
     /// <summary>Opens the allowed-folders list — the shell lands on the settings' folders tab.</summary>
@@ -903,11 +923,12 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void OnTargetChanged(object? sender, EventArgs e)
     {
         Options.Target = Target.Target;
-        _team = TeamCatalog.DescribeTarget(Target.SelectedPath);
-        Mounts.SetTeamMounts(_team.Mounts);
+        _team = TeamCatalog.DescribeTarget(Target.SelectedPath, _declaredMounts());
+        Mounts.SetTeamMounts(_team.ResolvedMounts);
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
-            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage));
+            nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
+            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
         RefreshPreview();

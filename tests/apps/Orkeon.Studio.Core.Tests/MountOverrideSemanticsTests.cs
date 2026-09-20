@@ -102,6 +102,55 @@ public sealed class MountOverrideSemanticsTests
         Assert.Equal(new EffectiveMount(1, "/srv/also:/data:ro", MountOrigin.Settings), effective[1]);
     }
 
+    /// <summary>VFS-90: among several entries of one root, the one a <c>--mount-id</c> names is kept.</summary>
+    [Fact]
+    public void A_mount_id_keeps_one_entry_of_a_shared_root_and_the_others_are_not_mounted()
+    {
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+
+        var effective = MountOverrideSemantics.ComputeEffectiveMounts(
+            [],
+            [$"{a}|/srv/a:/output:rw", $"{b}|/srv/b:/output:rw", "/srv/also:/data:ro"],
+            Injection(),
+            mountIds: [b.ToString()]);
+
+        Assert.Equal(EffectiveMountSelection.NotSelected, effective[0].Selection);
+        Assert.Equal(EffectiveMountSelection.SelectedById, effective[1].Selection);
+        Assert.Equal(EffectiveMountSelection.InForce, effective[2].Selection);
+        Assert.Equal(2, effective[0].SharedRootCount);
+        Assert.Equal(2, effective[1].SharedRootCount);
+        Assert.Equal(1, effective[2].SharedRootCount);
+        Assert.False(effective[0].IsMounted);
+        Assert.True(effective[1].IsMounted);
+    }
+
+    [Fact]
+    public void A_shared_root_nothing_selects_reads_as_a_conflict()
+    {
+        var effective = MountOverrideSemantics.ComputeEffectiveMounts(
+            [],
+            [$"{Orkeon.Domain.Common.MountId.Create()}|/srv/a:/output:rw", $"{Orkeon.Domain.Common.MountId.Create()}|/srv/b:/output:rw"],
+            Injection());
+
+        Assert.All(effective.Where(m => m.Origin == MountOrigin.Settings), m => Assert.Equal(EffectiveMountSelection.Conflict, m.Selection));
+    }
+
+    [Fact]
+    public void A_command_line_mount_on_a_shared_root_replaces_the_first_entry_and_withdraws_the_rest()
+    {
+        var effective = MountOverrideSemantics.ComputeEffectiveMounts(
+            ["/srv/run:/output:rw"],
+            [$"{Orkeon.Domain.Common.MountId.Create()}|/srv/a:/output:rw", $"{Orkeon.Domain.Common.MountId.Create()}|/srv/b:/output:rw"],
+            Injection(),
+            mountIds: [Orkeon.Domain.Common.MountId.Create().ToString()]);
+
+        Assert.Equal(MountOrigin.CommandLine, effective[0].Origin);
+        Assert.Equal(EffectiveMountSelection.InForce, effective[0].Selection);
+        Assert.Equal(EffectiveMountSelection.NotSelected, effective[1].Selection);
+        Assert.Equal(2, effective[1].SharedRootCount);
+    }
+
     [Fact]
     public void A_new_root_lands_after_every_settings_entry()
     {
@@ -212,7 +261,8 @@ public sealed class MountOverrideSemanticsTests
     [Fact]
     public void The_explanations_state_the_by_root_rule_and_the_whitelisting()
     {
-        Assert.Contains("replaces that settings entry", MountOverrideSemantics.Explanation, StringComparison.Ordinal);
+        Assert.Contains("replaces every settings entry of that root", MountOverrideSemantics.Explanation, StringComparison.Ordinal);
+        Assert.Contains("--mount-id", MountOverrideSemantics.Explanation, StringComparison.Ordinal);
         Assert.Contains("appended", MountOverrideSemantics.Explanation, StringComparison.Ordinal);
         Assert.DoesNotContain("index 1", MountOverrideSemantics.Explanation, StringComparison.Ordinal);
         Assert.Contains(

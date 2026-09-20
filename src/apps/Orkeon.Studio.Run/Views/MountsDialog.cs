@@ -161,10 +161,18 @@ internal sealed class MountsDialog : Window
             var replaced = mount.OverridesSettings
                 ? $"  (replaces '{mount.ReplacedSettingsMount}')"
                 : string.Empty;
+            // VFS-90: a settings entry sharing its root with others says whether it is the one kept.
+            var selection = mount.Selection switch
+            {
+                EffectiveMountSelection.SelectedById => $"  (selected by --mount-id among {mount.SharedRootCount})",
+                EffectiveMountSelection.NotSelected => "  (not mounted for this run)",
+                EffectiveMountSelection.Conflict => $"  (one of {mount.SharedRootCount} entries - nothing selects it)",
+                _ => string.Empty,
+            };
 
             yield return string.Create(
                 CultureInfo.InvariantCulture,
-                $"{mount.ConfigurationKey} = {mount.Value}   [{origin}]{replaced}");
+                $"{mount.ConfigurationKey} = {mount.Value}   [{origin}]{replaced}{selection}");
         }
     }
 

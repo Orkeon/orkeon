@@ -136,6 +136,21 @@
                     Visibility="{Binding SelectedMount, Converter={StaticResource NullToVisibility}}">
         <StackPanel DataContext="{Binding SelectedMount}">
 
+          <!-- VFS-90: the entry's identity, read-only, with a copy button and the teams naming it. -->
+          <DockPanel Margin="0,0,0,7" Visibility="{Binding IsParsed, Converter={StaticResource BooleanToVisibility}}">
+            <Button DockPanel.Dock="Right" Width="24" Height="24" Padding="0" Margin="6,0,0,0" Style="{StaticResource BtnGhost}"
+                    ToolTip="{Binding [Studio.Settings.CopyId], Source={x:Static services:I18n.Instance}}"
+                    Command="{Binding CopyIdCommand}">
+              <controls:LucideIcon Kind="copy" Size="12"/>
+            </Button>
+            <StackPanel>
+              <TextBlock Style="{StaticResource MonoText}" FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
+                         Text="{Binding IdDisplay, Mode=OneWay}"/>
+              <TextBlock Style="{StaticResource Hint}" FontSize="10.5" Text="{Binding UsedByDisplay, Mode=OneWay}"
+                         Visibility="{Binding IsReferenced, Converter={StaticResource BooleanToVisibility}}"/>
+            </StackPanel>
+          </DockPanel>
+
           <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource WarningBrush}" Margin="0,0,0,7"
                      Visibility="{Binding IsParsed, Converter={StaticResource InverseBooleanToVisibility}}"
                      Text="{Binding [Studio.Settings.Unparsed], Source={x:Static services:I18n.Instance}}"/>

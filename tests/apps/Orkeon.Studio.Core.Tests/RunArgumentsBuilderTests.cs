@@ -275,6 +275,33 @@ public sealed class RunArgumentsBuilderTests
         Assert.Equal("--mount", message.Path);
     }
 
+    /// <summary>VFS-90: one <c>--mount-id</c> after the mounts, several values after the one flag.</summary>
+    [Fact]
+    public void Mount_ids_follow_the_mounts_after_one_flag()
+    {
+        var a = Orkeon.Domain.Common.MountId.Create().ToString();
+        var b = Orkeon.Domain.Common.MountId.Create().ToString();
+        var options = new RunLaunchOptions { Mounts = ["/srv/data:/workspace:ro"], MountIds = [a, b] };
+
+        Assert.Equal(
+            ["run", "/crews/crew.yaml", "--mount", "/srv/data:/workspace:ro", "--mount-id", a, b],
+            RunArgumentsBuilder.Build(YamlTarget(), options));
+        Assert.Empty(RunArgumentsBuilder.Validate(YamlTarget(), options));
+        Assert.Empty(RunArgumentsBuilder.Validate(ScriptTarget(), options with { Mounts = [] }));
+    }
+
+    [Fact]
+    public void A_value_that_is_not_a_mount_id_is_refused_and_points_at_the_option()
+    {
+        var options = new RunLaunchOptions { MountIds = [Orkeon.Domain.Common.MountId.Create().ToString(), "nope"] };
+
+        var message = Assert.Single(RunArgumentsBuilder.Validate(YamlTarget(), options));
+
+        Assert.Equal(LaunchCodes.InvalidMountId, message.Code);
+        Assert.Contains("index 1", message.Text, StringComparison.Ordinal);
+        Assert.Equal("--mount-id", message.Path);
+    }
+
     [Fact]
     public void Setting_both_input_channels_is_a_warning_not_a_refusal()
     {

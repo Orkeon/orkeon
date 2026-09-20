@@ -18,7 +18,8 @@ public sealed class MountEditorViewModelTests
             Rights = MountRights.ReadWrite,
         };
 
-        Assert.Equal("/data/projects:/workspace:rw", mount.MountString);
+        Assert.Equal("/data/projects:/workspace:rw", MountDefinition.Parse(mount.MountString).WithoutId().ToMountString());
+        Assert.NotNull(mount.Id);   // a settings row is born with its identity (VFS-90)
     }
 
     [Fact]
@@ -32,7 +33,7 @@ public sealed class MountEditorViewModelTests
         };
         mount.Overrides.Add(new SubPathOverrideViewModel { RelativePath = "out", Rights = MountRights.ReadWrite });
 
-        Assert.Equal("/data:/workspace:ro;out:rw", mount.MountString);
+        Assert.Equal("/data:/workspace:ro;out:rw", MountDefinition.Parse(mount.MountString).WithoutId().ToMountString());
     }
 
     [Fact]
@@ -45,7 +46,7 @@ public sealed class MountEditorViewModelTests
         Assert.True(mount.IsParsed);
         Assert.Equal(MountRights.ReadWriteNoDelete, mount.Rights);
         Assert.Equal("cache", Assert.Single(mount.Overrides).RelativePath);
-        Assert.Equal(entry, mount.MountString);
+        Assert.Equal(entry, MountDefinition.Parse(mount.MountString).WithoutId().ToMountString());
     }
 
     [Fact]
@@ -208,7 +209,10 @@ public sealed class MountsEditorViewModelTests
 
         editor.Load(["/a:/workspace:ro", "/b:/workspace:rw"]);
 
-        Assert.Contains(editor.ValidationMessages, m => m.Code == ValidationCodes.MountVirtualCollision);
+        // VFS-90 D-03: every row has an id, so two on one root are legitimate — a team or
+        // --mount-id picks one per run — and the editor says so as information, not as an error.
+        Assert.Contains(editor.ValidationMessages, m => m.Code == ValidationCodes.MountSharedRoot && !m.IsError);
+        Assert.False(editor.HasErrors);
     }
 
     [Fact]
@@ -219,7 +223,119 @@ public sealed class MountsEditorViewModelTests
 
         editor.Load(entries);
 
-        Assert.Equal(entries, editor.ToRawEntries());
+        // Order and the unparsed entry survive; the parsed ones now carry the id every row is
+        // given at load (VFS-90), written at the next save.
+        var raw = editor.ToRawEntries();
+        Assert.Equal("garbage", raw[1]);
+        Assert.Equal(entries, raw.Select(e => MountDefinition.TryParse(e, out var m, out _) ? m.WithoutId().ToMountString() : e));
+        Assert.All(editor.Mounts.Where(m => m.IsParsed), m => { Assert.NotNull(m.Id); Assert.True(m.IsIdNew); });
+        Assert.False(editor.Mounts[1].IsParsed);
+        Assert.Null(editor.Mounts[1].Id);
+    }
+
+    /// <summary>VFS-90: an entry loaded with its id keeps it, and says nothing about a new one.</summary>
+    /// <summary>VFS-90 D-07: the launcher's per-run rows are not settings entries and carry no id.</summary>
+    [Fact]
+    public void Should_AssignNoId_When_UsedByTheLauncher()
+    {
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a"), requireAtLeastOne: false, assignIds: false);
+        editor.Load(["/a:/workspace:ro"]);
+        var added = editor.AddMount();
+        added.PhysicalPath = "/a";
+        added.VirtualPath = "/docs";
+
+        Assert.False(editor.AssignIds);
+        Assert.All(editor.Mounts, m => Assert.Null(m.Id));
+        Assert.Equal(["/a:/workspace:ro", "/a:/docs:ro"], editor.ToRawEntries());
+    }
+
+    [Fact]
+    public void Should_KeepAnExistingId_When_LoadingAnIdBearingEntry()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a"), requireAtLeastOne: false);
+
+        editor.Load([$"{id}|/a:/workspace:ro"]);
+
+        var row = Assert.Single(editor.Mounts);
+        Assert.Equal(id, row.Id);
+        Assert.False(row.IsIdNew);
+        Assert.Equal(id.ToString()[^6..], row.ShortId);
+        Assert.Equal($"Id {id}", row.IdDisplay);
+        Assert.Equal($"{id}|/a:/workspace:ro", row.MountString);
+    }
+
+    [Fact]
+    public void Should_PutTheFullIdOnTheClipboard_When_CopyIsClicked()
+    {
+        var clipboard = new Orkeon.Studio.Wpf.ViewModels.Services.InMemoryClipboardService();
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a"), requireAtLeastOne: false, clipboard: clipboard);
+        editor.Load(["/a:/workspace:ro"]);
+
+        editor.Mounts[0].CopyIdCommand.Execute(null);
+
+        Assert.Equal(editor.Mounts[0].Id!.ToString(), clipboard.LastText);
+    }
+
+    /// <summary>VFS-90: a row a team names by id is removed only once the question was answered yes.</summary>
+    [Fact]
+    public void Should_AskBeforeRemoving_When_ATeamNamesTheRowById()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a"), requireAtLeastOne: false)
+        {
+            LoadTeams = () =>
+            [
+                new Orkeon.Studio.Core.Teams.TeamSummary
+                {
+                    Name = "Veille", Slug = "veille", Path = "/teams/veille",
+                    Metadata = new Orkeon.Studio.Core.Teams.StudioTeamMetadata { Mounts = [$"{id}|/a:/output:rw"] },
+                },
+            ],
+        };
+        var asked = new List<(string Folder, IReadOnlyList<string> Teams)>();
+        var answer = false;
+        editor.ConfirmRemoval = (folder, teams) => { asked.Add((folder, teams)); return answer; };
+        editor.Load([$"{id}|/a:/output:rw", "/a:/docs:ro"]);
+
+        Assert.Equal(["Veille"], editor.Mounts[0].UsedByTeams);
+        Assert.Equal("Used by Veille", editor.Mounts[0].UsedByDisplay);
+        Assert.False(editor.Mounts[1].IsReferenced);
+
+        editor.Remove(editor.Mounts[0]);
+        Assert.Equal(2, editor.Mounts.Count);
+        Assert.Equal("/a", asked.Single().Folder);
+        Assert.Equal(["Veille"], asked.Single().Teams);
+
+        answer = true;
+        editor.Remove(editor.Mounts[0]);
+        Assert.Single(editor.Mounts);
+
+        // A row nobody names is removed without a question.
+        editor.Remove(editor.Mounts[0]);
+        Assert.Empty(editor.Mounts);
+        Assert.Equal(2, asked.Count);
+    }
+
+    /// <summary>VFS-90 D-01: what the wizard's disk pick declares — an equal row reused, otherwise a new one even on a taken root.</summary>
+    [Fact]
+    public void Should_ReuseAnEqualRow_And_AddUnderATakenRootOtherwise_When_EnsuringADeclaration()
+    {
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a", "/b"), requireAtLeastOne: false);
+        editor.Load(["/a:/output:rw"]);
+        var existingId = editor.Mounts[0].Id;
+
+        var (reused, wasReused) = editor.EnsureDeclared(new MountDefinition { PhysicalPath = "/a/", VirtualPath = "/output", Rights = MountRights.ReadWrite });
+        Assert.True(wasReused);
+        Assert.Equal(existingId, reused.Id);
+        Assert.Single(editor.Mounts);
+
+        var (added, wasAdded) = editor.EnsureDeclared(new MountDefinition { PhysicalPath = "/b", VirtualPath = "/output", Rights = MountRights.ReadWrite });
+        Assert.False(wasAdded);
+        Assert.NotNull(added.Id);
+        Assert.NotEqual(existingId, added.Id);
+        Assert.Equal(2, editor.Mounts.Count);
+        Assert.Equal(added.ToMountString(), editor.Mounts[1].MountString);
     }
 
     [Fact]
@@ -244,7 +360,7 @@ public sealed class MountsEditorViewModelTests
         mount.VirtualPath = "/docs";
 
         Assert.True(changes > 0);
-        Assert.Equal("/data:/docs:ro", Assert.Single(editor.ToRawEntries()));
+        Assert.Equal("/data:/docs:ro", MountDefinition.Parse(Assert.Single(editor.ToRawEntries())).WithoutId().ToMountString());
     }
 
     [Fact]
@@ -298,7 +414,7 @@ public sealed class MountsEditorViewModelTests
         editor.AllowFolderCommand.Execute(null);
 
         Assert.Equal([EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder]], picker.Prompts);
-        Assert.Equal(["/data/Factures:/factures:ro"], editor.ToRawEntries());
+        Assert.Equal(["/data/Factures:/factures:ro"], editor.ToRawEntries().Select(e => MountDefinition.Parse(e).WithoutId().ToMountString()));
         Assert.Same(editor.Mounts[0], editor.SelectedMount);
         Assert.False(editor.HasErrors);
         Assert.True(changed > 0);
@@ -326,7 +442,7 @@ public sealed class MountsEditorViewModelTests
 
         editor.AllowFolderCommand.Execute(null);
 
-        Assert.Equal(["/a:/docs:ro", "/elsewhere/docs:/data:ro"], editor.ToRawEntries());
+        Assert.Equal(["/a:/docs:ro", "/elsewhere/docs:/data:ro"], editor.ToRawEntries().Select(e => MountDefinition.Parse(e).WithoutId().ToMountString()));
     }
 
     [Fact]
@@ -346,6 +462,6 @@ public sealed class MountsEditorViewModelTests
 
         Assert.Equal(3, changed);
         Assert.False(editor.ToggleRightsCommand.CanExecute("not a row"));
-        Assert.Equal(["/a:/docs:ro", "/a:/tmp:ro"], editor.ToRawEntries());
+        Assert.Equal(["/a:/docs:ro", "/a:/tmp:ro"], editor.ToRawEntries().Select(e => MountDefinition.Parse(e).WithoutId().ToMountString()));
     }
 }

@@ -77,6 +77,16 @@ public static class ValidationCodes
     /// <summary>Two mounts claim the same virtual path.</summary>
     public const string MountVirtualCollision = "STUDIO-MOUNT-COLLISION";
 
+    /// <summary>One mount id carried by several entries — an id names one entry (VFS-90).</summary>
+    public const string MountIdDuplicate = "STUDIO-MOUNT-ID";
+
+    /// <summary>
+    /// A virtual root declared by several entries that all carry an id: legitimate, a team or
+    /// <c>--mount-id</c> picks one per run (VFS-90, information); or one folder declared twice
+    /// under one root (warning).
+    /// </summary>
+    public const string MountSharedRoot = "STUDIO-MOUNT-SHARED";
+
     /// <summary>An MCP server identifier is empty or carries characters the binder would mangle (STUDIO-21).</summary>
     public const string McpServerIdInvalid = "STUDIO-MCP-ID";
 

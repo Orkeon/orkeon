@@ -125,6 +125,7 @@ public partial class App : System.Windows.Application
             {
                 Strings = I18nStudioStrings.Instance,
                 ShellOpener = ShellOpener.Instance,
+                Clipboard = WpfClipboardService.Instance,
                 // The assistant's beats are timed; the ViewModels only know how to ask for
                 // "later", and this is the only place that knows what later means in WPF.
                 Delay = new WpfDelay(Dispatcher),
@@ -147,6 +148,19 @@ public partial class App : System.Windows.Application
                     _viewModel?.Mode.Mode ?? preferences.Mode ?? UiModeViewModel.Novice),
                 ApplyLanguage = I18n.Instance.SetLanguage,
             });
+
+        // VFS-90: removing an authorized folder a team names by id asks first — the one
+        // MessageBox the settings screen has, because the alternative is a team that silently
+        // stops starting.
+        _viewModel.Config.Mounts.ConfirmRemoval = (folder, teams) => MessageBox.Show(
+            string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                I18nStudioStrings.Instance[Orkeon.Studio.Core.Localization.StudioStringKeys.MountRemoveReferenced],
+                folder,
+                string.Join(", ", teams)),
+            "Orkeon Studio",
+            MessageBoxButton.YesNo,
+            MessageBoxImage.Warning) == MessageBoxResult.Yes;
 
         var window = new MainWindow { DataContext = _viewModel };
         MainWindow = window;

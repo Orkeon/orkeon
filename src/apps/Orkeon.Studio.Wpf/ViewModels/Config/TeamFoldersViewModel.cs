@@ -16,19 +16,35 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 public sealed class TeamFolderRowViewModel
 {
     internal TeamFolderRowViewModel(
-        string teamName, string virtualPath, string folder, MountRights rights, IStudioStrings strings)
+        string teamName, string virtualPath, string folder, MountRights rights, IStudioStrings strings,
+        string shortId = "", bool isDeclared = false, bool isUnknownId = false)
     {
         ArgumentNullException.ThrowIfNull(strings);
 
         TeamName = teamName;
         VirtualPath = virtualPath;
         Folder = folder;
+        ShortId = shortId;
+        IsDeclared = isDeclared;
+        IsUnknownId = isUnknownId;
         IsReadWrite = rights != MountRights.ReadOnly;
         RightsLabel = MountRightsTokens.GetLabel(rights, strings);
         RightsBadge = MountRightsTokens.GetBadge(rights, strings);
-        Label = string.Format(
-            CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], teamName, virtualPath, folder);
+        Label = isUnknownId
+            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], teamName, virtualPath, shortId)
+            : isDeclared
+                ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], teamName, virtualPath, folder, shortId)
+                : string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], teamName, virtualPath, folder);
     }
+
+    /// <summary>The last six characters of the settings entry the team names (VFS-90); empty for an in-team folder.</summary>
+    public string ShortId { get; }
+
+    /// <summary>Whether the row is a settings declaration the team names, rather than a folder inside the team.</summary>
+    public bool IsDeclared { get; }
+
+    /// <summary>Whether the team names a declaration this machine does not have (D-06).</summary>
+    public bool IsUnknownId { get; }
 
     /// <summary>The team's display name — one line, like its card (STUDIO-16).</summary>
     public string TeamName { get; }
@@ -76,14 +92,26 @@ public sealed class TeamFolderRowViewModel
 public sealed class TeamFoldersViewModel : ObservableObject
 {
     private readonly Func<IReadOnlyList<TeamSummary>> _loadTeams;
+    private readonly Func<IReadOnlyList<string>>? _declaredMounts;
     private readonly IStudioStrings _strings;
 
     /// <summary>Builds the section over the team catalog; the shell passes <c>TeamCatalog.List</c>.</summary>
-    public TeamFoldersViewModel(Func<IReadOnlyList<TeamSummary>> loadTeams, IStudioStrings? strings = null)
+    /// <param name="loadTeams">Reads the adopted teams.</param>
+    /// <param name="strings">Localization port.</param>
+    /// <param name="declaredMounts">
+    /// Reads the settings' mounts, so a team folder that names a settings declaration by id
+    /// (VFS-90) is listed too, with the declaration it resolves to; null lists the in-team
+    /// folders alone.
+    /// </param>
+    public TeamFoldersViewModel(
+        Func<IReadOnlyList<TeamSummary>> loadTeams,
+        IStudioStrings? strings = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         ArgumentNullException.ThrowIfNull(loadTeams);
 
         _loadTeams = loadTeams;
+        _declaredMounts = declaredMounts;
         _strings = strings ?? EnglishStudioStrings.Instance;
         // The rows carry fabricated text — the badge, the line — so a hot language switch
         // rebuilds them, the way every other list of this app re-emits (STUDIO-11).
@@ -108,6 +136,7 @@ public sealed class TeamFoldersViewModel : ObservableObject
     public void Refresh()
     {
         Rows.Clear();
+        var declared = _declaredMounts?.Invoke();
 
         foreach (var team in _loadTeams())
         {
@@ -117,20 +146,38 @@ public sealed class TeamFoldersViewModel : ObservableObject
             var teamName = TeamCatalog.NormalizeName(team.Name);
             foreach (var mount in mounts)
             {
+                if (!MountDefinition.TryParse(mount, out var parsed, out _) || parsed is null)
+                    continue;
+
                 // The one containment rule, not a local copy of it: relative entries are
                 // inside the team by construction, an absolute one only when the path says so.
-                if (!DeclaredMounts.IsInsideTeam(mount, team.Path)
-                    || !MountDefinition.TryParse(mount, out var parsed, out _)
-                    || parsed is null)
+                if (DeclaredMounts.IsInsideTeam(mount, team.Path))
                 {
+                    var folder = TeamMountPaths.TryGetRelativeFolder(mount, out var relative)
+                        ? relative
+                        : FolderUnderTeam(team.Path, parsed.PhysicalPath);
+
+                    Rows.Add(new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings));
                     continue;
                 }
 
-                var folder = TeamMountPaths.TryGetRelativeFolder(mount, out var relative)
-                    ? relative
-                    : FolderUnderTeam(team.Path, parsed.PhysicalPath);
+                // A settings declaration the team names by id (VFS-90): listed with what the
+                // declaration says today, or flagged when this machine has no such declaration.
+                if (declared is null || parsed.Id is null)
+                    continue;
 
-                Rows.Add(new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings));
+                if (DeclaredMounts.FindDeclared(mount, declared) is { } entry)
+                {
+                    Rows.Add(new TeamFolderRowViewModel(
+                        teamName, parsed.VirtualPath, entry.PhysicalPath, entry.Rights, _strings,
+                        shortId: entry.ShortId ?? "", isDeclared: true));
+                }
+                else
+                {
+                    Rows.Add(new TeamFolderRowViewModel(
+                        teamName, parsed.VirtualPath, "", parsed.Rights, _strings,
+                        shortId: parsed.ShortId ?? "", isDeclared: true, isUnknownId: true));
+                }
             }
         }
 

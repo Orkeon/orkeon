@@ -18,7 +18,9 @@ public sealed class TeamMountRowViewModel : ObservableObject
         MountDefinition? mount,
         bool isUndeclared,
         TeamMountsDialogViewModel owner,
-        IStudioStrings strings)
+        IStudioStrings strings,
+        string shortId = "",
+        bool isUnknownId = false)
     {
         _owner = owner;
         MountString = mountString;
@@ -32,7 +34,18 @@ public sealed class TeamMountRowViewModel : ObservableObject
             ? StudioStringKeys.RightsReadWrite
             : StudioStringKeys.RightsReadOnly];
         _isChecked = true;
+        ShortId = shortId;
+        IsUnknownId = isUnknownId;
     }
+
+    /// <summary>The last six characters of the settings entry the row names (VFS-90); empty otherwise.</summary>
+    public string ShortId { get; }
+
+    /// <summary>Whether the row shows an id.</summary>
+    public bool HasId => ShortId.Length > 0;
+
+    /// <summary>Whether the row names a declaration this machine does not have (D-06).</summary>
+    public bool IsUnknownId { get; }
 
     /// <summary>The row's mount string, verbatim — what a save writes.</summary>
     public string MountString { get; }
@@ -171,20 +184,54 @@ public sealed class TeamMountsDialogViewModel : ObservableObject
 
     internal void RowToggled() => OnPropertiesChanged(nameof(Summary));
 
-    private TeamMountRowViewModel Row(string mountString) => new(
-        mountString,
-        MountDefinition.TryParse(mountString, out var mount, out _) ? mount : null,
-        // The team's own folders are vouched for by being the team's, exactly as the launcher
-        // has it. Asking only «is it declared» painted a team's own /output red here while
-        // the Run screen let it through.
-        !Orkeon.Studio.Core.FileSystem.DeclaredMounts.IsVouchedFor(
-            mountString, _declaredMounts(), _teamDirectory),
-        this,
-        _strings);
+    private TeamMountRowViewModel Row(string mountString)
+    {
+        var declared = _declaredMounts();
+        var parsed = MountDefinition.TryParse(mountString, out var mount, out _) ? mount : null;
+        var insideTeam = Orkeon.Studio.Core.FileSystem.DeclaredMounts.IsInsideTeam(mountString, _teamDirectory);
+        // A row naming a settings declaration by id shows THAT declaration (VFS-90, D-01).
+        var entry = parsed is null || insideTeam ? null : Orkeon.Studio.Core.FileSystem.DeclaredMounts.FindDeclared(mountString, declared);
+
+        return new TeamMountRowViewModel(
+            mountString,
+            entry ?? parsed,
+            // The team's own folders are vouched for by being the team's, exactly as the launcher
+            // has it. Asking only «is it declared» painted a team's own /output red here while
+            // the Run screen let it through.
+            !Orkeon.Studio.Core.FileSystem.DeclaredMounts.IsVouchedFor(mountString, declared, _teamDirectory),
+            this,
+            _strings,
+            shortId: insideTeam ? "" : (entry?.ShortId ?? parsed?.ShortId ?? ""),
+            isUnknownId: !insideTeam && Orkeon.Studio.Core.FileSystem.DeclaredMounts.HasUnknownId(mountString, declared));
+    }
+
+    /// <summary>
+    /// The checked rows as the sidecar will record them: a copy of a settings entry written
+    /// before ids — same folder, root and rights — is upgraded to the entry itself, id
+    /// included, so the team names its declaration from now on (VFS-90 migration).
+    /// </summary>
+    private List<string> MountsToSave()
+    {
+        var declared = _declaredMounts();
+        var saved = new List<string>();
+        foreach (var raw in CheckedMounts)
+        {
+            if (!Orkeon.Studio.Core.FileSystem.DeclaredMounts.IsInsideTeam(raw, _teamDirectory)
+                && Orkeon.Studio.Core.FileSystem.DeclaredMounts.FindDeclared(raw, declared) is { Id: not null } entry)
+            {
+                saved.Add(entry.ToMountString());
+                continue;
+            }
+
+            saved.Add(raw);
+        }
+
+        return saved;
+    }
 
     private void Save()
     {
-        _saveMounts(_teamDirectory, CheckedMounts);
+        _saveMounts(_teamDirectory, MountsToSave());
         var onSaved = _onSaved;
         Close();
         onSaved?.Invoke();

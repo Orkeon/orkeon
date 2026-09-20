@@ -583,7 +583,7 @@
   </data>
   <!-- STUDIO-15: die Mount-Regel gilt je virtueller Wurzel, nicht mehr je Index -->
   <data name="Studio.Settings.Explanation" xml:space="preserve">
-    <value>Der Runner fügt zuerst seinen eigenen Mount ein — das Konfigurationsverzeichnis des Teams als «/crew» (bei einem .ork.ts-Team das Skriptverzeichnis als «/script») — und ordnet dann jedes --mount-Argument nach seiner virtuellen Wurzel in «Orkeon:FileSystem:Mounts» ein: auf einer Wurzel, die appsettings bereits deklariert, ersetzt das --mount diesen appsettings-Eintrag für diesen Lauf; auf einer neuen Wurzel wird es hinter allen deklarierten Einträgen angehängt. appsettings-Einträge, die kein --mount nennt, bleiben in Kraft. Das LLM-Log-Verzeichnis wird separat gemountet, ist für Agenten unsichtbar und verschiebt nichts.</value>
+    <value>Der Runner fügt zuerst seinen eigenen Einhängepunkt ein — das Konfigurationsverzeichnis des Teams als „/crew“ (das Skriptverzeichnis als „/script“ für ein .ork.ts-Team) — und platziert dann jedes --mount-Argument nach seiner virtuellen Wurzel in „Orkeon:FileSystem:Mounts“: auf einer Wurzel, die die Einstellungen bereits deklarieren, ersetzt das --mount für diesen Lauf jeden Einstellungseintrag dieser Wurzel; auf einer neuen Wurzel wird es nach allen deklarierten Einträgen angehängt. Mehrere Einstellungseinträge dürfen eine Wurzel deklarieren, wenn jeder eine Kennung trägt: ein --mount-id (oder der mounts:-Block des Teams) behält einen, die anderen werden für den Lauf nicht eingehängt. Einträge, die kein --mount nennt, bleiben in Kraft. Das LLM-Protokollverzeichnis wird getrennt eingehängt, für Agenten unsichtbar, und verschiebt nichts.</value>
   </data>
   <data name="Studio.Settings.ExternalMounts" xml:space="preserve">
     <value>--allow-external-mounts setzt zusätzlich jeden --mount-Basispfad auf die Whitelist «PathSecurity:AdditionalAllowedDirectories», sodass Mounts außerhalb des Arbeitsverzeichnisses zeigen dürfen (gleiche Wirkung wie ORKEON_ALLOW_EXTERNAL_MOUNTS=1).</value>
@@ -1799,6 +1799,24 @@
   <data name="Studio.Settings.NotSaved" xml:space="preserve">
     <value>«{0}» hinzugefügt, aber die Einstellungen konnten nicht gespeichert werden — {1}</value>
   </data>
+  <data name="Studio.Settings.OtherRoot" xml:space="preserve"><value>deklariert als {0} — dieser Einhängepunkt ist {1}</value></data>
+  <data name="Studio.Settings.Reused" xml:space="preserve"><value>„{0}“ war bereits freigegeben; das Team verwendet jetzt diesen Eintrag</value></data>
+  <data name="Studio.Settings.SharedRoot" xml:space="preserve"><value>einer von {0} Ordnern, die als {1} deklariert sind</value></data>
+  <data name="Studio.Settings.MountId" xml:space="preserve"><value>Kennung {0}</value></data>
+  <data name="Studio.Settings.MountIdNew" xml:space="preserve"><value>Kennung {0} — wird beim Speichern vergeben</value></data>
+  <data name="Studio.Settings.CopyId" xml:space="preserve"><value>Kennung kopieren</value></data>
+  <data name="Studio.Settings.MountUsedBy" xml:space="preserve"><value>Verwendet von {0}</value></data>
+  <data name="Studio.Settings.RemoveReferenced" xml:space="preserve"><value>„{0}“ wird von {1} verwendet. Trotzdem entfernen? Diese Teams starten erst wieder, wenn der Ordner erneut freigegeben ist.</value></data>
+  <data name="Studio.Settings.TeamFoldersRowDeclared" xml:space="preserve"><value>{0} · {1} → {2} ({3})</value></data>
+  <data name="Studio.Settings.TeamFoldersUnknownId" xml:space="preserve"><value>{0} · {1} — die Deklaration {2} fehlt auf diesem Rechner</value></data>
+  <data name="Studio.Create.UnknownMountId" xml:space="preserve"><value>Diese Deklaration ({0}) fehlt auf diesem Rechner</value></data>
+  <data name="Studio.Create.DeclaredFolder" xml:space="preserve"><value>„{0}“ freigegeben und als {1} verbunden</value></data>
+  <data name="Studio.Run.BlockedUnknownMountId" xml:space="preserve"><value>Dieses Team verweist auf Ordnerdeklarationen, die hier fehlen: {0}. Deklarieren Sie sie unter Einstellungen › Freigegebene Ordner oder ändern Sie die Ordner des Teams.</value></data>
+  <data name="Studio.Run.OriginSelectedById" xml:space="preserve"><value>{0} (per Kennung ausgewählt unter {1})</value></data>
+  <data name="Studio.Run.OriginNotSelected" xml:space="preserve"><value>{0} (für diesen Lauf nicht eingehängt)</value></data>
+  <data name="Studio.Run.OriginConflict" xml:space="preserve"><value>{0} (einer von {1} Einträgen — nichts wählt ihn aus)</value></data>
+  <data name="Studio.Import.UnknownMountIds" xml:space="preserve"><value>{0} Ordner verweisen auf Deklarationen, die auf diesem Rechner fehlen</value></data>
+  <data name="Studio.Import.DeclareCopies" xml:space="preserve"><value>Wie aufgezeichnet freigeben</value></data>
   <data name="Studio.Create.AgentEditorSub" xml:space="preserve">
     <value>Ein Agent macht genau eine Sache. Beschreiben Sie sie in einem Satz und öffnen Sie nur die nötigen Fähigkeiten.</value>
   </data>

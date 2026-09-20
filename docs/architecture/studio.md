@@ -191,8 +191,10 @@ opens the OS folder dialog, and the pick lands read-only under a virtual name
 derived from the folder's own name (`MountDefinition.SuggestVirtualPath`, the
 first free suggestion when that name is taken or unusable) — the card's rights
 badge flips it to read-and-write. The wizard's « Existing folders » rows open
-the same dialog on the row's rights and declare on the way; a writable extra
-folder at the Composer step goes through a named root.
+the same dialog on the row's rights and declare the pick **under the row's root**,
+with an id of its own, then bind that very entry (VFS-90, D-01) — a second entry on
+a root another folder already claims, told apart by its id, never a rename to
+`/docs`; a writable extra folder at the Composer step goes through a named root.
 
 A team folder that nothing vouches for — neither declared in the settings nor the
 team's own — reads red, on the wizard's rows, the "My teams" cards and the
@@ -224,27 +226,71 @@ will be bound to them and the agents writing there will fail; a single
 « Restore » is the way back from a wrong ✕. What `SidecarMounts` records is
 team-relative for every in-team answer and every root the blueprint addresses
 that nothing answered (`./output:/output:rw`, `./input:/workspace:ro`); the save
-creates the folders. At launch, Studio lays the sidecar's mounts on the run as
-`--mount` arguments ahead of the per-launch ones, so the chips and the command
-cannot disagree — **except the entries the settings already hold**, same folder,
-same name, same rights: those are in force from the settings alone, and passing
-them again is noise (`LaunchMountPlan.WithoutSettingsDuplicates`). The
-`--allow-external-mounts` flag follows the sidecar too: a team folder outside the
-team turns it on, a team whose folders all resolve under it — the launch's working
-directory — needs none, and the expert checkbox stays for the per-launch mounts.
-The engine places every `--mount` **by virtual root** (`RunnerHost`): a team folder
-under a name the settings spend on another folder replaces that settings entry for
+creates the folders. At launch, the catalog reads the sidecar against the settings
+(`TeamMountResolution.Resolve`) and `LaunchMountPlan.For` says what reaches the
+command line: a settings declaration the team names goes as `--mount-id <ulid>` —
+no path, the machine's own entry as it stands today; the team's own folders and
+any copy the settings do not hold as recorded go as `--mount`, ahead of the
+per-launch ones, so the chips and the command cannot disagree; an id this machine
+does not declare blocks the launch (below). The `--allow-external-mounts` flag
+follows the sidecar too: a team folder outside the team turns it on, a team whose
+folders all resolve under it — the launch's working directory — needs none, and
+the expert checkbox stays for the per-launch mounts. The engine places every
+`--mount` **by virtual root** (`RunnerHost`): a team folder under a name the
+settings spend on another folder replaces every settings entry of that root for
 the run, and a folder under a new name is appended after the declared ones. The
-Run screen's effective-mounts table predicts exactly that — one row per root,
-origin *appsettings* for what the settings provide, `--mount (replaces «…»)` for a
-replacement — and the sentence above it states the rule
+Run screen's effective-mounts table predicts exactly that — one row per settings
+entry, origin *appsettings* for what the settings provide, `--mount (replaces «…»)`
+for a replacement, *selected by id among N* / *not mounted for this run* for the
+entries of a shared root — and the sentence above it states the rule
 (`MountOverrideSemantics`). Before this, the chooser's verbatim copy met its own
 twin from the settings and every adopted team that used an allowed folder failed
 at kickoff on "Duplicate virtual paths"; the settings' declared folders are also
 whitelisted for `PathValidator` without any flag, so a team reading an allowed
 folder outside its own directory is no longer refused file by file. Deliberate
-limit: a bare `orkeon run` in a terminal does not read the sidecar — like the
-`profile` field, this is Studio's comfort, not the engine's contract.
+limit: a bare `orkeon run` in a terminal does not read the sidecar — the crew's
+own `mounts:` block is what it reads (VFS-90); like the `profile` field, the
+sidecar is Studio's comfort, not the engine's contract.
+
+### A mount has an identity (VFS-90)
+
+Every entry of « Settings › Authorized folders » carries an **id** — the
+26-character ULID before the `|` of its mount string,
+`01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data\out:/output:rw` — assigned by the editor at
+load to an entry that has none and written at the next save, shown on the row
+with a one-click copy for a hand-written crew's `mounts:` block. The id is what a
+team's sidecar names its declarations by, and it is why two entries may now
+declare one root: the owner's machine keeps experiment 09's `…\09\output:/output:rw`
+and experiment 10's `…\10\output:/output:rw` side by side, and each team names
+its own. The consequences, screen by screen:
+
+- **The entry is authoritative** (D-01). The chooser opened for one mount point
+  offers only the entries declared under that root — an entry declared as `/docs`
+  reads « declared as /docs — this mount point is /output » and cannot be picked —
+  and records the pick verbatim, id included. The disk pick declares the folder
+  **under the row's root** (a second `/output` entry when one exists) and binds
+  that entry; an equal entry — same folder, root and rights — is reused, never
+  declared twice. Renaming to `/docs` to dodge a taken root is gone with it.
+- **The sidecar keeps a copy** (D-02): `<ulid>|<folder>:/root:rights`, portable,
+  the id winning over the copy on the machine that has it. A team's own `./output`
+  carries no id (D-07). A sidecar written before ids resolves its copies by folder,
+  root and rights, and « Change the folders » upgrades an exact copy to the entry
+  itself on save.
+- **The ids travel with the team** (D-06). « Duplicate », « Export » and
+  « Import » copy them verbatim. A team naming a declaration this machine does not
+  have — an import, or an entry removed since — reads « declaration … is missing
+  on this machine » on its rows and in the folders tab, and « Run » refuses it
+  naming the ids; the import review offers « Authorize them as recorded », which
+  declares the copies **under the same ids** (a new id only when this machine
+  already spends it on something else).
+- **The settings say who depends on an entry**: each row reads « Used by … » from
+  the sidecars, and removing an entry a team names asks first, naming the teams —
+  they stop starting the moment it is gone. `MountValidator` files two entries on
+  one root as information (`STUDIO-MOUNT-SHARED`), a shared root with an entry
+  that has no id as the error the engine would raise, and one id on two entries
+  as `STUDIO-MOUNT-ID`.
+- **Agents never see an id**: `list_mounts`, the prompt's mount table and the
+  access-denied messages name virtual paths only.
 
 A team folder may hold a **single-file crew**. Every `examples/` crew — and every
 crew written by hand — is one `config.yaml` or `crew.yaml` carrying `agents:` and
