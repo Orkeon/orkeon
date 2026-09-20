@@ -181,12 +181,6 @@ public partial class MainWindow : Window
             shell.AllowedFolders.CancelCommand.Execute(null);
     }
 
-    private void OnFolderPickerBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
-    {
-        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
-            shell.FolderPicker.CancelCommand.Execute(null);
-    }
-
     private void OnSwallowClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>
         // The card must not let the click bubble to the backdrop, whose click means "close".
         e.Handled = true;

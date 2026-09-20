@@ -1,107 +1,17 @@
 using System.Text.Json;
 using Orkeon.Studio.Core.FileSystem;
-using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// The three v2 modals (RC2-FEAT-05, F-01/F-03): the folder picker's tree, rights and
-/// mount derivation; the team-mounts rows and their save; the agent editor's blueprint
-/// mutations — all pure ViewModel, no window.
+/// The two v2 modals (RC2-FEAT-05, F-01/F-03): the team-mounts rows and their save; the
+/// agent editor's blueprint mutations — all pure ViewModel, no window. The folder picker
+/// left with STUDIO-19: the OS folder dialog replaced it.
 /// </summary>
 public sealed class ModalDialogsTests
 {
-    // ── Folder picker ──
-
-    private static FolderPickerViewModel Picker(out FakeDirectoryProbe probe)
-    {
-        probe = new FakeDirectoryProbe("/data", "/data/projets", "/data/projets/veille", "/data/projets/veille/docs", "/data/projets/veille/out");
-        return new FolderPickerViewModel(probe, new FakePathPicker());
-    }
-
-    [Fact]
-    public void The_tree_shows_the_lineage_then_the_children_and_marks_mounted_folders()
-    {
-        var picker = Picker(out _);
-        picker.Open(["/data/projets/veille/docs:/docs:ro"], _ => { }, "/data/projets/veille");
-
-        var names = picker.Nodes.Select(n => n.Name).ToList();
-        // Lineage (root spelling → veille), then the two children.
-        Assert.Contains("veille", names);
-        Assert.Contains("docs", names);
-        Assert.Contains("out", names);
-        Assert.True(picker.Nodes.Single(n => n.Path == "/data/projets/veille").IsSelected);
-        Assert.True(picker.Nodes.Single(n => n.Name == "docs").HasNote);
-        Assert.False(picker.Nodes.Single(n => n.Name == "out").HasNote);
-
-        // Clicking a child descends.
-        picker.Nodes.Single(n => n.Name == "docs").PickCommand.Execute(null);
-        Assert.Equal("/data/projets/veille/docs", picker.Path);
-    }
-
-    [Fact]
-    public void Confirm_builds_the_mount_from_the_folder_name_and_the_rights_choice()
-    {
-        var picker = Picker(out _);
-        MountDefinition? picked = null;
-        picker.Open([], m => picked = m, "/data/projets/veille");
-
-        picker.PickReadWriteCommand.Execute(null);
-        Assert.True(picker.CanConfirm);
-        picker.ConfirmCommand.Execute(null);
-
-        Assert.False(picker.IsOpen);
-        Assert.Equal("/data/projets/veille", picked!.PhysicalPath);
-        Assert.Equal("/veille", picked.VirtualPath);
-        Assert.Equal(MountRights.ReadWrite, picked.Rights);
-    }
-
-    [Fact]
-    public void A_taken_virtual_name_falls_back_to_the_first_free_suggestion()
-    {
-        var picker = Picker(out _);
-        MountDefinition? picked = null;
-        // /veille is already used by another mount: the candidate must not collide.
-        picker.Open(["/elsewhere:/veille:ro"], m => picked = m, "/data/projets/veille");
-        picker.ConfirmCommand.Execute(null);
-
-        Assert.Equal(MountDefinition.SuggestedVirtualPaths[0], picked!.VirtualPath);
-        Assert.Equal(MountRights.ReadOnly, picked.Rights);   // read-only is the default
-    }
-
-    [Fact]
-    public void A_missing_folder_cannot_be_confirmed()
-    {
-        var picker = Picker(out _);
-        picker.Open([], _ => { }, "/nulle-part");
-        Assert.False(picker.CanConfirm);
-    }
-
-    /// <summary>
-    /// STUDIO-14 D-10: the wizard's « The results » row opens the picker on read-and-write, so
-    /// the folder the team writes to is not declared read-only by a default nobody looked at.
-    /// Read-only stays the default for every other caller.
-    /// </summary>
-    [Fact]
-    public void Open_can_start_on_read_and_write()
-    {
-        var picker = Picker(out _);
-        MountDefinition? picked = null;
-
-        picker.Open([], m => picked = m, "/data/projets/veille", initialRights: MountRights.ReadWrite);
-        Assert.True(picker.IsReadWrite);
-        Assert.False(picker.IsReadOnly);
-        Assert.EndsWith(":rw", picker.MountPreview, StringComparison.Ordinal);
-        picker.ConfirmCommand.Execute(null);
-        Assert.Equal(MountRights.ReadWrite, picked!.Rights);
-
-        // The next open does not inherit it: the default is the caller's to name each time.
-        picker.Open([], m => picked = m, "/data/projets/veille");
-        Assert.True(picker.IsReadOnly);
-    }
-
     // ── Team mounts ──
 
     [Fact]

@@ -1495,6 +1495,9 @@
   <data name="Studio.Settings.Allow" xml:space="preserve">
     <value>Ordner freigeben…</value>
   </data>
+  <data name="Studio.Settings.ToggleRights" xml:space="preserve">
+    <value>Klicken, um zwischen Nur-Lesen und Lesen und Schreiben zu wechseln</value>
+  </data>
   <data name="Studio.Trial.InputsLabel" xml:space="preserve">
     <value>Beispielsatz (JSON)</value>
   </data>
@@ -1582,9 +1585,6 @@
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
     <value>Leer: 30 s. Reasoning-Modelle (Kimi K3, Thinking-Modi) brauchen oft 120–300 s.</value>
   </data>
-  <data name="Studio.Settings.AlreadyMounted" xml:space="preserve">
-    <value>bereits freigegeben</value>
-  </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Ordner von «{0}»</value>
   </data>
@@ -1602,36 +1602,6 @@
   </data>
   <data name="Studio.Create.Add" xml:space="preserve">
     <value>Zum Team hinzufügen</value>
-  </data>
-  <data name="Studio.Settings.PickerTitle" xml:space="preserve">
-    <value>Ordner freigeben</value>
-  </data>
-  <data name="Studio.Settings.PickerSub" xml:space="preserve">
-    <value>Wählen Sie den Ordner, dann was die Agenten damit tun dürfen.</value>
-  </data>
-  <data name="Studio.Settings.Browse" xml:space="preserve">
-    <value>Durchsuchen…</value>
-  </data>
-  <data name="Studio.Settings.RightsLabel" xml:space="preserve">
-    <value>Was die Agenten tun dürfen</value>
-  </data>
-  <data name="Studio.Settings.PickerReadOnly" xml:space="preserve">
-    <value>Nur Lesen</value>
-  </data>
-  <data name="Studio.Settings.ReadOnlyHint" xml:space="preserve">
-    <value>Agenten lesen, ändern nie</value>
-  </data>
-  <data name="Studio.Settings.PickerReadWrite" xml:space="preserve">
-    <value>Lesen und Schreiben</value>
-  </data>
-  <data name="Studio.Settings.ReadWriteHint" xml:space="preserve">
-    <value>Agenten dürfen dort ihre Ergebnisse schreiben</value>
-  </data>
-  <data name="Studio.Settings.WrittenAs" xml:space="preserve">
-    <value>Wird geschrieben als</value>
-  </data>
-  <data name="Studio.Settings.PickerConfirm" xml:space="preserve">
-    <value>Diesen Ordner freigeben</value>
   </data>
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve">
     <value>Haken Sie an, was dieses Team sehen darf. Jeder abgewählte Ordner wird für es unsichtbar, auch wenn andere Teams ihn nutzen.</value>

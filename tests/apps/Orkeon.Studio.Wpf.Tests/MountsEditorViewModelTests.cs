@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Validation;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -282,5 +283,69 @@ public sealed class MountsEditorViewModelTests
         editor.BrowsePhysicalPathCommand.Execute(null);
 
         Assert.Equal("/kept", mount.PhysicalPath);
+    }
+
+    // ── STUDIO-19: « Allow a folder » is the OS folder dialog, the badge flips the rights ──
+
+    [Fact]
+    public void Should_MountThePickedFolderReadOnlyUnderItsOwnName_When_TheNoviceAllowsAFolder()
+    {
+        var picker = new FakePathPicker { FolderToReturn = "/data/Factures" };
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/data/Factures"), picker, requireAtLeastOne: false);
+        var changed = 0;
+        editor.Changed += (_, _) => changed++;
+
+        editor.AllowFolderCommand.Execute(null);
+
+        Assert.Equal([EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder]], picker.Prompts);
+        Assert.Equal(["/data/Factures:/factures:ro"], editor.ToRawEntries());
+        Assert.Same(editor.Mounts[0], editor.SelectedMount);
+        Assert.False(editor.HasErrors);
+        Assert.True(changed > 0);
+    }
+
+    [Fact]
+    public void Should_AddNothing_When_TheNoviceCancelsTheFolderDialog()
+    {
+        var picker = new FakePathPicker { FolderToReturn = null };
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe(), picker, requireAtLeastOne: false);
+
+        editor.AllowFolderCommand.Execute(null);
+
+        Assert.Single(picker.Prompts);
+        Assert.Empty(editor.Mounts);
+        Assert.Null(editor.SelectedMount);
+    }
+
+    [Fact]
+    public void Should_FallBackToTheFirstFreeSuggestion_When_TheFolderNameIsTaken()
+    {
+        var picker = new FakePathPicker { FolderToReturn = "/elsewhere/docs" };
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a", "/elsewhere/docs"), picker, requireAtLeastOne: false);
+        editor.Load(["/a:/docs:ro"]);
+
+        editor.AllowFolderCommand.Execute(null);
+
+        Assert.Equal(["/a:/docs:ro", "/elsewhere/docs:/data:ro"], editor.ToRawEntries());
+    }
+
+    [Fact]
+    public void Should_FlipReadOnlyAndReadWrite_When_TheCardBadgeIsClicked()
+    {
+        var editor = new MountsEditorViewModel(new FakeDirectoryProbe("/a"), new FakePathPicker(), requireAtLeastOne: false);
+        editor.Load(["/a:/docs:ro", "/a:/tmp:rwnd"]);
+        var changed = 0;
+        editor.Changed += (_, _) => changed++;
+
+        editor.ToggleRightsCommand.Execute(editor.Mounts[0]);
+        Assert.Equal(MountRights.ReadWrite, editor.Mounts[0].Rights);
+        editor.ToggleRightsCommand.Execute(editor.Mounts[0]);
+        Assert.Equal(MountRights.ReadOnly, editor.Mounts[0].Rights);
+        editor.ToggleRightsCommand.Execute(editor.Mounts[1]);
+        Assert.Equal(MountRights.ReadOnly, editor.Mounts[1].Rights);
+
+        Assert.Equal(3, changed);
+        Assert.False(editor.ToggleRightsCommand.CanExecute("not a row"));
+        Assert.Equal(["/a:/docs:ro", "/a:/tmp:ro"], editor.ToRawEntries());
     }
 }

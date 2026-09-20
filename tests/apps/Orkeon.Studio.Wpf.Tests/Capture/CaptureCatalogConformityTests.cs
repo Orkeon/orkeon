@@ -153,8 +153,8 @@ public sealed partial class CaptureCatalogConformityTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// Every scrim overlay is a whole screen laid over another one, and four of the six had never
-    /// been photographed. A seventh must not be able to arrive unnoticed.
+    /// Every scrim overlay is a whole screen laid over another one, and four of the five had never
+    /// been photographed. A sixth must not be able to arrive unnoticed.
     /// </summary>
     [Fact]
     public void Every_scrim_overlay_is_reached_by_a_stop()

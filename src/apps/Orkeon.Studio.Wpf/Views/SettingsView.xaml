@@ -316,21 +316,26 @@
                       BorderBrush="{DynamicResource LineFaintBrush}" Background="{DynamicResource SurfaceBrush}">
                 <DockPanel LastChildFill="True">
                   <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
-                    <Border VerticalAlignment="Center" Margin="0,0,9,0">
-                      <Border.Style>
-                        <Style TargetType="Border" BasedOn="{StaticResource BadgeBase}">
+                    <!-- The rights badge is a toggle (STUDIO-19): the OS folder dialog asks no rights
+                         question, so a declared folder lands read-only and this is where it widens. -->
+                    <Button VerticalAlignment="Center" Margin="0,0,9,0" Content="{Binding RightsLabel}"
+                            ToolTip="{Binding [Studio.Settings.ToggleRights], Source={x:Static services:I18n.Instance}}"
+                            Command="{Binding DataContext.Config.Mounts.ToggleRightsCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                            CommandParameter="{Binding}">
+                      <Button.Style>
+                        <Style TargetType="Button" BasedOn="{StaticResource ChipAction}">
+                          <Setter Property="FontSize" Value="10"/>
                           <Setter Property="Background" Value="{DynamicResource Surface2Brush}"/>
-                          <Setter Property="TextElement.Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                           <Style.Triggers>
                             <DataTrigger Binding="{Binding Rights}" Value="ReadWrite">
                               <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
-                              <Setter Property="TextElement.Foreground" Value="{DynamicResource AccentBrush}"/>
+                              <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
-                      </Border.Style>
-                      <TextBlock Style="{StaticResource BadgeText}" FontSize="10" Text="{Binding RightsLabel}"/>
-                    </Border>
+                      </Button.Style>
+                    </Button>
                     <Button Width="29" Height="29" Padding="0" Style="{StaticResource BtnGhost}"
                             Command="{Binding DataContext.Config.Mounts.DropMountCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
                             CommandParameter="{Binding}">

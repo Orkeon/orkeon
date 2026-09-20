@@ -1,4 +1,5 @@
 using Orkeon.Studio.Core.FileSystem;
+using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
@@ -80,7 +81,10 @@ public sealed class MainWindowViewModelTests
 
     // ── "allow a folder" : the team screens associate, the settings screen declares ──
 
-    private static MainWindowViewModel WithDeclaredFolders(FakeAppSettingsStore store, params string[] mounts)
+    private static MainWindowViewModel WithDeclaredFolders(FakeAppSettingsStore store, params string[] mounts) =>
+        WithDeclaredFolders(store, new FakePathPicker(), mounts);
+
+    private static MainWindowViewModel WithDeclaredFolders(FakeAppSettingsStore store, FakePathPicker picker, params string[] mounts)
     {
         var window = new MainWindowViewModel(
             new StudioServices
@@ -88,7 +92,7 @@ public sealed class MainWindowViewModelTests
                 SettingsStore = store,
                 Directories = new FakeDirectoryProbe("/data", "/data/docs", "/data/out"),
                 TargetProbe = new FakeTargetProbe(),
-                Picker = new FakePathPicker(),
+                Picker = picker,
                 ProcessRunner = new OrkeonProcessRunner(
                     new FakeProcessLauncher(),
                     new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
@@ -110,7 +114,6 @@ public sealed class MainWindowViewModelTests
         window.CreateTeam.AllowFolderCommand.Execute(null);
 
         Assert.True(window.AllowedFolders.IsOpen);
-        Assert.False(window.FolderPicker.IsOpen);
         Assert.Equal(["/docs"], window.AllowedFolders.Rows.Select(r => r.VirtualPath));
     }
 
@@ -134,17 +137,20 @@ public sealed class MainWindowViewModelTests
         window.TeamMounts.AddCommand.Execute(null);
 
         Assert.True(window.AllowedFolders.IsOpen);
-        Assert.False(window.FolderPicker.IsOpen);
     }
 
     [Fact]
-    public void The_settings_card_still_opens_the_disk_picker_it_is_the_declaration_screen()
+    public void The_settings_card_opens_the_os_folder_dialog_and_declares_the_pick_read_only()
     {
-        var window = WithDeclaredFolders(new FakeAppSettingsStore());
+        // STUDIO-19: the settings ARE the declaration screen, and declaring is one OS dialog —
+        // no in-app modal. The pick lands read-only under the folder's own name.
+        var picker = new FakePathPicker { FolderToReturn = "/data/docs" };
+        var window = WithDeclaredFolders(new FakeAppSettingsStore(), picker);
 
         window.Config.Mounts.AllowFolderCommand.Execute(null);
 
-        Assert.True(window.FolderPicker.IsOpen);
+        Assert.Equal([EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder]], picker.Prompts);
+        Assert.Equal(["/data/docs:/docs:ro"], window.Config.Mounts.CurrentMountStrings);
         Assert.False(window.AllowedFolders.IsOpen);
     }
 
@@ -159,7 +165,6 @@ public sealed class MainWindowViewModelTests
         // The folders tab, not merely the settings screen: arriving on the model tab and having
         // to find the right one is how the gesture loses the user it was meant to help.
         Assert.False(window.AllowedFolders.IsOpen);
-        Assert.False(window.FolderPicker.IsOpen);
         Assert.True(window.Settings.IsFoldersTab);
     }
 

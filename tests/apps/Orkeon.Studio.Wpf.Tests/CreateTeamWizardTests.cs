@@ -1826,19 +1826,20 @@ public class CreateTeamWizardTests
         Assert.False(vm.OpenFolderCommand.CanExecute(null));
     }
 
-    // ── D-10, at the shell: the disk picker that declares on the way ──
+    // ── D-10, at the shell: the OS folder dialog that declares on the way (STUDIO-19) ──
 
-    private static (MainWindowViewModel Shell, FakeAppSettingsStore Store) Shell(
+    private static (MainWindowViewModel Shell, FakeAppSettingsStore Store, FakePathPicker Picker) Shell(
         FakeDirectoryProbe directories, string? teamsRoot = null)
     {
         var store = new FakeAppSettingsStore();
+        var picker = new FakePathPicker();
         var shell = new MainWindowViewModel(
             new StudioServices
             {
                 SettingsStore = store,
                 Directories = directories,
                 TargetProbe = new FakeTargetProbe(),
-                Picker = new FakePathPicker(),
+                Picker = picker,
                 ProcessRunner = new OrkeonProcessRunner(
                     new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
                 HistoryStore = new FakeLaunchHistoryStore(),
@@ -1848,33 +1849,30 @@ public class CreateTeamWizardTests
             globalPathOverride: "/home/user/.config/Orkeon/appsettings.json",
             forgeWorkspace: "/ws",
             teamsRoot: teamsRoot ?? "/nowhere/teams");
-        return (shell, store);
+        return (shell, store, picker);
     }
+
+    private static string SelectFolderTitle => EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder];
 
     /// <summary>
     /// P-3. One gesture: the wizard's « Choose the folder… » under «existing folders» opens the
-    /// disk picker on the row's rights; confirming declares the folder in the settings, saves
-    /// them, and binds the folder behind the row — and the status line says so.
+    /// OS folder dialog; the pick is declared in the settings under the row's rights, saved,
+    /// and bound behind the row — and the status line says so. No in-app modal in between.
     /// </summary>
     [Fact]
     public void Picking_a_folder_from_the_wizard_declares_it_in_the_settings_saves_and_binds_it()
     {
-        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
+        picker.FolderToReturn = "/data/factures";
         var wizard = shell.CreateTeam;
         wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/output");
 
-        // The disk picker, not the declared list — opened on the row's rights.
-        Assert.True(shell.FolderPicker.IsOpen);
+        // The OS dialog, not the declared list.
+        Assert.Equal([SelectFolderTitle], picker.Prompts);
         Assert.False(shell.AllowedFolders.IsOpen);
-        Assert.True(shell.FolderPicker.IsReadWrite);
 
-        shell.FolderPicker.Path = "/data/factures";
-        Assert.True(shell.FolderPicker.CanConfirm);
-        shell.FolderPicker.ConfirmCommand.Execute(null);
-
-        Assert.False(shell.FolderPicker.IsOpen);
         Assert.Equal(["/data/factures:/factures:rw"], shell.Config.Mounts.CurrentMountStrings);
         // Written to the settings file — by the novice auto-save on the edit and by the
         // explicit save behind the pick; the second, identical write is what makes the
@@ -1896,14 +1894,13 @@ public class CreateTeamWizardTests
     [Fact]
     public void A_folder_already_declared_is_not_declared_twice_but_still_bound_with_the_rows_rights()
     {
-        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
+        picker.FolderToReturn = "/data/factures";
         shell.Config.Mounts.Load(["/data/factures:/factures:ro"]);
         var wizard = shell.CreateTeam;
         wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/output");
-        shell.FolderPicker.Path = "/data/factures";
-        shell.FolderPicker.ConfirmCommand.Execute(null);
 
         Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
         Assert.NotEmpty(store.SavedPaths);   // saved all the same: an auto-save may be in flight
@@ -1922,16 +1919,14 @@ public class CreateTeamWizardTests
         try
         {
             var input = Path.Combine(teamDir, "input");
-            var (shell, store) = Shell(new FakeDirectoryProbe(teamDir, input), teamsRoot: Path.Combine(root, "teams"));
+            var (shell, store, picker) = Shell(new FakeDirectoryProbe(teamDir, input), teamsRoot: Path.Combine(root, "teams"));
+            picker.FolderToReturn = input;
             var wizard = shell.CreateTeam;
             await wizard.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
 
             wizard.PickFolderCommand.Execute("/workspace");
-            Assert.True(shell.FolderPicker.IsOpen);
-            Assert.True(shell.FolderPicker.IsReadOnly);
-            shell.FolderPicker.Path = input;
-            shell.FolderPicker.ConfirmCommand.Execute(null);
 
+            Assert.Equal([SelectFolderTitle], picker.Prompts);
             Assert.Empty(shell.Config.Mounts.CurrentMountStrings);
             Assert.Empty(store.SavedPaths);
             Assert.Contains($"{input}:/workspace:ro", wizard.TeamMounts);
@@ -1955,14 +1950,13 @@ public class CreateTeamWizardTests
     [Fact]
     public void A_refused_settings_save_still_binds_and_says_so()
     {
-        var (shell, store) = Shell(new FakeDirectoryProbe("/data/factures"));
+        var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
+        picker.FolderToReturn = "/data/factures";
         store.SaveFault = new IOException("disk full");
         var wizard = shell.CreateTeam;
         wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/workspace");
-        shell.FolderPicker.Path = "/data/factures";
-        shell.FolderPicker.ConfirmCommand.Execute(null);
 
         Assert.Equal(["/data/factures:/factures:ro"], shell.Config.Mounts.CurrentMountStrings);
         Assert.Empty(store.SavedPaths);
@@ -1970,6 +1964,26 @@ public class CreateTeamWizardTests
         Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/workspace").IsUndeclared);
         Assert.StartsWith("“factures” added, but the settings could not be saved — ", wizard.StatusMessage, StringComparison.Ordinal);
         Assert.Contains("disk full", wizard.StatusMessage, StringComparison.Ordinal);
+    }
+
+    /// <summary>A cancelled OS dialog leaves everything as it was, and says nothing.</summary>
+    [Fact]
+    public void A_cancelled_os_dialog_declares_nothing_binds_nothing_and_says_nothing()
+    {
+        var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
+        picker.FolderToReturn = null;
+        var wizard = shell.CreateTeam;
+        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
+        var statusBefore = wizard.StatusMessage;
+
+        wizard.BindMountCommand.Execute("/output");
+
+        Assert.Single(picker.Prompts);
+        Assert.Empty(shell.Config.Mounts.CurrentMountStrings);
+        Assert.Empty(store.SavedPaths);
+        Assert.Empty(wizard.TeamMounts);
+        Assert.True(wizard.StepOneRows.Single(r => r.VirtualPath == "/output").CanChooseFolder);
+        Assert.Equal(statusBefore, wizard.StatusMessage);
     }
 
     // ── STUDIO-13: the failures of "Compose the team" are said, with the technical part copyable ──

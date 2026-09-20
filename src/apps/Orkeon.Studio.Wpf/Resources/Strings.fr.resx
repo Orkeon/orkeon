@@ -525,6 +525,7 @@
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Tout le reste de votre machine leur est invisible. Un dossier en lecture seule ne peut jamais être modifié.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>vu comme</value></data>
   <data name="Studio.Settings.Allow" xml:space="preserve"><value>Autoriser un dossier…</value></data>
+  <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Cliquer pour passer de lecture seule à lecture et écriture, et inversement</value></data>
   <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Jeu d'exemple (JSON)</value></data>
   <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Transmis à l'essai via --inputs ; les lancements réels gardent leurs propres entrées.</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
@@ -554,23 +555,12 @@
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Vide : le moteur décide. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Vide : 30 s. Les modèles raisonneurs (Kimi K3, modes thinking) demandent souvent 120–300 s.</value></data>
-  <data name="Studio.Settings.AlreadyMounted" xml:space="preserve"><value>déjà autorisé</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Dossiers de « {0} »</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Sans dossier, cette équipe ne pourra ni lire ni écrire de fichier.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} dossiers : {1}</value></data>
   <data name="Studio.Create.TitleAdd" xml:space="preserve"><value>Ajouter un agent</value></data>
   <data name="Studio.Create.TitleEdit" xml:space="preserve"><value>Modifier l'agent</value></data>
   <data name="Studio.Create.Add" xml:space="preserve"><value>Ajouter à l'équipe</value></data>
-  <data name="Studio.Settings.PickerTitle" xml:space="preserve"><value>Autoriser un dossier</value></data>
-  <data name="Studio.Settings.PickerSub" xml:space="preserve"><value>Choisissez le dossier, puis ce que les agents pourront en faire.</value></data>
-  <data name="Studio.Settings.Browse" xml:space="preserve"><value>Parcourir…</value></data>
-  <data name="Studio.Settings.RightsLabel" xml:space="preserve"><value>Ce que les agents pourront faire</value></data>
-  <data name="Studio.Settings.PickerReadOnly" xml:space="preserve"><value>Lecture seule</value></data>
-  <data name="Studio.Settings.ReadOnlyHint" xml:space="preserve"><value>les agents lisent, ne modifient jamais</value></data>
-  <data name="Studio.Settings.PickerReadWrite" xml:space="preserve"><value>Lecture et écriture</value></data>
-  <data name="Studio.Settings.ReadWriteHint" xml:space="preserve"><value>les agents peuvent y écrire leurs résultats</value></data>
-  <data name="Studio.Settings.WrittenAs" xml:space="preserve"><value>Sera écrit comme</value></data>
-  <data name="Studio.Settings.PickerConfirm" xml:space="preserve"><value>Autoriser ce dossier</value></data>
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve"><value>Cochez ce que cette équipe peut voir. Tout dossier décoché lui devient invisible, même si d'autres équipes l'utilisent.</value></data>
   <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Autoriser un autre dossier…</value></data>
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Ajouter un dossier autorisé</value></data>

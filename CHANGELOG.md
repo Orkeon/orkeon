@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-19 -->
+### Changed — Studio: « Allow a folder » opens the OS folder dialog directly; the in-app picker modal is gone (STUDIO-19)
+
+- **The « Allow a folder » modal is deleted** — path field and Browse, the one-level tree with
+  its « already allowed » notes, the two rights rows, the expert mount-string preview
+  (`FolderPickerViewModel`, its overlay in `MainWindow.xaml`, the `modale-declarer-dossier`
+  capture stop, eleven `Studio.Settings.*` strings in five languages). Owner review 2026-09-19:
+  a relic of an earlier design that the Windows folder dialog replaces outright.
+- **Settings › Authorized folders**: the novice card's button calls the OS folder dialog
+  (`IPathPicker.PickFolder`, `OpenFolderDialog`); the pick lands read-only under a virtual name
+  derived from the folder's own name — `MountDefinition.SuggestVirtualPath`, one derivation in
+  Core for both doors, first free suggestion when the name is taken, reserved or unusable.
+  The card's rights badge is now a toggle, read-only ↔ read-and-write (`rwnd` narrows to
+  read-only); the novice auto-save hears it like any edit.
+- **The wizard's « Existing folders » door** (`CreateTeam.PickFolderRequested`): the same OS
+  dialog, opened on the reopened team's folder when there is one; the pick is declared in the
+  settings under the ROW's rights, saved, and bound behind the row — the five steps of
+  STUDIO-14 D-10 unchanged. A cancelled dialog does nothing and says nothing.
+- `IDirectoryProbe.ListSubdirectories` and the `LeftIndent` converter leave with their only
+  consumer, the tree.
+
 <!-- STUDIO-18 -->
 ### Fixed — Studio opens on the per-user settings file (STUDIO-18)
 

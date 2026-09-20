@@ -525,6 +525,7 @@
   <data name="Studio.Settings.NoviceIntro" xml:space="preserve"><value>Everything else on your machine is invisible to them. A read-only folder can never be modified.</value></data>
   <data name="Studio.Settings.SeenAs" xml:space="preserve"><value>seen as</value></data>
   <data name="Studio.Settings.Allow" xml:space="preserve"><value>Allow a folder…</value></data>
+  <data name="Studio.Settings.ToggleRights" xml:space="preserve"><value>Click to switch between read-only and read-and-write</value></data>
   <data name="Studio.Trial.InputsLabel" xml:space="preserve"><value>Sample inputs (JSON)</value></data>
   <data name="Studio.Trial.InputsHint" xml:space="preserve"><value>Passed to the trial as --inputs; the real launches keep their own inputs.</value></data>
   <data name="Studio.Import.RecognizedAgents" xml:space="preserve"><value>{0} — {1} agent(s)</value></data>
@@ -554,23 +555,12 @@
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value></data>
-  <data name="Studio.Settings.AlreadyMounted" xml:space="preserve"><value>already allowed</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Folders of “{0}”</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Without a folder, this team can neither read nor write any file.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} folders: {1}</value></data>
   <data name="Studio.Create.TitleAdd" xml:space="preserve"><value>Add an agent</value></data>
   <data name="Studio.Create.TitleEdit" xml:space="preserve"><value>Edit the agent</value></data>
   <data name="Studio.Create.Add" xml:space="preserve"><value>Add to the team</value></data>
-  <data name="Studio.Settings.PickerTitle" xml:space="preserve"><value>Allow a folder</value></data>
-  <data name="Studio.Settings.PickerSub" xml:space="preserve"><value>Choose the folder, then what the agents may do with it.</value></data>
-  <data name="Studio.Settings.Browse" xml:space="preserve"><value>Browse…</value></data>
-  <data name="Studio.Settings.RightsLabel" xml:space="preserve"><value>What the agents will be able to do</value></data>
-  <data name="Studio.Settings.PickerReadOnly" xml:space="preserve"><value>Read only</value></data>
-  <data name="Studio.Settings.ReadOnlyHint" xml:space="preserve"><value>agents read, never modify</value></data>
-  <data name="Studio.Settings.PickerReadWrite" xml:space="preserve"><value>Read and write</value></data>
-  <data name="Studio.Settings.ReadWriteHint" xml:space="preserve"><value>agents may write their results here</value></data>
-  <data name="Studio.Settings.WrittenAs" xml:space="preserve"><value>Will be written as</value></data>
-  <data name="Studio.Settings.PickerConfirm" xml:space="preserve"><value>Allow this folder</value></data>
   <data name="Studio.Teams.TeamMountsSub" xml:space="preserve"><value>Tick what this team may see. Any unticked folder becomes invisible to it, even if other teams use it.</value></data>
   <data name="Studio.Teams.AddAnother" xml:space="preserve"><value>Allow another folder…</value></data>
   <data name="Studio.Settings.AllowedFoldersTitle" xml:space="preserve"><value>Add an allowed folder</value></data>

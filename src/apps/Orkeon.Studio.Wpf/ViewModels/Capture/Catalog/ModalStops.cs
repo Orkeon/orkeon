@@ -2,7 +2,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>The scrim modals — four of the six were never captured at all.</summary>
+/// <summary>The five scrim modals — four of them were never captured before the campaign.</summary>
 internal static class ModalStops
 {
     /// <summary>The stops.</summary>
@@ -51,22 +51,6 @@ internal static class ModalStops
                 c.Shell.CreateTeam.Agents[0].EditCommand.Execute(null);
             },
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.AgentEditor.CancelCommand.Execute(null)),
-        },
-
-        new()
-        {
-            Name = "modale-declarer-dossier",
-            Category = CaptureCategory.Modal,
-            Screen = CaptureScreen.SettingsFolders,
-            Because = "The disk tree, opened from the screen that declares a folder. There is "
-                    + "deliberately no way to reach it from the team chooser — «Déclarer un "
-                    + "dossier» closes the chooser and sends the user here instead — so the two "
-                    + "scrims are never up at once. The wizard's «Des dossiers existants» "
-                    + "(STUDIO-14) is the picker's other door, and declares on the way too.",
-            Covers = ["FolderPicker.IsOpen"],
-            CoversFalse = ["AllowedFolders.IsOpen"],
-            Arrange = CaptureAction.Sync(static c => c.Shell.Config.Mounts.AllowFolderCommand.Execute(null)),
-            Teardown = CaptureAction.Sync(static c => c.Shell.FolderPicker.CancelCommand.Execute(null)),
         },
     ];
 }

@@ -24,6 +24,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 public sealed class MainWindowViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
+    private readonly IPathPicker _picker;
     private int _selectedTabIndex;
 
     /// <summary>
@@ -167,11 +168,11 @@ public sealed class MainWindowViewModel : ObservableObject
 
         Import = new ImportTeamViewModel(targetProbe, picker, strings, teamsRoot);
 
-        // The folder picker DECLARES a folder — a disk tree, a physical path, a rights choice.
-        // That gesture belongs to the settings, and to nothing else. A team ASSOCIATES a folder
+        // Declaring a folder is the OS folder dialog, and that gesture belongs to the settings
+        // and to the wizard's « Existing folders » rows (STUDIO-19). A team ASSOCIATES a folder
         // already declared there, which is what the chooser offers; wiring both team screens on
-        // the picker made every team re-declare its mounts from scratch.
-        FolderPicker = new FolderPickerViewModel(directories, picker, strings);
+        // a declaration made every team re-declare its mounts from scratch.
+        _picker = picker ?? NullPathPicker.Instance;
         AllowedFolders = new AllowedFolderChooserViewModel(declaredMounts, strings);
         TeamMounts = new TeamMountsDialogViewModel(strings, declaredMounts: declaredMounts);
         Teams.MountsRequested += (_, e) =>
@@ -195,19 +196,11 @@ public sealed class MainWindowViewModel : ObservableObject
                     ? mount => CreateTeam.BindTeamMount(target, mount)
                     : CreateTeam.AddTeamMount,
                 e.TargetVirtualPath);
-        // STUDIO-14 (D-10): « Existing folders » at step 1 asks for a REAL folder, so the wizard
-        // opens the disk picker itself — on the row's rights — and the pick is declared in the
-        // settings on the way, then bound behind the row. One gesture; the settings stay the
-        // source of the rights; the declared list above stays the other way in.
-        CreateTeam.PickFolderRequested += (_, e) =>
-            FolderPicker.Open(
-                [.. Config.Mounts.CurrentMountStrings, .. CreateTeam.TeamMounts],
-                mount => _ = DeclareAndBindAsync(e.TargetVirtualPath, e.Rights, mount),
-                initialRights: e.Rights);
-        // The settings ARE the declaration screen: theirs is the one button that still opens
-        // the disk picker directly.
-        Config.Mounts.FolderPickRequested += (_, _) =>
-            FolderPicker.Open(Config.Mounts.CurrentMountStrings, Config.Mounts.AddPickedMount);
+        // STUDIO-14 (D-10), STUDIO-19: « Existing folders » at step 1 asks for a REAL folder, so
+        // the wizard opens the OS folder dialog itself; the pick is declared in the settings on
+        // the way, under the row's rights, then bound behind the row. One gesture, no modal in
+        // between; the declared list above stays the other way in.
+        CreateTeam.PickFolderRequested += (_, e) => _ = PickDeclareAndBindAsync(e.TargetVirtualPath, e.Rights);
         // The declare-a-new-folder action lands on the folders tab, not merely on the settings
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.
@@ -281,12 +274,10 @@ public sealed class MainWindowViewModel : ObservableObject
     /// <summary>The Import screen.</summary>
     public ImportTeamViewModel Import { get; }
 
-    /// <summary>The shared allow-a-folder modal (remediation v2, F-03).</summary>
-    public FolderPickerViewModel FolderPicker { get; }
-
     /// <summary>
     /// The add-an-allowed-folder modal the two team screens use: it offers the folders
-    /// already declared in the settings, and chains to <see cref="FolderPicker"/> to declare one more.
+    /// already declared in the settings, and its « Declare a new folder… » sends the user to
+    /// the settings' folders tab to declare one more.
     /// </summary>
     public AllowedFolderChooserViewModel AllowedFolders { get; }
 
@@ -417,13 +408,37 @@ public sealed class MainWindowViewModel : ObservableObject
     }
 
     /// <summary>
-    /// The wizard's disk pick, in five steps (STUDIO-14, D-10): a folder inside the reopened
+    /// The wizard's disk pick (STUDIO-19): the OS folder dialog — opened on the reopened team's
+    /// folder when there is one — then the five steps of <see cref="DeclareAndBindAsync"/>. A
+    /// cancelled dialog does nothing. The virtual name is derived the way the settings' own
+    /// button derives it, unique against the settings entries and the team's.
+    /// </summary>
+    private async Task PickDeclareAndBindAsync(string? targetVirtualPath, MountRights rights)
+    {
+        var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectMountFolder], CreateTeam.ReopenedTeamPath);
+        if (picked is not { Length: > 0 })
+            return;
+
+        var taken = Config.Mounts.CurrentMountStrings.Concat(CreateTeam.TeamMounts)
+            .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) ? mount.VirtualPath : null)
+            .OfType<string>();
+
+        await DeclareAndBindAsync(targetVirtualPath, rights, new MountDefinition
+        {
+            PhysicalPath = picked,
+            VirtualPath = MountDefinition.SuggestVirtualPath(picked, taken),
+            Rights = rights,
+        }).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// The five steps of a disk pick (STUDIO-14, D-10): a folder inside the reopened
     /// team is not declared — it is the team's own and the save relativizes it; any other
     /// folder is declared unless the settings already hold it (by physical folder — a second
     /// pick of one folder under other rights adds no second entry); the settings are saved
     /// every time, because the novice auto-save may be in flight and a second identical write
     /// is harmless and makes the outcome true; the team binds the folder under the ROW's
-    /// rights — the settings entry keeps the picker's; and the wizard's status line says
+    /// rights — the settings entry takes the same, there is no separate choice any more; and the wizard's status line says
     /// which of the two things happened, a refused save included: the folder is bound and
     /// counts as declared for the verdicts (the editor's live list vouches for it), so the
     /// sentence is the only trace of the refusal.

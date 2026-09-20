@@ -77,8 +77,10 @@ public sealed class CapturePlannerTests
         // STUDIO-13: +1 stop (etape1-echec-moteur, both modes, both themes, language sweep) = +8 shots.
         // STUDIO-14 wizard: +3 stops (the two step-1 folder policies and the step-2
         // "create inside the team" state — both modes, both themes, language sweep) = +24 shots.
-        Assert.Equal(52, CaptureCatalog.All.Count);
-        Assert.Equal(282, plan.Count);
+        // STUDIO-19: -1 stop (modale-declarer-dossier — the picker modal is gone, and the OS
+        // folder dialog that replaced it cannot be photographed) = -4 shots.
+        Assert.Equal(51, CaptureCatalog.All.Count);
+        Assert.Equal(278, plan.Count);
     }
 
     [Fact]

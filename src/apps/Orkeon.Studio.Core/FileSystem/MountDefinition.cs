@@ -46,6 +46,34 @@ public sealed record MountDefinition
         ["/data", "/docs", "/tmp"];
 
     /// <summary>
+    /// The virtual name a picked folder is offered under: the folder's own name, lowercased and
+    /// rooted — or the first free entry of <see cref="SuggestedVirtualPaths"/> when that name is
+    /// unusable (empty, reserved, refused by the domain rule) or already spent. One derivation
+    /// for the settings' « Allow a folder » and the wizard's disk pick (STUDIO-19), so the two
+    /// doors cannot name one folder two ways.
+    /// </summary>
+    /// <param name="physicalPath">The folder the OS dialog returned.</param>
+    /// <param name="takenVirtualPaths">Virtual paths already spent — the settings entries, the team's.</param>
+    public static string SuggestVirtualPath(string physicalPath, IEnumerable<string> takenVirtualPaths)
+    {
+        ArgumentNullException.ThrowIfNull(physicalPath);
+        ArgumentNullException.ThrowIfNull(takenVirtualPaths);
+
+        var taken = takenVirtualPaths.ToHashSet(StringComparer.Ordinal);
+        // Either separator, whatever the platform: the domain parser reads a Windows path on
+        // Linux too, and the name a mount is offered under must not depend on where it is read.
+        var trimmed = physicalPath.Trim().TrimEnd('/', '\\');
+        var name = trimmed[(trimmed.LastIndexOfAny(['/', '\\']) + 1)..];
+#pragma warning disable CA1308 // virtual paths are lowercase by convention, not a normalization round-trip
+        var candidate = "/" + (name is { Length: > 0 } ? name.ToLowerInvariant() : "docs");
+#pragma warning restore CA1308
+        if (IsValidVirtualPath(candidate) && !taken.Contains(candidate))
+            return candidate;
+
+        return SuggestedVirtualPaths.FirstOrDefault(s => !taken.Contains(s)) ?? SuggestedVirtualPaths[0];
+    }
+
+    /// <summary>
     /// Serializes to the mount string format the runtime parses. Each path segment goes through
     /// <see cref="FileSystemMount.Quote"/> — a folder holding a <c>:</c> or a <c>;</c> is legal on
     /// every OS the picker browses, and writing it bare produced a spec this type's own

@@ -58,6 +58,13 @@ public sealed class MountsEditorViewModel : ObservableObject
         DropMountCommand = new RelayCommand(
             parameter => { if (parameter is MountEditorViewModel mount) Remove(mount); },
             parameter => parameter is MountEditorViewModel);
+        ToggleRightsCommand = new RelayCommand(
+            parameter =>
+            {
+                if (parameter is MountEditorViewModel { IsParsed: true } mount)
+                    mount.Rights = mount.Rights == MountRights.ReadOnly ? MountRights.ReadWrite : MountRights.ReadOnly;
+            },
+            parameter => parameter is MountEditorViewModel { IsParsed: true });
         RemoveMountCommand = new RelayCommand(RemoveSelected, () => SelectedMount is not null);
         BrowsePhysicalPathCommand = new RelayCommand(BrowsePhysicalPath, () => SelectedMount is { IsParsed: true });
         CreatePhysicalFolderCommand = new RelayCommand(
@@ -160,21 +167,20 @@ public sealed class MountsEditorViewModel : ObservableObject
     public RelayCommand DropMountCommand { get; }
 
     /// <summary>
-    /// The novice flow: pick a real folder, mount it read-only under a virtual name derived
-    /// from the folder itself (first free suggested path as fallback). Read-only is the safe
-    /// default — the expert form is where rights widen.
+    /// Flips the rights of the mount passed as parameter — read-only becomes read-and-write,
+    /// anything else becomes read-only. The novice card's badge (STUDIO-19): the OS folder
+    /// dialog asks no rights question, so the pick lands read-only and the card is where it
+    /// widens — or narrows again — after the fact.
     /// </summary>
-    /// <summary>
-    /// Raised by « Autoriser un dossier… » when the shell wired the shared picker modal
-    /// (remediation v2, F-03): the rights choice then belongs to the modal. Without a
-    /// subscriber, the legacy OS browser opens and the mount lands read-only.
-    /// </summary>
-    public event EventHandler? FolderPickRequested;
+    public RelayCommand ToggleRightsCommand { get; }
 
-    /// <summary>The mount strings this editor currently holds — what the picker's notes show.</summary>
+    /// <summary>
+    /// The mount strings this editor currently holds — what the verdicts read live, and what
+    /// the wizard's disk pick counts as taken.
+    /// </summary>
     public IReadOnlyList<string> CurrentMountStrings => [.. Mounts.Select(m => m.MountString)];
 
-    /// <summary>Adds the picker modal's choice as a new mount row.</summary>
+    /// <summary>Adds a mount the shell declares on the wizard's behalf as a new row.</summary>
     public void AddPickedMount(MountDefinition mount)
     {
         ArgumentNullException.ThrowIfNull(mount);
@@ -188,35 +194,21 @@ public sealed class MountsEditorViewModel : ObservableObject
         });
     }
 
+    /// <summary>
+    /// « Autoriser un dossier… », the novice add path: the OS folder dialog, then the folder
+    /// mounted read-only under a virtual name derived from its own name (STUDIO-19 — no in-app
+    /// picker in between). Read-only is the safe default; the card's badge widens it.
+    /// </summary>
     private void AllowFolder()
     {
-        if (FolderPickRequested is not null)
-        {
-            FolderPickRequested.Invoke(this, EventArgs.Empty);
-            return;
-        }
-
         var picked = _picker.PickFolder(_strings[StudioStringKeys.DialogSelectMountFolder]);
         if (picked is not { Length: > 0 })
             return;
 
-        var name = System.IO.Path.GetFileName(picked.TrimEnd('/', '\\'));
-        var candidate = "/" + (name is { Length: > 0 }
-#pragma warning disable CA1308 // virtual paths are lowercase by convention, not a normalization round-trip
-            ? name.ToLowerInvariant()
-#pragma warning restore CA1308
-            : "docs");
-        if (!MountDefinition.IsValidVirtualPath(candidate) || Mounts.Any(m => m.VirtualPath == candidate))
-        {
-            candidate = MountDefinition.SuggestedVirtualPaths
-                .FirstOrDefault(s => Mounts.All(m => m.VirtualPath != s))
-                ?? MountDefinition.SuggestedVirtualPaths[0];
-        }
-
         var mount = new MountEditorViewModel(_strings)
         {
             PhysicalPath = picked,
-            VirtualPath = candidate,
+            VirtualPath = MountDefinition.SuggestVirtualPath(picked, Mounts.Select(m => m.VirtualPath)),
             Rights = MountRights.ReadOnly,
         };
 

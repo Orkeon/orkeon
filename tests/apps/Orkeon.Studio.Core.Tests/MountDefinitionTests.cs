@@ -239,4 +239,35 @@ public sealed class MountDefinitionTests
         Assert.DoesNotContain("/output", MountDefinition.SuggestedVirtualPaths, StringComparer.Ordinal);
         Assert.True(MountDefinition.IsReservedVirtualPath("/sandbox"));
     }
+
+    // ── STUDIO-19: the virtual name of a picked folder, derived once for both doors ──
+
+    [Fact]
+    public void The_suggested_virtual_path_is_the_folder_name_lowercased()
+    {
+        Assert.Equal("/factures", MountDefinition.SuggestVirtualPath("/data/Factures", []));
+        Assert.Equal("/factures", MountDefinition.SuggestVirtualPath("/data/Factures/", []));
+        Assert.Equal("/factures", MountDefinition.SuggestVirtualPath(@"C:\Users\me\Factures\", []));
+    }
+
+    [Fact]
+    public void A_taken_folder_name_falls_back_to_the_first_free_suggestion()
+    {
+        Assert.Equal("/data", MountDefinition.SuggestVirtualPath("/data/factures", ["/factures"]));
+        Assert.Equal("/docs", MountDefinition.SuggestVirtualPath("/data/factures", ["/factures", "/data"]));
+    }
+
+    [Fact]
+    public void An_unusable_folder_name_falls_back_to_a_suggestion()
+    {
+        // A folder named like a root the runner claims for itself, and a folder with no name.
+        Assert.Equal("/data", MountDefinition.SuggestVirtualPath("/srv/crew", []));
+        Assert.Equal("/docs", MountDefinition.SuggestVirtualPath("/", []));
+    }
+
+    [Fact]
+    public void When_every_suggestion_is_taken_the_first_one_is_offered_anyway()
+    {
+        Assert.Equal("/data", MountDefinition.SuggestVirtualPath("/srv/crew", ["/data", "/docs", "/tmp"]));
+    }
 }
