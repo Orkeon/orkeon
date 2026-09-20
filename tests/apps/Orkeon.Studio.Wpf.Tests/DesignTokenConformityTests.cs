@@ -90,6 +90,42 @@ public sealed partial class DesignTokenConformityTests
         Assert.True(missingInLight.Count == 0, $"Keys missing in Tokens.Light.xaml: {string.Join(", ", missingInLight)}");
     }
 
+    /// <summary>
+    /// A StaticResource used inside the theme must be declared by the theme. The theme
+    /// dictionaries are merged into App.xaml BEFORE the converters App.xaml declares, and a
+    /// StaticResource inside a theme template is resolved against the theme's own chain: one
+    /// that names an App.xaml converter parses fine, builds fine, and throws
+    /// XamlParseException the first time the template is instantiated — on the machine, in
+    /// front of the user (STUDIO-21, the secret-row template on the settings screen).
+    /// </summary>
+    [Fact]
+    public void Should_Declare_Every_Static_Resource_The_Theme_Uses_When_Reading_The_Theme_Files()
+    {
+        var themeFiles = Directory.EnumerateFiles(Path.Combine(WpfSourceRoot(), "Themes"), "*.xaml").ToList();
+        var declared = themeFiles
+            .SelectMany(file => ThemeKeyPattern().Matches(File.ReadAllText(file)).Select(m => m.Groups[1].Value))
+            .ToHashSet(StringComparer.Ordinal);
+
+        var undeclared = themeFiles
+            .SelectMany(file => ThemeStaticResourcePattern().Matches(File.ReadAllText(file))
+                .Select(m => (File: Path.GetFileName(file), Key: m.Groups[1].Value)))
+            .Where(use => !declared.Contains(use.Key))
+            .Select(use => $"{use.File} uses {use.Key}")
+            .Distinct(StringComparer.Ordinal)
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.True(undeclared.Count == 0,
+            "A theme StaticResource that App.xaml declares throws at first use, not at build: "
+            + string.Join("; ", undeclared));
+    }
+
+    [GeneratedRegex(@"\{StaticResource\s+([A-Za-z0-9_.]+)")]
+    private static partial Regex ThemeStaticResourcePattern();
+
+    [GeneratedRegex("x:Key=\"([A-Za-z0-9_.]+)\"")]
+    private static partial Regex ThemeKeyPattern();
+
     [Fact]
     public void Should_Never_Name_A_Colour_Directly_When_Scanning_Every_Xaml_Outside_The_Theme_Files()
     {

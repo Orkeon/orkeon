@@ -986,8 +986,20 @@
             </Border>
           </StackPanel>
           <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,0" Text="{Binding UsedBy}"/>
-          <StackPanel Orientation="Horizontal" Margin="0,3,0,0"
-                      Visibility="{Binding HasConsoleUrl, Converter={StaticResource BooleanToVisibility}}">
+          <!-- No converter here: the converters live in App.xaml, declared AFTER this dictionary is
+               merged, and a static resource reference inside a theme template cannot see them (the
+               settings screen threw XamlParseException on this line). A trigger needs no converter. -->
+          <StackPanel Orientation="Horizontal" Margin="0,3,0,0">
+            <StackPanel.Style>
+              <Style TargetType="StackPanel">
+                <Setter Property="Visibility" Value="Collapsed"/>
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding HasConsoleUrl}" Value="True">
+                    <Setter Property="Visibility" Value="Visible"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </StackPanel.Style>
             <TextBlock FontSize="11" Foreground="{DynamicResource InkFaintBrush}"
                        Text="{Binding [Studio.Settings.KeyNoKeyYet], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock FontFamily="{StaticResource MonoFont}" FontSize="10.5"
