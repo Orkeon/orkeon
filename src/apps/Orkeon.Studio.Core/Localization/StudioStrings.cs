@@ -1347,6 +1347,35 @@ public static class StudioStringKeys
     /// <summary>"Empty: this model is not in the catalogue, so the engine sends 4096. …"</summary>
     public const string ProfileMaxTokensHintUnknown = "Studio.Settings.MaxTokensHintUnknown";
 
+    // LLM-11 — the profile's timeout hint and its thinking switch ------------------------
+
+    /// <summary>"Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s."</summary>
+    public const string ProfileTimeoutHint = "Studio.Settings.TimeoutHint";
+
+    /// <summary>"{0} s pre-filled: {1}'s default model thinks before it answers, …"</summary>
+    public const string ProfileTimeoutHintReasoning = "Studio.Settings.ProfileTimeoutHintReasoning";
+
+    /// <summary>"Thinking"</summary>
+    public const string ProfileThinkingLabel = "Studio.Settings.ProfileLblThinking";
+
+    /// <summary>"Provider default"</summary>
+    public const string ProfileThinkingProviderDefault = "Studio.Settings.ProfileThinkingProviderDefault";
+
+    /// <summary>"On"</summary>
+    public const string ProfileThinkingOn = "Studio.Settings.ProfileThinkingOn";
+
+    /// <summary>"Off"</summary>
+    public const string ProfileThinkingOff = "Studio.Settings.ProfileThinkingOff";
+
+    /// <summary>"Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. …"</summary>
+    public const string ProfileThinkingHint = "Studio.Settings.ProfileThinkingHint";
+
+    /// <summary>"Reasoning effort"</summary>
+    public const string ProfileThinkingEffortLabel = "Studio.Settings.ProfileLblThinkingEffort";
+
+    /// <summary>"Empty: the provider's default. low / medium / high (max on some models), …"</summary>
+    public const string ProfileThinkingEffortHint = "Studio.Settings.ProfileThinkingEffortHint";
+
     // STUDIO-14 wizard — where a team's folders live: the step-1 policy chips, the two
     // canonical rows, the in-team label of a row, the step-2 buttons, the step-3 note and
     // the header's « Open the folder » (D-06, D-08, D-15).
@@ -1921,6 +1950,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileMaxTokensHintUnbounded] = "Empty: the vendor documents no cap for this model — the request carries none and the model writes up to its window.",
         [StudioStringKeys.ProfileMaxTokensHintLocal] = "Empty: a local runtime — no cap is sent, the model writes up to its context.",
         [StudioStringKeys.ProfileMaxTokensHintUnknown] = "Empty: this model is not in the catalogue, so the engine sends 4096. Type the model's documented maximum — a reasoning model needs 16384 or more.",
+        [StudioStringKeys.ProfileTimeoutHint] = "Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s.",
+        [StudioStringKeys.ProfileTimeoutHintReasoning] = "{0} s pre-filled: {1}'s default model thinks before it answers, and a thinking answer routinely outlasts the engine's 30 s. Type another value to override.",
+        [StudioStringKeys.ProfileThinkingLabel] = "Thinking",
+        [StudioStringKeys.ProfileThinkingProviderDefault] = "Provider default",
+        [StudioStringKeys.ProfileThinkingOn] = "On",
+        [StudioStringKeys.ProfileThinkingOff] = "Off",
+        [StudioStringKeys.ProfileThinkingHint] = "Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. Off answers faster and cheaper; On forces the reasoning pass where the model has the switch.",
+        [StudioStringKeys.ProfileThinkingEffortLabel] = "Reasoning effort",
+        [StudioStringKeys.ProfileThinkingEffortHint] = "Empty: the provider's default. low / medium / high (max on some models), for the models that take the hint.",
 
         // STUDIO-14 wizard: where a team's folders live
         [StudioStringKeys.WizardQFolders] = "Where are your folders?",

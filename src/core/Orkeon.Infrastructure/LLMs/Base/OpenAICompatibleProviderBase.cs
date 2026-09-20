@@ -175,7 +175,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
             // SECURITY: HandleApiException logs a sanitized copy to prevent API key
             // exposure and builds the response from the original exception to preserve
             // the real exception type.
-            return HandleApiException(ex);
+            return HandleApiException(ex, effectiveConfig);
         }
     }
 
@@ -726,15 +726,15 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         }
         catch (OperationCanceledException ex)
         {
-            return HandleApiException(ex);
+            return HandleApiException(ex, effectiveConfig);
         }
         catch (HttpRequestException ex)
         {
-            return HandleApiException(ex);
+            return HandleApiException(ex, effectiveConfig);
         }
         catch (JsonException ex)
         {
-            return HandleApiException(ex);
+            return HandleApiException(ex, effectiveConfig);
         }
     }
 
@@ -787,13 +787,13 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         SupportsVisionContent &&
         msg.MultiModalContent is { } content && content.Parts.Count > 0 && !content.IsTextOnly;
 
-    private LlmResponse HandleApiException(Exception ex)
+    private LlmResponse HandleApiException(Exception ex, LlmConfig effectiveConfig)
     {
         // Log a sanitized copy (secrets redacted) but build the response from the
         // original exception so the real type is preserved (mirrors OllamaLlmProvider).
         var sanitizedEx = LogSanitizer.CreateSanitizedException(ex);
         LogApiCallFailed(sanitizedEx, ProviderDisplayName);
-        return CreateExceptionResponse(ex);
+        return CreateExceptionResponse(ex, DescribeCallFailure(ProviderDisplayName, ex, effectiveConfig));
     }
 
     private async Task<LlmResponse> SendChatRequestAsync(
@@ -1739,17 +1739,17 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         CapabilityMismatchHint.ForVendorError(
             vendorError, ProviderDisplayName, effectiveConfig.Model ?? DefaultModel);
 
-    private LlmResponse CreateExceptionResponse(Exception ex)
+    private LlmResponse CreateExceptionResponse(Exception ex, string error)
     {
         // Surface the real exception type (e.g. HttpRequestException, TaskCanceledException)
         // rather than collapsing everything to the sanitized wrapper, mirroring the
-        // OllamaLlmProvider policy. The message is sanitized to avoid leaking secrets.
+        // OllamaLlmProvider policy. The message comes sanitized from DescribeCallFailure.
         return new LlmResponse
         {
             Content = "",
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
-                .AddError($"{ProviderDisplayName} API call failed: {LogSanitizer.SanitizeString(ex.Message)}")
+                .AddError(error)
                 .AddErrorType(ex.GetType().Name)
                 .Build()
                 .ToDictionary()

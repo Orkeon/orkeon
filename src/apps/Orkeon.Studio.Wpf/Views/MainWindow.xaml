@@ -586,7 +586,34 @@
                 <TextBox Style="{StaticResource InputMono}" Width="90" HorizontalAlignment="Left"
                          Text="{Binding TimeoutText, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
-                           Text="{Binding [Studio.Settings.TimeoutHint], Source={x:Static services:I18n.Instance}}"/>
+                           Text="{Binding TimeoutHint}"/>
+              </StackPanel>
+            </Grid>
+
+            <!-- thinking (LLM-11): the switch the run of 2026-09-20 had nowhere to live. Provider
+                 default lets the model decide (on for Kimi K2.6, DeepSeek V4, GLM); off is the
+                 way out of a timeout when the task does not need the reasoning pass; the effort
+                 hint is for the models that take one. -->
+            <Grid Margin="0,14,0,0"
+                  Visibility="{Binding ShowFields, Converter={StaticResource BooleanToVisibility}}">
+              <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*"/><ColumnDefinition Width="14"/><ColumnDefinition Width="*"/>
+              </Grid.ColumnDefinitions>
+              <StackPanel Grid.Column="0">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.ProfileLblThinking], Source={x:Static services:I18n.Instance}}"/>
+                <ComboBox Width="220" HorizontalAlignment="Left"
+                          ItemsSource="{Binding ThinkingChoices}"
+                          SelectedItem="{Binding SelectedThinking}"
+                          DisplayMemberPath="Label"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="{Binding ThinkingHint}"/>
+              </StackPanel>
+              <StackPanel Grid.Column="2">
+                <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Settings.ProfileLblThinkingEffort], Source={x:Static services:I18n.Instance}}"/>
+                <TextBox Style="{StaticResource InputMono}" Width="120" HorizontalAlignment="Left"
+                         Text="{Binding ThinkingEffortText, UpdateSourceTrigger=PropertyChanged}"/>
+                <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0" TextWrapping="Wrap"
+                           Text="{Binding [Studio.Settings.ProfileThinkingEffortHint], Source={x:Static services:I18n.Instance}}"/>
               </StackPanel>
             </Grid>
 

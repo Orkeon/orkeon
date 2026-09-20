@@ -44,6 +44,30 @@ public class LlmFormTests
     }
 
     [Fact]
+    public void The_thinking_switch_loads_applies_and_refuses_anything_but_a_boolean()
+    {
+        // LLM-11: Llm:Thinking:Enabled as text — "true", "false", or blank for the provider's default.
+        var document = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "kimi-k2.6", "Thinking": { "Enabled": false } } }""");
+        var form = new LlmForm();
+        form.LoadFrom(document);
+        Assert.Equal("false", form.ThinkingEnabled);
+
+        form.ThinkingEnabled = "";
+        Assert.Empty(form.ApplyTo(document));
+        Assert.Null(document.Llm.ThinkingEnabled);
+
+        form.ThinkingEnabled = " TRUE ";
+        Assert.Empty(form.ApplyTo(document));
+        Assert.True(document.Llm.ThinkingEnabled);
+
+        form.ThinkingEnabled = "yes";
+        var error = Assert.Single(form.ApplyTo(document));
+        Assert.Contains("Llm:Thinking:Enabled", error, StringComparison.Ordinal);
+        Assert.True(document.Llm.ThinkingEnabled);   // nothing written on a refused form
+    }
+
+    [Fact]
     public void Apply_writes_the_typed_values()
     {
         var document = AppSettingsDocument.CreateEmpty();

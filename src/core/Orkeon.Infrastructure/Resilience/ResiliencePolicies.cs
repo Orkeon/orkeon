@@ -13,11 +13,37 @@ namespace Orkeon.Infrastructure.Resilience;
 /// </summary>
 public static class ResiliencePolicies
 {
+    /// <summary>
+    /// True when <paramref name="exception"/> is what <see cref="HttpClient"/> throws once its
+    /// <see cref="HttpClient.Timeout"/> elapses: a <see cref="TaskCanceledException"/> nesting
+    /// a <see cref="TimeoutException"/> (since .NET 5). A caller's own cancellation nests none.
+    /// </summary>
+    /// <remarks>
+    /// The token is no discriminator: HttpClient cancels its own linked source on a timeout,
+    /// so the exception's <see cref="OperationCanceledException.CancellationToken"/> reads as
+    /// cancelled in both cases. The retry clause written as
+    /// <c>!ex.CancellationToken.IsCancellationRequested</c> therefore never fired on a real
+    /// timeout — every timeout looked like a cancellation and failed on its first attempt,
+    /// whatever <c>Llm:MaxRetries</c> said (LLM-11).
+    /// </remarks>
+    /// <param name="exception">The exception a send failed with.</param>
+    public static bool IsHttpClientTimeout(Exception? exception) =>
+        exception is TaskCanceledException { InnerException: TimeoutException };
+
     private static PolicyBuilder<HttpResponseMessage> HandleTransientHttpError()
+    {
+        return HandleTransientHttpStatusOrRequestError()
+            // An HttpClient timeout is retried like any other transient failure; a caller's
+            // cancellation (a cancelled token and no TimeoutException) never is — and Polly
+            // itself stops retrying once the execution token is cancelled.
+            .Or<TaskCanceledException>(ex => IsHttpClientTimeout(ex) || !ex.CancellationToken.IsCancellationRequested);
+    }
+
+    /// <summary>The transient failures that come back in seconds: a request error, a 5xx, a 408.</summary>
+    private static PolicyBuilder<HttpResponseMessage> HandleTransientHttpStatusOrRequestError()
     {
         return Policy<HttpResponseMessage>
             .Handle<HttpRequestException>()
-            .Or<TaskCanceledException>(ex => !ex.CancellationToken.IsCancellationRequested)
             .OrResult(r => (int)r.StatusCode >= 500 || r.StatusCode == HttpStatusCode.RequestTimeout);
     }
 
@@ -140,7 +166,9 @@ public static class ResiliencePolicies
     {
         var delay = baseDelay ?? ResilienceDefaults.DefaultRetryInitialDelay;
         var safeLogger = logger ?? NullLogger.Instance;
-        return HandleTransientHttpError()
+
+        // The failures that come back in seconds take the whole Llm:MaxRetries budget.
+        var transient = HandleTransientHttpStatusOrRequestError()
             .OrResult(msg => msg.StatusCode == HttpStatusCode.TooManyRequests)
             .WaitAndRetryAsync(maxRetryAttempts,
                 retryAttempt => LlmRetryDelay(retryAttempt, delay),
@@ -164,6 +192,25 @@ public static class ResiliencePolicies
                         onRetry?.Invoke(retryCount, timespan, reason);
                     }
                 });
+
+        // A call that hit Llm:TimeoutSeconds costs the whole timeout per attempt, so it gets
+        // its own, short budget (ResilienceDefaults.LlmTimeoutRetries) instead of the ladder
+        // above — and none at all when the caller turned retries off. The outer policy does
+        // not handle the timeout, so a second one surfaces to the provider, whose message
+        // then names the setting that elapsed (LLM-11).
+        var timeoutRetries = maxRetryAttempts > 0 ? ResilienceDefaults.LlmTimeoutRetries : 0;
+        var timedOut = Policy<HttpResponseMessage>
+            .Handle<TaskCanceledException>(IsHttpClientTimeout)
+            .WaitAndRetryAsync(timeoutRetries,
+                retryAttempt => LlmRetryDelay(retryAttempt, delay),
+                onRetry: (outcome, timespan, retryCount, context) =>
+                {
+                    var reason = outcome.Exception?.Message ?? "HTTP timeout";
+                    ResiliencePoliciesLog.LogLlmApiRetry(safeLogger, retryCount, timespan.TotalMilliseconds, reason);
+                    onRetry?.Invoke(retryCount, timespan, reason);
+                });
+
+        return Policy.WrapAsync(transient, timedOut);
     }
 
     /// <summary>

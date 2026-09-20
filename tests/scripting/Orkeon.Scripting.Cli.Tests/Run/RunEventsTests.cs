@@ -139,6 +139,30 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
+    public async Task A_skipped_task_says_so_on_the_wire()
+    {
+        // LLM-11: never started, completed with success=false, and told apart from a failure
+        // by the flag — a screen shows "skipped", not a red verdict on a task nobody ran.
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+        var skipped = Snapshot("write", "Writer", success: false) with
+        {
+            Skipped = true,
+            SkipReason = "Task write (Writer) skipped: it depends on task score, which did not succeed",
+            Duration = TimeSpan.Zero,
+        };
+
+        await observer.OnTaskCompletedAsync(skipped, TestContext.Current.CancellationToken);
+        await observer.OnTaskCompletedAsync(Snapshot("collect"), TestContext.Current.CancellationToken);
+
+        var events = Events();
+        Assert.Equal(2, events.Count);
+        Assert.True(events[0].GetProperty("skipped").GetBoolean());
+        Assert.False(events[0].GetProperty("success").GetBoolean());
+        Assert.Equal(0, events[0].GetProperty("durationMs").GetInt64());
+        Assert.False(events[1].GetProperty("skipped").GetBoolean());
+    }
+
+    [Fact]
     public async Task The_observer_composes_with_the_hook_that_was_already_registered()
     {
         // The regression this test exists for: ICrewExecutionHook is a single service and

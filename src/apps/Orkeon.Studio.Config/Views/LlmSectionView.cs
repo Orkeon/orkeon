@@ -25,6 +25,7 @@ internal sealed class LlmSectionView : SectionView
     private readonly TextField _temperature;
     private readonly TextField _maxTokens;
     private readonly TextField _timeout;
+    private readonly TextField _thinking;
     private readonly Label _provider;
     private readonly Label _apiKeyWarning;
     private readonly Button _testConnection;
@@ -48,11 +49,12 @@ internal sealed class LlmSectionView : SectionView
         _temperature = FormLayout.AddField(this, 8, "Temperature", _form.Temperature);
         _maxTokens = FormLayout.AddField(this, 9, "Max tokens", _form.MaxTokens);
         _timeout = FormLayout.AddField(this, 10, "Timeout (seconds)", _form.TimeoutSeconds);
+        _thinking = FormLayout.AddField(this, 11, "Thinking (true / false, blank = provider default)", _form.ThinkingEnabled);
 
-        _testConnection = new Button { X = FormLayout.Margin, Y = 12, Text = "Test connection" };
+        _testConnection = new Button { X = FormLayout.Margin, Y = 13, Text = "Test connection" };
         _testConnection.Accepting += (_, _) => TestConnection();
         Add(_testConnection);
-        _testResult = FormLayout.AddText(this, 13, "");
+        _testResult = FormLayout.AddText(this, 14, "");
 
         // The provider is inferred from the endpoint, so it follows every keystroke in it.
         _baseUrl.TextChanged += (_, _) =>
@@ -79,6 +81,7 @@ internal sealed class LlmSectionView : SectionView
         _temperature.Text = _form.Temperature;
         _maxTokens.Text = _form.MaxTokens;
         _timeout.Text = _form.TimeoutSeconds;
+        _thinking.Text = _form.ThinkingEnabled;
         _provider.Text = ProviderLine(_form.DetectedProvider);
         RefreshApiKeyWarning();
     }
@@ -92,6 +95,7 @@ internal sealed class LlmSectionView : SectionView
         _form.Temperature = _temperature.Text ?? "";
         _form.MaxTokens = _maxTokens.Text ?? "";
         _form.TimeoutSeconds = _timeout.Text ?? "";
+        _form.ThinkingEnabled = _thinking.Text ?? "";
     }
 
     /// <summary>
@@ -171,6 +175,7 @@ internal sealed class LlmSectionView : SectionView
             _temperature.Dispose();
             _maxTokens.Dispose();
             _timeout.Dispose();
+            _thinking.Dispose();
             _provider.Dispose();
             _apiKeyWarning.Dispose();
             _testConnection.Dispose();

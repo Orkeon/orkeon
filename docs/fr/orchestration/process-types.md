@@ -66,7 +66,7 @@ Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur 
 
 Les tâches s'exécutent **une par une, dans l'ordre** défini par l'`ExecutionPlan`. Chaque tâche reçoit en contexte les résultats des tâches précédentes. L'assignation agent se fait en round-robin (sauf assignation explicite via `task.AssignedAgent`).
 
-**Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche s'exécute après chaque tâche dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew sans aucune dépendance s'exécute exactement comme elle est écrite. Cela vaut dans tous les layouts : le layout multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichiers, donc sans ce tri `consolider.yaml` s'exécutait avant l'`extraire.yaml` dont il dépend. Une dépendance qui nomme un id de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dans le cycle et un avertissement les nomme. La même règle ordonne les modes hiérarchique, consensuel, graphe et autonome, qui distribuent eux aussi leurs tâches une par une ; le mode parallèle garde sa propre sémantique (des **vagues** de dépendances, et un cycle est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel.
+**Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche s'exécute après chaque tâche dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew sans aucune dépendance s'exécute exactement comme elle est écrite. Cela vaut dans tous les layouts : le layout multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichiers, donc sans ce tri `consolider.yaml` s'exécutait avant l'`extraire.yaml` dont il dépend. Une dépendance qui nomme un id de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dans le cycle et un avertissement les nomme. La même règle ordonne les modes hiérarchique, consensuel, graphe et autonome, qui distribuent eux aussi leurs tâches une par une ; le mode parallèle garde sa propre sémantique (des **vagues** de dépendances, et un cycle est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel. Une tâche dont une dépendance déclarée n'a pas abouti — échouée, ou ignorée à son tour — est **ignorée**, jamais exécutée sur un contexte qui dit `Task failed: …` à la place de l'entrée qu'elle attendait : elle apparaît en `⊘ skipped` dans `AUTO_SUMMARY.md` et comme événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée et ignorée (LLM-11).
 
 ### Mécanisme interne
 
@@ -125,7 +125,7 @@ var crew = new CrewBuilder()
 ### Inconvénients
 
 - **Pas de parallélisme** : le temps total est la somme de toutes les tâches
-- **Point de défaillance unique** : un échec bloque toute la chaîne
+- **Point de défaillance unique** : un échec bloque la suite de la chaîne — ses dépendantes sont ignorées, seules les tâches indépendantes s'exécutent encore
 - **Pas de retry** : aucune reprise automatique en cas d'erreur
 - **Rigide** : l'ordre est fixe, pas de branchement conditionnel
 

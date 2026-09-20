@@ -971,7 +971,11 @@ public partial class OllamaLlmProvider : HttpLlmProviderBase
             Model = config.Model ?? "llama2",
             Metadata = LlmResponseMetadata.CreateBuilder()
                 .AddProvider(Name)
-                .AddError(LogSanitizer.SanitizeString(ex.Message))
+                // An elapsed Llm:TimeoutSeconds names the setting and the ways out (LLM-11);
+                // every other failure keeps the sanitized message as before.
+                .AddError(Resilience.ResiliencePolicies.IsHttpClientTimeout(ex)
+                    ? DescribeCallFailure("Ollama", ex, config)
+                    : LogSanitizer.SanitizeString(ex.Message))
                 .AddErrorType(ex.GetType().Name)
                 .Build()
                 .ToDictionary()

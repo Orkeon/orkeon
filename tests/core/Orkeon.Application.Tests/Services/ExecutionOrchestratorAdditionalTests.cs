@@ -145,6 +145,9 @@ public class ExecutionOrchestratorAdditionalTests
             _responses.Enqueue(new Microsoft.Extensions.AI.ChatResponse([msg]));
         }
 
+        /// <summary>The next call fails the way the adapter fails a call the provider never answered (LLM-11).</summary>
+        public Exception? NextFailure { get; set; }
+
         public System.Threading.Tasks.Task<Microsoft.Extensions.AI.ChatResponse> GetResponseAsync(
             IEnumerable<Microsoft.Extensions.AI.ChatMessage> messages,
             Microsoft.Extensions.AI.ChatOptions? options = null,
@@ -152,6 +155,11 @@ public class ExecutionOrchestratorAdditionalTests
         {
             CallCount++;
             cancellationToken.ThrowIfCancellationRequested();
+            if (NextFailure is { } failure)
+            {
+                NextFailure = null;
+                return System.Threading.Tasks.Task.FromException<Microsoft.Extensions.AI.ChatResponse>(failure);
+            }
             if (_responses.Count > 0)
                 return System.Threading.Tasks.Task.FromResult(_responses.Dequeue());
             var defaultMsg = new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.Assistant, "Default");
@@ -447,6 +455,43 @@ public class ExecutionOrchestratorAdditionalTests
         // Assert
         Assert.True(result.Success);
         Assert.Equal(2, chatClient.CallCount); // Initial + retry
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldFailWithTheProvidersReason_AndAskNothingMore_WhenTheCallFailed()
+    {
+        // LLM-11: a call the provider never answered is a failed task with the provider's
+        // sentence — no tool-free retry in the loop, no validation correction round here.
+        const string timeout = "Kimi did not answer within Llm:TimeoutSeconds = 180 s: the HTTP timeout elapsed before any response arrived";
+        var logger = new TestLogger();
+        var llmProvider = new TestLlmProvider();
+        var planner = new TestAgentPlanner();
+        using var chatClient = new TestChatClient { NextFailure = new HttpRequestException(timeout) };
+        var validationPipeline = new TestOutputValidationPipeline();
+        validationPipeline.EnqueueResult(false, "empty is not a JSON object");
+        var parserFactory = new TestOutputParserFactory();
+
+        var taskWithJson = DomainTask.Create(
+            TaskDescription.From("Score the contacts as JSON"),
+            ExpectedOutput.From("JSON"),
+            outputOptions: new Domain.Task.TaskOutputOptions
+            {
+                OutputJson = Domain.Task.JsonSchema.From("{\"type\":\"object\"}")
+            });
+
+        var orchestrator = new ExecutionOrchestrator(
+            logger, llmProvider, planner, chatClient,
+            Array.Empty<IBaseTool>(),
+            validationPipeline, parserFactory, new FakeFileSystemService());
+
+        var result = await orchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), taskWithJson, CreateTestContext(), TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Equal(Orkeon.Application.Interfaces.Services.AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(timeout, result.Error);
+        Assert.Equal(timeout, result.LastError);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(1, chatClient.CallCount);   // no retry of any kind
     }
 
     [Fact]

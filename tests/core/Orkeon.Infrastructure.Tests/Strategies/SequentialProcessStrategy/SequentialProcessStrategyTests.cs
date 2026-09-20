@@ -321,6 +321,125 @@ public sealed class SequentialProcessStrategyTests : IDisposable
         Assert.True(_logger.HasLoggedWarning($"Task {missingTaskId} not found, skipping"));
     }
 
+    // ── LLM-11: a task whose dependency did not succeed does not run ─────────────────
+
+    /// <summary>Records every hook callback, to see what a skipped task looks like on the wire.</summary>
+    private sealed class RecordingHook : Orkeon.Application.Crew.ICrewExecutionHook
+    {
+        public List<string> Started { get; } = [];
+        public List<Orkeon.Application.Crew.TaskExecutionSnapshot> Completed { get; } = [];
+        public Orkeon.Application.Crew.CrewExecutionSnapshot? Crew { get; private set; }
+
+        public Task OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot snapshot, CancellationToken ct)
+        {
+            Started.Add(snapshot.TaskId);
+            return Task.CompletedTask;
+        }
+
+        public Task OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot snapshot, CancellationToken ct)
+        {
+            Completed.Add(snapshot);
+            return Task.CompletedTask;
+        }
+
+        public Task OnCrewCompletedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot snapshot, CancellationToken ct)
+        {
+            Crew = snapshot;
+            return Task.CompletedTask;
+        }
+
+        public Task OnCrewFailedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot isPartial, Exception? ex, CancellationToken ct)
+        {
+            Crew = isPartial;
+            return Task.CompletedTask;
+        }
+    }
+
+    [Fact]
+    public async Task ShouldSkipTheDependents_WhenATaskDoesNotSucceed()
+    {
+        // The run of 2026-09-20: the scorer failed, and the writer still ran on a context
+        // saying "Task failed: …" where the scored JSON should have been — and improvised a
+        // deliverable from the cleaner's prose. Now: clean fails, prioritise (depends on clean)
+        // and write (depends on prioritise) are skipped, an independent task still runs.
+        var agent = CreateAgent("agent1");
+        var clean = CreateTask("clean");
+        var prioritise = CreateTask("prioritise");
+        prioritise.AddDependency(clean.Id);
+        var write = CreateTask("write");
+        write.AddDependency(prioritise.Id);
+        var independent = CreateTask("independent");
+        var crew = CreateCrewWithTasksAndAgents([clean, prioritise, write, independent], [agent]);
+        _agents[agent.Id] = agent;
+        foreach (var task in new[] { clean, prioritise, write, independent })
+            _tasks[task.Id] = task;
+
+        var executed = new List<TaskId>();
+        _mockExecutionService.SetExecuteFunc((_, task, _, _) =>
+        {
+            var id = ((DomainTask)task).Id;
+            executed.Add(id);
+            return id == clean.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.FromSeconds(1),
+                    "Kimi did not answer within Llm:TimeoutSeconds = 180 s")
+                : new TaskResult(true, $"Task {id} executed", null, [], TimeSpan.FromSeconds(1));
+        });
+
+        var hook = new RecordingHook();
+        var strategy = new SequentialProcessStrategy(
+            new CrewStrategyDependencies(new MinimalTaskRepository(_tasks), new MinimalAgentRepository(_agents), _mockExecutionService, _mockMemoryScope),
+            _delegationProvider, _logger, hook);
+
+        var result = await strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+
+        // Only the failed task and the independent one asked the agent anything.
+        Assert.Equal([clean.Id, independent.Id], executed);
+        Assert.False(result.Success);
+        Assert.Equal(4, result.TaskOutputs.Count);
+        Assert.Contains($"Task {clean.Id} ({agent.Role}) failed: Kimi did not answer", result.Error, StringComparison.Ordinal);
+        Assert.Contains($"Task {prioritise.Id} ({agent.Role}) skipped: it depends on task {clean.Id}, which did not succeed", result.Error, StringComparison.Ordinal);
+        Assert.Contains($"Task {write.Id} ({agent.Role}) skipped: it depends on task {prioritise.Id}, which did not succeed", result.Error, StringComparison.Ordinal);
+        Assert.True(_logger.HasLoggedWarning($"Task {prioritise.Id} ({agent.Role}) skipped"));
+
+        // The skipped tasks are completed-but-skipped on the wire, and were never started.
+        Assert.Equal([clean.Id.Value.ToString(), independent.Id.Value.ToString()], hook.Started);
+        Assert.Equal(4, hook.Completed.Count);
+        var skipped = hook.Completed.Where(s => s.Skipped).ToList();
+        Assert.Equal(2, skipped.Count);
+        Assert.All(skipped, s =>
+        {
+            Assert.False(s.Success);
+            Assert.Equal(TimeSpan.Zero, s.Duration);
+            Assert.Equal(0, s.TokensUsed);
+            Assert.Contains("which did not succeed", s.SkipReason, StringComparison.Ordinal);
+        });
+        Assert.NotNull(hook.Crew);
+        Assert.Equal(2, hook.Crew!.SkippedTaskCount);
+        Assert.Equal(1, hook.Crew.CompletedTaskCount);
+    }
+
+    [Fact]
+    public async Task ShouldRunEveryTask_WhenTheFailedTaskHasNoDependents()
+    {
+        var agent = CreateAgent("agent1");
+        var first = CreateTask("first");
+        var second = CreateTask("second");
+        var crew = CreateCrewWithTasksAndAgents([first, second], [agent]);
+        _agents[agent.Id] = agent;
+        _tasks[first.Id] = first;
+        _tasks[second.Id] = second;
+        _mockExecutionService.SetExecuteFunc((_, task, _, _) =>
+            ((DomainTask)task).Id == first.Id
+                ? new TaskResult(false, "", null, [], TimeSpan.FromSeconds(1), "boom")
+                : new TaskResult(true, "done", null, [], TimeSpan.FromSeconds(1)));
+
+        var result = await _strategy.ExecuteSequentialAsync(crew, CrewExecutionPlan.Create(), cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, _mockExecutionService.ExecuteTaskCallCount);
+        Assert.False(result.Success);
+        Assert.DoesNotContain("skipped", result.Error, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task ShouldThrow_WhenExecuteSequentialAsyncWithNoAgents()
     {

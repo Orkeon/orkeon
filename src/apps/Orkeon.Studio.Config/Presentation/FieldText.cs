@@ -20,6 +20,36 @@ internal static class FieldText
     /// <summary>Renders an optional string; null becomes an empty field.</summary>
     public static string FromString(string? value) => value ?? "";
 
+    /// <summary>Renders an optional switch: "true", "false", or blank when the key is absent.</summary>
+    public static string FromBoolean(bool? value) => value switch
+    {
+        true => "true",
+        false => "false",
+        null => "",
+    };
+
+    /// <summary>
+    /// Reads an optional switch typed as text. A blank field yields null with no error;
+    /// anything but true / false is reported under <paramref name="fieldName"/>.
+    /// </summary>
+    public static bool TryReadBoolean(string? text, string fieldName, out bool? value, out string? error)
+    {
+        value = null;
+        error = null;
+
+        if (string.IsNullOrWhiteSpace(text))
+            return true;
+
+        if (bool.TryParse(text.Trim(), out var parsed))
+        {
+            value = parsed;
+            return true;
+        }
+
+        error = string.Create(CultureInfo.InvariantCulture, $"{fieldName}: '{text.Trim()}' is not true or false.");
+        return false;
+    }
+
     /// <summary>Trims a field; a blank field reads back as null.</summary>
     public static string? ToStringOrNull(string? text) =>
         string.IsNullOrWhiteSpace(text) ? null : text.Trim();

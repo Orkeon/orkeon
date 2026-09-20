@@ -29,3 +29,9 @@ override Orkeon.Application.Crew.TaskStartSnapshot.GetHashCode() -> int
 override Orkeon.Application.Crew.TaskStartSnapshot.ToString() -> string!
 static Orkeon.Application.Crew.TaskStartSnapshot.operator !=(Orkeon.Application.Crew.TaskStartSnapshot? left, Orkeon.Application.Crew.TaskStartSnapshot? right) -> bool
 static Orkeon.Application.Crew.TaskStartSnapshot.operator ==(Orkeon.Application.Crew.TaskStartSnapshot? left, Orkeon.Application.Crew.TaskStartSnapshot? right) -> bool
+Orkeon.Application.Interfaces.Services.AgentExitReason.LlmCallFailed = 6 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Crew.TaskExecutionSnapshot.Skipped.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Skipped.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.SkipReason.get -> string?
+Orkeon.Application.Crew.TaskExecutionSnapshot.SkipReason.init -> void
+Orkeon.Application.Crew.CrewExecutionSnapshot.SkippedTaskCount.get -> int

@@ -602,7 +602,7 @@
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Température (optionnel)</value></data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Vide : le moteur décide. Certains modèles imposent une valeur — Kimi K3 n'accepte que 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Délai de réponse (s, optionnel)</value></data>
-  <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Vide : 30 s. Les modèles raisonneurs (Kimi K3, modes thinking) demandent souvent 120–300 s.</value></data>
+  <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Vide : le défaut du moteur, 30 s. Un modèle qui réfléchit avant de répondre demande couramment 600 s.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Dossiers de « {0} »</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Sans dossier, cette équipe ne pourra ni lire ni écrire de fichier.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} dossiers : {1}</value></data>
@@ -1169,4 +1169,12 @@
   <data name="Studio.Create.AddRoot" xml:space="preserve">
     <value>Ajouter le dossier</value>
   </data>
+  <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s pré-rempli : le modèle par défaut de {1} réfléchit avant de répondre, et une réponse réfléchie dépasse couramment les 30 s du moteur. Saisissez une autre valeur pour l'écraser.</value></data>
+  <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Réflexion</value></data>
+  <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Défaut du fournisseur</value></data>
+  <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>Activée</value></data>
+  <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>Désactivée</value></data>
+  <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Défaut du fournisseur : le modèle décide — Kimi K2.6, DeepSeek V4 et GLM réfléchissent sauf consigne contraire. Désactivée répond plus vite et moins cher ; Activée impose la passe de raisonnement là où le modèle a l'interrupteur.</value></data>
+  <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Effort de raisonnement</value></data>
+  <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Vide : le défaut du fournisseur. low / medium / high (max sur certains modèles), pour les modèles qui acceptent l'indication.</value></data>
 </root>

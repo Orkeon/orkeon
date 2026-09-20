@@ -59,6 +59,18 @@ public sealed record TaskExecutionSnapshot
     public long CacheMissTokens { get; init; }
 
     /// <summary>
+    /// True when the task never ran because a task it depends on did not succeed (LLM-11).
+    /// The sequential mode used to run it anyway, on a context holding "Task failed: …" in
+    /// place of the output it needed, and the agent improvised a deliverable from what was
+    /// left. <see cref="Success"/> is false and <see cref="Duration"/> zero;
+    /// <see cref="SkipReason"/> names the dependency.
+    /// </summary>
+    public bool Skipped { get; init; }
+
+    /// <summary>Why the task was skipped — null unless <see cref="Skipped"/>.</summary>
+    public string? SkipReason { get; init; }
+
+    /// <summary>
     /// FQNs mentioned in the task's deliverable that could not be resolved in the
     /// RaggableTree store. Populated by <see cref="DeliverableResolvers.FinalMessageResolver"/>
     /// when an <c>IInlineFqnValidator</c> is registered. Empty otherwise.
@@ -118,6 +130,9 @@ public sealed record CrewExecutionSnapshot
 
     /// <summary>Number of tasks that did not complete successfully.</summary>
     public int FailedOrInterruptedTaskCount => Tasks.Count(t => !t.Success);
+
+    /// <summary>Number of tasks that never ran because a dependency did not succeed (LLM-11).</summary>
+    public int SkippedTaskCount => Tasks.Count(t => t.Skipped);
 
     /// <summary>Total tokens used across all tasks.</summary>
     public int TotalTokensUsed => Tasks.Sum(t => t.TokensUsed);

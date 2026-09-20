@@ -57,7 +57,11 @@ l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
-`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `MaxTokens` est un
+`Thinking:{Enabled,Effort}` pour les providers à raisonnement. `TimeoutSeconds` vaut 30 s par
+défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
+le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
+appel qui atteint le délai est réessayé une fois, puis fait échouer sa tâche avec un message qui
+nomme le réglage — il n'est jamais rapporté comme une réponse vide (LLM-11). `MaxTokens` est un
 **épinglage** : absent, la requête porte le **maximum de sortie documenté** du modèle,
 lu dans le catalogue `LlmModelOutputLimits` (128K sur `gpt-5.6-sol` et la génération Claude 5,
 384K sur `deepseek-flash`, 131 072 sur les familles GLM-5 et Qwen 3.7/3.8, 65 536 sur Gemini 3.x

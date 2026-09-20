@@ -266,9 +266,14 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var loopResult = await ExecuteWithProviderAsync(
                     agent, task, systemPrompt, userPrompt, context, toolsUsed, cancellationToken).ConfigureAwait(false);
 
-                var (validatedOutput, structuredOutput) = await OutputValidation.ValidateAndParseOutputAsync(
-                    new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed),
-                    MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
+                // A call the provider never answered leaves nothing to validate, and a correction
+                // round would only ask the same model again — the retries belong to the provider
+                // layer (LLM-11). Every other exit keeps its validation pass.
+                var (validatedOutput, structuredOutput) = loopResult.ExitReason == AgentExitReason.LlmCallFailed
+                    ? (loopResult.Output, null)
+                    : await OutputValidation.ValidateAndParseOutputAsync(
+                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed),
+                        MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
                 var finalOutput = ToolCallTextParser.UnescapeLlmText(validatedOutput);

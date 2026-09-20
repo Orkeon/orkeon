@@ -174,6 +174,33 @@ public sealed class AutoSummaryWriterTests : IDisposable
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task OnCrewFailedAsync_TellsASkippedTaskApartFromAFailedOne()
+    {
+        // LLM-11: a task that never ran because its dependency failed is neither ✓ nor ✗.
+        var writer = CreateWriter();
+        var failed = BuildSnapshot(CrewHookStatus.Failed, taskCount: 1, failureReason: "Task task-01 failed: timeout");
+        var skipped = new TaskExecutionSnapshot
+        {
+            TaskId = "task-02",
+            AgentRole = "agent-2",
+            Success = false,
+            Duration = TimeSpan.Zero,
+            CompletedAt = DateTimeOffset.UtcNow,
+            Skipped = true,
+            SkipReason = "Task task-02 (agent-2) skipped: it depends on task task-01, which did not succeed",
+        };
+        var snapshot = failed with { Tasks = failed.Tasks.Add(skipped) };
+
+        await writer.OnCrewFailedAsync(snapshot, null, CancellationToken.None);
+
+        var content = await File.ReadAllTextAsync(ExpectedPhysicalPath, TestContext.Current.CancellationToken);
+        Assert.Contains("| task-01 | agent-1 | ✗ failed |", content, StringComparison.Ordinal);
+        Assert.Contains("| task-02 | agent-2 | ⊘ skipped |", content, StringComparison.Ordinal);
+        Assert.Contains("**Skipped**: 1 (a dependency did not succeed)", content, StringComparison.Ordinal);
+        Assert.Contains("**Completed**: 0 / 2", content, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task OnCrewFailedAsync_WritesAutoSummaryFileEvenOnCancellation()
     {
         // Arrange

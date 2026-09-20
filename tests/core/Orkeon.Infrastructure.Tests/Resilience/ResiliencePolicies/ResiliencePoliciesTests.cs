@@ -635,6 +635,157 @@ public sealed class ResiliencePoliciesTests : IDisposable
         Assert.Equal(2, attemptCount);
     }
 
+    // ── LLM-11: an HttpClient timeout is a TaskCanceledException whose token IS cancelled ──
+
+    /// <summary>
+    /// What <see cref="HttpClient"/> throws once its <c>Timeout</c> elapses: the message names
+    /// the timeout, a <see cref="TimeoutException"/> is nested, and the token is HttpClient's
+    /// own linked source — cancelled. The clause written as
+    /// <c>!ex.CancellationToken.IsCancellationRequested</c> never matched this shape.
+    /// </summary>
+    private static TaskCanceledException HttpClientTimeout(int seconds = 180)
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        return new TaskCanceledException(
+            $"The request was canceled due to the configured HttpClient.Timeout of {seconds} seconds elapsing.",
+            new TimeoutException("The operation was canceled."),
+            cts.Token);
+    }
+
+    /// <summary>A caller's own cancellation: a cancelled token and no <see cref="TimeoutException"/>.</summary>
+    private static TaskCanceledException CallerCancellation()
+    {
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+        return new TaskCanceledException("The operation was canceled.", null, cts.Token);
+    }
+
+    [Fact]
+    public void IsHttpClientTimeout_RecognisesTheTimeoutShapeOnly()
+    {
+        Assert.True(ResiliencePolicies.IsHttpClientTimeout(HttpClientTimeout()));
+        Assert.False(ResiliencePolicies.IsHttpClientTimeout(CallerCancellation()));
+        Assert.False(ResiliencePolicies.IsHttpClientTimeout(new TaskCanceledException("bare")));
+        Assert.False(ResiliencePolicies.IsHttpClientTimeout(new HttpRequestException("refused")));
+        Assert.False(ResiliencePolicies.IsHttpClientTimeout(null));
+    }
+
+    [Fact]
+    public async Task ShouldRetry_WhenGetRetryPolicyWithAnHttpClientTimeout()
+    {
+        // Before LLM-11 this shape was never retried: the token test read it as a cancellation.
+        var policy = ResiliencePolicies.GetRetryPolicy(_logger, maxRetryAttempts: 2);
+        var attemptCount = 0;
+
+        var result = await policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            if (attemptCount < 2)
+                throw HttpClientTimeout();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        Assert.Equal(2, attemptCount);
+    }
+
+    [Fact]
+    public async Task ShouldRetryATimeoutOnce_WhenGetLlmApiPolicyKeepsTimingOut()
+    {
+        // A timed-out LLM call costs the whole Llm:TimeoutSeconds per attempt, so it gets one
+        // more try (ResilienceDefaults.LlmTimeoutRetries), not the ten of the ordinary budget.
+        var notified = new List<(int Attempt, string Reason)>();
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 10, baseDelay: TimeSpan.FromMilliseconds(5),
+            onRetry: (attempt, _, reason) => notified.Add((attempt, reason)));
+        var attemptCount = 0;
+
+        var failure = await Assert.ThrowsAsync<TaskCanceledException>(() => policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            throw HttpClientTimeout(seconds: 180);
+        }));
+
+        Assert.Equal(1 + Orkeon.Domain.Constants.Resilience.ResilienceDefaults.LlmTimeoutRetries, attemptCount);
+        Assert.True(ResiliencePolicies.IsHttpClientTimeout(failure));
+        var (attempt, reason) = Assert.Single(notified);
+        Assert.Equal(1, attempt);
+        Assert.Contains("HttpClient.Timeout of 180 seconds", reason, StringComparison.Ordinal);
+        Assert.True(_logger.HasLoggedWarning("LLM API retry"));
+    }
+
+    [Fact]
+    public async Task ShouldSucceed_WhenGetLlmApiPolicyTimesOutOnceThenAnswers()
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(5));
+        var attemptCount = 0;
+
+        var result = await policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            if (attemptCount == 1)
+                throw HttpClientTimeout();
+            return Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK));
+        });
+
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        Assert.Equal(2, attemptCount);
+    }
+
+    [Fact]
+    public async Task ShouldNotRetryATimeout_WhenGetLlmApiPolicyHasNoRetryBudget()
+    {
+        // Llm:MaxRetries = 0 means "never retry" — the timeout retry obeys it too.
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 0, baseDelay: TimeSpan.FromMilliseconds(5));
+        var attemptCount = 0;
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            throw HttpClientTimeout();
+        }));
+
+        Assert.Equal(1, attemptCount);
+    }
+
+    [Fact]
+    public async Task ShouldNotRetry_WhenGetLlmApiPolicyMeetsTheCallersCancellation()
+    {
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(5));
+        var attemptCount = 0;
+
+        await Assert.ThrowsAsync<TaskCanceledException>(() => policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            throw CallerCancellation();
+        }));
+
+        Assert.Equal(1, attemptCount);
+    }
+
+    [Fact]
+    public async Task ShouldStillTakeTheWholeBudget_WhenGetLlmApiPolicyMeetsServerErrors()
+    {
+        // The split into two policies must not shorten the ordinary ladder.
+        var policy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 3, baseDelay: TimeSpan.FromMilliseconds(5));
+        var attemptCount = 0;
+
+        var result = await policy.ExecuteAsync(() =>
+        {
+            attemptCount++;
+            return Task.FromResult(new HttpResponseMessage(
+                attemptCount < 4 ? HttpStatusCode.ServiceUnavailable : HttpStatusCode.OK));
+        });
+
+        Assert.Equal(HttpStatusCode.OK, result.StatusCode);
+        Assert.Equal(4, attemptCount);
+    }
+
     [Fact]
     public async Task ShouldFailFast_WhenGetCombinedPolicyWithCircuitBreakerOpen()
     {

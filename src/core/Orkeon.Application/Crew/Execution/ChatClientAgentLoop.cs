@@ -64,6 +64,7 @@ internal sealed class ChatClientAgentLoop
     /// Multi-turn execution loop using IChatClient with native function calling.
     /// Returns an <see cref="AgentLoopResult"/> with the final output, token count, and exit reason.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier: whatever the chat client fails with (a timeout, a refused request, a transport fault) is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
     internal async System.Threading.Tasks.Task<AgentLoopResult> ExecuteAsync(
         DomainAgent agent,
         CrewTask task,
@@ -128,6 +129,21 @@ internal sealed class ChatClientAgentLoop
                 {
                     chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
                     CompleteChatActivity(chatActivity, chatResponse);
+                }
+                catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
+                {
+                    // The call failed — a timeout, a refused request — and nothing was answered.
+                    // Not an empty answer: no tool-free retry, the task fails with the provider's
+                    // own reason (LLM-11). A caller's cancellation still propagates below.
+                    chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
+                    chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+                    return FailedCall(agent, task.Id, iteration + 1, totalTokensUsed, ex) with
+                    {
+                        PromptTokens = promptTokensTotal,
+                        CompletionTokens = completionTokensTotal,
+                        CacheHitTokens = cacheHitTotal,
+                        CacheMissTokens = cacheMissTotal,
+                    };
                 }
                 catch (Exception ex)
                 {
@@ -476,6 +492,7 @@ internal sealed class ChatClientAgentLoop
     /// <see cref="AgentExitReason.EmptyFinalAnswer"/> — a failed task with its reason, never
     /// a completed one with an empty output.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier on the tool-free retry: a failed call is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
     private async System.Threading.Tasks.Task<(AgentLoopResult Result, int ExtraTokens)> HandleEmptyResponseAsync(
         RetryLoopContext loop,
         int iteration,
@@ -485,7 +502,15 @@ internal sealed class ChatClientAgentLoop
     {
         ExecutionLog.LogEmptyFinalMessageRetrying(_logger, loop.Agent.Role, iteration + 1, DescribeMaxTokens(loop.Options));
 
-        var retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken).ConfigureAwait(false);
+        (string Text, int Tokens) retryText;
+        try
+        {
+            retryText = await RetryWithoutToolsAsync(loop.Agent, loop.Messages, loop.Options, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
+        {
+            return (FailedCall(loop.Agent, loop.TaskId, iteration + 2, totalTokensUsed, ex), 0);
+        }
 
         if (!string.IsNullOrWhiteSpace(retryText.Text))
         {
@@ -498,6 +523,26 @@ internal sealed class ChatClientAgentLoop
         return (new AgentLoopResult(string.Empty, totalTokensUsed + retryText.Tokens,
             AgentExitReason.EmptyFinalAnswer, IterationsUsed: iteration + 2,
             LastError: FinalAnswerPolicy.EmptyFinalAnswerReason), retryText.Tokens);
+    }
+
+    /// <summary>
+    /// True for every failure of the chat call except the caller's own cancellation, which
+    /// must keep propagating as <see cref="AgentExitReason.Cancelled"/>. An
+    /// <see cref="OperationCanceledException"/> whose token is not the caller's (an HTTP
+    /// timeout surfaced by a client that does not wrap it) is a failed call like any other.
+    /// </summary>
+    private static bool IsCallFailure(Exception exception, CancellationToken cancellationToken) =>
+        exception is not OperationCanceledException || !cancellationToken.IsCancellationRequested;
+
+    /// <summary>
+    /// The <see cref="AgentExitReason.LlmCallFailed"/> exit: the provider's own reason is the
+    /// task's error, the run's summary line and the runner's last stderr line (LLM-11).
+    /// </summary>
+    private AgentLoopResult FailedCall(DomainAgent agent, object taskId, int iterationsUsed, int totalTokensUsed, Exception exception)
+    {
+        ExecutionLog.LogLlmCallFailed(_logger, agent.Role, iterationsUsed, taskId, exception.Message);
+        return new AgentLoopResult(string.Empty, totalTokensUsed,
+            AgentExitReason.LlmCallFailed, IterationsUsed: iterationsUsed, LastError: exception.Message);
     }
 
     /// <summary>
@@ -515,6 +560,7 @@ internal sealed class ChatClientAgentLoop
     /// Handles the post-loop path when all iterations were consumed by tool calls with no final text.
     /// Gives the model one last chance with tool_choice=none.
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier on the synthesis retry: a failed call is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
     private async System.Threading.Tasks.Task<AgentLoopResult> HandleMaxIterExhaustedAsync(
         DomainAgent agent,
         List<ChatMessage> messages,
@@ -540,7 +586,15 @@ internal sealed class ChatClientAgentLoop
 
         ExecutionLog.LogEmptyFinalMessageRetrying(_logger, agent.Role, maxIter, DescribeMaxTokens(options));
 
-        var retry = await RetryWithoutToolsAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
+        (string Text, int Tokens) retry;
+        try
+        {
+            retry = await RetryWithoutToolsAsync(agent, messages, options, cancellationToken).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
+        {
+            return FailedCall(agent, taskId, maxIter, totalTokensUsed, ex);
+        }
         totalTokensUsed += retry.Tokens;
 
         if (!string.IsNullOrWhiteSpace(retry.Text))

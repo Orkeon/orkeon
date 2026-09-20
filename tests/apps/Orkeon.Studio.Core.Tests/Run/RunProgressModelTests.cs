@@ -50,6 +50,22 @@ public class RunProgressModelTests
     }
 
     [Fact]
+    public void A_skipped_task_is_told_apart_from_a_failed_one()
+    {
+        // LLM-11: the CLI flags a task that never ran because its dependency failed; an older
+        // CLI without the field folds as before (not skipped).
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"task.completed","taskId":"score","agentRole":"analyst","success":false,"durationMs":180000,"tokens":0,"toolCalls":0}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"write","agentRole":"writer","success":false,"skipped":true,"durationMs":0,"tokens":0,"toolCalls":0}""");
+
+        Assert.Equal(2, model.Tasks.Count);
+        Assert.False(model.Tasks[0].Skipped);
+        Assert.False(model.Tasks[0].Success);
+        Assert.True(model.Tasks[1].Skipped);
+        Assert.False(model.Tasks[1].Success);
+    }
+
+    [Fact]
     public void The_stream_becomes_progress_cost_and_an_outcome()
     {
         var model = Fold(

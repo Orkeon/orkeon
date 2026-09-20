@@ -23,7 +23,8 @@ public class ChatClientAgentLoopTests
     /// <summary>Scripted chat client recording every request with its options.</summary>
     private sealed class ScriptedChatClient : IChatClient
     {
-        private readonly Queue<ChatResponse> _responses = new();
+        // A turn is either an answer or a failure the client throws (LLM-11).
+        private readonly Queue<object> _responses = new();
 
         public List<(IList<ChatMessage> Messages, ChatOptions? Options)> Requests { get; } = [];
 
@@ -41,13 +42,21 @@ public class ChatClientAgentLoopTests
             _responses.Enqueue(new ChatResponse([message]));
         }
 
+        /// <summary>The next call fails with the exception the factory builds when the call is made.</summary>
+        public void EnqueueFailure(Func<Exception> failure) => _responses.Enqueue(failure);
+
         public System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
             Requests.Add((messages.ToList(), options));
-            return System.Threading.Tasks.Task.FromResult(_responses.Count > 0
-                ? _responses.Dequeue()
-                : new ChatResponse([new ChatMessage(ChatRole.Assistant, "scripted default")]));
+            if (_responses.Count == 0)
+                return System.Threading.Tasks.Task.FromResult(new ChatResponse([new ChatMessage(ChatRole.Assistant, "scripted default")]));
+
+            return _responses.Dequeue() switch
+            {
+                Func<Exception> failure => System.Threading.Tasks.Task.FromException<ChatResponse>(failure()),
+                var response => System.Threading.Tasks.Task.FromResult((ChatResponse)response),
+            };
         }
 
         public IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
@@ -356,6 +365,83 @@ public class ChatClientAgentLoopTests
         Assert.Equal(string.Empty, result.Output);
         Assert.Equal(FinalAnswerPolicy.EmptyFinalAnswerReason, result.LastError);
         Assert.Equal(3, client.Requests.Count);
+    }
+
+    // ── LLM-11: a failed call is not an empty answer ──────────────────────────────────
+
+    private const string KimiTimeout =
+        "Kimi did not answer within Llm:TimeoutSeconds = 180 s: the HTTP timeout elapsed before any response arrived";
+
+    [Fact]
+    public async System.Threading.Tasks.Task FailsTheTask_WithTheProvidersReason_WhenTheChatCallThrows()
+    {
+        // The run of 2026-09-20: Kimi timed out, the adapter mapped the refusal to an empty
+        // message, the loop diagnosed a reasoning model out of budget ("raise Llm:MaxTokens")
+        // and retried once more without tools — a second 180 s for nothing.
+        var tool = new SpyTool("worker", result: "did work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(KimiTimeout, result.LastError);
+        Assert.Single(client.Requests);   // no tool-free retry of a call that never answered
+        Assert.Equal(1, result.IterationsUsed);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task FailsTheTask_WhenTheToolFreeRetryItselfCannotReachTheModel()
+    {
+        var agent = BuildAgent(5);
+        var (loop, client) = BuildLoop();
+        client.EnqueueText("");   // an empty first turn earns the tool-free retry…
+        client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));   // …which fails
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(KimiTimeout, result.LastError);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task KeepsTheTokensSpentBeforeTheCallFailed()
+    {
+        var tool = new SpyTool("worker", result: "did work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(tool);
+        client.EnqueueFunctionCall("call-1", "worker");
+        client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
+
+        var result = await loop.ExecuteAsync(
+            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(2, result.IterationsUsed);
+        Assert.Equal(2, client.Requests.Count);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task StillPropagatesTheCallersCancellation()
+    {
+        // A cancellation is not a provider failure: the orchestrator's own barrier turns it
+        // into AgentExitReason.Cancelled, so the loop must let it through.
+        using var cts = new CancellationTokenSource();
+        var agent = BuildAgent(5);
+        var (loop, client) = BuildLoop();
+        client.EnqueueFailure(() =>
+        {
+            cts.Cancel();
+            return new OperationCanceledException(cts.Token);
+        });
+
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
+            loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, cts.Token));
     }
 
     [Fact]

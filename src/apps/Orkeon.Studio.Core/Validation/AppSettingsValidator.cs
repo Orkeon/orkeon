@@ -58,6 +58,7 @@ public sealed class AppSettingsValidator
         "Llm:Model",
         "Llm:BaseUrl",
         "Llm:ApiKey",
+        "Llm:Thinking:Effort",
         "Orkeon:Rag:Profile",
         "Orkeon:Rag:Provider",
         "Orkeon:Rag:ConnectionString",
@@ -79,6 +80,7 @@ public sealed class AppSettingsValidator
 
     private static readonly string[] BooleanFields =
     [
+        "Llm:Thinking:Enabled",
         "LlmLogging:FullEmbeddingLog",
         "LlmLogging:LogStreamingExchanges",
         "Orkeon:Rag:Retrieval:Hybrid:Enabled",

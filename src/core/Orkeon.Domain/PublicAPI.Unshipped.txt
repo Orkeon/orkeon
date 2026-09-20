@@ -13,3 +13,9 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.get -> int?
 *REMOVED*static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int maxTokens = 4096, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveMaxTokens(string? provider = null, string? defaultModel = null) -> int?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Error.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.ErrorType.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.Error = "error" -> string!
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.ErrorType = "error_type" -> string!
+const Orkeon.Domain.Constants.Resilience.ResilienceDefaults.LlmTimeoutRetries = 1 -> int

@@ -1727,7 +1727,7 @@
     <value>Tiempo de respuesta (s, opcional)</value>
   </data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
-    <value>Vacío: 30 s. Los modelos de razonamiento (Kimi K3, modos thinking) suelen necesitar 120–300 s.</value>
+    <value>Vacío: el valor por defecto del motor, 30 s. Un modelo que razona antes de responder suele necesitar 600 s.</value>
   </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Carpetas de «{0}»</value>
@@ -2467,4 +2467,12 @@
   <data name="Studio.Create.AddRoot" xml:space="preserve">
     <value>Añadir la carpeta</value>
   </data>
+  <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s prellenado: el modelo por defecto de {1} razona antes de responder, y una respuesta razonada suele superar los 30 s del motor. Escriba otro valor para sustituirlo.</value></data>
+  <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Razonamiento</value></data>
+  <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Valor por defecto del proveedor</value></data>
+  <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>Activado</value></data>
+  <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>Desactivado</value></data>
+  <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Valor por defecto del proveedor: decide el modelo — Kimi K2.6, DeepSeek V4 y GLM razonan salvo indicación contraria. Desactivado responde más rápido y más barato; Activado fuerza la pasada de razonamiento donde el modelo tiene el interruptor.</value></data>
+  <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Esfuerzo de razonamiento</value></data>
+  <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Vacío: el valor por defecto del proveedor. low / medium / high (max en algunos modelos), para los modelos que aceptan la indicación.</value></data>
 </root>

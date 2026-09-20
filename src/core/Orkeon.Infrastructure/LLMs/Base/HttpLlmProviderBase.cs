@@ -11,6 +11,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.Resilience;
+using Orkeon.Infrastructure.Security;
 using Orkeon.Domain.Constants.Serialization;
 
 namespace Orkeon.Infrastructure.LLMs.Base;
@@ -244,6 +245,41 @@ public abstract partial class HttpLlmProviderBase : ILlmProvider, IStreamingLlmP
             }
         }
     }
+
+    /// <summary>
+    /// The sentence a failed call carries as its <see cref="LlmResponseMetadataKeys.Error"/>:
+    /// for an elapsed <c>Llm:TimeoutSeconds</c>, <see cref="TimeoutFailureMessage"/>, which
+    /// names the setting, its value and the two ways out; for anything else, the provider's
+    /// display name and the sanitized exception message.
+    /// </summary>
+    /// <param name="providerDisplayName">The provider's display name ("Kimi", "Anthropic").</param>
+    /// <param name="exception">What the call failed with.</param>
+    /// <param name="config">The effective configuration of the call, for its timeout.</param>
+    protected static string DescribeCallFailure(string providerDisplayName, Exception exception, LlmConfig config)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+        ArgumentNullException.ThrowIfNull(config);
+        return ResiliencePolicies.IsHttpClientTimeout(exception)
+            ? TimeoutFailureMessage(providerDisplayName, config.TimeoutSeconds)
+            : $"{providerDisplayName} API call failed: {LogSanitizer.SanitizeString(exception.Message)}";
+    }
+
+    /// <summary>
+    /// What an elapsed <c>Llm:TimeoutSeconds</c> means, said where the reader will act on it.
+    /// The bare HttpClient wording ("The request was canceled due to the configured
+    /// HttpClient.Timeout of 180 seconds elapsing") names neither the setting nor the usual
+    /// cause: a model that thinks before it writes — Kimi K2.6, DeepSeek V4 and GLM do so by
+    /// default — routinely takes longer than a short timeout, and the run of 2026-09-20 lost
+    /// six minutes to two of them, reported as an empty answer (LLM-11).
+    /// </summary>
+    /// <param name="providerDisplayName">The provider's display name.</param>
+    /// <param name="timeoutSeconds">The timeout that elapsed, in seconds.</param>
+    protected static string TimeoutFailureMessage(string providerDisplayName, int timeoutSeconds) =>
+        $"{providerDisplayName} did not answer within Llm:TimeoutSeconds = {timeoutSeconds} s: the HTTP timeout elapsed " +
+        "before any response arrived, so this is a failed call, not an empty answer. A model that thinks before it " +
+        "writes routinely needs longer — raise Llm:TimeoutSeconds (600 s is a safe value for a reasoning model), or " +
+        "turn thinking off: Llm:Thinking:Enabled = false in the settings, `thinking: { enabled: false }` under `llm:` " +
+        "in the crew, or the profile's thinking switch in Studio.";
 
     /// <summary>Best-effort retry notification — never allowed to fail the call.</summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Observer fault barrier: a faulty host observer must degrade to unobserved retries, never to a failed LLM call.")]

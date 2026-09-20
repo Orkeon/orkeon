@@ -82,6 +82,11 @@ public sealed class ModelProfileItemViewModel
 /// provider seeds the endpoint and model from the preset catalogue; expert mode exposes both
 /// fields for hand-editing. The API key never appears here — it stays in the environment.
 /// </summary>
+/// <summary>One position of the profile editor's thinking switch: null is the provider's default.</summary>
+/// <param name="Value">What the profile pins — null, true or false.</param>
+/// <param name="Label">The localized label shown in the combo box.</param>
+public sealed record ThinkingChoice(bool? Value, string Label);
+
 public sealed class ModelProfileEditorViewModel : ObservableObject
 {
     private readonly ModelProfilesViewModel _owner;
@@ -98,6 +103,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private string _temperatureText = "";
     private string _timeoutText = "";
     private string _maxTokensText = "";
+    private bool? _thinkingEnabled;
+    private string _thinkingEffortText = "";
 
     internal ModelProfileEditorViewModel(
         ModelProfilesViewModel owner,
@@ -127,6 +134,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         _maxTokensText = profile.MaxTokens is { } maxTokens
             ? maxTokens.ToString(CultureInfo.InvariantCulture)
             : "";
+        _thinkingEnabled = profile.ThinkingEnabled;
+        _thinkingEffortText = profile.ThinkingEffort ?? "";
+        ThinkingChoices =
+        [
+            new ThinkingChoice(null, strings[StudioStringKeys.ProfileThinkingProviderDefault]),
+            new ThinkingChoice(true, strings[StudioStringKeys.ProfileThinkingOn]),
+            new ThinkingChoice(false, strings[StudioStringKeys.ProfileThinkingOff]),
+        ];
         _selectedProvider = providers.FirstOrDefault(p => string.Equals(p.Title, profile.Provider, StringComparison.Ordinal));
 
         SaveCommand = new RelayCommand(Save, () => CanSave);
@@ -166,12 +181,15 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         get => _selectedProvider;
         set
         {
+            var previous = _selectedProvider;
             if (!SetProperty(ref _selectedProvider, value) || value is null)
                 return;
 
             BaseUrl = value.DefaultBaseUrl;
             Model = value.DefaultModel;
             _apiKeyEnv = value.DefaultApiKeyEnv;
+            SeedTimeoutFor(value, previous);
+            OnPropertyChanged(nameof(TimeoutHint));
             ConnectionTestResult = null;
             OnPropertyChanged(nameof(RequiresApiKey));
             OnPropertyChanged(nameof(ApiKeyEnvName));
@@ -381,6 +399,64 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// What the timeout field means for the picked provider (LLM-11): the engine's 30 s when
+    /// empty, or the pre-filled recommendation and why — the provider's default model thinks
+    /// before it answers, and a run that hits the timeout gets no answer at all.
+    /// </summary>
+    public string TimeoutHint =>
+        _selectedProvider?.RecommendedTimeoutSeconds is { } recommended
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.ProfileTimeoutHintReasoning],
+                recommended.ToString(CultureInfo.CurrentCulture), _selectedProvider.Title)
+            : _strings[StudioStringKeys.ProfileTimeoutHint];
+
+    /// <summary>
+    /// Pre-fills the timeout the picked provider recommends, and only over a field the user
+    /// has not made theirs: empty, or still holding the previous card's own recommendation. A
+    /// value the user typed stays; a recommendation leaves with the card that brought it.
+    /// </summary>
+    private void SeedTimeoutFor(LlmPresetInfo picked, LlmPresetInfo? previous)
+    {
+        var typed = _timeoutText.Trim();
+        var previousSeed = previous?.RecommendedTimeoutSeconds?.ToString(CultureInfo.InvariantCulture);
+        var untouched = typed.Length == 0 || string.Equals(typed, previousSeed, StringComparison.Ordinal);
+        if (!untouched)
+            return;
+
+        TimeoutText = picked.RecommendedTimeoutSeconds?.ToString(CultureInfo.InvariantCulture) ?? "";
+    }
+
+    /// <summary>The three positions of the thinking switch: provider default, on, off.</summary>
+    public IReadOnlyList<ThinkingChoice> ThinkingChoices { get; }
+
+    /// <summary>
+    /// The thinking switch this profile pins (LLM-11). Provider default lets the model decide
+    /// — on for Kimi K2.6, DeepSeek V4 and GLM; off is the way out of a timeout when the task
+    /// does not need the reasoning pass. Travels as <c>ORKEON_Llm__Thinking__Enabled</c>.
+    /// </summary>
+    public ThinkingChoice SelectedThinking
+    {
+        get => ThinkingChoices.First(c => c.Value == _thinkingEnabled);
+        set
+        {
+            if (value is null || value.Value == _thinkingEnabled)
+                return;
+
+            _thinkingEnabled = value.Value;
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>What the switch does, under the field.</summary>
+    public string ThinkingHint => _strings[StudioStringKeys.ProfileThinkingHint];
+
+    /// <summary>The reasoning-effort hint as typed — empty for the provider's default.</summary>
+    public string ThinkingEffortText
+    {
+        get => _thinkingEffortText;
+        set => SetProperty(ref _thinkingEffortText, value ?? "");
+    }
+
     /// <summary>The typed timeout, or null when empty, unparseable, or non-positive.</summary>
     public int? ParsedTimeoutSeconds =>
         int.TryParse(_timeoutText.Trim(), NumberStyles.Integer, CultureInfo.InvariantCulture, out var value) && value > 0
@@ -460,6 +536,8 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             Temperature = ParsedTemperature,
             TimeoutSeconds = ParsedTimeoutSeconds,
             MaxTokens = ParsedMaxTokens,
+            ThinkingEnabled = _thinkingEnabled,
+            ThinkingEffort = string.IsNullOrWhiteSpace(_thinkingEffortText) ? null : _thinkingEffortText.Trim(),
             KeyEnvName = RequiresApiKey ? ApiKeyEnvName : null,
         }, PreviousName);
     }

@@ -90,6 +90,13 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}] produced no final answer for task {TaskId}, even after the tool-free retry: the task fails. Raise Llm:MaxTokens for a reasoning model (16384 or more)")]
     internal static partial void LogEmptyFinalAnswer(ILogger logger, object agentRole, object taskId);
 
+    // LLM-11 — a failed call is not an empty answer. The reason is the provider's own sentence
+    // (for a timeout it names Llm:TimeoutSeconds and the ways out). Nothing is retried here:
+    // the provider layer owns the retries, and a tool-free retry of a call that never answered
+    // would only cost a second timeout.
+    [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the LLM call failed on iteration {Iteration} of task {TaskId}; the task fails with the provider's reason — {Reason}")]
+    internal static partial void LogLlmCallFailed(ILogger logger, object agentRole, int iteration, object taskId, string reason);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "ChatClient iteration {Iteration} for [{AgentRole}]: the answer is shaped like a tool call but none could be executed from it; asking the model to call the tool instead of describing the call")]
     internal static partial void LogToolCallShapedAnswerRetrying(ILogger logger, object agentRole, int iteration);
 

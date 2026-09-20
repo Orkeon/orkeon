@@ -76,6 +76,23 @@ public sealed class LlmSection
     /// Provider inferred from <see cref="BaseUrl"/> — informational only, never written
     /// to the file. See <see cref="LlmProviderDetector"/>.
     /// </summary>
+    /// <summary>
+    /// Thinking switch (<c>Llm:Thinking:Enabled</c>): null leaves the provider's default —
+    /// on for Kimi K2.6, DeepSeek V4 and GLM. The runner reads the same key (LLM-11).
+    /// </summary>
+    public bool? ThinkingEnabled
+    {
+        get => _document.GetBoolean($"{SectionPath}:Thinking:Enabled");
+        set => _document.SetBoolean($"{SectionPath}:Thinking:Enabled", value);
+    }
+
+    /// <summary>Reasoning-effort hint (<c>Llm:Thinking:Effort</c>), for the models that take one.</summary>
+    public string? ThinkingEffort
+    {
+        get => _document.GetString($"{SectionPath}:Thinking:Effort");
+        set => _document.SetString($"{SectionPath}:Thinking:Effort", value);
+    }
+
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
 
     /// <summary>Removes the whole section (the WIN-01 state).</summary>

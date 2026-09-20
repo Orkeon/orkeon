@@ -127,6 +127,10 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             var agentIndex = 0;
             var failures = new List<string>();
+            // Every task that failed or was skipped: a task depending on one of them is skipped
+            // in its turn, so a broken step never runs the rest of the chain on a context that
+            // says "Task failed: …" where the deliverable it needed should have been (LLM-11).
+            var notSucceeded = new HashSet<TaskId>();
 
             foreach (var taskId in taskIds)
             {
@@ -143,6 +147,23 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 var agent = await _agentSelector
                     .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
                     .ConfigureAwait(false);
+
+                if (BlockingDependency(task, notSucceeded) is { } blockedBy)
+                {
+                    TaskExecutionSnapshot skippedSnapshot;
+                    (context, skippedSnapshot) = RecordSkippedTask(
+                        task, agent, blockedBy, context, applicationOutputs, domainResults);
+                    notSucceeded.Add(taskId);
+                    failures.Add(skippedSnapshot.SkipReason!);
+                    _delegationProvider.UpdateExecutionContext(context);
+
+                    if (_hooks.HasHook)
+                    {
+                        taskSnapshots.Add(skippedSnapshot);
+                        await _hooks.TaskCompletedAsync(skippedSnapshot, CancellationToken.None).ConfigureAwait(false);
+                    }
+                    continue;
+                }
 
                 // The task is about to run: say so before asking the agent anything, so a
                 // watcher shows it in progress instead of discovering it only once finished.
@@ -161,6 +182,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
                 if (!taskResult.Success)
                 {
+                    notSucceeded.Add(taskId);
                     failures.Add(
                         $"Task {taskId} ({agent.Role}) failed: {taskResult.Error ?? taskResult.LastError ?? "unknown error"}");
                 }
@@ -314,6 +336,79 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         return agents;
     }
 
+    /// <summary>
+    /// The first declared dependency of <paramref name="task"/> that failed or was skipped,
+    /// or null when the task may run. Only the direct dependencies are read: a skipped task
+    /// joins <paramref name="notSucceeded"/> itself, so the transitive closure follows.
+    /// </summary>
+    private static TaskId? BlockingDependency(Orkeon.Domain.Task.CrewTask task, HashSet<TaskId> notSucceeded)
+    {
+        foreach (var dependency in task.Dependencies)
+        {
+            if (notSucceeded.Contains(dependency))
+                return dependency;
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Records a task that does not run because <paramref name="blockedBy"/> did not succeed
+    /// (LLM-11): a failed output for the next tasks' context and the crew's result, and a
+    /// snapshot marked <see cref="TaskExecutionSnapshot.Skipped"/> for the summary and the
+    /// run events. No agent is asked anything, so nothing is started and no token is spent.
+    /// </summary>
+    private (SimpleExecutionContext Context, TaskExecutionSnapshot Snapshot) RecordSkippedTask(
+        Orkeon.Domain.Task.CrewTask task,
+        DomainAgent agent,
+        TaskId blockedBy,
+        SimpleExecutionContext context,
+        List<ApplicationTaskOutput> applicationOutputs,
+        List<DomainTaskOutput> domainResults)
+    {
+        var reason = $"Task {task.Id} ({agent.Role}) skipped: it depends on task {blockedBy}, which did not succeed";
+        LogTaskSkippedAfterDependency(task.Id, agent.Role, blockedBy);
+
+        var rawOutput = $"Task skipped: dependency {blockedBy} did not succeed";
+        applicationOutputs.Add(new ApplicationTaskOutput(
+            TaskId: task.Id.Value.ToString(),
+            AgentId: agent.Id.ToString(),
+            Content: rawOutput,
+            CompletedAt: DateTime.UtcNow,
+            Success: false,
+            ExecutionTime: TimeSpan.Zero));
+
+        domainResults.Add(DomainTaskOutput.Create(
+            rawOutput: rawOutput,
+            format: "text",
+            formattedOutput: null,
+            taskId: task.Id,
+            success: false,
+            executionTime: TimeSpan.Zero,
+            structuredOutput: null,
+            agentId: agent.Id.ToString()));
+
+        var updatedContext = new SimpleExecutionContext(
+            context.CrewId,
+            context.Variables,
+            context.Memory,
+            applicationOutputs,
+            context.CancellationToken);
+
+        var snapshot = new TaskExecutionSnapshot
+        {
+            TaskId = task.Id.Value.ToString(),
+            AgentRole = agent.Role?.ToString() ?? string.Empty,
+            Success = false,
+            Duration = TimeSpan.Zero,
+            CompletedAt = DateTimeOffset.UtcNow,
+            Skipped = true,
+            SkipReason = reason,
+        };
+
+        return (updatedContext, snapshot);
+    }
+
     private static string GetRawOutput(Orkeon.Application.Interfaces.Services.TaskResult result)
     {
         if (!string.IsNullOrEmpty(result.Output))
@@ -366,5 +461,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Agent [{AgentRole}] exited with reason {ExitReason} after {IterationsUsed} iterations. Last error: {LastError}")]
     private partial void LogAgentExitedWithReason(object agentRole, string exitReason, int iterationsUsed, string lastError);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} ({AgentRole}) skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, object agentRole, TaskId dependencyId);
 
 }

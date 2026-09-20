@@ -38,6 +38,27 @@ public sealed record LlmResponse
     /// <summary>Gets additional metadata about the response.</summary>
     public IReadOnlyDictionary<string, object> Metadata { get; init; } = new Dictionary<string, object>();
 
+    /// <summary>
+    /// The provider's own account of a call that produced no answer — the HTTP failure, the
+    /// elapsed timeout, the rejected request — read from
+    /// <see cref="LlmResponseMetadataKeys.Error"/>. Null for an answer, including an empty one:
+    /// a model with nothing to say is not a failed call, and the two must never be confused. A
+    /// Kimi timeout used to be reported as "the model answered empty, raise Llm:MaxTokens",
+    /// and retried once more without tools for a second full timeout (LLM-11).
+    /// </summary>
+    public string? Error =>
+        Metadata.TryGetValue(LlmResponseMetadataKeys.Error, out var error)
+        && error?.ToString() is { Length: > 0 } text
+            ? text
+            : null;
+
+    /// <summary>The exception type name behind <see cref="Error"/>, when the provider recorded one.</summary>
+    public string? ErrorType =>
+        Metadata.TryGetValue(LlmResponseMetadataKeys.ErrorType, out var errorType)
+        && errorType?.ToString() is { Length: > 0 } text
+            ? text
+            : null;
+
     /// <summary>Gets the raw JSON response body for tool call parsing.</summary>
     public string? RawResponseBody { get; init; }
 }

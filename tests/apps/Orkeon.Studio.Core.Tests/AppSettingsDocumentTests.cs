@@ -35,6 +35,25 @@ public sealed class AppSettingsDocumentTests
         """;
 
     [Fact]
+    public void The_llm_section_writes_and_clears_the_thinking_keys()
+    {
+        // LLM-11: the same Llm:Thinking:{Enabled,Effort} the runner reads.
+        var document = AppSettingsDocument.CreateEmpty();
+
+        document.Llm.ThinkingEnabled = false;
+        document.Llm.ThinkingEffort = "high";
+        Assert.False(document.Llm.ThinkingEnabled);
+        Assert.Equal("high", document.Llm.ThinkingEffort);
+        Assert.True(document.ContainsPath("Llm:Thinking:Enabled"));
+
+        document.Llm.ThinkingEnabled = null;
+        document.Llm.ThinkingEffort = null;
+        Assert.Null(document.Llm.ThinkingEnabled);
+        Assert.False(document.ContainsPath("Llm:Thinking:Enabled"));
+        Assert.False(document.ContainsPath("Llm:Thinking:Effort"));
+    }
+
+    [Fact]
     public void Round_trip_preserves_unknown_keys_values_and_order()
     {
         var document = AppSettingsDocument.Parse(DocumentWithUnknownKeys);

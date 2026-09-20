@@ -62,7 +62,20 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         return GetResponseCoreAsync();
 
         async Task<ChatResponse> GetResponseCoreAsync()
-            => (await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false)).Mapped;
+        {
+            var (raw, mapped) = await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false);
+
+            // A failed call is not an answer. The provider puts its refusal — the timeout, the
+            // HTTP error — in the response metadata, which a ChatResponse does not carry, so
+            // mapping it to an empty message told every consumer "the model said nothing":
+            // the agent loop then diagnosed a reasoning model out of budget and retried once
+            // more without tools, for a second full timeout (LLM-11). IChatClient's contract
+            // is to throw, as the streaming path below already did.
+            if (string.IsNullOrEmpty(raw.Content) && ProviderFailure(raw) is { } failure)
+                throw failure;
+
+            return mapped;
+        }
     }
 
     /// <summary>
@@ -290,7 +303,7 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             // paths fail a rejected request.
             var (raw, mapped) = await CallProviderAsync(messages, options, cancellationToken).ConfigureAwait(false);
 
-            if (string.IsNullOrEmpty(raw.Content) && BufferedFallbackRefusal(raw) is { } refusal)
+            if (string.IsNullOrEmpty(raw.Content) && ProviderFailure(raw) is { } refusal)
                 throw refusal;
 
             yield return new ChatResponseUpdate(ChatRole.Assistant, mapped.Text ?? string.Empty)
@@ -300,21 +313,16 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         }
     }
 
-    /// <summary>Metadata key every provider writes its refusal under (see <c>LlmResponseMetadata</c>).</summary>
-    private const string ProviderErrorMetadataKey = "error";
-
     /// <summary>
-    /// The exception the streaming fallback must fail with when the buffered answer is a refusal
-    /// rather than an answer. Returns <see langword="null"/> for a merely empty answer: a model
-    /// with nothing to say still ends its stream normally.
+    /// The exception a call must fail with when the provider answered with a refusal rather
+    /// than an answer — its message is the provider's own sentence
+    /// (<see cref="LlmResponse.Error"/>, which for a timeout names <c>Llm:TimeoutSeconds</c>).
+    /// Returns <see langword="null"/> for a merely empty answer: a model with nothing to say
+    /// is not a failed call.
     /// </summary>
-    /// <param name="response">The buffered answer the fallback was going to turn into one update.</param>
-    private static HttpRequestException? BufferedFallbackRefusal(LlmResponse response)
-        => response.Metadata.TryGetValue(ProviderErrorMetadataKey, out var value)
-           && value?.ToString() is { Length: > 0 } error
-            ? new HttpRequestException(
-                $"{error}: the buffered fallback answered with no content, so the stream carries nothing.")
-            : null;
+    /// <param name="response">The buffered answer.</param>
+    private static HttpRequestException? ProviderFailure(LlmResponse response)
+        => response.Error is { } error ? new HttpRequestException(error) : null;
 
     /// <inheritdoc />
     public object? GetService(Type serviceType, object? serviceKey = null)

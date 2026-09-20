@@ -66,6 +66,46 @@ public class OpenAICompatibleProviderBaseRetryTests
         Assert.Equal(2, callCount);
     }
 
+    /// <summary>A handler that never answers but honours the token — what a stalled endpoint looks like to HttpClient.</summary>
+    private sealed class HangingHandler : HttpMessageHandler
+    {
+        public int Calls;
+
+        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        {
+            Interlocked.Increment(ref Calls);
+            await Task.Delay(Timeout.Infinite, cancellationToken);
+            throw new InvalidOperationException("unreachable");
+        }
+    }
+
+    [Fact]
+    public async Task ShouldNameTheTimeoutSettingAndRetryOnce_WhenTheHttpTimeoutElapses()
+    {
+        // LLM-11 — the run of 2026-09-20: Kimi took longer than Llm:TimeoutSeconds, HttpClient
+        // threw its timeout shape, the policy never retried it (its token reads as cancelled)
+        // and the loop reported "the model answered empty, raise MaxTokens". The provider now
+        // says which setting elapsed and the ways out, after exactly one more attempt.
+        using var handler = new HangingHandler();
+        var httpClient = new HttpClient(handler);
+        _httpClientFactory.RegisterClient("TestableOpenAICompatibleProvider", httpClient);
+        var config = _config with { TimeoutSeconds = 1 };
+        var retryPolicy = ResiliencePolicies.GetLlmApiPolicy(
+            _logger, maxRetryAttempts: 10, baseDelay: TimeSpan.FromMilliseconds(10));
+        using var provider = new TestableOpenAICompatibleProvider(config, _httpClientFactory, retryPolicy, _logger);
+
+        var result = await provider.ChatAsync([LlmMessage.User("score the contacts")], config, TestContext.Current.CancellationToken);
+
+        Assert.Equal("", result.Content);
+        Assert.NotNull(result.Error);
+        Assert.StartsWith("Test did not answer within Llm:TimeoutSeconds = 1 s", result.Error, StringComparison.Ordinal);
+        Assert.Contains("not an empty answer", result.Error, StringComparison.Ordinal);
+        Assert.Contains("raise Llm:TimeoutSeconds", result.Error, StringComparison.Ordinal);
+        Assert.Contains("thinking", result.Error, StringComparison.Ordinal);
+        Assert.Equal(nameof(TaskCanceledException), result.ErrorType);
+        Assert.Equal(2, handler.Calls);
+    }
+
     [Fact]
     public async Task ShouldRetryAndSucceed_WhenChatAsyncWith500ThenSuccess()
     {

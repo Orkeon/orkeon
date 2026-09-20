@@ -40,6 +40,22 @@ public sealed class ProviderCatalogTests
     }
 
     [Fact]
+    public void The_providers_whose_default_model_reasons_recommend_a_long_timeout()
+    {
+        // LLM-11: the engine's 30 s lost a run to two Kimi timeouts; the cards of the vendors
+        // whose default model thinks before it answers pre-fill the settings templates' 600 s.
+        var cards = Catalogue().ToDictionary(c => c.Name, StringComparer.Ordinal);
+
+        foreach (var id in new[] { LlmPresets.Kimi, LlmPresets.DeepSeek, LlmPresets.Zai, LlmPresets.MiniMax })
+            Assert.Equal(LlmPresets.ReasoningTimeoutSeconds, cards[id].RecommendedTimeoutSeconds);
+
+        foreach (var id in new[] { LlmPresets.Ollama, LlmPresets.OpenAI, LlmPresets.Mistral, LlmPresets.Custom, LlmPresets.None })
+            Assert.Null(cards[id].RecommendedTimeoutSeconds);
+
+        Assert.Equal(600, LlmPresets.ReasoningTimeoutSeconds);
+    }
+
+    [Fact]
     public void Every_cloud_card_is_complete_enough_for_a_novice()
     {
         foreach (var card in Catalogue())

@@ -455,6 +455,66 @@ public sealed class SettingsScreenTests
     }
 
     [Fact]
+    public void Picking_a_reasoning_provider_prefills_the_timeout_and_a_typed_value_survives()
+    {
+        // LLM-11: the run of 2026-09-20 ran Kimi K2.6 on a 180 s timeout; the card now brings
+        // the 600 s the settings templates carry, says why, and never overwrites a typed value.
+        var (profiles, _, _, _) = Build();
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+        Assert.Equal("", editor.TimeoutText);
+
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.Kimi);
+        Assert.Equal("600", editor.TimeoutText);
+        Assert.Contains("600", editor.TimeoutHint, StringComparison.Ordinal);
+        Assert.Contains("Kimi", editor.TimeoutHint, StringComparison.Ordinal);
+
+        // The seed leaves with the card that brought it.
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.Ollama);
+        Assert.Equal("", editor.TimeoutText);
+        Assert.DoesNotContain("Kimi", editor.TimeoutHint, StringComparison.Ordinal);
+        Assert.DoesNotContain("pre-filled", editor.TimeoutHint, StringComparison.Ordinal);
+        Assert.Contains("30 s", editor.TimeoutHint, StringComparison.Ordinal);
+
+        // A typed value is the user's, whatever card comes next.
+        editor.TimeoutText = "240";
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.DeepSeek);
+        Assert.Equal("240", editor.TimeoutText);
+
+        editor.Name = "Mon DeepSeek";
+        editor.SaveCommand.Execute(null);
+        Assert.Equal(240, profiles.Set.Profiles.Single(p => p.Name == "Mon DeepSeek").TimeoutSeconds);
+    }
+
+    [Fact]
+    public void The_thinking_switch_rides_the_profile_and_its_launch_overrides()
+    {
+        // LLM-11: the knob existed in the crew YAML and the settings file, but the profile —
+        // the thing Studio pins per model — had no place for it.
+        var (profiles, _, _, _) = Build();
+        profiles.NewProfileCommand.Execute(null);
+        var editor = profiles.Editor!;
+        editor.SelectedProvider = editor.Providers.Single(p => p.Name == LlmPresets.Kimi);
+        Assert.Null(editor.SelectedThinking.Value);   // provider default
+        Assert.Equal(3, editor.ThinkingChoices.Count);
+
+        editor.SelectedThinking = editor.ThinkingChoices.Single(c => c.Value == false);
+        editor.ThinkingEffortText = " high ";
+        editor.Name = "Kimi sans réflexion";
+        editor.SaveCommand.Execute(null);
+
+        var saved = profiles.Set.Profiles.Single(p => p.Name == "Kimi sans réflexion");
+        Assert.False(saved.ThinkingEnabled);
+        Assert.Equal("high", saved.ThinkingEffort);
+        Assert.Equal("false", saved.EnvironmentOverrides()["ORKEON_Llm__Thinking__Enabled"]);
+        Assert.Equal("high", saved.EnvironmentOverrides()["ORKEON_Llm__Thinking__Effort"]);
+
+        profiles.BeginEdit(saved);
+        Assert.False(profiles.Editor!.SelectedThinking.Value);
+        Assert.Equal("high", profiles.Editor.ThinkingEffortText);
+    }
+
+    [Fact]
     public async Task The_connection_test_refuses_to_probe_without_a_key_and_uses_the_stored_one_after()
     {
         var keyStore = new FakeApiKeyStore();

@@ -16,7 +16,8 @@ public sealed record RunTaskProgress(
     bool Success,
     long DurationMs,
     long? Tokens,
-    int? ToolCalls);
+    int? ToolCalls,
+    bool Skipped = false);
 
 /// <summary>What the run has spent so far.</summary>
 public sealed record RunCost(long Tokens, string? Model, string? Provider);
@@ -170,7 +171,10 @@ public sealed class RunProgressModel
                     orkeonEvent.GetBool("success") ?? false,
                     orkeonEvent.GetInt64("durationMs") ?? 0,
                     orkeonEvent.GetInt64("tokens"),
-                    (int?)orkeonEvent.GetInt64("toolCalls"));
+                    (int?)orkeonEvent.GetInt64("toolCalls"),
+                    // A task that never ran because a dependency failed (LLM-11): not started,
+                    // completed with success=false, and told apart from a failure by this flag.
+                    orkeonEvent.GetBool("skipped") ?? false);
                 _tasks.Add(finished);
                 Settle(finished.TaskId, finished.AgentRole);
                 break;

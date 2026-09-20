@@ -54,3 +54,6 @@ override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ApplyProviderSpecificO
 *REMOVED*Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int? maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.Dispose() -> void
+static Orkeon.Infrastructure.Resilience.ResiliencePolicies.IsHttpClientTimeout(System.Exception? exception) -> bool
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeCallFailure(string! providerDisplayName, System.Exception! exception, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> string!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.TimeoutFailureMessage(string! providerDisplayName, int timeoutSeconds) -> string!

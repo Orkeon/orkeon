@@ -85,6 +85,31 @@ public class NativeToolCallingAgentLoopTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task FailsWithTheProvidersReason_WhenTheCallItselfFailed()
+    {
+        // LLM-11: a refusal (no content, the reason in the metadata) is not an empty answer.
+        const string timeout = "Kimi did not answer within Llm:TimeoutSeconds = 180 s: the HTTP timeout elapsed";
+        var agent = BuildAgent();
+        var (loop, provider, _) = BuildLoop(agent);
+        provider.Enqueue(new LlmResponse
+        {
+            Content = "",
+            Metadata = new Dictionary<string, object>
+            {
+                [LlmResponseMetadataKeys.Error] = timeout,
+                [LlmResponseMetadataKeys.ErrorType] = nameof(TaskCanceledException),
+            },
+        });
+
+        var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
+        Assert.Equal(string.Empty, result.Output);
+        Assert.Equal(timeout, result.LastError);
+        Assert.Single(provider.ReceivedTurns);
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheRawBodyCarriesNeitherCallsNorText()
     {
         var agent = BuildAgent();

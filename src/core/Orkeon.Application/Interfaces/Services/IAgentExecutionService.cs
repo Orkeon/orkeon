@@ -123,7 +123,17 @@ public enum AgentExitReason
     /// output mount (STUDIO-12 C5a). The typical cause is a reasoning model whose response
     /// budget (<c>Llm:MaxTokens</c>) went entirely into thinking.
     /// </summary>
-    EmptyFinalAnswer
+    EmptyFinalAnswer,
+
+    /// <summary>
+    /// The LLM call itself failed — the provider refused the request, or answered nothing at
+    /// all within <c>Llm:TimeoutSeconds</c> — so there is no answer to judge, empty or not.
+    /// Kept apart from <see cref="EmptyFinalAnswer"/> on purpose: a Kimi timeout used to be
+    /// reported as "the model answered empty, raise Llm:MaxTokens", and the tool-free retry
+    /// that followed cost a second full timeout (LLM-11). The task fails at once, with the
+    /// provider's own reason as its error.
+    /// </summary>
+    LlmCallFailed
 }
 
 /// <summary>

@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- LLM-11 -->
+### Fixed — a timed-out LLM call is a failed call, not an empty answer; the sequential mode skips the dependents of a failed task; Studio pins the thinking switch and a reasoning-model timeout (LLM-11)
+
+- **A call the provider never answered fails the task with the provider's reason.** On the
+  owner's run of 2026-09-20 (`kimi-k2.6`, `Llm:TimeoutSeconds` 180), the scorer's call timed
+  out, the chat-client adapter mapped the refusal to an empty message, the agent loop
+  diagnosed "a reasoning model out of budget — raise `Llm:MaxTokens`" and retried once
+  without tools, for a second full timeout: six minutes, zero tokens, wrong advice. Now the
+  provider's failure travels as `LlmResponse.Error` (`LlmResponseMetadataKeys`), the buffered
+  `LlmProviderToChatClientAdapter` path throws it the way the streaming path already did, and
+  the loops exit `AgentExitReason.LlmCallFailed` at once — no tool-free retry — with the
+  provider's sentence as the task's error, the summary line and the runner's last stderr line.
+- **An elapsed timeout says which setting elapsed and the ways out.** In place of HttpClient's
+  wording, every provider (`HttpLlmProviderBase.DescribeCallFailure`) answers "*{Provider} did
+  not answer within `Llm:TimeoutSeconds` = 180 s … raise `Llm:TimeoutSeconds` (600 s is a safe
+  value for a reasoning model), or turn thinking off*", naming the settings key, the crew
+  `llm.thinking.enabled` block and the Studio switch.
+- **An HttpClient timeout is retried — once.** The retry clause written as
+  `!ex.CancellationToken.IsCancellationRequested` never fired on a real timeout (HttpClient
+  cancels its own linked token), so every timeout failed on its first attempt whatever
+  `Llm:MaxRetries` said. `ResiliencePolicies.IsHttpClientTimeout` recognises the shape (a
+  nested `TimeoutException`); the LLM policy retries it once
+  (`ResilienceDefaults.LlmTimeoutRetries` — every attempt costs the whole timeout, the ordinary
+  budget is for failures that come back in seconds), never when `MaxRetries` is 0, never on a
+  caller's cancellation; the generic HTTP policies retry it like any transient failure.
+- **The sequential mode skips the dependents of a task that did not succeed.** The writer
+  used to run on a context saying "Task failed: …" where the scored JSON should have been, and
+  improvised a deliverable from the cleaner's prose. A task whose declared dependency failed
+  or was skipped is now skipped in its turn — no agent asked, no token spent — recorded as
+  `⊘ skipped` in `AUTO_SUMMARY.md` (with a **Skipped** count), as `task.completed` with
+  `skipped: true` on the event stream (`RunTaskProgress.Skipped` in Studio), and in the crew's
+  failure reason; the tasks that do not depend on it still run.
+- **Studio: the profile pins the thinking switch, and a reasoning provider brings its timeout.**
+  The knob existed in the crew YAML (`llm.thinking.enabled`) and the settings file
+  (`Llm:Thinking:Enabled`) but had no place in Studio. `ModelProfile.ThinkingEnabled` /
+  `ThinkingEffort` travel as `ORKEON_Llm__Thinking__{Enabled,Effort}`; the profile editor
+  offers provider default / on / off and the effort hint; `LlmSection` reads and writes the
+  same keys, the validator types them, and the TUI form has a `Thinking` field. Picking Kimi,
+  DeepSeek, Z.AI or MiniMax — whose default model reasons before it answers — pre-fills the
+  timeout with `LlmPresets.ReasoningTimeoutSeconds` (600 s, the settings templates' value) and
+  the hint says why; a typed value is never overwritten, and the seed leaves with the card
+  that brought it.
+
 <!-- STUDIO-22 -->
 ### Fixed — Studio: the limits tab shows the engine's defaults as watermarks, and its switches take one click (STUDIO-22)
 

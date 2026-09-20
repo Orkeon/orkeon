@@ -247,6 +247,23 @@ public sealed class ProfileTemperatureTests
     }
 
     [Fact]
+    public void The_thinking_switch_and_effort_ride_the_launch_only_when_pinned()
+    {
+        // LLM-11: the knob the run of 2026-09-20 could not reach from Studio.
+        var profile = new ModelProfile { Name = "Kimi", Model = "kimi-k2.6", ThinkingEnabled = false, ThinkingEffort = " high " };
+
+        var overrides = profile.EnvironmentOverrides();
+
+        Assert.Equal("false", overrides["ORKEON_Llm__Thinking__Enabled"]);
+        Assert.Equal("high", overrides["ORKEON_Llm__Thinking__Effort"]);
+        Assert.Equal("true", (profile with { ThinkingEnabled = true }).EnvironmentOverrides()["ORKEON_Llm__Thinking__Enabled"]);
+
+        var unpinned = (profile with { ThinkingEnabled = null, ThinkingEffort = "  " }).EnvironmentOverrides();
+        Assert.False(unpinned.ContainsKey("ORKEON_Llm__Thinking__Enabled"));
+        Assert.False(unpinned.ContainsKey("ORKEON_Llm__Thinking__Effort"));
+    }
+
+    [Fact]
     public void The_pinned_timeout_rides_the_launch_and_a_non_positive_one_does_not()
     {
         var profile = new ModelProfile { Name = "Kimi K3", Model = "kimi-k3", TimeoutSeconds = 180 };

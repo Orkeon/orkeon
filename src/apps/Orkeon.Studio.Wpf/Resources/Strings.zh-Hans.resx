@@ -1727,7 +1727,7 @@
     <value>响应超时（秒，可选）</value>
   </data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
-    <value>留空：30 秒。推理模型（Kimi K3、thinking 模式）通常需要 120–300 秒。</value>
+    <value>留空：引擎默认 30 秒。会先思考再回答的模型通常需要 600 秒。</value>
   </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>「{0}」的文件夹</value>
@@ -2467,4 +2467,12 @@
   <data name="Studio.Create.AddRoot" xml:space="preserve">
     <value>添加文件夹</value>
   </data>
+  <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>已预填 {0} 秒：{1} 的默认模型会先思考再回答，思考型回答通常超过引擎默认的 30 秒。输入其他值即可覆盖。</value></data>
+  <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>思考模式</value></data>
+  <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>提供商默认</value></data>
+  <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>开启</value></data>
+  <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>关闭</value></data>
+  <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>提供商默认：由模型决定 — Kimi K2.6、DeepSeek V4 和 GLM 默认会思考。关闭后回答更快更省；开启则在模型支持开关时强制推理。</value></data>
+  <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>推理强度</value></data>
+  <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>留空：提供商默认。low / medium / high（部分模型支持 max），仅对接受该提示的模型生效。</value></data>
 </root>

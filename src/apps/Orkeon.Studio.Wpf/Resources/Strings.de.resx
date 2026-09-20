@@ -1727,7 +1727,7 @@
     <value>Antwort-Timeout (s, optional)</value>
   </data>
   <data name="Studio.Settings.TimeoutHint" xml:space="preserve">
-    <value>Leer: 30 s. Reasoning-Modelle (Kimi K3, Thinking-Modi) brauchen oft 120–300 s.</value>
+    <value>Leer: Standard der Engine, 30 s. Ein Modell, das vor der Antwort nachdenkt, braucht regelmäßig 600 s.</value>
   </data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve">
     <value>Ordner von «{0}»</value>
@@ -2467,4 +2467,12 @@
   <data name="Studio.Create.AddRoot" xml:space="preserve">
     <value>Ordner hinzufügen</value>
   </data>
+  <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s vorbelegt: das Standardmodell von {1} denkt vor der Antwort nach, und eine durchdachte Antwort dauert regelmäßig länger als die 30 s der Engine. Anderen Wert eintragen, um ihn zu überschreiben.</value></data>
+  <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Denkmodus</value></data>
+  <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Standard des Anbieters</value></data>
+  <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>Ein</value></data>
+  <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>Aus</value></data>
+  <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Standard des Anbieters: das Modell entscheidet — Kimi K2.6, DeepSeek V4 und GLM denken nach, sofern nichts anderes gesagt wird. Aus antwortet schneller und günstiger; Ein erzwingt den Denkschritt, wo das Modell den Schalter hat.</value></data>
+  <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Denkaufwand</value></data>
+  <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Leer: Standard des Anbieters. low / medium / high (max bei manchen Modellen), für Modelle, die den Hinweis annehmen.</value></data>
 </root>

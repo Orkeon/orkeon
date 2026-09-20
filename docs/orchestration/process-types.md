@@ -66,7 +66,7 @@ The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `
 
 Tasks execute **one by one, in the order** defined by the `ExecutionPlan`. Each task receives the results of the previous tasks as context. Agent assignment is round-robin (unless explicitly assigned via `task.AssignedAgent`).
 
-**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is.
+**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is. A task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11).
 
 ### Internal mechanism
 
@@ -124,7 +124,7 @@ var crew = new CrewBuilder()
 ### Drawbacks
 
 - **No parallelism**: the total time is the sum of all the tasks
-- **Single point of failure**: one failure blocks the whole chain
+- **Single point of failure**: one failure blocks the rest of the chain — its dependents are skipped, only the independent tasks still run
 - **No retry**: no automatic recovery on error
 - **Rigid**: the order is fixed, no conditional branching
 

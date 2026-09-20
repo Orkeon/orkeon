@@ -88,6 +88,15 @@ internal sealed class NativeToolCallingAgentLoop
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, response.Content.Length, response.Content);
 
+            // A failed call — the provider's refusal, an elapsed timeout — is not an answer to
+            // judge: the task fails with the provider's own reason, and nothing is retried (LLM-11).
+            if (response.Error is { } callFailure)
+            {
+                ExecutionLog.LogLlmCallFailed(_logger, agent.Role, iteration + 1, task.Id, callFailure);
+                return new AgentLoopResult(string.Empty, 0, AgentExitReason.LlmCallFailed,
+                    IterationsUsed: iteration + 1, LastError: callFailure);
+            }
+
             // Check for tool calls in the response
             if (string.IsNullOrEmpty(response.RawResponseBody))
             {

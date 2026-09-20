@@ -57,6 +57,12 @@ public sealed record LlmPresetPlan
 /// <param name="DefaultApiKeyEnv">Conventional environment-variable name holding the key (cloud cards).</param>
 /// <param name="Kind">Which group of the editor the card sits in (local, cloud, other, none).</param>
 /// <param name="KeyConsoleUrl">Where the provider hands out API keys, shown as plain help text.</param>
+/// <param name="RecommendedTimeoutSeconds">
+/// The HTTP timeout the profile editor pre-fills when this card is picked, or null to leave the
+/// field to the engine's 30 s. Set for the clouds whose default model thinks before it answers
+/// (LLM-11): a thinking answer routinely outlasts 30 s, and a run that hits the timeout gets no
+/// answer at all.
+/// </param>
 [SuppressMessage("Design", "CA1054",
     Justification = "Presentation metadata: the default endpoint is shown in, and edited from, a " +
                     "text field before it becomes a JSON string field.")]
@@ -72,7 +78,8 @@ public sealed record LlmPresetInfo(
     bool RequiresApiKey,
     string? DefaultApiKeyEnv = null,
     LlmPresetKind Kind = LlmPresetKind.Other,
-    string? KeyConsoleUrl = null);
+    string? KeyConsoleUrl = null,
+    int? RecommendedTimeoutSeconds = null);
 
 /// <summary>How the profile editor groups a provider card (design v3, "volets" rev. 2).</summary>
 public enum LlmPresetKind
@@ -114,6 +121,16 @@ public static class LlmPresets
 
     /// <summary>The environment variable the runtime reads natively (<c>AddEnvironmentVariables("ORKEON_")</c>).</summary>
     public const string DefaultApiKeyEnv = "ORKEON_Llm__ApiKey";
+
+    /// <summary>
+    /// The timeout the profile editor pre-fills for a provider whose default model reasons
+    /// before it answers — Kimi (K2.6 thinks unless told not to, K3 always), DeepSeek (V4
+    /// thinking by default), Z.AI (the GLM-5 family) and MiniMax (an inline reasoning trace
+    /// that is always on). 600 s is the value the repository's own settings templates
+    /// carry for these vendors; the engine's 30 s default lost a run on 2026-09-20 to two
+    /// Kimi timeouts reported as an empty answer (LLM-11).
+    /// </summary>
+    public const int ReasoningTimeoutSeconds = 600;
 
     /// <summary>Docker Model Runner llama.cpp OpenAI-compatible endpoint.</summary>
     public const string DockerModelRunnerBaseUrl = LlmProviderEndpoints.DockerModelRunner;
@@ -242,7 +259,8 @@ public static class LlmPresets
                 "ANTHROPIC_API_KEY", LlmPresetKind.Cloud, "console.anthropic.com"),
             new(DeepSeek, strings[StudioStringKeys.ProviderDeepSeekTitle], strings[StudioStringKeys.ProviderDeepSeekDescription],
                 LlmProviderEndpoints.DeepSeek, LlmProviderDefaultModels.DeepSeek, RequiresApiKey: true,
-                "DEEPSEEK_API_KEY", LlmPresetKind.Cloud, "platform.deepseek.com"),
+                "DEEPSEEK_API_KEY", LlmPresetKind.Cloud, "platform.deepseek.com",
+                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
             new(Mistral, strings[StudioStringKeys.ProviderMistralTitle], strings[StudioStringKeys.ProviderMistralDescription],
                 LlmProviderEndpoints.Mistral, LlmProviderDefaultModels.Mistral, RequiresApiKey: true,
                 "MISTRAL_API_KEY", LlmPresetKind.Cloud, "console.mistral.ai"),
@@ -254,7 +272,8 @@ public static class LlmPresets
                 "XAI_API_KEY", LlmPresetKind.Cloud, "console.x.ai"),
             new(MiniMax, strings[StudioStringKeys.ProviderMiniMaxTitle], strings[StudioStringKeys.ProviderMiniMaxDescription],
                 LlmProviderEndpoints.MiniMax, LlmProviderDefaultModels.MiniMax, RequiresApiKey: true,
-                "MINIMAX_API_KEY", LlmPresetKind.Cloud, "platform.minimax.io"),
+                "MINIMAX_API_KEY", LlmPresetKind.Cloud, "platform.minimax.io",
+                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
             new(Together, strings[StudioStringKeys.ProviderTogetherTitle], strings[StudioStringKeys.ProviderTogetherDescription],
                 LlmProviderEndpoints.Together, LlmProviderDefaultModels.Together, RequiresApiKey: true,
                 "TOGETHER_API_KEY", LlmPresetKind.Cloud, "api.together.ai"),
@@ -263,13 +282,15 @@ public static class LlmPresets
                 "DASHSCOPE_API_KEY", LlmPresetKind.Cloud, "dashscope.console.aliyun.com"),
             new(Kimi, strings[StudioStringKeys.ProviderKimiTitle], strings[StudioStringKeys.ProviderKimiDescription],
                 LlmProviderEndpoints.Kimi, LlmProviderDefaultModels.Kimi, RequiresApiKey: true,
-                "MOONSHOT_API_KEY", LlmPresetKind.Cloud, "platform.moonshot.ai"),
+                "MOONSHOT_API_KEY", LlmPresetKind.Cloud, "platform.moonshot.ai",
+                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
             new(HuggingFace, strings[StudioStringKeys.ProviderHuggingFaceTitle], strings[StudioStringKeys.ProviderHuggingFaceDescription],
                 LlmProviderEndpoints.HuggingFace, LlmProviderDefaultModels.HuggingFace, RequiresApiKey: true,
                 "HF_TOKEN", LlmPresetKind.Cloud, "huggingface.co/settings/tokens"),
             new(Zai, strings[StudioStringKeys.ProviderZaiTitle], strings[StudioStringKeys.ProviderZaiDescription],
                 LlmProviderEndpoints.Zai, LlmProviderDefaultModels.Zai, RequiresApiKey: true,
-                "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey"),
+                "ZAI_API_KEY", LlmPresetKind.Cloud, "z.ai/manage-apikey",
+                RecommendedTimeoutSeconds: ReasoningTimeoutSeconds),
             // LLM-09: the two aggregators. Mammouth's exact API-settings page is to be
             // confirmed with the first key; the vendor documents "from the API settings".
             new(OpenRouter, strings[StudioStringKeys.ProviderOpenRouterTitle], strings[StudioStringKeys.ProviderOpenRouterDescription],

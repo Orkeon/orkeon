@@ -37,6 +37,12 @@ internal sealed class LlmForm : ISettingsForm
     /// <summary>Request timeout in seconds.</summary>
     public string TimeoutSeconds { get; set; } = "";
 
+    /// <summary>
+    /// Thinking switch (<c>Llm:Thinking:Enabled</c>): "true", "false", or blank for the
+    /// provider's default — on for Kimi K2.6, DeepSeek V4 and GLM (LLM-11).
+    /// </summary>
+    public string ThinkingEnabled { get; set; } = "";
+
     /// <summary>Provider inferred from <see cref="BaseUrl"/>; never written to the file.</summary>
     public string DetectedProvider => LlmProviderDetector.Detect(BaseUrl);
 
@@ -77,6 +83,7 @@ internal sealed class LlmForm : ISettingsForm
         Temperature = FieldText.FromDouble(section.Temperature);
         MaxTokens = FieldText.FromInt32(section.MaxTokens);
         TimeoutSeconds = FieldText.FromInt32(section.TimeoutSeconds);
+        ThinkingEnabled = FieldText.FromBoolean(section.ThinkingEnabled);
     }
 
     /// <inheritdoc />
@@ -93,6 +100,9 @@ internal sealed class LlmForm : ISettingsForm
         if (!FieldText.TryReadInt32(TimeoutSeconds, "Llm:TimeoutSeconds", out var timeout, out var timeoutError))
             errors.Add(timeoutError!);
 
+        if (!FieldText.TryReadBoolean(ThinkingEnabled, "Llm:Thinking:Enabled", out var thinking, out var thinkingError))
+            errors.Add(thinkingError!);
+
         if (errors.Count > 0)
             return errors;
 
@@ -103,6 +113,7 @@ internal sealed class LlmForm : ISettingsForm
         section.Temperature = temperature;
         section.MaxTokens = maxTokens;
         section.TimeoutSeconds = timeout;
+        section.ThinkingEnabled = thinking;
 
         return [];
     }

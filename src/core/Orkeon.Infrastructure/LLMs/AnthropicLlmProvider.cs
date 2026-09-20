@@ -186,16 +186,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         catch (OperationCanceledException ex)
         {
             LogApiCallFailed(ex);
-            return new LlmResponse
-            {
-                Content = "",
-                Metadata = LlmResponseMetadata.CreateBuilder()
-                    .AddProvider(Name)
-                    .AddError($"Anthropic API call failed: {ex.Message}")
-                    .AddErrorType(ex.GetType().Name)
-                    .Build()
-                    .ToDictionary()
-            };
+            return BuildErrorResponse(DescribeCallFailure("Anthropic", ex, effectiveConfig), ex.GetType().Name);
         }
         catch (HttpRequestException ex)
         {
@@ -268,7 +259,7 @@ public partial class AnthropicLlmProvider : HttpLlmProviderBase
         catch (OperationCanceledException ex)
         {
             LogApiCallFailed(ex);
-            return BuildErrorResponse($"Anthropic API call failed: {ex.Message}", ex.GetType().Name);
+            return BuildErrorResponse(DescribeCallFailure("Anthropic", ex, effectiveConfig), ex.GetType().Name);
         }
         catch (HttpRequestException ex)
         {

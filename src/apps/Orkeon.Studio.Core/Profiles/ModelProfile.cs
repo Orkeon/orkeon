@@ -55,6 +55,23 @@ public sealed record ModelProfile
     /// </summary>
     public int? MaxTokens { get; init; }
 
+    /// <summary>
+    /// The thinking switch this profile pins: true forces the reasoning pass on, false turns
+    /// it off, null leaves the provider's default — which, on Kimi K2.6, DeepSeek V4 and GLM,
+    /// is on. Travels as <c>ORKEON_Llm__Thinking__Enabled</c>; the engine translates it into
+    /// each provider's dialect and warns, never drops, when a provider has no switch. The
+    /// knob existed in the crew YAML and the settings file but had no place in Studio, so the
+    /// run of 2026-09-20 had nowhere to turn it off (LLM-11).
+    /// </summary>
+    public bool? ThinkingEnabled { get; init; }
+
+    /// <summary>
+    /// The reasoning-effort hint this profile pins (<c>low</c> / <c>medium</c> / <c>high</c>,
+    /// <c>max</c> where the model offers it), or null for the provider's default. Travels as
+    /// <c>ORKEON_Llm__Thinking__Effort</c>.
+    /// </summary>
+    public string? ThinkingEffort { get; init; }
+
     /// <summary>Endpoint base URL.</summary>
     [SuppressMessage("Design", "CA1056",
         Justification = "User-typed form value round-tripped verbatim into a JSON string field; " +
@@ -102,6 +119,10 @@ public sealed record ModelProfile
             overrides["ORKEON_Llm__TimeoutSeconds"] = timeout.ToString(System.Globalization.CultureInfo.InvariantCulture);
         if (MaxTokens is { } maxTokens and > 0)
             overrides["ORKEON_Llm__MaxTokens"] = maxTokens.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        if (ThinkingEnabled is { } thinking)
+            overrides["ORKEON_Llm__Thinking__Enabled"] = thinking ? "true" : "false";
+        if (ThinkingEffort is { } effort && !string.IsNullOrWhiteSpace(effort))
+            overrides["ORKEON_Llm__Thinking__Effort"] = effort.Trim();
         if (KeyEnvName is { Length: > 0 } name
             && environment(name) is { } key
             && !string.IsNullOrWhiteSpace(key))

@@ -602,7 +602,7 @@
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Temperature (optional)</value></data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
   <data name="Studio.Settings.LblTimeout" xml:space="preserve"><value>Response timeout (s, optional)</value></data>
-  <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Empty: 30 s. Reasoning models (Kimi K3, thinking modes) often need 120–300 s.</value></data>
+  <data name="Studio.Settings.TimeoutHint" xml:space="preserve"><value>Empty: the engine's default, 30 s. A model that thinks before it answers routinely needs 600 s.</value></data>
   <data name="Studio.Teams.TeamMountsTitle" xml:space="preserve"><value>Folders of “{0}”</value></data>
   <data name="Studio.Teams.None" xml:space="preserve"><value>Without a folder, this team can neither read nor write any file.</value></data>
   <data name="Studio.Teams.Summary" xml:space="preserve"><value>{0} folders: {1}</value></data>
@@ -1169,4 +1169,12 @@
   <data name="Studio.Create.AddRoot" xml:space="preserve">
     <value>Add the folder</value>
   </data>
+  <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s pre-filled: {1}'s default model thinks before it answers, and a thinking answer routinely outlasts the engine's 30 s. Type another value to override.</value></data>
+  <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Thinking</value></data>
+  <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Provider default</value></data>
+  <data name="Studio.Settings.ProfileThinkingOn" xml:space="preserve"><value>On</value></data>
+  <data name="Studio.Settings.ProfileThinkingOff" xml:space="preserve"><value>Off</value></data>
+  <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. Off answers faster and cheaper; On forces the reasoning pass where the model has the switch.</value></data>
+  <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Reasoning effort</value></data>
+  <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Empty: the provider's default. low / medium / high (max on some models), for the models that take the hint.</value></data>
 </root>

@@ -174,7 +174,7 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
         sb.AppendLine("|------|-------|--------|----------|------------|---------------------------|");
         foreach (var task in snapshot.Tasks)
         {
-            var status = task.Success ? "✓ completed" : "✗ failed";
+            var status = task.Skipped ? "⊘ skipped" : task.Success ? "✓ completed" : "✗ failed";
             sb.AppendLine(
                 CultureInfo.InvariantCulture,
                 $"| {task.TaskId} | {task.AgentRole} | {status} | {task.Duration:g} | {task.ToolCallCount} | {FormatTokens(task.TokensUsed, task.CacheHitTokens, task.CacheMissTokens)} |");
@@ -182,6 +182,8 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
 
         sb.AppendLine();
         sb.AppendLine(CultureInfo.InvariantCulture, $"**Completed**: {snapshot.CompletedTaskCount} / {snapshot.Tasks.Count}");
+        if (snapshot.SkippedTaskCount > 0)
+            sb.AppendLine(CultureInfo.InvariantCulture, $"**Skipped**: {snapshot.SkippedTaskCount} (a dependency did not succeed)");
         sb.AppendLine(CultureInfo.InvariantCulture, $"**Total tokens**: {snapshot.TotalTokensUsed}");
         AppendCacheStats(sb, snapshot);
         sb.AppendLine(CultureInfo.InvariantCulture, $"**Total tool calls**: {snapshot.TotalToolCallCount}");

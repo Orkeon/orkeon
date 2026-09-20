@@ -74,6 +74,29 @@ public sealed class AppSettingsValidatorTests
     }
 
     [Fact]
+    public void The_thinking_switch_must_be_a_boolean_and_its_effort_a_string()
+    {
+        // LLM-11: Llm:Thinking:{Enabled,Effort} are the keys the runner reads.
+        var wrongSwitch = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "kimi-k2.6", "Thinking": { "Enabled": "yes" } } }""");
+        var switchMessage = Find(Validator().Validate(wrongSwitch), ValidationCodes.InvalidFieldType);
+        Assert.NotNull(switchMessage);
+        Assert.Equal("Llm:Thinking:Enabled", switchMessage.Path);
+
+        var wrongEffort = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "kimi-k2.6", "Thinking": { "Effort": { "level": "high" } } } }""");
+        var effortMessage = Find(Validator().Validate(wrongEffort), ValidationCodes.InvalidFieldType);
+        Assert.NotNull(effortMessage);
+        Assert.Equal("Llm:Thinking:Effort", effortMessage.Path);
+
+        var right = AppSettingsDocument.Parse(
+            """{ "Llm": { "Model": "kimi-k2.6", "Thinking": { "Enabled": false, "Effort": "high" } } }""");
+        Assert.Null(Find(Validator().Validate(right), ValidationCodes.InvalidFieldType));
+        Assert.False(right.Llm.ThinkingEnabled);
+        Assert.Equal("high", right.Llm.ThinkingEffort);
+    }
+
+    [Fact]
     public void A_numeric_field_spelled_as_a_numeric_string_is_accepted()
     {
         var document = AppSettingsDocument.Parse(
