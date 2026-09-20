@@ -1863,8 +1863,11 @@
   <data name="Studio.Teams.ModifyTip" xml:space="preserve">
     <value>Reabrir el asistente sobre este equipo</value>
   </data>
+  <data name="Studio.Teams.ModifyRebuild" xml:space="preserve">
+    <value>Reabrir el asistente sobre este equipo — ninguna sesión del taller apunta aquí, así que se reconstruirá a partir de los archivos del equipo</value>
+  </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
-    <value>Ninguna sesión del taller apunta a este equipo (importado, o su sesión fue eliminada).</value>
+    <value>Nada que reabrir: este equipo no tiene un crew YAML (crew/config.yaml) que el asistente pueda releer.</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>Cambiar</value>

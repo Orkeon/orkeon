@@ -1863,8 +1863,11 @@
   <data name="Studio.Teams.ModifyTip" xml:space="preserve">
     <value>Assistenten für dieses Team wieder öffnen</value>
   </data>
+  <data name="Studio.Teams.ModifyRebuild" xml:space="preserve">
+    <value>Assistenten für dieses Team wieder öffnen — keine Werkstatt-Sitzung verweist hierher, sie wird aus den Dateien des Teams neu aufgebaut</value>
+  </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
-    <value>Keine Werkstatt-Sitzung verweist auf dieses Team (importiert, oder die Sitzung wurde gelöscht).</value>
+    <value>Nichts wieder zu öffnen: dieses Team hat keine YAML-Crew (crew/config.yaml), die der Assistent zurücklesen kann.</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>Ändern</value>

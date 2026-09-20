@@ -663,7 +663,8 @@
   <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>Ils viennent des agents : c'est en modifiant un agent que vous changez ce qu'il voit.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modifier</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe</value></data>
-  <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>Aucune session d'atelier ne pointe vers cette équipe (importée, ou session supprimée).</value></data>
+  <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Rouvrir l'assistant sur cette équipe — aucune session d'atelier ne pointe ici, elle sera reconstruite depuis les fichiers de l'équipe</value></data>
+  <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>Rien à rouvrir : cette équipe n'a pas de définition YAML (config.yaml dans son dossier) que l'assistant puisse relire.</value></data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve"><value>Changer</value></data>
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Peut :</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Modifier</value></data>

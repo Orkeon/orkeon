@@ -148,6 +148,16 @@ public sealed class ForgeSessionModel
     /// <summary>Whether this run resumed an existing session.</summary>
     public bool Resumed { get; private set; }
 
+    /// <summary>
+    /// Wire state of the session <c>forge reopen</c> found or rebuilt for a team folder
+    /// (<c>team.reopened</c>, FORGE-09); null until such an event arrives. <c>test</c> is the
+    /// dry pause — the wizard opens the Composer without an engine, as after <c>--dry</c>.
+    /// </summary>
+    public string? ReopenedState { get; private set; }
+
+    /// <summary>Whether the reopen rebuilt the session from the folder rather than finding it.</summary>
+    public bool? ReopenedRebuilt { get; private set; }
+
     /// <summary>Display name of the solution — the brief's goal, once there is one.</summary>
     public string? Title { get; private set; }
 
@@ -381,6 +391,11 @@ public sealed class ForgeSessionModel
                 // for the user it IS the Adopt milestone: the crew waits to be taken.
                 if (string.Equals(FinishedStatus, "ready", StringComparison.Ordinal))
                     Milestone = ForgeMilestone.Adopt;
+                break;
+
+            case ForgeEventKinds.TeamReopened:
+                ReopenedState = orkeonEvent.GetString("state");
+                ReopenedRebuilt = orkeonEvent.GetBool("rebuilt");
                 break;
 
             case ForgeEventKinds.Error:

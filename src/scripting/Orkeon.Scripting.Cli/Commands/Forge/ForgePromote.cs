@@ -152,7 +152,7 @@ internal static class ForgePromoter
         var updating = false;
         if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
         {
-            if (!IsSameDirectory(session.Document.PromotedTo, destination))
+            if (!ForgeSession.IsSameDirectory(session.Document.PromotedTo, destination))
                 throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
 
             updating = true;
@@ -221,6 +221,11 @@ internal static class ForgePromoter
             WriteMounts = writeMounts,
         });
 
+        // The machine-readable twin of the card (FORGE-09): what `forge reopen` needs to
+        // rebuild a faithful session from this folder once the original one is gone — the
+        // brief above all, which the crew files do not carry. No secret in it.
+        ForgeTeamRecord.Write(destination, session, brief, now);
+
         return new ForgePromotionResult
         {
             Destination = destination,
@@ -229,22 +234,6 @@ internal static class ForgePromoter
             InstallCommand = installCommand,
             Updated = updating,
         };
-    }
-
-    /// <summary>
-    /// Whether <paramref name="candidate"/> is the very folder this session already
-    /// promoted to — full-path, trailing-separator-blind, case-blind on Windows.
-    /// </summary>
-    private static bool IsSameDirectory(string? promotedTo, string candidate)
-    {
-        if (string.IsNullOrWhiteSpace(promotedTo))
-            return false;
-
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return string.Equals(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(promotedTo)),
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate)),
-            comparison);
     }
 
     private static void DeleteIfExists(string directory)
@@ -834,7 +823,8 @@ internal static class ForgePromoter
         return new DateTime(utc.Year, utc.Month, utc.Day, utc.Hour, 0, 0, DateTimeKind.Unspecified).AddHours(1);
     }
 
-    private static void CopyDirectory(string source, string target)
+    /// <summary>Recursive copy; the target is created, existing files are not expected there.</summary>
+    internal static void CopyDirectory(string source, string target)
     {
         Directory.CreateDirectory(target);
         foreach (var file in Directory.GetFiles(source))

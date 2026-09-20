@@ -76,24 +76,11 @@
                   </StackPanel>
                 </Button>
                 <!-- «Modifier» took «Ouvrir»'s visible seat (amended mock, W-09):
-                     it reopens the wizard at step 2 on this team. Disabled — with the
-                     reason — when no forge session points here (imported team). -->
+                     it reopens the wizard at step 2 on this team — through its session, or
+                     through a session rebuilt from the team's files when none points here
+                     (FORGE-09). Disabled, with the reason, only for a team with no YAML crew. -->
                 <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding ModifyCommand}"
-                        ToolTipService.ShowOnDisabled="True">
-                  <Button.ToolTip>
-                    <TextBlock>
-                      <TextBlock.Style>
-                        <Style TargetType="TextBlock">
-                          <Setter Property="Text" Value="{Binding [Studio.Teams.ModifyTip], Source={x:Static services:I18n.Instance}}"/>
-                          <Style.Triggers>
-                            <DataTrigger Binding="{Binding CanModify}" Value="False">
-                              <Setter Property="Text" Value="{Binding [Studio.Teams.ModifyNoSession], Source={x:Static services:I18n.Instance}}"/>
-                            </DataTrigger>
-                          </Style.Triggers>
-                        </Style>
-                      </TextBlock.Style>
-                    </TextBlock>
-                  </Button.ToolTip>
+                        ToolTip="{Binding ModifyTooltip}" ToolTipService.ShowOnDisabled="True">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="pencil" Size="13" Margin="0,0,7,0"/>
                     <TextBlock Text="{Binding [Studio.Teams.Modify], Source={x:Static services:I18n.Instance}}"/>

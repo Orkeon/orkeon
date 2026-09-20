@@ -144,6 +144,14 @@ public sealed record TeamSummary
 
     /// <summary>Agent definitions counted on disk; null when the folder shows none.</summary>
     public int? AgentCount { get; init; }
+
+    /// <summary>
+    /// Whether the folder holds a YAML crew under <c>crew/</c> (<c>config.yaml</c> or
+    /// <c>crew.yaml</c>, no <c>crew.ork.ts</c>) — what <c>forge reopen</c> can read back into a
+    /// plan (FORGE-09). « Modify » stays possible on such a team even when no session points at
+    /// it; a script crew or a foreign layout cannot be reopened.
+    /// </summary>
+    public bool HasYamlCrew { get; init; }
 }
 
 /// <summary>
@@ -220,7 +228,24 @@ public static partial class TeamCatalog
             Mounts = resolved.Select(m => m.Effective).ToList(),
             ResolvedMounts = resolved,
             AgentCount = CountAgents(teamDirectory),
+            HasYamlCrew = HasYamlCrew(teamDirectory),
         };
+    }
+
+    /// <summary>The crew layout <c>forge reopen</c> reads: a YAML settings file under <c>crew/</c>, no script.</summary>
+    private static bool HasYamlCrew(string teamDirectory)
+    {
+        try
+        {
+            var crew = Path.Combine(teamDirectory, "crew");
+            return !File.Exists(Path.Combine(crew, "crew.ork.ts"))
+                && (File.Exists(Path.Combine(crew, ConventionalNames.CrewSettingsFile))
+                    || File.Exists(Path.Combine(crew, ConventionalNames.CrewSettingsFallbackFile)));
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
+        }
     }
 
     /// <summary>

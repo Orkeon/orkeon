@@ -59,6 +59,13 @@ public static class ForgeEventKinds
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public const string SessionFinished = "session.finished";
 
+    /// <summary>
+    /// <c>forge reopen</c> found or rebuilt the session of a promoted team folder (FORGE-09):
+    /// <c>slug</c>, <c>dir</c>, <c>path</c>, the wire <c>state</c> of the session,
+    /// <c>rebuilt</c>, and for a rebuild whether the brief was <c>recorded</c> or <c>derived</c>.
+    /// </summary>
+    public const string TeamReopened = "team.reopened";
+
     /// <summary>An anomaly, recoverable or not.</summary>
     public const string Error = "error";
 

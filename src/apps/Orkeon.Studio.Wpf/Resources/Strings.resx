@@ -663,7 +663,8 @@
   <data name="Studio.Create.DerivedHint" xml:space="preserve"><value>They come from the agents: editing an agent is what changes what it sees.</value></data>
   <data name="Studio.Teams.Modify" xml:space="preserve"><value>Modify</value></data>
   <data name="Studio.Teams.ModifyTip" xml:space="preserve"><value>Reopen the assistant on this team</value></data>
-  <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>No workshop session points at this team (imported, or its session was deleted).</value></data>
+  <data name="Studio.Teams.ModifyRebuild" xml:space="preserve"><value>Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files</value></data>
+  <data name="Studio.Teams.ModifyNoSession" xml:space="preserve"><value>Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back.</value></data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve"><value>Change</value></data>
   <data name="Studio.Create.AgentCan" xml:space="preserve"><value>Can:</value></data>
   <data name="Studio.Create.Modify" xml:space="preserve"><value>Edit</value></data>

@@ -42,8 +42,12 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
     public ForgeSolutionSummary Session { get; } = session;
 }
 
-/// <summary>Payload of a «Modifier» request (W-09): the team and the session that adopted it.</summary>
-public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary session) : EventArgs
+/// <summary>
+/// Payload of a «Modifier» request (W-09): the team and the session that adopted it — or no
+/// session at all (FORGE-09), in which case the wizard has the engine rebuild one from the
+/// team's folder.
+/// </summary>
+public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary? session) : EventArgs
 {
     /// <summary>The adopted team, as the catalog listed it.</summary>
     [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
@@ -51,11 +55,11 @@ public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary s
                       + "assignment of the member, and removing it would leave it unset.")]
     public TeamSummary Team { get; } = team;
 
-    /// <summary>The forge session whose <c>promotedTo</c> is the team folder.</summary>
+    /// <summary>The forge session whose <c>promotedTo</c> is the team folder; null when none points at it.</summary>
     [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
         Justification = "False positive on a primary constructor: the initializer IS the only "
                       + "assignment of the member, and removing it would leave it unset.")]
-    public ForgeSolutionSummary Session { get; } = session;
+    public ForgeSolutionSummary? Session { get; } = session;
 }
 
 /// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
@@ -118,10 +122,16 @@ public sealed class TeamCardViewModel : ObservableObject
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
         TestCommand = new RelayCommand(() => owner.RequestTest(summary.Path));
-        // «Modifier» (W-09): only a team some session promoted can reopen the wizard —
-        // an imported team, or one whose session is gone, keeps the button disabled with
+        // «Modifier» (W-09, FORGE-09): through the session that promoted the team when one
+        // still points here, else through a session the engine rebuilds from the team's own
+        // crew/ — so an imported team, or one whose session is gone, is modifiable again and
+        // not only relaunchable. Only a team with no YAML crew keeps the button disabled,
         // the tooltip saying why. Resolved at card build; Refresh() rebuilds the cards.
-        CanModify = owner.FindSessionFor(summary) is not null;
+        var session = owner.FindSessionFor(summary);
+        CanModify = session is not null || summary.HasYamlCrew;
+        ModifyTooltip = strings[session is not null
+            ? StudioStringKeys.TeamsModifyTip
+            : summary.HasYamlCrew ? StudioStringKeys.TeamsModifyRebuild : StudioStringKeys.TeamsModifyNoSession];
         ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify);
         ToggleDescriptionCommand = new RelayCommand(() => IsDescriptionExpanded = !IsDescriptionExpanded);
     }
@@ -129,8 +139,11 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>« Modifier » — reopens the wizard at step 2 on this team (W-09).</summary>
     public RelayCommand ModifyCommand { get; }
 
-    /// <summary>Whether a forge session points at this team folder.</summary>
+    /// <summary>Whether the wizard can reopen on this team: a session points at it, or its crew can be read back.</summary>
     public bool CanModify { get; }
+
+    /// <summary>The Modify button's tooltip: reopen, reopen through a rebuilt session, or why neither is possible.</summary>
+    public string ModifyTooltip { get; }
 
     /// <summary>"Change the folders" — the team-mounts modal (remediation v2, F-02).</summary>
     public RelayCommand ChangeMountsCommand { get; }
@@ -488,7 +501,8 @@ public sealed class TeamsViewModel : ObservableObject
 
     internal void RequestModify(TeamSummary team)
     {
-        if (FindSessionFor(team) is { } session)
+        var session = FindSessionFor(team);
+        if (session is not null || team.HasYamlCrew)
             ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team, session));
     }
 

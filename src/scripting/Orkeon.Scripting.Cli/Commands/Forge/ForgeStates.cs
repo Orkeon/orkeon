@@ -102,6 +102,16 @@ internal enum ForgeTrigger
     /// </summary>
     TrialSkipped,
 
+    /// <summary>
+    /// A session was rebuilt from a promoted team's folder (<c>forge reopen</c>, FORGE-09):
+    /// the plan read back from <c>crew/</c>, the brief from <c>forge.json</c> when the
+    /// promotion left one, derived from the plan otherwise. Lands at the dry pause — the
+    /// boundary where a rendered, validated crew waits for a trial, an amendment or an
+    /// adoption — so a team whose session is gone, or that was never forged here, can be
+    /// modified again instead of only relaunched.
+    /// </summary>
+    Rebuilt,
+
     /// <summary>The user stopped the cycle.</summary>
     Abandon,
 

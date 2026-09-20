@@ -188,4 +188,10 @@ internal static class ForgeErrorCodes
 
     /// <summary>A command was asked of a session that is not where that command applies.</summary>
     public const string InvalidState = "FORGE-INVALID-STATE";
+
+    /// <summary>
+    /// <c>forge reopen</c> found no crew it can read back into a plan under the team folder
+    /// (no folder, no YAML crew, a script crew, or files that do not describe a valid plan).
+    /// </summary>
+    public const string TeamUnreadable = "FORGE-TEAM-UNREADABLE";
 }

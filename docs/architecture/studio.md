@@ -377,9 +377,16 @@ iteration), and re-adoption **updates the same team folder** — generated files
 the user's own files survive, and renaming the team only changes its display
 name. After an adoption the wizard is a blank step 1 again (STUDIO-20): modifying
 an adopted team goes through « Modify » on its card, and the reopened arbitration
-offers `retry`. Teams without a session — imported, or whose session was deleted
-— keep « Modify » disabled,
-with the reason in the tooltip.
+offers `retry`. A team no session points at — imported, or whose session was
+deleted — is modifiable too (FORGE-09): the card's « Modify » runs the engine's
+`forge reopen <team-folder>`, which rebuilds a session from the team's own `crew/`
+(brief from the promotion's `forge.json`, derived from the plan otherwise) and parks it
+at the dry pause; the wizard reads the session off `session.started` /
+`team.reopened` and opens the Composer without an engine, as after `--dry` — amend
+an agent, try the team, or keep it as it is, then re-adopt onto the same folder.
+`TeamSummary.HasYamlCrew` is the gate: only a team with no YAML crew under `crew/`
+(a script crew, a foreign layout) keeps « Modify » disabled, the tooltip saying why;
+the tooltip also says when the reopen goes through a rebuilt session.
 
 ### Tools and MCP in the settings (STUDIO-21)
 

@@ -412,8 +412,17 @@ lanceurs, `FORGE.md`, `schedule/`) sont régénérés, le sidecar et les fichier
 l'utilisateur survivent, renommer l'équipe ne change que son nom d'affichage.
 Après une adoption, l'assistant est de nouveau une étape 1 vierge (STUDIO-20) :
 modifier une équipe adoptée passe par « Modifier » sur sa carte, et l'arbitrage
-rouvert propose `retry`. Une équipe sans session — importée, ou session
-supprimée — garde « Modifier » désactivé, la raison en infobulle.
+rouvert propose `retry`. Une équipe vers laquelle aucune session ne pointe —
+importée, ou session supprimée — se modifie aussi (FORGE-09) : le « Modifier » de
+la carte lance le `forge reopen <dossier-equipe>` du moteur, qui reconstruit une
+session depuis le `crew/` de l'équipe (brief tiré du `forge.json` de la promotion,
+dérivé du plan sinon) et la pose à la pause sèche ; le wizard lit la session sur
+`session.started` / `team.reopened` et ouvre le Composer sans moteur, comme après
+`--dry` — amender un agent, essayer l'équipe ou la garder telle quelle, puis
+ré-adopter sur le même dossier. `TeamSummary.HasYamlCrew` est la porte : seule une
+équipe sans crew YAML sous `crew/` (crew script, disposition étrangère) garde
+« Modifier » désactivé, la raison en infobulle ; l'infobulle dit aussi quand la
+réouverture passe par une session reconstruite.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 

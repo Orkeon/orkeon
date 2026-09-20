@@ -690,4 +690,33 @@ public sealed class ForgePromoteTests : IDisposable
         var posix = File.ReadAllText(Path.Combine(Destination, ForgePromoter.PosixLauncherName));
         Assert.DoesNotContain("--mount", posix, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// FORGE-09: the folder carries a machine-readable twin of the card — the brief and the
+    /// session's identity — so <c>forge reopen</c> can rebuild a faithful session once the
+    /// original is gone. A re-promotion overwrites it; nothing secret is in it.
+    /// </summary>
+    [Fact]
+    public void The_promoted_folder_records_its_brief_and_identity_for_a_later_reopen()
+    {
+        var session = ReadySession();
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        var record = ForgeTeamRecord.TryRead(Destination);
+        Assert.NotNull(record);
+        Assert.Equal("veille", record.Slug);
+        Assert.Equal("Résumer chaque matin les nouvelles offres", record.Title);
+        Assert.Equal("yaml", record.Format);
+        Assert.Equal("2026-08-19T10:00:00Z", record.PromotedAt);
+        Assert.Equal("Résumer chaque matin les nouvelles offres du fournisseur", record.Brief!.Goal);
+        Assert.Equal(["A1", "A2"], record.Brief.Acceptance!.Select(a => a.Id));
+
+        // Absent or broken, the record is simply not there — never a throw.
+        File.WriteAllText(Path.Combine(Destination, ForgeTeamRecord.FileName), "{not json");
+        Assert.Null(ForgeTeamRecord.TryRead(Destination));
+        Assert.Null(ForgeTeamRecord.TryRead(Path.Combine(Destination, "nowhere")));
+    }
 }

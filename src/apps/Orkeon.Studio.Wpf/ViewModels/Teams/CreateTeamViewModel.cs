@@ -2182,11 +2182,18 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// 2 with the whole stepper reachable, and the adoption fields are seeded from the
     /// sidecar. Re-adoption then updates the SAME folder: the destination is pinned,
     /// renaming only changes the display name.
+    /// <para>
+    /// With no <paramref name="session"/> (FORGE-09) — an imported team, or one whose session
+    /// was deleted — the engine's <c>forge reopen</c> rebuilds one from the team's own
+    /// <c>crew/</c> first: offline, no LLM. It lands at the dry pause, so the wizard opens the
+    /// Composer without an engine, exactly as after <c>--dry</c>: amend an agent, try the team,
+    /// or keep it as it is. A reopen that finds an existing session at any other state resumes
+    /// it through the engine, as above.
+    /// </para>
     /// </summary>
-    public async Task ReopenTeamAsync(TeamSummary team, ForgeSolutionSummary session)
+    public async Task ReopenTeamAsync(TeamSummary team, ForgeSolutionSummary? session)
     {
         ArgumentNullException.ThrowIfNull(team);
-        ArgumentNullException.ThrowIfNull(session);
         if (IsEngineRunning)
             return;
 
@@ -2194,6 +2201,18 @@ public sealed class CreateTeamViewModel : ObservableObject
         ClearStepOneFolders();
         ResetProjection();
         _reopenedTeamPath = team.Path;
+
+        if (session is null)
+        {
+            session = await RebuildSessionAsync(team).ConfigureAwait(true);
+            if (session is null)
+            {
+                // The failure card says why (no CLI, no readable crew…); the team stays as it is.
+                _reopenedTeamPath = null;
+                return;
+            }
+        }
+
         ForgeSessionHydrator.Hydrate(_model, session.Directory);
 
         TeamName = team.Name;
@@ -2212,6 +2231,15 @@ public sealed class CreateTeamViewModel : ObservableObject
         SessionActivated?.Invoke(this, EventArgs.Empty);
         SyncFromModel();
 
+        // The dry pause (a rebuilt session, or one adopted without a trial and reopened):
+        // the Composer review, no engine — the trial stays the user's click, as in ResumeAsync.
+        if (string.Equals(session.State, "Test", StringComparison.OrdinalIgnoreCase))
+        {
+            _model.MarkPaused();
+            SyncFromModel();
+            return;
+        }
+
         await RunEngineAsync(new ForgeStartRequest
         {
             ResumeSlug = session.Slug,
@@ -2219,6 +2247,39 @@ public sealed class CreateTeamViewModel : ObservableObject
             ReadDirectory = ReadRoot(),
             EnvironmentOverrides = AssistantEnvironment(),
         }).ConfigureAwait(false);
+    }
+
+    /// <summary>
+    /// Runs <c>forge reopen &lt;team&gt;</c> and reads the session it found or rebuilt off the
+    /// stream: <c>session.started</c> gives the slug and directory, <c>team.reopened</c> the
+    /// state. Null when the engine produced none — the run's own failure card is up by then.
+    /// </summary>
+    private async Task<ForgeSolutionSummary?> RebuildSessionAsync(TeamSummary team)
+    {
+        await RunEngineAsync(new ForgeStartRequest
+        {
+            ReopenDirectory = team.Path,
+            WorkingDirectory = _workspace,
+        }).ConfigureAwait(true);
+
+        if (_model.Slug is not { Length: > 0 } slug
+            || _model.Directory is not { Length: > 0 } directory
+            || _model.ReopenedState is not { Length: > 0 } state)
+        {
+            return null;
+        }
+
+        // The wire spells states lowercase; the catalog's summaries carry the document's
+        // PascalCase. One spelling in the summary, so the pause test below reads either.
+        var documentState = char.ToUpperInvariant(state[0]) + state[1..];
+        return new ForgeSolutionSummary
+        {
+            Slug = slug,
+            State = documentState,
+            Status = documentState is "Ready" or "Promoted" or "Abandoned" or "Failed" ? documentState : "Active",
+            Directory = directory,
+            PromotedTo = team.Path,
+        };
     }
 
     /// <summary>Projects the sidecar's schedule string back onto the step-4 radios.</summary>

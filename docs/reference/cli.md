@@ -57,11 +57,14 @@ orkeon forge resume <slug>                     # pick a session up exactly where
 orkeon forge resume <slug> --read <dir>        # try it on the documents in <dir>
 orkeon forge resume <slug> --adopt             # keep the team as generated, without a trial
 orkeon forge promote <slug> --to <dir>         # ship a ready session as an ordinary folder
+orkeon forge reopen <team-folder>              # find — or rebuild from crew/ — the session of a promoted team
 ```
 
 The Atelier: a guided path from a need in plain words to a deployable crew. An assistant interviews you and captures a structured brief — goal, inputs, **acceptance criteria**, a sample input — then proposes a team plan, renders it, validates it, **tries it in a sandbox on your sample**, and judges the result **against your own criteria**. Not conforming? The diagnosis feeds a refine loop, bounded by a hard budget (iterations, tokens, wall time). Every session lives under `.orkeon/forge/<slug>/` — resumable, diffable between attempts, auditable.
 
-Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forge refuses to open the interview without one (`FORGE-LLM-UNAVAILABLE`) rather than degrade silently. `list` and `promote` are fully offline.
+Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forge refuses to open the interview without one (`FORGE-LLM-UNAVAILABLE`) rather than degrade silently. `list`, `promote` and `reopen` are fully offline.
+
+`reopen <team-folder>` makes a promoted team modifiable again when its session is gone — deleted, or the folder was forged on another machine or imported. When a session still points at the folder (`promotedTo`), it is only named: resume it. Otherwise a session is **rebuilt** from the folder itself: the plan is read back from `crew/` (per-entity `config.yaml` + `agents/` + `tasks/`, or a single `crew.yaml`), the brief comes from the `forge.json` every promotion now writes next to `FORGE.md` — or is derived from the plan, and the command says so — and the crew is copied verbatim. The rebuilt session lands at the `--dry` pause, pointing back at the folder: `resume --edit --dry`, `resume`, `resume --adopt` follow as usual, and a `promote --to` onto the same folder updates it in place. A folder with no YAML crew (a script crew, a foreign layout, files that do not describe a valid plan) is refused with `FORGE-TEAM-UNREADABLE` and the reasons; the verb takes no option but `--events`. This is how Orkeon Studio's « Modify » works on a team no session points at.
 
 | Option | Description |
 |---|---|
@@ -81,7 +84,7 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 
 The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the working directory — or the `--read` folder — mounted read-only as `/workspace`, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
 
-The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, and `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
+The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language — and `forge.json`, its machine-readable twin (slug, title, format, promotion instant, brief) that `forge reopen` reads. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
 
 ## `orkeon init`
 

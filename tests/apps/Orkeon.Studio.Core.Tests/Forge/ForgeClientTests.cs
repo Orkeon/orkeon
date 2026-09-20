@@ -371,4 +371,24 @@ public sealed class ForgeSessionCatalogTests : IDisposable
         Assert.Equal("veille", ForgeSessionCatalog.FindByPromotedTo(_workspace, teamDirectory)?.Slug);
         Assert.Null(ForgeSessionCatalog.FindByPromotedTo(_workspace, Path.Combine(_workspace, "teams", "inconnue")));
     }
+
+    /// <summary>
+    /// FORGE-09: « Modify » on a team no session points at runs <c>forge reopen</c> on the
+    /// folder — and nothing else: the verb starts no cycle, and the engine refuses every
+    /// cycle option on it, so the request's other fields never reach the argv.
+    /// </summary>
+    [Fact]
+    public void The_reopen_argv_carries_the_team_folder_and_nothing_else()
+    {
+        Assert.Equal(
+            ["forge", "reopen", "/teams/veille", "--events", "jsonl"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest
+            {
+                ReopenDirectory = "/teams/veille",
+                ResumeSlug = "ignored",
+                SettingsPath = "/ws/appsettings.json",
+                ReadDirectory = "/data",
+                Dry = true,
+            }));
+    }
 }

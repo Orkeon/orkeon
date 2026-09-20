@@ -1257,6 +1257,15 @@ public static class StudioStringKeys
     /// <summary>"Every hour"</summary>
     public const string TeamsHourly = "Studio.Teams.Hourly";
 
+    /// <summary>"Reopen the assistant on this team"</summary>
+    public const string TeamsModifyTip = "Studio.Teams.ModifyTip";
+
+    /// <summary>"Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files"</summary>
+    public const string TeamsModifyRebuild = "Studio.Teams.ModifyRebuild";
+
+    /// <summary>"Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back."</summary>
+    public const string TeamsModifyNoSession = "Studio.Teams.ModifyNoSession";
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -1990,6 +1999,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsOnDemand] = "On demand",
         [StudioStringKeys.TeamsDaily] = "Every day at {0}",
         [StudioStringKeys.TeamsHourly] = "Every hour",
+        [StudioStringKeys.TeamsModifyTip] = "Reopen the assistant on this team",
+        [StudioStringKeys.TeamsModifyRebuild] = "Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files",
+        [StudioStringKeys.TeamsModifyNoSession] = "Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back.",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

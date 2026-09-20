@@ -1863,8 +1863,11 @@
   <data name="Studio.Teams.ModifyTip" xml:space="preserve">
     <value>为此团队重新打开助手</value>
   </data>
+  <data name="Studio.Teams.ModifyRebuild" xml:space="preserve">
+    <value>为此团队重新打开助手——没有工坊会话指向这里，将根据团队文件重建一个</value>
+  </data>
   <data name="Studio.Teams.ModifyNoSession" xml:space="preserve">
-    <value>没有工坊会话指向该团队（可能是导入的，或其会话已被删除）。</value>
+    <value>无可重新打开：该团队没有助手可以读回的 YAML crew（crew/config.yaml）。</value>
   </data>
   <data name="Studio.Create.AdoptChange" xml:space="preserve">
     <value>更换</value>

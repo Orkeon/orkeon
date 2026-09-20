@@ -276,4 +276,27 @@ public class ForgeSessionModelTests
         Assert.True(model.LastError.Recoverable);
         Assert.Equal("ready", model.FinishedStatus);
     }
+
+    /// <summary>
+    /// FORGE-09: <c>team.reopened</c> tells the wizard where the session the engine found or
+    /// rebuilt stands — <c>test</c> is the dry pause, opened without an engine — and whether
+    /// it was rebuilt. Until it arrives, the model says nothing about it.
+    /// </summary>
+    [Fact]
+    public void A_team_reopened_event_records_the_state_and_whether_it_was_rebuilt()
+    {
+        var model = new ForgeSessionModel();
+        Assert.Null(model.ReopenedState);
+        Assert.Null(model.ReopenedRebuilt);
+
+        model.Feed(Event("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}"""));
+        model.Feed(Event("""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille","dir":"/ws/.orkeon/forge/veille","path":"/teams/veille","state":"test","rebuilt":true,"brief":"derived"}"""));
+        model.Feed(Event("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+        Assert.Equal("veille", model.Slug);
+        Assert.Equal("/ws/.orkeon/forge/veille", model.Directory);
+        Assert.Equal("test", model.ReopenedState);
+        Assert.True(model.ReopenedRebuilt);
+        Assert.Equal("paused", model.FinishedStatus);
+    }
 }

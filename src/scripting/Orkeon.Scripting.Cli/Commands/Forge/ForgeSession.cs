@@ -271,6 +271,50 @@ internal sealed class ForgeSession
         return false;
     }
 
+    /// <summary>
+    /// The session that promoted <paramref name="teamDirectory"/>, or null — the reverse lookup
+    /// from a team folder to its session (every session records its <c>promotedTo</c>, no team
+    /// folder records its session). Corrupt sessions are skipped, like <see cref="List"/>.
+    /// </summary>
+    public static ForgeSession? FindPromotedTo(string workspaceDirectory, string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var root = RootFor(workspaceDirectory);
+        if (!System.IO.Directory.Exists(root))
+            return null;
+
+        foreach (var directory in System.IO.Directory.EnumerateDirectories(root))
+        {
+            if (TryLoad(directory, out var session, out _)
+                && session is not null
+                && IsSameDirectory(session.Document.PromotedTo, teamDirectory))
+            {
+                return session;
+            }
+        }
+
+        return null;
+    }
+
+    /// <summary>
+    /// Whether <paramref name="candidate"/> is the very folder <paramref name="promotedTo"/>
+    /// names — full-path, trailing-separator-blind, case-blind on Windows. Shared by the
+    /// promoter (update in place) and the reopen (find the session).
+    /// </summary>
+    public static bool IsSameDirectory(string? promotedTo, string candidate)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(candidate);
+        if (string.IsNullOrWhiteSpace(promotedTo))
+            return false;
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        return string.Equals(
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(promotedTo)),
+            Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate)),
+            comparison);
+    }
+
     /// <summary>The sessions of a workspace, most recently touched first. Corrupt ones are skipped.</summary>
     public static IReadOnlyList<ForgeSessionSummary> List(string workspaceDirectory)
     {

@@ -365,6 +365,37 @@ public sealed class TeamCatalogDescribeTargetTests : IDisposable
         Assert.Equal("crew", described.Name);
         Assert.Null(described.AgentCount);
     }
+
+    /// <summary>
+    /// FORGE-09: a team « Modify » can reopen without a session is one whose <c>crew/</c> the
+    /// engine can read back — a YAML settings file, no script. A folder with agents but no
+    /// <c>crew/</c>, a script crew, or a bare sidecar cannot be rebuilt from.
+    /// </summary>
+    [Fact]
+    public void A_team_says_whether_its_crew_can_be_read_back()
+    {
+        var yaml = Path.Combine(_root, "yaml");
+        Directory.CreateDirectory(Path.Combine(yaml, "crew"));
+        File.WriteAllText(Path.Combine(yaml, "crew", "config.yaml"), "name: veille\n");
+        Assert.True(TeamCatalog.Describe(yaml).HasYamlCrew);
+
+        var fallback = Path.Combine(_root, "fallback");
+        Directory.CreateDirectory(Path.Combine(fallback, "crew"));
+        File.WriteAllText(Path.Combine(fallback, "crew", "crew.yaml"), "name: veille\n");
+        Assert.True(TeamCatalog.Describe(fallback).HasYamlCrew);
+
+        var script = Path.Combine(_root, "script");
+        Directory.CreateDirectory(Path.Combine(script, "crew"));
+        File.WriteAllText(Path.Combine(script, "crew", "config.yaml"), "name: veille\n");
+        File.WriteAllText(Path.Combine(script, "crew", "crew.ork.ts"), "// crew");
+        Assert.False(TeamCatalog.Describe(script).HasYamlCrew);
+
+        var flat = Path.Combine(_root, "flat");
+        Directory.CreateDirectory(Path.Combine(flat, "agents"));
+        File.WriteAllText(Path.Combine(flat, "agents", "a.yaml"), "role: a\n");
+        Assert.False(TeamCatalog.Describe(flat).HasYamlCrew);
+        Assert.False(TeamCatalog.Describe(Path.Combine(_root, "absent")).HasYamlCrew);
+    }
 }
 
 /// <summary>The forge working directory must exist before Process.Start refuses it.</summary>

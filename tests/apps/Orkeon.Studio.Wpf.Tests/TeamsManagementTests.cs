@@ -227,6 +227,60 @@ public sealed class TeamsManagementTests
                 Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// FORGE-09. « Modify » is no longer hostage to the session: a team some session promoted
+    /// reopens through it; a team no session points at but whose <c>crew/</c> is YAML reopens
+    /// through a session the engine rebuilds — the request then carries no session, and the
+    /// tooltip says so; only a team with nothing to read back keeps the button disabled.
+    /// </summary>
+    [Fact]
+    public void Modify_is_offered_through_the_session_or_through_a_rebuild_and_refused_only_without_a_crew()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var promoted = SeedTeam(root, "promue", "Promue");
+            Directory.CreateDirectory(Path.Combine(promoted, "crew"));
+            File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: promue\n");
+            var orphan = SeedTeam(root, "orpheline", "Orpheline");
+            Directory.CreateDirectory(Path.Combine(orphan, "crew"));
+            File.WriteAllText(Path.Combine(orphan, "crew", "config.yaml"), "name: orpheline\n");
+            var bare = SeedTeam(root, "nue", "Nue");
+
+            var session = new ForgeSolutionSummary
+            {
+                Slug = "promue", State = "Promoted", Status = "Promoted",
+                Directory = Path.Combine(root, "session"), PromotedTo = promoted,
+            };
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [session] });
+            var requests = new List<TeamModifyEventArgs>();
+            teams.ModifyRequested += (_, e) => requests.Add(e);
+            var strings = Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance;
+
+            var byName = teams.Teams.ToDictionary(card => card.Name, StringComparer.Ordinal);
+            Assert.True(byName["Promue"].CanModify);
+            Assert.Equal(strings[Orkeon.Studio.Core.Localization.StudioStringKeys.TeamsModifyTip], byName["Promue"].ModifyTooltip);
+            Assert.True(byName["Orpheline"].CanModify);
+            Assert.Equal(strings[Orkeon.Studio.Core.Localization.StudioStringKeys.TeamsModifyRebuild], byName["Orpheline"].ModifyTooltip);
+            Assert.False(byName["Nue"].CanModify);
+            Assert.False(byName["Nue"].ModifyCommand.CanExecute(null));
+            Assert.Equal(strings[Orkeon.Studio.Core.Localization.StudioStringKeys.TeamsModifyNoSession], byName["Nue"].ModifyTooltip);
+
+            byName["Promue"].ModifyCommand.Execute(null);
+            byName["Orpheline"].ModifyCommand.Execute(null);
+            Assert.Equal(2, requests.Count);
+            Assert.Same(session, requests[0].Session);
+            Assert.Equal(promoted, requests[0].Team.Path);
+            Assert.Null(requests[1].Session);
+            Assert.Equal(orphan, requests[1].Team.Path);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 /// <summary>
@@ -412,4 +466,5 @@ public sealed class NavigationDraftTests
         Assert.False(vm.Chat.IsAsking);
         Assert.Contains("message", vm.DraftLine, StringComparison.OrdinalIgnoreCase);
     }
+
 }

@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- FORGE-09 -->
+### Added — « Modify » without a session: `orkeon forge reopen <team-folder>` rebuilds one from the team's files (FORGE-09)
+
+- **A promoted team no longer needs its forge session to be modified.** `orkeon forge reopen
+  <team-folder>` (offline, `--events` its only option) names the session whose `promotedTo` is
+  the folder when one exists, and otherwise **rebuilds** one from the folder itself: the plan is
+  read back from `crew/` (per-entity or single-file YAML) into a blueprint, the brief comes from
+  the new `forge.json`, the crew is copied verbatim, and the session lands at the `--dry` pause
+  with `promotedTo` set — `resume --edit --dry`, `resume`, `resume --adopt` and a `promote --to`
+  onto the same folder follow as usual (`ForgeSessionRebuilder`, `ForgeTeamReader`,
+  `ForgeTrigger.Rebuilt`, event `team.reopened {slug, dir, path, state, rebuilt, brief}`). A
+  folder with no readable YAML crew is refused with `FORGE-TEAM-UNREADABLE` and the reasons.
+- **`forge promote` writes `forge.json`** next to `FORGE.md`: the session's slug, title, format,
+  promotion instant and the brief — the machine-readable twin of the card, nothing secret in it.
+  Without it (teams promoted earlier, imported crews) the rebuild derives a minimal brief from
+  the plan and says `brief: derived`.
+- **Orkeon Studio.** « Modify » on a team card is enabled for every team whose `crew/` holds a
+  YAML definition (`TeamSummary.HasYamlCrew`), session or not; without a session the wizard runs
+  `forge reopen` on the folder, reads the rebuilt session off the stream and opens the Composer
+  at the dry pause (agents editable, « Try the team » / « Adopt without trying », adoption
+  fields seeded from the sidecar, re-adoption pinned to the folder). The tooltip says whether
+  the reopen goes through the session or a rebuilt one; only a team with no YAML crew keeps the
+  button disabled, with the reason (`Studio.Teams.ModifyRebuild`, `Studio.Teams.ModifyNoSession`
+  reworded, five cultures).
+
 ### Added — the Launch screen's command can be copied, and « Open the result » opens every writable folder
 
 - Orkeon Studio's COMMANDE well is selectable and « Copy the command » puts the exact

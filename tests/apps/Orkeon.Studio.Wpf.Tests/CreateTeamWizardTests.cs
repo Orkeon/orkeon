@@ -2377,6 +2377,135 @@ public class CreateTeamWizardTests
         Assert.False(vm.HasFailure);
         Assert.False(vm.IsEngineRunning);
     }
+
+    // ── FORGE-09: « Modify » without a session — the engine rebuilds one from the team's folder ──
+
+    /// <summary>
+    /// A YAML team with no <c>crew/</c>-reading session: the promoted folder is all there is.
+    /// Written the way the catalog reads it, with a sidecar to seed the adoption fields.
+    /// </summary>
+    private static async Task<(string Root, string TeamDir, string SessionDir)> WriteOrphanTeam()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-rebuild-" + Guid.NewGuid().ToString("N"));
+        var teamDir = Path.Combine(root, "teams", "veille-docs");
+        var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille-docs");
+        Directory.CreateDirectory(Path.Combine(teamDir, "crew"));
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "crew", "config.yaml"), "name: veille\ngoal: g\n", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "studio-team.json"),
+            """{"name":"Veille docs","description":"le besoin d'origine","profile":"Local","schedule":"daily@07:30","mounts":["./output:/output:rw"]}""", TestContext.Current.CancellationToken);
+        return (root, teamDir, sessionDir);
+    }
+
+    /// <summary>The engine's own writes during <c>forge reopen</c>: the rebuilt session, parked at the dry pause.</summary>
+    private static void WriteRebuiltSession(string sessionDir, string teamDir)
+    {
+        Directory.CreateDirectory(sessionDir);
+        File.WriteAllText(Path.Combine(sessionDir, "session.json"),
+            $$"""{"v":1,"slug":"veille-docs","title":"veille","format":"yaml","state":"Test","status":"Active","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""");
+        File.WriteAllText(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille","goal":"g"},"agents":[{"key":"a","role":"Scanner","goal":"g","tools":["file_write"]}],"tasks":[{"key":"t","description":"d","expectedOutput":"e","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"read back"}""");
+    }
+
+    /// <summary>
+    /// The owner's case: « Modify » greyed out on an imported team, or one whose session was
+    /// deleted. The wizard now runs <c>forge reopen</c> on the folder — one offline child, no
+    /// resume — reads the rebuilt session off the stream, and opens the Composer at the dry
+    /// pause: agents editable, the trial and the adoption on offer, the adoption fields seeded
+    /// from the sidecar, and the re-adoption pinned to the same folder.
+    /// </summary>
+    [Fact]
+    public async Task Modify_on_a_team_without_a_session_has_the_engine_rebuild_one_and_opens_the_composer()
+    {
+        var (root, teamDir, sessionDir) = await WriteOrphanTeam();
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"format":"yaml","resumed":false}"""),
+                Out($$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"path":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+            ]);
+            var team = TeamCatalog.Describe(teamDir);
+            Assert.True(team.HasYamlCrew);
+
+            await vm.ReopenTeamAsync(team, session: null);
+
+            // One child, the reopen — no resume: the dry pause opens without an engine.
+            Assert.Equal(["forge", "reopen", teamDir, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
+            Assert.False(vm.IsEngineRunning);
+            Assert.False(vm.HasFailure);
+            Assert.Equal(2, vm.Step);
+            Assert.Equal(4, vm.MaxStep);
+            Assert.Equal(teamDir, vm.ReopenedTeamPath);
+            Assert.True(vm.CanTryTeam);
+            Assert.True(vm.AdoptWithoutTrialCommand.CanExecute(null));
+            Assert.True(vm.CanEditAgents);
+            Assert.Equal("Scanner", Assert.Single(vm.Agents).Name);
+            Assert.Equal("Veille docs", vm.TeamName);
+            Assert.Equal("Local", vm.AdoptProfileName);
+            Assert.Equal(1, vm.ScheduleChoice);
+            Assert.Equal("07:30", vm.ScheduleTime);
+            Assert.Contains("./output:/output:rw", vm.TeamMounts);
+
+            // Kept as it is (the dry pause's offline answer), then re-adopted onto the SAME folder.
+            processes.WhileRunning = null;
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+            await vm.AdoptWithoutTrialCommand.ExecuteAsync();
+            Assert.Equal(["forge", "resume", "veille-docs", "--events", "jsonl", "--adopt"], processes.Requests[1].Arguments);
+            Assert.True(vm.CanSaveTeam);
+
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.Add(Out(
+                """{"v":2,"seq":1,"ts":"t","kind":"promoted","path":PATH,"launcher":"run.sh","updated":true}"""
+                    .Replace("PATH", System.Text.Json.JsonSerializer.Serialize(teamDir), StringComparison.Ordinal)));
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            var promote = processes.Requests[2].Arguments.ToList();
+            Assert.Equal(teamDir, promote[promote.IndexOf("--to") + 1]);
+            Assert.Equal("le besoin d'origine", TeamCatalog.Describe(teamDir).Description);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A rebuild the engine refuses (nothing it can read back) is a failure card like any
+    /// other engine refusal — the engine's own code and words — and the wizard stays where it
+    /// was: no reopened folder pinned, step 1 untouched.
+    /// </summary>
+    [Fact]
+    public async Task A_refused_rebuild_shows_the_engines_refusal_and_pins_nothing()
+    {
+        var (root, teamDir, _) = await WriteOrphanTeam();
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.ExitCode = 1;
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"error","code":"FORGE-TEAM-UNREADABLE","message":"holds no crew the forge can read back into a plan","recoverable":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"failed","exitCode":1}"""),
+            ]);
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+
+            Assert.True(vm.HasFailure);
+            Assert.Equal(WizardFailureKind.ConfigRefused, vm.Failure!.Kind);
+            Assert.Contains("FORGE-TEAM-UNREADABLE", vm.Failure.Detail, StringComparison.Ordinal);
+            Assert.Null(vm.ReopenedTeamPath);
+            Assert.Equal(1, vm.Step);
+            Assert.False(vm.IsEngineRunning);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 /// <summary>A question asked while the engine is not listening must not vanish silently.</summary>

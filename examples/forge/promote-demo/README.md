@@ -19,6 +19,7 @@ my-solution/
 ├── crew/                 the team, exactly as it was tried
 ├── run.sh / run.cmd      launch scripts with the brief's sample inputs pre-filled
 ├── FORGE.md              the crew's identity card: goal, acceptance criteria, verdict
+├── forge.json            its machine-readable twin: slug, title, brief — what `forge reopen` rebuilds from
 └── schedule/             Windows task XML · systemd timer · cron line
                           (the install command is displayed, never executed)
 ```

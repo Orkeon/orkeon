@@ -26,6 +26,13 @@ internal sealed record ForgeCommandOptions
     /// <summary><c>forge promote &lt;slug&gt;</c>.</summary>
     public string? PromoteSlug { get; init; }
 
+    /// <summary>
+    /// <c>forge reopen &lt;team-folder&gt;</c>: the promoted folder to reopen the atelier on
+    /// (FORGE-09). Offline: finds the session that promoted it, or rebuilds one from its
+    /// <c>crew/</c> when that session is gone or never existed here.
+    /// </summary>
+    public string? ReopenDirectory { get; init; }
+
     /// <summary><c>--to</c>: destination directory of a promotion.</summary>
     public string? Destination { get; init; }
 
@@ -135,14 +142,24 @@ internal sealed record ForgeCommandOptions
         return Reconcile(options, needWords);
     }
 
-    private static bool IsVerb(string arg) => arg is "list" or "resume" or "promote";
+    private static bool IsVerb(string arg) => arg is "list" or "resume" or "promote" or "reopen";
 
-    /// <summary>The three subcommands; <c>resume</c> and <c>promote</c> take the session slug.</summary>
+    /// <summary>
+    /// The four subcommands; <c>resume</c> and <c>promote</c> take the session slug,
+    /// <c>reopen</c> the promoted team folder.
+    /// </summary>
     private static ForgeCommandOptions ParseVerb(string[] args, ref int i, ForgeCommandOptions options)
     {
         var verb = args[i];
         if (verb == "list")
             return options with { List = true };
+
+        if (verb == "reopen")
+        {
+            return i + 1 < args.Length
+                ? options with { ReopenDirectory = args[++i] }
+                : options with { Error = "reopen needs the team folder (the one `forge promote --to` wrote)." };
+        }
 
         // The slug is taken as written: it is positional, so it is whatever follows the verb.
         if (i + 1 >= args.Length)
@@ -250,8 +267,17 @@ internal sealed record ForgeCommandOptions
             return options with { Error = "--adopt and --edit are two different answers to the same pause." };
         // `promote` and `list` mount nothing: a read folder there would be silently ignored,
         // and this parser never ignores an option silently.
-        if (options.ReadDirectory is not null && (options.PromoteSlug is not null || options.List))
+        if (options.ReadDirectory is not null && (options.PromoteSlug is not null || options.List || options.ReopenDirectory is not null))
             return options with { Error = "--read only applies to a new session or to `forge resume`." };
+        // `reopen` starts no cycle: it finds or rebuilds a session and exits. Every option
+        // that shapes a cycle would be ignored there, so every one of them is refused.
+        if (options.ReopenDirectory is not null
+            && (options.Format is not null || options.Auto || options.Dry || options.PackDirectory is not null
+                || options.SettingsPath is not null || options.MaxIterations is not null
+                || options.MaxTokens is not null || options.MaxSeconds is not null || needWords.Count > 0))
+        {
+            return options with { Error = "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing." };
+        }
 
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };
     }
@@ -274,7 +300,8 @@ internal sealed record ForgeCommandOptions
 /// sandboxed test → diagnosis → verdict → promotion, the interview carried by the pack
 /// crew and the cycle by the engine. <c>--dry</c> stops after Validate;
 /// <c>--read &lt;dir&gt;</c> points the trial's <c>/workspace</c> at a folder of documents;
-/// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder.
+/// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder;
+/// <c>reopen &lt;dir&gt;</c> finds or rebuilds the session of a promoted folder (FORGE-09).
 /// </summary>
 internal static class ForgeCommand
 {
@@ -306,6 +333,24 @@ internal static class ForgeCommand
 
         if (options.PromoteSlug is not null)
             return await PromoteAsync(workspace, options).ConfigureAwait(false);
+
+        if (options.ReopenDirectory is not null)
+        {
+            // Under the same guard as adoption, for the same reason: the rebuild writes a
+            // session, and a disk that refuses must come back as an exit code with a
+            // closed event stream.
+            try
+            {
+                return await ReopenAsync(workspace, options).ConfigureAwait(false);
+            }
+#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+                return ExitRuntimeError;
+            }
+#pragma warning restore CA1031
+        }
 
         if (options.Format is { } requestedFormat
             && !string.Equals(requestedFormat, ForgeSession.FormatYaml, StringComparison.OrdinalIgnoreCase)
@@ -737,6 +782,108 @@ internal static class ForgeCommand
         }
 
         return 0;
+    }
+
+    /// <summary>
+    /// <c>forge reopen &lt;team-folder&gt;</c> (FORGE-09): makes sure a session exists for a
+    /// promoted team, so the atelier can be reopened on it — « Modify » in Studio, or
+    /// <c>forge resume</c> here. Fully offline — no host, no LLM.
+    /// <para>
+    /// The session that promoted the folder is found through its <c>promotedTo</c> and
+    /// reported as it stands; nothing is moved — the resume that follows does the reopen, as
+    /// it always did. When no session points at the folder (deleted, imported, forged on
+    /// another machine), one is <b>rebuilt</b> from the folder itself: the plan read back from
+    /// <c>crew/</c>, the brief from <c>forge.json</c> when the promotion left one — derived
+    /// from the plan otherwise, and said so — and the crew copied verbatim. It lands at the
+    /// dry pause with <c>promotedTo</c> set, so an amendment, a trial or an adoption follow
+    /// exactly as after <c>--dry</c>, and the re-adoption updates the same folder in place.
+    /// </para>
+    /// </summary>
+    private static async Task<int> ReopenAsync(string workspace, ForgeCommandOptions options)
+    {
+        var teamDirectory = Path.GetFullPath(options.ReopenDirectory!);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+
+        if (!Directory.Exists(teamDirectory))
+        {
+            return await RefuseReopenAsync(events, options, $"reopen names no directory: '{teamDirectory}'.")
+                .ConfigureAwait(false);
+        }
+
+        if (ForgeSession.FindPromotedTo(workspace, teamDirectory) is { } existing)
+        {
+            events.SessionStarted(existing, resumed: true);
+            events.Emit("team.reopened", new
+            {
+                slug = existing.Document.Slug,
+                dir = existing.Directory,
+                path = teamDirectory,
+                state = ForgeEventWriter.Spell(existing.State),
+                rebuilt = false,
+            });
+            events.SessionFinished(StatusWord(existing), 0);
+            if (!options.Events)
+            {
+                await Console.Out.WriteLineAsync(
+                    $"Session '{existing.Document.Slug}' promoted this folder. Reopen it: orkeon forge resume {existing.Document.Slug}")
+                    .ConfigureAwait(false);
+            }
+
+            return 0;
+        }
+
+        ForgeRebuildResult rebuilt;
+        try
+        {
+            rebuilt = ForgeSessionRebuilder.Rebuild(workspace, teamDirectory, DateTimeOffset.UtcNow);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return await RefuseReopenAsync(events, options, ex.Message).ConfigureAwait(false);
+        }
+
+        var session = rebuilt.Session;
+        var briefWord = rebuilt.BriefSource == ForgeBriefSource.Recorded ? "recorded" : "derived";
+        events.SessionStarted(session, resumed: false);
+        events.Emit("team.reopened", new
+        {
+            slug = session.Document.Slug,
+            dir = session.Directory,
+            path = teamDirectory,
+            state = ForgeEventWriter.Spell(session.State),
+            rebuilt = true,
+            brief = briefWord,
+        });
+        events.SessionFinished("paused", 0);
+
+        if (!options.Events)
+        {
+            var slug = session.Document.Slug;
+            await Console.Out.WriteLineAsync(
+                $"Session '{slug}' rebuilt from {Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName)}"
+                + (rebuilt.BriefSource == ForgeBriefSource.Recorded
+                    ? $" with the brief {ForgeTeamRecord.FileName} recorded."
+                    : $" — no {ForgeTeamRecord.FileName} here, so the brief was derived from the plan.")
+                + $" Amend it: orkeon forge resume {slug} --edit --dry · try it: orkeon forge resume {slug}"
+                + $" · keep it as it is: orkeon forge resume {slug} --adopt")
+                .ConfigureAwait(false);
+        }
+
+        return 0;
+    }
+
+    /// <summary>
+    /// A reopen that could not produce a session: no session started, so the stream carries the
+    /// error and closes on «failed» — the verdict is on the command, there is no session to judge.
+    /// </summary>
+    private static async Task<int> RefuseReopenAsync(ForgeEventWriter events, ForgeCommandOptions options, string detail)
+    {
+        events.Error(ForgeErrorCodes.TeamUnreadable, detail, recoverable: false);
+        events.SessionFinished("failed", ExitError);
+        if (!options.Events)
+            await Console.Error.WriteLineAsync($"orkeon forge: {detail}").ConfigureAwait(false);
+        return ExitError;
     }
 
     /// <summary>

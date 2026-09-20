@@ -57,11 +57,14 @@ orkeon forge resume <slug>                     # reprendre une session exactemen
 orkeon forge resume <slug> --read <dir>        # l'essayer sur les documents de <dir>
 orkeon forge resume <slug> --adopt             # garder l'équipe telle quelle, sans essai
 orkeon forge promote <slug> --to <dir>         # sortir une session prête en dossier ordinaire
+orkeon forge reopen <dossier-equipe>           # retrouver — ou reconstruire depuis crew/ — la session d'une équipe promue
 ```
 
 L'Atelier : un parcours guidé du besoin en langage naturel à l'équipe déployable. Un assistant vous interroge et capte un brief structuré — objectif, entrées, **critères d'acceptation**, un exemple d'entrée — puis propose un plan d'équipe, le rend, le valide, **l'essaie en bac à sable sur votre exemple**, et juge le résultat **contre vos propres critères**. Non conforme ? Le diagnostic alimente une boucle de correction, bornée par un budget dur (itérations, jetons, temps). Chaque session vit sous `.orkeon/forge/<slug>/` — reprenable, diffable entre tentatives, auditable.
 
-Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la forge refuse d'ouvrir l'entretien sans lui (`FORGE-LLM-UNAVAILABLE`) plutôt que de dégrader en silence. `list` et `promote` sont entièrement hors ligne.
+Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la forge refuse d'ouvrir l'entretien sans lui (`FORGE-LLM-UNAVAILABLE`) plutôt que de dégrader en silence. `list`, `promote` et `reopen` sont entièrement hors ligne.
+
+`reopen <dossier-equipe>` rend une équipe promue à nouveau modifiable quand sa session a disparu — supprimée, ou dossier forgé sur une autre machine ou importé. Quand une session pointe encore vers le dossier (`promotedTo`), elle est seulement nommée : reprenez-la. Sinon une session est **reconstruite** depuis le dossier lui-même : le plan est relu depuis `crew/` (`config.yaml` + `agents/` + `tasks/` par entité, ou un seul `crew.yaml`), le brief vient du `forge.json` que chaque promotion écrit désormais à côté de `FORGE.md` — ou est dérivé du plan, et la commande le dit — et le crew est copié tel quel. La session reconstruite se pose à la pause `--dry`, en pointant vers le dossier : `resume --edit --dry`, `resume`, `resume --adopt` suivent comme d'habitude, et un `promote --to` vers le même dossier le met à jour en place. Un dossier sans crew YAML (crew script, disposition étrangère, fichiers qui ne décrivent pas un plan valide) est refusé avec `FORGE-TEAM-UNREADABLE` et les raisons ; le verbe n'accepte aucune option sauf `--events`. C'est ainsi que fonctionne le « Modifier » d'Orkeon Studio sur une équipe vers laquelle aucune session ne pointe.
 
 | Option | Description |
 |---|---|
@@ -81,7 +84,7 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 
 Le bac à sable : l'essai tourne in-process avec les écritures confinées au dossier de la session (`/output` pour les livrables, `/forge` pour ses fichiers de travail), le répertoire de travail — ou le dossier `--read` — monté en lecture seule en `/workspace`, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
 
-Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, et `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien. `orkeon run <dir>/crew` le lance — depuis l'intérieur de `<dir>`, et sans les `--mount` que fournit `run.sh`, si bien qu'une équipe qui produit des livrables n'écrit rien par cette voie ; le lanceur Studio détecte le dossier et pose les montages lui-même.
+Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien — et `forge.json`, son jumeau lisible par la machine (slug, titre, format, instant de promotion, brief) que `forge reopen` lit. `orkeon run <dir>/crew` le lance — depuis l'intérieur de `<dir>`, et sans les `--mount` que fournit `run.sh`, si bien qu'une équipe qui produit des livrables n'écrit rien par cette voie ; le lanceur Studio détecte le dossier et pose les montages lui-même.
 
 ## `orkeon init`
 

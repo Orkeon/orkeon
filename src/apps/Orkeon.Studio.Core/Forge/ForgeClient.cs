@@ -13,6 +13,15 @@ public sealed record ForgeStartRequest
     /// <summary>Slug of the session to resume; wins over <see cref="Need"/>.</summary>
     public string? ResumeSlug { get; init; }
 
+    /// <summary>
+    /// <c>forge reopen &lt;team-folder&gt;</c> (FORGE-09): the promoted folder whose session
+    /// the engine finds — or rebuilds from the folder's <c>crew/</c> when none points at it.
+    /// Wins over both <see cref="ResumeSlug"/> and <see cref="Need"/>; the argv then carries
+    /// nothing else but <c>--events</c>, since the verb starts no cycle and the engine refuses
+    /// every cycle option on it.
+    /// </summary>
+    public string? ReopenDirectory { get; init; }
+
     /// <summary>Workspace the session lives under (the CLI's working directory).</summary>
     public string? WorkingDirectory { get; init; }
 
@@ -99,6 +108,9 @@ public static class ForgeArgumentsBuilder
         ArgumentNullException.ThrowIfNull(request);
 
         var arguments = new List<string> { ForgeVerb };
+
+        if (!string.IsNullOrWhiteSpace(request.ReopenDirectory))
+            return [ForgeVerb, "reopen", request.ReopenDirectory, "--events", "jsonl"];
 
         if (!string.IsNullOrWhiteSpace(request.ResumeSlug))
         {
