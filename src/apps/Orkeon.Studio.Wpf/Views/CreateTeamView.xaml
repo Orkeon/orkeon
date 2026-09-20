@@ -473,8 +473,7 @@
                        Text="{Binding [Studio.Create.NeedTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,12"
                        Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource Input}" MinHeight="84" TextWrapping="Wrap" AcceptsReturn="True"
-                     VerticalScrollBarVisibility="Auto"
+            <TextBox Style="{StaticResource InputMultiline}"
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,8"
                        Text="{Binding [Studio.Create.Examples], Source={x:Static services:I18n.Instance}}"/>
@@ -532,8 +531,7 @@
             <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.OutcomeLabel], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,6"
                        Text="{Binding [Studio.Create.OutcomeHint], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource Input}" MinHeight="74" TextWrapping="Wrap" AcceptsReturn="True"
-                     VerticalScrollBarVisibility="Auto"
+            <TextBox Style="{StaticResource InputMultiline}"
                      Text="{Binding Outcome, UpdateSourceTrigger=PropertyChanged}"/>
 
             <!-- STUDIO-14 (D-06): where the folders live. Not a brief precision — it answers the

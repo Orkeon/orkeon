@@ -21,6 +21,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   card) are `PasswordBox`es on the new `InputPassword` style, bound through
   `PasswordBinding.Text` (WPF keeps `Password` out of bindings on purpose; the attached
   property carries it both ways, so the field still empties itself once the key is stored).
+- **A multi-line field is five lines high, with a scrollbar from the sixth (T-32).** Two
+  styles, `InputMultiline` and `InputMultilineMono`, on `MinLines`/`MaxLines` rather than a
+  height — the box follows the font and the theme, never grows the card, never pushes the
+  layout. Six fields wear them: the step-1 brief and «what the result must contain», the
+  per-step instruction, the agent editor's «what it does», the trial's sample inputs (mono)
+  and the conversation composer, whose Enter-sends / Shift+Enter-breaks contract is unchanged.
+  The hard `MinHeight`/`MaxHeight` those fields carried are gone with the change.
 
 <!-- STUDIO-20 -->
 ### Changed — Studio: adopting a team ends the wizard at a blank step 1; the saved card is gone (STUDIO-20)

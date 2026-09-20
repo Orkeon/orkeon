@@ -44,8 +44,7 @@
               <StackPanel Visibility="{Binding Launcher.Options.AreInputsAvailable, Converter={StaticResource BooleanToVisibility}}">
                 <TextBlock Style="{StaticResource FieldLabel}" Margin="0,12,0,0"
                            Text="{Binding [Studio.Trial.InputsLabel], Source={x:Static services:I18n.Instance}}"/>
-                <TextBox AcceptsReturn="True" MinHeight="56" MaxHeight="120" VerticalScrollBarVisibility="Auto"
-                         FontFamily="{StaticResource MonoFont}" FontSize="11.5"
+                <TextBox Style="{StaticResource InputMultilineMono}"
                          Text="{Binding Launcher.Options.InputsJson, UpdateSourceTrigger=PropertyChanged}"/>
                 <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
                            Text="{Binding [Studio.Trial.InputsHint], Source={x:Static services:I18n.Instance}}"/>

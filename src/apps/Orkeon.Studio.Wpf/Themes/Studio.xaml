@@ -405,6 +405,23 @@
     <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
     <Setter Property="FontSize" Value="12"/>
   </Style>
+  <!-- Multi-line fields (T-32): exactly five lines, a scrollbar from the sixth. MinLines and
+       MaxLines rather than a Height, so the box follows the font and the theme and never grows
+       the card — which is also why no view may put a Height on one of these. Stretch puts a
+       paragraph on its first line instead of centring it. -->
+  <Style x:Key="InputMultiline" TargetType="TextBox" BasedOn="{StaticResource Input}">
+    <Setter Property="AcceptsReturn" Value="True"/>
+    <Setter Property="TextWrapping" Value="Wrap"/>
+    <Setter Property="MinLines" Value="5"/>
+    <Setter Property="MaxLines" Value="5"/>
+    <Setter Property="VerticalContentAlignment" Value="Stretch"/>
+    <Setter Property="VerticalScrollBarVisibility" Value="Auto"/>
+    <Setter Property="HorizontalScrollBarVisibility" Value="Disabled"/>
+  </Style>
+  <Style x:Key="InputMultilineMono" TargetType="TextBox" BasedOn="{StaticResource InputMultiline}">
+    <Setter Property="FontFamily" Value="{StaticResource MonoFont}"/>
+    <Setter Property="FontSize" Value="12"/>
+  </Style>
   <!-- The key field (T-31): the Input recipe on a PasswordBox — a style cannot be based
        across control types, so the setters and the template are said again — in mono 12
        like InputMono, since a key is a code. The box binds through PasswordBinding.Text. -->

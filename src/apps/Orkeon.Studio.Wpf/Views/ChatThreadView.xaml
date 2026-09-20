@@ -220,12 +220,13 @@
               </StackPanel>
             </Button>
             <Grid>
-              <TextBox x:Name="Composer" Style="{StaticResource Input}" MinHeight="46" TextWrapping="Wrap"
-                       AcceptsReturn="True" VerticalScrollBarVisibility="Auto" FontSize="12.5"
+              <TextBox x:Name="Composer" Style="{StaticResource InputMultiline}"
                        Text="{Binding Draft, UpdateSourceTrigger=PropertyChanged}">
                 <TextBox.InputBindings>
                   <!-- Enter sends, Shift+Enter opens a line — the mock's own contract, and
-                       the footer says so under the box. -->
+                       the footer says so under the box. The gesture is unmodified Return only:
+                       a KeyBinding matches the exact modifier set, so Shift+Return never reaches
+                       the command and falls through to the box, which AcceptsReturn (T-32). -->
                   <KeyBinding Key="Return" Command="{Binding SendCommand}"/>
                 </TextBox.InputBindings>
               </TextBox>

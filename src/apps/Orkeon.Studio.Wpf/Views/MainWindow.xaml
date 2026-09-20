@@ -826,7 +826,7 @@
             <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5"
                        Text="{Binding [Studio.Create.Does], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox MinHeight="66" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto"
+            <TextBox Style="{StaticResource InputMultiline}"
                      Text="{Binding WhatItDoes, UpdateSourceTrigger=PropertyChanged}"/>
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,7"
                        Text="{Binding [Studio.Create.Can], Source={x:Static services:I18n.Instance}}"/>

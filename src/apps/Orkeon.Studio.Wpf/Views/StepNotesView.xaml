@@ -21,8 +21,7 @@
                  Text="{Binding [Studio.Create.NotesSub], Source={x:Static services:I18n.Instance}}"/>
 
       <!-- the field IS the consigne: typed text is taken as-is, no add step, no list -->
-      <TextBox Style="{StaticResource Input}" MinHeight="60" TextWrapping="Wrap" AcceptsReturn="True"
-               VerticalScrollBarVisibility="Auto"
+      <TextBox Style="{StaticResource InputMultiline}"
                Text="{Binding Consigne, UpdateSourceTrigger=PropertyChanged}"/>
       <DockPanel Margin="0,8,0,0" LastChildFill="False">
         <StackPanel Orientation="Horizontal"
