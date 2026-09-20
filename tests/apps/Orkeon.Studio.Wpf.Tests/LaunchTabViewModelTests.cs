@@ -436,6 +436,42 @@ public sealed class LaunchTabViewModelTests
         return (tab, launcher, history);
     }
 
+    /// <summary>
+    /// The owner's screenshot of 2026-09-20: the COMMANDE well was readable and not selectable,
+    /// so reproducing a Studio launch in a terminal meant retyping a ULID. The button puts the
+    /// exact preview on the clipboard and says so until the command changes.
+    /// </summary>
+    [Fact]
+    public void Should_CopyTheExactCommand_When_TheCopyButtonIsClicked()
+    {
+        var clipboard = new Orkeon.Studio.Wpf.ViewModels.Services.InMemoryClipboardService();
+        var tab = new LaunchTabViewModel(new LaunchTabDependencies
+        {
+            ProcessRunner = new OrkeonProcessRunner(
+                new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            TargetProbe = new FakeTargetProbe().WithFile("/crews/team.yaml"),
+            Directories = new FakeDirectoryProbe(),
+            HistoryStore = new FakeLaunchHistoryStore(),
+            SettingsStore = new FakeAppSettingsStore(),
+            Clipboard = clipboard,
+        });
+        Assert.False(tab.CopyCommandLineCommand.CanExecute(null));
+
+        tab.Target.Select("/crews/team.yaml");
+        Assert.True(tab.CopyCommandLineCommand.CanExecute(null));
+
+        tab.CopyCommandLineCommand.Execute(null);
+
+        Assert.Equal(tab.CommandLinePreview, clipboard.LastText);
+        Assert.Contains("orkeon run", clipboard.LastText, StringComparison.Ordinal);
+        Assert.True(tab.CommandLineCopied);
+
+        // A new command is not the one that was copied.
+        tab.Options.Verbosity = 2;
+        Assert.False(tab.CommandLineCopied);
+        Assert.NotEqual(tab.CommandLinePreview, clipboard.LastText);
+    }
+
     [Fact]
     public void Should_RefuseToRun_When_NoTargetIsResolved()
     {

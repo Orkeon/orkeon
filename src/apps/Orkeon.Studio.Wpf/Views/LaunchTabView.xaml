@@ -431,12 +431,34 @@
             <views:MountsEditorView DataContext="{Binding Mounts.LaunchMounts}" Margin="0,12,0,0"/>
           </StackPanel>
 
-          <!-- the exact command, always visible in expert -->
-          <TextBlock Style="{StaticResource Eyebrow}" Margin="0,10,0,5"
-                     Text="{Binding [Studio.Run.CmdTitle], Source={x:Static services:I18n.Instance}}"/>
+          <!-- the exact command, always visible in expert — selectable, and one click away
+               from the clipboard: it is the text a terminal takes, ULID included. -->
+          <DockPanel Margin="0,10,0,5" LastChildFill="False">
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource Eyebrow}" VerticalAlignment="Center"
+                       Text="{Binding [Studio.Run.CmdTitle], Source={x:Static services:I18n.Instance}}"/>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Padding="8,3"
+                    Command="{Binding CopyCommandLineCommand}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="copy" Size="12" Margin="0,0,6,0"/>
+                <TextBlock FontSize="11.5">
+                  <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                      <Setter Property="Text" Value="{Binding [Studio.Run.CopyCommand], Source={x:Static services:I18n.Instance}}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding CommandLineCopied}" Value="True">
+                          <Setter Property="Text" Value="{Binding [Studio.Run.CommandCopied], Source={x:Static services:I18n.Instance}}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </TextBlock.Style>
+                </TextBlock>
+              </StackPanel>
+            </Button>
+          </DockPanel>
           <Border Style="{StaticResource Well}">
-            <TextBlock Style="{StaticResource MonoText}" FontSize="11.5" TextWrapping="Wrap"
-                       Text="{Binding CommandLinePreview, Mode=OneWay}"/>
+            <TextBox Text="{Binding CommandLinePreview, Mode=OneWay}" IsReadOnly="True" BorderThickness="0"
+                     Background="Transparent" Padding="0" FontFamily="{StaticResource MonoFont}" FontSize="11.5"
+                     Foreground="{DynamicResource InkFaintBrush}" TextWrapping="Wrap" IsReadOnlyCaretVisible="False"/>
           </Border>
 
           <WrapPanel Margin="0,10,0,0">

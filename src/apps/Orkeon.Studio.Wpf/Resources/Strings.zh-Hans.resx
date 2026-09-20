@@ -308,6 +308,8 @@
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>命令</value>
   </data>
+  <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>复制命令</value></data>
+  <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>命令已复制</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>准备就绪</value>
   </data>

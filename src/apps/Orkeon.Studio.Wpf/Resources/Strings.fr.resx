@@ -121,6 +121,8 @@
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Montages déjà présents dans le appsettings sélectionné</value></data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Autoriser les montages hors du répertoire de travail (--allow-external-mounts)</value></data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMANDE</value></data>
+  <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copier la commande</value></data>
+  <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Commande copiée</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Prête à travailler</value></data>
   <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Exécution en cours</value></data>
   <data name="Studio.Run.StateDone" xml:space="preserve"><value>Exécution terminée</value></data>

@@ -51,6 +51,8 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>The pinned settings file the panel's settings mounts were read from; null for the live declared list.</summary>
     private string? _settingsMountsSource;
     private string? _commandLinePreview;
+    private bool _commandLineCopied;
+    private readonly IClipboardService _clipboard;
     private string? _statusMessage;
     private ProcessRunResult? _lastResult;
     private BinaryLocation? _binaryLocation;
@@ -62,6 +64,7 @@ public sealed class LaunchTabViewModel : ObservableObject
 
         _environmentForTarget = seams.EnvironmentForTarget;
         _declaredMounts = seams.DeclaredMounts ?? (() => []);
+        _clipboard = seams.Clipboard ?? new InMemoryClipboardService();
         _directories = seams.Directories ?? PhysicalDirectoryProbe.Instance;
         _runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
@@ -102,6 +105,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             _ => IsBinaryAvailable && !IsRunning && !IsBlockedByUndeclaredFolders);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
+        CopyCommandLineCommand = new RelayCommand(CopyCommandLine, () => CommandLinePreview is { Length: > 0 });
         ChooseTeamCommand = new RelayCommand(() => ChooseTeamRequested?.Invoke(this, EventArgs.Empty));
         CreateTeamCommand = new RelayCommand(() => CreateTeamRequested?.Invoke(this, EventArgs.Empty));
         ClearLogCommand = new RelayCommand(() => Log.Clear());
@@ -184,7 +188,38 @@ public sealed class LaunchTabViewModel : ObservableObject
     public string? CommandLinePreview
     {
         get => _commandLinePreview;
-        private set => SetProperty(ref _commandLinePreview, value);
+        private set
+        {
+            if (!SetProperty(ref _commandLinePreview, value))
+                return;
+
+            // A new command is not the one that was copied: the button reads "copy" again.
+            CommandLineCopied = false;
+            CopyCommandLineCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>
+    /// Puts <see cref="CommandLinePreview"/> on the clipboard, verbatim — the same text a
+    /// terminal takes. The owner's screenshot of 2026-09-20: the command was readable and not
+    /// selectable, so reproducing a Studio launch by hand meant retyping a ULID.
+    /// </summary>
+    public RelayCommand CopyCommandLineCommand { get; }
+
+    /// <summary>True right after a copy, until the command changes; the button's label follows.</summary>
+    public bool CommandLineCopied
+    {
+        get => _commandLineCopied;
+        private set => SetProperty(ref _commandLineCopied, value);
+    }
+
+    private void CopyCommandLine()
+    {
+        if (CommandLinePreview is not { Length: > 0 } command)
+            return;
+
+        _clipboard.SetText(command);
+        CommandLineCopied = true;
     }
 
     /// <summary>The outcome of the last action.</summary>
@@ -1022,4 +1057,7 @@ public sealed record LaunchTabDependencies
 
     /// <summary>Reads the settings' allowed folders live — a snapshot would go stale.</summary>
     public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
+
+    /// <summary>The clipboard behind "copy the command"; in-memory when absent (the tests).</summary>
+    public IClipboardService? Clipboard { get; init; }
 }

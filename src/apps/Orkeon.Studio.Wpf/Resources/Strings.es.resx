@@ -308,6 +308,8 @@
   <data name="Studio.Run.CmdTitle" xml:space="preserve">
     <value>COMANDO</value>
   </data>
+  <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copiar el comando</value></data>
+  <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Comando copiado</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve">
     <value>Lista para trabajar</value>
   </data>

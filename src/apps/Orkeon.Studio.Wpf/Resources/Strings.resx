@@ -121,6 +121,8 @@
   <data name="Studio.Run.SettingsMountsTitle" xml:space="preserve"><value>Mounts already in the selected appsettings</value></data>
   <data name="Studio.Run.AllowExternal" xml:space="preserve"><value>Allow mounts outside the working directory (--allow-external-mounts)</value></data>
   <data name="Studio.Run.CmdTitle" xml:space="preserve"><value>COMMAND</value></data>
+  <data name="Studio.Run.CopyCommand" xml:space="preserve"><value>Copy the command</value></data>
+  <data name="Studio.Run.CommandCopied" xml:space="preserve"><value>Command copied</value></data>
   <data name="Studio.Run.StateIdle" xml:space="preserve"><value>Ready to work</value></data>
   <data name="Studio.Run.StateRunning" xml:space="preserve"><value>Run in progress</value></data>
   <data name="Studio.Run.StateDone" xml:space="preserve"><value>Run finished</value></data>

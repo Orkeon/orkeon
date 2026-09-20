@@ -7,6 +7,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the Launch screen's command can be copied
+
+- Orkeon Studio's COMMANDE well is selectable and « Copy the command » puts the exact
+  `orkeon run …` line on the clipboard, ULID and all; the button reads « Command copied » until
+  the command changes. Reproducing a Studio launch in a terminal no longer means retyping it.
+
 <!-- VFS-90 -->
 ### Added — every settings mount carries a ULID; a crew names the entries it uses (`mounts:`), two entries may share a root, and `--mount-id` selects one for the run (VFS-90)
 

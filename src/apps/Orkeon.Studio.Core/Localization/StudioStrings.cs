@@ -427,6 +427,12 @@ public static class StudioStringKeys
     /// <summary>"This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders."</summary>
     public const string RunBlockedUnknownMountId = "Studio.Run.BlockedUnknownMountId";
 
+    /// <summary>"Copy the command" — the Launch screen's button under the COMMANDE well.</summary>
+    public const string RunCopyCommand = "Studio.Run.CopyCommand";
+
+    /// <summary>"Command copied" — the same button, right after a copy.</summary>
+    public const string RunCommandCopied = "Studio.Run.CommandCopied";
+
     /// <summary>"{0} (selected by id among {1})" — an effective-mounts row kept by --mount-id.</summary>
     public const string MountsOriginSelectedById = "Studio.Run.OriginSelectedById";
 
@@ -1519,6 +1525,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDeclaredFolder] = "“{0}” authorized and bound as {1}",
         [StudioStringKeys.RunBlockedUnknownMountId] =
             "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
+        [StudioStringKeys.RunCopyCommand] = "Copy the command",
+        [StudioStringKeys.RunCommandCopied] = "Command copied",
         [StudioStringKeys.MountsOriginSelectedById] = "{0} (selected by id among {1})",
         [StudioStringKeys.MountsOriginNotSelected] = "{0} (not mounted for this run)",
         [StudioStringKeys.MountsOriginConflict] = "{0} (one of {1} entries — nothing selects it)",

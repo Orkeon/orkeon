@@ -100,6 +100,7 @@ public sealed class MainWindowViewModel : ObservableObject
             EnvironmentForTarget = TeamEnvironment,
             ShellOpener = shellOpener,
             DeclaredMounts = declaredMounts,
+            Clipboard = seams.Clipboard,
         });
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
