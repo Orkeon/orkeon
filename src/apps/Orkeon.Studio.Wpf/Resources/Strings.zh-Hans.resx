@@ -364,6 +364,7 @@
   <data name="Studio.Run.OpenResult" xml:space="preserve">
     <value>打开结果</value>
   </data>
+  <data name="Studio.Run.OpenResults" xml:space="preserve"><value>打开 {0} 个结果文件夹</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve">
     <value>高级选项</value>
   </data>

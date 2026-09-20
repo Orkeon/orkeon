@@ -427,6 +427,12 @@ public static class StudioStringKeys
     /// <summary>"This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders."</summary>
     public const string RunBlockedUnknownMountId = "Studio.Run.BlockedUnknownMountId";
 
+    /// <summary>"Open the result" — the Launch screen's button once a run finished, one writable folder.</summary>
+    public const string RunOpenResult = "Studio.Run.OpenResult";
+
+    /// <summary>"Open the {0} result folders" — the same button when the run could write to several folders.</summary>
+    public const string RunOpenResults = "Studio.Run.OpenResults";
+
     /// <summary>"Copy the command" — the Launch screen's button under the COMMANDE well.</summary>
     public const string RunCopyCommand = "Studio.Run.CopyCommand";
 
@@ -1525,6 +1531,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardDeclaredFolder] = "“{0}” authorized and bound as {1}",
         [StudioStringKeys.RunBlockedUnknownMountId] =
             "This team refers to folder declarations missing here: {0}. Declare them in Settings › Authorized folders or change the team's folders.",
+        [StudioStringKeys.RunOpenResult] = "Open the result",
+        [StudioStringKeys.RunOpenResults] = "Open the {0} result folders",
         [StudioStringKeys.RunCopyCommand] = "Copy the command",
         [StudioStringKeys.RunCommandCopied] = "Command copied",
         [StudioStringKeys.MountsOriginSelectedById] = "{0} (selected by id among {1})",

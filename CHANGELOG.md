@@ -7,11 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
-### Added — the Launch screen's command can be copied
+### Added — the Launch screen's command can be copied, and « Open the result » opens every writable folder
 
 - Orkeon Studio's COMMANDE well is selectable and « Copy the command » puts the exact
   `orkeon run …` line on the clipboard, ULID and all; the button reads « Command copied » until
   the command changes. Reproducing a Studio launch in a terminal no longer means retyping it.
+- « Open the result » opens one Explorer window per folder the run could write to — the team's
+  own folders first, then the declared entries kept for the run — and reads « Open the N result
+  folders » when there are several. It reads the effective mounts, so a settings entry withdrawn
+  for the run (its root went to the entry the team names) is never opened; the history cards
+  resolve a `--mount-id` against the declared list the same way.
 
 <!-- VFS-90 -->
 ### Added — every settings mount carries a ULID; a crew names the entries it uses (`mounts:`), two entries may share a root, and `--mount-id` selects one for the run (VFS-90)

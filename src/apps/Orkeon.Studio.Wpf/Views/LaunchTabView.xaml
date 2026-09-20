@@ -790,7 +790,8 @@
                   Visibility="{Binding CanOpenResult, Converter={StaticResource BooleanToVisibility}}">
             <StackPanel Orientation="Horizontal">
               <controls:LucideIcon Kind="folder-open" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
-              <TextBlock Text="{Binding [Studio.Run.OpenResult], Source={x:Static services:I18n.Instance}}"/>
+              <!-- "Open the result", or "Open the N result folders": one window per writable folder. -->
+              <TextBlock Text="{Binding OpenResultLabel, Mode=OneWay}"/>
             </StackPanel>
           </Button>
           <StackPanel VerticalAlignment="Center">

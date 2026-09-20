@@ -364,6 +364,7 @@
   <data name="Studio.Run.OpenResult" xml:space="preserve">
     <value>Abrir el resultado</value>
   </data>
+  <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Abrir las {0} carpetas de resultado</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve">
     <value>Opciones avanzadas</value>
   </data>

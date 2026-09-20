@@ -76,7 +76,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
-                nameof(CliBanner), nameof(TeamMetaLine));
+                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel));
             RaiseRunStateChanged();
         };
 
@@ -86,7 +86,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Mounts = new LaunchMountsViewModel(seams.Directories, seams.Picker, _strings);
         Log = new RunLogViewModel(_strings);
         Progress = new RunProgressViewModel(_strings);
-        History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener);
+        History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts);
 
         Target.TargetChanged += OnTargetChanged;
         Options.Changed += OnInputsChanged;
@@ -896,32 +896,66 @@ public sealed class LaunchTabViewModel : ObservableObject
         set => SetProperty(ref _isJournalOpen, value);
     }
 
-    /// <summary>Opens the result — the physical folder of the first writable mount.</summary>
+    /// <summary>Opens the result — one Explorer window per folder the run could write to.</summary>
     public RelayCommand OpenResultCommand { get; }
 
     /// <summary>A result folder exists once the run finished and a writable mount is known.</summary>
-    public bool CanOpenResult => HasResult && _shellOpener is not null && ResultFolder() is not null;
+    public bool CanOpenResult => HasResult && _shellOpener is not null && ResultFolders().Count > 0;
 
-    /// <summary>The physical directory results land in, parsed from the mount strings.</summary>
-    internal string? ResultFolder()
+    /// <summary>"Open the result", or "Open the {n} result folders" when the run could write to several.</summary>
+    public string OpenResultLabel => ResultFolders() is { Count: > 1 } many
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.RunOpenResults], many.Count)
+        : _strings[StudioStringKeys.RunOpenResult];
+
+    /// <summary>
+    /// The physical folders the run could have written to: every mount **in force** with write
+    /// rights — the team's own folders and the per-launch ones first, then the declared entries
+    /// kept for this run — each folder once. Read from the effective table rather than from the
+    /// three raw lists: since VFS-90 a settings entry may be withdrawn for the run (another
+    /// entry of its root was selected), and the folder of an entry the run never mounted is not
+    /// a result.
+    /// </summary>
+    internal IReadOnlyList<string> ResultFolders()
     {
-        foreach (var mountString in Mounts.TeamMounts
-                     .Concat(Mounts.SettingsMounts)
-                     .Concat(Mounts.LaunchMounts.Mounts.Select(m => m.MountString)))
+        IEnumerable<string> candidates = Mounts.HasAutoInjection
+            ? Mounts.EffectiveMounts
+                .Where(m => m.IsMounted)
+                .OrderBy(m => m.Origin == MountOrigin.Settings ? 1 : 0)
+                .Select(m => m.Value)
+            : Mounts.TeamMounts
+                .Concat(Mounts.LaunchMounts.Mounts.Select(m => m.MountString))
+                .Concat(Mounts.SettingsMounts);
+
+        var folders = new List<string>();
+        var seen = new HashSet<string>(
+            Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison == StringComparison.OrdinalIgnoreCase
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal);
+        foreach (var mountString in candidates)
         {
             if (MountDefinition.TryParse(mountString, out var mount, out _)
-                && mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 })
+                && mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 }
+                && seen.Add(MountDefinition.NormalizeFolder(mount.PhysicalPath)))
             {
-                return mount.PhysicalPath;
+                folders.Add(mount.PhysicalPath);
             }
         }
 
-        return null;
+        return folders;
+    }
+
+    /// <summary>The first folder of <see cref="ResultFolders"/> — where the team's own deliverables land.</summary>
+    internal string? ResultFolder()
+    {
+        var folders = ResultFolders();
+        return folders.Count > 0 ? folders[0] : null;
     }
 
     private void OpenResult()
     {
-        if (ResultFolder() is { } folder)
+        // One window per writable folder (owner's request of 2026-09-20): a team writing to
+        // /output and /rapports gets both, and a folder the run never mounted gets none.
+        foreach (var folder in ResultFolders())
             _shellOpener?.Open(folder);
     }
 
@@ -951,7 +985,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private void RaiseRunStateChanged()
     {
         OnPropertiesChanged(nameof(RunStateTitle), nameof(RunBadgeText), nameof(RunBadgeTone),
-            nameof(RunButtonLabel), nameof(CanOpenResult));
+            nameof(RunButtonLabel), nameof(CanOpenResult), nameof(OpenResultLabel));
         OpenResultCommand.RaiseCanExecuteChanged();
     }
 

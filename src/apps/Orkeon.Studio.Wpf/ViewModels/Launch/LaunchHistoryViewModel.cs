@@ -34,26 +34,30 @@ public sealed class LaunchHistoryEntryViewModel
         LaunchHistoryEntry entry,
         IStudioStrings? strings = null,
         Action<LaunchHistoryEntry>? onReplay = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
         Entry = entry;
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _declaredMounts = declaredMounts;
         ReplayCommand = new RelayCommand(() => onReplay?.Invoke(Entry), () => onReplay is not null);
         OpenResultCommand = new RelayCommand(
-            () => { if (ResultFolder() is { } folder) shellOpener?.Open(folder); },
-            () => shellOpener is not null && ResultFolder() is not null);
+            () => { foreach (var folder in ResultFolders()) shellOpener?.Open(folder); },
+            () => shellOpener is not null && ResultFolders().Count > 0);
     }
+
+    private readonly Func<IReadOnlyList<string>>? _declaredMounts;
 
     /// <summary>Replays this launch (per-card button — the mock has no global action row).</summary>
     public RelayCommand ReplayCommand { get; }
 
-    /// <summary>Opens the run's writable folder, when the argv named one.</summary>
+    /// <summary>Opens the run's writable folders — one window each — when the argv named any.</summary>
     public RelayCommand OpenResultCommand { get; }
 
     /// <summary>Whether the "open result" button should show at all.</summary>
-    public bool HasResultFolder => ResultFolder() is not null;
+    public bool HasResultFolder => ResultFolders().Count > 0;
 
     /// <summary>The underlying Core record.</summary>
     public LaunchHistoryEntry Entry { get; }
@@ -132,26 +136,60 @@ public sealed class LaunchHistoryEntryViewModel
         _ => "fail",
     };
 
-    /// <summary>The physical folder of the first writable mount in the recorded argv.</summary>
+    /// <summary>The first folder of <see cref="ResultFolders"/>.</summary>
     internal string? ResultFolder()
     {
+        var folders = ResultFolders();
+        return folders.Count > 0 ? folders[0] : null;
+    }
+
+    /// <summary>
+    /// The writable folders of the recorded argv, each once: the <c>--mount</c> values with
+    /// write rights, and — since VFS-90 a Studio launch names a declared folder by
+    /// <c>--mount-id</c> rather than by path — the settings entries those ids name, read from
+    /// the declared list as it stands today.
+    /// </summary>
+    internal IReadOnlyList<string> ResultFolders()
+    {
         var arguments = Entry.Arguments;
+        var folders = new List<string>();
+        var seen = new HashSet<string>(
+            Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison == StringComparison.OrdinalIgnoreCase
+                ? StringComparer.OrdinalIgnoreCase
+                : StringComparer.Ordinal);
+        List<MountDefinition>? declared = null;
+
+        void Consider(MountDefinition? mount)
+        {
+            if (mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 }
+                && seen.Add(MountDefinition.NormalizeFolder(mount.PhysicalPath)))
+            {
+                folders.Add(mount.PhysicalPath);
+            }
+        }
+
         for (var i = 0; i < arguments.Count - 1; i++)
         {
-            if (arguments[i] is not ("--mount" or "-V"))
-                continue;
-
-            for (var j = i + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
+            if (arguments[i] is "--mount" or "-m" or "-V")
             {
-                if (MountDefinition.TryParse(arguments[j], out var mount, out _)
-                    && mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 })
+                for (var j = i + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
+                    Consider(MountDefinition.TryParse(arguments[j], out var mount, out _) ? mount : null);
+            }
+            else if (arguments[i] == "--mount-id" && _declaredMounts is not null)
+            {
+                declared ??= _declaredMounts()
+                    .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) ? mount : null)
+                    .OfType<MountDefinition>()
+                    .ToList();
+                for (var j = i + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
                 {
-                    return mount.PhysicalPath;
+                    if (Orkeon.Domain.Common.MountId.TryParse(arguments[j], out var id))
+                        Consider(declared.FirstOrDefault(entry => id.Equals(entry.Id)));
                 }
             }
         }
 
-        return null;
+        return folders;
     }
 
     private static string FormatDuration(TimeSpan duration)
@@ -181,18 +219,21 @@ public sealed class LaunchHistoryViewModel : ObservableObject
 
     private readonly IStudioStrings? _strings;
     private readonly IShellOpener? _shellOpener;
+    private readonly Func<IReadOnlyList<string>>? _declaredMounts;
 
     /// <summary>Builds the panel over a history store; a null store keeps the history in memory only.</summary>
     public LaunchHistoryViewModel(
         ILaunchHistoryStore? store = null,
         IUiDispatcher? dispatcher = null,
         IStudioStrings? strings = null,
-        IShellOpener? shellOpener = null)
+        IShellOpener? shellOpener = null,
+        Func<IReadOnlyList<string>>? declaredMounts = null)
     {
         _store = store;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings;
         _shellOpener = shellOpener;
+        _declaredMounts = declaredMounts;
 
         ReplayCommand = new RelayCommand(Replay, () => SelectedEntry is not null);
         ReloadCommand = new AsyncRelayCommand(() => LoadAsync());
@@ -252,7 +293,7 @@ public sealed class LaunchHistoryViewModel : ObservableObject
         Entries.Clear();
         foreach (var entry in history.Entries)
             Entries.Add(new LaunchHistoryEntryViewModel(
-                entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener));
+                entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener, _declaredMounts));
 
         SelectedEntry = Entries.Count > 0 ? Entries[0] : null;
         OnPropertyChanged(nameof(IsEmpty));

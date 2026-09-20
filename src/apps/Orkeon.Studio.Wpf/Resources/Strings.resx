@@ -141,6 +141,7 @@
   <data name="Studio.Run.JournalShow" xml:space="preserve"><value>Show</value></data>
   <data name="Studio.Run.JournalHide" xml:space="preserve"><value>Hide</value></data>
   <data name="Studio.Run.OpenResult" xml:space="preserve"><value>Open the result</value></data>
+  <data name="Studio.Run.OpenResults" xml:space="preserve"><value>Open the {0} result folders</value></data>
   <data name="Studio.Run.Advanced" xml:space="preserve"><value>Advanced options</value></data>
   <data name="Studio.Run.VerbNormal" xml:space="preserve"><value>normal</value></data>
   <data name="Studio.Run.VerbDetailed" xml:space="preserve"><value>detailed</value></data>

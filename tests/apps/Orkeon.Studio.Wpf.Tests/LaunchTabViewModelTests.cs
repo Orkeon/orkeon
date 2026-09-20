@@ -916,14 +916,15 @@ public sealed class LaunchScreenFacetsTests
         FakeTargetProbe? targetProbe = null,
         FakeExecutableProbe? executables = null,
         RecordingShellOpener? shellOpener = null,
-        string[]? declaredMounts = null)
+        string[]? declaredMounts = null,
+        FakeDirectoryProbe? directories = null)
         => new(new LaunchTabDependencies
         {
             ProcessRunner = new OrkeonProcessRunner(
                 new FakeProcessLauncher(),
                 new OrkeonBinaryLocator(executables ?? FakeExecutableProbe.WithOrkeonInstalled())),
             TargetProbe = targetProbe ?? new FakeTargetProbe(),
-            Directories = new FakeDirectoryProbe(),
+            Directories = directories ?? new FakeDirectoryProbe(),
             SettingsStore = new FakeAppSettingsStore(),
             ShellOpener = shellOpener,
             DeclaredMounts = declaredMounts is null ? null : () => declaredMounts,
@@ -1068,8 +1069,79 @@ public sealed class LaunchScreenFacetsTests
 
         Assert.Equal("/srv/out", tab.ResultFolder());
         Assert.True(tab.CanOpenResult);
+        Assert.Equal("Open the result", tab.OpenResultLabel);
         tab.OpenResultCommand.Execute(null);
         Assert.Equal(["/srv/out"], opener.Opened);
+    }
+
+    /// <summary>
+    /// Owner's request of 2026-09-20: « Open the result » opens one Explorer window per folder
+    /// the run could write to — the team's own first — and the button says how many.
+    /// </summary>
+    [Fact]
+    public async Task Open_result_opens_every_writable_folder_in_force_once_the_teams_own_first()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-open-result-{Guid.NewGuid():N}");
+        var team = Path.Combine(root, "veille");
+        Directory.CreateDirectory(Path.Combine(team, "agents"));
+        try
+        {
+            TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+            {
+                Name = "Veille",
+                Mounts = ["./output:/output:rw", "./rapports:/rapports:rw", "./input:/workspace:ro"],
+            });
+            var probe = new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
+            var opener = new RecordingShellOpener();
+            var tab = Build(probe, directories: new FakeDirectoryProbe(team), shellOpener: opener,
+                declaredMounts: ["/srv/docs:/docs:ro", "/srv/archive:/archive:rw"]);
+            tab.Target.Select(team);
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            var output = Path.Combine(team, "output");
+            var rapports = Path.Combine(team, "rapports");
+            // The team's own two folders first, then the declared writable entry still in force.
+            Assert.Equal([output, rapports, "/srv/archive"], tab.ResultFolders());
+            Assert.Equal(output, tab.ResultFolder());
+            Assert.Equal("Open the 3 result folders", tab.OpenResultLabel);
+            tab.OpenResultCommand.Execute(null);
+            Assert.Equal([output, rapports, "/srv/archive"], opener.Opened);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>VFS-90: a settings entry withdrawn for the run — its root went to the entry the team names — is no result folder.</summary>
+    [Fact]
+    public async Task Open_result_skips_a_declared_entry_the_run_did_not_mount()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-open-result-{Guid.NewGuid():N}");
+        var team = Path.Combine(root, "crm");
+        Directory.CreateDirectory(Path.Combine(team, "agents"));
+        var a = Orkeon.Domain.Common.MountId.Create();
+        var b = Orkeon.Domain.Common.MountId.Create();
+        try
+        {
+            TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "CRM", Mounts = [$"{b}|/srv/b:/output:rw"] });
+            var probe = new FakeTargetProbe().WithDirectory(team).WithDirectory(Path.Combine(team, "agents"));
+            var opener = new RecordingShellOpener();
+            var tab = Build(probe, directories: new FakeDirectoryProbe(team), shellOpener: opener,
+                declaredMounts: [$"{a}|/srv/a:/output:rw", $"{b}|/srv/b:/output:rw"]);
+            tab.Target.Select(team);
+
+            await tab.RunAsync(TestContext.Current.CancellationToken);
+
+            Assert.Equal(["/srv/b"], tab.ResultFolders());
+            tab.OpenResultCommand.Execute(null);
+            Assert.Equal(["/srv/b"], opener.Opened);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
     }
 }
 
@@ -1106,6 +1178,31 @@ public sealed class LaunchHistoryCardTests
         Assert.True(card.HasResultFolder);
         card.OpenResultCommand.Execute(null);
         Assert.Equal(["/srv/out"], opener.Opened);
+    }
+
+    /// <summary>
+    /// VFS-90: a Studio launch names a declared folder by <c>--mount-id</c>, so the card reads the
+    /// folder from the declared list — and opens every writable folder of the argv, once each.
+    /// </summary>
+    [Fact]
+    public void A_mount_id_in_the_argv_resolves_to_the_declared_folder_and_every_writable_folder_opens()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var entry = LaunchHistoryEntry
+            .Starting("t", ["run", "t", "--mount", "/teams/t/rapports:/rapports:rw", "/srv/docs:/workspace:ro", "--mount-id", id.ToString()])
+            .WithResult(ProcessRunResult.FromExitCode(0, TimeSpan.FromSeconds(4)));
+
+        var opener = new RecordingShellOpener();
+        var card = new LaunchHistoryEntryViewModel(
+            entry, shellOpener: opener, declaredMounts: () => [$"{id}|/srv/out:/output:rw", "/srv/docs:/workspace:ro"]);
+
+        Assert.True(card.HasResultFolder);
+        Assert.Equal(["/teams/t/rapports", "/srv/out"], card.ResultFolders());
+        card.OpenResultCommand.Execute(null);
+        Assert.Equal(["/teams/t/rapports", "/srv/out"], opener.Opened);
+
+        // Without the declared list, an id names nothing this card can open — the --mount still does.
+        Assert.Equal(["/teams/t/rapports"], new LaunchHistoryEntryViewModel(entry, shellOpener: opener).ResultFolders());
     }
 
     [Fact]
