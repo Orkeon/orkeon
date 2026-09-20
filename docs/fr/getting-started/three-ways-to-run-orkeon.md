@@ -288,6 +288,17 @@ que soit son nom — est refusé, en nommant les deux candidats, tout comme un d
 sans disposition reconnue : Orkeon ne devine jamais lequel vous vouliez. Voir
 [YAML et builders](./yaml-and-builders.md) pour la disposition elle-même.
 
+**Une crew peut nommer les dossiers qu'elle utilise.** Un bloc `mounts:` dans
+`config.yaml` (ou `crew.yaml`) liste les racines virtuelles que la crew lit et écrit —
+`/output`, ou `<ulid>|/output` pour épingler une entrée des settings quand plusieurs
+déclarent cette racine (une entrée des settings peut porter un identifiant de
+26 caractères devant son `|` ; Orkeon Studio en écrit un à chaque enregistrement).
+`orkeon run crew/` résout alors le bloc face au fichier de settings sans aucun
+`--mount`, et refuse en une ligne une racine absente ou ambiguë ; `--mount-id <ulid>`
+choisit une entrée depuis la ligne de commande, et un simple
+`--mount <dossier>:/output:rw` remplace toutes les entrées des settings de cette racine
+pour le run.
+
 Vous pouvez aussi exécuter une commande directement depuis l'archive extraite,
 sans installer : `./libexec/orkeon/orkeon run …`.
 

@@ -1,3 +1,4 @@
+using System.Globalization;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Compliance.Vfs;
 
@@ -218,10 +219,81 @@ public static class RunnerSettings
     /// </summary>
     /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
     /// <returns>The declared mount strings, in file order; empty when there are none.</returns>
-    public static IReadOnlyList<string> ReadDeclaredMounts(string? settingsPath)
+    public static IReadOnlyList<string> ReadDeclaredMounts(string? settingsPath) =>
+        ReadFileSystemSection<IReadOnlyList<string>>(
+            settingsPath,
+            fileSystem =>
+            [
+                .. ReadMountArray(fileSystem, "Mounts"),
+                .. ReadMountArray(fileSystem, "InternalMounts"),
+            ],
+            empty: []);
+
+    /// <summary>
+    /// The agent-facing mounts a settings file declares (<c>Orkeon:FileSystem:Mounts</c> only),
+    /// each at the array position the configuration binder will key it under. The position is
+    /// what the mount selection withdraws an entry by (VFS-90), so an element that is not a
+    /// mount string — <c>null</c>, an empty string — is skipped but still counted: the entries
+    /// after it keep the indices the host will see.
+    /// <para>
+    /// Same dialect and same failure stance as <see cref="ReadDeclaredMounts"/>.
+    /// </para>
+    /// </summary>
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    public static IReadOnlyList<DeclaredMountEntry> ReadDeclaredAgentFacingMounts(string? settingsPath) =>
+        WithEnvironmentEntries(
+            ReadFileSystemSection<IReadOnlyList<DeclaredMountEntry>>(
+                settingsPath,
+                fileSystem => ReadMountEntries(fileSystem, "Mounts"),
+                empty: []),
+            "Mounts");
+
+    /// <summary>
+    /// The Internal mounts a settings file declares (<c>Orkeon:FileSystem:InternalMounts</c>
+    /// only), the <c>ORKEON_</c> environment included. Same dialect and same failure stance as
+    /// <see cref="ReadDeclaredMounts"/>.
+    /// </summary>
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    public static IReadOnlyList<string> ReadDeclaredInternalMounts(string? settingsPath)
+    {
+        var fromFile = ReadFileSystemSection(settingsPath, fileSystem => ReadMountArray(fileSystem, "InternalMounts"), empty: []);
+        var withIndices = fromFile.Select((spec, index) => new DeclaredMountEntry(index, spec)).ToList();
+        return WithEnvironmentEntries(withIndices, "InternalMounts").Select(entry => entry.Spec).ToList();
+    }
+
+    /// <summary>
+    /// The file's entries with the <c>ORKEON_Orkeon__FileSystem__{array}__{i}</c> variables
+    /// laid over them, index by index — the environment wins on an index it names, exactly as
+    /// the host's configuration does. An entry the environment alone declares is a declared
+    /// entry too: a second <c>/output</c> arriving through a variable must meet the same
+    /// one-line refusal as one written in the file, not the host's exception a moment later.
+    /// </summary>
+    private static List<DeclaredMountEntry> WithEnvironmentEntries(IReadOnlyList<DeclaredMountEntry> fromFile, string arrayName)
+    {
+        var prefix = $"ORKEON_Orkeon__FileSystem__{arrayName}__";
+        var merged = fromFile.ToDictionary(entry => entry.Index, entry => entry.Spec);
+        foreach (System.Collections.DictionaryEntry variable in Environment.GetEnvironmentVariables())
+        {
+            if (variable.Key is not string name
+                || !name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase)
+                || !int.TryParse(name.AsSpan(prefix.Length), NumberStyles.None, CultureInfo.InvariantCulture, out var index))
+            {
+                continue;
+            }
+
+            if (variable.Value is string { Length: > 0 } spec)
+                merged[index] = spec;
+            else
+                merged.Remove(index);
+        }
+
+        return merged.OrderBy(pair => pair.Key).Select(pair => new DeclaredMountEntry(pair.Key, pair.Value)).ToList();
+    }
+
+    private static T ReadFileSystemSection<T>(string? settingsPath, Func<System.Text.Json.JsonElement, T> read, T empty)
     {
         if (settingsPath is not { Length: > 0 } || !File.Exists(settingsPath))
-            return [];
+            return empty;
 
         try
         {
@@ -236,18 +308,14 @@ public static class RunnerSettings
             if (!TryGetSection(document.RootElement, "Orkeon", out var orkeon)
                 || !TryGetSection(orkeon, "FileSystem", out var fileSystem))
             {
-                return [];
+                return empty;
             }
 
-            return
-            [
-                .. ReadMountArray(fileSystem, "Mounts"),
-                .. ReadMountArray(fileSystem, "InternalMounts"),
-            ];
+            return read(fileSystem);
         }
         catch (Exception ex) when (ex is System.Text.Json.JsonException or IOException or UnauthorizedAccessException)
         {
-            return [];
+            return empty;
         }
     }
 
@@ -279,6 +347,38 @@ public static class RunnerSettings
         }
 
         return false;
+    }
+
+    /// <summary>
+    /// The non-empty strings in a named array property, case-insensitively, each with its
+    /// array position.
+    /// </summary>
+    private static List<DeclaredMountEntry> ReadMountEntries(System.Text.Json.JsonElement parent, string name)
+    {
+        foreach (var property in parent.EnumerateObject())
+        {
+            if (!string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
+                continue;
+            if (property.Value.ValueKind != System.Text.Json.JsonValueKind.Array)
+                return [];
+
+            var entries = new List<DeclaredMountEntry>();
+            var index = 0;
+            foreach (var element in property.Value.EnumerateArray())
+            {
+                if (element.ValueKind == System.Text.Json.JsonValueKind.String
+                    && element.GetString() is { Length: > 0 } spec)
+                {
+                    entries.Add(new DeclaredMountEntry(index, spec));
+                }
+
+                index++;
+            }
+
+            return entries;
+        }
+
+        return [];
     }
 
     /// <summary>The non-empty strings in a named array property, case-insensitively.</summary>

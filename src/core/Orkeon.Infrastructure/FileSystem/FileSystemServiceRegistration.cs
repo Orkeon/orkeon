@@ -59,16 +59,23 @@ public static class FileSystemServiceRegistration
         {
             var options = sp.GetRequiredService<IOptions<FileSystemOptions>>().Value;
 
-            if (options.Mounts.Count == 0 && options.InternalMounts.Count == 0)
+            // A null or blank entry is a settings entry the host withdrew for this run (VFS-90:
+            // another entry of the same virtual root was selected, or a --mount replaced them
+            // all). The in-memory override layer can only write a key, never remove one, so
+            // the host writes the vacated index empty and the factory skips it here.
+            var declared = options.Mounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
+            var internalDeclared = options.InternalMounts.Where(m => !string.IsNullOrWhiteSpace(m)).ToList();
+
+            if (declared.Count == 0 && internalDeclared.Count == 0)
                 throw new InvalidOperationException(
                     "At least one file system mount must be configured in 'Orkeon:FileSystem:Mounts'.");
 
             var mounts = new List<FileSystemMount>();
-            foreach (var mountStr in options.Mounts)
+            foreach (var mountStr in declared)
                 mounts.Add(ParseAndCheck(mountStr, MountVisibility.AgentFacing));
 
             // Infrastructure mounts: resolvable, never listed to an agent (ADR-008).
-            foreach (var mountStr in options.InternalMounts)
+            foreach (var mountStr in internalDeclared)
                 mounts.Add(ParseAndCheck(mountStr, MountVisibility.Internal));
 
             // The per-process sandbox: also Internal, and provisioned by the session object
@@ -86,6 +93,8 @@ public static class FileSystemServiceRegistration
                     throw new DirectoryNotFoundException(
                         $"Mount base path does not exist for virtual path '{parsed.VirtualPath}'.");
 
+                // An id is meaningful in Orkeon:FileSystem:Mounts only: an Internal mount is
+                // never referenced by a crew, so one it happens to carry is dropped here.
                 return visibility == MountVisibility.AgentFacing
                     ? parsed
                     : new FileSystemMount(

@@ -3,6 +3,7 @@ using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Infrastructure.Serialization;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
+using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.Configuration;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -119,11 +120,11 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         await ThrowIfMixedAsync(root, "tasks", ct).ConfigureAwait(false);
 
         // Crew settings: config.yaml is preferred, crew.yaml is accepted as a fallback name.
-        var settingsPath = root + "/config.yaml";
+        var settingsPath = root + "/" + ConventionalNames.CrewSettingsFile;
         var settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
         if (settingsYaml is null)
         {
-            settingsPath = root + "/crew.yaml";
+            settingsPath = root + "/" + ConventionalNames.CrewSettingsFallbackFile;
             settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
         }
         if (settingsYaml is null)
@@ -195,6 +196,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 CrewDefaultLlm = crewSettings?.Llm,
                 Rag = crewSettings?.Rag,
                 Links = crewSettings?.Links,
+                Mounts = crewSettings?.Mounts,
             },
             agents,
             tasks);
@@ -254,6 +256,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 CrewDefaultLlm = crewYaml?.Llm,
                 Rag = crewYaml?.Rag,
                 Links = crewYaml?.Links,
+                Mounts = crewYaml?.Mounts,
             },
             crewYaml?.Agents,
             crewYaml?.Tasks);

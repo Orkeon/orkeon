@@ -24,6 +24,13 @@ public static class RunOptionNames
     /// <summary>A VFS mount, <c>physical:virtual:rights</c>.</summary>
     public const string Mount = "mount";
 
+    /// <summary>
+    /// The id of a settings mount to use for the run, when several entries declare one virtual
+    /// root (the <c>&lt;ulid&gt;|</c> prefix of an entry, VFS-90). Several go space-separated
+    /// after ONE flag, like <see cref="Mount"/>.
+    /// </summary>
+    public const string MountId = "mount-id";
+
     /// <summary>Allow mounts whose base path sits outside the workspace root.</summary>
     public const string AllowExternalMounts = "allow-external-mounts";
 

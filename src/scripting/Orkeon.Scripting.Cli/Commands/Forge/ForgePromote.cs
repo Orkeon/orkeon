@@ -348,7 +348,7 @@ internal static class ForgePromoter
     /// <param name="VirtualRoot">The root the agents address, e.g. <c>/output</c>.</param>
     /// <param name="Folder">Its folder inside the promoted directory, e.g. <c>output</c>.</param>
     /// <param name="ReadOnly">Whether the team only reads it (the <c>/workspace</c> input folder).</param>
-    private sealed record DeliverableMount(string VirtualRoot, string Folder, bool ReadOnly = false);
+    internal sealed record DeliverableMount(string VirtualRoot, string Folder, bool ReadOnly = false);
 
     /// <summary>
     /// The virtual root a reading team reads from, and the folder inside the team that backs it.
@@ -388,9 +388,16 @@ internal static class ForgePromoter
     /// and nothing on screen said why.
     /// </para>
     /// </summary>
-    private static List<DeliverableMount> DeliverableMounts(ForgeSession session)
+    private static List<DeliverableMount> DeliverableMounts(ForgeSession session) =>
+        DeliverableMounts(session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName));
+
+    /// <summary>
+    /// The same derivation from the blueprint itself — what the compiler writes under the
+    /// crew's <c>mounts:</c> block (VFS-90), so the promoted crew names the roots it expects
+    /// and a bare <c>orkeon run crew/</c> refuses instead of writing nowhere.
+    /// </summary>
+    internal static List<DeliverableMount> DeliverableMounts(ForgeBlueprint? blueprint)
     {
-        var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
         var roots = new List<DeliverableMount>();
 
         // Read first, so the chips and the command line list it the way the Composer does.

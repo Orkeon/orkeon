@@ -48,6 +48,15 @@ public sealed record CrewConfiguration
     /// block exists but no entry survived parsing: the door is closed, never silently opened.
     /// </summary>
     public IReadOnlyList<CrewLink>? Links { get; init; }
+    /// <summary>
+    /// Gets the mounts this crew expects (<c>mounts:</c> block, VFS-90): virtual roots, each
+    /// optionally pinned to one settings entry by its id — <c>/output</c> or <c>01J…|/output</c>.
+    /// The list selects among the settings' entries when a root is declared more than once and
+    /// makes the run refuse when a root nothing provides is required; it never restricts the
+    /// other entries, and it never carries a physical path. <see langword="null"/> when the crew
+    /// wrote no block.
+    /// </summary>
+    public IReadOnlyList<Orkeon.Domain.FileSystem.MountReference>? Mounts { get; init; }
     /// <summary>Gets additional metadata for this crew configuration.</summary>
     public Dictionary<string, object> Metadata { get; init; } = [];
 }

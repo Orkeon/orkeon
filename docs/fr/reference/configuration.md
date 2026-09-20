@@ -26,9 +26,16 @@ empilent, au-dessus des sources standard de l'hôte .NET :
 3. **Les surcharges CLI de montage** — chaque argument `--mount` devient une entrée
    mémoire `Orkeon:FileSystem:Mounts:<i>` (précédence maximale), placée **par racine
    virtuelle** : un `--mount` sur une racine que le tableau déclaré (couches 1 + 2) tient
-   déjà est écrit à l'index de cette entrée et la remplace pour le run ; un `--mount` sur
-   une racine neuve est ajouté après le plus haut index déclaré. Le montage `/crew` (ou
-   `/script`) du runner et les `InternalMounts` sont toujours ajoutés.
+   déjà est écrit à l'index de la première entrée et **remplace toutes les entrées déclarées
+   de cette racine** pour le run ; un `--mount` sur une racine neuve est ajouté après le plus
+   haut index déclaré. Le montage `/crew` (ou `/script`) du runner et les `InternalMounts`
+   sont toujours ajoutés. Une entrée déclarée peut porter un **identifiant** — l'ULID de
+   26 caractères devant un `|`, `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw` (VFS-90) —
+   et plusieurs entrées peuvent déclarer une même racine si chacune en porte un :
+   `--mount-id <ulid>`, sinon le bloc `mounts:` de la crew, sélectionne l'entrée que le run
+   garde, et toute autre entrée de cette racine est **retirée** — sa clé est écrite à `null`
+   à son propre index, son chemin de base n'est pas mis en liste blanche et son dossier
+   n'est pas sondé.
 
 Le même préfixe `ORKEON_` alimente aussi `EnvironmentSecretProvider` (résolution de
 secrets, p. ex. `OPENAI_API_KEY` → `ORKEON_OPENAI_API_KEY` ; la clé Tavily de l'outil
@@ -156,7 +163,7 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 | `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:Sandbox` | Montage sandbox du système de fichiers (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
-| `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Un `--mount` CLI sur la même racine virtuelle **remplace** l'entrée pour ce run ; sur une racine neuve il est ajouté (jamais fusionné, jamais perdu). Une racine déclarée deux fois dans le fichier est refusée avant tout host (`… declared twice in <settings>. Keep one.`). Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il reste donc accessible même hors du répertoire de travail du processus | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Une entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` (VFS-90) : ce par quoi le bloc `mounts:` d'une crew, le sidecar d'équipe de Studio et `--mount-id` la désignent ; Studio en écrit un à chaque enregistrement. Un `--mount` CLI sur la même racine virtuelle **remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté (jamais fusionné, jamais perdu). Une racine déclarée deux fois n'est légitime que si chacune de ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé avant tout host (`'/output' is declared twice in <settings> (<idA>: <dossierA>, <idB>: <dossierB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`), de même qu'une racine déclarée deux fois avec une entrée sans identifiant (`… and '<entrée>' has no id. Give every entry an id …`) ou un identifiant porté par deux entrées. Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il reste donc accessible même hors du répertoire de travail du processus ; une entrée retirée ne l'est pas | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`InternalMounts`) | Même grammaire que `Mounts`, enregistrés en `MountVisibility.Internal` : résolubles par le VFS, **absents de `list_mounts`, de la table de montages du prompt agent et des messages de refus d'accès**. C'est là qu'un hôte met ce que le VFS doit atteindre et qu'aucun agent n'a à adresser — le répertoire `--llm-log` y vit ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Autorise interpréteurs/git mutant dans `ShellCommandTool` (**équivalent RCE**, avertissement émis) | `AddOrkeonCodeTools()` | config seule |
 | `Orkeon:Tools:Shell:ExtraAllowedCommands` / `AllowedCommands` | Allowlist shell : additive / remplacement complet (le remplacement annule `AllowInterpreters`) | idem | config seule |

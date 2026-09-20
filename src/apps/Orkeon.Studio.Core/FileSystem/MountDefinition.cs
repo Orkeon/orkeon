@@ -1,6 +1,7 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
 using System.Text;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Studio.Core.FileSystem;
@@ -19,6 +20,13 @@ public sealed record SubPathRightsOverride(string RelativePath, MountRights Righ
 /// </summary>
 public sealed record MountDefinition
 {
+    /// <summary>
+    /// The entry's identity (VFS-90): the <c>&lt;ulid&gt;|</c> prefix of the mount string, what a
+    /// team's sidecar and a crew's <c>mounts:</c> block name this entry by. Null for an entry
+    /// declared without one; the editors assign one on save.
+    /// </summary>
+    public MountId? Id { get; init; }
+
     /// <summary>Physical directory on disk, picked from a folder browser.</summary>
     public required string PhysicalPath { get; init; }
 
@@ -30,6 +38,64 @@ public sealed record MountDefinition
 
     /// <summary>Optional per-sub-path rights overrides.</summary>
     public IReadOnlyList<SubPathRightsOverride> Overrides { get; init; } = [];
+
+    /// <summary>The last six characters of <see cref="Id"/> — what a row shows; null without an id.</summary>
+    public string? ShortId => Id?.ToString() is { } text ? text[^Math.Min(6, text.Length)..] : null;
+
+    /// <summary>This entry under a fresh id (VFS-90): what the editors assign on save.</summary>
+    public MountDefinition WithFreshId() => this with { Id = MountId.Create() };
+
+    /// <summary>This entry without its id — the form a team-local (<c>./x</c>) entry keeps (D-07).</summary>
+    public MountDefinition WithoutId() => this with { Id = null };
+
+    /// <summary>
+    /// The virtual root as the engine compares it: trimmed, trailing slash dropped, <c>/</c>
+    /// kept as is. The mount-string grammar spells <c>/output</c> and <c>/output/</c> as one
+    /// root, and Studio must agree with it.
+    /// </summary>
+    public static string NormalizeRoot(string virtualPath)
+    {
+        ArgumentNullException.ThrowIfNull(virtualPath);
+
+        var trimmed = virtualPath.Trim();
+        return trimmed.Length > 1 ? trimmed.TrimEnd('/') : trimmed;
+    }
+
+    /// <summary>
+    /// Whether two entries declare the same thing, ids aside: the same folder (normalized,
+    /// compared the way <see cref="PhysicalPathContainment"/> compares paths on this
+    /// platform), the same root, the same rights and sub-path overrides. What an older
+    /// sidecar's copy of a settings entry is matched by, and what the editors reuse rather
+    /// than declare twice.
+    /// </summary>
+    public bool SameDeclaration(MountDefinition other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+
+        return string.Equals(NormalizeFolder(PhysicalPath), NormalizeFolder(other.PhysicalPath), PhysicalPathContainment.Comparison)
+            && SameRootAs(other.VirtualPath)
+            && Rights == other.Rights
+            && Overrides.SequenceEqual(other.Overrides);
+    }
+
+    /// <summary>Whether both entries carry the same id.</summary>
+    public bool SameIdentity(MountDefinition other)
+    {
+        ArgumentNullException.ThrowIfNull(other);
+        return Id is not null && other.Id is not null && Id.Equals(other.Id);
+    }
+
+    /// <summary>Whether this entry claims <paramref name="virtualPath"/>, as the engine compares roots.</summary>
+    public bool SameRootAs(string virtualPath) =>
+        virtualPath is not null
+        && string.Equals(NormalizeRoot(VirtualPath), NormalizeRoot(virtualPath), StringComparison.Ordinal);
+
+    /// <summary>The folder less the trailing separator a picker or a hand edit may have left.</summary>
+    public static string NormalizeFolder(string path)
+    {
+        ArgumentNullException.ThrowIfNull(path);
+        return path.Trim().TrimEnd('/', '\\');
+    }
 
     /// <summary>
     /// Virtual paths the UIs offer as suggestions — and pre-fill a new mount row with.
@@ -81,7 +147,11 @@ public sealed record MountDefinition
     /// </summary>
     public string ToMountString()
     {
-        var builder = new StringBuilder()
+        var builder = new StringBuilder();
+        if (Id is not null)
+            builder.Append(Id.ToString()).Append(FileSystemMount.IdSeparator);
+
+        builder
             .Append(FileSystemMount.Quote(PhysicalPath))
             .Append(':')
             .Append(FileSystemMount.Quote(VirtualPath))
@@ -166,6 +236,7 @@ public sealed record MountDefinition
 
         return new MountDefinition
         {
+            Id = mount.Id,
             PhysicalPath = mount.BasePath,
             VirtualPath = mount.VirtualPath,
             Rights = rights,

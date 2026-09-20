@@ -10,6 +10,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
@@ -60,6 +61,20 @@ public sealed record RunnerMountPlan
     public bool AllowExternalMounts { get; init; }
 
     /// <summary>
+    /// The settings entries this run selects by id — the CLI's <c>--mount-id</c> values, already
+    /// parsed (VFS-90, D-04). Needed only when several entries of <c>Orkeon:FileSystem:Mounts</c>
+    /// declare one virtual root; the other entries of that root are withdrawn for the run.
+    /// </summary>
+    public IReadOnlyList<MountId> SelectedMountIds { get; init; } = [];
+
+    /// <summary>
+    /// The mounts the crew names in its definition (<c>mounts:</c>, VFS-90 D-02): each a virtual
+    /// root, optionally pinned to one settings entry by its id. A reference selects and
+    /// validates; it never restricts what else is mounted (D-05).
+    /// </summary>
+    public IReadOnlyList<MountReference> CrewMountReferences { get; init; } = [];
+
+    /// <summary>
     /// When non-null, enables LLM exchange logging under this <b>virtual</b> path — the caller
     /// is responsible for having mounted it (the runners pass
     /// <see cref="RunnerVirtualRoots.LlmLogs"/> in <see cref="InternalMounts"/>). All HTTP
@@ -108,13 +123,12 @@ public static partial class RunnerHost
 
         // Collected while the configuration is composed, logged once the host exists: no
         // logger is available inside ConfigureAppConfiguration, and the replacement of a
-        // settings entry by a --mount is exactly the kind of decision an operator reading the
-        // log must be able to see (STUDIO-15 D-01).
-        var replacedRoots = new List<string>();
+        // settings entry by a --mount — or its selection by id, or its withdrawal — is exactly
+        // the kind of decision an operator reading the log must be able to see (STUDIO-15 D-01,
+        // VFS-90 D-10).
+        var decisions = new MountDecisions();
         var builder = Host.CreateDefaultBuilder()
-            .ConfigureAppConfiguration((_, b) =>
-                ConfigureAppConfiguration(
-                    b, settingsPath, mounts.CliMounts, mounts.InternalMounts, mounts.AllowExternalMounts, replacedRoots))
+            .ConfigureAppConfiguration((_, b) => ConfigureAppConfiguration(b, settingsPath, mounts, decisions))
             .ConfigureServices((context, services) =>
                 ConfigureRunnerServices(context, services, mounts.LlmLogVirtualPath, configureLogging, configureServices));
 
@@ -122,27 +136,63 @@ public static partial class RunnerHost
 
         var host = builder.Build();
 
-        LogMountReplacements(host, replacedRoots);
+        LogMountDecisions(host, decisions);
         WarnIfLlmNotConfigured(host);
         ActivateTelemetry(host);
         return host;
     }
 
     /// <summary>
-    /// One <c>Information</c> line per settings entry a <c>--mount</c> took the place of. The
-    /// run's own intent won over the machine's default, and the log says so by root name —
-    /// the same words for every runner, the daemon included.
+    /// One <c>Information</c> line per decision taken on the settings' mounts: an entry a
+    /// <c>--mount</c> took the place of, an entry selected by id, an entry withdrawn for the
+    /// run. The run's own intent won over the machine's default, and the log says so by root
+    /// name and id — the same words for every runner, the daemon included.
     /// </summary>
-    private static void LogMountReplacements(IHost host, List<string> replacedRoots)
+    private static void LogMountDecisions(IHost host, MountDecisions decisions)
     {
-        if (replacedRoots.Count == 0)
+        var plan = decisions.Plan;
+        if (decisions.ReplacedRoots.Count == 0 && plan.Selected.Count == 0 && plan.Withdrawn.Count == 0 && plan.Warnings.Count == 0)
             return;
 
         var logger = host.Services
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Orkeon.Hosting.RunnerHost");
-        foreach (var root in replacedRoots)
+        if (!logger.IsEnabled(LogLevel.Information))
+            return;
+
+        foreach (var root in decisions.ReplacedRoots)
             LogMountReplacesSettingsEntry(logger, root);
+        foreach (var entry in plan.Selected)
+        {
+            var selector = Describe(entry.Selector);
+            LogMountSelected(logger, entry.VirtualRoot, entry.Id, selector);
+            if (entry.OverridesCrewChoice is { } crewChoice)
+                LogMountOptionOverridesCrew(logger, entry.VirtualRoot, entry.Id, crewChoice);
+        }
+
+        foreach (var entry in plan.Withdrawn)
+        {
+            var id = entry.Id?.ToString() ?? "(no id)";
+            LogMountWithdrawn(logger, entry.VirtualRoot, id);
+        }
+
+        foreach (var warning in plan.Warnings)
+            LogMountSelectionWarning(logger, warning);
+    }
+
+    private static string Describe(MountSelector selector) => selector switch
+    {
+        MountSelector.MountIdOption => "--mount-id",
+        MountSelector.CrewMounts => "the crew's mounts:",
+        _ => selector.ToString(),
+    };
+
+    /// <summary>What <see cref="ConfigureAppConfiguration"/> decided, for the log once a logger exists.</summary>
+    private sealed class MountDecisions
+    {
+        public List<string> ReplacedRoots { get; } = [];
+
+        public MountSelectionPlan Plan { get; set; } = MountSelectionPlan.Empty;
     }
 
     /// <summary>
@@ -205,6 +255,21 @@ public static partial class RunnerHost
         "mount {VirtualPath}: --mount replaces the settings entry")]
     private static partial void LogMountReplacesSettingsEntry(ILogger logger, string virtualPath);
 
+    [LoggerMessage(EventId = 4, Level = LogLevel.Information, Message =
+        "mount {VirtualPath}: settings entry {MountId} selected by {Selector}")]
+    private static partial void LogMountSelected(ILogger logger, string virtualPath, MountId mountId, string selector);
+
+    [LoggerMessage(EventId = 5, Level = LogLevel.Information, Message =
+        "mount {VirtualPath}: settings entry {MountId} not mounted for this run")]
+    private static partial void LogMountWithdrawn(ILogger logger, string virtualPath, string mountId);
+
+    [LoggerMessage(EventId = 6, Level = LogLevel.Information, Message =
+        "mount {VirtualPath}: --mount-id {MountId} overrides the crew's choice {CrewMountId}")]
+    private static partial void LogMountOptionOverridesCrew(ILogger logger, string virtualPath, MountId mountId, MountId crewMountId);
+
+    [LoggerMessage(EventId = 7, Level = LogLevel.Information, Message = "{Warning}")]
+    private static partial void LogMountSelectionWarning(ILogger logger, string warning);
+
     /// <summary>The configuration section <c>--allow-external-mounts</c> extends.</summary>
     private const string PathSecurityWhitelistSection = "PathSecurity:AdditionalAllowedDirectories";
 
@@ -238,42 +303,69 @@ public static partial class RunnerHost
     /// flag able to rescue it — <c>--allow-external-mounts</c> only ever whitelisted the
     /// <c>--mount</c> arguments, and still does exactly that, and only that.
     /// </para>
+    /// <para>
+    /// Since VFS-90 the declared array may hold several entries of one root, told apart by
+    /// their ids. <see cref="MountSelection.Resolve"/> decides here, on the same snapshot,
+    /// which of them this run keeps: a <c>--mount</c> on the root replaces them all, else
+    /// <see cref="RunnerMountPlan.SelectedMountIds"/>, else
+    /// <see cref="RunnerMountPlan.CrewMountReferences"/>. Every other entry of that root is
+    /// <b>withdrawn</b>: its key is written to <c>null</c> at its own index (the binder binds
+    /// a null element there, and the registration leaves a null or blank entry out) and its
+    /// base path is not whitelisted. A selection that cannot be resolved is thrown, with the same text the
+    /// runners' guards print — this is the closed net for the hosts built without them.
+    /// </para>
     /// </summary>
     /// <param name="builder">The host's configuration builder.</param>
     /// <param name="settingsPath">Resolved appsettings.json path, or null.</param>
-    /// <param name="cliMounts">The agent-facing mounts, the crew mount included.</param>
-    /// <param name="internalMounts">The runner's own Internal mounts.</param>
-    /// <param name="allowExternalMounts">Whether <c>--allow-external-mounts</c> was given.</param>
-    /// <param name="replacedRoots">Receives the virtual root of every settings entry a
-    /// <c>--mount</c> took the place of, for the caller to log once a logger exists.</param>
+    /// <param name="mounts">The VFS surface: agent-facing mounts (the crew mount included),
+    /// Internal mounts, the selection inputs, the external-mounts opt-in.</param>
+    /// <param name="decisions">Receives what was decided, for the caller to log once a logger
+    /// exists.</param>
     private static void ConfigureAppConfiguration(
         IConfigurationBuilder builder,
         string? settingsPath,
-        IReadOnlyList<string> cliMounts,
-        IReadOnlyList<string> internalMounts,
-        bool allowExternalMounts,
-        List<string> replacedRoots)
+        RunnerMountPlan mounts,
+        MountDecisions decisions)
     {
         if (settingsPath != null && File.Exists(settingsPath))
             builder.AddJsonFile(settingsPath, optional: true);
 
         builder.AddEnvironmentVariables("ORKEON_");
 
+        var cliMounts = mounts.CliMounts;
+        var internalMounts = mounts.InternalMounts;
         var overrides = new Dictionary<string, string?>();
         using var declared = DeclaredConfiguration.Snapshot(builder);
 
         var declaredMounts = declared.Entries(ConfigurationKeys.FileSystemMounts);
+        var plan = MountSelection.Resolve(
+            declaredMounts
+                .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
+                .Select(entry => new DeclaredMountEntry(entry.Index, entry.Value!))
+                .ToList(),
+            cliMounts,
+            mounts.SelectedMountIds,
+            mounts.CrewMountReferences,
+            settingsPath);
+        if (plan.Errors.Count > 0)
+            throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Errors));
+
+        decisions.Plan = plan;
+        var withdrawnIndices = new HashSet<int>(plan.WithdrawnIndices);
+        foreach (var index in withdrawnIndices)
+            overrides[$"{ConfigurationKeys.FileSystemMounts}:{index}"] = null;
+
         var replacedIndices = new HashSet<int>();
         var nextMountIndex = NextIndex(declaredMounts);
         foreach (var mount in cliMounts)
         {
-            var root = TryGetVirtualRoot(mount);
+            var root = MountSelection.TryGetVirtualRoot(mount);
             var declaredIndex = root is null ? null : IndexOfRoot(declaredMounts, root);
             if (declaredIndex is { } index)
             {
                 overrides[$"{ConfigurationKeys.FileSystemMounts}:{index}"] = mount;
                 if (replacedIndices.Add(index))
-                    replacedRoots.Add(root!);
+                    decisions.ReplacedRoots.Add(root!);
             }
             else
             {
@@ -293,9 +385,12 @@ public static partial class RunnerHost
         var nextWhitelistIndex = NextIndex(declared.Entries(PathSecurityWhitelistSection));
         foreach (var (index, value) in declaredMounts)
         {
-            // A declared entry a --mount replaced is no longer mounted; whitelisting its base
-            // would open a folder nothing reaches, so only the entries still in force count.
-            if (!replacedIndices.Contains(index) && TryExtractMountBasePath(value) is { } declaredBase)
+            // A declared entry a --mount replaced, or the selection withdrew, is no longer
+            // mounted; whitelisting its base would open a folder nothing reaches, so only the
+            // entries still in force count.
+            if (replacedIndices.Contains(index) || withdrawnIndices.Contains(index))
+                continue;
+            if (TryExtractMountBasePath(value) is { } declaredBase)
                 overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = declaredBase;
         }
 
@@ -308,7 +403,7 @@ public static partial class RunnerHost
         // --allow-external-mounts: the --mount arguments (and the runner's own internal
         // mounts) may point outside the working directory. Unchanged: a folder named on the
         // command line is still gated behind the explicit opt-in.
-        if (allowExternalMounts)
+        if (mounts.AllowExternalMounts)
         {
             foreach (var mount in cliMounts.Concat(internalMounts))
             {
@@ -331,37 +426,19 @@ public static partial class RunnerHost
 
     /// <summary>
     /// The lowest declared index whose entry claims <paramref name="root"/>, or null. A root
-    /// declared twice is refused before any host by <c>RunnerExecution.EnsureVirtualRootsAreUnique</c>;
-    /// here the first declaration is the one a <c>--mount</c> replaces, so the answer is
-    /// deterministic for the callers that build a host without that guard.
+    /// declared several times (each entry with its id, VFS-90) has its first declaration
+    /// replaced by the <c>--mount</c> and the others withdrawn by the selection plan, so the
+    /// answer is deterministic and the run ends with one mount under that name.
     /// </summary>
     private static int? IndexOfRoot(List<(int Index, string? Value)> entries, string root)
     {
         foreach (var (index, value) in entries)
         {
-            if (value is not null && string.Equals(TryGetVirtualRoot(value), root, StringComparison.Ordinal))
+            if (value is not null && string.Equals(MountSelection.TryGetVirtualRoot(value), root, StringComparison.Ordinal))
                 return index;
         }
 
         return null;
-    }
-
-    /// <summary>
-    /// The virtual root a mount string claims, without its trailing slash, or null when the
-    /// string is not a well-formed mount — the parser reports those at host build time with
-    /// its own precise message. Ordinal, like the registry's own duplicate check.
-    /// </summary>
-    private static string? TryGetVirtualRoot(string mountString)
-    {
-        try
-        {
-            var virtualPath = FileSystemMount.Parse(mountString).VirtualPath;
-            return virtualPath.Length > 1 ? virtualPath.TrimEnd('/') : virtualPath;
-        }
-        catch (Exception ex) when (ex is FormatException or ArgumentException)
-        {
-            return null;
-        }
     }
 
     /// <summary>

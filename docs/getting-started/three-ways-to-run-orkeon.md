@@ -271,6 +271,15 @@ both candidates, and so is a directory with no recognized layout: Orkeon never g
 which one you meant. See
 [YAML and builders](./yaml-and-builders.md) for the layout itself.
 
+**A crew can name the folders it uses.** A `mounts:` block in `config.yaml` (or
+`crew.yaml`) lists the virtual roots the crew reads and writes — `/output`, or
+`<ulid>|/output` to pin one settings entry when several declare that root (a settings
+entry may carry a 26-character id before its `|`; Orkeon Studio writes one on every
+save). `orkeon run crew/` then resolves the block against the settings file with no
+`--mount` at all, and refuses in one line when a root is missing or ambiguous;
+`--mount-id <ulid>` picks an entry from the command line, and a plain
+`--mount <folder>:/output:rw` replaces every settings entry of that root for the run.
+
 You can also run a command straight from the extracted archive without
 installing: `./libexec/orkeon/orkeon run …`.
 

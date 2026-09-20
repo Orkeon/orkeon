@@ -57,3 +57,9 @@ Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int? maxTo
 static Orkeon.Infrastructure.Resilience.ResiliencePolicies.IsHttpClientTimeout(System.Exception? exception) -> bool
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeCallFailure(string! providerDisplayName, System.Exception! exception, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> string!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.TimeoutFailureMessage(string! providerDisplayName, int timeoutSeconds) -> string!
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Mounts.set -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Mounts.set -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Mounts.init -> void

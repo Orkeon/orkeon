@@ -112,17 +112,20 @@ sides (`/output:/output:rw`, the container convention). It no longer covers runn
 
 ## What this ADR deliberately does not settle
 
-A crew still **cannot declare the folders it needs**. `CrewYamlConfig` has no `filesystem:`
-block, so the virtual→physical binding is supplied entirely from outside the portable artifact —
-by a `--mount` argument, by `appsettings`, or by Studio's sidecar. That gap is why a promoted
-team could be launched with no `/output` at all while its own tasks declared
-`deliverable: /output/…`; the immediate breakage is closed by deriving those roots at promotion
-and at adoption, which is a remedy at the edges, not the contract itself.
+A crew still **cannot bind the folders it needs**. Since VFS-90 it **names** them: a `mounts:`
+block (`/output`, or `<ulid>|/output` to pin one settings entry when several declare that root)
+lists the virtual roots the crew uses, on the model of the existing `links:` block, and the
+runners resolve it against the settings before any host — a root nothing provides, or an id no
+entry carries, is refused in one line rather than at the first tool call. The block selects and
+validates; the virtual→physical binding itself is still supplied from outside the portable
+artifact — by a settings entry (now with an identity of its own), by a `--mount` argument, or by
+Studio's sidecar. That is what closes the gap that let a promoted team launch with no `/output`
+at all while its own tasks declared `deliverable: /output/…`: `forge promote` writes the block,
+and a bare `orkeon run crew/` refuses instead of writing nowhere.
 
-Declaring filesystem needs on the crew — on the model of the existing `links:` block, validated
-by `orkeon run --validate` rather than failing at the first tool call — changes the YAML grammar,
-the scripting DSL, the forge blueprint and public API in two assemblies. It belongs to a version
-that is allowed to move the grammar, not to a release candidate. This ADR reserves the place.
+A `filesystem:` block that would bind folders from the crew — physical paths inside the portable
+artifact — remains out of scope, and deliberately so: the folder behind a name is the machine's
+business, which is the whole point of this ADR.
 
 The **privileged caller** this ADR left open has since been built: `PrivilegedFileSystemAccess`
 is the second accessor, and `MountVisibility.Internal` refuses an agent that addresses the mount

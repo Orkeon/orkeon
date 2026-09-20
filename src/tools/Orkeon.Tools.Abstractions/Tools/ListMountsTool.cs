@@ -102,14 +102,13 @@ public class ListMountsTool : ToolBase
             Error: null));
     }
 
-    private static string FormatRights(FileAccessRights rights)
-    {
-        return rights switch
-        {
-            FileAccessRights.ReadOnly => "ro",
-            FileAccessRights.ReadWrite => "rw",
-            FileAccessRights.ReadWriteNoDelete => "rwnd",
-            _ => rights.ToString()
-        };
-    }
+    /// <summary>
+    /// The grammar's own token for the three rights a mount string can carry (one source of
+    /// truth with <see cref="FileSystemMount.FormatRights"/>); any other combination — a mount
+    /// registered in code with bare <c>Write</c>, say — is spelled by the enum, never hidden.
+    /// </summary>
+    private static string FormatRights(FileAccessRights rights) =>
+        rights is FileAccessRights.ReadOnly or FileAccessRights.ReadWrite or FileAccessRights.ReadWriteNoDelete
+            ? FileSystemMount.FormatRights(rights)
+            : rights.ToString();
 }

@@ -123,6 +123,92 @@ public sealed class RunCommandDirectoryTests
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// VFS-90: a crew whose <c>config.yaml</c> names the roots it uses starts when the settings
+    /// provide them — the block selects and validates, it asks for no flag.
+    /// </summary>
+    [Fact]
+    public async Task A_crew_naming_its_mounts_starts_when_the_settings_provide_them()
+    {
+        using var scratch = new ScriptScratch();
+        var dir = WritePerEntityCrew(scratch);
+        var output = Path.Combine(scratch.Root, "out");
+        Directory.CreateDirectory(output);
+        var id = Orkeon.Domain.Common.MountId.Create();
+        await File.WriteAllTextAsync(
+            Path.Combine(dir, "config.yaml"), CrewSettings + $"\nmounts:\n  - {id}|/output\n", TestContext.Current.CancellationToken);
+        var settings = Path.Combine(scratch.Root, "appsettings.json");
+        await File.WriteAllTextAsync(
+            settings,
+            "{ \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{id}|{output}:/output:rw") + " ] } } }",
+            TestContext.Current.CancellationToken);
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = dir,
+            SettingsPath = settings,
+            AllowExternalMounts = true,
+        });
+
+        Assert.Equal(Program.ExitRuntimeError, exit);
+        Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// VFS-90 D-04: two settings entries of one root and nothing to pick one is a one-line
+    /// refusal naming both ids, before any host — and <c>--mount-id</c> is the way through.
+    /// </summary>
+    [Fact]
+    public async Task Two_settings_entries_of_one_root_are_refused_until_a_mount_id_picks_one()
+    {
+        using var scratch = new ScriptScratch();
+        var dir = WritePerEntityCrew(scratch);
+        var a = Path.Combine(scratch.Root, "a");
+        var b = Path.Combine(scratch.Root, "b");
+        Directory.CreateDirectory(a);
+        Directory.CreateDirectory(b);
+        var idA = Orkeon.Domain.Common.MountId.Create();
+        var idB = Orkeon.Domain.Common.MountId.Create();
+        var settings = Path.Combine(scratch.Root, "appsettings.json");
+        await File.WriteAllTextAsync(
+            settings,
+            "{ \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{idA}|{a}:/output:rw") + ", "
+            + System.Text.Json.JsonSerializer.Serialize($"{idB}|{b}:/output:rw") + " ] } } }",
+            TestContext.Current.CancellationToken);
+
+        using (var console = new TestConsole())
+        {
+            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = dir,
+                SettingsPath = settings,
+                AllowExternalMounts = true,
+            });
+
+            Assert.Equal(Program.ExitScriptError, exit);
+            Assert.Contains($"'/output' is declared twice in {settings} ({idA}: {a}, {idB}: {b}) and nothing selects one.", console.Stderr, StringComparison.Ordinal);
+            Assert.DoesNotContain("Using settings", console.Stderr, StringComparison.Ordinal);
+            Assert.DoesNotContain("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
+        }
+
+        using (var console = new TestConsole())
+        {
+            var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = dir,
+                SettingsPath = settings,
+                AllowExternalMounts = true,
+                MountIds = [idB.ToString()],
+            });
+
+            Assert.Equal(Program.ExitRuntimeError, exit);
+            Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
+        }
+    }
+
     [Fact]
     public async Task Flat_triplet_directory_still_runs_end_to_end()
     {

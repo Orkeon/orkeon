@@ -24,6 +24,19 @@ public sealed class FileSystemRegistry : IDisposable
             throw new InvalidOperationException(
                 $"Duplicate virtual paths: {string.Join(", ", duplicates)}");
 
+        // An id names one entry (VFS-90): two mounts carrying the same one is a settings
+        // file that copied a line, and every reference to that id would be ambiguous.
+        var duplicateIds = mountList
+            .Where(m => m.Id is not null)
+            .GroupBy(m => m.Id!.ToString(), StringComparer.Ordinal)
+            .Where(g => g.Count() > 1)
+            .Select(g => g.Key)
+            .ToList();
+
+        if (duplicateIds.Count > 0)
+            throw new InvalidOperationException(
+                $"Duplicate mount ids: {string.Join(", ", duplicateIds)}");
+
         // Sort by VirtualPath length descending for longest prefix match
         mountList.Sort((a, b) => b.VirtualPath.Length.CompareTo(a.VirtualPath.Length));
         _mounts = mountList;
@@ -39,6 +52,8 @@ public sealed class FileSystemRegistry : IDisposable
         {
             if (_mounts.Any(m => string.Equals(m.VirtualPath, mount.VirtualPath, StringComparison.Ordinal)))
                 throw new InvalidOperationException($"Mount '{mount.VirtualPath}' already registered");
+            if (mount.Id is not null && _mounts.Any(m => mount.Id.Equals(m.Id)))
+                throw new InvalidOperationException($"Mount id '{mount.Id}' already registered");
 
             _mounts.Add(mount);
             _mounts.Sort((a, b) => b.VirtualPath.Length.CompareTo(a.VirtualPath.Length));
@@ -245,7 +260,7 @@ public sealed class FileSystemRegistry : IDisposable
         {
             return _mounts
                 .Where(m => m.Visibility == MountVisibility.AgentFacing)
-                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility))
+                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id })
                 .ToList()
                 .AsReadOnly();
         }
@@ -259,7 +274,7 @@ public sealed class FileSystemRegistry : IDisposable
         try
         {
             return _mounts
-                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility))
+                .Select(m => new MountInfo(m.VirtualPath, m.DefaultRights, m.Overrides, m.Visibility) { Id = m.Id })
                 .ToList()
                 .AsReadOnly();
         }

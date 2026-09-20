@@ -88,7 +88,7 @@ The promoted folder is ordinary — nothing about it is proprietary to the forge
 - `FORGE.md` — the crew's identity card: goal, acceptance criteria, verdict, generation date and version — what a colleague reads when picking up the folder;
 - `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line. The install command is **displayed, never executed**: Orkeon has no scheduler, and pretending otherwise would promise supervision it cannot give.
 
-Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it, but without the `--mount` arguments the launcher carries: the team then has no `/output` and writes nothing.
+Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it: the promoted `config.yaml` names the roots the team uses (`mounts: [/workspace, /output]`), so a settings entry declaring `/output` is used as it stands, and with none the run is refused in one line (`the crew requires '/output' … pass --mount <folder>:/output:rw`) instead of writing nowhere.
 
 ## In Orkeon Studio
 

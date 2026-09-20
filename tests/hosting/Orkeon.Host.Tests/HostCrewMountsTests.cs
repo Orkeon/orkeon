@@ -155,4 +155,22 @@ public sealed class HostCrewMountsTests : IDisposable
         Assert.Equal(HostCrewMounts.VirtualPathPrefix, mount.VirtualPath);
         Assert.Empty(mount.Overrides);
     }
+
+    /// <summary>
+    /// VFS-90 D-11: the daemon is out of the selection's scope — its crews live under
+    /// per-crew roots, no duplicate is possible — but an operator <c>--mount</c> carrying an id
+    /// prefix must still parse, and the mounts the daemon builds for its crews carry none.
+    /// </summary>
+    [Fact]
+    public void An_operator_mount_with_an_id_prefix_is_accepted_and_hosted_crew_mounts_carry_none()
+    {
+        Assert.Null(HostStartup.ValidateMounts([$"01J9Z3K4M5N6P7Q8R9S0T1V2W3|{_dir}:/data:ro"]));
+        Assert.NotNull(HostStartup.ValidateMounts([$"NOTANID|{_dir}:/data:ro"]));
+
+        var plan = HostCrewMounts.For(
+        [
+            new HostedCrewOptions { Name = "support", Path = Path.Combine(_dir, "crews", "support") },
+        ]);
+        Assert.All(plan.Mounts, m => Assert.Null(FileSystemMount.Parse(m).Id));
+    }
 }

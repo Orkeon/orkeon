@@ -1,2 +1,4 @@
 #nullable enable
 *REMOVED*static Orkeon.Constants.FileSystem.RunnerVirtualRoots.ForgeReserved.get -> System.Collections.Generic.IReadOnlyList<string!>!
+const Orkeon.Constants.FileSystem.ConventionalNames.CrewSettingsFile = "config.yaml" -> string!
+const Orkeon.Constants.FileSystem.ConventionalNames.CrewSettingsFallbackFile = "crew.yaml" -> string!

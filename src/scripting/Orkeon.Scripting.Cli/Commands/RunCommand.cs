@@ -48,6 +48,16 @@ internal sealed class RunCommandOptions
                        + "Several mounts go space-separated after ONE --mount (the flag cannot be repeated).")]
         public IEnumerable<string> Mounts { get; set; } = [];
 
+        /// <summary>
+        /// Ids of the settings mounts to use for this run, when several entries declare one
+        /// virtual root (VFS-90). Several go space-separated after ONE flag, like <c>--mount</c>.
+        /// </summary>
+        [Option(RunOptionNames.MountId, Required = false,
+            HelpText = "Id(s) of the settings mount to use when several entries declare one virtual root "
+                       + "(the <ulid>| prefix of an entry in appsettings.json). "
+                       + "Several ids go space-separated after ONE --mount-id (the flag cannot be repeated).")]
+        public IEnumerable<string> MountIds { get; set; } = [];
+
         /// <summary>Allow mounts whose base path is outside the cwd.</summary>
         [Option(RunOptionNames.AllowExternalMounts, Required = false, Default = false,
             HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +
@@ -538,6 +548,7 @@ internal static partial class RunCommand
             ConfigPath = options.ScriptPath,
             SettingsPath = options.SettingsPath,
             Mounts = options.Mounts,
+            MountIds = options.MountIds,
             AllowExternalMounts = options.AllowExternalMounts,
             Verbose = options.Verbose,
             LlmLogEnabled = options.LlmLogEnabled,
@@ -602,11 +613,10 @@ internal static partial class RunCommand
         var llmLogPath = options.ResolvedLlmLogPath;
 
         var cwd = Directory.GetCurrentDirectory();
-        if (!await MountConfigurationIsValidAsync(options, cliMounts, settingsPath, llmLogPath, cwd)
-                .ConfigureAwait(false))
-        {
+        var selection = await MountConfigurationIsValidAsync(options, cliMounts, settingsPath, llmLogPath, cwd)
+            .ConfigureAwait(false);
+        if (selection is null)
             return Program.ExitScriptError;
-        }
 
         // Mount the script directory under /script:ro so ScriptHost.RunAsync can resolve
         // the source through the same IFileSystemService the tools will see. We add it as
@@ -638,6 +648,8 @@ internal static partial class RunCommand
             {
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
+                SelectedMountIds = selection.SelectedMountIds,
+                CrewMountReferences = selection.CrewMountReferences,
                 AllowExternalMounts = implicitlyAllow,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
             },
@@ -760,7 +772,8 @@ internal static partial class RunCommand
     /// reserves for itself, and every mount source must exist on disk. Returns false when the
     /// run must stop - the diagnostic has already been printed.
     /// </summary>
-    private static async Task<bool> MountConfigurationIsValidAsync(
+    /// <returns>The resolved mount selection when every guard passes, else <see langword="null"/>.</returns>
+    private static async Task<MountSelectionPlan?> MountConfigurationIsValidAsync(
         RunCommandOptions options,
         IEnumerable<string> cliMounts,
         string? settingsPath,
@@ -784,7 +797,7 @@ internal static partial class RunCommand
                 + "(or set ORKEON_ALLOW_EXTERNAL_MOUNTS=1).").ConfigureAwait(false);
             await Console.Error.WriteLineAsync($"       llmLogPath  : {llmLogPath}").ConfigureAwait(false);
             await Console.Error.WriteLineAsync($"       cwd         : {cwd}").ConfigureAwait(false);
-            return false;
+            return null;
         }
 
         // Same guards as the YAML runner's TryBuildHost: two --mount arguments on one root, or
@@ -793,19 +806,27 @@ internal static partial class RunCommand
         // configuration mistake it is. A --mount on a root the settings declare is not a
         // duplicate: the host replaces that settings entry by name (STUDIO-15 D-01).
         if (!RunnerExecution.EnsureVirtualRootsAreUnique(cliMounts, settingsPath))
-            return false;
+            return null;
 
         if (!RunnerExecution.EnsureReservedRootsAreFree(
                 cliMounts, settingsPath,
                 RunnerVirtualRoots.Script, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox))
         {
-            return false;
+            return null;
+        }
+
+        // A script has no mounts: block (VFS-90, D-11): only --mount-id and --mount decide
+        // between two settings entries of one root, and the guard says so in one line.
+        if (!RunnerExecution.EnsureMountSelectionIsResolvable(
+                cliMounts, options.MountIds, CrewMountDeclarations.None, settingsPath, out var selection))
+        {
+            return null;
         }
 
         // Same guard as the YAML runner: a mount whose host-side directory is missing would
         // otherwise surface as a DirectoryNotFoundException thrown out of the
         // FileSystemRegistry DI factory — a stack trace for a mkdir-sized mistake.
-        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath);
+        return RunnerExecution.EnsureMountSourcesExist(cliMounts, settingsPath, selection) ? selection : null;
     }
 
     /// <summary>

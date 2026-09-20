@@ -9,6 +9,7 @@ using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
 using Orkeon.Domain.SharedKernel;
@@ -84,12 +85,20 @@ public static partial class RunnerExecution
         var cliMounts = opts.Mounts.ToList();
         var llmLogPath = opts.ResolvedLlmLogPath;
 
+        // The crew's own mounts: block, read raw before any host: it is one of the inputs that
+        // decide which settings entries the host mounts (VFS-90), and the loader that reads it
+        // properly runs over the VFS those very mounts build.
+        var crewMounts = target.IsScript
+            ? CrewMountDeclarations.None
+            : CrewMountDeclarations.Read(target.ConfigPath, target.IsCrewDirectory);
+
         if (!EnsureVirtualRootsAreUnique(cliMounts, target.SettingsPath)
             || !EnsureExternalMountsAllowed(opts, target.IsScript ? null : target.ConfigDir, llmLogPath)
             || !EnsureReservedRootsAreFree(
                 cliMounts, target.SettingsPath,
                 target.VirtualRoot, RunnerVirtualRoots.LlmLogs, RunnerVirtualRoots.Sandbox)
-            || !EnsureMountSourcesExist(cliMounts, target.SettingsPath))
+            || !EnsureMountSelectionIsResolvable(cliMounts, opts.MountIds, crewMounts, target.SettingsPath, out var selection)
+            || !EnsureMountSourcesExist(cliMounts, target.SettingsPath, selection))
         {
             errorCode = 1;
             return false;
@@ -113,6 +122,8 @@ public static partial class RunnerExecution
             {
                 CliMounts = cliMounts,
                 InternalMounts = internalMounts,
+                SelectedMountIds = selection.SelectedMountIds,
+                CrewMountReferences = selection.CrewMountReferences,
                 AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                 LlmLogVirtualPath = llmLogPath != null ? RunnerVirtualRoots.LlmLogs : null,
             },
@@ -358,16 +369,20 @@ public static partial class RunnerExecution
 
     /// <summary>
     /// Refuses two mounts claiming one virtual root from the same source: two <c>--mount</c>
-    /// arguments, or two entries of the settings file (both of its mount sections, since the
-    /// registry's duplicate check spans them). Without this the collision surfaces as a raw
-    /// <see cref="InvalidOperationException"/> ("Duplicate virtual paths") thrown out of a DI
-    /// factory at kickoff — after "Using settings", under a stack trace — where one line and
-    /// an exit code 1 before any host boots say what to fix (STUDIO-15 D-02).
+    /// arguments, or two entries of the settings file that nothing can tell apart. Without this
+    /// the collision surfaces as a raw <see cref="InvalidOperationException"/> ("Duplicate
+    /// virtual paths") thrown out of a DI factory at kickoff — after "Using settings", under a
+    /// stack trace — where one line and an exit code 1 before any host boots say what to fix
+    /// (STUDIO-15 D-02).
     /// <para>
     /// A <c>--mount</c> on a root the settings declare is NOT a duplicate: the host places a
     /// command-line mount by root and it replaces that settings entry for the run
-    /// (<c>RunnerHost</c>, D-01). Only a root claimed twice from the same source has no
-    /// answer but "keep one".
+    /// (<c>RunnerHost</c>, D-01). Nor are two settings entries of one root that both carry an
+    /// id (VFS-90, D-03): a <c>--mount-id</c> or the crew's <c>mounts:</c> picks one per run —
+    /// <see cref="EnsureMountSelectionIsResolvable"/> checks that something does. What has no
+    /// answer but "keep one" is a root claimed twice on the command line, an id declared twice,
+    /// a root declared twice with an entry that has no id, or an Internal mount on a root the
+    /// agent-facing array already holds (the registry's duplicate check spans both sections).
     /// </para>
     /// <para>
     /// Same completeness stance as <see cref="EnsureReservedRootsAreFree"/>: the settings file
@@ -384,18 +399,127 @@ public static partial class RunnerExecution
     {
         ArgumentNullException.ThrowIfNull(userMounts);
 
-        return RootsAreClaimedOnce(userMounts, "mounted twice on the command line")
-            && RootsAreClaimedOnce(
-                RunnerSettings.ReadDeclaredMounts(settingsPath), $"declared twice in {settingsPath}");
+        if (!RootsAreClaimedOnce(userMounts, "mounted twice on the command line"))
+            return false;
+
+        var declared = RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath);
+        var errors = MountSelection.ValidateDeclared(declared, settingsPath);
+        if (errors.Count > 0)
+        {
+            foreach (var error in errors)
+                Console.Error.WriteLine("ERROR: " + error);
+            return false;
+        }
+
+        // The Internal section must not claim a root the agent-facing one holds, whichever of
+        // its entries the run ends up keeping.
+        var agentFacingRoots = new Dictionary<string, string>(StringComparer.Ordinal);
+        foreach (var entry in declared)
+        {
+            if (MountSelection.TryGetVirtualRoot(entry.Spec) is { } root)
+                agentFacingRoots.TryAdd(root, entry.Spec);
+        }
+
+        return RootsAreClaimedOnce(
+            RunnerSettings.ReadDeclaredInternalMounts(settingsPath),
+            $"declared twice in {settingsPath}",
+            agentFacingRoots);
+    }
+
+    /// <summary>
+    /// Refuses a run whose mount selection cannot be resolved (VFS-90): a malformed
+    /// <c>--mount-id</c>, a malformed item in the crew's <c>mounts:</c> block, an id no entry
+    /// carries, a root the crew requires that nothing provides, and — D-04 — a root declared
+    /// several times with nothing selecting one. The plan it returns is what the host applies,
+    /// so the guard and the host cannot disagree.
+    /// <para>
+    /// Same completeness stance as <see cref="EnsureReservedRootsAreFree"/>: the settings file
+    /// is read HERE from <paramref name="settingsPath"/>. Warnings are printed and never refuse.
+    /// </para>
+    /// </summary>
+    /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
+    /// <param name="mountIds">The <c>--mount-id</c> values, unparsed.</param>
+    /// <param name="crewMounts">The crew's <c>mounts:</c> block, pre-read; <see cref="CrewMountDeclarations.None"/>
+    /// for a script or when the command has no crew.</param>
+    /// <param name="settingsPath">Resolved settings file, or <see langword="null"/>.</param>
+    /// <param name="plan">The resolved plan when the guard passes.</param>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    public static bool EnsureMountSelectionIsResolvable(
+        IEnumerable<string> userMounts,
+        IEnumerable<string> mountIds,
+        CrewMountDeclarations crewMounts,
+        string? settingsPath,
+        [System.Diagnostics.CodeAnalysis.NotNullWhen(true)] out MountSelectionPlan? plan)
+    {
+        ArgumentNullException.ThrowIfNull(userMounts);
+        ArgumentNullException.ThrowIfNull(mountIds);
+        ArgumentNullException.ThrowIfNull(crewMounts);
+        plan = null;
+
+        var ids = new List<MountId>();
+        foreach (var raw in mountIds)
+        {
+            if (!MountId.TryParse(raw, out var id))
+            {
+                Console.Error.WriteLine(
+                    $"ERROR: --mount-id '{raw}' is not a mount id: expected the 26 Crockford base32 characters "
+                    + "a settings entry carries before its '|' (0-9, A-Z without I, L, O, U).");
+                return false;
+            }
+
+            if (!ids.Contains(id))
+                ids.Add(id);
+        }
+
+        var references = new List<MountReference>();
+        foreach (var item in crewMounts.Items)
+        {
+            if (!MountReference.TryParse(item, out var reference))
+            {
+                Console.Error.WriteLine(
+                    $"ERROR: crew mounts: entry '{item}' in {crewMounts.SourceFile} is neither '/root' nor '<ulid>|/root' "
+                    + "(a virtual root starts with '/', a mount id is the 26-character ULID a settings entry carries before its '|').");
+                return false;
+            }
+
+            if (!references.Contains(reference))
+                references.Add(reference);
+        }
+
+        var resolved = MountSelection.Resolve(
+            RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath),
+            userMounts.ToList(),
+            ids,
+            references,
+            settingsPath);
+
+        foreach (var warning in resolved.Warnings)
+            Console.Error.WriteLine("WARNING: " + warning);
+        if (resolved.Errors.Count > 0)
+        {
+            foreach (var error in resolved.Errors)
+                Console.Error.WriteLine("ERROR: " + error);
+            return false;
+        }
+
+        plan = resolved;
+        return true;
     }
 
     /// <summary>
     /// One source's mounts, each root claimed at most once. Malformed strings are left to the
     /// mount parser, which reports them at host build time with its own precise message.
     /// </summary>
-    private static bool RootsAreClaimedOnce(IEnumerable<string> mountStrings, string howItWasClaimed)
+    /// <param name="mountStrings">The mounts of the source being checked.</param>
+    /// <param name="howItWasClaimed">The words of the refusal.</param>
+    /// <param name="alreadyClaimed">Roots another source already holds, by root, with the
+    /// mount string that holds them; a claim on one of those is refused too.</param>
+    private static bool RootsAreClaimedOnce(
+        IEnumerable<string> mountStrings,
+        string howItWasClaimed,
+        Dictionary<string, string>? alreadyClaimed = null)
     {
-        var firstClaim = new Dictionary<string, string>(StringComparer.Ordinal);
+        var firstClaim = alreadyClaimed ?? new Dictionary<string, string>(StringComparer.Ordinal);
         foreach (var mountString in mountStrings)
         {
             string virtualPath;
@@ -438,14 +562,36 @@ public static partial class RunnerExecution
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
     /// <see langword="null"/> when the command resolves none.</param>
+    public static bool EnsureMountSourcesExist(
+        IEnumerable<string> userMounts,
+        string? settingsPath) =>
+        EnsureMountSourcesExist(userMounts, settingsPath, selection: null);
+
+    /// <summary>
+    /// <see cref="EnsureMountSourcesExist(IEnumerable{string}, string?)"/>, minus the settings
+    /// entries the selection withdrew for this run (VFS-90, D-10): an entry the run does not
+    /// mount is not probed, so a machine whose second <c>/output</c> points at a folder that no
+    /// longer exists still runs the crew that selects the first.
+    /// </summary>
+    /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
+    /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
+    /// <see langword="null"/> when the command resolves none.</param>
+    /// <param name="selection">The resolved plan, or <see langword="null"/> to probe every entry.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     public static bool EnsureMountSourcesExist(
         IEnumerable<string> userMounts,
-        string? settingsPath)
+        string? settingsPath,
+        MountSelectionPlan? selection)
     {
         ArgumentNullException.ThrowIfNull(userMounts);
 
-        foreach (var mountString in userMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)))
+        var withdrawn = new HashSet<int>(selection?.WithdrawnIndices ?? []);
+        var declared = RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath)
+            .Where(entry => !withdrawn.Contains(entry.Index))
+            .Select(entry => entry.Spec)
+            .Concat(RunnerSettings.ReadDeclaredInternalMounts(settingsPath));
+
+        foreach (var mountString in userMounts.Concat(declared))
         {
             FileSystemMount mount;
             try

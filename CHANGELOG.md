@@ -7,6 +7,54 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- VFS-90 -->
+### Added — every settings mount carries a ULID; a crew names the entries it uses (`mounts:`), two entries may share a root, and `--mount-id` selects one for the run (VFS-90)
+
+- **A mount has an identity.** An entry of `Orkeon:FileSystem:Mounts` may carry a
+  26-character ULID before a `|` — `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw`
+  (`FileSystemMount.Id`, `MountId`, strict Crockford validation ahead of the lenient
+  `Ulid.Parse`). Two entries may declare one virtual root when both carry an id; a root declared
+  twice with an entry that has none, or one id on two entries, is refused before any host
+  (`RunnerExecution.EnsureVirtualRootsAreUnique`, `MountSelection.ValidateDeclared`).
+- **A crew names the roots it uses.** `config.yaml`/`crew.yaml` gain a `mounts:` block —
+  `/output`, or `<ulid>|/output` to pin one settings entry (`CrewConfiguration.Mounts`,
+  `MountReference`); `forge promote` writes it. The block selects and validates, it never
+  restricts (D-05): `orkeon run crew/` resolves it against the settings with no `--mount`, and
+  refuses in one line a root nothing provides or an id no entry carries.
+- **`--mount-id <ulid>`** (`orkeon run`, both dialects; several after one flag) keeps the entry
+  named among several entries of one root. Precedence (D-10): `--mount` on the root replaces
+  every entry of that root, else `--mount-id`, else the crew's `mounts:`, else a unique root
+  is mounted as it is; with nothing selecting one, the run is refused naming every id (D-04).
+  An entry not kept is **withdrawn for the run** — written to `null` at its own index, not
+  whitelisted, its folder not probed. `RunnerHost` applies the same `MountSelection.Resolve`
+  while composing the configuration, so a host built without the guards (the daemon, `rag`,
+  `forge`, tests) throws the same text instead of "Duplicate virtual paths".
+- **Orkeon Studio**: every authorized folder shows its id (copy button, « used by » the teams
+  naming it, a confirmation before removing one a team depends on); a save gives an id to an
+  entry that has none. The chooser opened for a mount point offers only the entries declared
+  under that root and records the pick verbatim; the disk pick declares the folder under the
+  row's root — a second `/output`, told apart by its id — instead of renaming it `/docs`. The
+  sidecar keeps `<ulid>|<copy>`, the ids travel with a duplicated, exported or imported team,
+  a team naming a declaration missing on this machine is refused and the import review offers
+  « Authorize them as recorded »; the launch lays `--mount-id` for a declaration and `--mount`
+  only for the team's own folders; the effective-mounts table says which entry of a shared
+  root is kept.
+
+### Changed
+
+- `|` at the head of a mount string is reserved for the id prefix; a physical path that really
+  starts with a bare token and a `|` is quoted (`"a|b":/x:ro`). `list_mounts` and the
+  access-denied messages never show an id (D-08).
+- The settings half of the duplicate-root guard reads `Orkeon:FileSystem:Mounts` with its
+  indices (`RunnerSettings.ReadDeclaredAgentFacingMounts`); `EnsureMountSourcesExist` skips the
+  entries a selection withdrew; the runners pre-read the crew's `mounts:` block from disk
+  (`CrewMountDeclarations`, an `EXCEPTION-BOOTSTRAP`) so the refusal comes in one line before
+  "Using settings".
+- The `orkeon-host` daemon stays out of the selection (D-11): per-crew roots, an id prefix on an
+  operator `--mount` parses, no crew block is read. A `studio-team.json` written with ids is not
+  read by an Orkeon Studio from before this change (same version, no migration needed the other
+  way: a sidecar without ids resolves by folder, root and rights and is upgraded on its next save).
+
 <!-- LLM-11 -->
 ### Fixed — a timed-out LLM call is a failed call, not an empty answer; the sequential mode skips the dependents of a failed task; Studio pins the thinking switch and a reasoning-model timeout (LLM-11)
 

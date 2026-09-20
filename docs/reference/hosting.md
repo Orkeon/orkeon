@@ -49,6 +49,9 @@ IHost host = RunnerHost.Build(
         InternalMounts = [],              // mounts registered MountVisibility.Internal — resolvable
                                           // by the VFS, never listed to an agent (ADR-008)
         AllowExternalMounts = false,      // whitelist mount base paths outside the workspace root
+        SelectedMountIds = [],            // --mount-id values, parsed: the settings entries kept when
+                                          // several declare one virtual root (VFS-90)
+        CrewMountReferences = [],         // the crew's mounts: block — selects and validates, never restricts
         LlmLogVirtualPath = null,         // when set, a VIRTUAL directory the caller has mounted:
                                           // LLM HTTP exchanges are captured there as .jsonl
     },
@@ -102,6 +105,11 @@ The registration order is deliberate:
 7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
    `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays
    register nothing). Either list alone makes the VFS real: `--list-tools` has only the second.
+   Several entries of `Mounts` may declare one root when each carries an id (VFS-90):
+   `MountSelection.Resolve` decides, while the configuration is composed, which one this run
+   keeps — a `--mount` on the root, else `SelectedMountIds`, else `CrewMountReferences` — and
+   writes the others to `null` at their own index; a selection nothing resolves throws with
+   the very text the runners' guards print, so a host built without them refuses the same way.
 8. **Late tool suites** — RaggableTree (semantic-graph tools, opt out with
    `"RaggableTree:Enabled": false`; pre-registers local embeddings when they are the selected
    provider), the WebSearch and `cache_search` tools, and the Brave search tool when
@@ -136,7 +144,10 @@ code.
 
 A long-running service *can* simply wrap `RunnerHost.Build` — that is exactly what the
 `orkeon-host` daemon does (`Orkeon.Host/Program.cs`), passing `configureBuilder` for
-`UseSystemd()`/`UseWindowsService()`. A host that already owns its `IHostBuilder` (an ASP.NET
+`UseSystemd()`/`UseWindowsService()`. The daemon stays out of the mount selection (VFS-90,
+D-11): its crews mount under per-crew roots (`/crews*`), so no root is ever declared twice
+there, an operator `--mount` carrying an id prefix parses like any other, and no crew
+`mounts:` block is read. A host that already owns its `IHostBuilder` (an ASP.NET
 app, for example) instead **replicates `ConfigureRunnerServices`' registration order** inside its
 own `Program.cs` — there is no packaged shortcut for this; the REPL console inlines the same
 sequence by hand:

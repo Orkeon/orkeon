@@ -89,6 +89,7 @@ public partial class YamlCrewExporter
             Memory = config.Memory ? true : null,
             Planning = config.Planning ? true : null,
             ManagerAgent = config.ManagerAgentId?.ToString(),
+            Mounts = MapMounts(config),
         };
 
         var crewYaml = _yamlSerializer.Serialize(crewSettings);
@@ -120,10 +121,17 @@ public partial class YamlCrewExporter
             Memory = config.Memory ? true : null,
             Planning = config.Planning ? true : null,
             ManagerAgent = config.ManagerAgentId?.ToString(),
+            Mounts = MapMounts(config),
             Agents = MapToAgentsDictionary(config.Agents),
             Tasks = MapToTasksDictionary(config.Tasks),
         };
     }
+
+    /// <summary>The <c>mounts:</c> block as the loader reads it back (VFS-90); null when the crew has none.</summary>
+    private static System.Collections.ObjectModel.Collection<string>? MapMounts(CrewConfiguration config) =>
+        config.Mounts is { } mounts
+            ? new System.Collections.ObjectModel.Collection<string>([.. mounts.Select(m => m.ToString())])
+            : null;
 
     private static Dictionary<string, AgentYamlConfig> MapToAgentsDictionary(
         IReadOnlyList<AgentConfiguration> agents)

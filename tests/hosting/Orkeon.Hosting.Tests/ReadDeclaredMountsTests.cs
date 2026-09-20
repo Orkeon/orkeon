@@ -105,4 +105,57 @@ public sealed class ReadDeclaredMountsTests : IDisposable
         Assert.Empty(RunnerSettings.ReadDeclaredMounts(""));
         Assert.Empty(RunnerSettings.ReadDeclaredMounts(Path.Combine(_dir, "nope.json")));
     }
+
+    /// <summary>
+    /// VFS-90: the agent-facing reader keeps the ARRAY POSITION of every entry, because that is
+    /// the index the host withdraws an entry under. An element that is not a mount string still
+    /// counts one position, or the entries after it would be withdrawn at the wrong index.
+    /// </summary>
+    [Fact]
+    public void ItReadsAgentFacingEntriesAtTheirArrayPosition()
+    {
+        var path = Write("""{"Orkeon":{"FileSystem":{"Mounts":["/a:/work:ro", null, "", "/b:/data:rw"],"InternalMounts":["/c:/vault:rw"]}}}""");
+
+        var entries = RunnerSettings.ReadDeclaredAgentFacingMounts(path);
+
+        Assert.Equal([new DeclaredMountEntry(0, "/a:/work:ro"), new DeclaredMountEntry(3, "/b:/data:rw")], entries);
+        Assert.Equal(["/c:/vault:rw"], RunnerSettings.ReadDeclaredInternalMounts(path));
+    }
+
+    /// <summary>
+    /// An entry the <c>ORKEON_</c> environment declares is a declared entry too (the host's
+    /// snapshot sees it), so the guards read it as well — laid over the file index by index,
+    /// the way the configuration lays it. Otherwise a second <c>/output</c> arriving through a
+    /// variable slipped past the one-line guard and met the host's exception instead.
+    /// </summary>
+    [Fact]
+    public void ItLaysTheEnvironmentEntriesOverTheFileOnes()
+    {
+        var path = Write("""{"Orkeon":{"FileSystem":{"Mounts":["/a:/work:ro","/b:/data:rw"]}}}""");
+        const string ninth = "ORKEON_Orkeon__FileSystem__Mounts__9";
+        const string first = "ORKEON_ORKEON__FILESYSTEM__MOUNTS__1";
+        Environment.SetEnvironmentVariable(ninth, "/c:/output:rw");
+        Environment.SetEnvironmentVariable(first, "/d:/data:ro");
+        try
+        {
+            Assert.Equal(
+                [new DeclaredMountEntry(0, "/a:/work:ro"), new DeclaredMountEntry(1, "/d:/data:ro"), new DeclaredMountEntry(9, "/c:/output:rw")],
+                RunnerSettings.ReadDeclaredAgentFacingMounts(path));
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(ninth, null);
+            Environment.SetEnvironmentVariable(first, null);
+        }
+    }
+
+    [Fact]
+    public void TheSplitReadersAgreeWithTheUnionReader()
+    {
+        var path = Write("""{"orkeon":{"filesystem":{"mounts":["01J9Z3K4M5N6P7Q8R9S0T1V2W3|/a:/work:ro"],"internalmounts":["/c:/vault:rw"]}}}""");
+
+        Assert.Equal(
+            RunnerSettings.ReadDeclaredMounts(path),
+            [.. RunnerSettings.ReadDeclaredAgentFacingMounts(path).Select(e => e.Spec), .. RunnerSettings.ReadDeclaredInternalMounts(path)]);
+    }
 }

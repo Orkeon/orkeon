@@ -271,3 +271,45 @@ public sealed class MountDefinitionTests
         Assert.Equal("/data", MountDefinition.SuggestVirtualPath("/srv/crew", ["/data", "/docs", "/tmp"]));
     }
 }
+
+/// <summary>VFS-90: the entry's id rides the definition, and survives the editor's re-serialization.</summary>
+public sealed class MountDefinitionIdTests
+{
+    private const string Id = "01J9Z3K4M5N6P7Q8R9S0T1V2W3";
+
+    [Fact]
+    public void An_id_bearing_settings_entry_survives_an_editor_round_trip_untouched()
+    {
+        // Studio re-serializes every parsed entry on save (MountEditorViewModel.MountString →
+        // ToDefinition().ToMountString()): a definition that dropped the id would strip it
+        // from the settings file on the first save.
+        const string entry = Id + "|/srv/data:/output:rw;cache:ro";
+
+        var definition = MountDefinition.Parse(entry);
+
+        Assert.Equal(Id, definition.Id!.ToString());
+        Assert.Equal(entry, definition.ToMountString());
+        Assert.Equal(Id, definition.ToDomainMount().Id!.ToString());
+    }
+
+    [Fact]
+    public void A_definition_without_id_serializes_without_the_separator()
+    {
+        var definition = new MountDefinition { PhysicalPath = "/srv/data", VirtualPath = "/data" };
+
+        Assert.Null(definition.Id);
+        Assert.Equal("/srv/data:/data:ro", definition.ToMountString());
+        Assert.DoesNotContain("|", definition.ToMountString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Two_entries_on_one_folder_and_root_are_told_apart_by_their_id_alone()
+    {
+        var a = MountDefinition.Parse(Id + "|/srv/data:/output:rw");
+        var b = MountDefinition.Parse("01J9Z3K4M5N6P7Q8R9S0T1V2W4|/srv/data:/output:rw");
+
+        Assert.NotEqual(a.Id, b.Id);
+        Assert.NotEqual(a.ToMountString(), b.ToMountString());
+        Assert.Equal((a with { Id = null }).ToMountString(), (b with { Id = null }).ToMountString());
+    }
+}

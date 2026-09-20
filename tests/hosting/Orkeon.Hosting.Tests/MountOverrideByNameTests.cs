@@ -4,6 +4,7 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Infrastructure.Configuration;
@@ -217,6 +218,173 @@ public sealed class MountOverrideByNameTests : IDisposable
         Assert.False(fileSystem.ResolveAndValidate("/extra/note.txt", FileAccessRights.Read).IsAllowed);
     }
 
+    private static string IdSpec(MountId id, string directory, string virtualPath, string rights) =>
+        $"{id}|{Spec(directory, virtualPath, rights)}";
+
+    /// <summary>
+    /// VFS-90 (c): with two ids on one root, a <c>--mount</c> on that root replaces them both —
+    /// the first by overwrite, the second by withdrawal (its key written to null) — so the
+    /// registry ends with exactly one <c>/output</c>, the run's own.
+    /// </summary>
+    [Fact]
+    public void A_mount_replaces_every_settings_entry_of_its_root()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var run = SubDir("run");
+        var crew = SubDir("crew");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "rw"), IdSpec(idB, b, "/output", "rw")]);
+
+        using var logs = new CapturingLoggerProvider();
+        using var host = RunnerHost.Build(
+            settingsPath,
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro"), Spec(run, "/output", "rw")] },
+            configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
+
+        var mounts = MountsByRoot(host);
+        // MountsByRoot keys by root: a second /output would have thrown out of ToDictionary.
+        Assert.Equal(run, mounts["/output"].BasePath);
+        Assert.Null(mounts["/output"].Id);
+
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        Assert.Equal(Spec(run, "/output", "rw"), configuration["Orkeon:FileSystem:Mounts:0"]);
+        Assert.Null(configuration["Orkeon:FileSystem:Mounts:1"]);
+
+        // What the binder really does with a withdrawn key: it binds a NULL element at that
+        // index (it does not skip it), and the registration is what leaves it out. Pinned here
+        // so a binder that changes its mind is noticed rather than assumed.
+        var bound = host.Services.GetRequiredService<IOptions<FileSystemOptions>>().Value.Mounts;
+        Assert.Equal([Spec(run, "/output", "rw"), null, Spec(crew, "/crew", "ro")], bound);
+
+        Assert.Contains(logs.Entries, e => e.Message == "mount /output: --mount replaces the settings entry");
+        Assert.Contains(logs.Entries, e => e.Message == $"mount /output: settings entry {idB} not mounted for this run");
+    }
+
+    /// <summary>
+    /// VFS-90 D-04 / D-10: a <c>--mount-id</c> keeps the entry it names, verbatim (folder,
+    /// rights, id), withdraws the other entry of the root, and the log says so by id.
+    /// </summary>
+    [Fact]
+    public void A_mount_id_selects_one_entry_and_withdraws_the_other()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var crew = SubDir("crew");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "ro"), IdSpec(idB, b, "/output", "rw")]);
+
+        using var logs = new CapturingLoggerProvider();
+        using var host = RunnerHost.Build(
+            settingsPath,
+            new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB] },
+            configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
+
+        var mounts = MountsByRoot(host);
+        Assert.Equal(b, mounts["/output"].BasePath);
+        Assert.Equal(FileAccessRights.ReadWrite, mounts["/output"].DefaultRights);
+        Assert.Equal(idB, mounts["/output"].Id);
+
+        var configuration = host.Services.GetRequiredService<IConfiguration>();
+        Assert.Null(configuration["Orkeon:FileSystem:Mounts:0"]);
+        Assert.Equal(IdSpec(idB, b, "/output", "rw"), configuration["Orkeon:FileSystem:Mounts:1"]);
+
+        Assert.Contains(logs.Entries, e =>
+            e.Level == LogLevel.Information && e.Message == $"mount /output: settings entry {idB} selected by --mount-id");
+        Assert.Contains(logs.Entries, e => e.Message == $"mount /output: settings entry {idA} not mounted for this run");
+
+        // The withdrawn entry's folder is not whitelisted: nothing reaches it any more.
+        var whitelist = host.Services.GetRequiredService<IOptions<PathSecurityOptions>>().Value.AdditionalAllowedDirectories;
+        Assert.Contains(b, whitelist);
+        Assert.DoesNotContain(a, whitelist);
+    }
+
+    [Fact]
+    public void The_crews_mounts_block_selects_an_entry_without_any_flag()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var crew = SubDir("crew");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "rw"), IdSpec(idB, b, "/output", "rw")]);
+
+        using var logs = new CapturingLoggerProvider();
+        using var host = RunnerHost.Build(
+            settingsPath,
+            new RunnerMountPlan
+            {
+                CliMounts = [Spec(crew, "/crew", "ro")],
+                CrewMountReferences = [MountReference.ForId(idA, "/output")],
+            },
+            configureLogging: (_, b2) => { b2.AddProvider(logs); b2.SetMinimumLevel(LogLevel.Information); });
+
+        Assert.Equal(a, MountsByRoot(host)["/output"].BasePath);
+        Assert.Contains(logs.Entries, e => e.Message == $"mount /output: settings entry {idA} selected by the crew's mounts:");
+    }
+
+    /// <summary>
+    /// The closed net: a host built without the runners' guards (the daemon, rag, forge) still
+    /// refuses an unresolvable selection, with the guards' own words — never "Duplicate virtual
+    /// paths" out of a DI factory.
+    /// </summary>
+    [Fact]
+    public void Two_entries_of_one_root_with_nothing_selecting_one_fail_the_build_with_the_selection_message()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var crew = SubDir("crew");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "rw"), IdSpec(idB, b, "/output", "rw")]);
+
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")] }));
+
+        Assert.Equal(
+            $"'/output' is declared twice in {settingsPath} ({idA}: {a}, {idB}: {b}) and nothing selects one. "
+            + "Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, "
+            + "or pass --mount <folder>:/output:rw to replace them all.",
+            ex.Message);
+    }
+
+    /// <summary>
+    /// An entry the environment adds is a declared entry too: the host's snapshot sees it, so
+    /// the refusal has the same text whether the second <c>/output</c> came from the file or
+    /// from <c>ORKEON_Orkeon__FileSystem__Mounts__9</c>.
+    /// </summary>
+    [Fact]
+    public void An_environment_declared_second_entry_is_refused_by_the_host_not_by_the_registry()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var crew = SubDir("crew");
+        var idA = MountId.Create();
+        var idB = MountId.Create();
+        var settingsPath = WriteSettings([IdSpec(idA, a, "/output", "rw")]);
+
+        const string variable = "ORKEON_Orkeon__FileSystem__Mounts__9";
+        Environment.SetEnvironmentVariable(variable, IdSpec(idB, b, "/output", "rw"));
+        try
+        {
+            var ex = Assert.Throws<InvalidOperationException>(() =>
+                RunnerHost.Build(settingsPath, new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")] }));
+            Assert.Contains("nothing selects one", ex.Message, StringComparison.Ordinal);
+            Assert.DoesNotContain("Duplicate virtual paths", ex.Message, StringComparison.Ordinal);
+
+            using var host = RunnerHost.Build(
+                settingsPath,
+                new RunnerMountPlan { CliMounts = [Spec(crew, "/crew", "ro")], SelectedMountIds = [idB] });
+            Assert.Equal(b, MountsByRoot(host)["/output"].BasePath);
+        }
+        finally
+        {
+            Environment.SetEnvironmentVariable(variable, null);
+        }
+    }
+
     private sealed class TestOptions : RunnerOptionsBase { }
 
     private const string MinimalCrewYaml = """
@@ -359,7 +527,101 @@ public sealed class VirtualRootUniquenessGuardTests : IDisposable
 
         Assert.Equal(1, exit);
         var line = Assert.Single(Lines(stderr));
-        Assert.Equal($"ERROR: '/x' is declared twice in {settingsPath}: {a}:/x:ro and {b}:/x:rw. Keep one.", line);
+        Assert.Equal(
+            $"ERROR: '/x' is declared twice in {settingsPath} ({a}:/x:ro and {b}:/x:rw) and '{a}:/x:ro' has no id. "
+            + "Give every entry an id (<ulid>|<physical>:/x:<rights>; Studio > Allowed folders writes one on save) or keep one.",
+            line);
+    }
+
+    /// <summary>
+    /// VFS-90 D-03: two entries of one root are legitimate when both carry an id — which one
+    /// the run keeps is the selection's business, not this guard's.
+    /// </summary>
+    [Fact]
+    public void Two_entries_of_one_root_that_both_carry_an_id_pass_the_uniqueness_guard()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var settingsPath = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(settingsPath,
+            "{ \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{MountId.Create()}|{a}:/x:ro") + ", "
+            + System.Text.Json.JsonSerializer.Serialize($"{MountId.Create()}|{b}:/x:rw") + " ] } } }");
+
+        var origErr = Console.Error;
+        using var stderr = new StringWriter(new StringBuilder());
+        Console.SetError(stderr);
+        bool ok;
+        try
+        {
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+        }
+        finally
+        {
+            Console.SetError(origErr);
+        }
+
+        Assert.True(ok);
+        Assert.Empty(stderr.ToString());
+    }
+
+    [Fact]
+    public void An_id_declared_twice_is_refused_by_the_uniqueness_guard()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var id = MountId.Create();
+        var settingsPath = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(settingsPath,
+            "{ \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{id}|{a}:/x:ro") + ", "
+            + System.Text.Json.JsonSerializer.Serialize($"{id}|{b}:/y:rw") + " ] } } }");
+
+        var origErr = Console.Error;
+        using var stderr = new StringWriter(new StringBuilder());
+        Console.SetError(stderr);
+        bool ok;
+        try
+        {
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+        }
+        finally
+        {
+            Console.SetError(origErr);
+        }
+
+        Assert.False(ok);
+        Assert.Equal(
+            $"ERROR: mount id {id} is declared twice in {settingsPath}: {id}|{a}:/x:ro and {id}|{b}:/y:rw. An id names one entry.",
+            Assert.Single(Lines(stderr.ToString())));
+    }
+
+    [Fact]
+    public void An_internal_mount_on_an_agent_facing_root_is_still_refused()
+    {
+        var a = SubDir("a");
+        var b = SubDir("b");
+        var settingsPath = Path.Combine(_root, "appsettings.json");
+        File.WriteAllText(settingsPath,
+            "{ \"Orkeon\": { \"FileSystem\": { \"Mounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{a}:/x:ro") + " ], \"InternalMounts\": [ "
+            + System.Text.Json.JsonSerializer.Serialize($"{b}:/x:rw") + " ] } } }");
+
+        var origErr = Console.Error;
+        using var stderr = new StringWriter(new StringBuilder());
+        Console.SetError(stderr);
+        bool ok;
+        try
+        {
+            ok = RunnerExecution.EnsureVirtualRootsAreUnique([], settingsPath);
+        }
+        finally
+        {
+            Console.SetError(origErr);
+        }
+
+        Assert.False(ok);
+        Assert.Equal($"ERROR: '/x' is declared twice in {settingsPath}: {a}:/x:ro and {b}:/x:rw. Keep one.", Assert.Single(Lines(stderr.ToString())));
     }
 
     /// <summary>

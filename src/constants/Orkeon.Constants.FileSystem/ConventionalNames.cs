@@ -26,6 +26,20 @@ public static class ConventionalNames
     public const string StateDirectory = ".orkeon";
 
     /// <summary>
+    /// The crew settings file of a multi-file YAML crew directory: <c>name</c>, <c>goal</c>,
+    /// <c>process</c>, <c>links</c>, <c>mounts</c>. Read by the YAML loader through the VFS and,
+    /// before any host exists, by the runners' mount pre-read (VFS-90) — two readers that must
+    /// agree on the name or the pre-read silently sees no <c>mounts:</c> block.
+    /// </summary>
+    public const string CrewSettingsFile = "config.yaml";
+
+    /// <summary>
+    /// The name accepted in place of <see cref="CrewSettingsFile"/> when a crew directory has
+    /// none: the flat layout's crew file doubles as the settings file.
+    /// </summary>
+    public const string CrewSettingsFallbackFile = "crew.yaml";
+
+    /// <summary>
     /// The flat YAML crew layout: a directory holding these three files is a crew, as opposed to
     /// the multi-file layout with its <c>agents/</c> and <c>tasks/</c> sub-folders.
     /// <para>

@@ -38,6 +38,10 @@ internal static class ForgeBlueprintCompiler
     {
         ArgumentNullException.ThrowIfNull(blueprint);
 
+        // The roots the blueprint reads and writes (VFS-90): the crew says what it expects, so
+        // a run without the launcher's --mount refuses instead of silently writing nowhere.
+        var expectedRoots = ForgePromoter.DeliverableMounts(blueprint).Select(m => m.VirtualRoot).ToList();
+
         var settings = new CrewSettingsYamlConfig
         {
             Name = blueprint.Crew?.Name,
@@ -46,6 +50,7 @@ internal static class ForgeBlueprintCompiler
             Verbose = blueprint.Crew?.Verbose,
             Memory = blueprint.Crew?.Memory,
             ManagerAgent = blueprint.Manager,
+            Mounts = expectedRoots.Count > 0 ? new Collection<string>(expectedRoots) : null,
         };
 
         var agents = new Dictionary<string, AgentYamlConfig>(StringComparer.Ordinal);
@@ -87,6 +92,7 @@ internal static class ForgeBlueprintCompiler
                 Verbose = settings.Verbose,
                 Memory = settings.Memory,
                 ManagerAgent = settings.ManagerAgent,
+                Mounts = settings.Mounts,
             },
             agents,
             tasks);

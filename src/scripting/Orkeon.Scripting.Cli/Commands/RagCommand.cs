@@ -473,6 +473,12 @@ internal static class RagCommand
         if (!RunnerExecution.EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Sandbox))
             return null;
 
+        // Two settings entries of one root (VFS-90) have no crew here to pick one and this verb
+        // takes no --mount-id: a --mount on the root replaces them both, otherwise the guard
+        // refuses in one line instead of the host throwing out of its configuration.
+        if (!RunnerExecution.EnsureMountSelectionIsResolvable(cliMounts, [], CrewMountDeclarations.None, settingsPath, out _))
+            return null;
+
         if (!claimed.Any(m => ClaimsVirtualRoot(m, "/workspace")))
             cliMounts.Insert(0, $"{FileSystemMount.Quote(cwd)}:/workspace:ro");
 

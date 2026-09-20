@@ -88,7 +88,7 @@ Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 - `FORGE.md` — la carte d'identité de l'équipe : objectif, critères d'acceptation, verdict, date et version de génération — ce qu'un collègue lit en récupérant le dossier ;
 - `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur, et prétendre le contraire promettrait une supervision qu'il ne peut pas donner.
 
-Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi, mais sans les arguments `--mount` que porte le lanceur : l'équipe n'a alors aucun `/output` et n'écrit rien.
+Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi : le `config.yaml` promu nomme les racines que l'équipe utilise (`mounts: [/workspace, /output]`), si bien qu'une entrée des settings déclarant `/output` est utilisée telle quelle, et qu'à défaut le run est refusé en une ligne (`the crew requires '/output' … pass --mount <folder>:/output:rw`) au lieu d'écrire nulle part.
 
 ## Dans Orkeon Studio
 

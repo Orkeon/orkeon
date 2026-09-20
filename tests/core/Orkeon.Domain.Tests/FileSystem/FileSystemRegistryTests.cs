@@ -39,6 +39,43 @@ public sealed class FileSystemRegistryTests : IDisposable
     }
 
     [Fact]
+    public void Constructor_DuplicateIds_ThrowsInvalidOperationException()
+    {
+        // VFS-90: an id names one entry; two mounts carrying the same one is a copied line.
+        var id = Orkeon.Domain.Common.MountId.Create();
+        var mounts = new[]
+        {
+            new FileSystemMount("/a", "/workspace", FileAccessRights.ReadWrite, id: id),
+            new FileSystemMount("/b", "/output", FileAccessRights.ReadOnly, id: id)
+        };
+
+        var ex = Assert.Throws<InvalidOperationException>(() => new FileSystemRegistry(mounts));
+        Assert.Contains("Duplicate mount ids", ex.Message, StringComparison.Ordinal);
+        Assert.Contains(id.ToString(), ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void GetAvailableMounts_CarriesTheIdButTheDenialMessageDoesNot()
+    {
+        var id = Orkeon.Domain.Common.MountId.Create();
+        using var registry = new FileSystemRegistry(
+        [
+            new FileSystemMount("/a", "/workspace", FileAccessRights.ReadOnly, id: id),
+            new FileSystemMount("/b", "/output", FileAccessRights.ReadWrite),
+        ]);
+
+        var listed = registry.GetAvailableMounts();
+        Assert.Equal(id, listed.Single(m => m.VirtualPath == "/workspace").Id);
+        Assert.Null(listed.Single(m => m.VirtualPath == "/output").Id);
+
+        // Agents deal in virtual paths alone (ADR-008): the id stays out of what they read.
+        var denied = Assert.Throws<FileAccessDeniedException>(() =>
+            registry.ResolveAndCheckRights("/nowhere/file.txt", FileAccessRights.Read));
+        Assert.DoesNotContain(id.ToString(), denied.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain("|", denied.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void ResolveAndCheckRights_ValidPath_ReturnsPhysicalPath()
     {
         var baseDir = CreateSubDir("ws");

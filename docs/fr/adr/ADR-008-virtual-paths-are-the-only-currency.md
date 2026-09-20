@@ -119,18 +119,21 @@ côtés (`/output:/output:rw`, la convention conteneur). Elle ne couvre plus l'i
 
 ## Ce que cet ADR ne tranche délibérément pas
 
-Un crew ne peut toujours **pas déclarer les dossiers dont il a besoin**. `CrewYamlConfig` n'a pas
-de bloc `filesystem:`, donc le liage virtuel→physique est fourni entièrement depuis l'extérieur de
-l'artefact portable — par un argument `--mount`, par `appsettings`, ou par le sidecar de Studio.
-C'est ce trou qui permettait de lancer une équipe promue sans aucun `/output` alors que ses propres
-tâches déclaraient `deliverable: /output/…` ; la casse immédiate est refermée en dérivant ces
-racines à la promotion et à l'adoption, ce qui est un remède aux bords, pas le contrat lui-même.
+Un crew ne peut toujours **pas lier les dossiers dont il a besoin**. Depuis VFS-90 il les
+**nomme** : un bloc `mounts:` (`/output`, ou `<ulid>|/output` pour épingler une entrée des settings
+quand plusieurs déclarent cette racine) liste les racines virtuelles que le crew utilise, sur le
+modèle du bloc `links:` existant, et les runners le résolvent face aux settings avant tout host —
+une racine que rien ne fournit, ou un identifiant qu'aucune entrée ne porte, est refusé en une
+ligne plutôt qu'au premier appel d'outil. Le bloc sélectionne et valide ; le liage
+virtuel→physique lui-même reste fourni depuis l'extérieur de l'artefact portable — par une entrée
+des settings (désormais dotée d'une identité), par un argument `--mount`, ou par le sidecar de
+Studio. C'est ce qui referme le trou qui permettait de lancer une équipe promue sans aucun
+`/output` alors que ses propres tâches déclaraient `deliverable: /output/…` : `forge promote` écrit
+le bloc, et un `orkeon run crew/` nu refuse au lieu d'écrire nulle part.
 
-Déclarer les besoins de fichiers sur le crew — sur le modèle du bloc `links:` existant, validé par
-`orkeon run --validate` plutôt qu'en échouant au premier appel d'outil — change la grammaire YAML,
-le DSL scripté, le blueprint de la forge et l'API publique de deux assemblies. Cela appartient à
-une version autorisée à bouger la grammaire, pas à une release candidate. Cet ADR en réserve la
-place.
+Un bloc `filesystem:` qui lierait des dossiers depuis le crew — des chemins physiques dans
+l'artefact portable — reste hors périmètre, et délibérément : le dossier derrière un nom est
+l'affaire de la machine, ce qui est tout le propos de cet ADR.
 
 L'**appelant privilégié** que cet ADR laissait ouvert a depuis été construit :
 `PrivilegedFileSystemAccess` est ce second accesseur, et `MountVisibility.Internal` refuse

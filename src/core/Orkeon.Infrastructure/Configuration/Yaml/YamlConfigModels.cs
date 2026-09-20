@@ -348,6 +348,11 @@ public class CrewYamlConfig
     public RagYamlConfig? Rag { get; set; }
     /// <summary>Gets or sets the EventHub authorizations declared by the crew (<c>links:</c>).</summary>
     public Collection<LinkYamlConfig>? Links { get; set; }
+    /// <summary>
+    /// Gets or sets the mounts the crew expects (<c>mounts:</c>, VFS-90): each item is a virtual
+    /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
+    /// </summary>
+    public Collection<string>? Mounts { get; set; }
     /// <summary>Gets or sets the agent configurations keyed by agent identifier.</summary>
     public Dictionary<string, AgentYamlConfig>? Agents { get; set; }
     /// <summary>Gets or sets the task configurations keyed by task identifier.</summary>
@@ -406,6 +411,11 @@ public class CrewSettingsYamlConfig
     public RagYamlConfig? Rag { get; set; }
     /// <summary>Gets or sets the EventHub authorizations declared by the crew (<c>links:</c>).</summary>
     public Collection<LinkYamlConfig>? Links { get; set; }
+    /// <summary>
+    /// Gets or sets the mounts the crew expects (<c>mounts:</c>, VFS-90): each item is a virtual
+    /// root (<c>/output</c>) or a root pinned to one settings entry by its id (<c>01J…|/output</c>).
+    /// </summary>
+    public Collection<string>? Mounts { get; set; }
 }
 
 #pragma warning restore CA2227 // Collection properties should be read only

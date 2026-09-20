@@ -28,6 +28,10 @@ links:                    # ACL EventHub (optionnel) — qui peut parler à qui 
     direction: string     # "send" | "receive" | "both"
     allowed_topics: [string]
 
+mounts:                   # Les racines virtuelles que la crew utilise (optionnel, VFS-90) — sélectionne et valide, ne restreint jamais
+  - /output               # une racine qu'une entrée des settings (ou un --mount) doit fournir ; refusée en une ligne si rien ne le fait
+  - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
+
 rag:                      # Configuration RAG au niveau crew (optionnel)
   provider: string        # Store mémoire/vectoriel des collections ("InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb")
   collections:
@@ -249,6 +253,7 @@ Les modèles YAML incluent :
 - `DeliverableYamlConfig` (le bloc `deliverable:` de tâche)
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
+- `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
 - `CircuitBreakerYamlConfig` (preset, seuils, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
 - `RagYamlConfig` (provider, collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`

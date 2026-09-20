@@ -9,4 +9,12 @@ public sealed record MountInfo(
     string VirtualPath,
     FileAccessRights DefaultRights,
     IReadOnlyList<SubPathOverride> Overrides,
-    MountVisibility Visibility = MountVisibility.AgentFacing);
+    MountVisibility Visibility = MountVisibility.AgentFacing)
+{
+    /// <summary>
+    /// The settings entry's id when the mount came from one (VFS-90), for the hosts and Studio.
+    /// Agents never see it: the agent-facing listing and the denial message deal in virtual
+    /// paths alone (ADR-008).
+    /// </summary>
+    public Orkeon.Domain.Common.MountId? Id { get; init; }
+}

@@ -131,8 +131,12 @@ public static partial class RunnerExecution
             // registry enumerates the DI-provided IBaseTool set. An internal mount of the cwd
             // satisfies that without putting a directory on the agent-facing surface.
             var cliMounts = opts.Mounts.ToList();
-            if (!EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox))
+            if (!EnsureReservedRootsAreFree(cliMounts, settingsPath, RunnerVirtualRoots.Crew, RunnerVirtualRoots.Sandbox)
+                || !EnsureMountSelectionIsResolvable(cliMounts, opts.MountIds, CrewMountDeclarations.None, settingsPath, out var selection))
+            {
                 return 1;
+            }
+
             var internalMounts = new[] { $"{FileSystemMount.Quote(cwd)}:{RunnerVirtualRoots.Crew}:ro" };
 
             using var host = RunnerHost.Build(
@@ -141,6 +145,8 @@ public static partial class RunnerExecution
                 {
                     CliMounts = cliMounts,
                     InternalMounts = internalMounts,
+                    SelectedMountIds = selection.SelectedMountIds,
+                    CrewMountReferences = selection.CrewMountReferences,
                     AllowExternalMounts = opts.EffectiveAllowExternalMounts,
                 },
                 configureLogging: (_, b) => ConfigureStderrOnlyLogging(b),

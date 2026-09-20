@@ -125,6 +125,23 @@ public sealed class ForgeYamlRendererTests : IDisposable
     }
 
     [Fact]
+    public void The_compiled_settings_name_the_roots_the_blueprint_reads_and_writes()
+    {
+        // VFS-90: the crew says which roots it expects (mounts:), derived exactly as the
+        // launcher's --mount arguments are, so a bare `orkeon run crew/` refuses instead of
+        // writing nowhere — and the same list reaches the configuration the validator judges.
+        Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
+        var expected = ForgePromoter.DeliverableMounts(blueprint).Select(m => m.VirtualRoot).ToList();
+        Assert.NotEmpty(expected);
+
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
+
+        Assert.Equal(expected, compilation.Settings.Mounts);
+        Assert.Equal(expected, compilation.Configuration.Mounts!.Select(m => m.VirtualRoot));
+        Assert.All(compilation.Configuration.Mounts!, m => Assert.Null(m.Id));
+    }
+
+    [Fact]
     public void The_per_entity_layout_is_written_one_file_per_entity()
     {
         var written = ForgeYamlRenderer.Render(CompileValid(), _sessionDirectory);

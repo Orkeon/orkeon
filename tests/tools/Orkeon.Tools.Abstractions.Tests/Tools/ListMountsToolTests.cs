@@ -84,6 +84,28 @@ public class ListMountsToolTests
     }
 
     /// <summary>
+    /// VFS-90 D-08: a mount's id is for hosts and Studio, never for agents. The DTO has no id
+    /// field, so <c>list_mounts</c> cannot leak one whatever the registry carries.
+    /// </summary>
+    [Fact]
+    public async Task CallAsync_NeverExposesTheMountId()
+    {
+        var mounts = new List<MountInfo>
+        {
+            new("/output", FileAccessRights.ReadWrite, []) { Id = Orkeon.Domain.Common.MountId.Create() },
+        };
+        using var tool = new ListMountsTool(new StubFileSystemService(mounts));
+
+        var response = await tool.CallAsync(new ProtocolToolCallRequest("list_mounts", []), TestContext.Current.CancellationToken);
+
+        var dict = Assert.IsType<Dictionary<string, object>>(response.Result);
+        var dto = Assert.Single(Assert.IsType<List<MountInfoDto>>(dict["mounts"]));
+        Assert.Equal("rw", dto.Rights);
+        Assert.DoesNotContain(typeof(MountInfoDto).GetProperties(), p => p.Name.Contains("Id", StringComparison.Ordinal));
+        Assert.DoesNotContain("|", System.Text.Json.JsonSerializer.Serialize(dto), StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// Minimal IFileSystemService stub that only supports GetAvailableMounts,
     /// which is the single method exercised by ListMountsTool.
     /// </summary>

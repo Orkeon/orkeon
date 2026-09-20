@@ -38,6 +38,16 @@ public abstract class RunnerOptionsBase
                    + "Several mounts go space-separated after ONE --mount (the flag cannot be repeated).")]
     public IEnumerable<string> Mounts { get; set; } = [];
 
+    /// <summary>
+    /// Ids of the settings mounts to use for this run, when several entries declare one virtual
+    /// root (VFS-90). Several go space-separated after ONE flag, like <see cref="Mounts"/>.
+    /// </summary>
+    [Option(RunOptionNames.MountId, Required = false,
+        HelpText = "Id(s) of the settings mount to use when several entries declare one virtual root "
+                   + "(the <ulid>| prefix of an entry in appsettings.json). "
+                   + "Several ids go space-separated after ONE --mount-id (the flag cannot be repeated).")]
+    public IEnumerable<string> MountIds { get; set; } = [];
+
     /// <summary>Allow mounts whose base path is outside the cwd.</summary>
     [Option(RunOptionNames.AllowExternalMounts, Required = false, Default = false,
         HelpText = "Allow mounts from directories outside the workspace root. Mount base paths are added to the security whitelist. " +

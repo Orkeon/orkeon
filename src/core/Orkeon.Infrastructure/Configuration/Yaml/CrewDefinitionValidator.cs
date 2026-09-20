@@ -26,11 +26,38 @@ public static class CrewDefinitionValidator
         ValidateAgents(config, errors);
         ValidateTasks(config, errors);
         ValidateHierarchicalProcess(config, errors, warnings);
+        ValidateMounts(config, errors);
 
         return new CrewDefinitionValidationResult(
             errors.Count == 0,
             errors.AsReadOnly(),
             warnings.AsReadOnly());
+    }
+
+    /// <summary>
+    /// The <c>mounts:</c> block (VFS-90): the format is the value object's, so what is left to
+    /// check is that the block selects coherently — one root once, and never two different
+    /// entries for one root.
+    /// </summary>
+    private static void ValidateMounts(CrewConfiguration config, List<string> errors)
+    {
+        if (config.Mounts is null)
+            return;
+
+        var seen = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var reference in config.Mounts)
+        {
+            if (!seen.Add(reference.ToString()))
+                errors.Add($"Crew mounts: '{reference}' is listed twice.");
+        }
+
+        foreach (var group in config.Mounts.Where(m => m.Id is not null)
+                     .GroupBy(m => m.VirtualRoot, StringComparer.Ordinal))
+        {
+            var ids = group.Select(m => m.Id!.ToString()).Distinct(StringComparer.Ordinal).ToList();
+            if (ids.Count > 1)
+                errors.Add($"Crew mounts: two ids select '{group.Key}' ({string.Join(", ", ids)}); keep one.");
+        }
     }
 
     private static void ValidateCrewBasicFields(CrewConfiguration config, List<string> errors)

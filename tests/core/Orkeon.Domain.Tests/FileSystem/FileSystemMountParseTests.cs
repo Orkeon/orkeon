@@ -228,3 +228,125 @@ public class FileSystemMountParseTests
         }
     }
 }
+
+/// <summary>
+/// VFS-90: the optional <c>&lt;ulid&gt;|</c> prefix that gives a settings entry its identity.
+/// </summary>
+public class FileSystemMountIdPrefixTests
+{
+    private const string Id = "01J9Z3K4M5N6P7Q8R9S0T1V2W3";
+
+    [Fact]
+    public void Parse_IdPrefix_IsReadAsMountId()
+    {
+        var mount = FileSystemMount.Parse($"{Id}|/srv/data:/data:ro");
+
+        Assert.Equal(Id, mount.Id!.ToString());
+        Assert.Equal("/srv/data", mount.BasePath);
+        Assert.Equal("/data", mount.VirtualPath);
+        Assert.Equal(FileAccessRights.ReadOnly, mount.DefaultRights);
+    }
+
+    [Fact]
+    public void Parse_IdPrefix_WithQuotedWindowsPathAndOverrides_ParsesCorrectly()
+    {
+        var mount = FileSystemMount.Parse($"{Id}|\"C:\\Users\\Demo\\\":/workspace:rw;vendor:ro");
+
+        Assert.Equal(Id, mount.Id!.ToString());
+        Assert.Equal(@"C:\Users\Demo\", mount.BasePath);
+        Assert.Single(mount.Overrides);
+    }
+
+    [Fact]
+    public void Parse_WithoutPrefix_HasNoId()
+    {
+        Assert.Null(FileSystemMount.Parse("/srv/data:/data:ro").Id);
+        Assert.Null(FileSystemMount.Parse(@"C:\data:/data:ro").Id);
+    }
+
+    [Theory]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W")]     // 25 characters
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2WI")]    // I is not Crockford
+    [InlineData("abc123")]                        // a bare token that is no id at all
+    public void Parse_BadIdPrefix_ThrowsWithTheRemedy(string token)
+    {
+        var failure = Assert.Throws<FormatException>(() => FileSystemMount.Parse($"{token}|/srv/data:/data:ro"));
+
+        Assert.Contains($"Invalid mount id '{token}'", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("26 Crockford base32 characters", failure.Message, StringComparison.Ordinal);
+        Assert.Contains("quoted", failure.Message, StringComparison.Ordinal);
+    }
+
+    [Theory]
+    [InlineData("\"/data/odd|name\":/x:ro", "/data/odd|name")]   // quoted: the pipe is literal
+    [InlineData("/data/odd|name:/x:ro", "/data/odd|name")]         // rooted: cannot be an id token
+    [InlineData("./odd|name:/x:ro", "./odd|name")]                 // relative: cannot be an id token
+    [InlineData(@"C:\odd|name:/x:ro", @"C:\odd|name")]             // drive letter: cannot be an id token
+    public void Parse_PipeInsideAPath_IsNotAnIdPrefix(string spec, string expectedBasePath)
+    {
+        var mount = FileSystemMount.Parse(spec);
+
+        Assert.Null(mount.Id);
+        Assert.Equal(expectedBasePath, mount.BasePath);
+    }
+
+    [Theory]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W3|/srv:/data:ro", "01J9Z3K4M5N6P7Q8R9S0T1V2W3")]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W3|this is not even a mount", "01J9Z3K4M5N6P7Q8R9S0T1V2W3")]
+    [InlineData("/srv:/data:ro", null)]
+    [InlineData("nope|/srv:/data:ro", null)]
+    [InlineData("", null)]
+    public void TryGetId_reads_the_prefix_without_parsing_the_rest(string spec, string? expected) =>
+        Assert.Equal(expected, FileSystemMount.TryGetId(spec)?.ToString());
+
+    [Fact]
+    public void TryGetBasePath_skips_the_id_and_WithBasePath_keeps_it()
+    {
+        var spec = $"{Id}|./output:/output:rw;cache:ro";
+
+        Assert.Equal("./output", FileSystemMount.TryGetBasePath(spec));
+
+        var rebased = FileSystemMount.WithBasePath(spec, "/teams/veille/output");
+        Assert.Equal($"{Id}|/teams/veille/output:/output:rw;cache:ro", rebased);
+        Assert.Equal(Id, FileSystemMount.Parse(rebased).Id!.ToString());
+    }
+
+    [Theory]
+    [InlineData("/srv/data:/data:ro")]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W3|/srv/data:/data:rw")]
+    [InlineData("01J9Z3K4M5N6P7Q8R9S0T1V2W3|\"C:\\src\\\":/workspace:rwnd;vendor/patches:rw;vendor:ro")]
+    [InlineData("\"abc123|odd\":/x:ro")]
+    public void ToMountString_round_trips(string spec)
+    {
+        var parsed = FileSystemMount.Parse(spec);
+
+        var written = parsed.ToMountString();
+        var reparsed = FileSystemMount.Parse(written);
+
+        // Member by member: the record holds a list, whose equality is by reference.
+        Assert.Equal(parsed.Id, reparsed.Id);
+        Assert.Equal(parsed.BasePath, reparsed.BasePath);
+        Assert.Equal(parsed.VirtualPath, reparsed.VirtualPath);
+        Assert.Equal(parsed.DefaultRights, reparsed.DefaultRights);
+        Assert.Equal(parsed.Overrides, reparsed.Overrides);
+        Assert.Equal(written, reparsed.ToMountString());
+    }
+
+    [Fact]
+    public void Quote_wraps_a_bare_token_followed_by_a_pipe_so_it_never_reads_as_an_id()
+    {
+        Assert.Equal("\"abc123|odd\"", FileSystemMount.Quote("abc123|odd"));
+        Assert.Equal("/data/odd|name", FileSystemMount.Quote("/data/odd|name"));
+    }
+
+    [Theory]
+    [InlineData(FileAccessRights.ReadOnly, "ro")]
+    [InlineData(FileAccessRights.ReadWrite, "rw")]
+    [InlineData(FileAccessRights.ReadWriteNoDelete, "rwnd")]
+    public void FormatRights_spells_the_grammar_tokens(FileAccessRights rights, string token) =>
+        Assert.Equal(token, FileSystemMount.FormatRights(rights));
+
+    [Fact]
+    public void FormatRights_refuses_rights_the_grammar_cannot_spell() =>
+        Assert.Throws<ArgumentOutOfRangeException>(() => FileSystemMount.FormatRights(FileAccessRights.Write));
+}

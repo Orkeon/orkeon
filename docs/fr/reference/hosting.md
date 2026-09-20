@@ -51,6 +51,9 @@ IHost host = RunnerHost.Build(
         InternalMounts = [],              // montages enregistrés en MountVisibility.Internal — résolubles
                                           // par le VFS, jamais listés à un agent (ADR-008)
         AllowExternalMounts = false,      // autoriser des bases de montage hors de la racine du workspace
+        SelectedMountIds = [],            // valeurs --mount-id, parsées : les entrées des settings gardées
+                                          // quand plusieurs déclarent une même racine virtuelle (VFS-90)
+        CrewMountReferences = [],         // le bloc mounts: de la crew — sélectionne et valide, ne restreint jamais
         LlmLogVirtualPath = null,         // si renseigné, un répertoire VIRTUEL que l'appelant a monté :
                                           // les échanges HTTP LLM y sont capturés en .jsonl
     },
@@ -107,7 +110,12 @@ L'ordre d'enregistrement est délibéré :
 7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` **ou**
    `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
    vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`
-   n'a que la seconde.
+   n'a que la seconde. Plusieurs entrées de `Mounts` peuvent déclarer une même racine si chacune
+   porte un identifiant (VFS-90) : `MountSelection.Resolve` décide, pendant la composition de la
+   configuration, laquelle ce run garde — un `--mount` sur la racine, sinon `SelectedMountIds`,
+   sinon `CrewMountReferences` — et écrit les autres à `null` à leur propre index ; une sélection
+   que rien ne résout lève le texte même que les gardes des runners impriment, si bien qu'un
+   host construit sans elles refuse de la même façon.
 8. **Suites d'outils tardives** — RaggableTree (outils de graphe sémantique, opt-out via
    `"RaggableTree:Enabled": false` ; pré-enregistre les embeddings locaux quand ils sont le provider
    choisi), les outils WebSearch et `cache_search`, et l'outil de recherche Brave quand
@@ -143,7 +151,10 @@ settings/montages et retournent un code de sortie processus.
 
 Un service longue durée *peut* simplement envelopper `RunnerHost.Build` — c'est exactement ce que
 fait le daemon `orkeon-host` (`Orkeon.Host/Program.cs`), en passant `configureBuilder` pour
-`UseSystemd()`/`UseWindowsService()`. Un hôte qui possède déjà son `IHostBuilder` (une app ASP.NET,
+`UseSystemd()`/`UseWindowsService()`. Le daemon reste hors de la sélection des montages (VFS-90,
+D-11) : ses crews montent sous des racines par crew (`/crews*`), aucune racine n'y est donc jamais
+déclarée deux fois, un `--mount` opérateur portant un préfixe d'identifiant se parse comme un
+autre, et aucun bloc `mounts:` de crew n'est lu. Un hôte qui possède déjà son `IHostBuilder` (une app ASP.NET,
 par exemple) **réplique l'ordre d'enregistrement de `ConfigureRunnerServices`** dans son propre
 `Program.cs` — il n'existe pas de raccourci packagé pour cela ; la console REPL inline la même
 séquence à la main :

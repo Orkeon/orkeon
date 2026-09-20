@@ -389,9 +389,18 @@ internal static class ForgeCommand
             return 1;
         }
 
+        // The forge's three CliMounts replace every settings entry of /workspace, /forge and
+        // /output — a machine with two /output entries (VFS-90) forges unchanged. Any other
+        // root declared twice with nothing to pick one is refused here, in one line.
+        var mountPlan = BuildMountPlan(workspace, readRoot, session);
+        if (!RunnerExecution.EnsureMountSelectionIsResolvable(mountPlan.CliMounts, [], CrewMountDeclarations.None, settingsPath, out _))
+        {
+            return 1;
+        }
+
         using var host = RunnerHost.Build(
             settingsPath,
-            BuildMountPlan(workspace, readRoot, session),
+            mountPlan,
             // stdout carries the --events jsonl protocol. The default preset writes
             // warnings there, so one line like «Access denied by registry for virtual path
             // '.'» lands in the middle of the event stream and every consumer has to guess

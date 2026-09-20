@@ -5,6 +5,7 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Configuration;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.EventHub;
 using Orkeon.Domain.Knowledge;
 using Orkeon.Domain.SharedKernel.ValueObjects;
@@ -57,7 +58,41 @@ public sealed partial class YamlCrewMapper
             GraphConfig = MapGraphConfig(settings.GraphConfig),
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
+            Mounts = MapMounts(settings.Name ?? string.Empty, settings.Mounts),
         };
+    }
+
+    /// <summary>
+    /// Maps the <c>mounts:</c> block (VFS-90). Strict, unlike <see cref="MapLinks"/>: an item
+    /// that is neither <c>/root</c> nor <c>&lt;ulid&gt;|/root</c> is a selection that would
+    /// otherwise be dropped in silence and resurface at startup as a refusal about a root the
+    /// author never meant. Null when the crew wrote no block.
+    /// </summary>
+    [SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null means the crew never wrote a mounts: block; an empty list means it wrote an empty one. " +
+                        "Both leave the settings' entries in force, but the summary and the exporter tell them apart.")]
+    private static List<MountReference>? MapMounts(string crewName, Collection<string>? yaml)
+    {
+        if (yaml is null)
+            return null;
+
+        var references = new List<MountReference>(yaml.Count);
+        foreach (var item in yaml)
+        {
+            if (string.IsNullOrWhiteSpace(item))
+                continue;
+
+            if (!MountReference.TryParse(item, out var reference))
+            {
+                throw new InvalidOperationException(
+                    $"Crew '{crewName}' mounts: entry '{item.Trim()}' is neither '/root' nor '<ulid>|/root' "
+                    + "(a virtual root starts with '/', a mount id is the 26-character ULID a settings entry carries before its '|').");
+            }
+
+            references.Add(reference);
+        }
+
+        return references;
     }
 
     private static List<AgentConfiguration> MapAgentsEmpty(out Dictionary<string, AgentId> nameToId)
@@ -763,4 +798,7 @@ public sealed record CrewMappingSettings
 
     /// <summary>Crew-level EventHub authorizations (<c>crew.links</c>).</summary>
     public Collection<LinkYamlConfig>? Links { get; init; }
+
+    /// <summary>Crew-level mount references (<c>crew.mounts</c>, VFS-90): roots, optionally pinned to a settings entry by id.</summary>
+    public Collection<string>? Mounts { get; init; }
 }

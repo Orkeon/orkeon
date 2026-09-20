@@ -1,8 +1,18 @@
+using Orkeon.Domain.Common;
+
 namespace Orkeon.Domain.FileSystem;
 
 /// <summary>Maps a physical directory to a virtual path with access rights.</summary>
 public sealed record FileSystemMount
 {
+    /// <summary>
+    /// The identity of the settings entry this mount came from (VFS-90), or null for a mount
+    /// declared without one — a hand-written settings line, a <c>--mount</c> argument, a
+    /// runner's own root. Written as the <c>&lt;ulid&gt;|</c> prefix of the mount string; what a
+    /// crew's <c>mounts:</c> block and Studio's team sidecar name an entry by, so two entries
+    /// may share a virtual root and still be told apart.
+    /// </summary>
+    public MountId? Id { get; }
     /// <summary>Physical base path on disk.</summary>
     public string BasePath { get; }
     /// <summary>Virtual path prefix used to reference this mount.</summary>
@@ -20,7 +30,8 @@ public sealed record FileSystemMount
         string virtualPath,
         FileAccessRights defaultRights,
         IReadOnlyList<SubPathOverride>? overrides = null,
-        MountVisibility visibility = MountVisibility.AgentFacing)
+        MountVisibility visibility = MountVisibility.AgentFacing,
+        MountId? id = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(virtualPath);
@@ -39,7 +50,16 @@ public sealed record FileSystemMount
                 .AsReadOnly()
             : Array.Empty<SubPathOverride>();
         Visibility = visibility;
+        Id = id;
     }
+
+    /// <summary>
+    /// The character between an entry's id and its mount string: <c>01J…|C:\data:/data:ro</c>.
+    /// The prefix is read only when what precedes the first unquoted <c>|</c> is a bare
+    /// alphanumeric token — a physical path that really contains a <c>|</c> is quoted, as any
+    /// path the grammar cannot read bare.
+    /// </summary>
+    public const char IdSeparator = '|';
 
     /// <summary>
     /// Wraps a segment of a mount string so its content is taken literally. A path that
@@ -54,8 +74,18 @@ public sealed record FileSystemMount
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(mountString);
 
+        var (idToken, spec) = SplitIdPrefix(mountString);
+        MountId? id = null;
+        if (idToken is not null && !MountId.TryParse(idToken, out id))
+        {
+            throw new FormatException(
+                $"Invalid mount id '{idToken}': expected 26 Crockford base32 characters (0-9, A-Z without I, L, O, U). "
+                + "Example: '01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\\data:/data:ro'. "
+                + "A physical path that really contains '|' is quoted: \"a|b\":/x:ro.");
+        }
+
         // Split into main part and override parts (separated by ';')
-        var segments = SplitOutsideQuotes(mountString, ';');
+        var segments = SplitOutsideQuotes(spec, ';');
         var mainPart = segments[0];
 
         // Split main part into basePath, virtualPath, rights
@@ -86,8 +116,53 @@ public sealed record FileSystemMount
             overrides.Add(new SubPathOverride(Unquote(overrideParts[0]), ParseRights(overrideParts[1])));
         }
 
-        return new FileSystemMount(basePath, virtualPath, defaultRights, overrides);
+        return new FileSystemMount(basePath, virtualPath, defaultRights, overrides, id: id);
     }
+
+    /// <summary>
+    /// The id an entry carries before its <see cref="IdSeparator"/>, read without parsing the
+    /// rest — the cheap question the hosts and Studio ask of every declared entry. Null when
+    /// the string carries no prefix, or one that is not a well-formed id (the parser reports
+    /// that one with its remedy).
+    /// </summary>
+    /// <param name="mountString">The entry as declared.</param>
+    public static MountId? TryGetId(string? mountString)
+    {
+        if (string.IsNullOrWhiteSpace(mountString))
+            return null;
+
+        var (idToken, _) = SplitIdPrefix(mountString);
+        return idToken is not null && MountId.TryParse(idToken, out var id) ? id : null;
+    }
+
+    /// <summary>
+    /// The mount as a mount string — the canonical spelling <see cref="Parse"/> reads back,
+    /// id prefix included when the mount has one, every path segment quoted only when the
+    /// grammar needs it.
+    /// </summary>
+    public string ToMountString()
+    {
+        var builder = new System.Text.StringBuilder();
+        if (Id is not null)
+            builder.Append(Id.ToString()).Append(IdSeparator);
+
+        builder.Append(Quote(BasePath)).Append(':').Append(Quote(VirtualPath)).Append(':').Append(FormatRights(DefaultRights));
+        foreach (var item in Overrides)
+            builder.Append(';').Append(Quote(item.RelativePath)).Append(':').Append(FormatRights(item.Rights));
+
+        return builder.ToString();
+    }
+
+    /// <summary>The rights token of the mount string grammar: <c>ro</c>, <c>rw</c> or <c>rwnd</c>.</summary>
+    /// <param name="rights">The rights to spell.</param>
+    /// <exception cref="ArgumentOutOfRangeException">The rights have no token in the grammar.</exception>
+    public static string FormatRights(FileAccessRights rights) => rights switch
+    {
+        FileAccessRights.ReadOnly => "ro",
+        FileAccessRights.ReadWrite => "rw",
+        FileAccessRights.ReadWriteNoDelete => "rwnd",
+        _ => throw new ArgumentOutOfRangeException(nameof(rights), rights, "Only ro, rw and rwnd can be written in a mount string."),
+    };
 
     /// <summary>
     /// The physical base path a mount string declares, unquoted — or <see langword="null"/>
@@ -104,7 +179,8 @@ public sealed record FileSystemMount
         if (string.IsNullOrWhiteSpace(mountString))
             return null;
 
-        var mainPart = SplitOutsideQuotes(mountString, ';')[0];
+        var (_, spec) = SplitIdPrefix(mountString);
+        var mainPart = SplitOutsideQuotes(spec, ';')[0];
         var parts = SplitMainPart(mainPart);
         if (parts.Count < 2)
             return null;
@@ -127,7 +203,9 @@ public sealed record FileSystemMount
         ArgumentException.ThrowIfNullOrWhiteSpace(mountString);
         ArgumentException.ThrowIfNullOrWhiteSpace(basePath);
 
-        var segments = SplitOutsideQuotes(mountString, ';');
+        // The id prefix is kept verbatim: rebasing a folder does not change which entry it is.
+        var (idToken, spec) = SplitIdPrefix(mountString);
+        var segments = SplitOutsideQuotes(spec, ';');
         var parts = SplitMainPart(segments[0]);
         if (parts.Count < 2)
             throw new FormatException(
@@ -135,7 +213,37 @@ public sealed record FileSystemMount
 
         parts[0] = Quote(basePath);
         segments[0] = string.Join(':', parts);
-        return string.Join(';', segments);
+        var rebased = string.Join(';', segments);
+        return idToken is null ? rebased : $"{idToken}{IdSeparator}{rebased}";
+    }
+
+    /// <summary>
+    /// Splits an optional id prefix off a mount string. The prefix exists only when the text
+    /// before the first <c>|</c> is a bare alphanumeric token: a quoted segment, a Unix or
+    /// Windows path, a <c>./</c> folder all start otherwise, so a <c>|</c> inside them keeps
+    /// its literal meaning. The token is returned unvalidated — <see cref="Parse"/> refuses a
+    /// bad one with its remedy, <see cref="TryGetId"/> answers null.
+    /// </summary>
+    private static (string? IdToken, string Spec) SplitIdPrefix(string mountString)
+    {
+        var separator = mountString.IndexOf(IdSeparator, StringComparison.Ordinal);
+        if (separator <= 0)
+            return (null, mountString);
+
+        var token = mountString[..separator];
+        return IsBareToken(token) ? (token, mountString[(separator + 1)..]) : (null, mountString);
+    }
+
+    /// <summary>True for a run of ASCII letters and digits — the only thing an id prefix can be.</summary>
+    private static bool IsBareToken(string text)
+    {
+        foreach (var c in text)
+        {
+            if (!char.IsAsciiLetterOrDigit(c))
+                return false;
+        }
+
+        return text.Length > 0;
     }
 
     /// <summary>
@@ -164,6 +272,12 @@ public sealed record FileSystemMount
         if (segment.EndsWith('\\') || segment.Contains(QuoteCharacter, StringComparison.Ordinal))
             return true;
         if (segment.Contains(';', StringComparison.Ordinal))
+            return true;
+
+        // A bare token followed by '|' would read as an id prefix (VFS-90); quoting keeps the
+        // '|' literal. Any other '|' (after a '/', a drive letter, a '.') already reads literally.
+        var pipe = segment.IndexOf(IdSeparator, StringComparison.Ordinal);
+        if (pipe > 0 && IsBareToken(segment[..pipe]))
             return true;
 
         // A drive-letter colon is read natively; any other colon is a separator.

@@ -56,6 +56,29 @@ public sealed class OptionGrammarTests
         Assert.Contains("RepeatedOptionError", ErrorTags(result));
     }
 
+    /// <summary>VFS-90: <c>--mount-id</c> follows the same grammar as <c>--mount</c>, and is spelled by the shared constant.</summary>
+    [Fact]
+    public void The_same_rule_governs_mount_id()
+    {
+        var parsed = Assert.IsType<Parsed<RunCommandOptions>>(
+            Parse<RunCommandOptions>("crew.yaml", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W3", "01J9Z3K4M5N6P7Q8R9S0T1V2W4"));
+        Assert.Equal(["01J9Z3K4M5N6P7Q8R9S0T1V2W3", "01J9Z3K4M5N6P7Q8R9S0T1V2W4"], parsed.Value.MountIds);
+
+        Assert.Contains(
+            "RepeatedOptionError",
+            ErrorTags(Parse<RunCommandOptions>("crew.yaml", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W3", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W4")));
+        Assert.Equal("mount-id", Orkeon.Constants.Cli.RunOptionNames.MountId);
+    }
+
+    [Fact]
+    public void Mount_id_is_carried_to_the_shared_runner_options()
+    {
+        var parsed = Assert.IsType<Parsed<RunCommandOptions>>(
+            Parse<RunCommandOptions>("crew.yaml", "--mount-id", "01J9Z3K4M5N6P7Q8R9S0T1V2W3"));
+
+        Assert.Equal(["01J9Z3K4M5N6P7Q8R9S0T1V2W3"], RunCommand.ToRunnerOptions(parsed.Value).MountIds);
+    }
+
     [Fact]
     public void The_same_rule_governs_var()
     {
