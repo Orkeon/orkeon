@@ -229,6 +229,9 @@ public sealed class MainWindowViewModel : ObservableObject
         Teams.LaunchRequested += (_, e) => Launch.Target.Select(e.Path);
         Teams.ResumeRequested += (sender, e) => _ = ResumeGuarded(e.Session);
         Teams.ModifyRequested += (sender, e) => _ = ModifyGuarded(e);
+        // A draft discarded from My teams is gone from the disk: the wizard it was open on
+        // goes back to a blank step 1 rather than keep a session that no longer exists.
+        Teams.SessionDeleted += (_, e) => CreateTeam.ForgetSession(e.Session.Directory);
         CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the

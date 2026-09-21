@@ -2177,6 +2177,27 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
+    /// My teams discarded a session — its directory is gone. When it is the one this wizard
+    /// is open on, the creation ends here: the same blank step 1 as « Start over », a running
+    /// engine asked to stop first. Left as it was, the screen kept offering to edit, try and
+    /// adopt a session that no longer existed (owner report of 2026-09-21). Any other
+    /// session, or no session at all, leaves the wizard untouched. Paths are compared full
+    /// and trailing-separator-blind, case-blind on Windows — the catalog's own discipline.
+    /// </summary>
+    public void ForgetSession(string sessionDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(sessionDirectory);
+        if (_model.Directory is not { Length: > 0 } current)
+            return;
+
+        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
+        if (!string.Equals(TeamCatalog.NormalizePath(current), TeamCatalog.NormalizePath(sessionDirectory), comparison))
+            return;
+
+        Restart();
+    }
+
+    /// <summary>
     /// «Modifier» on a team card (v3 W-09): reopens the wizard on the adopted team — the
     /// session re-enters at its arbitration (the engine's reopen), the wizard shows step
     /// 2 with the whole stepper reachable, and the adoption fields are seeded from the

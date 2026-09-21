@@ -422,7 +422,11 @@ dérivé du plan sinon) et la pose à la pause sèche ; le wizard lit la session
 ré-adopter sur le même dossier. `TeamSummary.HasYamlCrew` est la porte : seule une
 équipe sans crew YAML sous `crew/` (crew script, disposition étrangère) garde
 « Modifier » désactivé, la raison en infobulle ; l'infobulle dit aussi quand la
-réouverture passe par une session reconstruite.
+réouverture passe par une session reconstruite. Supprimer une session sous « Sessions
+en cours » pendant que l'assistant est ouvert dessus termine aussi cette création :
+l'assistant revient à l'étape 1 vierge de « Recommencer » (un moteur en marche est
+arrêté d'abord) plutôt que de garder un Composer au-dessus d'un dossier qui n'existe
+plus ; une session sur laquelle il n'est pas ouvert le laisse intact.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 

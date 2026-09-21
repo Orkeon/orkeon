@@ -386,7 +386,11 @@ at the dry pause; the wizard reads the session off `session.started` /
 an agent, try the team, or keep it as it is, then re-adopt onto the same folder.
 `TeamSummary.HasYamlCrew` is the gate: only a team with no YAML crew under `crew/`
 (a script crew, a foreign layout) keeps « Modify » disabled, the tooltip saying why;
-the tooltip also says when the reopen goes through a rebuilt session.
+the tooltip also says when the reopen goes through a rebuilt session. Discarding a
+session under « Sessions in progress » while the wizard is open on it ends that
+creation as well: the wizard goes back to the blank step 1 of « Restart » (a running
+engine is stopped first) rather than keep a Composer over a directory that no longer
+exists; a session it is not open on leaves it untouched.
 
 ### Tools and MCP in the settings (STUDIO-21)
 

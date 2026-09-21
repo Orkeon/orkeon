@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- Studio — owner report of 2026-09-21 -->
+### Fixed — Studio: discarding a session from My teams resets the wizard that was open on it
+
+- **A session deleted under « Sessions in progress » no longer lives on in the wizard.**
+  « Modify » on a team card parks its session in that list, « Resume » opens the wizard on
+  it, and deleting the row there left the wizard exactly where it was — a Composer over a
+  directory that no longer existed, every gesture on it bound to fail. The My-teams screen
+  now announces which session went (`TeamsViewModel.SessionDeleted`, not raised for a delete
+  the disk refused), the shell relays it, and the wizard open on that directory goes back to
+  the blank step 1 of « Restart », a running engine stopped first
+  (`CreateTeamViewModel.ForgetSession`). A session the wizard is not open on leaves it
+  untouched; paths are compared the catalog's way (full, trailing-separator-blind, case-blind
+  on Windows).
+
 <!-- LLM-10 / LLM-08 -->
 ### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)
 

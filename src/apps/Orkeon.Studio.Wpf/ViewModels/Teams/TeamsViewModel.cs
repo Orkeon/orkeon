@@ -42,6 +42,16 @@ public sealed class SessionResumeEventArgs(ForgeSolutionSummary session) : Event
     public ForgeSolutionSummary Session { get; } = session;
 }
 
+/// <summary>Payload of a discard: the session whose directory is gone.</summary>
+public sealed class SessionDeletedEventArgs(ForgeSolutionSummary session) : EventArgs
+{
+    /// <summary>The session, as the forge catalog listed it before the delete.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public ForgeSolutionSummary Session { get; } = session;
+}
+
 /// <summary>
 /// Payload of a «Modifier» request (W-09): the team and the session that adopted it — or no
 /// session at all (FORGE-09), in which case the wizard has the engine rebuild one from the
@@ -465,6 +475,12 @@ public sealed class TeamsViewModel : ObservableObject
     /// <summary>Raised when a stopped wizard session should resume.</summary>
     public event EventHandler<SessionResumeEventArgs>? ResumeRequested;
 
+    /// <summary>
+    /// Raised once a draft is gone from the disk — the shell tells the wizard, which forgets
+    /// the session when it is the one it was open on. Not raised for a delete the disk refused.
+    /// </summary>
+    public event EventHandler<SessionDeletedEventArgs>? SessionDeleted;
+
     /// <summary>Raised by the create-a-team button — the shell brings the wizard forward.</summary>
     public event EventHandler? CreateRequested;
 
@@ -645,12 +661,17 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>
     /// Discards an abandoned wizard draft. The session directory is the whole of it —
-    /// a draft that never promoted owns nothing else.
+    /// a draft that never promoted owns nothing else. The wizard may be open on that very
+    /// session (« Resume » brought it there a moment ago): the delete is announced so the
+    /// shell can have it forgotten there too, before the list re-reads the disk.
     /// </summary>
     internal void DeleteSession(ForgeSolutionSummary session)
     {
-        if (ForgeSessionCatalog.Delete(session.Directory))
-            Refresh();
+        if (!ForgeSessionCatalog.Delete(session.Directory))
+            return;
+
+        SessionDeleted?.Invoke(this, new SessionDeletedEventArgs(session));
+        Refresh();
     }
 
     /// <summary>

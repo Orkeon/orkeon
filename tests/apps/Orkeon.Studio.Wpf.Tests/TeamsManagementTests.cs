@@ -91,6 +91,59 @@ public sealed class TeamsManagementTests
     }
 
     [Fact]
+    public void Discarding_a_draft_says_which_session_went_so_the_wizard_can_forget_it()
+    {
+        // Owner report of 2026-09-21: the wizard « Resume » had opened stayed on the session
+        // after its row was deleted here. The screen deletes, the shell relays, and the
+        // event names the directory the wizard compares against its own.
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        var sessionDirectory = Path.Combine(root, ".orkeon", "forge", "veille");
+        try
+        {
+            Directory.CreateDirectory(sessionDirectory);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [Draft("veille", sessionDirectory)] });
+            var gone = new List<string>();
+            teams.SessionDeleted += (_, e) => gone.Add(e.Session.Directory);
+
+            Assert.Single(teams.InProgress).ConfirmDeleteCommand.Execute(null);
+
+            Assert.Equal(sessionDirectory, Assert.Single(gone));
+            Assert.False(Directory.Exists(sessionDirectory));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
+    public void A_discard_the_disk_refused_is_not_announced()
+    {
+        // Nothing was deleted, so nothing is relayed: the wizard keeps a session that is
+        // still there, and the row stays — the list re-reads nothing either.
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        var missing = Path.Combine(root, ".orkeon", "forge", "veille");
+        try
+        {
+            Directory.CreateDirectory(root);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [Draft("veille", missing)] });
+            var announced = false;
+            teams.SessionDeleted += (_, _) => announced = true;
+
+            Assert.Single(teams.InProgress).ConfirmDeleteCommand.Execute(null);
+
+            Assert.False(announced);
+            Assert.Single(teams.InProgress);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Deleting_a_session_directory_that_is_already_gone_is_refused_not_thrown()
     {
         var missing = Path.Combine(Path.GetTempPath(), "orkeon-absent-" + Guid.NewGuid().ToString("N"));

@@ -228,6 +228,53 @@ public class CreateTeamWizardTests
         }
     }
 
+    /// <summary>
+    /// Owner report of 2026-09-21: « Modify » parks the team's session under « Sessions in
+    /// progress », « Resume » opens the wizard on it, and deleting the row there left the
+    /// wizard exactly as it was — a Composer over a directory that no longer existed. The
+    /// wizard now forgets the session when told it is gone, and only that one.
+    /// </summary>
+    [Fact]
+    public async Task A_session_discarded_from_my_teams_takes_the_wizard_open_on_it_back_to_step_1()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-wiz-forget-" + Guid.NewGuid().ToString("N"));
+        var sessionDir = Path.Combine(root, ".orkeon", "forge", "veille");
+        Directory.CreateDirectory(sessionDir);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
+            """{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Test","status":"Active"}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}]}""", TestContext.Current.CancellationToken);
+        try
+        {
+            var (vm, _, _) = Build();
+            await vm.ResumeAsync(new ForgeSolutionSummary
+            {
+                Slug = "veille", State = "Test", Status = "Active", Directory = sessionDir,
+            });
+            Assert.True(vm.HasDraft);
+            Assert.Single(vm.Agents);
+
+            // Another session going is none of this wizard's business.
+            vm.ForgetSession(Path.Combine(root, ".orkeon", "forge", "autre"));
+            Assert.Equal("veille", vm.SessionSlug);
+            Assert.Single(vm.Agents);
+
+            // Its own — spelled with a trailing separator, as a catalog might — is the end
+            // of the creation: the same blank step 1 as « Start over ».
+            vm.ForgetSession(sessionDir + Path.DirectorySeparatorChar);
+            Assert.Equal(1, vm.Step);
+            Assert.Equal(1, vm.MaxStep);
+            Assert.False(vm.HasDraft);
+            Assert.Null(vm.SessionSlug);
+            Assert.Empty(vm.Agents);
+            Assert.False(vm.CanTryTeam);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
     [Fact]
     public async Task Modifier_reopens_the_wizard_on_the_adopted_team_and_readopts_the_same_folder()
     {
@@ -1955,6 +2002,49 @@ public class CreateTeamWizardTests
             Assert.Equal("Ma veille", card.Name);
             Assert.True(card.CanModify);
             Assert.True(File.Exists(Path.Combine(sessionDir, "session.json")));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The same report, through the shell: the session « Resume » opened the wizard on is
+    /// discarded under « Sessions in progress » — My teams stops listing it AND the wizard is
+    /// a blank step 1 again, with no refresh and no gesture from the test in between.
+    /// </summary>
+    [Fact]
+    public async Task Discarding_the_resumed_session_in_my_teams_resets_the_wizard_too()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        var workspace = Path.Combine(root, "forge");
+        var sessionDir = Path.Combine(workspace, ".orkeon", "forge", "veille");
+        Directory.CreateDirectory(sessionDir);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
+            """{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Test","status":"Active"}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
+            """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":[]}],"tasks":[{"key":"t","description":"d","agent":"a"}]}""", TestContext.Current.CancellationToken);
+        try
+        {
+            var (shell, _, _) = Shell(new FakeDirectoryProbe(), teamsRoot: Path.Combine(root, "teams"), forgeWorkspace: workspace);
+            shell.Teams.Refresh();
+            var session = Assert.Single(shell.Teams.InProgress);
+
+            // The dry pause resumes without an engine: the wizard is open on it at once.
+            session.ResumeCommand.Execute(null);
+            Assert.Equal("veille", shell.CreateTeam.SessionSlug);
+            Assert.True(shell.CreateTeam.HasDraft);
+
+            session.AskDeleteCommand.Execute(null);
+            session.ConfirmDeleteCommand.Execute(null);
+
+            Assert.False(Directory.Exists(sessionDir));
+            Assert.Empty(shell.Teams.InProgress);
+            Assert.Equal(1, shell.CreateTeam.Step);
+            Assert.False(shell.CreateTeam.HasDraft);
+            Assert.Null(shell.CreateTeam.SessionSlug);
         }
         finally
         {
