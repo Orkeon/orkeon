@@ -1,7 +1,7 @@
 # Stage 1: Build
 # GA image + global.json: the 10.0-preview SDK band ships a Roslyn that breaks the
 # Orkeon.Generators source generator (CS8795 partial methods without implementation).
-FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:e1ffd2a92ae84c1291bc1b6887501f8af98e6331e7af6d4c8d37168c5e87a64c AS build
+FROM mcr.microsoft.com/dotnet/sdk:10.0@sha256:2fa828c68761b1b8c23d7662dc134421b9d3b59fe1425fdbc80804e390cdb24d AS build
 WORKDIR /src
 
 # The whole source tree in one layer, restore against it, publish.
@@ -23,7 +23,7 @@ RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj
 RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj -c Release -o /app/publish --no-restore
 
 # Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:a365ce6a50b09176855d085c69da3fc1204a48432e36087e9a208f6e5860e235 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:8a153b5889d796b6450295b383596b13308c24c230515f8a7770ce1b94e0c460 AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 

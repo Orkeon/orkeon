@@ -62,7 +62,7 @@ jobs:
       # divergences had accumulated before this existed, most of them silent at run time
       # (see the script's header). esbuild cannot catch them: it strips types, it does not
       # check them.
-      - uses: actions/setup-node@39370e3970a6d050c480ffad4ff0ed4d3fdee5af # v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v4
         with: { node-version: '22' }
       - name: Typecheck the scripting examples against the shipped typings
         run: bash scripts/check-scripting-typings.sh
