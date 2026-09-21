@@ -433,6 +433,12 @@ fois la reconstruction finie (les « deux clics » du propriétaire, 2026-09-21)
 reconstruction se voit comme le moteur au travail. Un clic sur « Modifier » ou
 « Reprendre » pendant que le moteur est occupé sur une autre création est refusé en toutes
 lettres sur la ligne de statut de l'assistant, sans rien arrêter, au lieu d'être ignoré.
+La tâche d'un run forge ne se termine qu'une fois son épilogue posé sur le thread UI, et
+avec lui chaque événement posté avant : WPF reprend un await commencé dans un gestionnaire
+de saisie à la priorité Send, au-dessus de la priorité Normal des posts du thread lecteur,
+et la reconstruction lisait la session sur un modèle que les événements n'avaient pas
+encore atteint — étape 1, la session sur disque pour le second clic. Le disque est le
+repli quand le flux n'annonce rien, et une carte le dit quand ni l'un ni l'autre ne l'a.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 

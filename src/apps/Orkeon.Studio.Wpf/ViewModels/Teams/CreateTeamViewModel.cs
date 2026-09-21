@@ -2320,6 +2320,22 @@ public sealed class CreateTeamViewModel : ObservableObject
             || _model.Directory is not { Length: > 0 } directory
             || _model.ReopenedState is not { Length: > 0 } state)
         {
+            // The engine's own refusal is on the card already; nothing to add to it.
+            if (HasFailure)
+                return null;
+
+            // A clean exit that announced no session: the one it wrote is on the disk, where
+            // My teams reads it — the source the second click used to reach. And when the
+            // disk has none either, say so rather than sit on step 1 as if nothing happened.
+            if (ForgeSessionCatalog.FindByPromotedTo(_workspace, team.Path) is { } written)
+                return written;
+
+            FailWith(
+                WizardFailureKind.Unknown,
+                "The engine exited without announcing the reopened session (no session.started / "
+                + "team.reopened on the stream), and no session pointing at this team was found on disk.",
+                EngineCommandLine,
+                exitCode: null);
             return null;
         }
 
@@ -2501,7 +2517,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
         finally
         {
-            _dispatcher.Post(() =>
+            await PostAndAwaitAsync(() =>
             {
                 if (generation != _runGeneration)
                     return;
@@ -2513,7 +2529,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                 // composer writing into a closed pipe.
                 Chat.EngineFinished(interrupted: Chat.IsStarted && !Chat.IsDone);
                 SyncFromModel();
-            });
+            }).ConfigureAwait(false);
         }
     }
 
@@ -2597,11 +2613,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
         finally
         {
-            _dispatcher.Post(() =>
+            await PostAndAwaitAsync(() =>
             {
                 IsEngineRunning = false;
                 SyncFromModel();
-            });
+            }).ConfigureAwait(false);
         }
     }
 
@@ -2766,6 +2782,36 @@ public sealed class CreateTeamViewModel : ObservableObject
             Chat.OwnerChanged();
             SyncFromModel();
         });
+    }
+
+    /// <summary>
+    /// Posts a run's epilogue and completes once it has landed on the UI thread — and with it
+    /// everything posted before it, the events included, since the posts travel in order.
+    /// <para>
+    /// The run's task must not complete before that. WPF resumes an await begun in an input
+    /// handler at Send priority — every window message is dispatched through an Invoke at
+    /// Send — which is above the Normal priority the reader thread's posts travel at: a
+    /// caller reading the model right after <c>await RunEngineAsync</c> could overtake the
+    /// very events that fill it. That is how « Modify » landed on step 1 with the rebuilt
+    /// session sitting on disk, found by the second click (owner report of 2026-09-21). The
+    /// immediate dispatcher of the tests never showed it: there a post is a call.
+    /// </para>
+    /// </summary>
+    private Task PostAndAwaitAsync(Action epilogue)
+    {
+        var landed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        _dispatcher.Post(() =>
+        {
+            try
+            {
+                epilogue();
+            }
+            finally
+            {
+                landed.TrySetResult();
+            }
+        });
+        return landed.Task;
     }
 
     private void OnRaw(ProcessOutputLine line)

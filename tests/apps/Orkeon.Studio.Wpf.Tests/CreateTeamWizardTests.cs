@@ -27,7 +27,9 @@ public class CreateTeamWizardTests
         bool withAssistant = true,
         Func<IReadOnlyList<string>>? declaredMounts = null,
         bool cliInstalled = true,
-        Orkeon.Studio.Wpf.ViewModels.Mvvm.IShellOpener? shellOpener = null)
+        Orkeon.Studio.Wpf.ViewModels.Mvvm.IShellOpener? shellOpener = null,
+        Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDispatcher? dispatcher = null,
+        string? workspace = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -53,10 +55,11 @@ public class CreateTeamWizardTests
             new CreateTeamDependencies
             {
                 Client = client,
-                WorkspaceDirectory = "/ws",
+                WorkspaceDirectory = workspace ?? "/ws",
                 TeamsRoot = teamsRoot ?? "/teams",
                 DeclaredMounts = declaredMounts,
                 ShellOpener = shellOpener,
+                Dispatcher = dispatcher,
             });
         return (vm, processes, profiles);
     }
@@ -2687,6 +2690,111 @@ public class CreateTeamWizardTests
             // screen so the status line is read.
             Assert.Equal(2, activated);
             Assert.Single(processes.Requests);
+            Assert.Null(vm.ReopenedTeamPath);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    private static ProcessOutputLine[] RebuiltStream(string sessionDir, string teamDir) =>
+    [
+        Out($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"format":"yaml","resumed":false}"""),
+        Out($$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"path":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
+        Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+    ];
+
+    /// <summary>
+    /// The owner's « Modify » landing on step 1 with the rebuilt session sitting on disk, the
+    /// second click finding it (2026-09-21). WPF resumes an await begun in an input handler at
+    /// Send priority — above the Normal priority the reader thread's posts travel at — so the
+    /// rebuild read the session off a model the events had not reached yet. A run now completes
+    /// only once its epilogue has landed on the UI thread, and with it everything posted before.
+    /// The queued dispatcher is that thread seen from the outside: nothing lands until drained.
+    /// </summary>
+    [Fact]
+    public async Task A_run_completes_only_once_its_epilogue_has_landed_so_the_rebuild_reads_a_fed_model()
+    {
+        var (root, teamDir, sessionDir) = await WriteOrphanTeam();
+        try
+        {
+            var ui = new QueuedUiDispatcher();
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"), dispatcher: ui);
+            processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
+            processes.OutputToEmit.AddRange(RebuiltStream(sessionDir, teamDir));
+
+            var reopen = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+
+            // The child has run and exited; its events and the epilogue are queued, not landed
+            // — and the reopen waits for them instead of reading an empty model.
+            Assert.Single(processes.Requests);
+            Assert.False(reopen.IsCompleted);
+            Assert.True(ui.Pending > 0);
+            Assert.Null(vm.SessionSlug);
+
+            ui.Drain();
+            await reopen;
+
+            Assert.Equal(2, vm.Step);
+            Assert.Equal(teamDir, vm.ReopenedTeamPath);
+            Assert.Equal("veille-docs", vm.SessionSlug);
+            Assert.False(vm.IsEngineRunning);
+            Assert.False(vm.HasFailure);
+            Assert.Equal(0, ui.Pending);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// A clean exit that announces no session on the stream is not a step 1 with nothing said:
+    /// the session the engine wrote is on the disk, where My teams reads it, and the wizard
+    /// reads it there too.
+    /// </summary>
+    [Fact]
+    public async Task A_rebuild_the_stream_did_not_announce_is_read_off_the_disk()
+    {
+        var (root, teamDir, sessionDir) = await WriteOrphanTeam();
+        try
+        {
+            // The catalog reads the workspace the engine wrote into: the wizard's own.
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"), workspace: root);
+            processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+
+            Assert.False(vm.HasFailure);
+            Assert.Equal(2, vm.Step);
+            Assert.Equal(teamDir, vm.ReopenedTeamPath);
+            Assert.Equal("veille-docs", vm.SessionSlug);
+            Assert.True(vm.CanTryTeam);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>And when the disk has none either, the card says so — never a silent step 1.</summary>
+    [Fact]
+    public async Task A_rebuild_that_left_nothing_anywhere_says_so_on_the_card()
+    {
+        var (root, teamDir, _) = await WriteOrphanTeam();
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+
+            Assert.True(vm.HasFailure);
+            Assert.Equal(WizardFailureKind.Unknown, vm.Failure!.Kind);
+            Assert.Contains("team.reopened", vm.Failure.Detail, StringComparison.Ordinal);
+            Assert.Equal(1, vm.Step);
             Assert.Null(vm.ReopenedTeamPath);
         }
         finally

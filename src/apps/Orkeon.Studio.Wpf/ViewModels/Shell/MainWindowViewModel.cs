@@ -417,8 +417,10 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             await CreateTeam.ResumeAsync(session).ConfigureAwait(true);
         }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Whatever it was — the task is discarded, so this line is the only place it can
+            // be said (owner report of 2026-09-21: a silent reopen reads as a dead button).
             CreateTeam.ReportStatus(ex.Message);
         }
     }
@@ -518,8 +520,10 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             await CreateTeam.ReopenTeamAsync(request.Team, request.Session).ConfigureAwait(true);
         }
-        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException or System.Text.Json.JsonException)
+        catch (Exception ex) when (ex is not OperationCanceledException)
         {
+            // Whatever it was — the task is discarded, so this line is the only place it can
+            // be said (owner report of 2026-09-21: a silent reopen reads as a dead button).
             CreateTeam.ReportStatus(ex.Message);
         }
     }

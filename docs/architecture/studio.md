@@ -395,7 +395,13 @@ forward on the click itself, before any session exists — with none pointing at
 the engine rebuilds one first, and the screen used to move only once it had (the owner's
 « two clicks », 2026-09-21); the rebuild shows as the engine working. A click on « Modify »
 or « Resume » while the engine is busy on another creation is refused in words on the
-wizard's status line, nothing stopped, instead of being dropped.
+wizard's status line, nothing stopped, instead of being dropped. A forge run's task
+completes only once its epilogue has landed on the UI thread, and with it every event
+posted before: WPF resumes an await begun in an input handler at Send priority, above the
+Normal priority the reader thread's posts travel at, and the rebuild used to read the
+session off a model the events had not reached yet — step 1, with the session on disk for
+the second click to find. The disk is the fallback when the stream announces nothing, and
+a card says so when neither has it.
 
 ### Tools and MCP in the settings (STUDIO-21)
 

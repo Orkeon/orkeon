@@ -28,6 +28,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   « Modify » or « Resume » while the engine is busy on another creation is refused in words
   on the wizard's status line (`Studio.Create.EngineBusy`, five languages), the creation
   under way untouched, instead of being dropped.
+- **« Modify » no longer lands on step 1 with the rebuilt session sitting on disk.** The
+  real cause of the second click: WPF resumes an await begun in an input handler at Send
+  priority — every window message is dispatched through an Invoke at Send — above the
+  Normal priority the reader thread's posts travel at, so the rebuild read the session off a
+  model the engine's events had not reached yet, found nothing, and stayed on step 1 while
+  the session it had just written waited on disk for the next click. A forge run's task now
+  completes only once its epilogue has landed on the UI thread, and with it every event
+  posted before (`CreateTeamViewModel.PostAndAwaitAsync`, the adoption's promote too). The
+  disk is the fallback when the stream announces nothing, a failure card says so when
+  neither has it, and a resume or reopen that throws anything lands on the wizard's status
+  line instead of a discarded task.
 
 <!-- LLM-10 / LLM-08 -->
 ### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)
