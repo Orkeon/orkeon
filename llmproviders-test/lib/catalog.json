@@ -110,12 +110,14 @@
       "matrix": "§6.6",
       "apiKeyEnv": "TOGETHER_API_KEY",
       "defaultModel": "meta-llama/Llama-3.3-70B-Instruct-Turbo",
+      "visionModel": "zai-org/GLM-5.3-Flash",
       "candidateModels": [
         { "id": "zai-org/GLM-5.3-Flash", "why": "Together's own replacement target (2026-09-14 removals): 1M context, tools + JSON, 0.15 / 0.50 $/M \u2014 a seventh of the default's price." },
         { "id": "Qwen/Qwen3.5-9B", "why": "Together's replacement for gpt-oss-20b: 262K, tools + JSON, 0.17 / 0.25 $/M." }
       ],
       "notes": [
-        "The default `Llama-3.3-70B-Instruct-Turbo` is text-only: its red M9 is the D-03 proof (2026-08-30 campaign). No declarable vision companion: the 4 vision models tested (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) are all non-serverless on the measured tier — paid dedicated endpoint required, failure report archived as proof.",
+        "The default `Llama-3.3-70B-Instruct-Turbo` is text-only: its red M9 is the D-03 proof (2026-08-30 campaign). No vision companion was declarable until 2026-09-21: the 4 vision models tested on 2026-08-30 (`Qwen3-VL-8B`, `Qwen2.5-VL-72B`, `Llama-4-Scout`, `Llama-4-Maverick`) were all non-serverless on the measured tier — paid dedicated endpoint required, failure report archived as proof. `zai-org/GLM-5.3-Flash`, the replacement candidate, reads the image in serverless (M9 ✅ twice on 2026-09-21) and is the companion since.",
+        "LLM-10 (2026-09-19) sent the context window as `max_tokens` here, betting on `context_length_exceeded_behavior: truncate`; the 2026-09-21 campaign measured the default at 2/9/1 (`inputs tokens + max_new_tokens must be <= 131073`) — two of three serverless engines refuse regardless of the flag, the third clamps on the buffered path only. The window entries left the catalogue the same morning (`fb00251a`), the 4096 fallback is back (the field omitted means 2048 at Together, measured), and the 2/9/1 report is kept as the trace.",
         "Endpoint and default model up to date. One M1–M5 pass is enough.",
         "Together serves DeepSeek-V4-Pro at 512 K where DeepSeek serves it at 1 M — a service gap to verify in M11."
       ]
@@ -240,6 +242,7 @@
       "matrix": "§6.16",
       "apiKeyEnv": "MINIMAX_API_KEY",
       "defaultModel": "MiniMax-M2",
+      "visionModel": "MiniMax-M3",
       "candidateModels": [
         { "id": "MiniMax-M3", "why": "1M context, image + video input, same 0.30 / 1.20 $/M as M2. Whether the `<think>` block still arrives inline on the OpenAI-compatible endpoint is the campaign's question." }
       ],
@@ -248,7 +251,7 @@
         "Two regional endpoints with separate accounts: `api.minimax.io` (international, default) and `api.minimaxi.com` (mainland China) — same pattern as Kimi.",
         "First attempt on 2026-08-30: valid international key, catalog served (`MiniMax-M2` live, generations up to `MiniMax-M3` listed), but Token Plan exhausted — every billed mode answers `insufficient_balance_error` (402), typed errors end to end. The transport is validated; the campaign remains the pending proof, to rerun once the account is topped up.",
         "First campaign on 2026-08-30 (7/2/3 on `MiniMax-M2`, `sk-api-` key — `sk-cp-` keys are coding plans with their own quota). The three questions settled: (1) the trace arrives INLINE as a `<think>` block inside the content, no separate field — the Orkeon dialect extracts it to `reasoning_content` and re-injects it on replay as the doc requires; (2) no cache breakdown at 8k of prefix; (3) `response_format` accepted but NON-BINDING (schema ignored, json_object fenced in markdown) — the None declaration is a measurement.",
-        "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — no declarable vision companion as things stand."
+        "M2 and M9 red: model behaviour (system ignored on both shapes; text-only, `I'm unable to view the image`). The VL family does not appear in the platform's `/models` catalog — but `MiniMax-M3`, listed there, reads the image (M9 ✅ twice on 2026-09-21): it is the vision companion since, and the candidate for the default. Its `<think>` block is split out like M2's (6 characters returned for 199 billed tokens on M1); M10 saw 128 cached tokens once (ratio 0.02) and no breakdown the second time."
       ]
     },
     "gemini": {

@@ -160,8 +160,8 @@ JSON > the catalog's `defaultModel`.
 | `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1` |
 | `azure` | *(none — see below)* | | |
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless only — see catalog)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
-| `deepseek` | `deepseek-flash` *(renamed 2026-09-19, replay the campaign)* | *(the default sees)* | |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `zai-org/GLM-5.3-Flash` *(serverless, reads the image since the 2026-09-21 campaign)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
+| `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
 | `kimi` | `kimi-k2.6` | | `kimi-k3` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
 | `mistral` | `mistral-medium-2604` | | |
@@ -169,7 +169,7 @@ JSON > the catalog's `defaultModel`.
 | `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash` |
 | `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
 | `grok` | `grok-4.6` | *(the default sees)* | |
-| `minimax` | `MiniMax-M2` | *(no companion: the VL family is documented but absent from the platform's `/models`)* | `MiniMax-M3` |
+| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3` |
 | `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* | `google/gemini-3.8-flash` |
 | `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* | `gemini-3.8-flash` |
 

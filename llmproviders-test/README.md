@@ -160,8 +160,8 @@ JSON > the catalog's `defaultModel`.
 | `anthropic` | `claude-sonnet-5` | | `claude-fable-5-1` |
 | `azure` | *(none — see below)* | | |
 | `ollama` | `llama3.2` | `llava` | `qwen3.5:4b` *(pull it first)* |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | *(non-serverless only — see catalog)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
-| `deepseek` | `deepseek-flash` *(renamed 2026-09-19, replay the campaign)* | *(the default sees)* | |
+| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | `zai-org/GLM-5.3-Flash` *(serverless, reads the image since the 2026-09-21 campaign)* | `zai-org/GLM-5.3-Flash`, `Qwen/Qwen3.5-9B` |
+| `deepseek` | `deepseek-flash` *(renamed 2026-09-19, campaigned 2026-09-21)* | *(the default sees)* | |
 | `kimi` | `kimi-k2.6` | | `kimi-k3` |
 | `qwen` | `qwen3.7-plus` | | `qwen3.8-flash`, `qwen3.8-max` |
 | `mistral` | `mistral-medium-2604` | | |
@@ -169,7 +169,7 @@ JSON > the catalog's `defaultModel`.
 | `zai` | `glm-5.2` | `glm-4.6v-flash` | `glm-5.3`, `glm-5.3-flash` |
 | `gemini` | `gemini-3.7-flash` | *(the default sees)* | `gemini-3.8-flash` |
 | `grok` | `grok-4.6` | *(the default sees)* | |
-| `minimax` | `MiniMax-M2` | *(no companion: the VL family is documented but absent from the platform's `/models`)* | `MiniMax-M3` |
+| `minimax` | `MiniMax-M2` | `MiniMax-M3` *(the successor sees — measured 2026-09-21; the VL family is still absent from `/models`)* | `MiniMax-M3` |
 | `openrouter` | `google/gemini-3.7-flash` | *(the default sees in direct — the transport is what the campaign measures)* | `google/gemini-3.8-flash` |
 | `mammouth` | `gemini-3.7-flash` | *(same model, bare id — what the proxy lets through is what the campaign measures)* | `gemini-3.8-flash` |
 
@@ -316,6 +316,62 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 
 | Timestamp (UTC) | Provider | Model | ✅/❌/➖ | Version | Report |
 |---|---|---|---|---|---|
+| 2026-09-21T07:14:11Z | `zai` | `glm-5.3-flash` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](zai/2026-09-21-071302-glm-5.3-flash.md) |
+| 2026-09-21T07:13:41Z | `qwen` | `qwen3.8-max` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](qwen/2026-09-21-071247-qwen3.8-max.md) |
+| 2026-09-21T07:13:28Z | `huggingface` | `Qwen/Qwen3.5-9B` | ✅ 10/0/2 | 1.0.0-rc.4 | [report](huggingface/2026-09-21-071230-Qwen_Qwen3.5-9B.md) |
+| 2026-09-21T07:13:05Z | `kimi` | `kimi-k3` | ❌ 11/1/0 | 1.0.0-rc.4 | [report](kimi/2026-09-21-071123-kimi-k3.md) |
+| 2026-09-21T07:13:01Z | `zai` | `glm-5.3` | ❌ 10/2/0 | 1.0.0-rc.4 | [report](zai/2026-09-21-071119-glm-5.3.md) |
+| 2026-09-21T07:12:47Z | `qwen` | `qwen3.8-flash` | ❌ 11/1/0 | 1.0.0-rc.4 | [report](qwen/2026-09-21-071150-qwen3.8-flash.md) |
+| 2026-09-21T07:12:29Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.4 | [report](huggingface/2026-09-21-071227-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
+| 2026-09-21T07:12:26Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ❌ 7/3/2 | 1.0.0-rc.4 | [report](huggingface/2026-09-21-070949-meta-llama_Llama-3.1-8B-Instruct.md) |
+| 2026-09-21T07:12:06Z | `together` | `Qwen/Qwen3.5-9B` | ✅ 10/0/2 | 1.0.0-rc.4 | [report](together/2026-09-21-071053-Qwen_Qwen3.5-9B.md) |
+| 2026-09-21T07:11:50Z | `qwen` | `qwen3.7-plus` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](qwen/2026-09-21-070949-qwen3.7-plus.md) |
+| 2026-09-21T07:11:38Z | `openai` | `gpt-6-astra` | ❌ 10/2/0 | 1.0.0-rc.4 | [report](openai/2026-09-21-071107-gpt-6-astra.md) |
+| 2026-09-21T07:11:27Z | `anthropic` | `claude-fable-5-1` | ❌ 11/1/0 | 1.0.0-rc.4 | [report](anthropic/2026-09-21-071029-claude-fable-5-1.md) |
+| 2026-09-21T07:11:22Z | `kimi` | `kimi-k2.6` | ❌ 9/2/1 | 1.0.0-rc.4 | [report](kimi/2026-09-21-070949-kimi-k2.6.md) |
+| 2026-09-21T07:11:18Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.4 | [report](zai/2026-09-21-071106-glm-4.6v-flash.md) |
+| 2026-09-21T07:11:15Z | `minimax` | `MiniMax-M3` | ❌ 8/1/3 | 1.0.0-rc.4 | [report](minimax/2026-09-21-071050-MiniMax-M3.md) |
+| 2026-09-21T07:11:07Z | `openai` | `gpt-5.6-sol` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](openai/2026-09-21-070949-gpt-5.6-sol.md) |
+| 2026-09-21T07:11:05Z | `gemini` | `gemini-3.8-flash` | ✅ 11/0/1 | 1.0.0-rc.4 | [report](gemini/2026-09-21-071032-gemini-3.8-flash.md) |
+| 2026-09-21T07:11:05Z | `zai` | `glm-5.2` | ❌ 10/2/0 | 1.0.0-rc.4 | [report](zai/2026-09-21-070949-glm-5.2.md) |
+| 2026-09-21T07:11:00Z | `grok` | `grok-4.6` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](grok/2026-09-21-070949-grok-4.6.md) |
+| 2026-09-21T07:10:52Z | `together` | `zai-org/GLM-5.3-Flash` | ✅ 11/0/1 | 1.0.0-rc.4 | [report](together/2026-09-21-071009-zai-org_GLM-5.3-Flash.md) |
+| 2026-09-21T07:10:49Z | `minimax` | `MiniMax-M2` | ❌ 7/2/3 | 1.0.0-rc.4 | [report](minimax/2026-09-21-070949-MiniMax-M2.md) |
+| 2026-09-21T07:10:31Z | `gemini` | `gemini-3.7-flash` | ✅ 11/0/1 | 1.0.0-rc.4 | [report](gemini/2026-09-21-070949-gemini-3.7-flash.md) |
+| 2026-09-21T07:10:29Z | `anthropic` | `claude-sonnet-5` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](anthropic/2026-09-21-070949-claude-sonnet-5.md) |
+| 2026-09-21T07:10:10Z | `deepseek` | `deepseek-flash` | ✅ 12/0/0 | 1.0.0-rc.4 | [report](deepseek/2026-09-21-070949-deepseek-flash.md) |
+| 2026-09-21T07:10:09Z | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ 9/1/2 | 1.0.0-rc.4 | [report](together/2026-09-21-070949-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
+| 2026-09-21T07:07:34Z | `mistral` | `mistral-medium-2604` | ❌ 2/10/0 | 1.0.0-rc.3 | [report](mistral/2026-09-21-063504-mistral-medium-2604.md) |
+| 2026-09-21T06:53:14Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.3 | [report](zai/2026-09-21-065221-glm-4.6v-flash.md) |
+| 2026-09-21T06:52:21Z | `openai` | `gpt-6-astra` | ❌ 3/9/0 | 1.0.0-rc.3 | [report](openai/2026-09-21-065211-gpt-6-astra.md) |
+| 2026-09-21T06:52:10Z | `together` | `Qwen/Qwen3.5-9B` | ✅ 10/0/2 | 1.0.0-rc.3 | [report](together/2026-09-21-065028-Qwen_Qwen3.5-9B.md) |
+| 2026-09-21T06:50:28Z | `together` | `zai-org/GLM-5.3-Flash` | ✅ 11/0/1 | 1.0.0-rc.3 | [report](together/2026-09-21-065005-zai-org_GLM-5.3-Flash.md) |
+| 2026-09-21T06:50:04Z | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ 9/1/2 | 1.0.0-rc.3 | [report](together/2026-09-21-064947-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
+| 2026-09-21T06:41:57Z | `zai` | `glm-5.3-flash` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](zai/2026-09-21-064035-glm-5.3-flash.md) |
+| 2026-09-21T06:41:00Z | `kimi` | `kimi-k3` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](kimi/2026-09-21-063928-kimi-k3.md) |
+| 2026-09-21T06:40:34Z | `zai` | `glm-5.3` | ❌ 10/2/0 | 1.0.0-rc.3 | [report](zai/2026-09-21-063927-glm-5.3.md) |
+| 2026-09-21T06:39:27Z | `kimi` | `kimi-k2.6` | ❌ 10/1/1 | 1.0.0-rc.3 | [report](kimi/2026-09-21-063504-kimi-k2.6.md) |
+| 2026-09-21T06:39:27Z | `zai` | `glm-4.6v-flash` | ❌ 0/1/0 | 1.0.0-rc.3 | [report](zai/2026-09-21-063559-glm-4.6v-flash.md) |
+| 2026-09-21T06:38:42Z | `qwen` | `qwen3.8-max` | ❌ 11/1/0 | 1.0.0-rc.3 | [report](qwen/2026-09-21-063739-qwen3.8-max.md) |
+| 2026-09-21T06:37:39Z | `qwen` | `qwen3.8-flash` | ❌ 11/1/0 | 1.0.0-rc.3 | [report](qwen/2026-09-21-063648-qwen3.8-flash.md) |
+| 2026-09-21T06:37:32Z | `huggingface` | `Qwen/Qwen3.5-9B` | ❌ 9/1/2 | 1.0.0-rc.3 | [report](huggingface/2026-09-21-063535-Qwen_Qwen3.5-9B.md) |
+| 2026-09-21T06:36:47Z | `qwen` | `qwen3.7-plus` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](qwen/2026-09-21-063504-qwen3.7-plus.md) |
+| 2026-09-21T06:36:33Z | `anthropic` | `claude-fable-5-1` | ❌ 11/1/0 | 1.0.0-rc.3 | [report](anthropic/2026-09-21-063536-claude-fable-5-1.md) |
+| 2026-09-21T06:36:23Z | `grok` | `grok-4.6` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](grok/2026-09-21-063504-grok-4.6.md) |
+| 2026-09-21T06:36:13Z | `minimax` | `MiniMax-M3` | ❌ 9/1/2 | 1.0.0-rc.3 | [report](minimax/2026-09-21-063550-MiniMax-M3.md) |
+| 2026-09-21T06:36:00Z | `gemini` | `gemini-3.8-flash` | ✅ 11/0/1 | 1.0.0-rc.3 | [report](gemini/2026-09-21-063532-gemini-3.8-flash.md) |
+| 2026-09-21T06:35:59Z | `zai` | `glm-5.2` | ❌ 11/1/0 | 1.0.0-rc.3 | [report](zai/2026-09-21-063504-glm-5.2.md) |
+| 2026-09-21T06:35:49Z | `minimax` | `MiniMax-M2` | ❌ 7/2/3 | 1.0.0-rc.3 | [report](minimax/2026-09-21-063504-MiniMax-M2.md) |
+| 2026-09-21T06:35:46Z | `openai` | `gpt-6-astra` | ❌ 2/10/0 | 1.0.0-rc.3 | [report](openai/2026-09-21-063540-gpt-6-astra.md) |
+| 2026-09-21T06:35:40Z | `openai` | `gpt-5.6-sol` | ❌ 11/1/0 | 1.0.0-rc.3 | [report](openai/2026-09-21-063504-gpt-5.6-sol.md) |
+| 2026-09-21T06:35:40Z | `together` | `Qwen/Qwen3.5-9B` | ❌ 2/9/1 | 1.0.0-rc.3 | [report](together/2026-09-21-063533-Qwen_Qwen3.5-9B.md) |
+| 2026-09-21T06:35:36Z | `anthropic` | `claude-sonnet-5` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](anthropic/2026-09-21-063504-claude-sonnet-5.md) |
+| 2026-09-21T06:35:34Z | `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | ✅ 1/0/0 | 1.0.0-rc.3 | [report](huggingface/2026-09-21-063532-Qwen_Qwen3-VL-30B-A3B-Instruct.md) |
+| 2026-09-21T06:35:32Z | `together` | `zai-org/GLM-5.3-Flash` | ❌ 9/2/1 | 1.0.0-rc.3 | [report](together/2026-09-21-063515-zai-org_GLM-5.3-Flash.md) |
+| 2026-09-21T06:35:31Z | `gemini` | `gemini-3.7-flash` | ✅ 11/0/1 | 1.0.0-rc.3 | [report](gemini/2026-09-21-063504-gemini-3.7-flash.md) |
+| 2026-09-21T06:35:31Z | `huggingface` | `meta-llama/Llama-3.1-8B-Instruct` | ❌ 8/2/2 | 1.0.0-rc.3 | [report](huggingface/2026-09-21-063504-meta-llama_Llama-3.1-8B-Instruct.md) |
+| 2026-09-21T06:35:14Z | `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | ❌ 2/9/1 | 1.0.0-rc.3 | [report](together/2026-09-21-063504-meta-llama_Llama-3.3-70B-Instruct-Turbo.md) |
+| 2026-09-21T06:34:43Z | `deepseek` | `deepseek-flash` | ✅ 12/0/0 | 1.0.0-rc.3 | [report](deepseek/2026-09-21-063410-deepseek-flash.md) |
 | 2026-09-07T06:46:14Z | `mistral` | `mistral-medium-2604` | ❌ 2/10/0 | 1.0.0-rc.3 | [report](mistral/2026-09-07-061452-mistral-medium-2604.md) |
 | 2026-09-07T06:18:24Z | `zai` | `glm-4.6v-flash` | ✅ 1/0/0 | 1.0.0-rc.3 | [report](zai/2026-09-07-061600-glm-4.6v-flash.md) |
 | 2026-09-07T06:17:55Z | `kimi` | `kimi-k2.6` | ❌ 10/1/1 | 1.0.0-rc.3 | [report](kimi/2026-09-07-061452-kimi-k2.6.md) |
@@ -401,21 +457,21 @@ table row. Filling the matrix (LLM-08/C4) is mechanical.
 
 | Provider | Model | Date | Status | Modes exercised |
 |---|---|---|---|---|
-| `anthropic` | `claude-sonnet-5` | 2026-09-07 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `deepseek` | `deepseek-v4-flash-vision-exp` | 2026-09-07 | ❌ | M9 |
-| `gemini` | `gemini-3.7-flash` | 2026-09-07 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `grok` | `grok-4.6` | 2026-09-07 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `huggingface` | `Qwen/Qwen3-VL-30B-A3B-Instruct` | 2026-09-07 | ✅ | M9 |
-| `kimi` | `kimi-k2.6` | 2026-09-07 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `minimax` | `MiniMax-M2` | 2026-09-07 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `mistral` | `mistral-medium-2604` | 2026-09-07 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `anthropic` | `claude-fable-5-1` | 2026-09-21 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `deepseek` | `deepseek-flash` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `gemini` | `gemini-3.8-flash` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `grok` | `grok-4.6` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `huggingface` | `Qwen/Qwen3.5-9B` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `kimi` | `kimi-k3` | 2026-09-21 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `minimax` | `MiniMax-M3` | 2026-09-21 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `mistral` | `mistral-medium-2604` | 2026-09-21 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 | `ollama` | `llava` | 2026-09-07 | ✅ | M9 |
-| `openai` | `gpt-5.6-sol` | 2026-09-07 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `qwen` | `qwen3.7-plus` | 2026-09-07 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `together` | `meta-llama/Llama-3.3-70B-Instruct-Turbo` | 2026-09-07 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
-| `zai` | `glm-4.6v-flash` | 2026-09-07 | ✅ | M9 |
+| `openai` | `gpt-6-astra` | 2026-09-21 | ❌ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `qwen` | `qwen3.8-max` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `together` | `Qwen/Qwen3.5-9B` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
+| `zai` | `glm-5.3-flash` | 2026-09-21 | ✅ | M1 M2 M3 M4 M5 M6 M7 M8 M9 M10 M12 M13 |
 
 ---
 
 _Index regenerated by `lib/recap.sh` or `lib/recap.ps1` from the reports present on disk._
-_80 archived campaign(s)._
+_136 archived campaign(s)._
