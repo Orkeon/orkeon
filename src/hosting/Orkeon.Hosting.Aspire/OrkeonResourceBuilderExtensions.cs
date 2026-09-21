@@ -133,6 +133,8 @@ public sealed class OrkeonHostResource(string name, string command, string worki
     : ExecutableResource(name, command, workingDirectory);
 
 /// <summary>One <c>orkeon run</c> as an Aspire resource.</summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+    Justification = "False positive on a primary constructor: each initializer IS the capture of the parameter into the member, no constructor assigns it, and removing it would leave the member unset.")]
 public sealed class OrkeonCrewRunResource(string name, string command, string workingDirectory, string crewPath, string outputDirectory)
     : ExecutableResource(name, command, workingDirectory)
 {

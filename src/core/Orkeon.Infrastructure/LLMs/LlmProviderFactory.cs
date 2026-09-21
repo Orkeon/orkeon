@@ -198,7 +198,35 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     }
 
     /// <summary>
-    /// Infers the provider type from the model name patterns.
+    /// The model-name prefixes that name a vendor, in the order they are tried. A plain
+    /// <c>vendor/model</c> identifier is NOT a claim: HuggingFace and Together use the same
+    /// shape, so <c>anthropic/claude-sonnet-5</c> without a base URL keeps its historical route
+    /// (the OpenAI default), and the vendor prefixes listed here (<c>deepseek/…</c>,
+    /// <c>qwen/…</c>) keep going to the direct vendor (D-02, §9). OpenRouter's own router slugs
+    /// (<c>openrouter/auto</c>, <c>openrouter/free</c>) exist nowhere else; Mammouth's
+    /// identifiers are the vendors' own bare strings and are never inferred from.
+    /// </summary>
+    private static readonly (string Prefix, string Provider)[] ModelPrefixRoutes =
+    [
+        ("gpt", LlmProviderKeys.OpenAI),
+        ("claude", LlmProviderKeys.Anthropic),
+        ("llama", LlmProviderKeys.Ollama),
+        ("codellama", LlmProviderKeys.Ollama),
+        (LlmProviderKeys.Mistral, LlmProviderKeys.Mistral),
+        ("ministral", LlmProviderKeys.Mistral),
+        (LlmProviderKeys.Qwen, LlmProviderKeys.Qwen),
+        (LlmProviderKeys.DeepSeek, LlmProviderKeys.DeepSeek),
+        (LlmProviderKeys.MoonshotAlias, LlmProviderKeys.Kimi),
+        (LlmProviderKeys.GlmAlias, LlmProviderKeys.Zai),
+        (LlmProviderKeys.Gemini, LlmProviderKeys.Gemini),
+        (LlmProviderKeys.Grok, LlmProviderKeys.Grok),
+        (LlmProviderKeys.MiniMax, LlmProviderKeys.MiniMax),
+        (LlmProviderKeys.OpenRouter + "/", LlmProviderKeys.OpenRouter),
+    ];
+
+    /// <summary>
+    /// Infers the provider type from the model name patterns: the Ollama spelling of a Mistral
+    /// tag first (<see cref="IsOllamaMistralTag"/>), then <see cref="ModelPrefixRoutes"/>.
     /// </summary>
     private static string? InferFromModel(string? model)
     {
@@ -209,40 +237,13 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
         var m = model.ToLowerInvariant();
 #pragma warning restore CA1308
 
-        if (m.StartsWith("gpt", StringComparison.Ordinal))
-            return LlmProviderKeys.OpenAI;
-        if (m.StartsWith("claude", StringComparison.Ordinal))
-            return LlmProviderKeys.Anthropic;
-        if (m.StartsWith("llama", StringComparison.Ordinal) || m.StartsWith("codellama", StringComparison.Ordinal))
-            return LlmProviderKeys.Ollama;
         if (IsOllamaMistralTag(m))
             return LlmProviderKeys.Ollama;
-        if (m.StartsWith(LlmProviderKeys.Mistral, StringComparison.Ordinal) || m.StartsWith("ministral", StringComparison.Ordinal))
-            return LlmProviderKeys.Mistral;
-        if (m.StartsWith(LlmProviderKeys.Qwen, StringComparison.Ordinal))
-            return LlmProviderKeys.Qwen;
-        if (m.StartsWith(LlmProviderKeys.DeepSeek, StringComparison.Ordinal))
-            return LlmProviderKeys.DeepSeek;
-        if (m.StartsWith(LlmProviderKeys.MoonshotAlias, StringComparison.Ordinal))
-            return LlmProviderKeys.Kimi;
-        if (m.StartsWith(LlmProviderKeys.GlmAlias, StringComparison.Ordinal))
-            return LlmProviderKeys.Zai;
-        if (m.StartsWith(LlmProviderKeys.Gemini, StringComparison.Ordinal))
-            return LlmProviderKeys.Gemini;
-        if (m.StartsWith(LlmProviderKeys.Grok, StringComparison.Ordinal))
-            return LlmProviderKeys.Grok;
-        if (m.StartsWith(LlmProviderKeys.MiniMax, StringComparison.Ordinal))
-            return LlmProviderKeys.MiniMax;
-        // OpenRouter's own router slugs (openrouter/auto, openrouter/free) exist nowhere else.
-        // A plain `vendor/model` identifier is NOT a claim: HuggingFace and Together use the
-        // same shape, so `anthropic/claude-sonnet-5` without a base URL keeps its historical
-        // route (the OpenAI default), and the vendor prefixes this method already matches
-        // (`deepseek/…`, `qwen/…`) keep going to the direct vendor (D-02, §9). Mammouth's
-        // identifiers are the vendors' own bare strings and are never inferred from.
-        if (m.StartsWith(LlmProviderKeys.OpenRouter + "/", StringComparison.Ordinal))
-            return LlmProviderKeys.OpenRouter;
 
-        return null;
+        return ModelPrefixRoutes
+            .Where(route => m.StartsWith(route.Prefix, StringComparison.Ordinal))
+            .Select(route => route.Provider)
+            .FirstOrDefault();
     }
 
     /// <summary>

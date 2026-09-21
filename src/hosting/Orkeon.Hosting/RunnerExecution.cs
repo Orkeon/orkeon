@@ -414,10 +414,10 @@ public static partial class RunnerExecution
         // The Internal section must not claim a root the agent-facing one holds, whichever of
         // its entries the run ends up keeping.
         var agentFacingRoots = new Dictionary<string, string>(StringComparer.Ordinal);
-        foreach (var entry in declared)
+        foreach (var spec in declared.Select(entry => entry.Spec))
         {
-            if (MountSelection.TryGetVirtualRoot(entry.Spec) is { } root)
-                agentFacingRoots.TryAdd(root, entry.Spec);
+            if (MountSelection.TryGetVirtualRoot(spec) is { } root)
+                agentFacingRoots.TryAdd(root, spec);
         }
 
         return RootsAreClaimedOnce(
@@ -585,7 +585,7 @@ public static partial class RunnerExecution
     {
         ArgumentNullException.ThrowIfNull(userMounts);
 
-        var withdrawn = new HashSet<int>(selection?.WithdrawnIndices ?? []);
+        var withdrawn = new HashSet<int>(selection?.WithdrawnIndices() ?? []);
         var declared = RunnerSettings.ReadDeclaredAgentFacingMounts(settingsPath)
             .Where(entry => !withdrawn.Contains(entry.Index))
             .Select(entry => entry.Spec)
@@ -634,7 +634,6 @@ public static partial class RunnerExecution
     /// the runtime SIGINT path that <c>RegisterGracefulShutdown</c> relies on).
     /// </param>
     /// <returns>Exit code: 0 = success, 1 = config error, 2 = crew failure, 130 = canceled.</returns>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level fault barrier: any crew execution failure is logged and converted to exit code 2 so the runner exits cleanly instead of crashing. Cancellation maps to exit 130.")]
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     public static Task<int> RunOneShotAsync(
         RunnerOptionsBase opts,
@@ -661,14 +660,23 @@ public static partial class RunnerExecution
         // console logger's queue, so "ERROR: <message>" is the last thing on stderr — the
         // sentence exit code 2 promises ("the last stderr lines say why") — rather than a
         // line the logger's own output then buries (STUDIO-15 D-03).
-        var (exitCode, failure) = await RunWithHostAsync(bootstrap!).ConfigureAwait(false);
+        var (exitCode, failure) = await RunWithHostAsync(bootstrap!, opts, externalCt).ConfigureAwait(false);
         if (failure is not null)
             await Console.Error.WriteLineAsync($"ERROR: {failure}").ConfigureAwait(false);
         return exitCode;
         }
+    }
 
-        async Task<(int ExitCode, string? Failure)> RunWithHostAsync(HostBootstrap bootstrap)
-        {
+    /// <summary>
+    /// The exit-code fault barrier around one crew run: cancellation is 130, an unreachable
+    /// endpoint and any other failure are 2, with the reason handed back for the caller to
+    /// write once the host is disposed.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Top-level fault barrier: any crew execution failure is logged and converted to exit code 2 so the runner exits cleanly instead of crashing. Cancellation maps to exit 130.")]
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static async Task<(int ExitCode, string? Failure)> RunWithHostAsync(
+        HostBootstrap bootstrap, RunnerOptionsBase opts, CancellationToken externalCt)
+    {
         // `using`, because the sandbox session directory is deleted by SandboxSession.Dispose,
         // which the container runs on host disposal. Without it every `orkeon run` left a
         // directory under the ephemeral root for a later process's janitor to collect — and
@@ -713,7 +721,6 @@ public static partial class RunnerExecution
             if (RunnerEnvironment.DebugDiagnostics)
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return (2, ex.Message);
-        }
         }
     }
 

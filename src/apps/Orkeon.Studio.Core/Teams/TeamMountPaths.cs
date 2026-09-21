@@ -224,7 +224,7 @@ public static class TeamMountPaths
         if (folder.Length == 0 || Path.IsPathRooted(folder))
             return false;
 
-        foreach (var segment in folder.Split('/', '\\'))
+        foreach (var segment in folder.Split(['/', '\\']))
         {
             if (segment.Length == 0 || segment == "." || segment == "..")
                 return false;

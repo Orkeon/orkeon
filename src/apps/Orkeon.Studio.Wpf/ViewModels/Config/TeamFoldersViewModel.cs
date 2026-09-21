@@ -8,6 +8,25 @@ using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
+/// Where a team folder row comes from: a folder inside the team, a settings declaration the
+/// team names by id (VFS-90), or an id this machine has no declaration for (D-06).
+/// </summary>
+/// <param name="ShortId">The last six characters of the settings entry the team names; empty for an in-team folder.</param>
+/// <param name="IsDeclared">Whether the row is a settings declaration rather than a folder inside the team.</param>
+/// <param name="IsUnknownId">Whether the team names a declaration this machine does not have.</param>
+public readonly record struct TeamFolderOrigin(string ShortId, bool IsDeclared, bool IsUnknownId)
+{
+    /// <summary>A folder inside the team.</summary>
+    public static TeamFolderOrigin InsideTeam { get; } = new("", false, false);
+
+    /// <summary>A settings declaration the team names, found on this machine.</summary>
+    public static TeamFolderOrigin Declared(string shortId) => new(shortId, true, false);
+
+    /// <summary>A declaration the team names that this machine does not have.</summary>
+    public static TeamFolderOrigin Unknown(string shortId) => new(shortId, true, true);
+}
+
+/// <summary>
 /// One folder of one adopted team, as the read-only « Team folders » section of
 /// Settings › Authorized folders lists it (STUDIO-14, D-13): the team, the name the agents
 /// use, the sub-folder inside the team behind it, and the rights — in the one-word badge of
@@ -17,24 +36,25 @@ public sealed class TeamFolderRowViewModel
 {
     internal TeamFolderRowViewModel(
         string teamName, string virtualPath, string folder, MountRights rights, IStudioStrings strings,
-        string shortId = "", bool isDeclared = false, bool isUnknownId = false)
+        TeamFolderOrigin origin)
     {
         ArgumentNullException.ThrowIfNull(strings);
 
         TeamName = teamName;
         VirtualPath = virtualPath;
         Folder = folder;
-        ShortId = shortId;
-        IsDeclared = isDeclared;
-        IsUnknownId = isUnknownId;
+        ShortId = origin.ShortId;
+        IsDeclared = origin.IsDeclared;
+        IsUnknownId = origin.IsUnknownId;
         IsReadWrite = rights != MountRights.ReadOnly;
         RightsLabel = MountRightsTokens.GetLabel(rights, strings);
         RightsBadge = MountRightsTokens.GetBadge(rights, strings);
-        Label = isUnknownId
-            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], teamName, virtualPath, shortId)
-            : isDeclared
-                ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], teamName, virtualPath, folder, shortId)
-                : string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], teamName, virtualPath, folder);
+        Label = origin switch
+        {
+            { IsUnknownId: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], teamName, virtualPath, origin.ShortId),
+            { IsDeclared: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], teamName, virtualPath, folder, origin.ShortId),
+            _ => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], teamName, virtualPath, folder),
+        };
     }
 
     /// <summary>The last six characters of the settings entry the team names (VFS-90); empty for an in-team folder.</summary>
@@ -140,48 +160,59 @@ public sealed class TeamFoldersViewModel : ObservableObject
 
         foreach (var team in _loadTeams())
         {
-            if (team.Metadata?.Mounts is not { Count: > 0 } mounts)
-                continue;
-
-            var teamName = TeamCatalog.NormalizeName(team.Name);
-            foreach (var mount in mounts)
-            {
-                if (!MountDefinition.TryParse(mount, out var parsed, out _) || parsed is null)
-                    continue;
-
-                // The one containment rule, not a local copy of it: relative entries are
-                // inside the team by construction, an absolute one only when the path says so.
-                if (DeclaredMounts.IsInsideTeam(mount, team.Path))
-                {
-                    var folder = TeamMountPaths.TryGetRelativeFolder(mount, out var relative)
-                        ? relative
-                        : FolderUnderTeam(team.Path, parsed.PhysicalPath);
-
-                    Rows.Add(new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings));
-                    continue;
-                }
-
-                // A settings declaration the team names by id (VFS-90): listed with what the
-                // declaration says today, or flagged when this machine has no such declaration.
-                if (declared is null || parsed.Id is null)
-                    continue;
-
-                if (DeclaredMounts.FindDeclared(mount, declared) is { } entry)
-                {
-                    Rows.Add(new TeamFolderRowViewModel(
-                        teamName, parsed.VirtualPath, entry.PhysicalPath, entry.Rights, _strings,
-                        shortId: entry.ShortId ?? "", isDeclared: true));
-                }
-                else
-                {
-                    Rows.Add(new TeamFolderRowViewModel(
-                        teamName, parsed.VirtualPath, "", parsed.Rights, _strings,
-                        shortId: parsed.ShortId ?? "", isDeclared: true, isUnknownId: true));
-                }
-            }
+            foreach (var row in RowsOf(team, declared))
+                Rows.Add(row);
         }
 
         OnPropertiesChanged(nameof(HasRows), nameof(IsEmpty));
+    }
+
+    /// <summary>The rows of one team, in sidecar order: the entries that resolve to a row.</summary>
+    private IEnumerable<TeamFolderRowViewModel> RowsOf(TeamSummary team, IReadOnlyList<string>? declared)
+    {
+        if (team.Metadata?.Mounts is not { Count: > 0 } mounts)
+            yield break;
+
+        var teamName = TeamCatalog.NormalizeName(team.Name);
+        foreach (var mount in mounts)
+        {
+            if (RowFor(teamName, team.Path, mount, declared) is { } row)
+                yield return row;
+        }
+    }
+
+    /// <summary>
+    /// The row one sidecar entry makes: an in-team folder, a settings declaration the entry
+    /// names by id (listed with what the declaration says today, or flagged when this machine
+    /// has no such declaration — VFS-90), or nothing for an unreadable entry, a folder outside
+    /// the team, or an id when the settings were not consulted.
+    /// </summary>
+    private TeamFolderRowViewModel? RowFor(string teamName, string teamPath, string mount, IReadOnlyList<string>? declared)
+    {
+        if (!MountDefinition.TryParse(mount, out var parsed, out _) || parsed is null)
+            return null;
+
+        // The one containment rule, not a local copy of it: relative entries are
+        // inside the team by construction, an absolute one only when the path says so.
+        if (DeclaredMounts.IsInsideTeam(mount, teamPath))
+        {
+            var folder = TeamMountPaths.TryGetRelativeFolder(mount, out var relative)
+                ? relative
+                : FolderUnderTeam(teamPath, parsed.PhysicalPath);
+
+            return new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings, TeamFolderOrigin.InsideTeam);
+        }
+
+        if (declared is null || parsed.Id is null)
+            return null;
+
+        return DeclaredMounts.FindDeclared(mount, declared) is { } entry
+            ? new TeamFolderRowViewModel(
+                teamName, parsed.VirtualPath, entry.PhysicalPath, entry.Rights, _strings,
+                TeamFolderOrigin.Declared(entry.ShortId ?? ""))
+            : new TeamFolderRowViewModel(
+                teamName, parsed.VirtualPath, "", parsed.Rights, _strings,
+                TeamFolderOrigin.Unknown(parsed.ShortId ?? ""));
     }
 
     /// <summary>

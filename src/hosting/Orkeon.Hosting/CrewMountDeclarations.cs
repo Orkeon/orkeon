@@ -40,7 +40,7 @@ public sealed record CrewMountDeclarations(string? SourceFile, IReadOnlyList<str
 
         var file = isCrewDirectory
             ? FirstExisting(configPath, ConventionalNames.CrewSettingsFile, ConventionalNames.CrewSettingsFallbackFile)
-            : IsYaml(configPath) && File.Exists(configPath) ? configPath : null;
+            : ExistingYamlFile(configPath);
         if (file is null)
             return None;
 
@@ -71,12 +71,19 @@ public sealed record CrewMountDeclarations(string? SourceFile, IReadOnlyList<str
         return null;
     }
 
+    private static string? ExistingYamlFile(string path) =>
+        IsYaml(path) && File.Exists(path) ? path : null;
+
     private static bool IsYaml(string path) =>
         YamlExtensions.Contains(Path.GetExtension(path), StringComparer.OrdinalIgnoreCase);
 
     /// <summary>The one key the probe reads; every other key of the file is ignored.</summary>
+    // YamlDotNet populates the property by reflection, so the analyzer reports it as
+    // unassigned (S3459) and its setter as unused (S1144). Both are false positives.
+#pragma warning disable S3459, S1144 // Populated by YamlDotNet reflection, not by code
     private sealed class MountsProbe
     {
         public Collection<string>? Mounts { get; set; }
     }
+#pragma warning restore S3459, S1144
 }

@@ -380,9 +380,13 @@ public static class MountOverrideSemantics
                 index => IdOf(effective[index].Value) is { } id && selectedIds.Contains(id), -1);
             foreach (var index in indices)
             {
-                var selection = selected < 0
-                    ? EffectiveMountSelection.Conflict
-                    : index == selected ? EffectiveMountSelection.SelectedById : EffectiveMountSelection.NotSelected;
+                EffectiveMountSelection selection;
+                if (selected < 0)
+                    selection = EffectiveMountSelection.Conflict;
+                else if (index == selected)
+                    selection = EffectiveMountSelection.SelectedById;
+                else
+                    selection = EffectiveMountSelection.NotSelected;
                 effective[index] = effective[index] with { Selection = selection, SharedRootCount = indices.Count };
             }
         }

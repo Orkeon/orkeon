@@ -89,24 +89,16 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
         var startedAt = DateTimeOffset.UtcNow;
         var startTime = startedAt.UtcDateTime;
-        var domainResults = new List<Orkeon.Domain.Task.ValueObjects.TaskOutput>();
+        var variables = inputVariables != null
+            ? new Dictionary<string, string>(inputVariables)
+            : [];
         var applicationOutputs = new List<ApplicationTaskOutput>();
-        var taskSnapshots = new List<TaskExecutionSnapshot>();
-        var tokenTally = new TokenUsageTally();
+        var run = new SequentialRun(
+            new SimpleExecutionContext(crew.Id, variables, _memoryScope, applicationOutputs, cancellationToken),
+            applicationOutputs);
 
         try
         {
-            var variables = inputVariables != null
-                ? new Dictionary<string, string>(inputVariables)
-                : [];
-
-            var context = new SimpleExecutionContext(
-                crew.Id,
-                variables,
-                _memoryScope,
-                applicationOutputs,
-                cancellationToken);
-
             // Setup inside the barrier — an agent-less crew is the everyday failure, and it
             // has to produce a terminal event like any other exit.
             var agents = await LoadAgentsAsync(crew).ConfigureAwait(false);
@@ -121,16 +113,11 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             if (agents.Count == 0 && crew.Tasks.Count > 0)
                 throw new InvalidOperationException("No agents available for sequential execution");
 
-            _delegationProvider.UpdateExecutionContext(context);
+            _delegationProvider.UpdateExecutionContext(run.Context);
 
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
             var agentIndex = 0;
-            var failures = new List<string>();
-            // Every task that failed or was skipped: a task depending on one of them is skipped
-            // in its turn, so a broken step never runs the rest of the chain on a context that
-            // says "Task failed: …" where the deliverable it needed should have been (LLM-11).
-            var notSucceeded = new HashSet<TaskId>();
 
             foreach (var taskId in taskIds)
             {
@@ -148,77 +135,42 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
                     .ConfigureAwait(false);
 
-                if (BlockingDependency(task, notSucceeded) is { } blockedBy)
-                {
-                    TaskExecutionSnapshot skippedSnapshot;
-                    (context, skippedSnapshot) = RecordSkippedTask(
-                        task, agent, blockedBy, context, applicationOutputs, domainResults);
-                    notSucceeded.Add(taskId);
-                    failures.Add(skippedSnapshot.SkipReason!);
-                    _delegationProvider.UpdateExecutionContext(context);
-
-                    if (_hooks.HasHook)
-                    {
-                        taskSnapshots.Add(skippedSnapshot);
-                        await _hooks.TaskCompletedAsync(skippedSnapshot, CancellationToken.None).ConfigureAwait(false);
-                    }
-                    continue;
-                }
-
-                // The task is about to run: say so before asking the agent anything, so a
-                // watcher shows it in progress instead of discovering it only once finished.
-                await _hooks.TaskStartedAsync(
-                    CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), CancellationToken.None)
-                    .ConfigureAwait(false);
-
-                Orkeon.Application.Interfaces.Services.TaskResult taskResult;
-                (context, var taskSnapshot, taskResult) = await ExecuteSingleTaskAsync(
-                    task, agent, context, applicationOutputs, domainResults, cancellationToken)
-                    .ConfigureAwait(false);
-                tokenTally.Record(taskResult);
-
-                _delegationProvider.UpdateExecutionContext(context);
-                LogTaskCompletedSuccess(taskId, taskSnapshot.Success);
-
-                if (!taskResult.Success)
-                {
-                    notSucceeded.Add(taskId);
-                    failures.Add(
-                        $"Task {taskId} ({agent.Role}) failed: {taskResult.Error ?? taskResult.LastError ?? "unknown error"}");
-                }
+                var snapshot = BlockingDependency(task, run.NotSucceeded) is { } blockedBy
+                    ? SkipBlockedTask(run, task, agent, blockedBy)
+                    : await RunTaskAsync(run, task, agent, cancellationToken).ConfigureAwait(false);
 
                 if (_hooks.HasHook)
                 {
-                    taskSnapshots.Add(taskSnapshot);
-                    await _hooks.TaskCompletedAsync(taskSnapshot, CancellationToken.None).ConfigureAwait(false);
+                    run.TaskSnapshots.Add(snapshot);
+                    await _hooks.TaskCompletedAsync(snapshot, CancellationToken.None).ConfigureAwait(false);
                 }
             }
 
             var totalTime = DateTime.UtcNow - startTime;
-            var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
+            var finalOutput = run.DomainResults.LastOrDefault()?.Output ?? string.Empty;
 
-            LogTotalTokensUsed(crew.Id, tokenTally.TotalTokens);
+            LogTotalTokensUsed(crew.Id, run.TokenTally.TotalTokens);
 
-            var metadata = tokenTally
+            var metadata = run.TokenTally
                 .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
                 .Build();
 
             // A pipeline with a failed step is a failed pipeline: the crew used to report
             // success whatever its tasks did, so an empty deliverable went green all the way
             // to the runner's exit code (STUDIO-12 C5a). The reason names every failed task.
-            if (failures.Count > 0)
+            if (run.Failures.Count > 0)
             {
-                var reason = string.Join("; ", failures);
-                LogSequentialExecutionFailedForCrew(crew.Id, failures.Count, reason);
+                var reason = string.Join("; ", run.Failures);
+                LogSequentialExecutionFailedForCrew(crew.Id, run.Failures.Count, reason);
 
                 await _hooks.CrewFailedAsync(
                     CrewHookDispatcher.Snapshot(
-                        crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed, reason),
+                        crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Failed, reason),
                     null, CancellationToken.None).ConfigureAwait(false);
 
                 return DomainCrewOutput.CreateFailure(
                     error: reason,
-                    taskOutputs: domainResults,
+                    taskOutputs: run.DomainResults,
                     executionTime: totalTime,
                     metadata: metadata,
                     output: finalOutput);
@@ -228,13 +180,13 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
 
             await _hooks.CrewCompletedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Completed),
+                    crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Completed),
                 CancellationToken.None).ConfigureAwait(false);
 
             return DomainCrewOutput.CreateSuccess(
                 output: finalOutput,
                 structuredOutput: null,
-                taskOutputs: domainResults,
+                taskOutputs: run.DomainResults,
                 executionTime: totalTime,
                 metadata: metadata);
         }
@@ -242,7 +194,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         {
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Canceled,
+                    crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Canceled,
                     "Crew execution was canceled (timeout or external cancellation)."),
                 null, CancellationToken.None).ConfigureAwait(false);
             throw;
@@ -251,10 +203,81 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         {
             await _hooks.CrewFailedAsync(
                 CrewHookDispatcher.Snapshot(
-                    crew.Id.Value.ToString(), startedAt, taskSnapshots, CrewHookStatus.Failed, ex.Message),
+                    crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Failed, ex.Message),
                 ex, CancellationToken.None).ConfigureAwait(false);
             throw;
         }
+    }
+
+    /// <summary>
+    /// What one sequential pass accumulates task after task: the execution context the next
+    /// task reads (rebuilt after each one), the outputs in both shapes, the snapshots the hooks
+    /// receive, the token tally, the failure reasons and the tasks that did not succeed.
+    /// </summary>
+    private sealed class SequentialRun
+    {
+        public SequentialRun(SimpleExecutionContext context, List<ApplicationTaskOutput> applicationOutputs)
+        {
+            Context = context;
+            ApplicationOutputs = applicationOutputs;
+        }
+
+        public SimpleExecutionContext Context { get; set; }
+        public List<ApplicationTaskOutput> ApplicationOutputs { get; }
+        public List<DomainTaskOutput> DomainResults { get; } = [];
+        public List<TaskExecutionSnapshot> TaskSnapshots { get; } = [];
+        public TokenUsageTally TokenTally { get; } = new();
+        public List<string> Failures { get; } = [];
+
+        /// <summary>
+        /// Every task that failed or was skipped: a task depending on one of them is skipped in
+        /// its turn, so a broken step never runs the rest of the chain on a context that says
+        /// "Task failed: …" where the deliverable it needed should have been (LLM-11).
+        /// </summary>
+        public HashSet<TaskId> NotSucceeded { get; } = [];
+    }
+
+    /// <summary>A task blocked by a dependency that did not succeed: recorded as skipped, never run.</summary>
+    private TaskExecutionSnapshot SkipBlockedTask(
+        SequentialRun run, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, TaskId blockedBy)
+    {
+        TaskExecutionSnapshot snapshot;
+        (run.Context, snapshot) = RecordSkippedTask(
+            task, agent, blockedBy, run.Context, run.ApplicationOutputs, run.DomainResults);
+        run.NotSucceeded.Add(task.Id);
+        run.Failures.Add(snapshot.SkipReason!);
+        _delegationProvider.UpdateExecutionContext(run.Context);
+        return snapshot;
+    }
+
+    /// <summary>One task run by its agent, its outcome folded into the pass.</summary>
+    private async System.Threading.Tasks.Task<TaskExecutionSnapshot> RunTaskAsync(
+        SequentialRun run, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, CancellationToken cancellationToken)
+    {
+        // The task is about to run: say so before asking the agent anything, so a
+        // watcher shows it in progress instead of discovering it only once finished.
+        await _hooks.TaskStartedAsync(
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), agent.Role.Value), CancellationToken.None)
+            .ConfigureAwait(false);
+
+        Orkeon.Application.Interfaces.Services.TaskResult taskResult;
+        TaskExecutionSnapshot snapshot;
+        (run.Context, snapshot, taskResult) = await ExecuteSingleTaskAsync(
+            task, agent, run.Context, run.ApplicationOutputs, run.DomainResults, cancellationToken)
+            .ConfigureAwait(false);
+        run.TokenTally.Record(taskResult);
+
+        _delegationProvider.UpdateExecutionContext(run.Context);
+        LogTaskCompletedSuccess(task.Id, snapshot.Success);
+
+        if (!taskResult.Success)
+        {
+            run.NotSucceeded.Add(task.Id);
+            run.Failures.Add(
+                $"Task {task.Id} ({agent.Role}) failed: {taskResult.Error ?? taskResult.LastError ?? "unknown error"}");
+        }
+
+        return snapshot;
     }
 
     private async System.Threading.Tasks.Task<(SimpleExecutionContext Context, TaskExecutionSnapshot Snapshot, Orkeon.Application.Interfaces.Services.TaskResult Result)> ExecuteSingleTaskAsync(
@@ -341,16 +364,8 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
     /// or null when the task may run. Only the direct dependencies are read: a skipped task
     /// joins <paramref name="notSucceeded"/> itself, so the transitive closure follows.
     /// </summary>
-    private static TaskId? BlockingDependency(Orkeon.Domain.Task.CrewTask task, HashSet<TaskId> notSucceeded)
-    {
-        foreach (var dependency in task.Dependencies)
-        {
-            if (notSucceeded.Contains(dependency))
-                return dependency;
-        }
-
-        return null;
-    }
+    private static TaskId? BlockingDependency(Orkeon.Domain.Task.CrewTask task, HashSet<TaskId> notSucceeded) =>
+        task.Dependencies.FirstOrDefault(notSucceeded.Contains);
 
     /// <summary>
     /// Records a task that does not run because <paramref name="blockedBy"/> did not succeed

@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Tests.Cli;
@@ -180,17 +181,20 @@ public sealed class RunCommandTests : IDisposable
             (globalThis as any).crew = crew;
             """);
 
-        // The witness changed with LLM-11: an unconfigured provider no longer yields an
-        // empty green run. The orchestration pipeline now fails the task out loud —
-        // "ERROR: Task … (Writer) failed: … API key is required" on stderr, exit 2 — where
-        // the flat script path has no task to fail and prints a JSON result blob at exit 0.
-        // Settings are pinned to an empty file so the per-user configuration of the machine
-        // running the tests can neither hide the failure nor change its wording.
+        // The pipeline's banner is the discriminator: the shared one-shot runner prints
+        // "=== Crew Output ===", the flat script path prints a JSON result blob. Settings are
+        // pinned to an empty file so the per-user configuration of the machine running the
+        // tests cannot change the provider: with no Llm section the runner host falls back to
+        // the echo provider it announces on stderr (WIN-01), and the crew completes — an
+        // unconfigured provider never fails the task with a vendor's "API key is required".
         var settingsPath = WriteScript("settings.json", "{}");
 
+        var originalOut = Console.Out;
         var originalError = Console.Error;
-        using var captured = new StringWriter();
-        Console.SetError(captured);
+        using var capturedOut = new StringWriter();
+        using var capturedError = new StringWriter();
+        Console.SetOut(capturedOut);
+        Console.SetError(capturedError);
         int exit;
         try
         {
@@ -204,12 +208,14 @@ public sealed class RunCommandTests : IDisposable
         }
         finally
         {
+            Console.SetOut(originalOut);
             Console.SetError(originalError);
         }
 
-        Assert.Equal(2, exit);
-        var stderr = captured.ToString();
-        Assert.Contains("(Writer) failed:", stderr, StringComparison.Ordinal);
-        Assert.Contains("API key is required", stderr, StringComparison.Ordinal);
+        Assert.Equal(0, exit);
+        Assert.Contains("=== Crew Output ===", capturedOut.ToString(), StringComparison.Ordinal);
+        var stderr = capturedError.ToString();
+        Assert.Contains(RunnerHost.LlmNotConfiguredMessage, stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("API key is required", stderr, StringComparison.Ordinal);
     }
 }

@@ -73,44 +73,41 @@ public static class TeamMountResolution
             return [];
 
         var declared = declaredMounts is null ? null : Parse(declaredMounts);
-        var resolved = new List<ResolvedTeamMount>(mounts.Count);
-        foreach (var raw in mounts)
-        {
-            if (!MountDefinition.TryParse(raw, out var mount, out _))
-            {
-                resolved.Add(new ResolvedTeamMount(raw, raw, TeamMountSource.Unreadable, null, null));
-                continue;
-            }
+        return mounts.Select(raw => ResolveOne(teamDirectory, raw, declared)).ToList();
+    }
 
-            if (TeamMountPaths.IsTeamRelative(raw))
-            {
-                resolved.Add(new ResolvedTeamMount(raw, TeamMountPaths.Resolve(teamDirectory, raw), TeamMountSource.InsideTeam, null, null));
-                continue;
-            }
+    /// <summary>One sidecar entry, read against the team folder and the declarations.</summary>
+    private static ResolvedTeamMount ResolveOne(string teamDirectory, string raw, List<MountDefinition>? declared)
+    {
+        if (!MountDefinition.TryParse(raw, out var mount, out _))
+            return new ResolvedTeamMount(raw, raw, TeamMountSource.Unreadable, null, null);
 
-            if (mount.Id is { } id)
-            {
-                if (declared is null)
-                    resolved.Add(new ResolvedTeamMount(raw, raw, TeamMountSource.Copy, id, null));
-                else if (declared.FirstOrDefault(entry => id.Equals(entry.Id)) is { } byId)
-                    resolved.Add(new ResolvedTeamMount(raw, byId.ToMountString(), TeamMountSource.Settings, id, byId));
-                else
-                    resolved.Add(new ResolvedTeamMount(raw, raw, TeamMountSource.UnknownId, id, null));
-                continue;
-            }
+        if (TeamMountPaths.IsTeamRelative(raw))
+            return new ResolvedTeamMount(raw, TeamMountPaths.Resolve(teamDirectory, raw), TeamMountSource.InsideTeam, null, null);
 
-            if (declared?.FirstOrDefault(entry => entry.SameDeclaration(mount)) is { } same)
-            {
-                resolved.Add(new ResolvedTeamMount(raw, same.ToMountString(), TeamMountSource.Settings, same.Id, same));
-                continue;
-            }
+        if (mount.Id is { } id)
+            return ResolveById(raw, id, declared);
 
-            resolved.Add(DeclaredMounts.IsInsideTeam(raw, teamDirectory)
-                ? new ResolvedTeamMount(raw, raw, TeamMountSource.InsideTeam, null, null)
-                : new ResolvedTeamMount(raw, raw, TeamMountSource.Copy, null, null));
-        }
+        if (declared?.FirstOrDefault(entry => entry.SameDeclaration(mount)) is { } same)
+            return new ResolvedTeamMount(raw, same.ToMountString(), TeamMountSource.Settings, same.Id, same);
 
-        return resolved;
+        return DeclaredMounts.IsInsideTeam(raw, teamDirectory)
+            ? new ResolvedTeamMount(raw, raw, TeamMountSource.InsideTeam, null, null)
+            : new ResolvedTeamMount(raw, raw, TeamMountSource.Copy, null, null);
+    }
+
+    /// <summary>
+    /// An entry carrying an id: the declaration it names when the settings were consulted
+    /// and hold it, a copy when they were not consulted, unknown when they were and do not.
+    /// </summary>
+    private static ResolvedTeamMount ResolveById(string raw, MountId id, List<MountDefinition>? declared)
+    {
+        if (declared is null)
+            return new ResolvedTeamMount(raw, raw, TeamMountSource.Copy, id, null);
+
+        return declared.FirstOrDefault(entry => id.Equals(entry.Id)) is { } byId
+            ? new ResolvedTeamMount(raw, byId.ToMountString(), TeamMountSource.Settings, id, byId)
+            : new ResolvedTeamMount(raw, raw, TeamMountSource.UnknownId, id, null);
     }
 
     private static List<MountDefinition> Parse(IReadOnlyList<string> mountStrings)

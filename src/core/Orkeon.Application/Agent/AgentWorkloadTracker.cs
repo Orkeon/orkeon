@@ -40,7 +40,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
     /// </summary>
     public void RecordTaskStarted(string agentId, string taskId)
     {
-        var metrics = _workloadMetrics.GetOrAdd(agentId, id => new AgentWorkloadMetrics(id, _clock));
+        var metrics = _workloadMetrics.GetOrAdd(agentId, _ => new AgentWorkloadMetrics(_clock));
 
         metrics.IncrementActiveTasks();
         metrics.RecordTaskStart(taskId);
@@ -157,7 +157,7 @@ public partial class AgentWorkloadTracker : IAgentWorkloadTracker
         /// <summary>
         /// Initializes a new instance of <see cref="AgentWorkloadMetrics"/>.
         /// </summary>
-        public AgentWorkloadMetrics(string agentId, TimeProvider clock)
+        public AgentWorkloadMetrics(TimeProvider clock)
         {
             _clock = clock;
         }

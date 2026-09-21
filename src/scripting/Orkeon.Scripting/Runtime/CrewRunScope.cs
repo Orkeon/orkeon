@@ -453,6 +453,8 @@ internal sealed class CrewRunScope : IDisposable
 }
 
 /// <summary>One agent of a run, opened by <c>beginAgent</c>, closed by <c>endAgent</c>; opaque to JavaScript.</summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+    Justification = "False positive on a primary constructor: each initializer IS the capture of the parameter into the member, no constructor assigns it, and removing it would leave the member unset.")]
 internal sealed class AgentStep(JsAgent agent, Activity? activity, DateTime startUtc)
 {
     internal JsAgent Agent { get; } = agent;
@@ -463,6 +465,8 @@ internal sealed class AgentStep(JsAgent agent, Activity? activity, DateTime star
 
 /// <summary>One attempt of an agent's body, opened by <c>openAttempt</c>, closed by <c>closeAttempt</c>; JavaScript reads <c>ctx</c>.</summary>
 #pragma warning disable IDE1006 // ctx is the property the JS loop reads
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+    Justification = "False positive on a primary constructor: each initializer IS the capture of the parameter into the member, no constructor assigns it, and removing it would leave the member unset.")]
 internal sealed class AgentAttempt(JsAgentContext ctx, BrokerAttribution attribution)
 {
     public JsAgentContext ctx { get; } = ctx;
@@ -477,6 +481,8 @@ internal sealed class AgentAttempt(JsAgentContext ctx, BrokerAttribution attribu
 /// JavaScript reads <c>kind</c>, <c>value</c> and <c>delayMs</c>.
 /// </summary>
 #pragma warning disable IDE1006 // property names are the JS surface
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+    Justification = "False positive on a primary constructor: each initializer IS the capture of the parameter into the member, no constructor assigns it, and removing it would leave the member unset.")]
 internal sealed class ErrorDecision(string kind, JsValue value, double delayMs)
 {
     public string kind { get; } = kind;
@@ -491,6 +497,8 @@ internal sealed class ErrorDecision(string kind, JsValue value, double delayMs)
 /// its run. Reference identity — the crew removes this very entry when the attempt closes, whatever
 /// opened or closed in between.
 /// </summary>
+[System.Diagnostics.CodeAnalysis.SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+    Justification = "False positive on a primary constructor: each initializer IS the capture of the parameter into the member, no constructor assigns it, and removing it would leave the member unset.")]
 internal sealed class BrokerAttribution(string agentId, CrewRunScope scope)
 {
     internal string AgentId { get; } = agentId;

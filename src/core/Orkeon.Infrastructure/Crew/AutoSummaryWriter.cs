@@ -174,7 +174,7 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
         sb.AppendLine("|------|-------|--------|----------|------------|---------------------------|");
         foreach (var task in snapshot.Tasks)
         {
-            var status = task.Skipped ? "⊘ skipped" : task.Success ? "✓ completed" : "✗ failed";
+            var status = StatusLabel(task);
             sb.AppendLine(
                 CultureInfo.InvariantCulture,
                 $"| {task.TaskId} | {task.AgentRole} | {status} | {task.Duration:g} | {task.ToolCallCount} | {FormatTokens(task.TokensUsed, task.CacheHitTokens, task.CacheMissTokens)} |");
@@ -225,6 +225,13 @@ public sealed partial class AutoSummaryWriter : ICrewExecutionHook
     /// Formats the per-task tokens cell. When the provider reports prompt cache stats
     /// (DeepSeek), shows <c>total · hit/miss</c>; otherwise just the total.
     /// </summary>
+    private static string StatusLabel(TaskExecutionSnapshot task) => task switch
+    {
+        { Skipped: true } => "⊘ skipped",
+        { Success: true } => "✓ completed",
+        _ => "✗ failed",
+    };
+
     private static string FormatTokens(int total, long cacheHit, long cacheMiss)
     {
         if (cacheHit == 0 && cacheMiss == 0) return total.ToString(CultureInfo.InvariantCulture);

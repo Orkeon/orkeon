@@ -61,7 +61,7 @@ public sealed class OrkeonMetrics : IDisposable
             description: "Total number of LLM API calls");
 
         // gen_ai.client.token.usage and gen_ai.client.operation.duration are the two
-        // instruments the OpenTelemetry generative-AI conventions define for a client;
+        // instruments the OpenTelemetry generative-AI conventions define for a client —
         // a backend that knows them charts tokens per model without configuration.
         _llmTokensHistogram = _meter.CreateHistogram<long>(
             GenAiAttributes.MetricClientTokenUsage,

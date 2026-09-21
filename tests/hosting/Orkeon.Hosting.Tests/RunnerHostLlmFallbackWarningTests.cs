@@ -1,5 +1,10 @@
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.SharedKernel;
 using Orkeon.Hosting.Tests.Doubles;
+using Orkeon.Scripting.Runtime;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -68,6 +73,24 @@ public sealed class RunnerHostLlmFallbackWarningTests : IDisposable
     }
 
     [Fact]
+    public async Task MissingLlmSection_RunsOnTheEchoProvider()
+    {
+        // The warning's promise, kept: no section means the echo provider, which replays the
+        // prompt — not the infrastructure's keyless OpenAI default, whose refusal is a failed
+        // task since LLM-11 (the bundled demos exited 2 where the warning announced a run).
+        using var host = CaptureStderr(() => RunnerHost.Build(
+            settingsPath: null,
+            mounts: new RunnerMountPlan(),
+            configureLogging: (_, b) => b.SetMinimumLevel(LogLevel.None)));
+
+        Assert.IsType<UndefinedLlmProvider>(host.Services.GetRequiredService<ILlmProvider>());
+        var ct = TestContext.Current.CancellationToken;
+        Assert.Equal("hello", await host.Services.GetRequiredService<IBasicLlmProvider>().ChatAsync("hello", cancellationToken: ct));
+        var answer = await host.Services.GetRequiredService<IChatClient>().GetResponseAsync("hello", cancellationToken: ct);
+        Assert.Equal("hello", answer.Text);
+    }
+
+    [Fact]
     public void ConfiguredLlmSection_EmitsNoWarning()
     {
         var settingsPath = Path.Combine(_root, "appsettings.json");
@@ -105,6 +128,22 @@ public sealed class RunnerHostLlmFallbackWarningTests : IDisposable
             Console.SetError(original);
         }
         return writer.ToString();
+    }
+
+    /// <summary>Builds under a muted stderr (the fallback warning is another test's subject) and hands the result back.</summary>
+    private static T CaptureStderr<T>(Func<T> action)
+    {
+        var original = Console.Error;
+        using var writer = new StringWriter();
+        Console.SetError(writer);
+        try
+        {
+            return action();
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
     }
 
     private static int CountOccurrences(string haystack, string needle)

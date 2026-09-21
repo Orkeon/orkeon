@@ -103,7 +103,7 @@ public sealed class MountSelectionTests
         Assert.Null(selected.OverridesCrewChoice);
         var withdrawn = Assert.Single(plan.Withdrawn);
         Assert.Equal((0, "/output", A), (withdrawn.Index, withdrawn.VirtualRoot, withdrawn.Id));
-        Assert.Equal([0], plan.WithdrawnIndices);
+        Assert.Equal([0], plan.WithdrawnIndices());
     }
 
     [Fact]
@@ -116,7 +116,7 @@ public sealed class MountSelectionTests
         Assert.Empty(plan.Errors);
         var selected = Assert.Single(plan.Selected);
         Assert.Equal((1, B, MountSelector.CrewMounts), (selected.Index, selected.Id, selected.Selector));
-        Assert.Equal([0], plan.WithdrawnIndices);
+        Assert.Equal([0], plan.WithdrawnIndices());
     }
 
     /// <summary>D-09: a root-only reference names the root but chooses nothing among several.</summary>
@@ -154,7 +154,7 @@ public sealed class MountSelectionTests
         Assert.Equal(B, selected.Id);
         Assert.Equal(MountSelector.MountIdOption, selected.Selector);
         Assert.Equal(A, selected.OverridesCrewChoice);
-        Assert.Equal([0], plan.WithdrawnIndices);
+        Assert.Equal([0], plan.WithdrawnIndices());
     }
 
     [Fact]
@@ -179,7 +179,7 @@ public sealed class MountSelectionTests
 
         Assert.Empty(plan.Errors);
         Assert.Empty(plan.Selected);
-        Assert.Equal([1, 2], plan.WithdrawnIndices);
+        Assert.Equal([1, 2], plan.WithdrawnIndices());
     }
 
     [Fact]
@@ -330,6 +330,6 @@ public sealed class MountSelectionTests
             ids: [B]);
 
         Assert.Equal(7, Assert.Single(plan.Selected).Index);
-        Assert.Equal([3], plan.WithdrawnIndices);
+        Assert.Equal([3], plan.WithdrawnIndices());
     }
 }

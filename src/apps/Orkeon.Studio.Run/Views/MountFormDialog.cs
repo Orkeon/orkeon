@@ -35,9 +35,12 @@ internal sealed class MountFormDialog : Window
         _lister = lister;
         _existingId = existing?.Id;
 
-        Title = existing is null
-            ? "Add a launch mount"
-            : existing.ShortId is { } shortId ? $"Edit launch mount [{shortId}]" : "Edit launch mount";
+        Title = existing switch
+        {
+            null => "Add a launch mount",
+            { ShortId: { } shortId } => $"Edit launch mount [{shortId}]",
+            _ => "Edit launch mount",
+        };
         X = Pos.Center();
         Y = Pos.Center();
         Width = Dim.Percent(90);

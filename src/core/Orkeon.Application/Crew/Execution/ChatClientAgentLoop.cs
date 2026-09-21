@@ -64,7 +64,6 @@ internal sealed class ChatClientAgentLoop
     /// Multi-turn execution loop using IChatClient with native function calling.
     /// Returns an <see cref="AgentLoopResult"/> with the final output, token count, and exit reason.
     /// </summary>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier: whatever the chat client fails with (a timeout, a refused request, a transport fault) is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
     internal async System.Threading.Tasks.Task<AgentLoopResult> ExecuteAsync(
         DomainAgent agent,
         CrewTask task,
@@ -107,6 +106,15 @@ internal sealed class ChatClientAgentLoop
         // Circuit breaker state: detect repeated identical tool call errors
         var cbState = new CircuitBreakerState();
 
+        // Every exit carries the prompt/completion and cache split accumulated so far.
+        AgentLoopResult WithTokenSplit(AgentLoopResult result) => result with
+        {
+            PromptTokens = promptTokensTotal,
+            CompletionTokens = completionTokensTotal,
+            CacheHitTokens = cacheHitTotal,
+            CacheMissTokens = cacheMissTotal,
+        };
+
         for (int iteration = 0; iteration < maxIter; iteration++)
         {
             cancellationToken.ThrowIfCancellationRequested();
@@ -118,47 +126,14 @@ internal sealed class ChatClientAgentLoop
 
             ExecutionLog.LogChatClientIteration(_logger, agent.Role, iteration + 1, maxIter, messages.Count);
 
-            // Acquire rate limit lease for the LLM call only — released before tool execution
-            // to prevent deadlocks when tools (e.g. delegate_work) trigger nested agent executions.
             var iterSw = System.Diagnostics.Stopwatch.StartNew();
-            ChatResponse chatResponse;
-            var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
-            using (var chatActivity = StartChatActivity(agent, options))
-            {
-                try
-                {
-                    chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
-                    CompleteChatActivity(chatActivity, chatResponse);
-                }
-                catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
-                {
-                    // The call failed — a timeout, a refused request — and nothing was answered.
-                    // Not an empty answer: no tool-free retry, the task fails with the provider's
-                    // own reason (LLM-11). A caller's cancellation still propagates below.
-                    chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
-                    chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    return FailedCall(agent, task.Id, iteration + 1, totalTokensUsed, ex) with
-                    {
-                        PromptTokens = promptTokensTotal,
-                        CompletionTokens = completionTokensTotal,
-                        CacheHitTokens = cacheHitTotal,
-                        CacheMissTokens = cacheMissTotal,
-                    };
-                }
-                catch (Exception ex)
-                {
-                    chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
-                    chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
-                    throw;
-                }
-                finally
-                {
-                    llmLease?.Dispose();
-                }
-            }
+            var (chatResponse, failedCall) = await CallChatClientAsync(
+                agent, task.Id, messages, options, iteration, totalTokensUsed, cancellationToken).ConfigureAwait(false);
+            if (failedCall is not null)
+                return WithTokenSplit(failedCall);
             iterSw.Stop();
 
-            totalTokensUsed += (int)(chatResponse.Usage?.TotalTokenCount ?? 0);
+            totalTokensUsed += (int)(chatResponse!.Usage?.TotalTokenCount ?? 0);
             promptTokensTotal += (int)(chatResponse.Usage?.InputTokenCount ?? 0);
             completionTokensTotal += (int)(chatResponse.Usage?.OutputTokenCount ?? 0);
             AccumulateCacheUsage(chatResponse, ref cacheHitTotal, ref cacheMissTotal, agent.Role);
@@ -174,25 +149,13 @@ internal sealed class ChatClientAgentLoop
             if (dispatch.Handled)
             {
                 if (dispatch.Terminal is not null)
-                    return dispatch.Terminal with
-                    {
-                        PromptTokens = promptTokensTotal,
-                        CompletionTokens = completionTokensTotal,
-                        CacheHitTokens = cacheHitTotal,
-                        CacheMissTokens = cacheMissTotal,
-                    };
+                    return WithTokenSplit(dispatch.Terminal);
                 continue;
             }
 
             var responseText = chatResponse.Text ?? string.Empty;
 
-            // An answer shaped like a tool call that nothing could execute -- a JSON
-            // envelope with a defect, a call the server's parser dropped -- is not a final
-            // answer: taken as one, the run "succeeds" with the envelope as its deliverable
-            // and the tool never runs (llama3.2:1b under Ollama 0.34.0, 2026-09-11). Hand it
-            // back with the fix the model needs, twice at most, then let it stand.
-            if (availableTools.Count > 0 && toolCallShapedAnswers < MaxToolCallShapedAnswers
-                && ToolCallTextParser.LooksLikeToolCallAttempt(responseText, availableTools.Select(t => t.Name)))
+            if (IsToolCallShapedAnswer(responseText, availableTools, toolCallShapedAnswers))
             {
                 toolCallShapedAnswers++;
                 ExecutionLog.LogToolCallShapedAnswerRetrying(_logger, agent.Role, iteration + 1);
@@ -213,36 +176,75 @@ internal sealed class ChatClientAgentLoop
                     new RetryLoopContext(agent, messages, options, maxIter, task.Id),
                     iteration, iterSw.ElapsedMilliseconds,
                     totalTokensUsed, cancellationToken).ConfigureAwait(false);
-                return result with
-                {
-                    PromptTokens = promptTokensTotal,
-                    CompletionTokens = completionTokensTotal,
-                    CacheHitTokens = cacheHitTotal,
-                    CacheMissTokens = cacheMissTotal,
-                };
+                return WithTokenSplit(result);
             }
 
             ExecutionLog.LogChatClientFinalResponse(_logger, agent.Role, iteration + 1, iterSw.ElapsedMilliseconds);
-            return new AgentLoopResult(responseText, totalTokensUsed,
-                AgentExitReason.Completed, IterationsUsed: iteration + 1)
-            {
-                PromptTokens = promptTokensTotal,
-                CompletionTokens = completionTokensTotal,
-                CacheHitTokens = cacheHitTotal,
-                CacheMissTokens = cacheMissTotal,
-            };
+            return WithTokenSplit(new AgentLoopResult(responseText, totalTokensUsed,
+                AgentExitReason.Completed, IterationsUsed: iteration + 1));
         }
 
         var maxIterResult = await HandleMaxIterExhaustedAsync(
             agent, messages, options, maxIter, task.Id, totalTokensUsed, cancellationToken).ConfigureAwait(false);
-        return maxIterResult with
-        {
-            PromptTokens = promptTokensTotal,
-            CompletionTokens = completionTokensTotal,
-            CacheHitTokens = cacheHitTotal,
-            CacheMissTokens = cacheMissTotal,
-        };
+        return WithTokenSplit(maxIterResult);
     }
+
+    /// <summary>
+    /// One iteration's chat call, under its rate-limit lease and its chat span. The lease covers
+    /// the LLM call only — it is released before any tool runs, so a tool that starts a nested
+    /// agent (delegate_work) cannot deadlock on it. A failed call comes back as the
+    /// <see cref="AgentExitReason.LlmCallFailed"/> exit instead of a response.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "LLM-11 call fault barrier: whatever the chat client fails with (a timeout, a refused request, a transport fault) is the task's failure reason; a caller's cancellation is filtered out and still propagates.")]
+    private async System.Threading.Tasks.Task<(ChatResponse? Response, AgentLoopResult? FailedCall)> CallChatClientAsync(
+        DomainAgent agent,
+        object taskId,
+        List<ChatMessage> messages,
+        ChatOptions options,
+        int iteration,
+        int totalTokensUsed,
+        CancellationToken cancellationToken)
+    {
+        var llmLease = await _llmGate.AcquireLlmLeaseAsync(agent, cancellationToken).ConfigureAwait(false);
+        using var chatActivity = StartChatActivity(agent, options);
+        try
+        {
+            var chatResponse = await _chatClient.GetResponseAsync(messages, options, cancellationToken).ConfigureAwait(false);
+            CompleteChatActivity(chatActivity, chatResponse);
+            return (chatResponse, null);
+        }
+        catch (Exception ex) when (IsCallFailure(ex, cancellationToken))
+        {
+            // The call failed — a timeout, a refused request — and nothing was answered.
+            // Not an empty answer: no tool-free retry, the task fails with the provider's
+            // own reason (LLM-11). A caller's cancellation still propagates below.
+            chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
+            chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            return (null, FailedCall(agent, taskId, iteration + 1, totalTokensUsed, ex));
+        }
+        catch (Exception ex)
+        {
+            chatActivity?.SetTag(GenAiAttributes.ErrorType, ex.GetType().FullName);
+            chatActivity?.SetStatus(ActivityStatusCode.Error, ex.Message);
+            throw;
+        }
+        finally
+        {
+            llmLease?.Dispose();
+        }
+    }
+
+    /// <summary>
+    /// An answer shaped like a tool call that nothing could execute -- a JSON envelope with a
+    /// defect, a call the server's parser dropped -- is not a final answer: taken as one, the
+    /// run "succeeds" with the envelope as its deliverable and the tool never runs (llama3.2:1b
+    /// under Ollama 0.34.0, 2026-09-11). It is handed back with the fix the model needs, twice
+    /// at most (<see cref="MaxToolCallShapedAnswers"/>), then let stand.
+    /// </summary>
+    private static bool IsToolCallShapedAnswer(string responseText, List<Domain.Tools.IBaseTool> availableTools, int handedBackSoFar) =>
+        availableTools.Count > 0
+        && handedBackSoFar < MaxToolCallShapedAnswers
+        && ToolCallTextParser.LooksLikeToolCallAttempt(responseText, availableTools.Select(t => t.Name));
 
     /// <summary>
     /// One-shot soft-budget steering: when cumulative tokens cross the configured threshold,

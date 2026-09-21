@@ -73,7 +73,7 @@ public sealed record MountSelectionPlan
     public IReadOnlyList<string> Errors { get; init; } = [];
 
     /// <summary>The configuration indices of <see cref="Withdrawn"/>.</summary>
-    public IReadOnlyList<int> WithdrawnIndices => Withdrawn.Select(entry => entry.Index).ToList();
+    public IReadOnlyList<int> WithdrawnIndices() => Withdrawn.Select(entry => entry.Index).ToList();
 }
 
 /// <summary>
@@ -161,151 +161,31 @@ public static class MountSelection
         ArgumentNullException.ThrowIfNull(selectedIds);
         ArgumentNullException.ThrowIfNull(crewReferences);
 
-        var where = Where(settingsPath);
-        var errors = new List<string>(ValidateDeclared(declared, settingsPath));
-        var warnings = new List<string>();
         var entries = Parse(declared);
-        var byRoot = GroupByRoot(entries);
-        var byId = entries
-            .Where(entry => entry.Id is not null)
-            .GroupBy(entry => entry.Id!)
-            .Where(group => group.Count() == 1)
-            .ToDictionary(group => group.Key, group => group.Single());
-        var cliRoots = new HashSet<string>(
-            cliMounts.Select(TryGetVirtualRoot).OfType<string>(), StringComparer.Ordinal);
+        var resolution = new Resolution
+        {
+            SettingsLabel = Where(settingsPath),
+            Errors = new List<string>(ValidateDeclared(declared, settingsPath)),
+            ById = entries
+                .Where(entry => entry.Id is not null)
+                .GroupBy(entry => entry.Id!)
+                .Where(group => group.Count() == 1)
+                .ToDictionary(group => group.Key, group => group.Single()),
+            CliRoots = new HashSet<string>(
+                cliMounts.Select(TryGetVirtualRoot).OfType<string>(), StringComparer.Ordinal),
+        };
 
         var ids = selectedIds.Distinct().ToList();
         var references = crewReferences.Distinct().ToList();
-        var optionChoices = new Dictionary<string, List<ParsedEntry>>(StringComparer.Ordinal);
-        var crewChoices = new Dictionary<string, List<ParsedEntry>>(StringComparer.Ordinal);
-        var rootsInError = new HashSet<string>(StringComparer.Ordinal);
 
-        foreach (var id in ids)
-        {
-            if (byId.TryGetValue(id, out var entry))
-            {
-                Choose(optionChoices, entry);
-                continue;
-            }
-
-            errors.Add(
-                $"no entry of {where} carries mount id {id} (passed as --mount-id). "
-                + "Declare it (Studio > Allowed folders) or drop the option.");
-        }
-
-        var requiredRoots = new List<string>();
-        foreach (var reference in references)
-        {
-            var root = reference.VirtualRoot;
-            if (!requiredRoots.Contains(root, StringComparer.Ordinal))
-                requiredRoots.Add(root);
-
-            // A --mount on the root satisfies the reference whatever id it carries (D-09): an
-            // exported team's launcher names the folder itself and knows nothing of this
-            // machine's ids.
-            if (cliRoots.Contains(root) || reference.Id is null)
-                continue;
-
-            if (!byId.TryGetValue(reference.Id, out var entry))
-            {
-                rootsInError.Add(root);
-                errors.Add(
-                    $"no entry of {where} carries mount id {reference.Id} (referenced by the crew's mounts: for '{root}'). "
-                    + $"Declare it (Studio > Allowed folders) or pass --mount <folder>:{root}:rw.");
-                continue;
-            }
-
-            if (!string.Equals(entry.Root, root, StringComparison.Ordinal))
-            {
-                rootsInError.Add(root);
-                errors.Add(
-                    $"mount id {reference.Id} is '{entry.Root}' in {where} but the crew lists it for '{root}'. "
-                    + "Fix the crew's mounts: or the settings entry.");
-                continue;
-            }
-
-            Choose(crewChoices, entry);
-        }
-
-        foreach (var root in requiredRoots)
-        {
-            if (cliRoots.Contains(root) || byRoot.Any(group => group.Root == root) || rootsInError.Contains(root))
-                continue;
-
-            errors.Add(
-                $"the crew requires '{root}' (mounts: in its definition) and nothing provides it: run the team's "
-                + $"launcher, declare a folder under {root} in {where}, or pass --mount <folder>:{root}:rw.");
-        }
+        ApplyMountIdOptions(resolution, ids);
+        ApplyCrewReferences(resolution, references);
+        RefuseUnprovidedRoots(resolution, entries);
 
         var selected = new List<SelectedMountEntry>();
         var withdrawn = new List<WithdrawnMountEntry>();
-        foreach (var (root, group) in byRoot)
-        {
-            var optionPick = optionChoices.GetValueOrDefault(root) ?? [];
-            var crewPick = crewChoices.GetValueOrDefault(root) ?? [];
-
-            if (cliRoots.Contains(root))
-            {
-                foreach (var entry in optionPick)
-                    warnings.Add($"--mount-id {entry.Id} selects '{root}', which --mount also replaces; the --mount wins.");
-
-                // The host writes the --mount at the first entry's index; every other entry of
-                // the root is withdrawn so the run ends with one mount under that name.
-                withdrawn.AddRange(group.Skip(1).Select(entry => new WithdrawnMountEntry(entry.Index, root, entry.Id)));
-                continue;
-            }
-
-            if (optionPick.Count > 1)
-            {
-                errors.Add(
-                    $"--mount-id selects {Count(optionPick.Count)} of '{root}' ({JoinAnd(optionPick.Select(entry => entry.Id!.ToString()))}); pass one.");
-                continue;
-            }
-
-            if (crewPick.Count > 1)
-            {
-                errors.Add(
-                    $"the crew's mounts: selects {Count(crewPick.Count)} of '{root}' ({JoinAnd(crewPick.Select(entry => entry.Id!.ToString()))}); keep one.");
-                continue;
-            }
-
-            ParsedEntry? pick = null;
-            var selector = MountSelector.CrewMounts;
-            MountId? overridden = null;
-            if (optionPick.Count == 1)
-            {
-                pick = optionPick[0];
-                selector = MountSelector.MountIdOption;
-                if (crewPick.Count == 1 && crewPick[0].Index != pick.Index)
-                    overridden = crewPick[0].Id;
-            }
-            else if (crewPick.Count == 1)
-            {
-                pick = crewPick[0];
-            }
-
-            if (pick is null)
-            {
-                // D-04: several entries, all with ids (else ValidateDeclared already refused),
-                // and no one said which. The message names every candidate so the operator can
-                // pick without opening the file.
-                if (group.Count > 1 && group.All(entry => entry.Id is not null))
-                {
-                    errors.Add(
-                        $"'{root}' is declared {Times(group.Count)} in {where} "
-                        + $"({string.Join(", ", group.Select(entry => $"{entry.Id}: {entry.BasePath}"))}) and nothing selects one. "
-                        + $"Pass --mount-id <id>, list '<id>|{root}' under mounts: in the crew, "
-                        + $"or pass --mount <folder>:{root}:rw to replace them all.");
-                }
-
-                continue;
-            }
-
-            selected.Add(new SelectedMountEntry(pick.Index, root, pick.Id!, selector, overridden));
-            withdrawn.AddRange(group
-                .Where(entry => entry.Index != pick.Index)
-                .Select(entry => new WithdrawnMountEntry(entry.Index, root, entry.Id)));
-        }
+        foreach (var (root, group) in GroupByRoot(entries))
+            DecideRoot(resolution, root, group, selected, withdrawn);
 
         withdrawn.Sort((a, b) => a.Index.CompareTo(b.Index));
         return new MountSelectionPlan
@@ -314,9 +194,195 @@ public static class MountSelection
             CrewMountReferences = references,
             Selected = selected,
             Withdrawn = withdrawn,
-            Warnings = warnings,
-            Errors = errors,
+            Warnings = resolution.Warnings,
+            Errors = resolution.Errors,
         };
+    }
+
+    /// <summary>What one resolution reads and accumulates, phase after phase.</summary>
+    private sealed class Resolution
+    {
+        /// <summary>The settings file, as the messages name it.</summary>
+        public required string SettingsLabel { get; init; }
+
+        public required List<string> Errors { get; init; }
+
+        public List<string> Warnings { get; } = [];
+
+        /// <summary>The entries an id names unambiguously (an id declared twice names nothing).</summary>
+        public required Dictionary<MountId, ParsedEntry> ById { get; init; }
+
+        /// <summary>The roots a <c>--mount</c> replaces.</summary>
+        public required HashSet<string> CliRoots { get; init; }
+
+        /// <summary>The entries <c>--mount-id</c> selected, by root.</summary>
+        public Dictionary<string, List<ParsedEntry>> OptionChoices { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The entries the crew's <c>mounts:</c> selected, by root.</summary>
+        public Dictionary<string, List<ParsedEntry>> CrewChoices { get; } = new(StringComparer.Ordinal);
+
+        /// <summary>The roots the crew requires, in first-reference order.</summary>
+        public List<string> RequiredRoots { get; } = [];
+
+        /// <summary>The required roots already refused, which the "nothing provides it" check leaves alone.</summary>
+        public HashSet<string> RootsInError { get; } = new(StringComparer.Ordinal);
+    }
+
+    /// <summary>Each <c>--mount-id</c> selects the entry that carries it, or is refused.</summary>
+    private static void ApplyMountIdOptions(Resolution resolution, List<MountId> ids)
+    {
+        foreach (var id in ids)
+        {
+            if (resolution.ById.TryGetValue(id, out var entry))
+            {
+                Choose(resolution.OptionChoices, entry);
+                continue;
+            }
+
+            resolution.Errors.Add(
+                $"no entry of {resolution.SettingsLabel} carries mount id {id} (passed as --mount-id). "
+                + "Declare it (Studio > Allowed folders) or drop the option.");
+        }
+    }
+
+    /// <summary>
+    /// Each crew reference names a root the run requires and, when it carries an id, selects
+    /// the entry that carries it — unless a <c>--mount</c> on the root satisfies the reference
+    /// whatever id it carries (D-09): an exported team's launcher names the folder itself and
+    /// knows nothing of this machine's ids.
+    /// </summary>
+    private static void ApplyCrewReferences(Resolution resolution, List<MountReference> references)
+    {
+        foreach (var reference in references)
+        {
+            var root = reference.VirtualRoot;
+            if (!resolution.RequiredRoots.Contains(root, StringComparer.Ordinal))
+                resolution.RequiredRoots.Add(root);
+
+            if (resolution.CliRoots.Contains(root) || reference.Id is null)
+                continue;
+
+            if (!resolution.ById.TryGetValue(reference.Id, out var entry))
+            {
+                resolution.RootsInError.Add(root);
+                resolution.Errors.Add(
+                    $"no entry of {resolution.SettingsLabel} carries mount id {reference.Id} (referenced by the crew's mounts: for '{root}'). "
+                    + $"Declare it (Studio > Allowed folders) or pass --mount <folder>:{root}:rw.");
+                continue;
+            }
+
+            if (!string.Equals(entry.Root, root, StringComparison.Ordinal))
+            {
+                resolution.RootsInError.Add(root);
+                resolution.Errors.Add(
+                    $"mount id {reference.Id} is '{entry.Root}' in {resolution.SettingsLabel} but the crew lists it for '{root}'. "
+                    + "Fix the crew's mounts: or the settings entry.");
+                continue;
+            }
+
+            Choose(resolution.CrewChoices, entry);
+        }
+    }
+
+    /// <summary>A root the crew requires that nothing mounts is refused, with the three ways to provide it.</summary>
+    private static void RefuseUnprovidedRoots(Resolution resolution, List<ParsedEntry> entries)
+    {
+        foreach (var root in resolution.RequiredRoots)
+        {
+            if (resolution.CliRoots.Contains(root)
+                || entries.Exists(entry => entry.Root == root)
+                || resolution.RootsInError.Contains(root))
+            {
+                continue;
+            }
+
+            resolution.Errors.Add(
+                $"the crew requires '{root}' (mounts: in its definition) and nothing provides it: run the team's "
+                + $"launcher, declare a folder under {root} in {resolution.SettingsLabel}, or pass --mount <folder>:{root}:rw.");
+        }
+    }
+
+    /// <summary>
+    /// Which entry of one root the run keeps, the others withdrawn: the <c>--mount</c> replaces
+    /// them all, else the one <c>--mount-id</c> picked, else the one the crew picked; several
+    /// picks are refused, and several entries with nothing picking one too (D-04).
+    /// </summary>
+    private static void DecideRoot(
+        Resolution resolution,
+        string root,
+        List<ParsedEntry> group,
+        List<SelectedMountEntry> selected,
+        List<WithdrawnMountEntry> withdrawn)
+    {
+        var optionPick = resolution.OptionChoices.GetValueOrDefault(root) ?? [];
+        var crewPick = resolution.CrewChoices.GetValueOrDefault(root) ?? [];
+
+        if (resolution.CliRoots.Contains(root))
+        {
+            foreach (var entry in optionPick)
+                resolution.Warnings.Add($"--mount-id {entry.Id} selects '{root}', which --mount also replaces; the --mount wins.");
+
+            // The host writes the --mount at the first entry's index; every other entry of
+            // the root is withdrawn so the run ends with one mount under that name.
+            withdrawn.AddRange(group.Skip(1).Select(entry => new WithdrawnMountEntry(entry.Index, root, entry.Id)));
+            return;
+        }
+
+        if (optionPick.Count > 1)
+        {
+            resolution.Errors.Add(
+                $"--mount-id selects {Count(optionPick.Count)} of '{root}' ({JoinAnd(optionPick.Select(entry => entry.Id!.ToString()))}); pass one.");
+            return;
+        }
+
+        if (crewPick.Count > 1)
+        {
+            resolution.Errors.Add(
+                $"the crew's mounts: selects {Count(crewPick.Count)} of '{root}' ({JoinAnd(crewPick.Select(entry => entry.Id!.ToString()))}); keep one.");
+            return;
+        }
+
+        var (pick, selector, overridden) = PickOf(optionPick, crewPick);
+        if (pick is null)
+        {
+            // D-04: several entries, all with ids (else ValidateDeclared already refused),
+            // and no one said which. The message names every candidate so the operator can
+            // pick without opening the file.
+            if (group.Count > 1 && group.All(entry => entry.Id is not null))
+            {
+                resolution.Errors.Add(
+                    $"'{root}' is declared {Times(group.Count)} in {resolution.SettingsLabel} "
+                    + $"({string.Join(", ", group.Select(entry => $"{entry.Id}: {entry.BasePath}"))}) and nothing selects one. "
+                    + $"Pass --mount-id <id>, list '<id>|{root}' under mounts: in the crew, "
+                    + $"or pass --mount <folder>:{root}:rw to replace them all.");
+            }
+
+            return;
+        }
+
+        selected.Add(new SelectedMountEntry(pick.Index, root, pick.Id!, selector, overridden));
+        withdrawn.AddRange(group
+            .Where(entry => entry.Index != pick.Index)
+            .Select(entry => new WithdrawnMountEntry(entry.Index, root, entry.Id)));
+    }
+
+    /// <summary>
+    /// The one pick of a root: the <c>--mount-id</c> one first (noting the crew's choice it
+    /// overrides, when they differ), else the crew's, else none. Both lists hold at most one.
+    /// </summary>
+    private static (ParsedEntry? Pick, MountSelector Selector, MountId? Overridden) PickOf(
+        List<ParsedEntry> optionPick, List<ParsedEntry> crewPick)
+    {
+        if (optionPick.Count == 1)
+        {
+            var pick = optionPick[0];
+            var overridden = crewPick.Count == 1 && crewPick[0].Index != pick.Index ? crewPick[0].Id : null;
+            return (pick, MountSelector.MountIdOption, overridden);
+        }
+
+        return crewPick.Count == 1
+            ? (crewPick[0], MountSelector.CrewMounts, null)
+            : (null, MountSelector.CrewMounts, null);
     }
 
     /// <summary>

@@ -35,7 +35,7 @@ Orkeon.Hosting.MountSelectionPlan.Warnings.get -> System.Collections.Generic.IRe
 Orkeon.Hosting.MountSelectionPlan.Warnings.init -> void
 Orkeon.Hosting.MountSelectionPlan.Withdrawn.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Hosting.WithdrawnMountEntry!>!
 Orkeon.Hosting.MountSelectionPlan.Withdrawn.init -> void
-Orkeon.Hosting.MountSelectionPlan.WithdrawnIndices.get -> System.Collections.Generic.IReadOnlyList<int>!
+Orkeon.Hosting.MountSelectionPlan.WithdrawnIndices() -> System.Collections.Generic.IReadOnlyList<int>!
 Orkeon.Hosting.MountSelector
 Orkeon.Hosting.MountSelector.CrewMounts = 1 -> Orkeon.Hosting.MountSelector
 Orkeon.Hosting.MountSelector.MountIdOption = 0 -> Orkeon.Hosting.MountSelector

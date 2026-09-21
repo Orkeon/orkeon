@@ -120,11 +120,11 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         await ThrowIfMixedAsync(root, "tasks", ct).ConfigureAwait(false);
 
         // Crew settings: config.yaml is preferred, crew.yaml is accepted as a fallback name.
-        var settingsPath = root + "/" + ConventionalNames.CrewSettingsFile;
+        var settingsPath = $"{root}/{ConventionalNames.CrewSettingsFile}";
         var settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
         if (settingsYaml is null)
         {
-            settingsPath = root + "/" + ConventionalNames.CrewSettingsFallbackFile;
+            settingsPath = $"{root}/{ConventionalNames.CrewSettingsFallbackFile}";
             settingsYaml = await _fs.TryReadAllTextAsync(settingsPath, ct).ConfigureAwait(false);
         }
         if (settingsYaml is null)

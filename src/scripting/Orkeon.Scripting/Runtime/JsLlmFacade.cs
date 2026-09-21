@@ -286,6 +286,16 @@ public sealed partial class JsLlmFacade
         return _engine.Invoke(JsTrampolineFactories.StreamIterable.For(_engine), next, ret, observations);
     }
 
+    /// <summary>
+    /// The bare protocol over a CLR sequence — what <see cref="ActSession.deltas"/> is built
+    /// with: the iterator without the side-channel getters of <c>stream()</c>.
+    /// </summary>
+    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, CancellationToken ct)
+    {
+        var (next, ret) = AsyncIteratorCallbacks(source, ct);
+        return _engine.Invoke(JsTrampolineFactories.AsyncIterable.For(_engine), next, ret);
+    }
+
     // Both factories are evaluated once per engine (JsTrampolineFactories) and invoked once per
     // sequence: a script streaming in a loop must not re-parse the same source every turn.
     internal const string StreamIterableFactorySource = """
@@ -303,12 +313,6 @@ public sealed partial class JsLlmFacade
     internal const string AsyncIterableFactorySource = """
         (next, ret) => ({ [Symbol.asyncIterator]() { return { next: next, return: ret }; } })
         """;
-
-    private JsValue AsAsyncIterable(IAsyncEnumerable<string> source, CancellationToken ct)
-    {
-        var (next, ret) = AsyncIteratorCallbacks(source, ct);
-        return _engine.Invoke(JsTrampolineFactories.AsyncIterable.For(_engine), next, ret);
-    }
 
     /// <summary>
     /// The <c>next</c> / <c>return</c> pair of one async iterator over <paramref name="source"/>,
@@ -734,6 +738,8 @@ public sealed partial class JsLlmFacade
         /// The content deltas as a JS async iterable, built on first access — by the script,
         /// on the draining thread. Without a channel it completes at once.
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Read by the act trampoline (ActFactorySource) through Jint: `s.deltas` is the JS pump's source. The type is private so the script sees nothing else.")]
         public JsValue deltas => _deltasJs ??= _facade.AsAsyncIterable(
             // No cancellation token on purpose: run's finally completes the channel in every
             // outcome, so the read always ends — and an interrupt must not reject the pump,
@@ -741,6 +747,8 @@ public sealed partial class JsLlmFacade
             _deltas?.Reader.ReadAllAsync() ?? AsyncEnumerable.Empty<string>(), CancellationToken.None);
 
         /// <summary>Abandons the run: the pump's callback threw. Cannot throw, so needs no bridge.</summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1144:Unused private types or members should be removed",
+            Justification = "Called by the act trampoline (ActFactorySource) through Jint when the onDelta callback throws. The type is private so the script sees nothing else.")]
         public void abort() => _aborted = true;
 
         internal void ThrowIfAborted()

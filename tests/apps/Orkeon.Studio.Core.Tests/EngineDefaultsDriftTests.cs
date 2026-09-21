@@ -20,11 +20,11 @@ public sealed partial class EngineDefaultsDriftTests
     {
         var engine = new RateLimitingOptions();
 
-        Assert.Equal(engine.MaxConcurrentRequests, RateLimitingSection.DefaultMaxConcurrentRequests);
-        Assert.Equal(engine.GlobalRequestsPerMinute, RateLimitingSection.DefaultGlobalRequestsPerMinute);
-        Assert.Equal(engine.ProviderRequestsPerMinute, RateLimitingSection.DefaultProviderRequestsPerMinute);
-        Assert.Equal(engine.AgentRequestsPerMinute, RateLimitingSection.DefaultAgentRequestsPerMinute);
-        Assert.Equal(engine.QueueLimit, RateLimitingSection.DefaultQueueLimit);
+        Assert.Equal(RateLimitingSection.DefaultMaxConcurrentRequests, engine.MaxConcurrentRequests);
+        Assert.Equal(RateLimitingSection.DefaultGlobalRequestsPerMinute, engine.GlobalRequestsPerMinute);
+        Assert.Equal(RateLimitingSection.DefaultProviderRequestsPerMinute, engine.ProviderRequestsPerMinute);
+        Assert.Equal(RateLimitingSection.DefaultAgentRequestsPerMinute, engine.AgentRequestsPerMinute);
+        Assert.Equal(RateLimitingSection.DefaultQueueLimit, engine.QueueLimit);
     }
 
     [Fact]
@@ -32,9 +32,9 @@ public sealed partial class EngineDefaultsDriftTests
     {
         var engine = LlmLoggingOptions.Default;
 
-        Assert.Equal(engine.FullEmbeddingLog, LlmLoggingSection.DefaultFullEmbeddingLog);
-        Assert.Equal(engine.LogStreamingExchanges, LlmLoggingSection.DefaultLogStreamingExchanges);
-        Assert.Equal(engine.MaxBodyLengthChars, LlmLoggingSection.DefaultMaxBodyLengthChars);
+        Assert.Equal(LlmLoggingSection.DefaultFullEmbeddingLog, engine.FullEmbeddingLog);
+        Assert.Equal(LlmLoggingSection.DefaultLogStreamingExchanges, engine.LogStreamingExchanges);
+        Assert.Equal(LlmLoggingSection.DefaultMaxBodyLengthChars, engine.MaxBodyLengthChars);
     }
 
     [Fact]
@@ -44,8 +44,8 @@ public sealed partial class EngineDefaultsDriftTests
         Assert.Equal(new RagOptions().Profile, RagSection.DefaultProfile);
         Assert.Equal(RagCorrectiveOptions.DefaultMaxIterations, RagSection.DefaultCorrectiveMaxIterations);
         Assert.Equal(new RagCorrectiveOptions().MaxIterations, RagSection.DefaultCorrectiveMaxIterations);
-        Assert.Equal(new RagHybridOptions().Enabled, RagSection.DefaultHybridRetrievalEnabled);
-        Assert.Equal(new RagWebFallbackOptions().Enabled, RagSection.DefaultCorrectiveWebFallbackEnabled);
+        Assert.Equal(RagSection.DefaultHybridRetrievalEnabled, new RagHybridOptions().Enabled);
+        Assert.Equal(RagSection.DefaultCorrectiveWebFallbackEnabled, new RagWebFallbackOptions().Enabled);
     }
 
     /// <summary>

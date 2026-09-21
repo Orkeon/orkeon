@@ -28,6 +28,42 @@ public sealed record ImportCheckViewModel(string Title, string Detail, string To
 public delegate string? ImportTeamAction(string sourcePath, string root, out string? refusal);
 
 /// <summary>
+/// The import screen's seams: the collaborators it otherwise builds itself. They travel as
+/// one record rather than as nine constructor parameters — the screen has one real caller
+/// (the shell) and a row of tests, each naming two or three of these and leaving the rest
+/// to the real catalogs.
+/// </summary>
+public sealed record ImportTeamDependencies
+{
+    /// <summary>Recognizes the candidate; the launcher's own detector when null.</summary>
+    public ITargetProbe? TargetProbe { get; init; }
+
+    /// <summary>The OS file/folder dialogs; none when null.</summary>
+    public IPathPicker? Picker { get; init; }
+
+    /// <summary>The localized strings; English when null.</summary>
+    public IStudioStrings? Strings { get; init; }
+
+    /// <summary>Where the adopted teams live; the default teams root when null.</summary>
+    public string? TeamsRoot { get; init; }
+
+    /// <summary>Scans the candidate for pasted secrets; the real scan when null.</summary>
+    public Func<string, IReadOnlyList<string>>? ScanSecrets { get; init; }
+
+    /// <summary>Copies the candidate into the teams root; <see cref="TeamCatalog.Import"/> when null.</summary>
+    public ImportTeamAction? Import { get; init; }
+
+    /// <summary>Reads the settings' mounts, so unknown ids are reported (VFS-90, D-06); not consulted when null.</summary>
+    public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
+
+    /// <summary>Declares a folder in the settings under the id the team carries; the review card offers nothing when null.</summary>
+    public Action<MountDefinition>? DeclareMount { get; init; }
+
+    /// <summary>Saves the settings after the declarations; skipped when null.</summary>
+    public Func<Task<bool>>? SaveSettings { get; init; }
+}
+
+/// <summary>
 /// The "Importer" screen (design v3): point at a shared team — a folder, a YAML crew, an
 /// <c>.ork.ts</c> script — Studio recognizes it with the launcher's own detector, scans it
 /// for pasted secrets, and copies it into the teams root only on your say-so. Nothing is
@@ -42,27 +78,19 @@ public sealed class ImportTeamViewModel : ObservableObject
     private readonly ImportTeamAction _import;
     private string? _statusMessage;
 
-    /// <summary>Builds the screen; every collaborator is optional so tests inject doubles.</summary>
-    public ImportTeamViewModel(
-        ITargetProbe? targetProbe = null,
-        IPathPicker? picker = null,
-        IStudioStrings? strings = null,
-        string? teamsRoot = null,
-        Func<string, IReadOnlyList<string>>? scanSecrets = null,
-        ImportTeamAction? import = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null,
-        Action<MountDefinition>? declareMount = null,
-        Func<Task<bool>>? saveSettings = null)
+    /// <summary>Builds the screen over its seams; every collaborator defaults to the real one.</summary>
+    public ImportTeamViewModel(ImportTeamDependencies? dependencies = null)
     {
-        _teamsRoot = teamsRoot ?? TeamCatalog.DefaultRoot();
-        _strings = strings ?? EnglishStudioStrings.Instance;
-        _scanSecrets = scanSecrets ?? TeamCatalog.FindInlineSecrets;
-        _import = import ?? TeamCatalog.Import;
-        _declaredMounts = declaredMounts;
-        _declareMount = declareMount;
-        _saveSettings = saveSettings;
+        var wired = dependencies ?? new ImportTeamDependencies();
+        _teamsRoot = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
+        _strings = wired.Strings ?? EnglishStudioStrings.Instance;
+        _scanSecrets = wired.ScanSecrets ?? TeamCatalog.FindInlineSecrets;
+        _import = wired.Import ?? TeamCatalog.Import;
+        _declaredMounts = wired.DeclaredMounts;
+        _declareMount = wired.DeclareMount;
+        _saveSettings = wired.SaveSettings;
 
-        Target = new TargetSelectionViewModel(targetProbe, picker, strings);
+        Target = new TargetSelectionViewModel(wired.TargetProbe, wired.Picker, wired.Strings);
         Target.TargetChanged += (_, _) => OnTargetChanged();
 
         ImportCommand = new RelayCommand(Import, () => Target.Target is not null);

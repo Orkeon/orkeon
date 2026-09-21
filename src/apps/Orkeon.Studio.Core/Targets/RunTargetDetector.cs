@@ -181,40 +181,11 @@ public sealed class RunTargetDetector
         if (scripts.Count > 0)
             return RunTargetDetection.NeedsSelection(directory, scripts);
 
-        // An adopted team: `forge promote` keeps the definition in a `crew/` sub-folder and
-        // puts the launchers, the card, the deliverable folders and Studio's sidecar beside
-        // it. The folder the user picks — and the one a team card hands over — is the team,
-        // so the run path descends while the SELECTED path stays put: the sidecar is read
-        // next to it, and the launch runs from the team folder, which is what makes the
-        // team's own /output land inside the security root.
-        if (allowPromotedLayout && _probe.DirectoryExists(Path.Combine(directory, PromotedCrewDirectoryName)))
-        {
-            var nested = DetectDirectory(
-                Path.Combine(directory, PromotedCrewDirectoryName), preferredKind, allowPromotedLayout: false);
+        if (allowPromotedLayout && TryResolvePromotedLayout(directory, preferredKind) is { } promoted)
+            return promoted;
 
-            if (nested is { Status: RunTargetDetectionStatus.Resolved, Target: { } inner })
-                return RunTargetDetection.Resolved(directory, inner with { SelectedPath = directory });
-        }
-
-        // A single-file crew — the shape of every examples/ crew, and of a team folder adopted
-        // from one: a config.yaml or crew.yaml carrying agents: and tasks: inline. The file is
-        // what the CLI runs; the directory stays the selected path, so the sidecar beside it
-        // and the launch directory keep working the way they do for a promoted team.
-        var yamlFiles = ListYamlFiles(directory);
-        if (yamlFiles.Count == 1 && !IsFlatEntityFile(yamlFiles[0]))
-            return ResolveSingleFileCrewDirectory(directory, yamlFiles[0]);
-
-        if (yamlFiles.Count > 1 && !yamlFiles.Exists(IsFlatEntityFile))
-        {
-            var preferred = PreferredCrewFileNames
-                .Select(name => yamlFiles.Find(file => string.Equals(
-                    Path.GetFileName(file), name, StringComparison.OrdinalIgnoreCase)))
-                .FirstOrDefault(match => match is not null);
-
-            return preferred is not null
-                ? ResolveSingleFileCrewDirectory(directory, preferred)
-                : RunTargetDetection.NeedsSelection(directory, yamlFiles);
-        }
+        if (ResolveYamlFiles(directory) is { } singleFileCrew)
+            return singleFileCrew;
 
         return RunTargetDetection.Failed(
             directory,
@@ -223,6 +194,53 @@ public sealed class RunTargetDetector
             + $"sub-folder, no '{string.Join(" + ", FlatLayoutFileNames)}' triplet, no '{CrewScriptFileName}', "
             + $"no {DescribeScriptPatterns()} file, no single .yaml/.yml crew file. "
             + "Pick a .yaml or .ork.ts file inside it instead.");
+    }
+
+    /// <summary>
+    /// An adopted team: <c>forge promote</c> keeps the definition in a <c>crew/</c> sub-folder
+    /// and puts the launchers, the card, the deliverable folders and Studio's sidecar beside
+    /// it. The folder the user picks — and the one a team card hands over — is the team, so
+    /// the run path descends while the SELECTED path stays put: the sidecar is read next to
+    /// it, and the launch runs from the team folder, which is what makes the team's own
+    /// /output land inside the security root. Null when the folder holds no such layout.
+    /// </summary>
+    private RunTargetDetection? TryResolvePromotedLayout(string directory, RunTargetKind? preferredKind)
+    {
+        var crewDirectory = Path.Combine(directory, PromotedCrewDirectoryName);
+        if (!_probe.DirectoryExists(crewDirectory))
+            return null;
+
+        var nested = DetectDirectory(crewDirectory, preferredKind, allowPromotedLayout: false);
+        return nested is { Status: RunTargetDetectionStatus.Resolved, Target: { } inner }
+            ? RunTargetDetection.Resolved(directory, inner with { SelectedPath = directory })
+            : null;
+    }
+
+    /// <summary>
+    /// A single-file crew — the shape of every examples/ crew, and of a team folder adopted
+    /// from one: a config.yaml or crew.yaml carrying agents: and tasks: inline. The file is
+    /// what the CLI runs; the directory stays the selected path, so the sidecar beside it
+    /// and the launch directory keep working the way they do for a promoted team. Several
+    /// candidates resolve to the preferred name, or ask for a selection. Null when the folder
+    /// holds no such file.
+    /// </summary>
+    private RunTargetDetection? ResolveYamlFiles(string directory)
+    {
+        var yamlFiles = ListYamlFiles(directory);
+        if (yamlFiles.Count == 1 && !IsFlatEntityFile(yamlFiles[0]))
+            return ResolveSingleFileCrewDirectory(directory, yamlFiles[0]);
+
+        if (yamlFiles.Count <= 1 || yamlFiles.Exists(IsFlatEntityFile))
+            return null;
+
+        var preferred = PreferredCrewFileNames
+            .Select(name => yamlFiles.Find(file => string.Equals(
+                Path.GetFileName(file), name, StringComparison.OrdinalIgnoreCase)))
+            .FirstOrDefault(match => match is not null);
+
+        return preferred is not null
+            ? ResolveSingleFileCrewDirectory(directory, preferred)
+            : RunTargetDetection.NeedsSelection(directory, yamlFiles);
     }
 
     private static RunTargetDetection ResolveSingleFileCrewDirectory(string directory, string crewFile) =>

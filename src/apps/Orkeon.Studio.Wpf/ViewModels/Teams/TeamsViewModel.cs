@@ -139,9 +139,14 @@ public sealed class TeamCardViewModel : ObservableObject
         // the tooltip saying why. Resolved at card build; Refresh() rebuilds the cards.
         var session = owner.FindSessionFor(summary);
         CanModify = session is not null || summary.HasYamlCrew;
-        ModifyTooltip = strings[session is not null
-            ? StudioStringKeys.TeamsModifyTip
-            : summary.HasYamlCrew ? StudioStringKeys.TeamsModifyRebuild : StudioStringKeys.TeamsModifyNoSession];
+        string modifyTipKey;
+        if (session is not null)
+            modifyTipKey = StudioStringKeys.TeamsModifyTip;
+        else if (summary.HasYamlCrew)
+            modifyTipKey = StudioStringKeys.TeamsModifyRebuild;
+        else
+            modifyTipKey = StudioStringKeys.TeamsModifyNoSession;
+        ModifyTooltip = strings[modifyTipKey];
         ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify);
         ToggleDescriptionCommand = new RelayCommand(() => IsDescriptionExpanded = !IsDescriptionExpanded);
     }

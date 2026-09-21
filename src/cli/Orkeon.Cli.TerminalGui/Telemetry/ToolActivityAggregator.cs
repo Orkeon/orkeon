@@ -18,7 +18,7 @@ namespace Orkeon.Cli.TerminalGui.Telemetry;
 public sealed class ToolActivityAggregator : IDisposable
 {
     private const string SourceName = "Orkeon.Scripting";
-    // The gen_ai.* conventions the scripting runtime emits (Orkeon.Constants.Llm.GenAiAttributes;
+    // The gen_ai.* conventions the scripting runtime emits (Orkeon.Constants.Llm.GenAiAttributes —
     // spelled out here because this project references no Orkeon assembly): a tool span
     // is one whose gen_ai.operation.name is execute_tool, and its tool is gen_ai.tool.name.
     private const string OperationTag = "gen_ai.operation.name";

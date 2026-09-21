@@ -81,7 +81,7 @@ public sealed record TargetDescription
     public IReadOnlyList<ResolvedTeamMount> ResolvedMounts { get; init; } = [];
 
     /// <summary>The ids the sidecar names that this machine does not declare.</summary>
-    public IReadOnlyList<string> UnknownMountIds =>
+    public IReadOnlyList<string> UnknownMountIds() =>
         ResolvedMounts.Where(m => m.Source == TeamMountSource.UnknownId && m.Id is not null).Select(m => m.Id!.ToString()).Distinct().ToList();
 
     /// <summary>Whether the team refers to a declaration missing on this machine (D-06).</summary>
@@ -136,7 +136,7 @@ public sealed record TeamSummary
     public IReadOnlyList<ResolvedTeamMount> ResolvedMounts { get; init; } = [];
 
     /// <summary>The ids the sidecar names that this machine does not declare.</summary>
-    public IReadOnlyList<string> UnknownMountIds =>
+    public IReadOnlyList<string> UnknownMountIds() =>
         ResolvedMounts.Where(m => m.Source == TeamMountSource.UnknownId && m.Id is not null).Select(m => m.Id!.ToString()).Distinct().ToList();
 
     /// <summary>Whether the team refers to a declaration missing on this machine (D-06).</summary>
@@ -758,10 +758,13 @@ public static partial class TeamCatalog
     /// (cards, headline, history) alike, because a WPF TextBlock renders line breaks even
     /// without wrapping and has no MaxLines — a pasted page used to become a forty-line title.
     /// </summary>
-    public static string NormalizeName(string name) =>
-        TryNormalizeName(name, out var normalized)
-            ? normalized
-            : Slugify(string.IsNullOrWhiteSpace(name) ? "equipe" : name);
+    public static string NormalizeName(string name)
+    {
+        if (TryNormalizeName(name, out var normalized))
+            return normalized;
+
+        return Slugify(string.IsNullOrWhiteSpace(name) ? "equipe" : name);
+    }
 
     /// <summary>
     /// <see cref="NormalizeName"/> without the slug fallback: false, with an empty
@@ -789,63 +792,80 @@ public static partial class TeamCatalog
     {
         ArgumentNullException.ThrowIfNull(text);
 
-        string? heading = null;
-        var lines = new List<string>();
-        var inFence = false;
+        var scan = new SummaryScan();
+        foreach (var raw in Lines(text))
+        {
+            var line = raw.Trim();
+            var paragraph = scan.Read(line);
+            if (paragraph is not null)
+                return CutSummary(paragraph);
+        }
+
+        return CutSummary(scan.Close());
+    }
+
+    /// <summary>
+    /// The reading state of <see cref="Summarize"/>: the lines of the paragraph being read, a
+    /// heading remembered as the fallback rather than returned (prose wins over a title), and
+    /// whether the cursor is inside a fenced block.
+    /// </summary>
+    private sealed class SummaryScan
+    {
+        private readonly List<string> _lines = [];
+        private string? _heading;
+        private bool _inFence;
+
+        /// <summary>Reads one trimmed line; the paragraph it completes, when it completes one.</summary>
+        public string? Read(string line)
+        {
+            if (line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith("~~~", StringComparison.Ordinal))
+            {
+                var beforeFence = Flush(asHeading: false);
+                _inFence = !_inFence;
+                return beforeFence;
+            }
+
+            if (_inFence)
+                return null;
+
+            if (line.Length == 0 || RulePattern().IsMatch(line))
+                return Flush(asHeading: false);
+
+            if (line.StartsWith('#'))
+            {
+                // A heading is a block of its own, blank line after it or not.
+                var paragraph = Flush(asHeading: false);
+                if (paragraph is not null)
+                    return paragraph;
+                _lines.Add(line);
+                Flush(asHeading: true);
+                return null;
+            }
+
+            _lines.Add(line);
+            return null;
+        }
+
+        /// <summary>The end of the text: the pending paragraph, else the remembered heading, else nothing.</summary>
+        public string Close() => Flush(asHeading: false) ?? _heading ?? "";
 
         // Joins the pending lines into one paragraph; a heading is remembered as the fallback
         // rather than returned, prose wins over a title.
-        string? Flush(bool asHeading)
+        private string? Flush(bool asHeading)
         {
-            if (lines.Count == 0)
+            if (_lines.Count == 0)
                 return null;
 
-            var joined = string.Join(' ', lines.Select(StripMarkup).Where(l => l.Length > 0));
-            lines.Clear();
+            var joined = string.Join(' ', _lines.Select(StripMarkup).Where(l => l.Length > 0));
+            _lines.Clear();
             if (joined.Length == 0)
                 return null;
             if (!asHeading)
                 return joined;
 
-            heading ??= joined;
+            _heading ??= joined;
             return null;
         }
-
-        foreach (var raw in Lines(text))
-        {
-            var line = raw.Trim();
-            if (line.StartsWith("```", StringComparison.Ordinal) || line.StartsWith("~~~", StringComparison.Ordinal))
-            {
-                if (Flush(asHeading: false) is { } beforeFence)
-                    return CutSummary(beforeFence);
-                inFence = !inFence;
-                continue;
-            }
-
-            if (inFence)
-                continue;
-
-            if (line.Length == 0 || RulePattern().IsMatch(line))
-            {
-                if (Flush(asHeading: false) is { } paragraph)
-                    return CutSummary(paragraph);
-                continue;
-            }
-
-            if (line.StartsWith('#'))
-            {
-                // A heading is a block of its own, blank line after it or not.
-                if (Flush(asHeading: false) is { } paragraph)
-                    return CutSummary(paragraph);
-                lines.Add(line);
-                Flush(asHeading: true);
-                continue;
-            }
-
-            lines.Add(line);
-        }
-
-        return CutSummary(Flush(asHeading: false) ?? heading ?? "");
     }
 
     /// <summary>

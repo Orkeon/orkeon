@@ -22,6 +22,7 @@ using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Telemetry;
 using Orkeon.Infrastructure.Logging;
 using Orkeon.Infrastructure.MCP;
+using Orkeon.Scripting.Runtime;
 using Orkeon.Analysis.DependencyInjection;
 using Orkeon.Compliance.Vfs;
 using Orkeon.Tools.Abstractions.DependencyInjection;
@@ -332,8 +333,6 @@ public static partial class RunnerHost
 
         builder.AddEnvironmentVariables("ORKEON_");
 
-        var cliMounts = mounts.CliMounts;
-        var internalMounts = mounts.InternalMounts;
         var overrides = new Dictionary<string, string?>();
         using var declared = DeclaredConfiguration.Snapshot(builder);
 
@@ -343,7 +342,7 @@ public static partial class RunnerHost
                 .Where(entry => !string.IsNullOrWhiteSpace(entry.Value))
                 .Select(entry => new DeclaredMountEntry(entry.Index, entry.Value!))
                 .ToList(),
-            cliMounts,
+            mounts.CliMounts,
             mounts.SelectedMountIds,
             mounts.CrewMountReferences,
             settingsPath);
@@ -351,10 +350,52 @@ public static partial class RunnerHost
             throw new InvalidOperationException(string.Join(Environment.NewLine, plan.Errors));
 
         decisions.Plan = plan;
-        var withdrawnIndices = new HashSet<int>(plan.WithdrawnIndices);
+        var withdrawnIndices = new HashSet<int>(plan.WithdrawnIndices());
         foreach (var index in withdrawnIndices)
             overrides[$"{ConfigurationKeys.FileSystemMounts}:{index}"] = null;
 
+        var replacedIndices = ApplyCliMounts(overrides, declaredMounts, mounts.CliMounts, decisions);
+
+        var declaredInternal = declared.Entries(ConfigurationKeys.FileSystemInternalMounts);
+        var nextInternalIndex = NextIndex(declaredInternal);
+        foreach (var mount in mounts.InternalMounts)
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
+
+        // The whitelist "additionally" extends what the settings declare (the flag's own
+        // documented wording), so every entry continues AFTER the declared ones: starting the
+        // count at 0 silently replaced the operator's first allowed directory instead of
+        // adding to it.
+        var nextWhitelistIndex = NextIndex(declared.Entries(PathSecurityWhitelistSection));
+        // A declared entry a --mount replaced, or the selection withdrew, is no longer
+        // mounted; whitelisting its base would open a folder nothing reaches, so only the
+        // entries still in force count.
+        var inForce = declaredMounts
+            .Where(entry => !replacedIndices.Contains(entry.Index) && !withdrawnIndices.Contains(entry.Index))
+            .Select(entry => entry.Value);
+        nextWhitelistIndex = WhitelistBases(overrides, inForce, nextWhitelistIndex);
+        nextWhitelistIndex = WhitelistBases(overrides, declaredInternal.Select(entry => entry.Value), nextWhitelistIndex);
+
+        // --allow-external-mounts: the --mount arguments (and the runner's own internal
+        // mounts) may point outside the working directory. Unchanged: a folder named on the
+        // command line is still gated behind the explicit opt-in.
+        if (mounts.AllowExternalMounts)
+            WhitelistBases(overrides, mounts.CliMounts.Concat(mounts.InternalMounts), nextWhitelistIndex);
+
+        if (overrides.Count > 0)
+            builder.AddInMemoryCollection(overrides);
+    }
+
+    /// <summary>
+    /// Writes every <c>--mount</c> into the agent-facing section: at the index of the declared
+    /// entry of the same root when there is one (the replacement), else at the next free index.
+    /// Returns the indices that were replaced.
+    /// </summary>
+    private static HashSet<int> ApplyCliMounts(
+        Dictionary<string, string?> overrides,
+        List<(int Index, string? Value)> declaredMounts,
+        IReadOnlyList<string> cliMounts,
+        MountDecisions decisions)
+    {
         var replacedIndices = new HashSet<int>();
         var nextMountIndex = NextIndex(declaredMounts);
         foreach (var mount in cliMounts)
@@ -373,47 +414,22 @@ public static partial class RunnerHost
             }
         }
 
-        var declaredInternal = declared.Entries(ConfigurationKeys.FileSystemInternalMounts);
-        var nextInternalIndex = NextIndex(declaredInternal);
-        foreach (var mount in internalMounts)
-            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
+        return replacedIndices;
+    }
 
-        // The whitelist "additionally" extends what the settings declare (the flag's own
-        // documented wording), so every entry continues AFTER the declared ones: starting the
-        // count at 0 silently replaced the operator's first allowed directory instead of
-        // adding to it.
-        var nextWhitelistIndex = NextIndex(declared.Entries(PathSecurityWhitelistSection));
-        foreach (var (index, value) in declaredMounts)
+    /// <summary>
+    /// Whitelists the base path of every mount string that has one, from
+    /// <paramref name="nextIndex"/> on. Returns the next free whitelist index.
+    /// </summary>
+    private static int WhitelistBases(Dictionary<string, string?> overrides, IEnumerable<string?> mountStrings, int nextIndex)
+    {
+        foreach (var mount in mountStrings)
         {
-            // A declared entry a --mount replaced, or the selection withdrew, is no longer
-            // mounted; whitelisting its base would open a folder nothing reaches, so only the
-            // entries still in force count.
-            if (replacedIndices.Contains(index) || withdrawnIndices.Contains(index))
-                continue;
-            if (TryExtractMountBasePath(value) is { } declaredBase)
-                overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = declaredBase;
+            if (TryExtractMountBasePath(mount) is { } basePath)
+                overrides[$"{PathSecurityWhitelistSection}:{nextIndex++}"] = basePath;
         }
 
-        foreach (var (_, value) in declaredInternal)
-        {
-            if (TryExtractMountBasePath(value) is { } declaredBase)
-                overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = declaredBase;
-        }
-
-        // --allow-external-mounts: the --mount arguments (and the runner's own internal
-        // mounts) may point outside the working directory. Unchanged: a folder named on the
-        // command line is still gated behind the explicit opt-in.
-        if (mounts.AllowExternalMounts)
-        {
-            foreach (var mount in cliMounts.Concat(internalMounts))
-            {
-                if (TryExtractMountBasePath(mount) is { } basePath)
-                    overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = basePath;
-            }
-        }
-
-        if (overrides.Count > 0)
-            builder.AddInMemoryCollection(overrides);
+        return nextIndex;
     }
 
     /// <summary>
@@ -762,9 +778,13 @@ public static partial class RunnerHost
     private static void RegisterLlmProvider(HostBuilderContext context, IServiceCollection services)
     {
         var llmSection = context.Configuration.GetSection(ConfigurationKeys.LlmSection);
-        // No section → no provider registration; the echo fallback is announced once per
-        // host build by WarnIfLlmNotConfigured (no logger exists yet at this point).
-        if (!llmSection.Exists()) return;
+        // No section → the echo provider, announced once per host build by
+        // WarnIfLlmNotConfigured (no logger exists yet at this point).
+        if (!llmSection.Exists())
+        {
+            RegisterEchoProvider(services);
+            return;
+        }
 
         // The one default, not a literal: LlmConfig, AgentBuilder and Studio's presets all
         // read LlmDefaults.DefaultModelName, so a hardcoded model here gave an appsettings
@@ -815,5 +835,25 @@ public static partial class RunnerHost
             throw new InvalidOperationException(
                 $"LLM provider for model '{llmConfig.Model}' does not expose ILlmProvider.");
         });
+    }
+
+    /// <summary>
+    /// The fallback <see cref="LlmNotConfiguredMessage"/> promises: a host with no <c>Llm</c>
+    /// section runs its crews on the echo provider (<see cref="UndefinedLlmProvider"/>, the one
+    /// the scripting facade already answers <c>&lt;undefined-llm&gt;</c> with), which replays the
+    /// prompt instead of answering it. Registered explicitly because the infrastructure default
+    /// is an OpenAI provider without a key, and since LLM-11 a call that provider refuses is a
+    /// failed task, not an empty answer — the bundled demos then exited 2 where the warning had
+    /// announced a run.
+    /// </summary>
+    private static void RegisterEchoProvider(IServiceCollection services)
+    {
+        services.AddSingleton<UndefinedLlmProvider>();
+        services.AddSingleton<IBasicLlmProvider>(sp =>
+            new LlmProviderAdapter(sp.GetRequiredService<UndefinedLlmProvider>()));
+        services.AddSingleton<IChatClient>(sp =>
+            new LlmProviderToChatClientAdapter(
+                sp.GetRequiredService<UndefinedLlmProvider>(),
+                textFallbackParser: sp.GetService<Application.Interfaces.LLM.IToolCallParser>()));
     }
 }

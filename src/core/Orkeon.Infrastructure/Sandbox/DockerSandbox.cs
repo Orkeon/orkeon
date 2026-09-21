@@ -223,7 +223,7 @@ public partial class DockerSandbox : ICodeSandbox
         //   --security-opt=...       a setuid binary cannot re-grant what was dropped
         //   --pids-limit             a fork bomb hits a wall instead of the host's PID space
         // NOTE: the container still runs as root INSIDE its namespace. Adding --user needs
-        // an image that declares a usable non-root UID with a writable HOME and NuGet cache;
+        // an image that declares a usable non-root UID with a writable HOME and NuGet cache —
         // the default SDK image does not, and forcing a UID here breaks `dotnet build`
         // against the tmpfs. Dropping every capability is what closes the gap in the
         // meantime -- root without capabilities cannot act on the host.

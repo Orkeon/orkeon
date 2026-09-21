@@ -128,19 +128,14 @@ internal static partial class ToolCallTextParser
 
     private static bool TryGetProperty(JsonElement element, string name, out JsonElement value)
     {
-        if (element.ValueKind == JsonValueKind.Object)
-        {
-            foreach (var property in element.EnumerateObject())
-            {
-                if (string.Equals(property.Name, name, StringComparison.OrdinalIgnoreCase))
-                {
-                    value = property.Value;
-                    return true;
-                }
-            }
-        }
-        value = default;
-        return false;
+        var match = element.ValueKind == JsonValueKind.Object
+            ? element.EnumerateObject()
+                .Where(p => string.Equals(p.Name, name, StringComparison.OrdinalIgnoreCase))
+                .Select(p => (JsonElement?)p.Value)
+                .FirstOrDefault()
+            : null;
+        value = match ?? default;
+        return match is not null;
     }
 
     private static JsonDocument? TryParseJson(string text)
@@ -161,43 +156,86 @@ internal static partial class ToolCallTextParser
     private static IEnumerable<string> TopLevelJsonBlocks(string response)
     {
         var text = StripFences(response);
-        var depth = 0;
-        var start = -1;
-        var inString = false;
+        var scan = new BlockScan();
         for (var i = 0; i < text.Length; i++)
         {
-            var c = text[i];
-            if (inString)
+            if (scan.InString)
             {
-                if (c == '\\') i++;
-                else if (c == '"') inString = false;
+                i = SkipStringCharacter(text, i, scan);
                 continue;
             }
-            switch (c)
-            {
-                case '"' when depth > 0:
-                    inString = true;
-                    break;
-                case '{' or '[':
-                    if (depth++ == 0) start = i;
-                    break;
-                case '}' or ']':
-                    if (depth > 0 && --depth == 0 && start >= 0)
-                    {
-                        yield return text[start..(i + 1)];
-                        start = -1;
-                    }
-                    break;
-            }
+
+            if (Advance(text[i], i, scan) is { } block)
+                yield return text[block];
         }
-        // An unterminated string swallowed the closing brace: retry the tail without
-        // string tracking, so a raw quote inside a value does not hide the whole block.
-        if (depth > 0 && start >= 0 && inString)
+
+        if (RecoverUnterminatedBlock(text, scan) is { } tail)
+            yield return tail;
+    }
+
+    /// <summary>
+    /// Where the block scanner stands: the nesting depth, the index the open top-level block
+    /// started at (-1 when none is open) and whether the cursor is inside a string value.
+    /// </summary>
+    private sealed class BlockScan
+    {
+        public int Depth;
+        public int Start = -1;
+        public bool InString;
+    }
+
+    /// <summary>
+    /// Inside a string: a backslash escapes the next character, a quote closes the string.
+    /// Returns the index of the last character consumed.
+    /// </summary>
+    private static int SkipStringCharacter(string text, int i, BlockScan scan)
+    {
+        var c = text[i];
+        if (c == '\\')
+            return i + 1;
+        if (c == '"')
+            scan.InString = false;
+        return i;
+    }
+
+    /// <summary>
+    /// Outside a string: a quote inside a block opens a string, a bracket opens a block, a
+    /// closing bracket closes one. The span of the top-level block that closes here, if any.
+    /// </summary>
+    private static Range? Advance(char c, int i, BlockScan scan)
+    {
+        if (c == '"' && scan.Depth > 0)
         {
-            var close = text.LastIndexOf(text[start] == '{' ? '}' : ']');
-            if (close > start)
-                yield return text[start..(close + 1)];
+            scan.InString = true;
+            return null;
         }
+
+        if (c is '{' or '[')
+        {
+            if (scan.Depth++ == 0)
+                scan.Start = i;
+            return null;
+        }
+
+        if (c is not ('}' or ']') || scan.Depth <= 0 || --scan.Depth != 0 || scan.Start < 0)
+            return null;
+
+        var block = scan.Start..(i + 1);
+        scan.Start = -1;
+        return block;
+    }
+
+    /// <summary>
+    /// An unterminated string swallowed the closing brace: retry the tail without string
+    /// tracking, so a raw quote inside a value does not hide the whole block.
+    /// </summary>
+    private static string? RecoverUnterminatedBlock(string text, BlockScan scan)
+    {
+        if (scan.Depth <= 0 || scan.Start < 0 || !scan.InString)
+            return null;
+
+        var close = text.LastIndexOf(text[scan.Start] == '{' ? '}' : ']');
+        return close > scan.Start ? text[scan.Start..(close + 1)] : null;
     }
 
     private static string StripFences(string response) =>

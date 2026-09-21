@@ -207,8 +207,8 @@ public sealed class TeamCatalogMountsTests : IDisposable
         Assert.Equal(summary.Mounts, target.Mounts);
         Assert.Equal(summary.Mounts, Assert.Single(TeamCatalog.List(_root, declared)).Mounts);
         Assert.True(summary.HasUnknownMountIds);
-        Assert.Equal([unknown.ToString()], summary.UnknownMountIds);
-        Assert.Equal([unknown.ToString()], target.UnknownMountIds);
+        Assert.Equal([unknown.ToString()], summary.UnknownMountIds());
+        Assert.Equal([unknown.ToString()], target.UnknownMountIds());
 
         // Not consulted: the sidecar's own spelling, and no alarm.
         var alone = TeamCatalog.Describe(team);

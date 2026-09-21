@@ -94,7 +94,7 @@ public sealed class AppSettingsValidator
     // settings file, it is the very thing the API-key rows keep out of every file.
     private static readonly string[] SecretWords = ["TOKEN", "SECRET", "KEY", "PASSWORD", "PASSWD"];
 
-    // The indirection spellings a value may use to NAME a variable instead of holding one;
+    // The indirection spellings a value may use to NAME a variable instead of holding one —
     // the same four the team catalog tolerates (STUDIO-16).
     private static readonly string[] IndirectionPrefixes = ["${", "%", "env:", "ORKEON_"];
 
@@ -160,60 +160,76 @@ public sealed class AppSettingsValidator
         }
 
         foreach (var id in document.Mcp.ServerIds)
+            ValidateMcpServer(document, id, messages);
+    }
+
+    private static void ValidateMcpServer(AppSettingsDocument document, string id, List<ValidationMessage> messages)
+    {
+        var path = $"{McpSection.ServersPath}:{id}";
+        if (!McpSection.IsValidServerId(id))
         {
-            var path = $"{McpSection.ServersPath}:{id}";
-            if (!McpSection.IsValidServerId(id))
-            {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.McpServerIdInvalid,
-                    string.Create(CultureInfo.InvariantCulture,
-                        $"'{id}' is not a usable MCP server identifier: letters, digits, '.', '_' and '-' only."),
-                    path));
-            }
+            messages.Add(ValidationMessage.Error(
+                ValidationCodes.McpServerIdInvalid,
+                string.Create(CultureInfo.InvariantCulture,
+                    $"'{id}' is not a usable MCP server identifier: letters, digits, '.', '_' and '-' only."),
+                path));
+        }
 
-            if (document.Mcp.GetServer(id) is not { } server)
-                continue;
+        if (document.Mcp.GetServer(id) is not { } server)
+            return;
 
-            if (!server.IsStdio && !server.IsSse)
-            {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.McpTransportUnknown,
-                    string.Create(CultureInfo.InvariantCulture,
-                        $"Unknown MCP transport '{server.Transport}' for server '{id}'. Known transports: {string.Join(", ", McpSection.Transports)}."),
-                    $"{path}:Transport"));
-            }
-            else if (server.IsStdio && string.IsNullOrWhiteSpace(server.Command))
-            {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.McpCommandMissing,
-                    string.Create(CultureInfo.InvariantCulture,
-                        $"MCP server '{id}' uses the stdio transport and names no command to launch."),
-                    $"{path}:Command"));
-            }
-            else if (server.IsSse
-                && !(Uri.TryCreate(server.Url, UriKind.Absolute, out var url)
-                    && (url.Scheme == Uri.UriSchemeHttp || url.Scheme == Uri.UriSchemeHttps)))
-            {
-                messages.Add(ValidationMessage.Error(
-                    ValidationCodes.McpUrlInvalid,
-                    string.Create(CultureInfo.InvariantCulture,
-                        $"MCP server '{id}' uses the HTTP (sse) transport and '{server.Url}' is not an absolute http(s) URL."),
-                    $"{path}:Url"));
-            }
+        if (TransportError(server, id, path) is { } transportError)
+            messages.Add(transportError);
 
-            foreach (var (name, value) in server.Env)
-            {
-                if (LooksLikeSecret(name, value))
-                {
-                    messages.Add(ValidationMessage.Information(
-                        ValidationCodes.McpEnvLooksSecret,
-                        string.Create(CultureInfo.InvariantCulture,
-                            $"'{name}' of MCP server '{id}' is written in clear text in this file. The server process inherits your user environment: set the variable there and leave it out of the file."),
-                        $"{path}:Env:{name}"));
-                }
-            }
+        foreach (var (name, value) in server.Env.Where(entry => LooksLikeSecret(entry.Key, entry.Value)))
+        {
+            messages.Add(ValidationMessage.Information(
+                ValidationCodes.McpEnvLooksSecret,
+                string.Create(CultureInfo.InvariantCulture,
+                    $"'{name}' of MCP server '{id}' is written in clear text in this file. The server process inherits your user environment: set the variable there and leave it out of the file."),
+                $"{path}:Env:{name}"));
         }
     }
+
+    /// <summary>
+    /// The one refusal a server's transport earns: unknown, stdio without a command, or HTTP
+    /// (sse) without an absolute http(s) URL. Null when the transport is complete.
+    /// </summary>
+    private static ValidationMessage? TransportError(McpServerDefinition server, string id, string path)
+    {
+        if (!server.IsStdio && !server.IsSse)
+        {
+            return ValidationMessage.Error(
+                ValidationCodes.McpTransportUnknown,
+                string.Create(CultureInfo.InvariantCulture,
+                    $"Unknown MCP transport '{server.Transport}' for server '{id}'. Known transports: {string.Join(", ", McpSection.Transports)}."),
+                $"{path}:Transport");
+        }
+
+        if (server.IsStdio && string.IsNullOrWhiteSpace(server.Command))
+        {
+            return ValidationMessage.Error(
+                ValidationCodes.McpCommandMissing,
+                string.Create(CultureInfo.InvariantCulture,
+                    $"MCP server '{id}' uses the stdio transport and names no command to launch."),
+                $"{path}:Command");
+        }
+
+        if (server.IsSse && !IsAbsoluteHttpUrl(server.Url))
+        {
+            return ValidationMessage.Error(
+                ValidationCodes.McpUrlInvalid,
+                string.Create(CultureInfo.InvariantCulture,
+                    $"MCP server '{id}' uses the HTTP (sse) transport and '{server.Url}' is not an absolute http(s) URL."),
+                $"{path}:Url");
+        }
+
+        return null;
+    }
+
+    private static bool IsAbsoluteHttpUrl(string? url) =>
+        Uri.TryCreate(url, UriKind.Absolute, out var parsed)
+        && (parsed.Scheme == Uri.UriSchemeHttp || parsed.Scheme == Uri.UriSchemeHttps);
 
     private static bool LooksLikeSecret(string name, string value)
     {

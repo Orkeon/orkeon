@@ -58,12 +58,16 @@ public sealed class MountEditorViewModel : ObservableObject
     public string ShortId => Id?.ToString() is { } text ? text[^6..] : "";
 
     /// <summary>"Id 01J…" or "Id 01J… — assigned on save".</summary>
-    public string IdDisplay => Id is null
-        ? ""
-        : string.Format(
-            CultureInfo.CurrentCulture,
-            _strings[IsIdNew ? StudioStringKeys.MountIdAssignedOnSave : StudioStringKeys.MountId],
-            Id.ToString());
+    public string IdDisplay
+    {
+        get
+        {
+            if (Id is null)
+                return "";
+            var key = IsIdNew ? StudioStringKeys.MountIdAssignedOnSave : StudioStringKeys.MountId;
+            return string.Format(CultureInfo.CurrentCulture, _strings[key], Id.ToString());
+        }
+    }
 
     /// <summary>Copies the full id to the clipboard — for a hand-written crew's <c>mounts:</c> block.</summary>
     public RelayCommand CopyIdCommand { get; }

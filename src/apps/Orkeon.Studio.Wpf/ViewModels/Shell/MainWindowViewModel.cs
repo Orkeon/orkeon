@@ -172,13 +172,18 @@ public sealed class MainWindowViewModel : ObservableObject
             }),
             teamsRoot);
 
-        Import = new ImportTeamViewModel(
-            targetProbe, picker, strings, teamsRoot,
+        Import = new ImportTeamViewModel(new ImportTeamDependencies
+        {
+            TargetProbe = targetProbe,
+            Picker = picker,
+            Strings = strings,
+            TeamsRoot = teamsRoot,
             // VFS-90 D-06: an imported team naming declarations this machine does not have can
             // have them authorized as recorded — under the same ids — from the review card.
-            declaredMounts: declaredMounts,
-            declareMount: Config.Mounts.AddPickedMount,
-            saveSettings: () => Config.SaveAsync());
+            DeclaredMounts = declaredMounts,
+            DeclareMount = Config.Mounts.AddPickedMount,
+            SaveSettings = () => Config.SaveAsync(),
+        });
 
         // Declaring a folder is the OS folder dialog, and that gesture belongs to the settings
         // and to the wizard's « Existing folders » rows (STUDIO-19). A team ASSOCIATES a folder
@@ -212,7 +217,7 @@ public sealed class MainWindowViewModel : ObservableObject
         // the wizard opens the OS folder dialog itself; the pick is declared in the settings on
         // the way, under the row's rights, then bound behind the row. One gesture, no modal in
         // between; the declared list above stays the other way in.
-        CreateTeam.PickFolderRequested += (_, e) => _ = PickDeclareAndBindAsync(e.TargetVirtualPath, e.Rights);
+        CreateTeam.PickFolderRequested += (sender, e) => _ = PickDeclareAndBindAsync(e.TargetVirtualPath, e.Rights);
         // The declare-a-new-folder action lands on the folders tab, not merely on the settings
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.
@@ -243,8 +248,10 @@ public sealed class MainWindowViewModel : ObservableObject
         Teams.Teams.CollectionChanged += (_, e) =>
         {
             if (e.Action == System.Collections.Specialized.NotifyCollectionChangedAction.Reset)
+            {
                 Settings.TeamFolders.Refresh();
                 Config.Mounts.RefreshTeamReferences();
+            }
         };
         // STUDIO-18: the declared folders are read live from the settings editor, but a team
         // card computes its chips' verdicts when it is built and the launcher when its target
@@ -494,14 +501,15 @@ public sealed class MainWindowViewModel : ObservableObject
         var folder = System.IO.Path.GetFileName(mount.PhysicalPath.TrimEnd('/', '\\')) is { Length: > 0 } name
             ? name
             : mount.PhysicalPath;
+        string savedKey;
+        if (reused)
+            savedKey = StudioStringKeys.AllowedFoldersReused;
+        else if (targetVirtualPath is { Length: > 0 })
+            savedKey = StudioStringKeys.WizardDeclaredFolder;
+        else
+            savedKey = StudioStringKeys.AllowedFoldersDeclared;
         CreateTeam.ReportStatus(saved
-            ? string.Format(
-                System.Globalization.CultureInfo.CurrentCulture,
-                _strings[reused
-                    ? StudioStringKeys.AllowedFoldersReused
-                    : targetVirtualPath is { Length: > 0 } ? StudioStringKeys.WizardDeclaredFolder : StudioStringKeys.AllowedFoldersDeclared],
-                folder,
-                declared.VirtualPath)
+            ? string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[savedKey], folder, declared.VirtualPath)
             : string.Format(System.Globalization.CultureInfo.CurrentCulture, _strings[StudioStringKeys.AllowedFoldersNotSaved], folder, Config.StatusMessage));
 
         void Bind(string? target, MountDefinition picked)

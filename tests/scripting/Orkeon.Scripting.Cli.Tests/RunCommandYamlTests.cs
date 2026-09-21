@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests;
@@ -6,11 +7,10 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// Coverage for the YAML dispatch added to <see cref="RunCommand"/>: <c>orkeon run crew.yaml</c>
 /// must run a crew end-to-end through the shared one-shot runner, while <c>.ork.ts</c> keeps
 /// going through the Jint/esbuild script host. Both are driven in-process and offline:
-/// no <c>Llm</c> section is configured, so the default provider returns an empty completion
-/// (0 chars). Since STUDIO-12 C5a an empty answer is a failed task, never a green run: the
-/// crew runner is reached (its banner is printed), the crew fails and the command exits
-/// <see cref="Program.ExitRuntimeError"/> with the reason as the last stderr line — the
-/// exit-code contract the routing tests pin alongside the banner.
+/// no <c>Llm</c> section is configured, so the runner host falls back to the echo provider
+/// it announces on stderr (WIN-01) and the crew runs to the end on replayed prompts — the
+/// crew runner is reached (its banner is printed) and the command exits
+/// <see cref="Program.ExitOk"/>, the contract the routing tests pin alongside the banner.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class RunCommandYamlTests
@@ -38,7 +38,7 @@ public sealed class RunCommandYamlTests
     [Theory]
     [InlineData("crew.yaml")]
     [InlineData("crew.yml")]
-    public async Task Yaml_crew_runs_end_to_end_and_fails_honestly_without_a_provider(string fileName)
+    public async Task Yaml_crew_runs_end_to_end_on_the_echo_provider(string fileName)
     {
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript(fileName, MinimalCrew);
@@ -52,16 +52,15 @@ public sealed class RunCommandYamlTests
             AllowExternalMounts = true,
         });
 
-        // No provider answers, so the crew fails and says so: exit 2, "ERROR: <reason>" last.
-        Assert.Equal(Program.ExitRuntimeError, exit);
-        Assert.StartsWith("ERROR: ", LastLine(console.Stderr), StringComparison.Ordinal);
+        // No Llm section: the echo provider answers, announced once on stderr, and the crew
+        // completes — exit 0, no "ERROR: " line.
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains(RunnerHost.LlmNotConfiguredMessage, console.Stderr, StringComparison.Ordinal);
+        Assert.DoesNotContain("ERROR: ", console.Stderr, StringComparison.Ordinal);
         // The one-shot YAML runner prints a "=== Crew Output ===" banner; the script path
         // never does. Asserting on it pins the routing via observable behavior.
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
-
-    private static string LastLine(string text) =>
-        text.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)[^1];
 
     [Fact]
     public async Task Yaml_extension_routes_to_crew_runner_not_script_host()
@@ -76,9 +75,9 @@ public sealed class RunCommandYamlTests
             AllowExternalMounts = true,
         });
 
-        // Routed to the crew runner, which fails the unanswered crew (exit 2) — never exit 0
-        // through the script host.
-        Assert.Equal(Program.ExitRuntimeError, exit);
+        // Routed to the crew runner: its banner is printed, the script host's JSON result
+        // blob is not.
+        Assert.Equal(Program.ExitOk, exit);
         // Crew-runner marker present, script-host marker absent.
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
         Assert.DoesNotContain("\"result\"", console.Stdout, StringComparison.Ordinal);

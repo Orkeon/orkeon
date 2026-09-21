@@ -641,11 +641,8 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>Takes every binding off <paramref name="virtualPath"/> — a mount point takes one folder.</summary>
     private void RemoveBinding(string virtualPath)
     {
-        foreach (var existing in TeamMounts.ToList())
-        {
-            if (string.Equals(VirtualPathOf(existing), virtualPath, StringComparison.Ordinal))
-                TeamMounts.Remove(existing);
-        }
+        foreach (var existing in TeamMounts.Where(entry => string.Equals(VirtualPathOf(entry), virtualPath, StringComparison.Ordinal)).ToList())
+            TeamMounts.Remove(existing);
     }
 
     /// <summary>
@@ -2220,11 +2217,16 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// session's title, else the step-1 need, else the slug — one of them exists whenever
     /// the engine is running.
     /// </summary>
-    private string BusySessionLabel() =>
-        _teamName.Length > 0 ? _teamName
-        : _model.Title is { Length: > 0 } title ? TeamCatalog.NormalizeName(title)
-        : _need.Trim() is { Length: > 0 } need ? TeamCatalog.NormalizeName(need)
-        : _model.Slug ?? "";
+    private string BusySessionLabel()
+    {
+        if (_teamName.Length > 0)
+            return _teamName;
+        if (_model.Title is { Length: > 0 } title)
+            return TeamCatalog.NormalizeName(title);
+        if (_need.Trim() is { Length: > 0 } need)
+            return TeamCatalog.NormalizeName(need);
+        return _model.Slug ?? "";
+    }
 
     /// <summary>
     /// «Modifier» on a team card (v3 W-09): reopens the wizard on the adopted team — the
@@ -2656,7 +2658,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         // A new session starts from a clean slate: the previous blueprint's folders were
         // approved for THAT blueprint, never for the next one; the old engine command lies.
-        // The two step-1 answers survive (D-07) — they are the user's, not the blueprint's;
+        // The two step-1 answers survive (D-07) — they are the user's, not the blueprint's —
         // Restart, Resume and Reopen clear them first. The dropped roots go with the rest —
         // they were dropped from the previous blueprint.
         KeepOnlyStepOneMounts();

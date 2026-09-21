@@ -78,11 +78,13 @@ public static class ToolCatalog
     public const string BraveKeyEnv = "BRAVE_API_KEY";
 
     /// <summary>The keys the tools need, in the order the card lists them.</summary>
+#pragma warning disable S1075 // URIs should not be hardcoded — the vendors' own key consoles, public and stable; the card opens them for the user
     public static IReadOnlyList<ToolSecret> Secrets { get; } =
     [
         new(TavilyKeyEnv, "web_search", new Uri("https://app.tavily.com")),
         new(BraveKeyEnv, "brave_search", new Uri("https://api-dashboard.search.brave.com")),
     ];
+#pragma warning restore S1075
 
     /// <summary>The families, in display order.</summary>
     public static IReadOnlyList<ToolFamily> Families { get; } =

@@ -252,31 +252,44 @@ internal sealed record ForgeCommandOptions
             ? options with { MaxSeconds = maxSeconds }
             : options with { Error = invalid };
 
-    /// <summary>The rules that only make sense once every argument has been read.</summary>
+    /// <summary>
+    /// The rules that only make sense once every argument has been read, in the order they
+    /// are checked: the first one broken is the error. <c>promote</c> and <c>list</c> mount
+    /// nothing, so a read folder there would be silently ignored — and this parser never
+    /// ignores an option silently; <c>reopen</c> starts no cycle, so every option that shapes
+    /// one is refused there.
+    /// </summary>
+    private static readonly (Func<ForgeCommandOptions, int, bool> Broken, string Error)[] ReconcileRules =
+    [
+        ((o, _) => o.PromoteSlug is not null && o.Destination is null,
+            "promote needs --to <directory>."),
+        ((o, _) => o.PromoteSlug is null && (o.Destination is not null || o.Schedule is not null || o.WithSettings),
+            "--to, --schedule and --with-settings only apply to `forge promote`."),
+        ((o, _) => o.Edit && o.ResumeSlug is null,
+            "--edit only applies to `forge resume`."),
+        ((o, _) => o.Adopt && o.ResumeSlug is null,
+            "--adopt only applies to `forge resume`."),
+        ((o, _) => o.Adopt && o.Edit,
+            "--adopt and --edit are two different answers to the same pause."),
+        ((o, _) => o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null),
+            "--read only applies to a new session or to `forge resume`."),
+        ((o, needWords) => o.ReopenDirectory is not null && (ShapesACycle(o) || needWords > 0),
+            "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
+    ];
+
+    /// <summary>Whether any option that shapes a cycle was passed.</summary>
+    private static bool ShapesACycle(ForgeCommandOptions o) =>
+        o.Format is not null || o.Auto || o.Dry || o.PackDirectory is not null
+        || o.SettingsPath is not null || o.MaxIterations is not null
+        || o.MaxTokens is not null || o.MaxSeconds is not null;
+
+    /// <summary>Applies <see cref="ReconcileRules"/>, then folds the need words into the need.</summary>
     private static ForgeCommandOptions Reconcile(ForgeCommandOptions options, List<string> needWords)
     {
-        if (options.PromoteSlug is not null && options.Destination is null)
-            return options with { Error = "promote needs --to <directory>." };
-        if (options.PromoteSlug is null && (options.Destination is not null || options.Schedule is not null || options.WithSettings))
-            return options with { Error = "--to, --schedule and --with-settings only apply to `forge promote`." };
-        if (options.Edit && options.ResumeSlug is null)
-            return options with { Error = "--edit only applies to `forge resume`." };
-        if (options.Adopt && options.ResumeSlug is null)
-            return options with { Error = "--adopt only applies to `forge resume`." };
-        if (options.Adopt && options.Edit)
-            return options with { Error = "--adopt and --edit are two different answers to the same pause." };
-        // `promote` and `list` mount nothing: a read folder there would be silently ignored,
-        // and this parser never ignores an option silently.
-        if (options.ReadDirectory is not null && (options.PromoteSlug is not null || options.List || options.ReopenDirectory is not null))
-            return options with { Error = "--read only applies to a new session or to `forge resume`." };
-        // `reopen` starts no cycle: it finds or rebuilds a session and exits. Every option
-        // that shapes a cycle would be ignored there, so every one of them is refused.
-        if (options.ReopenDirectory is not null
-            && (options.Format is not null || options.Auto || options.Dry || options.PackDirectory is not null
-                || options.SettingsPath is not null || options.MaxIterations is not null
-                || options.MaxTokens is not null || options.MaxSeconds is not null || needWords.Count > 0))
+        foreach (var (broken, error) in ReconcileRules)
         {
-            return options with { Error = "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing." };
+            if (broken(options, needWords.Count))
+                return options with { Error = error };
         }
 
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };

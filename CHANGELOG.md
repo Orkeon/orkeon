@@ -7,6 +7,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- SonarQube campaign of 2026-09-21 -->
+### Fixed — a host without an `Llm` section runs on the echo provider again
+
+- **The fallback the warning announces is the fallback the run gets.** Since LLM-11 a call
+  the provider refuses fails the task with the provider's own sentence — the right thing for
+  a timed-out cloud model, and the wrong thing for a host with no `Llm` section at all: its
+  provider was the infrastructure's keyless OpenAI default, so *"No `Llm` section configured
+  — falling back to the echo provider"* was followed by *"OpenAI API key is required"* and
+  exit code 2. The bundled scripting demos and the offline E2E run had stopped running.
+  `RunnerHost` now registers the echo provider itself (`UndefinedLlmProvider`, the one the
+  scripting facade answers `<undefined-llm>` with) as `IBasicLlmProvider` and `IChatClient`
+  when the section is absent; the crew runs, its answers replay the prompts, and the warning
+  stays the one line that says it is not a real model
+  (`RunnerHostLlmFallbackWarningTests.MissingLlmSection_RunsOnTheEchoProvider`).
+
+### Changed — the SonarQube campaign of 2026-09-21 (87 issues, 2 hotspots)
+
+- Every issue the analysis raised on the code written since the 5 September campaign is
+  closed: the two `S2583` bugs of `ToolCallTextParser` (the JSON block scanner is now an
+  explicit `BlockScan` state with one method per transition), the sixteen methods above the
+  cognitive-complexity ceiling (`MountSelection.Resolve`, `RunnerHost` configuration,
+  `SequentialProcessStrategy`, `ChatClientAgentLoop`, `CrewHandoffDetector`, `TeamCatalog`,
+  the Studio view models, …), and the rest. Behaviour is unchanged except for one real
+  defect the analysis caught: the shell refreshed the mounts editor's team references on every
+  card added to the My-teams list instead of once per rebuild.
+- `MountSelectionPlan.WithdrawnIndices`, `TeamSummary.UnknownMountIds` and
+  `TeamTarget.UnknownMountIds` are methods now — a property must not copy a collection.
+  `ImportTeamViewModel` takes an `ImportTeamDependencies` record, like the other Studio
+  screens. `McpToolProvider` is sealed. Every false-positive arbitration lives in the code, as
+  a `[SuppressMessage]` or `#pragma` with its justification (13 × S3604 on primary
+  constructors, 2 × S1168 third-state nulls, the JS-called members of `JsLlmFacade`, the
+  YamlDotNet-populated probe, the vendors' key-console URLs).
+
 <!-- Studio — owner report of 2026-09-21 -->
 ### Fixed — Studio: My teams and the wizard — a discarded session resets the wizard, « Modify » reaches it at the first click
 

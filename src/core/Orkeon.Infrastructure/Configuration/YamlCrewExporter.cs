@@ -128,6 +128,10 @@ public partial class YamlCrewExporter
     }
 
     /// <summary>The <c>mounts:</c> block as the loader reads it back (VFS-90); null when the crew has none.</summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null means the crew never declared a mounts: block and the exporter writes none; an empty " +
+                        "collection means it declared an empty one and `mounts: []` is written. The exact mirror of " +
+                        "YamlCrewMapper.MapMounts, which reads the two states apart.")]
     private static System.Collections.ObjectModel.Collection<string>? MapMounts(CrewConfiguration config) =>
         config.Mounts is { } mounts
             ? new System.Collections.ObjectModel.Collection<string>([.. mounts.Select(m => m.ToString())])

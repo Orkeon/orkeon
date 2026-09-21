@@ -50,6 +50,10 @@ public sealed class ShellToolsSection
     /// <summary>Removes the whole section.</summary>
     public void Remove() => _document.Remove(SectionPath);
 
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Major Code Smell", "S1168:Empty arrays and collections should be returned instead of null",
+        Justification = "null is a third state here, not the absence of a value: an absent AllowedCommands means " +
+                        "\"the built-in defaults apply\" (ReplacesDefaults reads it so), while an empty list would mean " +
+                        "\"a custom allow-list with zero entries\" and block every command. ShellToolsSectionTests pins it.")]
     private IReadOnlyList<string>? ListOrNull(string path) =>
         _document.ContainsPath(path) ? _document.GetStringArray(path) : null;
 

@@ -217,28 +217,35 @@ internal sealed class ChatToolDispatcher
             case IDictionary<string, object?> dictionary:
                 return new Dictionary<string, object?>(dictionary);
             case System.Text.Json.JsonElement { ValueKind: System.Text.Json.JsonValueKind.String } text:
-                return TryParseObject(text.GetString()) ?? arguments;
+                return TryParseObject(text.GetString(), out var fromElement) ? fromElement : arguments;
             case string text:
-                return TryParseObject(text) ?? arguments;
+                return TryParseObject(text, out var fromText) ? fromText : arguments;
             default:
                 return arguments;
         }
     }
 
-    private static Dictionary<string, object?>? TryParseObject(string? json)
+    /// <summary>
+    /// True when <paramref name="json"/> is a JSON object, with its properties; false for
+    /// anything else (blank, malformed, an array, a scalar) — an empty object parses to an
+    /// empty dictionary, which is why "not an object" cannot be spelled as one.
+    /// </summary>
+    private static bool TryParseObject(string? json, out Dictionary<string, object?> parsed)
     {
+        parsed = [];
         if (string.IsNullOrWhiteSpace(json))
-            return null;
+            return false;
         try
         {
             using var document = System.Text.Json.JsonDocument.Parse(json);
             if (document.RootElement.ValueKind != System.Text.Json.JsonValueKind.Object)
-                return null;
-            return document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value.Clone());
+                return false;
+            parsed = document.RootElement.EnumerateObject().ToDictionary(p => p.Name, p => (object?)p.Value.Clone());
+            return true;
         }
         catch (System.Text.Json.JsonException)
         {
-            return null;
+            return false;
         }
     }
 

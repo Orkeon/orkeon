@@ -1,3 +1,4 @@
+using Orkeon.Hosting;
 using Orkeon.Scripting.Cli.Commands;
 
 namespace Orkeon.Scripting.Cli.Tests;
@@ -8,8 +9,8 @@ namespace Orkeon.Scripting.Cli.Tests;
 /// flat legacy triplet) through the shared one-shot runner, honour the same options as a single
 /// file, and refuse ambiguous or layout-less directories with a diagnostic naming what it found.
 /// Driven in-process and offline like <see cref="RunCommandYamlTests"/>: no <c>Llm</c> section is
-/// configured, so the crew gets no answer and — since STUDIO-12 C5a — fails honestly: the
-/// runner is reached (banner printed), exit <see cref="Program.ExitRuntimeError"/>.
+/// configured, so the runner host falls back to the echo provider it announces (WIN-01) and
+/// the crew runs to the end on replayed prompts: banner printed, exit <see cref="Program.ExitOk"/>.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class RunCommandDirectoryTests
@@ -102,7 +103,7 @@ public sealed class RunCommandDirectoryTests
     [Theory]
     [InlineData("config.yaml")]
     [InlineData("crew.yaml")]
-    public async Task PerEntity_directory_runs_end_to_end_and_fails_honestly_without_a_provider(string settingsFileName)
+    public async Task PerEntity_directory_runs_end_to_end_on_the_echo_provider(string settingsFileName)
     {
         using var scratch = new ScriptScratch();
         var dir = WritePerEntityCrew(scratch, settingsFileName);
@@ -116,8 +117,10 @@ public sealed class RunCommandDirectoryTests
             AllowExternalMounts = true,
         });
 
-        // No provider answers, so the crew fails and says so (exit 2); the banner pins the routing.
-        Assert.Equal(Program.ExitRuntimeError, exit);
+        // No Llm section: the echo provider answers, announced once on stderr, and the crew
+        // completes (exit 0); the banner pins the routing.
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains(RunnerHost.LlmNotConfiguredMessage, console.Stderr, StringComparison.Ordinal);
         // The one-shot YAML runner prints a "=== Crew Output ===" banner; the script path
         // never does. Asserting on it pins the routing via observable behavior.
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
@@ -152,7 +155,7 @@ public sealed class RunCommandDirectoryTests
             AllowExternalMounts = true,
         });
 
-        Assert.Equal(Program.ExitRuntimeError, exit);
+        Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
 
@@ -204,7 +207,7 @@ public sealed class RunCommandDirectoryTests
                 MountIds = [idB.ToString()],
             });
 
-            Assert.Equal(Program.ExitRuntimeError, exit);
+            Assert.Equal(Program.ExitOk, exit);
             Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
         }
     }
@@ -222,7 +225,7 @@ public sealed class RunCommandDirectoryTests
             AllowExternalMounts = true,
         });
 
-        Assert.Equal(Program.ExitRuntimeError, exit);
+        Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
     }
 
@@ -267,7 +270,7 @@ public sealed class RunCommandDirectoryTests
             Mounts = [$"{scratch.OutDir}:/output:rw"],
         });
 
-        Assert.Equal(Program.ExitRuntimeError, exit);
+        Assert.Equal(Program.ExitOk, exit);
         Assert.Contains("=== Crew Output ===", console.Stdout, StringComparison.Ordinal);
         Assert.Contains(settings, console.Stderr, StringComparison.Ordinal);
     }

@@ -71,11 +71,8 @@ internal static class CliUsage
         if (token.Contains('/', StringComparison.Ordinal) || token.Contains('\\', StringComparison.Ordinal))
             return true;
 
-        foreach (var suffix in CrewSuffixes)
-        {
-            if (token.EndsWith(suffix, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
+        if (CrewSuffixes.Any(suffix => token.EndsWith(suffix, StringComparison.OrdinalIgnoreCase)))
+            return true;
 
         // OUT-OF-SCOPE: probing a user-supplied crew path; the CLI entry point runs before any
         // VFS mount exists, and crews live wherever the user invokes us from.
@@ -110,13 +107,7 @@ internal static class CliUsage
     private static bool Matches(string[] tokens, string candidate)
     {
         ArgumentNullException.ThrowIfNull(candidate);
-        foreach (var token in tokens)
-        {
-            if (string.Equals(candidate, token, StringComparison.OrdinalIgnoreCase))
-                return true;
-        }
-
-        return false;
+        return tokens.Any(token => string.Equals(candidate, token, StringComparison.OrdinalIgnoreCase));
     }
 
     private static string ReadVersion()

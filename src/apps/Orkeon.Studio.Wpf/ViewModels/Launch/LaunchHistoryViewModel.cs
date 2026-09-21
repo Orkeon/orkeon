@@ -159,38 +159,49 @@ public sealed class LaunchHistoryEntryViewModel
                 : StringComparer.Ordinal);
         List<MountDefinition>? declared = null;
 
-        void Consider(MountDefinition? mount)
-        {
-            if (mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 }
-                && seen.Add(MountDefinition.NormalizeFolder(mount.PhysicalPath)))
-            {
-                folders.Add(mount.PhysicalPath);
-            }
-        }
-
         for (var i = 0; i < arguments.Count - 1; i++)
         {
             if (arguments[i] is "--mount" or "-m" or "-V")
             {
-                for (var j = i + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
-                    Consider(MountDefinition.TryParse(arguments[j], out var mount, out _) ? mount : null);
+                foreach (var value in OptionValues(arguments, i))
+                    AddWritable(ParseMount(value), seen, folders);
             }
             else if (arguments[i] == "--mount-id" && _declaredMounts is not null)
             {
-                declared ??= _declaredMounts()
-                    .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) ? mount : null)
-                    .OfType<MountDefinition>()
-                    .ToList();
-                for (var j = i + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
-                {
-                    if (Orkeon.Domain.Common.MountId.TryParse(arguments[j], out var id))
-                        Consider(declared.FirstOrDefault(entry => id.Equals(entry.Id)));
-                }
+                declared ??= _declaredMounts().Select(ParseMount).OfType<MountDefinition>().ToList();
+                foreach (var value in OptionValues(arguments, i))
+                    AddWritable(DeclaredById(declared, value), seen, folders);
             }
         }
 
         return folders;
     }
+
+    /// <summary>Adds the folder of a writable mount, once per normalized folder.</summary>
+    private static void AddWritable(MountDefinition? mount, HashSet<string> seen, List<string> folders)
+    {
+        if (mount is { Rights: MountRights.ReadWrite, PhysicalPath.Length: > 0 }
+            && seen.Add(MountDefinition.NormalizeFolder(mount.PhysicalPath)))
+        {
+            folders.Add(mount.PhysicalPath);
+        }
+    }
+
+    /// <summary>The values that follow the option at <paramref name="optionIndex"/>, up to the next option.</summary>
+    private static IEnumerable<string> OptionValues(IReadOnlyList<string> arguments, int optionIndex)
+    {
+        for (var j = optionIndex + 1; j < arguments.Count && !arguments[j].StartsWith('-'); j++)
+            yield return arguments[j];
+    }
+
+    private static MountDefinition? ParseMount(string mountString) =>
+        MountDefinition.TryParse(mountString, out var mount, out _) ? mount : null;
+
+    /// <summary>The declared entry whose id <paramref name="value"/> spells, or null.</summary>
+    private static MountDefinition? DeclaredById(List<MountDefinition> declared, string value) =>
+        Orkeon.Domain.Common.MountId.TryParse(value, out var id)
+            ? declared.FirstOrDefault(entry => id.Equals(entry.Id))
+            : null;
 
     private static string FormatDuration(TimeSpan duration)
     {

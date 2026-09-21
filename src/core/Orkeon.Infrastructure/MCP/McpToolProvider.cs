@@ -11,9 +11,7 @@ namespace Orkeon.Infrastructure.MCP;
 /// tools in the Orkeon tool registry.
 /// </summary>
 [Experimental("ORKEXP004", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
-[SuppressMessage("Design", "CA1063",
-    Justification = "The cleanup lives in DisposeAsync, which owns the disconnect sequence and the finalizer suppression; Dispose() is the synchronous bridge to it, and a Dispose(bool) split would duplicate that sequence for no native resource.")]
-public partial class McpToolProvider : IAsyncDisposable, IDisposable
+public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 {
     private readonly IToolRegistry _toolRegistry;
     private readonly ILogger _logger;

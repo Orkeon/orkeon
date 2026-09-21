@@ -20,16 +20,18 @@ public sealed class ImportAndTestScreensTests
         var probe = new FakeTargetProbe();
         probe.Files.Add("/shared/revue.yaml");
         string? imported = null;
-        var vm = new ImportTeamViewModel(
-            probe,
-            teamsRoot: "/teams",
-            scanSecrets: _ => ["revue.yaml"],
-            import: (string source, string root, out string? refusal) =>
+        var vm = new ImportTeamViewModel(new ImportTeamDependencies
+        {
+            TargetProbe = probe,
+            TeamsRoot = "/teams",
+            ScanSecrets = _ => ["revue.yaml"],
+            Import = (string source, string root, out string? refusal) =>
             {
                 imported = $"{root}:{source}";
                 refusal = null;
                 return "/teams/revue";
-            });
+            },
+        });
 
         vm.Target.SelectedPath = "/shared/revue.yaml";
         vm.Target.DetectCommand.Execute(null);
@@ -57,15 +59,17 @@ public sealed class ImportAndTestScreensTests
     {
         var probe = new FakeTargetProbe();
         probe.Files.Add("/shared/revue.yaml");
-        var vm = new ImportTeamViewModel(
-            probe,
-            teamsRoot: "/teams",
-            scanSecrets: _ => [],
-            import: (string _, string _, out string? refusal) =>
+        var vm = new ImportTeamViewModel(new ImportTeamDependencies
+        {
+            TargetProbe = probe,
+            TeamsRoot = "/teams",
+            ScanSecrets = _ => [],
+            Import = (string _, string _, out string? refusal) =>
             {
                 refusal = "'/shared/revue.yaml' holds no crew definition.";
                 return null;
-            });
+            },
+        });
         var landed = false;
         vm.TeamImported += (_, _) => landed = true;
 
@@ -81,15 +85,17 @@ public sealed class ImportAndTestScreensTests
     {
         var probe = new FakeTargetProbe();
         probe.Files.Add("/shared/revue.yaml");
-        var vm = new ImportTeamViewModel(
-            probe,
-            teamsRoot: "/teams",
-            scanSecrets: _ => [],
-            import: (string _, string _, out string? refusal) =>
+        var vm = new ImportTeamViewModel(new ImportTeamDependencies
+        {
+            TargetProbe = probe,
+            TeamsRoot = "/teams",
+            ScanSecrets = _ => [],
+            Import = (string _, string _, out string? refusal) =>
             {
                 refusal = null;
                 return null;
-            });
+            },
+        });
 
         vm.Target.Select("/shared/revue.yaml");
         vm.ImportCommand.Execute(null);
@@ -100,7 +106,7 @@ public sealed class ImportAndTestScreensTests
     [Fact]
     public void Nothing_recognized_means_nothing_importable()
     {
-        var vm = new ImportTeamViewModel(new FakeTargetProbe(), teamsRoot: "/teams");
+        var vm = new ImportTeamViewModel(new ImportTeamDependencies { TargetProbe = new FakeTargetProbe(), TeamsRoot = "/teams" });
 
         vm.Target.SelectedPath = "/nowhere/ghost.yaml";
         vm.Target.DetectCommand.Execute(null);
@@ -143,7 +149,7 @@ public sealed class ImportRecognitionReportTests
     public void A_recognized_candidate_yields_a_four_line_report()
     {
         var probe = new FakeTargetProbe().WithFile("/incoming/veille.yaml");
-        var import = new ImportTeamViewModel(probe, scanSecrets: _ => []);
+        var import = new ImportTeamViewModel(new ImportTeamDependencies { TargetProbe = probe, ScanSecrets = _ => [] });
 
         Assert.False(import.HasRecognitionReport);
 
@@ -176,12 +182,14 @@ public sealed class ImportRecognitionReportTests
             var declared = new List<string>();
             var saved = 0;
             var probe = new FakeTargetProbe().WithDirectory(source).WithDirectory(Path.Combine(source, "agents"));
-            var import = new ImportTeamViewModel(
-                probe,
-                scanSecrets: _ => [],
-                declaredMounts: () => declared,
-                declareMount: mount => declared.Add(mount.ToMountString()),
-                saveSettings: () => { saved++; return Task.FromResult(true); });
+            var import = new ImportTeamViewModel(new ImportTeamDependencies
+            {
+                TargetProbe = probe,
+                ScanSecrets = _ => [],
+                DeclaredMounts = () => declared,
+                DeclareMount = mount => declared.Add(mount.ToMountString()),
+                SaveSettings = () => { saved++; return Task.FromResult(true); },
+            });
 
             import.Target.Select(source);
 
@@ -206,7 +214,7 @@ public sealed class ImportRecognitionReportTests
     public void A_pasted_key_turns_the_secret_line_into_a_warning()
     {
         var probe = new FakeTargetProbe().WithFile("/incoming/veille.yaml");
-        var import = new ImportTeamViewModel(probe, scanSecrets: _ => ["crew.yaml"]);
+        var import = new ImportTeamViewModel(new ImportTeamDependencies { TargetProbe = probe, ScanSecrets = _ => ["crew.yaml"] });
 
         import.Target.Select("/incoming/veille.yaml");
 
@@ -233,7 +241,7 @@ public sealed class ImportRecognitionReportTests
             var probe = new FakeTargetProbe()
                 .WithDirectory(directory)
                 .WithDirectory(Path.Combine(directory, "agents"));
-            var import = new ImportTeamViewModel(probe, scanSecrets: _ => []);
+            var import = new ImportTeamViewModel(new ImportTeamDependencies { TargetProbe = probe, ScanSecrets = _ => [] });
 
             import.Target.Select(directory);
 

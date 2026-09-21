@@ -45,50 +45,85 @@ internal static partial class CrewHandoffDetector
         {
             var c = source[i];
 
-            if (c == '/' && i + 1 < source.Length && source[i + 1] == '/')
+            if (c == '/' && Peek(source, i + 1) == '/')
+                i = SkipLineComment(source, i, sb);
+            else if (c == '/' && Peek(source, i + 1) == '*')
+                i = SkipBlockComment(source, i, sb);
+            else if (c is '"' or '\'' or '`')
+                i = SkipLiteral(source, i, sb);
+            else
             {
-                while (i < source.Length && source[i] != '\n') { sb.Append(' '); i++; }
-                continue;
-            }
-
-            if (c == '/' && i + 1 < source.Length && source[i + 1] == '*')
-            {
-                sb.Append("  ");
-                i += 2;
-                while (i < source.Length && !(source[i] == '*' && i + 1 < source.Length && source[i + 1] == '/'))
-                {
-                    sb.Append(source[i] == '\n' ? '\n' : ' ');
-                    i++;
-                }
-                if (i < source.Length) { sb.Append("  "); i += 2; }
-                continue;
-            }
-
-            if (c is '"' or '\'' or '`')
-            {
-                var quote = c;
-                sb.Append(' ');
+                sb.Append(c);
                 i++;
-                while (i < source.Length)
-                {
-                    if (source[i] == '\\' && i + 1 < source.Length)
-                    {
-                        sb.Append("  ");
-                        i += 2;
-                        continue;
-                    }
-                    if (source[i] == quote) { sb.Append(' '); i++; break; }
-                    // A template literal spans lines; keep them so line geometry survives.
-                    sb.Append(source[i] == '\n' ? '\n' : ' ');
-                    i++;
-                }
-                continue;
             }
-
-            sb.Append(c);
-            i++;
         }
 
         return sb.ToString();
+    }
+
+    /// <summary>The character at <paramref name="index"/>, or <c>'\0'</c> past the end.</summary>
+    private static char Peek(string source, int index) => index < source.Length ? source[index] : '\0';
+
+    /// <summary>Blanks a <c>//</c> comment up to (not including) its newline; returns the index after it.</summary>
+    private static int SkipLineComment(string source, int i, StringBuilder sb)
+    {
+        while (i < source.Length && source[i] != '\n')
+        {
+            sb.Append(' ');
+            i++;
+        }
+
+        return i;
+    }
+
+    /// <summary>Blanks a <c>/* … */</c> comment, newlines kept; returns the index after it.</summary>
+    private static int SkipBlockComment(string source, int i, StringBuilder sb)
+    {
+        sb.Append("  ");
+        i += 2;
+        while (i < source.Length && !(source[i] == '*' && Peek(source, i + 1) == '/'))
+        {
+            sb.Append(source[i] == '\n' ? '\n' : ' ');
+            i++;
+        }
+
+        if (i < source.Length)
+        {
+            sb.Append("  ");
+            i += 2;
+        }
+
+        return i;
+    }
+
+    /// <summary>
+    /// Blanks a string or template literal, its escapes included; a template literal spans
+    /// lines, which are kept so line geometry survives. Returns the index after the literal.
+    /// </summary>
+    private static int SkipLiteral(string source, int i, StringBuilder sb)
+    {
+        var quote = source[i];
+        sb.Append(' ');
+        i++;
+        while (i < source.Length)
+        {
+            if (source[i] == '\\' && i + 1 < source.Length)
+            {
+                sb.Append("  ");
+                i += 2;
+                continue;
+            }
+
+            if (source[i] == quote)
+            {
+                sb.Append(' ');
+                return i + 1;
+            }
+
+            sb.Append(source[i] == '\n' ? '\n' : ' ');
+            i++;
+        }
+
+        return i;
     }
 }
