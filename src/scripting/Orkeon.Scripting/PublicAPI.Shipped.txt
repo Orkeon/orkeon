@@ -15,9 +15,11 @@ Orkeon.Scripting.Bindings.JsLlmNamespace.azureOpenai.get -> System.Func<Jint.Nat
 Orkeon.Scripting.Bindings.JsLlmNamespace.default.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
 Orkeon.Scripting.Bindings.JsLlmNamespace.default_.get -> Orkeon.Scripting.Runtime.JsLlmConfig!
 Orkeon.Scripting.Bindings.JsLlmNamespace.grok.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.mammouth.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.JsLlmNamespace.minimax.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.JsLlmNamespace.ollama.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.JsLlmNamespace.openai.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
+Orkeon.Scripting.Bindings.JsLlmNamespace.openrouter.get -> System.Func<Jint.Native.JsValue?, Orkeon.Scripting.Runtime.JsLlmConfig!>!
 Orkeon.Scripting.Bindings.LlmNamespaceBinding
 Orkeon.Scripting.Bindings.RagNamespaceBinding
 Orkeon.Scripting.Bindings.RagScriptingBackend
@@ -488,11 +490,11 @@ const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeUnknown = "unknown" -> st
 const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeValidation = "validation" -> string!
 const Orkeon.Scripting.Orchestration.GraphSentinels.End = "__END__" -> string!
 const Orkeon.Scripting.Orchestration.GraphSentinels.Start = "__START__" -> string!
-const Orkeon.Scripting.Telemetry.ScriptingActivitySource.AgentRunSpan = "agent.run" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.AgentRunSpan = "invoke_agent" -> string!
 const Orkeon.Scripting.Telemetry.ScriptingActivitySource.CrewRunSpan = "crew.run" -> string!
-const Orkeon.Scripting.Telemetry.ScriptingActivitySource.LlmCallSpan = "llm.call" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.LlmCallSpan = "chat" -> string!
 const Orkeon.Scripting.Telemetry.ScriptingActivitySource.Name = "Orkeon.Scripting" -> string!
-const Orkeon.Scripting.Telemetry.ScriptingActivitySource.ToolCallSpan = "tool.call" -> string!
+const Orkeon.Scripting.Telemetry.ScriptingActivitySource.ToolCallSpan = "execute_tool" -> string!
 const Orkeon.Scripting.Versioning.VersionDirectiveParser.DefaultVersion = "1.0" -> string!
 override Orkeon.Scripting.Bindings.RagScriptingBackend.Equals(object? obj) -> bool
 override Orkeon.Scripting.Bindings.RagScriptingBackend.GetHashCode() -> int

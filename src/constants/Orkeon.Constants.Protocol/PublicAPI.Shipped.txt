@@ -11,6 +11,7 @@ const Orkeon.Constants.Protocol.RunEventKinds.LlmDelta = "llm.delta" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.RunFinished = "run.finished" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.RunStarted = "run.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.TaskCompleted = "task.completed" -> string!
+const Orkeon.Constants.Protocol.RunEventKinds.TaskStarted = "task.started" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.ToolCalled = "tool.called" -> string!
 const Orkeon.Constants.Protocol.RunEventKinds.ToolReturned = "tool.returned" -> string!
 static Orkeon.Constants.Protocol.RunEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!

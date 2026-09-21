@@ -2208,6 +2208,7 @@ Orkeon.Application.Crew.CrewExecutionSnapshot.FailureReason.get -> string?
 Orkeon.Application.Crew.CrewExecutionSnapshot.FailureReason.init -> void
 Orkeon.Application.Crew.CrewExecutionSnapshot.OutputFiles.get -> System.Collections.Immutable.ImmutableList<Orkeon.Application.Crew.OutputFileInfo!>!
 Orkeon.Application.Crew.CrewExecutionSnapshot.OutputFiles.init -> void
+Orkeon.Application.Crew.CrewExecutionSnapshot.SkippedTaskCount.get -> int
 Orkeon.Application.Crew.CrewExecutionSnapshot.StartedAt.get -> System.DateTimeOffset
 Orkeon.Application.Crew.CrewExecutionSnapshot.StartedAt.init -> void
 Orkeon.Application.Crew.CrewExecutionSnapshot.Status.get -> Orkeon.Application.Crew.CrewHookStatus
@@ -2480,6 +2481,7 @@ Orkeon.Application.Crew.ICrewExecutionHook
 Orkeon.Application.Crew.ICrewExecutionHook.OnCrewCompletedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Application.Crew.ICrewExecutionHook.OnCrewFailedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot! isPartial, System.Exception? ex, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Application.Crew.ICrewExecutionHook.OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Application.Crew.ICrewExecutionHook.OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Application.Crew.OutputFileInfo
 Orkeon.Application.Crew.OutputFileInfo.<Clone>$() -> Orkeon.Application.Crew.OutputFileInfo!
 Orkeon.Application.Crew.OutputFileInfo.Equals(Orkeon.Application.Crew.OutputFileInfo? other) -> bool
@@ -2541,6 +2543,10 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.LlmExchangeCount.get -> int
 Orkeon.Application.Crew.TaskExecutionSnapshot.LlmExchangeCount.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.RewrittenFqns.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>!
 Orkeon.Application.Crew.TaskExecutionSnapshot.RewrittenFqns.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.SkipReason.get -> string?
+Orkeon.Application.Crew.TaskExecutionSnapshot.SkipReason.init -> void
+Orkeon.Application.Crew.TaskExecutionSnapshot.Skipped.get -> bool
+Orkeon.Application.Crew.TaskExecutionSnapshot.Skipped.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.Success.get -> bool
 Orkeon.Application.Crew.TaskExecutionSnapshot.Success.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.TaskExecutionSnapshot() -> void
@@ -2552,6 +2558,16 @@ Orkeon.Application.Crew.TaskExecutionSnapshot.ToolCallCount.get -> int
 Orkeon.Application.Crew.TaskExecutionSnapshot.ToolCallCount.init -> void
 Orkeon.Application.Crew.TaskExecutionSnapshot.UnknownFqns.get -> System.Collections.Immutable.ImmutableArray<string!>
 Orkeon.Application.Crew.TaskExecutionSnapshot.UnknownFqns.init -> void
+Orkeon.Application.Crew.TaskStartSnapshot
+Orkeon.Application.Crew.TaskStartSnapshot.<Clone>$() -> Orkeon.Application.Crew.TaskStartSnapshot!
+Orkeon.Application.Crew.TaskStartSnapshot.AgentRole.get -> string!
+Orkeon.Application.Crew.TaskStartSnapshot.AgentRole.init -> void
+Orkeon.Application.Crew.TaskStartSnapshot.Equals(Orkeon.Application.Crew.TaskStartSnapshot? other) -> bool
+Orkeon.Application.Crew.TaskStartSnapshot.StartedAt.get -> System.DateTimeOffset
+Orkeon.Application.Crew.TaskStartSnapshot.StartedAt.init -> void
+Orkeon.Application.Crew.TaskStartSnapshot.TaskId.get -> string!
+Orkeon.Application.Crew.TaskStartSnapshot.TaskId.init -> void
+Orkeon.Application.Crew.TaskStartSnapshot.TaskStartSnapshot() -> void
 Orkeon.Application.DependencyInjection.KickoffHookExtensions
 Orkeon.Application.DependencyInjection.ServiceCollectionExtensions
 Orkeon.Application.Evaluation.BenchmarkCaseResult
@@ -4576,6 +4592,8 @@ Orkeon.Application.Interfaces.Services.AgentExitReason.BudgetExhausted = 4 -> Or
 Orkeon.Application.Interfaces.Services.AgentExitReason.Cancelled = 3 -> Orkeon.Application.Interfaces.Services.AgentExitReason
 Orkeon.Application.Interfaces.Services.AgentExitReason.CircuitBreakerTripped = 2 -> Orkeon.Application.Interfaces.Services.AgentExitReason
 Orkeon.Application.Interfaces.Services.AgentExitReason.Completed = 0 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Interfaces.Services.AgentExitReason.EmptyFinalAnswer = 5 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Interfaces.Services.AgentExitReason.LlmCallFailed = 6 -> Orkeon.Application.Interfaces.Services.AgentExitReason
 Orkeon.Application.Interfaces.Services.AgentExitReason.MaxIterationsReached = 1 -> Orkeon.Application.Interfaces.Services.AgentExitReason
 Orkeon.Application.Interfaces.Services.AgentLifecycleState
 Orkeon.Application.Interfaces.Services.AgentLifecycleState.Killed = 4 -> Orkeon.Application.Interfaces.Services.AgentLifecycleState
@@ -4685,6 +4703,8 @@ Orkeon.Application.Interfaces.Services.CrewOutput.CrewOutput(string! FinalOutput
 Orkeon.Application.Interfaces.Services.CrewOutput.Deconstruct(out string! FinalOutput, out System.Collections.Generic.IReadOnlyList<Orkeon.Application.Execution.TaskOutput!>! TaskOutputs, out System.TimeSpan Duration, out Orkeon.Application.Interfaces.Services.TokenUsage? TokensUsed) -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.Duration.get -> System.TimeSpan
 Orkeon.Application.Interfaces.Services.CrewOutput.Duration.init -> void
+Orkeon.Application.Interfaces.Services.CrewOutput.Error.get -> string?
+Orkeon.Application.Interfaces.Services.CrewOutput.Error.init -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.FinalOutput.get -> string!
 Orkeon.Application.Interfaces.Services.CrewOutput.FinalOutput.init -> void
 Orkeon.Application.Interfaces.Services.CrewOutput.Succeeded.get -> bool
@@ -6035,6 +6055,7 @@ Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.GetTaskQuery(Orkeon.Applica
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.GetTaskQuery(System.Guid Id) -> void
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Id.get -> System.Guid
 Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.Id.init -> void
+Orkeon.Application.Telemetry.OrkeonActivitySources
 Orkeon.Application.Training.AchievementCriteriaData
 Orkeon.Application.Training.AchievementCriteriaData.Builder
 Orkeon.Application.Training.AchievementCriteriaData.Builder.Add(string! key, object! value) -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
@@ -6515,6 +6536,7 @@ const Orkeon.Application.Constants.Resilience.RetryDefaults.QuotaExceededDelayMi
 const Orkeon.Application.Constants.Resilience.RetryDefaults.RateLimitDelayMinutes = 1 -> int
 const Orkeon.Application.Constants.Resilience.RetryDefaults.TimeoutRetryDelaySeconds = 5 -> int
 const Orkeon.Application.EventHub.Message.NoDeclaredSchemaId = "_none" -> string!
+const Orkeon.Application.Telemetry.OrkeonActivitySources.Version = "1.0.0" -> string!
 override Orkeon.Application.Agent.AgentWorkloadInfo.Equals(object? obj) -> bool
 override Orkeon.Application.Agent.AgentWorkloadInfo.GetHashCode() -> int
 override Orkeon.Application.Agent.AgentWorkloadInfo.ToString() -> string!
@@ -6853,6 +6875,9 @@ override Orkeon.Application.Crew.TaskAmbiguousFqn.ToString() -> string!
 override Orkeon.Application.Crew.TaskExecutionSnapshot.Equals(object? obj) -> bool
 override Orkeon.Application.Crew.TaskExecutionSnapshot.GetHashCode() -> int
 override Orkeon.Application.Crew.TaskExecutionSnapshot.ToString() -> string!
+override Orkeon.Application.Crew.TaskStartSnapshot.Equals(object? obj) -> bool
+override Orkeon.Application.Crew.TaskStartSnapshot.GetHashCode() -> int
+override Orkeon.Application.Crew.TaskStartSnapshot.ToString() -> string!
 override Orkeon.Application.Evaluation.BenchmarkCaseResult.Equals(object? obj) -> bool
 override Orkeon.Application.Evaluation.BenchmarkCaseResult.GetHashCode() -> int
 override Orkeon.Application.Evaluation.BenchmarkCaseResult.ToString() -> string!
@@ -7666,6 +7691,8 @@ static Orkeon.Application.Crew.TaskAmbiguousFqn.operator !=(Orkeon.Application.C
 static Orkeon.Application.Crew.TaskAmbiguousFqn.operator ==(Orkeon.Application.Crew.TaskAmbiguousFqn? left, Orkeon.Application.Crew.TaskAmbiguousFqn? right) -> bool
 static Orkeon.Application.Crew.TaskExecutionSnapshot.operator !=(Orkeon.Application.Crew.TaskExecutionSnapshot? left, Orkeon.Application.Crew.TaskExecutionSnapshot? right) -> bool
 static Orkeon.Application.Crew.TaskExecutionSnapshot.operator ==(Orkeon.Application.Crew.TaskExecutionSnapshot? left, Orkeon.Application.Crew.TaskExecutionSnapshot? right) -> bool
+static Orkeon.Application.Crew.TaskStartSnapshot.operator !=(Orkeon.Application.Crew.TaskStartSnapshot? left, Orkeon.Application.Crew.TaskStartSnapshot? right) -> bool
+static Orkeon.Application.Crew.TaskStartSnapshot.operator ==(Orkeon.Application.Crew.TaskStartSnapshot? left, Orkeon.Application.Crew.TaskStartSnapshot? right) -> bool
 static Orkeon.Application.DependencyInjection.KickoffHookExtensions.AddAfterKickoffHook(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Application.Callback.AfterKickoffHook! hook) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Application.DependencyInjection.KickoffHookExtensions.AddBeforeKickoffHook(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Orkeon.Application.Callback.BeforeKickoffHook! hook) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Application.DependencyInjection.KickoffHookExtensions.AddOrkeonKickoffHooks(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
@@ -8080,6 +8107,7 @@ static Orkeon.Application.Task.DTOs.UpdateTaskRequest.operator !=(Orkeon.Applica
 static Orkeon.Application.Task.DTOs.UpdateTaskRequest.operator ==(Orkeon.Application.Task.DTOs.UpdateTaskRequest? left, Orkeon.Application.Task.DTOs.UpdateTaskRequest? right) -> bool
 static Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.operator !=(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? left, Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? right) -> bool
 static Orkeon.Application.Task.Queries.GetTask.GetTaskQuery.operator ==(Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? left, Orkeon.Application.Task.Queries.GetTask.GetTaskQuery? right) -> bool
+static Orkeon.Application.Telemetry.OrkeonActivitySources.ProviderName(string? providerName) -> string!
 static Orkeon.Application.Training.AchievementCriteriaData.CreateBuilder() -> Orkeon.Application.Training.AchievementCriteriaData.Builder!
 static Orkeon.Application.Training.AchievementCriteriaData.Empty.get -> Orkeon.Application.Training.AchievementCriteriaData!
 static Orkeon.Application.Training.AnalyticsCustomFilters.CreateBuilder() -> Orkeon.Application.Training.AnalyticsCustomFilters.Builder!
@@ -8141,6 +8169,14 @@ static readonly Orkeon.Application.Context.NullMemoryScope.Instance -> Orkeon.Ap
 static readonly Orkeon.Application.EventHub.ForeverWaitTimeout.Instance -> Orkeon.Application.EventHub.ForeverWaitTimeout!
 static readonly Orkeon.Application.Interfaces.Ports.DurationStatistics.Zero -> Orkeon.Application.Interfaces.Ports.DurationStatistics!
 static readonly Orkeon.Application.Interfaces.Services.CallbackHandlers.None -> Orkeon.Application.Interfaces.Services.CallbackHandlers!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Agent -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.AllNames -> string![]!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Crew -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.EventHub -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Llm -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Memory -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Task -> System.Diagnostics.ActivitySource!
+static readonly Orkeon.Application.Telemetry.OrkeonActivitySources.Tool -> System.Diagnostics.ActivitySource!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.<Clone>$() -> Orkeon.Application.Agent.AgentWorkloadInfo!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.EqualityContract.get -> System.Type!
 virtual Orkeon.Application.Agent.AgentWorkloadInfo.Equals(Orkeon.Application.Agent.AgentWorkloadInfo? other) -> bool

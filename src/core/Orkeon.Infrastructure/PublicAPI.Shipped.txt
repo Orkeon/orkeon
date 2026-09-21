@@ -216,6 +216,8 @@ Orkeon.Infrastructure.Configuration.CrewMappingSettings.Memory.get -> bool?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Memory.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.MemoryProvider.get -> string?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.MemoryProvider.init -> void
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewMappingSettings.Mounts.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Name.get -> string?
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Name.init -> void
 Orkeon.Infrastructure.Configuration.CrewMappingSettings.Planning.get -> bool?
@@ -244,6 +246,8 @@ Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Memory.get -> bool?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Memory.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.MemoryProvider.get -> string?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.MemoryProvider.set -> void
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Mounts.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Name.get -> string?
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Name.set -> void
 Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.Planning.get -> bool?
@@ -274,6 +278,8 @@ Orkeon.Infrastructure.Configuration.CrewYamlConfig.Memory.get -> bool?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Memory.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.MemoryProvider.get -> string?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.MemoryProvider.set -> void
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Mounts.get -> System.Collections.ObjectModel.Collection<string!>?
+Orkeon.Infrastructure.Configuration.CrewYamlConfig.Mounts.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Name.get -> string?
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Name.set -> void
 Orkeon.Infrastructure.Configuration.CrewYamlConfig.Planning.get -> bool?
@@ -640,6 +646,7 @@ Orkeon.Infrastructure.Crew.AutoSummaryWriter.AutoSummaryWriter(Orkeon.Domain.Fil
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnCrewCompletedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnCrewFailedAsync(Orkeon.Application.Crew.CrewExecutionSnapshot! isPartial, System.Exception? ex, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskCompletedAsync(Orkeon.Application.Crew.TaskExecutionSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Crew.AutoSummaryWriter.OnTaskStartedAsync(Orkeon.Application.Crew.TaskStartSnapshot! snapshot, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.Crew.LlmBasedManager
 Orkeon.Infrastructure.Crew.LlmBasedManager.AssignTaskAsync(Orkeon.Domain.Task.CrewTask! task, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Agent.Agent!>! availableAgents, Orkeon.Application.Context.SimpleExecutionContext! context) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.TaskAssignment!>!
 Orkeon.Infrastructure.Crew.LlmBasedManager.LlmBasedManager(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Crew.LlmBasedManager!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider) -> void
@@ -1222,6 +1229,7 @@ Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatiblePro
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatibleProviderBase(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatibleProviderBase(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
 Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.OpenAICompatibleProviderBase(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryDropCatalogueOutputCap(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
 Orkeon.Infrastructure.LLMs.Converters.ContentConverter
 Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider
 Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider.DeepSeekLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.DeepSeekLlmProvider!>? logger = null) -> void
@@ -1308,6 +1316,10 @@ Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder.Build() -> Orkeon.Infrast
 Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder.Builder() -> void
 Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Get<T>(string! key) -> T?
 Orkeon.Infrastructure.LLMs.LlmResponseMetadata.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.MammouthLlmProvider.MammouthLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MammouthLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider
 Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.MiniMaxLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.MiniMaxLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider!>? logger = null) -> void
@@ -1324,7 +1336,7 @@ Orkeon.Infrastructure.LLMs.OllamaLlmProvider.OllamaLlmProvider(Orkeon.Domain.Sha
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.Add(string! key, object! value) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
-Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
+Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddNumPredict(int? maxTokens) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddSeed(int seed) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTemperature(double temperature) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
 Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder.AddTopK(int topK) -> Orkeon.Infrastructure.LLMs.OllamaRequestOptions.Builder!
@@ -1352,6 +1364,10 @@ Orkeon.Infrastructure.LLMs.OpenAIProvider
 Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.OpenAIProvider.OpenAIProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenAIProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
+Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.OpenRouterLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>? resiliencePolicy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.QwenLlmProvider
 Orkeon.Infrastructure.LLMs.QwenLlmProvider.QwenLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.QwenLlmProvider!>? logger = null) -> void
 Orkeon.Infrastructure.LLMs.QwenLlmProvider.QwenLlmProvider(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.LLMs.QwenLlmProvider!>? logger = null) -> void
@@ -3194,6 +3210,7 @@ Orkeon.Infrastructure.Training.TrainingOrchestrator.TrainingOrchestrator(Orkeon.
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.IMcpTransport! transport, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.ConnectServerAsync(string! serverId, Orkeon.Infrastructure.MCP.McpServerConfig! config, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.DisconnectServerAsync(string! serverId) -> System.Threading.Tasks.Task!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.Dispose() -> void
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.DisposeAsync() -> System.Threading.Tasks.ValueTask
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.GetServerStatuses() -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.MCP.McpServerStatus!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpToolProvider.McpToolProvider(Orkeon.Domain.Tools.IToolRegistry! toolRegistry, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
@@ -3277,6 +3294,10 @@ const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.AzureApiKeyHeader = "api-
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.BearerPrefix = "Bearer " -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.DefaultUserAgent = "Orkeon/1.0 (+https://github.com/Orkeon/orkeon)" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.JsonContentType = "application/json" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterReferer = "https://github.com/Orkeon/orkeon" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterRefererHeader = "HTTP-Referer" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterTitle = "Orkeon" -> string!
+const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.OpenRouterTitleHeader = "X-OpenRouter-Title" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.SseContentType = "text/event-stream" -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.SseDataPrefix = "data: " -> string!
 const Orkeon.Infrastructure.Constants.Llm.HttpDefaults.SseDoneMarker = "[DONE]" -> string!
@@ -3287,10 +3308,12 @@ const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Gemini = "https://generat
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Grok = "https://api.x.ai/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.HuggingFace = "https://router.huggingface.co/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Kimi = "https://api.moonshot.ai/v1" -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Mammouth = "https://api.mammouth.ai/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.MiniMax = "https://api.minimax.io/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Mistral = "https://api.mistral.ai/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.OllamaDefault = "http://localhost:11434" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.OpenAI = "https://api.openai.com/v1" -> string!
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.OpenRouter = "https://openrouter.ai/api/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Qwen = "https://dashscope.aliyuncs.com/compatible-mode/v1" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.RedisDefault = "localhost:6379" -> string!
 const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.Together = "https://api.together.xyz/v1" -> string!
@@ -3340,6 +3363,7 @@ const Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbOptions.DefaultDatabase = "d
 const Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbOptions.DefaultTenant = "default_tenant" -> string!
 const Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.SessionNamespace = "crew-exec:" -> string!
 const Orkeon.Infrastructure.Orchestration.CrewExecutionStateMapper.StateDocumentKey = "__crew_execution_state__" -> string!
+const Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.InitialContextVariable = "initial_context" -> string!
 const Orkeon.Infrastructure.Security.Encryption.KeyRotationDefaults.DefaultBatchSize = 100 -> int
 const Orkeon.Infrastructure.Security.Encryption.KeyRotationDefaults.KeyVersionProperty = "orkeon-key-version" -> string!
 const Orkeon.Infrastructure.Security.Encryption.KeyRotationDefaults.PhaseCommitting = "committing" -> string!
@@ -3352,7 +3376,7 @@ const Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.PrincipalKey = "
 const Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.TokenKey = "auth_token" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentId = "orkeon.agent.id" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentIteration = "orkeon.agent.iteration" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentRole = "orkeon.agent.role" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentRole = "gen_ai.agent.name" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.AgentType = "orkeon.agent.type" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.CrewAgentCount = "orkeon.crew.agent_count" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.CrewId = "orkeon.crew.id" -> string!
@@ -3360,12 +3384,12 @@ const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.CrewName = "orkeon.cr
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.CrewProcess = "orkeon.crew.process" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.CrewTaskCount = "orkeon.crew.task_count" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ErrorMessage = "orkeon.error.message" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ErrorType = "orkeon.error.type" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmCompletionTokens = "orkeon.llm.completion_tokens" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ErrorType = "error.type" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmCompletionTokens = "gen_ai.usage.output_tokens" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmCost = "orkeon.llm.cost_usd" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel = "orkeon.llm.model" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmPromptTokens = "orkeon.llm.prompt_tokens" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider = "orkeon.llm.provider" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmModel = "gen_ai.request.model" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmPromptTokens = "gen_ai.usage.input_tokens" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmProvider = "gen_ai.provider.name" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmSuccess = "orkeon.llm.success" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.LlmTotalTokens = "orkeon.llm.total_tokens" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.MemoryItemCount = "orkeon.memory.item_count" -> string!
@@ -3378,7 +3402,7 @@ const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.TaskStatus = "orkeon.
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.TaskSuccess = "orkeon.task.success" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolCategory = "orkeon.tool.category" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolError = "orkeon.tool.error" -> string!
-const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "orkeon.tool.name" -> string!
+const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolName = "gen_ai.tool.name" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnosticTags.ToolSuccess = "orkeon.tool.success" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ServiceName = "Orkeon" -> string!
 const Orkeon.Infrastructure.Telemetry.OrkeonDiagnostics.ServiceVersion = "1.0.0" -> string!
@@ -3521,7 +3545,12 @@ override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DefaultBaseUrl.get -> System
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.DefaultModel.get -> string!
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.KimiLlmProvider.ProviderDisplayName.get -> string!
-override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+override Orkeon.Infrastructure.LLMs.KimiLlmProvider.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.MammouthLlmProvider.ProviderDisplayName.get -> string!
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.MiniMaxLlmProvider.DefaultModel.get -> string!
@@ -3550,12 +3579,22 @@ override Orkeon.Infrastructure.LLMs.OpenAIProvider.DefaultModel.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.MaxTokensFieldName.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.OpenAIProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ConfigureHttpClient(System.Net.Http.HttpClient! client, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.DefaultBaseUrl.get -> System.Uri!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.DefaultModel.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.Name.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.ReasoningFieldName.get -> string!
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.DefaultModel.get -> string!
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.Name.get -> string!
 override Orkeon.Infrastructure.LLMs.QwenLlmProvider.ProviderDisplayName.get -> string!
+override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.ApplyProviderSpecificOptions(System.Collections.Generic.Dictionary<string!, object!>! payload, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> void
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.DefaultBaseUrl.get -> System.Uri!
 override Orkeon.Infrastructure.LLMs.TogetherAiLlmProvider.DefaultModel.get -> string!
@@ -3881,12 +3920,15 @@ static Orkeon.Infrastructure.Flows.Visualization.GraphEdge.operator ==(Orkeon.In
 static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator !=(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
 static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator ==(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
 static Orkeon.Infrastructure.HumanInput.ConsoleHumanInputProvider.RequestInputAsync(Orkeon.Domain.HumanInput.ValueObjects.HumanInputRequest! request, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<string!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DescribeCallFailure(string! providerDisplayName, System.Exception! exception, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> string!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.NotConfiguredForStreaming(string! providerDisplayName) -> System.Net.Http.HttpRequestException!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadNdjsonStreamAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadSseStreamAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.ReadStreamLinesAsync(System.Net.Http.HttpResponseMessage! response, System.Threading.CancellationToken cancellationToken) -> System.Collections.Generic.IAsyncEnumerable<string!>!
 static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.StreamingRejectionAsync(System.Net.Http.HttpResponseMessage! response, string! providerDisplayName, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Net.Http.HttpRequestException!>!
+static Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.TimeoutFailureMessage(string! providerDisplayName, int timeoutSeconds) -> string!
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractReasoningContent(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
+static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractReasoningContent(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata, string! fieldName) -> void
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractStandardUsageMetadata(System.Text.Json.JsonElement root, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 static Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractSystemMessage(Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> string?
 static Orkeon.Infrastructure.LLMs.Converters.ContentConverter.FromAIContents(System.Collections.Generic.IEnumerable<Microsoft.Extensions.AI.AIContent!>! contents) -> Orkeon.Domain.SharedKernel.ValueObjects.Content.MultiModalContent!
@@ -3954,6 +3996,7 @@ static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetLlmApiPolicy(Micro
 static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetRedisRetryPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 3) -> Polly.IAsyncPolicy!
 static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetRetryPolicy(Microsoft.Extensions.Logging.ILogger? logger = null, int maxRetryAttempts = 3) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
 static Orkeon.Infrastructure.Resilience.ResiliencePolicies.GetTimeoutPolicy(System.TimeSpan timeout = default(System.TimeSpan), Microsoft.Extensions.Logging.ILogger? logger = null) -> Polly.IAsyncPolicy<System.Net.Http.HttpResponseMessage!>!
+static Orkeon.Infrastructure.Resilience.ResiliencePolicies.IsHttpClientTimeout(System.Exception? exception) -> bool
 static Orkeon.Infrastructure.Resilience.ResiliencePolicies.LlmRetryDelay(int retryAttempt, System.TimeSpan baseDelay) -> System.TimeSpan
 static Orkeon.Infrastructure.Sandbox.HostProcessRunner.GenerateProgramCs(string! userCode) -> string!
 static Orkeon.Infrastructure.Security.Auth.AzureAdOptions.operator !=(Orkeon.Infrastructure.Security.Auth.AzureAdOptions? left, Orkeon.Infrastructure.Security.Auth.AzureAdOptions? right) -> bool
@@ -4062,9 +4105,10 @@ virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.EnrichAssis
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ExtractResponseMetadata(System.Text.Json.JsonDocument! doc, Orkeon.Infrastructure.LLMs.LlmResponseMetadata.Builder! metadata) -> void
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.MaxTokensFieldName.get -> string!
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ParseSuccessResponse(string! responseJson, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! config) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ReasoningFieldName.get -> string!
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.SplitReasoningFromContent(string! content) -> (string! Content, string? Reasoning)
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.SupportsVisionContent.get -> bool
-virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody) -> bool
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.TryAdaptRejectedPayload(System.Collections.Generic.Dictionary<string!, object!>! payload, System.Net.HttpStatusCode statusCode, string! errorBody, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig! effectiveConfig) -> bool
 virtual Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.InitializeAsync(Orkeon.Domain.Memory.MemoryProviderConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 virtual Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.ValidateConfiguration() -> void
 virtual Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbMemoryProvider.Dispose(bool disposing) -> void

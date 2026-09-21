@@ -1004,6 +1004,8 @@ Orkeon.Domain.Common.MemoryItemId
 Orkeon.Domain.Common.MemoryItemId.MemoryItemId() -> void
 Orkeon.Domain.Common.MemoryStoreId
 Orkeon.Domain.Common.MemoryStoreId.MemoryStoreId() -> void
+Orkeon.Domain.Common.MountId
+Orkeon.Domain.Common.MountId.MountId() -> void
 Orkeon.Domain.Common.PlanStepId
 Orkeon.Domain.Common.PlanStepId.PlanStepId() -> void
 Orkeon.Domain.Common.ProcessId
@@ -1261,6 +1263,8 @@ Orkeon.Domain.Configuration.CrewConfiguration.MemoryProvider.get -> string?
 Orkeon.Domain.Configuration.CrewConfiguration.MemoryProvider.init -> void
 Orkeon.Domain.Configuration.CrewConfiguration.Metadata.get -> System.Collections.Generic.Dictionary<string!, object!>!
 Orkeon.Domain.Configuration.CrewConfiguration.Metadata.init -> void
+Orkeon.Domain.Configuration.CrewConfiguration.Mounts.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.MountReference!>?
+Orkeon.Domain.Configuration.CrewConfiguration.Mounts.init -> void
 Orkeon.Domain.Configuration.CrewConfiguration.Name.get -> string!
 Orkeon.Domain.Configuration.CrewConfiguration.Name.init -> void
 Orkeon.Domain.Configuration.CrewConfiguration.Planning.get -> bool
@@ -2320,9 +2324,11 @@ Orkeon.Domain.FileSystem.FileSystemMount.<Clone>$() -> Orkeon.Domain.FileSystem.
 Orkeon.Domain.FileSystem.FileSystemMount.BasePath.get -> string!
 Orkeon.Domain.FileSystem.FileSystemMount.DefaultRights.get -> Orkeon.Domain.FileSystem.FileAccessRights
 Orkeon.Domain.FileSystem.FileSystemMount.Equals(Orkeon.Domain.FileSystem.FileSystemMount? other) -> bool
-Orkeon.Domain.FileSystem.FileSystemMount.FileSystemMount(string! basePath, string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights defaultRights, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.SubPathOverride!>? overrides = null, Orkeon.Domain.FileSystem.MountVisibility visibility = Orkeon.Domain.FileSystem.MountVisibility.AgentFacing) -> void
+Orkeon.Domain.FileSystem.FileSystemMount.FileSystemMount(string! basePath, string! virtualPath, Orkeon.Domain.FileSystem.FileAccessRights defaultRights, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.SubPathOverride!>? overrides = null, Orkeon.Domain.FileSystem.MountVisibility visibility = Orkeon.Domain.FileSystem.MountVisibility.AgentFacing, Orkeon.Domain.Common.MountId? id = null) -> void
+Orkeon.Domain.FileSystem.FileSystemMount.Id.get -> Orkeon.Domain.Common.MountId?
 Orkeon.Domain.FileSystem.FileSystemMount.Overrides.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.SubPathOverride!>!
 Orkeon.Domain.FileSystem.FileSystemMount.ResolveRights(string! relativePath) -> Orkeon.Domain.FileSystem.FileAccessRights
+Orkeon.Domain.FileSystem.FileSystemMount.ToMountString() -> string!
 Orkeon.Domain.FileSystem.FileSystemMount.VirtualPath.get -> string!
 Orkeon.Domain.FileSystem.FileSystemMount.Visibility.get -> Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.FileSystemRegistry
@@ -2364,6 +2370,8 @@ Orkeon.Domain.FileSystem.MountInfo.Deconstruct(out string! VirtualPath, out Orke
 Orkeon.Domain.FileSystem.MountInfo.DefaultRights.get -> Orkeon.Domain.FileSystem.FileAccessRights
 Orkeon.Domain.FileSystem.MountInfo.DefaultRights.init -> void
 Orkeon.Domain.FileSystem.MountInfo.Equals(Orkeon.Domain.FileSystem.MountInfo? other) -> bool
+Orkeon.Domain.FileSystem.MountInfo.Id.get -> Orkeon.Domain.Common.MountId?
+Orkeon.Domain.FileSystem.MountInfo.Id.init -> void
 Orkeon.Domain.FileSystem.MountInfo.MountInfo(string! VirtualPath, Orkeon.Domain.FileSystem.FileAccessRights DefaultRights, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.SubPathOverride!>! Overrides, Orkeon.Domain.FileSystem.MountVisibility Visibility = Orkeon.Domain.FileSystem.MountVisibility.AgentFacing) -> void
 Orkeon.Domain.FileSystem.MountInfo.Overrides.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.FileSystem.SubPathOverride!>!
 Orkeon.Domain.FileSystem.MountInfo.Overrides.init -> void
@@ -2371,6 +2379,12 @@ Orkeon.Domain.FileSystem.MountInfo.VirtualPath.get -> string!
 Orkeon.Domain.FileSystem.MountInfo.VirtualPath.init -> void
 Orkeon.Domain.FileSystem.MountInfo.Visibility.get -> Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.MountInfo.Visibility.init -> void
+Orkeon.Domain.FileSystem.MountReference
+Orkeon.Domain.FileSystem.MountReference.<Clone>$() -> Orkeon.Domain.FileSystem.MountReference!
+Orkeon.Domain.FileSystem.MountReference.Equals(Orkeon.Domain.FileSystem.MountReference? other) -> bool
+Orkeon.Domain.FileSystem.MountReference.Id.get -> Orkeon.Domain.Common.MountId?
+Orkeon.Domain.FileSystem.MountReference.SameRootAs(Orkeon.Domain.FileSystem.MountReference! other) -> bool
+Orkeon.Domain.FileSystem.MountReference.VirtualRoot.get -> string!
 Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.MountVisibility.AgentFacing = 0 -> Orkeon.Domain.FileSystem.MountVisibility
 Orkeon.Domain.FileSystem.MountVisibility.Internal = 1 -> Orkeon.Domain.FileSystem.MountVisibility
@@ -4017,12 +4031,13 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarGbnf.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarGbnf.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRetries.get -> int
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxRetries.init -> void
-Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.get -> int
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.get -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.MaxTokens.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Model.get -> string!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Model.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.PresencePenalty.get -> double
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.PresencePenalty.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResolveMaxTokens(string? provider = null, string? defaultModel = null) -> int?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResponseFormat.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ResponseFormat.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Seed.get -> int?
@@ -4158,6 +4173,8 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Content.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.get -> double
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Equals(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse? other) -> bool
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Error.get -> string?
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.ErrorType.get -> string?
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.LlmResponse() -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Metadata.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Metadata.init -> void
@@ -4177,6 +4194,7 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat.Schema.get -> Orkeon.D
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat.Schema.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat.Type.get -> string!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat.Type.init -> void
+Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys
 Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent
 Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.<Clone>$() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!
 Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent.Delta.get -> string?
@@ -4887,6 +4905,11 @@ Orkeon.Domain.Task.TaskExecutionGuardContext.ToolCallCount.get -> int
 Orkeon.Domain.Task.TaskExecutionGuardContext.ToolCallCount.init -> void
 Orkeon.Domain.Task.TaskExecutionGuardContext.ValidationAttempts.get -> int
 Orkeon.Domain.Task.TaskExecutionGuardContext.ValidationAttempts.init -> void
+Orkeon.Domain.Task.TaskExecutionOrder
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.ForcedTaskIds.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.TaskId!>!
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.HasCycle.get -> bool
+Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>.Tasks.get -> System.Collections.Generic.IReadOnlyList<TTask>!
 Orkeon.Domain.Task.TaskExecutionState
 Orkeon.Domain.Task.TaskExecutionState.Assigned = 0 -> Orkeon.Domain.Task.TaskExecutionState
 Orkeon.Domain.Task.TaskExecutionState.Cancelled = 8 -> Orkeon.Domain.Task.TaskExecutionState
@@ -5509,6 +5532,7 @@ const Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.HighConfidenceThresh
 const Orkeon.Domain.Agent.ValueObjects.AgentSelectionResult.LowConfidenceThreshold = 0.5 -> double
 const Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.OverloadThreshold = 80 -> double
 const Orkeon.Domain.Agent.ValueObjects.WorkloadInfo.UtilizationMax = 100 -> double
+const Orkeon.Domain.Common.MountId.Length = 26 -> int
 const Orkeon.Domain.Constants.Agent.AgentDefaults.AgentGoalMaxLength = 2048 -> int
 const Orkeon.Domain.Constants.Agent.AgentDefaults.AgentRoleMaxLength = 256 -> int
 const Orkeon.Domain.Constants.Agent.AgentDefaults.MaxConsecutiveIdenticalErrors = 3 -> int
@@ -5552,6 +5576,7 @@ const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultMaxTokens = 4000 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultModelName = "gpt-5.6-sol" -> string!
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultPlanningModel = "gpt-4o-mini" -> string!
 const Orkeon.Domain.Constants.Llm.LlmDefaults.DefaultTemperature = 0.7 -> double
+const Orkeon.Domain.Constants.Llm.LlmDefaults.FallbackMaxOutputTokens = 4096 -> int
 const Orkeon.Domain.Constants.Llm.LlmDefaults.LegacyModelName = "gpt-3.5-turbo" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.Assistant = "assistant" -> string!
 const Orkeon.Domain.Constants.Llm.LlmRoles.System = "system" -> string!
@@ -5585,6 +5610,7 @@ const Orkeon.Domain.Constants.Rag.RagDefaults.RerankTopN = 5 -> int
 const Orkeon.Domain.Constants.Rag.RagDefaults.RrfK = 60 -> int
 const Orkeon.Domain.Constants.Rag.RagDefaults.TopK = 5 -> int
 const Orkeon.Domain.Constants.Resilience.ResilienceDefaults.DefaultResetStrategy = "sliding_window" -> string!
+const Orkeon.Domain.Constants.Resilience.ResilienceDefaults.LlmTimeoutRetries = 1 -> int
 const Orkeon.Domain.Constants.Security.SecurityDefaults.DefaultRiskLevel = "low" -> string!
 const Orkeon.Domain.Constants.Serialization.SerializationDefaults.JsonMaxDepth = 32 -> int
 const Orkeon.Domain.Constants.Task.TaskDefaults.ExpectedOutputMaxLength = 4096 -> int
@@ -5596,7 +5622,9 @@ const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CompletionTokensKey = "comple
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.PromptTokensKey = "promptTokens" -> string!
 const Orkeon.Domain.Crew.ValueObjects.CrewMetadata.TotalTokensKey = "totalTokens" -> string!
 const Orkeon.Domain.EventHub.CrewLink.ClientPrefix = "client:" -> string!
+const Orkeon.Domain.FileSystem.FileSystemMount.IdSeparator = '|' -> char
 const Orkeon.Domain.FileSystem.FileSystemMount.QuoteCharacter = '"' -> char
+const Orkeon.Domain.FileSystem.MountReference.IdSeparator = '|' -> char
 const Orkeon.Domain.Graph.StateGraph<TState>.EndNode = "__end__" -> string!
 const Orkeon.Domain.Graph.StateGraph<TState>.StartNode = "__start__" -> string!
 const Orkeon.Domain.Knowledge.KnowledgeAttachment.DefaultTopK = 5 -> int
@@ -5610,6 +5638,8 @@ const Orkeon.Domain.Security.NistAuditCategories.RiskAssessment = "RA" -> string
 const Orkeon.Domain.Security.NistAuditCategories.SystemIntegrity = "SI" -> string!
 const Orkeon.Domain.SharedKernel.ValueObjects.ConfidenceScore.DefaultDegradationFactor = 0.9 -> double
 const Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.MaxBreakpoints = 4 -> int
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.Error = "error" -> string!
+const Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseMetadataKeys.ErrorType = "error_type" -> string!
 const Orkeon.Domain.Task.ValueObjects.TaskComplexity.ComplexEffort = 8 -> int
 const Orkeon.Domain.Task.ValueObjects.TaskComplexity.MediumEffort = 3 -> int
 const Orkeon.Domain.Task.ValueObjects.TaskComplexity.SimpleEffort = 1 -> int
@@ -6003,6 +6033,9 @@ override Orkeon.Domain.FileSystem.FileSystemMount.ToString() -> string!
 override Orkeon.Domain.FileSystem.MountInfo.Equals(object? obj) -> bool
 override Orkeon.Domain.FileSystem.MountInfo.GetHashCode() -> int
 override Orkeon.Domain.FileSystem.MountInfo.ToString() -> string!
+override Orkeon.Domain.FileSystem.MountReference.Equals(object? obj) -> bool
+override Orkeon.Domain.FileSystem.MountReference.GetHashCode() -> int
+override Orkeon.Domain.FileSystem.MountReference.ToString() -> string!
 override Orkeon.Domain.FileSystem.SubPathOverride.Equals(object? obj) -> bool
 override Orkeon.Domain.FileSystem.SubPathOverride.GetHashCode() -> int
 override Orkeon.Domain.FileSystem.SubPathOverride.ToString() -> string!
@@ -6806,6 +6839,7 @@ static Orkeon.Domain.Common.Inv.ToString(float value, string! format) -> string!
 static Orkeon.Domain.Common.Inv.TryParseDecimal(string! s, out decimal result) -> bool
 static Orkeon.Domain.Common.Inv.TryParseDouble(string! s, out double result) -> bool
 static Orkeon.Domain.Common.Inv.TryParseFloat(string! s, out float result) -> bool
+static Orkeon.Domain.Common.MountId.TryParse(string? text, out Orkeon.Domain.Common.MountId? id) -> bool
 static Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy.Default.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
 static Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy.Permissive.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
 static Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy.Strict.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
@@ -6876,7 +6910,7 @@ static Orkeon.Domain.Crew.CrewInput.operator ==(Orkeon.Domain.Crew.CrewInput? le
 static Orkeon.Domain.Crew.CrewInputs.Empty() -> Orkeon.Domain.Crew.CrewInputs!
 static Orkeon.Domain.Crew.CrewInputs.From(Orkeon.Domain.Crew.ValueObjects.CrewInputData! inputData) -> Orkeon.Domain.Crew.CrewInputs!
 static Orkeon.Domain.Crew.CrewInputs.From(System.Collections.Generic.Dictionary<string!, object!>? data) -> Orkeon.Domain.Crew.CrewInputs!
-static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null) -> Orkeon.Domain.Crew.CrewOutput!
+static Orkeon.Domain.Crew.CrewOutput.CreateFailure(string! error, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null, string? output = null) -> Orkeon.Domain.Crew.CrewOutput!
 static Orkeon.Domain.Crew.CrewOutput.CreateSuccess(string! output, object? structuredOutput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Task.ValueObjects.TaskOutput!>! taskOutputs, System.TimeSpan executionTime, Orkeon.Domain.Crew.ValueObjects.CrewMetadata? metadata = null) -> Orkeon.Domain.Crew.CrewOutput!
 static Orkeon.Domain.Crew.CrewOutput.operator !=(Orkeon.Domain.Crew.CrewOutput? left, Orkeon.Domain.Crew.CrewOutput? right) -> bool
 static Orkeon.Domain.Crew.CrewOutput.operator ==(Orkeon.Domain.Crew.CrewOutput? left, Orkeon.Domain.Crew.CrewOutput? right) -> bool
@@ -7011,14 +7045,22 @@ static Orkeon.Domain.Delegation.QuestionRequest.operator ==(Orkeon.Domain.Delega
 static Orkeon.Domain.EventHub.CrewLink.ForClient(string! name) -> string!
 static Orkeon.Domain.EventHub.CrewLink.operator !=(Orkeon.Domain.EventHub.CrewLink? left, Orkeon.Domain.EventHub.CrewLink? right) -> bool
 static Orkeon.Domain.EventHub.CrewLink.operator ==(Orkeon.Domain.EventHub.CrewLink? left, Orkeon.Domain.EventHub.CrewLink? right) -> bool
+static Orkeon.Domain.FileSystem.FileSystemMount.FormatRights(Orkeon.Domain.FileSystem.FileAccessRights rights) -> string!
 static Orkeon.Domain.FileSystem.FileSystemMount.Parse(string! mountString) -> Orkeon.Domain.FileSystem.FileSystemMount!
 static Orkeon.Domain.FileSystem.FileSystemMount.Quote(string! segment) -> string!
 static Orkeon.Domain.FileSystem.FileSystemMount.TryGetBasePath(string! mountString) -> string?
+static Orkeon.Domain.FileSystem.FileSystemMount.TryGetId(string? mountString) -> Orkeon.Domain.Common.MountId?
 static Orkeon.Domain.FileSystem.FileSystemMount.WithBasePath(string! mountString, string! basePath) -> string!
 static Orkeon.Domain.FileSystem.FileSystemMount.operator !=(Orkeon.Domain.FileSystem.FileSystemMount? left, Orkeon.Domain.FileSystem.FileSystemMount? right) -> bool
 static Orkeon.Domain.FileSystem.FileSystemMount.operator ==(Orkeon.Domain.FileSystem.FileSystemMount? left, Orkeon.Domain.FileSystem.FileSystemMount? right) -> bool
 static Orkeon.Domain.FileSystem.MountInfo.operator !=(Orkeon.Domain.FileSystem.MountInfo? left, Orkeon.Domain.FileSystem.MountInfo? right) -> bool
 static Orkeon.Domain.FileSystem.MountInfo.operator ==(Orkeon.Domain.FileSystem.MountInfo? left, Orkeon.Domain.FileSystem.MountInfo? right) -> bool
+static Orkeon.Domain.FileSystem.MountReference.ForId(Orkeon.Domain.Common.MountId! id, string! virtualRoot) -> Orkeon.Domain.FileSystem.MountReference!
+static Orkeon.Domain.FileSystem.MountReference.ForRoot(string! virtualRoot) -> Orkeon.Domain.FileSystem.MountReference!
+static Orkeon.Domain.FileSystem.MountReference.Parse(string! text) -> Orkeon.Domain.FileSystem.MountReference!
+static Orkeon.Domain.FileSystem.MountReference.TryParse(string? text, out Orkeon.Domain.FileSystem.MountReference? reference) -> bool
+static Orkeon.Domain.FileSystem.MountReference.operator !=(Orkeon.Domain.FileSystem.MountReference? left, Orkeon.Domain.FileSystem.MountReference? right) -> bool
+static Orkeon.Domain.FileSystem.MountReference.operator ==(Orkeon.Domain.FileSystem.MountReference? left, Orkeon.Domain.FileSystem.MountReference? right) -> bool
 static Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison.get -> System.StringComparison
 static Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(string! path, string! directory) -> bool
 static Orkeon.Domain.FileSystem.SubPathOverride.operator !=(Orkeon.Domain.FileSystem.SubPathOverride? left, Orkeon.Domain.FileSystem.SubPathOverride? right) -> bool
@@ -7321,7 +7363,7 @@ static Orkeon.Domain.SharedKernel.ValueObjects.LlmCacheConfig.operator ==(Orkeon
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Claude(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.ClaudeWithSecret(string! apiKeySecretName = "ANTHROPIC_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Create(string! model, string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
-static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int maxTokens = 4096, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
+static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.CreateValidated(string! model, double temperature = 0.7, int? maxTokens = null, double topP = 1, double frequencyPenalty = 0, double presencePenalty = 0, int timeoutSeconds = 30, int maxRetries = 10, string? apiKey = null, System.Uri? baseUrl = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Default() -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt35Turbo(string? apiKey = null) -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
 static Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.Gpt35TurboWithSecret(string! apiKeySecretName = "OPENAI_API_KEY") -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig!
@@ -7492,6 +7534,7 @@ static Orkeon.Domain.Task.RetryPolicy.operator !=(Orkeon.Domain.Task.RetryPolicy
 static Orkeon.Domain.Task.RetryPolicy.operator ==(Orkeon.Domain.Task.RetryPolicy? left, Orkeon.Domain.Task.RetryPolicy? right) -> bool
 static Orkeon.Domain.Task.TaskExecutionGuardContext.operator !=(Orkeon.Domain.Task.TaskExecutionGuardContext? left, Orkeon.Domain.Task.TaskExecutionGuardContext? right) -> bool
 static Orkeon.Domain.Task.TaskExecutionGuardContext.operator ==(Orkeon.Domain.Task.TaskExecutionGuardContext? left, Orkeon.Domain.Task.TaskExecutionGuardContext? right) -> bool
+static Orkeon.Domain.Task.TaskExecutionOrder.Resolve<TTask>(System.Collections.Generic.IReadOnlyList<TTask>! tasks) -> Orkeon.Domain.Task.TaskExecutionOrderResult<TTask>!
 static Orkeon.Domain.Task.TaskExecutionStateMachine.Create(Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> Orkeon.Domain.Common.StateMachine.StateMachine<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
 static Orkeon.Domain.Task.TaskExecutionStateMachine.CreateBuilder(Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> Orkeon.Domain.Common.StateMachine.StateMachineBuilder<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
 static Orkeon.Domain.Task.TaskOutputOptions.operator !=(Orkeon.Domain.Task.TaskOutputOptions? left, Orkeon.Domain.Task.TaskOutputOptions? right) -> bool

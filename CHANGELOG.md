@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [1.0.0-rc.4] - 2026-09-21
+
+The release candidate of the Studio. Since `1.0.0-rc.3`: Orkeon Studio takes the team
+journey end to end on a real crew — the wizard, the folders that travel with a team
+(STUDIO-14, VFS-90: every settings mount carries a ULID, a crew names the entries it uses,
+`--mount-id` selects one), the Tools and MCP tabs, the Run screen that shows the task in
+progress, and « Modify » on any team, session or not (FORGE-09 `forge reopen`); the
+provider fleet reaches **16** with the two aggregators OpenRouter and Mammouth AI (LLM-09);
+the output cap follows each model's documented maximum instead of 4096 (LLM-10); a
+timed-out call is a failed call and the sequential mode skips what depended on it
+(LLM-11); the scripting runtime runs its loops in JavaScript (SCR-25); `Orkeon.Hosting.Aspire`
+(ADR-011) and `Orkeon.Interop.AgentFramework` (ADR-010) join the lineup, and a run speaks
+the OpenTelemetry GenAI conventions; the README's quickstart is executed by CI, the
+provenance chain is documented and closed with an SBOM; and a second full SonarQube
+campaign closes the 87 issues the fortnight had accumulated — 0 bug, 0 code smell, 0
+hotspot to review, debt back to zero.
+
+The public API surface is frozen at this tag: the 335 additions and 19 removals
+accumulated since rc.3 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
+across the twelve projects that carried them.
+
 <!-- SonarQube campaign of 2026-09-21 -->
 ### Fixed — a host without an `Llm` section runs on the echo provider again
 
@@ -4018,7 +4039,8 @@ Initial public development snapshot. Core domain model established in C# followi
 - Standalone mode (no Redis required)
 - Console application entry point
 
-[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...HEAD
+[Unreleased]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.4...HEAD
+[1.0.0-rc.4]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.3...v1.0.0-rc.4
 [1.0.0-rc.3]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.2...v1.0.0-rc.3
 [1.0.0-rc.2]: https://github.com/Orkeon/orkeon/compare/v1.0.0-rc.1...v1.0.0-rc.2
 [1.0.0-rc.1]: https://github.com/Orkeon/orkeon/compare/v0.9.2-beta...v1.0.0-rc.1
