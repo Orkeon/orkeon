@@ -1072,7 +1072,12 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// for a cap the catalogue chose — a value the user pinned is theirs to fix, and its
     /// rejection surfaces unchanged. The match is on the field's name in the vendor's own
     /// wording (Qwen "Range of max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini
-    /// "maxOutputTokens", DeepSeek's 422 on the same field), never on the status alone.
+    /// "maxOutputTokens", DeepSeek's 422 on the same field), never on the status alone — plus
+    /// the two engine wordings Together's serverless tier answers with when prompt + cap exceed
+    /// the window (TGI's <c>max_new_tokens</c>, vLLM's <c>context_length_exceeded</c> /
+    /// "maximum context length"; campaign of 2026-09-21). A prompt that is too long on its own
+    /// matches the latter two as well: the retry then fails the same way and the error surfaces,
+    /// one request later.
     /// </summary>
     protected bool TryDropCatalogueOutputCap(
         Dictionary<string, object> payload, HttpStatusCode statusCode, string errorBody, LlmConfig effectiveConfig)
@@ -1097,7 +1102,10 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         && (errorBody.Contains("max_tokens", StringComparison.OrdinalIgnoreCase)
             || errorBody.Contains("max_completion_tokens", StringComparison.OrdinalIgnoreCase)
             || errorBody.Contains("maxOutputTokens", StringComparison.OrdinalIgnoreCase)
-            || errorBody.Contains("max_output_tokens", StringComparison.OrdinalIgnoreCase));
+            || errorBody.Contains("max_output_tokens", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("max_new_tokens", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("context_length_exceeded", StringComparison.OrdinalIgnoreCase)
+            || errorBody.Contains("maximum context length", StringComparison.OrdinalIgnoreCase));
 
     [LoggerMessage(Level = LogLevel.Warning, Message =
         "{Provider} refused the catalogue's output cap {MaxTokens} for model {Model}; retrying once without the field so the endpoint applies its own default. Pin Llm:MaxTokens to choose the cap, and tell the catalogue (LlmModelOutputLimits).")]

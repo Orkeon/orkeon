@@ -177,15 +177,16 @@ the 4096 fallback. Only documented figures go in, each read on 2026-09-19:
 | MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | "128k (including CoT)"; **M3 is absent** — the vendor publishes no output figure (512k appears only as a benchmark setting; 512 000 on Mammouth) |
 | xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | no per-model cap; the vendor's own default when unset, reasoning excluded |
 | Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **none** | docs.mistral.ai/api/endpoint/chat | no output cap, only "prompt + max_tokens ≤ context": the field is left out and the model writes to its window |
-| Together | `meta-llama/Llama-3.3-70B-Instruct-Turbo` 131 072 · `zai-org/GLM-5.3-Flash` 1 048 575 · `Qwen/Qwen3.5-9B` 262 144 · `deepseek-ai/DeepSeek-V4.1-Flash` 1 000 000 | the window | docs.together.ai/docs/serverless-models | the provider sends `context_length_exceeded_behavior: truncate`, which clamps the cap to window − prompt; these entries hold on Together only |
+| Together | any | 4096 (fallback) | docs.together.ai/docs/serverless-models | no per-model output cap, only prompt + `max_tokens` ≤ window. The window itself was the cap from 2026-09-19 to 2026-09-21, on the assumption that `context_length_exceeded_behavior: truncate` clamps it to window − prompt; the campaign of 2026-09-21 measured that two of three serverless engines refuse regardless (`max_new_tokens`, `context_length_exceeded`) and the third clamps on the buffered path only. The fallback holds, the flag is still sent, and the retry net drops the cap on those wordings; omitted, the field means 2048 (`finish_reason: length`) |
 | Ollama | any | **none** (`num_predict` left out) | docs.ollama.com/modelfile | `-1, infinite generation` is the runtime's default: a local model writes to its context |
 | HuggingFace, Docker Model Runner, anything else | — | 4096 (fallback) | — | the router's bound is the routed provider's context, which differs per route; pin `Llm:MaxTokens` |
 
 Two things the catalogue is honest about. Where the vendor bounds the cap by `window − prompt`
-(Kimi, Together without the clamp, Mistral), a fixed value near the window fails on any real
-prompt — so those rows are either a pin, a clamp, or nothing. And a cap the endpoint refuses
-(Qwen "Range of max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini
-`maxOutputTokens`, DeepSeek's 422) is **retried once without the field** when it came from the
+(Kimi, Together, Mistral), a fixed value near the window fails on any real prompt — so those
+rows are either a pin, the fallback, or nothing. And a cap the endpoint refuses (Qwen "Range of
+max_tokens", Kimi "prompt tokens + max_tokens exceeds", Gemini `maxOutputTokens`, DeepSeek's
+422, Together's engines with `max_new_tokens` / `context_length_exceeded`) is **retried once
+without the field** when it came from the
 catalogue, with a warning naming the model — a pinned value is the user's, and its rejection
 surfaces unchanged. The Studio profile editor reads the same catalogue: the hint under the
 « Maximum response » field says what an empty field means for the chosen model, and invites a
@@ -205,6 +206,8 @@ breaking the sibling model. Every row below was measured live; nothing is inferr
 | Kimi | `kimi-k2.6` | `temperature` | `1` | `invalid temperature: only 1 is allowed for this model` | 2026-08-03 |
 | OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
 | OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` when the request carries function tools on `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
+| OpenAI | `gpt-6-astra` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-09-21 |
+| OpenAI | `gpt-6-astra` | `reasoning_effort` | **no `"none"` exists** (`low`, `medium`, `high`, `xhigh`) — the Sol workaround is impossible, so function tools stay refused on `/v1/chat/completions` until the dialect speaks `/v1/responses` | `'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.` — and without it, `Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses` | 2026-09-21 |
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, or omit the field | `` `temperature` is deprecated for this model.`` (1 and omission pass; 0 and 0.7 do not) | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` or `none` only | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | explicit `1` when `temperature` is 0 and reasoning is on (omission is NOT 1 there) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |

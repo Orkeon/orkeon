@@ -100,15 +100,17 @@ public static class LlmModelOutputLimits
         ["mistral-medium-2604"] = Unbounded,
         ["mistral-medium-3-5"] = Unbounded,
 
-        // Together — docs.together.ai/docs/serverless-models, 2026-09-19: no per-model output cap,
-        // the context is the bound, and the request fails when prompt + max_tokens exceed it unless
-        // context_length_exceeded_behavior is "truncate" — which TogetherAiLlmProvider sends, so the
-        // window itself is the safe cap. Keyed by provider: the same ids elsewhere (HuggingFace's
-        // router, per routed provider) have no such clamp and stay on the fallback.
-        ["together:meta-llama/Llama-3.3-70B-Instruct-Turbo"] = 131_072,
-        ["together:zai-org/GLM-5.3-Flash"] = 1_048_575,
-        ["together:Qwen/Qwen3.5-9B"] = 262_144,
-        ["together:deepseek-ai/DeepSeek-V4.1-Flash"] = 1_000_000,
+        // Together — docs.together.ai/docs/serverless-models: no per-model output cap, the context
+        // is the bound, and a request whose prompt + max_tokens exceed it is refused. From
+        // 2026-09-19 to 2026-09-21 the window itself sat here as the cap, on the assumption that
+        // context_length_exceeded_behavior: "truncate" clamps it to window − prompt. The campaign
+        // of 2026-09-21 measured otherwise: the TGI engine (Llama-3.3-70B, "`inputs` tokens +
+        // `max_new_tokens` must be <= 131073") and the vLLM engine (Qwen3.5-9B, "Requested token
+        // count exceeds the model's maximum context length") refuse regardless of the flag, and
+        // the GLM-5.3-Flash engine honours it on the buffered path only. No entry: the fallback
+        // holds, as it did through every green Together campaign, and the retry net drops it on
+        // those wordings. Omitting the field would be worse — Together then stops at 2048 tokens
+        // (finish_reason: length, measured the same day).
 
         // Mammouth — api.mammouth.ai/public/models, 2026-09-19 (max_output_tokens per model, the
         // proxy's own figures where they differ from the vendor's; its default when the field is

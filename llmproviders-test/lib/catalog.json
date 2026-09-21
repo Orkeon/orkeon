@@ -46,14 +46,16 @@
         { "id": "gpt-6-astra", "why": "Top tier above Sol (10 / 50 $/M, 2026-09-04). Effort low\u2026max with no `none`: the modes that pair function tools with reasoning measure whether Sol's `reasoning_effort: none` workaround is unnecessary or impossible there." }
       ],
       "requiredParams": {
-        "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" }
+        "gpt-5.6-sol": { "temperature": 1, "thinkingEffort": "none" },
+        "gpt-6-astra": { "temperature": 1 }
       },
       "notes": [
         "Generic target of the `LlmProviderFactory` fallback: a green campaign here indirectly validates Docker Model Runner, vLLM and LM Studio. Proven live on 2026-08-30: 12/12 campaign against `api.x.ai` (`grok-4.6`, OpenAI dialect, base-url alone) — report under `custom-endpoints/`.",
         "G-05 closed (LLM-01): the default moved from `gpt-4` (8 K context, retirement 2026-10-23) to `gpt-5.6-sol`.",
         "Current models refuse `max_tokens` (2026-08-30 campaign: ten modes red on that one field). The OpenAI dialect writes `max_completion_tokens` since that date — accepted by the earlier generations too (verified on `gpt-4o-mini` the same day).",
         "`gpt-5.6-sol` refuses any temperature other than 1 (`'temperature' does not support 0 with this model`) — same class as `kimi-k2.6`, same remedy: the catalog pins it for this model (requiredParams) and the report header carries the value used.",
-        "`gpt-5.6-sol` reasons by default and refuses function tools on chat/completions as long as `reasoning_effort` is not explicitly `none` (measured 2026-08-30, `none` unblocks the call). The catalog pins it for this model (`requiredParams`); M7 keeps probing thinking with its own explicit effort."
+        "`gpt-5.6-sol` reasons by default and refuses function tools on chat/completions as long as `reasoning_effort` is not explicitly `none` (measured 2026-08-30, `none` unblocks the call). The catalog pins it for this model (`requiredParams`); M7 keeps probing thinking with its own explicit effort.",
+        "`gpt-6-astra` refuses any temperature other than 1 (`'temperature' does not support 0 with this model. Only the default (1) value is supported`, measured 2026-09-21 — first candidate run 2/10 on that cause alone) and, unlike Sol, has NO `reasoning_effort: none`: pinning it as for Sol turned the run into 3/9 (`does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'`). Without it, function tools on chat/completions are refused outright (`Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses`) — the Sol workaround is impossible there, which is what the review of 2026-09-19 asked the campaign to settle. The catalog pins the temperature only; M5 is expected red until the dialect learns /v1/responses. Both refused reports (06:35, 06:52) are kept as the trace."
       ]
     },
     "anthropic": {

@@ -189,15 +189,16 @@ lu le 2026-09-19 :
 | MiniMax | `MiniMax-M2` | 131 072 | platform.minimax.io/docs/guides/models-intro | « 128k (CoT compris) » ; **M3 est absent** — le fournisseur ne publie aucun chiffre de sortie (512k n'apparaît que comme réglage de benchmark ; 512 000 chez Mammouth) |
 | xAI | `grok-4.6` | 128 000 | docs.x.ai/developers/rest-api-reference | pas de plafond par modèle ; le défaut du fournisseur quand le champ manque, raisonnement exclu |
 | Mistral | `mistral-medium-2604` (`mistral-medium-3-5`) | **aucun** | docs.mistral.ai/api/endpoint/chat | pas de plafond de sortie, seulement « prompt + max_tokens ≤ contexte » : le champ est omis et le modèle écrit jusqu'à sa fenêtre |
-| Together | `meta-llama/Llama-3.3-70B-Instruct-Turbo` 131 072 · `zai-org/GLM-5.3-Flash` 1 048 575 · `Qwen/Qwen3.5-9B` 262 144 · `deepseek-ai/DeepSeek-V4.1-Flash` 1 000 000 | la fenêtre | docs.together.ai/docs/serverless-models | le provider envoie `context_length_exceeded_behavior: truncate`, qui ramène le plafond à fenêtre − prompt ; ces entrées ne valent que chez Together |
+| Together | tous | 4096 (repli) | docs.together.ai/docs/serverless-models | aucun plafond de sortie par modèle, seulement prompt + `max_tokens` ≤ fenêtre. La fenêtre elle-même a été le plafond du 2026-09-19 au 2026-09-21, sur l'hypothèse que `context_length_exceeded_behavior: truncate` la ramène à fenêtre − prompt ; la campagne du 2026-09-21 a mesuré que deux des trois moteurs serverless refusent quand même (`max_new_tokens`, `context_length_exceeded`) et que le troisième ne tronque que sur le chemin bufferisé. Le repli tient, le drapeau part toujours, et le filet de rejeu retire le plafond sur ces formulations ; omis, le champ vaut 2048 (`finish_reason: length`) |
 | Ollama | tous | **aucun** (`num_predict` omis) | docs.ollama.com/modelfile | `-1, génération infinie` est le défaut du runtime : un modèle local écrit jusqu'à son contexte |
 | HuggingFace, Docker Model Runner, tout le reste | — | 4096 (repli) | — | la borne du routeur est le contexte du fournisseur routé, qui change selon la route ; épinglez `Llm:MaxTokens` |
 
 Deux choses que le catalogue dit franchement. Là où le fournisseur borne le plafond par
-« fenêtre − prompt » (Kimi, Together sans la troncature, Mistral), une valeur fixe proche de la
-fenêtre échoue sur tout vrai prompt — ces lignes sont donc un épinglage, une troncature, ou
-rien. Et un plafond que le point d'accès refuse (Qwen « Range of max_tokens », Kimi « prompt
-tokens + max_tokens exceeds », Gemini `maxOutputTokens`, le 422 de DeepSeek) est **rejoué une
+« fenêtre − prompt » (Kimi, Together, Mistral), une valeur fixe proche de la fenêtre échoue sur
+tout vrai prompt — ces lignes sont donc un épinglage, le repli, ou rien. Et un plafond que le
+point d'accès refuse (Qwen « Range of max_tokens », Kimi « prompt tokens + max_tokens exceeds »,
+Gemini `maxOutputTokens`, le 422 de DeepSeek, les moteurs Together avec `max_new_tokens` /
+`context_length_exceeded`) est **rejoué une
 fois sans le champ** quand il vient du catalogue, avec un avertissement qui nomme le modèle —
 une valeur épinglée appartient à l'utilisateur, et son rejet remonte tel quel. L'éditeur de
 profil de Studio lit le même catalogue : l'indication sous le champ « Réponse maximale » dit ce
@@ -219,6 +220,8 @@ réel ; rien n'est inféré.
 | Kimi | `kimi-k2.6` | `temperature` | `1` | `invalid temperature: only 1 is allowed for this model` | 2026-08-03 |
 | OpenAI | `gpt-5.6-sol` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-08-30 |
 | OpenAI | `gpt-5.6-sol` | `reasoning_effort` | `"none"` quand la requête porte des function tools sur `/v1/chat/completions` | `Function tools with reasoning_effort are not supported for gpt-5.6-sol in /v1/chat/completions. To use function tools, use /v1/responses or set reasoning_effort to 'none'.` | 2026-08-30 |
+| OpenAI | `gpt-6-astra` | `temperature` | `1` | `'temperature' does not support 0 with this model. Only the default (1) value is supported.` | 2026-09-21 |
+| OpenAI | `gpt-6-astra` | `reasoning_effort` | **aucun `"none"` n'existe** (`low`, `medium`, `high`, `xhigh`) — le contournement Sol est impossible, les function tools restent refusés sur `/v1/chat/completions` tant que le dialecte ne parle pas `/v1/responses` | `'reasoning_effort' does not support 'none' with this model. Supported values are: 'low', 'medium', 'high', and 'xhigh'.` — et sans lui, `Function tools with reasoning_effort are not supported for gpt-6-astra in /v1/chat/completions. To use function tools, use /v1/responses` | 2026-09-21 |
 | Anthropic | `claude-sonnet-5` | `temperature` | `1`, ou omettre le champ | `` `temperature` is deprecated for this model.`` (1 et l'omission passent ; 0 et 0.7 non) | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `reasoning_effort` | `high` ou `none` seulement | `reasoning_effort low is not supported for this model, supported values: [<ReasoningEffort.high: 'high'>, <ReasoningEffort.none: 'none'>]` | 2026-08-30 |
 | Mistral | `mistral-medium-2604` | `top_p` | `1` explicite quand `temperature` vaut 0 et que le raisonnement est actif (l'omission n'y vaut PAS 1) | `top_p must be 1 when using greedy sampling.` | 2026-08-30 |

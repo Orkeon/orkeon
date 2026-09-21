@@ -40,9 +40,12 @@ public partial class TogetherAiLlmProvider : OpenAICompatibleProviderBase
     /// <summary>
     /// Together documents no per-model output cap: the context window is the bound, and by
     /// default a request whose prompt plus <c>max_tokens</c> exceed it is refused
-    /// (<c>context_length_exceeded_behavior: "error"</c>). <c>"truncate"</c> clamps
-    /// <c>max_tokens</c> to <c>window − prompt</c> instead — the prompt is never cut — which is
-    /// what lets the catalogue name the window itself as a model's cap (LLM-10).
+    /// (<c>context_length_exceeded_behavior: "error"</c>). <c>"truncate"</c> asks for
+    /// <c>max_tokens</c> to be clamped to <c>window − prompt</c> instead, the prompt never cut.
+    /// The campaign of 2026-09-21 measured that only one of Together's engines honours it, and
+    /// on the buffered path only — Llama-3.3-70B and Qwen3.5-9B refuse the window regardless —
+    /// so the catalogue no longer names the window as a cap (LLM-10) and the fallback rides with
+    /// the retry net. The flag stays: it costs nothing and helps where it is honoured.
     /// </summary>
     protected override void ApplyProviderSpecificOptions(Dictionary<string, object> payload, LlmConfig effectiveConfig)
     {

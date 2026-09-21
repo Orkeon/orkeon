@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- LLM-10 / LLM-08 -->
+### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)
+
+- **`TogetherAiLlmProvider` sends the 4096 fallback again, not the model's window.** LLM-10
+  named the window as the cap on Together (131 072 on `Llama-3.3-70B-Instruct-Turbo`, up to
+  1 048 575 on `GLM-5.3-Flash`) on the assumption that `context_length_exceeded_behavior:
+  truncate` clamps it to window − prompt. The campaign of 2026-09-21 measured otherwise: only
+  one of Together's serverless engines honours the flag, and on the buffered path only — every
+  other call was refused (`inputs tokens + max_new_tokens must be <= 131073`,
+  `context_length_exceeded`), and the default model fell from 9/1/2 to 2/9/1 for two days. The
+  four `together:` entries are withdrawn from `LlmModelOutputLimits`; the flag stays, it costs
+  nothing and helps where it is honoured. Omitting the field would be worse: Together then
+  stops at 2048 tokens (`finish_reason: length`, measured the same day).
+- **The catalogue-cap retry net knows Together's wordings.** A 400/422 naming `max_new_tokens`,
+  `context_length_exceeded` or "maximum context length" now counts as the cap being refused,
+  so a long prompt on the fallback is retried once without the field instead of failing
+  (`OpenAICompatibleProviderBase.TryDropCatalogueOutputCap`).
+- **Campaign kit.** `gpt-6-astra` is pinned to `temperature: 1` in
+  `llmproviders-test/lib/catalog.json` (`Only the default (1) value is supported`) and, unlike
+  Sol, has no `reasoning_effort: none` (`Supported values are: 'low', 'medium', 'high', and
+  'xhigh'`): function tools stay refused on chat/completions (`use /v1/responses`). Both facts
+  are in `docs/reference/llm-providers-comparison.md`, per-model table.
+
 <!-- FORGE-09 -->
 ### Added — « Modify » without a session: `orkeon forge reopen <team-folder>` rebuilds one from the team's files (FORGE-09)
 

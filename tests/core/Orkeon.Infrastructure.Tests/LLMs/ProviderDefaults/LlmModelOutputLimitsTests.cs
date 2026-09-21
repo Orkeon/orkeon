@@ -29,7 +29,7 @@ public class LlmModelOutputLimitsTests
     [Fact]
     public void A_provider_bound_entry_is_tried_first_and_only_for_that_provider()
     {
-        Assert.Equal(262_144, LlmModelOutputLimits.MaxOutputTokens("Qwen/Qwen3.5-9B", LlmProviderKeys.Together));
+        Assert.Null(LlmModelOutputLimits.MaxOutputTokens("Qwen/Qwen3.5-9B", LlmProviderKeys.Together));   // the window entries were withdrawn on 2026-09-21: Together's engines refuse them
         Assert.Null(LlmModelOutputLimits.MaxOutputTokens("Qwen/Qwen3.5-9B", LlmProviderKeys.HuggingFace));
         Assert.Equal(65_500, LlmModelOutputLimits.MaxOutputTokens("qwen3.7-plus", LlmProviderKeys.Mammouth));
         Assert.Equal(131_072, LlmModelOutputLimits.MaxOutputTokens("qwen3.7-plus", LlmProviderKeys.Qwen));
@@ -44,6 +44,7 @@ public class LlmModelOutputLimitsTests
     {
         [LlmProviderDefaultModels.Ollama] = "a local runtime: num_predict is left out, Ollama generates to its window",
         [LlmProviderDefaultModels.HuggingFace] = "the router's bound is the routed provider's context, which differs per route",
+        [LlmProviderDefaultModels.Together] = "no vendor figure, and its engines refuse the window even with context_length_exceeded_behavior: truncate (campaign 2026-09-21) — the fallback holds",
         [LlmProviderDefaultModels.DockerModelRunner] = "a local llama.cpp server; no vendor figure",
     };
 

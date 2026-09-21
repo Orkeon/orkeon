@@ -117,14 +117,16 @@ public sealed class OutputCapDefaultTests : IDisposable
     }
 
     [Fact]
-    public async Task Together_names_its_window_as_the_cap_and_asks_the_endpoint_to_clamp_rather_than_refuse()
+    public async Task Together_keeps_the_fallback_cap_since_its_engines_refuse_the_window_and_still_asks_to_clamp()
     {
+        // The window sat in the catalogue for two days (2026-09-19 → 21) on the assumption that
+        // "truncate" clamps it; the campaign measured that two of three engines refuse regardless.
         using var provider = new TogetherAiLlmProvider(LlmConfig.Create(LlmProviderDefaultModels.Together, TestApiKey), _httpClientFactory, _noOpPolicy);
 
         await provider.ChatAsync([LlmMessage.User("hello")], cancellationToken: TestContext.Current.CancellationToken);
 
         using var payload = await ReadSentPayloadAsync();
-        Assert.Equal(131_072, payload.RootElement.GetProperty("max_tokens").GetInt32());
+        Assert.Equal(LlmDefaults.FallbackMaxOutputTokens, payload.RootElement.GetProperty("max_tokens").GetInt32());
         Assert.Equal("truncate", payload.RootElement.GetProperty("context_length_exceeded_behavior").GetString());
     }
 
@@ -228,5 +230,35 @@ public sealed class CatalogueOutputCapRetryTests
         await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(handler.CapturedRequests);
+    }
+
+    /// <summary>
+    /// Together's serverless engines never say <c>max_tokens</c>: TGI names <c>max_new_tokens</c>,
+    /// vLLM says <c>context_length_exceeded</c> / "maximum context length" (campaign 2026-09-21,
+    /// where the window-as-cap of LLM-10 fell on exactly these two wordings). Both count as the
+    /// cap being refused, so the fallback is dropped once on a long prompt instead of failing.
+    /// </summary>
+    [Theory]
+    [InlineData(HttpStatusCode.UnprocessableEntity, """{"id":"p28mt4T","error":{"message":"Input validation error: `inputs` tokens + `max_new_tokens` must be <= 131073. Given: 37 `inputs` tokens and 131072 `max_new_tokens`","type":"invalid_request_error","param":null,"code":null}}""")]
+    [InlineData(HttpStatusCode.BadRequest, """{"error":{"type":"Bad Request","code":"context_length_exceeded","message":"This model's maximum context length is 1048576 tokens, but the request requires 1048589 tokens (14 input + 1048575 for the completion). Reduce the input length or the completion.","param":null}}""")]
+    [InlineData(HttpStatusCode.BadRequest, """{"id":"p28k8XW","error":{"message":"Requested token count exceeds the model's maximum context length of 262144 tokens. You requested a total of 262161 tokens: 17 tokens from the input messages and 262144 tokens for the completion.","type":"invalid_request_error","param":null,"code":null}}""")]
+    public async Task Togethers_engine_wordings_for_the_bound_count_as_the_cap_being_refused(HttpStatusCode status, string body)
+    {
+        var calls = 0;
+        using var handler = new TestHttpMessageHandler(_ => ++calls == 1
+            ? new HttpResponseMessage(status) { Content = new StringContent(body) }
+            : new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(Success()) });
+        var factory = new TestHttpClientFactory();
+        factory.RegisterClient("TogetherAiLlmProvider", new HttpClient(handler));
+        using var provider = new TogetherAiLlmProvider(LlmConfig.Create(LlmProviderDefaultModels.Together, TestApiKey), factory, resiliencePolicy: null, new TestLogger<TogetherAiLlmProvider>());
+
+        var result = await provider.GenerateAsync("hello", cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Equal("ok", result.Content);
+        Assert.Equal(2, handler.CapturedRequests.Count);
+        var retried = await handler.CapturedRequests[1].Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
+        using var doc = JsonDocument.Parse(retried);
+        Assert.False(doc.RootElement.TryGetProperty("max_tokens", out _));
+        Assert.Equal("truncate", doc.RootElement.GetProperty("context_length_exceeded_behavior").GetString());
     }
 }
