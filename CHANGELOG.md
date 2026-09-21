@@ -8,7 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 <!-- Studio — owner report of 2026-09-21 -->
-### Fixed — Studio: discarding a session from My teams resets the wizard that was open on it
+### Fixed — Studio: My teams and the wizard — a discarded session resets the wizard, « Modify » reaches it at the first click
 
 - **A session deleted under « Sessions in progress » no longer lives on in the wizard.**
   « Modify » on a team card parks its session in that list, « Resume » opens the wizard on
@@ -20,6 +20,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   (`CreateTeamViewModel.ForgetSession`). A session the wizard is not open on leaves it
   untouched; paths are compared the catalog's way (full, trailing-separator-blind, case-blind
   on Windows).
+- **« Modify » brings the wizard forward on the first click.** With no session pointing at
+  the team (imported, or its session deleted), the engine rebuilds one first (FORGE-09), and
+  the screen only came forward once it had — a second or two of nothing, so the button got
+  clicked again, and the second click landed on the busy engine and vanished. The wizard
+  now takes the screen on the click and the rebuild shows as the engine working. A click on
+  « Modify » or « Resume » while the engine is busy on another creation is refused in words
+  on the wizard's status line (`Studio.Create.EngineBusy`, five languages), the creation
+  under way untouched, instead of being dropped.
 
 <!-- LLM-10 / LLM-08 -->
 ### Fixed — Together's context window is no longer sent as the output cap (LLM-10, campaign of 2026-09-21)

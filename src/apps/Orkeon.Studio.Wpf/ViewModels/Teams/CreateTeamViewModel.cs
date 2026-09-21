@@ -2147,7 +2147,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     public async Task ResumeAsync(ForgeSolutionSummary solution)
     {
         ArgumentNullException.ThrowIfNull(solution);
-        if (IsEngineRunning)
+        if (RefuseWhileEngineBusy())
             return;
 
         // Another creation than the one under way: its step-1 answers stay with it (D-07).
@@ -2198,6 +2198,35 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
+    /// The card's « Modify » and the row's « Resume » are live whatever the wizard is doing,
+    /// and a click while the engine was busy used to vanish (owner report of 2026-09-21). It
+    /// is refused in words instead, on the wizard's own status line — the screen comes
+    /// forward so the line is seen — and nothing under way is stopped: that is the user's
+    /// Stop, never a side effect of a click elsewhere. True when the click was refused.
+    /// </summary>
+    private bool RefuseWhileEngineBusy()
+    {
+        if (!IsEngineRunning)
+            return false;
+
+        StatusMessage = string.Format(
+            CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardEngineBusy], BusySessionLabel());
+        SessionActivated?.Invoke(this, EventArgs.Empty);
+        return true;
+    }
+
+    /// <summary>
+    /// What the creation under way is called on screen: the team being reopened, else the
+    /// session's title, else the step-1 need, else the slug — one of them exists whenever
+    /// the engine is running.
+    /// </summary>
+    private string BusySessionLabel() =>
+        _teamName.Length > 0 ? _teamName
+        : _model.Title is { Length: > 0 } title ? TeamCatalog.NormalizeName(title)
+        : _need.Trim() is { Length: > 0 } need ? TeamCatalog.NormalizeName(need)
+        : _model.Slug ?? "";
+
+    /// <summary>
     /// «Modifier» on a team card (v3 W-09): reopens the wizard on the adopted team — the
     /// session re-enters at its arbitration (the engine's reopen), the wizard shows step
     /// 2 with the whole stepper reachable, and the adoption fields are seeded from the
@@ -2215,13 +2244,18 @@ public sealed class CreateTeamViewModel : ObservableObject
     public async Task ReopenTeamAsync(TeamSummary team, ForgeSolutionSummary? session)
     {
         ArgumentNullException.ThrowIfNull(team);
-        if (IsEngineRunning)
+        if (RefuseWhileEngineBusy())
             return;
 
         // Another creation than the one under way: its step-1 answers stay with it (D-07).
         ClearStepOneFolders();
         ResetProjection();
         _reopenedTeamPath = team.Path;
+        // The screen comes forward on the click, not once the session exists: with none to
+        // hydrate, the engine rebuilds one first (FORGE-09), and a click that showed nothing
+        // for a second or two got clicked again — onto a busy engine, which dropped it (owner
+        // report of 2026-09-21, « two clicks »). The rebuild shows as the engine working.
+        SessionActivated?.Invoke(this, EventArgs.Empty);
 
         if (session is null)
         {
@@ -2249,7 +2283,6 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         MaxStep = 4;
         Step = 2;
-        SessionActivated?.Invoke(this, EventArgs.Empty);
         SyncFromModel();
 
         // The dry pause (a rebuilt session, or one adopted without a trial and reopened):

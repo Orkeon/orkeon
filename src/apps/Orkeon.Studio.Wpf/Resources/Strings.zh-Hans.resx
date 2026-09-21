@@ -1717,6 +1717,9 @@
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>助手当前未在运行——请启动组建（第 1 步「组建」）或恢复会话；您的问题已保留。</value>
   </data>
+  <data name="Studio.Create.EngineBusy" xml:space="preserve">
+    <value>助手仍在处理「{0}」——请先停止它，或等它完成，再打开一个团队。</value>
+  </data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve">
     <value>复制</value>
   </data>

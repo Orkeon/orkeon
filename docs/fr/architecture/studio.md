@@ -426,7 +426,13 @@ réouverture passe par une session reconstruite. Supprimer une session sous « S
 en cours » pendant que l'assistant est ouvert dessus termine aussi cette création :
 l'assistant revient à l'étape 1 vierge de « Recommencer » (un moteur en marche est
 arrêté d'abord) plutôt que de garder un Composer au-dessus d'un dossier qui n'existe
-plus ; une session sur laquelle il n'est pas ouvert le laisse intact.
+plus ; une session sur laquelle il n'est pas ouvert le laisse intact. « Modifier » amène
+l'assistant au premier plan dès le clic, avant qu'une session existe — quand aucune ne
+pointe vers l'équipe, le moteur en reconstruit une d'abord, et l'écran ne bougeait qu'une
+fois la reconstruction finie (les « deux clics » du propriétaire, 2026-09-21) ; la
+reconstruction se voit comme le moteur au travail. Un clic sur « Modifier » ou
+« Reprendre » pendant que le moteur est occupé sur une autre création est refusé en toutes
+lettres sur la ligne de statut de l'assistant, sans rien arrêter, au lieu d'être ignoré.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 

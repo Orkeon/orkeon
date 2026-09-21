@@ -2596,6 +2596,104 @@ public class CreateTeamWizardTests
             Directory.Delete(root, recursive: true);
         }
     }
+
+    /// <summary>
+    /// Owner report of 2026-09-21, « two clicks to reach the wizard »: with no session pointing
+    /// at the team, the engine rebuilds one first and the screen only came forward once it had —
+    /// a second or two of nothing, and the second click landed on a busy engine and vanished.
+    /// The screen comes forward on the click; the rebuild shows as the engine working.
+    /// </summary>
+    [Fact]
+    public async Task Modify_brings_the_wizard_forward_on_the_click_not_once_the_rebuild_is_over()
+    {
+        var (root, teamDir, sessionDir) = await WriteOrphanTeam();
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            var activated = 0;
+            var activatedBeforeAnyChild = 0;
+            vm.SessionActivated += (_, _) =>
+            {
+                activated++;
+                if (processes.Requests.Count == 0)
+                    activatedBeforeAnyChild++;
+            };
+            processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"format":"yaml","resumed":false}"""),
+                Out($$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-docs","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"path":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+            ]);
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+
+            // Once, and before the engine was even asked — not a second time on arrival.
+            Assert.Equal(1, activated);
+            Assert.Equal(1, activatedBeforeAnyChild);
+            Assert.Single(processes.Requests);
+            Assert.Equal(2, vm.Step);
+            Assert.Equal(teamDir, vm.ReopenedTeamPath);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// The other half of the same report: the card's button is live whatever the wizard is
+    /// doing, and a click onto a busy engine went nowhere. It is refused in words on the
+    /// wizard's status line, the screen brought forward so the line is read, and the creation
+    /// under way is left exactly as it was — no second child, nothing pinned, nothing stopped.
+    /// </summary>
+    [Fact]
+    public async Task Modify_while_the_engine_is_busy_is_refused_in_words_not_dropped()
+    {
+        var (root, teamDir, _) = await WriteOrphanTeam();
+        try
+        {
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            var activated = 0;
+            vm.SessionActivated += (_, _) => activated++;
+            processes.OutputToEmit.AddRange(
+            [
+                Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"stage.entered","stage":"blueprint","iteration":1}"""),
+            ]);
+            string? saidWhileBusy = null;
+            var childrenWhileBusy = -1;
+            processes.WhileRunning = () =>
+            {
+                var refused = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+                Assert.True(refused.IsCompletedSuccessfully);
+                saidWhileBusy = vm.StatusMessage;
+                childrenWhileBusy = processes.Requests.Count;
+            };
+
+            FillStepOne(vm);
+            await Compose(vm);
+
+            // Composing from step 1, with no title or slug from the engine yet, the creation
+            // is named by the need the user typed.
+            Assert.Equal(
+                string.Format(
+                    System.Globalization.CultureInfo.CurrentCulture,
+                    EnglishStudioStrings.Instance[StudioStringKeys.WizardEngineBusy],
+                    TeamCatalog.NormalizeName(vm.Need)),
+                saidWhileBusy);
+            Assert.Equal(1, childrenWhileBusy);
+            // The compose's own activation, then the refusal's — the second is what moves the
+            // screen so the status line is read.
+            Assert.Equal(2, activated);
+            Assert.Single(processes.Requests);
+            Assert.Null(vm.ReopenedTeamPath);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
 }
 
 /// <summary>A question asked while the engine is not listening must not vanish silently.</summary>

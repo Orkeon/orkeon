@@ -1717,6 +1717,9 @@
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve">
     <value>El asistente no se está ejecutando — inicie la composición (paso 1, Componer) o reanude la sesión; su pregunta se ha conservado.</value>
   </data>
+  <data name="Studio.Create.EngineBusy" xml:space="preserve">
+    <value>El asistente sigue ocupado con « {0} » — deténgalo, o deje que termine, antes de abrir un equipo.</value>
+  </data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve">
     <value>Copiar</value>
   </data>

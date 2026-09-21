@@ -68,6 +68,9 @@ public static class StudioStringKeys
     /// <summary>"The assistant is not running any more — …"</summary>
     public const string WizardAssistantNotRunning = "Studio.Create.AssistantNotRunning";
 
+    /// <summary>"The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team."</summary>
+    public const string WizardEngineBusy = "Studio.Create.EngineBusy";
+
     /// <summary>The four stepper labels. They already lived in the WPF resx for the
     /// stepper itself; the registry adopts the same keys so the draft line below the nav
     /// can name a step without a second spelling of it.</summary>
@@ -1584,6 +1587,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.DiagCounts] = "{0} checks passed, {1} warning(s), {2} failure(s).",
         [StudioStringKeys.ConfigNotSavedNeedFolder] = "Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.",
         [StudioStringKeys.WizardAssistantNotRunning] = "The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.",
+        [StudioStringKeys.WizardEngineBusy] = "The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team.",
         [StudioStringKeys.WizardStep1] = "Describe",
         [StudioStringKeys.WizardStep2] = "Compose",
         [StudioStringKeys.WizardStep3] = "Try",

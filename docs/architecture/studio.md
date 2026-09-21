@@ -390,7 +390,12 @@ the tooltip also says when the reopen goes through a rebuilt session. Discarding
 session under « Sessions in progress » while the wizard is open on it ends that
 creation as well: the wizard goes back to the blank step 1 of « Restart » (a running
 engine is stopped first) rather than keep a Composer over a directory that no longer
-exists; a session it is not open on leaves it untouched.
+exists; a session it is not open on leaves it untouched. « Modify » brings the wizard
+forward on the click itself, before any session exists — with none pointing at the team
+the engine rebuilds one first, and the screen used to move only once it had (the owner's
+« two clicks », 2026-09-21); the rebuild shows as the engine working. A click on « Modify »
+or « Resume » while the engine is busy on another creation is refused in words on the
+wizard's status line, nothing stopped, instead of being dropped.
 
 ### Tools and MCP in the settings (STUDIO-21)
 

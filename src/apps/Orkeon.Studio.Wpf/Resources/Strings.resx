@@ -601,6 +601,7 @@
   <data name="Studio.Settings.McpProblemDuplicate" xml:space="preserve"><value>Another server already carries this identifier.</value></data>
   <data name="Studio.Settings.NotSavedNeedFolder" xml:space="preserve"><value>Not saved yet: authorize at least one folder (Authorized folders tab) — your changes will be saved as soon as one is in place.</value></data>
   <data name="Studio.Create.AssistantNotRunning" xml:space="preserve"><value>The assistant is not running — start the composition (step 1, Composer) or resume the session; your question was kept.</value></data>
+  <data name="Studio.Create.EngineBusy" xml:space="preserve"><value>The assistant is still busy with « {0} » — stop it, or let it finish, before opening a team.</value></data>
   <data name="Studio.Run.JournalCopy" xml:space="preserve"><value>Copy</value></data>
   <data name="Studio.Settings.ProfileLblTemperature" xml:space="preserve"><value>Temperature (optional)</value></data>
   <data name="Studio.Settings.TemperatureHint" xml:space="preserve"><value>Empty: the engine decides. Some models mandate a value — Kimi K3 accepts only 1.</value></data>
