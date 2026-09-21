@@ -276,4 +276,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.3`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit.
