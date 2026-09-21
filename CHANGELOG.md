@@ -115,6 +115,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   operator `--mount` parses, no crew block is read. A `studio-team.json` written with ids is not
   read by an Orkeon Studio from before this change (same version, no migration needed the other
   way: a sidecar without ids resolves by folder, root and rights and is upgraded on its next save).
+- Dependencies (2026-09-21): the `Microsoft.Extensions.*` family and its `System.*` companions to
+  10.0.12, `Microsoft.Extensions.AI` to 10.10.0, `Microsoft.Agents.AI.Abstractions` to 1.22.0,
+  `Aspire.Hosting` to 13.5.4, `Microsoft.Data.SqlClient` 7.1.0, `MongoDB.Driver` 3.12.0,
+  `Gremlin.Net` 3.8.2, `StackExchange.Redis` 3.3.0, `AngleSharp` 1.8.2, `Polly` 8.8.0,
+  `Markdig` 1.4.0, the `IdentityModel` trio 8.23.0, `Azure.Security.KeyVault.Secrets` 4.11.1,
+  `AWSSDK.SecretsManager` 4.0.100.14, `OpenTelemetry` 1.19.0, `Microsoft.ML.OnnxRuntime` 1.30.0,
+  `Terminal.Gui` 2.5.0, `Jint` 4.16.3; on the test side `Microsoft.NET.Test.Sdk` 18.10.1,
+  `xunit.v3` 4.0.1 and `Testcontainers` 4.15.0. `Orkeon.Compliance.Vfs` is built against Roslyn
+  5.9.0, the compiler the repo runs, instead of 4.8.0; `Orkeon.Host` references
+  `Microsoft.CodeAnalysis.CSharp` directly. Both solutions build warning-free on the new pins and
+  the unit and fast suites are green.
 
 <!-- LLM-11 -->
 ### Fixed — a timed-out LLM call is a failed call, not an empty answer; the sequential mode skips the dependents of a failed task; Studio pins the thinking switch and a reasoning-model timeout (LLM-11)

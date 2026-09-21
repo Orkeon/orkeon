@@ -37,6 +37,7 @@
          only, and loaded only when a Discord channel is configured — a deployment that
          hosts no chat channel pays the assembly on disk and nothing else. -->
     <PackageReference Include="Discord.Net" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Hosting.Systemd" />
     <PackageReference Include="Microsoft.Extensions.Hosting.WindowsServices" />
