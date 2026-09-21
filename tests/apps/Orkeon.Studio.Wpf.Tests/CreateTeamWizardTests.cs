@@ -1105,10 +1105,10 @@ public class CreateTeamWizardTests
     // ── STUDIO-14: where a team's folders live — the step-1 policy, the in-team answers, the
     //    relative sidecar, the trial's read root and the header's « Open the folder » ──
 
-    private static readonly string SessionStarted =
+    private const string SessionStarted =
         """{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":false}""";
 
-    private static readonly string Paused =
+    private const string Paused =
         """{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}""";
 
     /// <summary>A blueprint whose agent reads and whose task writes under <paramref name="deliverableRoot"/>.</summary>

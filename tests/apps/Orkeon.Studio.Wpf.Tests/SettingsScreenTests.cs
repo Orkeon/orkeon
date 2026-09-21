@@ -785,11 +785,18 @@ public sealed class EditorMaxTokensHintTests
         var profiles = await OpenAsync(new ModelProfile { Name = "Any", Provider = "Kimi", Model = "kimi-k3" });
         var editor = profiles.Editor!;
 
-        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Together);
-        editor.Model = "Qwen/Qwen3.5-9B";
-        Assert.Contains(Formatted(262_144), editor.MaxTokensHint, StringComparison.Ordinal);
+        // Mammouth's own figure for qwen3.7-plus (65 500) holds on the proxy only; the direct
+        // endpoint shows the vendor's 131 072.
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Mammouth);
+        editor.Model = "qwen3.7-plus";
+        Assert.Contains(Formatted(65_500), editor.MaxTokensHint, StringComparison.Ordinal);
 
-        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.HuggingFace);
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Qwen);
+        Assert.Contains(Formatted(131_072), editor.MaxTokensHint, StringComparison.Ordinal);
+
+        // Together's window entries were withdrawn on 2026-09-21 (LLM-10 D-05): its engines
+        // refuse them, so an id it serves keeps the fallback like everywhere else.
+        editor.SelectedProvider = editor.Providers.First(p => p.Name == Orkeon.Constants.Llm.LlmProviderKeys.Together);
         editor.Model = "Qwen/Qwen3.5-9B";
         Assert.Contains("4096", editor.MaxTokensHint, StringComparison.Ordinal);
     }

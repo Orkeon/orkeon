@@ -256,7 +256,7 @@ public sealed class MountOverrideByNameTests : IDisposable
         // index (it does not skip it), and the registration is what leaves it out. Pinned here
         // so a binder that changes its mind is noticed rather than assumed.
         var bound = host.Services.GetRequiredService<IOptions<FileSystemOptions>>().Value.Mounts;
-        Assert.Equal([Spec(run, "/output", "rw"), null, Spec(crew, "/crew", "ro")], bound);
+        Assert.Equal<string?>([Spec(run, "/output", "rw"), null, Spec(crew, "/crew", "ro")], bound);
 
         Assert.Contains(logs.Entries, e => e.Message == "mount /output: --mount replaces the settings entry");
         Assert.Contains(logs.Entries, e => e.Message == $"mount /output: settings entry {idB} not mounted for this run");

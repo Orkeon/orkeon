@@ -164,8 +164,8 @@ public sealed class RunCommandTests : IDisposable
     {
         // F6: a bare `orkeon run crew.ork.ts` on a script that hands off
         // `globalThis.crew` must take the FULL pipeline, not the flat agent loop.
-        // The proof is the task deliverable: the flat loop ignores deliverables,
-        // only the orchestration pipeline writes them.
+        // The proof is the task itself: the flat loop has none, only the orchestration
+        // pipeline runs one — and reports on it.
         var scriptPath = WriteScript("crew.ork.ts", """
             /// <reference orkeon-script="1.0" />
             const writer = agentBuilder().name("writer").role("Writer").goal("Write a note").build();
@@ -180,29 +180,36 @@ public sealed class RunCommandTests : IDisposable
             (globalThis as any).crew = crew;
             """);
 
-        // The pipeline's banner is the discriminator: the shared one-shot runner
-        // prints "=== Crew Output ===", the flat script path prints a JSON result
-        // blob. (The offline echo provider yields an empty final message, so the
-        // deliverable file itself is not a reliable witness here.)
-        var originalOut = Console.Out;
+        // The witness changed with LLM-11: an unconfigured provider no longer yields an
+        // empty green run. The orchestration pipeline now fails the task out loud —
+        // "ERROR: Task … (Writer) failed: … API key is required" on stderr, exit 2 — where
+        // the flat script path has no task to fail and prints a JSON result blob at exit 0.
+        // Settings are pinned to an empty file so the per-user configuration of the machine
+        // running the tests can neither hide the failure nor change its wording.
+        var settingsPath = WriteScript("settings.json", "{}");
+
+        var originalError = Console.Error;
         using var captured = new StringWriter();
-        Console.SetOut(captured);
+        Console.SetError(captured);
         int exit;
         try
         {
             exit = await RunCommand.ExecuteAsync(new RunCommandOptions
             {
                 ScriptPath = scriptPath,
+                SettingsPath = settingsPath,
                 Mounts = new[] { $"{_outDir}:/output:rw" },
                 AllowExternalMounts = true,
             });
         }
         finally
         {
-            Console.SetOut(originalOut);
+            Console.SetError(originalError);
         }
 
-        Assert.Equal(0, exit);
-        Assert.Contains("=== Crew Output ===", captured.ToString(), StringComparison.Ordinal);
+        Assert.Equal(2, exit);
+        var stderr = captured.ToString();
+        Assert.Contains("(Writer) failed:", stderr, StringComparison.Ordinal);
+        Assert.Contains("API key is required", stderr, StringComparison.Ordinal);
     }
 }

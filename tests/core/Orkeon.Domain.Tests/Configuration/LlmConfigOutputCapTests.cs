@@ -69,11 +69,26 @@ public class LlmConfigOutputCapTests
     [Fact]
     public void A_provider_bound_entry_holds_only_on_that_provider()
     {
-        // Together clamps max_tokens to the window (truncate), so its window is a safe cap;
-        // the same id routed by HuggingFace has no such clamp and keeps the fallback.
+        // Mammouth publishes its own max_output_tokens per model, lower than the vendor's:
+        // qwen3.7-plus is 65 500 through the proxy and 131 072 on the direct endpoint. The
+        // entry is keyed by provider so the proxy's figure never leaks anywhere else.
+        var config = LlmConfig.Create("qwen3.7-plus");
+
+        Assert.Equal(65_500, config.ResolveMaxTokens(provider: LlmProviderKeys.Mammouth));
+        Assert.Equal(131_072, config.ResolveMaxTokens(provider: LlmProviderKeys.Qwen));
+        Assert.Equal(131_072, config.ResolveMaxTokens());
+    }
+
+    [Fact]
+    public void Together_keeps_the_fallback_since_its_engines_refuse_the_window_as_a_cap()
+    {
+        // The window sat in the catalogue as Together's cap for two days (2026-09-19 → 21);
+        // the campaign of the 21st measured that its engines refuse it, so the entries were
+        // withdrawn (LLM-10 D-05). The same id keeps the fallback there as on HuggingFace's
+        // router, which never had a clamp either.
         var config = LlmConfig.Create("Qwen/Qwen3.5-9B");
 
-        Assert.Equal(262_144, config.ResolveMaxTokens(provider: LlmProviderKeys.Together));
+        Assert.Equal(LlmDefaults.FallbackMaxOutputTokens, config.ResolveMaxTokens(provider: LlmProviderKeys.Together));
         Assert.Equal(LlmDefaults.FallbackMaxOutputTokens, config.ResolveMaxTokens(provider: LlmProviderKeys.HuggingFace));
         Assert.Equal(LlmDefaults.FallbackMaxOutputTokens, config.ResolveMaxTokens());
     }
