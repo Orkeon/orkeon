@@ -29,7 +29,7 @@
        4.8.0 is the compiler of the .NET 8.0.100 SDK: every SDK a consumer can plausibly
        run is at or above it. Nothing here needs a newer API. -->
   <ItemGroup>
-    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="5.9.0" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" VersionOverride="4.8.0" PrivateAssets="all" />
     <PackageReference Include="Microsoft.CodeAnalysis.Analyzers" PrivateAssets="all" />
   </ItemGroup>
 

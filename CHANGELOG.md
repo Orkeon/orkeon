@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `Orkeon.Compliance.Vfs` is compiled against Roslyn 4.8.0 again
+
+- The 2026-09-21 dependency bump raised the analyzer's `Microsoft.CodeAnalysis.CSharp`
+  reference from 4.8.0 back to 5.9.0 — the repository's own compiler — and `1.0.0-rc.4` of
+  the package went out that way. Outside this repository that is the rc.3 defect over
+  again: a stock .NET 10 SDK (compiler 5.6.0) refuses the analyzer with `CS9057` and skips
+  it silently, so a consumer project with a `File.ReadAllText` call builds clean. The
+  `VersionOverride` is back on 4.8.0, as the comment above it in the csproj has said since
+  rc.3, and the packed README names both inert versions instead of one.
+
 ## [1.0.0-rc.4] - 2026-09-21
 
 The release candidate of the Studio. Since `1.0.0-rc.3`: Orkeon Studio takes the team
