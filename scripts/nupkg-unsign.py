@@ -3,7 +3,7 @@
 
 nuget.org appends a `.signature.p7s` entry to every package it accepts and rewrites the
 zip central directory around it. The bytes GitHub attested (`publish.yml`, step
-"Attest the packages") are the bytes *before* that happened, so `gh attestation verify`
+"Attest the packages and the SBOM") are the bytes *before* that happened, so `gh attestation verify`
 on a package downloaded from nuget.org always fails on the digest -- not because the
 package is wrong, but because it is no longer the same file.
 
