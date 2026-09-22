@@ -22,7 +22,7 @@ Tool result << file_write [FAIL]: Error: No mount found for virtual path '/etc/h
                                   Available mounts: /output (writable), /crew (read-only)
 ```
 
-Try it: edit `crew.yaml`, replace both `/output/hello.md` with `/etc/hello.md`, run again.
+Try it: edit `crew.yaml`, replace every `/output/hello.md` (three of them) with `/etc/hello.md`, run again.
 
 ## Why this model
 

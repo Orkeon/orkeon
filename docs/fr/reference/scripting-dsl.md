@@ -27,9 +27,11 @@ recherche d'une affectation à `globalThis.crew`, et route selon ce qu'elle trou
 | honore `withTask` / `process` / `manager` | **non — ignoré** | oui |
 | `orkeon run --validate` | échoue (*did not assign globalThis.crew*) | fonctionne |
 
-Ce sont des opposés, pas des variantes. `JsCrew.RunAsync` itère `_agents` et ne regarde jamais
-les tâches ; `Process` n'atteint qu'un tag de télémétrie. L'adaptateur, symétriquement,
-contient **zéro occurrence** de `body` et de `Budget`.
+Ce sont des opposés, pas des variantes. La boucle procédurale (en JavaScript depuis SCR-25,
+`JsCrew.Run.cs`, pompée par `JsCrew.RunAsync`) parcourt les agents et ne regarde jamais les
+tâches ; `Process` n'atteint qu'un tag de télémétrie. L'adaptateur, symétriquement, n'invoque
+jamais un `body` : les seuls endroits où il en nomme un sont les avertissements qu'il émet
+pour les déclarations qu'il ignore.
 
 **La règle :** écrivez `.body()` et vous êtes en procédural ; écrivez `withTask` et vous êtes
 en déclaratif. Jamais les deux dans un fichier. Une crew avec des tâches qui se termine par

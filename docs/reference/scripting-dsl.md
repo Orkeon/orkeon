@@ -26,9 +26,10 @@ ends. `RunCommand.DeclaresCrewHandoffAsync` reads the source looking for an assi
 | honours `withTask` / `process` / `manager` | **no — ignored** | yes |
 | `orkeon run --validate` | fails (*did not assign globalThis.crew*) | works |
 
-They are opposites, not variants. `JsCrew.RunAsync` iterates `_agents` and never looks at
-tasks; `Process` reaches only a telemetry tag. The adapter, symmetrically, contains **zero
-occurrences** of `body` and of `Budget`.
+They are opposites, not variants. The procedural run loop (JavaScript since SCR-25,
+`JsCrew.Run.cs`, pumped by `JsCrew.RunAsync`) walks the agents and never looks at tasks;
+`Process` reaches only a telemetry tag. The adapter, symmetrically, never invokes a `body`:
+the only places it names one are the warnings it emits for the declarations it drops.
 
 **The rule:** write `.body()` and you are procedural; write `withTask` and you are
 declarative. Never both in one file. A crew with tasks that ends with `await crew.run()`
