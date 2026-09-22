@@ -88,13 +88,13 @@ The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.
 
 ## `orkeon init`
 
-Configuration assistant. Generates a valid `appsettings.json` at the global per-user path (`%APPDATA%\Orkeon\appsettings.json` on Windows, `~/.config/Orkeon/appsettings.json` on Linux/macOS) from an interactive 5-choice wizard — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` — or non-interactively via flags, then probes the endpoint (unless `--no-probe`).
+Configuration assistant. Generates a valid `appsettings.json` at the global per-user path (`%APPDATA%\Orkeon\appsettings.json` on Windows, `$XDG_CONFIG_HOME/Orkeon/appsettings.json` — else `~/.config/Orkeon/appsettings.json` — on Linux **and** macOS, which deliberately does not use `~/Library/Application Support`) from an interactive 5-choice wizard — `ollama`, `docker-model-runner`, `openai`, `custom`, `none` — or non-interactively via flags, then probes the endpoint (unless `--no-probe`).
 
 | Option | Description |
 |---|---|
 | `-p, --provider <preset>` | `ollama` \| `docker-model-runner` \| `openai` \| `custom` \| `none`. |
 | `-u, --base-url <url>` / `-m, --model <id>` | Endpoint and model. Required for `custom`; presets have defaults. |
-| `-k, --api-key-env <name>` / `--api-key <value>` | Env var holding the key, or a key to store. |
+| `-k, --api-key-env <name>` / `--api-key <value>` | The variable init's own probe reads — it is **not** written to the generated file, and init prints that the runtime reads `ORKEON_Llm__ApiKey` natively — or a key stored inline in clear text (discouraged). See [the variable per provider](./llm-providers-comparison.md). |
 | `--path <file>` | Write somewhere other than the global per-user path. |
 | `-f, --force` | Overwrite an existing file. |
 | `--no-probe` | Skip the endpoint probe. |

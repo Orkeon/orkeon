@@ -123,6 +123,54 @@ their own dialect.
   nothing.
 - **Polly** and **API key sanitization**: provided by `HttpLlmProviderBase` → active everywhere.
 
+## API keys: the variable per provider
+
+**A run reads one key and one only**: `Llm:ApiKey` in the settings file, overridden by
+`ORKEON_Llm__ApiKey` in the environment. The vendor names below are **not** read by the
+engine — they are the convention Orkeon Studio's model-profile editor carries
+(`LlmPresets.ProviderCatalogFor`): a profile stores the *name* of the variable and never the
+key (`ModelProfile.KeyEnvName`), resolves it at launch, and lays the value over the child
+process as `ORKEON_Llm__ApiKey`. Exporting `DEEPSEEK_API_KEY` and expecting a terminal
+`orkeon run` to find it is the trap this table exists to close: outside Studio, export
+`ORKEON_Llm__ApiKey`.
+
+| Provider | Variable (Studio convention) | Key issued at | Timeout Studio pre-fills |
+|---|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | engine default (30 s) |
+| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | engine default |
+| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** |
+| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | engine default |
+| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | engine default |
+| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | engine default |
+| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** |
+| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | engine default |
+| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | engine default |
+| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** |
+| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | engine default |
+| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | engine default |
+| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — the vendor documents "from the API settings"; the exact page is confirmed with the first key | engine default |
+| Ollama · Docker Model Runner | none | — | engine default |
+| OpenAI-compatible (`custom`) | `ORKEON_Llm__ApiKey` | — | engine default |
+| Azure OpenAI | no card by design: its per-resource endpoint makes it an OpenAI-compatible entry | — | — |
+
+The pre-filled 600 s is not decorative. The four providers whose **default** model reasons
+before it answers overrun the engine's 30 s, and the run of 2026-09-20 was lost to two Kimi
+timeouts reported as an empty answer (LLM-11). Studio pre-fills the profile's timeout field;
+a hand-written settings file needs `Llm:TimeoutSeconds` raised explicitly.
+
+Three names that are **not** this one, and get confused with it:
+
+- `ORKEON_LLM_API_KEY` — the default of `orkeon llm probe -k` and `orkeon llm models -k`.
+  Campaign tooling only; a run never reads it.
+- `orkeon init --api-key-env <name>` — writes **nothing** into the generated file. The name
+  feeds init's own endpoint probe, after which init prints that the runtime reads
+  `ORKEON_Llm__ApiKey` natively. The file it produces references no variable at all.
+- `ORKEON_<NAME>` — the secret chain of the **tools**, not of the LLM
+  (`EnvironmentSecretProvider`, then `Secrets:<NAME>` in the file): `ORKEON_TAVILY_API_KEY`
+  for `web_search`, `BRAVE_API_KEY` read as-is for `brave_search`. See the
+  [configuration reference](./configuration.md).
+
 ## Defaults and newer models — catalogue review of 2026-09-19
 
 Every vendor's own model and pricing pages were read on 2026-09-19, alongside the public

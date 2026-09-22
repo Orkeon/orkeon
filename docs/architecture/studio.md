@@ -447,6 +447,16 @@ Two roots, one rule: **application state** lives in the per-user config director
 directory, and API keys live in neither — they stay in the user's environment
 variables, never in a file.
 
+**The key is typed in one place only.** The paste-a-key row (`IApiKeyStore` /
+`EnvironmentApiKeyStore`, shared by the model tab and the tool keys of STUDIO-21) exists in
+the **WPF app alone**: the value goes to the user environment
+(`EnvironmentVariableTarget.User` plus the process, so the session and every child it spawns
+see it at once), which persists across sessions on Windows and is a documented no-op on
+Unix — where the WPF app does not run. The two TUIs carry no key field at all: on Linux and
+macOS the variable is set by the operator's own shell. Which variable, per provider, and the
+three names it gets confused with:
+[API keys: the variable per provider](../reference/llm-providers-comparison.md).
+
 **`%APPDATA%\Orkeon\`** (`$XDG_CONFIG_HOME/Orkeon/` elsewhere) — application state:
 
 | Entry | What it is |

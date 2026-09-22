@@ -134,6 +134,55 @@ API parlent leur propre dialecte.
   (CLI : `--workspace-id`) ; les clés classiques n'en ont pas besoin.
 - **Polly** et **Sanitization clé API** : fournis par `HttpLlmProviderBase` → actifs partout.
 
+## Clés d'API : la variable par fournisseur
+
+**Un run lit une clé et une seule** : `Llm:ApiKey` dans le fichier de réglages, surchargée par
+`ORKEON_Llm__ApiKey` dans l'environnement. Les noms de fournisseurs ci-dessous ne sont **pas**
+lus par le moteur — c'est la convention que porte l'éditeur de réglages de modèle d'Orkeon
+Studio (`LlmPresets.ProviderCatalogFor`) : un profil stocke le *nom* de la variable et jamais
+la clé (`ModelProfile.KeyEnvName`), le résout au lancement, et pose la valeur sur le processus
+enfant en `ORKEON_Llm__ApiKey`. Exporter `DEEPSEEK_API_KEY` en espérant qu'un `orkeon run`
+lancé au terminal la trouve est le piège que cette table existe pour fermer : hors de Studio,
+exportez `ORKEON_Llm__ApiKey`.
+
+| Fournisseur | Variable (convention Studio) | Clé délivrée sur | Timeout pré-rempli par Studio |
+|---|---|---|---|
+| OpenAI | `OPENAI_API_KEY` | `platform.openai.com/api-keys` | défaut moteur (30 s) |
+| Anthropic | `ANTHROPIC_API_KEY` | `console.anthropic.com` | défaut moteur |
+| DeepSeek | `DEEPSEEK_API_KEY` | `platform.deepseek.com` | **600 s** |
+| Mistral AI | `MISTRAL_API_KEY` | `console.mistral.ai` | défaut moteur |
+| Google Gemini | `GEMINI_API_KEY` | `aistudio.google.com/apikey` | défaut moteur |
+| Grok (x.AI) | `XAI_API_KEY` | `console.x.ai` | défaut moteur |
+| MiniMax | `MINIMAX_API_KEY` | `platform.minimax.io` | **600 s** |
+| Together AI | `TOGETHER_API_KEY` | `api.together.ai` | défaut moteur |
+| Qwen | `DASHSCOPE_API_KEY` | `dashscope.console.aliyun.com` | défaut moteur |
+| Kimi (Moonshot) | `MOONSHOT_API_KEY` | `platform.moonshot.ai` | **600 s** |
+| HuggingFace | `HF_TOKEN` | `huggingface.co/settings/tokens` | défaut moteur |
+| Z.AI (GLM) | `ZAI_API_KEY` | `z.ai/manage-apikey` | **600 s** |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter.ai/keys` | défaut moteur |
+| Mammouth AI | `MAMMOUTH_API_KEY` | `mammouth.ai` — le fournisseur documente « depuis les réglages API » ; la page exacte se confirme avec la première clé | défaut moteur |
+| Ollama · Docker Model Runner | aucune | — | défaut moteur |
+| Compatible OpenAI (`custom`) | `ORKEON_Llm__ApiKey` | — | défaut moteur |
+| Azure OpenAI | pas de carte, par conception : son endpoint par ressource en fait une entrée « compatible OpenAI » | — | — |
+
+Les 600 s pré-remplies ne sont pas décoratives. Les quatre fournisseurs dont le modèle **par
+défaut** raisonne avant de répondre débordent les 30 s du moteur, et le run du 2026-09-20 a
+été perdu sur deux timeouts Kimi remontés comme réponse vide (LLM-11). Studio pré-remplit le
+champ timeout du profil ; un fichier de réglages écrit à la main demande de monter
+`Llm:TimeoutSeconds` explicitement.
+
+Trois noms qui ne sont **pas** celui-là, et qu'on confond avec lui :
+
+- `ORKEON_LLM_API_KEY` — le défaut de `orkeon llm probe -k` et `orkeon llm models -k`.
+  Outillage de campagne seulement ; un run ne le lit jamais.
+- `orkeon init --api-key-env <nom>` — n'écrit **rien** dans le fichier généré. Le nom alimente
+  la sonde d'endpoint de `init`, qui imprime ensuite que le runtime lit `ORKEON_Llm__ApiKey`
+  nativement. Le fichier produit ne référence aucune variable.
+- `ORKEON_<NOM>` — la chaîne de secrets des **outils**, pas celle du LLM
+  (`EnvironmentSecretProvider`, puis `Secrets:<NOM>` dans le fichier) : `ORKEON_TAVILY_API_KEY`
+  pour `web_search`, `BRAVE_API_KEY` lu tel quel pour `brave_search`. Voir la
+  [référence de configuration](./configuration.md).
+
 ## Défauts et modèles plus récents — revue des catalogues du 2026-09-19
 
 Les pages modèles et tarifs de chaque vendeur ont été lues le 2026-09-19, avec les catalogues

@@ -485,6 +485,16 @@ par utilisateur, **les documents** vivent dans le profil utilisateur. Rien n'est
 généré dans le répertoire courant, et les clés d'API ne vivent dans aucun des deux —
 elles restent dans les variables d'environnement de l'utilisateur, jamais dans un fichier.
 
+**La clé ne se saisit qu'à un seul endroit.** La ligne où l'on colle une clé (`IApiKeyStore` /
+`EnvironmentApiKeyStore`, partagée par l'onglet modèle et les clés d'outils de STUDIO-21)
+n'existe que dans l'**application WPF** : la valeur part dans l'environnement utilisateur
+(`EnvironmentVariableTarget.User` plus le processus, pour que la session et chacun de ses
+enfants la voient tout de suite), ce qui persiste entre sessions sous Windows et est un no-op
+documenté sous Unix — là où l'application WPF ne tourne pas. Les deux TUI ne portent aucun
+champ de clé : sous Linux et macOS, la variable est posée par le shell de l'opérateur. Quelle
+variable, par fournisseur, et les trois noms qu'on confond avec elle :
+[Clés d'API : la variable par fournisseur](../reference/llm-providers-comparison.md).
+
 **`%APPDATA%\Orkeon\`** (`$XDG_CONFIG_HOME/Orkeon/` ailleurs) — l'état applicatif :
 
 | Entrée | Ce que c'est |

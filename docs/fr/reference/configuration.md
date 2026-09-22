@@ -63,7 +63,9 @@ La section `Llm` est lue par `RunnerHost.RegisterLlmProvider` et transformée en
 l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.x.ai` → Grok,
 `/engines/` → Docker Model Runner/compatible OpenAI), puis motifs du nom de modèle, puis
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
-`ORKEON_Llm__ApiKey`), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
+`ORKEON_Llm__ApiKey` — la variable où vit conventionnellement la clé de chaque fournisseur, et
+les trois noms qu'on confond avec elle, sont dans le
+[comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
 `Thinking:{Enabled,Effort}` pour les providers à raisonnement. `TimeoutSeconds` vaut 30 s par
 défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
