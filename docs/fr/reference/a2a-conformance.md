@@ -31,7 +31,8 @@ Cette page est la référence de ce qui interopère et de ce qui n'interopère p
 | États de tâche (9 : dont `SUBMITTED`, `INPUT_REQUIRED`, `AUTH_REQUIRED`, `REJECTED`) | 5 états (`Pending`, `Working`, `Completed`, `Failed`, `Cancelled`) | 🟡 Les états terminaux se mappent 1-1 ; les états interrompus n'ont pas d'équivalent. |
 | `Message` / `Part` (parts texte, fichier, données) | chaîne `input` + indice MIME `inputMode` | 🟡 Text-first ; pas de payloads multi-parts. |
 | Artifacts | chaîne `output` | 🟡 Sortie textuelle unique. |
-| AgentCard | `GET /.well-known/agent.json` | 🟡 Servie avec name/description/skills ; champs v1.0 (`capabilities`, `securitySchemes`, `agentInterfaces`, `signature`) absents. |
+| AgentCard | `GET /.well-known/agent.json` | 🟡 Servie avec name/description/skills ; champs v1.0 (`capabilities`, `securitySchemes`, `securityRequirements`, `supportedInterfaces`, `signatures`) absents. |
+| Chemin de découverte de l'AgentCard (`/.well-known/agent-card.json`) | `/.well-known/agent.json` | 🔴 Le chemin well-known de la v1.0 n'est pas servi ; un client qui suit la convention obtient un 404 avant toute question de binding. |
 | Paramètre de service `A2A-Version` | — | 🔴 Non lu ; aucune négociation de version. |
 
 ## Bindings

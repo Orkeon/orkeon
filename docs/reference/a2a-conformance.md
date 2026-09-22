@@ -31,7 +31,8 @@ for what interoperates and what does not.
 | Task states (9: incl. `SUBMITTED`, `INPUT_REQUIRED`, `AUTH_REQUIRED`, `REJECTED`) | 5 states (`Pending`, `Working`, `Completed`, `Failed`, `Cancelled`) | 🟡 Terminal states map 1-1; the interrupted states have no equivalent. |
 | `Message` / `Part` (text, file, data parts) | `input` string + `inputMode` MIME hint | 🟡 Text-first; no multi-part payloads. |
 | Artifacts | `output` string | 🟡 Single textual output. |
-| AgentCard | `GET /.well-known/agent.json` | 🟡 Served with name/description/skills; v1.0 fields (`capabilities`, `securitySchemes`, `agentInterfaces`, `signature`) absent. |
+| AgentCard | `GET /.well-known/agent.json` | 🟡 Served with name/description/skills; v1.0 fields (`capabilities`, `securitySchemes`, `securityRequirements`, `supportedInterfaces`, `signatures`) absent. |
+| AgentCard discovery path (`/.well-known/agent-card.json`) | `/.well-known/agent.json` | 🔴 The v1.0 well-known path is not served; a client following the convention gets a 404 before any binding question arises. |
 | `A2A-Version` service parameter | — | 🔴 Not read; there is no version negotiation. |
 
 ## Bindings
