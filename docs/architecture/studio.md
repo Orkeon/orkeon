@@ -454,8 +454,13 @@ variables, never in a file.
 | `appsettings.json` | the per-user global settings — the durable base every launch composes on |
 | `studio-model-profiles.json` | the named model profiles (provider, model, URL, temperature, response budget, timeout, thinking switch and effort, **key env-var name only**) |
 | `studio-history.json` | the launch history the History screen and the team cards read |
-| `Studio\ui-preferences.json` | window comfort: mode, language, theme |
 | `.orkeon\forge\<slug>\` | the **atelier sessions** — resumable works-in-progress (brief, blueprint, provisional `crew/` render, trial `runs/`), not adopted crews. The dot-name is the engine's workspace-state convention (SPEC §4.1, like `.git`): Studio hands `%APPDATA%\Orkeon` to the engine as its forge workspace, so `forge resume <slug>` works identically from a terminal and from Studio |
+
+**`%LOCALAPPDATA%\Orkeon\Studio\ui-preferences.json`** — window comfort: mode,
+language, theme. Apart from the two roots above: it is written by the WPF app alone
+(Windows-only), in the **non-roaming** local application data, and every disk touch is
+tolerant — a missing, corrupt or unwritable file degrades to the defaults, never to a
+crash.
 
 **`%USERPROFILE%\Orkeon\teams\<slug>\`** — documents: the adopted teams. Each is an
 ordinary, self-contained folder (crew definition, `run.cmd`/`run.sh`, the
