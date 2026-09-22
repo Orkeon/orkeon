@@ -666,7 +666,7 @@ public static class StudioStringKeys
     /// <summary>"No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. …"</summary>
     public const string PresetGuidanceNone = "Studio.Settings.GuidanceNone";
 
-    /// <summary>"API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;"</summary>
+    /// <summary>"API key: kept out of the file — set it in your environment: export {0}=&lt;your-key&gt;"</summary>
     public const string PresetGuidanceApiKeyEnv = "Studio.Settings.GuidanceApiKeyEnv";
 
     /// <summary>"Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by …"</summary>
@@ -1779,13 +1779,14 @@ public sealed class EnglishStudioStrings : IStudioStrings
             "No LLM configured: runs will use the <undefined-llm> echo provider. " +
             "Configure one when you are ready.",
         [StudioStringKeys.PresetGuidanceApiKeyEnv] =
-            "API key: referenced from the environment — set it with: export {0}=<your-key>",
+            "API key: kept out of the file — set it in your environment: export {0}=<your-key>",
         [StudioStringKeys.PresetGuidanceNonDefaultEnv] =
             "Note: the Orkeon runtime reads `{0}` natively; " +
             "`{1}` is only read by the `orkeon init` / `orkeon llm` probes.",
         [StudioStringKeys.PresetGuidanceInlineKeyWarning] =
             "WARNING: the API key is stored in plain text in the generated file. " +
-            "Prefer referencing it from the {0} environment variable.",
+            "Prefer leaving it out and setting {0} in the environment — the runtime reads it " +
+            "with precedence over the file.",
 
         [StudioStringKeys.ResolutionStep1Title] = "Explicit path",
         [StudioStringKeys.ResolutionStep1Description] =

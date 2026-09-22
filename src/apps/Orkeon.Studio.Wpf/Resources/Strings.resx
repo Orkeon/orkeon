@@ -205,9 +205,9 @@
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve"><value>The custom preset requires both a base URL and a model.</value></data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve"><value>Unknown preset '{0}'. Supported: {1}.</value></data>
   <data name="Studio.Settings.GuidanceNone" xml:space="preserve"><value>No LLM configured: runs will use the &lt;undefined-llm&gt; echo provider. Configure one when you are ready.</value></data>
-  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>API key: referenced from the environment — set it with: export {0}=&lt;your-key&gt;</value></data>
+  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>API key: kept out of the file — set it in your environment: export {0}=&lt;your-key&gt;</value></data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve"><value>Note: the Orkeon runtime reads `{0}` natively; `{1}` is only read by the `orkeon init` / `orkeon llm` probes.</value></data>
-  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve"><value>WARNING: the API key is stored in plain text in the generated file. Prefer referencing it from the {0} environment variable.</value></data>
+  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve"><value>WARNING: the API key is stored in plain text in the generated file. Prefer leaving it out and setting {0} in the environment — the runtime reads it with precedence over the file.</value></data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve"><value>Explicit path</value></data>
   <data name="Studio.Settings.Step1Desc" xml:space="preserve"><value>The file passed to the runner with --settings. If it does not exist, resolution stops and the runtime falls back to environment variables only.</value></data>
   <data name="Studio.Settings.Step2Title" xml:space="preserve"><value>Next to the crew</value></data>

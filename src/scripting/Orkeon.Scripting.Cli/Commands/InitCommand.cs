@@ -414,7 +414,7 @@ internal static class InitCommand
 
         if (plan.ApiKeyEnvName is { } envName)
         {
-            Console.WriteLine($"API key: referenced from the environment — set it with: export {envName}=<your-key>");
+            Console.WriteLine($"API key: kept out of the file — set it in your environment: export {envName}=<your-key>");
             if (!string.Equals(envName, DefaultApiKeyEnv, StringComparison.Ordinal))
             {
                 Console.WriteLine(
@@ -426,7 +426,8 @@ internal static class InitCommand
         {
             Console.Error.WriteLine(
                 "WARNING: the API key is stored in plain text in the generated file. " +
-                "Prefer --api-key-env (the file then references an environment variable).");
+                $"Prefer leaving it out and setting {DefaultApiKeyEnv} in the environment — " +
+                "the runtime reads it with precedence over the file.");
         }
     }
 

@@ -540,13 +540,13 @@
     <value>Kein LLM konfiguriert: Läufe verwenden den Echo-Provider &lt;undefined-llm&gt;. Richten Sie eines ein, wenn Sie so weit sind.</value>
   </data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve">
-    <value>API-Schlüssel: aus der Umgebung referenziert — setzen Sie ihn mit: export {0}=&lt;Ihr-Schlüssel&gt;</value>
+    <value>API-Schlüssel: bleibt außerhalb der Datei — setzen Sie ihn in Ihrer Umgebung: export {0}=&lt;Ihr-Schlüssel&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
     <value>Hinweis: Die Orkeon-Laufzeit liest `{0}` nativ; `{1}` wird nur von den Prüfungen `orkeon init` / `orkeon llm` gelesen.</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
-    <value>ACHTUNG: Der API-Schlüssel steht im Klartext in der erzeugten Datei. Referenzieren Sie ihn besser über die Umgebungsvariable {0}.</value>
+    <value>ACHTUNG: Der API-Schlüssel steht im Klartext in der erzeugten Datei. Lassen Sie ihn besser weg und setzen Sie {0} in der Umgebung — die Laufzeit liest sie vorrangig vor der Datei.</value>
   </data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve">
     <value>Expliziter Pfad</value>

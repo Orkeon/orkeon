@@ -540,13 +540,13 @@
     <value>Ningún LLM configurado: las ejecuciones usarán el proveedor de eco &lt;undefined-llm&gt;. Configure uno cuando esté listo.</value>
   </data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve">
-    <value>Clave de API: referenciada desde el entorno — defínala con: export {0}=&lt;su-clave&gt;</value>
+    <value>Clave de API: se mantiene fuera del archivo — defínala en su entorno: export {0}=&lt;su-clave&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
     <value>Nota: el runtime de Orkeon lee `{0}` de forma nativa; `{1}` solo la leen las sondas `orkeon init` / `orkeon llm`.</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
-    <value>ATENCIÓN: la clave de API se guarda en texto plano en el archivo generado. Es preferible referenciarla desde la variable de entorno {0}.</value>
+    <value>ATENCIÓN: la clave de API se guarda en texto plano en el archivo generado. Es preferible omitirla y definir {0} en el entorno — el runtime la lee con prioridad sobre el archivo.</value>
   </data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve">
     <value>Ruta explícita</value>

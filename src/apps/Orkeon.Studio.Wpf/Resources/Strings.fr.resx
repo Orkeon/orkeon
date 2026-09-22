@@ -205,9 +205,9 @@
   <data name="Studio.Settings.ErrorCustomIncomplete" xml:space="preserve"><value>Le preset custom exige à la fois une URL de base et un modèle.</value></data>
   <data name="Studio.Settings.ErrorUnknown" xml:space="preserve"><value>Preset inconnu « {0} ». Pris en charge : {1}.</value></data>
   <data name="Studio.Settings.GuidanceNone" xml:space="preserve"><value>Aucun LLM configuré : les exécutions utiliseront le provider écho &lt;undefined-llm&gt;. Configurez-en un quand vous serez prêt.</value></data>
-  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>Clé d'API : référencée depuis l'environnement — définissez-la avec : export {0}=&lt;votre-clé&gt;</value></data>
+  <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve"><value>Clé d'API : gardée hors du fichier — définissez-la dans votre environnement : export {0}=&lt;votre-clé&gt;</value></data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve"><value>Note : le runtime Orkeon lit `{0}` nativement ; `{1}` n'est lue que par les sondes `orkeon init` / `orkeon llm`.</value></data>
-  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve"><value>ATTENTION : la clé d'API est stockée en clair dans le fichier généré. Préférez la référencer depuis la variable d'environnement {0}.</value></data>
+  <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve"><value>ATTENTION : la clé d'API est stockée en clair dans le fichier généré. Préférez l'en retirer et définir {0} dans l'environnement — le runtime la lit avant le fichier.</value></data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve"><value>Chemin explicite</value></data>
   <data name="Studio.Settings.Step1Desc" xml:space="preserve"><value>Le fichier passé au runner avec --settings. S'il n'existe pas, la résolution s'arrête et le runtime ne lit plus que les variables d'environnement.</value></data>
   <data name="Studio.Settings.Step2Title" xml:space="preserve"><value>À côté de l'équipe</value></data>

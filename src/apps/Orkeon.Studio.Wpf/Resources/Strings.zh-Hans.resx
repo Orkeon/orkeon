@@ -540,13 +540,13 @@
     <value>未配置 LLM：运行将使用回显提供方 &lt;undefined-llm&gt;。准备好后再配置一个。</value>
   </data>
   <data name="Studio.Settings.GuidanceApiKeyEnv" xml:space="preserve">
-    <value>API 密钥：从环境变量引用 — 用以下命令设置：export {0}=&lt;您的密钥&gt;</value>
+    <value>API 密钥：不写入文件 — 请在环境中设置：export {0}=&lt;您的密钥&gt;</value>
   </data>
   <data name="Studio.Settings.GuidanceNonDefaultEnv" xml:space="preserve">
     <value>注意：Orkeon 运行时原生读取 `{0}`；`{1}` 只被 `orkeon init` / `orkeon llm` 探测读取。</value>
   </data>
   <data name="Studio.Settings.GuidanceInlineKeyWarning" xml:space="preserve">
-    <value>注意：API 密钥以明文形式保存在生成的文件中。建议改为从环境变量 {0} 引用。</value>
+    <value>注意：API 密钥以明文形式保存在生成的文件中。建议不要写入，改为在环境中设置 {0} — 运行时优先于文件读取它。</value>
   </data>
   <data name="Studio.Settings.Step1Title" xml:space="preserve">
     <value>显式路径</value>
