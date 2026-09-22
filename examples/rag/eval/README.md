@@ -46,7 +46,7 @@ programmatic one is `IRagEvaluator` (a port in `Orkeon.Rag.Abstractions.Interfac
 Measured table (2026-07-26, offline: local BGE embeddings, embedded
 ms-marco-MiniLM-L-6-v2 int8 cross-encoder, extractive generation, heuristic
 judge — published exactly as produced by
-`--compare fast,balanced,quality,corrective,adaptive --reindex`):
+`--compare fast,balanced,quality,corrective,adaptive --offline --reindex`):
 
 | profile | recall@5 | MRR | groundedness | answer-relevance | judge | ms/case |
 |---|---|---|---|---|---|---|
@@ -60,9 +60,15 @@ judge — published exactly as produced by
 and here is exactly why.** `--offline` replaces the LLM with the deterministic
 extractive stub, and the corrective graph is the one profile whose inner nodes
 *need* a real LLM: the retrieval grader's tolerant parser ends up fishing grade
-words (`no`, `correct`, …) out of the stub's echoed passages — pseudo-random
-verdicts — and every triggered `rewrite_query` degenerates to the stub's fixed
-prefix line, i.e. ONE meaningless probe shared by all cases. Per-case fallout
+words (`no`, `correct`, …) out of the stub's echoed passages — deterministic
+verdicts, in fact: this corpus holds exactly one accepted grade word, the `No`
+that opens `notes-telemetry.md`, so a case is graded `Incorrect` whenever that
+document is among the five chunks under evaluation — and every triggered
+`rewrite_query` degenerates to the stub's fixed prefix line, i.e. ONE meaningless
+probe shared by all cases. The proof is one variable:
+`ORKEON_Orkeon__Rag__Corrective__MaxIterations=0` (no rewrite possible, every
+other node in place) brings the row to recall@5 0.89 / MRR 0.89, the linear
+profiles' figures (measured 2026-09-22). Per-case fallout
 (see `golden-corrective.md`/`.json`): five of the nine cases ended on that
 degenerate probe and its single top-5 set; it happens to contain
 `notes-power.md` (q-007 "recovered": recall 1.00, RR 0.50), `notes-firmware.md`
