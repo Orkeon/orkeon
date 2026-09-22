@@ -5,6 +5,7 @@
 **AI agent teams that stay inside the lines — every file, endpoint and budget an agent may touch is declared, then enforced. Described in YAML, TypeScript (`.ork.ts`) or C#; one .NET runtime executes all three.**
 
 [![Release](https://img.shields.io/github/v/release/Orkeon/orkeon?include_prereleases)](https://github.com/Orkeon/orkeon/releases)
+[![NuGet](https://img.shields.io/nuget/vpre/Orkeon?label=nuget.org)](https://www.nuget.org/packages/Orkeon)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE.md)
 [![.NET](https://img.shields.io/badge/.NET-10.0-purple.svg)](https://dotnet.microsoft.com/)
 [![Build](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml/badge.svg)](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml)
@@ -35,7 +36,7 @@ mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:r
 ```
 <!-- quickstart:end -->
 
-The agent writes `./out/hello.md` — and only there: `/output` is the single mount, `rw`. Change the crew's task to write anywhere else and watch the file-system service refuse it. The block above is executed literally by CI on every change ([Quickstart workflow](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)): if it stops working, the build goes red before you find out. Everything about local models — Docker Model Runner, Ollama, a model baked into the container image — is in the [local models guide](docs/guides/local-models.md).
+The tool comes from [nuget.org](https://www.nuget.org/packages/Orkeon.Scripting.Cli) — no extra feed, no token. The agent writes `./out/hello.md` — and only there: `/output` is the single mount, `rw`. Change the crew's task to write anywhere else and watch the file-system service refuse it. The block above is executed literally by CI on every change ([Quickstart workflow](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)): if it stops working, the build goes red before you find out. Everything about local models — Docker Model Runner, Ollama, a model baked into the container image — is in the [local models guide](docs/guides/local-models.md).
 
 ## Forge a team from a need
 
@@ -145,7 +146,7 @@ Runner, Ollama, or a model embedded in the container image) — see the
 |---|---|---|
 | **Run crews with zero install** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — interactive shell, 105 bundled examples (`orkeon-example run 1`), local-model ready | [Container guide](docs/getting-started/three-ways-to-run-orkeon.md#3-container) |
 | **Install the `orkeon` CLI** | Windows and Debian/Ubuntu: the quickstarts below. macOS: the CLI tarball below (`osx-arm64`, `osx-x64`). `linux-arm64` — and anyone who also wants the REPL or the service host — takes the multi-app `orkeon-<version>-<rid>.tar.gz` from the [releases](https://github.com/Orkeon/orkeon/releases), then `./install.sh` | [Release binaries](docs/getting-started/three-ways-to-run-orkeon.md#2-release-binary) |
-| **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package. Optionally add `Orkeon.Tools` (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — the latter pins a pre-release upstream, `SmartComponents.LocalEmbeddings`, and will keep doing so past 1.0: see [limitations](docs/reference/limitations.md)) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
+| **Embed Orkeon in your app** | `dotnet add package Orkeon --prerelease` — the complete framework in one package, from [nuget.org](https://www.nuget.org/packages/Orkeon) (the public feed: no extra source, no token). Optionally add [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (the built-in tool families) and the opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — the latter pins a pre-release upstream, `SmartComponents.LocalEmbeddings`, and will keep doing so past 1.0: see [limitations](docs/reference/limitations.md)) — see the [publication matrix](docs/reference/publication-matrix.md). The `orkeon` CLI tool and the container image above are unchanged | [Bootstrap and execution](docs/getting-started/bootstrap.md) |
 | **Verify what you download** | Every package and installer carries a GitHub-signed build provenance attestation and a `SHA256SUMS` line: `gh attestation verify <file> --repo Orkeon/orkeon` — no trust in this page required | [Verify what you install](docs/guides/verify-what-you-install.md) |
 | **Hack on the framework** | `git clone` (**without** `--recursive`) + `dotnet build Orkeon.sln` | [From source](docs/getting-started/three-ways-to-run-orkeon.md#1-from-source) · [Contributing](#contributing) |
 
