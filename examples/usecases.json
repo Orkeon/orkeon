@@ -1420,7 +1420,7 @@
         "lending",
         "credit-scoring",
         "risk-assessment",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -1689,7 +1689,7 @@
         "investment",
         "risk-profile",
         "portfolio-allocation",
-        "rebalancing"
+        "human-in-the-loop"
       ],
       "tasks": 4,
       "title": {
@@ -1874,7 +1874,7 @@
         "tax",
         "tax-planning",
         "scenario-comparison",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -2007,10 +2007,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "healthcare",
         "diagnosis-support",
+        "symptoms",
         "drug-interactions",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 3,
       "title": {
@@ -2093,7 +2093,7 @@
         "mental-health",
         "well-being",
         "monitoring",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 3,
       "title": {
@@ -2130,7 +2130,6 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "healthcare",
         "medical-records",
         "fhir",
         "data-conversion"
@@ -2174,7 +2173,7 @@
       "tags": [
         "radiology",
         "medical-reports",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -2213,9 +2212,9 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "healthcare",
         "care-coordination",
-        "care-plan"
+        "care-plan",
+        "multidisciplinary-team"
       ],
       "tasks": 4,
       "title": {
@@ -2299,7 +2298,7 @@
       "tags": [
         "clinical-trials",
         "patient-safety",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -2339,7 +2338,7 @@
       "requiresNetwork": true,
       "tags": [
         "fitness",
-        "training-plan",
+        "workout-plan",
         "sports-nutrition",
         "recovery"
       ],
@@ -2383,7 +2382,7 @@
         "telemedicine",
         "consultation-support",
         "prescriptions",
-        "human-review"
+        "human-in-the-loop"
       ],
       "tasks": 4,
       "title": {
@@ -2421,7 +2420,6 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "education",
         "tutoring",
         "personalized-learning",
         "exercises"
@@ -2462,9 +2460,9 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "education",
+        "assessment",
         "exam-creation",
-        "assessment"
+        "question-writing"
       ],
       "tasks": 4,
       "title": {
@@ -2501,9 +2499,8 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "education",
-        "grading",
         "assessment",
+        "grading",
         "feedback"
       ],
       "tasks": 4,
@@ -2542,7 +2539,6 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "education",
         "learning-path",
         "knowledge-gaps",
         "study-plan"
@@ -2586,7 +2582,7 @@
         "training",
         "role-play",
         "soft-skills",
-        "feedback"
+        "human-in-the-loop"
       ],
       "tasks": 3,
       "title": {
@@ -2623,9 +2619,9 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "education",
         "gamification",
-        "challenges"
+        "challenges",
+        "human-in-the-loop"
       ],
       "tasks": 3,
       "title": {
@@ -2662,9 +2658,9 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "education",
+        "academic-integrity",
         "plagiarism-detection",
-        "academic-integrity"
+        "text-analysis"
       ],
       "tasks": 5,
       "title": {
