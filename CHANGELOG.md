@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: a status bar with one group per running activity (STUDIO-34)
+
+- A third row at the bottom of the window; the seven overlays now span the three rows.
+- **One group per activity that is running** — Run, Test and « Create a team » (the Atelier).
+  Each shows only while its activity runs, and a click opens its screen.
+- **Run and Test groups** read the run's progress model:
+  - team, state (running, waiting for an answer, succeeded, failed), current task, duration;
+  - ↑ / ↓, cache and real cost;
+  - tools at work (count and first name, the list on hover) and delegations;
+  - the provider and model reported by `cost.updated`.
+- **The Atelier group** shows its stage, ↑ / ↓ (≈ when estimated) and the remaining budget.
+- **At rest, and in expert mode only,** the bar shows the default profile's provider · model.
+- **Modes:** novice sees each group's state and ↑ / ↓; expert sees everything. Nothing
+  unmeasured is shown as zero.
+- **Duration** refreshes on a one-second ticker that only runs while a run is shown. A
+  `Balance` slot is reserved for STUDIO-35.
+
 ### Changed — adoption names the team, and the session folder follows it (STUDIO-26)
 
 - **`forge promote --name <team>`** hands the engine the team's name, which titles `FORGE.md`,
