@@ -16,8 +16,8 @@ namespace Orkeon.Studio.Core.Teams;
 /// </summary>
 public sealed record StudioTeamMetadata
 {
-    /// <summary>File name of the sidecar inside the team folder.</summary>
-    public const string FileName = "studio-team.json";
+    /// <summary>File name of the sidecar inside the team folder — the one <c>forge rename</c> retitles too (ADR-009).</summary>
+    public const string FileName = ConventionalNames.StudioTeamFile;
 
     /// <summary>Display name; the folder name when absent.</summary>
     [JsonPropertyName("name")]

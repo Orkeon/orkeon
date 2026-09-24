@@ -46,6 +46,14 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public string? UnscheduleDirectory { get; init; }
 
+    /// <summary>
+    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28): renames the team — its
+    /// folder by the one folder rule, the session rule R links to it, every title and generated
+    /// file, the schedule the operating system runs — all of it or nothing. Offline, no session
+    /// started: a team imported without one is renamed all the same.
+    /// </summary>
+    public string? RenameDirectory { get; init; }
+
     /// <summary><c>--check</c> (<c>forge schedule</c> only): report the state, change nothing.</summary>
     public bool Check { get; init; }
 
@@ -54,9 +62,10 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>
     /// <c>--name</c>: the team's name (STUDIO-26, D-01) — the title the promotion gives
-    /// <c>FORGE.md</c>, <c>forge.json</c> and the session. Taken as written, a leading dash
-    /// included: it is the user's words, not the next option. On one line: a line break in it
-    /// would split the card's title in two.
+    /// <c>FORGE.md</c>, <c>forge.json</c> and the session; for <c>forge rename</c>, the team's new
+    /// name, which names its folder too (STUDIO-28). Taken as written, a leading dash included: it
+    /// is the user's words, not the next option. On one line: a line break in it would split the
+    /// card's title in two.
     /// </summary>
     public string? TeamName { get; init; }
 
@@ -182,11 +191,11 @@ internal sealed record ForgeCommandOptions
     }
 
     private static bool IsVerb(string arg) =>
-        arg is "list" or "resume" or "promote" or "reopen" or "schedule" or "unschedule";
+        arg is "list" or "resume" or "promote" or "reopen" or "schedule" or "unschedule" or "rename";
 
     /// <summary>
-    /// The six subcommands; <c>resume</c> and <c>promote</c> take the session slug,
-    /// <c>reopen</c>, <c>schedule</c> and <c>unschedule</c> the promoted team folder.
+    /// The seven subcommands; <c>resume</c> and <c>promote</c> take the session slug,
+    /// <c>reopen</c>, <c>schedule</c>, <c>unschedule</c> and <c>rename</c> the promoted team folder.
     /// </summary>
     private static ForgeCommandOptions ParseVerb(string[] args, ref int i, ForgeCommandOptions options)
     {
@@ -201,17 +210,20 @@ internal sealed record ForgeCommandOptions
                 : options with { Error = "reopen needs the team folder (the one `forge promote --to` wrote)." };
         }
 
-        if (verb is "schedule" or "unschedule")
+        if (verb is "schedule" or "unschedule" or "rename")
         {
             // The folder comes first: `forge schedule --check` without one names no folder,
-            // rather than one called «--check».
+            // rather than one called «--check» — nor `forge rename --name X` one called «--name».
             if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
                 return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
 
             var folder = args[++i];
-            return verb == "schedule"
-                ? options with { ScheduleDirectory = folder }
-                : options with { UnscheduleDirectory = folder };
+            return verb switch
+            {
+                "schedule" => options with { ScheduleDirectory = folder },
+                "unschedule" => options with { UnscheduleDirectory = folder },
+                _ => options with { RenameDirectory = folder },
+            };
         }
 
         // The slug is taken as written: it is positional, so it is whatever follows the verb.
@@ -320,15 +332,18 @@ internal sealed record ForgeCommandOptions
     /// are checked: the first one broken is the error. <c>promote</c> and <c>list</c> mount
     /// nothing, so a read folder there would be silently ignored — and this parser never
     /// ignores an option silently; <c>reopen</c> starts no cycle, so every option that shapes
-    /// one is refused there.
+    /// one is refused there, and so does <c>rename</c>, whose only option is the name.
     /// </summary>
     private static readonly (Func<ForgeCommandOptions, int, bool> Broken, string Error)[] ReconcileRules =
     [
         ((o, _) => o.PromoteSlug is not null && o.Destination is null,
             "promote needs --to <directory>."),
+        ((o, _) => o.RenameDirectory is not null && o.TeamName is null,
+            "rename needs --name <the team's new name>."),
         ((o, _) => o.PromoteSlug is null
-                   && (o.Destination is not null || o.TeamName is not null || o.Schedule is not null || o.WithSettings),
-            "--to, --name, --schedule and --with-settings only apply to `forge promote`."),
+                   && (o.Destination is not null || (o.TeamName is not null && o.RenameDirectory is null)
+                       || o.Schedule is not null || o.WithSettings),
+            "--to, --name, --schedule and --with-settings only apply to `forge promote` — and --name to `forge rename`."),
         ((o, _) => o.Edit && o.ResumeSlug is null,
             "--edit only applies to `forge resume`."),
         ((o, _) => o.Adopt && o.ResumeSlug is null,
@@ -336,10 +351,10 @@ internal sealed record ForgeCommandOptions
         ((o, _) => o.Adopt && o.Edit,
             "--adopt and --edit are two different answers to the same pause."),
         ((o, _) => o.ReadDirectory is not null
-                   && (o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null || ActsOnASchedule(o)),
+                   && (o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o)),
             "--read only applies to a new session or to `forge resume`."),
         ((o, _) => o.Reference is not null
-                   && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null),
+                   && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || ActsOnATeamFolder(o)),
             "--reference only applies to a new session: a session keeps the reference it was created with."),
         ((o, needWords) => o.ReopenDirectory is not null && (ShapesACycle(o) || needWords > 0),
             "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
@@ -347,7 +362,13 @@ internal sealed record ForgeCommandOptions
             "--check only applies to `forge schedule`."),
         ((o, needWords) => ActsOnASchedule(o) && (ShapesACycle(o) || needWords > 0),
             "schedule and unschedule take no option but --events (and --check for schedule): they act on the team folder's schedule and start nothing."),
+        ((o, needWords) => o.RenameDirectory is not null && (ShapesACycle(o) || needWords > 0),
+            "rename takes no option but --name and --events: it renames the team folder and starts nothing."),
     ];
+
+    /// <summary>Whether the verb acts on a promoted team folder: <c>reopen</c>, <c>schedule</c>, <c>unschedule</c>, <c>rename</c>.</summary>
+    private static bool ActsOnATeamFolder(ForgeCommandOptions o) =>
+        o.ReopenDirectory is not null || ActsOnASchedule(o) || o.RenameDirectory is not null;
 
     /// <summary>Whether the verb is <c>schedule</c> or <c>unschedule</c>.</summary>
     private static bool ActsOnASchedule(ForgeCommandOptions o) =>
@@ -392,7 +413,8 @@ internal sealed record ForgeCommandOptions
 /// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder;
 /// <c>reopen &lt;dir&gt;</c> finds or rebuilds the session of a promoted folder (FORGE-09);
 /// <c>schedule &lt;dir&gt; [--check]</c> and <c>unschedule &lt;dir&gt;</c> install, check and remove
-/// its schedule with the operating system's own scheduler (STUDIO-27).
+/// its schedule with the operating system's own scheduler (STUDIO-27); <c>rename &lt;dir&gt; --name
+/// &lt;name&gt;</c> renames the team, all of it or nothing (STUDIO-28).
 /// </summary>
 internal static class ForgeCommand
 {
@@ -436,6 +458,24 @@ internal static class ForgeCommand
             try
             {
                 return Schedule(options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine());
+            }
+#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+                return ExitRuntimeError;
+            }
+#pragma warning restore CA1031
+        }
+
+        if (options.RenameDirectory is not null)
+        {
+            // Under the same guard as the schedule verbs: the rename undoes what it did itself
+            // when a step fails, and anything it did not foresee must still come back as an exit
+            // code, never as an unhandled exception.
+            try
+            {
+                return Rename(workspace, options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine());
             }
 #pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
             catch (Exception ex)
@@ -1128,6 +1168,40 @@ internal static class ForgeCommand
         }
 
         events.ScheduleState(outcome.Report!);
+        return 0;
+    }
+
+    /// <summary>
+    /// <c>forge rename &lt;team-folder&gt; --name &lt;name&gt;</c> (STUDIO-28, D-01): the team folder, the
+    /// session rule R links to it, every title and generated file and the schedule the operating
+    /// system runs take the new name — all of it or nothing (<see cref="ForgeTeamRenamer"/>).
+    /// Fully offline, no session started. The stream carries the <c>warning</c>s,
+    /// <c>session.renamed</c> when the session's folder moved, <c>schedule.state</c> when the
+    /// schedule was reinstalled, then <c>team.renamed</c> — exit 0 — or one <c>error</c> — exit 1,
+    /// and everything as it was.
+    /// </summary>
+    private static int Rename(string workspace, ForgeCommandOptions options, ForgeScheduleHost host)
+    {
+        var teamDirectory = Path.GetFullPath(options.RenameDirectory!);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+
+        var outcome = ForgeTeamRenamer.Rename(workspace, teamDirectory, options.TeamName!, host);
+        if (outcome.Failure is { } failure)
+        {
+            events.Error(failure.Code, failure.Message, failure.Recoverable);
+            return ExitError;
+        }
+
+        foreach (var (code, message) in outcome.Warnings)
+            events.Warning(code, message);
+
+        var renamed = outcome.Result!;
+        if (renamed.Session is { } session)
+            events.SessionRenamed(session.From, session.To, session.Directory, session.Suffixed);
+        if (renamed.Schedule is { } schedule)
+            events.ScheduleState(schedule);
+        events.TeamRenamed(renamed.From, renamed.Directory, renamed.Name);
         return 0;
     }
 

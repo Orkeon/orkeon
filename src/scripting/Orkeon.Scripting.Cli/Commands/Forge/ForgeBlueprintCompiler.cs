@@ -243,7 +243,27 @@ internal static class ForgeErrorCodes
     /// <summary>
     /// A <c>warning</c> of <c>forge promote</c>: a re-adoption dropped the schedule, and this
     /// folder's registration still runs the team until <c>forge unschedule</c> removes it — a
-    /// promotion never touches the OS (STUDIO-27).
+    /// promotion never touches the OS (STUDIO-27). <c>forge rename</c> refuses with it too: the
+    /// registration would be left running a folder that no longer exists (STUDIO-28).
     /// </summary>
     public const string ScheduleStillInstalled = "FORGE-SCHEDULE-STILL-INSTALLED";
+
+    /// <summary>
+    /// <c>forge rename</c> (STUDIO-28, D-03): the folder the new name gives the team is already
+    /// there — another team, a folder, a file. Nothing moved; the message says what is there.
+    /// </summary>
+    public const string RenameTaken = "FORGE-RENAME-TAKEN";
+
+    /// <summary>
+    /// <c>forge rename</c> (STUDIO-28, D-01): the disk refused a step — a folder that would not
+    /// move, a file that would not be written. Everything done before it was put back, and the
+    /// message says so — or names what could not be.
+    /// </summary>
+    public const string RenameFailed = "FORGE-RENAME-FAILED";
+
+    /// <summary>
+    /// A <c>warning</c> of <c>forge rename</c>: Studio's sidecar of the team could not be read, so
+    /// the name it records was left as it was; the rename itself stands (STUDIO-28).
+    /// </summary>
+    public const string RenameSidecarUnreadable = "FORGE-RENAME-SIDECAR-UNREADABLE";
 }

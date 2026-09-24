@@ -145,6 +145,22 @@ internal sealed record ForgeTeamRecord
     }
 
     /// <summary>
+    /// Renames the team in <paramref name="teamDirectory"/>'s record (STUDIO-28): its title, and the
+    /// slug of its session — the one it is linked to, or the one a rebuild will name after the
+    /// team — everything else kept, the id above all. A folder without a readable record is left
+    /// as it is: a rename invents no record.
+    /// </summary>
+    public static void Retitle(string teamDirectory, string title, string slug)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(title);
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        if (TryRead(teamDirectory) is { } recorded)
+            Save(teamDirectory, recorded with { Title = title, Slug = slug });
+    }
+
+    /// <summary>
     /// The id of the session <paramref name="teamDirectory"/>'s record names — rule R's reader.
     /// Null when the folder, its record or the id is absent or unreadable; never a throw.
     /// </summary>

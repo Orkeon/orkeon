@@ -88,6 +88,15 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("session.renamed", new { from, to, dir, suffixed });
 
     /// <summary>
+    /// <c>forge rename</c> renamed a team (STUDIO-28): <paramref name="from"/> is the folder it
+    /// had, <paramref name="path"/> the folder it has now — the same one when the new name keeps
+    /// its folder — and <paramref name="name"/> the name every title now carries. The last line of
+    /// a rename that stands.
+    /// </summary>
+    public void TeamRenamed(string from, string path, string name) =>
+        Emit("team.renamed", new { from, path, name });
+
+    /// <summary>
     /// Something the command could not do while everything it was asked for stands — a session
     /// folder the disk would not rename after a written promotion (STUDIO-26, D-05). Never an
     /// <c>error</c>: a client that stops on one must not stop here, and the exit code is the

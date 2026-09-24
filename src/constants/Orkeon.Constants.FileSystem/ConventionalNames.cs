@@ -40,6 +40,13 @@ public static class ConventionalNames
     public const string CrewSettingsFallbackFile = "crew.yaml";
 
     /// <summary>
+    /// Orkeon Studio's sidecar of an adopted team: its display name, its need, its model profile,
+    /// its schedule and its folders. Written by Studio; <c>orkeon forge rename</c> renames the team
+    /// in it (STUDIO-28) — the CLI's only reason to know the file, and every other field is Studio's.
+    /// </summary>
+    public const string StudioTeamFile = "studio-team.json";
+
+    /// <summary>
     /// The flat YAML crew layout: a directory holding these three files is a crew, as opposed to
     /// the multi-file layout with its <c>agents/</c> and <c>tasks/</c> sub-folders.
     /// <para>
