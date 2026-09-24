@@ -88,6 +88,50 @@ public sealed class ProviderCatalogTests
     }
 
     [Fact]
+    public void Every_cloud_card_opens_its_key_console_over_https()
+    {
+        // The catalogue keeps the scheme-less text the editor shows as help; the link a UI
+        // opens is the same text behind https:// (STUDIO-33 D-03).
+        foreach (var card in Catalogue().Where(c => c.Kind == LlmPresetKind.Cloud))
+        {
+            var console = card.KeyConsoleUri;
+
+            Assert.NotNull(console);
+            Assert.Equal(Uri.UriSchemeHttps, console.Scheme);
+            Assert.Equal($"https://{card.KeyConsoleUrl}", console.OriginalString);
+        }
+    }
+
+    [Fact]
+    public void A_card_without_a_key_console_has_no_link()
+    {
+        var cards = Catalogue().ToDictionary(c => c.Name, StringComparer.Ordinal);
+
+        Assert.Null(cards[LlmPresets.Ollama].KeyConsoleUri);
+        Assert.Null(cards[LlmPresets.Custom].KeyConsoleUri);
+        Assert.Null(cards[LlmPresets.None].KeyConsoleUri);
+    }
+
+    [Theory]
+    [InlineData("https://api.openai.com/v1", "https://platform.openai.com/api-keys")]
+    [InlineData("https://api.deepseek.com/v1", "https://platform.deepseek.com")]
+    [InlineData("https://api.moonshot.ai/v1", "https://platform.moonshot.ai")]
+    public void The_key_console_of_an_endpoint_is_its_cards_console(string baseUrl, string expected) =>
+        Assert.Equal(new Uri(expected), LlmPresets.KeyConsoleFor(baseUrl));
+
+    [Theory]
+    // The regional twins: another platform, other accounts — the card's console is not theirs.
+    [InlineData("https://api.moonshot.cn/v1")]
+    [InlineData("https://api.minimaxi.com/v1")]
+    // No card, or a card with no console.
+    [InlineData("https://my-resource.openai.azure.com/")]
+    [InlineData("https://llm.example.com/v1")]
+    [InlineData("http://localhost:11434")]
+    [InlineData(null)]
+    public void An_endpoint_without_a_console_of_its_own_gets_no_link(string? baseUrl) =>
+        Assert.Null(LlmPresets.KeyConsoleFor(baseUrl));
+
+    [Fact]
     public void The_init_catalogue_is_untouched_by_the_editor_catalogue()
     {
         // orkeon init parity is byte-for-byte on these five; the editor's wider catalogue
