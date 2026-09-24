@@ -11,9 +11,9 @@ namespace Orkeon.Scripting.Cli.Commands.UseCases;
 /// <summary>Options every <c>orkeon usecases</c> verb shares.</summary>
 internal abstract class UseCasesCommandOptions
 {
-    /// <summary>The language of the titles shown — and, for a search, of the query.</summary>
+    /// <summary>The language of the titles shown — for a search, of the query; for an export, of the team's name.</summary>
     [Option("lang", Required = false,
-        HelpText = "Language: fr, en, es, de or zh-Hans. For a search, the language of the query (read from the text when omitted); otherwise the language of the titles shown (default en).")]
+        HelpText = "Language: fr, en, es, de or zh-Hans. For a search, the language of the query (read from the text when omitted); for an export, the language of the team's name and description; otherwise the language of the titles shown (default en).")]
     public string? Language { get; set; }
 
     /// <summary><c>--events jsonl</c>: the answer as protocol lines on stdout.</summary>
@@ -77,10 +77,25 @@ internal sealed class UseCasesShowOptions : UseCasesCommandOptions
     public bool Crew { get; set; }
 }
 
+/// <summary>Parsed options of <c>orkeon usecases export</c> (STUDIO-41).</summary>
+[Verb("export", HelpText = "Write one use case as a team folder — crew/, its data/, its output folders and studio-team.json — that Orkeon Studio imports as it is.")]
+internal sealed class UseCasesExportOptions : UseCasesCommandOptions
+{
+    /// <summary>The use case's id.</summary>
+    [Value(0, Required = true, MetaName = "id", HelpText = "The use case's id, as `orkeon usecases list` prints it.")]
+    public string Id { get; set; } = string.Empty;
+
+    /// <summary>The folder to write the team into.</summary>
+    [Option("to", Required = true,
+        HelpText = "The team folder to write: created when absent; an existing folder must be empty — an export never merges.")]
+    public string To { get; set; } = string.Empty;
+}
+
 /// <summary>
-/// <c>orkeon usecases search | list | show</c> (STUDIO-38): the example catalogue, embedded in
-/// the tool, searched without an LLM and without the network. One verb class per subcommand,
-/// each parsing its own tail — <c>export</c> (STUDIO-41) is one more class and one more arm.
+/// <c>orkeon usecases search | list | show | export</c> (STUDIO-38, STUDIO-41): the example
+/// catalogue, embedded in the tool, searched without an LLM and without the network, and
+/// written out as a team folder on request. One verb class per subcommand, each parsing its own
+/// tail.
 /// <para>
 /// <c>search --events jsonl</c> without a text is the session mode Orkeon Studio keeps open while
 /// its assistant is: one <see cref="UseCaseEventKinds.Query"/> per stdin line, one
@@ -103,11 +118,12 @@ internal static class UseCasesCommand
             settings.CaseInsensitiveEnumValues = true;
         });
 
-        return await parser.ParseArguments<UseCasesSearchOptions, UseCasesListOptions, UseCasesShowOptions>(args)
+        return await parser.ParseArguments<UseCasesSearchOptions, UseCasesListOptions, UseCasesShowOptions, UseCasesExportOptions>(args)
             .MapResult(
                 (UseCasesSearchOptions options) => ExecuteSearchAsync(options),
                 (UseCasesListOptions options) => ExecuteListAsync(options),
                 (UseCasesShowOptions options) => ExecuteShowAsync(options),
+                (UseCasesExportOptions options) => ExecuteExportAsync(options),
                 _ => Task.FromResult(Program.ExitScriptError))
             .ConfigureAwait(false);
     }
@@ -233,6 +249,61 @@ internal static class UseCasesCommand
                 events.Sheet(useCase, files, crew);
             else
                 await Console.Out.WriteAsync(RenderSheet(useCase, files, crew, language)).ConfigureAwait(false);
+
+            return Program.ExitOk;
+        });
+    }
+
+    /// <summary>
+    /// Writes one use case as a team folder (STUDIO-41, D-02); returns the CLI exit code. A
+    /// reference-only case (D-03) and a destination that holds anything are refused before a
+    /// byte is written.
+    /// </summary>
+    public static Task<int> ExecuteExportAsync(UseCasesExportOptions options)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        return GuardedAsync("export", options, async (output, _) =>
+        {
+            if (!TryReadLanguage(options, output, out var language))
+                return Program.ExitScriptError;
+
+            var catalog = options.Catalog ?? UseCaseCatalog.Embedded;
+            var id = options.Id.Trim();
+            if (!catalog.TryGet(id, out var useCase))
+            {
+                var unknown = UnknownUseCaseException.For(id);
+                return await output.FailAsync(UnknownUseCaseException.Code, unknown.Message, alreadyCoded: true).ConfigureAwait(false);
+            }
+
+            if (!useCase.Importable)
+            {
+                return await output.FailAsync(UseCaseErrorCodes.NotImportable,
+                    $"'{id}' is reference only: its crew depends on files the CLI does not carry, so it cannot be exported as a team"
+                    + $" — it stays searchable and readable (orkeon usecases show {id} --crew).").ConfigureAwait(false);
+            }
+
+            if (string.IsNullOrWhiteSpace(options.To))
+                return await output.FailAsync(UseCaseErrorCodes.OptionInvalid, "--to needs the folder to write the team into.").ConfigureAwait(false);
+
+            var destination = Path.GetFullPath(options.To.Trim());
+            if (File.Exists(destination))
+            {
+                return await output.FailAsync(UseCaseErrorCodes.DestinationNotEmpty,
+                    $"'{destination}' is a file — export into a folder that does not exist yet, or an empty one.").ConfigureAwait(false);
+            }
+
+            if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
+            {
+                return await output.FailAsync(UseCaseErrorCodes.DestinationNotEmpty,
+                    $"'{destination}' is not empty — export into a folder that does not exist yet, or an empty one: an export never merges.")
+                    .ConfigureAwait(false);
+            }
+
+            var export = UseCaseExporter.Export(catalog, useCase, destination, language ?? UseCaseLanguages.Fallback);
+            if (output.Events is { } events)
+                events.Exported(export);
+            else
+                await Console.Out.WriteAsync(RenderExport(export)).ConfigureAwait(false);
 
             return Program.ExitOk;
         });
@@ -510,6 +581,30 @@ internal static class UseCasesCommand
 
     private static void Row(System.Text.StringBuilder text, string label, string value) =>
         text.Append("  ").Append(label.PadRight(10)).AppendLine(value);
+
+    /// <summary>
+    /// What an export wrote, and the folder's own launch: from inside it, with its mounts — a bare
+    /// <c>orkeon run</c> of the crew would read and write nowhere.
+    /// </summary>
+    private static string RenderExport(UseCaseExport export)
+    {
+        var text = new System.Text.StringBuilder();
+        text.AppendLine(CultureInfo.InvariantCulture,
+            $"Exported {export.UseCase.Id} as the team \"{export.Name}\" ({export.Language}) into {export.Destination}:");
+
+        var crewFile = export.Files[0];
+        text.AppendLine(CultureInfo.InvariantCulture, $"  {crewFile}");
+        foreach (var file in export.Files.Skip(1).SkipLast(1))
+            text.AppendLine(CultureInfo.InvariantCulture, $"  {file}");
+        foreach (var folder in export.Folders)
+            text.AppendLine(CultureInfo.InvariantCulture, $"  {folder}/");
+        text.AppendLine(CultureInfo.InvariantCulture, $"  {export.Files[^1]}");
+
+        var mounts = export.UseCase.Mounts.Count > 0 ? " --mount " + string.Join(' ', export.UseCase.Mounts) : string.Empty;
+        text.AppendLine("Import the folder in Orkeon Studio (Import a team), or run it from inside the folder:");
+        text.AppendLine(CultureInfo.InvariantCulture, $"  orkeon run {crewFile}{mounts}");
+        return text.ToString();
+    }
 
     private static string Spell(UseCaseLanguageSource source) => source switch
     {

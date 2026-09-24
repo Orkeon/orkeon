@@ -96,9 +96,10 @@ orkeon usecases search "je veux un résumé de mes mails chaque matin"  # les ca
 orkeon usecases search "summarize my emails every morning" --top 3
 orkeon usecases list --category finance-trading --process parallel   # le catalogue, filtré
 orkeon usecases show 03-email-pipeline --crew                         # une fiche, et son fichier de crew
+orkeon usecases export 01-research-assistant --to ./research --lang fr   # un cas d'usage, en dossier d'équipe
 ```
 
-Le catalogue des cas d'usage d'exemple : les 105 exemples numérotés d'`examples/`, chacun décrit par une fiche écrite en cinq langues ([usecases.json](../../../examples/usecases.json)). L'outil embarque le catalogue lui-même — le manifeste, le fichier de crew de chaque exemple et son dossier `data/` — si bien que les trois sous-commandes fonctionnent hors ligne, ne lisent rien sur le disque et n'appellent aucun LLM. Les exemples finance sont **référence seule** : on peut les chercher et les lire, pas les importer, car leurs crews dépendent d'un dossier `_tools/` partagé que l'outil n'embarque pas.
+Le catalogue des cas d'usage d'exemple : les 105 exemples numérotés d'`examples/`, chacun décrit par une fiche écrite en cinq langues ([usecases.json](../../../examples/usecases.json)). L'outil embarque le catalogue lui-même — le manifeste, le fichier de crew de chaque exemple et son dossier `data/` — si bien que chaque sous-commande fonctionne hors ligne, ne lit rien sur le disque et n'appelle aucun LLM ; seul `export` écrit. Les exemples finance sont **référence seule** : on peut les chercher et les lire, pas les importer, car leurs crews dépendent d'un dossier `_tools/` partagé que l'outil n'embarque pas.
 
 **`search <texte>`** classe le catalogue selon un besoin écrit en langage naturel, en français, anglais, espagnol, allemand ou chinois simplifié.
 
@@ -127,7 +128,9 @@ Une requête sans `top` ni `lang` prend le `--top` et la `--lang` de la ligne de
 
 **`show <id>`** imprime une fiche : sa catégorie, son processus, ses agents et tâches, ses outils, ses tags, ce dont elle a besoin (réseau, clés), ses montages, si elle est importable, les fichiers que l'outil embarque pour elle, et son titre et son problème dans chaque langue écrite (`--lang` pour une seule). `--crew` ajoute le fichier de crew. `--events jsonl` émet une ligne `usecases.sheet`, avec `crew` sur demande. Un id inconnu sort avec le code 1 et `USECASES-UNKNOWN-ID` (une ligne `error` en mode `--events`).
 
-Codes de sortie : `0` réponse donnée (réponse vide comprise), `1` refus (id inconnu, option invalide), `2` erreur inattendue, `130` Ctrl+C.
+**`export <id> --to <dossier>`** écrit un cas d'usage sous la forme d'un dossier d'équipe qu'Orkeon Studio importe tel quel (STUDIO-41) : `crew/config.yaml` — la crew de l'exemple, octet pour octet —, son dossier `data/` s'il en a un, un dossier derrière chacun de ses montages (`output/` pour toute crew qui écrit des fichiers), et `studio-team.json`, la fiche Studio qui nomme l'équipe d'après le titre du cas, la décrit par son problème — tous deux dans la langue de `--lang`, `en` par défaut — et enregistre les montages du manifeste relativement au dossier (`./data:/data:ro`, `./output:/output:rw`). Il n'y a pas de `forge.json` : aucune session d'atelier n'a produit l'équipe, et `forge reopen` en reconstruit une depuis `crew/` à la première modification de l'équipe. Seuls les montages du manifeste sont enregistrés — aucun dossier d'entrée n'est inventé. `--to` est créé s'il n'existe pas ; un dossier qui contient quoi que ce soit, ou un fichier, est refusé avec `USECASES-DESTINATION-NOT-EMPTY` — un export ne fusionne jamais —, et un cas « référence seule » avec `USECASES-NOT-IMPORTABLE`. `--events jsonl` répond par une ligne `usecases.exported` : `id`, `path`, `name`, `lang`, `files` (chaque fichier écrit, en relatif) et `mounts`. Le dossier se lance depuis l'intérieur — `orkeon run crew/config.yaml --mount ./data:/data:ro ./output:/output:rw`, comme la commande l'affiche — ou depuis Studio une fois importé, qui pose les montages lui-même.
+
+Codes de sortie : `0` réponse donnée (réponse vide comprise), `1` refus (id inconnu, option invalide, cas « référence seule » ou destination non vide à l'export), `2` erreur inattendue, `130` Ctrl+C.
 
 ## `orkeon init`
 

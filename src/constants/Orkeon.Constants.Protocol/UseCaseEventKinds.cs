@@ -41,6 +41,13 @@ public static class UseCaseEventKinds
     /// <summary>One use case in full, with the files the CLI embeds for it: the <c>show</c> answer.</summary>
     public const string Sheet = "usecases.sheet";
 
+    /// <summary>
+    /// One use case written as a team folder (STUDIO-41): the <c>export</c> answer — the folder,
+    /// the team's name, the files written and the mounts its sidecar records. What Studio
+    /// imports next.
+    /// </summary>
+    public const string Exported = "usecases.exported";
+
     /// <summary>An anomaly — the run stream's kind, with its shape: <c>code</c>, <c>message</c>, <c>recoverable</c>.</summary>
     public const string Error = RunEventKinds.Error;
 
@@ -48,5 +55,5 @@ public static class UseCaseEventKinds
     /// Every kind, so a consumer can assert it handles them all rather than discovering a gap
     /// as an answer that silently never arrives.
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Query, Ready, Results, Catalog, Sheet, Error];
+    public static IReadOnlyList<string> All { get; } = [Query, Ready, Results, Catalog, Sheet, Exported, Error];
 }

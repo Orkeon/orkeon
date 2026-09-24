@@ -1,1 +1,2 @@
 #nullable enable
+const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "studio-team.json" -> string!

@@ -40,6 +40,14 @@ public static class ConventionalNames
     public const string CrewSettingsFallbackFile = "crew.yaml";
 
     /// <summary>
+    /// Orkeon Studio's sidecar at the root of a team folder: the team's name, its description,
+    /// its model profile, its schedule and its mounts. Written by Studio at adoption and by
+    /// <c>orkeon usecases export</c>, read by Studio's team catalogue — a sidecar written under
+    /// another name is a team without a name, a description or its folders.
+    /// </summary>
+    public const string TeamSidecarFile = "studio-team.json";
+
+    /// <summary>
     /// The flat YAML crew layout: a directory holding these three files is a crew, as opposed to
     /// the multi-file layout with its <c>agents/</c> and <c>tasks/</c> sub-folders.
     /// <para>

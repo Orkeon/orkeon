@@ -96,9 +96,10 @@ orkeon usecases search "summarize my emails every morning"          # the closes
 orkeon usecases search "je veux un résumé de mes mails chaque matin" --top 3
 orkeon usecases list --category finance-trading --process parallel  # the catalogue, filtered
 orkeon usecases show 03-email-pipeline --crew                        # one sheet, and its crew file
+orkeon usecases export 01-research-assistant --to ./research --lang fr  # one use case, as a team folder
 ```
 
-The catalogue of the example use cases: the 105 numbered examples of `examples/`, each described by a sheet written in five languages ([usecases.json](../../examples/usecases.json)). The tool carries the catalogue itself — the manifest, each example's crew file and its `data/` folder — so all three subcommands work offline, read nothing from disk, and call no LLM. The finance examples are **reference only**: searchable and readable, not importable, since their crews depend on a shared `_tools/` folder the tool does not carry.
+The catalogue of the example use cases: the 105 numbered examples of `examples/`, each described by a sheet written in five languages ([usecases.json](../../examples/usecases.json)). The tool carries the catalogue itself — the manifest, each example's crew file and its `data/` folder — so every subcommand works offline, reads nothing from disk, and calls no LLM; only `export` writes. The finance examples are **reference only**: searchable and readable, not importable, since their crews depend on a shared `_tools/` folder the tool does not carry.
 
 **`search <text>`** ranks the catalogue against a need written in plain words, in French, English, Spanish, German or Simplified Chinese.
 
@@ -127,7 +128,9 @@ A query without `top` or `lang` takes the command line's `--top` and `--lang`. A
 
 **`show <id>`** prints one sheet: its category, process, agents and tasks, tools, tags, what it needs (network, keys), its mounts, whether it is importable, the files the tool carries for it, and its title and problem in every language written (`--lang` for one). `--crew` appends the crew file. `--events jsonl` emits a `usecases.sheet` line, with `crew` when asked. An unknown id exits 1 with `USECASES-UNKNOWN-ID` (an `error` line in `--events` mode).
 
-Exit codes: `0` answered (an empty answer included), `1` refused (an unknown id, an invalid option), `2` unexpected error, `130` Ctrl+C.
+**`export <id> --to <folder>`** writes one use case as a team folder Orkeon Studio imports as it is (STUDIO-41): `crew/config.yaml` — the example's crew, byte for byte —, its `data/` folder when it has one, a folder behind each of its mounts (`output/` for every crew that writes files), and `studio-team.json`, the Studio sidecar that names the team after the use case's title, describes it with its problem — both in `--lang`, default `en` — and records the manifest's mounts relative to the folder (`./data:/data:ro`, `./output:/output:rw`). There is no `forge.json`: no workshop session made the team, and `forge reopen` rebuilds one from `crew/` the first time the team is modified. Only the manifest's mounts are recorded — no input folder is invented. `--to` is created when absent; a folder that holds anything, or a file, is refused with `USECASES-DESTINATION-NOT-EMPTY` — an export never merges — and a reference-only use case with `USECASES-NOT-IMPORTABLE`. `--events jsonl` answers with one `usecases.exported` line: `id`, `path`, `name`, `lang`, `files` (every file written, relative) and `mounts`. The folder runs from inside it — `orkeon run crew/config.yaml --mount ./data:/data:ro ./output:/output:rw`, as the command prints it — or from Studio once imported, which lays the mounts itself.
+
+Exit codes: `0` answered (an empty answer included), `1` refused (an unknown id, an invalid option, a reference-only use case or a destination that is not empty to export), `2` unexpected error, `130` Ctrl+C.
 
 ## `orkeon init`
 
