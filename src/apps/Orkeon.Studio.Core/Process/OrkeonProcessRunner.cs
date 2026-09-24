@@ -26,6 +26,12 @@ public sealed class OrkeonProcessRunner
     /// <summary>Resolves the binary without running anything — for a status field in the UI.</summary>
     public BinaryLocation LocateBinary() => _locator.Locate();
 
+    /// <summary>The launcher this runner spawns through — what a forge client built over it shares.</summary>
+    internal IProcessLauncher Launcher => _launcher;
+
+    /// <summary>The locator this runner finds the binary with.</summary>
+    internal OrkeonBinaryLocator Locator => _locator;
+
     /// <summary>
     /// Runs <c>orkeon</c> with <paramref name="arguments"/>.
     /// A missing binary is returned as a <see cref="RunOutcome.NotStarted"/> result carrying

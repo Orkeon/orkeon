@@ -85,15 +85,20 @@ public sealed record TeamMountChip(
 public sealed class TeamCardViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
+    private readonly TeamsViewModel _owner;
     private DateTimeOffset? _lastRun;
     private RunOutcome? _lastOutcome;
     private bool _isConfirmingDelete;
     private bool _isDescriptionExpanded;
+    private TeamScheduleState _scheduleState;
+    private string _scheduleMessage = "";
+    private string? _scheduleManualCommand;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
     {
         _strings = strings;
+        _owner = owner;
         Summary = summary;
 
         // Never the raw string: it carries the physical folder, and a team card is an
@@ -122,6 +127,9 @@ public sealed class TeamCardViewModel : ObservableObject
         AskDeleteCommand = new RelayCommand(() => owner.ArmDelete(this));
         ConfirmDeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
         CancelDeleteCommand = new RelayCommand(() => IsConfirmingDelete = false);
+        // STUDIO-27 (D-05): the engine installs and removes; the card shows what it answered.
+        InstallScheduleCommand = new AsyncRelayCommand(() => owner.InstallScheduleAsync(this));
+        StopScheduleCommand = new AsyncRelayCommand(() => owner.StopScheduleAsync(this));
         OpenCommand = new RelayCommand(() => owner.OpenInShell(summary.Path), () => owner.CanOpenInShell);
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
@@ -233,8 +241,90 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>True for a team the wizard adopted (it carries the Studio sidecar).</summary>
     public bool IsAdopted => Summary.HasMetadata;
 
-    /// <summary>True for a scheduled team — the card's green badge.</summary>
+    /// <summary>True for a team whose sidecar declares a schedule — what the user chose, not what runs.</summary>
     public bool IsScheduled => Summary.Schedule is { Length: > 0 };
+
+    /// <summary>
+    /// Where the schedule stands, as the engine last said (STUDIO-27, D-05): checked at startup and
+    /// after each gesture, never assumed from the sidecar — that was the badge that promised a
+    /// schedule nothing ran. <see cref="TeamScheduleState.Unknown"/> until the engine answered.
+    /// </summary>
+    public TeamScheduleState ScheduleState => _scheduleState;
+
+    /// <summary>« Scheduled », « Not installed » or « To reinstall », as a sentence; empty while unknown.</summary>
+    public string ScheduleStateLine => _scheduleState switch
+    {
+        TeamScheduleState.Installed => _strings[StudioStringKeys.TeamsScheduleInstalled],
+        TeamScheduleState.Absent => _strings[StudioStringKeys.TeamsScheduleAbsent],
+        TeamScheduleState.Stale => _strings[StudioStringKeys.TeamsScheduleStale],
+        _ => "",
+    };
+
+    /// <summary>Whether the state sentence shows.</summary>
+    public bool HasScheduleStateLine => _scheduleState != TeamScheduleState.Unknown;
+
+    /// <summary>Whether the card has a schedule row: one declared, or one the engine says is registered.</summary>
+    public bool HasScheduleRow =>
+        IsScheduled || _scheduleState is TeamScheduleState.Installed or TeamScheduleState.Stale;
+
+    /// <summary>« Install the schedule »: a declared schedule nothing runs, or one to reinstall.</summary>
+    public bool ShowsInstallSchedule =>
+        _owner.CanSchedule && IsScheduled && _scheduleState is TeamScheduleState.Absent or TeamScheduleState.Stale;
+
+    /// <summary>« Stop the schedule »: whenever there is one to stop.</summary>
+    public bool ShowsStopSchedule => _owner.CanSchedule && HasScheduleRow;
+
+    /// <summary>« Install the schedule » — <c>forge schedule</c> on this folder.</summary>
+    public AsyncRelayCommand InstallScheduleCommand { get; }
+
+    /// <summary>« Stop the schedule » — <c>forge unschedule</c>, then the sidecar forgets it.</summary>
+    public AsyncRelayCommand StopScheduleCommand { get; }
+
+    /// <summary>What the last schedule gesture could not do; empty while nothing failed.</summary>
+    public string ScheduleMessage
+    {
+        get => _scheduleMessage;
+        private set
+        {
+            if (SetProperty(ref _scheduleMessage, value))
+                OnPropertyChanged(nameof(HasScheduleMessage));
+        }
+    }
+
+    /// <summary>Whether the failure line shows.</summary>
+    public bool HasScheduleMessage => _scheduleMessage.Length > 0;
+
+    /// <summary>The command a person runs by hand when the system refused Orkeon; null otherwise.</summary>
+    public string? ScheduleManualCommand
+    {
+        get => _scheduleManualCommand;
+        private set
+        {
+            if (SetProperty(ref _scheduleManualCommand, value))
+                OnPropertyChanged(nameof(HasScheduleManualCommand));
+        }
+    }
+
+    /// <summary>Whether the manual command shows.</summary>
+    public bool HasScheduleManualCommand => _scheduleManualCommand is { Length: > 0 };
+
+    internal void SetScheduleState(TeamScheduleState state)
+    {
+        if (_scheduleState == state)
+            return;
+
+        _scheduleState = state;
+        OnPropertiesChanged(
+            nameof(ScheduleState), nameof(ScheduleStateLine), nameof(HasScheduleStateLine), nameof(HasScheduleRow),
+            nameof(ShowsInstallSchedule), nameof(ShowsStopSchedule), nameof(BadgeTone));
+    }
+
+    /// <summary>Says what a schedule gesture could not do; empty clears it.</summary>
+    internal void ReportSchedule(string message, string? manualCommand)
+    {
+        ScheduleMessage = message;
+        ScheduleManualCommand = manualCommand;
+    }
 
     /// <summary>Hands the folder to the launcher.</summary>
     public RelayCommand LaunchCommand { get; }
@@ -290,13 +380,19 @@ public sealed class TeamCardViewModel : ObservableObject
     public string BadgeText =>
         IsScheduled || _lastRun is not null ? ScheduleDisplay : _strings[StudioStringKeys.TeamsToTest];
 
-    /// <summary>ok / warn / accent — the badge's tone name for the view's triggers.</summary>
-    public string BadgeTone => (IsScheduled, _lastRun) switch
-    {
-        (true, _) => "ok",
-        (false, null) => "warn",
-        _ => "accent",
-    };
+    /// <summary>
+    /// ok / warn / accent — the badge's tone name for the view's triggers. A scheduled team is
+    /// green only once the engine said the operating system runs it (STUDIO-27); not installed or
+    /// to reinstall reads amber, and not asked yet claims nothing.
+    /// </summary>
+    public string BadgeTone => IsScheduled
+        ? _scheduleState switch
+        {
+            TeamScheduleState.Installed => "ok",
+            TeamScheduleState.Absent or TeamScheduleState.Stale => "warn",
+            _ => "accent",
+        }
+        : _lastRun is null ? "warn" : "accent";
 
     /// <summary>The last-run date, or never-ran — the meta line's history part.</summary>
     public string LastRunDisplay
@@ -435,6 +531,13 @@ public sealed record TeamsDependencies
 
     /// <summary>The folders the settings declare; none when null.</summary>
     public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
+
+    /// <summary>
+    /// The forge engine the schedule gestures go through (STUDIO-27): <c>forge schedule</c>,
+    /// <c>--check</c>, <c>forge unschedule</c>. Null wires none: the cards claim no schedule
+    /// state, offer no schedule action, and refuse to delete a team whose schedule they cannot stop.
+    /// </summary>
+    public ForgeClient? Forge { get; init; }
 }
 
 /// <summary>
@@ -450,7 +553,15 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly Func<IReadOnlyList<ForgeSolutionSummary>> _loadSessions;
     private readonly IStudioStrings _strings;
     private readonly ILaunchHistoryStore? _historyStore;
+    private readonly ForgeClient? _forge;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
+
+    /// <summary>
+    /// What the engine last said of each team's schedule, by folder: a refresh rebuilds the cards
+    /// from the disk, and these answers are laid back on them — a refresh never asks the engine
+    /// again (STUDIO-27, D-05: at startup and after each gesture only).
+    /// </summary>
+    private readonly Dictionary<string, TeamScheduleState> _scheduleStates = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>Builds the screen over its seams; the loaders default to the real catalogs.</summary>
     public TeamsViewModel(TeamsDependencies? dependencies = null)
@@ -459,6 +570,7 @@ public sealed class TeamsViewModel : ObservableObject
         _declaredMounts = wired.DeclaredMounts ?? (() => []);
         _shellOpener = wired.ShellOpener;
         _historyStore = wired.HistoryStore;
+        _forge = wired.Forge;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         var workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root));
@@ -555,7 +667,136 @@ public sealed class TeamsViewModel : ObservableObject
         }
 
         ApplyLastRuns();
+        ApplyScheduleStates();
         OnPropertiesChanged(nameof(Count), nameof(IsEmpty), nameof(HasInProgress));
+    }
+
+    /// <summary>Whether the schedule gestures can reach the engine at all.</summary>
+    public bool CanSchedule => _forge is not null;
+
+    /// <summary>
+    /// Asks the engine where every team's schedule stands (STUDIO-27, D-05) — the shell runs this
+    /// once at startup. Only teams that have one are asked, one at a time.
+    /// </summary>
+    public async Task CheckSchedulesAsync(CancellationToken cancellationToken = default)
+    {
+        if (_forge is null)
+            return;
+
+        foreach (var path in Teams.Where(card => card.Summary.HasSchedule).Select(card => card.Summary.Path).ToList())
+            await CheckScheduleAsync(path, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// Asks the engine where one team's schedule stands — after a gesture that may have changed it:
+    /// an adoption, an import, a duplication. A team with no schedule any more is forgotten without
+    /// asking; an answer the engine could not give is recorded as unknown, never as a guess.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A check is comfort, not truth: whatever it could not learn leaves the card saying nothing.")]
+    public async Task CheckScheduleAsync(string teamPath, CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamPath);
+        if (_forge is null)
+            return;
+
+        if (!TeamCatalog.Describe(teamPath).HasSchedule)
+        {
+            RecordScheduleState(teamPath, TeamScheduleState.Unknown);
+            return;
+        }
+
+        TeamScheduleState state;
+        try
+        {
+            var report = await _forge.ScheduleAsync(teamPath, ForgeScheduleVerb.Check, cancellationToken).ConfigureAwait(true);
+            state = report.Succeeded ? report.State : TeamScheduleState.Unknown;
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            state = TeamScheduleState.Unknown;
+        }
+
+        RecordScheduleState(teamPath, state);
+    }
+
+    /// <summary>Records what the engine said of <paramref name="teamPath"/>'s schedule, and shows it on its card.</summary>
+    public void RecordScheduleState(string teamPath, TeamScheduleState state)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamPath);
+
+        var key = NormalizePath(teamPath);
+        if (state == TeamScheduleState.Unknown)
+            _scheduleStates.Remove(key);
+        else
+            _scheduleStates[key] = state;
+
+        ApplyScheduleStates();
+    }
+
+    private void ApplyScheduleStates()
+    {
+        foreach (var card in Teams)
+        {
+            card.SetScheduleState(_scheduleStates.TryGetValue(NormalizePath(card.Summary.Path), out var state)
+                ? state
+                : TeamScheduleState.Unknown);
+        }
+    }
+
+    /// <summary>« Install the schedule » (D-05): <c>forge schedule</c>, the card then shows what the engine answered.</summary>
+    internal async Task InstallScheduleAsync(TeamCardViewModel card)
+    {
+        card.ReportSchedule("", null);
+        var report = await ScheduleAsync(card.Summary.Path, ForgeScheduleVerb.Install).ConfigureAwait(true);
+        if (!report.Succeeded)
+        {
+            card.ReportSchedule(
+                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleInstallFailed], report.FailureReason),
+                report.ManualCommand);
+            return;
+        }
+
+        RecordScheduleState(card.Summary.Path, report.State);
+    }
+
+    /// <summary>
+    /// « Stop the schedule » (D-05): <c>forge unschedule</c>, then the sidecar forgets the schedule —
+    /// the card is on demand from then on. A refusal changes nothing, and says what to run by hand.
+    /// </summary>
+    internal async Task StopScheduleAsync(TeamCardViewModel card)
+    {
+        card.ReportSchedule("", null);
+        var report = await ScheduleAsync(card.Summary.Path, ForgeScheduleVerb.Remove).ConfigureAwait(true);
+        if (!report.Succeeded)
+        {
+            card.ReportSchedule(
+                string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], report.FailureReason),
+                report.ManualCommand);
+            return;
+        }
+
+        TeamCatalog.ClearSchedule(card.Summary.Path);
+        _scheduleStates.Remove(NormalizePath(card.Summary.Path));
+        Refresh();
+    }
+
+    /// <summary>One schedule verb; a screen wired without an engine gets a run that never started.</summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A launch fault is the refusal the card says, never an exception in a discarded task.")]
+    private async Task<ForgeScheduleReport> ScheduleAsync(string teamPath, ForgeScheduleVerb verb)
+    {
+        if (_forge is null)
+            return new ForgeScheduleReport { Run = ProcessRunResult.NotStarted("No forge engine is wired to this screen.") };
+
+        try
+        {
+            return await _forge.ScheduleAsync(teamPath, verb).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new ForgeScheduleReport { Run = ProcessRunResult.NotStarted(ex.Message) };
+        }
     }
 
     /// <summary>
@@ -639,8 +880,13 @@ public sealed class TeamsViewModel : ObservableObject
 
     internal void Duplicate(string path)
     {
-        if (TeamCatalog.Duplicate(path) is not null)
-            Refresh();
+        if (TeamCatalog.Duplicate(path) is not { } copy)
+            return;
+
+        Refresh();
+        // A copy carries its original's schedule, which runs the original: what runs the copy is
+        // the engine's to say (STUDIO-27).
+        _ = CheckScheduleAsync(copy);
     }
 
     internal void Delete(string path)

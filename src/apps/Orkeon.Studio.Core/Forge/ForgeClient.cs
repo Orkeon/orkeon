@@ -112,6 +112,24 @@ public static class ForgeArgumentsBuilder
         return arguments;
     }
 
+    /// <summary>
+    /// Builds the argv of a schedule verb on <paramref name="teamDirectory"/> (STUDIO-27):
+    /// <c>forge schedule &lt;team&gt;</c>, with <c>--check</c> to only ask, or
+    /// <c>forge unschedule &lt;team&gt;</c>. The engine does the operating system's part — Studio
+    /// never runs schtasks, systemctl or crontab itself.
+    /// </summary>
+    public static IReadOnlyList<string> BuildSchedule(string teamDirectory, ForgeScheduleVerb verb)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        return verb switch
+        {
+            ForgeScheduleVerb.Check => [ForgeVerb, "schedule", teamDirectory, "--check", "--events", "jsonl"],
+            ForgeScheduleVerb.Remove => [ForgeVerb, "unschedule", teamDirectory, "--events", "jsonl"],
+            _ => [ForgeVerb, "schedule", teamDirectory, "--events", "jsonl"],
+        };
+    }
+
     /// <summary>Builds the argv of <paramref name="request"/>, <c>--events jsonl</c> always on.</summary>
     public static IReadOnlyList<string> Build(ForgeStartRequest request)
     {
@@ -189,6 +207,17 @@ public sealed class ForgeClient
     /// <summary>Creates a client over the real machine and real processes.</summary>
     public static ForgeClient ForCurrentMachine() =>
         new(SystemProcessLauncher.Instance, OrkeonBinaryLocator.ForCurrentMachine());
+
+    /// <summary>
+    /// Creates a client over the launcher and the locator of <paramref name="runner"/> — the one
+    /// binary every screen invokes: the doctor, the launcher and the forge never disagree about
+    /// which <c>orkeon</c> answers.
+    /// </summary>
+    public static ForgeClient Over(OrkeonProcessRunner runner)
+    {
+        ArgumentNullException.ThrowIfNull(runner);
+        return new(runner.Launcher, runner.Locator);
+    }
 
     /// <summary>Whether a forge child is currently alive.</summary>
     public bool IsRunning { get; private set; }
@@ -323,6 +352,53 @@ public sealed class ForgeClient
         {
             IsRunning = false;
         }
+    }
+
+    /// <summary>
+    /// Runs one schedule verb on <paramref name="teamDirectory"/> (STUDIO-27) and reads its answer.
+    /// A short child of its own, beside whatever session this client drives: it shares neither
+    /// the session's stdin nor its cancellation, so « Install the schedule » on a card works while
+    /// the wizard composes another team. A missing binary comes back as a not-started run, never
+    /// as an exception.
+    /// </summary>
+    public async Task<ForgeScheduleReport> ScheduleAsync(
+        string teamDirectory,
+        ForgeScheduleVerb verb,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var location = _locator.Locate();
+        if (!location.Found)
+        {
+            return new ForgeScheduleReport
+            {
+                Run = ProcessRunResult.NotStarted(location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found."),
+            };
+        }
+
+        var reading = new ForgeScheduleReading();
+        var run = await _launcher.RunAsync(
+            new ProcessLaunchRequest
+            {
+                FileName = location.Path!,
+                Arguments = ForgeArgumentsBuilder.BuildSchedule(teamDirectory, verb),
+            },
+            line =>
+            {
+                if (line.Channel == ProcessOutputChannel.StandardOutput
+                    && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
+                {
+                    reading.Read(orkeonEvent!);
+                }
+                else if (line.Channel == ProcessOutputChannel.StandardError)
+                {
+                    reading.ReadError(line.Text);
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return reading.Report(run);
     }
 
     /// <summary>Sends the user's next conversation turn; false when no child is listening.</summary>

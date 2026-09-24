@@ -219,7 +219,7 @@ public static class StudioStringKeys
     public const string ChatAnswerDuration = "Studio.Chat.AnswerDuration";
     /// <summary>"If a step fails the run stops and nothing is written to the output…"</summary>
     public const string ChatAnswerError = "Studio.Chat.AnswerError";
-    /// <summary>"A scheduled team runs even with Studio closed, as long as the machi…"</summary>
+    /// <summary>"Once you confirm it, Studio installs the schedule in your system's scheduler…" (STUDIO-27: true now)</summary>
     public const string ChatAnswerSchedule = "Studio.Chat.AnswerSchedule";
     /// <summary>"With a local setting, no data leaves the machine. With a cloud sett…"</summary>
     public const string ChatAnswerPrivacy = "Studio.Chat.AnswerPrivacy";
@@ -229,7 +229,7 @@ public static class StudioStringKeys
     public const string ChatReplyStep2 = "Studio.Chat.ReplyStep2";
     /// <summary>"The trial touches nothing: read-only, on a sample of documents, and…"</summary>
     public const string ChatReplyStep3 = "Studio.Chat.ReplyStep3";
-    /// <summary>"After adoption the team works on its own at the chosen moment, even…"</summary>
+    /// <summary>"After adoption, Studio offers to install the schedule: the team then…" (STUDIO-27: true now)</summary>
     public const string ChatReplyStep4 = "Studio.Chat.ReplyStep4";
     /// <summary>"I'm following the run live. If a step stops, tell me: I read the te…"</summary>
     public const string ChatReplyRun = "Studio.Chat.ReplyRun";
@@ -1290,6 +1290,45 @@ public static class StudioStringKeys
     /// <summary>"Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back."</summary>
     public const string TeamsModifyNoSession = "Studio.Teams.ModifyNoSession";
 
+    // ---- STUDIO-27: the managed schedule ----
+
+    /// <summary>"Scheduled — the system runs it, even with Studio closed." — the card's schedule row when the operating system runs the team (STUDIO-27).</summary>
+    public const string TeamsScheduleInstalled = "Studio.Teams.ScheduleInstalled";
+
+    /// <summary>"Schedule not installed — nothing runs it yet." — the card's schedule row when nothing of the team's is registered (STUDIO-27).</summary>
+    public const string TeamsScheduleAbsent = "Studio.Teams.ScheduleAbsent";
+
+    /// <summary>"Schedule to reinstall — what is installed no longer matches this team." — the card's schedule row when the registration no longer matches the team (STUDIO-27).</summary>
+    public const string TeamsScheduleStale = "Studio.Teams.ScheduleStale";
+
+    /// <summary>"The schedule could not be installed: {0}" — {0} is the engine's refusal (STUDIO-27, D-04).</summary>
+    public const string TeamsScheduleInstallFailed = "Studio.Teams.ScheduleInstallFailed";
+
+    /// <summary>"The schedule could not be stopped: {0}" — {0} is the engine's refusal (STUDIO-27, D-04).</summary>
+    public const string TeamsScheduleStopFailed = "Studio.Teams.ScheduleStopFailed";
+
+
+
+    /// <summary>"Install the schedule (every day at {0})?" — the question after adopting a daily team; {0} is its time (STUDIO-27, D-05).</summary>
+    public const string WizardScheduleOfferDaily = "Studio.Create.ScheduleOfferDaily";
+
+    /// <summary>"Install the schedule (every hour)?" — the question after adopting an hourly team (STUDIO-27, D-05).</summary>
+    public const string WizardScheduleOfferHourly = "Studio.Create.ScheduleOfferHourly";
+
+    /// <summary>"The schedule is installed: the system will run the team, even with Studio closed." — the line once the schedule was installed from the wizard (STUDIO-27).</summary>
+    public const string WizardScheduleInstalled = "Studio.Create.ScheduleInstalled";
+
+    /// <summary>"Schedule not installed — you can install it later from My teams." — the line once the user answered « Later » (STUDIO-27).</summary>
+    public const string WizardScheduleDeclined = "Studio.Create.ScheduleDeclined";
+
+    /// <summary>"Its schedule stays installed." — a re-adoption finds the schedule still installed as declared: nothing to ask (STUDIO-27).</summary>
+    public const string WizardScheduleKept = "Studio.Create.ScheduleKept";
+
+    /// <summary>"Its schedule is stopped." — after the adopted line, when a re-adoption on demand stopped the schedule (STUDIO-27).</summary>
+    public const string WizardScheduleStopped = "Studio.Create.ScheduleStopped";
+
+
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -1687,12 +1726,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatAnswerCost] = "A local setting (Ollama) costs nothing. In the cloud the cost depends on how many words are exchanged: Studio shows the tokens spent at the end of every run.",
         [StudioStringKeys.ChatAnswerDuration] = "On this dataset, count one to two minutes per run locally. The technical log gives the duration of each step.",
         [StudioStringKeys.ChatAnswerError] = "If a step fails the run stops and nothing is written to the output folder. The failure appears in the history, with the step and the error message.",
-        [StudioStringKeys.ChatAnswerSchedule] = "A scheduled team runs even with Studio closed, as long as the machine is on. You can stop the schedule from My teams.",
+        [StudioStringKeys.ChatAnswerSchedule] = "Once you confirm it, Studio installs the schedule in your system's scheduler: the team then runs even with Studio closed, while your session on this computer is open. You can stop the schedule from My teams.",
         [StudioStringKeys.ChatAnswerPrivacy] = "With a local setting, no data leaves the machine. With a cloud setting, only the text sent to the model leaves — never the files themselves.",
         [StudioStringKeys.ChatReplyStep1] = "Describe the work in one sentence, as you would to a colleague: what you do by hand today, and what you want to receive. I'll take care of the rest — and I'll ask for the details that are missing.",
         [StudioStringKeys.ChatReplyStep2] = "The proposed agents share the reading, the writing and the proofreading. You can drop one: I'll rebalance the roles, and the allowed folders will stay the same.",
         [StudioStringKeys.ChatReplyStep3] = "The trial touches nothing: read-only, on a sample of documents, and nothing is saved. This is the moment to check the tone and the level of detail.",
-        [StudioStringKeys.ChatReplyStep4] = "After adoption the team works on its own at the chosen moment, even with Studio closed. Every run leaves a trace in History, and you can stop the schedule from My teams.",
+        [StudioStringKeys.ChatReplyStep4] = "After adoption, Studio offers to install the schedule: the team then works on its own at the chosen moment, even with Studio closed, while your session on this computer is open. What it produces lands in its folder, and you can stop the schedule from My teams.",
         [StudioStringKeys.ChatReplyRun] = "I'm following the run live. If a step stops, tell me: I read the technical log and explain what blocked, without jargon.",
         [StudioStringKeys.ChatReplyHistory] = "Every line of the history keeps its full log. Ask me « why did the last one fail? » and I'll pick up the offending step and the error message.",
         [StudioStringKeys.WizardDraftTitle] = "A creation in progress",
@@ -2034,6 +2073,17 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsModifyTip] = "Reopen the assistant on this team",
         [StudioStringKeys.TeamsModifyRebuild] = "Reopen the assistant on this team — no workshop session points here, so one is rebuilt from the team's files",
         [StudioStringKeys.TeamsModifyNoSession] = "Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back.",
+        [StudioStringKeys.TeamsScheduleInstalled] = "Scheduled — the system runs it, even with Studio closed.",
+        [StudioStringKeys.TeamsScheduleAbsent] = "Schedule not installed — nothing runs it yet.",
+        [StudioStringKeys.TeamsScheduleStale] = "Schedule to reinstall — what is installed no longer matches this team.",
+        [StudioStringKeys.TeamsScheduleInstallFailed] = "The schedule could not be installed: {0}",
+        [StudioStringKeys.TeamsScheduleStopFailed] = "The schedule could not be stopped: {0}",
+        [StudioStringKeys.WizardScheduleOfferDaily] = "Install the schedule (every day at {0})?",
+        [StudioStringKeys.WizardScheduleOfferHourly] = "Install the schedule (every hour)?",
+        [StudioStringKeys.WizardScheduleInstalled] = "The schedule is installed: the system will run the team, even with Studio closed.",
+        [StudioStringKeys.WizardScheduleDeclined] = "Schedule not installed — you can install it later from My teams.",
+        [StudioStringKeys.WizardScheduleKept] = "Its schedule stays installed.",
+        [StudioStringKeys.WizardScheduleStopped] = "Its schedule is stopped.",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

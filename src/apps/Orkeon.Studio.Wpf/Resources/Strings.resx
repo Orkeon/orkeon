@@ -705,7 +705,7 @@
   <data name="Studio.Create.HelpStep1" xml:space="preserve"><value>Describe what you need in your own words — folders to read, the result you expect, how often. The assistant asks its questions until the brief is clear; nothing runs on your machine yet.</value></data>
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>The assistant proposes a team: one agent per job, each with only the capacities it needs. You can edit an agent, add one, and choose which folders the team may see once adopted.</value></data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>The team rehearses on a sample, in its own sandbox — nothing outside it is touched. The verdict tells you honestly whether the result meets what you asked at step 1.</value></data>
-  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. Scheduling is shown as a command, never run for you; the team then appears in My teams.</value></data>
+  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopting stores the team as an ordinary folder under your profile. If you chose a schedule, Studio then offers to install it in your system's scheduler; the team appears in My teams.</value></data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>No folder is allowed yet. The agents will see nothing until you allow at least one.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Not saved — the file could not be written: {0}</value></data>
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Team exported to {0}</value></data>
@@ -986,7 +986,7 @@
     <value>If a step fails the run stops and nothing is written to the output folder. The failure appears in the history, with the step and the error message.</value>
   </data>
   <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
-    <value>A scheduled team runs even with Studio closed, as long as the machine is on. You can stop the schedule from My teams.</value>
+    <value>Once you confirm it, Studio installs the schedule in your system's scheduler: the team then runs even with Studio closed, while your session on this computer is open. You can stop the schedule from My teams.</value>
   </data>
   <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>With a local setting, no data leaves the machine. With a cloud setting, only the text sent to the model leaves — never the files themselves.</value>
@@ -1001,7 +1001,7 @@
     <value>The trial touches nothing: read-only, on a sample of documents, and nothing is saved. This is the moment to check the tone and the level of detail.</value>
   </data>
   <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
-    <value>After adoption the team works on its own at the chosen moment, even with Studio closed. Every run leaves a trace in History, and you can stop the schedule from My teams.</value>
+    <value>After adoption, Studio offers to install the schedule: the team then works on its own at the chosen moment, even with Studio closed, while your session on this computer is open. What it produces lands in its folder, and you can stop the schedule from My teams.</value>
   </data>
   <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>I'm following the run live. If a step stops, tell me: I read the technical log and explain what blocked, without jargon.</value>
@@ -1069,6 +1069,57 @@
   </data>
   <data name="Studio.Teams.ShowLess" xml:space="preserve">
     <value>Show less</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstalled" xml:space="preserve">
+    <value>Scheduled — the system runs it, even with Studio closed.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleAbsent" xml:space="preserve">
+    <value>Schedule not installed — nothing runs it yet.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStale" xml:space="preserve">
+    <value>Schedule to reinstall — what is installed no longer matches this team.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstall" xml:space="preserve">
+    <value>Install the schedule</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStop" xml:space="preserve">
+    <value>Stop the schedule</value>
+  </data>
+  <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
+    <value>By hand:</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
+    <value>The schedule could not be installed: {0}</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
+    <value>The schedule could not be stopped: {0}</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
+    <value>Install the schedule (every day at {0})?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHourly" xml:space="preserve">
+    <value>Install the schedule (every hour)?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHint" xml:space="preserve">
+    <value>The system will run the team at that time, even with Studio closed, while your session on this computer is open. You can stop it from My teams.</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstallNow" xml:space="preserve">
+    <value>Install</value>
+  </data>
+  <data name="Studio.Create.ScheduleLater" xml:space="preserve">
+    <value>Later</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstalled" xml:space="preserve">
+    <value>The schedule is installed: the system will run the team, even with Studio closed.</value>
+  </data>
+  <data name="Studio.Create.ScheduleDeclined" xml:space="preserve">
+    <value>Schedule not installed — you can install it later from My teams.</value>
+  </data>
+  <data name="Studio.Create.ScheduleKept" xml:space="preserve">
+    <value>Its schedule stays installed.</value>
+  </data>
+  <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
+    <value>Its schedule is stopped.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>read</value>

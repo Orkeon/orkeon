@@ -59,6 +59,15 @@ public sealed record ForgeSolutionSummary
         || string.Equals(Status, "Ready", StringComparison.OrdinalIgnoreCase);
 }
 
+/// <summary>What Studio reads of a team's <c>forge.json</c> (<see cref="ForgeSessionCatalog.ReadTeamRecord"/>).</summary>
+/// <param name="SessionId">The id of the session it names (STUDIO-25); null when none or unreadable.</param>
+/// <param name="HasInstalledSchedule">Whether its <c>schedule</c> block records an installation (STUDIO-27).</param>
+public sealed record TeamForgeRecord(Guid? SessionId, bool HasInstalledSchedule)
+{
+    /// <summary>No record, or one that could not be read.</summary>
+    public static TeamForgeRecord None { get; } = new(null, false);
+}
+
 /// <summary>
 /// Reads the workspace's forge sessions straight off the disk —
 /// <c>.orkeon/forge/&lt;slug&gt;/session.json</c>, the layout SPEC-ORKEON-FORGE §4.1 fixes.
@@ -151,7 +160,15 @@ public static class ForgeSessionCatalog
     /// (STUDIO-25) — read-only: the CLI writes the record. Null when the record, or its id, is
     /// absent, unreadable or not an id; never a throw.
     /// </summary>
-    public static Guid? ReadTeamSessionId(string teamDirectory)
+    public static Guid? ReadTeamSessionId(string teamDirectory) => ReadTeamRecord(teamDirectory).SessionId;
+
+    /// <summary>
+    /// What Studio reads of <paramref name="teamDirectory"/>'s <c>forge.json</c>, in one read: the id
+    /// of its session (STUDIO-25), and whether its <c>schedule</c> block records an installation
+    /// (STUDIO-27) — a team whose registration the engine must be asked to remove before the folder
+    /// goes. Read-only, tolerant: an absent or unreadable record reads as neither.
+    /// </summary>
+    public static TeamForgeRecord ReadTeamRecord(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
@@ -159,16 +176,22 @@ public static class ForgeSessionCatalog
         {
             var path = Path.Combine(teamDirectory, TeamRecordFileName);
             if (!File.Exists(path))
-                return null;
+                return TeamForgeRecord.None;
 
             using var document = JsonDocument.Parse(File.ReadAllText(path));
-            return document.RootElement.ValueKind == JsonValueKind.Object
-                ? ReadId(document.RootElement)
-                : null;
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return TeamForgeRecord.None;
+
+            var installed = root.TryGetProperty("schedule", out var schedule)
+                && schedule.ValueKind == JsonValueKind.Object
+                && schedule.TryGetProperty("installed", out var block)
+                && block.ValueKind == JsonValueKind.Object;
+            return new TeamForgeRecord(ReadId(root), installed);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return null;
+            return TeamForgeRecord.None;
         }
     }
 

@@ -1990,7 +1990,7 @@
     <value>团队会在自己的沙箱里用一个样例排练——沙箱之外的一切都不会被触碰。结论会如实告诉您结果是否符合您在第 1 步提出的要求。</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
-    <value>采纳会把团队保存为您个人目录下的一个普通文件夹。排程只以命令的形式展示，绝不会代您执行；随后团队会出现在「我的团队」中。</value>
+    <value>采纳会把团队保存为您个人目录下的一个普通文件夹。如果您选择了排程，Studio 随后会提议把它安装到系统的计划程序中；团队会出现在「我的团队」中。</value>
   </data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
     <value>尚未授权任何文件夹。在您至少授权一个之前，智能体什么也看不到。</value>
@@ -2284,7 +2284,7 @@
     <value>某步失败时，执行停止，输出文件夹不写入任何内容。失败会连同步骤和错误信息出现在历史记录中。</value>
   </data>
   <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
-    <value>设了计划的团队即使 Studio 关闭也会运行，只要机器开着。可在“我的团队”中停止计划。</value>
+    <value>您确认后，Studio 会在系统的计划程序中安装计划：此后即使 Studio 已关闭，只要您在这台电脑上的会话处于打开状态，团队就会运行。可在“我的团队”中停止计划。</value>
   </data>
   <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>使用本地配置时，任何数据都不离开本机。使用云端配置时，只有发送给模型的文本会外传——文件本身绝不会。</value>
@@ -2299,7 +2299,7 @@
     <value>试运行不动任何东西：只读、抽样文档、不保存。正是检查语气与细节程度的时机。</value>
   </data>
   <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
-    <value>采用后，团队将在选定时间自行工作，即使 Studio 已关闭。每次执行都会留痕于历史记录，您可在“我的团队”中停止计划。</value>
+    <value>采用后，Studio 会提议安装计划：此后团队将在选定时间自行工作，即使 Studio 已关闭，只要您在这台电脑上的会话处于打开状态。其产出会保存在它的文件夹中，您可在“我的团队”中停止计划。</value>
   </data>
   <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>我在实时跟踪这次执行。哪个步骤停了就告诉我：我会读取技术日志，用大白话解释卡在哪里。</value>
@@ -2367,6 +2367,57 @@
   </data>
   <data name="Studio.Teams.ShowLess" xml:space="preserve">
     <value>收起</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstalled" xml:space="preserve">
+    <value>已计划——系统会运行它，即使 Studio 已关闭。</value>
+  </data>
+  <data name="Studio.Teams.ScheduleAbsent" xml:space="preserve">
+    <value>计划未安装——目前还没有任何东西会运行它。</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStale" xml:space="preserve">
+    <value>需要重新安装计划——已安装的内容与此团队不再相符。</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstall" xml:space="preserve">
+    <value>安装计划</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStop" xml:space="preserve">
+    <value>停止计划</value>
+  </data>
+  <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
+    <value>手动执行：</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
+    <value>无法安装计划：{0}</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
+    <value>无法停止计划：{0}</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
+    <value>安装计划（每天 {0}）？</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHourly" xml:space="preserve">
+    <value>安装计划（每小时）？</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHint" xml:space="preserve">
+    <value>系统将在该时间运行团队，即使 Studio 已关闭，只要您在这台电脑上的会话处于打开状态。您可以在“我的团队”中停止它。</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstallNow" xml:space="preserve">
+    <value>安装</value>
+  </data>
+  <data name="Studio.Create.ScheduleLater" xml:space="preserve">
+    <value>稍后</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstalled" xml:space="preserve">
+    <value>计划已安装：系统将运行该团队，即使 Studio 已关闭。</value>
+  </data>
+  <data name="Studio.Create.ScheduleDeclined" xml:space="preserve">
+    <value>计划未安装——您可以稍后在“我的团队”中安装。</value>
+  </data>
+  <data name="Studio.Create.ScheduleKept" xml:space="preserve">
+    <value>其计划仍保持安装。</value>
+  </data>
+  <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
+    <value>其计划已停止。</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>只读</value>

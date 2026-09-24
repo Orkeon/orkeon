@@ -76,7 +76,11 @@ internal static class CaptureWorldWriter
             .Answer("doctor", 0, plan.DoctorJson)
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
-            .Answer("forge", 0, [.. plan.ForgeStream]);
+            .Answer("forge", 0, [.. plan.ForgeStream])
+            // STUDIO-27: a card says where its schedule stands only once the engine answered, so the
+            // seeded schedules are said to be installed — the green badge is an answer, not a sidecar.
+            .Answer("forge schedule", 0,
+                """{"v":2,"seq":1,"ts":"2026-09-24T08:00:00Z","kind":"schedule.state","path":"team","state":"installed","expression":"daily@07:00","family":"windows","names":["Orkeon team"]}""");
 
         // «Modifier» asks the engine first (STUDIO-25, D-04): `forge reopen` on the adopted team
         // answers with the session its forge.json names, found where promotedTo says.

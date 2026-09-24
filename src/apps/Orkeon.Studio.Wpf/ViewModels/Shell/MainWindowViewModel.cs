@@ -52,13 +52,15 @@ public sealed class MainWindowViewModel : ObservableObject
         var historyStore = seams.HistoryStore;
         var dispatcher = seams.Dispatcher;
         var strings = seams.Strings;
-        var forgeClient = seams.ForgeClient;
         var profileStore = seams.ProfileStore;
         var shellOpener = seams.ShellOpener;
         var delay = seams.Delay;
         var llmProbe = seams.LlmProbe;
         var keyStore = seams.KeyStore;
         var runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+        // One forge client for the wizard and the team cards' schedule gestures (STUDIO-27), over
+        // the same binary as the doctor and the launcher when none is handed in.
+        var forgeClient = seams.ForgeClient ?? ForgeClient.Over(runner);
 
         Mode = new UiModeViewModel(ui.InitialMode, ui.PersistMode);
 
@@ -151,6 +153,7 @@ public sealed class MainWindowViewModel : ObservableObject
             ShellOpener = shellOpener,
             HistoryStore = historyStore,
             DeclaredMounts = declaredMounts,
+            Forge = forgeClient,
         });
 
 
@@ -237,8 +240,11 @@ public sealed class MainWindowViewModel : ObservableObject
         // A draft discarded from My teams is gone from the disk: the wizard it was open on
         // goes back to a blank step 1 rather than keep a session that no longer exists.
         Teams.SessionDeleted += (_, e) => CreateTeam.ForgetSession(e.Session.Directory);
-        CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
-        Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
+        // An adoption or an import may bring a schedule: its card asks the engine where it stands
+        // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
+        CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
+        Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
         // team list. Every change to the teams on disk — an adoption, an import, a deletion or
         // a duplication from a card, a save of the folders modal — ends in Teams.Refresh(),
@@ -401,7 +407,10 @@ public sealed class MainWindowViewModel : ObservableObject
                 Config.Diagnostic.InitializeAsync(cancellationToken),
                 // The team cards' last-run line, from the same history the
                 // History screen reads.
-                Teams.LoadLastRunsAsync(cancellationToken)).ConfigureAwait(true);
+                Teams.LoadLastRunsAsync(cancellationToken),
+                // Where each scheduled team's schedule really stands — the engine says, the
+                // sidecar never does (STUDIO-27, D-05).
+                Teams.CheckSchedulesAsync(cancellationToken)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {

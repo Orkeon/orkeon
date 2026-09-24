@@ -1990,7 +1990,7 @@
     <value>Das Team probt an einem Beispiel, in seiner eigenen Sandbox — nichts außerhalb wird berührt. Das Urteil sagt Ihnen ehrlich, ob das Ergebnis dem entspricht, was Sie in Schritt 1 verlangt haben.</value>
   </data>
   <data name="Studio.Create.HelpStep4" xml:space="preserve">
-    <value>Die Übernahme legt das Team als gewöhnlichen Ordner in Ihrem Profil ab. Die Zeitplanung wird als Befehl angezeigt, nie für Sie ausgeführt; danach erscheint das Team unter Meine Teams.</value>
+    <value>Die Übernahme legt das Team als gewöhnlichen Ordner in Ihrem Profil ab. Haben Sie eine Zeitplanung gewählt, bietet Studio danach an, sie in der Aufgabenplanung Ihres Systems zu installieren; das Team erscheint unter Meine Teams.</value>
   </data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve">
     <value>Es ist noch kein Ordner erlaubt. Die Agenten sehen nichts, solange Sie nicht mindestens einen freigeben.</value>
@@ -2284,7 +2284,7 @@
     <value>Schlägt ein Schritt fehl, stoppt der Lauf und nichts wird in den Ausgabeordner geschrieben. Der Fehler erscheint im Verlauf, mit Schritt und Fehlermeldung.</value>
   </data>
   <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
-    <value>Ein geplantes Team läuft auch bei geschlossenem Studio, solange der Rechner an ist. Den Zeitplan stoppen Sie unter Meine Teams.</value>
+    <value>Sobald Sie ihn bestätigen, installiert Studio den Zeitplan in der Aufgabenplanung Ihres Systems: Das Team läuft dann auch bei geschlossenem Studio, solange Ihre Sitzung auf diesem Rechner geöffnet ist. Den Zeitplan stoppen Sie unter Meine Teams.</value>
   </data>
   <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>Mit einem lokalen Profil verlässt kein Datum den Rechner. Mit einem Cloud-Profil geht nur der an das Modell gesendete Text hinaus — nie die Dateien selbst.</value>
@@ -2299,7 +2299,7 @@
     <value>Der Probelauf rührt nichts an: nur Lesen, auf einer Dokumentprobe, nichts wird gespeichert. Jetzt Ton und Detailgrad prüfen.</value>
   </data>
   <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
-    <value>Nach der Übernahme arbeitet das Team allein zur gewählten Zeit, auch bei geschlossenem Studio. Jeder Lauf hinterlässt eine Spur im Verlauf, den Zeitplan stoppen Sie unter Meine Teams.</value>
+    <value>Nach der Übernahme bietet Studio an, den Zeitplan zu installieren: Das Team arbeitet dann allein zur gewählten Zeit, auch bei geschlossenem Studio, solange Ihre Sitzung auf diesem Rechner geöffnet ist. Was es erzeugt, landet in seinem Ordner, den Zeitplan stoppen Sie unter Meine Teams.</value>
   </data>
   <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>Ich verfolge den Lauf live. Stoppt ein Schritt, sagen Sie es mir: Ich lese das technische Protokoll und erkläre ohne Jargon, was blockiert hat.</value>
@@ -2367,6 +2367,57 @@
   </data>
   <data name="Studio.Teams.ShowLess" xml:space="preserve">
     <value>Weniger anzeigen</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstalled" xml:space="preserve">
+    <value>Geplant — das System startet es, auch bei geschlossenem Studio.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleAbsent" xml:space="preserve">
+    <value>Zeitplan nicht installiert — noch startet es nichts.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStale" xml:space="preserve">
+    <value>Zeitplan neu zu installieren — das Installierte passt nicht mehr zu diesem Team.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstall" xml:space="preserve">
+    <value>Zeitplan installieren</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStop" xml:space="preserve">
+    <value>Zeitplan stoppen</value>
+  </data>
+  <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
+    <value>Von Hand:</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
+    <value>Der Zeitplan konnte nicht installiert werden: {0}</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
+    <value>Der Zeitplan konnte nicht gestoppt werden: {0}</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
+    <value>Den Zeitplan installieren (täglich um {0})?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHourly" xml:space="preserve">
+    <value>Den Zeitplan installieren (stündlich)?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHint" xml:space="preserve">
+    <value>Das System startet das Team zu dieser Zeit, auch bei geschlossenem Studio, solange Ihre Sitzung auf diesem Rechner geöffnet ist. Stoppen können Sie ihn unter „Meine Teams“.</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstallNow" xml:space="preserve">
+    <value>Installieren</value>
+  </data>
+  <data name="Studio.Create.ScheduleLater" xml:space="preserve">
+    <value>Später</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstalled" xml:space="preserve">
+    <value>Der Zeitplan ist installiert: Das System startet das Team, auch bei geschlossenem Studio.</value>
+  </data>
+  <data name="Studio.Create.ScheduleDeclined" xml:space="preserve">
+    <value>Zeitplan nicht installiert — Sie können ihn später unter „Meine Teams“ installieren.</value>
+  </data>
+  <data name="Studio.Create.ScheduleKept" xml:space="preserve">
+    <value>Sein Zeitplan bleibt installiert.</value>
+  </data>
+  <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
+    <value>Sein Zeitplan ist gestoppt.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>Lesen</value>
