@@ -190,6 +190,13 @@ internal static class ForgeErrorCodes
     public const string InvalidState = "FORGE-INVALID-STATE";
 
     /// <summary>
+    /// The promotion is written, but the session folder could not take the team folder's name —
+    /// a handle held open on Windows, an antivirus (STUDIO-26, D-05). Carried by a <c>warning</c>,
+    /// never an <c>error</c>: the team is linked to its session by the id either way.
+    /// </summary>
+    public const string SessionNotRenamed = "FORGE-SESSION-NOT-RENAMED";
+
+    /// <summary>
     /// <c>forge reopen</c> found no crew it can read back into a plan under the team folder
     /// (no folder, no YAML crew, a script crew, or files that do not describe a valid plan).
     /// </summary>

@@ -59,22 +59,30 @@ public sealed class ForgeCliOfflineSlowTests : IDisposable
 
         var destination = Path.Combine(workspace, "my-solution");
         var (promoteCode, promoteOutput) = RunCli(
-            $"forge promote supplier-watch --to {destination} --schedule daily@07:30 --events jsonl",
+            $"forge promote supplier-watch --to {destination} --name \"Supplier watch\" --schedule daily@07:30 --events jsonl",
             workspace);
         Assert.True(promoteCode == 0, $"forge promote exited {promoteCode}. Output:\n{promoteOutput}");
         Assert.Contains("\"kind\":\"promoted\"", promoteOutput, StringComparison.Ordinal);
+        Assert.Contains("\"kind\":\"session.renamed\"", promoteOutput, StringComparison.Ordinal);
 
-        // The folder is the ordinary artifact the docs promise.
+        // The folder is the ordinary artifact the docs promise, titled and named after the team.
         Assert.True(File.Exists(Path.Combine(destination, "FORGE.md")));
         Assert.True(File.Exists(Path.Combine(destination, "run.sh")));
         Assert.True(File.Exists(Path.Combine(destination, "crew", "config.yaml")));
         Assert.Contains("30 7 * * *",
             File.ReadAllText(Path.Combine(destination, "schedule", "cron.txt")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(destination, "schedule", "orkeon-my-solution.timer")));
+        Assert.StartsWith("# Supplier watch", File.ReadAllText(Path.Combine(destination, "FORGE.md")), StringComparison.Ordinal);
         Assert.Contains("The summary cites its sources",
             File.ReadAllText(Path.Combine(destination, "FORGE.md")), StringComparison.Ordinal);
 
+        // STUDIO-26: after the adoption the atelier holds one session folder, named after the team.
+        Assert.Equal(
+            ["my-solution"],
+            Directory.GetDirectories(Path.Combine(workspace, ".orkeon", "forge")).Select(Path.GetFileName));
+
         // Promotion is recorded; a second one is refused by design.
-        var (againCode, againOutput) = RunCli($"forge promote supplier-watch --to {destination}-2", workspace);
+        var (againCode, againOutput) = RunCli($"forge promote my-solution --to {destination}-2", workspace);
         Assert.Equal(1, againCode);
         Assert.Contains("only a ready session", againOutput, StringComparison.Ordinal);
     }

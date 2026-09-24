@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Text.Json;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Scripting.Cli.Commands.Forge;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
@@ -48,7 +49,8 @@ public sealed class ForgePromoteTests : IDisposable
     private readonly string _workspace =
         Path.Combine(Path.GetTempPath(), "orkeon-forge-promote-" + Guid.NewGuid().ToString("N"));
 
-    private string Destination => Path.Combine(_workspace, "promoted");
+    /// <summary>A team folder the way Studio names one: under the teams root, after the team's name.</summary>
+    private string Destination => Path.Combine(_workspace, "teams", "ma-veille");
 
     public void Dispose()
     {
@@ -56,9 +58,9 @@ public sealed class ForgePromoteTests : IDisposable
             Directory.Delete(_workspace, recursive: true);
     }
 
-    private ForgeSession ReadySession(bool withVerdict = true)
+    private ForgeSession ReadySession(string slug = "veille", bool withVerdict = true)
     {
-        var session = ForgeSession.Create(_workspace, "veille");
+        var session = ForgeSession.Create(_workspace, slug);
         session.Document.Title = "Résumer chaque matin les nouvelles offres";
 
         Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
@@ -189,8 +191,8 @@ public sealed class ForgePromoteTests : IDisposable
         var scheduleDir = Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName);
         Assert.Contains("30 7 * * *", File.ReadAllText(Path.Combine(scheduleDir, "cron.txt")), StringComparison.Ordinal);
         Assert.Contains("OnCalendar=*-*-* 07:30:00",
-            File.ReadAllText(Path.Combine(scheduleDir, "orkeon-veille.timer")), StringComparison.Ordinal);
-        Assert.Contains("run.sh", File.ReadAllText(Path.Combine(scheduleDir, "orkeon-veille.service")), StringComparison.Ordinal);
+            File.ReadAllText(Path.Combine(scheduleDir, "orkeon-ma-veille.timer")), StringComparison.Ordinal);
+        Assert.Contains("run.sh", File.ReadAllText(Path.Combine(scheduleDir, "orkeon-ma-veille.service")), StringComparison.Ordinal);
 
         // 10:00 > 07:30 on the fixed clock: the Windows task anchors on tomorrow's occurrence.
         var task = File.ReadAllText(Path.Combine(scheduleDir, "windows-task.xml"));
@@ -198,7 +200,7 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Contains("run.cmd", task, StringComparison.Ordinal);
 
         Assert.Equal(ForgePromoter.ScheduleDirectoryName, result.ScheduleDirectory);
-        Assert.Contains("systemctl --user enable --now orkeon-veille.timer", result.InstallCommand, StringComparison.Ordinal);
+        Assert.Contains("systemctl --user enable --now orkeon-ma-veille.timer", result.InstallCommand, StringComparison.Ordinal);
 
         // The card shows the install command; nothing was executed.
         var card = File.ReadAllText(Path.Combine(Destination, ForgePromoter.CardFileName));
@@ -219,7 +221,7 @@ public sealed class ForgePromoteTests : IDisposable
         var scheduleDir = Path.Combine(Destination, ForgePromoter.ScheduleDirectoryName);
         Assert.Contains("0 * * * *", File.ReadAllText(Path.Combine(scheduleDir, "cron.txt")), StringComparison.Ordinal);
         Assert.Contains("OnCalendar=hourly",
-            File.ReadAllText(Path.Combine(scheduleDir, "orkeon-veille.timer")), StringComparison.Ordinal);
+            File.ReadAllText(Path.Combine(scheduleDir, "orkeon-ma-veille.timer")), StringComparison.Ordinal);
         Assert.Contains("<Interval>PT1H</Interval>",
             File.ReadAllText(Path.Combine(scheduleDir, "windows-task.xml")), StringComparison.Ordinal);
 
@@ -393,16 +395,15 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal(0, exitCode);
         Assert.True(File.Exists(Path.Combine(Destination, ForgePromoter.CardFileName)));
 
-        var events = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonElement.Parse(line)).ToList();
-        Assert.Equal(["session.started", "promoted", "session.finished"],
-            events.Select(e => e.GetProperty("kind").GetString()).ToList());
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "promoted", "session.renamed", "session.finished"], Kinds(events));
         Assert.Equal(Destination, events[1].GetProperty("path").GetString());
         Assert.False(events[1].TryGetProperty("schedule", out _));
-        Assert.Equal("ready", events[2].GetProperty("status").GetString());
+        Assert.Equal("ready", events[3].GetProperty("status").GetString());
 
-        // The session moved to Promoted, transition in the history, and refuses a second run.
-        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var promoted, out _));
+        // The session moved to Promoted — under its team's name now — with the transition in the
+        // history, and refuses a second run.
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "ma-veille", out var promoted, out _));
         Assert.Equal(ForgeState.Promoted, promoted!.State);
         Assert.Equal(ForgeSessionStatus.Promoted, promoted.Status);
         Assert.Equal(Destination, promoted.Document.PromotedTo);
@@ -411,7 +412,7 @@ public sealed class ForgePromoteTests : IDisposable
             StringComparison.OrdinalIgnoreCase);
 
         using var again = new TestConsole();
-        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination], _workspace));
+        Assert.Equal(1, await ForgeCommand.DispatchAsync(["promote", "ma-veille", "--to", Destination], _workspace));
         Assert.Contains("only a ready session", again.Stderr, StringComparison.Ordinal);
     }
 
@@ -424,17 +425,18 @@ public sealed class ForgePromoteTests : IDisposable
         using var console = new TestConsole();
 
         var exitCode = await ForgeCommand.DispatchAsync(
-            ["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace);
+            ["promote", "veille", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"], _workspace);
 
         Assert.Equal(1, exitCode);
-        var error = console.Stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries)
-            .Select(line => JsonElement.Parse(line))
-            .Single(e => e.GetProperty("kind").GetString() == "error");
+        var error = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "error");
         Assert.Equal(ForgeErrorCodes.PromoteFailed, error.GetProperty("code").GetString());
         Assert.True(error.GetProperty("recoverable").GetBoolean());
 
+        // Nothing moved: the name, the folder and the state all wait for a promotion that is written.
         Assert.True(ForgeSession.TryLoadBySlug(_workspace, "veille", out var session, out _));
         Assert.Equal(ForgeSessionStatus.Ready, session!.Status);
+        Assert.Equal("Résumer chaque matin les nouvelles offres", session.Document.Title);
+        Assert.DoesNotContain(Events(console.Stdout), e => e.GetProperty("kind").GetString() == "session.renamed");
         Assert.False(File.Exists(Path.Combine(Destination, ForgePromoter.CardFileName)));
     }
 
@@ -782,4 +784,276 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal(session.Document.Id, ForgeTeamRecord.ReadSessionId(Destination));
         Assert.Null(ForgeTeamRecord.ReadSessionId(Path.Combine(_workspace, "nowhere")));
     }
+
+    // ── STUDIO-26: the team's name reaches the engine, and the session folder follows the team ──
+
+    /// <summary>
+    /// D-01/D-02: the name the user gave the team reaches the engine. It titles the card a
+    /// colleague reads, the record <c>forge reopen</c> rebuilds from, and the session itself — all
+    /// three carried the goal sentence of the interview before, whatever the team was called.
+    /// </summary>
+    [Fact]
+    public async Task The_name_passed_to_promote_titles_the_card_the_record_and_the_session()
+    {
+        ReadySession();
+        using var console = new TestConsole();
+
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+            ["promote", "veille", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"], _workspace));
+
+        Assert.Equal("# Ma veille", CardTitle(Destination));
+        Assert.Equal("Ma veille", ForgeTeamRecord.TryRead(Destination)!.Title);
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "ma-veille", out var session, out _));
+        Assert.Equal("Ma veille", session!.Document.Title);
+    }
+
+    /// <summary>
+    /// D-02/D-03: once the promotion is written, the session folder takes the team folder's name —
+    /// as it is — and the wire says so, so the atelier lists the session under the team it made
+    /// rather than under the need it was opened with. Everything travels with the folder, the
+    /// history included; the id does not change, so rule R still links the two.
+    /// </summary>
+    [Fact]
+    public async Task Adoption_gives_the_session_folder_the_team_folders_name()
+    {
+        var session = ReadySession("resumer-chaque-matin-les-offres");
+        using var console = new TestConsole();
+
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+            ["promote", "resumer-chaque-matin-les-offres", "--to", Destination, "--name", "Ma veille", "--events", "jsonl"],
+            _workspace));
+
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "promoted", "session.renamed", "session.finished"], Kinds(events));
+        var moved = Path.Combine(ForgeSession.RootFor(_workspace), "ma-veille");
+        var renamed = events[2];
+        Assert.Equal("resumer-chaque-matin-les-offres", renamed.GetProperty("from").GetString());
+        Assert.Equal("ma-veille", renamed.GetProperty("to").GetString());
+        Assert.Equal(moved, renamed.GetProperty("dir").GetString());
+        Assert.False(renamed.GetProperty("suffixed").GetBoolean());
+        Assert.Equal(0, events[3].GetProperty("exitCode").GetInt32());
+
+        // One folder in the atelier, named after the team; nothing is left under the old name.
+        Assert.Equal(["ma-veille"], Directory.GetDirectories(ForgeSession.RootFor(_workspace)).Select(Path.GetFileName));
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "ma-veille", out var aligned, out _));
+        Assert.Equal("ma-veille", aligned!.Document.Slug);
+        Assert.Equal(session.Document.Id, aligned.Document.Id);
+        Assert.Equal(ForgeSessionStatus.Promoted, aligned.Status);
+        Assert.Equal(Destination, aligned.Document.PromotedTo);
+        Assert.Contains("\"trigger\":\"Promote\"",
+            await File.ReadAllTextAsync(Path.Combine(moved, ForgeSession.HistoryFileName), TestContext.Current.CancellationToken),
+            StringComparison.Ordinal);
+
+        // The team's record names the session by its new slug, and rule R still links them.
+        Assert.Equal("ma-veille", ForgeTeamRecord.TryRead(Destination)!.Slug);
+        var link = ForgeTeamLink.Resolve(_workspace, Destination);
+        Assert.Equal(TeamSessionLinkKind.Linked, link.Kind);
+        Assert.Equal(moved, link.Session!.Directory);
+    }
+
+    /// <summary>
+    /// D-04: another session already holds the team folder's name — a second team forged under the
+    /// same one. It is never overwritten: the adopting session takes the name suffixed -2, and the
+    /// event says the name was taken.
+    /// </summary>
+    [Fact]
+    public async Task An_alignment_collision_is_suffixed_and_reported()
+    {
+        var other = ForgeSession.Create(_workspace, "ma-veille");
+        ReadySession();
+        using var console = new TestConsole();
+
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--events", "jsonl"], _workspace));
+
+        var renamed = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "session.renamed");
+        Assert.Equal("veille", renamed.GetProperty("from").GetString());
+        Assert.Equal("ma-veille-2", renamed.GetProperty("to").GetString());
+        Assert.True(renamed.GetProperty("suffixed").GetBoolean());
+        Assert.True(ForgeSession.TryLoadBySlug(_workspace, "ma-veille-2", out var aligned, out _));
+        Assert.Equal(ForgeSessionStatus.Promoted, aligned!.Status);
+        Assert.Equal("ma-veille-2", ForgeTeamRecord.TryRead(Destination)!.Slug);
+
+        // The other session is exactly what and where it was.
+        Assert.True(ForgeSession.TryLoad(other.Directory, out var untouched, out _));
+        Assert.Equal(other.Document.Id, untouched!.Document.Id);
+        Assert.Equal("ma-veille", untouched.Document.Slug);
+        Assert.Equal(ForgeSessionStatus.Active, untouched.Status);
+    }
+
+    /// <summary>
+    /// A re-adoption finds its session already named after the team: nothing moves and nothing is
+    /// said — the folder is no collision with itself.
+    /// </summary>
+    [Fact]
+    public async Task A_session_already_named_after_its_team_stays_where_it_is()
+    {
+        ReadySession("ma-veille");
+        using var console = new TestConsole();
+
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "ma-veille", "--to", Destination, "--events", "jsonl"], _workspace));
+
+        Assert.Equal(["session.started", "promoted", "session.finished"], Kinds(Events(console.Stdout)));
+        Assert.Equal(["ma-veille"], Directory.GetDirectories(ForgeSession.RootFor(_workspace)).Select(Path.GetFileName));
+    }
+
+    /// <summary>
+    /// D-05: a move the disk refuses leaves the adoption as it stands. The promotion is written and
+    /// the command succeeds; the stream carries a structured warning — never an error, never
+    /// silence — and the session keeps its folder, linked to its team by the id all the same.
+    /// <para>
+    /// The refusal is one every file system makes whoever runs the test — root included, which
+    /// ignores the permissions a read-only folder would rely on: a team folder named at the
+    /// 255-character limit, whose name another session already holds, can only be followed under a
+    /// name one past that limit once suffixed.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public async Task A_move_the_disk_refuses_leaves_the_adoption_successful_with_a_warning()
+    {
+        Assert.SkipWhen(OperatingSystem.IsWindows(), "A 255-character folder name under the temp folder needs long paths on Windows.");
+
+        var session = ReadySession();
+        var atTheLimit = new string('v', 255);
+        Directory.CreateDirectory(Path.Combine(ForgeSession.RootFor(_workspace), atTheLimit));
+        var team = Path.Combine(_workspace, "teams", atTheLimit);
+        using var console = new TestConsole();
+
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", team, "--events", "jsonl"], _workspace));
+
+        var events = Events(console.Stdout);
+        Assert.Equal(["session.started", "promoted", "warning", "session.finished"], Kinds(events));
+        Assert.Equal(ForgeErrorCodes.SessionNotRenamed, events[2].GetProperty("code").GetString());
+        Assert.Contains("'veille'", events[2].GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.Equal("ready", events[3].GetProperty("status").GetString());
+        Assert.Equal(0, events[3].GetProperty("exitCode").GetInt32());
+
+        // Promoted where it stands, its team's record unchanged: the id links the two.
+        Assert.True(ForgeSession.TryLoad(session.Directory, out var kept, out _));
+        Assert.Equal(ForgeSessionStatus.Promoted, kept!.Status);
+        Assert.Equal("veille", kept.Document.Slug);
+        Assert.Equal("veille", ForgeTeamRecord.TryRead(team)!.Slug);
+        Assert.Equal(TeamSessionLinkKind.Linked, ForgeTeamLink.Resolve(_workspace, team).Kind);
+    }
+
+    /// <summary>
+    /// D-06: every artifact the promotion generates carries the team folder's name, never the slug
+    /// of the need the session was opened with — the unit files and their descriptions, the
+    /// scheduled task, the install command of each platform, the launchers' header — and so does
+    /// the <c>install</c> field of the <c>promoted</c> event.
+    /// </summary>
+    [Fact]
+    public async Task The_schedule_artifacts_and_the_install_command_carry_the_team_name()
+    {
+        var session = ReadySession("resumer-chaque-matin-les-offres");
+        Assert.True(ForgeSchedule.TryParse("daily@07:30", out var daily, out _));
+
+        foreach (var platform in new[] { ForgePromotePlatform.Linux, ForgePromotePlatform.Windows, ForgePromotePlatform.Other })
+        {
+            var team = Path.Combine(_workspace, platform.ToString(), "ma-veille");
+            var result = ForgePromoter.Promote(session, team, daily, null, false, platform, Now);
+
+            var scheduleDir = Path.Combine(team, ForgePromoter.ScheduleDirectoryName);
+            Assert.Equal(
+                ["cron.txt", "orkeon-ma-veille.service", "orkeon-ma-veille.timer", "windows-task.xml"],
+                Directory.GetFiles(scheduleDir).Select(Path.GetFileName).Order(StringComparer.Ordinal));
+            Assert.Contains("Description=Orkeon crew 'ma-veille'",
+                await File.ReadAllTextAsync(Path.Combine(scheduleDir, "orkeon-ma-veille.service"), TestContext.Current.CancellationToken),
+                StringComparison.Ordinal);
+            Assert.Contains("Description=Schedule for Orkeon crew 'ma-veille'",
+                await File.ReadAllTextAsync(Path.Combine(scheduleDir, "orkeon-ma-veille.timer"), TestContext.Current.CancellationToken),
+                StringComparison.Ordinal);
+            Assert.Contains("ma-veille", result.InstallCommand, StringComparison.Ordinal);
+            Assert.DoesNotContain("resumer", result.InstallCommand, StringComparison.Ordinal);
+            foreach (var generated in Directory.GetFiles(scheduleDir)
+                         .Append(Path.Combine(team, ForgePromoter.PosixLauncherName))
+                         .Append(Path.Combine(team, ForgePromoter.WindowsLauncherName)))
+            {
+                Assert.DoesNotContain("resumer",
+                    await File.ReadAllTextAsync(generated, TestContext.Current.CancellationToken), StringComparison.Ordinal);
+            }
+
+            Assert.Contains("for the team 'ma-veille'",
+                await File.ReadAllTextAsync(Path.Combine(team, ForgePromoter.PosixLauncherName), TestContext.Current.CancellationToken),
+                StringComparison.Ordinal);
+            Assert.Contains("for the team 'ma-veille'",
+                await File.ReadAllTextAsync(Path.Combine(team, ForgePromoter.WindowsLauncherName), TestContext.Current.CancellationToken),
+                StringComparison.Ordinal);
+        }
+
+        Assert.Contains("systemctl --user enable --now orkeon-ma-veille.timer",
+            ForgePromoter.Promote(session, Path.Combine(_workspace, "linux-2", "ma-veille"), daily, null, false, ForgePromotePlatform.Linux, Now).InstallCommand,
+            StringComparison.Ordinal);
+        Assert.StartsWith("schtasks /Create /TN \"Orkeon ma-veille\"",
+            ForgePromoter.Promote(session, Path.Combine(_workspace, "windows-2", "ma-veille"), daily, null, false, ForgePromotePlatform.Windows, Now).InstallCommand,
+            StringComparison.Ordinal);
+
+        // Through the verb: the event's install command names the team on whatever platform runs it.
+        using var console = new TestConsole();
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(
+            ["promote", "resumer-chaque-matin-les-offres", "--to", Destination, "--schedule", "daily@07:30", "--events", "jsonl"],
+            _workspace));
+        var install = Events(console.Stdout).Single(e => e.GetProperty("kind").GetString() == "promoted").GetProperty("install").GetString();
+        Assert.Contains("ma-veille", install, StringComparison.Ordinal);
+        Assert.DoesNotContain("resumer", install, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// A folder whose name a unit file cannot carry — spaces, capitals — names its artifacts through
+    /// the one folder rule: what systemd and schtasks accept, and for every folder Studio names, the
+    /// folder's name itself.
+    /// </summary>
+    [Fact]
+    public void A_folder_name_a_unit_cannot_carry_names_its_artifacts_through_the_folder_rule()
+    {
+        Assert.Equal("ma-veille", ForgePromoter.ArtifactName(Destination));
+        Assert.Equal("ma-veille-v2", ForgePromoter.ArtifactName(Path.Combine(_workspace, "teams", "Ma Veille (v2)")));
+        Assert.Equal("ma-veille", ForgePromoter.ArtifactName(Destination + Path.DirectorySeparatorChar));
+        Assert.Equal(FolderSlug.TeamFallback, ForgePromoter.ArtifactName(Path.Combine(_workspace, "teams", "每日监控")));
+    }
+
+    /// <summary>
+    /// D-01: a team's name is the user's words, and a leading dash is one of them — the value of
+    /// <c>--name</c> is taken as written, where any other option's would be read as the next option.
+    /// </summary>
+    [Fact]
+    public async Task A_name_starting_with_a_dash_is_accepted()
+    {
+        var options = ForgeCommandOptions.Parse(["promote", "veille", "--to", "/t", "--name", "-Veille-", "--events", "jsonl"]);
+        Assert.Null(options.Error);
+        Assert.Equal("-Veille-", options.TeamName);
+        Assert.Equal("/t", options.Destination);
+        Assert.True(options.Events);
+
+        ReadySession();
+        using var console = new TestConsole();
+        Assert.Equal(0, await ForgeCommand.DispatchAsync(["promote", "veille", "--to", Destination, "--name", "-Veille-"], _workspace));
+        Assert.Equal("# -Veille-", CardTitle(Destination));
+    }
+
+    /// <summary>
+    /// The name's grammar, loud like the rest of the parser: a missing or blank name is refused, a
+    /// name anywhere but on <c>promote</c> would be ignored and is refused, and a line break in it
+    /// would split the card's title in two, so it reaches the engine on one line.
+    /// </summary>
+    [Fact]
+    public void The_name_is_refused_where_it_means_nothing()
+    {
+        Assert.Contains("--name needs the team's name", ForgeCommandOptions.Parse(["promote", "veille", "--to", "/t", "--name"]).Error, StringComparison.Ordinal);
+        Assert.Contains("--name needs the team's name", ForgeCommandOptions.Parse(["promote", "veille", "--to", "/t", "--name", "  "]).Error, StringComparison.Ordinal);
+        Assert.Contains("only apply to `forge promote`", ForgeCommandOptions.Parse(["une veille", "--name", "Ma veille"]).Error, StringComparison.Ordinal);
+        Assert.Contains("only apply to `forge promote`", ForgeCommandOptions.Parse(["resume", "veille", "--name", "Ma veille"]).Error, StringComparison.Ordinal);
+        Assert.Equal("Ma veille", ForgeCommandOptions.Parse(["promote", "veille", "--to", "/t", "--name", "Ma\nveille "]).TeamName);
+    }
+
+    /// <summary>The first line of the card a promotion wrote into <paramref name="team"/>.</summary>
+    private static string CardTitle(string team) =>
+        File.ReadAllText(Path.Combine(team, ForgePromoter.CardFileName)).ReplaceLineEndings("\n").Split('\n')[0];
+
+    private static List<JsonElement> Events(string stdout) => stdout
+        .Split('\n', StringSplitOptions.RemoveEmptyEntries)
+        .Select(line => JsonElement.Parse(line))
+        .ToList();
+
+    private static List<string?> Kinds(IEnumerable<JsonElement> events) =>
+        [.. events.Select(e => e.GetProperty("kind").GetString())];
 }
