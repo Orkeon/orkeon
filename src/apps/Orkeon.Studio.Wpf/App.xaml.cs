@@ -134,6 +134,8 @@ public partial class App : System.Windows.Application
                 // The wizard's pause before a need is searched for close use cases (STUDIO-39):
                 // a timer of its own, so dropping a superseded pause never drops a beat above.
                 SuggestionDelay = new WpfDelay(Dispatcher),
+                // My teams' undo banner (STUDIO-32, D-02): its own timer too, for the same reason.
+                UndoDelay = new WpfDelay(Dispatcher),
                 // The optional automatic balance reading keeps a beat of its own (STUDIO-35).
                 BalanceTicker = new WpfTicker(Dispatcher),
             },

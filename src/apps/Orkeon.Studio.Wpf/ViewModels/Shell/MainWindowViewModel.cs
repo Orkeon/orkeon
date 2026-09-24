@@ -174,6 +174,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 UiLanguage = () => Language.Current,
                 // STUDIO-41: the gallery's « Import as is » follows the window's expert switch.
                 Mode = Mode,
+                // STUDIO-32: an imported case dates its arrival — its first activity.
+                Clock = seams.Clock,
             });
 
         Teams = new TeamsViewModel(new TeamsDependencies
@@ -189,6 +191,10 @@ public sealed class MainWindowViewModel : ObservableObject
             // wizard does not move — read at the moment of the gesture.
             ActivityOf = TeamActivityOf,
             Clock = seams.Clock,
+            // STUDIO-32: the archive suggestion reads Settings › Studio as in force (DB-1), and the
+            // undo banner keeps a timer of its own (D-02).
+            StudioSettings = () => Settings.Studio.Current,
+            UndoDelay = seams.UndoDelay,
         });
 
 
@@ -244,6 +250,8 @@ public sealed class MainWindowViewModel : ObservableObject
             DeclaredMounts = declaredMounts,
             DeclareMount = Config.Mounts.AddPickedMount,
             SaveSettings = () => Config.SaveAsync(),
+            // STUDIO-32: an imported team dates its arrival — its first activity.
+            Clock = seams.Clock,
         });
 
         // Declaring a folder is the OS folder dialog, and that gesture belongs to the settings
@@ -319,6 +327,13 @@ public sealed class MainWindowViewModel : ObservableObject
             Test.Launcher.RefreshTeamDescription();
         };
         CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
+        // STUDIO-32 (DB-1): the archive suggestion follows Settings › Studio at once — turned off, it
+        // leaves My teams; a new threshold, and it is worked out again.
+        Settings.Studio.PropertyChanged += (_, e) =>
+        {
+            if (e.PropertyName == nameof(StudioSettingsViewModel.Current))
+                Teams.RefreshArchiveSuggestion();
+        };
         Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
         // A use case imported as it is from the gallery (STUDIO-41) has no schedule to ask about.
         CreateTeam.Gallery.Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };

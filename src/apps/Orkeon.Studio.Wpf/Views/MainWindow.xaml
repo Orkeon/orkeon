@@ -333,13 +333,15 @@
             </Button>
             <RadioButton x:Name="NavTeams" GroupName="Nav" Style="{StaticResource NavItem}"
                          HorizontalContentAlignment="Stretch">
-              <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip -->
+              <!-- T-10: the counter is pushed to the right edge, mono 10 faint, no chip. It counts the
+                   ACTIVE teams (STUDIO-32, D-03): neither the screen's search nor its Archives view
+                   moves it. -->
               <DockPanel LastChildFill="False">
                 <controls:LucideIcon DockPanel.Dock="Left" Kind="brain-circuit" Size="14" Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=RadioButton}}"/>
                 <TextBlock DockPanel.Dock="Left" Margin="10,0,0,0" Text="{Binding [Studio.Shell.NavTeams], Source={x:Static services:I18n.Instance}}"/>
                 <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource MonoFont}" FontSize="10"
                            Foreground="{DynamicResource InkFaintBrush}" VerticalAlignment="Center"
-                           Text="{Binding DataContext.Teams.Count, RelativeSource={RelativeSource AncestorType=Window}}"/>
+                           Text="{Binding DataContext.Teams.ActiveCount, RelativeSource={RelativeSource AncestorType=Window}}"/>
               </DockPanel>
             </RadioButton>
             <RadioButton x:Name="NavImport" GroupName="Nav" Style="{StaticResource NavItem}">

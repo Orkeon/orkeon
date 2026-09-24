@@ -25,6 +25,8 @@ public sealed class UiPreferencesDocument
     private const string StudioKey = "Studio";
     private const string BalanceRefreshMinutesKey = "BalanceRefreshMinutes";
     private const string BalanceThresholdsKey = "BalanceThresholds";
+    private const string ArchiveSuggestionKey = "ArchiveSuggestion";
+    private const string ArchiveSuggestionDaysKey = "ArchiveSuggestionDays";
 
     /// <summary>
     /// What the first writer also put in the file: it serialized the whole preferences record,
@@ -90,7 +92,18 @@ public sealed class UiPreferencesDocument
                 }
             }
 
-            return new StudioSettings { BalanceRefreshMinutes = minutes, BalanceThresholds = thresholds.ToImmutable() };
+            var days = Number(section[ArchiveSuggestionDaysKey]) is { } written
+                       && written >= 1 && written <= int.MaxValue && decimal.Truncate(written) == written
+                ? (int)written
+                : StudioSettings.DefaultArchiveSuggestionDays;
+
+            return new StudioSettings
+            {
+                BalanceRefreshMinutes = minutes,
+                BalanceThresholds = thresholds.ToImmutable(),
+                ArchiveSuggestion = Flag(section[ArchiveSuggestionKey]) ?? StudioSettings.Default.ArchiveSuggestion,
+                ArchiveSuggestionDays = days,
+            };
         }
     }
 
@@ -128,6 +141,8 @@ public sealed class UiPreferencesDocument
             thresholds[provider] = threshold;
 
         section[BalanceThresholdsKey] = thresholds;
+        section[ArchiveSuggestionKey] = settings.ArchiveSuggestion;
+        section[ArchiveSuggestionDaysKey] = settings.ArchiveSuggestionDays;
     }
 
     /// <summary>The document as the file stores it, indented for whoever opens it.</summary>
@@ -138,4 +153,7 @@ public sealed class UiPreferencesDocument
 
     private static decimal? Number(JsonNode? node) =>
         node is JsonValue value && value.TryGetValue<decimal>(out var number) ? number : null;
+
+    private static bool? Flag(JsonNode? node) =>
+        node is JsonValue value && value.TryGetValue<bool>(out var flag) ? flag : null;
 }

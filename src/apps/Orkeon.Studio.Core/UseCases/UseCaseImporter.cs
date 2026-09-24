@@ -51,7 +51,8 @@ public static class UseCaseImporter
     /// <summary>
     /// Exports <paramref name="useCaseId"/> and imports it as <paramref name="teamFolder"/>, named
     /// <paramref name="teamName"/> — a folder the caller found free. What the CLI answered and what
-    /// the disk refused are typed failures, and none leaves anything in the teams root.
+    /// the disk refused are typed failures, and none leaves anything in the teams root. The team's
+    /// arrival, <paramref name="addedAt"/>, is its first activity (STUDIO-32).
     /// </summary>
     public static async Task<UseCaseImportResult> ImportAsync(
         UseCaseClient client,
@@ -60,6 +61,7 @@ public static class UseCaseImporter
         string teamFolder,
         string teamsRoot,
         string? language,
+        DateTimeOffset addedAt,
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(client);
@@ -80,7 +82,7 @@ public static class UseCaseImporter
 
             // What was staged is what enters — never a path the answer names: the import copies
             // a whole folder into the teams root.
-            var team = TeamCatalog.Import(exported, teamsRoot, out var refusal);
+            var team = TeamCatalog.Import(exported, teamsRoot, addedAt, out var refusal);
             if (team is null)
             {
                 return new UseCaseImportResult

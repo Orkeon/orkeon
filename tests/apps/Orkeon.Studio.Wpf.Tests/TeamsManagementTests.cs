@@ -364,7 +364,7 @@ public sealed class TeamsManagementTests
                 $$"""{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(original)}}}""",
                 TestContext.Current.CancellationToken);
 
-            var copy = TeamCatalog.Duplicate(original);
+            var copy = TeamCatalog.Duplicate(original, DateTimeOffset.UnixEpoch);
             Assert.NotNull(copy);
             var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = teamsRoot, WorkspaceDirectory = root });
             var copyCard = teams.Teams.Single(card => card.Summary.Path == copy);

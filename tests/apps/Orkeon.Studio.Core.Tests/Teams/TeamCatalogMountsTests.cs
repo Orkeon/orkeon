@@ -9,6 +9,9 @@ namespace Orkeon.Studio.Core.Tests.Teams;
 /// </summary>
 public sealed class TeamCatalogMountsTests : IDisposable
 {
+    /// <summary>When a copy entered the teams root (STUDIO-32): a duplicate and an import date their arrival.</summary>
+    private static readonly DateTimeOffset AddedOn = new(2026, 9, 24, 11, 0, 0, TimeSpan.Zero);
+
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-mounts-{Guid.NewGuid():N}");
 
     public void Dispose()
@@ -118,7 +121,7 @@ public sealed class TeamCatalogMountsTests : IDisposable
             ],
         });
 
-        var copy = TeamCatalog.Duplicate(team);
+        var copy = TeamCatalog.Duplicate(team, AddedOn);
 
         Assert.NotNull(copy);
         var mounts = TeamCatalog.Describe(copy).Mounts;
@@ -228,7 +231,7 @@ public sealed class TeamCatalogMountsTests : IDisposable
             Mounts = ["./output:/output:rw", $"{id}|/data/docs:/docs:ro"],
         });
 
-        var copy = TeamCatalog.Duplicate(team)!;
+        var copy = TeamCatalog.Duplicate(team, AddedOn)!;
         var exported = TeamCatalog.ExportTo(team, Path.Combine(_root, "export"))!;
 
         Assert.Equal($"{id}|/data/docs:/docs:ro", TeamCatalog.Describe(copy).Metadata!.Mounts![1]);
@@ -292,7 +295,7 @@ public sealed class TeamCatalogMountsTests : IDisposable
             Mounts = ["./output:/output:rw", $"{Path.Combine(_root, "documents")}:/docs:ro"],
         });
 
-        var copy = TeamCatalog.Duplicate(team);
+        var copy = TeamCatalog.Duplicate(team, AddedOn);
 
         Assert.NotNull(copy);
         var copied = TeamCatalog.Describe(copy);
@@ -324,9 +327,9 @@ public sealed class TeamCatalogMountsTests : IDisposable
                 Mounts = [$"{Path.Combine(team, "output")}:/output:rw", "/data/docs:/docs:ro"],
             }));
 
-        var duplicated = TeamCatalog.Duplicate(team)!;
+        var duplicated = TeamCatalog.Duplicate(team, AddedOn)!;
         var exported = TeamCatalog.ExportTo(team, Path.Combine(_root, "partage"))!;
-        var imported = TeamCatalog.Import(exported, Path.Combine(_root, "imports"), out _)!;
+        var imported = TeamCatalog.Import(exported, Path.Combine(_root, "imports"), AddedOn, out _)!;
 
         foreach (var copy in new[] { duplicated, exported, imported })
         {

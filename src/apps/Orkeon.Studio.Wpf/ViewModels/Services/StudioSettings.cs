@@ -8,14 +8,20 @@ namespace Orkeon.Studio.Wpf.ViewModels.Services;
 /// (<see cref="UiPreferencesDocument"/>), and never in the settings file the CLI and the teams
 /// read.
 /// <para>
-/// STUDIO-35 gives it the balance settings; the section is built to take more (STUDIO-32's
-/// archiving suggestion): a new setting is one more property here, one more key in
-/// <see cref="UiPreferencesDocument"/>, and one more card on the tab.
+/// STUDIO-35 gives it the balance settings, STUDIO-32 the archive suggestion: a new setting is one
+/// more property here, one more key in <see cref="UiPreferencesDocument"/>, and one more card on
+/// the tab.
 /// </para>
 /// </summary>
 public sealed record StudioSettings
 {
-    /// <summary>What a machine that never opened the tab runs on: no automatic reading, no threshold.</summary>
+    /// <summary>The days without activity past which My teams proposes to archive a team, unless set otherwise (DB-1).</summary>
+    public const int DefaultArchiveSuggestionDays = 60;
+
+    /// <summary>
+    /// What a machine that never opened the tab runs on: no automatic reading, no threshold, and the
+    /// archive suggestion on at sixty days.
+    /// </summary>
     public static StudioSettings Default { get; } = new();
 
     /// <summary>
@@ -32,4 +38,13 @@ public sealed record StudioSettings
     /// </summary>
     public ImmutableDictionary<string, decimal> BalanceThresholds { get; init; } =
         ImmutableDictionary.Create<string, decimal>(StringComparer.Ordinal);
+
+    /// <summary>
+    /// Whether My teams proposes to archive the teams not launched for <see cref="ArchiveSuggestionDays"/>
+    /// (STUDIO-32, DB-1) — on by default. It only proposes: nothing is archived without a click.
+    /// </summary>
+    public bool ArchiveSuggestion { get; init; } = true;
+
+    /// <summary>The days without activity past which a team is proposed for archiving (DB-1).</summary>
+    public int ArchiveSuggestionDays { get; init; } = DefaultArchiveSuggestionDays;
 }

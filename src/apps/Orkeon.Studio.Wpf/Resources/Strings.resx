@@ -1204,6 +1204,100 @@
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>To rename the folder, use Rename in My teams.</value>
   </data>
+  <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
+  <data name="Studio.Teams.SearchHint" xml:space="preserve">
+    <value>Search a team by its name or its need…</value>
+  </data>
+  <data name="Studio.Teams.SortTip" xml:space="preserve">
+    <value>The order of the cards</value>
+  </data>
+  <data name="Studio.Teams.SortActivity" xml:space="preserve">
+    <value>Last activity</value>
+  </data>
+  <data name="Studio.Teams.SortName" xml:space="preserve">
+    <value>Name</value>
+  </data>
+  <data name="Studio.Teams.ArchivesTip" xml:space="preserve">
+    <value>The archived teams — click again to come back to the others.</value>
+  </data>
+  <data name="Studio.Teams.ArchivesLabel" xml:space="preserve">
+    <value>Archives ({0})</value>
+  </data>
+  <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
+    <value>Archived teams are out of the list, the Test picker and the balance; their folders, sessions and history stay where they are. « Restore » puts a team back among the others.</value>
+  </data>
+  <data name="Studio.Teams.Archive" xml:space="preserve">
+    <value>Archive</value>
+  </data>
+  <data name="Studio.Teams.ArchiveTip" xml:space="preserve">
+    <value>Archive the team: it leaves the list, its folder stays where it is, and « Restore » brings it back.</value>
+  </data>
+  <data name="Studio.Teams.StopScheduleAndArchive" xml:space="preserve">
+    <value>Stop the schedule and archive</value>
+  </data>
+  <data name="Studio.Teams.Undo" xml:space="preserve">
+    <value>Undo</value>
+  </data>
+  <data name="Studio.Teams.ArchivedUndo" xml:space="preserve">
+    <value>Team “{0}” archived.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedScheduleStoppedUndo" xml:space="preserve">
+    <value>Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedManyUndo" xml:space="preserve">
+    <value>{0} teams archived.</value>
+  </data>
+  <data name="Studio.Teams.SuggestionOne" xml:space="preserve">
+    <value>“{0}” has not been launched for {1} days — archive it?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionMany" xml:space="preserve">
+    <value>{0} teams not launched for {1} days — archive them?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionLater" xml:space="preserve">
+    <value>Not now</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedTitle" xml:space="preserve">
+    <value>All your teams are archived</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedBody" xml:space="preserve">
+    <value>They keep their folders, their sessions and their history. Open the archives to restore one, or create a new team.</value>
+  </data>
+  <data name="Studio.Teams.OpenArchives" xml:space="preserve">
+    <value>Open the archives</value>
+  </data>
+  <data name="Studio.Teams.SearchNoMatch" xml:space="preserve">
+    <value>No team matches “{0}”.</value>
+  </data>
+  <data name="Studio.Teams.ClearSearch" xml:space="preserve">
+    <value>Clear the search</value>
+  </data>
+  <data name="Studio.Teams.ArchivedBadge" xml:space="preserve">
+    <value>Archived</value>
+  </data>
+  <data name="Studio.Teams.ArchivedOn" xml:space="preserve">
+    <value>Archived on {0}</value>
+  </data>
+  <data name="Studio.Teams.LastRunDate" xml:space="preserve">
+    <value>Last run: {0}</value>
+  </data>
+  <data name="Studio.Settings.ArchiveTitle" xml:space="preserve">
+    <value>Archiving</value>
+  </data>
+  <data name="Studio.Settings.ArchiveIntro" xml:space="preserve">
+    <value>My teams can propose to archive the teams you no longer launch. It only proposes: nothing is archived without your click, and an archived team comes back intact.</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionToggle" xml:space="preserve">
+    <value>Propose to archive the teams not launched for a while</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionLabel" xml:space="preserve">
+    <value>Not launched for</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
+    <value>{0} days</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
+    <value>A scheduled team is never proposed — the system runs it without Studio — nor a team whose last activity is unknown.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Install the schedule (every day at {0})?</value>
   </data>

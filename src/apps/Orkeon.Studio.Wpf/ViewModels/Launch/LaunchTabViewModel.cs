@@ -437,6 +437,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// <summary>Runs the crew with <c>--validate</c> (spec §5.2).</summary>
     public Task<ProcessRunResult?> ValidateAsync(CancellationToken cancellationToken = default)
     {
+        if (RefusesArchivedTarget())
+            return Task.FromResult<ProcessRunResult?>(null);
+
         BeginLaunch();
         return LaunchAsync(validate: true, cancellationToken);
     }
@@ -448,6 +451,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     public async Task<ProcessRunResult?> RunAsync(CancellationToken cancellationToken = default)
     {
+        if (RefusesArchivedTarget())
+            return null;
+
         BeginLaunch();
 
         if (Options.ValidateFirst)
@@ -458,6 +464,22 @@ public sealed class LaunchTabViewModel : ObservableObject
         }
 
         return await LaunchAsync(validate: false, cancellationToken).ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// The archived state, read again right before a launch (STUDIO-32, after STUDIO-31 D-07): the one
+    /// the target was picked with may be stale — a team archived by hand in its sidecar, or from a
+    /// second window, stayed launchable until its target was picked again. True when the target turned
+    /// out archived: its banner then offers the restore, and nothing runs.
+    /// </summary>
+    private bool RefusesArchivedTarget()
+    {
+        if (Target.Target is not { } target || !TeamCatalog.DescribeTarget(target.SelectedPath).IsArchived)
+            return false;
+
+        RefreshTeamDescription();
+        StatusMessage = _strings[StudioStringKeys.CommonArchivedTeamRestore];
+        return true;
     }
 
     /// <summary>Stops the running child process.</summary>

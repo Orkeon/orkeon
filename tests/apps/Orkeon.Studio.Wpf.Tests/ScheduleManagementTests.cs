@@ -396,7 +396,7 @@ public sealed class ScheduleManagementTests : IDisposable
     {
         var original = Team("veille", schedule: null, id: OriginalId);
         var session = Session("veille", OriginalId, original);
-        var copy = TeamCatalog.Duplicate(original)!;
+        var copy = TeamCatalog.Duplicate(original, DateTimeOffset.UnixEpoch)!;
         var teams = Teams(new FakeProcessLauncher());
         var copyCard = teams.Teams.Single(card => card.Summary.Path == copy);
 

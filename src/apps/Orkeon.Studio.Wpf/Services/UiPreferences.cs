@@ -31,7 +31,10 @@ public sealed record UiPreferences
     /// <summary>"novice" or "expert"; anything else means the default (novice).</summary>
     public string? Mode { get; init; }
 
-    /// <summary>What Settings › Studio holds: the balance's automatic reading and alert thresholds (STUDIO-35).</summary>
+    /// <summary>
+    /// What Settings › Studio holds: the balance's automatic reading and alert thresholds (STUDIO-35),
+    /// the archive suggestion of My teams (STUDIO-32).
+    /// </summary>
     public StudioSettings Studio { get; init; } = StudioSettings.Default;
 
     /// <summary>Convenience view of <see cref="Theme"/>.</summary>

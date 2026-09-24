@@ -2578,6 +2578,100 @@
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>Um den Ordner umzubenennen, nutzen Sie „Umbenennen“ unter „Meine Teams“.</value>
   </data>
+  <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
+  <data name="Studio.Teams.SearchHint" xml:space="preserve">
+    <value>Ein Team nach Name oder Bedarf suchen…</value>
+  </data>
+  <data name="Studio.Teams.SortTip" xml:space="preserve">
+    <value>Die Reihenfolge der Karten</value>
+  </data>
+  <data name="Studio.Teams.SortActivity" xml:space="preserve">
+    <value>Letzte Aktivität</value>
+  </data>
+  <data name="Studio.Teams.SortName" xml:space="preserve">
+    <value>Alphabetisch</value>
+  </data>
+  <data name="Studio.Teams.ArchivesTip" xml:space="preserve">
+    <value>Die archivierten Teams — ein weiterer Klick führt zu den anderen zurück.</value>
+  </data>
+  <data name="Studio.Teams.ArchivesLabel" xml:space="preserve">
+    <value>Archiv ({0})</value>
+  </data>
+  <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
+    <value>Archivierte Teams verlassen die Liste, die Auswahl von Erproben und das Guthaben; ihre Ordner, Sitzungen und ihr Verlauf bleiben, wo sie sind. „Wiederherstellen“ holt ein Team zu den anderen zurück.</value>
+  </data>
+  <data name="Studio.Teams.Archive" xml:space="preserve">
+    <value>Archivieren</value>
+  </data>
+  <data name="Studio.Teams.ArchiveTip" xml:space="preserve">
+    <value>Das Team archivieren: es verlässt die Liste, sein Ordner bleibt, wo er ist, und „Wiederherstellen“ holt es zurück.</value>
+  </data>
+  <data name="Studio.Teams.StopScheduleAndArchive" xml:space="preserve">
+    <value>Zeitplan stoppen und archivieren</value>
+  </data>
+  <data name="Studio.Teams.Undo" xml:space="preserve">
+    <value>Rückgängig</value>
+  </data>
+  <data name="Studio.Teams.ArchivedUndo" xml:space="preserve">
+    <value>Team „{0}“ archiviert.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedScheduleStoppedUndo" xml:space="preserve">
+    <value>Team „{0}“ archiviert und sein Zeitplan gestoppt — Rückgängig holt das Team zurück, nicht seinen Zeitplan.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedManyUndo" xml:space="preserve">
+    <value>{0} Teams archiviert.</value>
+  </data>
+  <data name="Studio.Teams.SuggestionOne" xml:space="preserve">
+    <value>„{0}“ wurde seit {1} Tagen nicht gestartet — archivieren?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionMany" xml:space="preserve">
+    <value>{0} Teams seit {1} Tagen nicht gestartet — archivieren?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionLater" xml:space="preserve">
+    <value>Nicht jetzt</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedTitle" xml:space="preserve">
+    <value>Alle Ihre Teams sind archiviert</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedBody" xml:space="preserve">
+    <value>Sie behalten ihre Ordner, ihre Sitzungen und ihren Verlauf. Öffnen Sie das Archiv, um eines wiederherzustellen, oder erstellen Sie ein neues Team.</value>
+  </data>
+  <data name="Studio.Teams.OpenArchives" xml:space="preserve">
+    <value>Archiv öffnen</value>
+  </data>
+  <data name="Studio.Teams.SearchNoMatch" xml:space="preserve">
+    <value>Kein Team passt zu „{0}“.</value>
+  </data>
+  <data name="Studio.Teams.ClearSearch" xml:space="preserve">
+    <value>Suche leeren</value>
+  </data>
+  <data name="Studio.Teams.ArchivedBadge" xml:space="preserve">
+    <value>Archiviert</value>
+  </data>
+  <data name="Studio.Teams.ArchivedOn" xml:space="preserve">
+    <value>Archiviert am {0}</value>
+  </data>
+  <data name="Studio.Teams.LastRunDate" xml:space="preserve">
+    <value>Letzter Lauf: {0}</value>
+  </data>
+  <data name="Studio.Settings.ArchiveTitle" xml:space="preserve">
+    <value>Archivierung</value>
+  </data>
+  <data name="Studio.Settings.ArchiveIntro" xml:space="preserve">
+    <value>„Meine Teams“ kann vorschlagen, die Teams zu archivieren, die Sie nicht mehr starten. Es ist nur ein Vorschlag: Nichts wird ohne Ihren Klick archiviert, und ein archiviertes Team kommt unverändert zurück.</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionToggle" xml:space="preserve">
+    <value>Vorschlagen, länger nicht gestartete Teams zu archivieren</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionLabel" xml:space="preserve">
+    <value>Nicht gestartet seit</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
+    <value>{0} Tagen</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
+    <value>Ein geplantes Team wird nie vorgeschlagen — das System führt es ohne Studio aus —, ebenso wenig ein Team, dessen letzte Aktivität unbekannt ist.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Den Zeitplan installieren (täglich um {0})?</value>
   </data>

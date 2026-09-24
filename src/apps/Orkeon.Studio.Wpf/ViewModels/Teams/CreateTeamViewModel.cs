@@ -323,6 +323,9 @@ public sealed record CreateTeamDependencies
     /// (STUDIO-41, D-01); novice — no import — when null.
     /// </summary>
     public Shell.UiModeViewModel? Mode { get; init; }
+
+    /// <summary>The clock a use case imported as it is dates its arrival on (STUDIO-32); the system's when null.</summary>
+    public TimeProvider? Clock { get; init; }
 }
 
 /// <summary>
@@ -526,7 +529,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             new UseCaseImportSeams(
                 _teamsRoot,
                 wired.Mode ?? new Shell.UiModeViewModel(),
-                path => OpenTeamRequested?.Invoke(this, new TeamActionEventArgs(path))));
+                path => OpenTeamRequested?.Invoke(this, new TeamActionEventArgs(path)),
+                wired.Clock ?? TimeProvider.System));
         BrowseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: false), () => CanBrowseUseCases);
         ShowCloseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: true), () => HasCloseUseCases);
         RemoveReferenceUseCaseCommand = new RelayCommand(RemoveReferenceUseCase, () => HasReferenceUseCase);

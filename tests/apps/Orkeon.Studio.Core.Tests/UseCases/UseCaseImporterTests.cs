@@ -15,6 +15,9 @@ public sealed class UseCaseImporterTests : IDisposable
     private static readonly string InstallDirectory = Path.Combine("/", "opt", "orkeon");
     private static readonly string BinaryPath = Path.Combine(InstallDirectory, "orkeon");
 
+    /// <summary>When a copy entered the teams root (STUDIO-32): a duplicate and an import date their arrival.</summary>
+    private static readonly DateTimeOffset AddedOn = new(2026, 9, 24, 11, 0, 0, TimeSpan.Zero);
+
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-usecase-import-{Guid.NewGuid():N}");
 
     public void Dispose()
@@ -154,7 +157,7 @@ public sealed class UseCaseImporterTests : IDisposable
         var folder = Path.Combine(TeamsRoot, "daily-email-digest");
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "01-daily-mail-digest", "Daily email digest", folder, TeamsRoot, "en", TestContext.Current.CancellationToken);
+            client, "01-daily-mail-digest", "Daily email digest", folder, TeamsRoot, "en", AddedOn, TestContext.Current.CancellationToken);
 
         Assert.Null(result.Failure);
         Assert.Equal(folder, result.TeamPath);
@@ -169,6 +172,9 @@ public sealed class UseCaseImporterTests : IDisposable
             [$"{Path.Combine(folder, "data")}:/data:ro", $"{Path.Combine(folder, "output")}:/output:rw"],
             team.Mounts);
         Assert.True(File.Exists(Path.Combine(folder, "data", "inbox.eml")));
+        // Its arrival is its activity (STUDIO-32): the CLI writes no date, the import stamps one.
+        Assert.Equal(AddedOn, team.AddedAt);
+        Assert.Null(team.LastRunAt);
 
         // The export was staged under the very name the team's folder took, and the staging is gone.
         var staged = Assert.Single(processes.Destinations);
@@ -187,7 +193,7 @@ public sealed class UseCaseImporterTests : IDisposable
         var name = TeamCatalog.FreeName("Daily email digest", taken, free);
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "01-daily-mail-digest", name, free, TeamsRoot, "en", TestContext.Current.CancellationToken);
+            client, "01-daily-mail-digest", name, free, TeamsRoot, "en", AddedOn, TestContext.Current.CancellationToken);
 
         Assert.Equal(Path.Combine(TeamsRoot, "daily-email-digest-2"), result.TeamPath);
         Assert.Equal("Daily email digest (2)", TeamCatalog.Describe(result.TeamPath!).Name);
@@ -203,7 +209,7 @@ public sealed class UseCaseImporterTests : IDisposable
         using var client = new UseCaseClient(processes, Locator());
 
         var result = await UseCaseImporter.ImportAsync(
-            client, "31-algo-trading", "Simulated trading room", Path.Combine(TeamsRoot, "simulated-trading-room"), TeamsRoot, "en",
+            client, "31-algo-trading", "Simulated trading room", Path.Combine(TeamsRoot, "simulated-trading-room"), TeamsRoot, "en", AddedOn,
             TestContext.Current.CancellationToken);
 
         Assert.Null(result.TeamPath);

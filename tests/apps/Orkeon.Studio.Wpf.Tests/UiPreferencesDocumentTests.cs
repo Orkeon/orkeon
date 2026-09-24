@@ -20,7 +20,9 @@ public sealed class UiPreferencesDocumentTests
           "Studio": {
             "BalanceRefreshMinutes": 15,
             "BalanceThresholds": { "deepseek": 12.5 },
-            "ArchiveSuggestionDays": 60
+            "ArchiveSuggestion": false,
+            "ArchiveSuggestionDays": 90,
+            "SomethingNewer": 7
           },
           "SomethingLater": { "Kept": true }
         }
@@ -39,8 +41,11 @@ public sealed class UiPreferencesDocumentTests
         Assert.Equal<(string?, string?, string?)>(("light", null, "novice"), (written.Theme, written.Language, written.Mode));
         Assert.Equal(15, written.Studio.BalanceRefreshMinutes);
         Assert.Equal(12.5m, written.Studio.BalanceThresholds["deepseek"]);
+        // STUDIO-32 DB-1: the archive suggestion survives a theme, a language or a mode change.
+        Assert.False(written.Studio.ArchiveSuggestion);
+        Assert.Equal(90, written.Studio.ArchiveSuggestionDays);
         var json = Json(file.ToJson());
-        Assert.Equal(60, (int)json["Studio"]!["ArchiveSuggestionDays"]!);
+        Assert.Equal(7, (int)json["Studio"]!["SomethingNewer"]!);
         Assert.True((bool)json["SomethingLater"]!["Kept"]!);
     }
 
@@ -60,8 +65,11 @@ public sealed class UiPreferencesDocumentTests
         Assert.Equal<(string?, string?, string?)>(("dark", "fr", "expert"), (written.Theme, written.Language, written.Mode));
         Assert.Null(written.Studio.BalanceRefreshMinutes);
         Assert.Equal(["openrouter"], written.Studio.BalanceThresholds.Keys);
+        // The settings passed are written whole, the archive suggestion's included (STUDIO-32).
+        Assert.True(written.Studio.ArchiveSuggestion);
+        Assert.Equal(StudioSettings.DefaultArchiveSuggestionDays, written.Studio.ArchiveSuggestionDays);
         var json = Json(file.ToJson());
-        Assert.Equal(60, (int)json["Studio"]!["ArchiveSuggestionDays"]!);
+        Assert.Equal(7, (int)json["Studio"]!["SomethingNewer"]!);
         Assert.True((bool)json["SomethingLater"]!["Kept"]!);
     }
 
@@ -79,6 +87,8 @@ public sealed class UiPreferencesDocumentTests
         Assert.Null(file.Mode);
         Assert.Equal(StudioSettings.Default.BalanceRefreshMinutes, file.Studio.BalanceRefreshMinutes);
         Assert.Empty(file.Studio.BalanceThresholds);
+        Assert.True(file.Studio.ArchiveSuggestion);
+        Assert.Equal(60, file.Studio.ArchiveSuggestionDays);
 
         // And writing over it starts a sound file rather than failing.
         file.SetAppearance("dark", "en", "novice");
@@ -93,7 +103,9 @@ public sealed class UiPreferencesDocumentTests
               "Theme": 3,
               "Studio": {
                 "BalanceRefreshMinutes": "often",
-                "BalanceThresholds": { "deepseek": "five", "kimi": -1, "openrouter": 4 }
+                "BalanceThresholds": { "deepseek": "five", "kimi": -1, "openrouter": 4 },
+                "ArchiveSuggestion": "yes",
+                "ArchiveSuggestionDays": 0
               }
             }
             """);
@@ -101,6 +113,9 @@ public sealed class UiPreferencesDocumentTests
         Assert.Null(file.Theme);
         Assert.Null(file.Studio.BalanceRefreshMinutes);
         Assert.Equal(["openrouter"], file.Studio.BalanceThresholds.Keys);
+        Assert.True(file.Studio.ArchiveSuggestion);
+        Assert.Equal(60, file.Studio.ArchiveSuggestionDays);
+        Assert.Equal(60, UiPreferencesDocument.Parse("""{ "Studio": { "ArchiveSuggestionDays": 2.5 } }""").Studio.ArchiveSuggestionDays);
     }
 
     [Fact]

@@ -18,9 +18,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 public sealed record ImportCheckViewModel(string Title, string Detail, string Tone);
 
 /// <summary>
-/// The import seam — <see cref="TeamCatalog.Import"/> by default: copies the source into the
-/// teams root and returns the new team folder, or null with <paramref name="refusal"/> set
-/// when the source was refused (null when the disk was the reason).
+/// The import seam — <see cref="TeamCatalog.Import"/> by default, dated on the screen's clock (a
+/// copy's arrival is its activity, STUDIO-32): copies the source into the teams root and returns the
+/// new team folder, or null with <paramref name="refusal"/> set when the source was refused (null
+/// when the disk was the reason).
 /// </summary>
 /// <param name="sourcePath">The folder or file to import.</param>
 /// <param name="root">The teams root.</param>
@@ -52,6 +53,9 @@ public sealed record ImportTeamDependencies
 
     /// <summary>Copies the candidate into the teams root; <see cref="TeamCatalog.Import"/> when null.</summary>
     public ImportTeamAction? Import { get; init; }
+
+    /// <summary>The clock an import dates the team's arrival on (STUDIO-32); the system's when null.</summary>
+    public TimeProvider? Clock { get; init; }
 
     /// <summary>Reads the settings' mounts, so unknown ids are reported (VFS-90, D-06); not consulted when null.</summary>
     public Func<IReadOnlyList<string>>? DeclaredMounts { get; init; }
@@ -85,7 +89,10 @@ public sealed class ImportTeamViewModel : ObservableObject
         _teamsRoot = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         _strings = wired.Strings ?? EnglishStudioStrings.Instance;
         _scanSecrets = wired.ScanSecrets ?? TeamCatalog.FindInlineSecrets;
-        _import = wired.Import ?? TeamCatalog.Import;
+        var clock = wired.Clock ?? TimeProvider.System;
+        _import = wired.Import
+            ?? ((string sourcePath, string root, out string? refusal) =>
+                TeamCatalog.Import(sourcePath, root, clock.GetUtcNow(), out refusal));
         _declaredMounts = wired.DeclaredMounts;
         _declareMount = wired.DeclareMount;
         _saveSettings = wired.SaveSettings;

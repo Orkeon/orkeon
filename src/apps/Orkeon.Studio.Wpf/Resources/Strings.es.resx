@@ -2578,6 +2578,100 @@
   <data name="Studio.Create.RenameHint" xml:space="preserve">
     <value>Para renombrar la carpeta, use Renombrar en Mis equipos.</value>
   </data>
+  <!-- STUDIO-32: My teams — the search, the order, the Archives view, the archive gestures and their undo banner, the archive suggestion and its Settings › Studio card -->
+  <data name="Studio.Teams.SearchHint" xml:space="preserve">
+    <value>Buscar un equipo por su nombre o su necesidad…</value>
+  </data>
+  <data name="Studio.Teams.SortTip" xml:space="preserve">
+    <value>El orden de las tarjetas</value>
+  </data>
+  <data name="Studio.Teams.SortActivity" xml:space="preserve">
+    <value>Última actividad</value>
+  </data>
+  <data name="Studio.Teams.SortName" xml:space="preserve">
+    <value>Nombre</value>
+  </data>
+  <data name="Studio.Teams.ArchivesTip" xml:space="preserve">
+    <value>Los equipos archivados — otro clic vuelve a los demás.</value>
+  </data>
+  <data name="Studio.Teams.ArchivesLabel" xml:space="preserve">
+    <value>Archivados ({0})</value>
+  </data>
+  <data name="Studio.Teams.ArchivesHint" xml:space="preserve">
+    <value>Los equipos archivados salen de la lista, del selector de Probar y del saldo; sus carpetas, sesiones e historial se quedan donde están. « Restaurar » devuelve un equipo junto a los demás.</value>
+  </data>
+  <data name="Studio.Teams.Archive" xml:space="preserve">
+    <value>Archivar</value>
+  </data>
+  <data name="Studio.Teams.ArchiveTip" xml:space="preserve">
+    <value>Archivar el equipo: sale de la lista, su carpeta se queda donde está y « Restaurar » lo trae de vuelta.</value>
+  </data>
+  <data name="Studio.Teams.StopScheduleAndArchive" xml:space="preserve">
+    <value>Detener la planificación y archivar</value>
+  </data>
+  <data name="Studio.Teams.Undo" xml:space="preserve">
+    <value>Deshacer</value>
+  </data>
+  <data name="Studio.Teams.ArchivedUndo" xml:space="preserve">
+    <value>Equipo « {0} » archivado.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedScheduleStoppedUndo" xml:space="preserve">
+    <value>Equipo « {0} » archivado y su planificación detenida — Deshacer devuelve el equipo, no su planificación.</value>
+  </data>
+  <data name="Studio.Teams.ArchivedManyUndo" xml:space="preserve">
+    <value>{0} equipos archivados.</value>
+  </data>
+  <data name="Studio.Teams.SuggestionOne" xml:space="preserve">
+    <value>« {0} » no se ha lanzado desde hace {1} días — ¿archivarlo?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionMany" xml:space="preserve">
+    <value>{0} equipos no lanzados desde hace {1} días — ¿archivarlos?</value>
+  </data>
+  <data name="Studio.Teams.SuggestionLater" xml:space="preserve">
+    <value>Ahora no</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedTitle" xml:space="preserve">
+    <value>Todos sus equipos están archivados</value>
+  </data>
+  <data name="Studio.Teams.AllArchivedBody" xml:space="preserve">
+    <value>Conservan sus carpetas, sus sesiones y su historial. Abra los archivados para restaurar uno, o cree un equipo nuevo.</value>
+  </data>
+  <data name="Studio.Teams.OpenArchives" xml:space="preserve">
+    <value>Abrir los archivados</value>
+  </data>
+  <data name="Studio.Teams.SearchNoMatch" xml:space="preserve">
+    <value>Ningún equipo coincide con « {0} ».</value>
+  </data>
+  <data name="Studio.Teams.ClearSearch" xml:space="preserve">
+    <value>Borrar la búsqueda</value>
+  </data>
+  <data name="Studio.Teams.ArchivedBadge" xml:space="preserve">
+    <value>Archivado</value>
+  </data>
+  <data name="Studio.Teams.ArchivedOn" xml:space="preserve">
+    <value>Archivado el {0}</value>
+  </data>
+  <data name="Studio.Teams.LastRunDate" xml:space="preserve">
+    <value>Última ejecución: {0}</value>
+  </data>
+  <data name="Studio.Settings.ArchiveTitle" xml:space="preserve">
+    <value>Archivado de equipos</value>
+  </data>
+  <data name="Studio.Settings.ArchiveIntro" xml:space="preserve">
+    <value>« Mis equipos » puede proponer archivar los equipos que ya no lanza. Solo lo propone: nada se archiva sin su clic, y un equipo archivado vuelve intacto.</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionToggle" xml:space="preserve">
+    <value>Proponer archivar los equipos que no se lanzan desde hace tiempo</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionLabel" xml:space="preserve">
+    <value>Sin lanzarse desde hace</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionDays" xml:space="preserve">
+    <value>{0} días</value>
+  </data>
+  <data name="Studio.Settings.ArchiveSuggestionHint" xml:space="preserve">
+    <value>Nunca se propone un equipo planificado — el sistema lo ejecuta sin Studio — ni un equipo cuya última actividad se desconoce.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>¿Instalar la planificación (cada día a las {0})?</value>
   </data>

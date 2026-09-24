@@ -11,12 +11,14 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 
 /// <summary>
 /// What the gallery's « Import as is » needs from its wizard (STUDIO-41): where teams land, the
-/// window's Novice/Expert switch — the action is the expert's (D-01) — and the way to My teams.
+/// window's Novice/Expert switch — the action is the expert's (D-01) — the way to My teams, and the
+/// clock the team's arrival is dated on (STUDIO-32).
 /// </summary>
 /// <param name="TeamsRoot">The teams root an imported case lands in.</param>
 /// <param name="Mode">The window's switch: the action exists in expert mode only.</param>
 /// <param name="OpenTeams">Brings My teams forward, on the team at the path given.</param>
-internal sealed record UseCaseImportSeams(string TeamsRoot, UiModeViewModel Mode, Action<string> OpenTeams);
+/// <param name="Clock">Dates the imported team's arrival — its first activity.</param>
+internal sealed record UseCaseImportSeams(string TeamsRoot, UiModeViewModel Mode, Action<string> OpenTeams, TimeProvider Clock);
 
 /// <summary>
 /// « Import as is » (STUDIO-41): from the gallery, an expert turns a use case into a team of My
@@ -259,7 +261,7 @@ public sealed class UseCaseImportViewModel : ObservableObject
         try
         {
             result = await UseCaseImporter
-                .ImportAsync(_client!, useCase.Id, name, folder, _seams!.TeamsRoot, _language())
+                .ImportAsync(_client!, useCase.Id, name, folder, _seams!.TeamsRoot, _language(), _seams.Clock.GetUtcNow())
                 .ConfigureAwait(false);
             // Read here, off the UI thread: the report names the folders the team really has.
             if (result.TeamPath is { } team)
