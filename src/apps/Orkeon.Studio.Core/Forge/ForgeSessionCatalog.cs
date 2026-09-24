@@ -59,6 +59,15 @@ public sealed record ForgeSolutionSummary
         || string.Equals(Status, "Ready", StringComparison.OrdinalIgnoreCase);
 }
 
+/// <summary>What Studio reads of a team's <c>forge.json</c> (<see cref="ForgeSessionCatalog.ReadTeamRecord"/>).</summary>
+/// <param name="SessionId">The id of the session it names (STUDIO-25); null when none or unreadable.</param>
+/// <param name="HasInstalledSchedule">Whether its <c>schedule</c> block records an installation (STUDIO-27).</param>
+public sealed record TeamForgeRecord(Guid? SessionId, bool HasInstalledSchedule)
+{
+    /// <summary>No record, or one that could not be read.</summary>
+    public static TeamForgeRecord None { get; } = new(null, false);
+}
+
 /// <summary>
 /// Reads the workspace's forge sessions straight off the disk —
 /// <c>.orkeon/forge/&lt;slug&gt;/session.json</c>, the layout SPEC-ORKEON-FORGE §4.1 fixes.
@@ -151,7 +160,15 @@ public static class ForgeSessionCatalog
     /// (STUDIO-25) — read-only: the CLI writes the record. Null when the record, or its id, is
     /// absent, unreadable or not an id; never a throw.
     /// </summary>
-    public static Guid? ReadTeamSessionId(string teamDirectory)
+    public static Guid? ReadTeamSessionId(string teamDirectory) => ReadTeamRecord(teamDirectory).SessionId;
+
+    /// <summary>
+    /// What Studio reads of <paramref name="teamDirectory"/>'s <c>forge.json</c>, in one read: the id
+    /// of its session (STUDIO-25), and whether its <c>schedule</c> block records an installation
+    /// (STUDIO-27) — a team whose registration the engine must be asked to remove before the folder
+    /// goes. Read-only, tolerant: an absent or unreadable record reads as neither.
+    /// </summary>
+    public static TeamForgeRecord ReadTeamRecord(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
@@ -159,17 +176,105 @@ public static class ForgeSessionCatalog
         {
             var path = Path.Combine(teamDirectory, TeamRecordFileName);
             if (!File.Exists(path))
-                return null;
+                return TeamForgeRecord.None;
 
             using var document = JsonDocument.Parse(File.ReadAllText(path));
-            return document.RootElement.ValueKind == JsonValueKind.Object
-                ? ReadId(document.RootElement)
-                : null;
+            var root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return TeamForgeRecord.None;
+
+            var installed = root.TryGetProperty("schedule", out var schedule)
+                && schedule.ValueKind == JsonValueKind.Object
+                && schedule.TryGetProperty("installed", out var block)
+                && block.ValueKind == JsonValueKind.Object;
+            return new TeamForgeRecord(ReadId(root), installed);
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
-            return null;
+            return TeamForgeRecord.None;
         }
+    }
+
+    /// <summary>
+    /// The session rule R links <paramref name="teamDirectory"/> to (STUDIO-25) — the one a deletion
+    /// of the team may take with it (STUDIO-27, D-07). Null when none is linked: no id, an id no
+    /// session carries, or a COPY — whose id names its original's session, which deleting the copy
+    /// must never touch.
+    /// </summary>
+    public static ForgeSolutionSummary? LinkedSession(string workspaceDirectory, string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+
+        return LinkedSession(List(workspaceDirectory), teamDirectory);
+    }
+
+    /// <summary>
+    /// <see cref="LinkedSession(string, string)"/> among <paramref name="sessions"/> as a screen
+    /// already listed them: the most recently touched carrying the team's id — the order
+    /// <see cref="FindById"/> answers in — then rule R.
+    /// </summary>
+    public static ForgeSolutionSummary? LinkedSession(IEnumerable<ForgeSolutionSummary> sessions, string teamDirectory)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var id = ReadTeamSessionId(teamDirectory);
+        var session = id is { } known
+            ? sessions
+                .Where(summary => summary.Id == known)
+                .OrderByDescending(summary => summary.UpdatedAt, StringComparer.Ordinal)
+                .ThenBy(summary => summary.Slug, StringComparer.Ordinal)
+                .FirstOrDefault()
+            : null;
+        return TeamSessionLink.IsLinked(TeamSessionLink.Resolve(teamDirectory, id, session?.Promotion, ReadTeamSessionId))
+            ? session
+            : null;
+    }
+
+    /// <summary>
+    /// The orphan sessions of the workspace (STUDIO-27, D-08): adopted ones — status
+    /// <c>Promoted</c>, so listed nowhere else — whose <c>promotedTo</c> folder no longer exists.
+    /// A team moved or renamed within <paramref name="teamsRoot"/> is found by the id its
+    /// <c>forge.json</c> carries, and its session is not an orphan: rule R links them. One moved
+    /// anywhere else cannot be told from a deleted one — the list is only a list, and nothing
+    /// in it is deleted without the user.
+    /// </summary>
+    public static IReadOnlyList<ForgeSolutionSummary> FindOrphans(string workspaceDirectory, string? teamsRoot = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(workspaceDirectory);
+
+        var carried = teamsRoot is { Length: > 0 } root ? IdsCarriedUnder(root) : [];
+        return
+        [
+            .. List(workspaceDirectory).Where(session =>
+                string.Equals(session.Status, "Promoted", StringComparison.OrdinalIgnoreCase)
+                && session.PromotedTo is { Length: > 0 } promotedTo
+                && !System.IO.Directory.Exists(promotedTo)
+                && !(session.Id is { } id && carried.Contains(id))),
+        ];
+    }
+
+    /// <summary>The session ids the team folders under <paramref name="teamsRoot"/> carry.</summary>
+    private static HashSet<Guid> IdsCarriedUnder(string teamsRoot)
+    {
+        var ids = new HashSet<Guid>();
+        try
+        {
+            if (!System.IO.Directory.Exists(teamsRoot))
+                return ids;
+
+            foreach (var team in System.IO.Directory.EnumerateDirectories(teamsRoot))
+            {
+                if (ReadTeamSessionId(team) is { } id)
+                    ids.Add(id);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A root that cannot be read claims nothing: every session reads as it stands.
+        }
+
+        return ids;
     }
 
     private static bool TryRead(string directory, out ForgeSolutionSummary? summary)

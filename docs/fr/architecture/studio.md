@@ -26,7 +26,7 @@ Une bibliothèque sans UI et sans point d'entrée, consommée uniquement par les
 - **Launch/ & Process/** — construction de la ligne de commande `orkeon run` (`RunArgumentsBuilder`, `RunLaunchOptions`), localisation du binaire (`OrkeonBinaryLocator` — dans l'ordre : l'argument `--cli-dir`, à côté de l'exécutable, la variable d'environnement `ORKEON_CLI_DIR`, le `PATH`, puis le checkout de développement), exécution et flux de sortie (`OrkeonProcessRunner`, `IProcessLauncher`), interprétation des codes de sortie (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), et le rapport `orkeon doctor` (`DoctorReport`).
 - **Forge/** — le client typé d'`orkeon forge --events jsonl` (le moteur derrière l'assistant de création) : un parseur de lignes tolérant, épinglé contre les lignes d'or du protocole côté CLI, la projection de session que tous les fronts lisent (`ForgeSessionModel`, correspondance des jalons, les règles de la checklist ✔/✘), le pilote de processus enfant avec le canal de réponse stdin (`ForgeClient`, dont la requête de démarrage porte des surcharges d'environnement — c'est ainsi que le profil de l'assistant de Studio atteint le moteur), le catalogue de sessions sur disque et l'hydrateur de reprise. Le processus Studio ne touche jamais à un LLM — il ne voit que des lignes JSON.
 - **Profiles/** — les réglages de modèle nommés du design v3 (`ModelProfile`, `ModelProfileSet`, `ModelProfileFileStore` → `studio-model-profiles.json` à côté du fichier de settings) : des « réglages de modèle » réutilisables, une élection par défaut reflétée dans la section `Llm`, le profil sur lequel tourne l'assistant de Studio, et des surcharges d'environnement `ORKEON_Llm__*` par profil pour les lancements (modèle, endpoint, température, délai et le budget de réponse `MaxTokens` — vide laisse le plafond au moteur, qui envoie le maximum documenté du modèle, et l'indication sous le champ dit ce que c'est pour le modèle choisi, ou que le modèle est inconnu du catalogue et reçoit 4096 sauf épinglage — LLM-10 ; l'interrupteur de réflexion — défaut du fournisseur / activée / désactivée — et l'indication d'effort de raisonnement, `ORKEON_Llm__Thinking__{Enabled,Effort}`, et un délai pré-rempli à 600 s quand le modèle par défaut du fournisseur choisi réfléchit avant de répondre — Kimi, DeepSeek, Z.AI, MiniMax — LLM-11). L'éditeur de profil offre le catalogue complet des fournisseurs (`LlmPresets.ProviderCatalogFor` — les deux runtimes locaux plus chaque cloud dont le framework livre un provider, endpoint/modèle pré-remplis depuis les défauts runtime épinglés par drift), et un novice colle sa clé d'API directement dans l'éditeur : elle atterrit dans une **variable d'environnement utilisateur** (`IApiKeyStore`/`EnvironmentApiKeyStore`, le nom conventionnel du fournisseur comme `DEEPSEEK_API_KEY`) — le fichier du store ne porte jamais que le *nom* de cette variable (`ModelProfile.KeyEnvName`), et les lancements posent la valeur résolue sur le processus enfant en `ORKEON_Llm__ApiKey`. La clé elle-même n'entre dans aucun fichier. Le store lit son fichier sans tenir compte de la casse des propriétés — il s'édite à la main, et `"profiles"` est ce que les gens tapent — et un fichier qui existe mais ne se lit pas est signalé sur l'écran des réglages au lieu de se charger comme un ensemble vide, indiscernable d'un premier lancement.
-- **Teams/** — le dossier des équipes (`TeamCatalog`, défaut `~/Orkeon/teams`) : chaque équipe adoptée est un dossier ordinaire — listé, dupliqué, supprimé, importé (avec un scan des secrets en clair, et refusé avant toute copie quand le détecteur du lanceur ne le résout pas en une définition d'équipe, avec le message du détecteur) — plus le sidecar `studio-team.json` qui note ce que la définition de crew ne peut pas dire (nom, besoin, profil, planification affichée). Le profil noté n'est pas décoratif : lancer une équipe adoptée le résout dans le store de profils et le pose sur le run en `ORKEON_Llm__*`.
+- **Teams/** — le dossier des équipes (`TeamCatalog`, défaut `~/Orkeon/teams`) : chaque équipe adoptée est un dossier ordinaire — listé, dupliqué, supprimé, importé (avec un scan des secrets en clair, et refusé avant toute copie quand le détecteur du lanceur ne le résout pas en une définition d'équipe, avec le message du détecteur) — plus le sidecar `studio-team.json` qui note ce que la définition de crew ne peut pas dire (nom, besoin, profil, la planification choisie — savoir si le système la lance est la réponse du moteur, STUDIO-27). Le profil noté n'est pas décoratif : lancer une équipe adoptée le résout dans le store de profils et le pose sur le run en `ORKEON_Llm__*`.
 - **Run/** — le client typé d'un `orkeon run --events jsonl` **observé** (BUS-06) : `RunClient`, frère de `ForgeClient` et délibérément son jumeau — même lanceur, même localisateur, même parseur d'enveloppe — et `RunProgressModel`, qui plie le flux vers ce qu'un écran affiche (tâches en cours et chaque outil au travail, délégations en cours, tâches terminées, coût, question en attente — l'état complet est décrit sous *L'état de progression d'un run*, plus bas). Le client porte aussi le siège que le hub du run donne à un processus observateur : écrire à un agent, publier, s'abonner, répondre — et l'écran « Lancer » occupe désormais ce siège lui aussi : le `send` d'un agent (marqué `expectsReply`) apparaît comme un panneau de demande, et la réponse saisie repart par stdin. Voir [Le bus d'événements du run](run-event-bus.md).
 - **UseCases/** — le client typé d'`orkeon usecases` (STUDIO-39) : `UseCaseClient`, jumeau de `ForgeClient` — `usecases list` exécuté jusqu'au bout pour le catalogue de la galerie, une session `usecases search` gardée ouverte pour les suggestions sous le besoin, chaque requête appariée à sa réponse par l'identifiant de corrélation, les échecs typés plutôt que levés — ainsi que les lecteurs du catalogue et d'une réponse (`UseCaseCatalog`, `UseCaseAnswer`), la règle qui décide des réponses assez proches pour être suggérées (`UseCaseSuggestions`), qui lit dans la réponse elle-même combien de cas d'usage portent un terme — Studio ne normalise jamais une orthographe de son côté.
 - **Storage/ & History/** — emplacements des settings et chaîne de résolution (`SettingsLocations`, `AppSettingsFile`), historique des lancements (`LaunchHistoryStore`).
@@ -549,6 +549,50 @@ l'équipe existante », qui amène Mes équipes au premier plan. Le moteur n'est
 fois le nom libre, si bien que son refus d'une destination non vide n'atteint jamais l'écran.
 Une ré-adoption écrit dans le dossier de sa propre équipe, ce qui n'est pas une collision.
 
+### La planification, installée et arrêtée (STUDIO-27)
+
+Studio installe et retire lui-même la planification d'une équipe, avec l'accord de
+l'utilisateur. C'est le système qui lance l'équipe — Orkeon n'a toujours pas d'ordonnanceur à
+lui — et le CLI, qui possède les artefacts, fait la part du système : `forge schedule`,
+`forge schedule --check` et `forge unschedule` ([référence CLI](../reference/cli.md#orkeon-forge)).
+Studio ne lance jamais `schtasks`, `systemctl` ni `crontab` lui-même ; il lit l'événement
+`schedule.state` du moteur, ou son `error`, dont le `command` est ce qu'une personne peut lancer à
+la main. Après l'adoption d'une équipe planifiée, l'assistant demande sous sa ligne de statut
+« Installer la planification (tous les jours à 08:00) ? » (`ScheduleOfferViewModel`) :
+« Installer » lance `forge schedule` sur le nouveau dossier, « Plus tard » laisse l'équipe
+installable depuis sa carte, et l'issue reste à l'écran en une ligne — avec la commande manuelle
+quand le système a refusé. Une ré-adoption ne demande que si la planification n'est plus installée
+telle que déclarée (elle contrôle d'abord) ; une ré-adoption « à la demande » d'une équipe planifiée
+arrête la planification avant de promouvoir — choisir « à la demande » est l'accord — et un refus
+arrête l'enregistrement, la commande manuelle dans la ligne de statut. La carte de « Mes équipes »
+montre l'état réel, la réponse du moteur et jamais celle du sidecar : « Planifiée » — le badge ne
+passe au vert qu'alors —, « Planification non installée » ou « Planification à réinstaller »
+(déplacée, renommée, replanifiée ou désactivée), toutes deux en ambre ; tant que le moteur n'a pas
+répondu, la carte n'affirme rien. L'état est contrôlé au démarrage et après chaque geste — une
+adoption, un import, une duplication, une installation, un arrêt — et chaque rafraîchissement repose
+les réponses sur les cartes reconstruites sans redemander. La carte porte deux actions :
+« Installer la planification » (une planification déclarée que rien ne lance, ou à réinstaller) et
+« Arrêter la planification » (`forge unschedule`, puis `schedule` est retiré de `studio-team.json` :
+l'équipe est à la demande). Un refus ne change rien, et la carte montre ce qu'il faut lancer à la
+main.
+
+### Supprimer une équipe ne laisse rien derrière (STUDIO-27)
+
+Le bandeau de suppression en place arrête d'abord la planification de l'équipe — déclarée dans le
+sidecar, ou notée comme installée dans son `forge.json` (`TeamSummary.HasSchedule`) — par
+`forge unschedule` ; quand le système refuse, l'équipe reste et le bandeau dit pourquoi, avec la
+commande à lancer à la main. Le bandeau propose « Supprimer aussi la session d'atelier », cochée par
+défaut, pour la session que la règle R lie à l'équipe (`ForgeSessionCatalog.LinkedSession`) : la
+règle R ne lie une copie à aucune session, si bien que supprimer une copie ne propose — ni ne
+supprime — jamais celle de l'original. Le dossier part, puis la session, annoncée à l'assistant, qui
+l'oublie s'il était ouvert dessus. L'écran Diagnostic liste les sessions d'atelier orphelines
+(`ForgeSessionCatalog.FindOrphans`) : des sessions adoptées — listées nulle part ailleurs — dont le
+dossier `promotedTo` n'existe plus ; une équipe déplacée ou renommée dans le dossier des équipes est
+retrouvée par son identifiant et n'en est pas une. Chaque ligne a un « Nettoyer » qui demande en
+place avant de supprimer (`DiagnosticViewModel` reçoit le workspace de l'atelier et le dossier des
+équipes). Une équipe déplacée hors du dossier des équipes peut aussi y apparaître : rien n'est
+supprimé sans l'utilisateur.
+
 ### Outils et MCP dans les réglages (STUDIO-21)
 
 Deux onglets qui manquaient à l'écran Réglages. **Outils**, ouvert aux deux modes, tient en
@@ -652,6 +696,7 @@ Les deux TUIs ciblent `net10.0` simple et sont donc des builds multi-plateformes
 
 - **Pas un paquet NuGet** — les quatre projets posent `IsPackable=false` ; le seul canal de distribution est celui des installeurs de release.
 - **Pas un moteur séparé** — Studio ne ré-implémente jamais un workflow : il édite le fichier de settings du CLI et lance le CLI lui-même (`OrkeonProcessRunner`), donc ses résultats sont exactement ceux d'`orkeon run`.
+- **Pas un ordonnanceur** — c'est le système qui lance une équipe planifiée ; Studio demande au CLI d'installer et de retirer l'enregistrement, avec l'accord de l'utilisateur (STUDIO-27).
 
 ---
 

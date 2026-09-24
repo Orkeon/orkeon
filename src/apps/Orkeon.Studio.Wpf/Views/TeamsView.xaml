@@ -122,20 +122,36 @@
                 <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
                         BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
                         Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                               Foreground="{DynamicResource DangerBrush}"
-                               Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
-                    <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
-                                             Foreground="{DynamicResource DangerFgBrush}"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
-                            Command="{Binding CancelDeleteCommand}"
-                            Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource DangerBrush}"
+                                 Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource DangerFgBrush}"/>
+                          <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                              Command="{Binding CancelDeleteCommand}"
+                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                    <!-- STUDIO-27 (D-07): the workshop session rule R links to this team goes with
+                         it, unless unticked. A copy is linked to none, so it offers none: deleting
+                         a copy never touches its original's session. -->
+                    <CheckBox Margin="0,6,0,2" IsChecked="{Binding DeleteSessionToo}"
+                              Visibility="{Binding CanDeleteSessionToo, Converter={StaticResource BooleanToVisibility}}"
+                              Content="{Binding [Studio.Teams.DeleteSessionToo], Source={x:Static services:I18n.Instance}}"/>
+                    <!-- STUDIO-27 (D-06): the schedule is stopped first; when it cannot be, the team
+                         stays, and the banner says why and what to run by hand. -->
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
+                               MaxWidth="420" HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding DeleteRefusal}"
+                               Visibility="{Binding HasDeleteRefusal, Converter={StaticResource BooleanToVisibility}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Margin="0,4,0,2" MaxWidth="420" HorizontalAlignment="Left"
+                             IsReadOnly="True" TextWrapping="Wrap" Text="{Binding DeleteManualCommand, Mode=OneWay}"
+                             Visibility="{Binding HasDeleteManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
               </Grid>
@@ -279,6 +295,60 @@
                      ONE « · »-joined line, the launcher's recipe (v3 F-02) -->
                 <TextBlock Style="{StaticResource Hint}" Margin="0,7,0,0" TextWrapping="Wrap"
                            Text="{Binding MetaLine}"/>
+                <!-- STUDIO-27 (D-05): where the schedule really stands — what the engine answered,
+                     never what the sidecar says — and its two gestures, install and stop. -->
+                <StackPanel Margin="0,8,0,0"
+                            Visibility="{Binding HasScheduleRow, Converter={StaticResource BooleanToVisibility}}">
+                  <WrapPanel>
+                    <TextBlock FontSize="11.5" VerticalAlignment="Center" Margin="0,0,10,4" TextWrapping="Wrap"
+                               Text="{Binding ScheduleStateLine}"
+                               Visibility="{Binding HasScheduleStateLine, Converter={StaticResource BooleanToVisibility}}">
+                      <TextBlock.Style>
+                        <Style TargetType="TextBlock">
+                          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                          <Style.Triggers>
+                            <DataTrigger Binding="{Binding ScheduleState}" Value="Installed">
+                              <Setter Property="Foreground" Value="{DynamicResource SuccessBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ScheduleState}" Value="Absent">
+                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding ScheduleState}" Value="Stale">
+                              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                            </DataTrigger>
+                          </Style.Triggers>
+                        </Style>
+                      </TextBlock.Style>
+                    </TextBlock>
+                    <Button Style="{StaticResource ChipAction}" Margin="0,0,7,4" Command="{Binding InstallScheduleCommand}"
+                            Visibility="{Binding ShowsInstallSchedule, Converter={StaticResource BooleanToVisibility}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="play" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding [Studio.Teams.ScheduleInstall], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                    <Button Style="{StaticResource ChipAction}" Margin="0,0,0,4" Command="{Binding StopScheduleCommand}"
+                            Visibility="{Binding ShowsStopSchedule, Converter={StaticResource BooleanToVisibility}}">
+                      <StackPanel Orientation="Horizontal">
+                        <controls:LucideIcon Kind="square" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                             VerticalAlignment="Center" Margin="0,0,6,0"/>
+                        <TextBlock VerticalAlignment="Center"
+                                   Text="{Binding [Studio.Teams.ScheduleStop], Source={x:Static services:I18n.Instance}}"/>
+                      </StackPanel>
+                    </Button>
+                  </WrapPanel>
+                  <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" TextWrapping="Wrap"
+                             Text="{Binding ScheduleMessage}"
+                             Visibility="{Binding HasScheduleMessage, Converter={StaticResource BooleanToVisibility}}"/>
+                  <StackPanel Visibility="{Binding HasScheduleManualCommand, Converter={StaticResource BooleanToVisibility}}">
+                    <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,2"
+                               Text="{Binding [Studio.Teams.ScheduleManual], Source={x:Static services:I18n.Instance}}"/>
+                    <TextBox Style="{StaticResource InputMono}" IsReadOnly="True" TextWrapping="Wrap"
+                             Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
+                  </StackPanel>
+                </StackPanel>
               </StackPanel>
             </DockPanel>
           </Border>

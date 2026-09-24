@@ -21,8 +21,10 @@ my-solution/
 ├── FORGE.md              the crew's identity card: goal, acceptance criteria, verdict
 ├── forge.json            its machine-readable twin: slug, title, brief — what `forge reopen` rebuilds from
 └── schedule/             Windows task XML · systemd timer · cron line
-                          (the install command is displayed, never executed)
+                          (installed by `orkeon forge schedule`, never by the promotion)
 ```
+
+The promotion never touches the operating system's scheduler. `orkeon forge schedule ./my-solution` installs the schedule on this machine (`--check` says where it stands), and `orkeon forge unschedule ./my-solution` removes it.
 
 From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like any crew (this one needs an LLM and network access for `web_scrape`), and the Orkeon Studio launcher detects the folder.
 

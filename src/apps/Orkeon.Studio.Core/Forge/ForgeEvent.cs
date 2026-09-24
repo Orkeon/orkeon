@@ -79,6 +79,15 @@ public static class ForgeEventKinds
     public const string SessionFinished = "session.finished";
 
     /// <summary>
+    /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or
+    /// <c>forge unschedule</c> (STUDIO-27): <c>path</c>, <c>state</c> (<c>installed</c> |
+    /// <c>absent</c> | <c>stale</c>), <c>reason</c>, <c>expression</c>, <c>family</c>,
+    /// <c>names</c> and, for a removal, <c>removed</c>. A refusal is an <c>error</c> instead, whose
+    /// <c>command</c> is what a person can run by hand.
+    /// </summary>
+    public const string ScheduleState = "schedule.state";
+
+    /// <summary>
     /// <c>forge reopen</c> found or rebuilt the session of a promoted team folder (FORGE-09):
     /// <c>slug</c>, <c>dir</c>, <c>path</c>, the wire <c>state</c> of the session,
     /// <c>rebuilt</c>, and for a rebuild whether the brief was <c>recorded</c> or <c>derived</c>.

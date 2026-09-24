@@ -53,7 +53,6 @@ public sealed class MainWindowViewModel : ObservableObject
         var historyStore = seams.HistoryStore;
         var dispatcher = seams.Dispatcher;
         var strings = seams.Strings;
-        var forgeClient = seams.ForgeClient;
         var profileStore = seams.ProfileStore;
         var shellOpener = seams.ShellOpener;
         var delay = seams.Delay;
@@ -62,6 +61,9 @@ public sealed class MainWindowViewModel : ObservableObject
         // account is read with the key its profile's row just remembered.
         var keyStore = seams.KeyStore ?? new EnvironmentApiKeyStore();
         var runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
+        // One forge client for the wizard and the team cards' schedule gestures (STUDIO-27), over
+        // the same binary as the doctor and the launcher when none is handed in.
+        var forgeClient = seams.ForgeClient ?? ForgeClient.Over(runner);
 
         Mode = new UiModeViewModel(ui.InitialMode, ui.PersistMode);
 
@@ -77,12 +79,23 @@ public sealed class MainWindowViewModel : ObservableObject
         Chat = new ChatThreadViewModel(strings, delay);
         About = new AboutViewModel(runner, dispatcher);
 
+        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
+        // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
+        // on Windows — where the global appsettings, the model profiles and the history
+        // already live): sessions are resumable app state, not documents, unlike the
+        // adopted teams which stay under ~/Orkeon/teams. Never the process working
+        // directory: launched from the installed app or a dev tree, that is the
+        // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
+        // next clean, and the assistant's /workspace would show DLLs.
+        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
+
         // The tab is built over the window's own seams, the shared runner included: the doctor
         // panel and the launcher must never disagree about which binary is in use. The LLM probe
         // travels with them rather than being hard-coded null — the screenshot campaign passes
         // one that answers offline, which is what makes "the connection was tested"
         // photographable AND makes a live HTTP call from a headless run structurally impossible.
-        Config = new ConfigTabViewModel(seams with { ProcessRunner = runner }, globalPathOverride);
+        // The two roots are the diagnostic's orphan-session list (STUDIO-27, D-08).
+        Config = new ConfigTabViewModel(seams with { ProcessRunner = runner }, globalPathOverride, forgeHome, teamsHome);
 
         // The settings' folder list is read live everywhere it is needed: a team folder that is
         // not in it reads red — on the wizard's chips, the team cards and the team-mounts modal
@@ -107,19 +120,9 @@ public sealed class MainWindowViewModel : ObservableObject
             Clock = seams.Clock,
         });
 
-        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
         // VFS-90: each settings row says which teams name it by id, and removing one asks
         // first — the composition root supplies the question, the view model the facts.
         Config.Mounts.LoadTeams = () => TeamCatalog.List(teamsHome);
-        // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
-        // on Windows — where the global appsettings, the model profiles and the history
-        // already live): sessions are resumable app state, not documents, unlike the
-        // adopted teams which stay under ~/Orkeon/teams. Never the process working
-        // directory: launched from the installed app or a dev tree, that is the
-        // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
-        // next clean, and the assistant's /workspace would show DLLs.
-        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
-
         // STUDIO-35: the provider balances, read on the triggers of D-02 and kept in memory only
         // (D-05). The status bar, the profile rows and the profile editor share them; without a
         // probe in the seams nothing is read (see StudioServices.BalanceProbe).
@@ -171,6 +174,7 @@ public sealed class MainWindowViewModel : ObservableObject
             ShellOpener = shellOpener,
             HistoryStore = historyStore,
             DeclaredMounts = declaredMounts,
+            Forge = forgeClient,
         });
 
 
@@ -277,8 +281,11 @@ public sealed class MainWindowViewModel : ObservableObject
         // A draft discarded from My teams is gone from the disk: the wizard it was open on
         // goes back to a blank step 1 rather than keep a session that no longer exists.
         Teams.SessionDeleted += (_, e) => CreateTeam.ForgetSession(e.Session.Directory);
-        CreateTeam.TeamAdopted += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
-        Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
+        // An adoption or an import may bring a schedule: its card asks the engine where it stands
+        // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
+        CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
+        Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
         // team list. Every change to the teams on disk — an adoption, an import, a deletion or
         // a duplication from a card, a save of the folders modal — ends in Teams.Refresh(),
@@ -455,7 +462,10 @@ public sealed class MainWindowViewModel : ObservableObject
                 Teams.LoadLastRunsAsync(cancellationToken),
                 // The use-case catalogue (STUDIO-39): the wizard's link says how many cases it
                 // holds from the first frame, and the suggestions have sheets to count against.
-                CreateTeam.Gallery.LoadAsync(cancellationToken)).ConfigureAwait(true);
+                CreateTeam.Gallery.LoadAsync(cancellationToken),
+                // Where each scheduled team's schedule really stands — the engine says, the
+                // sidecar never does (STUDIO-27, D-05).
+                Teams.CheckSchedulesAsync(cancellationToken)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {

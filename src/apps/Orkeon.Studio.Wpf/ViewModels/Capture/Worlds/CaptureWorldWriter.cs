@@ -76,7 +76,11 @@ internal static class CaptureWorldWriter
             .Answer("doctor", 0, plan.DoctorJson)
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
-            .Answer("forge", 0, [.. plan.ForgeStream]);
+            .Answer("forge", 0, [.. plan.ForgeStream])
+            // STUDIO-27: a card says where its schedule stands only once the engine answered, so the
+            // seeded schedules are said to be installed — the green badge is an answer, not a sidecar.
+            .Answer("forge schedule", 0,
+                """{"v":2,"seq":1,"ts":"2026-09-24T08:00:00Z","kind":"schedule.state","path":"team","state":"installed","expression":"daily@07:00","family":"windows","names":["Orkeon team"]}""");
 
         // STUDIO-39: the catalogue `usecases list` prints, and the search session the wizard keeps
         // open for its suggestions — a conversation that answers every query of the campaign.

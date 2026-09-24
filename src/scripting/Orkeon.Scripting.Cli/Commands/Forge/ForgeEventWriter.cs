@@ -50,6 +50,35 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("error", new { code, message, recoverable });
 
     /// <summary>
+    /// An anomaly with the command a person can run instead (STUDIO-27, D-04): the operating
+    /// system refused a schedule verb, and <paramref name="command"/> does by hand what Orkeon
+    /// could not. Omitted from the line when there is none.
+    /// </summary>
+    public void Error(string code, string message, bool recoverable, string? command) =>
+        Emit("error", new { code, message, recoverable, command });
+
+    /// <summary>
+    /// Where a team folder's schedule stands after <c>forge schedule</c>, <c>--check</c> or
+    /// <c>forge unschedule</c> (STUDIO-27): <c>installed</c>, <c>absent</c> or <c>stale</c> — to
+    /// reinstall, <c>reason</c> saying why — with the schedule the folder declares, this machine's
+    /// OS family, the names of the registration concerned, and for a removal whether one was removed.
+    /// </summary>
+    public void ScheduleState(ForgeScheduleReport report)
+    {
+        ArgumentNullException.ThrowIfNull(report);
+        Emit("schedule.state", new
+        {
+            path = report.TeamDirectory,
+            state = Spell(report.State),
+            reason = report.Reason,
+            expression = report.Expression,
+            family = report.Family,
+            names = report.Names.Count > 0 ? report.Names : null,
+            removed = report.Removed,
+        });
+    }
+
+    /// <summary>
     /// The session folder followed its team (STUDIO-26): <paramref name="from"/> and
     /// <paramref name="to"/> are its slugs, <paramref name="dir"/> its new absolute folder — what a
     /// client that reads the session's files next must read from — and <paramref name="suffixed"/>
@@ -70,6 +99,14 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public void SessionFinished(string status, int exitCode) =>
         Emit("session.finished", new { status, exitCode });
+
+    /// <summary>A schedule state's wire spelling.</summary>
+    internal static string Spell(ForgeScheduleState state) => state switch
+    {
+        ForgeScheduleState.Installed => "installed",
+        ForgeScheduleState.Stale => "stale",
+        _ => "absent",
+    };
 
     /// <summary>Stage names on the wire are lowercase; the enum spelling stays a C# detail.</summary>
 #pragma warning disable CA1308 // lowercase is the wire spelling of the protocol contract, not a comparison normalization

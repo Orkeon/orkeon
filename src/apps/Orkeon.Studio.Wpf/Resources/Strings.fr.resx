@@ -745,7 +745,7 @@
   <data name="Studio.Create.HelpStep1" xml:space="preserve"><value>Décrivez le besoin avec vos mots — les dossiers à lire, le résultat attendu, la fréquence. L'assistant pose ses questions jusqu'à ce que le brief soit clair ; rien ne s'exécute encore sur votre machine.</value></data>
   <data name="Studio.Create.HelpStep2" xml:space="preserve"><value>L'assistant propose une équipe : un agent par tâche, chacun avec les seules capacités nécessaires. Vous pouvez modifier un agent, en ajouter un, et choisir les dossiers que l'équipe verra une fois adoptée.</value></data>
   <data name="Studio.Create.HelpStep3" xml:space="preserve"><value>L'équipe répète sur un exemple, dans son bac à sable — rien d'autre n'est touché. Le verdict vous dit honnêtement si le résultat correspond à ce que vous avez demandé à l'étape 1.</value></data>
-  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopter range l'équipe dans un dossier ordinaire de votre profil. La planification est affichée en commande, jamais exécutée à votre place ; l'équipe apparaît ensuite dans Mes équipes.</value></data>
+  <data name="Studio.Create.HelpStep4" xml:space="preserve"><value>Adopter range l'équipe dans un dossier ordinaire de votre profil. Si vous avez choisi une planification, Studio propose ensuite de l'installer dans le planificateur de votre système ; l'équipe apparaît dans Mes équipes.</value></data>
   <data name="Studio.Settings.NoviceEmpty" xml:space="preserve"><value>Aucun dossier n'est encore autorisé. Les agents ne verront rien tant que vous n'en autorisez pas au moins un.</value></data>
   <data name="Studio.Settings.NotSavedWriteFailed" xml:space="preserve"><value>Non enregistré — le fichier n'a pas pu être écrit : {0}</value></data>
   <data name="Studio.Teams.ExportedTo" xml:space="preserve"><value>Équipe exportée vers {0}</value></data>
@@ -1026,7 +1026,7 @@
     <value>Si une étape échoue, l'exécution s'arrête et rien n'est écrit dans le dossier de sortie. L'échec apparaît dans l'historique, avec l'étape et le message d'erreur.</value>
   </data>
   <data name="Studio.Chat.AnswerSchedule" xml:space="preserve">
-    <value>Une équipe programmée s'exécute même Studio fermé, tant que la machine est allumée. Vous pouvez arrêter la planification depuis Mes équipes.</value>
+    <value>Une fois que vous l'avez confirmée, Studio installe la planification dans le planificateur de votre système : l'équipe s'exécute alors même Studio fermé, tant que votre session est ouverte sur cet ordinateur. Vous pouvez arrêter la planification depuis Mes équipes.</value>
   </data>
   <data name="Studio.Chat.AnswerPrivacy" xml:space="preserve">
     <value>Avec un réglage local, aucune donnée ne quitte la machine. Avec un réglage dans le nuage, seul le texte envoyé au modèle sort — jamais les fichiers eux-mêmes.</value>
@@ -1041,7 +1041,7 @@
     <value>L'essai ne touche à rien : lecture seule, sur un échantillon de documents, et rien n'est enregistré. C'est le moment de vérifier le ton et le niveau de détail.</value>
   </data>
   <data name="Studio.Chat.ReplyStep4" xml:space="preserve">
-    <value>Après l'adoption, l'équipe travaille seule au moment choisi, même Studio fermé. Chaque exécution laisse une trace dans Historique, et vous pouvez arrêter la planification depuis Mes équipes.</value>
+    <value>Après l'adoption, Studio propose d'installer la planification : l'équipe travaille alors seule au moment choisi, même Studio fermé, tant que votre session est ouverte sur cet ordinateur. Ce qu'elle produit arrive dans son dossier, et vous pouvez arrêter la planification depuis Mes équipes.</value>
   </data>
   <data name="Studio.Chat.ReplyRun" xml:space="preserve">
     <value>Je suis l'exécution en direct. Si une étape s'arrête, dites-le-moi : je lis le journal technique et je vous explique ce qui a bloqué, sans jargon.</value>
@@ -1109,6 +1109,84 @@
   </data>
   <data name="Studio.Teams.ShowLess" xml:space="preserve">
     <value>Voir moins</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstalled" xml:space="preserve">
+    <value>Planifiée — le système la lance, même Studio fermé.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleAbsent" xml:space="preserve">
+    <value>Planification non installée — rien ne la lance encore.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStale" xml:space="preserve">
+    <value>Planification à réinstaller — ce qui est installé ne correspond plus à l'équipe.</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstall" xml:space="preserve">
+    <value>Installer la planification</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStop" xml:space="preserve">
+    <value>Arrêter la planification</value>
+  </data>
+  <data name="Studio.Teams.ScheduleManual" xml:space="preserve">
+    <value>À la main :</value>
+  </data>
+  <data name="Studio.Teams.ScheduleInstallFailed" xml:space="preserve">
+    <value>La planification n'a pas pu être installée : {0}</value>
+  </data>
+  <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
+    <value>La planification n'a pas pu être arrêtée : {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>Supprimer aussi la session d'atelier</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>Suppression refusée : sa planification n'a pas pu être arrêtée — {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>Suppression refusée par le disque — un fichier de l'équipe est peut-être ouvert.</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
+    <value>Installer la planification (tous les jours à {0}) ?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHourly" xml:space="preserve">
+    <value>Installer la planification (toutes les heures) ?</value>
+  </data>
+  <data name="Studio.Create.ScheduleOfferHint" xml:space="preserve">
+    <value>Le système lancera l'équipe à ce moment-là, même Studio fermé, tant que votre session est ouverte sur cet ordinateur. Vous pourrez l'arrêter depuis Mes équipes.</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstallNow" xml:space="preserve">
+    <value>Installer</value>
+  </data>
+  <data name="Studio.Create.ScheduleLater" xml:space="preserve">
+    <value>Plus tard</value>
+  </data>
+  <data name="Studio.Create.ScheduleInstalled" xml:space="preserve">
+    <value>La planification est installée : le système lancera l'équipe, même Studio fermé.</value>
+  </data>
+  <data name="Studio.Create.ScheduleDeclined" xml:space="preserve">
+    <value>Planification non installée — vous pourrez l'installer plus tard depuis Mes équipes.</value>
+  </data>
+  <data name="Studio.Create.ScheduleKept" xml:space="preserve">
+    <value>Sa planification reste installée.</value>
+  </data>
+  <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
+    <value>Sa planification est arrêtée.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>Sessions d'atelier orphelines</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>Ces sessions adoptées désignent un dossier d'équipe qui n'existe plus. Une équipe déplacée hors de Mes équipes apparaît aussi ici : ne nettoyez que ce dont vous n'avez plus besoin.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>Son dossier d'équipe a disparu : {0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>Nettoyer</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>Supprimer définitivement cette session ?</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>La session n'a pas pu être supprimée — un de ses fichiers est peut-être ouvert.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>lecture</value>

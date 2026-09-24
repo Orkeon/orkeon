@@ -506,6 +506,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
         OpenDiagnosticCommand = new RelayCommand(() => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
         PickAssistantCommand = new RelayCommand(PickAssistant);
+        ScheduleOffer = new ScheduleOfferViewModel(_client, _dispatcher, _strings);
 
         // STUDIO-39: the gallery, the suggestions under the need, the reference chip.
         Gallery = new UseCaseGalleryViewModel(
@@ -2865,6 +2866,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         // One line, <= 64, no markup (STUDIO-16, D-04) — the name the sidecar records, and the
         // one the engine titles the card, the record and the session with (STUDIO-26, D-01).
         var adopted = TeamCatalog.NormalizeName(_teamName);
+        var reopened = _reopenedTeamPath is not null;
+        string? adoptedPath = null;
 
         IsEngineRunning = true;
         _lastStderr = null;
@@ -2876,9 +2879,25 @@ public sealed class CreateTeamViewModel : ObservableObject
             ForgeArgumentsBuilder.BuildPromote(slug, destination, adopted, schedule));
         try
         {
+            // STUDIO-27: a re-adoption « on demand » of a team that has a schedule stops it first —
+            // choosing « on demand » is the consent. A refusal stops the save, with what to run by
+            // hand: the team would otherwise keep running on a schedule it no longer declares,
+            // and no card would offer to stop it.
+            var scheduleStopped = false;
+            if (reopened && schedule is null && TeamCatalog.Describe(destination).HasSchedule)
+            {
+                if (await StopScheduleBeforeReadoptionAsync(destination).ConfigureAwait(false) is { } refusal)
+                {
+                    await PostAndAwaitAsync(() => _saveError = refusal).ConfigureAwait(false);
+                    return;
+                }
+
+                scheduleStopped = true;
+            }
+
             var result = await _client.PromoteAsync(slug, destination, adopted, schedule, _workspace, OnEvent, OnRaw)
                 .ConfigureAwait(false);
-            _dispatcher.Post(() =>
+            await PostAndAwaitAsync(() =>
             {
                 FinishRun(result, commandLine);
                 if (_model.Promotion is { } promotion)
@@ -2906,7 +2925,10 @@ public sealed class CreateTeamViewModel : ObservableObject
                     // the one line that stays says where the team went. The finally block's sync
                     // keeps it: a fresh model has no finished status to paint over it.
                     ResetToStepOne();
-                    StatusMessage = AdoptedLine(adopted, warning);
+                    StatusMessage = scheduleStopped
+                        ? AdoptedLine(adopted, warning) + " " + _strings[StudioStringKeys.WizardScheduleStopped]
+                        : AdoptedLine(adopted, warning);
+                    adoptedPath = promotion.Path;
                 }
                 else
                 {
@@ -2927,7 +2949,12 @@ public sealed class CreateTeamViewModel : ObservableObject
                         commandLine,
                         result.ExitCode);
                 }
-            });
+            }).ConfigureAwait(false);
+
+            // STUDIO-27 (D-05): a scheduled team is not scheduled until the operating system says
+            // so — the question comes after the adoption, and « Later » keeps it installable.
+            if (adoptedPath is not null && schedule is not null)
+                await ScheduleOffer.OfferAsync(adoptedPath, schedule, checkFirst: reopened).ConfigureAwait(false);
         }
         finally
         {
@@ -2938,6 +2965,38 @@ public sealed class CreateTeamViewModel : ObservableObject
             }).ConfigureAwait(false);
         }
     }
+
+    /// <summary>
+    /// Stops the schedule of the team a re-adoption turns « on demand » (STUDIO-27): null once
+    /// the engine removed it, else the sentence the status line says — with the command to run
+    /// by hand when the system refused.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A launch fault is the refusal the status line says, never an exception that ends the save unsaid.")]
+    private async Task<string?> StopScheduleBeforeReadoptionAsync(string teamPath)
+    {
+        ForgeScheduleReport report;
+        try
+        {
+            report = await _client.ScheduleAsync(teamPath, ForgeScheduleVerb.Remove).ConfigureAwait(false);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], ex.Message);
+        }
+
+        if (report.Succeeded)
+            return null;
+
+        var refusal = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsScheduleStopFailed], report.FailureReason);
+        return report.ManualCommand is { Length: > 0 } manual ? $"{refusal} — {manual}" : refusal;
+    }
+
+    /// <summary>
+    /// The question an adoption of a scheduled team asks (STUDIO-27, D-05): « Install the schedule
+    /// (every day at 08:00)? » — and, once answered, what became of it.
+    /// </summary>
+    public ScheduleOfferViewModel ScheduleOffer { get; }
 
     private void Restart()
     {
@@ -2974,6 +3033,9 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     private void ResetProjection()
     {
+        // The schedule question belonged to the adoption that asked it: a new creation, a resume
+        // or a reopen starts without it. An adoption asks again once its folder is written.
+        ScheduleOffer.Close();
         // A new session starts from a clean slate: the previous blueprint's folders were
         // approved for THAT blueprint, never for the next one; the old engine command lies.
         // The two step-1 answers survive (D-07) — they are the user's, not the blueprint's —

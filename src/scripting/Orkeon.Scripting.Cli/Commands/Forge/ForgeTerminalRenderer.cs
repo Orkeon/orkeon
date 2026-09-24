@@ -100,7 +100,15 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 _console.WriteLine($"✔ PROMOTED → {Text(e, "path")}");
                 _console.WriteLine($"  launch: {Text(e, "launcher")}");
                 if (e.TryGetProperty("install", out var install) && install.ValueKind == JsonValueKind.String)
-                    _console.WriteLine($"  schedule install (displayed, never executed): {install.GetString()}");
+                {
+                    _console.WriteLine($"  schedule: install it with `orkeon forge schedule \"{Text(e, "path")}\"`");
+                    _console.WriteLine($"  or by hand: {install.GetString()}");
+                }
+
+                break;
+
+            case "schedule.state":
+                RenderScheduleState(e);
                 break;
 
             case "session.renamed":
@@ -117,6 +125,8 @@ internal sealed class ForgeTerminalRenderer : TextWriter
 
             case "error":
                 _console.WriteLine($"✖ [{Text(e, "code")}] {Text(e, "message")}");
+                if (Text(e, "command") is { Length: > 0 } command)
+                    _console.WriteLine($"  by hand: {command}");
                 break;
 
             case "session.finished":
@@ -131,6 +141,33 @@ internal sealed class ForgeTerminalRenderer : TextWriter
         }
 
         _console.Flush();
+    }
+
+    /// <summary>A folder's schedule, in one line: what runs it, what to do about it, or that nothing does.</summary>
+    private void RenderScheduleState(JsonElement e)
+    {
+        var names = e.TryGetProperty("names", out var list) && list.ValueKind == JsonValueKind.Array
+            ? string.Join(", ", list.EnumerateArray().Select(name => name.GetString()))
+            : "";
+        var removed = e.TryGetProperty("removed", out var flag) && flag.ValueKind == JsonValueKind.True;
+
+        switch (Text(e, "state"))
+        {
+            case "installed":
+                _console.WriteLine($"✔ scheduled ({Text(e, "expression")}): {names}");
+                break;
+
+            case "stale":
+                _console.WriteLine(
+                    $"⚠ schedule to reinstall ({Text(e, "reason")}): {names} — run `orkeon forge schedule \"{Text(e, "path")}\"`");
+                break;
+
+            default:
+                _console.WriteLine(removed
+                    ? $"✔ schedule removed: {names}"
+                    : $"○ no schedule installed for this folder ({Text(e, "reason")})");
+                break;
+        }
     }
 
     private static string Text(JsonElement e, string property) =>

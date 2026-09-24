@@ -775,7 +775,7 @@ public partial class CreateTeamWizardTests
     }
 
     [Fact]
-    public void The_teams_screen_lists_the_folders_and_hands_a_launch_to_the_shell()
+    public async Task The_teams_screen_lists_the_folders_and_hands_a_launch_to_the_shell()
     {
         var root = Path.Combine(Path.GetTempPath(), $"orkeon-teams-{Guid.NewGuid():N}");
         try
@@ -789,7 +789,17 @@ public partial class CreateTeamWizardTests
                 Schedule = "daily@07:30",
             });
 
-            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [] });
+            // The team is scheduled: its deletion asks the engine to stop the schedule first
+            // (STUDIO-27, D-06), and the engine says there was nothing to remove.
+            var processes = new FakeProcessLauncher();
+            processes.OutputToEmit.Add(Out(
+                """{"v":2,"seq":1,"ts":"t","kind":"schedule.state","path":"p","state":"absent","reason":"not-installed","family":"windows","removed":false}"""));
+            var teams = new TeamsViewModel(new TeamsDependencies
+            {
+                TeamsRoot = root,
+                LoadSessions = () => [],
+                Forge = new ForgeClient(processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            });
             string? launched = null;
             teams.LaunchRequested += (_, e) => launched = e.Path;
 
@@ -810,7 +820,8 @@ public partial class CreateTeamWizardTests
             Assert.False(teams.IsEmpty);
 
             card.AskDeleteCommand.Execute(null);
-            card.ConfirmDeleteCommand.Execute(null);
+            await card.ConfirmDeleteCommand.ExecuteAsync();
+            Assert.Equal(["forge", "unschedule", teamDir, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
             Assert.True(teams.IsEmpty);
         }
         finally

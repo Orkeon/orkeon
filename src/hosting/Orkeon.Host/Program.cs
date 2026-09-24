@@ -12,9 +12,10 @@ using Orkeon.Hosting;
 // doing it after you log out. A daemon you cannot run in the foreground is a daemon you cannot
 // debug.
 //
-// It hosts crews; it does not schedule them. rc.2 ships no scheduler, deliberately — a crew
-// that should run every morning still needs the artifact `orkeon forge promote --schedule`
-// produces, installed by a person.
+// It hosts crews; it does not schedule them. Orkeon ships no scheduler, deliberately — a crew
+// that should run every morning is run by the operating system, from the artifact
+// `orkeon forge promote --schedule` produces, which `orkeon forge schedule` installs with the
+// user's consent (Studio asks first) and `orkeon forge unschedule` removes (STUDIO-27).
 //
 // The startup decisions themselves live in HostStartup: each answers with the operator-facing
 // refusal instead of writing it, so this file stays the sequence — ask, report, exit 78 — and

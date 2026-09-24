@@ -29,6 +29,14 @@ internal sealed record ForgeSchedule
     /// <summary>Minute, 0-59 (daily only).</summary>
     public int Minute { get; init; }
 
+    /// <summary>
+    /// The schedule as the grammar spells it — <c>daily@HH:mm</c> or <c>hourly</c> — which is
+    /// what <c>forge.json</c> records and Studio's sidecar holds (STUDIO-27).
+    /// </summary>
+    public string Expression => Kind == KindHourly
+        ? KindHourly
+        : string.Create(CultureInfo.InvariantCulture, $"{KindDaily}@{Hour:00}:{Minute:00}");
+
     /// <summary>Parses <c>daily@HH:mm</c> or <c>hourly</c>; anything else is an error sentence.</summary>
     public static bool TryParse(string text, out ForgeSchedule? schedule, out string? error)
     {
@@ -79,7 +87,10 @@ internal sealed record ForgePromotionResult
     /// <summary>Relative schedule directory, when a schedule was requested.</summary>
     public string? ScheduleDirectory { get; init; }
 
-    /// <summary>The host platform's install command — displayed, never executed (§3.4).</summary>
+    /// <summary>
+    /// The host platform's install command, for a person installing by hand. The promotion never
+    /// runs it: <c>forge schedule</c> installs the schedule, when the user agrees (STUDIO-27).
+    /// </summary>
     public string? InstallCommand { get; init; }
 
     /// <summary>
@@ -237,7 +248,8 @@ internal static class ForgePromoter
         if (schedule is not null)
         {
             scheduleDirectory = ScheduleDirectoryName;
-            installCommand = WriteScheduleArtifacts(destination, teamName, schedule, platform, now);
+            WriteScheduleArtifacts(destination, teamName, schedule, now);
+            installCommand = ForgeScheduleAdapters.ManualInstallCommand(platform, destination, teamName);
         }
 
         WriteCard(destination, new ForgeCard
@@ -255,7 +267,7 @@ internal static class ForgePromoter
         // The machine-readable twin of the card (FORGE-09): what `forge reopen` needs to
         // rebuild a faithful session from this folder once the original one is gone — the
         // brief above all, which the crew files do not carry. No secret in it.
-        ForgeTeamRecord.Write(destination, session, brief, now);
+        ForgeTeamRecord.Write(destination, session, brief, now, schedule);
 
         return new ForgePromotionResult
         {
@@ -569,16 +581,19 @@ internal static class ForgePromoter
     }
 
     /// <summary>
-    /// Writes all three schedule families under <c>schedule/</c> — the "choice" of §11 is
-    /// made at install time, not at generation time: the folder is portable and the
-    /// artifacts are a few hundred bytes. Every name in them is <paramref name="teamName"/>
-    /// (<see cref="ArtifactName"/>). Returns the install command for
-    /// <paramref name="platform"/>, which the caller displays and never executes.
+    /// Writes all three schedule families under <c>schedule/</c> — the "choice" of §11 is made at
+    /// install time, not at generation time: the folder is portable and the artifacts are a few
+    /// hundred bytes. Every name in them is <paramref name="teamName"/> (<see cref="ArtifactName"/>)
+    /// and every path this folder's own. <c>forge schedule</c> installs the host's family from
+    /// them (STUDIO-27); <see cref="ForgeScheduleAdapters.ManualInstallCommand"/> is the same
+    /// install, by hand.
     /// </summary>
-    private static string WriteScheduleArtifacts(
-        string destination, string teamName, ForgeSchedule schedule,
-        ForgePromotePlatform platform, DateTimeOffset now)
+    internal static void WriteScheduleArtifacts(string destination, string teamName, ForgeSchedule schedule, DateTimeOffset now)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamName);
+        ArgumentNullException.ThrowIfNull(schedule);
+
         var directory = Path.Combine(destination, ScheduleDirectoryName);
         Directory.CreateDirectory(directory);
 
@@ -587,17 +602,24 @@ internal static class ForgePromoter
 
         // Windows scheduled task (schtasks /Create /XML). The start boundary anchors the
         // time of day at the next occurrence; Task Scheduler owns the recurrence after that.
+        // No principal: the task is the registering user's own, run while that user is logged
+        // on — no password asked, nothing elevated. The settings are the laptop's: the default
+        // would skip a run on battery, and a run missed while the machine was off happens when
+        // it next can, like the systemd timer's Persistent=true below.
         var start = schedule.Kind == ForgeSchedule.KindDaily
             ? NextOccurrence(now, schedule.Hour, schedule.Minute)
             : NextTopOfHour(now);
         var repetition = schedule.Kind == ForgeSchedule.KindHourly
             ? "      <Repetition><Interval>PT1H</Interval><Duration>P1D</Duration></Repetition>\n"
             : "";
-        File.WriteAllText(Path.Combine(directory, "windows-task.xml"),
+        File.WriteAllText(Path.Combine(directory, WindowsTaskScheduleAdapter.TaskFileName),
             // The declared encoding must match the bytes on disk (UTF-8, no BOM) —
             // schtasks accepts UTF-8 XML; declaring UTF-16 over UTF-8 bytes would not parse.
             "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n" +
             "<Task version=\"1.2\" xmlns=\"http://schemas.microsoft.com/windows/2004/02/mit/task\">\n" +
+            "  <RegistrationInfo>\n" +
+            $"    <Description>{SecurityElement.Escape($"Orkeon crew '{teamName}'")}</Description>\n" +
+            "  </RegistrationInfo>\n" +
             "  <Triggers>\n" +
             "    <CalendarTrigger>\n" +
             string.Create(CultureInfo.InvariantCulture, $"      <StartBoundary>{start:yyyy-MM-dd'T'HH:mm:ss}</StartBoundary>\n") +
@@ -606,6 +628,11 @@ internal static class ForgePromoter
             "      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>\n" +
             "    </CalendarTrigger>\n" +
             "  </Triggers>\n" +
+            "  <Settings>\n" +
+            "    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>\n" +
+            "    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>\n" +
+            "    <StartWhenAvailable>true</StartWhenAvailable>\n" +
+            "  </Settings>\n" +
             "  <Actions Context=\"Author\">\n" +
             $"    <Exec><Command>{SecurityElement.Escape(windowsLauncher)}</Command></Exec>\n" +
             "  </Actions>\n" +
@@ -615,29 +642,54 @@ internal static class ForgePromoter
         var onCalendar = schedule.Kind == ForgeSchedule.KindDaily
             ? string.Create(CultureInfo.InvariantCulture, $"*-*-* {schedule.Hour:00}:{schedule.Minute:00}:00")
             : "hourly";
-        File.WriteAllText(Path.Combine(directory, $"orkeon-{teamName}.service"),
+        File.WriteAllText(Path.Combine(directory, SystemdUserScheduleAdapter.ServiceName(teamName)),
             $"[Unit]\nDescription=Orkeon crew '{teamName}'\n\n[Service]\nType=oneshot\nExecStart=\"{posixLauncher}\"\n");
-        File.WriteAllText(Path.Combine(directory, $"orkeon-{teamName}.timer"),
+        File.WriteAllText(Path.Combine(directory, SystemdUserScheduleAdapter.TimerName(teamName)),
             $"[Unit]\nDescription=Schedule for Orkeon crew '{teamName}'\n\n[Timer]\nOnCalendar={onCalendar}\nPersistent=true\n\n[Install]\nWantedBy=timers.target\n");
 
-        // cron line.
+        // cron line, marked with the team's tag: how `forge unschedule` finds it again among the
+        // user's own lines — and how a person does.
         var cron = schedule.Kind == ForgeSchedule.KindDaily
             ? string.Create(CultureInfo.InvariantCulture, $"{schedule.Minute} {schedule.Hour} * * *")
             : "0 * * * *";
-        File.WriteAllText(Path.Combine(directory, "cron.txt"),
-            $"# Generated by Orkeon Forge — append to the crontab of the user who runs the crew.\n{cron} \"{posixLauncher}\"\n");
-
-        return platform switch
-        {
-            ForgePromotePlatform.Windows =>
-                $"schtasks /Create /TN \"Orkeon {teamName}\" /XML \"{Path.Combine(directory, "windows-task.xml")}\"",
-            ForgePromotePlatform.Linux =>
-                $"cp \"{Path.Combine(directory, $"orkeon-{teamName}.service")}\" \"{Path.Combine(directory, $"orkeon-{teamName}.timer")}\" ~/.config/systemd/user/ " +
-                $"&& systemctl --user daemon-reload && systemctl --user enable --now orkeon-{teamName}.timer",
-            _ =>
-                $"( crontab -l 2>/dev/null; cat \"{Path.Combine(directory, "cron.txt")}\" ) | crontab -",
-        };
+        File.WriteAllText(Path.Combine(directory, CronScheduleAdapter.LineFileName),
+            "# Generated by Orkeon Forge — `orkeon forge schedule` installs this line; by hand, append it to the crontab of the user who runs the crew.\n"
+            + $"{cron} \"{CronScheduleAdapter.EscapePercent(posixLauncher)}\" {CronScheduleAdapter.Marker(CronScheduleAdapter.Tag(teamName))}\n");
     }
+
+    /// <summary>
+    /// Makes <c>schedule/</c> describe <paramref name="teamDirectory"/> as it is now before an
+    /// install (STUDIO-27): the artifacts are left as they are — hand edits included — when they
+    /// name this folder's launchers under <paramref name="teamName"/>, and regenerated from
+    /// <paramref name="schedule"/> when they do not: a copy of a scheduled team, a team moved or
+    /// renamed since its promotion, or artifacts deleted.
+    /// </summary>
+    internal static void EnsureScheduleArtifacts(string teamDirectory, string teamName, ForgeSchedule schedule, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        if (ScheduleArtifactsDescribe(teamDirectory, teamName))
+            return;
+
+        DeleteIfExists(Path.Combine(teamDirectory, ScheduleDirectoryName));
+        WriteScheduleArtifacts(teamDirectory, teamName, schedule, now);
+    }
+
+    /// <summary>Whether every family's artifact names this folder's launcher, under <paramref name="teamName"/>.</summary>
+    private static bool ScheduleArtifactsDescribe(string teamDirectory, string teamName)
+    {
+        var directory = Path.Combine(teamDirectory, ScheduleDirectoryName);
+        var posixLauncher = Path.Combine(teamDirectory, PosixLauncherName);
+        var windowsLauncher = Path.Combine(teamDirectory, WindowsLauncherName);
+
+        return Mentions(Path.Combine(directory, WindowsTaskScheduleAdapter.TaskFileName), $"<Command>{SecurityElement.Escape(windowsLauncher)}</Command>")
+            && Mentions(Path.Combine(directory, SystemdUserScheduleAdapter.ServiceName(teamName)), $"ExecStart=\"{posixLauncher}\"")
+            && File.Exists(Path.Combine(directory, SystemdUserScheduleAdapter.TimerName(teamName)))
+            && Mentions(Path.Combine(directory, CronScheduleAdapter.LineFileName), $"\"{CronScheduleAdapter.EscapePercent(posixLauncher)}\"");
+    }
+
+    private static bool Mentions(string file, string text) =>
+        File.Exists(file) && File.ReadAllText(file).Contains(text, StringComparison.Ordinal);
 
     /// <summary>Everything <c>FORGE.md</c> says, gathered from one promotion.</summary>
     private sealed record ForgeCard
@@ -657,7 +709,7 @@ internal static class ForgePromoter
         /// <summary>The requested schedule, when <c>--schedule</c> asked for one.</summary>
         public ForgeSchedule? Schedule { get; init; }
 
-        /// <summary>The install command the card displays — never executed (§3.4).</summary>
+        /// <summary>The command the card displays for a person installing by hand.</summary>
         public string? InstallCommand { get; init; }
 
         /// <summary>When the folder was promoted.</summary>
@@ -836,7 +888,10 @@ internal static class ForgePromoter
             $"Drop what the team should read into `{ReadFolderName}/`. It is the only folder it reads: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach."));
     }
 
-    /// <summary>The schedule artifacts and the command that installs one — displayed, never run.</summary>
+    /// <summary>
+    /// The schedule: the artifacts, who installs them — Orkeon Studio with the user's consent, or
+    /// <c>forge schedule</c> (STUDIO-27, DA-3) — and the command that installs them by hand.
+    /// </summary>
     private static void AppendScheduleSection(
         StringBuilder card, ForgeSchedule? schedule, string? installCommand, CardLanguage language)
     {
@@ -847,8 +902,8 @@ internal static class ForgePromoter
         card.AppendLine(CultureInfo.InvariantCulture, $"## {language.Pick("Planification", "Schedule")}");
         card.AppendLine();
         card.AppendLine(language.Pick(
-            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur : installez l'artefact vous-même — par exemple :",
-            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler: install the artifact yourself — for example:"));
+            $"Les artefacts sous `{ScheduleDirectoryName}/` couvrent les trois plateformes (tâche planifiée Windows, timer systemd, ligne cron). Orkeon n'a pas d'ordonnanceur à lui : c'est le système qui lance l'équipe. Orkeon Studio installe la planification avec votre accord ; en ligne de commande, depuis ce dossier, `orkeon forge schedule .` l'installe et `orkeon forge unschedule .` la retire. À la main, sur cette machine :",
+            $"The artifacts under `{ScheduleDirectoryName}/` cover the three platforms (Windows scheduled task, systemd timer, cron line). Orkeon has no scheduler of its own: the operating system runs the team. Orkeon Studio installs the schedule with your consent; from a terminal, in this folder, `orkeon forge schedule .` installs it and `orkeon forge unschedule .` removes it. By hand, on this machine:"));
         card.AppendLine();
         card.AppendLine(CultureInfo.InvariantCulture, $"```\n{installCommand}\n```");
     }

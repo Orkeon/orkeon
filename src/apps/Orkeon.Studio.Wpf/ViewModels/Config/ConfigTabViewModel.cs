@@ -35,9 +35,15 @@ public sealed class ConfigTabViewModel : ObservableObject
     /// <summary>
     /// Builds the tab over the given seams; every one of them has an in-memory double in the
     /// tests, and <paramref name="globalPathOverride"/> names the per-user settings file when
-    /// the machine's own location must not be used.
+    /// the machine's own location must not be used. <paramref name="forgeWorkspace"/> and
+    /// <paramref name="teamsRoot"/> are what the diagnostic's orphan-session list reads
+    /// (STUDIO-27, D-08); null lists none.
     /// </summary>
-    public ConfigTabViewModel(StudioServices? services = null, string? globalPathOverride = null)
+    public ConfigTabViewModel(
+        StudioServices? services = null,
+        string? globalPathOverride = null,
+        string? forgeWorkspace = null,
+        string? teamsRoot = null)
     {
         var seams = services ?? new StudioServices();
 
@@ -63,7 +69,9 @@ public sealed class ConfigTabViewModel : ObservableObject
         Diagnostic = new DiagnosticViewModel(
             seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine(),
             seams.Dispatcher,
-            _strings);
+            _strings,
+            forgeWorkspace,
+            teamsRoot);
 
         // A language change at runtime, STUDIO-11: the tab lives as long as the window, so the
         // subscription needs no teardown.

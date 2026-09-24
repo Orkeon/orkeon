@@ -31,7 +31,11 @@ public sealed record StudioTeamMetadata
     [JsonPropertyName("profile")]
     public string? Profile { get; init; }
 
-    /// <summary>The engine schedule (<c>daily@HH:mm</c> / <c>hourly</c>), or null for on demand.</summary>
+    /// <summary>
+    /// The engine schedule (<c>daily@HH:mm</c> / <c>hourly</c>), or null for on demand. What the
+    /// user chose; whether the operating system runs it is the engine's to say
+    /// (<c>forge schedule --check</c>, STUDIO-27), never this field's.
+    /// </summary>
     [JsonPropertyName("schedule")]
     public string? Schedule { get; init; }
 
@@ -163,6 +167,19 @@ public sealed record TeamSummary
     /// through <c>forge reopen</c>.
     /// </summary>
     public Guid? ForgeSessionId { get; init; }
+
+    /// <summary>
+    /// Whether the folder's <c>forge.json</c> records a schedule the engine installed (STUDIO-27) —
+    /// even one the sidecar no longer names, or one inherited by a copy: the engine decides which
+    /// registration is the folder's own when asked to remove it.
+    /// </summary>
+    public bool HasInstalledSchedule { get; init; }
+
+    /// <summary>
+    /// Whether the team has a schedule to stop before it goes (STUDIO-27, D-06): declared in the
+    /// sidecar, or recorded as installed in <c>forge.json</c>.
+    /// </summary>
+    public bool HasSchedule => Schedule is { Length: > 0 } || HasInstalledSchedule;
 }
 
 /// <summary>What sits where an adoption would write its team (STUDIO-26, D-07): <see cref="TeamCatalog.OccupantOf"/>.</summary>
@@ -245,6 +262,7 @@ public static partial class TeamCatalog
         // relative physical path against the process cwd, and no launcher should have
         // to know the sidecar's convention — nor which settings entry an id stands for.
         var resolved = TeamMountResolution.Resolve(teamDirectory, metadata?.Mounts, declaredMounts);
+        var record = ForgeSessionCatalog.ReadTeamRecord(teamDirectory);
 
         return new TeamSummary
         {
@@ -256,7 +274,8 @@ public static partial class TeamCatalog
             ResolvedMounts = resolved,
             AgentCount = CountAgents(teamDirectory),
             HasYamlCrew = HasYamlCrew(teamDirectory),
-            ForgeSessionId = ForgeSessionCatalog.ReadTeamSessionId(teamDirectory),
+            ForgeSessionId = record.SessionId,
+            HasInstalledSchedule = record.HasInstalledSchedule,
         };
     }
 
@@ -517,6 +536,19 @@ public static partial class TeamCatalog
 
         var metadata = TryReadMetadata(teamDirectory) ?? new StudioTeamMetadata();
         SaveMetadata(teamDirectory, metadata with { Mounts = mounts.Count > 0 ? mounts : null });
+    }
+
+    /// <summary>
+    /// Forgets the team's schedule in the sidecar — « Stop the schedule » (STUDIO-27, D-05), once the
+    /// engine removed the registration — everything else it says kept. A folder without a sidecar,
+    /// or whose sidecar names no schedule, is left as it is.
+    /// </summary>
+    public static void ClearSchedule(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        if (TryReadMetadata(teamDirectory) is { Schedule: { Length: > 0 } } metadata)
+            SaveMetadata(teamDirectory, metadata with { Schedule = null });
     }
 
     /// <summary>Deletes a team folder, recursively. Returns false when the disk refused.</summary>
