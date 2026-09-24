@@ -2584,6 +2584,12 @@
   <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>Nur Referenz</value></data>
   <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>Sein Team hängt von Dateien ab, die die Engine nicht mitbringt: Es kann Ihres inspirieren, aber nicht unverändert importiert werden.</value></data>
   <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>Von diesem Fall ausgehen</value></data>
+  <!-- STUDIO-41: « Import as is », the expert's action on a gallery card -->
+  <data name="Studio.Create.GalleryImportAsIs" xml:space="preserve"><value>Unverändert importieren</value></data>
+  <data name="Studio.Create.GalleryImportAsIsTip" xml:space="preserve"><value>Fügt diesen Fall unverändert zu „Meine Teams“ hinzu – seine Agenten, seine Beispieldaten, seine Ordner –, startbereit und wie jedes andere Team änderbar.</value></data>
+  <data name="Studio.Create.GalleryImporting" xml:space="preserve"><value>„{0}“ wird importiert…</value></data>
+  <data name="Studio.Create.GalleryImportAs" xml:space="preserve"><value>Als „{0}“ importieren</value></data>
+  <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>„Meine Teams“ öffnen</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>Kein Anwendungsfall passt zu diesen Filtern.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Filter zurücksetzen</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Anwendungsfälle werden gelesen…</value></data>

@@ -10,7 +10,12 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// <summary>One card of the use-case gallery: a sheet of the catalogue, read in the UI's language.</summary>
 public sealed class UseCaseCardViewModel
 {
-    internal UseCaseCardViewModel(UseCase useCase, string language, IStudioStrings strings, Action<UseCase> choose)
+    /// <summary>
+    /// Builds a card; <paramref name="importAsIs"/> is the gallery's « Import as is » (STUDIO-41),
+    /// passed in expert mode only — without it, the card offers no import.
+    /// </summary>
+    internal UseCaseCardViewModel(
+        UseCase useCase, string language, IStudioStrings strings, Action<UseCase> choose, Func<UseCase, Task>? importAsIs = null)
     {
         UseCase = useCase;
         Title = useCase.TitleIn(language) is { Length: > 0 } title ? title : useCase.Id;
@@ -18,6 +23,10 @@ public sealed class UseCaseCardViewModel
         ProcessLabel = UseCaseLabels.Process(useCase.Process, strings);
         CategoryLabel = UseCaseLabels.Category(useCase.Category, strings);
         ChooseCommand = new RelayCommand(() => choose(useCase));
+        CanImportAsIs = importAsIs is not null && useCase.Importable;
+        ImportAsIsCommand = new AsyncRelayCommand(
+            () => CanImportAsIs ? importAsIs!(useCase) : Task.CompletedTask,
+            () => CanImportAsIs);
     }
 
     /// <summary>The sheet behind the card.</summary>
@@ -52,6 +61,15 @@ public sealed class UseCaseCardViewModel
 
     /// <summary>« Start from this case »: fills the need and attaches the reference.</summary>
     public RelayCommand ChooseCommand { get; }
+
+    /// <summary>
+    /// Whether the card offers « Import as is » (STUDIO-41): in expert mode (D-01), on a case that
+    /// is not reference-only (D-03).
+    /// </summary>
+    public bool CanImportAsIs { get; }
+
+    /// <summary>« Import as is »: the case becomes a team of My teams, ready to run and to modify.</summary>
+    public AsyncRelayCommand ImportAsIsCommand { get; }
 }
 
 /// <summary>
@@ -117,7 +135,8 @@ internal static class UseCaseLabels
 /// wizard, over the catalogue <c>orkeon usecases list</c> answers — searched and filtered here, by
 /// category, by process, without web access, without a third-party key, and on the use cases the
 /// need's suggestions found. Choosing a card is the wizard's business: it fills the need and
-/// attaches the reference.
+/// attaches the reference. In expert mode a card can also be imported as it is (STUDIO-41,
+/// <see cref="Import"/>).
 /// <para>
 /// No fallback on Studio's side (D-05): the catalogue comes from the CLI like every other answer
 /// of the wizard, and without the CLI the panel shows the same « engine not found » card the
@@ -153,7 +172,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     /// <summary>
     /// Builds the panel. <paramref name="language"/> answers the catalogue code of the UI's
     /// language (<c>zh-Hans</c>, never Studio's <c>zh</c>); <paramref name="choose"/> is the
-    /// wizard's answer to a chosen card.
+    /// wizard's answer to a chosen card; <paramref name="importSeams"/> gives the expert's
+    /// « Import as is » (STUDIO-41) — none when null.
     /// </summary>
     internal UseCaseGalleryViewModel(
         UseCaseClient? client,
@@ -161,7 +181,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         IStudioStrings strings,
         Func<string> language,
         Action<UseCase> choose,
-        Action openDiagnostic)
+        Action openDiagnostic,
+        UseCaseImportSeams? importSeams = null)
     {
         _client = client;
         _dispatcher = dispatcher;
@@ -169,6 +190,10 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         _language = language;
         _choose = choose;
         _openDiagnostic = openDiagnostic;
+
+        // STUDIO-41: the expert's shortcut, offered on the cards while the switch says expert.
+        Import = new UseCaseImportViewModel(client, importSeams, dispatcher, strings, language, Close);
+        Import.AvailabilityChanged += (_, _) => Refilter();
 
         CloseCommand = new RelayCommand(Close);
         ClearFiltersCommand = new RelayCommand(ClearFilters);
@@ -353,6 +378,9 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         ? ""
         : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryCount], _cards.Count, _catalog.Count);
 
+    /// <summary>« Import as is » (STUDIO-41): the expert's action on the cards, and the banner that follows it.</summary>
+    public UseCaseImportViewModel Import { get; }
+
     // ── the wizard's side ──
 
     /// <summary>
@@ -362,6 +390,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
     internal void Open(bool suggestedOnly)
     {
         SuggestedOnly = suggestedOnly;
+        // A new visit starts without the last one's import banner (one still running stays).
+        Import.Clear();
         IsOpen = true;
         if (_catalog is null)
             _ = LoadAsync();
@@ -553,12 +583,13 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         var candidates = _suggestedOnly
             ? _suggested.Select(catalog.Find).OfType<UseCase>()
             : catalog.UseCases;
+        Func<UseCase, Task>? importAsIs = Import.IsAvailable ? Import.StartAsync : null;
 
         Cards =
         [
             .. candidates
                 .Where(useCase => Passes(useCase, language, words))
-                .Select(useCase => new UseCaseCardViewModel(useCase, language, _strings, _choose)),
+                .Select(useCase => new UseCaseCardViewModel(useCase, language, _strings, _choose, importAsIs)),
         ];
     }
 

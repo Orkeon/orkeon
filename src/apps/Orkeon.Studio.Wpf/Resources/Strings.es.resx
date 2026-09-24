@@ -2584,6 +2584,12 @@
   <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>Solo referencia</value></data>
   <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>Su equipo depende de archivos que el motor no incluye: puede inspirar el suyo, no importarse tal cual.</value></data>
   <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>Partir de este caso</value></data>
+  <!-- STUDIO-41: « Import as is », the expert's action on a gallery card -->
+  <data name="Studio.Create.GalleryImportAsIs" xml:space="preserve"><value>Importar tal cual</value></data>
+  <data name="Studio.Create.GalleryImportAsIsTip" xml:space="preserve"><value>Añade este caso a Mis equipos tal cual — sus agentes, sus datos de ejemplo, sus carpetas —, listo para ejecutarse y modificable como cualquier otro equipo.</value></data>
+  <data name="Studio.Create.GalleryImporting" xml:space="preserve"><value>Importando « {0} »…</value></data>
+  <data name="Studio.Create.GalleryImportAs" xml:space="preserve"><value>Importar como « {0} »</value></data>
+  <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>Abrir Mis equipos</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>Ningún caso de uso coincide con estos filtros.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Borrar los filtros</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Leyendo los casos de uso…</value></data>

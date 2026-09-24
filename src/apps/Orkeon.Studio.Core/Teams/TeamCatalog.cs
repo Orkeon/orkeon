@@ -11,13 +11,14 @@ namespace Orkeon.Studio.Core.Teams;
 /// <summary>
 /// Studio's sidecar metadata for one adopted team — what the crew definition itself cannot
 /// say: the human description, the model profile the team runs on, and the displayed
-/// schedule. Written at adoption next to the promoted files; a team folder without it (one
+/// schedule. Written at adoption next to the promoted files, and by <c>orkeon usecases
+/// export</c> for a use case imported as it is (STUDIO-41); a team folder without it (one
 /// imported or built by hand) is still a team, just a quieter card.
 /// </summary>
 public sealed record StudioTeamMetadata
 {
-    /// <summary>File name of the sidecar inside the team folder.</summary>
-    public const string FileName = "studio-team.json";
+    /// <summary>File name of the sidecar inside the team folder — the CLI writes it too (ADR-009).</summary>
+    public const string FileName = ConventionalNames.TeamSidecarFile;
 
     /// <summary>Display name; the folder name when absent.</summary>
     [JsonPropertyName("name")]
@@ -299,6 +300,23 @@ public static partial class TeamCatalog
             if (!Path.Exists(candidate))
                 return candidate;
         }
+    }
+
+    /// <summary>
+    /// The name that goes with <paramref name="freeFolder"/>, the <see cref="FreeSibling"/> of
+    /// <paramref name="takenFolder"/>: <paramref name="name"/> followed by the folder's own suffix
+    /// — « Ma veille (2) » beside « Ma veille », so the two cards stay apart where novice mode
+    /// shows no folder — cut so the whole stays within <see cref="MaxNameLength"/>.
+    /// </summary>
+    public static string FreeName(string name, string takenFolder, string freeFolder)
+    {
+        ArgumentNullException.ThrowIfNull(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(takenFolder);
+        ArgumentException.ThrowIfNullOrWhiteSpace(freeFolder);
+
+        var suffix = $" ({freeFolder[(Path.TrimEndingDirectorySeparator(takenFolder).Length + 1)..]})";
+        var room = MaxNameLength - suffix.Length;
+        return (name.Length > room ? name[..room].TrimEnd() : name) + suffix;
     }
 
     /// <summary>The crew layout <c>forge reopen</c> reads: a YAML settings file under <c>crew/</c>, no script.</summary>

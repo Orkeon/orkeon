@@ -2,7 +2,8 @@
      window. A search, the categories, how the team works, two needs of the machine (no web
      access, no third-party key) and, when the need has some, the cases close to it; then one
      card per case — title, problem, a badge for how the team works, «reference only» for the
-     cases that can inspire a team but not be imported as they are (D-06).
+     cases that can inspire a team but not be imported as they are (D-06). In expert mode the
+     other cases also offer «Import as is» (STUDIO-41), whose banner sits above the cards.
      No fallback here (D-05): the catalogue comes from the CLI, and without it the panel shows
      the wizard's own «engine not found» card.
      DataContext: UseCaseGalleryViewModel (CreateTeam.Gallery). -->
@@ -80,6 +81,56 @@
       </DockPanel>
     </StackPanel>
 
+    <!-- STUDIO-41: « Import as is » — the name already taken (D-05: what holds it, the free name,
+         the way to the team holding it), the import under way, its failure, or the team it made
+         with the adoption's line and the Import screen's report on the folders. Above the cards,
+         so it stays in view however far the list is scrolled. -->
+    <Border DockPanel.Dock="Top" Margin="24,12,24,0" CornerRadius="10" Padding="12,10"
+            DataContext="{Binding Import}"
+            Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
+            Visibility="{Binding HasBanner, Converter={StaticResource BooleanToVisibility}}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" VerticalAlignment="Top" Margin="8,0,0,0"
+                Command="{Binding DismissCommand}"
+                ToolTip="{Binding [Studio.Create.GalleryClose], Source={x:Static services:I18n.Instance}}">
+          <controls:LucideIcon Kind="x" Size="12"/>
+        </Button>
+        <StackPanel>
+          <StackPanel Visibility="{Binding HasConflict, Converter={StaticResource BooleanToVisibility}}">
+            <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}" Text="{Binding Conflict}"/>
+            <WrapPanel Margin="0,8,0,0">
+              <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+                      Command="{Binding UseFreeNameCommand}" Content="{Binding UseFreeNameLabel}"/>
+              <Button Style="{StaticResource BtnGhost}"
+                      Command="{Binding OpenConflictingTeamCommand}"
+                      Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
+                      Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
+            </WrapPanel>
+          </StackPanel>
+          <StackPanel Orientation="Horizontal" Visibility="{Binding IsImporting, Converter={StaticResource BooleanToVisibility}}">
+            <controls:LucideIcon Kind="loader-circle" Size="13" Foreground="{DynamicResource InkMutedBrush}" VerticalAlignment="Center"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportingLabel}"/>
+          </StackPanel>
+          <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource DangerBrush}" Text="{Binding Failure}"
+                     Visibility="{Binding HasFailure, Converter={StaticResource BooleanToVisibility}}"/>
+          <StackPanel Visibility="{Binding HasImported, Converter={StaticResource BooleanToVisibility}}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="circle-check" Size="14" Foreground="{DynamicResource SuccessBrush}" VerticalAlignment="Center"/>
+              <TextBlock FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
+                         Margin="8,0,0,0" VerticalAlignment="Center" Text="{Binding ImportedLine}"/>
+            </StackPanel>
+            <!-- One line of markup: the whitespace between inlines would render as a space. -->
+            <TextBlock FontSize="12" Foreground="{DynamicResource InkMutedBrush}" TextWrapping="Wrap" Margin="22,4,0,0">
+              <Run FontWeight="SemiBold" Text="{Binding FoldersReport.Title, Mode=OneWay}"/><LineBreak/><Run Text="{Binding FoldersReport.Detail, Mode=OneWay}"/>
+            </TextBlock>
+            <Button Style="{StaticResource BtnGhost}" HorizontalAlignment="Left" Margin="22,8,0,0"
+                    Command="{Binding OpenTeamsCommand}"
+                    Content="{Binding [Studio.Create.GalleryOpenTeams], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </StackPanel>
+      </DockPanel>
+    </Border>
+
     <!-- reading the catalogue: a line, no spinner — the read takes a moment, not a wait -->
     <TextBlock DockPanel.Dock="Top" Style="{StaticResource Hint}" FontSize="12" Margin="24,16,24,0"
                Text="{Binding [Studio.Create.GalleryLoading], Source={x:Static services:I18n.Instance}}"
@@ -139,9 +190,22 @@
           <DataTemplate>
             <Border Style="{StaticResource Card}" Padding="16,14" Margin="0,0,0,10">
               <DockPanel>
-                <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Top" Margin="12,0,0,0"
-                        Command="{Binding ChooseCommand}"
-                        Content="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
+                <StackPanel DockPanel.Dock="Right" VerticalAlignment="Top" Margin="12,0,0,0">
+                  <Button Style="{StaticResource ChipAction}"
+                          Command="{Binding ChooseCommand}"
+                          Content="{Binding [Studio.Create.GalleryChoose], Source={x:Static services:I18n.Instance}}"/>
+                  <!-- STUDIO-41 (D-01, D-03): the expert's shortcut — the case as a team of My
+                       teams, ready to run and to modify; never on a reference-only case. -->
+                  <Button Style="{StaticResource ChipAction}" Margin="0,6,0,0"
+                          Command="{Binding ImportAsIsCommand}"
+                          ToolTip="{Binding [Studio.Create.GalleryImportAsIsTip], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding CanImportAsIs, Converter={StaticResource BooleanToVisibility}}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="arrow-down" Size="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
+                      <TextBlock Text="{Binding [Studio.Create.GalleryImportAsIs], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                </StackPanel>
                 <StackPanel>
                   <TextBlock FontSize="13.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}" TextWrapping="Wrap"
                              Text="{Binding Title}"/>

@@ -2584,6 +2584,12 @@
   <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>仅供参考</value></data>
   <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>该团队依赖引擎未附带的文件：可以启发您的团队，但不能原样导入。</value></data>
   <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>以此用例为起点</value></data>
+  <!-- STUDIO-41: « Import as is », the expert's action on a gallery card -->
+  <data name="Studio.Create.GalleryImportAsIs" xml:space="preserve"><value>原样导入</value></data>
+  <data name="Studio.Create.GalleryImportAsIsTip" xml:space="preserve"><value>将此用例原样加入我的团队——包括其智能体、示例数据和文件夹——可直接运行，也可像其他团队一样修改。</value></data>
+  <data name="Studio.Create.GalleryImporting" xml:space="preserve"><value>正在导入“{0}”…</value></data>
+  <data name="Studio.Create.GalleryImportAs" xml:space="preserve"><value>以“{0}”导入</value></data>
+  <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>打开我的团队</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>没有符合这些筛选条件的用例。</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>清除筛选</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>正在读取用例…</value></data>

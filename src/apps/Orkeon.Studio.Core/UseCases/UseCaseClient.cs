@@ -24,6 +24,18 @@ public static class UseCaseArgumentsBuilder
     /// line, one answer per query, the end of stdin the end of the process.
     /// </summary>
     public static IReadOnlyList<string> BuildSession() => [Verb, "search", "--events", "jsonl"];
+
+    /// <summary>
+    /// <c>usecases export &lt;id&gt; --to &lt;folder&gt; --lang &lt;code&gt; --events jsonl</c> (STUDIO-41):
+    /// the use case written as a team folder, named and described in <paramref name="language"/> —
+    /// Studio's spelling (<c>zh</c>) read as the catalogue's (<c>zh-Hans</c>).
+    /// </summary>
+    public static IReadOnlyList<string> BuildExport(string id, string destination, string? language)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(destination);
+        return [Verb, "export", id, "--to", destination, "--lang", UseCaseLanguages.FromUiLanguage(language), "--events", "jsonl"];
+    }
 }
 
 /// <summary>What stood between Studio and an answer.</summary>
@@ -37,6 +49,12 @@ public enum UseCaseFailureKind
 
     /// <summary>The process ended without the answer: its stderr, or its exit code, is the detail.</summary>
     Stopped,
+
+    /// <summary>
+    /// The team folder the CLI exported could not enter the teams root (STUDIO-41): the import's
+    /// own refusal — the launcher's detector — or the disk's; the detail says which.
+    /// </summary>
+    NotImported,
 }
 
 /// <summary>Why a catalogue or a search did not come back, in the CLI's own words — never translated.</summary>
@@ -66,9 +84,20 @@ public sealed record UseCaseSearchResult
     public UseCaseFailure? Failure { get; init; }
 }
 
+/// <summary>A use case written as a team folder (STUDIO-41), or why it was not.</summary>
+public sealed record UseCaseExportResult
+{
+    /// <summary>The folder the CLI wrote, as its <c>usecases.exported</c> line names it; null when <see cref="Failure"/> says why.</summary>
+    public string? Folder { get; init; }
+
+    /// <summary>Why no folder was written — a reference-only case, a folder that is not empty, no engine; null on success.</summary>
+    public UseCaseFailure? Failure { get; init; }
+}
+
 /// <summary>
-/// The Studio side of <c>orkeon usecases</c> (STUDIO-38/39): <c>list</c> run to completion for the
-/// gallery, and ONE <c>search</c> session kept open for the suggestions typed under the need —
+/// The Studio side of <c>orkeon usecases</c> (STUDIO-38/39/41): <c>list</c> run to completion for
+/// the gallery, <c>export</c> run to completion for « Import as is », and ONE <c>search</c> session
+/// kept open for the suggestions typed under the need —
 /// started at the first query, answering every query after it, closed with the client. Modelled on
 /// <c>ForgeClient</c>: the argv, the jsonl stream on stdout read through the same envelope parser,
 /// JSON lines written to stdin, failures typed rather than thrown.
@@ -171,6 +200,56 @@ public sealed class UseCaseClient : IDisposable
             Failure = run.Outcome == RunOutcome.NotStarted
                 ? new UseCaseFailure(UseCaseFailureKind.EngineMissing, run.Description)
                 : Stopped(run, stderr, "no usecases.catalog line came back"),
+        };
+    }
+
+    /// <summary>
+    /// Runs <c>usecases export</c> to completion (STUDIO-41) and reads the folder off its one
+    /// <c>usecases.exported</c> line. Never throws for what the process did: no binary, an
+    /// <c>error</c> line — a reference-only case, a destination that is not empty — or an exit
+    /// without the line, each is a typed failure.
+    /// </summary>
+    public async Task<UseCaseExportResult> ExportAsync(
+        string id,
+        string destination,
+        string? language = null,
+        CancellationToken cancellationToken = default)
+    {
+        var arguments = UseCaseArgumentsBuilder.BuildExport(id, destination, language);
+        string? folder = null;
+        UseCaseFailure? refusal = null;
+        var stderr = new List<string>();
+
+        var run = await _runner.RunAsync(
+            arguments,
+            onOutput: line =>
+            {
+                if (line.Channel == ProcessOutputChannel.StandardError)
+                {
+                    if (!string.IsNullOrWhiteSpace(line.Text))
+                        stderr.Add(line.Text);
+                }
+                else if (OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
+                {
+                    if (orkeonEvent!.Kind == UseCaseEventKinds.Exported)
+                        folder = orkeonEvent.GetString("path");
+                    else if (orkeonEvent.Kind == UseCaseEventKinds.Error)
+                        refusal = Refusal(orkeonEvent);
+                }
+            },
+            cancellationToken: cancellationToken).ConfigureAwait(false);
+
+        if (folder is { Length: > 0 })
+            return new UseCaseExportResult { Folder = folder };
+
+        if (refusal is not null)
+            return new UseCaseExportResult { Failure = refusal };
+
+        return new UseCaseExportResult
+        {
+            Failure = run.Outcome == RunOutcome.NotStarted
+                ? new UseCaseFailure(UseCaseFailureKind.EngineMissing, run.Description)
+                : Stopped(run, stderr, "no usecases.exported line came back"),
         };
     }
 

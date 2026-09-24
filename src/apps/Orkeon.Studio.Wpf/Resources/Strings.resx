@@ -1252,6 +1252,12 @@
   <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>Reference only</value></data>
   <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>Its team depends on files the engine does not carry: it can inspire yours, not be imported as it is.</value></data>
   <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>Start from this case</value></data>
+  <!-- STUDIO-41: « Import as is », the expert's action on a gallery card -->
+  <data name="Studio.Create.GalleryImportAsIs" xml:space="preserve"><value>Import as is</value></data>
+  <data name="Studio.Create.GalleryImportAsIsTip" xml:space="preserve"><value>Adds this case to My teams as it is — its agents, its sample data, its folders — ready to run, and modifiable like any other team.</value></data>
+  <data name="Studio.Create.GalleryImporting" xml:space="preserve"><value>Importing “{0}”…</value></data>
+  <data name="Studio.Create.GalleryImportAs" xml:space="preserve"><value>Import as “{0}”</value></data>
+  <data name="Studio.Create.GalleryOpenTeams" xml:space="preserve"><value>Open My teams</value></data>
   <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>No use case matches these filters.</value></data>
   <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Clear the filters</value></data>
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Reading the use cases…</value></data>

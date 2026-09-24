@@ -317,6 +317,12 @@ public sealed record CreateTeamDependencies
     /// Chinese) — Core cannot see it; English when null.
     /// </summary>
     public Func<string>? UiLanguage { get; init; }
+
+    /// <summary>
+    /// The window's Novice/Expert switch: the gallery's « Import as is » is the expert's
+    /// (STUDIO-41, D-01); novice — no import — when null.
+    /// </summary>
+    public Shell.UiModeViewModel? Mode { get; init; }
 }
 
 /// <summary>
@@ -514,7 +520,12 @@ public sealed class CreateTeamViewModel : ObservableObject
             _strings,
             () => UseCaseLanguage,
             ChooseUseCase,
-            () => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
+            () => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty),
+            // STUDIO-41: the expert's « Import as is » lands in the teams root; My teams is the way on.
+            new UseCaseImportSeams(
+                _teamsRoot,
+                wired.Mode ?? new Shell.UiModeViewModel(),
+                path => OpenTeamRequested?.Invoke(this, new TeamActionEventArgs(path))));
         BrowseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: false), () => CanBrowseUseCases);
         ShowCloseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: true), () => HasCloseUseCases);
         RemoveReferenceUseCaseCommand = new RelayCommand(RemoveReferenceUseCase, () => HasReferenceUseCase);
@@ -3490,7 +3501,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         var folder = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(destination));
         _freeTeamFolder = TeamCatalog.FreeSibling(destination);
-        _freeTeamName = FreeName(TeamCatalog.NormalizeName(_teamName), destination, _freeTeamFolder);
+        _freeTeamName = TeamCatalog.FreeName(TeamCatalog.NormalizeName(_teamName), destination, _freeTeamFolder);
         _conflictingTeamPath = occupant == TeamFolderOccupant.Team ? destination : null;
         AdoptConflict = occupant switch
         {
@@ -3505,18 +3516,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         UseFreeTeamNameCommand.RaiseCanExecuteChanged();
         OpenConflictingTeamCommand.RaiseCanExecuteChanged();
         return true;
-    }
-
-    /// <summary>
-    /// The name that goes with the free folder: the one typed, followed by the folder's own suffix
-    /// — « Ma veille (2) » beside « Ma veille », so the two cards stay apart where novice mode shows
-    /// no folder — cut so the whole stays within the name's cap.
-    /// </summary>
-    private static string FreeName(string name, string takenFolder, string freeFolder)
-    {
-        var suffix = $" ({freeFolder[(System.IO.Path.TrimEndingDirectorySeparator(takenFolder).Length + 1)..]})";
-        var room = TeamCatalog.MaxNameLength - suffix.Length;
-        return (name.Length > room ? name[..room].TrimEnd() : name) + suffix;
     }
 
     /// <summary>
