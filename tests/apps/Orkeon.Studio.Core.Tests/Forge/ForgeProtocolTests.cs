@@ -358,7 +358,7 @@ public class ForgeSessionModelTests
     public void A_session_renamed_event_without_a_dir_puts_the_folder_beside_the_old_one()
     {
         var model = new ForgeSessionModel();
-        var root = Path.Combine("/ws", ".orkeon", "forge");
+        var root = Path.Combine(Path.GetTempPath(), "ws", ".orkeon", "forge");
         model.Feed(Event($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":{{System.Text.Json.JsonSerializer.Serialize(Path.Combine(root, "veille"))}},"format":"yaml","resumed":true}"""));
         model.Feed(Event("""{"v":2,"seq":2,"ts":"t","kind":"session.renamed","from":"veille","to":"ma-veille"}"""));
 
