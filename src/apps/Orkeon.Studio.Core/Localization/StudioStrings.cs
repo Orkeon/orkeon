@@ -1693,6 +1693,15 @@ public static class StudioStringKeys
     /// <summary>"The use cases could not be read." — the panel's card when the CLI answered no catalogue.</summary>
     public const string WizardGalleryUnreadable = "Studio.Create.GalleryUnreadable";
 
+    // STUDIO-41 — « Import as is », the expert's action on a gallery card: the banner's lines the
+    // view model formats. The card's button, its tooltip and « Open My teams » live in the resx only.
+
+    /// <summary>"Importing “{0}”…" — the banner while the case is exported and imported.</summary>
+    public const string WizardGalleryImporting = "Studio.Create.GalleryImporting";
+
+    /// <summary>"Import as “{0}”" — the banner's way out of a taken name: the free one, imported at once.</summary>
+    public const string WizardGalleryImportAs = "Studio.Create.GalleryImportAs";
+
     /// <summary>"Enterprise" — category <c>01-enterprise</c>.</summary>
     public const string WizardGalleryCategoryEnterprise = "Studio.Create.GalleryCategoryEnterprise";
 
@@ -2386,6 +2395,9 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardGalleryCount] = "{0} of {1} use cases",
         [StudioStringKeys.WizardGallerySuggested] = "Close to your need ({0})",
         [StudioStringKeys.WizardGalleryUnreadable] = "The use cases could not be read.",
+        // STUDIO-41: « Import as is »
+        [StudioStringKeys.WizardGalleryImporting] = "Importing “{0}”…",
+        [StudioStringKeys.WizardGalleryImportAs] = "Import as “{0}”",
         [StudioStringKeys.WizardGalleryCategoryEnterprise] = "Enterprise",
         [StudioStringKeys.WizardGalleryCategoryScience] = "Science and research",
         [StudioStringKeys.WizardGalleryCategoryFinance] = "Finance and trading",

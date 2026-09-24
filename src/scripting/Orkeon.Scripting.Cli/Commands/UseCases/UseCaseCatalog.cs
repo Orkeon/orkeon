@@ -75,6 +75,12 @@ internal static class UseCaseErrorCodes
     /// <summary>A search that failed while running; the session goes on.</summary>
     public const string SearchFailed = "USECASES-SEARCH-FAILED";
 
+    /// <summary>An export of a reference-only use case (DC-3): searchable and readable, never exported.</summary>
+    public const string NotImportable = "USECASES-NOT-IMPORTABLE";
+
+    /// <summary>An export into a folder that already holds something, or onto a file: an export never merges.</summary>
+    public const string DestinationNotEmpty = "USECASES-DESTINATION-NOT-EMPTY";
+
     /// <summary>Anything else that went wrong: the verb ends with the runtime-error exit code.</summary>
     public const string Failed = "USECASES-FAILED";
 }

@@ -111,6 +111,25 @@ internal sealed class UseCaseEventWriter : OrkeonEventWriter
         Emit(UseCaseEventKinds.Sheet, sheet);
     }
 
+    /// <summary>
+    /// One use case written as a team folder (STUDIO-41): its id, the folder, the team's name and
+    /// the language it was read in, the files written and the mounts the sidecar records.
+    /// </summary>
+    public void Exported(UseCaseExport export)
+    {
+        ArgumentNullException.ThrowIfNull(export);
+
+        Emit(UseCaseEventKinds.Exported, new
+        {
+            id = export.UseCase.Id,
+            path = export.Destination,
+            name = export.Name,
+            lang = export.Language,
+            files = export.Files,
+            mounts = export.UseCase.Mounts,
+        });
+    }
+
     /// <summary>An anomaly; in session mode it answers the query it names, and the session goes on.</summary>
     public void Error(string code, string message, bool recoverable, string? correlationId = null) =>
         Emit(UseCaseEventKinds.Error, Scope(correlationId), new { code, message, recoverable });

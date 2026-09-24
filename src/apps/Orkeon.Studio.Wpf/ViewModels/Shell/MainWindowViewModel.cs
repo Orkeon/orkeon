@@ -164,6 +164,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 UseCases = seams.UseCases ?? new UseCaseClient(runner),
                 SuggestionDelay = seams.SuggestionDelay,
                 UiLanguage = () => Language.Current,
+                // STUDIO-41: the gallery's « Import as is » follows the window's expert switch.
+                Mode = Mode,
             });
 
         Teams = new TeamsViewModel(new TeamsDependencies
@@ -286,6 +288,8 @@ public sealed class MainWindowViewModel : ObservableObject
         CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
         CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
         Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        // A use case imported as it is from the gallery (STUDIO-41) has no schedule to ask about.
+        CreateTeam.Gallery.Import.TeamImported += (_, _) => { Teams.Refresh(); Test.RefreshTeams(); };
         // STUDIO-14 settings (D-13): the « Team folders » section of the settings follows the
         // team list. Every change to the teams on disk — an adoption, an import, a deletion or
         // a duplication from a card, a save of the folders modal — ends in Teams.Refresh(),

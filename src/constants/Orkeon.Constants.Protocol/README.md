@@ -22,7 +22,7 @@ This project is no longer distributed as a NuGet package — reference it from s
 | Type | What it declares |
 |---|---|
 | `RunEventKinds` | The event kinds a run emits, plus `All` — the set, so a consumer can assert it handles every one. |
-| `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet — plus `All`. |
+| `UseCaseEventKinds` | The event kinds `orkeon usecases` exchanges with the process driving it — the search session's query and answer, the catalogue, a sheet, an export — plus `All`. |
 
 ## License
 
