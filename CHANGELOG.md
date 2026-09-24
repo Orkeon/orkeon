@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — import a use case as it is: `orkeon usecases export` and the gallery's expert action (STUDIO-41)
+
+- **`orkeon usecases export <id> --to <folder> [--lang <code>]`** writes one use case as a team
+  folder:
+  - `crew/config.yaml` (the example's crew, byte for byte) and its `data/`;
+  - a folder behind each of the manifest's mounts (`output/` for every crew that writes files);
+  - `studio-team.json`: the title and the problem in `--lang` as the team's name and description,
+    and the manifest's mounts relative to the folder (`./data:/data:ro`, `./output:/output:rw`).
+  - No `forge.json`: `forge reopen` rebuilds a session from `crew/` (checked on the 90 importable
+    examples). Only the manifest's mounts are recorded.
+  - A reference-only case is refused with `USECASES-NOT-IMPORTABLE`, a folder that is not empty
+    with `USECASES-DESTINATION-NOT-EMPTY`. `--events jsonl` answers with `usecases.exported`.
+- **Studio, expert mode:** every gallery card that is not reference-only offers « Import as is ».
+  - The name is the title in the UI language. When it is taken, the adoption's banner offers the
+    free name (« Import as “… (2)” »), and nothing is exported until the name is free.
+  - Studio exports into a staging folder and brings it in through the existing import. The team
+    lands in My teams with its name, its description and its data mounted, and « Modify » is
+    active.
+  - The banner ends on « Team “…” is saved in My teams » and the Import screen's report on the
+    folders.
+- `ConventionalNames.TeamSidecarFile` and `UseCaseEventKinds.Exported` join the shared constant
+  satellites (ADR-009).
+
 ### Added — Studio installs and removes a team's schedule; deleting a team leaves nothing behind (STUDIO-27)
 
 - **The operating system runs a scheduled team**; Orkeon still has no scheduler of its own.
