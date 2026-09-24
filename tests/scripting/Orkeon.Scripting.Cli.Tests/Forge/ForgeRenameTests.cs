@@ -308,6 +308,34 @@ public sealed class ForgeRenameTests : IDisposable
     }
 
     /// <summary>
+    /// A folder that holds no team — no record, no sidecar, no crew — is not renamed: the verb run
+    /// from the wrong directory must never move it. A team imported as a single crew file is one.
+    /// </summary>
+    [Fact]
+    public async Task A_folder_that_holds_no_team_is_not_renamed()
+    {
+        var documents = Path.Combine(_workspace, "documents");
+        Directory.CreateDirectory(documents);
+        await File.WriteAllTextAsync(Path.Combine(documents, "notes.txt"), "x", TestContext.Current.CancellationToken);
+        var (_, host) = Machine(ForgePromotePlatform.Linux);
+
+        var (exitCode, events) = await RunAsync(host, "rename", documents, "--name", "Archives");
+
+        Assert.Equal(1, exitCode);
+        var error = Assert.Single(events);
+        Assert.Equal(ForgeErrorCodes.TeamUnreadable, error.GetProperty("code").GetString());
+        Assert.Contains("holds no team", error.GetProperty("message").GetString(), StringComparison.Ordinal);
+        Assert.True(Directory.Exists(documents));
+        Assert.False(Directory.Exists(Path.Combine(_workspace, "archives")));
+
+        var single = Path.Combine(_workspace, "teams", "veille-import");
+        Directory.CreateDirectory(single);
+        await File.WriteAllTextAsync(Path.Combine(single, "veille.yaml"), "name: veille\n", TestContext.Current.CancellationToken);
+        Assert.Equal(0, (await RunAsync(host, "rename", single, "--name", "Veille importée")).ExitCode);
+        Assert.True(File.Exists(Path.Combine(_workspace, "teams", "veille-importee", "veille.yaml")));
+    }
+
+    /// <summary>
     /// A copy carries its original's id and is linked to no session (rule R): renaming it moves the
     /// copy and retitles it, and leaves the original's session exactly where and what it was.
     /// </summary>

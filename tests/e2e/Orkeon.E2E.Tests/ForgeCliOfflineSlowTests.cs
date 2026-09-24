@@ -85,6 +85,20 @@ public sealed class ForgeCliOfflineSlowTests : IDisposable
         var (againCode, againOutput) = RunCli($"forge promote my-solution --to {destination}-2", workspace);
         Assert.Equal(1, againCode);
         Assert.Contains("only a ready session", againOutput, StringComparison.Ordinal);
+
+        // STUDIO-28: the adopted team is renamed through the real binary, offline — the folder and
+        // the session's folder take the new name, and so do the card and the schedule artifacts.
+        var renamed = Path.Combine(workspace, "veille-fournisseurs");
+        var (renameCode, renameOutput) = RunCli(
+            $"forge rename {destination} --name \"Veille fournisseurs\" --events jsonl", workspace);
+        Assert.True(renameCode == 0, $"forge rename exited {renameCode}. Output:\n{renameOutput}");
+        Assert.Contains("\"kind\":\"team.renamed\"", renameOutput, StringComparison.Ordinal);
+        Assert.False(Directory.Exists(destination));
+        Assert.StartsWith("# Veille fournisseurs", File.ReadAllText(Path.Combine(renamed, "FORGE.md")), StringComparison.Ordinal);
+        Assert.True(File.Exists(Path.Combine(renamed, "schedule", "orkeon-veille-fournisseurs.timer")));
+        Assert.Equal(
+            ["veille-fournisseurs"],
+            Directory.GetDirectories(Path.Combine(workspace, ".orkeon", "forge")).Select(Path.GetFileName));
     }
 
     [Fact]

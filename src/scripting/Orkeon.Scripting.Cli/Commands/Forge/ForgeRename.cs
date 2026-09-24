@@ -84,6 +84,14 @@ internal static class ForgeTeamRenamer
         if (!Directory.Exists(team) || Path.GetDirectoryName(team) is not { Length: > 0 } parent)
             return Refused(ForgeErrorCodes.TeamUnreadable, $"rename names no team folder: '{team}'.", recoverable: false);
 
+        // Run from the wrong directory, the verb must never move a folder that is not a team's.
+        if (!HoldsATeam(team))
+        {
+            return Refused(ForgeErrorCodes.TeamUnreadable,
+                $"'{team}' holds no team: no {ForgeTeamRecord.FileName}, no {ConventionalNames.StudioTeamFile}, no crew — nothing to rename.",
+                recoverable: false);
+        }
+
         // (1) The folder rule's name, with a team folder's fallback — the very name Studio would
         // have given the team at its adoption.
         var folderName = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
@@ -192,12 +200,23 @@ internal static class ForgeTeamRenamer
         if (!Directory.Exists(path))
             return null;
 
-        return File.Exists(Path.Combine(path, ForgeTeamRecord.FileName))
-            || File.Exists(Path.Combine(path, ConventionalNames.StudioTeamFile))
-            || Directory.Exists(Path.Combine(path, ForgeYamlRenderer.CrewDirectoryName))
-                ? "another team"
-                : "a folder that holds no team";
+        return HoldsATeam(path) ? "another team" : "a folder that holds no team";
     }
+
+    /// <summary>The extensions of a crew definition file at a team's root.</summary>
+    private static readonly string[] CrewFileExtensions = [".yaml", ".yml", ".ork.ts"];
+
+    /// <summary>
+    /// Whether <paramref name="folder"/> holds a team: a promotion's record, Studio's sidecar, a
+    /// <c>crew/</c>, or a crew definition at its root — what an import keeps of a crew folder or of a
+    /// single crew file.
+    /// </summary>
+    private static bool HoldsATeam(string folder) =>
+        File.Exists(Path.Combine(folder, ForgeTeamRecord.FileName))
+        || File.Exists(Path.Combine(folder, ConventionalNames.StudioTeamFile))
+        || Directory.Exists(Path.Combine(folder, ForgeYamlRenderer.CrewDirectoryName))
+        || Directory.EnumerateFiles(folder).Any(file =>
+            CrewFileExtensions.Any(extension => file.EndsWith(extension, StringComparison.OrdinalIgnoreCase)));
 
     /// <summary>
     /// The names of this folder's registration that the rename must carry over — one the operating

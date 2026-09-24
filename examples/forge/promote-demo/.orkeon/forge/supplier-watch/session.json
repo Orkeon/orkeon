@@ -1,5 +1,6 @@
 {
   "v": 1,
+  "id": "3f1c9b2e-5a7d-4c1e-9b8a-2d6e4f0a1c73",
   "slug": "supplier-watch",
   "title": "Summarize the supplier's new offers every morning",
   "format": "yaml",
