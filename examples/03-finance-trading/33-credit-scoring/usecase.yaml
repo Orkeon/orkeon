@@ -12,7 +12,7 @@ problem:
   es: "Evaluar una solicitud de crédito y recomendarme una decisión, sin decidir por mí"
   de: "Einen Kreditantrag bewerten und mir eine Entscheidung empfehlen, ohne für mich zu entscheiden"
   zh-Hans: "评估一份贷款申请并给我决策建议，但不替我做决定"
-tags: ["lending", "credit-scoring", "risk-assessment", "human-review"]
+tags: ["lending", "credit-scoring", "risk-assessment", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

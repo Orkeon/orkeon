@@ -12,7 +12,7 @@ problem:
   es: "Convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias"
   de: "Patientenakten aus unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren"
   zh-Hans: "把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
-tags: ["healthcare", "medical-records", "fhir", "data-conversion"]
+tags: ["medical-records", "fhir", "data-conversion"]
 mounts:
   - "./output:/output:rw"
 importable: true

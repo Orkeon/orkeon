@@ -12,7 +12,7 @@ problem:
   es: "Durante mis teleconsultas, sugerirme preguntas y preparar borradores de recetas y notas para mi aprobación"
   de: "Mir in meinen Videosprechstunden Fragen vorschlagen und Entwürfe für Rezepte und Notizen zur Freigabe vorbereiten"
   zh-Hans: "在我远程问诊时建议提问，并准备供我审核的处方和病历草稿"
-tags: ["telemedicine", "consultation-support", "prescriptions", "human-review"]
+tags: ["telemedicine", "consultation-support", "prescriptions", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

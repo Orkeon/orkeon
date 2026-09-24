@@ -12,7 +12,7 @@ problem:
   es: "Corregir un trabajo según el fondo, la forma y el método, con una nota y comentarios detallados"
   de: "Eine Arbeit nach Inhalt, Form und Methode bewerten, mit einer Note und ausführlichen Kommentaren"
   zh-Hans: "从内容、形式和方法三方面批改一份作业，给出分数和详细评语"
-tags: ["education", "grading", "assessment", "feedback"]
+tags: ["assessment", "grading", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

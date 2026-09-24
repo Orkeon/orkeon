@@ -12,7 +12,7 @@ problem:
   es: "Crear un itinerario de formación adaptado a mis lagunas, con recursos seleccionados y un calendario"
   de: "Einen Lernpfad passend zu meinen Wissenslücken erstellen, mit ausgewählten Materialien und einem Zeitplan"
   zh-Hans: "针对我的知识薄弱点设计学习路径，并配上精选资源和时间安排"
-tags: ["education", "learning-path", "knowledge-gaps", "study-plan"]
+tags: ["learning-path", "knowledge-gaps", "study-plan"]
 mounts:
   - "./output:/output:rw"
 importable: true

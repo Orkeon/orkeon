@@ -12,7 +12,7 @@ problem:
   es: "Preparar un examen equilibrado, con preguntas claras y una dificultad bien dosificada"
   de: "Eine ausgewogene Prüfung mit klaren Fragen und gut abgestimmtem Schwierigkeitsgrad erstellen"
   zh-Hans: "出一份均衡的试卷，题目表述清晰，难度把握得当"
-tags: ["education", "exam-creation", "assessment"]
+tags: ["assessment", "exam-creation", "question-writing"]
 mounts:
   - "./output:/output:rw"
 importable: true

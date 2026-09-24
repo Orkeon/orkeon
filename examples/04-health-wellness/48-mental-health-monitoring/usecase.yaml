@@ -12,7 +12,7 @@ problem:
   es: "Seguir el bienestar de mis pacientes y proponerles ejercicios validados antes por mí"
   de: "Das Wohlbefinden meiner Patienten begleiten und ihnen Übungen vorschlagen, die ich vorher freigebe"
   zh-Hans: "跟踪我所负责患者的心理状态，并推荐经我审核的练习"
-tags: ["mental-health", "well-being", "monitoring", "human-review"]
+tags: ["mental-health", "well-being", "monitoring", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

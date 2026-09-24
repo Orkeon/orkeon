@@ -12,7 +12,7 @@ problem:
   es: "Definir mi perfil de inversor a partir de unas preguntas y proponerme un reparto de inversiones adecuado"
   de: "Mein Anlegerprofil über ein paar Fragen bestimmen und mir eine passende Aufteilung meiner Geldanlagen vorschlagen"
   zh-Hans: "通过几个问题确定我的投资风险偏好，并给出相应的资产配置方案"
-tags: ["investment", "risk-profile", "portfolio-allocation", "rebalancing"]
+tags: ["investment", "risk-profile", "portfolio-allocation", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

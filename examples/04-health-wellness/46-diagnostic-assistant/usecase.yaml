@@ -12,6 +12,6 @@ problem:
   es: "Ordenar los síntomas de mis pacientes y las pistas por verificar, sometiendo cada paso a mi aprobación"
   de: "Die Symptome meiner Patienten und die zu prüfenden Diagnoseansätze ordnen und mir jeden Schritt zur Freigabe vorlegen"
   zh-Hans: "整理我接诊患者的症状和待核实的诊断思路，每一步都交由我确认"
-tags: ["healthcare", "diagnosis-support", "drug-interactions", "human-review"]
+tags: ["diagnosis-support", "symptoms", "drug-interactions", "human-in-the-loop"]
 mounts: []
 importable: true

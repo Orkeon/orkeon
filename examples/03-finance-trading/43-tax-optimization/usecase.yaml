@@ -12,7 +12,7 @@ problem:
   es: "Comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y someter la estrategia a mi aprobación"
   de: "Die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und mir die Strategie zur Freigabe vorlegen"
   zh-Hans: "比较我的公司在美国、欧洲和亚太地区的税负，再把最终策略交给我审定"
-tags: ["tax", "tax-planning", "scenario-comparison", "human-review"]
+tags: ["tax", "tax-planning", "scenario-comparison", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

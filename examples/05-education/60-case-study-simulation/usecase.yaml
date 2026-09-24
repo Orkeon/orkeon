@@ -12,7 +12,7 @@ problem:
   es: "Ponerme frente a un cliente en una simulación realista y luego darme comentarios sobre mi desempeño"
   de: "Mich in einem realistischen Rollenspiel mit einem Kunden üben lassen und mir danach Feedback zu meiner Leistung geben"
   zh-Hans: "让我在逼真的情景模拟中练习应对客户，然后对我的表现给出反馈"
-tags: ["training", "role-play", "soft-skills", "feedback"]
+tags: ["training", "role-play", "soft-skills", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true
