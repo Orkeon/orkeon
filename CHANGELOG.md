@@ -7,6 +7,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: the progress model holds everything in flight (STUDIO-30)
+
+- `RunProgressModel` now exposes:
+  - every tool at work with its start (`ActiveTools`; `ActiveToolName` derives from it) and the
+    call tally (`ToolCallCount`, `SucceededToolCalls`, `FailedToolCalls`);
+  - the delegations under way (`ActiveDelegations`, from `delegation.started` until its
+    `tool.returned`) and the spawned agents (`SpawnedAgents`);
+  - `IsWaitingForAnswer`;
+  - `StartedAt` and `Elapsed`, with an injectable `TimeProvider`, frozen at the run's own
+    duration once it ends.
+- A call still open at `run.finished` moves to `UnfinishedTools` / `UnfinishedDelegations` and is
+  never counted as a success.
+- `Changed` becomes `EventHandler<RunProgressChangedEventArgs>`. Its `Kind` names the event that
+  changed the state, so a screen can skip per-token `llm.delta`.
+
 ### Added — `orkeon usecases`: the example catalogue in the tool, searched offline in five languages (STUDIO-38)
 
 - `orkeon usecases search "<need>"` ranks the 105 example use cases against a need written in
