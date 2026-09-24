@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Réponses avec sources"
+  en: "Answers with sources"
+  es: "Respuestas con fuentes"
+  de: "Antworten mit Quellen"
+  zh-Hans: "附出处的问答"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Poser une question et obtenir une réponse claire, dans ma langue, avec ses sources"
+  en: "Ask a question and get a clear answer, in my language, with its sources"
+  es: "Hacer una pregunta y obtener una respuesta clara, en mi idioma, con sus fuentes"
+  de: "Eine Frage stellen und eine klare Antwort in meiner Sprache samt Quellen erhalten"
+  zh-Hans: "提出一个问题，用我的语言得到清晰的回答，并附上出处"
+tags: ["question-answering", "web-search", "citations", "multilingual"]
 mounts: []
 importable: true

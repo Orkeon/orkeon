@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Résumé adapté au lecteur"
+  en: "Summary tailored to the reader"
+  es: "Resumen adaptado al lector"
+  de: "Zusammenfassung nach Kenntnisstand"
+  zh-Hans: "按读者水平定制的摘要"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Résumer un document à mon niveau, du plus technique au plus pédagogique"
+  en: "Summarize a document at my level, from highly technical to beginner-friendly"
+  es: "Resumir un documento a mi nivel, de lo más técnico a lo más didáctico"
+  de: "Ein Dokument auf meinem Niveau zusammenfassen, von sehr fachlich bis einsteigerfreundlich"
+  zh-Hans: "按我的水平总结一份文档，可以很专业，也可以通俗易懂"
+tags: ["summarization", "documents", "personalization"]
 mounts:
   - "./output:/output:rw"
 importable: true

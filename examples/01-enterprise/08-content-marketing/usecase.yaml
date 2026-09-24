@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Rédaction d'articles marketing"
+  en: "Marketing article writing"
+  es: "Redacción de artículos de marketing"
+  de: "Erstellung von Marketingartikeln"
+  zh-Hans: "营销文章撰写"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Écrire un article marketing optimisé pour le référencement et en vérifier les faits"
+  en: "Write a search-optimized marketing article and check its claims"
+  es: "Escribir un artículo de marketing optimizado para buscadores y verificar sus afirmaciones"
+  de: "Einen suchmaschinenoptimierten Marketingartikel schreiben und seine Aussagen prüfen"
+  zh-Hans: "撰写一篇针对搜索引擎优化的营销文章，并核实其中的说法"
+tags: ["marketing", "content-writing", "seo", "fact-checking"]
 mounts:
   - "./output:/output:rw"
 importable: true

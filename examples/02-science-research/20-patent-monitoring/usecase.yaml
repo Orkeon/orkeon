@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Veille sur les brevets"
+  en: "Patent watch"
+  es: "Vigilancia de patentes"
+  de: "Patentbeobachtung"
+  zh-Hans: "专利动态监测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Suivre les brevets déposés dans mon domaine et repérer ceux qui comptent vraiment"
+  en: "Keep track of patents filed in my field and spot the ones that really matter"
+  es: "Seguir las patentes presentadas en mi sector y detectar las que de verdad importan"
+  de: "Neue Patente in meinem Fachgebiet verfolgen und die wirklich wichtigen erkennen"
+  zh-Hans: "跟踪我所在领域新申请的专利，找出真正值得关注的那些"
+tags: ["patents", "intellectual-property", "technology-watch", "alerts"]
 mounts:
   - "./output:/output:rw"
 importable: true

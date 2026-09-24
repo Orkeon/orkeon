@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Hypothèses de recherche à tester"
+  en: "Testable research hypotheses"
+  es: "Hipótesis de investigación comprobables"
+  de: "Prüfbare Forschungshypothesen"
+  zh-Hans: "可检验的研究假设"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Trouver des pistes de recherche dans mes données et savoir comment les tester"
+  en: "Find research leads in my data and work out how to test them"
+  es: "Encontrar pistas de investigación en mis datos y saber cómo ponerlas a prueba"
+  de: "In meinen Daten Forschungsansätze finden und klären, wie sie sich überprüfen lassen"
+  zh-Hans: "从我的数据中找出研究线索，并想清楚如何检验它们"
+tags: ["hypotheses", "experiment-design", "data-analysis", "research"]
 mounts:
   - "./output:/output:rw"
 importable: true

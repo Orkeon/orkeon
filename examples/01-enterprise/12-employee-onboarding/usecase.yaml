@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Accueil d'une nouvelle recrue"
+  en: "Onboarding a new hire"
+  es: "Acogida de una nueva incorporación"
+  de: "Einarbeitung eines neuen Teammitglieds"
+  zh-Hans: "新员工入职准备"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer l'arrivée d'une recrue : documents, formation, mentor et première semaine"
+  en: "Prepare a new hire's arrival: documents, training, mentor and first week"
+  es: "Preparar la llegada de una nueva incorporación: documentos, formación, mentor y primera semana"
+  de: "Den Start eines neuen Teammitglieds vorbereiten: Unterlagen, Schulung, Mentor und erste Woche"
+  zh-Hans: "为新员工入职做好准备：资料、培训、导师和第一周安排"
+tags: ["human-resources", "onboarding", "training"]
 mounts:
   - "./output:/output:rw"
 importable: true

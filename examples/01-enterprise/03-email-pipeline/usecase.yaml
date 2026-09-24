@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Tri et réponse aux e-mails"
+  en: "Email triage and replies"
+  es: "Clasificación y respuesta de correos"
+  de: "E-Mail-Sortierung mit Antwortentwürfen"
+  zh-Hans: "邮件分类与回复"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Trier mes e-mails par urgence et préparer des réponses que je valide avant envoi"
+  en: "Sort my emails by urgency and draft replies for me to approve before sending"
+  es: "Ordenar mis correos por urgencia y preparar respuestas que apruebo antes de enviarlas"
+  de: "Meine E-Mails nach Dringlichkeit sortieren und Antworten zur Freigabe vorbereiten"
+  zh-Hans: "按紧急程度整理我的邮件，起草回复，经我确认后再发送"
+tags: ["email", "triage", "replies"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Suivi d'une expérience de laboratoire"
+  en: "Lab experiment follow-up"
+  es: "Seguimiento de un experimento de laboratorio"
+  de: "Begleitung eines Laborversuchs"
+  zh-Hans: "实验室实验跟进"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Suivre une expérience de labo, du protocole à la comparaison avec les publications"
+  en: "Follow a lab experiment from protocol to comparison with published work"
+  es: "Seguir un experimento de laboratorio, del protocolo a la comparación con lo publicado"
+  de: "Einen Laborversuch vom Protokoll bis zum Abgleich mit der Fachliteratur begleiten"
+  zh-Hans: "跟进一项实验室实验，从制定方案到与已发表的文献对比"
+tags: ["laboratory", "experiments", "instruments", "literature"]
 mounts:
   - "./output:/output:rw"
 importable: true
