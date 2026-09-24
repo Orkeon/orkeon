@@ -153,6 +153,94 @@
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve">
     <value>打开该活动的界面</value>
   </data>
+  <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
+  <data name="Studio.Shell.BalanceTitle" xml:space="preserve">
+    <value>服务商余额</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotRead" xml:space="preserve">
+    <value>尚未读取</value>
+  </data>
+  <data name="Studio.Shell.BalanceReading" xml:space="preserve">
+    <value>正在读取余额…</value>
+  </data>
+  <data name="Studio.Shell.BalanceClickToRead" xml:space="preserve">
+    <value>单击会重新读取余额；若服务商不提供余额，则打开其控制台。</value>
+  </data>
+  <data name="Studio.Shell.BalanceReadAt" xml:space="preserve">
+    <value>读取于 {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceAvailable" xml:space="preserve">
+    <value>可用 {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyLimit" xml:space="preserve">
+    <value>此密钥限额内剩余 {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnderThreshold" xml:space="preserve">
+    <value>低于您的提醒阈值 {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve">
+    <value>API 未提供</value>
+  </data>
+  <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve">
+    <value>仅管理员密钥可读取</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve">
+    <value>密钥被拒绝</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve">
+    <value>无响应</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve">
+    <value>响应格式异常</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve">
+    <value>没有可查询的账户</value>
+  </data>
+  <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve">
+    <value>单击打开其控制台</value>
+  </data>
+  <data name="Studio.Shell.StudioTab" xml:space="preserve">
+    <value>Studio</value>
+  </data>
+  <data name="Studio.Settings.StudioIntro" xml:space="preserve">
+    <value>Studio 本身在这台机器上的行为。这些选择保存在您的 Windows 用户配置中，绝不会写入团队运行所用的设置文件。</value>
+  </data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve">
+    <value>状态栏显示您的模型设置所用账户的剩余额度——默认设置、助手的设置以及各团队的设置。它会在启动时、每次运行、试运行或组建结束时以及您点击时读取。不会保存任何内容：屏幕上的数字都是刚刚读取的。</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve">
+    <value>自动读取</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve">
+    <value>默认关闭：Studio 不会发送任何您未请求的请求，也不会占用服务商的速率限制。</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve">
+    <value>从不（默认）</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshEvery" xml:space="preserve">
+    <value>每 {0} 分钟</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsLabel" xml:space="preserve">
+    <value>提醒阈值</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsHint" xml:space="preserve">
+    <value>低于阈值时，状态栏中该服务商的余额会变为橙色。以服务商返回的币种计，不做任何换算。留空：不提醒。</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdInvalid" xml:space="preserve">
+    <value>请输入金额，例如 5 或 12.50——阈值保持不变。</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdLastRead" xml:space="preserve">
+    <value>上次读取：{0}</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdNoReading" xml:space="preserve">
+    <value>本次会话尚未读取</value>
+  </data>
+  <data name="Studio.Settings.ReadBalance" xml:space="preserve">
+    <value>读取余额</value>
+  </data>
+  <data name="Studio.Settings.BalanceConsole" xml:space="preserve">
+    <value>打开控制台</value>
+  </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>测试连接</value>
   </data>

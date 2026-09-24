@@ -987,6 +987,67 @@ public static class StudioStringKeys
     /// <summary>"{0} — billed by the provider" — a real charge, never an estimate (DD-1).</summary>
     public const string StatusBarCostBilled = "Studio.Shell.StatusCostBilled";
 
+    // ---- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) ----------
+    // The probe's own detail line stays English, like the connectivity probe's (STUDIO-33):
+    // only the state and the amounts are said in the user's language.
+
+    /// <summary>"Provider balance" — the head of the Balance segment's tooltip.</summary>
+    public const string BalanceTitle = "Studio.Shell.BalanceTitle";
+
+    /// <summary>"not read yet" — a covered account no trigger has read this session.</summary>
+    public const string BalanceNotRead = "Studio.Shell.BalanceNotRead";
+
+    /// <summary>"Reading the balance…"</summary>
+    public const string BalanceReading = "Studio.Shell.BalanceReading";
+
+    /// <summary>"A click reads the balances again; …" — the foot of the segment's tooltip.</summary>
+    public const string BalanceClickToRead = "Studio.Shell.BalanceClickToRead";
+
+    /// <summary>"read at {0}" — when the provider answered, local time.</summary>
+    public const string BalanceReadAt = "Studio.Shell.BalanceReadAt";
+
+    /// <summary>"{0} available" — the account's balance.</summary>
+    public const string BalanceAvailable = "Studio.Shell.BalanceAvailable";
+
+    /// <summary>"{0} left under this key's limit" — what a key may still spend (OpenRouter).</summary>
+    public const string BalanceKeyLimit = "Studio.Shell.BalanceKeyLimit";
+
+    /// <summary>"under your alert threshold of {0}" (D-03).</summary>
+    public const string BalanceUnderThreshold = "Studio.Shell.BalanceUnderThreshold";
+
+    /// <summary>"not exposed by the API"</summary>
+    public const string BalanceNotExposed = "Studio.Shell.BalanceNotExposed";
+
+    /// <summary>"readable with an admin key only"</summary>
+    public const string BalanceAdminKey = "Studio.Shell.BalanceAdminKey";
+
+    /// <summary>"key refused" — a 401/403, or no key to present.</summary>
+    public const string BalanceKeyRefused = "Studio.Shell.BalanceKeyRefused";
+
+    /// <summary>"no answer" — the exchange failed or timed out.</summary>
+    public const string BalanceNoAnswer = "Studio.Shell.BalanceNoAnswer";
+
+    /// <summary>"unexpected answer" — the endpoint answered outside its documented shape.</summary>
+    public const string BalanceUnexpected = "Studio.Shell.BalanceUnexpected";
+
+    /// <summary>"no account to ask" — a local runtime, or no endpoint.</summary>
+    public const string BalanceNoAccount = "Studio.Shell.BalanceNoAccount";
+
+    /// <summary>"click to open its console" — for a provider whose balance only its console shows.</summary>
+    public const string BalanceOpenConsole = "Studio.Shell.BalanceOpenConsole";
+
+    /// <summary>"Never — the default" — the automatic reading switched off (D-02).</summary>
+    public const string BalanceRefreshOff = "Studio.Settings.BalanceRefreshOff";
+
+    /// <summary>"every {0} minutes" — the optional automatic reading.</summary>
+    public const string BalanceRefreshEvery = "Studio.Settings.BalanceRefreshEvery";
+
+    /// <summary>"last read: {0}" — beside a provider's alert threshold.</summary>
+    public const string BalanceThresholdLastRead = "Studio.Settings.BalanceThresholdLastRead";
+
+    /// <summary>"not read yet this session" — beside a provider's alert threshold.</summary>
+    public const string BalanceThresholdNoReading = "Studio.Settings.BalanceThresholdNoReading";
+
     // ---- Model profiles (settings screen, design v3) ------------------------
 
     /// <summary>"New setting" — the freshly created profile's placeholder name.</summary>
@@ -1964,6 +2025,27 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.StatusBarBudgetLeft] = "{0} tokens left",
         [StudioStringKeys.StatusBarProfileTip] = "Default model setting: {0}",
         [StudioStringKeys.StatusBarCostBilled] = "{0} — billed by the provider",
+
+        // STUDIO-35: the provider balance
+        [StudioStringKeys.BalanceTitle] = "Provider balance",
+        [StudioStringKeys.BalanceNotRead] = "not read yet",
+        [StudioStringKeys.BalanceReading] = "Reading the balance…",
+        [StudioStringKeys.BalanceClickToRead] = "A click reads the balances again; on a provider that does not expose its balance, it opens the console.",
+        [StudioStringKeys.BalanceReadAt] = "read at {0}",
+        [StudioStringKeys.BalanceAvailable] = "{0} available",
+        [StudioStringKeys.BalanceKeyLimit] = "{0} left under this key's limit",
+        [StudioStringKeys.BalanceUnderThreshold] = "under your alert threshold of {0}",
+        [StudioStringKeys.BalanceNotExposed] = "not exposed by the API",
+        [StudioStringKeys.BalanceAdminKey] = "readable with an admin key only",
+        [StudioStringKeys.BalanceKeyRefused] = "key refused",
+        [StudioStringKeys.BalanceNoAnswer] = "no answer",
+        [StudioStringKeys.BalanceUnexpected] = "unexpected answer",
+        [StudioStringKeys.BalanceNoAccount] = "no account to ask",
+        [StudioStringKeys.BalanceOpenConsole] = "click to open its console",
+        [StudioStringKeys.BalanceRefreshOff] = "Never — the default",
+        [StudioStringKeys.BalanceRefreshEvery] = "every {0} minutes",
+        [StudioStringKeys.BalanceThresholdLastRead] = "last read: {0}",
+        [StudioStringKeys.BalanceThresholdNoReading] = "not read yet this session",
 
         [StudioStringKeys.ProfileNewName] = "New setting",
         [StudioStringKeys.ProfileGroupLocal] = "ON YOUR MACHINE · FREE, NO KEY",

@@ -530,25 +530,23 @@ public sealed class StatusBarViewModelTests
         Assert.False(bar.ShowsProfile);
     }
 
-    /// <summary>The Balance segment is STUDIO-35's: reserved here, empty until a reading fills it.</summary>
+    /// <summary>
+    /// The Balance segment is STUDIO-35's (see <c>ProviderBalanceTests</c>): a bar built without
+    /// the balances — a probe and what it read — has no segment, whatever the profiles cover.
+    /// </summary>
     [Fact]
-    public void The_balance_slot_stays_empty_until_a_reading_fills_it()
+    public void The_balance_segment_stays_off_a_bar_built_without_the_balances()
     {
-        var bar = new StatusBarViewModel();
+        var profiles = Profiles();
+        var bar = new StatusBarViewModel(new StatusBarSources { Profiles = profiles });
+
+        profiles.CommitEdit(
+            new ModelProfile { Name = "Cloud", Provider = "DeepSeek", Model = "deepseek-chat", BaseUrl = "https://api.deepseek.com" },
+            previousName: null);
 
         Assert.False(bar.Balance.HasBalance);
-
-        bar.Balance.Show("12.40 USD", "DeepSeek — 10:30", isWarning: true);
-
-        Assert.True(bar.Balance.HasBalance);
-        Assert.Equal("12.40 USD", bar.Balance.Text);
-        Assert.Equal("DeepSeek — 10:30", bar.Balance.Detail);
-        Assert.True(bar.Balance.IsWarning);
-
-        bar.Balance.Clear();
-
-        Assert.False(bar.Balance.HasBalance);
-        Assert.False(bar.Balance.IsWarning);
+        Assert.Empty(bar.Balance.Items);
+        Assert.Null(bar.Balance.Detail);
     }
 
     [Fact]

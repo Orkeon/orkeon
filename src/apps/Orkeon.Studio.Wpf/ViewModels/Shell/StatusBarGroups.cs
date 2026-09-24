@@ -393,49 +393,6 @@ public sealed class StatusBarAtelierGroupViewModel : ObservableObject
     }
 }
 
-/// <summary>
-/// The Balance segment's slot on the status bar, reserved for STUDIO-35: what the provider
-/// accounts have left. Empty — and absent from the bar — until a reading is shown; nothing here
-/// calls a provider.
-/// </summary>
-public sealed class StatusBarBalanceViewModel : ObservableObject
-{
-    /// <summary>The segment's text; null while no reading was shown.</summary>
-    public string? Text { get; private set; }
-
-    /// <summary>What the segment says on hover — the detail of the reading and when it was taken.</summary>
-    public string? Detail { get; private set; }
-
-    /// <summary>Whether the reading is under its alert threshold — the warning tone.</summary>
-    public bool IsWarning { get; private set; }
-
-    /// <summary>Whether the segment is on the bar, in both modes (D-03).</summary>
-    public bool HasBalance => Text is { Length: > 0 };
-
-    /// <summary>Shows a reading on the bar.</summary>
-    public void Show(string text, string? detail = null, bool isWarning = false)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(text);
-
-        Text = text;
-        Detail = detail;
-        IsWarning = isWarning;
-        RaiseAll();
-    }
-
-    /// <summary>Takes the reading off the bar: a figure nobody can vouch for any more is not shown.</summary>
-    public void Clear()
-    {
-        Text = null;
-        Detail = null;
-        IsWarning = false;
-        RaiseAll();
-    }
-
-    private void RaiseAll() =>
-        OnPropertiesChanged(nameof(Text), nameof(Detail), nameof(IsWarning), nameof(HasBalance));
-}
-
 /// <summary>The few text rules the bar's segments share.</summary>
 internal static class StatusBarText
 {

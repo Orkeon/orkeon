@@ -60,6 +60,15 @@ public sealed record StudioServices
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }
 
+    /// <summary>
+    /// Reads what a provider account has left (STUDIO-35). Unlike the connection test, it is
+    /// called without a click — at startup, at the end of an activity — so a window built
+    /// without one reads no balance at all: only the composition root for the real machine
+    /// names the HTTP probe, and a test or a headless campaign can never reach a provider by
+    /// omission.
+    /// </summary>
+    public IProviderBalanceProbe? BalanceProbe { get; init; }
+
     /// <summary>Peeks at the API keys the profiles name, without ever reading a file.</summary>
     public IApiKeyStore? KeyStore { get; init; }
 
@@ -68,6 +77,12 @@ public sealed record StudioServices
 
     /// <summary>The beat the status bar's clocks move on (STUDIO-34); one that never beats when absent.</summary>
     public IUiTicker? Ticker { get; init; }
+
+    /// <summary>
+    /// The beat of the optional automatic balance reading (STUDIO-35 D-02) — a ticker of its
+    /// own, since one ticker keeps one beat; one that never beats when absent.
+    /// </summary>
+    public IUiTicker? BalanceTicker { get; init; }
 
     /// <summary>
     /// The clock a run's elapsed time is read on (STUDIO-34): the system's when absent, frozen by

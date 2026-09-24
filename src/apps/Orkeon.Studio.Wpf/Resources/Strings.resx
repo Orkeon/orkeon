@@ -64,6 +64,36 @@
   <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Default model setting: {0}</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — billed by the provider</value></data>
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Open this activity's screen</value></data>
+  <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
+  <data name="Studio.Shell.BalanceTitle" xml:space="preserve"><value>Provider balance</value></data>
+  <data name="Studio.Shell.BalanceNotRead" xml:space="preserve"><value>not read yet</value></data>
+  <data name="Studio.Shell.BalanceReading" xml:space="preserve"><value>Reading the balance…</value></data>
+  <data name="Studio.Shell.BalanceClickToRead" xml:space="preserve"><value>A click reads the balances again; on a provider that does not expose its balance, it opens the console.</value></data>
+  <data name="Studio.Shell.BalanceReadAt" xml:space="preserve"><value>read at {0}</value></data>
+  <data name="Studio.Shell.BalanceAvailable" xml:space="preserve"><value>{0} available</value></data>
+  <data name="Studio.Shell.BalanceKeyLimit" xml:space="preserve"><value>{0} left under this key's limit</value></data>
+  <data name="Studio.Shell.BalanceUnderThreshold" xml:space="preserve"><value>under your alert threshold of {0}</value></data>
+  <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve"><value>not exposed by the API</value></data>
+  <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve"><value>readable with an admin key only</value></data>
+  <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve"><value>key refused</value></data>
+  <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve"><value>no answer</value></data>
+  <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve"><value>unexpected answer</value></data>
+  <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve"><value>no account to ask</value></data>
+  <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve"><value>click to open its console</value></data>
+  <data name="Studio.Shell.StudioTab" xml:space="preserve"><value>Studio</value></data>
+  <data name="Studio.Settings.StudioIntro" xml:space="preserve"><value>How Studio itself behaves on this machine. These choices stay in your Windows profile — never in the settings file your teams run on.</value></data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve"><value>The status bar shows what the accounts of your model settings have left — the default one, the assistant's and your teams'. It reads them at startup, at the end of each run, trial or composition, and when you click it. Nothing is written down: a figure on screen was just read.</value></data>
+  <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve"><value>Automatic reading</value></data>
+  <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve"><value>Off by default: Studio then sends no request you did not ask for, and spares the providers' rate limits.</value></data>
+  <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve"><value>Never — the default</value></data>
+  <data name="Studio.Settings.BalanceRefreshEvery" xml:space="preserve"><value>every {0} minutes</value></data>
+  <data name="Studio.Settings.BalanceThresholdsLabel" xml:space="preserve"><value>Alert thresholds</value></data>
+  <data name="Studio.Settings.BalanceThresholdsHint" xml:space="preserve"><value>Under its threshold, a provider's balance turns orange on the status bar. In the currency the provider returns — nothing is converted. Empty: no alert.</value></data>
+  <data name="Studio.Settings.BalanceThresholdInvalid" xml:space="preserve"><value>Type an amount, such as 5 or 12.50 — the threshold stays as it was.</value></data>
+  <data name="Studio.Settings.BalanceThresholdLastRead" xml:space="preserve"><value>last read: {0}</value></data>
+  <data name="Studio.Settings.BalanceThresholdNoReading" xml:space="preserve"><value>not read yet this session</value></data>
+  <data name="Studio.Settings.ReadBalance" xml:space="preserve"><value>Read the balance</value></data>
+  <data name="Studio.Settings.BalanceConsole" xml:space="preserve"><value>Open the console</value></data>
                 
 
       <data name="Studio.Settings.TestConnection" xml:space="preserve"><value>Test connection</value></data>

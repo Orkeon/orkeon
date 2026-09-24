@@ -1,6 +1,8 @@
 using System.ComponentModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Llm;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -57,6 +59,22 @@ public sealed record StatusBarSources
 
     /// <summary>The beat the clocks on the bar move on; one that never beats when absent.</summary>
     public IUiTicker? Ticker { get; init; }
+
+    /// <summary>The balances read this session and the probe behind them (STUDIO-35); no Balance segment when absent.</summary>
+    public BalanceReadings? Balances { get; init; }
+
+    /// <summary>
+    /// The profiles the teams name — their share of the Balance segment (STUDIO-35 D-01). The
+    /// seam archiving narrows to the active teams (STUDIO-31): an archived team's account is no
+    /// longer one the bar reads. None when absent.
+    /// </summary>
+    public Func<IEnumerable<string?>>? TeamProfiles { get; init; }
+
+    /// <summary>The beat of the optional automatic balance reading; one that never beats when absent.</summary>
+    public IUiTicker? BalanceTicker { get; init; }
+
+    /// <summary>Opens a provider's console from the Balance segment; the console entries do nothing when absent.</summary>
+    public IShellOpener? ShellOpener { get; init; }
 }
 
 /// <summary>
@@ -69,6 +87,11 @@ public sealed record StatusBarSources
 /// own, and during a run only the model the meter reports is true. A segment nothing measured
 /// is absent, never a zero. The novice reads each group's state and meters; the expert reads
 /// everything (D-03). A click on a group asks the shell for that activity's screen (D-04).
+/// </para>
+/// <para>
+/// On the right, the Balance segment (STUDIO-35): what the provider accounts behind the
+/// profiles have left, read again when an activity ends — never while it runs, and never of
+/// its own accord (<see cref="StatusBarBalanceViewModel"/>).
 /// </para>
 /// <para>
 /// Everything here is read off models the screens already hold — the launchers' progress models
@@ -85,6 +108,7 @@ public sealed class StatusBarViewModel : ObservableObject
     private readonly UiModeViewModel _mode;
     private readonly IUiTicker _ticker;
     private readonly ModelProfilesViewModel? _profiles;
+    private readonly Func<IEnumerable<string?>>? _teamProfiles;
     private bool _beating;
 
     /// <summary>Builds the bar over the activities it watches.</summary>
@@ -95,10 +119,13 @@ public sealed class StatusBarViewModel : ObservableObject
         _mode = wired.Mode ?? new UiModeViewModel();
         _ticker = wired.Ticker ?? NullUiTicker.Instance;
         _profiles = wired.Profiles;
+        _teamProfiles = wired.TeamProfiles;
 
         Launch = new StatusBarRunGroupViewModel(StatusBarActivity.Launch, wired.Launch, _strings, IsExpert, Open);
         Test = new StatusBarRunGroupViewModel(StatusBarActivity.Test, wired.Test, _strings, IsExpert, Open);
         Atelier = new StatusBarAtelierGroupViewModel(wired.Atelier, _strings, IsExpert, Open);
+        Balance = new StatusBarBalanceViewModel(
+            wired.Balances, Coverage, _strings, wired.ShellOpener, wired.BalanceTicker ?? NullUiTicker.Instance);
 
         Launch.PropertyChanged += OnGroupChanged;
         Test.PropertyChanged += OnGroupChanged;
@@ -118,8 +145,8 @@ public sealed class StatusBarViewModel : ObservableObject
     /// <summary>The assistant's group, while it composes or tries a team.</summary>
     public StatusBarAtelierGroupViewModel Atelier { get; }
 
-    /// <summary>The Balance segment, reserved for STUDIO-35: empty until a reading fills it.</summary>
-    public StatusBarBalanceViewModel Balance { get; } = new();
+    /// <summary>The Balance segment (STUDIO-35): what the covered provider accounts have left.</summary>
+    public StatusBarBalanceViewModel Balance { get; }
 
     /// <summary>Whether nothing runs — no group on the bar.</summary>
     public bool IsAtRest => !Launch.IsActive && !Test.IsActive && !Atelier.IsActive;
@@ -148,16 +175,47 @@ public sealed class StatusBarViewModel : ObservableObject
     private void Open(StatusBarActivity activity) =>
         OpenRequested?.Invoke(this, new StatusBarOpenEventArgs(activity));
 
+    /// <summary>
+    /// The accounts the Balance segment covers (STUDIO-35 D-01): the default profile's, the
+    /// assistant's and those of the profiles the teams name, each once. A team that names no
+    /// profile — or one the store no longer has — runs on the settings file, which the default
+    /// is mirrored into: its account is the default's.
+    /// </summary>
+    private IReadOnlyList<ProviderBalanceTarget> Coverage()
+    {
+        if (_profiles?.Set is not { } set)
+            return [];
+
+        var covered = new List<ModelProfile>();
+        if (set.Default is { } byDefault)
+            covered.Add(byDefault);
+        if (set.Studio is { } assistant)
+            covered.Add(assistant);
+        foreach (var name in _teamProfiles?.Invoke() ?? [])
+        {
+            if (set.Find(name) is { } named)
+                covered.Add(named);
+        }
+
+        return ProviderBalanceTarget.For(covered);
+    }
+
     private void OnGroupChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(StatusBarRunGroupViewModel.IsActive))
-            OnActivityChanged();
+        if (e.PropertyName != nameof(StatusBarRunGroupViewModel.IsActive))
+            return;
+
+        OnActivityChanged();
+
+        // STUDIO-35 D-02: an activity that ends — a run, a trial, a composition — is what moved
+        // the balance, so it is read again then, and not while the activity spends.
+        if (sender is StatusBarRunGroupViewModel { IsActive: false } or StatusBarAtelierGroupViewModel { IsActive: false })
+            _ = Balance.RefreshAsync();
     }
 
     /// <summary>
     /// A group came or went. The clocks beat only while a run goes — at rest nothing ticks — and
-    /// the profile shows only at rest. The end of an activity is also where STUDIO-35 reads the
-    /// balance again.
+    /// the profile shows only at rest.
     /// </summary>
     private void OnActivityChanged()
     {
@@ -198,12 +256,19 @@ public sealed class StatusBarViewModel : ObservableObject
         Launch.RefreshAll();
         Test.RefreshAll();
         Atelier.RefreshAll();
+        Balance.Rebuild();
         OnPropertiesChanged(nameof(Profile), nameof(ProfileTip));
     }
 
     private void OnProfilesChanged(object? sender, PropertyChangedEventArgs e)
     {
-        if (e.PropertyName == nameof(ModelProfilesViewModel.Set))
-            OnPropertiesChanged(nameof(Profile), nameof(ProfileTip), nameof(ShowsProfile));
+        if (e.PropertyName != nameof(ModelProfilesViewModel.Set))
+            return;
+
+        OnPropertiesChanged(nameof(Profile), nameof(ProfileTip), nameof(ShowsProfile));
+
+        // The default, the assistant or a profile changed: the segment covers other accounts,
+        // and says so — a newly covered one shows unread; nothing is read until a trigger.
+        Balance.Rebuild();
     }
 }

@@ -57,7 +57,9 @@ public sealed class MainWindowViewModel : ObservableObject
         var shellOpener = seams.ShellOpener;
         var delay = seams.Delay;
         var llmProbe = seams.LlmProbe;
-        var keyStore = seams.KeyStore;
+        // One key store for the profiles, the tool keys and the balance reads: the balance of an
+        // account is read with the key its profile's row just remembered.
+        var keyStore = seams.KeyStore ?? new EnvironmentApiKeyStore();
         var runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
 
         Mode = new UiModeViewModel(ui.InitialMode, ui.PersistMode);
@@ -116,17 +118,27 @@ public sealed class MainWindowViewModel : ObservableObject
         // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
         // next clean, and the assistant's /workspace would show DLLs.
         var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
+
+        // STUDIO-35: the provider balances, read on the triggers of D-02 and kept in memory only
+        // (D-05). The status bar, the profile rows and the profile editor share them; without a
+        // probe in the seams nothing is read (see StudioServices.BalanceProbe).
+        Balances = new BalanceReadings(seams.BalanceProbe, keyStore, ui.InitialStudio, seams.Clock);
+
         Settings = new SettingsScreenViewModel(
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
-                loadTeams: () => TeamCatalog.List(teamsHome)),
+                loadTeams: () => TeamCatalog.List(teamsHome),
+                balances: Balances,
+                shellOpener: shellOpener),
             Mode,
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
             // for by living inside it, and the global appsettings never learns them.
             new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings, declaredMounts),
             // STUDIO-21: the tool keys ride the same store as the profile keys.
-            new ToolsSettingsViewModel(keyStore, strings));
+            new ToolsSettingsViewModel(keyStore, strings),
+            // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge.
+            new StudioSettingsViewModel(Balances, ui.PersistStudio, strings));
 
         CreateTeam = new CreateTeamViewModel(
             Settings.Profiles,
@@ -185,6 +197,12 @@ public sealed class MainWindowViewModel : ObservableObject
             Mode = Mode,
             Strings = strings,
             Ticker = seams.Ticker,
+            // STUDIO-35: the Balance segment covers the default profile, the assistant's and the
+            // profiles the teams name. STUDIO-31 narrows the teams to the active ones here.
+            Balances = Balances,
+            TeamProfiles = () => TeamCatalog.List(teamsHome).Select(team => team.Profile),
+            BalanceTicker = seams.BalanceTicker,
+            ShellOpener = shellOpener,
         });
 
         Import = new ImportTeamViewModel(new ImportTeamDependencies
@@ -266,6 +284,9 @@ public sealed class MainWindowViewModel : ObservableObject
             {
                 Settings.TeamFolders.Refresh();
                 Config.Mounts.RefreshTeamReferences();
+                // A team adopted, deleted or pointed at another profile changes what the
+                // Balance segment covers (STUDIO-35 D-01) — said now, read on the next trigger.
+                StatusBar.Balance.Rebuild();
             }
         };
         // STUDIO-18: the declared folders are read live from the settings editor, but a team
@@ -311,6 +332,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The bar at the foot of the window (STUDIO-34): one group per activity while it runs.</summary>
     public StatusBarViewModel StatusBar { get; }
+
+    /// <summary>The provider balances read this session (STUDIO-35), shared by the bar, the profile rows and the editor.</summary>
+    public BalanceReadings Balances { get; }
 
     /// <summary>The Import screen.</summary>
     public ImportTeamViewModel Import { get; }
@@ -389,6 +413,8 @@ public sealed class MainWindowViewModel : ObservableObject
                 HistoryStore = historyStore,
                 Dispatcher = dispatcher,
                 ProfileStore = profileStore,
+                // The one place a balance probe over the real network is named (STUDIO-35).
+                BalanceProbe = seams.BalanceProbe ?? HttpProviderBalanceProbe.ForCurrentMachine(),
             },
             preferences,
             teamsRoot: teamsRoot);
@@ -413,7 +439,7 @@ public sealed class MainWindowViewModel : ObservableObject
             await Task.WhenAll(
                 Launch.InitializeAsync(cancellationToken),
                 Test.Launcher.InitializeAsync(cancellationToken),
-                Settings.Profiles.InitializeAsync(cancellationToken),
+                LoadProfilesThenReadBalanceAsync(cancellationToken),
                 // The silent doctor run (audit 09/20): the sidebar dot and the verdict card
                 // are honest from the first frame, without the user pressing anything.
                 Config.Diagnostic.InitializeAsync(cancellationToken),
@@ -429,6 +455,17 @@ public sealed class MainWindowViewModel : ObservableObject
         {
             CreateTeam.ReportStatus(ex.Message);
         }
+    }
+
+    /// <summary>
+    /// The profiles, then the balance of the accounts they cover (STUDIO-35 D-02: the startup
+    /// read) — which accounts to ask is not known before the profiles are in, and the other
+    /// loaders need not wait on either.
+    /// </summary>
+    private async Task LoadProfilesThenReadBalanceAsync(CancellationToken cancellationToken)
+    {
+        await Settings.Profiles.InitializeAsync(cancellationToken).ConfigureAwait(true);
+        await StatusBar.Balance.RefreshAsync(cancellationToken).ConfigureAwait(true);
     }
 
     /// <summary>

@@ -42,6 +42,9 @@ internal enum CaptureScreen
     /// <summary>Settings, on the MCP tab — expert only (STUDIO-21).</summary>
     SettingsMcp,
 
+    /// <summary>Settings, on the Studio tab (STUDIO-35).</summary>
+    SettingsStudio,
+
     /// <summary>Diagnostic.</summary>
     Diagnostic,
 }
@@ -87,7 +90,7 @@ internal enum CaptureCategory
     /// <summary>Historique.</summary>
     History,
 
-    /// <summary>Settings and its six tabs.</summary>
+    /// <summary>Settings and its seven tabs.</summary>
     Settings,
 
     /// <summary>Diagnostic.</summary>

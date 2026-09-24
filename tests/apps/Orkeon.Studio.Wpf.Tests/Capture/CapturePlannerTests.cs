@@ -81,8 +81,9 @@ public sealed class CapturePlannerTests
         // folder dialog that replaced it cannot be photographed) = -4 shots.
         // STUDIO-21: +2 stops (reglages-outils, both modes, both themes, language sweep = +8;
         // reglages-mcp, expert only, both themes = +2).
-        Assert.Equal(53, CaptureCatalog.All.Count);
-        Assert.Equal(288, plan.Count);
+        // STUDIO-35: +1 stop (reglages-studio, both modes, both themes, language sweep) = +8 shots.
+        Assert.Equal(54, CaptureCatalog.All.Count);
+        Assert.Equal(296, plan.Count);
     }
 
     [Fact]

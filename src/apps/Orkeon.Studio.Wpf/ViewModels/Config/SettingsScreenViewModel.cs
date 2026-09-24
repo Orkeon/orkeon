@@ -5,11 +5,11 @@ using Orkeon.Studio.Wpf.ViewModels.Shell;
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
 
 /// <summary>
-/// The unified Settings screen (design v3): one nav entry, six inner tabs. Novice sees the
-/// three that matter — the AI model, the authorized folders and the tools (their keys and
-/// what each one needs, STUDIO-21); the limits-and-logs tab, the MCP servers and the raw-JSON
-/// tab are expert-only, and a switch back to novice while one of them is showing falls back
-/// to the model tab rather than leaving a blank screen.
+/// The unified Settings screen (design v3): one nav entry, seven inner tabs. Novice sees the
+/// four that matter — the AI model, the authorized folders, the tools (their keys and what
+/// each one needs, STUDIO-21) and Studio itself (STUDIO-35); the limits-and-logs tab, the MCP
+/// servers and the raw-JSON tab are expert-only, and a switch back to novice while one of them
+/// is showing falls back to the model tab rather than leaving a blank screen.
 /// </summary>
 public sealed class SettingsScreenViewModel : ObservableObject
 {
@@ -31,6 +31,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>The MCP servers a run connects (expert, STUDIO-21).</summary>
     public const string McpTab = "mcp";
 
+    /// <summary>How Studio itself behaves on this machine (STUDIO-35): the balance, and what STUDIO-32 adds.</summary>
+    public const string StudioTab = "studio";
+
     private readonly UiModeViewModel _mode;
     private string _activeTab = ModelTab;
 
@@ -39,14 +42,16 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// is the read-only « Team folders » section of the folders tab (STUDIO-14); left out, the
     /// section lists nothing — the shell passes one over the team catalog. <paramref name="tools"/>
     /// is the Tools tab's own content (STUDIO-21); left out, the tab is built over the environment
-    /// key store.
+    /// key store. <paramref name="studio"/> is the « Studio » tab (STUDIO-35); left out, its
+    /// choices last for the session only.
     /// </summary>
     public SettingsScreenViewModel(
         ConfigTabViewModel config,
         ModelProfilesViewModel profiles,
         UiModeViewModel mode,
         TeamFoldersViewModel? teamFolders = null,
-        ToolsSettingsViewModel? tools = null)
+        ToolsSettingsViewModel? tools = null,
+        StudioSettingsViewModel? studio = null)
     {
         ArgumentNullException.ThrowIfNull(config);
         ArgumentNullException.ThrowIfNull(profiles);
@@ -56,6 +61,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         Profiles = profiles;
         TeamFolders = teamFolders ?? new TeamFoldersViewModel(() => []);
         Tools = tools ?? new ToolsSettingsViewModel();
+        Studio = studio ?? new StudioSettingsViewModel();
         _mode = mode;
         _mode.PropertyChanged += OnModeChanged;
 
@@ -81,6 +87,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         ShowJsonCommand = new RelayCommand(() => ActiveTab = JsonTab);
         ShowToolsCommand = new RelayCommand(() => ActiveTab = ToolsTab);
         ShowMcpCommand = new RelayCommand(() => ActiveTab = McpTab);
+        ShowStudioCommand = new RelayCommand(() => ActiveTab = StudioTab);
     }
 
     /// <summary>The settings-document editor the tabs render.</summary>
@@ -99,6 +106,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>The Tools tab: the keys the tools need and the catalogue of what a run exposes (STUDIO-21).</summary>
     public ToolsSettingsViewModel Tools { get; }
 
+    /// <summary>The Studio tab: how Studio itself behaves — the provider balance first (STUDIO-35).</summary>
+    public StudioSettingsViewModel Studio { get; }
+
     /// <summary>The window-wide mode switch, for the view's expert/novice visibilities.</summary>
     public UiModeViewModel Mode => _mode;
 
@@ -108,7 +118,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
         get => _activeTab;
         set
         {
-            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab ? value : ModelTab;
+            var requested = value is FoldersTab or LimitsTab or JsonTab or ToolsTab or McpTab or StudioTab ? value : ModelTab;
             if (_mode.IsNovice && requested is LimitsTab or JsonTab or McpTab)
                 requested = ModelTab;
 
@@ -116,7 +126,7 @@ public sealed class SettingsScreenViewModel : ObservableObject
             {
                 OnPropertiesChanged(
                     nameof(IsModelTab), nameof(IsFoldersTab), nameof(IsLimitsTab), nameof(IsJsonTab),
-                    nameof(IsToolsTab), nameof(IsMcpTab));
+                    nameof(IsToolsTab), nameof(IsMcpTab), nameof(IsStudioTab));
             }
         }
     }
@@ -139,6 +149,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
     /// <summary>True while the expert MCP tab shows.</summary>
     public bool IsMcpTab => _activeTab == McpTab;
 
+    /// <summary>True while the Studio tab shows.</summary>
+    public bool IsStudioTab => _activeTab == StudioTab;
+
     /// <summary>Shows the model tab.</summary>
     public RelayCommand ShowModelCommand { get; }
 
@@ -156,6 +169,9 @@ public sealed class SettingsScreenViewModel : ObservableObject
 
     /// <summary>Shows the MCP tab.</summary>
     public RelayCommand ShowMcpCommand { get; }
+
+    /// <summary>Shows the Studio tab.</summary>
+    public RelayCommand ShowStudioCommand { get; }
 
     private void OnModeChanged(object? sender, PropertyChangedEventArgs e)
     {

@@ -437,10 +437,10 @@
     <!-- ══════════ STATUS BAR (STUDIO-34) ══════════ -->
     <!-- What runs, what it spends and the tools at work, without changing screen. One group per
          activity that runs — Run, Test, the assistant — each only while it runs, none hidden, none
-         merged (DD-2). At rest the expert reads the default profile; the Balance slot on the right
-         is STUDIO-35's. A segment nothing measured is absent, never a zero; the novice reads each
-         group's state and meters, the expert everything (D-03). A click on a group opens its
-         activity's screen (D-04). DataContext: StatusBarViewModel. -->
+         merged (DD-2). At rest the expert reads the default profile; the Balance segment on the
+         right says what the provider accounts have left (STUDIO-35). A segment nothing measured is
+         absent, never a zero; the novice reads each group's state and meters, the expert everything
+         (D-03). A click on a group opens its activity's screen (D-04). DataContext: StatusBarViewModel. -->
     <Border x:Name="StatusStrip" Grid.Row="2" MinHeight="30" DataContext="{Binding StatusBar}"
             Background="{DynamicResource PaperSunkBrush}"
             BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0">
@@ -473,6 +473,12 @@
               </ControlTemplate>
             </Setter.Value>
           </Setter>
+        </Style>
+        <!-- A Balance entry (STUDIO-35): a group's flat button without the group's «open this
+             screen» tip — the segment's own tip says what each entry holds and what its click does. -->
+        <Style x:Key="StatusBalanceEntry" TargetType="Button" BasedOn="{StaticResource StatusGroup}">
+          <Setter Property="Margin" Value="2,0,0,0"/>
+          <Setter Property="ToolTip" Value="{x:Null}"/>
         </Style>
         <Style x:Key="StatusGroupLabel" TargetType="TextBlock">
           <Setter Property="FontSize" Value="11.5"/>
@@ -550,21 +556,47 @@
       </Border.Resources>
 
       <DockPanel Margin="10,0">
-        <!-- The Balance segment (STUDIO-35 fills it): both modes, absent until a reading is shown. -->
-        <TextBlock DockPanel.Dock="Right" Margin="12,0,4,0" Text="{Binding Balance.Text}"
-                   ToolTip="{Binding Balance.Detail}"
-                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}">
-          <TextBlock.Style>
-            <Style TargetType="TextBlock" BasedOn="{StaticResource StatusFigure}">
-              <Style.Triggers>
-                <DataTrigger Binding="{Binding Balance.IsWarning}" Value="True">
-                  <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
-                  <Setter Property="FontWeight" Value="SemiBold"/>
-                </DataTrigger>
-              </Style.Triggers>
-            </Style>
-          </TextBlock.Style>
-        </TextBlock>
+        <!-- The Balance segment (STUDIO-35): what the covered provider accounts have left, one
+             entry per account, in both modes. A click on an entry reads the balances again — or,
+             for a provider whose balance only its console shows, opens that console (D-01). An
+             amount under its provider's threshold takes the warning tone (D-03), a failed read is
+             said quietly, an account not read yet carries the read-again glyph. Per account, with
+             the time of each read, on hover. -->
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,0,0" VerticalAlignment="Center"
+                    DataContext="{Binding Balance}" ToolTip="{Binding Detail}"
+                    Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+          <controls:LucideIcon Kind="wallet" Size="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkFaintBrush}"/>
+          <ItemsControl ItemsSource="{Binding Items}" VerticalAlignment="Center">
+            <ItemsControl.ItemsPanel>
+              <ItemsPanelTemplate><StackPanel Orientation="Horizontal"/></ItemsPanelTemplate>
+            </ItemsControl.ItemsPanel>
+            <ItemsControl.ItemTemplate>
+              <DataTemplate>
+                <Button Style="{StaticResource StatusBalanceEntry}" Command="{Binding ClickCommand}">
+                  <StackPanel Orientation="Horizontal">
+                    <TextBlock x:Name="Figure" Style="{StaticResource StatusFigure}" Text="{Binding Text}"/>
+                    <controls:LucideIcon Kind="external-link" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding OffersConsole, Converter={StaticResource BooleanToVisibility}}"/>
+                    <controls:LucideIcon Kind="rotate-cw" Size="10" Margin="4,0,0,0" VerticalAlignment="Center"
+                                         Foreground="{DynamicResource InkFaintBrush}"
+                                         Visibility="{Binding IsUnread, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </Button>
+                <DataTemplate.Triggers>
+                  <DataTrigger Binding="{Binding IsWarning}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                    <Setter TargetName="Figure" Property="FontWeight" Value="SemiBold"/>
+                  </DataTrigger>
+                  <DataTrigger Binding="{Binding IsFaint}" Value="True">
+                    <Setter TargetName="Figure" Property="Foreground" Value="{DynamicResource InkFaintBrush}"/>
+                  </DataTrigger>
+                </DataTemplate.Triggers>
+              </DataTemplate>
+            </ItemsControl.ItemTemplate>
+          </ItemsControl>
+        </StackPanel>
 
         <!-- At rest, to the expert: provider · model of the default profile. -->
         <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
@@ -910,6 +942,41 @@
               <TextBlock Style="{StaticResource Hint}" VerticalAlignment="Center" Margin="12,0,0,0"
                          Text="{Binding ConnectionTestResult}"
                          Visibility="{Binding ConnectionTestResult, Converter={StaticResource StringPresentToVisibility}}"/>
+            </StackPanel>
+
+            <!-- STUDIO-35 (D-04): the balance line beside « Test » — what the account behind the
+                 endpoint and the key has left, read on the click, never the key; where only the
+                 vendor's console shows it, a link to that console. The probe's own line, in
+                 English like the connection test's, on hover. -->
+            <StackPanel Orientation="Horizontal" Margin="0,8,0,0"
+                        Visibility="{Binding ShowBalanceRow, Converter={StaticResource BooleanToVisibility}}">
+              <Button Style="{StaticResource BtnGhost}" Command="{Binding ReadBalanceCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="wallet" Size="13" Margin="0,0,7,0"/>
+                  <TextBlock Text="{Binding [Studio.Settings.ReadBalance], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
+              <TextBlock VerticalAlignment="Center" Margin="12,0,0,0" MaxWidth="400"
+                         Text="{Binding BalanceResult}" ToolTip="{Binding BalanceDetail}"
+                         Visibility="{Binding BalanceResult, Converter={StaticResource StringPresentToVisibility}}">
+                <TextBlock.Style>
+                  <Style TargetType="TextBlock" BasedOn="{StaticResource Hint}">
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
+                        <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                        <Setter Property="FontWeight" Value="SemiBold"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </TextBlock.Style>
+              </TextBlock>
+              <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding OpenBalanceConsoleCommand}"
+                      Visibility="{Binding BalanceOffersConsole, Converter={StaticResource BooleanToVisibility}}">
+                <StackPanel Orientation="Horizontal">
+                  <controls:LucideIcon Kind="external-link" Size="12" Margin="0,0,6,0"/>
+                  <TextBlock Text="{Binding [Studio.Settings.BalanceConsole], Source={x:Static services:I18n.Instance}}"/>
+                </StackPanel>
+              </Button>
             </StackPanel>
           </StackPanel>
           </ScrollViewer>

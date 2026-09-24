@@ -160,6 +160,13 @@ internal sealed record CaptureWorldPlan
     /// <summary>The model profiles.</summary>
     public ModelProfileSet Profiles { get; init; } = ModelProfileSet.Empty;
 
+    /// <summary>
+    /// The API keys remembered on this machine, by variable — held by the world's own key
+    /// store, which never reaches the operator's environment.
+    /// </summary>
+    public IReadOnlyDictionary<string, string> ApiKeys { get; init; } =
+        new Dictionary<string, string>(StringComparer.Ordinal);
+
     /// <summary>What <c>orkeon doctor --json</c> answers.</summary>
     public string DoctorJson { get; init; } = "[]";
 

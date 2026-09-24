@@ -64,6 +64,36 @@
   <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Réglage de modèle par défaut : {0}</value></data>
   <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — facturé par le fournisseur</value></data>
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Ouvrir l'écran de cette activité</value></data>
+  <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
+  <data name="Studio.Shell.BalanceTitle" xml:space="preserve"><value>Solde des fournisseurs</value></data>
+  <data name="Studio.Shell.BalanceNotRead" xml:space="preserve"><value>pas encore lu</value></data>
+  <data name="Studio.Shell.BalanceReading" xml:space="preserve"><value>Lecture du solde…</value></data>
+  <data name="Studio.Shell.BalanceClickToRead" xml:space="preserve"><value>Un clic relit les soldes ; sur un fournisseur qui n'expose pas son solde, il ouvre la console.</value></data>
+  <data name="Studio.Shell.BalanceReadAt" xml:space="preserve"><value>lu à {0}</value></data>
+  <data name="Studio.Shell.BalanceAvailable" xml:space="preserve"><value>{0} disponibles</value></data>
+  <data name="Studio.Shell.BalanceKeyLimit" xml:space="preserve"><value>{0} restants sous la limite de cette clé</value></data>
+  <data name="Studio.Shell.BalanceUnderThreshold" xml:space="preserve"><value>sous votre seuil d'alerte de {0}</value></data>
+  <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve"><value>non exposé par l'API</value></data>
+  <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve"><value>lisible avec une clé admin seulement</value></data>
+  <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve"><value>clé refusée</value></data>
+  <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve"><value>pas de réponse</value></data>
+  <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve"><value>réponse inattendue</value></data>
+  <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve"><value>aucun compte à interroger</value></data>
+  <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve"><value>cliquez pour ouvrir sa console</value></data>
+  <data name="Studio.Shell.StudioTab" xml:space="preserve"><value>Studio</value></data>
+  <data name="Studio.Settings.StudioIntro" xml:space="preserve"><value>Le comportement de Studio lui-même sur cette machine. Ces choix restent dans votre profil Windows — jamais dans le fichier de réglages de vos équipes.</value></data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve"><value>La barre d'état affiche ce qu'il reste sur les comptes de vos réglages de modèle — celui par défaut, celui de l'assistant et ceux de vos équipes. Elle les lit au démarrage, à la fin de chaque exécution, essai ou composition, et quand vous cliquez dessus. Rien n'est enregistré : un montant affiché vient d'être lu.</value></data>
+  <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve"><value>Lecture automatique</value></data>
+  <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve"><value>Désactivée par défaut : Studio n'envoie alors aucune requête que vous n'avez pas demandée, et ménage les limites de débit des fournisseurs.</value></data>
+  <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve"><value>Jamais — par défaut</value></data>
+  <data name="Studio.Settings.BalanceRefreshEvery" xml:space="preserve"><value>toutes les {0} minutes</value></data>
+  <data name="Studio.Settings.BalanceThresholdsLabel" xml:space="preserve"><value>Seuils d'alerte</value></data>
+  <data name="Studio.Settings.BalanceThresholdsHint" xml:space="preserve"><value>Sous son seuil, le solde d'un fournisseur passe en orange dans la barre d'état. Dans la devise que renvoie le fournisseur — rien n'est converti. Vide : pas d'alerte.</value></data>
+  <data name="Studio.Settings.BalanceThresholdInvalid" xml:space="preserve"><value>Saisissez un montant, par exemple 5 ou 12,50 — le seuil reste inchangé.</value></data>
+  <data name="Studio.Settings.BalanceThresholdLastRead" xml:space="preserve"><value>dernière lecture : {0}</value></data>
+  <data name="Studio.Settings.BalanceThresholdNoReading" xml:space="preserve"><value>pas encore lu dans cette session</value></data>
+  <data name="Studio.Settings.ReadBalance" xml:space="preserve"><value>Lire le solde</value></data>
+  <data name="Studio.Settings.BalanceConsole" xml:space="preserve"><value>Ouvrir la console</value></data>
                 
 
       <data name="Studio.Settings.TestConnection" xml:space="preserve"><value>Tester la connexion</value></data>
