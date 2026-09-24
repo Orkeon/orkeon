@@ -35,7 +35,6 @@ public sealed partial class JsLlmFacade
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
-    private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly string _crewName;
     private readonly string _agentName;
 
@@ -61,91 +60,21 @@ public sealed partial class JsLlmFacade
         _permissionGate = permissionGate;
         _deltaSink = observability?.DeltaSink;
         _logger = observability?.Logger;
-        _usageSink = observability?.UsageSink;
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
         embed = EmbedAsync;
     }
 
     /// <summary>
-    /// Reports one completed LLM call to the host's usage sink. One call per response,
-    /// per path — <c>act</c> reports each iteration's response HERE, never inside
-    /// <see cref="ChatViaStreamAsync"/> (which only assembles it), so a streamed
-    /// iteration counts exactly once. Best-effort: a throwing sink degrades to
-    /// unobserved usage, never to a failed LLM call.
-    /// <para>
-    /// A response that carried NO usage at all is estimated rather than dropped
-    /// (<see cref="Orkeon.Infrastructure.CostTracking.LlmUsageEstimator"/>): several OpenAI-compatible endpoints answer without
-    /// a <c>usage</c> block, and the meter used to stand at zero through an entire
-    /// session because of it. The event then says <c>Estimated</c>, so a screen can mark
-    /// the figure and a budget knows what it is consuming. "No usage" still never reads
-    /// as "zero tokens" — it reads as an approximation, which is what it is.
-    /// </para>
+    /// Opens the attribution scope of one <c>ctx.llm.*</c> call: the method's name as the kind
+    /// of work, and the crew and agent this context runs for. The call itself is reported by
+    /// the metered provider the host hands the engine — once, whatever path it takes, a
+    /// streamed <c>act</c> turn included (STUDIO-42). The facade used to report each response
+    /// itself, and nothing else in the runtime did.
     /// </summary>
-    /// <param name="response">The provider's answer; null reports nothing.</param>
-    /// <param name="method">The <c>ctx.llm.*</c> entry point, for the operation type.</param>
-    /// <param name="promptText">The single prompt sent, when the call had one.</param>
-    /// <param name="promptMessages">The conversation sent, when the call had one instead.</param>
-    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Host-sink fault barrier: usage accounting must never fail the LLM call it observes.")]
-    private void ReportUsage(
-        LlmResponse? response,
-        string method,
-        string? promptText = null,
-        IReadOnlyList<LlmMessage>? promptMessages = null)
-    {
-        if (_usageSink is null || response is null)
-            return;
-
-        var estimated = !Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Reported(response);
-        try
-        {
-            var prompt = estimated
-                ? EstimatePromptTokens(promptText, promptMessages)
-                : response.PromptTokens ?? 0;
-            // What the vendor billed, when it bills in its answer (STUDIO-29) — the buffered
-            // response and a stream's final one alike. Never estimated: an approximate token
-            // count is marked as such, an approximate price is not something this reports.
-            var billed = Orkeon.Infrastructure.CostTracking.LlmVendorCost.TryRead(response, out var cost, out var currency);
-            _usageSink.Record(new Orkeon.Application.Interfaces.Ports.CostUsageEvent
-            {
-                CrewId = _crewName,
-                AgentId = _agentName,
-                Model = response.Model ?? string.Empty,
-                Provider = _provider?.Name ?? string.Empty,
-                PromptTokens = prompt,
-                Estimated = estimated,
-                // Providers that report only a grand total leave the split null; the
-                // remainder keeps PromptTokens + CompletionTokens == TokensUsed (the
-                // sum is what ICostBudgetManager aggregates as TotalTokens). Known
-                // bias: the pricing registry then charges that whole total at the
-                // OUTPUT rate — a deliberate upper bound (a budget trips too early,
-                // never too late), but an overestimate for cost REPORTING on
-                // split-less providers.
-                CompletionTokens = estimated
-                    ? Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Completion(response)
-                    : response.CompletionTokens ?? Math.Max(0, response.TokensUsed - prompt),
-                // A partition of PromptTokens (never additive) — null when unreported.
-                CacheHitTokens = response.CacheHitTokens,
-                CacheMissTokens = response.CacheMissTokens,
-                Cost = billed ? cost : null,
-                CostCurrency = currency,
-                OperationType = method,
-            });
-        }
-        catch
-        {
-            // Deliberately swallowed — see the fault-barrier contract above.
-        }
-    }
-
-    /// <summary>
-    /// Estimates the prompt token count of a call whose response reported none: from the
-    /// conversation when the call sent one, from the single prompt string otherwise.
-    /// </summary>
-    private static int EstimatePromptTokens(string? promptText, IReadOnlyList<LlmMessage>? promptMessages)
-        => promptMessages is not null
-            ? Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptMessages)
-            : Orkeon.Infrastructure.CostTracking.LlmUsageEstimator.Prompt(promptText);
+    /// <param name="method">The <c>ctx.llm.*</c> entry point, reported as the operation.</param>
+    private IDisposable BeginUsageScope(string method) =>
+        Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(method, crewId: _crewName, agentId: _agentName);
 
     /// <summary>Cancels the in-flight and future llm calls of this context (script-facing).</summary>
     public void interrupt() => _cts.Cancel();
@@ -188,9 +117,9 @@ public sealed partial class JsLlmFacade
         using var activity = StartChatActivity("complete");
         activity?.SetTag("orkeon.llm.prompt.length", prompt.Length);
         if (_provider is null) return $"<undefined-llm:{prompt}>";
+        using var usage = BeginUsageScope("complete");
         var resp = await _provider.GenerateAsync(prompt, ConfigFrom(options), _ct).ConfigureAwait(false);
         CompleteChatActivity(activity, resp);
-        ReportUsage(resp, "complete", prompt);
         return RenderAnswer(resp);
     };
 
@@ -235,8 +164,8 @@ public sealed partial class JsLlmFacade
         var msgs = ToMessages(messages);
         if (_provider is null)
             return new { content = $"<undefined-llm:chat:{msgs.Length} msgs>", tokensUsed = 0 };
+        using var usage = BeginUsageScope("chat");
         var resp = await _provider.ChatAsync(msgs, ConfigFrom(options), _ct).ConfigureAwait(false);
-        ReportUsage(resp, "chat", promptMessages: msgs);
         return new
         {
             content = resp.Content,
@@ -437,6 +366,10 @@ public sealed partial class JsLlmFacade
 
         var config = ConfigFrom(options);
 
+        // Open before the first yield: the metered provider reads the attribution when the
+        // stream starts, and this iterator resumes from a yield without it.
+        using var usage = BeginUsageScope("stream");
+
         if (_provider is Orkeon.Application.Interfaces.Ports.IStreamingLlmProvider sp && sp.SupportsStreaming)
         {
             await foreach (var ev in sp.ChatStreamingAsync([LlmMessage.User(prompt)], config, _ct)
@@ -454,7 +387,6 @@ public sealed partial class JsLlmFacade
                         break;
                     case LlmStreamEventKind.Completed:
                         observations.usage = ToStreamUsage(ev.FinalResponse);
-                        ReportUsage(ev.FinalResponse, "stream", prompt);
                         break;
                     default:
                         break;
@@ -466,7 +398,6 @@ public sealed partial class JsLlmFacade
         var resp = await _provider.GenerateAsync(prompt, config, _ct).ConfigureAwait(false);
         yield return RenderAnswer(resp);
         observations.usage = ToStreamUsage(resp);
-        ReportUsage(resp, "stream", prompt);
     }
 
     /// <summary>
@@ -521,8 +452,8 @@ public sealed partial class JsLlmFacade
         // JSON; (3) the reply is stripped of ```json fences before parsing, tolerating models that wrap
         // the object anyway. Without these, any prose/markdown reply threw and aborted the whole crew.
         var fullPrompt = AugmentExtractPrompt(prompt, schema);
+        using var usage = BeginUsageScope("extract");
         var resp = await _provider.GenerateAsync(fullPrompt, ConfigForExtract(options), _ct).ConfigureAwait(false);
-        ReportUsage(resp, "extract", fullPrompt);
         var content = StripJsonFences(resp.Content);
         try
         {
@@ -604,11 +535,10 @@ public sealed partial class JsLlmFacade
         if (allowed.Length == 0)
             throw new ArgumentException("ctx.llm.decide requires a non-empty choices array.", nameof(choices));
         var decidePrompt = $"{prompt}\n\nReply with exactly one of: {string.Join(", ", allowed)}";
+        using var usage = BeginUsageScope("decide");
         var resp = _provider is null
             ? new LlmResponse { Content = allowed[0] }
             : await _provider.GenerateAsync(decidePrompt, ConfigFrom(options), _ct).ConfigureAwait(false);
-        if (_provider is not null)
-            ReportUsage(resp, "decide", decidePrompt);
         var picked = allowed.FirstOrDefault(c =>
             resp.Content.Trim().StartsWith(c, StringComparison.OrdinalIgnoreCase));
         if (picked is null)
@@ -778,6 +708,7 @@ public sealed partial class JsLlmFacade
     private async Task<object> RunActAsync(ActSession session)
     {
         var completedIterations = 0;
+        using var usage = BeginUsageScope("act");
         try
         {
             if (_provider is null)
@@ -801,7 +732,6 @@ public sealed partial class JsLlmFacade
                     : session.Config with { Tools = session.ToolSchemas, ToolMode = ToolCallMode.Auto };
                 var resp = await SendChatAsync(messages.ToArray(), cfg, session).ConfigureAwait(false);
                 _budget?.RecordTokens(resp.TokensUsed);
-                ReportUsage(resp, "act", promptMessages: messages);
 
                 var call = TryParseToolCall(resp.RawResponseBody);
                 if (call is null)

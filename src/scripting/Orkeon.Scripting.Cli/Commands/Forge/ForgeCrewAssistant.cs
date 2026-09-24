@@ -122,7 +122,6 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             {
                 PermissionGate = services.GetService<IPermissionGate>(),
                 DeltaSink = services.GetService<ILlmDeltaSink>(),
-                UsageSink = services.GetService<ILlmUsageSink>(),
             });
 
         // The pack ships pre-built JS: pass-through, no esbuild required for the interview

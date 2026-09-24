@@ -12,24 +12,37 @@ namespace Orkeon.Infrastructure.LLMs;
 /// Simplified factory for creating LLM providers.
 /// Pure factory pattern - no business logic.
 /// </summary>
+/// <remarks>
+/// The only place a vendor provider is built, and therefore the place it is metered: every
+/// provider comes out wrapped in <see cref="MeteredLlmProvider"/> when the host registered an
+/// <see cref="ILlmUsageSink"/> (STUDIO-42). A provider built anywhere else would spend tokens
+/// no meter sees — an architecture test holds that line.
+/// </remarks>
 public sealed class LlmProviderFactory : ILlmProviderFactory
 {
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly ILoggerFactory _loggerFactory;
+    private readonly ILlmUsageSink? _usageSink;
     private readonly OpenAIToolCallingStrategy _openAiStrategy;
     private readonly AnthropicToolCallingStrategy _anthropicStrategy;
 
     /// <summary>Initializes a new instance of <see cref="LlmProviderFactory"/>.</summary>
     /// <param name="httpClientFactory">The HTTP client factory.</param>
     /// <param name="loggerFactory">The logger factory.</param>
+    /// <param name="usageSink">
+    /// The host's usage receiver: every provider built is metered for it. Null — no host
+    /// listening — builds the providers bare.
+    /// </param>
     public LlmProviderFactory(
         IHttpClientFactory httpClientFactory,
-        ILoggerFactory loggerFactory)
+        ILoggerFactory loggerFactory,
+        ILlmUsageSink? usageSink = null)
     {
         ArgumentNullException.ThrowIfNull(httpClientFactory);
         _httpClientFactory = httpClientFactory;
         ArgumentNullException.ThrowIfNull(loggerFactory);
         _loggerFactory = loggerFactory;
+        _usageSink = usageSink;
 
         // Create tool calling strategies
         _openAiStrategy = new OpenAIToolCallingStrategy(
@@ -305,7 +318,10 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     }
 
     /// <summary>
-    /// Wraps a freshly built provider in an <see cref="LlmProviderAdapter"/>.
+    /// Meters a freshly built provider (<see cref="MeteredLlmProvider"/>) and wraps it in an
+    /// <see cref="LlmProviderAdapter"/>, whose <see cref="LlmProviderAdapter.UnderlyingProvider"/>
+    /// is then the metered one: every consumer that unwraps the adapter — the chat client, the
+    /// native tool-calling loop, the scripting facade — calls through the meter.
     /// </summary>
     /// <remarks>
     /// R10.2/ANT-006: the provider is a disposable, but ownership transfers to the returned
@@ -320,7 +336,7 @@ public sealed class LlmProviderFactory : ILlmProviderFactory
     private LlmProviderAdapter Adapt<TProvider>(Func<ILogger<TProvider>, ILlmProvider> build)
     {
         var provider = build(_loggerFactory.CreateLogger<TProvider>());
-        return new LlmProviderAdapter(provider);
+        return new LlmProviderAdapter(MeteredLlmProvider.Wrap(provider, _usageSink));
     }
 
     /// <summary>

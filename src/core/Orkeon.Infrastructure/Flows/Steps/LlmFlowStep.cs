@@ -3,6 +3,7 @@ using System.Text.RegularExpressions;
 using Orkeon.Domain.Flows;
 using Orkeon.Domain.Flows.ValueObjects;
 using Orkeon.Infrastructure.Flows.Base;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Flows.Steps;
 
@@ -113,6 +114,7 @@ public partial class LlmFlowStep : FlowStepBase<LlmFlowStepInput, LlmFlowStepOut
                 messages.Insert(0, new ChatMessage(ChatRole.System, systemPrompt));
             }
 
+            using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Flow);
             var response = await _chatClient.GetResponseAsync(messages, cancellationToken: cancellationToken).ConfigureAwait(false);
             var responseText = response?.Text ?? string.Empty;
 

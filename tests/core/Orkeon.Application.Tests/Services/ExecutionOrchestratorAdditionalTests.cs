@@ -759,24 +759,21 @@ public class ExecutionOrchestratorAdditionalTests
 
     #endregion
 
-    #region Usage Sink Tests (STUDIO-29)
-
-    private static Microsoft.Extensions.AI.ChatResponse AnswerWithUsage(string text) =>
-        new([new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.Assistant, text)])
-        {
-            Usage = new Microsoft.Extensions.AI.UsageDetails { InputTokenCount = 90, OutputTokenCount = 10, TotalTokenCount = 100 },
-        };
+    #region Usage Metering Tests (STUDIO-29, STUDIO-42)
 
     [Fact]
-    public async System.Threading.Tasks.Task Every_call_of_a_task_is_reported_for_the_crew_it_runs_in_the_correction_round_included()
+    public async System.Threading.Tasks.Task Every_call_of_a_task_is_metered_for_the_crew_it_runs_in_the_correction_round_included()
     {
-        // The execution context knows which crew the task runs for; the usage event used to
-        // leave it empty, so the wire's cost.updated could not say which run it was metering.
-        // The validation round goes through the same loop and carries it too.
+        // The execution context knows which crew the task runs for, and the task's scope says
+        // so: the usage event used to leave the crew empty, so the wire's cost.updated could
+        // not say which run it was metering. The validation round goes through the same
+        // provider and the same scope — metered once, for the same crew.
         var sink = new MockLlmUsageSink();
-        using var chatClient = new TestChatClient();
-        chatClient.EnqueueResponse(AnswerWithUsage("Invalid JSON output"));
-        chatClient.EnqueueResponse(AnswerWithUsage("{\"valid\": true}"));
+        var provider = new ScriptedFullLlmProvider();
+        provider.Enqueue(new LlmResponse { Content = "Invalid JSON output", PromptTokens = 90, CompletionTokens = 10, TokensUsed = 100 });
+        provider.Enqueue(new LlmResponse { Content = "{\"valid\": true}", PromptTokens = 90, CompletionTokens = 10, TokensUsed = 100 });
+        var metered = Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(provider, sink);
+        using var chatClient = new Orkeon.Infrastructure.LLMs.Adapters.LlmProviderToChatClientAdapter(metered);
         var validationPipeline = new TestOutputValidationPipeline();
         validationPipeline.EnqueueResult(false, "Invalid JSON format", "Wrap output in JSON braces");
         validationPipeline.EnqueueResult(true);
@@ -788,21 +785,24 @@ public class ExecutionOrchestratorAdditionalTests
                 OutputJson = Domain.Task.JsonSchema.From("{\"type\":\"object\"}")
             });
         var orchestrator = new ExecutionOrchestrator(
-            new TestLogger(), new TestLlmProvider(), new TestAgentPlanner(), chatClient,
+            new TestLogger(), new Orkeon.Infrastructure.LLMs.LlmProviderAdapter(metered), new TestAgentPlanner(), chatClient,
             Array.Empty<IBaseTool>(), validationPipeline, new TestOutputParserFactory(), new TestRateLimiter(),
             fullProvider: null, toolCallingStrategy: null, deliverableResolverFactory: null,
-            new FakeFileSystemService(), sink);
+            new FakeFileSystemService());
         var context = CreateTestContext();
 
         var result = await orchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), taskWithJson, context, TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
-        Assert.Equal(2, sink.Recorded.Count);
+        Assert.Equal(2, provider.ReceivedTurns.Count);
+        Assert.Equal(provider.ReceivedTurns.Count, sink.Recorded.Count);
         Assert.All(sink.Recorded, usage =>
         {
             Assert.Equal(context.CrewId.ToString(), usage.CrewId);
-            Assert.Equal("TestLLM", usage.Provider);
+            Assert.Equal("scripted-full", usage.Provider);
             Assert.Equal("Test Agent", usage.AgentId);
+            Assert.Equal(taskWithJson.Id.ToString(), usage.TaskId);
+            Assert.Equal(LlmUsageOperations.Agent, usage.OperationType);
         });
     }
 

@@ -10,6 +10,7 @@ using Orkeon.Infrastructure.Constants.Security;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Constants.Memory;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Memory.Cognitive;
 
@@ -65,6 +66,7 @@ public sealed partial class MemoryAnalyzer
                 MaxTokens = 500
             };
 
+            using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Memory);
             try
             {
                 var response = await _llmProvider.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);

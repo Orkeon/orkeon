@@ -1,13 +1,10 @@
 using System.Collections.Immutable;
 using System.Text.Json;
-using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Hosting;
-using Orkeon.Infrastructure.LLMs;
-using Orkeon.Infrastructure.LLMs.Adapters;
+using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Commands.Run;
 using Orkeon.Scripting.Cli.Events;
@@ -276,6 +273,25 @@ public sealed class RunEventsTests : IDisposable
         Assert.Equal("vendor", e.GetProperty("costSource").GetString());
     }
 
+    [Fact]
+    public void The_part_of_the_meter_the_runtime_estimated_is_marked_and_only_that_part()
+    {
+        // STUDIO-42 D-06: a provider that counted nothing is estimated, and the wire says how
+        // much of the total is the runtime's own reading — absent while every call was counted.
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        observer.Record(new CostUsageEvent { PromptTokens = 100, CompletionTokens = 20 });
+        observer.Record(new CostUsageEvent { PromptTokens = 30, CompletionTokens = 10, Estimated = true });
+        observer.Record(new CostUsageEvent { PromptTokens = 5, CompletionTokens = 5 });
+
+        var events = Events();
+        Assert.False(events[0].TryGetProperty("estimatedTokens", out _));
+        Assert.Equal(40, events[1].GetProperty("estimatedTokens").GetInt64());
+        Assert.Equal(40, events[2].GetProperty("estimatedTokens").GetInt64());
+        Assert.Equal(170, events[2].GetProperty("tokens").GetInt64());
+        Assert.Equal(40, observer.EstimatedTokens);
+    }
+
     /// <summary>Two tasks, one agent: two calls to the vendor, one per task.</summary>
     private const string TwoTaskCrew =
         """
@@ -310,7 +326,6 @@ public sealed class RunEventsTests : IDisposable
         using var scratch = new ScriptScratch();
         var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
         using var console = new TestConsole(stdin: string.Empty);
-        using var chatClient = new LlmProviderToChatClientAdapter(vendor);
         await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio");
 
         var exit = await RunnerExecution.RunOneShotAsync(
@@ -318,8 +333,9 @@ public sealed class RunEventsTests : IDisposable
             "orkeon",
             configureServices: (_, services) =>
             {
-                services.Replace(ServiceDescriptor.Singleton<IBasicLlmProvider>(new LlmProviderAdapter(vendor)));
-                services.Replace(ServiceDescriptor.Singleton<IChatClient>(chatClient));
+                // The vendor enters the host the way any provider the factory does not build
+                // does: metered, for the run's observer (STUDIO-42).
+                services.AddOrkeonLlmProvider(_ => vendor);
                 observed.WireServices(services);
             },
             TestContext.Current.CancellationToken);

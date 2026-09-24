@@ -108,6 +108,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             if (workerAgents.Count == 0)
                 throw new InvalidOperationException("No worker agents available for hierarchical execution");
 
+            // The manager hands out the work: its assignments and reviews are metered under its
+            // role (STUDIO-42). Each worker's execution opens its own scope and names itself.
+            using var managerUsageScope = LlmUsageScope.Begin(agentId: managerAgent.Role.Value);
+
             var variables = inputVariables != null
                 ? new Dictionary<string, string>(inputVariables)
                 : [];
@@ -119,7 +123,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
             // Token telemetry propagation (R10.8) — same metadata channel as Sequential.
             // Records every worker execution, including revision re-executions. The manager's
-            // own assign/review LLM usage is not surfaced by IManagerAgent and stays unmetered.
+            // own assign/review usage belongs to no task, so no task's figure carries it; the
+            // run's token meter counts it through the metered provider (STUDIO-42).
             var tokenTally = new TokenUsageTally();
 
             // The manager hands the tasks out one after another, so the order is the

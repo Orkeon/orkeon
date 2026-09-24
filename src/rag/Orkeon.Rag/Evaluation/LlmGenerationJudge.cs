@@ -5,6 +5,7 @@ using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Rag.Evaluation;
 
@@ -54,6 +55,7 @@ public sealed partial class LlmGenerationJudge : IGenerationJudge
         ArgumentNullException.ThrowIfNull(evalCase);
         ArgumentNullException.ThrowIfNull(answer);
 
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Judge);
         try
         {
             var messages = new List<ChatMessage>

@@ -3,3 +3,18 @@ Orkeon.Infrastructure.CostTracking.LlmVendorCost
 static Orkeon.Infrastructure.CostTracking.LlmVendorCost.TryRead(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, out decimal cost, out string? currency) -> bool
 virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.CostCurrency.get -> string?
 override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.CostCurrency.get -> string?
+*REMOVED*Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory) -> void
+Orkeon.Infrastructure.DependencyInjection.LlmProviderRegistrationExtensions
+Orkeon.Infrastructure.LLMs.LlmProviderFactory.LlmProviderFactory(System.Net.Http.IHttpClientFactory! httpClientFactory, Microsoft.Extensions.Logging.ILoggerFactory! loggerFactory, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink = null) -> void
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.BaseConfig.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig?
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Capabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.ChatAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.ChatStreamingAsync(Orkeon.Domain.SharedKernel.ValueObjects.LlmMessage![]! messages, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<Orkeon.Domain.SharedKernel.ValueObjects.LlmStreamEvent!>!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.GenerateAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse!>!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.GenerateStreamingAsync(string! prompt, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? config = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Collections.Generic.IAsyncEnumerable<string!>!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Name.get -> string!
+Orkeon.Infrastructure.LLMs.MeteredLlmProvider.SupportsStreaming.get -> bool
+static Orkeon.Infrastructure.DependencyInjection.LlmProviderRegistrationExtensions.AddOrkeonLlmProvider(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.SharedKernel.ILlmProvider!>! provider, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? baseConfig = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Unwrap(Orkeon.Domain.SharedKernel.ILlmProvider! provider) -> Orkeon.Domain.SharedKernel.ILlmProvider!
+static Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(Orkeon.Domain.SharedKernel.ILlmProvider! provider, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? sink) -> Orkeon.Domain.SharedKernel.ILlmProvider!

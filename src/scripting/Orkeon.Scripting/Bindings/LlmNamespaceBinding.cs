@@ -147,7 +147,9 @@ public sealed partial class JsLlmNamespace
         if (!string.IsNullOrWhiteSpace(configuredName))
             return BuildFromProviderName(configuredName);
 
-        if (_defaultProvider is not null && _defaultProvider is not UndefinedLlmProvider)
+        // The echo provider is recognised under the token meter the host wraps it in.
+        if (_defaultProvider is not null
+            && Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Unwrap(_defaultProvider) is not UndefinedLlmProvider)
         {
             LogResolvedDefaultFromDi(_defaultProvider.Name);
             return new JsLlmConfig(_defaultProvider.Name, LlmConfig.Default());

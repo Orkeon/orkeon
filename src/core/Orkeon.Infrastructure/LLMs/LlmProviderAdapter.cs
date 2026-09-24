@@ -20,7 +20,12 @@ public sealed class LlmProviderAdapter : IBasicLlmProvider
         _llmProvider = llmProvider;
     }
 
-    /// <summary>Gets the underlying <see cref="ILlmProvider"/> instance.</summary>
+    /// <summary>
+    /// Gets the underlying <see cref="ILlmProvider"/> instance — the one this adapter calls, so
+    /// metered (<see cref="MeteredLlmProvider"/>) whenever the factory built it for a host with
+    /// a usage sink. Code that must know the vendor type reads
+    /// <see cref="MeteredLlmProvider.Unwrap"/>; code that calls keeps this one.
+    /// </summary>
     public ILlmProvider UnderlyingProvider => _llmProvider;
 
     /// <inheritdoc />

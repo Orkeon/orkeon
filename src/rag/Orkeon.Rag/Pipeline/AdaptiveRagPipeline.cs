@@ -6,6 +6,7 @@ using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Rag.Pipeline;
 
@@ -81,6 +82,9 @@ public sealed partial class AdaptiveRagPipeline : IRagPipeline
     {
         ArgumentNullException.ThrowIfNull(query);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Text);
+
+        // The routing call and whatever the route leads to are RAG work (STUDIO-42).
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
 
         var watch = Stopwatch.StartNew();
         var route = await _classifier.ClassifyAsync(query.Text, cancellationToken).ConfigureAwait(false);

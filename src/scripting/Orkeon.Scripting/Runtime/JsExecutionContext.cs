@@ -50,7 +50,6 @@ public class JsExecutionContext
             {
                 DeltaSink = environment.DeltaSink,
                 Logger = environment.Logger,
-                UsageSink = environment.UsageSink,
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,
             });

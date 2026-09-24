@@ -88,9 +88,10 @@ internal sealed class LlmForgeJudge : IForgeJudge
     }
 
     /// <summary>
-    /// What one judging call cost, split by direction. The judge talks to the provider
-    /// directly — no usage sink sits between them — so it does its own reading, and falls
-    /// back to an estimate when the provider reports nothing rather than counting zero.
+    /// What one judging call cost, split by direction — the figure the diagnosis stage is
+    /// charged with. The metered provider reports the call to the host's tally too, but the
+    /// tally is read by the assistant's turns only, so the stage keeps its own reading, and
+    /// falls back to an estimate when the provider reports nothing rather than counting zero.
     /// </summary>
     private static ForgeUsageSnapshot Measure(LlmResponse response, IReadOnlyList<LlmMessage> prompt)
     {

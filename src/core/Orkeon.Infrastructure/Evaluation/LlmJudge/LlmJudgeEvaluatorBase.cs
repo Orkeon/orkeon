@@ -3,6 +3,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 using Orkeon.Application.Evaluation;
 using Orkeon.Domain.Common;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Evaluation.LlmJudge;
 
@@ -46,6 +47,7 @@ public abstract partial class LlmJudgeEvaluatorBase : IEvaluator
             new(ChatRole.User, prompt)
         };
 
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Judge);
         try
         {
             var response = await _chatClient.GetResponseAsync(messages, cancellationToken: ct).ConfigureAwait(false);

@@ -22,7 +22,6 @@ public sealed class JsEngineFactory
     private readonly Orkeon.Domain.SharedKernel.ILlmProvider? _llmProvider;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
-    private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Bindings.RagScriptingBackend? _ragBackend;
 
     /// <summary>
@@ -32,8 +31,12 @@ public sealed class JsEngineFactory
     /// <param name="loggerFactory">Source of the script-facing logger; null silences it.</param>
     /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
     /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
-    /// <param name="llmProvider">Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour.</param>
-    /// <param name="hostPorts">Permission gate and telemetry sinks the host wired, if any.</param>
+    /// <param name="llmProvider">
+    /// Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour. The host
+    /// hands it metered (the provider factory, <c>AddOrkeonLlmProvider</c>) when it listens to
+    /// usage: every <c>ctx.llm.*</c> call is counted there, never again by the engine.
+    /// </param>
+    /// <param name="hostPorts">Permission gate and delta sink the host wired, if any.</param>
     /// <param name="ragBackend">Pipelines + VFS backing the <c>rag</c> namespace; null makes its calls fail loudly.</param>
     public JsEngineFactory(
         IOptions<ScriptingLimitsOptions> limits,
@@ -52,7 +55,6 @@ public sealed class JsEngineFactory
         _llmProvider = llmProvider;
         _permissionGate = hostPorts?.PermissionGate;
         _deltaSink = hostPorts?.DeltaSink;
-        _usageSink = hostPorts?.UsageSink;
         _ragBackend = ragBackend;
     }
 
@@ -65,7 +67,7 @@ public sealed class JsEngineFactory
     /// <param name="configuration">Configuration the <c>llm</c> namespace reads its defaults from.</param>
     /// <param name="builtInTools">Built-in tools exposed to scripts through the <c>tools</c> namespace.</param>
     /// <param name="llmProvider">Provider backing <c>ctx.llm</c>; null keeps the undefined-LLM echo behaviour.</param>
-    /// <param name="hostPorts">Permission gate and telemetry sinks the host wired, if any.</param>
+    /// <param name="hostPorts">Permission gate and delta sink the host wired, if any.</param>
     /// <param name="ragBackend">Pipelines + VFS backing the <c>rag</c> namespace; null makes its calls fail loudly.</param>
     public JsEngineFactory(
         ScriptingLimitsOptions? limits = null,
@@ -131,7 +133,7 @@ public sealed class JsEngineFactory
         // Register globals exposed to every script. Bindings are added incrementally as
         // builders land (SCR-03..SCR-06).
         AgentBuilderBinding.Register(engine);
-        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink, _usageSink);
+        CrewBuilderBinding.Register(engine, _scriptLogger, _llmProvider, _builtInTools, _permissionGate, _deltaSink);
         TaskBuilderBinding.Register(engine);
         ToolBuilderBinding.Register(engine);
         LlmNamespaceBinding.Register(engine, _configuration, _scriptLogger, _llmProvider);

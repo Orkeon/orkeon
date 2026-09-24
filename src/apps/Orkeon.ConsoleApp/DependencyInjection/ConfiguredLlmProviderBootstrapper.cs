@@ -90,8 +90,9 @@ internal static class ConfiguredLlmProviderBootstrapper
                     $"an ILlmProvider nor a LlmProviderAdapter; cannot expose it to the crew runtime."),
             };
             // Retry visibility: hand the host's observer (status line / ps) to the provider so
-            // reconnection backoffs are shown instead of stalling the turn in silence.
-            if (provider is Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase httpProvider)
+            // reconnection backoffs are shown instead of stalling the turn in silence. The
+            // vendor sits under the token meter; the metered provider is what gets exposed.
+            if (MeteredLlmProvider.Unwrap(provider) is Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase httpProvider)
                 httpProvider.RetryObserver = sp.GetService<ILlmRetryObserver>();
             return provider;
         });

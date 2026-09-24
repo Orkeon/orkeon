@@ -11,6 +11,9 @@ public record CostUsageEvent
     /// <summary>Agent identifier.</summary>
     public string AgentId { get; init; } = string.Empty;
 
+    /// <summary>The task the call served (<see cref="LlmUsageAttribution.TaskId"/>); empty when none.</summary>
+    public string TaskId { get; init; } = string.Empty;
+
     /// <summary>Model used (e.g., "gpt-4o").</summary>
     public string Model { get; init; } = string.Empty;
 
@@ -57,7 +60,10 @@ public record CostUsageEvent
     /// </summary>
     public string? CostCurrency { get; init; }
 
-    /// <summary>Type of operation (e.g., "llm_call", "embedding").</summary>
+    /// <summary>
+    /// Type of operation. Generation calls carry the kind of work they were attributed to
+    /// (<see cref="LlmUsageOperations"/>); "llm_call" is the default of an event built by hand.
+    /// </summary>
     public string OperationType { get; init; } = "llm_call";
 
     /// <summary>Timestamp of the event.</summary>

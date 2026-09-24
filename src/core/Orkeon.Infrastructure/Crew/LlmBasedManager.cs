@@ -79,6 +79,10 @@ public partial class LlmBasedManager : IManagerAgent
 
         var prompt = BuildAssignmentPrompt(task, availableAgents, context);
 
+        // Manager work on this task, in this crew: the metered provider tags the call so.
+        using var usageScope = LlmUsageScope.Begin(
+            LlmUsageOperations.Manager, crewId: context?.CrewId.ToString(), taskId: task.Id.ToString());
+
         try
         {
             var response = await SendPromptAsync(prompt, context?.CancellationToken ?? CancellationToken.None).ConfigureAwait(false);
@@ -123,6 +127,9 @@ public partial class LlmBasedManager : IManagerAgent
             LogManagerReviewingOutputForTask(originalTask.Id);
 
             var prompt = BuildReviewPrompt(output, originalTask);
+
+            // The crew comes from the enclosing scope: a review knows only its task.
+            using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Manager, taskId: originalTask.Id.ToString());
 
             try
             {

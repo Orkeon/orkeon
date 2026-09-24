@@ -200,6 +200,11 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
         CrewInput input,
         CancellationToken cancellationToken)
     {
+        // Every LLM call of the run is metered for this crew, whichever part of the run makes
+        // it — the planner, the manager, an agent, a tool (STUDIO-42). The narrower scopes
+        // opened below say what the work was; this one says whose run it is.
+        using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(crewId: crew.Id.ToString());
+
         try
         {
             // Planning (moved from Crew.KickoffAsync)
@@ -235,6 +240,8 @@ public partial class SequentialCrewOrchestrator : ICrewOrchestrationService
 
         var planner = CrewPlanner.Create(crew.PlanningLlm, _executionPlanParser);
         var planningContext = new PlanningContext(crew.Id, crew.Goal, crew.Agents);
+        using var usageScope = Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(
+            Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, crewId: crew.Id.ToString());
         return await planner.CreatePlanAsync(planningContext, crew.Tasks, domainInput).ConfigureAwait(false);
     }
 

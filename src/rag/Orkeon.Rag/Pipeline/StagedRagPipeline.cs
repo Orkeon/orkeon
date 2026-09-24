@@ -133,6 +133,10 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         RagQuery query,
         CancellationToken cancellationToken = default)
     {
+        // Every LLM call below — rewrite, rerank, answer, check — is RAG work, metered for
+        // whoever queried: the agent whose tool asked stays the one charged (STUDIO-42).
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
+
         var retrieval = await RetrieveCoreAsync(query, cancellationToken).ConfigureAwait(false);
         if (retrieval.Empty is { } noContext)
             return noContext;
@@ -164,6 +168,8 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
         RagQuery query,
         CancellationToken cancellationToken = default)
     {
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
+
         var retrieval = await RetrieveCoreAsync(query, cancellationToken).ConfigureAwait(false);
         if (retrieval.Empty is { } noContext)
         {

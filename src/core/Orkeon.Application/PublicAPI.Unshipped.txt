@@ -5,3 +5,36 @@ Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostCurrency.get -> string?
 Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostCurrency.init -> void
 const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.Cost = "cost" -> string!
 const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.CostCurrency = "cost_currency" -> string!
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.<Clone>$() -> Orkeon.Application.Interfaces.Ports.LlmUsageAttribution!
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.AgentId.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.AgentId.init -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.CrewId.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.CrewId.init -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.Equals(Orkeon.Application.Interfaces.Ports.LlmUsageAttribution? other) -> bool
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.LlmUsageAttribution() -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.Operation.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.Operation.init -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.TaskId.get -> string!
+Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.TaskId.init -> void
+Orkeon.Application.Interfaces.Ports.LlmUsageOperations
+Orkeon.Application.Interfaces.Ports.LlmUsageScope
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Agent = "agent" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Flow = "flow" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Judge = "judge" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Manager = "manager" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Memory = "memory" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning = "planning" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Rag = "rag" -> string!
+const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Unattributed = "unattributed" -> string!
+override Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.ToString() -> string!
+static Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.Unattributed.get -> Orkeon.Application.Interfaces.Ports.LlmUsageAttribution!
+static Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.operator !=(Orkeon.Application.Interfaces.Ports.LlmUsageAttribution? left, Orkeon.Application.Interfaces.Ports.LlmUsageAttribution? right) -> bool
+static Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.operator ==(Orkeon.Application.Interfaces.Ports.LlmUsageAttribution? left, Orkeon.Application.Interfaces.Ports.LlmUsageAttribution? right) -> bool
+static Orkeon.Application.Interfaces.Ports.LlmUsageScope.Begin(string? operation = null, string? crewId = null, string? agentId = null, string? taskId = null) -> System.IDisposable!
+static Orkeon.Application.Interfaces.Ports.LlmUsageScope.Current.get -> Orkeon.Application.Interfaces.Ports.LlmUsageAttribution!
+*REMOVED*Orkeon.Application.Crew.ExecutionOrchestrator.ExecutionOrchestrator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.ExecutionOrchestrator!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider, Orkeon.Domain.Crew.Planning.IAgentPlanner! planner, Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! registeredTools, Orkeon.Application.Interfaces.Ports.IOutputValidationPipeline! validationPipeline, Orkeon.Application.Interfaces.Ports.IOutputParserFactory! parserFactory, Orkeon.Application.Interfaces.Security.ILlmRateLimiter! rateLimiter, Orkeon.Domain.SharedKernel.ILlmProvider? fullProvider, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Orkeon.Application.Crew.DeliverableResolvers.IDeliverableResolverFactory? deliverableResolverFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink) -> void
