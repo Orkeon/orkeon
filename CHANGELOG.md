@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — the 105 use cases state the user's problem in five languages (STUDIO-37, draft)
+
+- Every `usecase.yaml` now carries a title and a one-line problem in fr, en, es, de and
+  zh-Hans, plus two to four search tags.
+  - Each problem answers the team wizard's question in the voice of Studio's four example
+    chips.
+  - Each follows what the crew's config really does, not what its README claims.
+- `lint-example-configs.py` now requires the five languages on every sheet.
+- The texts are a reviewed first draft: a fluent human review per language is still due.
+
 ### Added — every numbered example carries a use-case sheet, gathered in `examples/usecases.json` (STUDIO-36)
 
 - Each of the 105 numbered examples has a `usecase.yaml` beside its crew. It holds the
