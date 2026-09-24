@@ -1,4 +1,5 @@
 using Orkeon.Constants.FileSystem;
+using Orkeon.Domain.FileSystem;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
@@ -593,9 +594,10 @@ public static partial class TeamCatalog
             var name = isDirectory
                 ? Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath))
                 : Path.GetFileNameWithoutExtension(sourcePath);
-            var destination = Path.Combine(root, Slugify(name));
+            var slug = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
+            var destination = Path.Combine(root, slug);
             for (var i = 2; Directory.Exists(destination); i++)
-                destination = Path.Combine(root, $"{Slugify(name)}-{i}");
+                destination = Path.Combine(root, $"{slug}-{i}");
 
             if (isDirectory)
             {
@@ -699,53 +701,14 @@ public static partial class TeamCatalog
         """(?i)(api[_-]?key|secret|token)["']?\s*[:=]\s*["']?(?<value>[^"'\s]{8,})["']?""")]
     private static partial System.Text.RegularExpressions.Regex SecretPattern();
 
-    /// <summary>The slug a team name becomes on disk: lowercase ASCII, dashes between words.</summary>
-    public static string Slugify(string name)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-
-        var normalized = name.Normalize(System.Text.NormalizationForm.FormD);
-        var builder = new System.Text.StringBuilder(normalized.Length);
-        var lastWasDash = true;
-        foreach (var ch in normalized)
-        {
-            var category = System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch);
-            if (category == System.Globalization.UnicodeCategory.NonSpacingMark)
-                continue;
-
-            if (char.IsAsciiLetterOrDigit(ch))
-            {
-                builder.Append(char.ToLowerInvariant(ch));
-                lastWasDash = false;
-            }
-            else if (!lastWasDash)
-            {
-                builder.Append('-');
-                lastWasDash = true;
-            }
-        }
-
-        var slug = builder.ToString().Trim('-');
-
-        // Hard cap (64): a slug is a folder name, and Windows' MAX_PATH is a shared
-        // budget — a goal-length sentence must never become a 200-character directory.
-        // Cut at the last dash inside the window when one is reasonably close.
-        if (slug.Length > MaxSlugLength)
-        {
-            var cut = slug.LastIndexOf('-', MaxSlugLength);
-            slug = slug[..(cut >= MaxSlugLength / 2 ? cut : MaxSlugLength)].Trim('-');
-        }
-
-        return slug.Length > 0 ? slug : "equipe";
-    }
-
-    /// <summary>Longest slug <see cref="Slugify"/> produces.</summary>
-    public const int MaxSlugLength = 64;
-
     #region STUDIO-16 — display normalisation
 
-    /// <summary>Longest display name <see cref="NormalizeName"/> produces — the slug's own cap.</summary>
-    public const int MaxNameLength = MaxSlugLength;
+    /// <summary>
+    /// Longest display name <see cref="NormalizeName"/> produces — the folder slug's own cap
+    /// (<see cref="FolderSlug.MaxLength"/>), so the folder of a name typed up to the cap is
+    /// never cut.
+    /// </summary>
+    public const int MaxNameLength = FolderSlug.MaxLength;
 
     /// <summary>Longest summary <see cref="Summarize"/> produces, ellipsis included.</summary>
     public const int MaxSummaryLength = 240;
@@ -754,16 +717,17 @@ public static partial class TeamCatalog
     /// The one-line display name a free text becomes (STUDIO-16, D-04): its first line that
     /// says something, Markdown markup stripped, cut at a word boundary to
     /// <see cref="MaxNameLength"/> — the slug's cap — and never empty: a text that strips to
-    /// nothing falls back on its slug. Applied at write (adoption, import) and at display
-    /// (cards, headline, history) alike, because a WPF TextBlock renders line breaks even
-    /// without wrapping and has no MaxLines — a pasted page used to become a forty-line title.
+    /// nothing falls back on its slug, and on the team fallback when even that is empty.
+    /// Applied at write (adoption, import) and at display (cards, headline, history) alike,
+    /// because a WPF TextBlock renders line breaks even without wrapping and has no MaxLines —
+    /// a pasted page used to become a forty-line title.
     /// </summary>
     public static string NormalizeName(string name)
     {
         if (TryNormalizeName(name, out var normalized))
             return normalized;
 
-        return Slugify(string.IsNullOrWhiteSpace(name) ? "equipe" : name);
+        return FolderSlug.From(name) ?? FolderSlug.TeamFallback;
     }
 
     /// <summary>

@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
@@ -2543,7 +2544,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         // In reopened mode the destination is PINNED to the original team folder (W-09):
         // re-adoption updates, never duplicates — renaming only changes the display name.
         var destination = _reopenedTeamPath
-            ?? System.IO.Path.Combine(_teamsRoot, TeamCatalog.Slugify(_teamName));
+            ?? System.IO.Path.Combine(_teamsRoot, FolderSlug.From(_teamName) ?? FolderSlug.TeamFallback);
         var schedule = _scheduleChoice switch
         {
             1 => $"daily@{_scheduleTime.Trim()}",

@@ -513,7 +513,12 @@ ou non inscriptible retombe sur les valeurs par défaut, jamais sur un plantage.
 **`%USERPROFILE%\Orkeon\teams\<slug>\`** — les documents : les équipes adoptées.
 Chacune est un dossier ordinaire et autonome (définition de la crew, `run.cmd`/`run.sh`,
 le sidecar `studio-team.json` avec nom, besoin, réglage, programmation et dossiers) —
-copiable, partageable, supprimable, exécutable avec `orkeon run <dossier>` seul.
+copiable, partageable, supprimable, exécutable avec `orkeon run <dossier>` seul. Le
+`<slug>` est le nom de l'équipe passé par la règle de nommage de dossier dont le moteur
+nomme aussi ses sessions — une seule implémentation, `FolderSlug` dans
+`Orkeon.Domain.FileSystem` : minuscules ASCII, accents retirés, un tiret entre les mots,
+coupé au mot sous 64 caractères ; un nom qui ne garde aucune lettre ni aucun chiffre
+ASCII (écrit en chinois, par exemple) donne `equipe`.
 L'adoption *déplace* le résultat d'une session de la racine d'état vers la racine des
 documents ; c'est la frontière entre un brouillon et un livrable. Dans le sidecar,
 `name` est normalisé à l'écriture (une ligne, balisage Markdown retiré, coupé au mot

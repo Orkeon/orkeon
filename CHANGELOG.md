@@ -45,6 +45,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Every verdict is sourced from vendor documentation read on 2026-09-24 (provider
   comparison, "Account balance"). The three readers still await a check with a real key.
 
+### Changed — one folder-name rule for the CLI and Studio (STUDIO-24)
+
+- **A name gives one folder, whichever side computes it.** The CLI named a forge session
+  with its own slugifier (40 characters cut mid-word, `forge-<timestamp>` when nothing
+  usable remained) and Studio named a team folder with another (64 characters cut at a
+  word, `equipe`, an exception on a blank name). Both now go through `FolderSlug`, public in
+  `Orkeon.Domain.FileSystem`: lowercase ASCII, accents dropped, one dash between words, 64
+  characters cut at a word — and `null` when no ASCII letter or digit remains, each caller
+  keeping its own fallback (`FolderSlug.TeamFallback`, `equipe`, for a team folder or an
+  agent key; the timestamp for a session). A session named from a long need now keeps up
+  to 64 characters cut at a word instead of 40 cut mid-word.
+- `TeamCatalog.Slugify` and `TeamCatalog.MaxSlugLength` are removed, without a shim;
+  `TeamCatalog.MaxNameLength` is `FolderSlug.MaxLength`. A new agent whose name holds only
+  spaces previews the key `agent`, as an empty name did, instead of throwing from the slug
+  rule.
+- `FolderSlugDriftTests` fails when a slug implementation reappears in the CLI or Studio
+  sources, and one corpus of names (`FolderSlugCorpus`) is checked by the Domain, CLI and
+  Studio suites alike.
+
 ### Fixed — `Orkeon.Compliance.Vfs` is compiled against Roslyn 4.8.0 again
 
 - The 2026-09-21 dependency bump raised the analyzer's `Microsoft.CodeAnalysis.CSharp`
@@ -1225,7 +1244,6 @@ The public API surface is frozen at this tag: the 328 additions and 203 removals
 accumulated since rc.2 move from `PublicAPI.Unshipped.txt` to `PublicAPI.Shipped.txt`
 across the twelve projects that carried them, and the seven `ORKVFS` analyzer rules ship
 with them.
-
 
 ### Changed — the scripting DSL stops dropping half of what a script declares in silence
 

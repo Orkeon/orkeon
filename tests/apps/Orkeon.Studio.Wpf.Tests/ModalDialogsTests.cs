@@ -1,4 +1,5 @@
 using System.Text.Json;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -143,6 +144,46 @@ public sealed class ModalDialogsTests
         Assert.Equal(3, agents.GetArrayLength());
         Assert.Equal("verificateur-web", agents[2].GetProperty("key").GetString());
         Assert.Equal("Vérificateur Web", agents[2].GetProperty("role").GetString());
+    }
+
+    /// <summary>
+    /// A new agent's key is its name through the shared folder slug rule (STUDIO-24): the key
+    /// a short name always had, a numeric suffix on a clash, and the team fallback for a name
+    /// that keeps no ASCII letter or digit.
+    /// </summary>
+    [Theory]
+    [InlineData("Analyste données & graphiques", "analyste-donnees-graphiques")]
+    [InlineData("Rédacteur", "redacteur-2")]
+    [InlineData("???", FolderSlug.TeamFallback)]
+    [InlineData("每日监控", FolderSlug.TeamFallback)]
+    public void A_new_agent_key_is_its_name_through_the_shared_slug_rule(string name, string key)
+    {
+        var editor = new AgentEditorViewModel();
+        string? sent = null;
+        editor.Open(Blueprint, agentKey: null, [], json => sent = json);
+
+        editor.Name = name;
+        editor.SaveCommand.Execute(null);
+
+        using var document = JsonDocument.Parse(sent!);
+        Assert.Equal(key, document.RootElement.GetProperty("agents")[2].GetProperty("key").GetString());
+    }
+
+    /// <summary>
+    /// The expert key line previews the key while the name is still blank — spaces included,
+    /// which used to throw from the slug rule instead.
+    /// </summary>
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void A_new_agent_without_a_name_yet_previews_the_agent_key(string name)
+    {
+        var editor = new AgentEditorViewModel();
+        editor.Open(Blueprint, agentKey: null, [], _ => { });
+
+        editor.Name = name;
+
+        Assert.StartsWith("id: agent ·", editor.KeyLine, StringComparison.Ordinal);
     }
 
     [Fact]

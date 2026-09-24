@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Process;
@@ -9,6 +10,7 @@ using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 using Orkeon.Studio.Core.Localization;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -665,7 +667,8 @@ public class CreateTeamWizardTests
 
             vm.TeamName = PastedPage;
             Assert.True(vm.CanSaveTeam);
-            var promoted = Path.Combine(root, TeamCatalog.Slugify(vm.TeamName));
+            // The folder is the slug of the normalized name, not of the page: under the cap, uncut.
+            var promoted = Path.Combine(root, "extraire-les-factures-fournisseurs-deposees-en-docs-classees");
 
             processes.OutputToEmit.Clear();
             processes.OutputToEmit.AddRange(
@@ -675,6 +678,8 @@ public class CreateTeamWizardTests
             ]);
             await vm.SaveTeamCommand.ExecuteAsync();
 
+            var promote = processes.LastRequest!.Arguments.ToList();
+            Assert.Equal(promoted, promote[promote.IndexOf("--to") + 1]);
             var summary = TeamCatalog.Describe(promoted);
             Assert.Equal("Extraire les factures fournisseurs déposées en docs/, classées", summary.Name);
             Assert.True(summary.Name.Length <= TeamCatalog.MaxNameLength);
@@ -687,6 +692,48 @@ public class CreateTeamWizardTests
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// Studio's half of the shared corpus (STUDIO-24): the folder adoption asks the engine to
+    /// promote into is the folder the CLI gives a session of the same name.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(FolderSlugCorpus.Entries), MemberType = typeof(FolderSlugCorpus))]
+    public async Task Adoption_promotes_into_the_folder_the_cli_gives_the_same_name(string name, string folder)
+    {
+        Assert.Equal(Path.Combine("/teams", folder), await AdoptionDestinationFor(name));
+    }
+
+    /// <summary>
+    /// A name that keeps no ASCII letter or digit — zh-Hans is one of Studio's five
+    /// languages — adopts into the team fallback, never into an empty folder name.
+    /// </summary>
+    [Fact]
+    public async Task A_name_in_a_non_latin_script_adopts_into_the_team_fallback_folder()
+    {
+        Assert.Equal(Path.Combine("/teams", FolderSlug.TeamFallback), await AdoptionDestinationFor("每日监控"));
+    }
+
+    /// <summary>The <c>--to</c> folder of the promote that adopts a ready session under <paramref name="name"/>.</summary>
+    private static async Task<string> AdoptionDestinationFor(string name)
+    {
+        var (vm, processes, _) = Build(teamsRoot: "/teams");
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+
+        vm.TeamName = name;
+        Assert.True(vm.CanSaveTeam);
+        processes.OutputToEmit.Clear();
+        await vm.SaveTeamCommand.ExecuteAsync();
+
+        var promote = processes.LastRequest!.Arguments.ToList();
+        return promote[promote.IndexOf("--to") + 1];
     }
 
     [Fact]
