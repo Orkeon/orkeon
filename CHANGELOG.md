@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio can read what is left on a provider account (STUDIO-33)
+
+- `IProviderBalanceProbe` / `HttpProviderBalanceProbe` (Studio.Core) return a typed result
+  for every provider, never an exception and never a silence:
+  - DeepSeek, Kimi (USD on the `.ai` host, CNY on the `.cn` one) and OpenRouter (what the key
+    may still spend under its limit) are read with the profile's own key and host;
+  - x.AI and Qwen keep the balance behind an administrative credential;
+  - the other cloud providers expose none — their admin APIs report spend, not what is left;
+  - local endpoints have no account.
+- No detail quotes the provider's answer or the key, and the probe never runs by itself:
+  its caller decides when a read is worth a request.
+- `LlmPresetInfo.KeyConsoleUri` and `LlmPresets.KeyConsoleFor` give the https link of the
+  vendor console, from the existing `KeyConsoleUrl` text.
+- Every verdict is sourced from vendor documentation read on 2026-09-24 (provider
+  comparison, "Account balance"). The three readers still await a check with a real key.
+
 ### Fixed — `Orkeon.Compliance.Vfs` is compiled against Roslyn 4.8.0 again
 
 - The 2026-09-21 dependency bump raised the analyzer's `Microsoft.CodeAnalysis.CSharp`
