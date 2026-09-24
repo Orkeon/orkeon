@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a stable session id and one rule link a team to its forge session (STUDIO-25)
+
+- **A team's link to its session no longer rests on an absolute path.**
+  - A forge session gets an id (GUID) at creation. It is written to `session.json`, announced on
+    `session.started`, and copied by `forge promote` into the team's `forge.json`.
+  - A rebuilt session gets a new id.
+- **Rule R decides the link.** It is written once, in `Orkeon.Domain.FileSystem.TeamSessionLink`.
+  Take the session that carries the folder's id:
+  - it is linked when its `promotedTo` designates the folder;
+  - it is also linked when that folder is gone or no longer carries the id: the team was moved or
+    renamed;
+  - when `promotedTo` designates another existing folder carrying the same id, the folder is a copy
+    and is linked to nothing;
+  - no id, or an id no session carries, links nothing (no shim).
+- **`forge reopen` applies rule R.**
+  - A moved team resumes its session: `promotedTo` is re-pointed, and there is no more `-2`
+    duplicate.
+  - A copy, or a folder without a known id, gets a rebuilt session whose id is written into its
+    `forge.json`. A copy thus becomes independent, and its session is named after its own folder.
+- **`forge promote --to`** updates the linked folder in place, a moved one included, and refuses a
+  copy with the reason.
+- **Studio « Modifier » always runs `forge reopen`.** A duplicated team can no longer open its
+  original's session.
+  - Removed, without a shim: `TeamsViewModel.FindSessionFor`,
+    `ForgeSessionCatalog.FindByPromotedTo`, `ForgeSession.FindPromotedTo` and `IsSameDirectory`.
+  - New: `ForgeSessionCatalog.FindById` / `ReadTeamSessionId`, `TeamSummary.ForgeSessionId`,
+    `ForgeSessionModel.SessionId`.
+
 ### Added — the 105 use cases state the user's problem in five languages (STUDIO-37, draft)
 
 - Every `usecase.yaml` now carries a title and a one-line problem in fr, en, es, de and
