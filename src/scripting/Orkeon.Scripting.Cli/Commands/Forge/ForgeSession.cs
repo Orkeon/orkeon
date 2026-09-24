@@ -1,4 +1,5 @@
 using Orkeon.Constants.FileSystem;
+using Orkeon.Domain.FileSystem;
 using System.Globalization;
 using System.Text;
 using System.Text.Json;
@@ -199,7 +200,9 @@ internal sealed class ForgeSession
     {
         var root = RootFor(workspaceDirectory);
         var stamp = (now ?? DateTimeOffset.UtcNow).UtcDateTime;
-        var baseSlug = Slugify(requestedSlug) ?? stamp.ToString("'forge-'yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
+        // The folder rule Studio's teams follow too, with the session's own fallback: a need
+        // that keeps no usable character names its session after the instant it was opened.
+        var baseSlug = FolderSlug.From(requestedSlug) ?? stamp.ToString("'forge-'yyyyMMdd-HHmmss", CultureInfo.InvariantCulture);
 
         var slug = baseSlug;
         var suffix = 2;
@@ -538,43 +541,4 @@ internal sealed class ForgeSession
 
     private static string FormatInstant(DateTime utc) =>
         utc.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture);
-
-    /// <summary>Kebab-cases a requested slug; null when nothing usable remains.</summary>
-    private static string? Slugify(string? requested)
-    {
-        if (string.IsNullOrWhiteSpace(requested))
-            return null;
-
-        var builder = new StringBuilder(requested.Length);
-        var previousDash = false;
-
-        // FormD then dropping the combining marks strips accents, so an accented title collapses to
-        // plain ASCII: the slug is a directory name, and the product's first audience writes French.
-#pragma warning disable CA1308 // lowercase is the slug's stored form (a directory name), not a comparison normalization
-        var normalized = new string(
-            [.. requested.Trim().Normalize(NormalizationForm.FormD)
-                .Where(ch => System.Globalization.CharUnicodeInfo.GetUnicodeCategory(ch)
-                    != System.Globalization.UnicodeCategory.NonSpacingMark)])
-            .ToLowerInvariant();
-#pragma warning restore CA1308
-        foreach (var ch in normalized)
-        {
-            if (char.IsAsciiLetterOrDigit(ch))
-            {
-                builder.Append(ch);
-                previousDash = false;
-            }
-            else if (!previousDash && builder.Length > 0)
-            {
-                builder.Append('-');
-                previousDash = true;
-            }
-
-            if (builder.Length >= 40)
-                break;
-        }
-
-        var slug = builder.ToString().TrimEnd('-');
-        return slug.Length == 0 ? null : slug;
-    }
 }

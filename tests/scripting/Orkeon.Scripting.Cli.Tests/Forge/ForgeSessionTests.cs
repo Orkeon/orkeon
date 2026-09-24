@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -71,6 +72,7 @@ public sealed class ForgeSessionTests : IDisposable
     [InlineData("Résumer les offres, chaque matin !", "resumer-les-offres-chaque-matin")]
     [InlineData("  UPPER case  ", "upper-case")]
     [InlineData("///", null)]
+    [InlineData("每日监控", null)]
     public void Requested_slugs_are_kebab_cased_or_fall_back_to_a_stamp(string requested, string? expected)
     {
         var session = ForgeSession.Create(_workspace, requested, now: FixedNow);
@@ -79,6 +81,36 @@ public sealed class ForgeSessionTests : IDisposable
             Assert.Equal("forge-20260819-120000", session.Document.Slug);
         else
             Assert.Equal(expected, session.Document.Slug);
+    }
+
+    /// <summary>
+    /// A session named from the need takes the team rule (STUDIO-24): up to 64 characters,
+    /// cut before the word that would cross the cap — no longer a hard cut at 40, wherever
+    /// it fell.
+    /// </summary>
+    [Fact]
+    public void A_long_need_names_its_session_up_to_the_cap_cut_at_a_word()
+    {
+        var session = ForgeSession.Create(
+            _workspace,
+            "Résumer chaque matin les offres d'emploi publiées sur les sites des cabinets de recrutement",
+            now: FixedNow);
+
+        Assert.Equal("resumer-chaque-matin-les-offres-d-emploi-publiees-sur-les-sites", session.Document.Slug);
+    }
+
+    /// <summary>
+    /// The CLI's half of the shared corpus: the folder a name gives a session is the folder
+    /// the same name gives a team adopted in Studio.
+    /// </summary>
+    [Theory]
+    [MemberData(nameof(FolderSlugCorpus.Entries), MemberType = typeof(FolderSlugCorpus))]
+    public void A_session_takes_the_folder_studio_gives_a_team_of_the_same_name(string name, string folder)
+    {
+        var session = ForgeSession.Create(_workspace, name, now: FixedNow);
+
+        Assert.Equal(folder, session.Document.Slug);
+        Assert.Equal(Path.Combine(ForgeSession.RootFor(_workspace), folder), session.Directory);
     }
 
     [Fact]

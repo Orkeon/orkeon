@@ -475,7 +475,11 @@ crash.
 **`%USERPROFILE%\Orkeon\teams\<slug>\`** — documents: the adopted teams. Each is an
 ordinary, self-contained folder (crew definition, `run.cmd`/`run.sh`, the
 `studio-team.json` sidecar with name, need, profile, schedule and mounts) — copiable,
-shareable, deletable, runnable with `orkeon run <folder>` alone. Adoption *moves* a
+shareable, deletable, runnable with `orkeon run <folder>` alone. The `<slug>` is the
+team's name through the folder-name rule the engine also names its sessions with — one
+implementation, `FolderSlug` in `Orkeon.Domain.FileSystem`: lowercase ASCII, accents
+dropped, one dash between words, cut at a word under 64 characters; a name that keeps
+no ASCII letter or digit (one written in Chinese, say) gives `equipe`. Adoption *moves* a
 session's result from the state root to the documents root; that is the boundary
 between a draft and a deliverable. In the sidecar, `name` is normalized at write
 (one line, Markdown stripped, cut at a word under 64 characters — the slug's cap;

@@ -1,3 +1,4 @@
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Tests.Teams;
@@ -30,12 +31,26 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.False(summary.HasMetadata);
     }
 
-    [Fact]
-    public void Slugify_speaks_lowercase_ascii_with_dashes()
+    /// <summary>
+    /// The folder is the file's name through the shared slug rule (STUDIO-24), and a name
+    /// that keeps no ASCII letter or digit — zh-Hans is one of Studio's five languages —
+    /// lands in the team fallback rather than nowhere.
+    /// </summary>
+    [Theory]
+    [InlineData("Ma veille quotidienne.yaml", "ma-veille-quotidienne")]
+    [InlineData("Équipe d'été.yaml", "equipe-d-ete")]
+    [InlineData("每日监控.yaml", FolderSlug.TeamFallback)]
+    public void Importing_a_file_names_its_team_folder_with_the_shared_slug_rule(string fileName, string folder)
     {
-        Assert.Equal("ma-veille-quotidienne", TeamCatalog.Slugify("Ma veille quotidienne"));
-        Assert.Equal("equipe", TeamCatalog.Slugify("Équipe"));
-        Assert.Equal("equipe", TeamCatalog.Slugify("???"));
+        var source = Path.Combine(_root, "incoming", fileName);
+        Directory.CreateDirectory(Path.GetDirectoryName(source)!);
+        File.WriteAllText(source, "name: veille");
+        var teams = Path.Combine(_root, "teams");
+
+        var destination = TeamCatalog.Import(source, teams, out var refusal);
+
+        Assert.Null(refusal);
+        Assert.Equal(Path.Combine(teams, folder), destination);
     }
 
     [Fact]
@@ -419,29 +434,5 @@ public sealed class EnsureDirectoryTests
             if (Directory.Exists(path))
                 Directory.Delete(path);
         }
-    }
-}
-
-/// <summary>A slug is a folder name: goal-length sentences must not become 200-char directories.</summary>
-public sealed class SlugLengthTests
-{
-    [Fact]
-    public void A_goal_length_sentence_is_capped_at_a_word_boundary()
-    {
-        var goal = "Résumer en une seule exécution les nouveautés d'un site web dont les "
-            + "fichiers sont sauvegardés dans le sous-dossier new de c:\\documents sur le PC "
-            + "de l'utilisateur et produire un document de synthèse clair et lisible";
-
-        var slug = TeamCatalog.Slugify(goal);
-
-        Assert.True(slug.Length <= TeamCatalog.MaxSlugLength, $"slug too long: {slug.Length}");
-        Assert.False(slug.EndsWith('-'));
-        Assert.StartsWith("resumer-en-une-seule-execution", slug, StringComparison.Ordinal);
-    }
-
-    [Fact]
-    public void A_short_name_is_untouched()
-    {
-        Assert.Equal("veille-matinale", TeamCatalog.Slugify("Veille matinale"));
     }
 }

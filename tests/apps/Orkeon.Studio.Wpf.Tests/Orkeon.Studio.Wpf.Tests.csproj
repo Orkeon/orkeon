@@ -28,6 +28,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\..\src\apps\Orkeon.Studio.Core\Orkeon.Studio.Core.csproj" />
+    <!-- The folder-name corpus the CLI suite checks too (STUDIO-24): adoption must land a name
+         in the folder the CLI would compute for it. -->
+    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
 
   <ItemGroup>

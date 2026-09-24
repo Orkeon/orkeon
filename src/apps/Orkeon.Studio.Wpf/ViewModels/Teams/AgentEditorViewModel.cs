@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
 using System.Text.Json.Nodes;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -262,7 +263,9 @@ public sealed class AgentEditorViewModel : ObservableObject
     /// <summary>A slug key for a new agent, unique among the blueprint's keys.</summary>
     private string NewKey()
     {
-        var basis = Orkeon.Studio.Core.Teams.TeamCatalog.Slugify(_name is { Length: > 0 } ? _name : "agent");
+        // A blank name previews the placeholder key; a name that keeps no usable character
+        // takes the team fallback, like a team folder would.
+        var basis = string.IsNullOrWhiteSpace(_name) ? "agent" : FolderSlug.From(_name) ?? FolderSlug.TeamFallback;
         var keys = ReadAgents(_blueprintJson).Select(a => a.Key).ToHashSet(StringComparer.Ordinal);
         var key = basis;
         for (var i = 2; keys.Contains(key); i++)
