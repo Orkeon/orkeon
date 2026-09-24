@@ -2517,6 +2517,36 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>未删除：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
   </data>
+  <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
+    <value>团队已归档——要恢复吗？</value>
+  </data>
+  <data name="Studio.Common.TeamRestored" xml:space="preserve">
+    <value>团队已恢复：它已回到您的团队中。</value>
+  </data>
+  <data name="Studio.Teams.ArchiveBusy" xml:space="preserve">
+    <value>未归档：团队正在运行，或已在助手中打开——空闲后请重试。</value>
+  </data>
+  <data name="Studio.Teams.RestoreBusy" xml:space="preserve">
+    <value>未恢复：团队正在运行，或已在助手中打开——空闲后请重试。</value>
+  </data>
+  <data name="Studio.Teams.ArchiveScheduled" xml:space="preserve">
+    <value>该团队已设置计划：系统会继续运行它。请停止其计划后再归档。</value>
+  </data>
+  <data name="Studio.Teams.ArchiveUnscheduleFailed" xml:space="preserve">
+    <value>未归档：无法停止其计划——{0}</value>
+  </data>
+  <data name="Studio.Teams.ArchiveRefused" xml:space="preserve">
+    <value>未归档：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
+  </data>
+  <data name="Studio.Teams.RestoreRefused" xml:space="preserve">
+    <value>未恢复：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersArchived" xml:space="preserve">
+    <value>{0}（已归档）</value>
+  </data>
+  <data name="Studio.Common.Restore" xml:space="preserve">
+    <value>恢复</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>安装计划（每天 {0}）？</value>
   </data>

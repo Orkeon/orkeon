@@ -66,6 +66,12 @@ public sealed record TeamForgeRecord(Guid? SessionId, bool HasInstalledSchedule)
 {
     /// <summary>No record, or one that could not be read.</summary>
     public static TeamForgeRecord None { get; } = new(null, false);
+
+    /// <summary>
+    /// When the folder was promoted — its <c>promotedAt</c>, one of the three dates a team's last
+    /// activity is read from (STUDIO-31, D-05); null when absent or not a date.
+    /// </summary>
+    public DateTimeOffset? PromotedAt { get; init; }
 }
 
 /// <summary>
@@ -187,7 +193,7 @@ public static class ForgeSessionCatalog
                 && schedule.ValueKind == JsonValueKind.Object
                 && schedule.TryGetProperty("installed", out var block)
                 && block.ValueKind == JsonValueKind.Object;
-            return new TeamForgeRecord(ReadId(root), installed);
+            return new TeamForgeRecord(ReadId(root), installed) { PromotedAt = ReadPromotedAt(root) };
         }
         catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
@@ -316,6 +322,16 @@ public static class ForgeSessionCatalog
     /// <summary>The <c>id</c> of a session or team record; <see cref="Guid.Empty"/> is no id.</summary>
     private static Guid? ReadId(JsonElement element) =>
         Guid.TryParse(ReadString(element, "id"), out var id) && id != Guid.Empty ? id : null;
+
+    /// <summary>The record's <c>promotedAt</c> — UTC ISO-8601, as the CLI writes it — or null when absent or not a date.</summary>
+    private static DateTimeOffset? ReadPromotedAt(JsonElement element) =>
+        DateTimeOffset.TryParse(
+            ReadString(element, "promotedAt"),
+            System.Globalization.CultureInfo.InvariantCulture,
+            System.Globalization.DateTimeStyles.AssumeUniversal,
+            out var promotedAt)
+            ? promotedAt
+            : null;
 
     private static string? ReadString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String

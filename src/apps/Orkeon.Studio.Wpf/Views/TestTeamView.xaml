@@ -69,6 +69,21 @@
               </StackPanel>
               <TextBlock Style="{StaticResource Hint}" Margin="0,8,0,0" Text="{Binding Launcher.StatusMessage}"
                          Visibility="{Binding Launcher.StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+
+              <!-- STUDIO-31 (D-07): the picker lists the active teams only, but a target can be
+                   archived under the trial launcher — it is not tested, and the way back is here. -->
+              <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,12,0,0"
+                      Visibility="{Binding Launcher.IsTargetArchived, Converter={StaticResource BooleanToVisibility}}">
+                <DockPanel>
+                  <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="12,0,0,0" VerticalAlignment="Center"
+                          Command="{Binding Launcher.RestoreTargetCommand}"
+                          Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,0,10,0"
+                                       VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
+                  <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                             Foreground="{DynamicResource WarningBrush}" Text="{Binding Launcher.ArchivedTargetMessage}"/>
+                </DockPanel>
+              </Border>
             </StackPanel>
           </Border>
 

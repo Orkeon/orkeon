@@ -1401,6 +1401,35 @@ public static class StudioStringKeys
     /// <summary>"Not deleted: the disk refused — a file of the team may be open." — the delete banner when the disk kept the folder (STUDIO-27).</summary>
     public const string TeamsDeleteRefused = "Studio.Teams.DeleteRefused";
 
+    // ---- STUDIO-31: archiving a team — the model and the rules ----
+
+    /// <summary>"Archived team — restore it?" — what every guard of an archived team says: the launchers, a replay from the History, the card's Test icon (STUDIO-31, D-07).</summary>
+    public const string CommonArchivedTeamRestore = "Studio.Common.ArchivedTeamRestore";
+
+    /// <summary>"Team restored: it is back among your teams." — the launcher's line once an archived team was restored from its banner (STUDIO-31).</summary>
+    public const string CommonTeamRestored = "Studio.Common.TeamRestored";
+
+    /// <summary>"Not archived: the team is running, or open in the assistant — try again once it is free." — an archive refused because the team is the running target of Run or Test, or open in the assistant (STUDIO-31, D-09).</summary>
+    public const string TeamsArchiveBusy = "Studio.Teams.ArchiveBusy";
+
+    /// <summary>"Not restored: the team is running, or open in the assistant — try again once it is free." — a restore refused for the same reasons (STUDIO-31, D-09).</summary>
+    public const string TeamsRestoreBusy = "Studio.Teams.RestoreBusy";
+
+    /// <summary>"This team is scheduled: the system would keep running it. Stop its schedule to archive it." — an archive refused while the team is scheduled; the card then offers « Stop the schedule and archive » (STUDIO-31, D-06).</summary>
+    public const string TeamsArchiveScheduled = "Studio.Teams.ArchiveScheduled";
+
+    /// <summary>"Not archived: its schedule could not be stopped — {0}" — « Stop the schedule and archive » when the schedule could not be removed; {0} is the engine's refusal (STUDIO-31, D-06).</summary>
+    public const string TeamsArchiveUnscheduleFailed = "Studio.Teams.ArchiveUnscheduleFailed";
+
+    /// <summary>"Not archived: the disk refused — a file of the team may be open." — an archive the disk refused (STUDIO-31).</summary>
+    public const string TeamsArchiveRefused = "Studio.Teams.ArchiveRefused";
+
+    /// <summary>"Not restored: the disk refused — a file of the team may be open." — a restore the disk refused (STUDIO-31).</summary>
+    public const string TeamsRestoreRefused = "Studio.Teams.RestoreRefused";
+
+    /// <summary>"{0} (archived)" — an archived team's name on a row of Settings › Team folders, which lists every team with its state (STUDIO-31, D-08).</summary>
+    public const string TeamFoldersArchived = "Studio.Settings.TeamFoldersArchived";
+
     /// <summary>"Install the schedule (every day at {0})?" — the question after adopting a daily team; {0} is its time (STUDIO-27, D-05).</summary>
     public const string WizardScheduleOfferDaily = "Studio.Create.ScheduleOfferDaily";
 
@@ -2287,6 +2316,15 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsScheduleStopFailed] = "The schedule could not be stopped: {0}",
         [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
         [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
+        [StudioStringKeys.CommonArchivedTeamRestore] = "Archived team — restore it?",
+        [StudioStringKeys.CommonTeamRestored] = "Team restored: it is back among your teams.",
+        [StudioStringKeys.TeamsArchiveBusy] = "Not archived: the team is running, or open in the assistant — try again once it is free.",
+        [StudioStringKeys.TeamsRestoreBusy] = "Not restored: the team is running, or open in the assistant — try again once it is free.",
+        [StudioStringKeys.TeamsArchiveScheduled] = "This team is scheduled: the system would keep running it. Stop its schedule to archive it.",
+        [StudioStringKeys.TeamsArchiveUnscheduleFailed] = "Not archived: its schedule could not be stopped — {0}",
+        [StudioStringKeys.TeamsArchiveRefused] = "Not archived: the disk refused — a file of the team may be open.",
+        [StudioStringKeys.TeamsRestoreRefused] = "Not restored: the disk refused — a file of the team may be open.",
+        [StudioStringKeys.TeamFoldersArchived] = "{0} (archived)",
         [StudioStringKeys.WizardScheduleOfferDaily] = "Install the schedule (every day at {0})?",
         [StudioStringKeys.WizardScheduleOfferHourly] = "Install the schedule (every hour)?",
         [StudioStringKeys.WizardScheduleInstalled] = "The schedule is installed: the system will run the team, even with Studio closed.",

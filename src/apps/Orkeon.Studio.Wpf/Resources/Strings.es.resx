@@ -2517,6 +2517,36 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>No se eliminó: el disco lo rechazó — quizá haya un archivo del equipo abierto.</value>
   </data>
+  <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
+    <value>Equipo archivado — ¿restaurarlo?</value>
+  </data>
+  <data name="Studio.Common.TeamRestored" xml:space="preserve">
+    <value>Equipo restaurado: vuelve a estar entre sus equipos.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveBusy" xml:space="preserve">
+    <value>No se archivó: el equipo se está ejecutando o está abierto en el asistente — vuelva a intentarlo cuando esté libre.</value>
+  </data>
+  <data name="Studio.Teams.RestoreBusy" xml:space="preserve">
+    <value>No se restauró: el equipo se está ejecutando o está abierto en el asistente — vuelva a intentarlo cuando esté libre.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveScheduled" xml:space="preserve">
+    <value>Este equipo está planificado: el sistema seguiría ejecutándolo. Detenga su planificación para archivarlo.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveUnscheduleFailed" xml:space="preserve">
+    <value>No se archivó: no se pudo detener su planificación — {0}</value>
+  </data>
+  <data name="Studio.Teams.ArchiveRefused" xml:space="preserve">
+    <value>No se archivó: el disco lo rechazó — quizá haya un archivo del equipo abierto.</value>
+  </data>
+  <data name="Studio.Teams.RestoreRefused" xml:space="preserve">
+    <value>No se restauró: el disco lo rechazó — quizá haya un archivo del equipo abierto.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersArchived" xml:space="preserve">
+    <value>{0} (archivado)</value>
+  </data>
+  <data name="Studio.Common.Restore" xml:space="preserve">
+    <value>Restaurar</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>¿Instalar la planificación (cada día a las {0})?</value>
   </data>

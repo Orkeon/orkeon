@@ -205,7 +205,7 @@ public sealed class TeamCatalogMountsTests : IDisposable
             [$"{Path.Combine(team, "output")}:/output:rw", $"{id}|/data/docs:/docs:ro", $"{unknown}|/x:/x:ro"],
             summary.Mounts);
         Assert.Equal(summary.Mounts, target.Mounts);
-        Assert.Equal(summary.Mounts, Assert.Single(TeamCatalog.List(_root, declared)).Mounts);
+        Assert.Equal(summary.Mounts, Assert.Single(TeamCatalog.List(_root, TeamListFilter.All, declared)).Mounts);
         Assert.True(summary.HasUnknownMountIds);
         Assert.Equal([unknown.ToString()], summary.UnknownMountIds());
         Assert.Equal([unknown.ToString()], target.UnknownMountIds());

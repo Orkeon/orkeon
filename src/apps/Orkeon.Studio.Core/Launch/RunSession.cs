@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Launch;
 
@@ -45,13 +46,23 @@ public sealed class RunSession
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly ILaunchHistoryStore? _history;
+    private readonly string? _teamsRoot;
     private CancellationTokenSource? _cancellation;
 
     /// <summary>Creates a session over <paramref name="runner"/>, optionally recording launches.</summary>
-    public RunSession(OrkeonProcessRunner runner, ILaunchHistoryStore? history = null)
+    /// <param name="runner">Spawns the co-installed CLI.</param>
+    /// <param name="history">Where the launches are recorded; null keeps them in memory only.</param>
+    /// <param name="teamsRoot">
+    /// The teams directory whose teams a real run stamps with its date (STUDIO-31, D-05) — the
+    /// Launch tab's session passes it. Null stamps nothing: the Test screen's session is built
+    /// without it, a trial is a rehearsal, like its absent history; the terminal launcher too —
+    /// archiving and the last activity are Studio's notions.
+    /// </param>
+    public RunSession(OrkeonProcessRunner runner, ILaunchHistoryStore? history = null, string? teamsRoot = null)
     {
         _runner = runner ?? throw new ArgumentNullException(nameof(runner));
         _history = history;
+        _teamsRoot = teamsRoot;
     }
 
     /// <summary>True between the spawn and the child's exit.</summary>
@@ -148,6 +159,12 @@ public sealed class RunSession
             History = _history is not null
                 ? await _history.RecordAsync(completed, CancellationToken.None).ConfigureAwait(false)
                 : History.Add(completed);
+
+            // The run's date also lands in the team it ran (STUDIO-31, D-05): the history keeps
+            // fifty entries, the team keeps its own last one. Only a real run gets here — a dry
+            // run records nothing — and only a session that was given the teams root stamps.
+            if (_teamsRoot is not null)
+                _ = TeamCatalog.RecordRun(_teamsRoot, request.TargetPath, completed.StartedAt);
         }
 
         return result;

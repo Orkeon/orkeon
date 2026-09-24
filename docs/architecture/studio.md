@@ -26,7 +26,7 @@ A library with no UI and no entry point, consumed only by the three front-ends. 
 - **Launch/ & Process/** — building the `orkeon run` command line (`RunArgumentsBuilder`, `RunLaunchOptions`), locating the binary (`OrkeonBinaryLocator` — in order: the `--cli-dir` argument, next to the executable, the `ORKEON_CLI_DIR` environment variable, `PATH`, then the development checkout), running it and streaming output (`OrkeonProcessRunner`, `IProcessLauncher`), interpreting exit codes (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), and the `orkeon doctor` report (`DoctorReport`).
 - **Forge/** — the typed client of `orkeon forge --events jsonl` (the engine behind the creation wizard): a tolerant line parser pinned against the CLI's golden protocol lines, the session projection every front reads (`ForgeSessionModel`, milestone mapping, the ✔/✘ checklist rules), the child-process driver with the stdin answer channel (`ForgeClient`, whose start request carries environment overrides — how Studio's assistant profile reaches the engine), the on-disk session catalogue and the resume hydrator. Studio's process never touches an LLM — it only ever sees JSON lines.
 - **Profiles/** — the named model settings of the v3 design (`ModelProfile`, `ModelProfileSet`, `ModelProfileFileStore` → `studio-model-profiles.json` next to the settings file): reusable "model settings", a default election mirrored into the `Llm` section, the profile Studio's own assistant runs on, and per-profile `ORKEON_Llm__*` environment overrides for launches (model, endpoint, temperature, timeout and the response budget `MaxTokens` — empty leaves the cap to the engine, which sends the model's documented maximum, and the hint under the field says what that is for the chosen model, or that the model is unknown to the catalogue and gets 4096 unless pinned — LLM-10; the thinking switch — provider default / on / off — and the reasoning-effort hint, `ORKEON_Llm__Thinking__{Enabled,Effort}`, and a timeout pre-filled to 600 s when the picked provider's default model reasons before it answers — Kimi, DeepSeek, Z.AI, MiniMax — LLM-11). The profile editor offers the full provider catalogue (`LlmPresets.ProviderCatalogFor` — the two local runtimes plus every cloud the framework ships a provider for, endpoint/model pre-filled from the drift-pinned runtime defaults), and a novice pastes the API key right in the editor: it lands in a **user environment variable** (`IApiKeyStore`/`EnvironmentApiKeyStore`, the vendor's conventional name such as `DEEPSEEK_API_KEY`) — the store file only ever carries the *name* of that variable (`ModelProfile.KeyEnvName`), and launches lay the resolved value over the child process as `ORKEON_Llm__ApiKey`. The key itself never enters any file. The store reads its file with case-insensitive property names — it is hand-editable, and `"profiles"` is what people type — and a file that exists but cannot be parsed is reported on the settings screen instead of loading as an empty set indistinguishable from a first run.
-- **Teams/** — the teams directory (`TeamCatalog`, default `~/Orkeon/teams`): every adopted team is an ordinary folder — listed, duplicated, deleted, imported (with an inline-secret scan, and refused before any copy when the launcher's detector cannot resolve it to a crew definition, with the detector's message) — plus the `studio-team.json` sidecar recording what the crew definition cannot say (name, need, profile, the schedule chosen — whether the system runs it is the engine's answer, STUDIO-27). The recorded profile is not decorative: launching an adopted team resolves it against the profile store and lays it over the run as `ORKEON_Llm__*`.
+- **Teams/** — the teams directory (`TeamCatalog`, default `~/Orkeon/teams`): every adopted team is an ordinary folder — listed (the active teams, the archived ones or all of them; a dot folder, or a hidden or system one on Windows, is never a team), duplicated, deleted, imported (with an inline-secret scan, and refused before any copy when the launcher's detector cannot resolve it to a crew definition, with the detector's message; a duplicate or an import that fails halfway leaves no partial folder behind) — plus the `studio-team.json` sidecar recording what the crew definition cannot say (name, need, profile, the schedule chosen — whether the system runs it is the engine's answer, STUDIO-27 — and whether the team is archived, and when it last ran from Studio, STUDIO-31). Every writer merges into the sidecar, never rebuilds it: a re-adoption keeps what it does not own. The recorded profile is not decorative: launching an adopted team resolves it against the profile store and lays it over the run as `ORKEON_Llm__*`.
 - **Run/** — the typed client of a **watched** `orkeon run --events jsonl` (BUS-06): `RunClient`, ForgeClient's sibling and deliberately its twin — same launcher, same locator, same envelope parser — and `RunProgressModel`, which folds the stream into what a screen shows (the tasks in progress and every tool at work, delegations under way, finished tasks, cost, the question the run is waiting on — the whole state is under *The progress state of a run*, below). The client also carries the seat the run's hub gives a watching process: post to an agent, publish, subscribe, reply — and the Launch screen staffs that seat too: an agent's `send` (marked `expectsReply`) shows up as a request panel, and the typed reply goes back down stdin. See [The run event bus](run-event-bus.md).
 - **UseCases/** — the typed client of `orkeon usecases` (STUDIO-39): `UseCaseClient`, `ForgeClient`'s twin — `usecases list` run to completion for the gallery's catalogue, one `usecases search` session kept open for the suggestions under the need, each query matched to its answer by correlation id, failures typed rather than thrown — plus the readers of the catalogue and of an answer (`UseCaseCatalog`, `UseCaseAnswer`) and the rule that decides which answers are close enough to suggest (`UseCaseSuggestions`), which reads how many use cases carry a term off the answer itself — Studio never normalizes a spelling of its own.
 - **Storage/ & History/** — settings locations and resolution chain (`SettingsLocations`, `AppSettingsFile`), launch history (`LaunchHistoryStore`).
@@ -547,6 +547,52 @@ by its id and is not one. Each row has a « Clean » that asks in place before d
 (`DiagnosticViewModel` takes the forge workspace and the teams root). A team moved outside the
 teams directory can show there too: nothing is deleted without the user.
 
+### Archiving a team (STUDIO-31)
+
+Archiving takes a team out of the active list without deleting it, and gives it back intact. It is
+a **flag** in `studio-team.json` — `archived`, and `archivedAt` for the date — and nothing else: the
+folder does not move, so nothing that points at it breaks — its path, its workshop session's link,
+its scheduled task, its history. `TeamCatalog.List` takes a filter (`TeamListFilter`: `Active`, the
+default; `Archived`; `All`) and each screen asks for what it shows: My teams reads every team and
+splits the cards (`Teams`, the active ones, which the sidebar counts; `ArchivedTeams`); the Test
+picker and the Balance segment of the status bar cover the active teams; « Used by » of a folder or
+of a profile counts every team — removing what an archived team names would break it the day it is
+restored — and Settings › Team folders lists every team, an archived one marked « (archived) ». The
+list never shows a dot folder (an engine's workspace state, a VCS folder) nor, on Windows, a hidden
+or system folder, and a duplicate or an import that fails halfway deletes its partial folder rather
+than leave a card nothing can run.
+
+The sidecar is **merged, never rebuilt** (`TeamCatalog.UpdateMetadata`): an adoption, a re-adoption
+after « Modify », a change of folders write the fields they own and keep the others — the archive
+flag, the last run. A duplicate or an import is a team in use and comes out active; an export carries
+the flag as the team has it, and importing it clears it anyway.
+
+**Last activity.** At the end of a real run from the Run screen — never a trial, never a
+`--validate` — `RunSession` stamps `lastRunAt` into the team it ran: only a team folder right under
+the teams root that already has its sidecar, the target being the folder or a file inside it
+(`DeclaredMounts.TeamDirectoryOf`); a launch pointed elsewhere writes nothing. A team's **last
+activity** is the most recent of three dates — `lastRunAt`, its latest launch-history entry (the
+history keeps fifty), the `promotedAt` of its `forge.json` — computed when the list is read, with no
+migration (`TeamSummary.LastActivity`, `TeamCardViewModel.LastActivity`).
+
+**Nothing relaunches an archived team by mistake.** Studio neither launches nor tests one, and each
+guard offers the way back rather than refusing in silence — « Archived team — restore it? »: the
+Run and Test screens keep the run and the dry run off under a banner with « Restore »
+(`TargetDescription.IsArchived`); « Replay » in the History reads the entry's own target — not the
+form's — and, on an archived team, runs nothing: its card asks in place; the card's Test icon, which
+bypasses the Test picker, asks too; the picker itself lists the active teams only. **The rules**:
+archiving a scheduled team — declared, or recorded as installed — is refused unless « Stop the
+schedule and archive », which runs `forge unschedule` first (STUDIO-27); archiving and restoring are
+refused while the team is the target of a run in flight on the Run or Test screen, or open in the
+wizard — the busy-team seam shared with the rename (STUDIO-28: `LaunchTabViewModel.RunningTarget`,
+`TeamsDependencies.ActivityOf`). A restored team simply takes its place again in the order. Every
+archive and restore refreshes the Test picker and the two launchers.
+
+**Archiving is Studio's notion.** `orkeon run <folder>` and the terminal launcher
+`orkeon-studio-run` run an archived team like any other, and a run they start — or one the operating
+system starts — does not stamp its last run. The screen around it — search, sort by last activity,
+the Archives view, the undo banner, the archive suggestion — is STUDIO-32's.
+
 ### Tools and MCP in the settings (STUDIO-21)
 
 Two tabs the settings screen lacked. **Tools**, open to both modes, is three cards. The
@@ -619,7 +665,8 @@ never written here, nor anywhere else.
 
 **`%USERPROFILE%\Orkeon\teams\<slug>\`** — documents: the adopted teams. Each is an
 ordinary, self-contained folder (crew definition, `run.cmd`/`run.sh`, the
-`studio-team.json` sidecar with name, need, profile, schedule and mounts) — copiable,
+`studio-team.json` sidecar with name, need, profile, schedule and mounts — and, once they
+apply, the archive flag and the date of the last run from Studio, STUDIO-31) — copiable,
 shareable, deletable, runnable with `orkeon run <folder>` alone. The `<slug>` is the
 team's name through the folder-name rule the engine also names its sessions with — one
 implementation, `FolderSlug` in `Orkeon.Domain.FileSystem`: lowercase ASCII, accents
