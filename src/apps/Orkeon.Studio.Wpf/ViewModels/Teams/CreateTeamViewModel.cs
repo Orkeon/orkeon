@@ -1465,7 +1465,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// Asks the session for <paramref name="need"/> and keeps the close matches — unless the need
-    /// moved on meanwhile. The catalogue is read first when it never was: the rule counts sheets.
+    /// moved on meanwhile. The catalogue is read first when it never was: the rule needs its size.
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification =
         "A suggestion is a courtesy: the client already turns what the CLI did into typed failures, "
@@ -1483,7 +1483,11 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (Gallery.Catalog is not { } catalog || generation != _suggestionGeneration)
                 return;
 
-            var result = await _useCases.SearchAsync(need).ConfigureAwait(false);
+            // The whole catalogue, not the best five: the rule reads how many use cases carry
+            // each term off the answer itself, and only a complete answer counts them all.
+            var result = await _useCases
+                .SearchAsync(need, top: Math.Max(UseCaseClient.DefaultTop, catalog.Count))
+                .ConfigureAwait(false);
             _dispatcher.Post(() =>
             {
                 if (generation == _suggestionGeneration)

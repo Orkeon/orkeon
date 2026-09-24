@@ -31,9 +31,6 @@
     -->
     <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\src\hosting\Orkeon.Hosting\Orkeon.Hosting.csproj" />
-    <!-- The search-term corpus the CLI suite checks too (STUDIO-39): Studio mirrors the CLI's
-         normalization to count how many use cases share a term. -->
-    <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
   </ItemGroup>
 
 </Project>
