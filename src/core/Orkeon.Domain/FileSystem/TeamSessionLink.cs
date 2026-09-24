@@ -96,7 +96,7 @@ public static class TeamSessionLink
 
         // A folder that no longer exists carries no forge.json, so one read answers both halves
         // of case 2: the other folder is there, and it is the same team.
-        return session.PromotedTo is { Length: > 0 } elsewhere && recordedSessionIdAt(elsewhere) == id
+        return !string.IsNullOrWhiteSpace(session.PromotedTo) && recordedSessionIdAt(session.PromotedTo) == id
             ? TeamSessionLinkKind.Copy
             : TeamSessionLinkKind.Moved;
     }

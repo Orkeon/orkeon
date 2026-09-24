@@ -157,13 +157,22 @@ public sealed class TeamSessionLinkTests
         Assert.Equal([Original], reads);
     }
 
-    /// <summary>A promotedTo that is no path at all is a folder nobody can find — never an exception.</summary>
+    /// <summary>
+    /// A promotedTo that is no path at all is a folder nobody can find — never an exception —
+    /// and one of blanks names no folder: the reader is not even asked about it.
+    /// </summary>
     [Fact]
     public void A_promoted_to_that_is_no_path_never_takes_the_rule_down()
     {
-        var kind = TeamSessionLink.Resolve(
-            Original, SessionId, new SessionPromotion(SessionId, "\0"), NothingElsewhere);
+        Guid? RefusingBlanks(string folder) =>
+            string.IsNullOrWhiteSpace(folder) ? throw new ArgumentException("no folder", nameof(folder)) : null;
 
-        Assert.Equal(TeamSessionLinkKind.Moved, kind);
+        var garbage = TeamSessionLink.Resolve(
+            Original, SessionId, new SessionPromotion(SessionId, "\0"), RefusingBlanks);
+        var blanks = TeamSessionLink.Resolve(
+            Original, SessionId, new SessionPromotion(SessionId, "   "), RefusingBlanks);
+
+        Assert.Equal(TeamSessionLinkKind.Moved, garbage);
+        Assert.Equal(TeamSessionLinkKind.Moved, blanks);
     }
 }
