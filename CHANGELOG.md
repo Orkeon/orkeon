@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — renaming a team: its folder, session, titles and schedule follow, all or nothing (STUDIO-28)
+
+- **`orkeon forge rename <team-folder> --name <name>`** renames a promoted team, all of it or nothing:
+  - the folder takes the name's folder (the one folder rule); the session rule R links to it follows
+    (suffixed `-2` past another session's name);
+  - `session.json`, `forge.json`, Studio's `studio-team.json` (its `name` only — every other field
+    kept), the title and install command of `FORGE.md` and the launchers' header take the new name;
+    `schedule/` is regenerated for the new path;
+  - a schedule the system runs is reinstalled under the new name, the former registration removed.
+
+  Every step is journaled: a failed one — the disk, the system's scheduler — puts everything back and
+  the verb exits 1 (`FORGE-RENAME-FAILED`, or `FORGE-SCHEDULE-REFUSED`). A taken name is refused with
+  what holds it (`FORGE-RENAME-TAKEN`); a folder that holds no team is never moved
+  (`FORGE-TEAM-UNREADABLE`). New event `team.renamed`; `--name` is no longer reserved to `promote`,
+  and `--reference` is now refused on `schedule` / `unschedule` as on the other folder verbs.
+- **In Studio**, « Rename » on every team card, in both modes, opens an editor in place of the action
+  row:
+  - refused while the team runs on the Run or Test screen or is open in the assistant; a taken name is
+    said before the engine is asked;
+  - the launch history follows the folder — target, working directory, settings file and arguments —
+    so the card keeps its last run and « Relaunch » replays where the team is; a launcher aimed at the
+    former folder follows it;
+  - an allowed folder declared inside the former folder is reported, never rewritten.
+- « Modify » still changes the title only; step 4 now says the folder is renamed from My teams.
+- The "busy team" hook (`TeamsDependencies.ActivityOf`, `LaunchTabViewModel.RunningTarget`) is shared
+  with archiving (STUDIO-31). `examples/forge/promote-demo`'s session now carries an id, like every
+  session this build creates.
+
 ### Added — Studio archives a team: out of the active list, every link kept (STUDIO-31)
 
 - **Archiving is a flag** in `studio-team.json` (`archived`, `archivedAt`); the folder does not move,
