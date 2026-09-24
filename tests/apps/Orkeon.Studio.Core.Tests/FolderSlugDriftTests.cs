@@ -40,6 +40,10 @@ public sealed partial class FolderSlugDriftTests
         ["src/scripting/Orkeon.Scripting.Cli/Commands/UseCases/UseCaseText.cs"] =
             "STUDIO-38: the search normalization folds a query and a use-case sheet alike (FormKD) "
             + "so BM25 matches 'resume' with 'résumé'; it produces terms, never a folder name.",
+        ["src/apps/Orkeon.Studio.Core/UseCases/UseCaseTerms.cs"] =
+            "STUDIO-39: Studio mirrors that same search normalization to count how many use cases share "
+            + "a term the CLI answers with (the suggestion rule); terms again, never a folder name — and "
+            + "UseCaseTermsCorpus, checked by both suites, keeps the two spellings one.",
     };
 
     [GeneratedRegex(@"NormalizationForm\s*\.\s*FormK?D\b|UnicodeCategory\s*\.\s*NonSpacingMark\b")]
