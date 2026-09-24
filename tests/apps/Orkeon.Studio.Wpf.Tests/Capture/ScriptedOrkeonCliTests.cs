@@ -111,6 +111,36 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Equal(2, lines.Count);
     }
 
+    /// <summary>
+    /// A conversing verb is a session (STUDIO-39): it opens, answers every stdin line on its own
+    /// channel — a run started meanwhile does not take it over — and ends when its stdin closes.
+    /// </summary>
+    [Fact]
+    public async Task A_conversing_verb_answers_each_line_until_its_stdin_closes()
+    {
+        var cli = new ScriptedOrkeonCli()
+            .Answer("usecases list", 0, "catalogue")
+            .Converse("usecases search", ["ready"], line => [$"answer to {line}"]);
+        Orkeon.Studio.Core.Process.IProcessInputWriter? input = null;
+        var lines = new List<string>();
+
+        var session = cli.RunAsync(
+            new ProcessLaunchRequest { FileName = "orkeon", Arguments = ["usecases", "search", "--events", "jsonl"], OnInputReady = writer => input = writer },
+            line => lines.Add(line.Text),
+            TestContext.Current.CancellationToken);
+        Assert.Equal("catalogue", await FirstLineAsync(cli, Ask("usecases", "list", "--events", "jsonl")));
+
+        Assert.True(input!.TryWriteLine("q1"));
+        Assert.True(input.TryWriteLine("q2"));
+        Assert.False(session.IsCompleted);
+
+        input.Close();
+
+        Assert.Equal(0, (await session).ExitCode);
+        Assert.Equal(["ready", "answer to q1", "answer to q2"], lines);
+        Assert.False(input.TryWriteLine("q3"));
+    }
+
     /// <summary>Outside a run there is no listener, and a line falls on the floor — as a dead child would.</summary>
     [Fact]
     public void An_emit_outside_a_run_is_dropped()

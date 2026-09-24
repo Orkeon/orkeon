@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Core.UseCases;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
@@ -142,6 +143,12 @@ public sealed class MainWindowViewModel : ObservableObject
                 // « Open the folder » in the wizard's header (STUDIO-14, D-15) — the same
                 // opener the team cards use, gated the same way.
                 ShellOpener = shellOpener,
+                // STUDIO-39: the gallery reads the catalogue of the binary every other screen
+                // runs, through the same runner; the suggestions pause on a timer of their own;
+                // the problem a chosen case writes is read in the language the window speaks.
+                UseCases = seams.UseCases ?? new UseCaseClient(runner),
+                SuggestionDelay = seams.SuggestionDelay,
+                UiLanguage = () => Language.Current,
             });
 
         Teams = new TeamsViewModel(new TeamsDependencies
@@ -419,7 +426,10 @@ public sealed class MainWindowViewModel : ObservableObject
                 Config.Diagnostic.InitializeAsync(cancellationToken),
                 // The team cards' last-run line, from the same history the
                 // History screen reads.
-                Teams.LoadLastRunsAsync(cancellationToken)).ConfigureAwait(true);
+                Teams.LoadLastRunsAsync(cancellationToken),
+                // The use-case catalogue (STUDIO-39): the wizard's link says how many cases it
+                // holds from the first frame, and the suggestions have sheets to count against.
+                CreateTeam.Gallery.LoadAsync(cancellationToken)).ConfigureAwait(true);
         }
         catch (OperationCanceledException)
         {

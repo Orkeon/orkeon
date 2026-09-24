@@ -152,6 +152,48 @@ internal static class WizardStops
             }),
         },
 
+        // STUDIO-39 — the use cases of step 1: the suggestions under the need (D-03) and the
+        // reference a chosen case leaves (D-04). The gallery panel itself is a modal stop.
+        new()
+        {
+            Name = "etape1-cas-proches",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "A need typed and the typing paused: «2 cas proches» under the box. The search "
+                    + "session answered three cases; the wizard kept the two that share a word only they "
+                    + "carry (concurrents, résumer) and left out the one that shares nothing but «mes».",
+            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasCloseUseCases"],
+            CoversFalse = ["CreateTeam.HasReferenceUseCase"],
+            SweepsLanguages = true,
+            Arrange = CaptureAction.Sync(static c => c.Shell.CreateTeam.Need = StudioFixture.Need),
+            Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.Need = ""),
+        },
+
+        new()
+        {
+            Name = "etape1-inspire-de",
+            Category = CaptureCategory.Wizard,
+            Screen = CaptureScreen.Create,
+            Because = "A case chosen in the gallery: its problem fills the need in the language of the "
+                    + "window, and the chip «Inspiré de : Veille concurrentielle» says which case the "
+                    + "creation starts from — its ✕ takes the reference away, never the words.",
+            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasReferenceUseCase"],
+            CoversFalse = ["CreateTeam.Gallery.IsOpen", "CreateTeam.HasCloseUseCases"],
+            SweepsLanguages = true,
+            Arrange = static async c =>
+            {
+                var wizard = c.Shell.CreateTeam;
+                await wizard.Gallery.LoadAsync();
+                wizard.BrowseUseCasesCommand.Execute(null);
+                wizard.Gallery.Cards.First(card => card.Id == "06-competitive-intelligence").ChooseCommand.Execute(null);
+            },
+            Teardown = CaptureAction.Sync(static c =>
+            {
+                c.Shell.CreateTeam.RemoveReferenceUseCaseCommand.Execute(null);
+                c.Shell.CreateTeam.Need = "";
+            }),
+        },
+
         new()
         {
             Name = "etape1-sans-assistant",

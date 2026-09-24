@@ -171,4 +171,16 @@ internal sealed record CaptureWorldPlan
 
     /// <summary>The event stream <c>orkeon forge</c> plays.</summary>
     public IReadOnlyList<string> ForgeStream { get; init; } = [];
+
+    /// <summary>
+    /// What <c>orkeon usecases list</c> prints (STUDIO-39) — the catalogue line; null for a machine
+    /// that answers none.
+    /// </summary>
+    public string? UseCaseCatalog { get; init; }
+
+    /// <summary>The line an <c>orkeon usecases search</c> session opens with.</summary>
+    public string? UseCaseReady { get; init; }
+
+    /// <summary>How that session answers one query line — a conversation, not a script.</summary>
+    public Func<string, IEnumerable<string>>? UseCaseAnswer { get; init; }
 }

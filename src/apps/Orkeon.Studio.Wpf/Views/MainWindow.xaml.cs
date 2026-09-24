@@ -58,6 +58,8 @@ public partial class MainWindow : Window
 
         // Escape closes the language menu; StaysOpen=False already answers the click
         // elsewhere. Handled on the window because the popup is not in its visual tree.
+        // It closes the use-case gallery too (STUDIO-39), the side panel a user reaches for
+        // Escape to leave.
         PreviewKeyDown += (_, e) =>
         {
             if (e.Key == System.Windows.Input.Key.Escape && shell.Language.IsMenuOpen)
@@ -65,7 +67,16 @@ public partial class MainWindow : Window
                 shell.Language.CloseMenuCommand.Execute(null);
                 e.Handled = true;
             }
+            else if (e.Key == System.Windows.Input.Key.Escape && shell.CreateTeam.Gallery.IsOpen)
+            {
+                shell.CreateTeam.Gallery.CloseCommand.Execute(null);
+                e.Handled = true;
+            }
         };
+
+        // The wizard's use-case search session lives as long as the window (STUDIO-39, D-03):
+        // closing it closes the session's stdin, the CLI's own clean exit.
+        Closed += (_, _) => shell.CreateTeam.CloseUseCaseSession();
 
         // The conversation follows the screen it is mounted on: what a free question with
         // no keyword gets back, and what the primer says on an empty thread, both depend
@@ -191,6 +202,12 @@ public partial class MainWindow : Window
     {
         if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
             shell.AllowedFolders.CancelCommand.Execute(null);
+    }
+
+    private void OnGalleryBackdropClick(object sender, System.Windows.Input.MouseButtonEventArgs e)
+    {
+        if (DataContext is ViewModels.Shell.MainWindowViewModel shell)
+            shell.CreateTeam.Gallery.CloseCommand.Execute(null);
     }
 
     private void OnSwallowClick(object sender, System.Windows.Input.MouseButtonEventArgs e) =>

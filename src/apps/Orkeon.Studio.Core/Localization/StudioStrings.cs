@@ -1549,6 +1549,86 @@ public static class StudioStringKeys
 
     /// <summary>The tooltip of the header button after adoption: the team folder opens.</summary>
     public const string WizardOpenFolderTeam = "Studio.Create.OpenFolderTeam";
+
+    // STUDIO-39 — the use-case gallery of step 1: the link and its count, the suggestions under
+    // the need, the reference chip, the panel's filters and count, and the labels the catalogue's
+    // categories and processes are shown under (the gallery builds its chips from the catalogue,
+    // so these are fabricated below the view). The panel's fixed labels live in the resx only.
+
+    /// <summary>"Browse the use cases" — the step-1 link while the catalogue's size is unknown.</summary>
+    public const string WizardGalleryBrowse = "Studio.Create.GalleryBrowse";
+
+    /// <summary>"Browse the use cases ({0})" — the step-1 link, N read from the catalogue.</summary>
+    public const string WizardGalleryBrowseCount = "Studio.Create.GalleryBrowseCount";
+
+    /// <summary>"1 close use case" — the hint under the need.</summary>
+    public const string WizardGalleryCloseOne = "Studio.Create.GalleryCloseOne";
+
+    /// <summary>"{0} close use cases" — the hint under the need.</summary>
+    public const string WizardGalleryCloseMany = "Studio.Create.GalleryCloseMany";
+
+    /// <summary>"Inspired by: {0}" — the removable reference chip.</summary>
+    public const string WizardGalleryReference = "Studio.Create.GalleryReference";
+
+    /// <summary>"All" — the category chip that filters nothing.</summary>
+    public const string WizardGalleryAllCategories = "Studio.Create.GalleryAllCategories";
+
+    /// <summary>"Any" — the process chip that filters nothing.</summary>
+    public const string WizardGalleryAnyProcess = "Studio.Create.GalleryAnyProcess";
+
+    /// <summary>"{0} of {1} use cases" — the panel's count line.</summary>
+    public const string WizardGalleryCount = "Studio.Create.GalleryCount";
+
+    /// <summary>"Close to your need ({0})" — the filter the suggestion hint opens the panel on.</summary>
+    public const string WizardGallerySuggested = "Studio.Create.GallerySuggested";
+
+    /// <summary>"The use cases could not be read." — the panel's card when the CLI answered no catalogue.</summary>
+    public const string WizardGalleryUnreadable = "Studio.Create.GalleryUnreadable";
+
+    /// <summary>"Enterprise" — category <c>01-enterprise</c>.</summary>
+    public const string WizardGalleryCategoryEnterprise = "Studio.Create.GalleryCategoryEnterprise";
+
+    /// <summary>"Science and research" — category <c>02-science-research</c>.</summary>
+    public const string WizardGalleryCategoryScience = "Studio.Create.GalleryCategoryScience";
+
+    /// <summary>"Finance and trading" — category <c>03-finance-trading</c>.</summary>
+    public const string WizardGalleryCategoryFinance = "Studio.Create.GalleryCategoryFinance";
+
+    /// <summary>"Health and wellness" — category <c>04-health-wellness</c>.</summary>
+    public const string WizardGalleryCategoryHealth = "Studio.Create.GalleryCategoryHealth";
+
+    /// <summary>"Education" — category <c>05-education</c>.</summary>
+    public const string WizardGalleryCategoryEducation = "Studio.Create.GalleryCategoryEducation";
+
+    /// <summary>"Engineering and DevOps" — category <c>06-engineering-devops</c>.</summary>
+    public const string WizardGalleryCategoryEngineering = "Studio.Create.GalleryCategoryEngineering";
+
+    /// <summary>"Creative and media" — category <c>07-creative-media</c>.</summary>
+    public const string WizardGalleryCategoryCreative = "Studio.Create.GalleryCategoryCreative";
+
+    /// <summary>"IoT and smart systems" — category <c>08-iot-smart-systems</c>.</summary>
+    public const string WizardGalleryCategoryIot = "Studio.Create.GalleryCategoryIot";
+
+    /// <summary>"Experimental" — category <c>09-experimental</c>.</summary>
+    public const string WizardGalleryCategoryExperimental = "Studio.Create.GalleryCategoryExperimental";
+
+    /// <summary>"Step by step" — process <c>sequential</c>, in plain words.</summary>
+    public const string WizardGalleryProcessSequential = "Studio.Create.GalleryProcessSequential";
+
+    /// <summary>"With a lead" — process <c>hierarchical</c>.</summary>
+    public const string WizardGalleryProcessHierarchical = "Studio.Create.GalleryProcessHierarchical";
+
+    /// <summary>"In parallel" — process <c>parallel</c>.</summary>
+    public const string WizardGalleryProcessParallel = "Studio.Create.GalleryProcessParallel";
+
+    /// <summary>"By consensus" — process <c>consensual</c>.</summary>
+    public const string WizardGalleryProcessConsensual = "Studio.Create.GalleryProcessConsensual";
+
+    /// <summary>"With loops and branches" — process <c>graph</c>.</summary>
+    public const string WizardGalleryProcessGraph = "Studio.Create.GalleryProcessGraph";
+
+    /// <summary>"Autonomous" — process <c>autonomous</c>.</summary>
+    public const string WizardGalleryProcessAutonomous = "Studio.Create.GalleryProcessAutonomous";
 }
 
 /// <summary>
@@ -2150,6 +2230,33 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardOpenFolder] = "Open the folder",
         [StudioStringKeys.WizardOpenFolderSession] = "Opens the working session — the folder the assistant is writing in.",
         [StudioStringKeys.WizardOpenFolderTeam] = "Opens the folder of the adopted team.",
+
+        // STUDIO-39: the use-case gallery
+        [StudioStringKeys.WizardGalleryBrowse] = "Browse the use cases",
+        [StudioStringKeys.WizardGalleryBrowseCount] = "Browse the use cases ({0})",
+        [StudioStringKeys.WizardGalleryCloseOne] = "1 close use case",
+        [StudioStringKeys.WizardGalleryCloseMany] = "{0} close use cases",
+        [StudioStringKeys.WizardGalleryReference] = "Inspired by: {0}",
+        [StudioStringKeys.WizardGalleryAllCategories] = "All",
+        [StudioStringKeys.WizardGalleryAnyProcess] = "Any",
+        [StudioStringKeys.WizardGalleryCount] = "{0} of {1} use cases",
+        [StudioStringKeys.WizardGallerySuggested] = "Close to your need ({0})",
+        [StudioStringKeys.WizardGalleryUnreadable] = "The use cases could not be read.",
+        [StudioStringKeys.WizardGalleryCategoryEnterprise] = "Enterprise",
+        [StudioStringKeys.WizardGalleryCategoryScience] = "Science and research",
+        [StudioStringKeys.WizardGalleryCategoryFinance] = "Finance and trading",
+        [StudioStringKeys.WizardGalleryCategoryHealth] = "Health and wellness",
+        [StudioStringKeys.WizardGalleryCategoryEducation] = "Education",
+        [StudioStringKeys.WizardGalleryCategoryEngineering] = "Engineering and DevOps",
+        [StudioStringKeys.WizardGalleryCategoryCreative] = "Creative and media",
+        [StudioStringKeys.WizardGalleryCategoryIot] = "IoT and smart systems",
+        [StudioStringKeys.WizardGalleryCategoryExperimental] = "Experimental",
+        [StudioStringKeys.WizardGalleryProcessSequential] = "Step by step",
+        [StudioStringKeys.WizardGalleryProcessHierarchical] = "With a lead",
+        [StudioStringKeys.WizardGalleryProcessParallel] = "In parallel",
+        [StudioStringKeys.WizardGalleryProcessConsensual] = "By consensus",
+        [StudioStringKeys.WizardGalleryProcessGraph] = "With loops and branches",
+        [StudioStringKeys.WizardGalleryProcessAutonomous] = "Autonomous",
     };
 
     /// <summary>Every declared key with its English text, for the front-ends' drift tests.</summary>

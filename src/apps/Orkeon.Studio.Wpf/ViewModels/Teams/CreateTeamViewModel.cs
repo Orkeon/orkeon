@@ -9,6 +9,7 @@ using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
+using Orkeon.Studio.Core.UseCases;
 using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Launch;
 using Orkeon.Studio.Wpf.ViewModels.Mounts;
@@ -298,6 +299,24 @@ public sealed record CreateTeamDependencies
     /// folder » when null, the same rule as the team cards.
     /// </summary>
     public IShellOpener? ShellOpener { get; init; }
+
+    /// <summary>
+    /// The use-case catalogue and its search session (STUDIO-39); the wizard offers no gallery and
+    /// suggests nothing when null, the rule of <see cref="ShellOpener"/>.
+    /// </summary>
+    public UseCaseClient? UseCases { get; init; }
+
+    /// <summary>
+    /// The pause before the need is searched for close use cases — the wizard's OWN timer, so
+    /// dropping a superseded pause can never drop one of the assistant's beats; immediate when null.
+    /// </summary>
+    public IUiDelay? SuggestionDelay { get; init; }
+
+    /// <summary>
+    /// The UI language in force, spelled the way Studio's language switch spells it (<c>zh</c> for
+    /// Chinese) — Core cannot see it; English when null.
+    /// </summary>
+    public Func<string>? UiLanguage { get; init; }
 }
 
 /// <summary>
@@ -357,6 +376,14 @@ public sealed class CreateTeamViewModel : ObservableObject
     private string? _conflictingTeamPath;
     /// <summary>The folder an accepted proposal pinned the adoption to; null while the folder follows the name.</summary>
     private string? _adoptionFolder;
+    private readonly UseCaseClient? _useCases;
+    private readonly IUiDelay _suggestionDelay;
+    private readonly Func<string> _uiLanguage;
+    /// <summary>Bumped by every keystroke: an answer to an older need lands on nothing.</summary>
+    private int _suggestionGeneration;
+    private IReadOnlyList<UseCaseMatch> _closeMatches = [];
+    private IReadOnlyList<UseCaseCardViewModel> _closeUseCases = [];
+    private string? _referenceUseCaseId;
 
     /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
     public CreateTeamViewModel(ModelProfilesViewModel profiles, CreateTeamDependencies? dependencies = null)
@@ -372,6 +399,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         _shellOpener = wired.ShellOpener;
         _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         _teamsRoot = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
+        _useCases = wired.UseCases;
+        _suggestionDelay = wired.SuggestionDelay ?? ImmediateUiDelay.Instance;
+        _uiLanguage = wired.UiLanguage ?? (() => UseCaseLanguages.English);
 
         // The conversation is the window's, not this screen's: it has to survive a tab
         // change, and losing it on the first one is precisely the defect being fixed. A
@@ -476,6 +506,20 @@ public sealed class CreateTeamViewModel : ObservableObject
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
         OpenDiagnosticCommand = new RelayCommand(() => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
         PickAssistantCommand = new RelayCommand(PickAssistant);
+
+        // STUDIO-39: the gallery, the suggestions under the need, the reference chip.
+        Gallery = new UseCaseGalleryViewModel(
+            _useCases,
+            _dispatcher,
+            _strings,
+            () => UseCaseLanguage,
+            ChooseUseCase,
+            () => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
+        BrowseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: false), () => CanBrowseUseCases);
+        ShowCloseUseCasesCommand = new RelayCommand(() => Gallery.Open(suggestedOnly: true), () => HasCloseUseCases);
+        RemoveReferenceUseCaseCommand = new RelayCommand(RemoveReferenceUseCase, () => HasReferenceUseCase);
+        Gallery.PropertyChanged += (_, e) => OnGalleryPropertyChanged(e.PropertyName);
+        _strings.CultureChanged += (_, _) => OnUseCaseLanguageChanged();
 
         Profiles.PropertyChanged += (_, e) => OnProfilesPropertyChanged(e.PropertyName);
     }
@@ -1031,6 +1075,7 @@ public sealed class CreateTeamViewModel : ObservableObject
                 OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
                 RaiseDraftChanged();
                 ComposeCommand.RaiseCanExecuteChanged();
+                ScheduleSuggestions();
             }
         }
     }
@@ -1282,6 +1327,218 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>Sends the brief to the engine — the wizard's "compose the team" button.</summary>
     public AsyncRelayCommand ComposeCommand { get; }
+
+    // ── step 1 : the use-case gallery (STUDIO-39) ──────────────────────────────────────────
+    // The four quick examples stay first (D-01); the link under them opens the gallery over the
+    // catalogue the CLI embeds (D-02, D-05). A pause in the typing asks the CLI's search session
+    // which use cases are close to the need (D-03), and choosing one fills the need in the UI's
+    // language and attaches it as the session's reference (D-04) — the state STUDIO-40 hands
+    // the engine as `forge --reference`.
+
+    /// <summary>How long the typing must pause before the need is searched.</summary>
+    internal static readonly TimeSpan SuggestionPause = TimeSpan.FromMilliseconds(500);
+
+    /// <summary>A shorter need is not searched: nothing that short is close to anything.</summary>
+    internal const int SuggestionMinimumLength = 3;
+
+    /// <summary>The gallery panel, laid over the window by the shell.</summary>
+    public UseCaseGalleryViewModel Gallery { get; }
+
+    /// <summary>Whether the wizard offers the gallery at all: a use-case client is wired.</summary>
+    public bool CanBrowseUseCases => _useCases is not null;
+
+    /// <summary>« Browse the use cases (105) » — N read from the catalogue, bare until it is.</summary>
+    public string BrowseUseCasesLabel => Gallery.HasCatalog
+        ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryBrowseCount], Gallery.Count)
+        : _strings[StudioStringKeys.WizardGalleryBrowse];
+
+    /// <summary>Opens the gallery on the whole catalogue.</summary>
+    public RelayCommand BrowseUseCasesCommand { get; }
+
+    /// <summary>
+    /// The use cases close to the need, best first (D-03) — the rule is
+    /// <see cref="UseCaseSuggestions"/>'s; empty while none is, and while a reference is attached.
+    /// </summary>
+    public IReadOnlyList<UseCaseCardViewModel> CloseUseCases => _closeUseCases;
+
+    /// <summary>Whether the hint under the need shows.</summary>
+    public bool HasCloseUseCases => _closeUseCases.Count > 0;
+
+    /// <summary>« 2 close use cases ».</summary>
+    public string CloseUseCasesLabel => _closeUseCases.Count == 1
+        ? _strings[StudioStringKeys.WizardGalleryCloseOne]
+        : string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardGalleryCloseMany], _closeUseCases.Count);
+
+    /// <summary>Their titles, one per line — the hint's tooltip.</summary>
+    public string CloseUseCasesTitles => string.Join(Environment.NewLine, _closeUseCases.Select(card => card.Title));
+
+    /// <summary>« N close use cases »: the gallery, on them.</summary>
+    public RelayCommand ShowCloseUseCasesCommand { get; }
+
+    /// <summary>
+    /// The use case this creation starts from (D-04): the id STUDIO-40 hands the engine as
+    /// <c>forge --reference</c>. Set by choosing a card, cleared by the chip's ✕ and by the end of
+    /// the creation; null when none.
+    /// </summary>
+    public string? ReferenceUseCaseId
+    {
+        get => _referenceUseCaseId;
+        private set
+        {
+            if (!SetProperty(ref _referenceUseCaseId, value))
+                return;
+
+            OnPropertiesChanged(nameof(HasReferenceUseCase), nameof(ReferenceUseCaseLabel));
+            RemoveReferenceUseCaseCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>Whether the reference chip shows.</summary>
+    public bool HasReferenceUseCase => _referenceUseCaseId is not null;
+
+    /// <summary>« Inspired by: Competitive watch » — the title in the UI's language.</summary>
+    public string ReferenceUseCaseLabel => _referenceUseCaseId is { } id
+        ? string.Format(
+            CultureInfo.CurrentCulture,
+            _strings[StudioStringKeys.WizardGalleryReference],
+            Gallery.Catalog?.Find(id)?.TitleIn(UseCaseLanguage) is { Length: > 0 } title ? title : id)
+        : "";
+
+    /// <summary>The chip's ✕: the reference goes, the need stays as written.</summary>
+    public RelayCommand RemoveReferenceUseCaseCommand { get; }
+
+    /// <summary>The catalogue code of the UI's language: Studio says <c>zh</c>, the catalogue <c>zh-Hans</c>.</summary>
+    internal string UseCaseLanguage => UseCaseLanguages.FromUiLanguage(_uiLanguage());
+
+    /// <summary>
+    /// A card chosen in the gallery (D-04): its problem, in the UI's language, becomes the need,
+    /// and the case the reference. What the user had typed is replaced — choosing a case is
+    /// asking for its words.
+    /// </summary>
+    private void ChooseUseCase(UseCase useCase)
+    {
+        var language = UseCaseLanguage;
+
+        // The reference first: the need it writes is not searched for cases close to itself.
+        ReferenceUseCaseId = useCase.Id;
+        Need = useCase.ProblemIn(language) is { Length: > 0 } problem ? problem : useCase.TitleIn(language);
+        Gallery.Close();
+    }
+
+    private void RemoveReferenceUseCase()
+    {
+        ReferenceUseCaseId = null;
+        ScheduleSuggestions();
+    }
+
+    /// <summary>Another creation starts: the reference and the suggestions were the previous one's.</summary>
+    private void ForgetUseCases()
+    {
+        ReferenceUseCaseId = null;
+        _suggestionGeneration++;
+        _suggestionDelay.CancelPending();
+        ShowCloseUseCases([]);
+    }
+
+    /// <summary>
+    /// A keystroke in the need: the pause before it is dropped and a new one starts, so the CLI
+    /// is asked once the typing stops, never once per key. Too short a need, or one a reference
+    /// is attached to, has no suggestion at all.
+    /// </summary>
+    private void ScheduleSuggestions()
+    {
+        if (_useCases is null)
+            return;
+
+        var generation = ++_suggestionGeneration;
+        _suggestionDelay.CancelPending();
+
+        var need = _need.Trim();
+        if (need.Length < SuggestionMinimumLength || HasReferenceUseCase)
+        {
+            ShowCloseUseCases([]);
+            return;
+        }
+
+        _suggestionDelay.After(SuggestionPause, () => _ = SuggestAsync(generation, need));
+    }
+
+    /// <summary>
+    /// Asks the session for <paramref name="need"/> and keeps the close matches — unless the need
+    /// moved on meanwhile. The catalogue is read first when it never was: the rule counts sheets.
+    /// </summary>
+    [SuppressMessage("Design", "CA1031", Justification =
+        "A suggestion is a courtesy: the client already turns what the CLI did into typed failures, "
+        + "and anything else escaping this fire-and-forget task must cost the hint, never the wizard.")]
+    private async Task SuggestAsync(int generation, string need)
+    {
+        try
+        {
+            if (generation != _suggestionGeneration || _useCases is null)
+                return;
+
+            if (!Gallery.HasCatalog && !Gallery.HasFailure)
+                await Gallery.LoadAsync().ConfigureAwait(true);
+
+            if (Gallery.Catalog is not { } catalog || generation != _suggestionGeneration)
+                return;
+
+            var result = await _useCases.SearchAsync(need).ConfigureAwait(false);
+            _dispatcher.Post(() =>
+            {
+                if (generation == _suggestionGeneration)
+                    ShowCloseUseCases(result.Answer is { } answer ? UseCaseSuggestions.Close(answer, catalog) : []);
+            });
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // No hint, and nothing else lost: the need, the gallery and the composing are untouched.
+        }
+    }
+
+    private void ShowCloseUseCases(IReadOnlyList<UseCaseMatch> matches)
+    {
+        _closeMatches = matches;
+        var language = UseCaseLanguage;
+        _closeUseCases =
+        [
+            .. matches
+                .Select(match => Gallery.Catalog?.Find(match.Id))
+                .OfType<UseCase>()
+                .Where(useCase => !string.Equals(useCase.Id, _referenceUseCaseId, StringComparison.Ordinal))
+                .Select(useCase => new UseCaseCardViewModel(useCase, language, _strings, ChooseUseCase)),
+        ];
+
+        Gallery.Suggest([.. _closeUseCases.Select(card => card.Id)]);
+        OnPropertiesChanged(
+            nameof(CloseUseCases), nameof(HasCloseUseCases), nameof(CloseUseCasesLabel), nameof(CloseUseCasesTitles));
+        ShowCloseUseCasesCommand.RaiseCanExecuteChanged();
+    }
+
+    private void OnGalleryPropertyChanged(string? propertyName)
+    {
+        if (propertyName is nameof(UseCaseGalleryViewModel.HasCatalog) or nameof(UseCaseGalleryViewModel.Count))
+            OnPropertiesChanged(nameof(BrowseUseCasesLabel), nameof(ReferenceUseCaseLabel));
+    }
+
+    /// <summary>The titles and labels here are catalogue text: a language switch re-reads them.</summary>
+    private void OnUseCaseLanguageChanged()
+    {
+        ShowCloseUseCases(_closeMatches);
+        OnPropertiesChanged(nameof(BrowseUseCasesLabel), nameof(ReferenceUseCaseLabel));
+    }
+
+    /// <summary>
+    /// Ends the wizard's search session — its stdin closed, the CLI's own clean exit — and drops
+    /// a pause still pending. The window calls it when it closes: the wizard lives as long as the
+    /// window, and so does the one process that serves its suggestions (D-03). A later keystroke
+    /// would open a new one.
+    /// </summary>
+    public void CloseUseCaseSession()
+    {
+        _suggestionDelay.CancelPending();
+        _useCases?.CloseSession();
+    }
 
     // ── the engine ──
 
@@ -2165,6 +2422,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         // Another creation than the one under way: its step-1 answers stay with it (D-07).
         ClearStepOneFolders();
+        ForgetUseCases();
         ResetProjection();
         ForgeSessionHydrator.Hydrate(_model, solution.Directory);
         SessionActivated?.Invoke(this, EventArgs.Empty);
@@ -2269,6 +2527,7 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         // Another creation than the one under way: its step-1 answers stay with it (D-07).
         ClearStepOneFolders();
+        ForgetUseCases();
         ResetProjection();
         _reopenedTeamPath = team.Path;
         // The screen comes forward on the click, not once the engine has answered: the reopen —
@@ -2682,8 +2941,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     private void ResetToStepOne()
     {
-        // The step-1 answers belong to the creation being ended too, policy included.
+        // The step-1 answers belong to the creation being ended too, policy included — and the
+        // use case it started from (STUDIO-39).
         ClearStepOneFolders();
+        ForgetUseCases();
         ResetProjection();
         // The conversation belongs to the creation being ended — unlike ResetProjection,
         // which also runs at the START of a compose and must leave the interview's answers

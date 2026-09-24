@@ -131,6 +131,9 @@ public partial class App : System.Windows.Application
                 Delay = new WpfDelay(Dispatcher),
                 // The status bar's clocks move between a run's events (STUDIO-34).
                 Ticker = new WpfTicker(Dispatcher),
+                // The wizard's pause before a need is searched for close use cases (STUDIO-39):
+                // a timer of its own, so dropping a superseded pause never drops a beat above.
+                SuggestionDelay = new WpfDelay(Dispatcher),
             },
             new StudioUiPreferences
             {
