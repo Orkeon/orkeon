@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Pistes de diagnostic pour le médecin"
+  en: "Diagnostic leads for doctors"
+  es: "Pistas diagnósticas para la consulta"
+  de: "Diagnoseansätze für die Arztpraxis"
+  zh-Hans: "供医生参考的诊断思路"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je suis médecin : je veux organiser les symptômes d'un patient et les pistes à vérifier, en validant chaque étape"
+  en: "As a doctor, I want to organize a patient's symptoms and the leads to check, approving each step"
+  es: "En mi consulta, quiero ordenar los síntomas de un paciente y las pistas por verificar, validando cada paso"
+  de: "In meiner Praxis möchte ich die Symptome eines Patienten und die zu prüfenden Diagnoseansätze ordnen und jeden Schritt selbst freigeben"
+  zh-Hans: "作为医生，我想整理患者的症状和有待核实的诊断思路，并亲自确认每一步"
+tags: ["diagnosis-support", "symptoms", "drug-interactions", "human-review"]
 mounts: []
 importable: true

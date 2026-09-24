@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Tutorat personnalisé"
+  en: "Personalized tutoring"
+  es: "Tutoría personalizada"
+  de: "Persönliche Lernbegleitung"
+  zh-Hans: "个性化辅导"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève"
+  en: "I want explanations and exercises matched to a learner's level and way of learning"
+  es: "Quiero explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno"
+  de: "Ich möchte Erklärungen und Übungen, die zu Niveau und Lernstil der Lernenden passen"
+  zh-Hans: "我想要根据学习者的水平和学习方式量身定制的讲解和练习"
+tags: ["tutoring", "personalized-learning", "exercises"]
 mounts:
   - "./output:/output:rw"
 importable: true

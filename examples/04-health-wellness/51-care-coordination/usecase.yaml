@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Plan de soins coordonné"
+  en: "Coordinated care plan"
+  es: "Plan de cuidados coordinado"
+  de: "Koordinierter Versorgungsplan"
+  zh-Hans: "协同照护计划"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux préparer un plan de soins partagé entre médecin, spécialiste, kiné et équipe infirmière"
+  en: "I want to prepare one care plan shared by the doctor, specialist, physical therapist and nursing team"
+  es: "Quiero preparar un plan de cuidados compartido entre médico, especialista, fisioterapeuta y personal de enfermería"
+  de: "Ich möchte einen gemeinsamen Versorgungsplan für das ganze Team aus Medizin, Physiotherapie und Pflege vorbereiten"
+  zh-Hans: "我想为医生、专科医生、康复治疗师和护理团队准备一份共享的照护计划"
+tags: ["care-coordination", "care-plan", "multidisciplinary-team"]
 mounts:
   - "./output:/output:rw"
 importable: true

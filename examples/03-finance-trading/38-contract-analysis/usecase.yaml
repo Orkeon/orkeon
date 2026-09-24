@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Analyse de contrat avant négociation"
+  en: "Contract review before negotiation"
+  es: "Análisis de contrato antes de negociar"
+  de: "Vertragsprüfung vor der Verhandlung"
+  zh-Hans: "谈判前的合同审查"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux repérer les clauses risquées ou coûteuses d'un contrat et savoir quoi renégocier"
+  en: "I want to spot the risky or costly clauses in a contract and know what to renegotiate"
+  es: "Quiero detectar las cláusulas arriesgadas o costosas de un contrato y saber qué renegociar"
+  de: "Ich möchte riskante oder teure Klauseln in einem Vertrag finden und wissen, was ich nachverhandeln sollte"
+  zh-Hans: "我想找出合同中有风险或代价高昂的条款，并知道该重新谈判哪些内容"
+tags: ["contract-review", "negotiation", "legal-risk"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Suivi du bien-être psychologique"
+  en: "Mental well-being tracking"
+  es: "Seguimiento del bienestar psicológico"
+  de: "Begleitung des psychischen Wohlbefindens"
+  zh-Hans: "心理健康状况跟踪"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je suis psychologue : je veux suivre le bien-être d'un patient et lui proposer des exercices que je valide"
+  en: "As a psychologist, I want to follow a patient's well-being and suggest exercises I approve first"
+  es: "En mi consulta de psicología, quiero seguir el bienestar de un paciente y proponerle ejercicios validados por mí"
+  de: "In meiner psychologischen Praxis möchte ich das Wohlbefinden eines Patienten verfolgen und Übungen vorschlagen, die ich vorher freigebe"
+  zh-Hans: "作为临床心理师，我想跟踪一位患者的心理状态，并推荐经我审核的练习"
+tags: ["mental-health", "well-being", "human-review"]
 mounts:
   - "./output:/output:rw"
 importable: true

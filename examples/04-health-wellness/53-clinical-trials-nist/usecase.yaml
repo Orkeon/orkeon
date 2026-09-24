@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Suivi d'un essai clinique"
+  en: "Clinical trial oversight"
+  es: "Seguimiento de un ensayo clínico"
+  de: "Begleitung einer klinischen Studie"
+  zh-Hans: "临床试验跟踪"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux suivre un essai clinique, du recrutement à la sécurité des participants, en validant moi-même la suite à donner"
+  en: "I want to oversee a clinical trial, from recruitment to participant safety, and approve the next steps myself"
+  es: "Quiero supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y validar personalmente los siguientes pasos"
+  de: "Ich möchte eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und das weitere Vorgehen selbst freigeben"
+  zh-Hans: "我想跟踪一项临床试验，从招募到受试者安全全程把关，并亲自审定下一步安排"
+tags: ["clinical-trials", "patient-safety", "human-review"]
 mounts:
   - "./output:/output:rw"
 importable: true

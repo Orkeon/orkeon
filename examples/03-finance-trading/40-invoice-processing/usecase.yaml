@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Contrôle des factures fournisseurs"
+  en: "Supplier invoice checks"
+  es: "Control de facturas de proveedores"
+  de: "Prüfung von Lieferantenrechnungen"
+  zh-Hans: "供应商发票核对"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison"
+  en: "I want to check that every supplier invoice matches an order and a delivery"
+  es: "Quiero comprobar que cada factura de proveedor corresponde a un pedido y a una entrega"
+  de: "Ich möchte prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt"
+  zh-Hans: "我想核实每张供应商发票都能对应到一笔订单和一次收货"
+tags: ["invoice-processing", "accounts-payable", "three-way-matching", "document-extraction"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

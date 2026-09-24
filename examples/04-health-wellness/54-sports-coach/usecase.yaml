@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Programme d'entraînement personnalisé"
+  en: "Personalized training program"
+  es: "Programa de entrenamiento personalizado"
+  de: "Persönlicher Trainingsplan"
+  zh-Hans: "个性化训练计划"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux un programme d'entraînement pour la semaine, avec des conseils de nutrition et de récupération adaptés à mon niveau"
+  en: "I want a training program for the week, with nutrition and recovery tips suited to my level"
+  es: "Quiero un programa de entrenamiento para la semana, con consejos de nutrición y recuperación adaptados a mi nivel"
+  de: "Ich möchte einen Wochentrainingsplan mit Ernährungs- und Erholungstipps, alles auf mein Niveau abgestimmt"
+  zh-Hans: "我想要一份一周训练计划，并附上适合我水平的营养和恢复建议"
+tags: ["fitness", "training-plan", "sports-nutrition", "recovery"]
 mounts:
   - "./output:/output:rw"
 importable: true

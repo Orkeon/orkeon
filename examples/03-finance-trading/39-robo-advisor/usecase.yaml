@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Placements adaptés à mon profil"
+  en: "Investments matched to my profile"
+  es: "Inversiones adaptadas a mi perfil"
+  de: "Geldanlage passend zu meinem Profil"
+  zh-Hans: "适合我的投资配置"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux définir mon profil d'investisseur en répondant à quelques questions et obtenir une répartition de placements adaptée"
+  en: "I want to define my investor profile by answering a few questions and get an allocation that fits it"
+  es: "Quiero definir mi perfil de inversor respondiendo a unas preguntas y obtener un reparto de inversiones adecuado"
+  de: "Ich möchte mein Anlegerprofil über ein paar Fragen bestimmen und eine passende Aufteilung meiner Geldanlagen erhalten"
+  zh-Hans: "我想通过回答几个问题确定自己的投资风险偏好，并得到相应的资产配置方案"
+tags: ["investment", "risk-profile", "portfolio-allocation", "rebalancing"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

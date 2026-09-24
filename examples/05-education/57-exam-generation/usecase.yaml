@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Création d'examens équilibrés"
+  en: "Building balanced exams"
+  es: "Creación de exámenes equilibrados"
+  de: "Erstellung ausgewogener Prüfungen"
+  zh-Hans: "编制均衡试卷"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux préparer un examen équilibré, avec des questions claires et une difficulté bien dosée"
+  en: "I want to prepare a balanced exam, with clear questions and well-judged difficulty"
+  es: "Quiero preparar un examen equilibrado, con preguntas claras y una dificultad bien dosificada"
+  de: "Ich möchte eine ausgewogene Prüfung mit klaren Fragen und gut abgestimmtem Schwierigkeitsgrad erstellen"
+  zh-Hans: "我想出一份均衡的试卷，题目表述清晰，难度把握得当"
+tags: ["exam-creation", "assessment", "teaching"]
 mounts:
   - "./output:/output:rw"
 importable: true

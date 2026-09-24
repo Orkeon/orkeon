@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Comparaison fiscale entre pays"
+  en: "Tax comparison across countries"
+  es: "Comparación fiscal entre países"
+  de: "Steuervergleich zwischen Ländern"
+  zh-Hans: "跨国税负比较"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux comparer l'imposition de mon entreprise aux États-Unis, en Europe et en Asie-Pacifique, et valider moi-même la stratégie"
+  en: "I want to compare how my company is taxed in the US, Europe and Asia-Pacific, and approve the strategy myself"
+  es: "Quiero comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y validar personalmente la estrategia"
+  de: "Ich möchte die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und die Strategie selbst freigeben"
+  zh-Hans: "我想比较我的公司在美国、欧洲和亚太地区的税负，并亲自审定最终策略"
+tags: ["tax-planning", "international-tax", "scenario-comparison", "human-review"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

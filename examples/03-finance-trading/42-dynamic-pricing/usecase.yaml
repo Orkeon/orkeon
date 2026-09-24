@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Fixation du prix de vente"
+  en: "Setting the selling price"
+  es: "Fijación del precio de venta"
+  de: "Festlegung des Verkaufspreises"
+  zh-Hans: "销售定价"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux fixer le bon prix de vente en tenant compte de la demande, des concurrents et de ma marge"
+  en: "I want to set the right selling price by weighing demand, competitors and my margin"
+  es: "Quiero fijar el precio de venta adecuado teniendo en cuenta la demanda, la competencia y mi margen"
+  de: "Ich möchte den richtigen Verkaufspreis festlegen und dabei Nachfrage, Wettbewerb und meine Marge berücksichtigen"
+  zh-Hans: "我想综合考虑需求、竞争对手和自身利润，定出合适的售价"
+tags: ["pricing", "competitor-analysis", "profit-margin"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

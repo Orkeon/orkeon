@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Évaluation de demandes de crédit"
+  en: "Credit application assessment"
+  es: "Evaluación de solicitudes de crédito"
+  de: "Prüfung von Kreditanträgen"
+  zh-Hans: "贷款申请评估"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux évaluer une demande de crédit et recevoir une recommandation, en gardant le dernier mot"
+  en: "I want to assess a credit application and get a recommendation, while keeping the final say"
+  es: "Quiero evaluar una solicitud de crédito y recibir una recomendación, reservándome la última palabra"
+  de: "Ich möchte einen Kreditantrag bewerten und eine Empfehlung erhalten, wobei das letzte Wort bei mir bleibt"
+  zh-Hans: "我想评估一份贷款申请并获得建议，最终决定仍由我来做"
+tags: ["credit-scoring", "lending", "risk-assessment", "human-review"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Test de résistance bancaire"
+  en: "Bank stress test"
+  es: "Prueba de resistencia bancaria"
+  de: "Bankenstresstest"
+  zh-Hans: "银行压力测试"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux simuler l'effet d'une crise grave sur ma banque et préparer le rapport pour le régulateur"
+  en: "I want to simulate how a severe crisis would hit my bank and prepare the report for the regulator"
+  es: "Quiero simular el efecto de una crisis grave en mi banco y preparar el informe para el supervisor"
+  de: "Ich möchte simulieren, wie eine schwere Krise meine Bank treffen würde, und den Bericht für die Aufsicht vorbereiten"
+  zh-Hans: "我想模拟一场严重危机对我所在银行的冲击，并准备提交给监管机构的报告"
+tags: ["stress-testing", "banking", "regulatory-reporting"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

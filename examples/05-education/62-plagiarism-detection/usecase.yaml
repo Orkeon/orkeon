@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Détection de plagiat"
+  en: "Plagiarism check"
+  es: "Detección de plagio"
+  de: "Plagiatsprüfung"
+  zh-Hans: "抄袭检测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux vérifier si un devoir a été copié, en croisant plusieurs indices pour limiter les fausses alertes"
+  en: "I want to check whether an assignment was copied, cross-checking several clues to limit false alarms"
+  es: "Quiero comprobar si un trabajo ha sido copiado, cruzando varios indicios para limitar las falsas alarmas"
+  de: "Ich möchte prüfen, ob eine Arbeit abgeschrieben wurde, und dafür mehrere Hinweise abgleichen, um Fehlalarme gering zu halten"
+  zh-Hans: "我想核查一份作业是否抄袭，交叉比对多种线索以减少误判"
+tags: ["plagiarism-detection", "academic-integrity", "text-analysis"]
 mounts:
   - "./output:/output:rw"
 importable: true
