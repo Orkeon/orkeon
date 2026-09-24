@@ -9,6 +9,29 @@ namespace Orkeon.Studio.Core.Run;
 /// </summary>
 public sealed record RunTaskInFlight(string? TaskId, string? AgentRole, DateTimeOffset? StartedAt);
 
+/// <summary>
+/// One tool call the run announced (<c>tool.called</c>) and has not seen return (STUDIO-30).
+/// </summary>
+/// <param name="ToolName">The tool at work.</param>
+/// <param name="StartedAt">The run's own clock at the call; null when it did not parse.</param>
+public sealed record RunToolInFlight(string ToolName, DateTimeOffset? StartedAt);
+
+/// <summary>
+/// One delegation under way (STUDIO-30): an agent handed work over and the delegate has not
+/// come back. The CLI reports it with <c>delegation.started</c> instead of a <c>tool.called</c>
+/// and closes it with the <c>tool.returned</c> every call gets — there is no
+/// <c>delegation.finished</c>.
+/// </summary>
+/// <param name="ToRole">The coworker the work went to, when the call named one.</param>
+/// <param name="StartedAt">The run's own clock at the handover; null when it did not parse.</param>
+public sealed record RunDelegationInFlight(string? ToRole, DateTimeOffset? StartedAt);
+
+/// <summary>One agent the team grew by at runtime (<c>agent.spawned</c>, STUDIO-30).</summary>
+/// <param name="Role">The new agent's role, when the call named one.</param>
+/// <param name="Reason">What it was spawned for — the spawn call's goal — when stated.</param>
+/// <param name="SpawnedAt">The run's own clock at the spawn; null when it did not parse.</param>
+public sealed record RunSpawnedAgent(string? Role, string? Reason, DateTimeOffset? SpawnedAt);
+
 /// <summary>One task the run has finished.</summary>
 public sealed record RunTaskProgress(
     string? TaskId,
@@ -77,11 +100,33 @@ public sealed record RunHubMessage(string? From, string? Topic, string? Correlat
 public sealed record RunAgentRequest(string CorrelationId, string? From, string? Payload);
 
 /// <summary>
+/// What <see cref="RunProgressModel.Changed"/> says about a change (STUDIO-30): which kind of
+/// event moved the state.
+/// </summary>
+public sealed class RunProgressChangedEventArgs : EventArgs
+{
+    /// <summary>Names the kind that moved the state; null for a change made on this side.</summary>
+    public RunProgressChangedEventArgs(string? kind) => Kind = kind;
+
+    /// <summary>
+    /// The kind of the event that moved the state (one of <see cref="RunEventKinds"/>), or null
+    /// when the change was made on this side — an answer or a reply the run's stdin accepted.
+    /// </summary>
+    public string? Kind { get; }
+}
+
+/// <summary>
 /// Folds a watched run's event stream into the state a screen shows (BUS-06).
 /// <para>
 /// It is deliberately a plain model rather than a view-model: the same folding serves the WPF
 /// screen, a terminal, and the tests. Everything it exposes comes from an event — nothing is
-/// inferred, so a screen never shows progress the run did not report.
+/// inferred, so a screen never shows progress the run did not report. Its one reading of this
+/// machine's clock, <see cref="Elapsed"/>, counts from the start the run itself stamped.
+/// </para>
+/// <para>
+/// It holds the whole live state of one run (STUDIO-30) — tasks and tools at work with their
+/// start, delegations under way, agents spawned, whether the run waits on an answer, what it
+/// spent, how long it has gone — so a status bar reads it rather than the raw stream.
 /// </para>
 /// <para>
 /// A run that says nothing leaves this empty, which is the honest state: "no news" is not
@@ -90,11 +135,24 @@ public sealed record RunAgentRequest(string CorrelationId, string? From, string?
 /// </summary>
 public sealed class RunProgressModel
 {
+    private readonly TimeProvider _time;
     private readonly List<RunTaskProgress> _tasks = [];
     private readonly List<RunTaskInFlight> _running = [];
-    private readonly List<(string Key, string Tool)> _activeTools = [];
+    private readonly InFlight<RunToolInFlight> _activeTools = new();
+    private readonly List<RunToolInFlight> _unfinishedTools = [];
+    private readonly InFlight<RunDelegationInFlight> _activeDelegations = new();
+    private readonly List<RunDelegationInFlight> _unfinishedDelegations = [];
+    private readonly List<RunSpawnedAgent> _spawnedAgents = [];
     private readonly List<RunHubMessage> _hubMessages = [];
     private readonly System.Text.StringBuilder _generated = new();
+    private DateTimeOffset? _finishedAt;
+
+    /// <summary>
+    /// Builds an empty model. <paramref name="timeProvider"/> is the clock <see cref="Elapsed"/>
+    /// reads while the run goes: the system's by default, a fixed one in tests.
+    /// </summary>
+    public RunProgressModel(TimeProvider? timeProvider = null) =>
+        _time = timeProvider ?? TimeProvider.System;
 
     /// <summary>Tasks finished so far, in the order the run reported them.</summary>
     public IReadOnlyList<RunTaskProgress> Tasks => _tasks;
@@ -107,10 +165,53 @@ public sealed class RunProgressModel
     public IReadOnlyList<RunTaskInFlight> RunningTasks => _running;
 
     /// <summary>
-    /// The tool most recently called and not yet returned, or null when no tool is at work.
-    /// Straight from <c>tool.called</c> / <c>tool.returned</c>, paired by correlation id.
+    /// Every tool at work — called and not yet returned — oldest first, each with the run's own
+    /// clock at the call (STUDIO-30). Parallel calls are all here, not only the latest: a return
+    /// closes the call its correlation id names, in whatever order the returns come back.
     /// </summary>
-    public string? ActiveToolName => _activeTools.Count > 0 ? _activeTools[^1].Tool : null;
+    public IReadOnlyList<RunToolInFlight> ActiveTools => _activeTools.Calls;
+
+    /// <summary>
+    /// The tool most recently called and not yet returned — the last of
+    /// <see cref="ActiveTools"/> — or null when no tool is at work.
+    /// </summary>
+    public string? ActiveToolName => _activeTools.Calls.Count > 0 ? _activeTools.Calls[^1].ToolName : null;
+
+    /// <summary>
+    /// Tool calls the run announced so far. Each one is in exactly one place:
+    /// <see cref="ActiveTools"/>, <see cref="SucceededToolCalls"/>, <see cref="FailedToolCalls"/>
+    /// or <see cref="UnfinishedTools"/>. A delegation or a spawn is a tool call underneath, but
+    /// the run reports it under its own kind, and it is not counted here.
+    /// </summary>
+    public int ToolCallCount { get; private set; }
+
+    /// <summary>Tool calls whose return said <c>success: true</c>.</summary>
+    public int SucceededToolCalls { get; private set; }
+
+    /// <summary>Tool calls whose return said anything else — a tool that threw included.</summary>
+    public int FailedToolCalls { get; private set; }
+
+    /// <summary>
+    /// Tools still at work when the run reported its end: they never returned, so none of them
+    /// is a success. Kept aside rather than dropped — dropped, a call that never came back would
+    /// read as one that went well. Empty until the run ends.
+    /// </summary>
+    public IReadOnlyList<RunToolInFlight> UnfinishedTools => _unfinishedTools;
+
+    /// <summary>
+    /// Delegations under way — handed over and not yet come back — oldest first (STUDIO-30).
+    /// </summary>
+    public IReadOnlyList<RunDelegationInFlight> ActiveDelegations => _activeDelegations.Calls;
+
+    /// <summary>Delegations still under way when the run reported its end — not finished, like <see cref="UnfinishedTools"/>.</summary>
+    public IReadOnlyList<RunDelegationInFlight> UnfinishedDelegations => _unfinishedDelegations;
+
+    /// <summary>
+    /// Agents the team grew by at runtime, in the order the run announced them (STUDIO-30). The
+    /// announcement goes out with the spawn call, and whatever that call returns leaves the
+    /// agent counted: a spawn that waits for its agent reports that agent's own failure.
+    /// </summary>
+    public IReadOnlyList<RunSpawnedAgent> SpawnedAgents => _spawnedAgents;
 
     /// <summary>Messages the run's hub relayed to this process, oldest first.</summary>
     public IReadOnlyList<RunHubMessage> HubMessages => _hubMessages;
@@ -120,6 +221,35 @@ public sealed class RunProgressModel
 
     /// <summary>Whether the run was asked for token-by-token deltas.</summary>
     public bool Streaming { get; private set; }
+
+    /// <summary>
+    /// When the run said it started — the envelope <c>ts</c> of its <c>run.started</c>; null
+    /// before that line, or when its clock did not parse.
+    /// </summary>
+    public DateTimeOffset? StartedAt { get; private set; }
+
+    /// <summary>
+    /// How long the run has been going (STUDIO-30). Once it reported its end, its own wall
+    /// time — <see cref="FinalDurationMs"/>, else the span between its two stamps — frozen there.
+    /// Before, the time since <see cref="StartedAt"/> on this machine's clock: a reading rather
+    /// than an event, so it moves without <see cref="Changed"/>, and a screen refreshes it on
+    /// its own timer. Null when nothing gives a start to count from.
+    /// </summary>
+    public TimeSpan? Elapsed
+    {
+        get
+        {
+            if (Finished)
+                return FinalDurationMs is { } durationMs ? TimeSpan.FromMilliseconds(durationMs) : _finishedAt - StartedAt;
+
+            if (StartedAt is not { } started)
+                return null;
+
+            // A clock set back since the start must not show a negative time.
+            var elapsed = _time.GetUtcNow() - started;
+            return elapsed > TimeSpan.Zero ? elapsed : TimeSpan.Zero;
+        }
+    }
 
     /// <summary>What has been spent, or null while the meter has not moved.</summary>
     public RunCost? Cost { get; private set; }
@@ -133,6 +263,12 @@ public sealed class RunProgressModel
     public RunAgentRequest? PendingAgentRequest => _agentRequests.Count > 0 ? _agentRequests[0] : null;
 
     private readonly List<RunAgentRequest> _agentRequests = [];
+
+    /// <summary>
+    /// Whether the run is waiting on this process — a question for a human, or an agent's
+    /// request for a reply (STUDIO-30).
+    /// </summary>
+    public bool IsWaitingForAnswer => _questions.Count > 0 || _agentRequests.Count > 0;
 
     /// <summary>The last error reported, or null.</summary>
     public RunErrorInfo? LastError { get; private set; }
@@ -161,8 +297,12 @@ public sealed class RunProgressModel
     /// <summary>Generated text accumulated from <c>llm.delta</c>, empty without <c>--stream</c>.</summary>
     public string GeneratedText => _generated.ToString();
 
-    /// <summary>Raised after each applied event, so a screen can refresh once per change.</summary>
-    public event EventHandler? Changed;
+    /// <summary>
+    /// Raised after each applied event, so a screen can refresh once per change. It names the
+    /// kind that moved the state (STUDIO-30): a token delta arrives per token, and a screen that
+    /// shows no generated text can skip it rather than repaint for each one.
+    /// </summary>
+    public event EventHandler<RunProgressChangedEventArgs>? Changed;
 
     /// <summary>
     /// Folds one event in. Unknown kinds are ignored on purpose: a newer CLI may emit more
@@ -178,6 +318,7 @@ public sealed class RunProgressModel
             case RunEventKinds.RunStarted:
                 Target = orkeonEvent.GetString("target");
                 Streaming = orkeonEvent.GetBool("stream") ?? false;
+                StartedAt = ReadTimestamp(orkeonEvent);
                 break;
 
             case RunEventKinds.TaskStarted:
@@ -208,13 +349,30 @@ public sealed class RunProgressModel
                 if (orkeonEvent.GetString("toolName") is not { Length: > 0 } calledTool)
                     return;   // a call that names no tool is nothing a screen can show
 
-                _activeTools.Add((ToolKey(orkeonEvent), calledTool));
+                _activeTools.Open(ToolKey(orkeonEvent), new RunToolInFlight(calledTool, ReadTimestamp(orkeonEvent)));
+                ToolCallCount++;
                 break;
 
             case RunEventKinds.ToolReturned:
-                if (!ToolReturned(orkeonEvent))
+                if (!Returned(orkeonEvent))
                     return;   // a return nothing was waiting for changes nothing
 
+                break;
+
+            case RunEventKinds.DelegationStarted:
+                // Reported instead of the delegation's tool.called, and closed by that call's
+                // tool.returned — there is no delegation.finished. A handover naming no
+                // coworker is still one under way.
+                _activeDelegations.Open(ToolKey(orkeonEvent), new RunDelegationInFlight(
+                    orkeonEvent.GetString("toRole"),
+                    ReadTimestamp(orkeonEvent)));
+                break;
+
+            case RunEventKinds.AgentSpawned:
+                _spawnedAgents.Add(new RunSpawnedAgent(
+                    orkeonEvent.GetString("role"),
+                    orkeonEvent.GetString("reason"),
+                    ReadTimestamp(orkeonEvent)));
                 break;
 
             case RunEventKinds.CostUpdated:
@@ -306,17 +464,22 @@ public sealed class RunProgressModel
                 FinalDurationMs = orkeonEvent.GetInt64("durationMs");
                 FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
                 FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
+                _finishedAt = ReadTimestamp(orkeonEvent);
                 _questions.Clear();       // nobody is left to answer them
                 _agentRequests.Clear();   // the asking agents are gone with the run
                 _running.Clear();         // nothing is in progress once the run has ended
-                _activeTools.Clear();
+
+                // A call still open now never came back. It leaves what is at work, but is set
+                // aside as not finished rather than dropped, where it would read as a success.
+                _activeTools.AbandonInto(_unfinishedTools);
+                _activeDelegations.AbandonInto(_unfinishedDelegations);
                 break;
 
             default:
                 return;   // nothing changed, so nothing to announce
         }
 
-        Changed?.Invoke(this, EventArgs.Empty);
+        Changed?.Invoke(this, new RunProgressChangedEventArgs(orkeonEvent.Kind));
     }
 
     /// <summary>
@@ -330,7 +493,7 @@ public sealed class RunProgressModel
             return;
 
         _questions.RemoveAt(0);
-        Changed?.Invoke(this, EventArgs.Empty);
+        Changed?.Invoke(this, new RunProgressChangedEventArgs(kind: null));
     }
 
     /// <summary>
@@ -345,7 +508,7 @@ public sealed class RunProgressModel
             return;
 
         _agentRequests.RemoveAt(0);
-        Changed?.Invoke(this, EventArgs.Empty);
+        Changed?.Invoke(this, new RunProgressChangedEventArgs(kind: null));
     }
 
     /// <summary>
@@ -377,25 +540,31 @@ public sealed class RunProgressModel
             ? id
             : orkeonEvent.Seq.ToString(CultureInfo.InvariantCulture);
 
-    /// <summary>Pairs a return with its call — by correlation id, else the latest call of that tool. False when nothing matched.</summary>
-    private bool ToolReturned(OrkeonEvent orkeonEvent)
+    /// <summary>
+    /// Pairs a return with its call — by correlation id, a delegation or a tool; else the latest
+    /// call of that tool — and counts a tool call's outcome. False when nothing matched.
+    /// </summary>
+    private bool Returned(OrkeonEvent orkeonEvent)
     {
-        if (orkeonEvent.CorrelationId is { Length: > 0 } id)
-        {
-            var byId = _activeTools.FindLastIndex(t => string.Equals(t.Key, id, StringComparison.Ordinal));
-            if (byId >= 0)
-            {
-                _activeTools.RemoveAt(byId);
-                return true;
-            }
-        }
+        var id = orkeonEvent.CorrelationId is { Length: > 0 } correlationId ? correlationId : null;
+
+        // The delegate came back. Its return closes the delegation, and counts as no tool call.
+        if (id is not null && _activeDelegations.Close(id))
+            return true;
 
         var name = orkeonEvent.GetString("toolName");
-        var byName = _activeTools.FindLastIndex(t => string.Equals(t.Tool, name, StringComparison.Ordinal));
-        if (byName < 0)
+        if (!(id is not null && _activeTools.Close(id))
+            && !_activeTools.CloseLatest(t => string.Equals(t.ToolName, name, StringComparison.Ordinal)))
+        {
             return false;
+        }
 
-        _activeTools.RemoveAt(byName);
+        // A success only when the return says so: a return that says nothing is not one.
+        if (orkeonEvent.GetBool("success") == true)
+            SucceededToolCalls++;
+        else
+            FailedToolCalls++;
+
         return true;
     }
 
@@ -419,5 +588,48 @@ public sealed class RunProgressModel
             orkeonEvent.GetString("inputKind") ?? RunQuestion.Text,
             orkeonEvent.GetString("prompt") ?? string.Empty,
             orkeonEvent.GetStrings("choices"));
+    }
+
+    /// <summary>
+    /// Calls announced and not yet returned, oldest first, each filed under its identity on the
+    /// wire — so a return closes the very call it answers, whatever order the returns come in.
+    /// </summary>
+    private sealed class InFlight<T>
+    {
+        private readonly List<string> _keys = [];
+
+        /// <summary>The open calls, oldest first.</summary>
+        public List<T> Calls { get; } = [];
+
+        /// <summary>Files <paramref name="call"/> under <paramref name="key"/>, as the latest open call.</summary>
+        public void Open(string key, T call)
+        {
+            _keys.Add(key);
+            Calls.Add(call);
+        }
+
+        /// <summary>Closes the latest call filed under <paramref name="key"/>; false when none is open.</summary>
+        public bool Close(string key) => CloseAt(_keys.LastIndexOf(key));
+
+        /// <summary>Closes the latest call <paramref name="match"/> accepts; false when none does.</summary>
+        public bool CloseLatest(Predicate<T> match) => CloseAt(Calls.FindLastIndex(match));
+
+        /// <summary>Hands every open call to <paramref name="abandoned"/> and closes them all.</summary>
+        public void AbandonInto(List<T> abandoned)
+        {
+            abandoned.AddRange(Calls);
+            Calls.Clear();
+            _keys.Clear();
+        }
+
+        private bool CloseAt(int index)
+        {
+            if (index < 0)
+                return false;
+
+            _keys.RemoveAt(index);
+            Calls.RemoveAt(index);
+            return true;
+        }
     }
 }
