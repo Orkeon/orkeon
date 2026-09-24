@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Trafic urbain, quartier par quartier"
+  en: "City traffic, district by district"
+  es: "Tráfico urbano, barrio a barrio"
+  de: "Stadtverkehr, Bezirk für Bezirk"
+  zh-Hans: "城市交通分区疏导"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Proposer des réglages de feux et des messages aux automobilistes pour fluidifier la circulation en ville"
+  en: "Suggest traffic-light settings and messages for drivers to ease traffic across a city"
+  es: "Proponer ajustes de semáforos y mensajes a los conductores para agilizar el tráfico de una ciudad"
+  de: "Ampelschaltungen und Hinweise für Autofahrer vorschlagen, damit der Verkehr in der Stadt besser fließt"
+  zh-Hans: "提出红绿灯配时调整和给司机的提示信息，让城市交通更顺畅"
+tags: ["smart-city", "traffic-management", "transportation", "iot"]
 mounts:
   - "./output:/output:rw"
 importable: true

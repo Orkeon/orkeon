@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Équipe qui s'auto-évalue"
+  en: "Self-assessing team"
+  es: "Equipo que se autoevalúa"
+  de: "Team, das sich selbst bewertet"
+  zh-Hans: "自我评估的团队"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Évaluer le coût et la qualité d'une équipe automatisée, puis proposer une meilleure organisation"
+  en: "Assess the cost and quality of an automated team, then propose a better setup"
+  es: "Evaluar el coste y la calidad de un equipo automatizado y proponer una organización mejor"
+  de: "Kosten und Qualität eines automatisierten Teams bewerten und dann eine bessere Aufstellung vorschlagen"
+  zh-Hans: "评估一个自动化团队的成本与质量，再提出更好的组织方式"
+tags: ["self-improvement", "performance-monitoring", "benchmarking", "team-optimization"]
 mounts:
   - "./output:/output:rw"
 importable: true

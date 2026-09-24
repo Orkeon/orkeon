@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Composition musicale collective"
+  en: "Collaborative music composition"
+  es: "Composición musical colectiva"
+  de: "Gemeinsame Musikkomposition"
+  zh-Hans: "协作式音乐创作"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Composer un morceau sur le papier, de la mélodie aux réglages de mixage"
+  en: "Compose a piece of music on paper, from the melody to the mixing settings"
+  es: "Componer una pieza musical sobre el papel, de la melodía a los ajustes de mezcla"
+  de: "Ein Musikstück auf dem Papier komponieren, von der Melodie bis zu den Einstellungen für die Abmischung"
+  zh-Hans: "以书面形式创作一首乐曲，从旋律一直到混音设置"
+tags: ["music", "composition", "arrangement", "consensus"]
 mounts:
   - "./output:/output:rw"
 importable: true

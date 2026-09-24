@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Sélection de contenus pour newsletter"
+  en: "Newsletter content selection"
+  es: "Selección de contenidos para un boletín"
+  de: "Inhaltsauswahl für den Newsletter"
+  zh-Hans: "简报内容精选"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer ma newsletter à partir d'articles, de blogs et d'études trouvés en ligne, sans doublons"
+  en: "Put together my newsletter from articles, blogs and studies found online, without duplicates"
+  es: "Preparar mi boletín a partir de artículos, blogs y estudios encontrados en internet, sin duplicados"
+  de: "Meinen Newsletter aus online gefundenen Artikeln, Blogs und Studien zusammenstellen, ohne Duplikate"
+  zh-Hans: "从网上的新闻、博客和研究中为我的简报挑选内容，并去除重复"
+tags: ["newsletter", "content-curation", "web-scraping", "deduplication"]
 mounts:
   - "./output:/output:rw"
 importable: true

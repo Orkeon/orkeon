@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Création d'un monde imaginaire"
+  en: "Building an imaginary world"
+  es: "Creación de un mundo imaginario"
+  de: "Erschaffung einer Fantasiewelt"
+  zh-Hans: "虚构世界构建"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Inventer un monde imaginaire cohérent pour un roman ou un jeu, de sa géographie à ses langues"
+  en: "Invent a consistent imaginary world for a novel or a game, from its geography to its languages"
+  es: "Inventar un mundo imaginario coherente para una novela o un juego, de su geografía a sus lenguas"
+  de: "Eine stimmige Fantasiewelt für einen Roman oder ein Spiel erfinden, von der Geografie bis zu den Sprachen"
+  zh-Hans: "为小说或游戏构建一个自洽的虚构世界，从地理到语言"
+tags: ["worldbuilding", "fiction", "game-design", "creative-writing"]
 mounts:
   - "./output:/output:rw"
 importable: true

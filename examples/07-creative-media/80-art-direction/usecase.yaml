@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Conception d'une campagne publicitaire"
+  en: "Ad campaign design"
+  es: "Diseño de una campaña publicitaria"
+  de: "Konzeption einer Werbekampagne"
+  zh-Hans: "广告活动策划"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer une campagne publicitaire, des idées visuelles aux slogans et au choix des supports"
+  en: "Prepare an advertising campaign, from visual ideas and slogans to where to run it"
+  es: "Preparar una campaña publicitaria, de las ideas visuales y los eslóganes a la elección de los medios"
+  de: "Eine Werbekampagne vorbereiten, von Bildideen und Slogans bis zur Wahl der Werbekanäle"
+  zh-Hans: "策划一场广告活动，从视觉创意、广告语到投放渠道"
+tags: ["marketing", "advertising", "creative-direction", "copywriting", "media-planning"]
 mounts:
   - "./output:/output:rw"
 importable: true

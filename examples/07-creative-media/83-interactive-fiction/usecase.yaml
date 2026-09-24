@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Histoire interactive"
+  en: "Interactive story"
+  es: "Historia interactiva"
+  de: "Interaktive Geschichte"
+  zh-Hans: "互动故事"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Me faire raconter une histoire dont je choisis la suite"
+  en: "Play through a story where I choose what happens next"
+  es: "Vivir una historia en la que yo elijo cómo continúa"
+  de: "Mir eine Geschichte erzählen lassen, deren Fortgang ich selbst wähle"
+  zh-Hans: "体验一个由我选择情节走向的故事"
+tags: ["interactive-fiction", "storytelling", "games", "branching-narrative"]
 mounts:
   - "./output:/output:rw"
 importable: true

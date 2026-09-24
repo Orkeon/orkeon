@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Gestion d'une flotte de livraison"
+  en: "Delivery fleet management"
+  es: "Gestión de una flota de reparto"
+  de: "Verwaltung einer Lieferflotte"
+  zh-Hans: "配送车队管理"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Répartir les livraisons du jour entre mes véhicules et savoir lesquels doivent passer à l'entretien"
+  en: "Split today's deliveries across my vehicles and find out which ones need servicing"
+  es: "Repartir las entregas del día entre mis vehículos y saber cuáles necesitan mantenimiento"
+  de: "Die heutigen Lieferungen auf meine Fahrzeuge verteilen und erfahren, welche in die Wartung müssen"
+  zh-Hans: "把今天的配送任务分配给我的车辆，并找出哪些车需要保养"
+tags: ["fleet-management", "logistics", "delivery-planning", "vehicle-maintenance"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

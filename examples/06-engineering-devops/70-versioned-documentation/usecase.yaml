@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Documentation technique tirée du code"
+  en: "Technical documentation from code"
+  es: "Documentación técnica a partir del código"
+  de: "Technische Dokumentation aus dem Code"
+  zh-Hans: "从代码生成技术文档"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Rédiger la documentation technique de mon code et vérifier qu'elle est cohérente"
+  en: "Write the technical documentation of my code and check that it is consistent"
+  es: "Redactar la documentación técnica de mi código y comprobar que es coherente"
+  de: "Die technische Dokumentation meines Codes schreiben und prüfen, ob sie stimmig ist"
+  zh-Hans: "为我的代码编写技术文档，并检查内容前后一致"
+tags: ["documentation", "api-docs", "software-architecture", "codebase-analysis"]
 mounts:
   - "./output:/output:rw"
 importable: true

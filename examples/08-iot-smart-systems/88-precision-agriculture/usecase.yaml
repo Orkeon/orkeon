@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Agriculture de précision"
+  en: "Precision farming"
+  es: "Agricultura de precisión"
+  de: "Präzisionslandwirtschaft"
+  zh-Hans: "精准农业"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Savoir quoi arroser ou traiter dans mes champs d'après les capteurs, et valider chaque intervention"
+  en: "Know what to water or treat in my fields from sensor readings, and approve each intervention"
+  es: "Saber qué regar o tratar en mis campos según los sensores y aprobar cada intervención"
+  de: "Anhand der Sensoren wissen, was auf meinen Feldern zu bewässern oder zu behandeln ist, und jeden Eingriff freigeben"
+  zh-Hans: "根据传感器数据判断我的田地该浇水还是施药，并逐项批准作业"
+tags: ["agriculture", "iot", "irrigation", "crop-health", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

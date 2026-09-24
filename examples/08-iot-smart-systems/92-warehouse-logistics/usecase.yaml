@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Préparation de commandes en entrepôt"
+  en: "Warehouse order picking"
+  es: "Preparación de pedidos en almacén"
+  de: "Auftragsabwicklung im Lager"
+  zh-Hans: "仓库订单拣货"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Organiser la préparation des commandes de mon entrepôt, jusqu'au contrôle avant expédition"
+  en: "Organize order picking in my warehouse, through to the checks before shipping"
+  es: "Organizar la preparación de pedidos de mi almacén, hasta el control antes del envío"
+  de: "Die Zusammenstellung der Bestellungen in meinem Lager organisieren, bis zur Kontrolle vor dem Versand"
+  zh-Hans: "组织我仓库里的订单拣货，直至发货前检查"
+tags: ["warehouse", "logistics", "order-picking", "inventory"]
 mounts:
   - "./output:/output:rw"
 importable: true

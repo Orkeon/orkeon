@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Réponse à une panne de service"
+  en: "Service outage response"
+  es: "Respuesta a una caída del servicio"
+  de: "Reaktion auf einen Dienstausfall"
+  zh-Hans: "服务故障应急处理"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Traiter une panne de mon service en ligne, avec mon feu vert avant chaque action, puis en faire le bilan"
+  en: "Handle an outage of my online service, with my go-ahead before each action, then review what happened"
+  es: "Gestionar una caída de mi servicio en línea, con mi visto bueno antes de cada acción, y después hacer balance"
+  de: "Einen Ausfall meines Onlinedienstes angehen, jede Maßnahme vorher selbst freigeben und danach Bilanz ziehen"
+  zh-Hans: "处理我的在线服务故障，每项操作前先经我同意，事后进行复盘"
+tags: ["devops", "incident-response", "root-cause-analysis", "post-mortem", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

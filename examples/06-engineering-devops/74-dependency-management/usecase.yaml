@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Mise à jour des composants vulnérables"
+  en: "Updating vulnerable components"
+  es: "Actualización de componentes vulnerables"
+  de: "Aktualisierung anfälliger Komponenten"
+  zh-Hans: "更新存在漏洞的组件"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Mettre à jour les composants de mon projet, les failles de sécurité les plus graves d'abord"
+  en: "Update my project's components, most serious security flaws first"
+  es: "Actualizar los componentes de mi proyecto, primero los fallos de seguridad más graves"
+  de: "Die Komponenten meines Projekts aktualisieren, die schwersten Sicherheitslücken zuerst"
+  zh-Hans: "更新我项目中的组件，最严重的安全漏洞优先"
+tags: ["dependencies", "vulnerability-management", "security", "upgrades"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Jury éthique pour décisions d'IA"
+  en: "Ethics jury for AI decisions"
+  es: "Jurado ético para decisiones de IA"
+  de: "Ethikjury für KI-Entscheidungen"
+  zh-Hans: "AI 决策伦理评审团"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Examiner une décision proposée par une IA sous cinq angles éthiques, puis trancher moi-même"
+  en: "Examine a decision proposed by an AI from five ethical angles, then make the final call myself"
+  es: "Examinar desde cinco enfoques éticos una decisión propuesta por una IA y luego tener la última palabra"
+  de: "Eine von einer KI vorgeschlagene Entscheidung aus fünf ethischen Blickwinkeln prüfen und dann selbst entscheiden"
+  zh-Hans: "从五个伦理角度审视 AI 提出的一项决定，最后由我亲自拍板"
+tags: ["ai-ethics", "decision-support", "governance", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

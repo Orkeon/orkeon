@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Préparation d'un épisode de podcast"
+  en: "Podcast episode preparation"
+  es: "Preparación de un episodio de pódcast"
+  de: "Vorbereitung einer Podcastfolge"
+  zh-Hans: "播客节目筹备"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer un épisode de podcast, des recherches sur le sujet jusqu'au script prêt à enregistrer"
+  en: "Prepare a podcast episode, from researching the topic to a script ready to record"
+  es: "Preparar un episodio de pódcast, desde la investigación del tema hasta un guion listo para grabar"
+  de: "Eine Podcastfolge vorbereiten, von der Recherche zum Thema bis zum aufnahmebereiten Skript"
+  zh-Hans: "筹备一期播客节目，从选题调研到可直接录制的脚本"
+tags: ["podcast", "scriptwriting", "content-production", "research"]
 mounts:
   - "./output:/output:rw"
 importable: true

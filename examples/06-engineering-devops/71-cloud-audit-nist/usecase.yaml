@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Audit sécurité et coûts du cloud"
+  en: "Cloud security and cost audit"
+  es: "Auditoría cloud de seguridad y costes"
+  de: "Sicherheits- und Kostenaudit der Cloud"
+  zh-Hans: "云安全与成本审计"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Repérer les failles de sécurité et les dépenses inutiles de mon hébergement cloud"
+  en: "Spot the security gaps and wasted spending in my cloud hosting"
+  es: "Detectar los fallos de seguridad y los gastos innecesarios de mi alojamiento en la nube"
+  de: "Sicherheitslücken und unnötige Ausgaben in meinem Cloud-Hosting aufspüren"
+  zh-Hans: "找出我的云服务中的安全漏洞和不必要的开支"
+tags: ["cloud", "security-audit", "cost-optimization", "compliance", "nist"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

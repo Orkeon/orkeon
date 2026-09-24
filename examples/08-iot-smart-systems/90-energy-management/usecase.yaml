@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Économies d'énergie dans un bâtiment"
+  en: "Building energy savings"
+  es: "Ahorro energético en un edificio"
+  de: "Energiesparen im Gebäude"
+  zh-Hans: "建筑节能"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Trouver comment réduire la consommation d'énergie de mon bâtiment en anticipant les pics"
+  en: "Find ways to cut my building's energy use by anticipating consumption peaks"
+  es: "Encontrar cómo reducir el consumo de energía de mi edificio anticipando los picos de demanda"
+  de: "Wege finden, den Energieverbrauch meines Gebäudes durch das Vorhersehen von Verbrauchsspitzen zu senken"
+  zh-Hans: "预判用电高峰，找出降低我的楼宇能耗的办法"
+tags: ["energy-management", "buildings", "demand-forecasting", "energy-efficiency"]
 mounts:
   - "./output:/output:rw"
 importable: true

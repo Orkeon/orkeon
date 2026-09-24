@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Diagnostic d'une application lente"
+  en: "Diagnosing a slow application"
+  es: "Diagnóstico de una aplicación lenta"
+  de: "Diagnose einer langsamen Anwendung"
+  zh-Hans: "应用性能诊断"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Comprendre pourquoi mon application est lente et savoir quoi corriger en premier"
+  en: "Find out why my application is slow and what to fix first"
+  es: "Entender por qué mi aplicación va lenta y saber qué corregir primero"
+  de: "Verstehen, warum meine Anwendung langsam ist, und wissen, was zuerst zu beheben ist"
+  zh-Hans: "弄清我的应用为什么慢，以及应该先解决哪些问题"
+tags: ["performance", "bottleneck-analysis", "observability", "optimization"]
 mounts:
   - "./output:/output:rw"
 importable: true

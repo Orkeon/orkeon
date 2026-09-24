@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Mise en ligne de code contrôlée"
+  en: "Controlled code release"
+  es: "Publicación controlada de código"
+  de: "Kontrollierte Code-Veröffentlichung"
+  zh-Hans: "代码上线把关"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Contrôler une modification de code avant sa mise en ligne, et revenir en arrière si elle échoue"
+  en: "Check a code change before it goes live, and roll it back if it fails"
+  es: "Revisar un cambio de código antes de publicarlo y deshacerlo si falla"
+  de: "Eine Codeänderung vor der Veröffentlichung prüfen und bei einem Fehler zurücknehmen"
+  zh-Hans: "上线前检查代码改动，出问题时退回原版本"
+tags: ["devops", "ci-cd", "code-review", "deployment", "rollback"]
 mounts:
   - "./output:/output:rw"
 importable: true

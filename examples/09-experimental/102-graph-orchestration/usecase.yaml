@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Rapport web avec reprises automatiques"
+  en: "Web report with automatic retries"
+  es: "Informe web con reintentos automáticos"
+  de: "Webbericht mit automatischen Wiederholungen"
+  zh-Hans: "自动重试的网络调研报告"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Produire un rapport sur un sujet à partir du web, en relançant automatiquement les étapes ratées"
+  en: "Produce a report on a topic from the web, automatically retrying the steps that fail"
+  es: "Elaborar un informe sobre un tema a partir de internet, repitiendo automáticamente los pasos fallidos"
+  de: "Einen Bericht zu einem Thema aus dem Web erstellen und fehlgeschlagene Schritte automatisch wiederholen"
+  zh-Hans: "根据网上信息就某个主题撰写报告，失败的步骤自动重试"
+tags: ["research", "web-scraping", "reporting", "retries"]
 mounts:
   - "./output:/output:rw"
 importable: true
