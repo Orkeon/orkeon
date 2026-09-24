@@ -22,10 +22,17 @@ internal sealed record CliAnswer(int ExitCode, IReadOnlyList<string> Lines);
 /// a script of its own: <c>forge reopen</c> is a conversation of its own, distinct from the
 /// cycle <c>forge</c> answers.
 /// </para>
+/// <para>
+/// A verb scripted with <see cref="Converse"/> is a session rather than a run (STUDIO-39: the
+/// use-case search): it speaks its opening, then answers every stdin line and stays open until
+/// its stdin closes — beside any other run, since it keeps its own output channel instead of the
+/// single live one <see cref="Emit"/> writes to.
+/// </para>
 /// </summary>
 internal sealed class ScriptedOrkeonCli : IProcessLauncher
 {
     private readonly Dictionary<string, CliAnswer> _answers = new(StringComparer.Ordinal);
+    private readonly Dictionary<string, Conversation> _conversations = new(StringComparer.Ordinal);
     private readonly HashSet<string> _heldVerbs = new(StringComparer.Ordinal);
 
     private Action<ProcessOutputLine>? _live;
@@ -47,6 +54,20 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
         ArgumentNullException.ThrowIfNull(lines);
 
         _answers[verb] = new CliAnswer(exitCode, lines);
+        return this;
+    }
+
+    /// <summary>
+    /// Scripts <paramref name="verb"/> as a session: it speaks <paramref name="opening"/>, then
+    /// answers each stdin line with what <paramref name="reply"/> returns, until its stdin closes.
+    /// </summary>
+    public ScriptedOrkeonCli Converse(string verb, IReadOnlyList<string> opening, Func<string, IEnumerable<string>> reply)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(verb);
+        ArgumentNullException.ThrowIfNull(opening);
+        ArgumentNullException.ThrowIfNull(reply);
+
+        _conversations[verb] = new Conversation(opening, reply);
         return this;
     }
 
@@ -85,6 +106,9 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
         Requests.Add(request);
 
         var verb = VerbOf(request);
+        if (_conversations.TryGetValue(verb, out var conversation))
+            return await ConverseAsync(request, conversation, onOutput, cancellationToken);
+
         var answer = _answers.TryGetValue(verb, out var scripted)
             ? scripted
             : new CliAnswer(0, []);
@@ -125,10 +149,62 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     private string VerbOf(ProcessLaunchRequest request)
     {
         var arguments = request.Arguments;
-        if (arguments.Count > 1 && _answers.ContainsKey($"{arguments[0]} {arguments[1]}"))
+        if (arguments.Count > 1
+            && (_answers.ContainsKey($"{arguments[0]} {arguments[1]}") || _conversations.ContainsKey($"{arguments[0]} {arguments[1]}")))
+        {
             return $"{arguments[0]} {arguments[1]}";
+        }
 
         return arguments.Count > 0 ? arguments[0] : "";
+    }
+
+    /// <summary>A session run: its own output channel, open until its stdin closes or it is cancelled.</summary>
+    private async Task<ProcessRunResult> ConverseAsync(
+        ProcessLaunchRequest request,
+        Conversation conversation,
+        Action<ProcessOutputLine>? onOutput,
+        CancellationToken cancellationToken)
+    {
+        var closed = new TaskCompletionSource(TaskCreationOptions.RunContinuationsAsynchronously);
+        request.OnInputReady?.Invoke(new ConversingInputWriter(this, conversation, onOutput, closed));
+
+        foreach (var line in conversation.Opening)
+            onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, line));
+
+        using var abandon = cancellationToken.Register(() => closed.TrySetResult());
+        await closed.Task;
+
+        return cancellationToken.IsCancellationRequested
+            ? ProcessRunResult.FromCancellation(
+                rawExitCode: -1,
+                ProcessTerminationOutcome.Of(ProcessTerminationMode.StoppedBySignal),
+                TimeSpan.Zero)
+            : ProcessRunResult.FromExitCode(0, TimeSpan.Zero);
+    }
+
+    /// <summary>What a session says when it starts, and how it answers a line.</summary>
+    private sealed record Conversation(IReadOnlyList<string> Opening, Func<string, IEnumerable<string>> Reply);
+
+    /// <summary>A session's stdin: each line is recorded, then answered on the session's own channel.</summary>
+    private sealed class ConversingInputWriter(
+        ScriptedOrkeonCli owner,
+        Conversation conversation,
+        Action<ProcessOutputLine>? onOutput,
+        TaskCompletionSource closed) : IProcessInputWriter
+    {
+        public bool TryWriteLine(string line)
+        {
+            if (closed.Task.IsCompleted)
+                return false;
+
+            owner.InputLines.Add(line);
+            foreach (var answer in conversation.Reply(line))
+                onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, answer));
+
+            return true;
+        }
+
+        public void Close() => closed.TrySetResult();
     }
 
     private sealed class ScriptedInputWriter(ScriptedOrkeonCli owner) : IProcessInputWriter

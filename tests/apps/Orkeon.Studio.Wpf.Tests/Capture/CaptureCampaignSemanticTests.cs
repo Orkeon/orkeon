@@ -97,6 +97,7 @@ public sealed class CaptureCampaignSemanticTests : IAsyncLifetime
             "Settings.Profiles.IsEditorOpen",
             "TeamMounts.IsOpen",
             "CreateTeam.AgentEditor.IsOpen",
+            "CreateTeam.Gallery.IsOpen",
             "AllowedFolders.IsOpen",
             "About.IsOpen",
         ];

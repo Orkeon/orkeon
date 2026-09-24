@@ -2502,4 +2502,45 @@
   <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>提供商默认：由模型决定 — Kimi K2.6、DeepSeek V4 和 GLM 默认会思考。关闭后回答更快更省；开启则在模型支持开关时强制推理。</value></data>
   <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>推理强度</value></data>
   <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>留空：提供商默认。low / medium / high（部分模型支持 max），仅对接受该提示的模型生效。</value></data>
+  <!-- STUDIO-39: the use-case gallery of step 1 -->
+  <data name="Studio.Create.GalleryBrowse" xml:space="preserve"><value>浏览用例</value></data>
+  <data name="Studio.Create.GalleryBrowseCount" xml:space="preserve"><value>浏览用例（{0}）</value></data>
+  <data name="Studio.Create.GalleryCloseOne" xml:space="preserve"><value>1 个相近的用例</value></data>
+  <data name="Studio.Create.GalleryCloseMany" xml:space="preserve"><value>{0} 个相近的用例</value></data>
+  <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>参考：{0}</value></data>
+  <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>全部</value></data>
+  <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>不限</value></data>
+  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>共 {1} 个用例，显示 {0} 个</value></data>
+  <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>与您的需求相近（{0}）</value></data>
+  <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>无法读取用例。</value></data>
+  <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>企业</value></data>
+  <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>科学与研究</value></data>
+  <data name="Studio.Create.GalleryCategoryFinance" xml:space="preserve"><value>金融与交易</value></data>
+  <data name="Studio.Create.GalleryCategoryHealth" xml:space="preserve"><value>健康与养生</value></data>
+  <data name="Studio.Create.GalleryCategoryEducation" xml:space="preserve"><value>教育</value></data>
+  <data name="Studio.Create.GalleryCategoryEngineering" xml:space="preserve"><value>工程与运维</value></data>
+  <data name="Studio.Create.GalleryCategoryCreative" xml:space="preserve"><value>创意与媒体</value></data>
+  <data name="Studio.Create.GalleryCategoryIot" xml:space="preserve"><value>物联网与智能系统</value></data>
+  <data name="Studio.Create.GalleryCategoryExperimental" xml:space="preserve"><value>实验性</value></data>
+  <data name="Studio.Create.GalleryProcessSequential" xml:space="preserve"><value>逐步进行</value></data>
+  <data name="Studio.Create.GalleryProcessHierarchical" xml:space="preserve"><value>由负责人协调</value></data>
+  <data name="Studio.Create.GalleryProcessParallel" xml:space="preserve"><value>并行</value></data>
+  <data name="Studio.Create.GalleryProcessConsensual" xml:space="preserve"><value>协商一致</value></data>
+  <data name="Studio.Create.GalleryProcessGraph" xml:space="preserve"><value>含循环与分支</value></data>
+  <data name="Studio.Create.GalleryProcessAutonomous" xml:space="preserve"><value>自主</value></data>
+  <data name="Studio.Create.GalleryTitle" xml:space="preserve"><value>用例</value></data>
+  <data name="Studio.Create.GallerySub" xml:space="preserve"><value>各领域经过验证的团队。选择一个：它的问题会填入您的需求，并作为参考保留。</value></data>
+  <data name="Studio.Create.GallerySearch" xml:space="preserve"><value>搜索用例…</value></data>
+  <data name="Studio.Create.GalleryFilterCategory" xml:space="preserve"><value>领域</value></data>
+  <data name="Studio.Create.GalleryFilterProcess" xml:space="preserve"><value>团队的工作方式</value></data>
+  <data name="Studio.Create.GalleryNoWeb" xml:space="preserve"><value>无需联网</value></data>
+  <data name="Studio.Create.GalleryNoKey" xml:space="preserve"><value>无需第三方密钥</value></data>
+  <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>仅供参考</value></data>
+  <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>该团队依赖引擎未附带的文件：可以启发您的团队，但不能原样导入。</value></data>
+  <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>以此用例为起点</value></data>
+  <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>没有符合这些筛选条件的用例。</value></data>
+  <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>清除筛选</value></data>
+  <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>正在读取用例…</value></data>
+  <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>关闭</value></data>
+  <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>移除参考——您的需求保持不变。</value></data>
 </root>

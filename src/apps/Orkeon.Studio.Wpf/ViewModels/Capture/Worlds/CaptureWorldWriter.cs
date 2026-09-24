@@ -78,6 +78,13 @@ internal static class CaptureWorldWriter
             .Answer("run", 0, [.. plan.RunStream])
             .Answer("forge", 0, [.. plan.ForgeStream]);
 
+        // STUDIO-39: the catalogue `usecases list` prints, and the search session the wizard keeps
+        // open for its suggestions — a conversation that answers every query of the campaign.
+        if (plan.UseCaseCatalog is { } catalog)
+            cli.Answer("usecases list", 0, catalog);
+        if (plan.UseCaseAnswer is { } answer)
+            cli.Converse("usecases search", plan.UseCaseReady is { } ready ? [ready] : [], answer);
+
         // «Modifier» asks the engine first (STUDIO-25, D-04): `forge reopen` on the adopted team
         // answers with the session its forge.json names, found where promotedTo says.
         if (plan.Sessions.FirstOrDefault(session => session is { PromotedToTeamSlug: not null, Id: not null }) is { } promoted)

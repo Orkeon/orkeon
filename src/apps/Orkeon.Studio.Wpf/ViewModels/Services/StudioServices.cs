@@ -6,6 +6,7 @@ using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Targets;
+using Orkeon.Studio.Core.UseCases;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Services;
@@ -56,6 +57,19 @@ public sealed record StudioServices
 
     /// <summary>The "later" the assistant's timed beats ask for.</summary>
     public IUiDelay? Delay { get; init; }
+
+    /// <summary>
+    /// The "later" of the wizard's use-case suggestions (STUDIO-39) — an instance of its own: a
+    /// superseded pause is dropped with <c>CancelPending</c>, which on the shared one above would
+    /// drop the assistant's beats too. Immediate when null.
+    /// </summary>
+    public IUiDelay? SuggestionDelay { get; init; }
+
+    /// <summary>
+    /// The use-case catalogue and search behind the wizard's gallery (STUDIO-39); when null, a client
+    /// over the window's <see cref="ProcessRunner"/> — the binary the doctor and the launcher use.
+    /// </summary>
+    public UseCaseClient? UseCases { get; init; }
 
     /// <summary>Probes an LLM endpoint for the "Test connection" command.</summary>
     public ILlmEndpointProbe? LlmProbe { get; init; }

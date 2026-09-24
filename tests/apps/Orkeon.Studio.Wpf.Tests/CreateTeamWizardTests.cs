@@ -19,7 +19,7 @@ namespace Orkeon.Studio.Wpf.Tests;
 /// out — no real binary, no LLM, the inline dispatcher. The protocol reading itself is
 /// pinned in <c>Orkeon.Studio.Core.Tests</c>; these tests pin the wizard's behaviour.
 /// </summary>
-public class CreateTeamWizardTests
+public partial class CreateTeamWizardTests
 {
     private static ProcessOutputLine Out(string json) =>
         ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, json);

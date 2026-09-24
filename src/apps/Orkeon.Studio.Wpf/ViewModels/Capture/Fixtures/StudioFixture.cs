@@ -134,6 +134,10 @@ internal static class StudioFixture
     public static CaptureWorldPlan Seeded { get; } = new()
     {
         Name = "seeded",
+        // STUDIO-39: a slice of the use-case catalogue, and a search session that finds close cases.
+        UseCaseCatalog = CaptureScripts.UseCaseCatalog,
+        UseCaseReady = CaptureScripts.UseCaseReady,
+        UseCaseAnswer = CaptureScripts.UseCaseAnswer,
         // «disparu» is deliberately absent: one declared folder must be genuinely unreadable, so
         // the red row in the settings is a real verdict rather than a simulated one.
         DataFolders = ["docs", "sortie", "archives"],

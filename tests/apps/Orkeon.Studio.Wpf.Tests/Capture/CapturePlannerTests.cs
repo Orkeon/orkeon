@@ -81,8 +81,11 @@ public sealed class CapturePlannerTests
         // folder dialog that replaced it cannot be photographed) = -4 shots.
         // STUDIO-21: +2 stops (reglages-outils, both modes, both themes, language sweep = +8;
         // reglages-mcp, expert only, both themes = +2).
-        Assert.Equal(53, CaptureCatalog.All.Count);
-        Assert.Equal(288, plan.Count);
+        // STUDIO-39: +6 stops (the close use cases under the need, the reference chip and the whole
+        // gallery — both modes, both themes, language sweep = +24; the gallery on one category, on
+        // the close cases, and on the machine without a CLI — both modes, both themes = +12).
+        Assert.Equal(59, CaptureCatalog.All.Count);
+        Assert.Equal(324, plan.Count);
     }
 
     [Fact]

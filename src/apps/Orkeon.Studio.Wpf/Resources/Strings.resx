@@ -1200,4 +1200,45 @@
   <data name="Studio.Settings.ProfileThinkingHint" xml:space="preserve"><value>Provider default: the model decides — Kimi K2.6, DeepSeek V4 and GLM think unless told not to. Off answers faster and cheaper; On forces the reasoning pass where the model has the switch.</value></data>
   <data name="Studio.Settings.ProfileLblThinkingEffort" xml:space="preserve"><value>Reasoning effort</value></data>
   <data name="Studio.Settings.ProfileThinkingEffortHint" xml:space="preserve"><value>Empty: the provider's default. low / medium / high (max on some models), for the models that take the hint.</value></data>
+  <!-- STUDIO-39: the use-case gallery of step 1 -->
+  <data name="Studio.Create.GalleryBrowse" xml:space="preserve"><value>Browse the use cases</value></data>
+  <data name="Studio.Create.GalleryBrowseCount" xml:space="preserve"><value>Browse the use cases ({0})</value></data>
+  <data name="Studio.Create.GalleryCloseOne" xml:space="preserve"><value>1 close use case</value></data>
+  <data name="Studio.Create.GalleryCloseMany" xml:space="preserve"><value>{0} close use cases</value></data>
+  <data name="Studio.Create.GalleryReference" xml:space="preserve"><value>Inspired by: {0}</value></data>
+  <data name="Studio.Create.GalleryAllCategories" xml:space="preserve"><value>All</value></data>
+  <data name="Studio.Create.GalleryAnyProcess" xml:space="preserve"><value>Any</value></data>
+  <data name="Studio.Create.GalleryCount" xml:space="preserve"><value>{0} of {1} use cases</value></data>
+  <data name="Studio.Create.GallerySuggested" xml:space="preserve"><value>Close to your need ({0})</value></data>
+  <data name="Studio.Create.GalleryUnreadable" xml:space="preserve"><value>The use cases could not be read.</value></data>
+  <data name="Studio.Create.GalleryCategoryEnterprise" xml:space="preserve"><value>Enterprise</value></data>
+  <data name="Studio.Create.GalleryCategoryScience" xml:space="preserve"><value>Science and research</value></data>
+  <data name="Studio.Create.GalleryCategoryFinance" xml:space="preserve"><value>Finance and trading</value></data>
+  <data name="Studio.Create.GalleryCategoryHealth" xml:space="preserve"><value>Health and wellness</value></data>
+  <data name="Studio.Create.GalleryCategoryEducation" xml:space="preserve"><value>Education</value></data>
+  <data name="Studio.Create.GalleryCategoryEngineering" xml:space="preserve"><value>Engineering and DevOps</value></data>
+  <data name="Studio.Create.GalleryCategoryCreative" xml:space="preserve"><value>Creative and media</value></data>
+  <data name="Studio.Create.GalleryCategoryIot" xml:space="preserve"><value>IoT and smart systems</value></data>
+  <data name="Studio.Create.GalleryCategoryExperimental" xml:space="preserve"><value>Experimental</value></data>
+  <data name="Studio.Create.GalleryProcessSequential" xml:space="preserve"><value>Step by step</value></data>
+  <data name="Studio.Create.GalleryProcessHierarchical" xml:space="preserve"><value>With a lead</value></data>
+  <data name="Studio.Create.GalleryProcessParallel" xml:space="preserve"><value>In parallel</value></data>
+  <data name="Studio.Create.GalleryProcessConsensual" xml:space="preserve"><value>By consensus</value></data>
+  <data name="Studio.Create.GalleryProcessGraph" xml:space="preserve"><value>With loops and branches</value></data>
+  <data name="Studio.Create.GalleryProcessAutonomous" xml:space="preserve"><value>Autonomous</value></data>
+  <data name="Studio.Create.GalleryTitle" xml:space="preserve"><value>Use cases</value></data>
+  <data name="Studio.Create.GallerySub" xml:space="preserve"><value>Teams that have proven themselves, in every field. Pick one: its problem fills in your need, and it stays attached as a reference.</value></data>
+  <data name="Studio.Create.GallerySearch" xml:space="preserve"><value>Search a use case…</value></data>
+  <data name="Studio.Create.GalleryFilterCategory" xml:space="preserve"><value>Field</value></data>
+  <data name="Studio.Create.GalleryFilterProcess" xml:space="preserve"><value>How the team works</value></data>
+  <data name="Studio.Create.GalleryNoWeb" xml:space="preserve"><value>Without web access</value></data>
+  <data name="Studio.Create.GalleryNoKey" xml:space="preserve"><value>Without a third-party key</value></data>
+  <data name="Studio.Create.GalleryReferenceOnly" xml:space="preserve"><value>Reference only</value></data>
+  <data name="Studio.Create.GalleryReferenceOnlyTip" xml:space="preserve"><value>Its team depends on files the engine does not carry: it can inspire yours, not be imported as it is.</value></data>
+  <data name="Studio.Create.GalleryChoose" xml:space="preserve"><value>Start from this case</value></data>
+  <data name="Studio.Create.GalleryEmpty" xml:space="preserve"><value>No use case matches these filters.</value></data>
+  <data name="Studio.Create.GalleryClearFilters" xml:space="preserve"><value>Clear the filters</value></data>
+  <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Reading the use cases…</value></data>
+  <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Close</value></data>
+  <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Remove the reference — your need stays as it is.</value></data>
 </root>

@@ -935,6 +935,19 @@
       </Border>
     </Grid>
 
+    <!-- ══════════ CAS D'USAGE (panneau latéral, STUDIO-39) ══════════
+         The gallery comes in from the right, over the wizard it was opened from: step 1 stays in
+         sight on the left, under the scrim, so the need a card fills is never out of view. A click
+         on the scrim closes it, like every overlay here. -->
+    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnGalleryBackdropClick"
+          Visibility="{Binding CreateTeam.Gallery.IsOpen, Converter={StaticResource BooleanToVisibility}}">
+      <Border Width="560" HorizontalAlignment="Right" MouseLeftButtonDown="OnSwallowClick"
+              Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1,0,0,0"
+              CornerRadius="18,0,0,18" DataContext="{Binding CreateTeam.Gallery}" Effect="{DynamicResource ShadowLg}">
+        <views:UseCaseGalleryView/>
+      </Border>
+    </Grid>
+
     <!-- ══════════ AJOUTER UN DOSSIER AUTORISÉ (overlay — les deux écrans équipe) ══════════
          Une équipe ne déclare pas un dossier : elle associe un montage déjà déclaré dans
          Réglages › Dossiers autorisés, droits compris. Déclarer reste le geste des Réglages,

@@ -1,3 +1,6 @@
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 
 /// <summary>
@@ -149,5 +152,256 @@ internal static class CaptureScripts
         """{"v":2,"seq":4,"ts":"2026-08-28T07:10:52Z","kind":"task.completed","task":"analyser","agent":"Analyste","ok":true}""",
         """{"v":2,"seq":5,"ts":"2026-08-28T07:11:08Z","kind":"task.completed","task":"rediger","agent":"Rédacteur","ok":true}""",
         """{"v":2,"seq":6,"ts":"2026-08-28T07:11:14Z","kind":"run.finished","status":"ok","exitCode":0}""",
+    ];
+    // ── the use-case catalogue (STUDIO-39): what `orkeon usecases` answers ─────────────────
+
+    /// <summary>
+    /// The <c>usecases.catalog</c> line <c>usecases list</c> prints: a slice of the real catalogue
+    /// (STUDIO-36/37) — every category, the finance cases that are reference only, the one case that
+    /// needs a third-party key — in the five languages, so the language sweep photographs real text.
+    /// </summary>
+    /// <remarks>Built on each read, never in a static initializer: the sheets are declared below it.</remarks>
+    public static string UseCaseCatalog => BuildUseCaseCatalog();
+
+    /// <summary>The line a search session opens with.</summary>
+    public static string UseCaseReady =>
+        $$$"""{"v":2,"seq":1,"ts":"2026-08-28T07:12:00Z","kind":"usecases.ready","count":{{{UseCaseSheets.Length}}},"languages":["fr","en","es","de","zh-Hans"],"modes":{"fr":"bm25","en":"hybrid","es":"bm25","de":"bm25","zh-Hans":"bm25"}}""";
+
+    /// <summary>
+    /// The answer to any query of the session, as the CLI spells one: the competitor watch and the
+    /// adaptive summary on the terms of <see cref="StudioFixture.Need"/> that only they carry, the
+    /// email triage on words every sentence shares — which the wizard does not count as close.
+    /// </summary>
+    public static IEnumerable<string> UseCaseAnswer(string queryLine)
+    {
+        var query = JsonNode.Parse(queryLine);
+        if (query?["kind"]?.GetValue<string>() != "usecases.query")
+            return [];
+
+        var answer = new JsonObject
+        {
+            ["v"] = 2,
+            ["seq"] = 2,
+            ["ts"] = "2026-08-28T07:12:01Z",
+            ["kind"] = "usecases.results",
+            ["correlationId"] = query["correlationId"]?.GetValue<string>(),
+            ["query"] = query["text"]?.GetValue<string>(),
+            ["lang"] = "fr",
+            ["langSource"] = "detected",
+            ["mode"] = "bm25",
+            ["results"] = new JsonArray(
+                Result(1, "06-competitive-intelligence", "concurrents", "mes", "de"),
+                Result(2, "30-adaptive-summary", "resumer", "de"),
+                Result(3, "03-email-pipeline", "je", "mes")),
+        };
+        return [answer.ToJsonString(WireOptions)];
+
+        static JsonObject Result(int rank, string id, params string[] terms) => new()
+        {
+            ["rank"] = rank,
+            ["id"] = id,
+            ["score"] = 4.0 / rank,
+            ["reason"] = "terms",
+            ["terms"] = new JsonArray([.. terms.Select(term => (JsonNode?)term)]),
+        };
+    }
+
+    /// <summary>The CLI's own escaping on the wire: an accented letter stays that letter.</summary>
+    private static readonly JsonSerializerOptions WireOptions = new()
+    {
+        Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+    };
+
+    private static readonly string[] UseCaseLanguages = ["fr", "en", "es", "de", "zh-Hans"];
+
+    private static string BuildUseCaseCatalog()
+    {
+        var sheets = new JsonArray();
+        foreach (var sheet in UseCaseSheets)
+        {
+            sheets.Add(new JsonObject
+            {
+                ["agents"] = 3,
+                ["category"] = sheet.Category,
+                ["format"] = "yaml",
+                ["hasSampleData"] = false,
+                ["id"] = sheet.Id,
+                ["importable"] = sheet.Importable,
+                ["mounts"] = new JsonArray("./output:/output:rw"),
+                ["number"] = int.Parse(sheet.Id[..sheet.Id.IndexOf('-', StringComparison.Ordinal)], System.Globalization.CultureInfo.InvariantCulture),
+                ["problem"] = Texts(sheet.Problems),
+                ["process"] = sheet.Process,
+                ["requiresKeys"] = new JsonArray([.. sheet.Keys.Select(key => (JsonNode?)key)]),
+                ["requiresNetwork"] = sheet.Network,
+                ["tags"] = new JsonArray(),
+                ["tasks"] = 3,
+                ["title"] = Texts(sheet.Titles),
+                ["tools"] = new JsonArray("file_read", "file_write"),
+            });
+        }
+
+        return new JsonObject
+        {
+            ["v"] = 2,
+            ["seq"] = 1,
+            ["ts"] = "2026-08-28T07:12:00Z",
+            ["kind"] = "usecases.catalog",
+            ["count"] = UseCaseSheets.Length,
+            ["languages"] = new JsonArray([.. UseCaseLanguages.Select(language => (JsonNode?)language)]),
+            ["useCases"] = sheets,
+        }.ToJsonString(WireOptions);
+
+        static JsonObject Texts(string[] texts)
+        {
+            var node = new JsonObject();
+            for (var i = 0; i < UseCaseLanguages.Length; i++)
+                node[UseCaseLanguages[i]] = texts[i];
+            return node;
+        }
+    }
+
+    /// <summary>One sheet of the slice; <paramref name="Titles"/> and <paramref name="Problems"/> in the manifest's language order.</summary>
+    private sealed record UseCaseSheet(
+        string Id,
+        string Category,
+        string Process,
+        bool Network,
+        string[] Keys,
+        bool Importable,
+        string[] Titles,
+        string[] Problems);
+
+    private static readonly UseCaseSheet[] UseCaseSheets =
+    [
+        new("06-competitive-intelligence", "01-enterprise", "parallel", Network: true, Keys: [], Importable: true,
+            Titles: ["Veille concurrentielle", "Competitor monitoring", "Vigilancia de la competencia", "Wettbewerbsbeobachtung", "竞争对手监测"],
+            Problems:
+            [
+                "Suivre les prix, annonces et brevets de mes concurrents et repérer ce qui change",
+                "Track my competitors' prices, announcements and patents, and spot what changes",
+                "Seguir los precios, anuncios y patentes de mis competidores y detectar qué cambia",
+                "Preise, Ankündigungen und Patente meiner Wettbewerber verfolgen und Veränderungen erkennen",
+                "跟踪竞争对手的价格、公告和专利，找出其中的变化",
+            ]),
+        new("03-email-pipeline", "01-enterprise", "sequential", Network: false, Keys: [], Importable: true,
+            Titles: ["Tri et réponse aux e-mails", "Email triage and replies", "Clasificación y respuesta de correos", "E-Mail-Sortierung mit Antwortentwürfen", "邮件分类与回复"],
+            Problems:
+            [
+                "Trier mes e-mails par urgence et préparer des réponses que je valide avant envoi",
+                "Sort my emails by urgency and draft replies for me to approve before sending",
+                "Ordenar mis correos por urgencia y preparar respuestas que apruebo antes de enviarlas",
+                "Meine E-Mails nach Dringlichkeit sortieren und Antworten zur Freigabe vorbereiten",
+                "按紧急程度整理我的邮件，起草回复，经我确认后再发送",
+            ]),
+        new("16-interactive-qa", "01-enterprise", "sequential", Network: true, Keys: ["ORKEON_TAVILY_API_KEY"], Importable: true,
+            Titles: ["Réponses avec sources", "Answers with sources", "Respuestas con fuentes", "Antworten mit Quellen", "附出处的问答"],
+            Problems:
+            [
+                "Poser une question et obtenir une réponse claire, dans ma langue, avec ses sources",
+                "Ask a question and get a clear answer, in my language, with its sources",
+                "Hacer una pregunta y obtener una respuesta clara, en mi idioma, con sus fuentes",
+                "Eine Frage stellen und eine klare Antwort in meiner Sprache samt Quellen erhalten",
+                "提出一个问题，用我的语言得到清晰的回答，并附上出处",
+            ]),
+        new("30-adaptive-summary", "02-science-research", "sequential", Network: false, Keys: [], Importable: true,
+            Titles: ["Résumé adapté au lecteur", "Summary tailored to the reader", "Resumen adaptado al lector", "Zusammenfassung nach Kenntnisstand", "按读者水平定制的摘要"],
+            Problems:
+            [
+                "Résumer un document à mon niveau, du plus technique au plus pédagogique",
+                "Summarize a document at my level, from highly technical to beginner-friendly",
+                "Resumir un documento a mi nivel, de lo más técnico a lo más didáctico",
+                "Ein Dokument auf meinem Niveau zusammenfassen, von sehr fachlich bis einsteigerfreundlich",
+                "按我的水平总结一份文档，可以很专业，也可以通俗易懂",
+            ]),
+        new("16-prisma-meta-analysis", "02-science-research", "sequential", Network: true, Keys: [], Importable: true,
+            Titles: ["Revue systématique de la littérature", "Systematic literature review", "Revisión sistemática de la literatura", "Systematische Literaturübersicht", "系统性文献综述"],
+            Problems:
+            [
+                "Synthétiser les études sur une question, en justifiant chaque étude retenue ou écartée",
+                "Synthesize the studies on a question, justifying each study kept or left out",
+                "Sintetizar los estudios sobre una pregunta, justificando cada estudio incluido o descartado",
+                "Die Studien zu einer Frage auswerten und jede Aufnahme oder jeden Ausschluss begründen",
+                "综合分析某个问题的相关研究，并说明每项研究纳入或排除的理由",
+            ]),
+        new("31-algo-trading", "03-finance-trading", "hierarchical", Network: true, Keys: [], Importable: false,
+            Titles: ["Salle des marchés simulée", "Simulated trading desk", "Mesa de operaciones simulada", "Simulierter Handelsraum", "模拟交易室"],
+            Problems:
+            [
+                "Simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel",
+                "Simulate a complete trading strategy, from market analysis to buying and selling, without real money",
+                "Simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real",
+                "Eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld",
+                "完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金",
+            ]),
+        new("40-invoice-processing", "03-finance-trading", "sequential", Network: false, Keys: [], Importable: false,
+            Titles: ["Contrôle des factures fournisseurs", "Supplier invoice checks", "Control de facturas de proveedores", "Prüfung von Lieferantenrechnungen", "供应商发票核对"],
+            Problems:
+            [
+                "Vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison",
+                "Check that every supplier invoice matches an order and a delivery",
+                "Comprobar que cada factura de proveedor corresponde a un pedido y a una entrega",
+                "Prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt",
+                "核实每张供应商发票都能对应到一笔订单和一次收货",
+            ]),
+        new("46-diagnostic-assistant", "04-health-wellness", "sequential", Network: true, Keys: [], Importable: true,
+            Titles: ["Pistes de diagnostic pour le médecin", "Diagnostic leads for doctors", "Pistas diagnósticas para la consulta", "Diagnoseansätze für die Arztpraxis", "供医生参考的诊断思路"],
+            Problems:
+            [
+                "Organiser les symptômes de mes patients et les pistes à vérifier, en me soumettant chaque étape",
+                "Organize my patients' symptoms and the leads to check, submitting each step for my approval",
+                "Ordenar los síntomas de mis pacientes y las pistas por verificar, sometiendo cada paso a mi aprobación",
+                "Die Symptome meiner Patienten und die zu prüfenden Diagnoseansätze ordnen und mir jeden Schritt zur Freigabe vorlegen",
+                "整理我接诊患者的症状和待核实的诊断思路，每一步都交由我确认",
+            ]),
+        new("56-adaptive-tutor", "05-education", "sequential", Network: false, Keys: [], Importable: true,
+            Titles: ["Tutorat personnalisé", "Personalized tutoring", "Tutoría personalizada", "Persönliche Lernbegleitung", "个性化辅导"],
+            Problems:
+            [
+                "Proposer des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève",
+                "Provide explanations and exercises matched to a learner's level and way of learning",
+                "Proponer explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno",
+                "Erklärungen und Übungen anbieten, die zu Niveau und Lernstil der Lernenden passen",
+                "根据学习者的水平和学习方式，提供量身定制的讲解和练习",
+            ]),
+        new("66-cicd-pipeline", "06-engineering-devops", "sequential", Network: true, Keys: [], Importable: true,
+            Titles: ["Mise en ligne de code contrôlée", "Controlled code release", "Publicación controlada de código", "Kontrollierte Code-Veröffentlichung", "代码上线把关"],
+            Problems:
+            [
+                "Contrôler une modification de code avant sa mise en ligne, et revenir en arrière si elle échoue",
+                "Check a code change before it goes live, and roll it back if it fails",
+                "Revisar un cambio de código antes de publicarlo y deshacerlo si falla",
+                "Eine Codeänderung vor der Veröffentlichung prüfen und bei einem Fehler zurücknehmen",
+                "上线前检查代码改动，出问题时退回原版本",
+            ]),
+        new("76-narrative-studio", "07-creative-media", "sequential", Network: false, Keys: [], Importable: true,
+            Titles: ["Studio d'écriture", "Story writing studio", "Estudio de escritura", "Schreibstudio", "故事写作工作室"],
+            Problems:
+            [
+                "Écrire un chapitre de mon histoire, de l'intrigue aux dialogues, et en vérifier la cohérence",
+                "Write a chapter of my story, from plot to dialogue, and check that it holds together",
+                "Escribir un capítulo de mi historia, de la trama a los diálogos, y comprobar su coherencia",
+                "Ein Kapitel meiner Geschichte schreiben, von der Handlung bis zu den Dialogen, und seine Stimmigkeit prüfen",
+                "为我的故事写一章，从情节到对白，并检查是否前后连贯",
+            ]),
+        new("86-smart-home-a2a", "08-iot-smart-systems", "parallel", Network: true, Keys: [], Importable: true,
+            Titles: ["Maison connectée coordonnée", "Coordinated smart home", "Casa inteligente coordinada", "Abgestimmtes Smart Home", "协同智能家居"],
+            Problems:
+            [
+                "Accorder chauffage, éclairage, alarme et dépense d'énergie de ma maison en un seul plan",
+                "Reconcile my home's heating, lighting, alarm and energy use in a single plan",
+                "Conciliar calefacción, iluminación, alarma y consumo de energía de mi casa en un único plan",
+                "Heizung, Licht, Alarmanlage und Energieverbrauch meines Hauses in einem einzigen Plan abstimmen",
+                "把我家的供暖、照明、安防和用电统一到一份方案中",
+            ]),
+        new("96-self-adaptive-crew", "09-experimental", "sequential", Network: true, Keys: [], Importable: true,
+            Titles: ["Équipe qui s'auto-évalue", "Self-assessing team", "Equipo que se autoevalúa", "Team, das sich selbst bewertet", "自我评估的团队"],
+            Problems:
+            [
+                "Évaluer le coût et la qualité d'une équipe automatisée, puis proposer une meilleure organisation",
+                "Assess the cost and quality of an automated team, then propose a better setup",
+                "Evaluar el coste y la calidad de un equipo automatizado y proponer una organización mejor",
+                "Kosten und Qualität eines automatisierten Teams bewerten und dann eine bessere Aufstellung vorschlagen",
+                "评估一个自动化团队的成本与质量，再提出更好的组织方式",
+            ]),
     ];
 }

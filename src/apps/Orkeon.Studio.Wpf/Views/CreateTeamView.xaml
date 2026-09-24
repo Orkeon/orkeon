@@ -475,6 +475,33 @@
                        Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource InputMultiline}"
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
+            <!-- STUDIO-39 (D-04): the use case this creation starts from — the chip a chosen card
+                 leaves under the need it wrote. Its ✕ takes the reference away, never the words. -->
+            <Border Style="{StaticResource BriefChip}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,0,4,0"
+                    Visibility="{Binding HasReferenceUseCase, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="compass" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock FontSize="11.5" FontWeight="SemiBold" Foreground="{DynamicResource InkMutedBrush}"
+                           VerticalAlignment="Center" Text="{Binding ReferenceUseCaseLabel}"/>
+                <Button Width="18" Height="18" Margin="6,0,0,0" Cursor="Hand" Background="Transparent" BorderThickness="0"
+                        VerticalAlignment="Center" Command="{Binding RemoveReferenceUseCaseCommand}"
+                        ToolTip="{Binding [Studio.Create.GalleryRemoveReference], Source={x:Static services:I18n.Instance}}">
+                  <controls:LucideIcon Kind="x" Size="10" Foreground="{DynamicResource InkFaintBrush}"/>
+                </Button>
+              </StackPanel>
+            </Border>
+            <!-- STUDIO-39 (D-03): once the typing pauses, the use cases close to the need — a
+                 link that opens the gallery on them, their titles in the tooltip. -->
+            <Button Style="{StaticResource LinkBtn}" HorizontalAlignment="Left" Margin="0,8,0,0"
+                    Command="{Binding ShowCloseUseCasesCommand}" ToolTip="{Binding CloseUseCasesTitles}"
+                    Visibility="{Binding HasCloseUseCases, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="sparkles" Size="12" Foreground="{DynamicResource MarkBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock Foreground="{DynamicResource AccentBrush}" VerticalAlignment="Center" Text="{Binding CloseUseCasesLabel}"/>
+              </StackPanel>
+            </Button>
             <TextBlock Style="{StaticResource Eyebrow}" Margin="0,16,0,8"
                        Text="{Binding [Studio.Create.Examples], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding Examples}">
@@ -487,6 +514,17 @@
                 </DataTemplate>
               </ItemsControl.ItemTemplate>
             </ItemsControl>
+            <!-- STUDIO-39 (D-01, D-02): the four quick examples stay first; the whole catalogue is
+                 one click further — the gallery, its size read from the CLI. -->
+            <Button Style="{StaticResource ChipAction}" HorizontalAlignment="Left" Margin="0,4,0,0"
+                    Command="{Binding BrowseUseCasesCommand}"
+                    Visibility="{Binding CanBrowseUseCases, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel Orientation="Horizontal">
+                <controls:LucideIcon Kind="scan-search" Size="11" Foreground="{DynamicResource AccentBrush}"
+                                     VerticalAlignment="Center" Margin="0,0,6,0"/>
+                <TextBlock VerticalAlignment="Center" Text="{Binding BrowseUseCasesLabel}"/>
+              </StackPanel>
+            </Button>
           </StackPanel>
         </Border>
 
