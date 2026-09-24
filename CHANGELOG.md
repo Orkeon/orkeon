@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — every LLM call of a run feeds the token counter (STUDIO-42)
+
+- **One measuring point.** `MeteredLlmProvider` wraps every provider that `LlmProviderFactory`
+  builds, and every hand-made provider registered through the new `AddOrkeonLlmProvider(...)`. It
+  reports each call, buffered or streamed, to `ILlmUsageSink`. With no sink registered, providers
+  stay bare.
+  - The live `cost.updated` and the final `run.finished.tokens` now count calls they used to miss:
+    the hierarchical manager, planning, agent-loop retries and fallbacks, the RAG pipelines,
+    flows, memory and LLM judges.
+- **Attribution.** `LlmUsageScope`, an `AsyncLocal`, names crew, agent, task and operation
+  (`agent`, `manager`, `planning`, `rag`, `memory`, `flow`, `judge`, `ctx.llm.*`). A call no scope
+  claims is counted as `unattributed`. `CostUsageEvent` gains `TaskId`.
+- **No double count.** The agent loop's and the scripting facade's own reports are removed.
+- **Estimates.** A response without usage is estimated and marked, never priced. `cost.updated`
+  and `run.finished` gain `estimatedTokens`, omitted when nothing was estimated.
+- **A two-part architecture guard:**
+  - a source scan (providers built only by the factory or through `AddOrkeonLlmProvider`);
+  - a behavioural check (every LLM surface the runner host hands out reports its usage).
+- Embedding calls are not generation calls: they stay out of the counter, a limit documented in
+  Known limitations.
+
 ### Added — Studio: the 105 use cases in the creation wizard, suggested as you type (STUDIO-39)
 
 - Step 1 of « Create a team » keeps its four quick examples first and adds « Browse the use
