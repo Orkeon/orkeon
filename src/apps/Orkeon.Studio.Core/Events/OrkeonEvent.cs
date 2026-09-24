@@ -70,6 +70,17 @@ public sealed record OrkeonEvent
             : null;
 
     /// <summary>
+    /// Decimal property — an amount of money, read exactly as the line wrote it; null when
+    /// absent or not representable as a decimal.
+    /// </summary>
+    public decimal? GetDecimal(string name) =>
+        Root.TryGetProperty(name, out var value)
+            && value.ValueKind == JsonValueKind.Number
+            && value.TryGetDecimal(out var number)
+            ? number
+            : null;
+
+    /// <summary>
     /// String-array property, empty when absent. Non-string entries are skipped rather than
     /// failing the whole list: a screen showing three of four choices beats one showing none.
     /// </summary>

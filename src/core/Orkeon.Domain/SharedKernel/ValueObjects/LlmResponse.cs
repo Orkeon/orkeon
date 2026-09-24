@@ -31,8 +31,6 @@ public sealed record LlmResponse
         CacheHitTokens is { } hit && CacheMissTokens is { } miss && (hit + miss) > 0
             ? (double)hit / (hit + miss)
             : null;
-    /// <summary>Gets the cost.</summary>
-    public double Cost { get; init; }
     /// <summary>Gets the model identifier that generated the response.</summary>
     public string? Model { get; init; }
     /// <summary>Gets additional metadata about the response.</summary>

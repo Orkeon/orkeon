@@ -19,6 +19,7 @@ using Orkeon.Domain.Constants.Agent;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestTimingConstants;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Application.Tests.Doubles;
 
 namespace Orkeon.Application.Tests.Services;
 
@@ -137,6 +138,8 @@ public class ExecutionOrchestratorAdditionalTests
             var msg = new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.Assistant, text);
             _responses.Enqueue(new Microsoft.Extensions.AI.ChatResponse([msg]));
         }
+
+        public void EnqueueResponse(Microsoft.Extensions.AI.ChatResponse response) => _responses.Enqueue(response);
 
         public void EnqueueFunctionCallResponse(string name, IDictionary<string, object?>? args = null)
         {
@@ -752,6 +755,55 @@ public class ExecutionOrchestratorAdditionalTests
         Assert.Equal("Orkeon", mapped.Variables["project"]);
         Assert.Equal("1.0", mapped.Variables["version"]);
         Assert.Equal(RoleWorker, mapped.Variables["agent_role"]);
+    }
+
+    #endregion
+
+    #region Usage Sink Tests (STUDIO-29)
+
+    private static Microsoft.Extensions.AI.ChatResponse AnswerWithUsage(string text) =>
+        new([new Microsoft.Extensions.AI.ChatMessage(Microsoft.Extensions.AI.ChatRole.Assistant, text)])
+        {
+            Usage = new Microsoft.Extensions.AI.UsageDetails { InputTokenCount = 90, OutputTokenCount = 10, TotalTokenCount = 100 },
+        };
+
+    [Fact]
+    public async System.Threading.Tasks.Task Every_call_of_a_task_is_reported_for_the_crew_it_runs_in_the_correction_round_included()
+    {
+        // The execution context knows which crew the task runs for; the usage event used to
+        // leave it empty, so the wire's cost.updated could not say which run it was metering.
+        // The validation round goes through the same loop and carries it too.
+        var sink = new MockLlmUsageSink();
+        using var chatClient = new TestChatClient();
+        chatClient.EnqueueResponse(AnswerWithUsage("Invalid JSON output"));
+        chatClient.EnqueueResponse(AnswerWithUsage("{\"valid\": true}"));
+        var validationPipeline = new TestOutputValidationPipeline();
+        validationPipeline.EnqueueResult(false, "Invalid JSON format", "Wrap output in JSON braces");
+        validationPipeline.EnqueueResult(true);
+        var taskWithJson = DomainTask.Create(
+            TaskDescription.From("Generate JSON report"),
+            ExpectedOutput.From("JSON report"),
+            outputOptions: new Domain.Task.TaskOutputOptions
+            {
+                OutputJson = Domain.Task.JsonSchema.From("{\"type\":\"object\"}")
+            });
+        var orchestrator = new ExecutionOrchestrator(
+            new TestLogger(), new TestLlmProvider(), new TestAgentPlanner(), chatClient,
+            Array.Empty<IBaseTool>(), validationPipeline, new TestOutputParserFactory(), new TestRateLimiter(),
+            fullProvider: null, toolCallingStrategy: null, deliverableResolverFactory: null,
+            new FakeFileSystemService(), sink);
+        var context = CreateTestContext();
+
+        var result = await orchestrator.ExecuteTaskCoreAsync(CreateTestAgent(), taskWithJson, context, TestContext.Current.CancellationToken);
+
+        Assert.True(result.Success);
+        Assert.Equal(2, sink.Recorded.Count);
+        Assert.All(sink.Recorded, usage =>
+        {
+            Assert.Equal(context.CrewId.ToString(), usage.CrewId);
+            Assert.Equal("TestLLM", usage.Provider);
+            Assert.Equal("Test Agent", usage.AgentId);
+        });
     }
 
     #endregion

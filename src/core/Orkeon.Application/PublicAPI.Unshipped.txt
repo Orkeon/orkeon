@@ -1,1 +1,7 @@
 #nullable enable
+*REMOVED*Orkeon.Application.Interfaces.Ports.CostUsageEvent.Cost.get -> decimal
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.Cost.get -> decimal?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostCurrency.get -> string?
+Orkeon.Application.Interfaces.Ports.CostUsageEvent.CostCurrency.init -> void
+const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.Cost = "cost" -> string!
+const Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.CostCurrency = "cost_currency" -> string!

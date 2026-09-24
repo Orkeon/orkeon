@@ -3,3 +3,5 @@ Orkeon.Domain.FileSystem.FolderSlug
 const Orkeon.Domain.FileSystem.FolderSlug.MaxLength = 64 -> int
 const Orkeon.Domain.FileSystem.FolderSlug.TeamFallback = "equipe" -> string!
 static Orkeon.Domain.FileSystem.FolderSlug.From(string? text) -> string?
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.init -> void

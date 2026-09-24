@@ -243,8 +243,10 @@ public class CostBudgetManagerTests
     }
 
     [Fact]
-    public void ShouldAutoCalculatesCostWhenCostIsZero_WhenRecordUsage()
+    public void A_call_nobody_priced_is_estimated_from_the_price_registry()
     {
+        // No vendor cost (null) is an unknown cost: the manager prices it for its own
+        // accounting, and only then.
         var evt = new CostUsageEvent
         {
             CrewId = CrewIdAlt1,
@@ -252,7 +254,6 @@ public class CostBudgetManagerTests
             Model = ModelGpt4o,
             PromptTokens = 1000,
             CompletionTokens = 500,
-            Cost = 0m // should be auto-calculated
         };
 
         var result = _sut.RecordUsage(evt);
@@ -261,7 +262,27 @@ public class CostBudgetManagerTests
 
         var report = _sut.GetReport(CrewIdAlt1);
         var expectedCost = _pricingRegistry.CalculateCost(ModelGpt4o, 1000, 500);
+        Assert.True(expectedCost > 0m);
         Assert.Equal(expectedCost, report.TotalCost);
+    }
+
+    [Fact]
+    public void A_vendor_cost_of_zero_is_a_free_call_and_is_never_replaced_by_an_estimate()
+    {
+        // STUDIO-29: a free model on OpenRouter bills 0. The manager used to read 0 as "not
+        // provided" and charge the registry price for a call that cost nothing.
+        _sut.RecordUsage(new CostUsageEvent
+        {
+            CrewId = CrewIdAlt1,
+            AgentId = "agent1",
+            Model = ModelGpt4o,
+            PromptTokens = 1000,
+            CompletionTokens = 500,
+            Cost = 0m,
+            CostCurrency = "USD",
+        });
+
+        Assert.Equal(0m, _sut.GetReport(CrewIdAlt1).TotalCost);
     }
 
     [Fact]

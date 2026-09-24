@@ -51,8 +51,17 @@ substitution is logged as a structured warning. Two more dialect seams serve the
 aggregators (LLM-09): `ReasoningFieldName` names the vendor field the reasoning trace is
 read from (`reasoning_content` by default, `reasoning` on OpenRouter — the Orkeon metadata
 key stays `reasoning_content`), and `usage.cost` becomes the `cost` metadata wherever a
-vendor bills in the response. A chunk carrying a root-level `error` after the HTTP 200
-ends a stream the way a pre-stream refusal does — `error` metadata on the chat stream, an
+vendor bills in the response — buffered or streamed — with `cost_currency` beside it when the
+provider states its vendor's billing currency (`CostCurrency`: `USD` on OpenRouter, whose
+credits are dollars; no other provider states one). From there the charge travels as billed:
+the chat client adapter carries it onto the `ChatResponse` (`AdditionalProperties`, also on
+its streamed fallback), the agent loop reports it on the usage event
+(`CostUsageEvent.Cost`, null when the vendor billed nothing — a free model's `0` stays
+`0`), the scripting facade does the same for `ctx.llm.*`, and the run's `cost.updated`
+relays it with `costSource: "vendor"` ([the run event bus](run-event-bus.md)).
+`CostBudgetManager` prices from its registry only a call nobody priced, for its own
+budgets; that estimate never reaches the wire. A chunk carrying a root-level `error` after
+the HTTP 200 ends a stream the way a pre-stream refusal does — `error` metadata on the chat stream, an
 `HttpRequestException` on the token stream — never as a clean completion. All 16 providers
 are `IStreamingLlmProvider`s, and `RateLimitedLlmProvider` decorates any of them. The
 per-provider matrix lives in [the provider comparison](../reference/llm-providers-comparison.md).

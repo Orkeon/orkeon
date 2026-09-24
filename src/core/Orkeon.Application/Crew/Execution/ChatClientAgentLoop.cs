@@ -63,10 +63,12 @@ internal sealed class ChatClientAgentLoop
     /// <summary>
     /// Multi-turn execution loop using IChatClient with native function calling.
     /// Returns an <see cref="AgentLoopResult"/> with the final output, token count, and exit reason.
+    /// Every call's usage is reported for <c>crewId</c>, the crew the task runs for.
     /// </summary>
     internal async System.Threading.Tasks.Task<AgentLoopResult> ExecuteAsync(
         DomainAgent agent,
         CrewTask task,
+        string crewId,
         string systemPrompt,
         string userPrompt,
         List<Domain.Tools.ToolUsage> toolsUsed,
@@ -138,7 +140,7 @@ internal sealed class ChatClientAgentLoop
             completionTokensTotal += (int)(chatResponse.Usage?.OutputTokenCount ?? 0);
             AccumulateCacheUsage(chatResponse, ref cacheHitTotal, ref cacheMissTotal, agent.Role);
 
-            ReportUsageToSink(agent, chatResponse);
+            ReportUsageToSink(agent, crewId, chatResponse);
 
             var dispatch = await TryDispatchToolCallsAsync(
                 chatResponse,
@@ -266,14 +268,15 @@ internal sealed class ChatClientAgentLoop
         return true;
     }
 
-    /// <summary>
-    /// Forwards one LLM call's usage to the optional <see cref="Interfaces.Ports.ILlmUsageSink"/>.
-    /// This is the one place the YAML/agent path actually sees per-call usage — without this
-    /// Record, ILlmUsageSink only ever heard from the scripting facade, and an observed crew
-    /// run reported zero tokens no matter what it spent.
-    /// </summary>
     /// <summary>How many tool-call-shaped answers are handed back before one is accepted as final.</summary>
     private const int MaxToolCallShapedAnswers = 2;
+
+    /// <summary>
+    /// The operation an agent turn is reported under — the attribution vocabulary the usage
+    /// sink's consumers group by (<c>agent</c>, beside the scripting facade's own
+    /// <c>ctx.llm.*</c> method names).
+    /// </summary>
+    private const string AgentTurnOperation = "agent";
 
     private const string ToolCallShapedAnswerCorrection =
         "Your previous answer described a tool call instead of making one, and it could not be executed. " +
@@ -315,7 +318,16 @@ internal sealed class ChatClientAgentLoop
         }
     }
 
-    private void ReportUsageToSink(DomainAgent agent, ChatResponse chatResponse)
+    /// <summary>
+    /// Forwards one LLM call's usage to the optional <see cref="Interfaces.Ports.ILlmUsageSink"/>.
+    /// This is the one place the YAML/agent path actually sees per-call usage — without this
+    /// Record, ILlmUsageSink only ever heard from the scripting facade, and an observed crew
+    /// run reported zero tokens no matter what it spent. The event says who answered, for
+    /// which crew, and what the vendor billed when it billed in its answer (STUDIO-29): the
+    /// first version left all three out, so the wire could name neither the provider nor
+    /// the run, and OpenRouter's real charge died at the chat client adapter.
+    /// </summary>
+    private void ReportUsageToSink(DomainAgent agent, string crewId, ChatResponse chatResponse)
     {
         var usage = chatResponse.Usage;
         if (_usageSink is null || usage is null)
@@ -328,17 +340,48 @@ internal sealed class ChatClientAgentLoop
         long? callMiss = counts is not null
             && counts.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CacheMissTokens, out var missCount)
                 ? missCount : null;
+        var (cost, currency) = ReadVendorCost(chatResponse);
 
         _usageSink.Record(new Interfaces.Ports.CostUsageEvent
         {
+            CrewId = crewId,
             AgentId = agent.Role,
             Model = chatResponse.ModelId ?? string.Empty,
+            Provider = _llmGate.ProviderName,
             PromptTokens = (int)(usage.InputTokenCount ?? 0),
             CompletionTokens = (int)(usage.OutputTokenCount ?? 0),
             // A partition of PromptTokens — the sink must never add these to totals.
             CacheHitTokens = callHit,
             CacheMissTokens = callMiss,
+            // What the vendor billed, as billed — null when it billed nothing in its answer,
+            // never a price computed here (DD-1).
+            Cost = cost,
+            CostCurrency = currency,
+            OperationType = AgentTurnOperation,
         });
+    }
+
+    /// <summary>
+    /// The vendor's charge the chat client adapter carried onto the response
+    /// (<see cref="Application.Common.DTOs.LlmUsageMetadataKeys.Cost"/>, a decimal), with its
+    /// currency. Null when the vendor billed nothing in its answer — a 0 is a free call and
+    /// comes back as 0.
+    /// </summary>
+    private static (decimal? Cost, string? Currency) ReadVendorCost(ChatResponse chatResponse)
+    {
+        var properties = chatResponse.AdditionalProperties;
+        if (properties is null
+            || !properties.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.Cost, out var charged)
+            || charged is not decimal cost)
+        {
+            return (null, null);
+        }
+
+        var currency = properties.TryGetValue(Application.Common.DTOs.LlmUsageMetadataKeys.CostCurrency, out var code)
+            && code is string { Length: > 0 } text
+                ? text
+                : null;
+        return (cost, currency);
     }
 
     /// <summary>

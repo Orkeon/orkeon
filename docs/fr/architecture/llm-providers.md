@@ -51,7 +51,17 @@ dur dériverait) et la substitution est journalisée en avertissement structuré
 coutures de dialecte supplémentaires servent les agrégateurs (LLM-09) : `ReasoningFieldName`
 nomme le champ vendeur où la trace de raisonnement est lue (`reasoning_content` par défaut,
 `reasoning` chez OpenRouter — la clé de métadonnée Orkeon reste `reasoning_content`), et
-`usage.cost` devient la métadonnée `cost` partout où un vendeur facture dans la réponse. Un
+`usage.cost` devient la métadonnée `cost` partout où un vendeur facture dans la réponse —
+bufferisée ou en flux — avec `cost_currency` à côté quand le provider énonce la devise dans
+laquelle son vendeur facture (`CostCurrency` : `USD` chez OpenRouter, dont les crédits sont
+des dollars ; aucun autre provider n'en énonce). De là, le coût voyage tel que facturé :
+l'adaptateur de client de chat le porte sur le `ChatResponse` (`AdditionalProperties`, aussi
+sur son repli en flux), la boucle d'agent le rapporte sur l'événement d'usage
+(`CostUsageEvent.Cost`, null quand le vendeur n'a rien facturé — le `0` d'un modèle gratuit
+reste `0`), la façade de scripting fait de même pour `ctx.llm.*`, et le `cost.updated` du run
+le relaie avec `costSource: "vendor"` ([le bus d'événements du run](run-event-bus.md)).
+`CostBudgetManager` ne calcule depuis son registre que le coût d'un appel que personne n'a
+chiffré, pour ses propres budgets ; cette estimation n'atteint jamais le fil. Un
 chunk portant un `error` racine après le HTTP 200 termine un flux comme un refus pré-flux —
 métadonnée `error` sur le flux chat, `HttpRequestException` sur le flux texte — jamais
 comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`, et

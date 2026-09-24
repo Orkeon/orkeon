@@ -84,9 +84,8 @@ public class RunProgressModelTests
         Assert.Equal(340, task.Tokens);
         Assert.Equal(2, task.ToolCalls);
 
-        // tokens/model/provider are the fields the CLI emits; usd never existed on the wire
-        // (the framework has no price table) and reading it here was building a screen
-        // against a fiction.
+        // usd never existed on the wire, and reading it here was building a screen against a
+        // fiction: a price arrives only as the vendor's own cost (STUDIO-29, next tests).
         Assert.Equal(340, model.Cost!.Tokens);
         Assert.Equal("deepseek-chat", model.Cost.Model);
         Assert.Equal("deepseek", model.Cost.Provider);
@@ -94,6 +93,56 @@ public class RunProgressModelTests
         Assert.True(model.Finished);
         Assert.True(model.Success);
         Assert.Equal(0, model.ExitCode);
+    }
+
+    [Fact]
+    public void The_meter_folds_the_split_and_the_vendor_charge_while_the_run_goes()
+    {
+        // STUDIO-29: cost.updated says what goes up, what comes back and — when the vendor
+        // billed it — what it cost, while the run is still going.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","crewId":"01K5","agentId":"Writer","kind":"cost.updated","tokens":300,"promptTokens":240,"completionTokens":60,"cacheHitTokens":200,"cacheMissTokens":40,"model":"google/gemini-3.7-flash","provider":"openrouter","cost":0.0042,"currency":"USD","costSource":"vendor"}""");
+
+        var cost = model.Cost!;
+        Assert.Equal(300, cost.Tokens);
+        Assert.Equal(240, cost.PromptTokens);
+        Assert.Equal(60, cost.CompletionTokens);
+        Assert.Equal(200, cost.CacheHitTokens);
+        Assert.Equal(40, cost.CacheMissTokens);
+        Assert.Equal("google/gemini-3.7-flash", cost.Model);
+        Assert.Equal("openrouter", cost.Provider);
+        Assert.Equal(0.0042m, cost.Amount);
+        Assert.Equal("USD", cost.Currency);
+        Assert.Equal("vendor", cost.Source);
+    }
+
+    [Fact]
+    public void A_meter_line_that_says_less_leaves_the_rest_absent()
+    {
+        // An older CLI, or a vendor that bills nothing in its answer: what the line does not
+        // say stays unknown — never a zero a screen would show as a count or as a price.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":340,"model":"deepseek-chat","provider":"deepseek"}""");
+
+        var cost = model.Cost!;
+        Assert.Equal(340, cost.Tokens);
+        Assert.Null(cost.PromptTokens);
+        Assert.Null(cost.CompletionTokens);
+        Assert.Null(cost.CacheHitTokens);
+        Assert.Null(cost.CacheMissTokens);
+        Assert.Null(cost.Amount);
+        Assert.Null(cost.Currency);
+        Assert.Null(cost.Source);
+    }
+
+    [Fact]
+    public void A_free_call_folds_as_a_price_of_zero()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":150,"promptTokens":120,"completionTokens":30,"cost":0,"currency":"USD","costSource":"vendor"}""");
+
+        Assert.Equal(0m, model.Cost!.Amount);
+        Assert.Equal("USD", model.Cost.Currency);
     }
 
     [Fact]

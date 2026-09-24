@@ -86,6 +86,8 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private long _cacheHitTokens;
     private long _cacheMissTokens;
     private bool _cacheMeasured;
+    private decimal? _vendorCost;
+    private string? _vendorCostCurrency;
 
     /// <summary>Builds the observer over the stream, the hook it must not displace, and the streaming flag.</summary>
     public RunEventObserver(OrkeonEventWriter events, ICrewExecutionHook? inner, bool stream)
@@ -198,11 +200,20 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Every reading carries the run's standing meter, cumulative like <c>run.finished</c>: both
+    /// directions at every call (STUDIO-29 — the split used to wait for the closing event),
+    /// the cache pair once a provider measured it, and the vendor's own charge once a vendor
+    /// billed one.
+    /// </remarks>
     public void Record(CostUsageEvent usage)
     {
         ArgumentNullException.ThrowIfNull(usage);
 
-        long total;
+        long total, prompt, completion;
+        long? cacheHit, cacheMiss;
+        decimal? cost;
+        string? currency;
         lock (_gate)
         {
             _tokens += usage.PromptTokens + usage.CompletionTokens;
@@ -222,16 +233,48 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 _cacheMeasured = true;
             }
 
+            // The vendor's charge, summed as billed — a 0 is a free call, not a missing one.
+            if (usage.Cost is { } charged)
+            {
+                _vendorCost = (_vendorCost ?? 0m) + charged;
+                _vendorCostCurrency = usage.CostCurrency ?? _vendorCostCurrency;
+            }
+
             total = _tokens;
+            prompt = _promptTokens;
+            completion = _completionTokens;
+            cacheHit = _cacheMeasured ? _cacheHitTokens : null;
+            cacheMiss = _cacheMeasured ? _cacheMissTokens : null;
+            cost = _vendorCost;
+            currency = _vendorCostCurrency;
         }
 
-        // The cost in currency is deliberately absent: no price table exists in the
-        // framework, and inventing one would be worse than omitting it.
+        // The price is the vendor's own figure or nothing (DD-1): the framework's price
+        // registry estimates for budgets, and an estimate on the wire would read as a bill.
+        // A null field is omitted by the writer, so a run no vendor billed shows no price.
         _events.Emit(
             RunEventKinds.CostUpdated,
             new OrkeonEventScope { CrewId = Blank(usage.CrewId), AgentId = Blank(usage.AgentId) },
-            new { tokens = total, model = Blank(usage.Model), provider = Blank(usage.Provider) });
+            new
+            {
+                tokens = total,
+                promptTokens = prompt,
+                completionTokens = completion,
+                cacheHitTokens = cacheHit,
+                cacheMissTokens = cacheMiss,
+                model = Blank(usage.Model),
+                provider = Blank(usage.Provider),
+                cost,
+                currency,
+                costSource = cost is null ? null : VendorCostSource,
+            });
     }
+
+    /// <summary>
+    /// The one value of <c>costSource</c>: the charge is what the vendor billed. The field
+    /// exists so a price never has to be taken on faith — and DD-1 keeps it the only source.
+    /// </summary>
+    private const string VendorCostSource = "vendor";
 
     /// <inheritdoc />
     public void OnDelta(string delta)

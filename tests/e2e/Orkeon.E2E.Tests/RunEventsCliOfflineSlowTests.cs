@@ -86,13 +86,12 @@ public sealed class RunEventsCliOfflineSlowTests
         }
     }
 
-    [Fact]
-    public void A_successful_run_keeps_stdout_pure_and_free_of_nulls()
+    /// <summary>
+    /// A real crew, run to success offline: no Llm section, so the echo provider answers —
+    /// it replays the prompt, counts no token and bills nothing.
+    /// </summary>
+    private (int ExitCode, string Stdout, string Stderr) RunTheOfflineCrew()
     {
-        // The rich half of the invariant: a real crew, run to success offline (no Llm section
-        // → echo provider), emitting cost.updated and task.completed with actual payloads.
-        // Two promises under test: every stdout line is an envelope — the human summary
-        // banner used to land between two JSONL documents — and no key is ever null.
         var dir = Path.Combine(Path.GetTempPath(), $"orkeon-e2e-{Guid.NewGuid():N}");
         Directory.CreateDirectory(dir);
         try
@@ -113,36 +112,74 @@ tasks:
     agent: worker
 """);
 
-            var (exitCode, stdout, stderr) = _cli.RunCliSplit(
+            return _cli.RunCliSplit(
                 $"run \"{Path.Combine(dir, "crew.yaml")}\" --events jsonl --allow-external-mounts " +
                 $"--settings \"{Path.Combine(dir, "appsettings.json")}\"",
                 _cli.RepoRoot, TimeSpan.FromMinutes(5));
-
-            Assert.Equal(0, exitCode);
-
-            // stdout carries the protocol and nothing else.
-            var stdoutLines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-            Assert.All(stdoutLines, line => Assert.StartsWith("{\"v\":2", line, StringComparison.Ordinal));
-
-            var events = ProtocolLines(stdout);
-            Assert.Contains(events, e => e.GetProperty("kind").GetString() == "run.started");
-            Assert.Contains(events, e => e.GetProperty("kind").GetString() == "task.completed");
-            var finished = Assert.Single(events, e => e.GetProperty("kind").GetString() == "run.finished");
-            Assert.True(finished.GetProperty("success").GetBoolean());
-
-            foreach (var element in events)
-            {
-                foreach (var property in element.EnumerateObject())
-                    Assert.NotEqual(JsonValueKind.Null, property.Value.ValueKind);
-            }
-
-            // The human summary moved, it did not vanish: the answer stays where humans read.
-            Assert.Contains("Crew Output", stderr, StringComparison.Ordinal);
         }
         finally
         {
             Directory.Delete(dir, recursive: true);
         }
+    }
+
+    [Fact]
+    public void A_successful_run_keeps_stdout_pure_and_free_of_nulls()
+    {
+        // The rich half of the invariant: a real crew, run to success offline, emitting
+        // cost.updated and task.completed with actual payloads. Two promises under test:
+        // every stdout line is an envelope — the human summary banner used to land between
+        // two JSONL documents — and no key is ever null.
+        var (exitCode, stdout, stderr) = RunTheOfflineCrew();
+
+        Assert.Equal(0, exitCode);
+
+        // stdout carries the protocol and nothing else.
+        var stdoutLines = stdout.Split('\n', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        Assert.All(stdoutLines, line => Assert.StartsWith("{\"v\":2", line, StringComparison.Ordinal));
+
+        var events = ProtocolLines(stdout);
+        Assert.Contains(events, e => e.GetProperty("kind").GetString() == "run.started");
+        Assert.Contains(events, e => e.GetProperty("kind").GetString() == "task.completed");
+        var finished = Assert.Single(events, e => e.GetProperty("kind").GetString() == "run.finished");
+        Assert.True(finished.GetProperty("success").GetBoolean());
+
+        foreach (var element in events)
+        {
+            foreach (var property in element.EnumerateObject())
+                Assert.NotEqual(JsonValueKind.Null, property.Value.ValueKind);
+        }
+
+        // The human summary moved, it did not vanish: the answer stays where humans read.
+        Assert.Contains("Crew Output", stderr, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void The_meter_reports_both_directions_before_the_run_finishes()
+    {
+        // STUDIO-29: cost.updated carries the prompt/completion split at every call, not only
+        // run.finished. The echo provider counts nothing, so both sides read 0 — present, not
+        // absent — and it bills nothing, so no cost goes on the wire at all.
+        var (exitCode, stdout, _) = RunTheOfflineCrew();
+
+        Assert.Equal(0, exitCode);
+
+        var events = ProtocolLines(stdout);
+        var kinds = events.Select(e => e.GetProperty("kind").GetString()).ToList();
+        var meter = events.Where(e => e.GetProperty("kind").GetString() == "cost.updated").ToList();
+        Assert.NotEmpty(meter);
+        Assert.True(kinds.LastIndexOf("cost.updated") < kinds.IndexOf("run.finished"));
+
+        Assert.All(meter, e =>
+        {
+            Assert.Equal(0, e.GetProperty("promptTokens").GetInt64());
+            Assert.Equal(0, e.GetProperty("completionTokens").GetInt64());
+            Assert.Equal("undefined", e.GetProperty("provider").GetString());
+            Assert.Equal("Echoist", e.GetProperty("agentId").GetString());
+            Assert.False(string.IsNullOrEmpty(e.GetProperty("crewId").GetString()));
+            Assert.False(e.TryGetProperty("cost", out _));
+            Assert.False(e.TryGetProperty("costSource", out _));
+        });
     }
 
     [Fact]

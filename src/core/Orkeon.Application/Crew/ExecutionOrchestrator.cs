@@ -247,6 +247,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     {
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(context);
         return ExecuteTaskCoreInnerAsync();
 
         async System.Threading.Tasks.Task<TaskResult> ExecuteTaskCoreInnerAsync()
@@ -272,7 +273,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var (validatedOutput, structuredOutput) = loopResult.ExitReason == AgentExitReason.LlmCallFailed
                     ? (loopResult.Output, null)
                     : await OutputValidation.ValidateAndParseOutputAsync(
-                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed),
+                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, context.CrewId.ToString(), systemPrompt, userPrompt, toolsUsed),
                         MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
@@ -389,7 +390,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (_chatClient != null)
         {
             var loopResult = await ChatLoop.ExecuteAsync(
-                agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
+                agent, task, context.CrewId.ToString(), systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);

@@ -14,6 +14,7 @@ internal sealed record OutputValidationRequest(
     OutputValidationContext? ValidationContext,
     CrewTask Task,
     DomainAgent Agent,
+    string CrewId,
     string SystemPrompt,
     string UserPrompt,
     List<Domain.Tools.ToolUsage> ToolsUsed);
@@ -93,7 +94,7 @@ internal sealed class OutputValidationCoordinator
 
             LogRetryAttempt(request.Task, retry, pipelineResult, maxOutputRetries);
             var correctionContext = new CorrectionExecutionContext(
-                request.Agent, request.Task, request.SystemPrompt, request.ToolsUsed, defaultMaxIterations);
+                request.Agent, request.Task, request.CrewId, request.SystemPrompt, request.ToolsUsed, defaultMaxIterations);
             currentOutput = await RetryWithCorrectionAsync(
                 pipelineResult, request.ValidationContext, correctionContext, cancellationToken).ConfigureAwait(false);
         }
@@ -125,13 +126,14 @@ internal sealed class OutputValidationCoordinator
     }
 
     /// <summary>
-    /// Cohesive execution inputs for a single correction attempt: the agent, task, system prompt,
-    /// running tool-usage log, and default iteration cap. Mirrors what
+    /// Cohesive execution inputs for a single correction attempt: the agent, task, crew, system
+    /// prompt, running tool-usage log, and default iteration cap. Mirrors what
     /// <see cref="ChatClientAgentLoop.ExecuteAsync"/> consumes (minus the user prompt, built per attempt).
     /// </summary>
     private sealed record CorrectionExecutionContext(
         DomainAgent Agent,
         CrewTask Task,
+        string CrewId,
         string SystemPrompt,
         List<Domain.Tools.ToolUsage> ToolsUsed,
         int DefaultMaxIterations);
@@ -147,7 +149,7 @@ internal sealed class OutputValidationCoordinator
         if (_chatLoop != null)
         {
             var correctionResult = await _chatLoop.ExecuteAsync(
-                context.Agent, context.Task, context.SystemPrompt, correctionPrompt,
+                context.Agent, context.Task, context.CrewId, context.SystemPrompt, correctionPrompt,
                 context.ToolsUsed, context.DefaultMaxIterations, cancellationToken).ConfigureAwait(false);
             return correctionResult.Output;
         }

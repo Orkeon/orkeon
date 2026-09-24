@@ -102,6 +102,10 @@ public sealed partial class JsLlmFacade
             var prompt = estimated
                 ? EstimatePromptTokens(promptText, promptMessages)
                 : response.PromptTokens ?? 0;
+            // What the vendor billed, when it bills in its answer (STUDIO-29) — the buffered
+            // response and a stream's final one alike. Never estimated: an approximate token
+            // count is marked as such, an approximate price is not something this reports.
+            var billed = Orkeon.Infrastructure.CostTracking.LlmVendorCost.TryRead(response, out var cost, out var currency);
             _usageSink.Record(new Orkeon.Application.Interfaces.Ports.CostUsageEvent
             {
                 CrewId = _crewName,
@@ -123,6 +127,8 @@ public sealed partial class JsLlmFacade
                 // A partition of PromptTokens (never additive) — null when unreported.
                 CacheHitTokens = response.CacheHitTokens,
                 CacheMissTokens = response.CacheMissTokens,
+                Cost = billed ? cost : null,
+                CostCurrency = currency,
                 OperationType = method,
             });
         }
