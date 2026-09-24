@@ -1158,18 +1158,18 @@
       ],
       "number": 31,
       "problem": {
-        "de": "Ich möchte eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld",
-        "en": "I want to simulate a complete trading strategy, from market analysis to buying and selling, without real money",
-        "es": "Quiero simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real",
-        "fr": "Je veux simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel",
-        "zh-Hans": "我想完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金"
+        "de": "Eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld",
+        "en": "Simulate a complete trading strategy, from market analysis to buying and selling, without real money",
+        "es": "Simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real",
+        "fr": "Simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel",
+        "zh-Hans": "完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "algorithmic-trading",
-        "trading-simulation",
+        "trading",
+        "simulation",
         "risk-management",
         "compliance"
       ],
@@ -1213,19 +1213,19 @@
       ],
       "number": 32,
       "problem": {
-        "de": "Ich möchte verdächtige Transaktionen erkennen, genau untersuchen und ausführliche Warnmeldungen vorbereiten",
-        "en": "I want to spot suspicious transactions, look into them closely and prepare detailed alerts",
-        "es": "Quiero detectar las transacciones sospechosas, examinarlas de cerca y preparar alertas detalladas",
-        "fr": "Je veux repérer les transactions suspectes, les examiner de près et préparer des alertes détaillées",
-        "zh-Hans": "我想找出可疑交易，仔细核查，并准备详细的预警报告"
+        "de": "Verdächtige Transaktionen erkennen, genau untersuchen und ausführliche Warnmeldungen vorbereiten",
+        "en": "Spot suspicious transactions, look into them closely and prepare detailed alerts",
+        "es": "Detectar las transacciones sospechosas, examinarlas de cerca y preparar alertas detalladas",
+        "fr": "Repérer les transactions suspectes, les examiner de près et préparer des alertes détaillées",
+        "zh-Hans": "找出可疑交易，仔细核查，并准备详细的预警报告"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "banking",
         "fraud-detection",
-        "transaction-monitoring",
-        "alerting"
+        "transaction-monitoring"
       ],
       "tasks": 4,
       "title": {
@@ -1259,18 +1259,18 @@
       ],
       "number": 33,
       "problem": {
-        "de": "Ich möchte einen Kreditantrag bewerten und eine Empfehlung erhalten, wobei das letzte Wort bei mir bleibt",
-        "en": "I want to assess a credit application and get a recommendation, while keeping the final say",
-        "es": "Quiero evaluar una solicitud de crédito y recibir una recomendación, reservándome la última palabra",
-        "fr": "Je veux évaluer une demande de crédit et recevoir une recommandation, en gardant le dernier mot",
-        "zh-Hans": "我想评估一份贷款申请并获得建议，最终决定仍由我来做"
+        "de": "Einen Kreditantrag bewerten und mir eine Entscheidung empfehlen, ohne für mich zu entscheiden",
+        "en": "Assess a credit application and recommend a decision, without deciding for me",
+        "es": "Evaluar una solicitud de crédito y recomendarme una decisión, sin decidir por mí",
+        "fr": "Évaluer une demande de crédit et me recommander une décision, sans décider à ma place",
+        "zh-Hans": "评估一份贷款申请并给我决策建议，但不替我做决定"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "credit-scoring",
         "lending",
+        "credit-scoring",
         "risk-assessment",
         "human-review"
       ],
@@ -1306,18 +1306,18 @@
       ],
       "number": 34,
       "problem": {
-        "de": "Ich möchte ein Aktienportfolio auf Basis mehrerer Analysen aufteilen, ohne meine Risikogrenzen zu überschreiten",
-        "en": "I want to allocate a stock portfolio by combining several analyses, without exceeding my risk limits",
-        "es": "Quiero repartir una cartera de acciones combinando varios análisis, sin superar mis límites de riesgo",
-        "fr": "Je veux répartir un portefeuille d'actions en croisant plusieurs analyses, sans dépasser mes limites de risque",
-        "zh-Hans": "我想综合多种分析来配置股票投资组合，同时不超出我的风险上限"
+        "de": "Ein Aktienportfolio auf Basis mehrerer Analysen aufteilen, ohne meine Risikogrenzen zu überschreiten",
+        "en": "Allocate a stock portfolio by combining several analyses, without exceeding my risk limits",
+        "es": "Repartir una cartera de acciones combinando varios análisis, sin superar mis límites de riesgo",
+        "fr": "Répartir un portefeuille d'actions en croisant plusieurs analyses, sans dépasser mes limites de risque",
+        "zh-Hans": "综合多种分析配置股票投资组合，同时不超出我的风险上限"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "portfolio-allocation",
         "investment",
+        "portfolio-allocation",
         "risk-management"
       ],
       "tasks": 4,
@@ -1353,11 +1353,11 @@
       ],
       "number": 35,
       "problem": {
-        "de": "Ich möchte prüfen, ob meine Kontoauszüge, meine Buchhaltung und meine Rechnungen übereinstimmen, und wissen, wie ich Abweichungen korrigiere",
-        "en": "I want to check that my bank statements, accounting records and invoices agree, and know how to fix the differences",
-        "es": "Quiero comprobar que mis extractos bancarios, mi contabilidad y mis facturas cuadran, y saber cómo corregir las diferencias",
-        "fr": "Je veux vérifier que mes relevés bancaires, ma comptabilité et mes factures concordent, et savoir comment corriger les écarts",
-        "zh-Hans": "我想核对银行流水、账务记录和发票是否一致，并知道如何修正其中的差异"
+        "de": "Prüfen, ob meine Kontoauszüge, meine Buchhaltung und meine Rechnungen übereinstimmen, und mir Korrekturen für Abweichungen vorschlagen",
+        "en": "Check that my bank statements, accounting records and invoices agree, and suggest fixes for the differences",
+        "es": "Comprobar que mis extractos bancarios, mi contabilidad y mis facturas cuadran, y proponerme correcciones para las diferencias",
+        "fr": "Vérifier que mes relevés bancaires, ma comptabilité et mes factures concordent, et me proposer des corrections pour les écarts",
+        "zh-Hans": "核对我的银行流水、账务记录和发票是否一致，并为差异提出修正建议"
       },
       "process": "parallel",
       "requiresKeys": [],
@@ -1398,20 +1398,19 @@
       ],
       "number": 36,
       "problem": {
-        "de": "Ich möchte meine Liquidität für die nächsten drei Monate vorhersagen und wissen, wann mir das Geld knapp werden könnte",
-        "en": "I want to forecast my cash flow for the next three months and know when I might run short of money",
-        "es": "Quiero prever mi tesorería a tres meses y saber cuándo podría quedarme sin liquidez",
-        "fr": "Je veux prévoir ma trésorerie sur trois mois et savoir quand je risque de manquer d'argent",
-        "zh-Hans": "我想预测未来三个月的现金流，并知道什么时候可能出现资金短缺"
+        "de": "Meine Liquidität für die nächsten drei Monate vorhersagen und mir sagen, wann das Geld knapp werden könnte",
+        "en": "Forecast my cash flow for the next three months and tell me when I might run short of money",
+        "es": "Prever mi tesorería a tres meses y avisarme de cuándo podría quedarme sin liquidez",
+        "fr": "Prévoir ma trésorerie sur trois mois et me dire quand je risque de manquer d'argent",
+        "zh-Hans": "预测我未来三个月的现金流，并告诉我何时可能出现资金短缺"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "cash-flow",
-        "forecasting",
         "treasury",
-        "stress-scenarios"
+        "cash-flow",
+        "forecasting"
       ],
       "tasks": 4,
       "title": {
@@ -1442,20 +1441,20 @@
       "mounts": [],
       "number": 37,
       "problem": {
-        "de": "Ich muss einen neuen Kunden prüfen, bevor ich ihn annehme: Identität, Sanktionslisten und Risikoländer",
-        "en": "I need to check a new customer before taking them on: identity, sanctions lists and high-risk countries",
-        "es": "Debo verificar a un nuevo cliente antes de aceptarlo: identidad, listas de sanciones y países de riesgo",
-        "fr": "Je dois contrôler un nouveau client avant de l'accepter : identité, listes de sanctions et pays à risque",
-        "zh-Hans": "我需要在接纳新客户前完成核查：身份、制裁名单和高风险国家"
+        "de": "Einen neuen Kunden vor der Aufnahme prüfen: Identität, Sanktionslisten und Risikoländer",
+        "en": "Check a new customer before taking them on: identity, sanctions lists and high-risk countries",
+        "es": "Verificar a un nuevo cliente antes de aceptarlo: identidad, listas de sanciones y países de riesgo",
+        "fr": "Contrôler un nouveau client avant de l'accepter : identité, listes de sanctions et pays à risque",
+        "zh-Hans": "在接纳新客户前完成核查：身份、制裁名单和高风险国家"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "compliance",
         "kyc",
         "anti-money-laundering",
-        "sanctions-screening",
-        "compliance"
+        "sanctions"
       ],
       "tasks": 3,
       "title": {
@@ -1486,19 +1485,19 @@
       ],
       "number": 38,
       "problem": {
-        "de": "Ich möchte riskante oder teure Klauseln in einem Vertrag finden und wissen, was ich nachverhandeln sollte",
-        "en": "I want to spot the risky or costly clauses in a contract and know what to renegotiate",
-        "es": "Quiero detectar las cláusulas arriesgadas o costosas de un contrato y saber qué renegociar",
-        "fr": "Je veux repérer les clauses risquées ou coûteuses d'un contrat et savoir quoi renégocier",
-        "zh-Hans": "我想找出合同中有风险或代价高昂的条款，并知道该重新谈判哪些内容"
+        "de": "Riskante oder teure Klauseln in einem Vertrag finden und mir sagen, was ich nachverhandeln sollte",
+        "en": "Spot the risky or costly clauses in a contract and tell me what to renegotiate",
+        "es": "Detectar las cláusulas arriesgadas o costosas de un contrato y decirme qué renegociar",
+        "fr": "Repérer les clauses risquées ou coûteuses d'un contrat et me dire quoi renégocier",
+        "zh-Hans": "找出合同中有风险或代价高昂的条款，并告诉我该重新谈判哪些内容"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "legal",
         "contract-review",
-        "negotiation",
-        "legal-risk"
+        "negotiation"
       ],
       "tasks": 3,
       "title": {
@@ -1529,11 +1528,11 @@
       ],
       "number": 39,
       "problem": {
-        "de": "Ich möchte mein Anlegerprofil über ein paar Fragen bestimmen und eine passende Aufteilung meiner Geldanlagen erhalten",
-        "en": "I want to define my investor profile by answering a few questions and get an allocation that fits it",
-        "es": "Quiero definir mi perfil de inversor respondiendo a unas preguntas y obtener un reparto de inversiones adecuado",
-        "fr": "Je veux définir mon profil d'investisseur en répondant à quelques questions et obtenir une répartition de placements adaptée",
-        "zh-Hans": "我想通过回答几个问题确定自己的投资风险偏好，并得到相应的资产配置方案"
+        "de": "Mein Anlegerprofil über ein paar Fragen bestimmen und mir eine passende Aufteilung meiner Geldanlagen vorschlagen",
+        "en": "Work out my investor profile from a few questions and suggest an allocation that fits it",
+        "es": "Definir mi perfil de inversor a partir de unas preguntas y proponerme un reparto de inversiones adecuado",
+        "fr": "Définir mon profil d'investisseur à partir de quelques questions et me proposer une répartition de placements adaptée",
+        "zh-Hans": "通过几个问题确定我的投资风险偏好，并给出相应的资产配置方案"
       },
       "process": "sequential",
       "requiresKeys": [],
@@ -1576,20 +1575,20 @@
       ],
       "number": 40,
       "problem": {
-        "de": "Ich möchte prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt",
-        "en": "I want to check that every supplier invoice matches an order and a delivery",
-        "es": "Quiero comprobar que cada factura de proveedor corresponde a un pedido y a una entrega",
-        "fr": "Je veux vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison",
-        "zh-Hans": "我想核实每张供应商发票都能对应到一笔订单和一次收货"
+        "de": "Prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt",
+        "en": "Check that every supplier invoice matches an order and a delivery",
+        "es": "Comprobar que cada factura de proveedor corresponde a un pedido y a una entrega",
+        "fr": "Vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison",
+        "zh-Hans": "核实每张供应商发票都能对应到一笔订单和一次收货"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "invoice-processing",
+        "accounting",
         "accounts-payable",
-        "three-way-matching",
-        "document-extraction"
+        "invoice-processing",
+        "three-way-matching"
       ],
       "tasks": 3,
       "title": {
@@ -1621,16 +1620,17 @@
       ],
       "number": 41,
       "problem": {
-        "de": "Ich möchte verdächtige Börsengeschäfte kurz vor einer Unternehmensmeldung erkennen und eine Verdachtsmeldung vorbereiten",
-        "en": "I want to spot suspicious stock trades made just before a company announcement and prepare a report for the authorities",
-        "es": "Quiero detectar operaciones bursátiles sospechosas realizadas justo antes de un anuncio de empresa y preparar un informe para las autoridades",
-        "fr": "Je veux repérer les opérations boursières suspectes réalisées juste avant une annonce d'entreprise et préparer un signalement",
-        "zh-Hans": "我想找出公司发布公告前夕的可疑股票交易，并准备上报材料"
+        "de": "Verdächtige Börsengeschäfte kurz vor einer Unternehmensmeldung erkennen und eine Verdachtsmeldung vorbereiten",
+        "en": "Spot suspicious stock trades made just before a company announcement and prepare a report for the authorities",
+        "es": "Detectar operaciones bursátiles sospechosas realizadas justo antes de un anuncio de empresa y preparar un informe para las autoridades",
+        "fr": "Repérer les opérations boursières suspectes réalisées juste avant une annonce d'entreprise et préparer un signalement",
+        "zh-Hans": "找出公司发布公告前夕的可疑股票交易，并准备上报材料"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "trading",
         "insider-trading",
         "market-surveillance",
         "regulatory-reporting"
@@ -1667,16 +1667,17 @@
       ],
       "number": 42,
       "problem": {
-        "de": "Ich möchte den richtigen Verkaufspreis festlegen und dabei Nachfrage, Wettbewerb und meine Marge berücksichtigen",
-        "en": "I want to set the right selling price by weighing demand, competitors and my margin",
-        "es": "Quiero fijar el precio de venta adecuado teniendo en cuenta la demanda, la competencia y mi margen",
-        "fr": "Je veux fixer le bon prix de vente en tenant compte de la demande, des concurrents et de ma marge",
-        "zh-Hans": "我想综合考虑需求、竞争对手和自身利润，定出合适的售价"
+        "de": "Den richtigen Verkaufspreis festlegen und dabei Nachfrage, Wettbewerb und meine Marge berücksichtigen",
+        "en": "Set the right selling price by weighing demand, competitors and my margin",
+        "es": "Fijar el precio de venta adecuado teniendo en cuenta la demanda, la competencia y mi margen",
+        "fr": "Fixer le bon prix de vente en tenant compte de la demande, des concurrents et de ma marge",
+        "zh-Hans": "综合考虑需求、竞争对手和我的利润，定出合适的售价"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "sales",
         "pricing",
         "competitor-analysis",
         "profit-margin"
@@ -1712,18 +1713,18 @@
       ],
       "number": 43,
       "problem": {
-        "de": "Ich möchte die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und die Strategie selbst freigeben",
-        "en": "I want to compare how my company is taxed in the US, Europe and Asia-Pacific, and approve the strategy myself",
-        "es": "Quiero comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y validar personalmente la estrategia",
-        "fr": "Je veux comparer l'imposition de mon entreprise aux États-Unis, en Europe et en Asie-Pacifique, et valider moi-même la stratégie",
-        "zh-Hans": "我想比较我的公司在美国、欧洲和亚太地区的税负，并亲自审定最终策略"
+        "de": "Die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und mir die Strategie zur Freigabe vorlegen",
+        "en": "Compare how my company is taxed in the US, Europe and Asia-Pacific, then submit the strategy for my approval",
+        "es": "Comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y someter la estrategia a mi aprobación",
+        "fr": "Comparer l'imposition de mon entreprise aux États-Unis, en Europe et en Asie-Pacifique, puis me soumettre la stratégie pour validation",
+        "zh-Hans": "比较我的公司在美国、欧洲和亚太地区的税负，再把最终策略交给我审定"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "tax",
         "tax-planning",
-        "international-tax",
         "scenario-comparison",
         "human-review"
       ],
@@ -1757,18 +1758,18 @@
       ],
       "number": 44,
       "problem": {
-        "de": "Ich möchte ein Unternehmen in den Bereichen Umwelt, Soziales und Unternehmensführung bewerten und eine vergleichbare Gesamtnote erhalten",
-        "en": "I want to rate a company on environment, social impact and governance, with a score I can compare",
-        "es": "Quiero evaluar una empresa en medio ambiente, impacto social y gobernanza, con una puntuación comparable",
-        "fr": "Je veux évaluer une entreprise sur l'environnement, le social et la gouvernance, avec une note comparable",
-        "zh-Hans": "我想从环境、社会和公司治理三方面评估一家企业，并得到可横向比较的评分"
+        "de": "Ein Unternehmen in den Bereichen Umwelt, Soziales und Unternehmensführung mit einer vergleichbaren Gesamtnote bewerten",
+        "en": "Rate a company on environment, social impact and governance, with a score I can compare",
+        "es": "Evaluar una empresa en medio ambiente, impacto social y gobernanza, con una puntuación comparable",
+        "fr": "Évaluer une entreprise sur l'environnement, le social et la gouvernance, avec une note comparable",
+        "zh-Hans": "从环境、社会和公司治理三方面评估一家企业，并给出可横向比较的评分"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "esg",
         "sustainability",
+        "esg",
         "company-rating"
       ],
       "tasks": 5,
@@ -1801,18 +1802,18 @@
       ],
       "number": 45,
       "problem": {
-        "de": "Ich möchte simulieren, wie eine schwere Krise meine Bank treffen würde, und den Bericht für die Aufsicht vorbereiten",
-        "en": "I want to simulate how a severe crisis would hit my bank and prepare the report for the regulator",
-        "es": "Quiero simular el efecto de una crisis grave en mi banco y preparar el informe para el supervisor",
-        "fr": "Je veux simuler l'effet d'une crise grave sur ma banque et préparer le rapport pour le régulateur",
-        "zh-Hans": "我想模拟一场严重危机对我所在银行的冲击，并准备提交给监管机构的报告"
+        "de": "Simulieren, wie eine schwere Krise meine Bank treffen würde, und den Bericht für die Aufsicht vorbereiten",
+        "en": "Simulate how a severe crisis would hit my bank and prepare the report for the regulator",
+        "es": "Simular el efecto de una crisis grave en mi banco y preparar el informe para el supervisor",
+        "fr": "Simuler l'effet d'une crise grave sur ma banque et préparer le rapport pour le régulateur",
+        "zh-Hans": "模拟一场严重危机对我所在银行的冲击，并准备提交给监管机构的报告"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "stress-testing",
         "banking",
+        "stress-testing",
         "regulatory-reporting"
       ],
       "tasks": 4,
@@ -1848,18 +1849,18 @@
       "mounts": [],
       "number": 46,
       "problem": {
-        "de": "In meiner Praxis möchte ich die Symptome eines Patienten und die zu prüfenden Diagnoseansätze ordnen und jeden Schritt selbst freigeben",
-        "en": "As a doctor, I want to organize a patient's symptoms and the leads to check, approving each step",
-        "es": "En mi consulta, quiero ordenar los síntomas de un paciente y las pistas por verificar, validando cada paso",
-        "fr": "Je suis médecin : je veux organiser les symptômes d'un patient et les pistes à vérifier, en validant chaque étape",
-        "zh-Hans": "作为医生，我想整理患者的症状和有待核实的诊断思路，并亲自确认每一步"
+        "de": "Die Symptome meiner Patienten und die zu prüfenden Diagnoseansätze ordnen und mir jeden Schritt zur Freigabe vorlegen",
+        "en": "Organize my patients' symptoms and the leads to check, submitting each step for my approval",
+        "es": "Ordenar los síntomas de mis pacientes y las pistas por verificar, sometiendo cada paso a mi aprobación",
+        "fr": "Organiser les symptômes de mes patients et les pistes à vérifier, en me soumettant chaque étape",
+        "zh-Hans": "整理我接诊患者的症状和待核实的诊断思路，每一步都交由我确认"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "healthcare",
         "diagnosis-support",
-        "symptoms",
         "drug-interactions",
         "human-review"
       ],
@@ -1890,11 +1891,11 @@
       ],
       "number": 47,
       "problem": {
-        "de": "Ich möchte einen Wochenspeiseplan, der meine Allergien, meinen Geschmack und meinen Nährstoffbedarf berücksichtigt",
-        "en": "I want a week of meals that respects my allergies, my tastes and my nutritional needs",
-        "es": "Quiero menús para la semana que respeten mis alergias, mis gustos y mis necesidades nutricionales",
-        "fr": "Je veux des menus pour la semaine qui respectent mes allergies, mes goûts et mes besoins nutritionnels",
-        "zh-Hans": "我想要一份一周菜单，兼顾我的过敏情况、口味偏好和营养需求"
+        "de": "Einen Wochenspeiseplan erstellen, der meine Allergien, meinen Geschmack und meinen Nährstoffbedarf berücksichtigt",
+        "en": "Plan a week of meals that respects my allergies, my tastes and my nutritional needs",
+        "es": "Preparar menús para la semana que respeten mis alergias, mis gustos y mis necesidades nutricionales",
+        "fr": "Composer des menus pour la semaine qui respectent mes allergies, mes goûts et mes besoins nutritionnels",
+        "zh-Hans": "制定一份兼顾我的过敏情况、口味偏好和营养需求的一周菜单"
       },
       "process": "sequential",
       "requiresKeys": [],
@@ -1931,11 +1932,11 @@
       ],
       "number": 48,
       "problem": {
-        "de": "In meiner psychologischen Praxis möchte ich das Wohlbefinden eines Patienten verfolgen und Übungen vorschlagen, die ich vorher freigebe",
-        "en": "As a psychologist, I want to follow a patient's well-being and suggest exercises I approve first",
-        "es": "En mi consulta de psicología, quiero seguir el bienestar de un paciente y proponerle ejercicios validados por mí",
-        "fr": "Je suis psychologue : je veux suivre le bien-être d'un patient et lui proposer des exercices que je valide",
-        "zh-Hans": "作为临床心理师，我想跟踪一位患者的心理状态，并推荐经我审核的练习"
+        "de": "Das Wohlbefinden meiner Patienten begleiten und ihnen Übungen vorschlagen, die ich vorher freigebe",
+        "en": "Track my patients' well-being and suggest exercises for them that I approve first",
+        "es": "Seguir el bienestar de mis pacientes y proponerles ejercicios validados antes por mí",
+        "fr": "Suivre le bien-être de mes patients et leur proposer des exercices que je valide d'abord",
+        "zh-Hans": "跟踪我所负责患者的心理状态，并推荐经我审核的练习"
       },
       "process": "sequential",
       "requiresKeys": [],
@@ -1943,6 +1944,7 @@
       "tags": [
         "mental-health",
         "well-being",
+        "monitoring",
         "human-review"
       ],
       "tasks": 3,
@@ -1970,20 +1972,20 @@
       ],
       "number": 49,
       "problem": {
-        "de": "Ich möchte Patientenakten in unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren",
-        "en": "I want to convert medical records in assorted formats to the standard health data format, flagging inconsistencies",
-        "es": "Quiero convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias",
-        "fr": "Je veux convertir des dossiers médicaux de formats variés au format standard des données de santé, en repérant les incohérences",
-        "zh-Hans": "我想把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
+        "de": "Patientenakten aus unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren",
+        "en": "Convert medical records in assorted formats to the standard health data format, flagging inconsistencies",
+        "es": "Convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias",
+        "fr": "Convertir des dossiers médicaux de formats variés au format standard des données de santé, en signalant les incohérences",
+        "zh-Hans": "把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "healthcare",
         "medical-records",
         "fhir",
-        "data-extraction",
-        "data-quality"
+        "data-conversion"
       ],
       "tasks": 3,
       "title": {
@@ -2012,18 +2014,18 @@
       ],
       "number": 50,
       "problem": {
-        "de": "Ich möchte einen ersten Entwurf meiner radiologischen Befunde, den ich selbst prüfe, korrigiere und unterschreibe",
-        "en": "As a radiologist, I want a first draft of my reports that I review, correct and sign myself",
-        "es": "Quiero un primer borrador de mis informes de radiología, que reviso, corrijo y firmo personalmente",
-        "fr": "Je suis radiologue : je veux un premier jet de mes comptes rendus, que je relis, corrige et signe moi-même",
-        "zh-Hans": "作为放射科医生，我想先拿到报告初稿，再由我亲自审阅、修改并签字"
+        "de": "Einen ersten Entwurf meiner radiologischen Befunde erstellen, den ich selbst prüfe, korrigiere und unterschreibe",
+        "en": "Prepare a first draft of my imaging reports, which I review, correct and sign myself",
+        "es": "Preparar un primer borrador de mis informes de imagen, que reviso, corrijo y firmo personalmente",
+        "fr": "Rédiger un premier jet de mes comptes rendus d'imagerie, que je relis, corrige et signe moi-même",
+        "zh-Hans": "为我的影像报告准备初稿，再由我亲自审阅、修改并签字"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
         "radiology",
-        "medical-reporting",
+        "medical-reports",
         "human-review"
       ],
       "tasks": 5,
@@ -2053,19 +2055,19 @@
       ],
       "number": 51,
       "problem": {
-        "de": "Ich möchte einen gemeinsamen Versorgungsplan für das ganze Team aus Medizin, Physiotherapie und Pflege vorbereiten",
-        "en": "I want to prepare one care plan shared by the doctor, specialist, physical therapist and nursing team",
-        "es": "Quiero preparar un plan de cuidados compartido entre médico, especialista, fisioterapeuta y personal de enfermería",
-        "fr": "Je veux préparer un plan de soins partagé entre médecin, spécialiste, kiné et équipe infirmière",
-        "zh-Hans": "我想为医生、专科医生、康复治疗师和护理团队准备一份共享的照护计划"
+        "de": "Einen gemeinsamen Versorgungsplan für das ganze Team aus Medizin, Physiotherapie und Pflege vorbereiten",
+        "en": "Prepare one care plan shared by the doctor, specialist, physical therapist and nursing team",
+        "es": "Preparar un plan de cuidados compartido entre médico, especialista, fisioterapeuta y personal de enfermería",
+        "fr": "Préparer un plan de soins partagé entre médecin, spécialiste, kiné et équipe infirmière",
+        "zh-Hans": "为医生、专科医生、康复治疗师和护理团队准备一份共享的照护计划"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "healthcare",
         "care-coordination",
-        "care-plan",
-        "multidisciplinary-team"
+        "care-plan"
       ],
       "tasks": 4,
       "title": {
@@ -2093,18 +2095,18 @@
       ],
       "number": 52,
       "problem": {
-        "de": "Ich möchte gemeldete Nebenwirkungen eines Medikaments in offiziellen Datenbanken, Fachartikeln und Foren verfolgen, ohne doppelte Meldungen",
-        "en": "I want to track a drug's reported side effects across official databases, publications and forums, without duplicates",
-        "es": "Quiero seguir los efectos adversos de un medicamento notificados en bases oficiales, publicaciones y foros, sin duplicados",
-        "fr": "Je veux suivre les effets indésirables d'un médicament signalés dans les bases officielles, les publications et les forums, sans doublons",
-        "zh-Hans": "我想跟踪某种药物在官方数据库、学术文献和论坛中被报告的不良反应，并去除重复"
+        "de": "Gemeldete Nebenwirkungen eines Medikaments in offiziellen Datenbanken, Fachartikeln und Foren ohne doppelte Meldungen verfolgen",
+        "en": "Track a drug's reported side effects across official databases, publications and forums, without duplicates",
+        "es": "Seguir los efectos adversos de un medicamento notificados en bases oficiales, publicaciones y foros, sin duplicados",
+        "fr": "Suivre les effets indésirables d'un médicament signalés dans les bases officielles, les publications et les forums, sans doublons",
+        "zh-Hans": "跟踪某种药物在官方数据库、学术文献和论坛中被报告的不良反应，并去除重复"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "pharmacovigilance",
         "drug-safety",
+        "pharmacovigilance",
         "adverse-events",
         "deduplication"
       ],
@@ -2137,11 +2139,11 @@
       ],
       "number": 53,
       "problem": {
-        "de": "Ich möchte eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und das weitere Vorgehen selbst freigeben",
-        "en": "I want to oversee a clinical trial, from recruitment to participant safety, and approve the next steps myself",
-        "es": "Quiero supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y validar personalmente los siguientes pasos",
-        "fr": "Je veux suivre un essai clinique, du recrutement à la sécurité des participants, en validant moi-même la suite à donner",
-        "zh-Hans": "我想跟踪一项临床试验，从招募到受试者安全全程把关，并亲自审定下一步安排"
+        "de": "Eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und mir das weitere Vorgehen zur Freigabe vorlegen",
+        "en": "Oversee a clinical trial, from recruitment to participant safety, and submit the next steps for my approval",
+        "es": "Supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y someter los siguientes pasos a mi aprobación",
+        "fr": "Suivre un essai clinique, du recrutement à la sécurité des participants, et me soumettre la suite à donner",
+        "zh-Hans": "跟踪一项临床试验，从招募到受试者安全全程把关，并把下一步安排交给我审定"
       },
       "process": "hierarchical",
       "requiresKeys": [],
@@ -2178,11 +2180,11 @@
       ],
       "number": 54,
       "problem": {
-        "de": "Ich möchte einen Wochentrainingsplan mit Ernährungs- und Erholungstipps, alles auf mein Niveau abgestimmt",
-        "en": "I want a training program for the week, with nutrition and recovery tips suited to my level",
-        "es": "Quiero un programa de entrenamiento para la semana, con consejos de nutrición y recuperación adaptados a mi nivel",
-        "fr": "Je veux un programme d'entraînement pour la semaine, avec des conseils de nutrition et de récupération adaptés à mon niveau",
-        "zh-Hans": "我想要一份一周训练计划，并附上适合我水平的营养和恢复建议"
+        "de": "Meinen Trainingsplan für die Woche erstellen, mit Ernährungs- und Erholungstipps, alles auf mein Niveau abgestimmt",
+        "en": "Plan my training week, with nutrition and recovery tips suited to my level",
+        "es": "Preparar mi programa de entrenamiento de la semana, con consejos de nutrición y recuperación adaptados a mi nivel",
+        "fr": "Préparer mon programme d'entraînement de la semaine, avec des conseils de nutrition et de récupération adaptés à mon niveau",
+        "zh-Hans": "为我制定一周训练计划，并附上适合我水平的营养和恢复建议"
       },
       "process": "sequential",
       "requiresKeys": [],
@@ -2220,11 +2222,11 @@
       ],
       "number": 55,
       "problem": {
-        "de": "In meinen Videosprechstunden möchte ich Vorschläge für Fragen sowie Entwürfe für Rezepte und Notizen, die ich freigebe",
-        "en": "During my video consultations, I want suggested questions and draft prescriptions and notes that I approve",
-        "es": "Durante mis teleconsultas, quiero preguntas sugeridas y borradores de recetas y de notas que luego valido",
-        "fr": "Pendant mes téléconsultations, je veux des questions suggérées et des brouillons d'ordonnance et de notes, que je valide",
-        "zh-Hans": "远程问诊时，我希望得到建议提问，以及由我审核的处方和病历草稿"
+        "de": "Mir in meinen Videosprechstunden Fragen vorschlagen und Entwürfe für Rezepte und Notizen zur Freigabe vorbereiten",
+        "en": "During my video consultations, suggest questions and draft prescriptions and notes for my approval",
+        "es": "Durante mis teleconsultas, sugerirme preguntas y preparar borradores de recetas y notas para mi aprobación",
+        "fr": "Pendant mes téléconsultations, me suggérer des questions et préparer des brouillons d'ordonnance et de notes que je valide",
+        "zh-Hans": "在我远程问诊时建议提问，并准备供我审核的处方和病历草稿"
       },
       "process": "parallel",
       "requiresKeys": [],
@@ -2261,16 +2263,17 @@
       ],
       "number": 56,
       "problem": {
-        "de": "Ich möchte Erklärungen und Übungen, die zu Niveau und Lernstil der Lernenden passen",
-        "en": "I want explanations and exercises matched to a learner's level and way of learning",
-        "es": "Quiero explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno",
-        "fr": "Je veux des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève",
-        "zh-Hans": "我想要根据学习者的水平和学习方式量身定制的讲解和练习"
+        "de": "Erklärungen und Übungen anbieten, die zu Niveau und Lernstil der Lernenden passen",
+        "en": "Provide explanations and exercises matched to a learner's level and way of learning",
+        "es": "Proponer explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno",
+        "fr": "Proposer des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève",
+        "zh-Hans": "根据学习者的水平和学习方式，提供量身定制的讲解和练习"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "education",
         "tutoring",
         "personalized-learning",
         "exercises"
@@ -2301,19 +2304,19 @@
       ],
       "number": 57,
       "problem": {
-        "de": "Ich möchte eine ausgewogene Prüfung mit klaren Fragen und gut abgestimmtem Schwierigkeitsgrad erstellen",
-        "en": "I want to prepare a balanced exam, with clear questions and well-judged difficulty",
-        "es": "Quiero preparar un examen equilibrado, con preguntas claras y una dificultad bien dosificada",
-        "fr": "Je veux préparer un examen équilibré, avec des questions claires et une difficulté bien dosée",
-        "zh-Hans": "我想出一份均衡的试卷，题目表述清晰，难度把握得当"
+        "de": "Eine ausgewogene Prüfung mit klaren Fragen und gut abgestimmtem Schwierigkeitsgrad erstellen",
+        "en": "Prepare a balanced exam, with clear questions and well-judged difficulty",
+        "es": "Preparar un examen equilibrado, con preguntas claras y una dificultad bien dosificada",
+        "fr": "Préparer un examen équilibré, avec des questions claires et une difficulté bien dosée",
+        "zh-Hans": "出一份均衡的试卷，题目表述清晰，难度把握得当"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "education",
         "exam-creation",
-        "assessment",
-        "teaching"
+        "assessment"
       ],
       "tasks": 4,
       "title": {
@@ -2340,20 +2343,20 @@
       ],
       "number": 58,
       "problem": {
-        "de": "Ich möchte eine Arbeit nach Inhalt, Form und Methode bewerten, mit einer Note und ausführlichen Kommentaren",
-        "en": "I want to grade a paper on content, form and method, with a score and detailed comments",
-        "es": "Quiero corregir un trabajo según el fondo, la forma y el método, con una nota y comentarios detallados",
-        "fr": "Je veux corriger une copie sur le fond, la forme et la méthode, avec une note et des commentaires détaillés",
-        "zh-Hans": "我想从内容、形式和方法三方面批改一份作业，给出分数和详细评语"
+        "de": "Eine Arbeit nach Inhalt, Form und Methode bewerten, mit einer Note und ausführlichen Kommentaren",
+        "en": "Grade a paper on content, form and method, with a score and detailed comments",
+        "es": "Corregir un trabajo según el fondo, la forma y el método, con una nota y comentarios detallados",
+        "fr": "Corriger une copie sur le fond, la forme et la méthode, avec une note et des commentaires détaillés",
+        "zh-Hans": "从内容、形式和方法三方面批改一份作业，给出分数和详细评语"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "education",
         "grading",
         "assessment",
-        "feedback",
-        "teaching"
+        "feedback"
       ],
       "tasks": 4,
       "title": {
@@ -2381,16 +2384,17 @@
       ],
       "number": 59,
       "problem": {
-        "de": "Ich möchte einen Lernpfad, der sich an meine Wissenslücken anpasst, mit ausgewählten Materialien und einem Zeitplan",
-        "en": "I want a learning path that adapts to my knowledge gaps, with hand-picked resources and a schedule",
-        "es": "Quiero un itinerario de formación que se adapte a mis lagunas, con recursos seleccionados y un calendario",
-        "fr": "Je veux un parcours de formation qui s'adapte à mes lacunes, avec des ressources choisies et un calendrier",
-        "zh-Hans": "我想要一条针对我知识薄弱点的学习路径，并配有精选资源和时间安排"
+        "de": "Einen Lernpfad passend zu meinen Wissenslücken erstellen, mit ausgewählten Materialien und einem Zeitplan",
+        "en": "Build a learning path around my knowledge gaps, with hand-picked resources and a schedule",
+        "es": "Crear un itinerario de formación adaptado a mis lagunas, con recursos seleccionados y un calendario",
+        "fr": "Construire un parcours de formation adapté à mes lacunes, avec des ressources choisies et un calendrier",
+        "zh-Hans": "针对我的知识薄弱点设计学习路径，并配上精选资源和时间安排"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "education",
         "learning-path",
         "knowledge-gaps",
         "study-plan"
@@ -2421,16 +2425,17 @@
       ],
       "number": 60,
       "problem": {
-        "de": "Ich möchte in einem realistischen Rollenspiel den Umgang mit Kunden üben und danach Feedback zu meiner Leistung erhalten",
-        "en": "I want to practice with a client in a realistic role-play, then get feedback on how I did",
-        "es": "Quiero practicar con un cliente en una simulación realista y luego recibir comentarios sobre mi desempeño",
-        "fr": "Je veux m'entraîner face à un client dans une mise en situation réaliste, puis avoir un retour sur ma prestation",
-        "zh-Hans": "我想在逼真的情景模拟中练习与客户打交道，然后获得对我表现的反馈"
+        "de": "Mich in einem realistischen Rollenspiel mit einem Kunden üben lassen und mir danach Feedback zu meiner Leistung geben",
+        "en": "Put me in a realistic role-play with a client, then give me feedback on how I did",
+        "es": "Ponerme frente a un cliente en una simulación realista y luego darme comentarios sobre mi desempeño",
+        "fr": "Me mettre face à un client dans une mise en situation réaliste, puis me faire un retour sur ma prestation",
+        "zh-Hans": "让我在逼真的情景模拟中练习应对客户，然后对我的表现给出反馈"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "training",
         "role-play",
         "soft-skills",
         "feedback"
@@ -2460,18 +2465,18 @@
       ],
       "number": 61,
       "problem": {
-        "de": "Ich möchte lernen, indem ich Herausforderungen meistere, die Punkte, Abzeichen und neue Level bringen",
-        "en": "I want to learn by taking on challenges that earn points, badges and levels",
-        "es": "Quiero aprender superando retos que dan puntos, insignias y niveles",
-        "fr": "Je veux apprendre en relevant des défis qui rapportent des points, des badges et des niveaux",
-        "zh-Hans": "我想通过完成挑战来学习，赢取积分、徽章并逐级升级"
+        "de": "Mein Lernen in ein Spiel verwandeln, mit Herausforderungen, Punkten, Abzeichen und Levels",
+        "en": "Turn my learning into a game, with challenges, points, badges and levels",
+        "es": "Convertir mi aprendizaje en un juego, con retos, puntos, insignias y niveles",
+        "fr": "Transformer mon apprentissage en jeu, avec des défis, des points, des badges et des niveaux",
+        "zh-Hans": "把我的学习变成游戏，设置挑战、积分、徽章和等级"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "education",
         "gamification",
-        "learning",
         "challenges"
       ],
       "tasks": 3,
@@ -2499,19 +2504,19 @@
       ],
       "number": 62,
       "problem": {
-        "de": "Ich möchte prüfen, ob eine Arbeit abgeschrieben wurde, und dafür mehrere Hinweise abgleichen, um Fehlalarme gering zu halten",
-        "en": "I want to check whether an assignment was copied, cross-checking several clues to limit false alarms",
-        "es": "Quiero comprobar si un trabajo ha sido copiado, cruzando varios indicios para limitar las falsas alarmas",
-        "fr": "Je veux vérifier si un devoir a été copié, en croisant plusieurs indices pour limiter les fausses alertes",
-        "zh-Hans": "我想核查一份作业是否抄袭，交叉比对多种线索以减少误判"
+        "de": "Prüfen, ob eine Arbeit abgeschrieben wurde, und dafür mehrere Hinweise abgleichen, um Fehlalarme gering zu halten",
+        "en": "Check whether an assignment was copied, cross-checking several clues to limit false alarms",
+        "es": "Comprobar si un trabajo ha sido copiado, cruzando varios indicios para limitar las falsas alarmas",
+        "fr": "Vérifier si un devoir a été copié, en croisant plusieurs indices pour limiter les fausses alertes",
+        "zh-Hans": "核查一份作业是否抄袭，交叉比对多种线索以减少误判"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "education",
         "plagiarism-detection",
-        "academic-integrity",
-        "text-analysis"
+        "academic-integrity"
       ],
       "tasks": 5,
       "title": {
@@ -2542,16 +2547,17 @@
       ],
       "number": 63,
       "problem": {
-        "de": "Ich möchte wissen, welche Kompetenzen meinem Team fehlen und welche Schulungen Vorrang haben",
-        "en": "I want to know which skills my team lacks and which training to prioritize",
-        "es": "Quiero saber qué competencias le faltan a mi equipo y qué formaciones priorizar",
-        "fr": "Je veux savoir quelles compétences manquent à mon équipe et quelles formations suivre en priorité",
-        "zh-Hans": "我想知道我的团队缺少哪些技能，以及应优先安排哪些培训"
+        "de": "Herausfinden, welche Kompetenzen meinem Team fehlen und welche Schulungen Vorrang haben",
+        "en": "Find the skills my team lacks and the training to prioritize",
+        "es": "Encontrar las competencias que le faltan a mi equipo y las formaciones prioritarias",
+        "fr": "Trouver les compétences qui manquent à mon équipe et les formations à suivre en priorité",
+        "zh-Hans": "找出我的团队欠缺的技能，以及应优先安排的培训"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "hr",
         "skills-gap",
         "team-development",
         "training-plan"
@@ -2583,11 +2589,11 @@
       ],
       "number": 64,
       "problem": {
-        "de": "Ich möchte Inhalte für blinde und gehörlose Menschen sowie für Menschen mit Leseschwierigkeiten zugänglich machen",
-        "en": "I want to make content accessible to people who are blind, deaf or have trouble reading",
-        "es": "Quiero hacer un contenido accesible para personas ciegas, sordas o con dificultades de lectura",
-        "fr": "Je veux rendre un contenu accessible aux personnes aveugles, sourdes ou qui ont du mal à lire",
-        "zh-Hans": "我想让一份内容也能被盲人、聋人和阅读有困难的人顺利使用"
+        "de": "Inhalte für blinde und gehörlose Menschen sowie für Menschen mit Leseschwierigkeiten zugänglich machen",
+        "en": "Make content accessible to people who are blind, deaf or have trouble reading",
+        "es": "Hacer un contenido accesible para personas ciegas, sordas o con dificultades de lectura",
+        "fr": "Rendre un contenu accessible aux personnes aveugles, sourdes ou qui ont du mal à lire",
+        "zh-Hans": "让一份内容也能被盲人、聋人和阅读有困难的人顺利使用"
       },
       "process": "parallel",
       "requiresKeys": [],
@@ -2625,19 +2631,19 @@
       ],
       "number": 65,
       "problem": {
-        "de": "Ich möchte, dass jemand meinen Code prüft, mir erklärt, wie ich ihn verbessere, und sagt, was ich als Nächstes lernen sollte",
-        "en": "I want someone to review my code, explain how to improve it and tell me what to learn next",
-        "es": "Quiero que revisen mi código, me expliquen cómo mejorarlo y qué debería aprender después",
-        "fr": "Je veux qu'on relise mon code, qu'on m'explique comment l'améliorer et ce que je dois apprendre ensuite",
-        "zh-Hans": "我想请人审阅我的代码，讲解如何改进，并告诉我下一步该学什么"
+        "de": "Meinen Code prüfen, mir erklären, wie ich ihn verbessere, und mir sagen, was ich als Nächstes lernen sollte",
+        "en": "Review my code, explain how to improve it and tell me what to learn next",
+        "es": "Revisar mi código, explicarme cómo mejorarlo y decirme qué aprender después",
+        "fr": "Relire mon code, m'expliquer comment l'améliorer et me dire quoi apprendre ensuite",
+        "zh-Hans": "审阅我的代码，讲解如何改进，并告诉我下一步该学什么"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "software-development",
         "code-review",
         "mentoring",
-        "software-development",
         "career-growth"
       ],
       "tasks": 4,
