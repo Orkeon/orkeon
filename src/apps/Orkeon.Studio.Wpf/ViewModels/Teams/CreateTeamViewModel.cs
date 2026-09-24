@@ -2919,7 +2919,9 @@ public sealed class CreateTeamViewModel : ObservableObject
                         ? need
                         : TeamCatalog.Describe(promotion.Path).Description ?? "";
                     var mounts = SidecarMounts();
-                    TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
+                    // Merged, never rebuilt (STUDIO-31, D-02): the adoption writes the fields it
+                    // owns, and a « Modify » keeps the others — the archive flag, the last run.
+                    TeamCatalog.UpdateMetadata(promotion.Path, current => current with
                     {
                         Name = adopted,
                         Description = description,

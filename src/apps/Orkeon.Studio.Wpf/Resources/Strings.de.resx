@@ -2517,6 +2517,36 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Nicht gelöscht: das Laufwerk hat abgelehnt — vielleicht ist eine Datei des Teams geöffnet.</value>
   </data>
+  <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
+    <value>Archiviertes Team — wiederherstellen?</value>
+  </data>
+  <data name="Studio.Common.TeamRestored" xml:space="preserve">
+    <value>Team wiederhergestellt: es ist wieder bei Ihren Teams.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveBusy" xml:space="preserve">
+    <value>Nicht archiviert: das Team läuft gerade oder ist im Assistenten geöffnet — versuchen Sie es erneut, sobald es frei ist.</value>
+  </data>
+  <data name="Studio.Teams.RestoreBusy" xml:space="preserve">
+    <value>Nicht wiederhergestellt: das Team läuft gerade oder ist im Assistenten geöffnet — versuchen Sie es erneut, sobald es frei ist.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveScheduled" xml:space="preserve">
+    <value>Dieses Team ist geplant: das System würde es weiter ausführen. Stoppen Sie seinen Zeitplan, um es zu archivieren.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveUnscheduleFailed" xml:space="preserve">
+    <value>Nicht archiviert: sein Zeitplan konnte nicht gestoppt werden — {0}</value>
+  </data>
+  <data name="Studio.Teams.ArchiveRefused" xml:space="preserve">
+    <value>Nicht archiviert: das Laufwerk hat abgelehnt — vielleicht ist eine Datei des Teams geöffnet.</value>
+  </data>
+  <data name="Studio.Teams.RestoreRefused" xml:space="preserve">
+    <value>Nicht wiederhergestellt: das Laufwerk hat abgelehnt — vielleicht ist eine Datei des Teams geöffnet.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersArchived" xml:space="preserve">
+    <value>{0} (archiviert)</value>
+  </data>
+  <data name="Studio.Common.Restore" xml:space="preserve">
+    <value>Wiederherstellen</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Den Zeitplan installieren (täglich um {0})?</value>
   </data>

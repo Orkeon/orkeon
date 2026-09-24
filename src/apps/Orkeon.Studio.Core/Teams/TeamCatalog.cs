@@ -1,5 +1,6 @@
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using System.Globalization;
 using System.Text.Json;
@@ -53,6 +54,44 @@ public sealed record StudioTeamMetadata
     /// </summary>
     [JsonPropertyName("mounts")]
     public IReadOnlyList<string>? Mounts { get; init; }
+
+    /// <summary>
+    /// Whether the team is archived (STUDIO-31, D-01): out of the active list, its folder where it
+    /// always was — path, session link, schedule and history untouched. A Studio notion: the CLI,
+    /// the terminal launcher and the operating system run an archived team like any other. Absent
+    /// from the file while false.
+    /// </summary>
+    [JsonPropertyName("archived")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public bool Archived { get; init; }
+
+    /// <summary>When the team was archived; null while it is active.</summary>
+    [JsonPropertyName("archivedAt")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? ArchivedAt { get; init; }
+
+    /// <summary>
+    /// When the team's last real run from Studio started (STUDIO-31, D-05): stamped at the end of
+    /// the run — never a trial, never a <c>--validate</c> — so the date outlives the launch
+    /// history's cap. A run started by the CLI or by the operating system does not pass through
+    /// Studio and leaves it as it is.
+    /// </summary>
+    [JsonPropertyName("lastRunAt")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? LastRunAt { get; init; }
+}
+
+/// <summary>Which teams <see cref="TeamCatalog.List"/> returns (STUDIO-31, D-03).</summary>
+public enum TeamListFilter
+{
+    /// <summary>The teams in use: what My teams lists, the Test picker offers and the balance covers.</summary>
+    Active,
+
+    /// <summary>The archived teams alone.</summary>
+    Archived,
+
+    /// <summary>Every team, archived or not: what « Used by » counts and the settings list.</summary>
+    All,
 }
 
 /// <summary>What a launch screen shows about a target — sidecar-backed, best-effort.</summary>
@@ -94,6 +133,18 @@ public sealed record TargetDescription
 
     /// <summary>Whether the team refers to a declaration missing on this machine (D-06).</summary>
     public bool HasUnknownMountIds => ResolvedMounts.Any(m => m.Source == TeamMountSource.UnknownId);
+
+    /// <summary>
+    /// Whether the sidecar says the team is archived (STUDIO-31, D-07): Studio neither launches
+    /// nor tests it until it is restored.
+    /// </summary>
+    public bool IsArchived { get; init; }
+
+    /// <summary>
+    /// The folder the sidecar is read from — the target itself, or the folder holding it: the team a
+    /// restore acts on (STUDIO-31). Null when the target could not be read.
+    /// </summary>
+    public string? TeamDirectory { get; init; }
 }
 
 
@@ -181,6 +232,27 @@ public sealed record TeamSummary
     /// sidecar, or recorded as installed in <c>forge.json</c>.
     /// </summary>
     public bool HasSchedule => Schedule is { Length: > 0 } || HasInstalledSchedule;
+
+    /// <summary>Whether the team is archived (STUDIO-31, D-01): out of the active list, its folder untouched.</summary>
+    public bool IsArchived => Metadata?.Archived == true;
+
+    /// <summary>When the team was archived; null while it is active.</summary>
+    public DateTimeOffset? ArchivedAt => Metadata?.ArchivedAt;
+
+    /// <summary>When the team's last real run from Studio started, as the sidecar recorded it (STUDIO-31, D-05).</summary>
+    public DateTimeOffset? LastRunAt => Metadata?.LastRunAt;
+
+    /// <summary>When the folder was promoted, as its <c>forge.json</c> says; null without the record or the date.</summary>
+    public DateTimeOffset? PromotedAt { get; init; }
+
+    /// <summary>
+    /// The team's last activity (STUDIO-31, D-05): the most recent of <see cref="LastRunAt"/>,
+    /// <paramref name="lastHistoryEntry"/> — the latest launch-history entry naming the team, which
+    /// the catalog does not read — and <see cref="PromotedAt"/>. Computed at read time, never
+    /// stored; null when none of the three is known.
+    /// </summary>
+    public DateTimeOffset? LastActivity(DateTimeOffset? lastHistoryEntry = null) =>
+        new[] { LastRunAt, lastHistoryEntry, PromotedAt }.Max();
 }
 
 /// <summary>What sits where an adoption would write its team (STUDIO-26, D-07): <see cref="TeamCatalog.OccupantOf"/>.</summary>
@@ -222,11 +294,18 @@ public static partial class TeamCatalog
             "Orkeon", "teams");
 
     /// <summary>
-    /// Lists the team folders under <paramref name="root"/>, sidecars read when present.
+    /// Lists the team folders under <paramref name="root"/>, sidecars read when present. A folder
+    /// whose name starts with a dot — an engine's workspace state, a VCS folder — is never a team,
+    /// nor, on Windows, a hidden or system folder (STUDIO-31, D-03).
     /// </summary>
     /// <param name="root">The teams directory.</param>
+    /// <param name="filter">
+    /// Which teams: the active ones (the default — what My teams lists), the archived ones, or all
+    /// of them (STUDIO-31, D-08).
+    /// </param>
     /// <param name="declaredMounts">The settings' mounts, to read each sidecar against (VFS-90); null not to consult them.</param>
-    public static IReadOnlyList<TeamSummary> List(string root, IReadOnlyList<string>? declaredMounts = null)
+    public static IReadOnlyList<TeamSummary> List(
+        string root, TeamListFilter filter = TeamListFilter.Active, IReadOnlyList<string>? declaredMounts = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
 
@@ -236,13 +315,42 @@ public static partial class TeamCatalog
                 return [];
 
             return Directory.EnumerateDirectories(root)
+                .Where(IsListable)
                 .Order(StringComparer.OrdinalIgnoreCase)
                 .Select(directory => Describe(directory, declaredMounts))
+                .Where(team => filter switch
+                {
+                    TeamListFilter.Active => !team.IsArchived,
+                    TeamListFilter.Archived => team.IsArchived,
+                    _ => true,
+                })
                 .ToList();
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
             return [];
+        }
+    }
+
+    /// <summary>
+    /// Whether a folder under the root can be a team: not a dot folder, and on Windows neither
+    /// hidden nor system. One that vanished while the list was read is none either.
+    /// </summary>
+    private static bool IsListable(string directory)
+    {
+        if (Path.GetFileName(Path.TrimEndingDirectorySeparator(directory)).StartsWith('.'))
+            return false;
+
+        if (!OperatingSystem.IsWindows())
+            return true;
+
+        try
+        {
+            return (File.GetAttributes(directory) & (FileAttributes.Hidden | FileAttributes.System)) == 0;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            return false;
         }
     }
 
@@ -277,6 +385,7 @@ public static partial class TeamCatalog
             HasYamlCrew = HasYamlCrew(teamDirectory),
             ForgeSessionId = record.SessionId,
             HasInstalledSchedule = record.HasInstalledSchedule,
+            PromotedAt = record.PromotedAt,
         };
     }
 
@@ -443,6 +552,8 @@ public static partial class TeamCatalog
                 AgentCount = agentCount,
                 Mounts = resolved.Select(m => m.Effective).ToList(),
                 ResolvedMounts = resolved,
+                IsArchived = metadata?.Archived == true,
+                TeamDirectory = directory is { Length: > 0 } ? directory : null,
             };
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException)
@@ -491,6 +602,16 @@ public static partial class TeamCatalog
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(metadata);
 
+        // The promoted folder is the deliverable; losing the sidecar loses only comfort.
+        _ = TryWriteMetadata(teamDirectory, metadata);
+    }
+
+    /// <summary>
+    /// <see cref="SaveMetadata"/>, saying whether the disk took the write — for the gestures whose
+    /// whole point is the sidecar (archive, restore, the copy that must come out active).
+    /// </summary>
+    private static bool TryWriteMetadata(string teamDirectory, StudioTeamMetadata metadata)
+    {
         var relativized = Relativized(metadata, teamDirectory);
         try
         {
@@ -499,11 +620,111 @@ public static partial class TeamCatalog
             File.WriteAllText(
                 Path.Combine(teamDirectory, StudioTeamMetadata.FileName),
                 JsonSerializer.Serialize(relativized, Options));
+            return true;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
-            // The promoted folder is the deliverable; losing the sidecar loses only comfort.
+            return false;
         }
+    }
+
+    /// <summary>
+    /// Rewrites the sidecar through <paramref name="update"/>, starting from what it says today:
+    /// merged, never rebuilt (STUDIO-31, D-02). A writer changes the fields it owns and keeps every
+    /// other one — the archive flag and the last run survive an adoption, a re-adoption, a change of
+    /// folders. A folder without a readable sidecar starts from an empty one. Tolerant like
+    /// <see cref="SaveMetadata"/>.
+    /// </summary>
+    public static void UpdateMetadata(string teamDirectory, Func<StudioTeamMetadata, StudioTeamMetadata> update)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(update);
+
+        SaveMetadata(teamDirectory, update(TryReadMetadata(teamDirectory) ?? new StudioTeamMetadata()));
+    }
+
+    /// <summary>
+    /// Archives the team (STUDIO-31, D-01): a flag and its date in the sidecar, everything else kept,
+    /// the folder left where it is — so nothing that points at it breaks: the path, the session link,
+    /// the schedule, the history. A folder without a sidecar gains a minimal one. False when the
+    /// folder is not there, when a sidecar is there that cannot be read (overwriting it would lose
+    /// what it says), or when the disk refused. The rules around the gesture — a team that runs, a
+    /// team still scheduled — are the screen's.
+    /// </summary>
+    public static bool Archive(string teamDirectory, DateTimeOffset archivedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        return TryReadForUpdate(teamDirectory, out var metadata)
+            && TryWriteMetadata(teamDirectory, metadata with { Archived = true, ArchivedAt = archivedAt });
+    }
+
+    /// <summary>
+    /// Restores an archived team (STUDIO-31): the flag and its date leave the sidecar, everything
+    /// else stays. A team that is not archived is left as it is. False only when the disk refused, or
+    /// when a sidecar is there that cannot be read.
+    /// </summary>
+    public static bool Restore(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        if (!TryReadForUpdate(teamDirectory, out var metadata))
+            return false;
+
+        return (!metadata.Archived && metadata.ArchivedAt is null)
+            || TryWriteMetadata(teamDirectory, metadata with { Archived = false, ArchivedAt = null });
+    }
+
+    /// <summary>
+    /// Stamps the end of a real run on the team it ran (STUDIO-31, D-05): <c>lastRunAt</c> in the
+    /// sidecar, the rest kept. Only a team folder right under <paramref name="teamsRoot"/> that
+    /// already has its sidecar: a launch pointed anywhere else, or at a folder Studio never adopted,
+    /// leaves the disk as it found it — no sidecar is created in a folder a run merely passed
+    /// through. The target is the folder or a file inside it, read the way the launcher reads it
+    /// (<see cref="DeclaredMounts.TeamDirectoryOf"/>). False when nothing was stamped.
+    /// </summary>
+    /// <param name="teamsRoot">The teams directory.</param>
+    /// <param name="targetPath">What the run was pointed at.</param>
+    /// <param name="startedAt">When the run started — the moment its history entry records.</param>
+    public static bool RecordRun(string teamsRoot, string targetPath, DateTimeOffset startedAt)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamsRoot);
+
+        var team = DeclaredMounts.TeamDirectoryOf(targetPath, PhysicalDirectoryProbe.Instance);
+        if (team is null || !IsTeamFolderOf(teamsRoot, team))
+            return false;
+
+        return File.Exists(Path.Combine(team, StudioTeamMetadata.FileName))
+            && TryReadMetadata(team) is { } metadata
+            && TryWriteMetadata(team, metadata with { LastRunAt = startedAt });
+    }
+
+    /// <summary>Whether <paramref name="directory"/> is a folder right under <paramref name="teamsRoot"/> — where a team lives.</summary>
+    private static bool IsTeamFolderOf(string teamsRoot, string directory)
+    {
+        var parent = Path.GetDirectoryName(NormalizePath(directory));
+        return parent is { Length: > 0 }
+            && string.Equals(NormalizePath(parent), NormalizePath(teamsRoot), PhysicalPathContainment.Comparison);
+    }
+
+    /// <summary>
+    /// The sidecar a gesture rewrites (STUDIO-31): what the file says, or an empty one when the folder
+    /// has none. False when the folder is not there, or when a sidecar is there that cannot be read.
+    /// </summary>
+    private static bool TryReadForUpdate(string teamDirectory, out StudioTeamMetadata metadata)
+    {
+        metadata = new StudioTeamMetadata();
+        if (!Directory.Exists(teamDirectory))
+            return false;
+
+        if (!File.Exists(Path.Combine(teamDirectory, StudioTeamMetadata.FileName)))
+            return true;
+
+        if (TryReadMetadata(teamDirectory) is not { } read)
+            return false;
+
+        metadata = read;
+        return true;
     }
 
     /// <summary>
@@ -552,8 +773,7 @@ public static partial class TeamCatalog
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
         ArgumentNullException.ThrowIfNull(mounts);
 
-        var metadata = TryReadMetadata(teamDirectory) ?? new StudioTeamMetadata();
-        SaveMetadata(teamDirectory, metadata with { Mounts = mounts.Count > 0 ? mounts : null });
+        UpdateMetadata(teamDirectory, metadata => metadata with { Mounts = mounts.Count > 0 ? mounts : null });
     }
 
     /// <summary>
@@ -587,12 +807,14 @@ public static partial class TeamCatalog
 
     /// <summary>
     /// Copies a team folder next to itself under a unique "-copy" slug. Returns the new
-    /// path, or null when the disk refused.
+    /// path, or null when the disk refused — and then no partial copy is left behind: the
+    /// list would show it as a team (STUDIO-31, D-03).
     /// </summary>
     public static string? Duplicate(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
+        string? destination = null;
         try
         {
             var parent = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(teamDirectory));
@@ -600,10 +822,11 @@ public static partial class TeamCatalog
             if (parent is null || slug.Length == 0)
                 return null;
 
-            var destination = Path.Combine(parent, slug + "-copy");
-            for (var i = 2; Directory.Exists(destination); i++)
-                destination = Path.Combine(parent, $"{slug}-copy-{i}");
+            var candidate = Path.Combine(parent, slug + "-copy");
+            for (var i = 2; Directory.Exists(candidate); i++)
+                candidate = Path.Combine(parent, $"{slug}-copy-{i}");
 
+            destination = candidate;
             CopyTree(teamDirectory, destination);
 
             // A verbatim sidecar would show two cards under the same display name — and in
@@ -611,20 +834,49 @@ public static partial class TeamCatalog
             // Its folders travel with it: a team-relative entry is copied verbatim and resolves
             // under the copy; an absolute entry under the SOURCE (an older sidecar) is rewritten
             // relative on the way, so the copy writes into its own folder, never the original's.
+            // A copy is a team in use: it comes out active whatever its original is (STUDIO-31,
+            // D-04) — a copy whose sidecar could not say so is no copy at all.
             if (TryReadMetadata(destination) is { } metadata)
             {
                 var copySlug = Path.GetFileName(destination);
-                SaveMetadata(destination, Relativized(metadata, teamDirectory) with
+                var renamed = Relativized(metadata, teamDirectory) with
                 {
                     Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
-                });
+                    Archived = false,
+                    ArchivedAt = null,
+                };
+                if (!TryWriteMetadata(destination, renamed))
+                {
+                    RemovePartialCopy(destination);
+                    return null;
+                }
             }
 
             return destination;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            RemovePartialCopy(destination);
             return null;
+        }
+    }
+
+    /// <summary>
+    /// Deletes what a failed copy left at <paramref name="destination"/> — a folder the copy chose
+    /// because nothing was there. Tolerant: a folder the disk keeps is left, never a crash.
+    /// </summary>
+    private static void RemovePartialCopy(string? destination)
+    {
+        if (destination is null || !Directory.Exists(destination))
+            return;
+
+        try
+        {
+            Directory.Delete(destination, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // What the disk kept is still better than an exception out of a copy that already failed.
         }
     }
 
@@ -685,7 +937,8 @@ public static partial class TeamCatalog
     /// folder the launcher's own detector cannot resolve to a crew definition is refused
     /// before a byte is copied, with the detector's message, instead of landing in the
     /// catalogue as a team nothing can run (STUDIO-12 C1). A disk that refused leaves
-    /// <paramref name="refusal"/> null, as before.
+    /// <paramref name="refusal"/> null, as before, and no partial copy behind (STUDIO-31, D-03).
+    /// The imported team is active, whatever the sidecar it came with says (D-04).
     /// </summary>
     public static string? Import(string sourcePath, string root, out string? refusal)
     {
@@ -703,6 +956,7 @@ public static partial class TeamCatalog
         }
         refusal = null;
 
+        string? destination = null;
         try
         {
             var isDirectory = Directory.Exists(sourcePath);
@@ -713,30 +967,38 @@ public static partial class TeamCatalog
                 ? Path.GetFileName(Path.TrimEndingDirectorySeparator(sourcePath))
                 : Path.GetFileNameWithoutExtension(sourcePath);
             var slug = FolderSlug.From(name) ?? FolderSlug.TeamFallback;
-            var destination = Path.Combine(root, slug);
-            for (var i = 2; Directory.Exists(destination); i++)
-                destination = Path.Combine(root, $"{slug}-{i}");
+            var candidate = Path.Combine(root, slug);
+            for (var i = 2; Directory.Exists(candidate); i++)
+                candidate = Path.Combine(root, $"{slug}-{i}");
 
             if (isDirectory)
             {
                 // Importing an ancestor of the teams root would copy the destination into
                 // itself while it fills — a tree that only ends in an I/O error.
                 var fullSource = Path.GetFullPath(sourcePath);
-                var fullDestination = Path.GetFullPath(destination);
+                var fullDestination = Path.GetFullPath(candidate);
                 if (Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(fullDestination, fullSource))
                 {
                     return null;
                 }
 
+                destination = candidate;
                 CopyTree(sourcePath, destination);
 
                 // An older sidecar carrying absolute paths under its source folder is rewritten
-                // relative on import — a copy is a safeguard, not a compatibility layer.
-                if (TryReadMetadata(destination) is { } imported)
-                    SaveMetadata(destination, WithNormalizedName(Relativized(imported, sourcePath)));
+                // relative on import — a copy is a safeguard, not a compatibility layer. An
+                // archived team's export lands active, and a copy whose sidecar could not say so
+                // is no import at all.
+                if (TryReadMetadata(destination) is { } imported
+                    && !TryWriteMetadata(destination, WithNormalizedName(Relativized(imported, sourcePath)) with { Archived = false, ArchivedAt = null }))
+                {
+                    RemovePartialCopy(destination);
+                    return null;
+                }
             }
             else
             {
+                destination = candidate;
                 Directory.CreateDirectory(destination);
                 File.Copy(sourcePath, Path.Combine(destination, Path.GetFileName(sourcePath)));
             }
@@ -745,6 +1007,7 @@ public static partial class TeamCatalog
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {
+            RemovePartialCopy(destination);
             return null;
         }
     }

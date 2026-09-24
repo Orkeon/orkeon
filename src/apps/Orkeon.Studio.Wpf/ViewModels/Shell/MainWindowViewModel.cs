@@ -118,11 +118,17 @@ public sealed class MainWindowViewModel : ObservableObject
             DeclaredMounts = declaredMounts,
             Clipboard = seams.Clipboard,
             Clock = seams.Clock,
+            // STUDIO-31: a real run stamps its team's last run under the teams root (D-05), and the
+            // archived-team banner restores through « My teams », which owns the rules.
+            TeamsRoot = teamsHome,
+            RestoreTeam = RestoreArchivedTeam,
         });
 
         // VFS-90: each settings row says which teams name it by id, and removing one asks
-        // first — the composition root supplies the question, the view model the facts.
-        Config.Mounts.LoadTeams = () => TeamCatalog.List(teamsHome);
+        // first — the composition root supplies the question, the view model the facts. Every
+        // team counts, archived ones too (STUDIO-31, D-08): removing a folder an archived team
+        // names would break it on the day it is restored.
+        Config.Mounts.LoadTeams = () => TeamCatalog.List(teamsHome, TeamListFilter.All);
         // STUDIO-35: the provider balances, read on the triggers of D-02 and kept in memory only
         // (D-05). The status bar, the profile rows and the profile editor share them; without a
         // probe in the seams nothing is read (see StudioServices.BalanceProbe).
@@ -130,15 +136,17 @@ public sealed class MainWindowViewModel : ObservableObject
 
         Settings = new SettingsScreenViewModel(
             Config,
+            // « Used by » counts the archived teams too (STUDIO-31, D-08).
             new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
-                loadTeams: () => TeamCatalog.List(teamsHome),
+                loadTeams: () => TeamCatalog.List(teamsHome, TeamListFilter.All),
                 balances: Balances,
                 shellOpener: shellOpener),
             Mode,
             // STUDIO-14 settings (D-13, P-1): the folders tab also lists each adopted team's own
             // folders, read from the sidecars and written nowhere — a team's folders are vouched
-            // for by living inside it, and the global appsettings never learns them.
-            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome), strings, declaredMounts),
+            // for by living inside it, and the global appsettings never learns them. Every team,
+            // its archived state said (STUDIO-31, D-08).
+            new TeamFoldersViewModel(() => TeamCatalog.List(teamsHome, TeamListFilter.All), strings, declaredMounts),
             // STUDIO-21: the tool keys ride the same store as the profile keys.
             new ToolsSettingsViewModel(keyStore, strings),
             // STUDIO-35 D-06: Settings › Studio, written into ui-preferences.json by merge.
@@ -177,6 +185,10 @@ public sealed class MainWindowViewModel : ObservableObject
             HistoryStore = historyStore,
             DeclaredMounts = declaredMounts,
             Forge = forgeClient,
+            // STUDIO-28 (D-02), STUDIO-31 (D-09): a team running, under test or open in the
+            // wizard does not move — read at the moment of the gesture.
+            ActivityOf = TeamActivityOf,
+            Clock = seams.Clock,
         });
 
 
@@ -196,6 +208,9 @@ public sealed class MainWindowViewModel : ObservableObject
                 ShellOpener = shellOpener,
                 DeclaredMounts = declaredMounts,
                 Clock = seams.Clock,
+                // No teams root: a trial stamps no last run (STUDIO-31, D-05). The restore goes
+                // through « My teams » like the Run screen's.
+                RestoreTeam = RestoreArchivedTeam,
             }),
             teamsRoot);
 
@@ -211,9 +226,9 @@ public sealed class MainWindowViewModel : ObservableObject
             Strings = strings,
             Ticker = seams.Ticker,
             // STUDIO-35: the Balance segment covers the default profile, the assistant's and the
-            // profiles the teams name. STUDIO-31 narrows the teams to the active ones here.
+            // profiles the ACTIVE teams name (STUDIO-31, D-08): an archived team runs nowhere.
             Balances = Balances,
-            TeamProfiles = () => TeamCatalog.List(teamsHome).Select(team => team.Profile),
+            TeamProfiles = () => TeamCatalog.List(teamsHome, TeamListFilter.Active).Select(team => team.Profile),
             BalanceTicker = seams.BalanceTicker,
             ShellOpener = shellOpener,
         });
@@ -286,6 +301,14 @@ public sealed class MainWindowViewModel : ObservableObject
         // An adoption or an import may bring a schedule: its card asks the engine where it stands
         // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
         CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
+        // STUDIO-31 (D-08): an archive or a restore changes what the Test picker offers, and what
+        // the two launchers may run — a target archived under them is refused from then on.
+        Teams.ArchiveChanged += (_, _) =>
+        {
+            Test.RefreshTeams();
+            Launch.RefreshTeamDescription();
+            Test.Launcher.RefreshTeamDescription();
+        };
         CreateTeam.ScheduleOffer.ScheduleChanged += (_, e) => Teams.RecordScheduleState(e.Path, e.State);
         Import.TeamImported += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };
         // A use case imported as it is from the gallery (STUDIO-41) has no schedule to ask about.
@@ -624,6 +647,20 @@ public sealed class MainWindowViewModel : ObservableObject
             && System.IO.Path.GetDirectoryName(settingsPath) is { Length: > 0 } configDirectory
             ? configDirectory
             : System.IO.Path.GetDirectoryName(teamsHome) ?? teamsHome;
+
+    /// <summary>
+    /// What Studio is doing with a team folder (STUDIO-28, D-02; STUDIO-31, D-09): the run in
+    /// flight of either launcher, and the team the wizard reopened. The Test screen is built after
+    /// My teams, so the launchers are read when a gesture asks, never captured at construction.
+    /// </summary>
+    private TeamActivity TeamActivityOf(string teamPath) =>
+        TeamActivities.Of(teamPath, Launch.RunningTarget, Test.Launcher.RunningTarget, CreateTeam.ReopenedTeamPath);
+
+    /// <summary>
+    /// The launchers' « Restore » on an archived target (STUDIO-31, D-07): through « My teams », so
+    /// the rules (D-09) and the refresh of every list are one; the refusal, or null once restored.
+    /// </summary>
+    private string? RestoreArchivedTeam(string teamPath) => Teams.RestoreTeam(teamPath);
 
     /// <summary>
     /// The environment an adopted team lays over its launches: the sidecar names a model

@@ -97,6 +97,10 @@ public sealed class TeamCardViewModel : ObservableObject
     private bool _deleteSessionToo = true;
     private string _deleteRefusal = "";
     private string? _deleteManualCommand;
+    private string _archiveNotice = "";
+    private string? _archiveManualCommand;
+    private bool _offersScheduleStop;
+    private bool _offersRestore;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -139,7 +143,14 @@ public sealed class TeamCardViewModel : ObservableObject
         OpenCommand = new RelayCommand(() => owner.OpenInShell(summary.Path), () => owner.CanOpenInShell);
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
-        TestCommand = new RelayCommand(() => owner.RequestTest(summary.Path));
+        // STUDIO-31 (D-07): an archived team is not tested from Studio — the icon offers the restore.
+        TestCommand = new RelayCommand(() => owner.RequestTest(this));
+        // STUDIO-31: the model's gestures — the buttons, the Archives view and the undo banner are
+        // STUDIO-32's. A refusal or an offer lands on the card (ArchiveNotice), never in silence.
+        ArchiveCommand = new AsyncRelayCommand(() => owner.ArchiveAsync(this, stopSchedule: false), () => !IsArchived);
+        StopScheduleAndArchiveCommand = new AsyncRelayCommand(() => owner.ArchiveAsync(this, stopSchedule: true), () => !IsArchived);
+        RestoreCommand = new RelayCommand(() => owner.Restore(this), () => IsArchived);
+        DismissArchiveNoticeCommand = new RelayCommand(ClearArchiveNotice);
         // «Modifier» (W-09, FORGE-09, STUDIO-25): always through `forge reopen` on the folder —
         // the engine finds the session rule R links it to, or rebuilds one from the team's own
         // crew/, so an imported team, or one whose session is gone, is modifiable again and not
@@ -430,6 +441,92 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>The action row's own visibility — the banner takes its place, never sits over it.</summary>
     public bool IsIdle => !_isConfirmingDelete;
 
+    /// <summary>Whether the team is archived (STUDIO-31, D-01): out of the active list, its folder untouched.</summary>
+    public bool IsArchived => Summary.IsArchived;
+
+    /// <summary>
+    /// « Archive » — refused while the team is busy (D-09) or scheduled (D-06); the notice then
+    /// says why, or offers « Stop the schedule and archive ».
+    /// </summary>
+    public AsyncRelayCommand ArchiveCommand { get; }
+
+    /// <summary>« Stop the schedule and archive » (D-06): <c>forge unschedule</c> first, then the archive.</summary>
+    public AsyncRelayCommand StopScheduleAndArchiveCommand { get; }
+
+    /// <summary>« Restore » — the team takes its place again in the active list (D-10); refused while it is busy (D-09).</summary>
+    public RelayCommand RestoreCommand { get; }
+
+    /// <summary>Closes the notice.</summary>
+    public RelayCommand DismissArchiveNoticeCommand { get; }
+
+    /// <summary>What the last archive gesture has to say — a refusal or an offer; empty while quiet.</summary>
+    public string ArchiveNotice
+    {
+        get => _archiveNotice;
+        private set
+        {
+            if (SetProperty(ref _archiveNotice, value))
+                OnPropertyChanged(nameof(HasArchiveNotice));
+        }
+    }
+
+    /// <summary>Whether the card shows its archive notice.</summary>
+    public bool HasArchiveNotice => _archiveNotice.Length > 0;
+
+    /// <summary>Whether the notice offers « Stop the schedule and archive » (D-06).</summary>
+    public bool OffersScheduleStop
+    {
+        get => _offersScheduleStop;
+        private set => SetProperty(ref _offersScheduleStop, value);
+    }
+
+    /// <summary>Whether the notice offers « Restore »: the Test icon met an archived team (D-07).</summary>
+    public bool OffersRestore
+    {
+        get => _offersRestore;
+        private set => SetProperty(ref _offersRestore, value);
+    }
+
+    /// <summary>The command a person runs to stop the schedule by hand, when the system refused Orkeon.</summary>
+    public string? ArchiveManualCommand
+    {
+        get => _archiveManualCommand;
+        private set
+        {
+            if (SetProperty(ref _archiveManualCommand, value))
+                OnPropertyChanged(nameof(HasArchiveManualCommand));
+        }
+    }
+
+    /// <summary>Whether the notice shows the manual command.</summary>
+    public bool HasArchiveManualCommand => _archiveManualCommand is { Length: > 0 };
+
+    /// <summary>Says why the gesture did not happen, and what to run by hand when there is something to.</summary>
+    internal void ReportArchive(string notice, string? manualCommand = null)
+    {
+        OffersScheduleStop = false;
+        OffersRestore = false;
+        ArchiveNotice = notice;
+        ArchiveManualCommand = manualCommand;
+    }
+
+    /// <summary>Offers « Stop the schedule and archive » under <paramref name="notice"/> (D-06).</summary>
+    internal void OfferScheduleStop(string notice)
+    {
+        ReportArchive(notice);
+        OffersScheduleStop = true;
+    }
+
+    /// <summary>Offers « Restore » under <paramref name="notice"/> (D-07).</summary>
+    internal void OfferRestore(string notice)
+    {
+        ReportArchive(notice);
+        OffersRestore = true;
+    }
+
+    /// <summary>Forgets the notice and its offer.</summary>
+    internal void ClearArchiveNotice() => ReportArchive("");
+
     /// <summary>The team's mount strings, straight from the sidecar.</summary>
     public IReadOnlyList<string> Mounts => Summary.Mounts;
 
@@ -444,6 +541,13 @@ public sealed class TeamCardViewModel : ObservableObject
 
     /// <summary>How that last run ended; null when the team never ran.</summary>
     public RunOutcome? LastOutcome => _lastOutcome;
+
+    /// <summary>
+    /// The team's last activity (STUDIO-31, D-05) — the most recent of the last run its sidecar
+    /// records, its latest launch-history entry and its promotion; null when none is known. What
+    /// the screen sorts on and what an archive suggestion reads (STUDIO-32).
+    /// </summary>
+    public DateTimeOffset? LastActivity => Summary.LastActivity(_lastRun);
 
     /// <summary>The mount chips, virtual path + rights in words.</summary>
     public IReadOnlyList<TeamMountChip> MountChips { get; }
@@ -521,7 +625,7 @@ public sealed class TeamCardViewModel : ObservableObject
         _lastOutcome = outcome;
         OnPropertiesChanged(
             nameof(LastRun), nameof(LastOutcome), nameof(LastRunDisplay),
-            nameof(BadgeText), nameof(BadgeTone), nameof(MetaLine));
+            nameof(BadgeText), nameof(BadgeTone), nameof(MetaLine), nameof(LastActivity));
     }
 }
 
@@ -613,6 +717,17 @@ public sealed record TeamsDependencies
     /// state, offer no schedule action, and refuse to delete a team whose schedule they cannot stop.
     /// </summary>
     public ForgeClient? Forge { get; init; }
+
+    /// <summary>
+    /// What Studio is doing with a team folder right now (STUDIO-28, D-02; STUDIO-31, D-09):
+    /// running it on the Launch or Test screen, or holding it open in the wizard. A gesture that
+    /// moves or hides the folder is refused while it answers anything but
+    /// <see cref="TeamActivity.None"/>. Null wires none: no team is ever busy.
+    /// </summary>
+    public Func<string, TeamActivity>? ActivityOf { get; init; }
+
+    /// <summary>The clock an archive is dated on (STUDIO-31); the system's when null.</summary>
+    public TimeProvider? Clock { get; init; }
 }
 
 /// <summary>
@@ -629,6 +744,8 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly ILaunchHistoryStore? _historyStore;
     private readonly ForgeClient? _forge;
+    private readonly Func<string, TeamActivity>? _activityOf;
+    private readonly TimeProvider _clock;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -646,9 +763,12 @@ public sealed class TeamsViewModel : ObservableObject
         _shellOpener = wired.ShellOpener;
         _historyStore = wired.HistoryStore;
         _forge = wired.Forge;
+        _activityOf = wired.ActivityOf;
+        _clock = wired.Clock ?? TimeProvider.System;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         var workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
-        _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root));
+        // Every team, archived or not: the screen splits them (STUDIO-31).
+        _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root, TeamListFilter.All));
         _loadSessions = wired.LoadSessions ?? (() => ForgeSessionCatalog.List(workspace));
         _strings = wired.Strings ?? EnglishStudioStrings.Instance;
         CreateCommand = new RelayCommand(() => CreateRequested?.Invoke(this, EventArgs.Empty));
@@ -687,6 +807,12 @@ public sealed class TeamsViewModel : ObservableObject
     public event EventHandler<TeamModifyEventArgs>? ModifyRequested;
 
     /// <summary>
+    /// Raised once a team was archived or restored (STUDIO-31, D-08) — the shell re-reads what lists
+    /// the active teams elsewhere: the Test picker, and the two launchers' view of their target.
+    /// </summary>
+    public event EventHandler<TeamActionEventArgs>? ArchiveChanged;
+
+    /// <summary>
     /// Whether «Modifier» can reopen the wizard on <paramref name="team"/> (STUDIO-25, D-04): its
     /// <c>forge.json</c> names a session, or its crew can be read back into one. Which session,
     /// if any, is linked is never decided here — <c>forge reopen</c> applies rule R.
@@ -699,14 +825,33 @@ public sealed class TeamsViewModel : ObservableObject
             ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team));
     }
 
-    /// <summary>The team cards.</summary>
+    /// <summary>
+    /// What Studio is doing with the team at <paramref name="teamPath"/> (STUDIO-28, D-02): asked
+    /// at the moment of a gesture that moves or hides its folder, never cached — a run starts and
+    /// ends between two clicks. <see cref="TeamActivity.None"/> when no hook is wired.
+    /// </summary>
+    internal TeamActivity ActivityOf(string teamPath) => _activityOf?.Invoke(teamPath) ?? TeamActivity.None;
+
+    /// <summary>The cards of the active teams (STUDIO-31) — what the screen lists.</summary>
     public ObservableCollection<TeamCardViewModel> Teams { get; } = [];
+
+    /// <summary>
+    /// The cards of the archived teams (STUDIO-31): out of the active list, restorable. The view
+    /// that shows them is STUDIO-32's.
+    /// </summary>
+    public ObservableCollection<TeamCardViewModel> ArchivedTeams { get; } = [];
 
     /// <summary>The wizard sessions still underway.</summary>
     public ObservableCollection<InProgressSessionViewModel> InProgress { get; } = [];
 
-    /// <summary>Number of teams — the sidebar count.</summary>
+    /// <summary>Number of active teams — the sidebar count.</summary>
     public int Count => Teams.Count;
+
+    /// <summary>Number of archived teams.</summary>
+    public int ArchivedCount => ArchivedTeams.Count;
+
+    /// <summary>Every card, active then archived: what the schedule answers and the last runs are laid on.</summary>
+    private IEnumerable<TeamCardViewModel> AllCards => Teams.Concat(ArchivedTeams);
 
     /// <summary>Whether the cards can offer "Ouvrir" at all (a shell opener was wired).</summary>
     public bool CanOpenInShell => _shellOpener is not null;
@@ -729,10 +874,11 @@ public sealed class TeamsViewModel : ObservableObject
     public void Refresh()
     {
         Teams.Clear();
+        ArchivedTeams.Clear();
         // Read once per refresh, not once per card: the settings list is the same for all of them.
         var declared = _declaredMounts();
         foreach (var team in _loadTeams())
-            Teams.Add(new TeamCardViewModel(team, this, _strings, declared));
+            (team.IsArchived ? ArchivedTeams : Teams).Add(new TeamCardViewModel(team, this, _strings, declared));
 
         InProgress.Clear();
         foreach (var session in _loadSessions())
@@ -743,7 +889,7 @@ public sealed class TeamsViewModel : ObservableObject
 
         ApplyLastRuns();
         ApplyScheduleStates();
-        OnPropertiesChanged(nameof(Count), nameof(IsEmpty), nameof(HasInProgress));
+        OnPropertiesChanged(nameof(Count), nameof(IsEmpty), nameof(HasInProgress), nameof(ArchivedCount));
     }
 
     /// <summary>Whether the schedule gestures can reach the engine at all.</summary>
@@ -758,7 +904,7 @@ public sealed class TeamsViewModel : ObservableObject
         if (_forge is null)
             return;
 
-        foreach (var path in Teams.Where(card => card.Summary.HasSchedule).Select(card => card.Summary.Path).ToList())
+        foreach (var path in AllCards.Where(card => card.Summary.HasSchedule).Select(card => card.Summary.Path).ToList())
             await CheckScheduleAsync(path, cancellationToken).ConfigureAwait(true);
     }
 
@@ -811,7 +957,7 @@ public sealed class TeamsViewModel : ObservableObject
 
     private void ApplyScheduleStates()
     {
-        foreach (var card in Teams)
+        foreach (var card in AllCards)
         {
             card.SetScheduleState(_scheduleStates.TryGetValue(NormalizePath(card.Summary.Path), out var state)
                 ? state
@@ -909,7 +1055,7 @@ public sealed class TeamsViewModel : ObservableObject
 
     private void ApplyLastRuns()
     {
-        foreach (var card in Teams)
+        foreach (var card in AllCards)
         {
             card.SetLastRun(
                 _lastRuns.TryGetValue(NormalizePath(card.Summary.Path), out var run) ? run.StartedAt : null,
@@ -927,7 +1073,113 @@ public sealed class TeamsViewModel : ObservableObject
     internal void RequestMounts(TeamCardViewModel card) =>
         MountsRequested?.Invoke(this, new TeamMountsRequestedEventArgs(card));
 
-    internal void RequestTest(string path) => TestRequested?.Invoke(this, new TeamActionEventArgs(path));
+    /// <summary>
+    /// The card's Test icon, which bypasses the trial screen's picker (STUDIO-31, D-07): an archived
+    /// team is not tested from Studio — the card offers to restore it rather than refusing in silence.
+    /// </summary>
+    internal void RequestTest(TeamCardViewModel card)
+    {
+        if (card.IsArchived)
+        {
+            card.OfferRestore(_strings[StudioStringKeys.CommonArchivedTeamRestore]);
+            return;
+        }
+
+        TestRequested?.Invoke(this, new TeamActionEventArgs(card.Summary.Path));
+    }
+
+    /// <summary>
+    /// Archives a team (STUDIO-31): a flag in its sidecar, the folder where it is. Refused while the
+    /// team is busy (D-09). A scheduled team — declared, or recorded as installed — is refused too,
+    /// the card offering « Stop the schedule and archive » (D-06); that gesture stops the schedule
+    /// through the engine first, the way a deletion does, and a refusal of the system keeps the team
+    /// active, saying what to run by hand. Every refusal lands on the card.
+    /// </summary>
+    internal async Task ArchiveAsync(TeamCardViewModel card, bool stopSchedule)
+    {
+        var team = card.Summary;
+        card.ClearArchiveNotice();
+        if (team.IsArchived)
+            return;
+
+        if (ActivityOf(team.Path) != TeamActivity.None)
+        {
+            card.ReportArchive(_strings[StudioStringKeys.TeamsArchiveBusy]);
+            return;
+        }
+
+        var scheduleStopped = false;
+        if (team.HasSchedule || card.ScheduleState is TeamScheduleState.Installed or TeamScheduleState.Stale)
+        {
+            if (!stopSchedule)
+            {
+                card.OfferScheduleStop(_strings[StudioStringKeys.TeamsArchiveScheduled]);
+                return;
+            }
+
+            var report = await ScheduleAsync(team.Path, ForgeScheduleVerb.Remove).ConfigureAwait(true);
+            if (!report.Succeeded)
+            {
+                card.ReportArchive(
+                    string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsArchiveUnscheduleFailed], report.FailureReason),
+                    report.ManualCommand);
+                return;
+            }
+
+            TeamCatalog.ClearSchedule(team.Path);
+            _scheduleStates.Remove(NormalizePath(team.Path));
+            scheduleStopped = true;
+        }
+
+        if (!TeamCatalog.Archive(team.Path, _clock.GetUtcNow()))
+        {
+            // A schedule stopped on the way changed the card: it is rebuilt, and says the refusal.
+            if (scheduleStopped)
+                Refresh();
+            (CardFor(team.Path) ?? card).ReportArchive(_strings[StudioStringKeys.TeamsArchiveRefused]);
+            return;
+        }
+
+        Refresh();
+        ArchiveChanged?.Invoke(this, new TeamActionEventArgs(team.Path));
+    }
+
+    /// <summary>
+    /// Restores an archived team (STUDIO-31): null once it is back among the active teams — where the
+    /// order puts it, not on top (D-10) — else the refusal: the team is busy (D-09), or the disk
+    /// refused. A team that is not archived has nothing to restore. The launchers' « Restore » comes
+    /// through here too, so the rules and the refresh of every list are the same whoever asks.
+    /// </summary>
+    public string? RestoreTeam(string teamPath)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamPath);
+
+        if (!TeamCatalog.Describe(teamPath).IsArchived)
+            return null;
+
+        if (ActivityOf(teamPath) != TeamActivity.None)
+            return _strings[StudioStringKeys.TeamsRestoreBusy];
+
+        if (!TeamCatalog.Restore(teamPath))
+            return _strings[StudioStringKeys.TeamsRestoreRefused];
+
+        Refresh();
+        ArchiveChanged?.Invoke(this, new TeamActionEventArgs(teamPath));
+        return null;
+    }
+
+    /// <summary>« Restore » on a card: <see cref="RestoreTeam"/>, the refusal said on the card.</summary>
+    internal void Restore(TeamCardViewModel card)
+    {
+        card.ClearArchiveNotice();
+        if (RestoreTeam(card.Summary.Path) is { } refusal)
+            card.ReportArchive(refusal);
+    }
+
+    /// <summary>The card of <paramref name="teamPath"/>, active or archived; null when none shows it.</summary>
+    private TeamCardViewModel? CardFor(string teamPath) =>
+        AllCards.FirstOrDefault(card => string.Equals(
+            NormalizePath(card.Summary.Path), NormalizePath(teamPath), StringComparison.OrdinalIgnoreCase));
 
     internal void Export(string path)
     {
@@ -1029,7 +1281,7 @@ public sealed class TeamsViewModel : ObservableObject
     /// </summary>
     internal void ArmDelete(object row)
     {
-        foreach (var card in Teams)
+        foreach (var card in AllCards)
         {
             var armed = ReferenceEquals(card, row);
             // The banner's box needs the session before it opens (STUDIO-27, D-07).

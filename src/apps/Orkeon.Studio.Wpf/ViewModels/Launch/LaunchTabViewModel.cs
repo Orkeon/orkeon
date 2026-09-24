@@ -44,7 +44,9 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly Func<string, IReadOnlyDictionary<string, string>?>? _environmentForTarget;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly IDirectoryProbe _directories;
+    private readonly Func<string, string?>? _restoreTeam;
     private bool _isRunning;
+    private string? _runningTarget;
     private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
@@ -68,15 +70,18 @@ public sealed class LaunchTabViewModel : ObservableObject
         _directories = seams.Directories ?? PhysicalDirectoryProbe.Instance;
         _runner = seams.ProcessRunner ?? OrkeonProcessRunner.ForCurrentMachine();
         // The run lifecycle is the shared Core session, not a re-implementation: the terminal
-        // launcher runs over the very same class, which is what keeps the two in step.
-        _session = new RunSession(_runner, seams.HistoryStore);
+        // launcher runs over the very same class, which is what keeps the two in step. The teams
+        // root is how a real run stamps its team's last run (STUDIO-31, D-05) — the Test screen's
+        // launcher is built without one.
+        _session = new RunSession(_runner, seams.HistoryStore, seams.TeamsRoot);
+        _restoreTeam = seams.RestoreTeam;
         _settingsStore = seams.SettingsStore ?? PhysicalAppSettingsStore.Instance;
         _dispatcher = seams.Dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = seams.Strings ?? EnglishStudioStrings.Instance;
         _strings.CultureChanged += (_, _) =>
         {
             OnPropertiesChanged(nameof(BinaryStatus), nameof(ValidationSummary),
-                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel));
+                nameof(CliBanner), nameof(TeamMetaLine), nameof(OpenResultLabel), nameof(ArchivedTargetMessage));
             RaiseRunStateChanged();
         };
 
@@ -92,6 +97,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Options.Changed += OnInputsChanged;
         Mounts.Changed += OnInputsChanged;
         History.ReplayRequested += OnReplayRequested;
+        History.RestoreRequested += OnRestoreRequested;
 
         ValidateCommand = new AsyncRelayCommand(() => ValidateAsync(), CanLaunch);
         RunCommand = new AsyncRelayCommand(() => RunAsync(), CanLaunch);
@@ -105,6 +111,7 @@ public sealed class LaunchTabViewModel : ObservableObject
             _ => IsBinaryAvailable && !IsRunning && !IsBlockedByUndeclaredFolders);
         CancelCommand = new RelayCommand(Cancel, () => IsRunning);
         OpenAllowedFoldersCommand = new RelayCommand(() => OpenAllowedFoldersRequested?.Invoke(this, EventArgs.Empty));
+        RestoreTargetCommand = new RelayCommand(() => RestoreTeamAt(_team.TeamDirectory), () => IsTargetArchived);
         CopyCommandLineCommand = new RelayCommand(CopyCommandLine, () => CommandLinePreview is { Length: > 0 });
         ChooseTeamCommand = new RelayCommand(() => ChooseTeamRequested?.Invoke(this, EventArgs.Empty));
         CreateTeamCommand = new RelayCommand(() => CreateTeamRequested?.Invoke(this, EventArgs.Empty));
@@ -182,6 +189,18 @@ public sealed class LaunchTabViewModel : ObservableObject
             CancelCommand.RaiseCanExecuteChanged();
             RaiseRunStateChanged();
         }
+    }
+
+    /// <summary>
+    /// The target of the run in flight — the path its request carried when it started — or null
+    /// while nothing runs (STUDIO-28, D-02). Never <see cref="TargetSelectionViewModel.SelectedPath"/>:
+    /// the picker stays live during a run, and a folder browsed to since is not the one being read.
+    /// My teams asks it before a gesture that moves or hides a team's folder.
+    /// </summary>
+    public string? RunningTarget
+    {
+        get => _runningTarget;
+        private set => SetProperty(ref _runningTarget, value);
     }
 
     /// <summary>The exact command line that will be run, shown so nothing is hidden from the user.</summary>
@@ -472,8 +491,11 @@ public sealed class LaunchTabViewModel : ObservableObject
     // late failure: a live Run button that answers a click with «the tool was not located»
     // is a button that lied about being available. The banner says what is wrong; the
     // commands must agree with it.
+    // An archived team is not launched, nor tested, from Studio (STUDIO-31, D-07): its banner
+    // offers the restore instead of a button that would run it anyway.
     private bool CanLaunch() =>
-        IsBinaryAvailable && !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders && !IsBlockedByUnknownMountIds;
+        IsBinaryAvailable && !IsRunning && Target.IsResolved && !IsBlockedByUndeclaredFolders && !IsBlockedByUnknownMountIds
+        && !IsTargetArchived;
 
     private async Task<ProcessRunResult?> LaunchAsync(bool validate, CancellationToken cancellationToken)
     {
@@ -533,6 +555,16 @@ public sealed class LaunchTabViewModel : ObservableObject
             return null;
         }
 
+        // STUDIO-31, D-07: the recorded argv would run an archived team as if nothing had changed —
+        // one click, no confirmation. The guard reads the ENTRY's target, not the form's, and the
+        // entry offers the restore rather than refusing in silence; the form is left as it was.
+        if (TeamCatalog.DescribeTarget(entry.Target).IsArchived)
+        {
+            StatusMessage = _strings[StudioStringKeys.CommonArchivedTeamRestore];
+            History.OfferRestore(entry);
+            return null;
+        }
+
         BeginLaunch();
         LoadIntoForm(entry);
 
@@ -575,6 +607,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         bool dryRun,
         CancellationToken cancellationToken)
     {
+        // The target first, so whoever reacts to IsRunning already reads what is running.
+        RunningTarget = request.TargetPath;
         IsRunning = true;
 
         Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
@@ -620,6 +654,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         finally
         {
             IsRunning = false;
+            RunningTarget = null;
             _input = null;
         }
     }
@@ -707,9 +742,11 @@ public sealed class LaunchTabViewModel : ObservableObject
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
-            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage));
+            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
+            nameof(IsTargetArchived), nameof(ArchivedTargetMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
+        RestoreTargetCommand.RaiseCanExecuteChanged();
         // Replay is gated on the same refusal, so it has to be told when the refusal changes -
         // otherwise the button stays enabled until something else happens to refresh it.
         ReplayCommand.RaiseCanExecuteChanged();
@@ -798,6 +835,42 @@ public sealed class LaunchTabViewModel : ObservableObject
                 _strings[StudioStringKeys.RunBlockedUnknownMountId],
                 string.Join(", ", UnknownTeamMountIds))
             : "";
+
+    /// <summary>
+    /// Whether the selected target is an archived team (STUDIO-31, D-07): Studio neither launches
+    /// nor tests it — the banner offers to restore it. The CLI, the terminal launcher and the
+    /// operating system run it as ever: archiving is Studio's notion.
+    /// </summary>
+    public bool IsTargetArchived => _team.IsArchived;
+
+    /// <summary>« Archived team — restore it? » while the target is one; empty otherwise.</summary>
+    public string ArchivedTargetMessage =>
+        IsTargetArchived ? _strings[StudioStringKeys.CommonArchivedTeamRestore] : "";
+
+    /// <summary>« Restore » — the archived target's team goes back among the active teams.</summary>
+    public RelayCommand RestoreTargetCommand { get; }
+
+    /// <summary>
+    /// Restores the archived team at <paramref name="teamDirectory"/> — the folder whose sidecar
+    /// said archived: the banner's target, or the one of a history entry that offered it
+    /// (STUDIO-31). Through the shell's seam when one was wired: « My teams » owns the rules (a
+    /// busy team is refused, D-09) and refreshes every list; straight through the catalog
+    /// otherwise. The outcome is said, a refusal included, and the target is read again.
+    /// </summary>
+    internal void RestoreTeamAt(string? teamDirectory)
+    {
+        if (teamDirectory is not { Length: > 0 } directory)
+            return;
+
+        string? refusal;
+        if (_restoreTeam is not null)
+            refusal = _restoreTeam(directory);
+        else
+            refusal = TeamCatalog.Restore(directory) ? null : _strings[StudioStringKeys.TeamsRestoreRefused];
+
+        StatusMessage = refusal ?? _strings[StudioStringKeys.CommonTeamRestored];
+        RefreshTeamDescription();
+    }
 
     /// <summary>Opens the allowed-folders list — the shell lands on the settings' folders tab.</summary>
     public RelayCommand OpenAllowedFoldersCommand { get; }
@@ -997,9 +1070,11 @@ public sealed class LaunchTabViewModel : ObservableObject
         Mounts.AllowExternalMounts = ReachesOutsideTheTeam();
         OnPropertiesChanged(nameof(TeamHeadline), nameof(TeamMetaLine), nameof(HasTeamCard),
             nameof(UndeclaredTeamFolders), nameof(IsBlockedByUndeclaredFolders), nameof(UndeclaredFoldersMessage),
-            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage));
+            nameof(UnknownTeamMountIds), nameof(IsBlockedByUnknownMountIds), nameof(UnknownMountIdsMessage),
+            nameof(IsTargetArchived), nameof(ArchivedTargetMessage));
         RunCommand.RaiseCanExecuteChanged();
         ValidateCommand.RaiseCanExecuteChanged();
+        RestoreTargetCommand.RaiseCanExecuteChanged();
         RefreshPreview();
     }
 
@@ -1011,6 +1086,10 @@ public sealed class LaunchTabViewModel : ObservableObject
     /// </summary>
     private void OnReplayRequested(object? sender, LaunchReplayEventArgs e) =>
         ReplayCommand.Execute(e.Entry);
+
+    /// <summary>« Restore » on a history entry that refused to replay an archived team (STUDIO-31, D-07).</summary>
+    private void OnRestoreRequested(object? sender, LaunchReplayEventArgs e) =>
+        RestoreTeamAt(TeamCatalog.DescribeTarget(e.Entry.Target).TeamDirectory);
 
     /// <summary>
     /// Shows a past launch in the form, so the user can see and then adjust what was replayed.
@@ -1097,4 +1176,17 @@ public sealed record LaunchTabDependencies
 
     /// <summary>The clock a run's elapsed time is read on (STUDIO-34); the system's when absent.</summary>
     public TimeProvider? Clock { get; init; }
+
+    /// <summary>
+    /// The teams directory whose teams a real run stamps with its date (STUDIO-31, D-05); null
+    /// stamps nothing — the Test screen's launcher is built without it: a trial is a rehearsal.
+    /// </summary>
+    public string? TeamsRoot { get; init; }
+
+    /// <summary>
+    /// Restores an archived team, given its folder: null once restored, the refusal otherwise
+    /// (STUDIO-31). The shell routes it through « My teams », which owns the rules and refreshes
+    /// every list; null restores through the catalog directly.
+    /// </summary>
+    public Func<string, string?>? RestoreTeam { get; init; }
 }

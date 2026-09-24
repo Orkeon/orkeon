@@ -383,6 +383,275 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Equal("Local", imported.Profile);
         Assert.Equal(PastedPage, TeamCatalog.Describe(source).Name);
     }
+
+    // ── STUDIO-31: archiving is a flag, the folder never moves ──
+
+    private static readonly DateTimeOffset ArchivedOn = new(2026, 9, 24, 9, 15, 0, TimeSpan.Zero);
+
+    /// <summary>A team as the wizard leaves it: sidecar, crew, forge.json, one file of its own.</summary>
+    private string AdoptedTeam(string slug, string name)
+    {
+        var team = Path.Combine(_root, slug);
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata
+        {
+            Name = name,
+            Description = "Relit la presse du secteur chaque matin.",
+            Profile = "Local",
+            Mounts = ["./output:/output:rw"],
+        });
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), $"name: {slug}\n");
+        File.WriteAllText(Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName), """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"}""");
+        File.WriteAllText(Path.Combine(team, "output", "rapport.md"), "# Rapport\n");
+        return team;
+    }
+
+    private static string[] FilesUnder(string directory) =>
+        [.. Directory.EnumerateFiles(directory, "*", SearchOption.AllDirectories)
+            .Select(file => Path.GetRelativePath(directory, file))
+            .Order(StringComparer.Ordinal)];
+
+    [Fact]
+    public void Archiving_moves_nothing_and_flags_the_sidecar_whose_other_fields_stay()
+    {
+        var team = AdoptedTeam("veille", "Veille");
+        var files = FilesUnder(team);
+
+        Assert.True(TeamCatalog.Archive(team, ArchivedOn));
+
+        // Same folder, same files: the path, the session link and the schedule all hold.
+        Assert.Equal(files, FilesUnder(team));
+        var archived = TeamCatalog.Describe(team);
+        Assert.True(archived.IsArchived);
+        Assert.Equal(ArchivedOn, archived.ArchivedAt);
+        Assert.Equal("Veille", archived.Name);
+        Assert.Equal("Local", archived.Profile);
+        Assert.Equal(["./output:/output:rw"], archived.Metadata!.Mounts);
+        Assert.True(TeamCatalog.DescribeTarget(team).IsArchived);
+        Assert.True(TeamCatalog.DescribeTarget(Path.Combine(team, "crew.yaml")).IsArchived);
+
+        Assert.True(TeamCatalog.Restore(team));
+
+        var restored = TeamCatalog.Describe(team);
+        Assert.False(restored.IsArchived);
+        Assert.Null(restored.ArchivedAt);
+        Assert.Equal("Local", restored.Profile);
+        Assert.Equal(files, FilesUnder(team));
+        // An active team's sidecar does not even name the flag.
+        var sidecar = File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName));
+        Assert.DoesNotContain("archived", sidecar, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Archiving_a_folder_that_is_not_there_creates_nothing()
+    {
+        var absent = Path.Combine(_root, "absente");
+
+        Assert.False(TeamCatalog.Archive(absent, ArchivedOn));
+        Assert.False(Directory.Exists(absent));
+    }
+
+    /// <summary>A sidecar that cannot be read is not overwritten by an archive: what it says would be lost.</summary>
+    [Fact]
+    public void An_unreadable_sidecar_is_never_overwritten_by_an_archive()
+    {
+        var team = Path.Combine(_root, "abimee");
+        Directory.CreateDirectory(team);
+        File.WriteAllText(Path.Combine(team, StudioTeamMetadata.FileName), "{ not json");
+
+        Assert.False(TeamCatalog.Archive(team, ArchivedOn));
+        Assert.Equal("{ not json", File.ReadAllText(Path.Combine(team, StudioTeamMetadata.FileName)));
+    }
+
+    [Fact]
+    public void The_active_list_ignores_the_archives_and_the_dot_folders()
+    {
+        AdoptedTeam("veille", "Veille");
+        var archived = AdoptedTeam("synthese", "Synthèse");
+        TeamCatalog.Archive(archived, ArchivedOn);
+        // What an engine's workspace state looks like: never a team, whatever it holds.
+        var state = Path.Combine(_root, ".orkeon");
+        TeamCatalog.SaveMetadata(state, new StudioTeamMetadata { Name = "State" });
+        Directory.CreateDirectory(Path.Combine(_root, ".git"));
+
+        Assert.Equal(["veille"], TeamCatalog.List(_root).Select(team => team.Slug));
+        Assert.Equal(["veille"], TeamCatalog.List(_root, TeamListFilter.Active).Select(team => team.Slug));
+        Assert.Equal(["synthese"], TeamCatalog.List(_root, TeamListFilter.Archived).Select(team => team.Slug));
+        Assert.Equal(["synthese", "veille"], TeamCatalog.List(_root, TeamListFilter.All).Select(team => team.Slug));
+    }
+
+    [Fact]
+    public void The_list_ignores_the_hidden_and_system_folders_of_windows()
+    {
+        Assert.SkipUnless(OperatingSystem.IsWindows(), "Hidden and System are Windows attributes.");
+
+        AdoptedTeam("veille", "Veille");
+        var hidden = AdoptedTeam("cachee", "Cachée");
+        File.SetAttributes(hidden, File.GetAttributes(hidden) | FileAttributes.Hidden);
+        var system = AdoptedTeam("systeme", "Système");
+        File.SetAttributes(system, File.GetAttributes(system) | FileAttributes.System);
+
+        Assert.Equal(["veille"], TeamCatalog.List(_root, TeamListFilter.All).Select(team => team.Slug));
+    }
+
+    [Fact]
+    public void Duplicating_an_archived_team_gives_an_active_one()
+    {
+        var team = AdoptedTeam("veille", "Veille");
+        TeamCatalog.Archive(team, ArchivedOn);
+
+        var copy = TeamCatalog.Duplicate(team);
+
+        Assert.NotNull(copy);
+        var duplicated = TeamCatalog.Describe(copy!);
+        Assert.False(duplicated.IsArchived);
+        Assert.Null(duplicated.ArchivedAt);
+        Assert.Equal("Local", duplicated.Profile);
+        // The original stays where it was: archived.
+        Assert.True(TeamCatalog.Describe(team).IsArchived);
+    }
+
+    /// <summary>
+    /// A copy that fails halfway used to stay behind as a partial folder the list showed as a team.
+    /// A file held open without sharing is what makes a copy fail on every platform.
+    /// </summary>
+    [Fact]
+    public void A_failed_duplicate_leaves_no_folder_behind()
+    {
+        var team = AdoptedTeam("veille", "Veille");
+
+        string? copy;
+        using (new FileStream(Path.Combine(team, "crew.yaml"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            copy = TeamCatalog.Duplicate(team);
+
+        Assert.Null(copy);
+        Assert.Equal(["veille"], Directory.EnumerateDirectories(_root).Select(Path.GetFileName));
+    }
+
+    [Fact]
+    public void A_failed_import_leaves_no_folder_behind()
+    {
+        var source = Path.Combine(_root, "incoming", "revue");
+        Directory.CreateDirectory(source);
+        File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: revue");
+        File.WriteAllText(Path.Combine(source, "notes.md"), "held open");
+        var teams = Path.Combine(_root, "teams");
+        Directory.CreateDirectory(teams);
+
+        string? imported;
+        using (new FileStream(Path.Combine(source, "notes.md"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
+            imported = TeamCatalog.Import(source, teams, out _);
+
+        Assert.Null(imported);
+        Assert.Empty(Directory.EnumerateFileSystemEntries(teams));
+    }
+
+    /// <summary>D-04: an export carries the flag as the team has it; the import of anything lands active.</summary>
+    [Fact]
+    public void An_export_keeps_the_flag_and_an_import_clears_it()
+    {
+        var team = AdoptedTeam("veille", "Veille");
+        TeamCatalog.Archive(team, ArchivedOn);
+        var shared = Path.Combine(_root, "partage");
+        Directory.CreateDirectory(shared);
+
+        var exported = TeamCatalog.ExportTo(team, shared);
+        var imported = TeamCatalog.Import(exported!, Path.Combine(_root, "ailleurs"), out var refusal);
+
+        Assert.True(TeamCatalog.Describe(exported!).IsArchived);
+        Assert.Null(refusal);
+        Assert.NotNull(imported);
+        Assert.False(TeamCatalog.Describe(imported!).IsArchived);
+        Assert.Null(TeamCatalog.Describe(imported!).ArchivedAt);
+    }
+
+    /// <summary>
+    /// D-05: the last activity is the most recent of three dates, read at load — the last run Studio
+    /// recorded in the sidecar, the last entry of the launch history, the promotion forge.json records.
+    /// </summary>
+    [Theory]
+    [InlineData(3, 1, 2)]
+    [InlineData(1, 3, 2)]
+    [InlineData(1, 2, 3)]
+    public void The_last_activity_is_the_most_recent_of_the_three_dates(int lastRunDay, int historyDay, int promotedDay)
+    {
+        static DateTimeOffset On(int day) => new(2026, 9, day, 8, 0, 0, TimeSpan.Zero);
+        var team = Path.Combine(_root, "veille");
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", LastRunAt = On(lastRunDay) });
+        File.WriteAllText(
+            Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName),
+            $$"""{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","promotedAt":"2026-09-0{{promotedDay}}T08:00:00Z"}""");
+
+        var summary = TeamCatalog.Describe(team);
+
+        Assert.Equal(On(lastRunDay), summary.LastRunAt);
+        Assert.Equal(On(promotedDay), summary.PromotedAt);
+        Assert.Equal(On(3), summary.LastActivity(On(historyDay)));
+    }
+
+    [Fact]
+    public void A_team_with_no_date_at_all_has_no_last_activity()
+    {
+        var team = Path.Combine(_root, "muette");
+        Directory.CreateDirectory(team);
+        File.WriteAllText(Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName), """{"v":1,"promotedAt":"not a date"}""");
+
+        var summary = TeamCatalog.Describe(team);
+
+        Assert.Null(summary.PromotedAt);
+        Assert.Null(summary.LastActivity());
+        Assert.Equal(ArchivedOn, summary.LastActivity(ArchivedOn));
+    }
+
+    /// <summary>
+    /// D-05: a real run stamps <c>lastRunAt</c> into an adopted team right under the teams root — the
+    /// folder or a file inside it — and nowhere else: a folder without its sidecar gains none, and a
+    /// team outside the root is left as it was.
+    /// </summary>
+    [Fact]
+    public void A_run_stamps_only_an_adopted_team_under_the_teams_root()
+    {
+        var teams = Path.Combine(_root, "teams");
+        var team = Path.Combine(teams, "veille");
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", Profile = "Local" });
+        File.WriteAllText(Path.Combine(team, "crew.yaml"), "name: veille\n");
+        var bare = Path.Combine(teams, "nue");
+        Directory.CreateDirectory(bare);
+        var elsewhere = Path.Combine(_root, "ailleurs", "veille");
+        TeamCatalog.SaveMetadata(elsewhere, new StudioTeamMetadata { Name = "Ailleurs" });
+
+        Assert.True(TeamCatalog.RecordRun(teams, team, ArchivedOn));
+        Assert.Equal(ArchivedOn, TeamCatalog.Describe(team).LastRunAt);
+        Assert.Equal("Local", TeamCatalog.Describe(team).Profile);
+
+        var later = ArchivedOn.AddHours(2);
+        Assert.True(TeamCatalog.RecordRun(teams, Path.Combine(team, "crew.yaml"), later));
+        Assert.Equal(later, TeamCatalog.Describe(team).LastRunAt);
+
+        Assert.False(TeamCatalog.RecordRun(teams, bare, ArchivedOn));
+        Assert.False(File.Exists(Path.Combine(bare, StudioTeamMetadata.FileName)));
+        Assert.False(TeamCatalog.RecordRun(teams, elsewhere, ArchivedOn));
+        Assert.Null(TeamCatalog.Describe(elsewhere).LastRunAt);
+        Assert.False(TeamCatalog.RecordRun(teams, Path.Combine(teams, "absente"), ArchivedOn));
+        Assert.False(Directory.Exists(Path.Combine(teams, "absente")));
+    }
+
+    /// <summary>D-02: a writer changes the fields it owns and keeps every other one.</summary>
+    [Fact]
+    public void UpdateMetadata_merges_into_the_sidecar_instead_of_rebuilding_it()
+    {
+        var team = Path.Combine(_root, "veille");
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", LastRunAt = ArchivedOn });
+        TeamCatalog.Archive(team, ArchivedOn);
+
+        TeamCatalog.UpdateMetadata(team, current => current with { Name = "Veille renommée", Profile = "Cloud" });
+
+        var summary = TeamCatalog.Describe(team);
+        Assert.Equal("Veille renommée", summary.Name);
+        Assert.Equal("Cloud", summary.Profile);
+        Assert.True(summary.IsArchived);
+        Assert.Equal(ArchivedOn, summary.ArchivedAt);
+        Assert.Equal(ArchivedOn, summary.LastRunAt);
+    }
 }
 
 /// <summary>What the Run screen's team card can honestly say about a target (audit 05/14).</summary>

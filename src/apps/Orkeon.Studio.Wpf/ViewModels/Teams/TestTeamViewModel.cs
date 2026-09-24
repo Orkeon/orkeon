@@ -29,7 +29,8 @@ public sealed class TestTeamViewModel : ObservableObject
 
         Launcher = launcher;
         var root = teamsRoot ?? TeamCatalog.DefaultRoot();
-        _loadTeams = loadTeams ?? (() => TeamCatalog.List(root));
+        // The active teams only (STUDIO-31, D-08): an archived team is not tested from Studio.
+        _loadTeams = loadTeams ?? (() => TeamCatalog.List(root, TeamListFilter.Active));
         RefreshTeams();
     }
 
@@ -52,7 +53,10 @@ public sealed class TestTeamViewModel : ObservableObject
         }
     }
 
-    /// <summary>Re-reads the catalog (called when the teams list changes).</summary>
+    /// <summary>
+    /// Re-reads the catalog — called when the teams list changes: on arrival in My teams, after an
+    /// adoption or an import, and after an archive or a restore (STUDIO-31, D-08).
+    /// </summary>
     public void RefreshTeams()
     {
         TeamChoices.Clear();

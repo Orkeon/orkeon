@@ -36,7 +36,7 @@ public sealed class TeamFolderRowViewModel
 {
     internal TeamFolderRowViewModel(
         string teamName, string virtualPath, string folder, MountRights rights, IStudioStrings strings,
-        TeamFolderOrigin origin)
+        TeamFolderOrigin origin, bool isArchived = false)
     {
         ArgumentNullException.ThrowIfNull(strings);
 
@@ -46,16 +46,24 @@ public sealed class TeamFolderRowViewModel
         ShortId = origin.ShortId;
         IsDeclared = origin.IsDeclared;
         IsUnknownId = origin.IsUnknownId;
+        IsArchived = isArchived;
         IsReadWrite = rights != MountRights.ReadOnly;
         RightsLabel = MountRightsTokens.GetLabel(rights, strings);
         RightsBadge = MountRightsTokens.GetBadge(rights, strings);
+        // An archived team's folders are still its folders (STUDIO-31, D-08): listed, its state said.
+        var shownName = isArchived
+            ? string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersArchived], teamName)
+            : teamName;
         Label = origin switch
         {
-            { IsUnknownId: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], teamName, virtualPath, origin.ShortId),
-            { IsDeclared: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], teamName, virtualPath, folder, origin.ShortId),
-            _ => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], teamName, virtualPath, folder),
+            { IsUnknownId: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersUnknownId], shownName, virtualPath, origin.ShortId),
+            { IsDeclared: true } => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRowDeclared], shownName, virtualPath, folder, origin.ShortId),
+            _ => string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.TeamFoldersRow], shownName, virtualPath, folder),
         };
     }
+
+    /// <summary>Whether the team is archived (STUDIO-31): its rows stay, the line saying so.</summary>
+    public bool IsArchived { get; }
 
     /// <summary>The last six characters of the settings entry the team names (VFS-90); empty for an in-team folder.</summary>
     public string ShortId { get; }
@@ -102,6 +110,10 @@ public sealed class TeamFolderRowViewModel
 /// looking for one is told, by the hint, that these folders are changed from « My teams ».
 /// </para>
 /// <para>
+/// Every team is listed, archived ones included, the line saying which (STUDIO-31, D-08): an
+/// archived team keeps its folders, and the settings screen is where one looks for them.
+/// </para>
+/// <para>
 /// It reads the raw sidecar entries (<see cref="TeamSummary.Metadata"/>) rather than the
 /// resolved <see cref="TeamSummary.Mounts"/>: the resolved list is absolute by design, and
 /// the sub-folder's name is exactly what a team-relative entry spells. An older sidecar that
@@ -115,8 +127,8 @@ public sealed class TeamFoldersViewModel : ObservableObject
     private readonly Func<IReadOnlyList<string>>? _declaredMounts;
     private readonly IStudioStrings _strings;
 
-    /// <summary>Builds the section over the team catalog; the shell passes <c>TeamCatalog.List</c>.</summary>
-    /// <param name="loadTeams">Reads the adopted teams.</param>
+    /// <summary>Builds the section over the team catalog; the shell passes <c>TeamCatalog.List</c> of every team.</summary>
+    /// <param name="loadTeams">Reads the adopted teams, archived ones included.</param>
     /// <param name="strings">Localization port.</param>
     /// <param name="declaredMounts">
     /// Reads the settings' mounts, so a team folder that names a settings declaration by id
@@ -176,7 +188,7 @@ public sealed class TeamFoldersViewModel : ObservableObject
         var teamName = TeamCatalog.NormalizeName(team.Name);
         foreach (var mount in mounts)
         {
-            if (RowFor(teamName, team.Path, mount, declared) is { } row)
+            if (RowFor(teamName, team, mount, declared) is { } row)
                 yield return row;
         }
     }
@@ -187,10 +199,12 @@ public sealed class TeamFoldersViewModel : ObservableObject
     /// has no such declaration — VFS-90), or nothing for an unreadable entry, a folder outside
     /// the team, or an id when the settings were not consulted.
     /// </summary>
-    private TeamFolderRowViewModel? RowFor(string teamName, string teamPath, string mount, IReadOnlyList<string>? declared)
+    private TeamFolderRowViewModel? RowFor(string teamName, TeamSummary team, string mount, IReadOnlyList<string>? declared)
     {
         if (!MountDefinition.TryParse(mount, out var parsed, out _) || parsed is null)
             return null;
+
+        var teamPath = team.Path;
 
         // The one containment rule, not a local copy of it: relative entries are
         // inside the team by construction, an absolute one only when the path says so.
@@ -200,7 +214,7 @@ public sealed class TeamFoldersViewModel : ObservableObject
                 ? relative
                 : FolderUnderTeam(teamPath, parsed.PhysicalPath);
 
-            return new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings, TeamFolderOrigin.InsideTeam);
+            return new TeamFolderRowViewModel(teamName, parsed.VirtualPath, folder, parsed.Rights, _strings, TeamFolderOrigin.InsideTeam, team.IsArchived);
         }
 
         if (declared is null || parsed.Id is null)
@@ -209,10 +223,10 @@ public sealed class TeamFoldersViewModel : ObservableObject
         return DeclaredMounts.FindDeclared(mount, declared) is { } entry
             ? new TeamFolderRowViewModel(
                 teamName, parsed.VirtualPath, entry.PhysicalPath, entry.Rights, _strings,
-                TeamFolderOrigin.Declared(entry.ShortId ?? ""))
+                TeamFolderOrigin.Declared(entry.ShortId ?? ""), team.IsArchived)
             : new TeamFolderRowViewModel(
                 teamName, parsed.VirtualPath, "", parsed.Rights, _strings,
-                TeamFolderOrigin.Unknown(parsed.ShortId ?? ""));
+                TeamFolderOrigin.Unknown(parsed.ShortId ?? ""), team.IsArchived);
     }
 
     /// <summary>

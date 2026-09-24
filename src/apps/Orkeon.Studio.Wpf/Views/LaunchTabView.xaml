@@ -272,6 +272,22 @@
           </DockPanel>
         </Border>
 
+        <!-- STUDIO-31 (D-07): an archived team is neither launched nor tested from Studio. The
+             Run button stays off, and this says why and offers the way back — never a refusal
+             in silence. The CLI and the operating system are not concerned: archiving is Studio's. -->
+        <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="13,11" Margin="0,14,0,0"
+                Visibility="{Binding IsTargetArchived, Converter={StaticResource BooleanToVisibility}}">
+          <DockPanel>
+            <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Margin="12,0,0,0" VerticalAlignment="Center"
+                    Command="{Binding RestoreTargetCommand}"
+                    Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+            <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,0,10,0"
+                                 VerticalAlignment="Center" Foreground="{DynamicResource WarningBrush}"/>
+            <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Foreground="{DynamicResource WarningBrush}" Text="{Binding ArchivedTargetMessage}"/>
+          </DockPanel>
+        </Border>
+
         <!-- expert machinery inside the same card, per the mock -->
         <StackPanel Visibility="{Binding DataContext.Mode.IsExpert, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
           <Border Height="1" Background="{DynamicResource LineFaintBrush}" Margin="0,14,0,14"/>

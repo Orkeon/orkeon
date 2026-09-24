@@ -25,9 +25,10 @@ public sealed class LaunchReplayEventArgs : EventArgs
 }
 
 /// <summary>One past launch, ready to be shown and replayed — one card of the mock's list.</summary>
-public sealed class LaunchHistoryEntryViewModel
+public sealed class LaunchHistoryEntryViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
+    private bool _isOfferingRestore;
 
     /// <summary>Wraps a stored entry.</summary>
     public LaunchHistoryEntryViewModel(
@@ -35,7 +36,8 @@ public sealed class LaunchHistoryEntryViewModel
         IStudioStrings? strings = null,
         Action<LaunchHistoryEntry>? onReplay = null,
         IShellOpener? shellOpener = null,
-        Func<IReadOnlyList<string>>? declaredMounts = null)
+        Func<IReadOnlyList<string>>? declaredMounts = null,
+        Action<LaunchHistoryEntry>? onRestore = null)
     {
         ArgumentNullException.ThrowIfNull(entry);
 
@@ -46,12 +48,39 @@ public sealed class LaunchHistoryEntryViewModel
         OpenResultCommand = new RelayCommand(
             () => { foreach (var folder in ResultFolders()) shellOpener?.Open(folder); },
             () => shellOpener is not null && ResultFolders().Count > 0);
+        RestoreCommand = new RelayCommand(
+            () =>
+            {
+                IsOfferingRestore = false;
+                onRestore?.Invoke(Entry);
+            },
+            () => onRestore is not null);
+        DismissRestoreCommand = new RelayCommand(() => IsOfferingRestore = false);
     }
 
     private readonly Func<IReadOnlyList<string>>? _declaredMounts;
 
     /// <summary>Replays this launch (per-card button — the mock has no global action row).</summary>
     public RelayCommand ReplayCommand { get; }
+
+    /// <summary>
+    /// Whether the card offers « Archived team — restore it? » in place (STUDIO-31, D-07): « Replay »
+    /// found the team archived and ran nothing. One card at a time, like a delete banner.
+    /// </summary>
+    public bool IsOfferingRestore
+    {
+        get => _isOfferingRestore;
+        internal set => SetProperty(ref _isOfferingRestore, value);
+    }
+
+    /// <summary>« Archived team — restore it? » — the sentence of the offer.</summary>
+    public string RestoreOffer => _strings[StudioStringKeys.CommonArchivedTeamRestore];
+
+    /// <summary>« Restore » — the team goes back among the active teams; « Replay » runs it from then on.</summary>
+    public RelayCommand RestoreCommand { get; }
+
+    /// <summary>Closes the offer, restoring nothing.</summary>
+    public RelayCommand DismissRestoreCommand { get; }
 
     /// <summary>Opens the run's writable folders — one window each — when the argv named any.</summary>
     public RelayCommand OpenResultCommand { get; }
@@ -253,6 +282,12 @@ public sealed class LaunchHistoryViewModel : ObservableObject
     /// <summary>Raised when the user asks to replay <see cref="SelectedEntry"/>.</summary>
     public event EventHandler<LaunchReplayEventArgs>? ReplayRequested;
 
+    /// <summary>
+    /// Raised by « Restore » on a card whose replay found its team archived (STUDIO-31, D-07) — the
+    /// launcher restores the team the entry ran.
+    /// </summary>
+    public event EventHandler<LaunchReplayEventArgs>? RestoreRequested;
+
     /// <summary>The stored launches, most recent first.</summary>
     public ObservableCollection<LaunchHistoryEntryViewModel> Entries { get; } = [];
 
@@ -304,10 +339,30 @@ public sealed class LaunchHistoryViewModel : ObservableObject
         Entries.Clear();
         foreach (var entry in history.Entries)
             Entries.Add(new LaunchHistoryEntryViewModel(
-                entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener, _declaredMounts));
+                entry, _strings, e => ReplayRequested?.Invoke(this, new LaunchReplayEventArgs(e)), _shellOpener, _declaredMounts,
+                e => RestoreRequested?.Invoke(this, new LaunchReplayEventArgs(e))));
 
         SelectedEntry = Entries.Count > 0 ? Entries[0] : null;
         OnPropertyChanged(nameof(IsEmpty));
+    }
+
+    /// <summary>
+    /// Opens « Archived team — restore it? » on the card of <paramref name="entry"/> — the replay
+    /// that found its team archived (STUDIO-31, D-07) — and closes it on every other card: two open
+    /// offers would ask the same question twice. The card is the entry itself, or the first one
+    /// that ran the same target.
+    /// </summary>
+    internal void OfferRestore(LaunchHistoryEntry entry)
+    {
+        ArgumentNullException.ThrowIfNull(entry);
+
+        var offered = Entries.FirstOrDefault(row => ReferenceEquals(row.Entry, entry))
+            ?? Entries.FirstOrDefault(row => string.Equals(
+                Orkeon.Studio.Core.Teams.TeamCatalog.NormalizePath(row.Target),
+                Orkeon.Studio.Core.Teams.TeamCatalog.NormalizePath(entry.Target),
+                StringComparison.OrdinalIgnoreCase));
+        foreach (var row in Entries)
+            row.IsOfferingRestore = ReferenceEquals(row, offered);
     }
 
     private void Replay()

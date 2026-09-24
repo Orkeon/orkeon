@@ -26,7 +26,7 @@ Une bibliothèque sans UI et sans point d'entrée, consommée uniquement par les
 - **Launch/ & Process/** — construction de la ligne de commande `orkeon run` (`RunArgumentsBuilder`, `RunLaunchOptions`), localisation du binaire (`OrkeonBinaryLocator` — dans l'ordre : l'argument `--cli-dir`, à côté de l'exécutable, la variable d'environnement `ORKEON_CLI_DIR`, le `PATH`, puis le checkout de développement), exécution et flux de sortie (`OrkeonProcessRunner`, `IProcessLauncher`), interprétation des codes de sortie (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), et le rapport `orkeon doctor` (`DoctorReport`).
 - **Forge/** — le client typé d'`orkeon forge --events jsonl` (le moteur derrière l'assistant de création) : un parseur de lignes tolérant, épinglé contre les lignes d'or du protocole côté CLI, la projection de session que tous les fronts lisent (`ForgeSessionModel`, correspondance des jalons, les règles de la checklist ✔/✘), le pilote de processus enfant avec le canal de réponse stdin (`ForgeClient`, dont la requête de démarrage porte des surcharges d'environnement — c'est ainsi que le profil de l'assistant de Studio atteint le moteur), le catalogue de sessions sur disque et l'hydrateur de reprise. Le processus Studio ne touche jamais à un LLM — il ne voit que des lignes JSON.
 - **Profiles/** — les réglages de modèle nommés du design v3 (`ModelProfile`, `ModelProfileSet`, `ModelProfileFileStore` → `studio-model-profiles.json` à côté du fichier de settings) : des « réglages de modèle » réutilisables, une élection par défaut reflétée dans la section `Llm`, le profil sur lequel tourne l'assistant de Studio, et des surcharges d'environnement `ORKEON_Llm__*` par profil pour les lancements (modèle, endpoint, température, délai et le budget de réponse `MaxTokens` — vide laisse le plafond au moteur, qui envoie le maximum documenté du modèle, et l'indication sous le champ dit ce que c'est pour le modèle choisi, ou que le modèle est inconnu du catalogue et reçoit 4096 sauf épinglage — LLM-10 ; l'interrupteur de réflexion — défaut du fournisseur / activée / désactivée — et l'indication d'effort de raisonnement, `ORKEON_Llm__Thinking__{Enabled,Effort}`, et un délai pré-rempli à 600 s quand le modèle par défaut du fournisseur choisi réfléchit avant de répondre — Kimi, DeepSeek, Z.AI, MiniMax — LLM-11). L'éditeur de profil offre le catalogue complet des fournisseurs (`LlmPresets.ProviderCatalogFor` — les deux runtimes locaux plus chaque cloud dont le framework livre un provider, endpoint/modèle pré-remplis depuis les défauts runtime épinglés par drift), et un novice colle sa clé d'API directement dans l'éditeur : elle atterrit dans une **variable d'environnement utilisateur** (`IApiKeyStore`/`EnvironmentApiKeyStore`, le nom conventionnel du fournisseur comme `DEEPSEEK_API_KEY`) — le fichier du store ne porte jamais que le *nom* de cette variable (`ModelProfile.KeyEnvName`), et les lancements posent la valeur résolue sur le processus enfant en `ORKEON_Llm__ApiKey`. La clé elle-même n'entre dans aucun fichier. Le store lit son fichier sans tenir compte de la casse des propriétés — il s'édite à la main, et `"profiles"` est ce que les gens tapent — et un fichier qui existe mais ne se lit pas est signalé sur l'écran des réglages au lieu de se charger comme un ensemble vide, indiscernable d'un premier lancement.
-- **Teams/** — le dossier des équipes (`TeamCatalog`, défaut `~/Orkeon/teams`) : chaque équipe adoptée est un dossier ordinaire — listé, dupliqué, supprimé, importé (avec un scan des secrets en clair, et refusé avant toute copie quand le détecteur du lanceur ne le résout pas en une définition d'équipe, avec le message du détecteur) — plus le sidecar `studio-team.json` qui note ce que la définition de crew ne peut pas dire (nom, besoin, profil, la planification choisie — savoir si le système la lance est la réponse du moteur, STUDIO-27). Le profil noté n'est pas décoratif : lancer une équipe adoptée le résout dans le store de profils et le pose sur le run en `ORKEON_Llm__*`.
+- **Teams/** — le dossier des équipes (`TeamCatalog`, défaut `~/Orkeon/teams`) : chaque équipe adoptée est un dossier ordinaire — listé (les équipes actives, les archivées ou toutes ; un dossier en `.`, ou sous Windows un dossier caché ou système, n'est jamais une équipe), dupliqué, supprimé, importé (avec un scan des secrets en clair, et refusé avant toute copie quand le détecteur du lanceur ne le résout pas en une définition d'équipe, avec le message du détecteur ; une duplication ou un import qui échoue en cours de route ne laisse aucun dossier partiel) — plus le sidecar `studio-team.json` qui note ce que la définition de crew ne peut pas dire (nom, besoin, profil, la planification choisie — savoir si le système la lance est la réponse du moteur, STUDIO-27 — et si l'équipe est archivée, et quand elle a tourné pour la dernière fois depuis Studio, STUDIO-31). Chaque écrivain fusionne le sidecar, aucun ne le reconstruit : une ré-adoption garde ce qu'elle ne gère pas. Le profil noté n'est pas décoratif : lancer une équipe adoptée le résout dans le store de profils et le pose sur le run en `ORKEON_Llm__*`.
 - **Run/** — le client typé d'un `orkeon run --events jsonl` **observé** (BUS-06) : `RunClient`, frère de `ForgeClient` et délibérément son jumeau — même lanceur, même localisateur, même parseur d'enveloppe — et `RunProgressModel`, qui plie le flux vers ce qu'un écran affiche (tâches en cours et chaque outil au travail, délégations en cours, tâches terminées, coût, question en attente — l'état complet est décrit sous *L'état de progression d'un run*, plus bas). Le client porte aussi le siège que le hub du run donne à un processus observateur : écrire à un agent, publier, s'abonner, répondre — et l'écran « Lancer » occupe désormais ce siège lui aussi : le `send` d'un agent (marqué `expectsReply`) apparaît comme un panneau de demande, et la réponse saisie repart par stdin. Voir [Le bus d'événements du run](run-event-bus.md).
 - **UseCases/** — le client typé d'`orkeon usecases` (STUDIO-39) : `UseCaseClient`, jumeau de `ForgeClient` — `usecases list` exécuté jusqu'au bout pour le catalogue de la galerie, une session `usecases search` gardée ouverte pour les suggestions sous le besoin, chaque requête appariée à sa réponse par l'identifiant de corrélation, `usecases export` exécuté jusqu'au bout pour « Importer tel quel » (STUDIO-41), les échecs typés plutôt que levés — ainsi que les lecteurs du catalogue et d'une réponse (`UseCaseCatalog`, `UseCaseAnswer`), la règle qui décide des réponses assez proches pour être suggérées (`UseCaseSuggestions`), qui lit dans la réponse elle-même combien de cas d'usage portent un terme — Studio ne normalise jamais une orthographe de son côté —, et `UseCaseImporter`, qui fait entrer un cas exporté dans la racine des équipes par l'import que prend toute équipe.
 - **Storage/ & History/** — emplacements des settings et chaîne de résolution (`SettingsLocations`, `AppSettingsFile`), historique des lancements (`LaunchHistoryStore`).
@@ -597,6 +597,58 @@ place avant de supprimer (`DiagnosticViewModel` reçoit le workspace de l'atelie
 équipes). Une équipe déplacée hors du dossier des équipes peut aussi y apparaître : rien n'est
 supprimé sans l'utilisateur.
 
+### Archiver une équipe (STUDIO-31)
+
+Archiver sort une équipe de la liste active sans la supprimer, et la rend intacte. C'est un
+**drapeau** dans `studio-team.json` — `archived`, et `archivedAt` pour la date — et rien d'autre : le
+dossier ne bouge pas, donc rien de ce qui pointe vers lui ne casse — son chemin, le lien de sa
+session d'atelier, sa tâche planifiée, son historique. `TeamCatalog.List` prend un filtre
+(`TeamListFilter` : `Active`, par défaut ; `Archived` ; `All`) et chaque écran demande ce qu'il
+montre : Mes équipes lit toutes les équipes et répartit les cartes (`Teams`, les actives, que compte
+la barre latérale ; `ArchivedTeams`) ; le sélecteur de l'écran Tester et le segment Solde de la barre
+d'état couvrent les équipes actives ; « Utilisé par » d'un dossier ou d'un profil compte toutes les
+équipes — retirer ce qu'une équipe archivée nomme la casserait le jour de sa restauration — et
+Réglages › Dossiers d'équipe liste toutes les équipes, une équipe archivée marquée « (archivée) ». La
+liste ne montre jamais un dossier en `.` (l'état de travail d'un moteur, un dossier de VCS) ni, sous
+Windows, un dossier caché ou système, et une duplication ou un import qui échoue en cours de route
+supprime son dossier partiel plutôt que de laisser une carte que rien ne peut lancer.
+
+Le sidecar est **fusionné, jamais reconstruit** (`TeamCatalog.UpdateMetadata`) : une adoption, une
+ré-adoption après « Modifier », un changement de dossiers écrivent les champs qu'ils gèrent et gardent
+les autres — le drapeau d'archivage, la dernière exécution. Une copie ou un import est une équipe en
+service et en sort active ; un export emporte le drapeau tel que l'équipe l'a, et l'importer l'efface
+de toute façon.
+
+**Dernière activité.** À la fin d'une exécution réelle depuis l'écran Lancer — jamais un essai, jamais
+un `--validate` — `RunSession` inscrit `lastRunAt` dans l'équipe exécutée : seulement un dossier
+d'équipe placé directement sous la racine des équipes et qui a déjà son sidecar, la cible étant le
+dossier ou un fichier qu'il contient (`DeclaredMounts.TeamDirectoryOf`) ; un lancement pointé
+ailleurs n'écrit rien. La **dernière activité** d'une équipe est la plus récente de trois dates —
+`lastRunAt`, sa dernière entrée d'historique des lancements (l'historique en garde cinquante), le
+`promotedAt` de son `forge.json` — calculée à la lecture de la liste, sans migration
+(`TeamSummary.LastActivity`, `TeamCardViewModel.LastActivity`).
+
+**Rien ne relance une équipe archivée par mégarde.** Studio ne la lance ni ne la teste, et chaque
+garde propose le retour plutôt qu'un refus muet — « Équipe archivée — la restaurer ? » : les écrans
+Lancer et Tester gardent l'exécution et l'essai à blanc éteints sous un bandeau muni de « Restaurer »
+(`TargetDescription.IsArchived`) ; « Relancer » dans l'Historique lit la cible de l'entrée — pas celle
+du formulaire — et, sur une équipe archivée, ne lance rien : sa carte pose la question en place ;
+l'icône Tester de la carte, qui contourne le sélecteur de l'écran Tester, la pose aussi ; le
+sélecteur lui-même ne liste que les équipes actives. **Les règles** : archiver une équipe planifiée —
+déclarée, ou notée comme installée — est refusé, sauf par « Arrêter la planification et archiver »,
+qui lance d'abord `forge unschedule` (STUDIO-27) ; archiver et restaurer sont refusés tant que
+l'équipe est la cible d'une exécution en cours sur l'écran Lancer ou Tester, ou qu'elle est ouverte
+dans l'assistant — le crochet d'occupation partagé avec le renommage (STUDIO-28 :
+`LaunchTabViewModel.RunningTarget`, `TeamsDependencies.ActivityOf`). Une équipe restaurée reprend
+simplement sa place dans l'ordre. Chaque archivage et chaque restauration rafraîchit le sélecteur de
+l'écran Tester et les deux lanceurs.
+
+**L'archivage est une notion de Studio.** `orkeon run <dossier>` et le lanceur en terminal
+`orkeon-studio-run` lancent une équipe archivée comme n'importe quelle autre, et une exécution qu'ils
+démarrent — ou que le système d'exploitation démarre — n'inscrit pas sa dernière exécution. L'écran
+autour — la recherche, le tri par dernière activité, la vue Archives, le bandeau d'annulation, la
+suggestion d'archivage — relève de STUDIO-32.
+
 ### Outils et MCP dans les réglages (STUDIO-21)
 
 Deux onglets qui manquaient à l'écran Réglages. **Outils**, ouvert aux deux modes, tient en
@@ -671,7 +723,9 @@ de solde n'est jamais écrite ici, ni ailleurs.
 
 **`%USERPROFILE%\Orkeon\teams\<slug>\`** — les documents : les équipes adoptées.
 Chacune est un dossier ordinaire et autonome (définition de la crew, `run.cmd`/`run.sh`,
-le sidecar `studio-team.json` avec nom, besoin, réglage, programmation et dossiers) —
+le sidecar `studio-team.json` avec nom, besoin, réglage, programmation et dossiers — et,
+quand ils s'appliquent, le drapeau d'archivage et la date de la dernière exécution depuis
+Studio, STUDIO-31) —
 copiable, partageable, supprimable, exécutable avec `orkeon run <dossier>` seul. Le
 `<slug>` est le nom de l'équipe passé par la règle de nommage de dossier dont le moteur
 nomme aussi ses sessions — une seule implémentation, `FolderSlug` dans

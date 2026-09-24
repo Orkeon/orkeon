@@ -1143,6 +1143,36 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Suppression refusée par le disque — un fichier de l'équipe est peut-être ouvert.</value>
   </data>
+  <data name="Studio.Common.ArchivedTeamRestore" xml:space="preserve">
+    <value>Équipe archivée — la restaurer ?</value>
+  </data>
+  <data name="Studio.Common.TeamRestored" xml:space="preserve">
+    <value>Équipe restaurée : elle a repris sa place parmi vos équipes.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveBusy" xml:space="preserve">
+    <value>Archivage refusé : l'équipe est en cours d'exécution, ou ouverte dans l'assistant — réessayez quand elle sera libre.</value>
+  </data>
+  <data name="Studio.Teams.RestoreBusy" xml:space="preserve">
+    <value>Restauration refusée : l'équipe est en cours d'exécution, ou ouverte dans l'assistant — réessayez quand elle sera libre.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveScheduled" xml:space="preserve">
+    <value>Cette équipe est planifiée : le système continuerait de la lancer. Arrêtez sa planification pour l'archiver.</value>
+  </data>
+  <data name="Studio.Teams.ArchiveUnscheduleFailed" xml:space="preserve">
+    <value>Archivage refusé : sa planification n'a pas pu être arrêtée — {0}</value>
+  </data>
+  <data name="Studio.Teams.ArchiveRefused" xml:space="preserve">
+    <value>Archivage refusé par le disque — un fichier de l'équipe est peut-être ouvert.</value>
+  </data>
+  <data name="Studio.Teams.RestoreRefused" xml:space="preserve">
+    <value>Restauration refusée par le disque — un fichier de l'équipe est peut-être ouvert.</value>
+  </data>
+  <data name="Studio.Settings.TeamFoldersArchived" xml:space="preserve">
+    <value>{0} (archivée)</value>
+  </data>
+  <data name="Studio.Common.Restore" xml:space="preserve">
+    <value>Restaurer</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Installer la planification (tous les jours à {0}) ?</value>
   </data>

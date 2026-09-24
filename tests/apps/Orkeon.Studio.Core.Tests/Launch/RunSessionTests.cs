@@ -38,6 +38,10 @@ internal sealed class SessionFixture
     /// <summary>Builds the session over the declared doubles.</summary>
     public RunSession Build() =>
         new(new OrkeonProcessRunner(Processes, new OrkeonBinaryLocator(Executables)), History);
+
+    /// <summary>Builds the session the Launch tab builds: its real runs stamp the teams under <paramref name="teamsRoot"/>.</summary>
+    public RunSession Build(string teamsRoot) =>
+        new(new OrkeonProcessRunner(Processes, new OrkeonBinaryLocator(Executables)), History, teamsRoot);
 }
 
 /// <summary>
@@ -260,5 +264,38 @@ public class RunSessionTests
 
         Assert.Single(history.Entries);
         Assert.Same(history, session.History);
+    }
+
+    /// <summary>
+    /// STUDIO-31 D-05: the end of a real run stamps <c>lastRunAt</c> into the team it ran, with the
+    /// moment the history entry records — a dry run does not, and neither does a session that was
+    /// given no teams root (the Test screen's: a trial is a rehearsal, like its absent history).
+    /// </summary>
+    [Fact]
+    public async Task A_real_run_stamps_its_teams_last_run_and_neither_a_dry_run_nor_a_trial_does()
+    {
+        var teams = Path.Combine(Path.GetTempPath(), $"orkeon-lastrun-{Guid.NewGuid():N}");
+        var team = Path.Combine(teams, "veille");
+        try
+        {
+            Orkeon.Studio.Core.Teams.TeamCatalog.SaveMetadata(team, new Orkeon.Studio.Core.Teams.StudioTeamMetadata { Name = "Veille" });
+            var request = new RunLaunchRequest { TargetPath = team, Arguments = ["run", team] };
+            var fixture = new SessionFixture().WithInstalledCli();
+
+            await fixture.Build(teams).RunAsync(request with { RecordInHistory = false }, cancellationToken: TestContext.Current.CancellationToken);
+            Assert.Null(Orkeon.Studio.Core.Teams.TeamCatalog.Describe(team).LastRunAt);
+
+            await fixture.Build().RunAsync(request, cancellationToken: TestContext.Current.CancellationToken);
+            Assert.Null(Orkeon.Studio.Core.Teams.TeamCatalog.Describe(team).LastRunAt);
+
+            await fixture.Build(teams).RunAsync(request, cancellationToken: TestContext.Current.CancellationToken);
+
+            Assert.Equal(fixture.History.Recorded[^1].StartedAt, Orkeon.Studio.Core.Teams.TeamCatalog.Describe(team).LastRunAt);
+        }
+        finally
+        {
+            if (Directory.Exists(teams))
+                Directory.Delete(teams, recursive: true);
+        }
     }
 }
