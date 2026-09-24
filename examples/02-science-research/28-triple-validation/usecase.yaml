@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Vérification croisée d'un résultat"
+  en: "Cross-checking a finding"
+  es: "Verificación cruzada de un resultado"
+  de: "Gegenprüfung eines Ergebnisses"
+  zh-Hans: "结果交叉验证"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Vérifier qu'un résultat tiré de mes données se confirme avec trois méthodes différentes"
+  en: "Check that a finding from my data holds up under three different methods"
+  es: "Comprobar que un resultado de mis datos se sostiene con tres métodos distintos"
+  de: "Prüfen, ob ein Ergebnis aus meinen Daten mit drei verschiedenen Methoden standhält"
+  zh-Hans: "用三种不同的方法检验我的数据得出的结论是否站得住"
+tags: ["validation", "statistics", "data-analysis", "cross-check"]
 mounts:
   - "./output:/output:rw"
 importable: true

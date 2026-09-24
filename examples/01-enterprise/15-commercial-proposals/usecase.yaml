@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Réponse à un appel d'offres"
+  en: "Response to a call for tenders"
+  es: "Respuesta a una licitación"
+  de: "Antwort auf eine Ausschreibung"
+  zh-Hans: "投标方案撰写"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Répondre à l'appel d'offres d'un client avec une proposition commerciale que je valide"
+  en: "Answer a client's call for tenders with a sales proposal for me to approve"
+  es: "Responder a la licitación de un cliente con una propuesta comercial lista para mi aprobación"
+  de: "Die Ausschreibung eines Kunden mit einem Angebot beantworten, das ich freigebe"
+  zh-Hans: "针对客户的招标撰写商务方案，最终由我审批"
+tags: ["sales", "proposal", "tender"]
 mounts:
   - "./output:/output:rw"
 importable: true

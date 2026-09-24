@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Veille concurrentielle"
+  en: "Competitor monitoring"
+  es: "Vigilancia de la competencia"
+  de: "Wettbewerbsbeobachtung"
+  zh-Hans: "竞争对手监测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Suivre les prix, annonces et brevets de mes concurrents et repérer ce qui change"
+  en: "Track my competitors' prices, announcements and patents, and spot what changes"
+  es: "Seguir los precios, anuncios y patentes de mis competidores y detectar qué cambia"
+  de: "Preise, Ankündigungen und Patente meiner Wettbewerber verfolgen und Veränderungen erkennen"
+  zh-Hans: "跟踪竞争对手的价格、公告和专利，找出其中的变化"
+tags: ["competitive-intelligence", "competitors", "pricing", "patents"]
 mounts:
   - "./output:/output:rw"
 importable: true

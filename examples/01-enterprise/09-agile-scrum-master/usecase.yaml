@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Découpage d'un projet logiciel"
+  en: "Software project breakdown"
+  es: "Desglose de un proyecto de software"
+  de: "Aufteilung eines Softwareprojekts"
+  zh-Hans: "软件项目任务拆分"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Découper un projet logiciel en tâches, les estimer et préparer un plan pour chacune"
+  en: "Break a software project into tasks, estimate them and plan each one"
+  es: "Dividir un proyecto de software en tareas, estimarlas y planificar cada una"
+  de: "Ein Softwareprojekt in Aufgaben zerlegen, den Aufwand schätzen und jede einzelne planen"
+  zh-Hans: "把软件项目拆分成任务，估算工作量，并为每项任务制定计划"
+tags: ["project-management", "agile", "planning", "software-development"]
 mounts:
   - "./output:/output:rw"
 importable: true

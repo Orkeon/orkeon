@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Débat scientifique contradictoire"
+  en: "Two-sided scientific debate"
+  es: "Debate científico contradictorio"
+  de: "Wissenschaftliche Debatte mit Gegenpositionen"
+  zh-Hans: "正反双方的科学辩论"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Confronter les deux camps d'une controverse scientifique et en tirer une synthèse"
+  en: "Hear both sides of a scientific controversy and reach a synthesis"
+  es: "Confrontar las dos posturas de una controversia científica y llegar a una síntesis"
+  de: "Beide Seiten einer wissenschaftlichen Kontroverse gegenüberstellen und ein Fazit ziehen"
+  zh-Hans: "让科学争议的双方各自陈述论据，并得出综合结论"
+tags: ["debate", "controversy", "evidence", "synthesis"]
 mounts: []
 importable: true

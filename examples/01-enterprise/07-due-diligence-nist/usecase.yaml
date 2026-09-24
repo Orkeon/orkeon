@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Évaluation des risques avant rachat"
+  en: "Risk assessment before an acquisition"
+  es: "Evaluación previa a una adquisición"
+  de: "Risikoprüfung vor einer Übernahme"
+  zh-Hans: "收购前的风险评估"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Évaluer les risques d'une entreprise avant de la racheter ou d'y investir"
+  en: "Assess a company's risks before buying it or investing in it"
+  es: "Evaluar los riesgos de una empresa antes de comprarla o invertir en ella"
+  de: "Die Risiken eines Unternehmens vor einem Kauf oder einer Beteiligung bewerten"
+  zh-Hans: "在收购或投资一家公司之前，评估它的各项风险"
+tags: ["due-diligence", "acquisition", "risk-assessment", "compliance"]
 mounts: []
 importable: true

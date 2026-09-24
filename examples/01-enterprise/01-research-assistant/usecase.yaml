@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Synthèse de recherche avec sources"
+  en: "Research summary with sources"
+  es: "Síntesis de investigación con fuentes"
+  de: "Recherchebericht mit Quellen"
+  zh-Hans: "附出处的研究综述"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Rassembler ce que le web et mes documents disent d'un sujet, sources à l'appui"
+  en: "Pull together what the web and my documents say about a topic, with sources"
+  es: "Reunir lo que dicen la web y mis documentos sobre un tema, citando las fuentes"
+  de: "Zusammentragen, was das Web und meine Dokumente zu einem Thema sagen, mit Quellenangaben"
+  zh-Hans: "汇总网络资料和我的文档对某个主题的论述，并注明出处"
+tags: ["research", "report", "citations"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

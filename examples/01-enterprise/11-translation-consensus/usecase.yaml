@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Traduction avec double relecture"
+  en: "Translation with double review"
+  es: "Traducción con doble revisión"
+  de: "Übersetzung mit doppelter Prüfung"
+  zh-Hans: "翻译与双重审校"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Traduire un document et vérifier qu'il sonne naturel et emploie les bons termes"
+  en: "Translate a document and check that it reads naturally and uses the right terms"
+  es: "Traducir un documento y comprobar que suena natural y usa los términos adecuados"
+  de: "Ein Dokument übersetzen und prüfen, ob es natürlich klingt und die Fachbegriffe stimmen"
+  zh-Hans: "翻译一份文档，并检查译文是否自然、术语是否准确"
+tags: ["translation", "localization", "terminology", "proofreading"]
 mounts:
   - "./output:/output:rw"
 importable: true

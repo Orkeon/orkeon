@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Nettoyage et import de données"
+  en: "Data cleanup and import"
+  es: "Limpieza e importación de datos"
+  de: "Datenbereinigung und -import"
+  zh-Hans: "数据清洗与导入"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Nettoyer les données de fichiers disparates et les charger dans une base de données"
+  en: "Clean up data from assorted files and load it into a database"
+  es: "Limpiar datos procedentes de archivos dispares y cargarlos en una base de datos"
+  de: "Daten aus unterschiedlichen Dateien bereinigen und in eine Datenbank laden"
+  zh-Hans: "清洗来自各种文件的数据，并导入数据库"
+tags: ["data", "etl", "data-cleaning", "database"]
 mounts:
   - "./output:/output:rw"
 importable: true

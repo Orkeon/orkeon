@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Audit de sécurité informatique"
+  en: "IT security audit"
+  es: "Auditoría de seguridad informática"
+  de: "IT-Sicherheitsaudit"
+  zh-Hans: "IT 安全审计"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Évaluer la sécurité de mes systèmes et obtenir un plan de correction priorisé"
+  en: "Assess the security of my systems and get a prioritized plan of fixes"
+  es: "Evaluar la seguridad de mis sistemas y obtener un plan de correcciones priorizado"
+  de: "Die Sicherheit meiner IT-Systeme bewerten und einen priorisierten Maßnahmenplan erhalten"
+  zh-Hans: "评估我的系统安全状况，并得到按优先级排序的整改计划"
+tags: ["security", "audit", "compliance", "vulnerabilities"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Relecture d'article avant soumission"
+  en: "Paper review before submission"
+  es: "Revisión de artículo antes del envío"
+  de: "Begutachtung vor der Einreichung"
+  zh-Hans: "投稿前论文预审"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Anticiper les critiques des relecteurs sur mon article avant de le soumettre"
+  en: "Anticipate reviewers' criticism of my paper before I submit it"
+  es: "Anticipar las críticas de los revisores a mi artículo antes de enviarlo"
+  de: "Vor der Einreichung erfahren, was Gutachter an meinem Artikel bemängeln könnten"
+  zh-Hans: "在投稿前预判审稿人会对我的论文提出哪些意见"
+tags: ["peer-review", "research-paper", "academic-publishing", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

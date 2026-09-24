@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Analyse des avis clients"
+  en: "Customer review analysis"
+  es: "Análisis de opiniones de clientes"
+  de: "Analyse von Kundenbewertungen"
+  zh-Hans: "客户评价分析"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Savoir ce que mes clients pensent de mes produits d'après leurs avis en ligne"
+  en: "Find out what my customers think of my products from their online reviews"
+  es: "Saber qué opinan mis clientes de mis productos a partir de sus reseñas en línea"
+  de: "Anhand von Online-Bewertungen herausfinden, was meine Kunden von meinen Produkten halten"
+  zh-Hans: "通过网上的评价，了解客户对我的产品有什么看法"
+tags: ["customer-reviews", "sentiment-analysis", "social-media"]
 mounts:
   - "./output:/output:rw"
 importable: true

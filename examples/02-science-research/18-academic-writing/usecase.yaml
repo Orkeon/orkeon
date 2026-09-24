@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Rédaction d'un article scientifique"
+  en: "Writing a research paper"
+  es: "Redacción de un artículo científico"
+  de: "Verfassen eines Fachartikels"
+  zh-Hans: "学术论文撰写"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Rédiger un article de recherche, du plan à la version finale, en vérifiant ses références"
+  en: "Write a research paper from outline to final draft, checking its references"
+  es: "Redactar un artículo científico, del esquema a la versión final, verificando sus referencias"
+  de: "Einen Forschungsartikel von der Gliederung bis zur Endfassung schreiben und die Quellen prüfen"
+  zh-Hans: "撰写一篇研究论文，从提纲到定稿，并逐条核实参考文献"
+tags: ["academic-writing", "research-paper", "citations", "editing"]
 mounts:
   - "./output:/output:rw"
 importable: true

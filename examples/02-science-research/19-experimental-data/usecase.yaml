@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Analyse de données d'expérience"
+  en: "Experiment data analysis"
+  es: "Análisis de datos experimentales"
+  de: "Auswertung von Versuchsdaten"
+  zh-Hans: "实验数据分析"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Analyser les mesures de mon expérience et savoir si le traitement a vraiment un effet"
+  en: "Analyze my experiment's measurements and find out whether the treatment really works"
+  es: "Analizar las mediciones de mi experimento y saber si el tratamiento tiene un efecto real"
+  de: "Die Messwerte meines Versuchs auswerten und herausfinden, ob die Behandlung wirklich wirkt"
+  zh-Hans: "分析我的实验测量数据，弄清治疗是否真的有效"
+tags: ["experiments", "statistics", "data-analysis", "report"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

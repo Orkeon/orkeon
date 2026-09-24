@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Anticipation des tendances technologiques"
+  en: "Technology trend forecasting"
+  es: "Previsión de tendencias tecnológicas"
+  de: "Prognose technologischer Trends"
+  zh-Hans: "科技趋势预测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Anticiper les technologies qui montent en croisant publications, brevets et financements"
+  en: "Anticipate rising technologies by cross-checking publications, patents and funding"
+  es: "Anticipar las tecnologías emergentes cruzando publicaciones, patentes y financiación"
+  de: "Aufstrebende Technologien anhand von Publikationen, Patenten und Fördermitteln früh erkennen"
+  zh-Hans: "综合论文、专利和资助信息，预判正在兴起的技术"
+tags: ["trends", "forecasting", "technology-watch", "patents"]
 mounts:
   - "./output:/output:rw"
 importable: true

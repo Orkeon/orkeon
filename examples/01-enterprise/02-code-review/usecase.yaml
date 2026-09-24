@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Revue de code complète"
+  en: "Thorough code review"
+  es: "Revisión de código completa"
+  de: "Umfassendes Code-Review"
+  zh-Hans: "全面代码审查"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Faire relire mon code et savoir quoi corriger en priorité"
+  en: "Get my code reviewed and learn what to fix first"
+  es: "Hacer revisar mi código y saber qué corregir primero"
+  de: "Meinen Code prüfen lassen und erfahren, was zuerst behoben werden sollte"
+  zh-Hans: "审查我的代码，找出需要优先修复的问题"
+tags: ["code-review", "security", "performance", "testing"]
 mounts: []
 importable: true

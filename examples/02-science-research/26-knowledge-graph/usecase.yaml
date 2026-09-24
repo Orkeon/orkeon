@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Carte des connaissances"
+  en: "Knowledge map"
+  es: "Mapa de conocimiento"
+  de: "Wissenslandkarte"
+  zh-Hans: "知识地图"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Cartographier les notions de mes documents, leurs liens et leurs contradictions"
+  en: "Map the concepts in my documents, how they connect and where they contradict"
+  es: "Trazar un mapa de los conceptos de mis documentos, sus vínculos y sus contradicciones"
+  de: "Die Begriffe meiner Dokumente samt Zusammenhängen und Widersprüchen kartieren"
+  zh-Hans: "梳理我文档中的概念，理清它们之间的关联和矛盾"
+tags: ["knowledge-graph", "documents", "concept-mapping", "contradictions"]
 mounts:
   - "./output:/output:rw"
 importable: true

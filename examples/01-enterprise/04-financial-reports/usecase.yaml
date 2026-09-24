@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Rapport d'analyse financière"
+  en: "Financial analysis report"
+  es: "Informe de análisis financiero"
+  de: "Bericht zur Finanzanalyse"
+  zh-Hans: "财务分析报告"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Réunir les chiffres financiers d'une entreprise, les vérifier et en tirer un rapport"
+  en: "Gather a company's financial figures, check them and turn them into a report"
+  es: "Reunir las cifras financieras de una empresa, verificarlas y convertirlas en un informe"
+  de: "Die Finanzzahlen eines Unternehmens sammeln, prüfen und zu einem Bericht aufbereiten"
+  zh-Hans: "汇总一家公司的财务数据，核查后整理成报告"
+tags: ["finance", "financial-analysis", "report", "compliance"]
 mounts:
   - "./output:/output:rw"
 importable: true

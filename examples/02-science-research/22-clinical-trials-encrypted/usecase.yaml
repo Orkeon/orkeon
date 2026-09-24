@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Suivi d'un essai clinique"
+  en: "Clinical trial monitoring"
+  es: "Seguimiento de un ensayo clínico"
+  de: "Überwachung einer klinischen Studie"
+  zh-Hans: "临床试验监测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Faire le point sur la sécurité et les premiers résultats d'un essai clinique en cours"
+  en: "Take stock of the safety and early results of an ongoing clinical trial"
+  es: "Hacer balance de la seguridad y los primeros resultados de un ensayo clínico en curso"
+  de: "Sicherheit und erste Ergebnisse einer laufenden klinischen Studie prüfen"
+  zh-Hans: "评估一项进行中的临床试验的安全性和初步结果"
+tags: ["clinical-trials", "health", "patient-safety", "compliance"]
 mounts:
   - "./output:/output:rw"
 importable: true

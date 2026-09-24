@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Support client à trois niveaux"
+  en: "Three-level customer support"
+  es: "Atención al cliente en tres niveles"
+  de: "Kundensupport in drei Stufen"
+  zh-Hans: "三级客户支持"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Répondre à mes clients et faire remonter les cas difficiles à un responsable"
+  en: "Answer my customers and pass the difficult cases up to a manager"
+  es: "Responder a mis clientes y derivar los casos difíciles a un responsable"
+  de: "Meinen Kunden antworten und schwierige Fälle an die Leitung weitergeben"
+  zh-Hans: "答复客户的咨询，并把棘手的问题上报给负责人"
+tags: ["customer-support", "escalation", "helpdesk"]
 mounts: []
 importable: true

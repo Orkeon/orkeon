@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Demande de subvention de recherche"
+  en: "Research grant application"
+  es: "Solicitud de subvención de investigación"
+  de: "Antrag auf Forschungsförderung"
+  zh-Hans: "科研经费申请"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer ma demande de subvention de recherche, du texte scientifique au budget"
+  en: "Prepare my research grant application, from the scientific case to the budget"
+  es: "Preparar mi solicitud de subvención de investigación, del texto científico al presupuesto"
+  de: "Meinen Forschungsantrag vorbereiten, vom wissenschaftlichen Teil bis zum Budget"
+  zh-Hans: "准备我的科研经费申请，从科学论证到预算"
+tags: ["grant-writing", "funding", "research", "budget"]
 mounts:
   - "./output:/output:rw"
 importable: true
