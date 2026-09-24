@@ -130,9 +130,9 @@ public sealed class TeamCardViewModel : ObservableObject
         // the engine finds the session rule R links it to, or rebuilds one from the team's own
         // crew/, so an imported team, or one whose session is gone, is modifiable again and not
         // only relaunchable. The card never looks the session up: it only knows whether the
-        // folder names one (its forge.json carries an id) or can be read back (a YAML crew).
-        // Neither keeps the button disabled, the tooltip saying why. Resolved at card build;
-        // Refresh() rebuilds the cards.
+        // folder names one (its forge.json carries an id) or can be read back (a YAML crew). A
+        // team with neither keeps the button disabled, the tooltip saying why. Resolved at card
+        // build; Refresh() rebuilds the cards.
         CanModify = TeamsViewModel.CanReopen(summary);
         string modifyTipKey;
         if (summary.ForgeSessionId is not null)

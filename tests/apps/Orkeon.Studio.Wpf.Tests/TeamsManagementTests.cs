@@ -370,16 +370,18 @@ public sealed class TeamsManagementTests
             var copyCard = teams.Teams.Single(card => card.Summary.Path == copy);
             Assert.True(copyCard.CanModify);
 
-            // The engine's answer for a copy: a session of its own, rebuilt from the copy's crew
-            // and parked at the dry pause, its id written into the copy's forge.json.
+            // The engine's answer for a copy: a session of its own, named after the copy's folder,
+            // rebuilt from its crew and parked at the dry pause, its id written into the copy's
+            // forge.json.
             var (wizard, processes, _) = CreateTeamWizardTests.Build(teamsRoot: teamsRoot, workspace: root);
-            var ownSession = Path.Combine(root, ".orkeon", "forge", "veille-copie");
+            Assert.Equal("veille-copy", Path.GetFileName(copy));
+            var ownSession = Path.Combine(root, ".orkeon", "forge", "veille-copy");
             processes.OutputToEmit.AddRange(
             [
                 Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
-                    $$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-copie","id":"0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"format":"yaml","resumed":false}"""),
+                    $$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-copy","id":"0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"format":"yaml","resumed":false}"""),
                 Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
-                    $$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-copie","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"path":{{System.Text.Json.JsonSerializer.Serialize(copy)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
+                    $$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-copy","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"path":{{System.Text.Json.JsonSerializer.Serialize(copy)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
                 Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
                     """{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
             ]);
@@ -391,7 +393,7 @@ public sealed class TeamsManagementTests
             await reopening;
 
             Assert.Equal(["forge", "reopen", copy!, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
-            Assert.Equal("veille-copie", wizard.SessionSlug);
+            Assert.Equal("veille-copy", wizard.SessionSlug);
             Assert.Equal(copy, wizard.ReopenedTeamPath);
             Assert.DoesNotContain(processes.Requests, request => request.Arguments.Contains("veille"));
         }
