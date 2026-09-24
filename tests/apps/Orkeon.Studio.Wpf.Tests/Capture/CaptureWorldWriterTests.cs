@@ -57,8 +57,12 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
     {
         var teams = TeamCatalog.List(_worlds.Seeded.TeamsRoot);
 
-        Assert.Equal(4, teams.Count);
+        // Five active teams, and one archived (STUDIO-32): the Archives view has something to show.
+        Assert.Equal(5, teams.Count);
         Assert.Contains(teams, team => team.Name == "Veille concurrentielle");
+        var archived = Assert.Single(TeamCatalog.List(_worlds.Seeded.TeamsRoot, TeamListFilter.Archived));
+        Assert.Equal(StudioFixture.ArchivedTeamSlug, archived.Slug);
+        Assert.Equal(6, TeamCatalog.List(_worlds.Seeded.TeamsRoot, TeamListFilter.All).Count);
 
         // The agent count is read off the crew folder, not stored: a team folder that the real
         // detector does not recognise would report null here.

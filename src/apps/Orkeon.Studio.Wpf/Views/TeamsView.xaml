@@ -1,5 +1,7 @@
-<!-- "Mes équipes" (design v3): every adopted team is an autonomous folder — copiable,
-     shareable, deletable — plus the wizard sessions still underway, resumable.
+<!-- "My teams" (design v3): every adopted team is an autonomous folder — copiable,
+     shareable, deletable — plus the wizard sessions still underway, resumable. STUDIO-32 keeps
+     it readable with many teams: a search, an order, the Archives view, an undo banner after
+     « Archive », and the proposal to archive the teams nobody launches any more.
      DataContext: TeamsViewModel (bound as Teams in MainWindow). -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.TeamsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
@@ -24,8 +26,130 @@
       </StackPanel>
     </DockPanel>
 
-    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,-14,0,10" Text="{Binding StatusMessage}"
+    <!-- STUDIO-32 (D-01): the search, the order and the Archives toggle — a view over the cards in
+         memory: none of them reads the disk again. There as soon as there is a team to find. -->
+    <DockPanel Margin="0,-8,0,14"
+               Visibility="{Binding IsEmpty, Converter={StaticResource InverseBooleanToVisibility}}">
+      <Button DockPanel.Dock="Right" Margin="10,0,0,0" VerticalAlignment="Center"
+              Command="{Binding ToggleArchivesCommand}"
+              ToolTip="{Binding [Studio.Teams.ArchivesTip], Source={x:Static services:I18n.Instance}}"
+              Visibility="{Binding HasArchives, Converter={StaticResource BooleanToVisibility}}">
+        <Button.Style>
+          <Style TargetType="Button" BasedOn="{StaticResource BtnGhost}">
+            <Style.Triggers>
+              <DataTrigger Binding="{Binding ShowArchives}" Value="True">
+                <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                <Setter Property="BorderBrush" Value="{DynamicResource AccentBrush}"/>
+                <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+              </DataTrigger>
+            </Style.Triggers>
+          </Style>
+        </Button.Style>
+        <StackPanel Orientation="Horizontal">
+          <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0"
+                               Foreground="{Binding Foreground, RelativeSource={RelativeSource AncestorType=Button}}"/>
+          <TextBlock Text="{Binding ArchivesLabel}"/>
+        </StackPanel>
+      </Button>
+      <Border DockPanel.Dock="Right" Style="{StaticResource SegmentedGroup}" Margin="10,0,0,0"
+              ToolTip="{Binding [Studio.Teams.SortTip], Source={x:Static services:I18n.Instance}}">
+        <StackPanel Orientation="Horizontal">
+          <Button Command="{Binding SortByActivityCommand}"
+                  Content="{Binding [Studio.Teams.SortActivity], Source={x:Static services:I18n.Instance}}">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsSortedByActivity}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+          <Button Command="{Binding SortByNameCommand}"
+                  Content="{Binding [Studio.Teams.SortName], Source={x:Static services:I18n.Instance}}">
+            <Button.Style>
+              <Style TargetType="Button" BasedOn="{StaticResource SegmentBtn}">
+                <Style.Triggers>
+                  <DataTrigger Binding="{Binding IsSortedByName}" Value="True">
+                    <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                  </DataTrigger>
+                </Style.Triggers>
+              </Style>
+            </Button.Style>
+          </Button>
+        </StackPanel>
+      </Border>
+      <!-- Tag is the watermark the Input style shows while the box is empty. -->
+      <TextBox Style="{StaticResource Input}" VerticalAlignment="Center"
+               Tag="{Binding [Studio.Teams.SearchHint], Source={x:Static services:I18n.Instance}}"
+               Text="{Binding SearchText, UpdateSourceTrigger=PropertyChanged}"/>
+    </DockPanel>
+
+    <!-- The Archives view says what an archive is, and how one comes back. -->
+    <TextBlock Style="{StaticResource Hint}" Margin="0,-4,0,12"
+               Text="{Binding [Studio.Teams.ArchivesHint], Source={x:Static services:I18n.Instance}}"
+               Visibility="{Binding ShowArchives, Converter={StaticResource BooleanToVisibility}}"/>
+
+    <TextBlock Style="{StaticResource MonoText}" FontSize="10.5" Margin="0,-4,0,10" Text="{Binding StatusMessage}"
                Visibility="{Binding StatusMessage, Converter={StaticResource StringPresentToVisibility}}"/>
+
+    <!-- STUDIO-32 (D-02): « Archive » asks nothing — this banner undoes it, for a few seconds, on a
+         timer of its own. After « Stop the schedule and archive » it says the schedule stays stopped. -->
+    <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"
+            BorderThickness="1" CornerRadius="11" Padding="12,6,6,6" Margin="0,0,0,12"
+            Visibility="{Binding HasUndo, Converter={StaticResource BooleanToVisibility}}">
+      <DockPanel>
+        <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="26" Height="26" VerticalAlignment="Center"
+                Command="{Binding DismissUndoCommand}"
+                ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
+          <controls:LucideIcon Kind="x" Size="11"/>
+        </Button>
+        <Button DockPanel.Dock="Right" Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="10,0,6,0"
+                VerticalAlignment="Center" Command="{Binding UndoCommand}">
+          <StackPanel Orientation="Horizontal">
+            <controls:LucideIcon Kind="rotate-ccw" Size="12" Margin="0,0,6,0"/>
+            <TextBlock Text="{Binding [Studio.Teams.Undo], Source={x:Static services:I18n.Instance}}"/>
+          </StackPanel>
+        </Button>
+        <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="14" Margin="0,0,9,0"
+                             VerticalAlignment="Center" Foreground="{DynamicResource AccentBrush}"/>
+        <TextBlock FontSize="12.5" TextWrapping="Wrap" VerticalAlignment="Center"
+                   Foreground="{DynamicResource InkBrush}" Text="{Binding UndoNotice}"/>
+      </DockPanel>
+    </Border>
+
+    <!-- STUDIO-32 (DB-1): the teams nobody launches any more — never a scheduled one, whose runs
+         the system makes without Studio, never one whose activity is unknown. It only proposes:
+         nothing is archived without the click, which archives exactly the teams named, and « Not
+         now » puts it away for the session. Settings › Studio sets the threshold, or turns it off. -->
+    <Border Background="{DynamicResource SandWeakBrush}" BorderBrush="{DynamicResource SandBrush}"
+            BorderThickness="1" CornerRadius="11" Padding="12,9,9,9" Margin="0,0,0,12"
+            Visibility="{Binding HasArchiveSuggestion, Converter={StaticResource BooleanToVisibility}}">
+      <DockPanel>
+        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="12,0,0,0">
+          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ArchiveSuggestedCommand}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+              <TextBlock Text="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding DismissSuggestionCommand}"
+                  Content="{Binding [Studio.Teams.SuggestionLater], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="15" Margin="0,1,10,0"
+                             VerticalAlignment="Top" Foreground="{DynamicResource SandBrush}"/>
+        <StackPanel VerticalAlignment="Center">
+          <TextBlock FontSize="12.5" FontWeight="SemiBold" TextWrapping="Wrap" Foreground="{DynamicResource InkBrush}"
+                     Text="{Binding ArchiveSuggestionLine}"/>
+          <TextBlock Style="{StaticResource Hint}" Margin="0,3,0,0" TextWrapping="NoWrap" TextTrimming="CharacterEllipsis"
+                     Text="{Binding ArchiveSuggestionNames}" ToolTip="{Binding ArchiveSuggestionNames}"
+                     Visibility="{Binding ArchiveSuggestionNames, Converter={StaticResource StringPresentToVisibility}}"/>
+        </StackPanel>
+      </DockPanel>
+    </Border>
 
     <Border Style="{StaticResource Card}" Padding="30,30,30,30" Margin="0,0,0,10"
             Visibility="{Binding IsEmpty, Converter={StaticResource BooleanToVisibility}}">
@@ -54,21 +178,89 @@
       </StackPanel>
     </Border>
 
-    <ItemsControl ItemsSource="{Binding Teams}">
+    <!-- STUDIO-32 (D-04): every team archived — the list is empty, the teams are not: the way on is
+         the archives, not the creation. -->
+    <Border Style="{StaticResource Card}" Padding="30,30,30,30" Margin="0,0,0,10"
+            Visibility="{Binding IsAllArchived, Converter={StaticResource BooleanToVisibility}}">
+      <StackPanel HorizontalAlignment="Center">
+        <Border Width="40" Height="40" CornerRadius="20" HorizontalAlignment="Center"
+                Background="{DynamicResource PaperSunkBrush}">
+          <controls:LucideIcon Kind="archive" Size="19" Foreground="{DynamicResource InkMutedBrush}"
+                               HorizontalAlignment="Center" VerticalAlignment="Center"/>
+        </Border>
+        <TextBlock FontSize="14.5" FontWeight="Bold" Margin="0,12,0,0" HorizontalAlignment="Center"
+                   Foreground="{DynamicResource InkBrush}"
+                   Text="{Binding [Studio.Teams.AllArchivedTitle], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource Hint}" FontSize="12.5" MaxWidth="420" Margin="0,6,0,0"
+                   TextWrapping="Wrap" TextAlignment="Center"
+                   Text="{Binding [Studio.Teams.AllArchivedBody], Source={x:Static services:I18n.Instance}}"/>
+        <StackPanel Orientation="Horizontal" Margin="0,16,0,0" HorizontalAlignment="Center">
+          <Button Style="{StaticResource BtnPrimary}" Command="{Binding ToggleArchivesCommand}">
+            <StackPanel Orientation="Horizontal">
+              <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+              <TextBlock Text="{Binding [Studio.Teams.OpenArchives], Source={x:Static services:I18n.Instance}}"/>
+            </StackPanel>
+          </Button>
+          <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding CreateCommand}"
+                  Content="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+      </StackPanel>
+    </Border>
+
+    <!-- STUDIO-32 (D-04): the search found nothing — said, with the way back. -->
+    <StackPanel Orientation="Horizontal" Margin="0,2,0,14"
+                Visibility="{Binding HasNoMatch, Converter={StaticResource BooleanToVisibility}}">
+      <controls:LucideIcon Kind="scan-search" Size="13" VerticalAlignment="Center" Margin="0,0,8,0"/>
+      <TextBlock Style="{StaticResource Hint}" FontSize="12.5" VerticalAlignment="Center" Text="{Binding NoMatchLine}"/>
+      <Button Style="{StaticResource LinkBtn}" Margin="10,0,0,0" VerticalAlignment="Center"
+              Foreground="{DynamicResource AccentBrush}" Command="{Binding ClearSearchCommand}"
+              Content="{Binding [Studio.Teams.ClearSearch], Source={x:Static services:I18n.Instance}}"/>
+    </StackPanel>
+
+    <!-- The cards the screen lists: the active teams or the archives, the search applied, in the
+         chosen order (STUDIO-32, D-01). -->
+    <ItemsControl ItemsSource="{Binding Cards}">
       <ItemsControl.ItemTemplate>
         <DataTemplate>
           <Border Style="{StaticResource Card}" Margin="0,0,0,10">
             <DockPanel>
-              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" VerticalAlignment="Top"
-                      Background="{DynamicResource AccentWeakBrush}" Margin="0,0,14,0">
-                <controls:LucideIcon Kind="brain-circuit" Size="16" Foreground="{DynamicResource AccentBrush}"
-                                     HorizontalAlignment="Center" VerticalAlignment="Center"/>
+              <Border DockPanel.Dock="Left" Width="34" Height="34" CornerRadius="10" VerticalAlignment="Top" Margin="0,0,14,0">
+                <Border.Style>
+                  <Style TargetType="Border">
+                    <Setter Property="Background" Value="{DynamicResource AccentWeakBrush}"/>
+                    <Style.Triggers>
+                      <DataTrigger Binding="{Binding IsArchived}" Value="True">
+                        <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                      </DataTrigger>
+                    </Style.Triggers>
+                  </Style>
+                </Border.Style>
+                <controls:LucideIcon Size="16" HorizontalAlignment="Center" VerticalAlignment="Center">
+                  <controls:LucideIcon.Style>
+                    <Style TargetType="controls:LucideIcon">
+                      <Setter Property="Kind" Value="brain-circuit"/>
+                      <Setter Property="Foreground" Value="{DynamicResource AccentBrush}"/>
+                      <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsArchived}" Value="True">
+                          <Setter Property="Kind" Value="archive"/>
+                          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+                        </DataTrigger>
+                      </Style.Triggers>
+                    </Style>
+                  </controls:LucideIcon.Style>
+                </controls:LucideIcon>
               </Border>
               <!-- Two faces, never both: the action row, or the confirmation that replaces
                    it in place. A MessageBox would take the card off screen to ask about it. -->
               <Grid DockPanel.Dock="Right" VerticalAlignment="Top">
-                <StackPanel Orientation="Horizontal"
-                            Visibility="{Binding IsIdle, Converter={StaticResource BooleanToVisibility}}">
+                <!-- an active team's actions -->
+                <StackPanel Orientation="Horizontal">
+                  <StackPanel.Visibility>
+                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                      <Binding Path="IsIdle"/>
+                      <Binding Path="IsArchived" Converter="{StaticResource Negate}"/>
+                    </MultiBinding>
+                  </StackPanel.Visibility>
                 <Button Style="{StaticResource BtnPrimary}" Command="{Binding LaunchCommand}">
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="play" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
@@ -94,6 +286,16 @@
                   <StackPanel Orientation="Horizontal">
                     <controls:LucideIcon Kind="pencil-line" Size="13" Margin="0,0,7,0"/>
                     <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
+                <!-- STUDIO-32 (D-02): « Archive », labelled in novice mode, an icon in expert mode. No
+                     question — it is undone in one click: the undo banner follows. -->
+                <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding ArchiveCommand}"
+                        ToolTip="{Binding [Studio.Teams.ArchiveTip], Source={x:Static services:I18n.Instance}}"
+                        Visibility="{Binding DataContext.Mode.IsNovice, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="archive" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Studio.Teams.Archive], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
                 <!-- Novice never sees the icon row, so it needs a delete of its own — until
@@ -123,11 +325,37 @@
                           ToolTip="{Binding [Studio.Teams.Export], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="save" Size="13"/>
                   </Button>
+                  <Button Style="{StaticResource IconBtn}" Command="{Binding ArchiveCommand}" Margin="0,0,6,0"
+                          ToolTip="{Binding [Studio.Teams.ArchiveTip], Source={x:Static services:I18n.Instance}}">
+                    <controls:LucideIcon Kind="archive" Size="13"/>
+                  </Button>
                   <Button Style="{StaticResource IconBtn}" Command="{Binding AskDeleteCommand}"
                           ToolTip="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}">
                     <controls:LucideIcon Kind="trash-2" Size="13" Foreground="{DynamicResource DangerBrush}"/>
                   </Button>
                 </StackPanel>
+                </StackPanel>
+                <!-- STUDIO-32 (D-02): an archived team offers « Restore » and « Delete », nothing else
+                     — neither launched, modified, renamed nor copied until it is back. -->
+                <StackPanel Orientation="Horizontal">
+                  <StackPanel.Visibility>
+                    <MultiBinding Converter="{StaticResource AllTrueToVisibility}">
+                      <Binding Path="IsIdle"/>
+                      <Binding Path="IsArchived"/>
+                    </MultiBinding>
+                  </StackPanel.Visibility>
+                  <Button Style="{StaticResource BtnPrimary}" Command="{Binding RestoreCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="rotate-ccw" Size="13" Margin="0,0,7,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                      <TextBlock Text="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
+                  <Button Style="{StaticResource BtnGhostDanger}" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}">
+                    <StackPanel Orientation="Horizontal">
+                      <controls:LucideIcon Kind="trash-2" Size="13" Margin="0,0,7,0"/>
+                      <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                  </Button>
                 </StackPanel>
                 <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
                         BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
@@ -210,6 +438,9 @@
                           <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
                             <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
                           </DataTrigger>
+                          <DataTrigger Binding="{Binding BadgeTone}" Value="muted">
+                            <Setter Property="Background" Value="{DynamicResource PaperSunkBrush}"/>
+                          </DataTrigger>
                         </Style.Triggers>
                       </Style>
                     </Border.Style>
@@ -223,6 +454,9 @@
                             </DataTrigger>
                             <DataTrigger Binding="{Binding BadgeTone}" Value="warn">
                               <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                            </DataTrigger>
+                            <DataTrigger Binding="{Binding BadgeTone}" Value="muted">
+                              <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
                             </DataTrigger>
                           </Style.Triggers>
                         </Style>
@@ -322,7 +556,8 @@
                       </DataTemplate>
                     </ItemsControl.ItemTemplate>
                   </ItemsControl>
-                  <Button Style="{StaticResource ChipAction}" Command="{Binding ChangeMountsCommand}" Margin="0,0,0,4">
+                  <Button Style="{StaticResource ChipAction}" Command="{Binding ChangeMountsCommand}" Margin="0,0,0,4"
+                          Visibility="{Binding IsArchived, Converter={StaticResource InverseBooleanToVisibility}}">
                     <StackPanel Orientation="Horizontal">
                       <controls:LucideIcon Kind="folder-tree" Size="11" Foreground="{DynamicResource AccentBrush}"
                                            VerticalAlignment="Center" Margin="0,0,6,0"/>
@@ -389,6 +624,40 @@
                              Text="{Binding ScheduleManualCommand, Mode=OneWay}"/>
                   </StackPanel>
                 </StackPanel>
+                <!-- STUDIO-31/32: what an archive or a restore has to say on its card — a refusal (the
+                     team busy, the disk), or an offer: « Stop the schedule and archive » (the system
+                     would keep running a team nobody sees), « Restore ». Never a refusal in silence. -->
+                <Border Margin="0,10,0,0" Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="12,8,6,8"
+                        Visibility="{Binding HasArchiveNotice, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel>
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource IconBtn}" Width="24" Height="24" VerticalAlignment="Top"
+                              Command="{Binding DismissArchiveNoticeCommand}"
+                              ToolTip="{Binding [Studio.Shell.Close], Source={x:Static services:I18n.Instance}}">
+                        <controls:LucideIcon Kind="x" Size="11"/>
+                      </Button>
+                      <controls:LucideIcon DockPanel.Dock="Left" Kind="archive" Size="13" Margin="0,2,8,0"
+                                           VerticalAlignment="Top" Foreground="{DynamicResource WarningBrush}"/>
+                      <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+                                 Text="{Binding ArchiveNotice}"/>
+                    </DockPanel>
+                    <WrapPanel>
+                      <Button Style="{StaticResource BtnGhost}" Margin="21,8,8,0" Command="{Binding StopScheduleAndArchiveCommand}"
+                              Visibility="{Binding OffersScheduleStop, Converter={StaticResource BooleanToVisibility}}">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="square" Size="12" Margin="0,0,7,0"/>
+                          <TextBlock Text="{Binding [Studio.Teams.StopScheduleAndArchive], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource BtnGhost}" Margin="21,8,8,0" Command="{Binding RestoreCommand}"
+                              Visibility="{Binding OffersRestore, Converter={StaticResource BooleanToVisibility}}"
+                              Content="{Binding [Studio.Common.Restore], Source={x:Static services:I18n.Instance}}"/>
+                    </WrapPanel>
+                    <TextBox Style="{StaticResource InputMono}" Margin="21,6,8,0" IsReadOnly="True" TextWrapping="Wrap"
+                             Text="{Binding ArchiveManualCommand, Mode=OneWay}"
+                             Visibility="{Binding HasArchiveManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </Border>
               </StackPanel>
             </DockPanel>
           </Border>
@@ -396,8 +665,9 @@
       </ItemsControl.ItemTemplate>
     </ItemsControl>
 
-    <!-- the wizard sessions still underway -->
-    <StackPanel Margin="0,18,0,0">
+    <!-- the wizard sessions still underway — beside the active teams, not in the Archives view -->
+    <StackPanel Margin="0,18,0,0"
+                Visibility="{Binding ShowArchives, Converter={StaticResource InverseBooleanToVisibility}}">
       <TextBlock Style="{StaticResource Eyebrow}" Margin="0,0,0,8"
                  Text="{Binding [Studio.Teams.InProgress], Source={x:Static services:I18n.Instance}}"/>
       <TextBlock Style="{StaticResource Hint}" FontSize="12.5" Foreground="{DynamicResource InkFaintBrush}"

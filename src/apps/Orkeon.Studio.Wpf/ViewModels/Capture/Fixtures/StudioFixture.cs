@@ -48,6 +48,16 @@ internal static class StudioFixture
     public const string BlockedTeamSlug = "tri-factures";
 
     /// <summary>
+    /// The team nobody launched for a month and a half (STUDIO-32): younger than the archive
+    /// suggestion's sixty days, so My teams proposes nothing by default — the stop that shows the
+    /// proposal lowers the threshold, the way a user does in Settings › Studio.
+    /// </summary>
+    public const string StaleTeamSlug = "inventaire-stock";
+
+    /// <summary>The archived team (STUDIO-31, STUDIO-32): what the Archives view lists.</summary>
+    public const string ArchivedTeamSlug = "veille-salon";
+
+    /// <summary>
     /// The team whose sidecar carries a pasted README (STUDIO-16): a name of several lines,
     /// headings and code included, and a need forty lines long — what a team created from a
     /// long brief really looks like on disk. The run card, the my-teams card and the history
@@ -213,10 +223,38 @@ internal static class StudioFixture
                     Description = PastedReadmeDescription,
                     Profile = "Local",
                     Schedule = "daily@07:00",
+                    // Run from Studio early this morning (STUDIO-31, D-05): the list goes by last
+                    // activity (STUDIO-32), and this card stays high enough to be seen folded.
+                    LastRunAt = Now.AddHours(-3),
                 },
                 [new("docs", "/docs", "ro"), new("sortie", "/output", "rw")],
                 ["lecteur.yaml", "extracteur.yaml", "verificateur.yaml", "archiviste.yaml"],
                 ["lire.yaml", "extraire.yaml", "verifier.yaml", "classer.yaml"]),
+            new(
+                StaleTeamSlug,
+                new StudioTeamMetadata
+                {
+                    Name = "Inventaire du stock",
+                    Description = "Recense chaque trimestre les fournitures du cabinet et signale ce qu'il faut recommander.",
+                    // Its last run from Studio, older than the history the fixture keeps.
+                    LastRunAt = Now.AddDays(-45),
+                },
+                [new("archives", "/archives", "ro")],
+                ["compteur.yaml", "acheteur.yaml"],
+                ["recenser.yaml"]),
+            new(
+                ArchivedTeamSlug,
+                new StudioTeamMetadata
+                {
+                    Name = "Veille du salon 2025",
+                    Description = "Suivait les annonces des exposants avant le salon professionnel de juin.",
+                    LastRunAt = Now.AddDays(-110),
+                    Archived = true,
+                    ArchivedAt = Now.AddDays(-20),
+                },
+                [new("docs", "/docs", "ro")],
+                ["veilleur.yaml", "redacteur.yaml"],
+                ["collecter.yaml"]),
         ],
         History =
         [

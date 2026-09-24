@@ -66,6 +66,13 @@ public sealed record StudioServices
     public IUiDelay? SuggestionDelay { get; init; }
 
     /// <summary>
+    /// The "later" of My teams' undo banner (STUDIO-32, D-02) — an instance of its own, for the same
+    /// reason as <see cref="SuggestionDelay"/>: the banner drops its pause with <c>CancelPending</c>.
+    /// Immediate when null, and the banner then never stays.
+    /// </summary>
+    public IUiDelay? UndoDelay { get; init; }
+
+    /// <summary>
     /// The use-case catalogue and search behind the wizard's gallery (STUDIO-39); when null, a client
     /// over the window's <see cref="ProcessRunner"/> — the binary the doctor and the launcher use.
     /// </summary>

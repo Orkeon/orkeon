@@ -54,7 +54,10 @@ public sealed class BalanceReadings
     /// <summary>Whether a read of the covered accounts is under way.</summary>
     public bool IsReading { get; private set; }
 
-    /// <summary>Settings › Studio: the automatic reading's interval and the alert thresholds.</summary>
+    /// <summary>
+    /// Settings › Studio, whole: the automatic reading's interval and the alert thresholds — and the
+    /// archive suggestion My teams reads through <c>StudioSettingsViewModel.Current</c> (STUDIO-32).
+    /// </summary>
     public StudioSettings Settings
     {
         get => _settings;

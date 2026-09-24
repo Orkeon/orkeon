@@ -3,6 +3,7 @@ using System.Globalization;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.UseCases;
+using Orkeon.Studio.Wpf.ViewModels.Common;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Teams;
@@ -579,7 +580,7 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         }
 
         var language = _language();
-        var words = Words(_query);
+        var words = TextSearch.Words(_query);
         var candidates = _suggestedOnly
             ? _suggested.Select(catalog.Find).OfType<UseCase>()
             : catalog.UseCases;
@@ -606,7 +607,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
         if (words.Count == 0)
             return true;
 
-        // What a reader of the card can see, in the UI's language, plus its tags, tools and id.
+        // What a reader of the card can see, in the UI's language, plus its tags, tools and id —
+        // read the way every search box of Studio reads a query.
         var text = string.Join(
             ' ',
             [
@@ -617,50 +619,8 @@ public sealed class UseCaseGalleryViewModel : ObservableObject
                 .. useCase.Tools,
                 useCase.Id,
             ]);
-        var cardWords = Words(text);
-
-        // Chinese is written without spaces, so a word of it is found anywhere in the text; any
-        // other word must start one of the card's.
-        return words.All(word => IsChinese(word)
-            ? Collation.IndexOf(text, word, Loose) >= 0
-            : cardWords.Any(cardWord => Collation.IsPrefix(cardWord, word, Loose)));
+        return TextSearch.Finds(words, text);
     }
-
-    /// <summary>
-    /// The platform's collation, loosened: an accent typed or not, a capital or not, finds the same
-    /// card. Studio compares with it and never folds a spelling itself — the one normalization the
-    /// use cases have is the CLI's, for its search (STUDIO-24, STUDIO-38).
-    /// </summary>
-    private static readonly CompareInfo Collation = CultureInfo.InvariantCulture.CompareInfo;
-
-    private const CompareOptions Loose =
-        CompareOptions.IgnoreCase | CompareOptions.IgnoreNonSpace | CompareOptions.IgnoreWidth | CompareOptions.IgnoreKanaType;
-
-    /// <summary>The runs of letters or digits of <paramref name="text"/>, as typed.</summary>
-    private static List<string> Words(string text)
-    {
-        var words = new List<string>();
-        var start = -1;
-        for (var i = 0; i <= text.Length; i++)
-        {
-            var letter = i < text.Length && char.IsLetterOrDigit(text[i]);
-            if (letter && start < 0)
-            {
-                start = i;
-            }
-            else if (!letter && start >= 0)
-            {
-                words.Add(text[start..i]);
-                start = -1;
-            }
-        }
-
-        return words;
-    }
-
-    /// <summary>Whether <paramref name="word"/> holds a CJK ideograph.</summary>
-    private static bool IsChinese(string word) =>
-        word.Any(ch => ch is (>= '\u4E00' and <= '\u9FFF') or (>= '\u3400' and <= '\u4DBF'));
 
     /// <summary>Posts <paramref name="action"/> and completes once it ran on the UI thread.</summary>
     private Task PostAndAwaitAsync(Action action)

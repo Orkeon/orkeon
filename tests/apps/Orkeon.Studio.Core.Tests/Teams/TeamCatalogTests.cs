@@ -10,6 +10,9 @@ namespace Orkeon.Studio.Core.Tests.Teams;
 /// </summary>
 public sealed class TeamCatalogTests : IDisposable
 {
+    /// <summary>When a copy entered the teams root (STUDIO-32): a duplicate and an import date their arrival.</summary>
+    private static readonly DateTimeOffset AddedOn = new(2026, 9, 24, 11, 0, 0, TimeSpan.Zero);
+
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-catalog-{Guid.NewGuid():N}");
 
     public void Dispose()
@@ -48,7 +51,7 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(source, "name: veille");
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams, out var refusal);
+        var destination = TeamCatalog.Import(source, teams, AddedOn, out var refusal);
 
         Assert.Null(refusal);
         Assert.Equal(Path.Combine(teams, folder), destination);
@@ -62,7 +65,7 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(source, "name: revue");
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams, out var refusal);
+        var destination = TeamCatalog.Import(source, teams, AddedOn, out var refusal);
 
         Assert.Null(refusal);
         Assert.NotNull(destination);
@@ -78,8 +81,8 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: revue");
         var teams = Path.Combine(_root, "teams");
 
-        var first = TeamCatalog.Import(source, teams, out _);
-        var second = TeamCatalog.Import(source, teams, out _);
+        var first = TeamCatalog.Import(source, teams, AddedOn, out _);
+        var second = TeamCatalog.Import(source, teams, AddedOn, out _);
 
         Assert.Equal(Path.Combine(teams, "revue"), first);
         Assert.Equal(Path.Combine(teams, "revue-2"), second);
@@ -178,7 +181,7 @@ public sealed class TeamCatalogTests : IDisposable
         Directory.CreateDirectory(teams);
         File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: x");
 
-        Assert.Null(TeamCatalog.Import(source, teams, out _));
+        Assert.Null(TeamCatalog.Import(source, teams, AddedOn, out _));
         Assert.Empty(Directory.EnumerateDirectories(teams));
     }
 
@@ -194,7 +197,7 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(source, "README.md"), "how to run\n");
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams, out var refusal);
+        var destination = TeamCatalog.Import(source, teams, AddedOn, out var refusal);
 
         Assert.Null(refusal);
         Assert.NotNull(destination);
@@ -217,7 +220,7 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(Path.Combine(source, "README.md"), "nothing runnable here\n");
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams, out var refusal);
+        var destination = TeamCatalog.Import(source, teams, AddedOn, out var refusal);
 
         Assert.Null(destination);
         Assert.NotNull(refusal);
@@ -233,7 +236,7 @@ public sealed class TeamCatalogTests : IDisposable
         File.WriteAllText(source, "not a crew\n");
         var teams = Path.Combine(_root, "teams");
 
-        Assert.Null(TeamCatalog.Import(source, teams, out var refusal));
+        Assert.Null(TeamCatalog.Import(source, teams, AddedOn, out var refusal));
         Assert.NotNull(refusal);
         Assert.Contains(".ork.ts", refusal, StringComparison.Ordinal);
         Assert.False(Directory.Exists(teams));
@@ -246,7 +249,7 @@ public sealed class TeamCatalogTests : IDisposable
         Directory.CreateDirectory(team);
         TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", Profile = "Local" });
 
-        var copy = TeamCatalog.Duplicate(team);
+        var copy = TeamCatalog.Duplicate(team, AddedOn);
 
         Assert.NotNull(copy);
         var summary = TeamCatalog.Describe(copy!);
@@ -372,7 +375,7 @@ public sealed class TeamCatalogTests : IDisposable
             System.Text.Json.JsonSerializer.Serialize(new StudioTeamMetadata { Name = PastedPage, Description = PastedPage, Profile = "Local" }));
         var teams = Path.Combine(_root, "teams");
 
-        var destination = TeamCatalog.Import(source, teams, out var refusal);
+        var destination = TeamCatalog.Import(source, teams, AddedOn, out var refusal);
 
         Assert.Null(refusal);
         Assert.NotNull(destination);
@@ -499,7 +502,7 @@ public sealed class TeamCatalogTests : IDisposable
         var team = AdoptedTeam("veille", "Veille");
         TeamCatalog.Archive(team, ArchivedOn);
 
-        var copy = TeamCatalog.Duplicate(team);
+        var copy = TeamCatalog.Duplicate(team, AddedOn);
 
         Assert.NotNull(copy);
         var duplicated = TeamCatalog.Describe(copy!);
@@ -521,7 +524,7 @@ public sealed class TeamCatalogTests : IDisposable
 
         string? copy;
         using (new FileStream(Path.Combine(team, "crew.yaml"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-            copy = TeamCatalog.Duplicate(team);
+            copy = TeamCatalog.Duplicate(team, AddedOn);
 
         Assert.Null(copy);
         Assert.Equal(["veille"], Directory.EnumerateDirectories(_root).Select(Path.GetFileName));
@@ -539,7 +542,7 @@ public sealed class TeamCatalogTests : IDisposable
 
         string? imported;
         using (new FileStream(Path.Combine(source, "notes.md"), FileMode.Open, FileAccess.ReadWrite, FileShare.None))
-            imported = TeamCatalog.Import(source, teams, out _);
+            imported = TeamCatalog.Import(source, teams, AddedOn, out _);
 
         Assert.Null(imported);
         Assert.Empty(Directory.EnumerateFileSystemEntries(teams));
@@ -555,7 +558,7 @@ public sealed class TeamCatalogTests : IDisposable
         Directory.CreateDirectory(shared);
 
         var exported = TeamCatalog.ExportTo(team, shared);
-        var imported = TeamCatalog.Import(exported!, Path.Combine(_root, "ailleurs"), out var refusal);
+        var imported = TeamCatalog.Import(exported!, Path.Combine(_root, "ailleurs"), AddedOn, out var refusal);
 
         Assert.True(TeamCatalog.Describe(exported!).IsArchived);
         Assert.Null(refusal);
@@ -565,18 +568,20 @@ public sealed class TeamCatalogTests : IDisposable
     }
 
     /// <summary>
-    /// D-05: the last activity is the most recent of three dates, read at load — the last run Studio
-    /// recorded in the sidecar, the last entry of the launch history, the promotion forge.json records.
+    /// D-05, completed by STUDIO-32: the last activity is the most recent of four dates, read at load —
+    /// the last run Studio recorded in the sidecar, the last entry of the launch history, the promotion
+    /// forge.json records, and the arrival of a copy (a duplicate, an import).
     /// </summary>
     [Theory]
-    [InlineData(3, 1, 2)]
-    [InlineData(1, 3, 2)]
-    [InlineData(1, 2, 3)]
-    public void The_last_activity_is_the_most_recent_of_the_three_dates(int lastRunDay, int historyDay, int promotedDay)
+    [InlineData(4, 1, 2, 3)]
+    [InlineData(1, 4, 2, 3)]
+    [InlineData(1, 2, 4, 3)]
+    [InlineData(1, 2, 3, 4)]
+    public void The_last_activity_is_the_most_recent_of_the_four_dates(int lastRunDay, int historyDay, int promotedDay, int addedDay)
     {
         static DateTimeOffset On(int day) => new(2026, 9, day, 8, 0, 0, TimeSpan.Zero);
         var team = Path.Combine(_root, "veille");
-        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", LastRunAt = On(lastRunDay) });
+        TeamCatalog.SaveMetadata(team, new StudioTeamMetadata { Name = "Veille", LastRunAt = On(lastRunDay), AddedAt = On(addedDay) });
         File.WriteAllText(
             Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName),
             $$"""{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","promotedAt":"2026-09-0{{promotedDay}}T08:00:00Z"}""");
@@ -585,7 +590,8 @@ public sealed class TeamCatalogTests : IDisposable
 
         Assert.Equal(On(lastRunDay), summary.LastRunAt);
         Assert.Equal(On(promotedDay), summary.PromotedAt);
-        Assert.Equal(On(3), summary.LastActivity(On(historyDay)));
+        Assert.Equal(On(addedDay), summary.AddedAt);
+        Assert.Equal(On(4), summary.LastActivity(On(historyDay)));
     }
 
     [Fact]
@@ -635,6 +641,89 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.False(Directory.Exists(Path.Combine(teams, "absente")));
     }
 
+    // ── STUDIO-32: a copy's arrival is its activity ──
+
+    /// <summary>
+    /// A copy of an old team is not an old team. Carrying its original's last run — and its
+    /// forge.json promotion — it sorted at the bottom of My teams and was proposed for archiving the
+    /// moment it was made. The copy forgets the last run, which is not its own, and dates its
+    /// arrival: the most recent of its dates from then on.
+    /// </summary>
+    [Fact]
+    public void A_duplicate_dates_its_arrival_and_forgets_its_originals_last_run()
+    {
+        var team = AdoptedTeam("veille", "Veille");
+        TeamCatalog.UpdateMetadata(team, current => current with { LastRunAt = ArchivedOn.AddDays(-200) });
+        File.WriteAllText(
+            Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName),
+            """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","promotedAt":"2025-01-10T08:00:00Z"}""");
+
+        var copy = TeamCatalog.Describe(TeamCatalog.Duplicate(team, AddedOn)!);
+
+        Assert.Null(copy.LastRunAt);
+        Assert.Equal(AddedOn, copy.AddedAt);
+        Assert.Equal(AddedOn, copy.LastActivity());
+        Assert.Equal("Local", copy.Profile);
+        // The original keeps what it had, and gains nothing.
+        var original = TeamCatalog.Describe(team);
+        Assert.Equal(ArchivedOn.AddDays(-200), original.LastRunAt);
+        Assert.Null(original.AddedAt);
+    }
+
+    /// <summary>An import is a copy too, whatever dates the sidecar it came with carries.</summary>
+    [Fact]
+    public void An_import_dates_its_arrival_whatever_the_sidecar_it_came_with_says()
+    {
+        var source = Path.Combine(_root, "incoming", "revue");
+        TeamCatalog.SaveMetadata(source, new StudioTeamMetadata
+        {
+            Name = "Revue",
+            LastRunAt = ArchivedOn.AddDays(-300),
+            AddedAt = ArchivedOn.AddDays(-400),
+        });
+        File.WriteAllText(Path.Combine(source, "crew.yaml"), "name: revue");
+
+        var imported = TeamCatalog.Describe(TeamCatalog.Import(source, Path.Combine(_root, "teams"), AddedOn, out _)!);
+
+        Assert.Equal("Revue", imported.Name);
+        Assert.Null(imported.LastRunAt);
+        Assert.Equal(AddedOn, imported.AddedAt);
+        Assert.Equal(AddedOn, imported.LastActivity());
+        // The source is read, never written.
+        Assert.Equal(ArchivedOn.AddDays(-300), TeamCatalog.Describe(source).LastRunAt);
+    }
+
+    /// <summary>
+    /// A copy that came without a sidecar — a crew folder shared by hand, a single file — gains a
+    /// minimal one: its arrival would otherwise go unrecorded, and the team would sort as never used.
+    /// </summary>
+    [Fact]
+    public void A_copy_without_a_sidecar_gains_one_that_dates_its_arrival()
+    {
+        var folder = Path.Combine(_root, "incoming", "revue");
+        Directory.CreateDirectory(folder);
+        File.WriteAllText(Path.Combine(folder, "crew.yaml"), "name: revue");
+        var file = Path.Combine(_root, "incoming", "tri.yaml");
+        File.WriteAllText(file, "name: tri");
+        var bare = Path.Combine(_root, "nue");
+        Directory.CreateDirectory(bare);
+        File.WriteAllText(Path.Combine(bare, "crew.yaml"), "name: nue");
+        var teams = Path.Combine(_root, "teams");
+
+        var fromFolder = TeamCatalog.Describe(TeamCatalog.Import(folder, teams, AddedOn, out _)!);
+        var fromFile = TeamCatalog.Describe(TeamCatalog.Import(file, teams, AddedOn, out _)!);
+        var duplicated = TeamCatalog.Describe(TeamCatalog.Duplicate(bare, AddedOn.AddHours(1))!);
+
+        Assert.Equal(AddedOn, fromFolder.AddedAt);
+        Assert.Equal("revue", fromFolder.Name);
+        Assert.Equal(AddedOn, fromFile.AddedAt);
+        Assert.Equal(AddedOn.AddHours(1), duplicated.AddedAt);
+        Assert.Equal("nue-copy", duplicated.Name);
+        // Nothing is written where the copies came from.
+        Assert.False(File.Exists(Path.Combine(folder, StudioTeamMetadata.FileName)));
+        Assert.False(File.Exists(Path.Combine(bare, StudioTeamMetadata.FileName)));
+    }
+
     /// <summary>D-02: a writer changes the fields it owns and keeps every other one.</summary>
     [Fact]
     public void UpdateMetadata_merges_into_the_sidecar_instead_of_rebuilding_it()
@@ -657,6 +746,9 @@ public sealed class TeamCatalogTests : IDisposable
 /// <summary>What the Run screen's team card can honestly say about a target (audit 05/14).</summary>
 public sealed class TeamCatalogDescribeTargetTests : IDisposable
 {
+    /// <summary>When a copy entered the teams root (STUDIO-32): a duplicate and an import date their arrival.</summary>
+    private static readonly DateTimeOffset AddedOn = new(2026, 9, 24, 11, 0, 0, TimeSpan.Zero);
+
     private readonly string _root = Path.Combine(Path.GetTempPath(), $"orkeon-describe-{Guid.NewGuid():N}");
 
     public void Dispose()
@@ -749,7 +841,7 @@ public sealed class TeamCatalogDescribeTargetTests : IDisposable
             """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille"}""");
         Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), TeamCatalog.Describe(team).ForgeSessionId);
 
-        var copy = TeamCatalog.Duplicate(team);
+        var copy = TeamCatalog.Duplicate(team, AddedOn);
         Assert.NotNull(copy);
         Assert.Equal(TeamCatalog.Describe(team).ForgeSessionId, TeamCatalog.Describe(copy!).ForgeSessionId);
     }

@@ -40,7 +40,10 @@ public sealed class TestTeamViewModel : ObservableObject
     /// <summary>The teams offered by the picker.</summary>
     public ObservableCollection<TeamSummary> TeamChoices { get; } = [];
 
-    /// <summary>The picked team; picking one aims the launcher at its folder.</summary>
+    /// <summary>
+    /// The picked team; picking one aims the launcher at its folder and resolves it, the way the
+    /// card's Test icon does — a path set without its detection left the trial's buttons off.
+    /// </summary>
     public TeamSummary? SelectedTeam
     {
         get => _selectedTeam;
@@ -49,7 +52,7 @@ public sealed class TestTeamViewModel : ObservableObject
             if (!SetProperty(ref _selectedTeam, value) || value is null)
                 return;
 
-            Launcher.Target.SelectedPath = value.Path;
+            Launcher.Target.Select(value.Path);
         }
     }
 

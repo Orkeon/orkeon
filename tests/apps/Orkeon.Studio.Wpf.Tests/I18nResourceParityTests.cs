@@ -156,7 +156,9 @@ public sealed partial class I18nResourceParityTests
         // (« {0} · {1} → {2} ({3}) », no words in it — the same floor), measured, not above it.
         // STUDIO-35: raised by one for the « Studio » settings tab — the product's own name, which
         // no language rewrites (the same floor), measured, not above it.
-        ["Strings.fr.resx"] = 58,
+        // STUDIO-32: fr raised by one for « Archives ({0}) », the toggle's label — the fiche's own
+        // French word, a real cognate (the same floor), measured, not above it.
+        ["Strings.fr.resx"] = 59,
         ["Strings.es.resx"] = 41,
         ["Strings.de.resx"] = 44,
         ["Strings.zh-Hans.resx"] = 35,

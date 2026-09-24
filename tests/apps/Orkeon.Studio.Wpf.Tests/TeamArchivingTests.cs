@@ -72,12 +72,12 @@ public sealed class TeamArchivingTests : IDisposable
         Team("synthese");
         var teams = Teams();
         var changed = new List<string>();
-        teams.ArchiveChanged += (_, e) => changed.Add(e.Path);
+        teams.ArchiveChanged += (_, e) => changed.AddRange(e.Paths);
 
         await teams.Teams.Single(card => card.Slug == "veille").ArchiveCommand.ExecuteAsync();
 
         Assert.Equal(["synthese"], teams.Teams.Select(card => card.Slug));
-        Assert.Equal(1, teams.Count);
+        Assert.Equal(1, teams.ActiveCount);
         var archived = Assert.Single(teams.ArchivedTeams);
         Assert.True(archived.IsArchived);
         Assert.Equal(Now, archived.Summary.ArchivedAt);
@@ -158,13 +158,17 @@ public sealed class TeamArchivingTests : IDisposable
 
         var active = Assert.Single(teams.Teams);
         await active.ArchiveCommand.ExecuteAsync();
-        var archived = Assert.Single(teams.ArchivedTeams);
-        archived.RestoreCommand.Execute(null);
 
         Assert.False(TeamCatalog.Describe(veille).IsArchived);
         Assert.Equal(Text(StudioStringKeys.TeamsArchiveBusy), active.ArchiveNotice);
+
+        var archived = Assert.Single(teams.ArchivedTeams);
+        archived.RestoreCommand.Execute(null);
+
         Assert.True(TeamCatalog.Describe(archivedTeam).IsArchived);
         Assert.Equal(Text(StudioStringKeys.TeamsRestoreBusy), archived.ArchiveNotice);
+        // One question on screen at a time (STUDIO-32): the second gesture closed the first one's notice.
+        Assert.False(active.HasArchiveNotice);
         Assert.Equal(Text(StudioStringKeys.TeamsRestoreBusy), teams.RestoreTeam(archivedTeam));
     }
 

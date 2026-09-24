@@ -14,15 +14,18 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// teams run on — and every change is written at once, merged into the file (STUDIO-35 D-06).
 /// <para>
 /// STUDIO-35 puts the provider balance here: the optional automatic reading, off by default
-/// (D-02), and one alert threshold per provider whose balance a key reads (D-03). STUDIO-32's
-/// archiving suggestion is the next card: one more <see cref="StudioSettings"/> property, one
-/// more card in the view, written through the same <see cref="Apply"/>.
+/// (D-02), and one alert threshold per provider whose balance a key reads (D-03). STUDIO-32 puts
+/// the archive suggestion of My teams beside it (DB-1): its switch and its threshold, written
+/// through the same <see cref="Apply"/>.
 /// </para>
 /// </summary>
 public sealed class StudioSettingsViewModel : ObservableObject
 {
     /// <summary>The intervals offered besides «never», in minutes: none short enough to strain a vendor's rate limit.</summary>
     private static readonly int[] Intervals = [5, 15, 30, 60];
+
+    /// <summary>The thresholds the archive suggestion offers, in days: a month to a year.</summary>
+    private static readonly int[] SuggestionThresholds = [30, 60, 90, 180, 365];
 
     private readonly BalanceReadings _balances;
     private readonly Action<StudioSettings>? _persist;
@@ -50,6 +53,12 @@ public sealed class StudioSettingsViewModel : ObservableObject
             .. Intervals.Append(current ?? Intervals[0]).Distinct().Order().Select(minutes => new BalanceRefreshChoice(minutes, _strings)),
         ];
         Thresholds = [.. HttpProviderBalanceProbe.ReadableProviders.Select(provider => new BalanceThresholdRowViewModel(this, provider, _strings))];
+        // The same rule for the suggestion's threshold: a number of days written by hand is offered.
+        ArchiveSuggestionChoices =
+        [
+            .. SuggestionThresholds.Append(_balances.Settings.ArchiveSuggestionDays).Distinct().Order()
+                .Select(days => new ArchiveSuggestionChoice(days, _strings)),
+        ];
 
         _balances.Changed += (_, _) =>
         {
@@ -62,6 +71,8 @@ public sealed class StudioSettingsViewModel : ObservableObject
                 choice.RefreshLabel();
             foreach (var row in Thresholds)
                 row.RefreshLabels();
+            foreach (var choice in ArchiveSuggestionChoices)
+                choice.RefreshLabel();
         };
     }
 
@@ -92,6 +103,41 @@ public sealed class StudioSettingsViewModel : ObservableObject
     /// <summary>One alert threshold per provider whose balance a key reads (STUDIO-33) — the only ones that can fire.</summary>
     public IReadOnlyList<BalanceThresholdRowViewModel> Thresholds { get; }
 
+    /// <summary>
+    /// Whether My teams proposes to archive the teams not launched for a while (STUDIO-32, DB-1): on
+    /// by default. Turned off, the proposal leaves the screen at once.
+    /// </summary>
+    public bool ArchiveSuggestion
+    {
+        get => _balances.Settings.ArchiveSuggestion;
+        set
+        {
+            if (value == _balances.Settings.ArchiveSuggestion)
+                return;
+
+            Apply(_balances.Settings with { ArchiveSuggestion = value });
+            OnPropertyChanged();
+        }
+    }
+
+    /// <summary>The thresholds offered: a month, two, three, six, a year — and a number of days written by hand.</summary>
+    public IReadOnlyList<ArchiveSuggestionChoice> ArchiveSuggestionChoices { get; }
+
+    /// <summary>The days without activity past which a team is proposed for archiving; setting it writes it.</summary>
+    public ArchiveSuggestionChoice SelectedArchiveSuggestion
+    {
+        get => ArchiveSuggestionChoices.FirstOrDefault(choice => choice.Days == _balances.Settings.ArchiveSuggestionDays)
+               ?? ArchiveSuggestionChoices.First(choice => choice.Days == StudioSettings.DefaultArchiveSuggestionDays);
+        set
+        {
+            if (value is null || value.Days == _balances.Settings.ArchiveSuggestionDays)
+                return;
+
+            Apply(_balances.Settings with { ArchiveSuggestionDays = value.Days });
+            OnPropertyChanged();
+        }
+    }
+
     /// <summary>The threshold a provider's balance is held to now; null for none.</summary>
     internal decimal? ThresholdOf(string provider) => _balances.ThresholdOf(provider);
 
@@ -118,6 +164,26 @@ public sealed class StudioSettingsViewModel : ObservableObject
         _persist?.Invoke(settings);
         OnPropertyChanged(nameof(Current));
     }
+}
+
+/// <summary>One threshold of the archive suggestion (STUDIO-32, DB-1): so many days without activity.</summary>
+public sealed class ArchiveSuggestionChoice : ObservableObject
+{
+    private readonly IStudioStrings _strings;
+
+    internal ArchiveSuggestionChoice(int days, IStudioStrings strings)
+    {
+        Days = days;
+        _strings = strings;
+    }
+
+    /// <summary>The days without activity.</summary>
+    public int Days { get; }
+
+    /// <summary>What the combo says: «60 days».</summary>
+    public string Label => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.SettingsArchiveSuggestionDays], Days);
+
+    internal void RefreshLabel() => OnPropertyChanged(nameof(Label));
 }
 
 /// <summary>One position of the automatic balance reading: never, or every so many minutes.</summary>

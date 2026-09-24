@@ -82,6 +82,15 @@ public sealed record StudioTeamMetadata
     [JsonPropertyName("lastRunAt")]
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public DateTimeOffset? LastRunAt { get; init; }
+
+    /// <summary>
+    /// When the team entered the teams root as a copy (STUDIO-32): a duplicate or an import stamps
+    /// it, because a copy's arrival is activity — a fresh copy of an old team is not an old team.
+    /// Never written by the CLI, nor by an adoption, whose <c>forge.json</c> dates the promotion.
+    /// </summary>
+    [JsonPropertyName("addedAt")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public DateTimeOffset? AddedAt { get; init; }
 }
 
 /// <summary>Which teams <see cref="TeamCatalog.List"/> returns (STUDIO-31, D-03).</summary>
@@ -248,14 +257,17 @@ public sealed record TeamSummary
     /// <summary>When the folder was promoted, as its <c>forge.json</c> says; null without the record or the date.</summary>
     public DateTimeOffset? PromotedAt { get; init; }
 
+    /// <summary>When the team entered the teams root as a copy, as the sidecar recorded it (STUDIO-32).</summary>
+    public DateTimeOffset? AddedAt => Metadata?.AddedAt;
+
     /// <summary>
-    /// The team's last activity (STUDIO-31, D-05): the most recent of <see cref="LastRunAt"/>,
+    /// The team's last activity (STUDIO-31, D-05; STUDIO-32): the most recent of <see cref="LastRunAt"/>,
     /// <paramref name="lastHistoryEntry"/> — the latest launch-history entry naming the team, which
-    /// the catalog does not read — and <see cref="PromotedAt"/>. Computed at read time, never
-    /// stored; null when none of the three is known.
+    /// the catalog does not read — <see cref="PromotedAt"/> and <see cref="AddedAt"/>. Computed at
+    /// read time, never stored; null when none of the four is known.
     /// </summary>
     public DateTimeOffset? LastActivity(DateTimeOffset? lastHistoryEntry = null) =>
-        new[] { LastRunAt, lastHistoryEntry, PromotedAt }.Max();
+        new[] { LastRunAt, lastHistoryEntry, PromotedAt, AddedAt }.Max();
 }
 
 /// <summary>What sits where an adoption would write its team (STUDIO-26, D-07): <see cref="TeamCatalog.OccupantOf"/>.</summary>
@@ -813,7 +825,12 @@ public static partial class TeamCatalog
     /// path, or null when the disk refused — and then no partial copy is left behind: the
     /// list would show it as a team (STUDIO-31, D-03).
     /// </summary>
-    public static string? Duplicate(string teamDirectory)
+    /// <param name="teamDirectory">The team to copy.</param>
+    /// <param name="addedAt">
+    /// When the copy is made: its arrival, which counts as activity (STUDIO-32) — the original's last
+    /// run is not the copy's.
+    /// </param>
+    public static string? Duplicate(string teamDirectory, DateTimeOffset addedAt)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
@@ -838,7 +855,8 @@ public static partial class TeamCatalog
             // under the copy; an absolute entry under the SOURCE (an older sidecar) is rewritten
             // relative on the way, so the copy writes into its own folder, never the original's.
             // A copy is a team in use: it comes out active whatever its original is (STUDIO-31,
-            // D-04) — a copy whose sidecar could not say so is no copy at all.
+            // D-04) — a copy whose sidecar could not say so is no copy at all. And its arrival is
+            // its activity (STUDIO-32): it never ran, and it is not as old as its original.
             if (TryReadMetadata(destination) is { } metadata)
             {
                 var copySlug = Path.GetFileName(destination);
@@ -847,12 +865,18 @@ public static partial class TeamCatalog
                     Name = metadata.Name is { Length: > 0 } name ? $"{name} ({copySlug[(slug.Length + 1)..]})" : copySlug,
                     Archived = false,
                     ArchivedAt = null,
+                    LastRunAt = null,
+                    AddedAt = addedAt,
                 };
                 if (!TryWriteMetadata(destination, renamed))
                 {
                     RemovePartialCopy(destination);
                     return null;
                 }
+            }
+            else
+            {
+                DateArrival(destination, addedAt);
             }
 
             return destination;
@@ -862,6 +886,17 @@ public static partial class TeamCatalog
             RemovePartialCopy(destination);
             return null;
         }
+    }
+
+    /// <summary>
+    /// Gives a copy that came without a sidecar a minimal one, dating its arrival (STUDIO-32): without
+    /// it the copy would sort as never used. A sidecar that is there and cannot be read is left alone —
+    /// writing over it would lose what it says — and a disk that refuses costs the date, not the copy.
+    /// </summary>
+    private static void DateArrival(string destination, DateTimeOffset addedAt)
+    {
+        if (!File.Exists(Path.Combine(destination, StudioTeamMetadata.FileName)))
+            _ = TryWriteMetadata(destination, new StudioTeamMetadata { AddedAt = addedAt });
     }
 
     /// <summary>
@@ -943,7 +978,14 @@ public static partial class TeamCatalog
     /// <paramref name="refusal"/> null, as before, and no partial copy behind (STUDIO-31, D-03).
     /// The imported team is active, whatever the sidecar it came with says (D-04).
     /// </summary>
-    public static string? Import(string sourcePath, string root, out string? refusal)
+    /// <param name="sourcePath">The folder or the crew file to import.</param>
+    /// <param name="root">The teams root.</param>
+    /// <param name="addedAt">
+    /// When the import is made: its arrival, which counts as activity (STUDIO-32) — whatever last run
+    /// the sidecar it came with records is another machine's, or another folder's.
+    /// </param>
+    /// <param name="refusal">Why the source was refused, when it was.</param>
+    public static string? Import(string sourcePath, string root, DateTimeOffset addedAt, out string? refusal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(sourcePath);
         ArgumentException.ThrowIfNullOrWhiteSpace(root);
@@ -991,12 +1033,25 @@ public static partial class TeamCatalog
                 // An older sidecar carrying absolute paths under its source folder is rewritten
                 // relative on import — a copy is a safeguard, not a compatibility layer. An
                 // archived team's export lands active, and a copy whose sidecar could not say so
-                // is no import at all.
-                if (TryReadMetadata(destination) is { } imported
-                    && !TryWriteMetadata(destination, WithNormalizedName(Relativized(imported, sourcePath)) with { Archived = false, ArchivedAt = null }))
+                // is no import at all. Its arrival is its activity (STUDIO-32).
+                if (TryReadMetadata(destination) is { } imported)
                 {
-                    RemovePartialCopy(destination);
-                    return null;
+                    var arrived = WithNormalizedName(Relativized(imported, sourcePath)) with
+                    {
+                        Archived = false,
+                        ArchivedAt = null,
+                        LastRunAt = null,
+                        AddedAt = addedAt,
+                    };
+                    if (!TryWriteMetadata(destination, arrived))
+                    {
+                        RemovePartialCopy(destination);
+                        return null;
+                    }
+                }
+                else
+                {
+                    DateArrival(destination, addedAt);
                 }
             }
             else
@@ -1004,6 +1059,7 @@ public static partial class TeamCatalog
                 destination = candidate;
                 Directory.CreateDirectory(destination);
                 File.Copy(sourcePath, Path.Combine(destination, Path.GetFileName(sourcePath)));
+                DateArrival(destination, addedAt);
             }
 
             return destination;

@@ -82,6 +82,42 @@ public sealed class TeamsLastRunTests : IDisposable
         Assert.Null(card.LastOutcome);
     }
 
+    /// <summary>
+    /// The history keeps fifty runs and the team outlives them: the sidecar's last run (STUDIO-31)
+    /// stands in, without an outcome it does not know — so the card's line agrees with the order of
+    /// the screen and with the archive suggestion (STUDIO-32). The history's entry wins as soon as
+    /// it is the latest, outcome included.
+    /// </summary>
+    [Fact]
+    public async Task A_run_the_history_forgot_is_still_the_cards_last_run()
+    {
+        var team = NewTeam("veille");
+        var recorded = new DateTimeOffset(2026, 7, 10, 8, 0, 0, TimeSpan.Zero);
+        TeamCatalog.UpdateMetadata(team, metadata => metadata with { LastRunAt = recorded });
+        var store = new FakeLaunchHistoryStore();
+        var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = _root, LoadSessions = () => [], HistoryStore = store });
+        await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
+
+        var card = Assert.Single(teams.Teams);
+        Assert.Equal(recorded, card.LastRun);
+        Assert.Null(card.LastOutcome);
+        Assert.Equal("accent", card.BadgeTone);
+        Assert.Equal(
+            string.Format(
+                System.Globalization.CultureInfo.CurrentCulture,
+                Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance[Orkeon.Studio.Core.Localization.StudioStringKeys.TeamsLastRunDate],
+                recorded.ToLocalTime().ToString("d", System.Globalization.CultureInfo.CurrentCulture)),
+            card.LastRunDisplay);
+
+        var later = recorded.AddDays(3);
+        store.History = LaunchHistory.Empty.Add(Entry(team, later, RunOutcome.Success));
+        await teams.LoadLastRunsAsync(TestContext.Current.CancellationToken);
+
+        card = Assert.Single(teams.Teams);
+        Assert.Equal(later, card.LastRun);
+        Assert.Equal(RunOutcome.Success, card.LastOutcome);
+    }
+
     [Fact]
     public void The_card_carries_the_sidecar_mounts()
     {

@@ -86,8 +86,10 @@ public sealed class CapturePlannerTests
         // the close cases, and on the machine without a CLI — both modes, both themes = +12).
         // STUDIO-35: +1 stop (reglages-studio, both modes, both themes, language sweep) = +8 shots.
         // STUDIO-28: +1 stop (equipes-renommage, the card's rename editor, both modes, both themes) = +4 shots.
-        Assert.Equal(61, CaptureCatalog.All.Count);
-        Assert.Equal(336, plan.Count);
+        // STUDIO-32: +3 stops — the Archives view and the archive suggestion (both modes, both themes,
+        // language sweep = +16) and the undo banner (both modes, both themes = +4) = +20 shots.
+        Assert.Equal(64, CaptureCatalog.All.Count);
+        Assert.Equal(356, plan.Count);
     }
 
     [Fact]

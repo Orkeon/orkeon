@@ -41,6 +41,9 @@ internal static class CaptureShellBuilder
                 ProfileStore = world.ProfileStore,
                 ShellOpener = NullShellOpener.Instance,
                 Delay = world.Delay,
+                // My teams' undo banner (STUDIO-32) never goes by itself during a campaign: a stop
+                // photographs it, and its teardown answers it. One timer per shell, never shared.
+                UndoDelay = new CaptureUiDelay { Hold = true },
                 LlmProbe = world.LlmProbe,
                 KeyStore = world.KeyStore,
                 // STUDIO-35: the balance is read at startup — offline, so the shot has one.

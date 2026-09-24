@@ -1474,6 +1474,41 @@ public static class StudioStringKeys
     /// <summary>"Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists." — {0} lists the declared folders the rename stranded, said and never rewritten (STUDIO-28, D-05).</summary>
     public const string TeamsRenameStrandedFolders = "Studio.Teams.RenameStrandedFolders";
 
+    // ---- STUDIO-32: My teams — search, order, the Archives view, the undo banner, the suggestion ----
+
+    /// <summary>"Archives ({0})" — the toggle of the Archives view; {0} is the number of archived teams (STUDIO-32, D-01).</summary>
+    public const string TeamsArchivesLabel = "Studio.Teams.ArchivesLabel";
+
+    /// <summary>"No team matches “{0}”." — the search found nothing; {0} is what was typed (STUDIO-32, D-04).</summary>
+    public const string TeamsSearchNoMatch = "Studio.Teams.SearchNoMatch";
+
+    /// <summary>"Team “{0}” archived." — the undo banner after « Archive »; {0} is the team's name (STUDIO-32, D-02).</summary>
+    public const string TeamsArchivedUndo = "Studio.Teams.ArchivedUndo";
+
+    /// <summary>"Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule." — the undo banner after « Stop the schedule and archive » (STUDIO-32).</summary>
+    public const string TeamsArchivedScheduleStoppedUndo = "Studio.Teams.ArchivedScheduleStoppedUndo";
+
+    /// <summary>"{0} teams archived." — the undo banner after the archive suggestion was accepted; {0} counts the teams, two or more (STUDIO-32, DB-1).</summary>
+    public const string TeamsArchivedManyUndo = "Studio.Teams.ArchivedManyUndo";
+
+    /// <summary>"“{0}” has not been launched for {1} days — archive it?" — the suggestion of one team; {0} its name, {1} the threshold in days (STUDIO-32, DB-1).</summary>
+    public const string TeamsSuggestionOne = "Studio.Teams.SuggestionOne";
+
+    /// <summary>"{0} teams not launched for {1} days — archive them?" — the suggestion of several teams; {0} counts them, {1} is the threshold in days (STUDIO-32, DB-1).</summary>
+    public const string TeamsSuggestionMany = "Studio.Teams.SuggestionMany";
+
+    /// <summary>"Archived" — the badge of an archived team's card (STUDIO-32).</summary>
+    public const string TeamsArchivedBadge = "Studio.Teams.ArchivedBadge";
+
+    /// <summary>"Archived on {0}" — an archived card's meta part; {0} is the date (STUDIO-32).</summary>
+    public const string TeamsArchivedOn = "Studio.Teams.ArchivedOn";
+
+    /// <summary>"Last run: {0}" — a card's last run when only the sidecar remembers it, the history having forgotten the outcome; {0} is the date (STUDIO-32).</summary>
+    public const string TeamsLastRunDate = "Studio.Teams.LastRunDate";
+
+    /// <summary>"{0} days" — a threshold of the archive suggestion in Settings › Studio (STUDIO-32, DB-1).</summary>
+    public const string SettingsArchiveSuggestionDays = "Studio.Settings.ArchiveSuggestionDays";
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -2369,6 +2404,19 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsRenameFailed] = "The rename did not go through: {0}",
         [StudioStringKeys.TeamsRenamed] = "Team renamed “{0}” — its folder is now {1}.",
         [StudioStringKeys.TeamsRenameStrandedFolders] = "Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists.",
+
+        // STUDIO-32: My teams — search, order, the Archives view, the undo banner, the suggestion
+        [StudioStringKeys.TeamsArchivesLabel] = "Archives ({0})",
+        [StudioStringKeys.TeamsSearchNoMatch] = "No team matches “{0}”.",
+        [StudioStringKeys.TeamsArchivedUndo] = "Team “{0}” archived.",
+        [StudioStringKeys.TeamsArchivedScheduleStoppedUndo] = "Team “{0}” archived and its schedule stopped — Undo brings the team back, not its schedule.",
+        [StudioStringKeys.TeamsArchivedManyUndo] = "{0} teams archived.",
+        [StudioStringKeys.TeamsSuggestionOne] = "“{0}” has not been launched for {1} days — archive it?",
+        [StudioStringKeys.TeamsSuggestionMany] = "{0} teams not launched for {1} days — archive them?",
+        [StudioStringKeys.TeamsArchivedBadge] = "Archived",
+        [StudioStringKeys.TeamsArchivedOn] = "Archived on {0}",
+        [StudioStringKeys.TeamsLastRunDate] = "Last run: {0}",
+        [StudioStringKeys.SettingsArchiveSuggestionDays] = "{0} days",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",
