@@ -143,11 +143,11 @@ internal static class CaptureScripts
     /// <summary>A run that goes all the way through, for the Run screen.</summary>
     public static IReadOnlyList<string> RunToSuccess { get; } =
     [
-        """{"v":2,"seq":1,"ts":"2026-08-28T07:10:00Z","kind":"run.started","crew":"veille-concurrentielle","tasks":3}""",
-        """{"v":2,"seq":2,"ts":"2026-08-28T07:10:14Z","kind":"task.completed","task":"collecter","agent":"Veilleur","ok":true}""",
-        """{"v":2,"seq":3,"ts":"2026-08-28T07:10:41Z","kind":"cost.updated","promptTokens":9200,"completionTokens":2100,"estimatedTokens":11300}""",
-        """{"v":2,"seq":4,"ts":"2026-08-28T07:10:52Z","kind":"task.completed","task":"analyser","agent":"Analyste","ok":true}""",
-        """{"v":2,"seq":5,"ts":"2026-08-28T07:11:08Z","kind":"task.completed","task":"rediger","agent":"Rédacteur","ok":true}""",
-        """{"v":2,"seq":6,"ts":"2026-08-28T07:11:14Z","kind":"run.finished","status":"ok","exitCode":0}""",
+        """{"v":2,"seq":1,"ts":"2026-08-28T07:10:00Z","kind":"run.started","target":"veille-concurrentielle","stream":false}""",
+        """{"v":2,"seq":2,"ts":"2026-08-28T07:10:14Z","kind":"task.completed","agentId":"Veilleur","taskId":"collecter","agentRole":"Veilleur","success":true}""",
+        """{"v":2,"seq":3,"ts":"2026-08-28T07:10:41Z","kind":"cost.updated","tokens":11300,"promptTokens":9200,"completionTokens":2100,"model":"deepseek-chat","provider":"deepseek"}""",
+        """{"v":2,"seq":4,"ts":"2026-08-28T07:10:52Z","kind":"task.completed","agentId":"Analyste","taskId":"analyser","agentRole":"Analyste","success":true}""",
+        """{"v":2,"seq":5,"ts":"2026-08-28T07:11:08Z","kind":"task.completed","agentId":"Rédacteur","taskId":"rediger","agentRole":"Rédacteur","success":true}""",
+        """{"v":2,"seq":6,"ts":"2026-08-28T07:11:14Z","kind":"run.finished","success":true,"exitCode":0,"tokens":11300,"durationMs":74000,"promptTokens":9200,"completionTokens":2100}""",
     ];
 }
