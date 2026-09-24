@@ -85,6 +85,55 @@ public sealed class TeamCatalogTests : IDisposable
         Assert.Equal(Path.Combine(teams, "revue-2"), second);
     }
 
+    /// <summary>
+    /// STUDIO-26, D-07: what already sits where an adoption would write — nothing, a team (the
+    /// sidecar, a record naming a session, or a crew the launcher runs), a folder holding none, or a
+    /// file. Read before the engine is asked, so the user is told what occupies the name instead of
+    /// being shown its refusal.
+    /// </summary>
+    [Fact]
+    public void An_adoption_folder_says_what_occupies_it()
+    {
+        var teams = Path.Combine(_root, "teams");
+        Assert.Equal(TeamFolderOccupant.None, TeamCatalog.OccupantOf(Path.Combine(teams, "libre")));
+
+        var adopted = Path.Combine(teams, "veille");
+        TeamCatalog.SaveMetadata(adopted, new StudioTeamMetadata { Name = "Veille" });
+        Assert.Equal(TeamFolderOccupant.Team, TeamCatalog.OccupantOf(adopted));
+
+        var promoted = Path.Combine(teams, "promue");
+        Directory.CreateDirectory(promoted);
+        File.WriteAllText(Path.Combine(promoted, ForgeSessionCatalog.TeamRecordFileName), """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"}""");
+        Assert.Equal(TeamFolderOccupant.Team, TeamCatalog.OccupantOf(promoted));
+
+        var handMade = Path.Combine(teams, "a-la-main");
+        Directory.CreateDirectory(handMade);
+        File.WriteAllText(Path.Combine(handMade, "crew.yaml"), "name: a-la-main");
+        Assert.Equal(TeamFolderOccupant.Team, TeamCatalog.OccupantOf(handMade));
+
+        var notes = Path.Combine(teams, "notes");
+        Directory.CreateDirectory(notes);
+        File.WriteAllText(Path.Combine(notes, "idees.txt"), "rien de lançable");
+        Assert.Equal(TeamFolderOccupant.Folder, TeamCatalog.OccupantOf(notes));
+
+        var file = Path.Combine(teams, "fichier");
+        File.WriteAllText(file, "x");
+        Assert.Equal(TeamFolderOccupant.File, TeamCatalog.OccupantOf(file));
+    }
+
+    /// <summary>The free sibling of a taken folder: its name suffixed -2, -3…, past folders and files alike.</summary>
+    [Fact]
+    public void The_free_sibling_of_a_taken_folder_is_suffixed_past_every_entry()
+    {
+        var teams = Path.Combine(_root, "teams");
+        Directory.CreateDirectory(Path.Combine(teams, "veille"));
+        Directory.CreateDirectory(Path.Combine(teams, "veille-2"));
+        File.WriteAllText(Path.Combine(teams, "veille-3"), "a file");
+
+        Assert.Equal(Path.Combine(teams, "veille-4"), TeamCatalog.FreeSibling(Path.Combine(teams, "veille")));
+        Assert.Equal(Path.Combine(teams, "veille-4"), TeamCatalog.FreeSibling(Path.Combine(teams, "veille") + Path.DirectorySeparatorChar));
+    }
+
     [Fact]
     public void The_secret_scan_names_a_pasted_key_but_lets_environment_references_pass()
     {

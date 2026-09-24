@@ -1189,6 +1189,24 @@
   <data name="Studio.Create.AdoptedLine" xml:space="preserve">
     <value>Das Team „{0}“ ist unter „Meine Teams“ gespeichert.</value>
   </data>
+  <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
+    <value>Seine Werkstatt-Sitzung behält ihren bisherigen Ordnernamen — {0}</value>
+  </data>
+  <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
+    <value>Dieser Name ist vergeben: Der Ordner {1} unter „Meine Teams“ enthält bereits das Team „{0}“.</value>
+  </data>
+  <data name="Studio.Create.NameTakenFolder" xml:space="preserve">
+    <value>Dieser Name ist vergeben: Der Ordner {0} existiert unter „Meine Teams“ bereits und enthält kein Team.</value>
+  </data>
+  <data name="Studio.Create.NameTakenFile" xml:space="preserve">
+    <value>Dieser Name ist vergeben: Eine Datei namens {0} liegt unter „Meine Teams“ an der Stelle seines Ordners.</value>
+  </data>
+  <data name="Studio.Create.UseFreeName" xml:space="preserve">
+    <value>„{0}“ verwenden</value>
+  </data>
+  <data name="Studio.Create.OpenExistingTeam" xml:space="preserve">
+    <value>Vorhandenes Team öffnen</value>
+  </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>Kompositions-Anweisung</value>
   </data>

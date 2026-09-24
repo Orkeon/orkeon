@@ -1189,6 +1189,24 @@
   <data name="Studio.Create.AdoptedLine" xml:space="preserve">
     <value>团队“{0}”已保存到我的团队。</value>
   </data>
+  <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
+    <value>其工坊会话保留原来的文件夹名称——{0}</value>
+  </data>
+  <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
+    <value>此名称已被占用：我的团队中的文件夹 {1} 已包含团队“{0}”。</value>
+  </data>
+  <data name="Studio.Create.NameTakenFolder" xml:space="preserve">
+    <value>此名称已被占用：文件夹 {0} 已存在于我的团队中，且不包含任何团队。</value>
+  </data>
+  <data name="Studio.Create.NameTakenFile" xml:space="preserve">
+    <value>此名称已被占用：我的团队中有一个名为 {0} 的文件占据了其文件夹的位置。</value>
+  </data>
+  <data name="Studio.Create.UseFreeName" xml:space="preserve">
+    <value>命名为“{0}”</value>
+  </data>
+  <data name="Studio.Create.OpenExistingTeam" xml:space="preserve">
+    <value>打开现有团队</value>
+  </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>组建指令</value>
   </data>

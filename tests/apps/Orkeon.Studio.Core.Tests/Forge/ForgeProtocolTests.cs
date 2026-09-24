@@ -41,6 +41,29 @@ public class ForgeEventParserTests
         Assert.Equal(0, events[3].GetInt64("exitCode"));
     }
 
+    /// <summary>
+    /// STUDIO-26's two lines, verbatim from the CLI's golden test
+    /// (<c>ForgeEventWriterTests.The_rename_and_warning_lines_are_the_pinned_golden_form</c>).
+    /// </summary>
+    [Fact]
+    public void The_cli_golden_rename_and_warning_lines_parse_with_their_payload()
+    {
+        Assert.True(OrkeonEventParser.TryParse(
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"session.renamed","from":"veille","to":"ma-veille-2","dir":"/ws/.orkeon/forge/ma-veille-2","suffixed":true}""",
+            out var renamed));
+        Assert.True(OrkeonEventParser.TryParse(
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"warning","code":"FORGE-SESSION-NOT-RENAMED","message":"The session folder 'veille' keeps its name: access denied."}""",
+            out var warning));
+
+        Assert.Equal(ForgeEventKinds.SessionRenamed, renamed!.Kind);
+        Assert.Equal("veille", renamed.GetString("from"));
+        Assert.Equal("ma-veille-2", renamed.GetString("to"));
+        Assert.Equal("/ws/.orkeon/forge/ma-veille-2", renamed.GetString("dir"));
+        Assert.True(renamed.GetBool("suffixed"));
+        Assert.Equal(ForgeEventKinds.Warning, warning!.Kind);
+        Assert.Equal("FORGE-SESSION-NOT-RENAMED", warning.GetString("code"));
+    }
+
     [Theory]
     [InlineData(null)]
     [InlineData("")]
@@ -302,5 +325,62 @@ public class ForgeSessionModelTests
         Assert.Equal("test", model.ReopenedState);
         Assert.True(model.ReopenedRebuilt);
         Assert.Equal("paused", model.FinishedStatus);
+    }
+
+    /// <summary>
+    /// STUDIO-26, D-03: once the promotion is written the engine renames the session folder after
+    /// the team, and <c>session.renamed</c> moves the model with it — the slug the next resume
+    /// names, and the folder the generated definition is read from. The promotion it follows
+    /// stays exactly as the stream said it.
+    /// </summary>
+    [Fact]
+    public void A_session_renamed_event_moves_the_slug_and_the_directory()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"resumer-les-offres","id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","dir":"/ws/.orkeon/forge/resumer-les-offres","format":"yaml","resumed":true}"""));
+        model.Feed(Event("""{"v":2,"seq":2,"ts":"t","kind":"promoted","path":"/teams/ma-veille","launcher":"run.sh","updated":false}"""));
+        model.Feed(Event("""{"v":2,"seq":3,"ts":"t","kind":"session.renamed","from":"resumer-les-offres","to":"ma-veille","dir":"/ws/.orkeon/forge/ma-veille","suffixed":false}"""));
+        model.Feed(Event("""{"v":2,"seq":4,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+
+        Assert.Equal("ma-veille", model.Slug);
+        Assert.Equal("/ws/.orkeon/forge/ma-veille", model.Directory);
+        Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), model.SessionId);
+        Assert.Equal("/teams/ma-veille", model.Promotion!.Path);
+        Assert.Null(model.LastWarning);
+        Assert.Null(model.LastError);
+    }
+
+    /// <summary>
+    /// An engine that names the new slug but not the folder still moves the model: the folder is
+    /// the old one's sibling, under the same session root.
+    /// </summary>
+    [Fact]
+    public void A_session_renamed_event_without_a_dir_puts_the_folder_beside_the_old_one()
+    {
+        var model = new ForgeSessionModel();
+        var root = Path.Combine("/ws", ".orkeon", "forge");
+        model.Feed(Event($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":{{System.Text.Json.JsonSerializer.Serialize(Path.Combine(root, "veille"))}},"format":"yaml","resumed":true}"""));
+        model.Feed(Event("""{"v":2,"seq":2,"ts":"t","kind":"session.renamed","from":"veille","to":"ma-veille"}"""));
+
+        Assert.Equal("ma-veille", model.Slug);
+        Assert.Equal(Path.Combine(root, "ma-veille"), model.Directory);
+    }
+
+    /// <summary>
+    /// D-05: a rename the disk refused arrives as a <c>warning</c> — kept apart from the errors, so
+    /// the screen can say it without reading the adoption as failed.
+    /// </summary>
+    [Fact]
+    public void A_warning_is_kept_apart_from_the_errors()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event("""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":"/teams/ma-veille","launcher":"run.sh"}"""));
+        model.Feed(Event("""{"v":2,"seq":2,"ts":"t","kind":"warning","code":"FORGE-SESSION-NOT-RENAMED","message":"The session folder 'veille' keeps its name."}"""));
+        model.Feed(Event("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+
+        Assert.Equal("FORGE-SESSION-NOT-RENAMED", model.LastWarning!.Code);
+        Assert.Equal("The session folder 'veille' keeps its name.", model.LastWarning.Message);
+        Assert.Null(model.LastError);
+        Assert.Equal("ready", model.FinishedStatus);
     }
 }

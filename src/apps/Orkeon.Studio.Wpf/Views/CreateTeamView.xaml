@@ -1093,6 +1093,24 @@
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
                        Text="{Binding [Studio.Create.TeamName], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"/>
+            <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
+                 field, with a free name and the way to the team that holds this one; the
+                 engine's own refusal never reaches the screen. -->
+            <Border Background="{DynamicResource WarningWeakBrush}" CornerRadius="10" Padding="12,10" Margin="0,8,0,0"
+                    Visibility="{Binding HasAdoptConflict, Converter={StaticResource BooleanToVisibility}}">
+              <StackPanel>
+                <TextBlock FontSize="12" TextWrapping="Wrap" Foreground="{DynamicResource WarningBrush}"
+                           Text="{Binding AdoptConflict}"/>
+                <WrapPanel Margin="0,8,0,0">
+                  <Button Style="{StaticResource BtnGhost}" Margin="0,0,8,0"
+                          Command="{Binding UseFreeTeamNameCommand}" Content="{Binding UseFreeTeamNameLabel}"/>
+                  <Button Style="{StaticResource BtnGhost}"
+                          Command="{Binding OpenConflictingTeamCommand}"
+                          Visibility="{Binding CanOpenConflictingTeam, Converter={StaticResource BooleanToVisibility}}"
+                          Content="{Binding [Studio.Create.OpenExistingTeam], Source={x:Static services:I18n.Instance}}"/>
+                </WrapPanel>
+              </StackPanel>
+            </Border>
 
             <!-- T-22: «Gérer les réglages» rides the LABEL's line. Stacked under the picker
                  it read as a fourth choice among the profiles rather than as the way out

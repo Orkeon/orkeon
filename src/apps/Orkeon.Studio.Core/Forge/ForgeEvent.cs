@@ -60,6 +60,21 @@ public static class ForgeEventKinds
     /// <summary>The session was promoted to an ordinary folder.</summary>
     public const string Promoted = "promoted";
 
+    /// <summary>
+    /// Once a promotion is written, the session folder took the team folder's name (STUDIO-26):
+    /// <c>from</c> and <c>to</c> are the session's slugs, <c>dir</c> its new folder, and
+    /// <c>suffixed</c> says the team's own name was already another session's, so a <c>-2</c>…
+    /// was added. The session's id does not change: rule R still links it to its team.
+    /// </summary>
+    public const string SessionRenamed = "session.renamed";
+
+    /// <summary>
+    /// Something the command could not do while everything it was asked for stands: <c>code</c>
+    /// (<c>FORGE-…</c>) and <c>message</c> — a session folder the disk would not rename after a
+    /// written promotion (STUDIO-26, D-05). Never an error: the run's outcome is its exit code.
+    /// </summary>
+    public const string Warning = "warning";
+
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public const string SessionFinished = "session.finished";
 
