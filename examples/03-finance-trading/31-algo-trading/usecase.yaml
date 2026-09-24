@@ -7,12 +7,12 @@ title:
   de: "Simulierter Handelsraum"
   zh-Hans: "模拟交易室"
 problem:
-  fr: "Je veux simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel"
-  en: "I want to simulate a complete trading strategy, from market analysis to buying and selling, without real money"
-  es: "Quiero simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real"
-  de: "Ich möchte eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld"
-  zh-Hans: "我想完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金"
-tags: ["algorithmic-trading", "trading-simulation", "risk-management", "compliance"]
+  fr: "Simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel"
+  en: "Simulate a complete trading strategy, from market analysis to buying and selling, without real money"
+  es: "Simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real"
+  de: "Eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld"
+  zh-Hans: "完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金"
+tags: ["trading", "simulation", "risk-management", "compliance"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

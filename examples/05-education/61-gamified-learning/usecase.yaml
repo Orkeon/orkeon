@@ -7,12 +7,12 @@ title:
   de: "Spielerisch lernen"
   zh-Hans: "寓学于乐"
 problem:
-  fr: "Je veux apprendre en relevant des défis qui rapportent des points, des badges et des niveaux"
-  en: "I want to learn by taking on challenges that earn points, badges and levels"
-  es: "Quiero aprender superando retos que dan puntos, insignias y niveles"
-  de: "Ich möchte lernen, indem ich Herausforderungen meistere, die Punkte, Abzeichen und neue Level bringen"
-  zh-Hans: "我想通过完成挑战来学习，赢取积分、徽章并逐级升级"
-tags: ["gamification", "learning", "challenges"]
+  fr: "Transformer mon apprentissage en jeu, avec des défis, des points, des badges et des niveaux"
+  en: "Turn my learning into a game, with challenges, points, badges and levels"
+  es: "Convertir mi aprendizaje en un juego, con retos, puntos, insignias y niveles"
+  de: "Mein Lernen in ein Spiel verwandeln, mit Herausforderungen, Punkten, Abzeichen und Levels"
+  zh-Hans: "把我的学习变成游戏，设置挑战、积分、徽章和等级"
+tags: ["education", "gamification", "challenges"]
 mounts:
   - "./output:/output:rw"
 importable: true

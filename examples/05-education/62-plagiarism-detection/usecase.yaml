@@ -7,12 +7,12 @@ title:
   de: "Plagiatsprüfung"
   zh-Hans: "抄袭检测"
 problem:
-  fr: "Je veux vérifier si un devoir a été copié, en croisant plusieurs indices pour limiter les fausses alertes"
-  en: "I want to check whether an assignment was copied, cross-checking several clues to limit false alarms"
-  es: "Quiero comprobar si un trabajo ha sido copiado, cruzando varios indicios para limitar las falsas alarmas"
-  de: "Ich möchte prüfen, ob eine Arbeit abgeschrieben wurde, und dafür mehrere Hinweise abgleichen, um Fehlalarme gering zu halten"
-  zh-Hans: "我想核查一份作业是否抄袭，交叉比对多种线索以减少误判"
-tags: ["plagiarism-detection", "academic-integrity", "text-analysis"]
+  fr: "Vérifier si un devoir a été copié, en croisant plusieurs indices pour limiter les fausses alertes"
+  en: "Check whether an assignment was copied, cross-checking several clues to limit false alarms"
+  es: "Comprobar si un trabajo ha sido copiado, cruzando varios indicios para limitar las falsas alarmas"
+  de: "Prüfen, ob eine Arbeit abgeschrieben wurde, und dafür mehrere Hinweise abgleichen, um Fehlalarme gering zu halten"
+  zh-Hans: "核查一份作业是否抄袭，交叉比对多种线索以减少误判"
+tags: ["education", "plagiarism-detection", "academic-integrity"]
 mounts:
   - "./output:/output:rw"
 importable: true

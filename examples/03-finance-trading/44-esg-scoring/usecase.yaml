@@ -7,12 +7,12 @@ title:
   de: "Nachhaltigkeitsbewertung eines Unternehmens"
   zh-Hans: "企业可持续发展评级"
 problem:
-  fr: "Je veux évaluer une entreprise sur l'environnement, le social et la gouvernance, avec une note comparable"
-  en: "I want to rate a company on environment, social impact and governance, with a score I can compare"
-  es: "Quiero evaluar una empresa en medio ambiente, impacto social y gobernanza, con una puntuación comparable"
-  de: "Ich möchte ein Unternehmen in den Bereichen Umwelt, Soziales und Unternehmensführung bewerten und eine vergleichbare Gesamtnote erhalten"
-  zh-Hans: "我想从环境、社会和公司治理三方面评估一家企业，并得到可横向比较的评分"
-tags: ["esg", "sustainability", "company-rating"]
+  fr: "Évaluer une entreprise sur l'environnement, le social et la gouvernance, avec une note comparable"
+  en: "Rate a company on environment, social impact and governance, with a score I can compare"
+  es: "Evaluar una empresa en medio ambiente, impacto social y gobernanza, con una puntuación comparable"
+  de: "Ein Unternehmen in den Bereichen Umwelt, Soziales und Unternehmensführung mit einer vergleichbaren Gesamtnote bewerten"
+  zh-Hans: "从环境、社会和公司治理三方面评估一家企业，并给出可横向比较的评分"
+tags: ["sustainability", "esg", "company-rating"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

@@ -7,12 +7,12 @@ title:
   de: "Persönliche Lernbegleitung"
   zh-Hans: "个性化辅导"
 problem:
-  fr: "Je veux des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève"
-  en: "I want explanations and exercises matched to a learner's level and way of learning"
-  es: "Quiero explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno"
-  de: "Ich möchte Erklärungen und Übungen, die zu Niveau und Lernstil der Lernenden passen"
-  zh-Hans: "我想要根据学习者的水平和学习方式量身定制的讲解和练习"
-tags: ["tutoring", "personalized-learning", "exercises"]
+  fr: "Proposer des explications et des exercices adaptés au niveau et à la façon d'apprendre d'un élève"
+  en: "Provide explanations and exercises matched to a learner's level and way of learning"
+  es: "Proponer explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno"
+  de: "Erklärungen und Übungen anbieten, die zu Niveau und Lernstil der Lernenden passen"
+  zh-Hans: "根据学习者的水平和学习方式，提供量身定制的讲解和练习"
+tags: ["education", "tutoring", "personalized-learning", "exercises"]
 mounts:
   - "./output:/output:rw"
 importable: true

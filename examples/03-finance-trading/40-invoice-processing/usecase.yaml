@@ -7,12 +7,12 @@ title:
   de: "Prüfung von Lieferantenrechnungen"
   zh-Hans: "供应商发票核对"
 problem:
-  fr: "Je veux vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison"
-  en: "I want to check that every supplier invoice matches an order and a delivery"
-  es: "Quiero comprobar que cada factura de proveedor corresponde a un pedido y a una entrega"
-  de: "Ich möchte prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt"
-  zh-Hans: "我想核实每张供应商发票都能对应到一笔订单和一次收货"
-tags: ["invoice-processing", "accounts-payable", "three-way-matching", "document-extraction"]
+  fr: "Vérifier que chaque facture fournisseur correspond bien à une commande et à une livraison"
+  en: "Check that every supplier invoice matches an order and a delivery"
+  es: "Comprobar que cada factura de proveedor corresponde a un pedido y a una entrega"
+  de: "Prüfen, ob jede Lieferantenrechnung zu einer Bestellung und einer Lieferung passt"
+  zh-Hans: "核实每张供应商发票都能对应到一笔订单和一次收货"
+tags: ["accounting", "accounts-payable", "invoice-processing", "three-way-matching"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

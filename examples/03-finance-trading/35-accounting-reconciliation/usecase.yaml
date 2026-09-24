@@ -7,11 +7,11 @@ title:
   de: "Abgleich von Bank, Buchhaltung und Rechnungen"
   zh-Hans: "银行、账务与发票对账"
 problem:
-  fr: "Je veux vérifier que mes relevés bancaires, ma comptabilité et mes factures concordent, et savoir comment corriger les écarts"
-  en: "I want to check that my bank statements, accounting records and invoices agree, and know how to fix the differences"
-  es: "Quiero comprobar que mis extractos bancarios, mi contabilidad y mis facturas cuadran, y saber cómo corregir las diferencias"
-  de: "Ich möchte prüfen, ob meine Kontoauszüge, meine Buchhaltung und meine Rechnungen übereinstimmen, und wissen, wie ich Abweichungen korrigiere"
-  zh-Hans: "我想核对银行流水、账务记录和发票是否一致，并知道如何修正其中的差异"
+  fr: "Vérifier que mes relevés bancaires, ma comptabilité et mes factures concordent, et me proposer des corrections pour les écarts"
+  en: "Check that my bank statements, accounting records and invoices agree, and suggest fixes for the differences"
+  es: "Comprobar que mis extractos bancarios, mi contabilidad y mis facturas cuadran, y proponerme correcciones para las diferencias"
+  de: "Prüfen, ob meine Kontoauszüge, meine Buchhaltung und meine Rechnungen übereinstimmen, und mir Korrekturen für Abweichungen vorschlagen"
+  zh-Hans: "核对我的银行流水、账务记录和发票是否一致，并为差异提出修正建议"
 tags: ["accounting", "reconciliation", "bank-statements", "invoices"]
 mounts:
   - "./output:/output:rw"

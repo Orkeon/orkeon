@@ -7,11 +7,11 @@ title:
   de: "Barrierefreie Inhalte für alle"
   zh-Hans: "人人可用的无障碍内容"
 problem:
-  fr: "Je veux rendre un contenu accessible aux personnes aveugles, sourdes ou qui ont du mal à lire"
-  en: "I want to make content accessible to people who are blind, deaf or have trouble reading"
-  es: "Quiero hacer un contenido accesible para personas ciegas, sordas o con dificultades de lectura"
-  de: "Ich möchte Inhalte für blinde und gehörlose Menschen sowie für Menschen mit Leseschwierigkeiten zugänglich machen"
-  zh-Hans: "我想让一份内容也能被盲人、聋人和阅读有困难的人顺利使用"
+  fr: "Rendre un contenu accessible aux personnes aveugles, sourdes ou qui ont du mal à lire"
+  en: "Make content accessible to people who are blind, deaf or have trouble reading"
+  es: "Hacer un contenido accesible para personas ciegas, sordas o con dificultades de lectura"
+  de: "Inhalte für blinde und gehörlose Menschen sowie für Menschen mit Leseschwierigkeiten zugänglich machen"
+  zh-Hans: "让一份内容也能被盲人、聋人和阅读有困难的人顺利使用"
 tags: ["accessibility", "plain-language", "audio-description", "screen-readers"]
 mounts:
   - "./output:/output:rw"

@@ -7,11 +7,11 @@ title:
   de: "Persönlicher Trainingsplan"
   zh-Hans: "个性化训练计划"
 problem:
-  fr: "Je veux un programme d'entraînement pour la semaine, avec des conseils de nutrition et de récupération adaptés à mon niveau"
-  en: "I want a training program for the week, with nutrition and recovery tips suited to my level"
-  es: "Quiero un programa de entrenamiento para la semana, con consejos de nutrición y recuperación adaptados a mi nivel"
-  de: "Ich möchte einen Wochentrainingsplan mit Ernährungs- und Erholungstipps, alles auf mein Niveau abgestimmt"
-  zh-Hans: "我想要一份一周训练计划，并附上适合我水平的营养和恢复建议"
+  fr: "Préparer mon programme d'entraînement de la semaine, avec des conseils de nutrition et de récupération adaptés à mon niveau"
+  en: "Plan my training week, with nutrition and recovery tips suited to my level"
+  es: "Preparar mi programa de entrenamiento de la semana, con consejos de nutrición y recuperación adaptados a mi nivel"
+  de: "Meinen Trainingsplan für die Woche erstellen, mit Ernährungs- und Erholungstipps, alles auf mein Niveau abgestimmt"
+  zh-Hans: "为我制定一周训练计划，并附上适合我水平的营养和恢复建议"
 tags: ["fitness", "training-plan", "sports-nutrition", "recovery"]
 mounts:
   - "./output:/output:rw"

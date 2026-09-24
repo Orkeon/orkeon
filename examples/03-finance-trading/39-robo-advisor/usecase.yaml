@@ -7,11 +7,11 @@ title:
   de: "Geldanlage passend zu meinem Profil"
   zh-Hans: "适合我的投资配置"
 problem:
-  fr: "Je veux définir mon profil d'investisseur en répondant à quelques questions et obtenir une répartition de placements adaptée"
-  en: "I want to define my investor profile by answering a few questions and get an allocation that fits it"
-  es: "Quiero definir mi perfil de inversor respondiendo a unas preguntas y obtener un reparto de inversiones adecuado"
-  de: "Ich möchte mein Anlegerprofil über ein paar Fragen bestimmen und eine passende Aufteilung meiner Geldanlagen erhalten"
-  zh-Hans: "我想通过回答几个问题确定自己的投资风险偏好，并得到相应的资产配置方案"
+  fr: "Définir mon profil d'investisseur à partir de quelques questions et me proposer une répartition de placements adaptée"
+  en: "Work out my investor profile from a few questions and suggest an allocation that fits it"
+  es: "Definir mi perfil de inversor a partir de unas preguntas y proponerme un reparto de inversiones adecuado"
+  de: "Mein Anlegerprofil über ein paar Fragen bestimmen und mir eine passende Aufteilung meiner Geldanlagen vorschlagen"
+  zh-Hans: "通过几个问题确定我的投资风险偏好，并给出相应的资产配置方案"
 tags: ["investment", "risk-profile", "portfolio-allocation", "rebalancing"]
 mounts:
   - "./output:/output:rw"

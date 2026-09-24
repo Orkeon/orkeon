@@ -7,11 +7,11 @@ title:
   de: "Begleitung einer klinischen Studie"
   zh-Hans: "临床试验跟踪"
 problem:
-  fr: "Je veux suivre un essai clinique, du recrutement à la sécurité des participants, en validant moi-même la suite à donner"
-  en: "I want to oversee a clinical trial, from recruitment to participant safety, and approve the next steps myself"
-  es: "Quiero supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y validar personalmente los siguientes pasos"
-  de: "Ich möchte eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und das weitere Vorgehen selbst freigeben"
-  zh-Hans: "我想跟踪一项临床试验，从招募到受试者安全全程把关，并亲自审定下一步安排"
+  fr: "Suivre un essai clinique, du recrutement à la sécurité des participants, et me soumettre la suite à donner"
+  en: "Oversee a clinical trial, from recruitment to participant safety, and submit the next steps for my approval"
+  es: "Supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y someter los siguientes pasos a mi aprobación"
+  de: "Eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und mir das weitere Vorgehen zur Freigabe vorlegen"
+  zh-Hans: "跟踪一项临床试验，从招募到受试者安全全程把关，并把下一步安排交给我审定"
 tags: ["clinical-trials", "patient-safety", "human-review"]
 mounts:
   - "./output:/output:rw"

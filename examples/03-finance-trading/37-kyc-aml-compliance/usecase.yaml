@@ -7,12 +7,12 @@ title:
   de: "Prüfung neuer Kunden"
   zh-Hans: "新客户审查"
 problem:
-  fr: "Je dois contrôler un nouveau client avant de l'accepter : identité, listes de sanctions et pays à risque"
-  en: "I need to check a new customer before taking them on: identity, sanctions lists and high-risk countries"
-  es: "Debo verificar a un nuevo cliente antes de aceptarlo: identidad, listas de sanciones y países de riesgo"
-  de: "Ich muss einen neuen Kunden prüfen, bevor ich ihn annehme: Identität, Sanktionslisten und Risikoländer"
-  zh-Hans: "我需要在接纳新客户前完成核查：身份、制裁名单和高风险国家"
-tags: ["kyc", "anti-money-laundering", "sanctions-screening", "compliance"]
+  fr: "Contrôler un nouveau client avant de l'accepter : identité, listes de sanctions et pays à risque"
+  en: "Check a new customer before taking them on: identity, sanctions lists and high-risk countries"
+  es: "Verificar a un nuevo cliente antes de aceptarlo: identidad, listas de sanciones y países de riesgo"
+  de: "Einen neuen Kunden vor der Aufnahme prüfen: Identität, Sanktionslisten und Risikoländer"
+  zh-Hans: "在接纳新客户前完成核查：身份、制裁名单和高风险国家"
+tags: ["compliance", "kyc", "anti-money-laundering", "sanctions"]
 mounts: []
 # Reference only: the crew imports the shared ../_tools/ module, which an
 # imported team does not carry.

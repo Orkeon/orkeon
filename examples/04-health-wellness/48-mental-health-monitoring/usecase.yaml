@@ -7,12 +7,12 @@ title:
   de: "Begleitung des psychischen Wohlbefindens"
   zh-Hans: "心理健康状况跟踪"
 problem:
-  fr: "Je suis psychologue : je veux suivre le bien-être d'un patient et lui proposer des exercices que je valide"
-  en: "As a psychologist, I want to follow a patient's well-being and suggest exercises I approve first"
-  es: "En mi consulta de psicología, quiero seguir el bienestar de un paciente y proponerle ejercicios validados por mí"
-  de: "In meiner psychologischen Praxis möchte ich das Wohlbefinden eines Patienten verfolgen und Übungen vorschlagen, die ich vorher freigebe"
-  zh-Hans: "作为临床心理师，我想跟踪一位患者的心理状态，并推荐经我审核的练习"
-tags: ["mental-health", "well-being", "human-review"]
+  fr: "Suivre le bien-être de mes patients et leur proposer des exercices que je valide d'abord"
+  en: "Track my patients' well-being and suggest exercises for them that I approve first"
+  es: "Seguir el bienestar de mis pacientes y proponerles ejercicios validados antes por mí"
+  de: "Das Wohlbefinden meiner Patienten begleiten und ihnen Übungen vorschlagen, die ich vorher freigebe"
+  zh-Hans: "跟踪我所负责患者的心理状态，并推荐经我审核的练习"
+tags: ["mental-health", "well-being", "monitoring", "human-review"]
 mounts:
   - "./output:/output:rw"
 importable: true

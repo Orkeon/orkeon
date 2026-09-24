@@ -7,12 +7,12 @@ title:
   de: "Erkennung verdächtiger Transaktionen"
   zh-Hans: "可疑交易识别"
 problem:
-  fr: "Je veux repérer les transactions suspectes, les examiner de près et préparer des alertes détaillées"
-  en: "I want to spot suspicious transactions, look into them closely and prepare detailed alerts"
-  es: "Quiero detectar las transacciones sospechosas, examinarlas de cerca y preparar alertas detalladas"
-  de: "Ich möchte verdächtige Transaktionen erkennen, genau untersuchen und ausführliche Warnmeldungen vorbereiten"
-  zh-Hans: "我想找出可疑交易，仔细核查，并准备详细的预警报告"
-tags: ["fraud-detection", "transaction-monitoring", "alerting"]
+  fr: "Repérer les transactions suspectes, les examiner de près et préparer des alertes détaillées"
+  en: "Spot suspicious transactions, look into them closely and prepare detailed alerts"
+  es: "Detectar las transacciones sospechosas, examinarlas de cerca y preparar alertas detalladas"
+  de: "Verdächtige Transaktionen erkennen, genau untersuchen und ausführliche Warnmeldungen vorbereiten"
+  zh-Hans: "找出可疑交易，仔细核查，并准备详细的预警报告"
+tags: ["banking", "fraud-detection", "transaction-monitoring"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an
