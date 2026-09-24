@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: the provider balance, where you work (STUDIO-35)
+
+- **The status bar's Balance segment** says what the provider accounts behind the default
+  profile, the assistant's profile and the teams' profiles have left.
+  - One entry per account (provider + endpoint host + key variable), in the currency the
+    provider returns, with the time of each read on hover.
+  - Two profiles on one account cost one request.
+- **When it reads:** at startup, at the end of each run, trial or composition, and on a click.
+  - There is no polling unless Settings › Studio turns on the automatic reading, which is off by
+    default.
+  - Only DeepSeek, Kimi and OpenRouter accounts ever cost a request; the other providers are
+    answered from their documentation.
+- **On the bar:** a click on a provider that does not expose its balance opens its console, and an
+  optional threshold per provider turns the amount orange.
+- **In the profiles:** each model profile row shows its account's balance once read, and the
+  profile editor gains a « Read the balance » line.
+- Nothing read is written to disk, and no key is ever shown.
+- **New Settings tab « Studio »,** holding the automatic reading and the thresholds.
+  `ui-preferences.json` is now written by merging, so a theme, language or mode change no longer
+  erases other settings.
+
 ### Changed — the status bar marks estimated tokens and names the model the agents work on (STUDIO-30 follow-up)
 
 - `cost.updated` gains an optional `operation`: the kind of work the engine attributed the call
