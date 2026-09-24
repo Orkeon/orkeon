@@ -118,7 +118,7 @@ Session mode is how Orkeon Studio suggests use cases while you type: the process
 ← {"v":2,"seq":2,"ts":"…","kind":"usecases.results","correlationId":"q1","query":"relancer les factures impayées","lang":"fr","langSource":"option","mode":"hybrid","results":[{"rank":1,"id":"40-invoice-processing","score":0.0325,"reason":"terms+meaning","terms":["factures"],"similarity":0.6912,"title":"…"}]}
 ```
 
-A line that is not a query is skipped. A query that cannot run — no `text`, a `lang` outside the five, a `top` below 1 — is answered by an `error` line carrying its `correlationId` and the code `USECASES-QUERY-INVALID`, and the session goes on. The event kinds are declared once, in `Orkeon.Constants.Protocol.UseCaseEventKinds`.
+A query without `top` or `lang` takes the command line's `--top` and `--lang`. A line that is not a query is skipped. A query that cannot run — no `text`, a `lang` outside the five, a `top` below 1 — is answered by an `error` line carrying its `correlationId` and the code `USECASES-QUERY-INVALID`, and the session goes on. The event kinds are declared once, in `Orkeon.Constants.Protocol.UseCaseEventKinds`.
 
 **`list`** prints the catalogue: id, process, title, and the flags `data` (sample data), `web` (needs the network), `keys` (needs a third-party key) and `reference only`. The filters combine: `--category` (`03-finance-trading`, or `finance-trading`), `--process` (`sequential`, `hierarchical`, `parallel`, `consensual`, `graph`, `autonomous`), `--tag`. An unknown category or process is refused with the list of valid ones. `--lang` picks the titles (default `en`). `--events jsonl` emits one `usecases.catalog` line holding every sheet in full, under the manifest's field names.
 

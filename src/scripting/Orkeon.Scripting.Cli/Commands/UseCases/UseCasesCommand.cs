@@ -139,7 +139,10 @@ internal static class UseCasesCommand
             using var engine = new UseCaseSearchEngine(catalog, policy, options.LoadModel ?? UseCaseLocalModel.Load);
 
             if (text.Length == 0)
-                return await RunSessionAsync(engine, catalog, policy, output.Events!, cancellationToken).ConfigureAwait(false);
+            {
+                return await RunSessionAsync(engine, catalog, policy, options.Top, language, output.Events!, cancellationToken)
+                    .ConfigureAwait(false);
+            }
 
             var answer = await engine
                 .SearchAsync(new UseCaseQuery { Text = text, Top = options.Top, Language = language }, cancellationToken)
@@ -239,7 +242,8 @@ internal static class UseCasesCommand
     /// The session mode (D-07): announces itself, then answers each query line until stdin
     /// closes. A line that is not a query is skipped — the inbound stream is tolerant, as in
     /// every other verb; a query that cannot run is answered with an error naming it, and the
-    /// session goes on.
+    /// session goes on. A query without <c>top</c> or <c>lang</c> takes the command line's
+    /// <c>--top</c> (<paramref name="defaultTop"/>) and <c>--lang</c> (<paramref name="defaultLanguage"/>).
     /// </summary>
     [SuppressMessage("Design", "CA1031", Justification =
         "Session fault barrier: one query that fails is answered with a recoverable error event, and the next query is still served.")]
@@ -247,6 +251,8 @@ internal static class UseCasesCommand
         UseCaseSearchEngine engine,
         UseCaseCatalog catalog,
         UseCaseSearchPolicy policy,
+        int defaultTop,
+        string? defaultLanguage,
         UseCaseEventWriter events,
         CancellationToken cancellationToken)
     {
@@ -254,7 +260,7 @@ internal static class UseCasesCommand
 
         while (await ReadLineAsync(Console.In, cancellationToken).ConfigureAwait(false) is { } line)
         {
-            if (!TryReadQuery(line, out var correlationId, out var query, out var problem))
+            if (!TryReadQuery(line, defaultTop, defaultLanguage, out var correlationId, out var query, out var problem))
             {
                 if (problem is not null)
                     events.Error(UseCaseErrorCodes.QueryInvalid, problem, recoverable: true, correlationId);
@@ -287,7 +293,12 @@ internal static class UseCasesCommand
     /// problem: a query that cannot run, answered with an error.
     /// </summary>
     internal static bool TryReadQuery(
-        string line, out string? correlationId, [NotNullWhen(true)] out UseCaseQuery? query, out string? problem)
+        string line,
+        int defaultTop,
+        string? defaultLanguage,
+        out string? correlationId,
+        [NotNullWhen(true)] out UseCaseQuery? query,
+        out string? problem)
     {
         correlationId = null;
         query = null;
@@ -327,7 +338,7 @@ internal static class UseCasesCommand
                 return false;
             }
 
-            var top = UseCaseSearchEngine.DefaultTop;
+            var top = defaultTop;
             if (root.TryGetProperty("top", out var topValue)
                 && (topValue.ValueKind != JsonValueKind.Number || !topValue.TryGetInt32(out top) || top < 1))
             {
@@ -335,7 +346,7 @@ internal static class UseCasesCommand
                 return false;
             }
 
-            string? language = null;
+            var language = defaultLanguage;
             if (root.TryGetProperty("lang", out var lang) && lang.ValueKind != JsonValueKind.Null
                 && (lang.ValueKind != JsonValueKind.String || !UseCaseLanguages.TryParse(lang.GetString(), out language)))
             {

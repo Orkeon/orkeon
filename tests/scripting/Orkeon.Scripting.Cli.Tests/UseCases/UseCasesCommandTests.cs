@@ -264,19 +264,28 @@ public sealed class UseCasesCommandTests
         Assert.Contains(option, console.Stderr, StringComparison.Ordinal);
     }
 
-    /// <summary>The acceptance line of the fiche, against the real catalogue: it runs offline and answers.</summary>
+    /// <summary>
+    /// The acceptance line of the fiche, against the embedded catalogue and the shipped policy: it
+    /// runs offline and answers. The model is the hand-written double — the real one boots the
+    /// ONNX runtime, which only the Slow golden-set tests do.
+    /// </summary>
     [Fact]
     public async Task Search_runs_offline_on_the_embedded_catalogue()
     {
         using var console = new TestConsole();
 
-        var exit = await Program.DispatchAsync(
-            ["usecases", "search", "je veux un résumé de mes mails chaque matin", "--events", "jsonl"]);
+        var exit = await UseCasesCommand.ExecuteSearchAsync(new UseCasesSearchOptions
+        {
+            Words = ["je veux un résumé de mes mails chaque matin"],
+            Events = "jsonl",
+            LoadModel = () => new FakeKeywordEmbeddingProvider(),
+        });
 
         Assert.Equal(Program.ExitOk, exit);
         var results = SingleEvent(console.Stdout, UseCaseEventKinds.Results);
         Assert.Equal("fr", results.GetProperty("lang").GetString());
         Assert.Equal("detected", results.GetProperty("langSource").GetString());
+        Assert.Equal(UseCaseSearchEngine.DefaultTop, results.GetProperty("results").GetArrayLength());
     }
 
     // --- search, session mode ---
@@ -307,6 +316,25 @@ public sealed class UseCasesCommandTests
         Assert.Equal(UseCaseFixtures.MailDigest, answers[0].GetProperty("results")[0].GetProperty("id").GetString());
         Assert.Equal(UseCaseFixtures.InvoiceMatching, answers[1].GetProperty("results")[0].GetProperty("id").GetString());
         Assert.Equal(1, answers[1].GetProperty("results").GetArrayLength());
+    }
+
+    [Fact]
+    public async Task Session_queries_without_top_or_lang_take_the_command_line_ones()
+    {
+        using var console = new TestConsole(stdin: Lines(
+            """{"kind":"usecases.query","correlationId":"q1","text":"de"}""",
+            """{"kind":"usecases.query","correlationId":"q2","text":"de","top":3,"lang":"es"}"""));
+        var options = Search([], language: "fr", events: true);
+        options.Top = 2;
+
+        var exit = await UseCasesCommand.ExecuteSearchAsync(options);
+
+        Assert.Equal(Program.ExitOk, exit);
+        var answers = Events(console.Stdout).Where(e => e.GetProperty("kind").GetString() == UseCaseEventKinds.Results).ToList();
+        Assert.Equal(2, answers[0].GetProperty("results").GetArrayLength());
+        Assert.Equal("fr", answers[0].GetProperty("lang").GetString());
+        Assert.Equal(3, answers[1].GetProperty("results").GetArrayLength());
+        Assert.Equal("es", answers[1].GetProperty("lang").GetString());
     }
 
     [Fact]
