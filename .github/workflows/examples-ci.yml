@@ -1,5 +1,6 @@
-# Examples CI — validates the numbered example catalog (config.yaml + README.md) and
-# their wiring on every change under examples/, src/ or scripts/.
+# Examples CI — validates the numbered example catalog (crew definitions, README.md,
+# usecase.yaml sheets and the generated INDEX.md / usecases.json) and their wiring on
+# every change under examples/, src/ or scripts/.
 #
 # The trigger covers src/** and not just src/hosting/**: an example exercises the whole
 # engine, so a change to the Domain, the Application or a strategy can break the catalog
@@ -47,8 +48,10 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with: { python-version: '3.11' }
-      - name: Lint example config.yaml (tool names, structure)
+      - name: Lint example crews and use-case sheets (tool names, structure, usecases.json)
         run: python3 scripts/lint-example-configs.py
+      - name: Test the use-case catalogue generator and lint
+        run: python3 scripts/test-examples-catalog.py
 
   lint-readmes:
     runs-on: ubuntu-latest
@@ -58,9 +61,9 @@ jobs:
         with: { python-version: '3.11' }
       - name: Lint example README.md (launch section, links)
         run: python3 scripts/lint-example-readmes.py
-      # lint-example-readmes.py already runs INDEX --check, but keep an explicit
-      # step so a stale INDEX is easy to spot in the job log.
-      - name: Verify examples/INDEX.md is up to date
+      # lint-example-readmes.py already runs the generator's --check, but keep an
+      # explicit step so a stale INDEX.md or usecases.json is easy to spot in the log.
+      - name: Verify examples/INDEX.md and examples/usecases.json are up to date
         run: bash scripts/generate-examples-index.sh --check
 
   validate-examples:

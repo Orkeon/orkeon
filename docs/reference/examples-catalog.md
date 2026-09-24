@@ -11,6 +11,14 @@ agent/task counts and referenced tools — is the generated
 `scripts/generate_examples_index.py` and CI fails when it drifts from the folders on
 disk, so no count is maintained by hand here.
 
+The same generator writes its machine-readable twin,
+[`examples/usecases.json`](https://github.com/Orkeon/orkeon/blob/main/examples/usecases.json):
+one entry per numbered example, joining what its crew declares (process, tools, whether
+they reach the internet or need a third-party key) to its hand-written `usecase.yaml`
+sheet (title and problem statement in five languages, tags, mounts, whether it can be
+imported as a team). CI fails when it drifts too; the sheet format is in
+[`examples/README.md`](https://github.com/Orkeon/orkeon/blob/main/examples/README.md#use-case-sheet-usecaseyaml).
+
 ## The nine business categories
 
 The numbered YAML crews live in nine thematic folders:

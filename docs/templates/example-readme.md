@@ -9,6 +9,12 @@
 >
 > **Required sections**: What it does · Prerequisites · Required data · Run it ·
 > Expected output · Approx. duration & cost.
+>
+> **Beside the README**: a numbered example also carries a `usecase.yaml` — its title
+> and problem statement in five languages, its search tags, the mounts it needs and
+> whether it can be imported as a team. Copy a sibling's and follow
+> [the use-case sheet format](https://github.com/Orkeon/orkeon/blob/main/examples/README.md#use-case-sheet-usecaseyaml);
+> CI fails without it.
 
 > NB: example READMEs are written in English (they live outside `docs/`, so the bilingual parity contract does not apply to them) — this template's French twin exists for reference only.
 
@@ -41,6 +47,9 @@ Delete this section if the example needs no input data.
 | Virtual path | Mount flag | Purpose |
 |---|---|---|
 | `/data/<file>` | `--mount ./data:/data:ro` | <what it contains> |
+
+List the same mounts under `mounts:` in the example's `usecase.yaml`, relative to
+the team folder (`./data:/data:ro`, `./output:/output:rw`).
 
 ## Run it
 
