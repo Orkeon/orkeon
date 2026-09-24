@@ -56,7 +56,7 @@ orkeon forge list                              # list the workspace's sessions
 orkeon forge resume <slug>                     # pick a session up exactly where it stopped
 orkeon forge resume <slug> --read <dir>        # try it on the documents in <dir>
 orkeon forge resume <slug> --adopt             # keep the team as generated, without a trial
-orkeon forge promote <slug> --to <dir>         # ship a ready session as an ordinary folder
+orkeon forge promote <slug> --to <dir> --name <team>   # ship a ready session as an ordinary folder, under the team's name
 orkeon forge reopen <team-folder>              # find — or rebuild from crew/ — the session linked to a promoted team
 ```
 
@@ -79,12 +79,15 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | `--read <dir>` | *(new session, resume)* The folder the trial reads as `/workspace`, in place of the working directory. The working directory keeps every other role — the session still lives under its `.orkeon/forge/<slug>/`, the settings still resolve next to it: `--read` moves the documents, not the atelier. A folder that does not exist is refused with exit 1 before any session is created (`--read names no directory`); `promote` refuses the option, since it mounts nothing. A read folder outside the working directory is whitelisted for the file tools automatically, the way `orkeon run` whitelists its script directory — the forge's mounts are its own three roots, so there is no `--allow-external-mounts` here. This is how Orkeon Studio tries a team on the folder chosen at its first step. |
 | `--pack <dir>` | Override the embedded prompt pack. |
 | `--to <dir>` | *(promote)* Destination folder; must not exist or be empty — unless it is the folder the session is linked to (where it promoted to, or that folder moved or renamed since; never a copy of it, which is refused with the reason), which is then updated in place. |
+| `--name <team>` | *(promote)* The team's name: it titles `FORGE.md`, `forge.json` and the session itself — without it they keep the brief's goal. Taken as written, a leading dash included: the value of `--name` is never read as the next option. Orkeon Studio always passes it. |
 | `--schedule daily@HH:mm\|hourly` | *(promote)* Generate schedule artifacts under `schedule/` — Windows task XML, systemd timer, cron line. The install command is **displayed, never executed**: Orkeon has no scheduler. |
 | `--with-settings` | *(promote)* Copy the resolved settings file into the folder. Off by default — a settings file usually carries API keys and the folder is made to be shared. |
 
 The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the working directory — or the `--read` folder — mounted read-only as `/workspace`, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
 
 The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language — and `forge.json`, its machine-readable twin (the session's id, slug, title, format, promotion instant, brief) that `forge reopen` reads — the id is what links the folder back to its session wherever the folder goes. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
+
+Once the promotion is written, the session follows its team: its folder under `.orkeon/forge/` takes the destination folder's name, as it is — suffixed `-2`, `-3`… when another session already has that name, which is never overwritten — and `session.json` and `forge.json` take the new slug, so `forge list` shows each adopted session under the name of the team it made rather than the need it was opened with. `--events` announces it: `session.renamed` carries `from`, `to`, the new `dir` and `suffixed`. A rename the disk refuses (a handle held open on Windows, an antivirus) leaves the promotion successful — exit 0 — with a `warning` event (`FORGE-SESSION-NOT-RENAMED`): the team stays linked to its session by the id either way. The generated artifacts carry the team folder's name too, never the session's: `schedule/orkeon-<team>.service` and `.timer` with their descriptions, the scheduled task `Orkeon <team>`, the install command, the launchers' header. `<team>` is the folder's name as the folder rule spells it — lowercase ASCII and dashes, what a unit name can carry — which is the name itself for every folder Studio creates.
 
 ## `orkeon init`
 

@@ -457,6 +457,23 @@ moteur dans le `forge.json` de l'équipe, retenue seulement si la règle R la li
 dossier même, si bien qu'une copie n'atterrit jamais sur la session de l'original — et une
 carte le dit quand ni l'un ni l'autre ne l'a.
 
+### Adopter sous le nom de l'équipe (STUDIO-26)
+
+L'adoption transmet au moteur le nom de l'équipe : `forge promote --name` devient le titre de
+`FORGE.md`, de `forge.json` et de la session, et une fois la promotion écrite le moteur renomme
+le dossier de session d'après le dossier d'équipe (`-2` quand une autre session porte déjà ce
+nom) et l'annonce par `session.renamed`, qui déplace avec lui le slug et le dossier de session de
+l'assistant ; les artefacts de planification et les lanceurs portent eux aussi le nom du dossier
+d'équipe. Un renommage que le disque refuse laisse l'adoption debout : le `warning` du moteur
+rejoint la ligne que l'assistant laisse après une adoption, et l'identifiant garde le lien.
+Avant de promouvoir une **nouvelle** équipe, l'assistant regarde d'abord le dossier : quand
+quelque chose l'occupe déjà — une équipe, un dossier qui n'en contient aucune, un fichier
+(`TeamCatalog.OccupantOf`) — l'étape 4 dit quoi, propose un nom libre dont le dossier est celui
+qui est pris suffixé `-2`… (`TeamCatalog.FreeSibling`) et, quand une équipe l'occupe, « Ouvrir
+l'équipe existante », qui amène Mes équipes au premier plan. Le moteur n'est sollicité qu'une
+fois le nom libre, si bien que son refus d'une destination non vide n'atteint jamais l'écran.
+Une ré-adoption écrit dans le dossier de sa propre équipe, ce qui n'est pas une collision.
+
 ### Outils et MCP dans les réglages (STUDIO-21)
 
 Deux onglets qui manquaient à l'écran Réglages. **Outils**, ouvert aux deux modes, tient en

@@ -77,8 +77,10 @@ Les deux rendus convergent vers le même validateur, et l'essai charge la crew *
 
 ```bash
 orkeon forge promote veille-fournisseur --to ~/solutions/veille-fournisseur \
-    --schedule daily@07:30
+    --name "Veille fournisseur" --schedule daily@07:30
 ```
+
+`--name` est le nom de l'équipe : il devient le titre de la carte, du jumeau et de la session. Une fois le dossier écrit, la session suit l'équipe — son dossier sous `.orkeon/forge/` prend le nom du dossier de destination (`-2` si une autre session le porte déjà), si bien que `forge list` la montre sous le nom de l'équipe qu'elle a produite.
 
 Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 
@@ -87,7 +89,7 @@ Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 - `run.sh` / `run.cmd` — des scripts de lancement qui se placent (`cd`) dans le dossier, portent les montages liant ces racines (`--mount "$DIR/output":/output:rw`) et ont vos entrées d'exemple pré-remplies (à adapter au vrai usage) ;
 - `FORGE.md` — la carte d'identité de l'équipe : objectif, critères d'acceptation, verdict, date et version de génération — ce qu'un collègue lit en récupérant le dossier ;
 - `forge.json` — le jumeau lisible par la machine de la carte : identifiant, slug, titre, format, instant de promotion de la session et le brief — l'identifiant relie le dossier à sa session où qu'aille le dossier, et le reste est ce que `forge reopen` lit pour reconstruire une session fidèle une fois l'originale disparue (rien de secret dedans) ;
-- `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur, et prétendre le contraire promettrait une supervision qu'il ne peut pas donner.
+- `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron, tous au nom du dossier d'équipe (`orkeon-veille-fournisseur.timer`). La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur, et prétendre le contraire promettrait une supervision qu'il ne peut pas donner.
 
 Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi : le `config.yaml` promu nomme les racines que l'équipe utilise (`mounts: [/workspace, /output]`), si bien qu'une entrée des settings déclarant `/output` est utilisée telle quelle, et qu'à défaut le run est refusé en une ligne (`the crew requires '/output' … pass --mount <folder>:/output:rw`) au lieu d'écrire nulle part.
 

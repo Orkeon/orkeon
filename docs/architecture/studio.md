@@ -417,6 +417,22 @@ the session named by the id the engine left in the team's `forge.json`, taken on
 rule R links it to that very folder, so a copy never lands on its original's session — and
 a card says so when neither has it.
 
+### Adopting under the team's name (STUDIO-26)
+
+The adoption hands the engine the team's name: `forge promote --name` titles `FORGE.md`,
+`forge.json` and the session, and once the promotion is written the engine renames the
+session folder after the team folder (`-2` when another session already holds the name) and
+says so on `session.renamed`, which moves the wizard's session slug and directory with it; the
+schedule artifacts and the launchers carry the team folder's name as well. A rename the disk
+refuses leaves the adoption standing: the engine's `warning` joins the one line the wizard
+leaves after an adoption, and the id keeps the link. Before promoting a **new** team the wizard
+looks at the folder first: when something already occupies it — a team, a folder holding
+none, a file (`TeamCatalog.OccupantOf`) — step 4 says what, offers a free name whose folder is
+the taken one suffixed `-2`… (`TeamCatalog.FreeSibling`), and, when a team holds it, « Open
+the existing team », which brings My teams forward. The engine is not asked until the name is
+free, so its refusal of a non-empty destination never reaches the screen. A re-adoption writes
+into its own team's folder, which is no collision.
+
 ### Tools and MCP in the settings (STUDIO-21)
 
 Two tabs the settings screen lacked. **Tools**, open to both modes, is three cards. The
