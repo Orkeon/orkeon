@@ -66,8 +66,21 @@ internal sealed record ForgeTeamRecord
     [JsonPropertyName("brief")]
     public ForgeBrief? Brief { get; init; }
 
-    /// <summary>Writes the record into <paramref name="destination"/> (overwriting a previous promotion's).</summary>
-    public static void Write(string destination, ForgeSession session, ForgeBrief? brief, DateTimeOffset now)
+    /// <summary>
+    /// The schedule the folder declares, and what <c>forge schedule</c> installed of it
+    /// (STUDIO-27, D-03); null when it declares none and nothing is installed.
+    /// </summary>
+    [JsonPropertyName("schedule")]
+    public ForgeTeamSchedule? Schedule { get; init; }
+
+    /// <summary>
+    /// Writes the record into <paramref name="destination"/> (overwriting a previous promotion's).
+    /// <paramref name="schedule"/> is the promotion's <c>--schedule</c>; what a previous
+    /// <c>forge schedule</c> installed is carried over whatever it says, because the registration
+    /// is still there — a re-adoption touches no operating system, and the names are the only way
+    /// back to it (D-03).
+    /// </summary>
+    public static void Write(string destination, ForgeSession session, ForgeBrief? brief, DateTimeOffset now, ForgeSchedule? schedule = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
         ArgumentNullException.ThrowIfNull(session);
@@ -80,7 +93,24 @@ internal sealed record ForgeTeamRecord
             Format = session.Document.Format,
             PromotedAt = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             Brief = brief,
+            Schedule = ForgeTeamSchedule.Of(schedule?.Expression, TryRead(destination)?.Schedule?.Installed),
         });
+    }
+
+    /// <summary>
+    /// Replaces the <c>schedule</c> block of <paramref name="teamDirectory"/>'s record, everything
+    /// else kept; null removes it. A folder without a readable record gets one holding the block
+    /// alone — and one without a record and without a block is left as it is.
+    /// </summary>
+    public static void SaveSchedule(string teamDirectory, ForgeTeamSchedule? schedule)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var recorded = TryRead(teamDirectory);
+        if (recorded is null && schedule is null)
+            return;
+
+        Save(teamDirectory, (recorded ?? new ForgeTeamRecord()) with { Schedule = schedule });
     }
 
     /// <summary>

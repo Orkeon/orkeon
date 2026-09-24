@@ -91,6 +91,92 @@ public class ForgeEventWriterTests
             lines);
     }
 
+    /// <summary>
+    /// STUDIO-27's lines, pinned like the rest: <c>schedule.state</c> for each of the three states,
+    /// and the <c>error</c> of a refusal carrying the command a person can run instead. Studio.Core's
+    /// <c>ForgeProtocolTests</c> carries the same lines, verbatim.
+    /// </summary>
+    [Fact]
+    public void The_schedule_lines_are_the_pinned_golden_form()
+    {
+        var output = new StringWriter();
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/home/u/Orkeon/teams/ma-veille",
+            State = ForgeScheduleState.Installed,
+            Expression = "daily@08:00",
+            Family = "windows",
+            Names = ["Orkeon ma-veille"],
+        });
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/home/u/Orkeon/teams/ma-veille",
+            State = ForgeScheduleState.Stale,
+            Reason = ForgeScheduleReasons.Moved,
+            Expression = "daily@08:00",
+            Family = "linux",
+            Names = ["orkeon-ma-veille.timer", "orkeon-ma-veille.service"],
+        });
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/home/u/Orkeon/teams/ma-veille",
+            State = ForgeScheduleState.Absent,
+            Reason = ForgeScheduleReasons.NotInstalled,
+            Family = "other",
+            Names = ["orkeon:ma-veille"],
+            Removed = true,
+        });
+        writer.Error(ForgeErrorCodes.ScheduleRefused, "The other scheduler refused: crontab: permission denied", recoverable: true,
+            "( crontab -l 2>/dev/null; cat \"/home/u/Orkeon/teams/ma-veille/schedule/cron.txt\" ) | crontab -");
+
+        var expected = string.Join('\n',
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"installed","expression":"daily@08:00","family":"windows","names":["Orkeon ma-veille"]}""",
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"stale","reason":"moved","expression":"daily@08:00","family":"linux","names":["orkeon-ma-veille.timer","orkeon-ma-veille.service"]}""",
+            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"schedule.state","path":"/home/u/Orkeon/teams/ma-veille","state":"absent","reason":"not-installed","family":"other","names":["orkeon:ma-veille"],"removed":true}""",
+            """{"v":2,"seq":4,"ts":"2026-08-19T12:00:03Z","kind":"error","code":"FORGE-SCHEDULE-REFUSED","message":"The other scheduler refused: crontab: permission denied","recoverable":true,"command":"( crontab -l 2>/dev/null; cat \"/home/u/Orkeon/teams/ma-veille/schedule/cron.txt\" ) | crontab -"}""",
+            "");
+
+        Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
+    }
+
+    /// <summary>Without <c>--events</c>, a folder's schedule and a refusal are said in words — the refusal with what to run by hand.</summary>
+    [Fact]
+    public void The_terminal_says_the_schedule_and_the_manual_command_in_words()
+    {
+        var console = new StringWriter();
+        using var renderer = new ForgeTerminalRenderer(console);
+        var writer = new ForgeEventWriter(renderer, new FakeOrkeonClock());
+
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/t/ma-veille", State = ForgeScheduleState.Installed, Expression = "hourly",
+            Family = "windows", Names = ["Orkeon ma-veille"],
+        });
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/t/ma-veille", State = ForgeScheduleState.Stale, Reason = ForgeScheduleReasons.Renamed,
+            Family = "windows", Names = ["Orkeon veille"],
+        });
+        writer.ScheduleState(new ForgeScheduleReport
+        {
+            TeamDirectory = "/t/ma-veille", State = ForgeScheduleState.Absent, Reason = ForgeScheduleReasons.NotInstalled,
+            Family = "windows", Names = ["Orkeon ma-veille"], Removed = true,
+        });
+        writer.Error(ForgeErrorCodes.ScheduleRefused, "The windows scheduler refused: ERROR: Access is denied.", recoverable: true,
+            "schtasks /Delete /TN \"Orkeon ma-veille\" /F");
+
+        var lines = console.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(
+            ["✔ scheduled (hourly): Orkeon ma-veille",
+             "⚠ schedule to reinstall (renamed): Orkeon veille — run `orkeon forge schedule \"/t/ma-veille\"`",
+             "✔ schedule removed: Orkeon ma-veille",
+             "✖ [FORGE-SCHEDULE-REFUSED] The windows scheduler refused: ERROR: Access is denied.",
+             "  by hand: schtasks /Delete /TN \"Orkeon ma-veille\" /F"],
+            lines);
+    }
+
     [Fact]
     public void The_sequence_is_strictly_increasing_from_one()
     {

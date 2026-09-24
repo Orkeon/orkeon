@@ -33,6 +33,22 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public string? ReopenDirectory { get; init; }
 
+    /// <summary>
+    /// <c>forge schedule &lt;team-folder&gt;</c> (STUDIO-27): installs the schedule the folder
+    /// declares with the operating system's own scheduler — or, with <see cref="Check"/>, says
+    /// where it stands. Offline, no session: the folder is all it reads.
+    /// </summary>
+    public string? ScheduleDirectory { get; init; }
+
+    /// <summary>
+    /// <c>forge unschedule &lt;team-folder&gt;</c> (STUDIO-27): removes the registration the
+    /// folder installed, its <c>schedule/</c> and the block of its <c>forge.json</c>.
+    /// </summary>
+    public string? UnscheduleDirectory { get; init; }
+
+    /// <summary><c>--check</c> (<c>forge schedule</c> only): report the state, change nothing.</summary>
+    public bool Check { get; init; }
+
     /// <summary><c>--to</c>: destination directory of a promotion.</summary>
     public string? Destination { get; init; }
 
@@ -158,11 +174,12 @@ internal sealed record ForgeCommandOptions
         return Reconcile(options, needWords);
     }
 
-    private static bool IsVerb(string arg) => arg is "list" or "resume" or "promote" or "reopen";
+    private static bool IsVerb(string arg) =>
+        arg is "list" or "resume" or "promote" or "reopen" or "schedule" or "unschedule";
 
     /// <summary>
-    /// The four subcommands; <c>resume</c> and <c>promote</c> take the session slug,
-    /// <c>reopen</c> the promoted team folder.
+    /// The six subcommands; <c>resume</c> and <c>promote</c> take the session slug,
+    /// <c>reopen</c>, <c>schedule</c> and <c>unschedule</c> the promoted team folder.
     /// </summary>
     private static ForgeCommandOptions ParseVerb(string[] args, ref int i, ForgeCommandOptions options)
     {
@@ -175,6 +192,19 @@ internal sealed record ForgeCommandOptions
             return i + 1 < args.Length
                 ? options with { ReopenDirectory = args[++i] }
                 : options with { Error = "reopen needs the team folder (the one `forge promote --to` wrote)." };
+        }
+
+        if (verb is "schedule" or "unschedule")
+        {
+            // The folder comes first: `forge schedule --check` without one names no folder,
+            // rather than one called «--check».
+            if (i + 1 >= args.Length || args[i + 1].StartsWith('-'))
+                return options with { Error = $"{verb} needs the team folder (the one `forge promote --to` wrote)." };
+
+            var folder = args[++i];
+            return verb == "schedule"
+                ? options with { ScheduleDirectory = folder }
+                : options with { UnscheduleDirectory = folder };
         }
 
         // The slug is taken as written: it is positional, so it is whatever follows the verb.
@@ -226,6 +256,7 @@ internal sealed record ForgeCommandOptions
         "--dry" => options with { Dry = true },
         "--edit" => options with { Edit = true },
         "--adopt" => options with { Adopt = true },
+        "--check" => options with { Check = true },
         _ => null,
     };
 
@@ -296,11 +327,20 @@ internal sealed record ForgeCommandOptions
             "--adopt only applies to `forge resume`."),
         ((o, _) => o.Adopt && o.Edit,
             "--adopt and --edit are two different answers to the same pause."),
-        ((o, _) => o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null),
+        ((o, _) => o.ReadDirectory is not null
+                   && (o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null || ActsOnASchedule(o)),
             "--read only applies to a new session or to `forge resume`."),
         ((o, needWords) => o.ReopenDirectory is not null && (ShapesACycle(o) || needWords > 0),
             "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
+        ((o, _) => o.Check && o.ScheduleDirectory is null,
+            "--check only applies to `forge schedule`."),
+        ((o, needWords) => ActsOnASchedule(o) && (ShapesACycle(o) || needWords > 0),
+            "schedule and unschedule take no option but --events (and --check for schedule): they act on the team folder's schedule and start nothing."),
     ];
+
+    /// <summary>Whether the verb is <c>schedule</c> or <c>unschedule</c>.</summary>
+    private static bool ActsOnASchedule(ForgeCommandOptions o) =>
+        o.ScheduleDirectory is not null || o.UnscheduleDirectory is not null;
 
     /// <summary>Whether any option that shapes a cycle was passed.</summary>
     private static bool ShapesACycle(ForgeCommandOptions o) =>
@@ -339,7 +379,9 @@ internal sealed record ForgeCommandOptions
 /// crew and the cycle by the engine. <c>--dry</c> stops after Validate;
 /// <c>--read &lt;dir&gt;</c> points the trial's <c>/workspace</c> at a folder of documents;
 /// <c>promote &lt;slug&gt; --to &lt;dir&gt;</c> ships a Ready session as an ordinary folder;
-/// <c>reopen &lt;dir&gt;</c> finds or rebuilds the session of a promoted folder (FORGE-09).
+/// <c>reopen &lt;dir&gt;</c> finds or rebuilds the session of a promoted folder (FORGE-09);
+/// <c>schedule &lt;dir&gt; [--check]</c> and <c>unschedule &lt;dir&gt;</c> install, check and remove
+/// its schedule with the operating system's own scheduler (STUDIO-27).
 /// </summary>
 internal static class ForgeCommand
 {
@@ -353,7 +395,11 @@ internal static class ForgeCommand
     private const int ExitCancelled = 130;
 
     /// <summary>Dispatches <c>forge</c> subcommands.</summary>
-    public static async Task<int> DispatchAsync(string[] args, string? workingDirectoryOverride = null)
+    /// <param name="args">The arguments after <c>forge</c>.</param>
+    /// <param name="workingDirectoryOverride">The workspace; the process working directory when null.</param>
+    /// <param name="scheduleHost">The operating system the schedule verbs act on; this machine's when null.</param>
+    public static async Task<int> DispatchAsync(
+        string[] args, string? workingDirectoryOverride = null, ForgeScheduleHost? scheduleHost = null)
     {
         ArgumentNullException.ThrowIfNull(args);
 
@@ -370,7 +416,24 @@ internal static class ForgeCommand
             return await ListAsync(workspace).ConfigureAwait(false);
 
         if (options.PromoteSlug is not null)
-            return await PromoteAsync(workspace, options).ConfigureAwait(false);
+            return await PromoteAsync(workspace, options, scheduleHost).ConfigureAwait(false);
+
+        if (options.ScheduleDirectory is not null || options.UnscheduleDirectory is not null)
+        {
+            // Under the same guard as a reopen: the verbs write forge.json and schedule/, and a
+            // disk that refuses must come back as an exit code, never as an unhandled exception.
+            try
+            {
+                return Schedule(options, scheduleHost ?? ForgeScheduleHost.ForCurrentMachine());
+            }
+#pragma warning disable CA1031 // the CLI boundary: anything unexpected becomes exit 2, like `orkeon run`
+            catch (Exception ex)
+            {
+                await Console.Error.WriteLineAsync($"orkeon forge: {Explain(ex)}").ConfigureAwait(false);
+                return ExitRuntimeError;
+            }
+#pragma warning restore CA1031
+        }
 
         if (options.ReopenDirectory is not null)
         {
@@ -948,6 +1011,48 @@ internal static class ForgeCommand
     }
 
     /// <summary>
+    /// <c>forge schedule &lt;team-folder&gt; [--check]</c> and <c>forge unschedule &lt;team-folder&gt;</c>
+    /// (STUDIO-27): the operating system runs the team, the CLI — which owns the artifacts —
+    /// registers, checks and removes it (<see cref="ForgeScheduler"/>). Fully offline, no session:
+    /// the stream carries the <c>warning</c>s, then either the folder's <c>schedule.state</c> —
+    /// exit 0 — or an <c>error</c> with the command a person can run instead — exit 1.
+    /// </summary>
+    private static int Schedule(ForgeCommandOptions options, ForgeScheduleHost host)
+    {
+        var verb = options.UnscheduleDirectory is not null ? "unschedule" : "schedule";
+        var teamDirectory = Path.GetFullPath(options.ScheduleDirectory ?? options.UnscheduleDirectory!);
+        using var renderer = options.Events ? null : new ForgeTerminalRenderer(Console.Out);
+        var events = new ForgeEventWriter(renderer ?? Console.Out);
+
+        if (!Directory.Exists(teamDirectory))
+        {
+            events.Error(ForgeErrorCodes.TeamUnreadable, $"{verb} names no directory: '{teamDirectory}'.", recoverable: false);
+            return ExitError;
+        }
+
+        var scheduler = new ForgeScheduler(host);
+        ForgeScheduleOutcome outcome;
+        if (options.UnscheduleDirectory is not null)
+            outcome = scheduler.Remove(teamDirectory);
+        else if (options.Check)
+            outcome = scheduler.Check(teamDirectory);
+        else
+            outcome = scheduler.Install(teamDirectory);
+
+        foreach (var (code, message) in outcome.Warnings)
+            events.Warning(code, message);
+
+        if (outcome.Failure is { } failure)
+        {
+            events.Error(failure.Code, failure.Message, recoverable: true, failure.Command);
+            return ExitError;
+        }
+
+        events.ScheduleState(outcome.Report!);
+        return 0;
+    }
+
+    /// <summary>
     /// The protocol's word for where a session stands, for a command that refused to move it.
     /// «failed» is reserved for a session that actually broke; a session that is merely not
     /// where the command applies is still exactly as resumable as it was a moment ago.
@@ -973,7 +1078,7 @@ internal static class ForgeCommand
     /// the command still succeeds: the promotion stands, the id links the two.
     /// </para>
     /// </summary>
-    private static async Task<int> PromoteAsync(string workspace, ForgeCommandOptions options)
+    private static async Task<int> PromoteAsync(string workspace, ForgeCommandOptions options, ForgeScheduleHost? scheduleHost)
     {
         if (!ForgeSession.TryLoadBySlug(workspace, options.PromoteSlug!, out var session, out var loadError))
         {
@@ -1040,6 +1145,14 @@ internal static class ForgeCommand
                 install = result.InstallCommand,
                 updated = result.Updated,
             });
+
+        // A re-adoption that drops the schedule touches no OS (STUDIO-27): the registration this
+        // folder installed keeps running the team, and saying so is the promotion's whole part.
+        if (options.Schedule is null
+            && ForgeScheduler.StillInstalled(result.Destination, scheduleHost?.Adapter.Family ?? ForgePromoter.DetectPlatform()) is { } stillInstalled)
+        {
+            events.Warning(ForgeErrorCodes.ScheduleStillInstalled, stillInstalled);
+        }
 
         // The promotion is written: the session folder follows the team's (D-02). Outside the
         // guard above on purpose — nothing that happens from here may read as a failed

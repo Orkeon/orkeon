@@ -199,6 +199,51 @@ internal static class ForgeErrorCodes
     /// <summary>
     /// <c>forge reopen</c> found no crew it can read back into a plan under the team folder
     /// (no folder, no YAML crew, a script crew, or files that do not describe a valid plan).
+    /// The schedule verbs say it too of a folder that is not there, or holds no launcher.
     /// </summary>
     public const string TeamUnreadable = "FORGE-TEAM-UNREADABLE";
+
+    /// <summary>
+    /// <c>forge schedule</c> was asked to install the schedule of a folder that declares none: its
+    /// <c>forge.json</c> records no <c>--schedule</c> of a promotion (STUDIO-27).
+    /// </summary>
+    public const string ScheduleNone = "FORGE-SCHEDULE-NONE";
+
+    /// <summary>
+    /// The operating system refused a schedule verb — a policy, no user session bus, no crontab
+    /// binary. Carried by an <c>error</c> whose <c>command</c> is what a person can run instead
+    /// (STUDIO-27, D-04).
+    /// </summary>
+    public const string ScheduleRefused = "FORGE-SCHEDULE-REFUSED";
+
+    /// <summary>
+    /// <c>forge schedule</c> found the name its folder takes already registered for another team
+    /// folder that claims it: never replaced (STUDIO-27).
+    /// </summary>
+    public const string ScheduleNameTaken = "FORGE-SCHEDULE-NAME-TAKEN";
+
+    /// <summary>
+    /// A <c>warning</c>: the registration a folder's record names belongs to the folder it was
+    /// copied from, and is left in place (STUDIO-27).
+    /// </summary>
+    public const string ScheduleNotOwned = "FORGE-SCHEDULE-NOT-OWNED";
+
+    /// <summary>
+    /// A <c>warning</c>: the registration a folder's record names was made on another operating
+    /// system family, which this machine cannot act on (STUDIO-27).
+    /// </summary>
+    public const string ScheduleOtherSystem = "FORGE-SCHEDULE-OTHER-SYSTEM";
+
+    /// <summary>
+    /// A <c>warning</c>: the schedule is removed from the OS, but files that described it could not
+    /// all be deleted (STUDIO-27).
+    /// </summary>
+    public const string ScheduleFilesKept = "FORGE-SCHEDULE-FILES-KEPT";
+
+    /// <summary>
+    /// A <c>warning</c> of <c>forge promote</c>: a re-adoption dropped the schedule, and this
+    /// folder's registration still runs the team until <c>forge unschedule</c> removes it — a
+    /// promotion never touches the OS (STUDIO-27).
+    /// </summary>
+    public const string ScheduleStillInstalled = "FORGE-SCHEDULE-STILL-INSTALLED";
 }
