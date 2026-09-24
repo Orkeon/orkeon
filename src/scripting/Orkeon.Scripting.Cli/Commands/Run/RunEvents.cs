@@ -217,7 +217,8 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     /// the cache pair once a provider measured it, the part the runtime had to estimate once a
     /// provider counted nothing, and the vendor's own charge once a vendor billed one. Every
     /// generation call of the run reaches here — the agents', the manager's, the planner's, the
-    /// RAG pipelines', the memory services' — through the one metered provider (STUDIO-42).
+    /// RAG pipelines', the memory services' — through the one metered provider (STUDIO-42), and
+    /// each reading says which kind of work its own call was (STUDIO-30).
     /// </remarks>
     public void Record(CostUsageEvent usage)
     {
@@ -283,6 +284,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 estimatedTokens = estimated,
                 model = Blank(usage.Model),
                 provider = Blank(usage.Provider),
+                operation = Operation(usage.OperationType),
                 cost,
                 currency,
                 costSource = cost is null ? null : VendorCostSource,
@@ -294,6 +296,24 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     /// exists so a price never has to be taken on faith — and DD-1 keeps it the only source.
     /// </summary>
     private const string VendorCostSource = "vendor";
+
+    /// <summary>
+    /// What an event built without a kind of work carries — <see cref="CostUsageEvent"/>'s own
+    /// default, read off a fresh instance so the two cannot drift apart.
+    /// </summary>
+    private static readonly string UnnamedOperation = new CostUsageEvent().OperationType;
+
+    /// <summary>
+    /// The kind of work a reading measured, as the engine attributed its call (STUDIO-30): what
+    /// lets a watcher name the model the agents work on rather than a judge's or a RAG
+    /// pipeline's. A call nothing claimed names none — an unknown kind is left out, not guessed.
+    /// </summary>
+    private static string? Operation(string operation) =>
+        string.IsNullOrEmpty(operation)
+        || string.Equals(operation, LlmUsageOperations.Unattributed, StringComparison.Ordinal)
+        || string.Equals(operation, UnnamedOperation, StringComparison.Ordinal)
+            ? null
+            : operation;
 
     /// <inheritdoc />
     public void OnDelta(string delta)

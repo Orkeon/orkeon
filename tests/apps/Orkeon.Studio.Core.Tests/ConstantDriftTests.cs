@@ -2,12 +2,14 @@ using Orkeon.Constants.Llm;
 using Orkeon.Constants.FileSystem;
 using System.Reflection;
 using System.Text.Json;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Hosting;
 using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Launch;
 using Orkeon.Studio.Core.Presets;
+using Orkeon.Studio.Core.Run;
 using Orkeon.Studio.Core.Storage;
 using Orkeon.Studio.Core.Targets;
 using Orkeon.Studio.Core.Validation;
@@ -121,6 +123,27 @@ public sealed class ConstantDriftTests
         Assert.True(
             declared <= built,
             $"MinimumCliVersion {RunTargetRequirements.MinimumCliVersion} is ahead of the built version {built}.");
+    }
+
+    /// <summary>
+    /// The status bar names the model the agents work on, and a reading from the machinery around
+    /// them — a judge, a RAG pipeline, the manager — leaves that name alone (STUDIO-30). Studio
+    /// sorts the kinds of work the engine names; a kind added there and not sorted here would read
+    /// as an agent's work, so every one of them is checked. <c>unattributed</c> never reaches the
+    /// wire: the CLI leaves the field out.
+    /// </summary>
+    [Fact]
+    public void Every_kind_of_work_the_engine_names_is_sorted_by_the_run_meter()
+    {
+        var engine = ConstantValuesOf(typeof(LlmUsageOperations))
+            .Where(kind => !string.Equals(kind, LlmUsageOperations.Unattributed, StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(engine, ConstantValuesOf(typeof(RunCostOperations)).Order(StringComparer.Ordinal));
+        Assert.All(engine, kind => Assert.Equal(
+            string.Equals(kind, LlmUsageOperations.Agent, StringComparison.Ordinal),
+            RunCostOperations.IsAgentWork(kind)));
     }
 
     private static string BuiltVersion() =>

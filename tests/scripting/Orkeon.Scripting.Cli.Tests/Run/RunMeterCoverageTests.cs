@@ -132,5 +132,10 @@ public sealed class RunMeterCoverageTests : IDisposable
         var agents = meter.Select(e => e.TryGetProperty("agentId", out var id) ? id.GetString() : null).ToList();
         Assert.Equal([null, "Manager", "Researcher", "Researcher", "Researcher", "Manager"], agents);
         Assert.All(meter, e => Assert.Equal(crew.Id.ToString(), e.GetProperty("crewId").GetString()));
+
+        // And what each call was for: a watcher naming the model the agents work on reads the
+        // agent's two turns, not the plan, the manager or the RAG answer inside the tool.
+        var operations = meter.Select(e => e.TryGetProperty("operation", out var op) ? op.GetString() : null).ToList();
+        Assert.Equal(["planning", "manager", "agent", "rag", "agent", "manager"], operations);
     }
 }

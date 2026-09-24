@@ -292,6 +292,25 @@ public sealed class RunEventsTests : IDisposable
         Assert.Equal(40, observer.EstimatedTokens);
     }
 
+    [Fact]
+    public void Each_reading_names_the_work_its_call_was_for_and_an_unclaimed_call_names_none()
+    {
+        // Every call of a run is on the meter (STUDIO-42), so a watcher that names the model a
+        // team works on has to tell an agent's reading from a judge's. The engine's attribution
+        // travels as it is; a call nothing claimed leaves the field out rather than say
+        // "unattributed", and so does an event built without a kind of work.
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        observer.Record(new CostUsageEvent { PromptTokens = 10, CompletionTokens = 5, OperationType = LlmUsageOperations.Agent });
+        observer.Record(new CostUsageEvent { PromptTokens = 10, CompletionTokens = 5, OperationType = LlmUsageOperations.Judge });
+        observer.Record(new CostUsageEvent { PromptTokens = 10, CompletionTokens = 5, OperationType = "complete" });
+        observer.Record(new CostUsageEvent { PromptTokens = 10, CompletionTokens = 5, OperationType = LlmUsageOperations.Unattributed });
+        observer.Record(new CostUsageEvent { PromptTokens = 10, CompletionTokens = 5 });
+
+        var operations = Events().Select(e => e.TryGetProperty("operation", out var operation) ? operation.GetString() : null);
+        Assert.Equal(["agent", "judge", "complete", null, null], operations);
+    }
+
     /// <summary>Two tasks, one agent: two calls to the vendor, one per task.</summary>
     private const string TwoTaskCrew =
         """

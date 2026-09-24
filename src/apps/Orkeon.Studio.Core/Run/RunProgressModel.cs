@@ -45,16 +45,26 @@ public sealed record RunTaskProgress(
 /// <summary>
 /// What the run has spent so far, as its latest <c>cost.updated</c> said it — every figure
 /// cumulative. A field the line did not carry stays null: an older CLI sends no split, a
-/// provider that measures no cache sends no cache pair, and a vendor that bills nothing in
-/// its answers sends no amount. None of them is a zero.
+/// provider that measures no cache sends no cache pair, a run whose every call was counted
+/// sends no estimated part, and a vendor that bills nothing in its answers sends no amount.
+/// None of them is a zero.
 /// </summary>
 /// <param name="Tokens">Both directions together.</param>
-/// <param name="Model">The model that answered last, when reported.</param>
-/// <param name="Provider">The provider that answered last, when reported.</param>
+/// <param name="Model">
+/// The model the agents' latest call was answered by, when reported. A reading from the
+/// machinery around the agents — a judge, a RAG pipeline, the manager, the planner — or one that
+/// names no kind of work leaves it as it was (<see cref="RunCostOperations.IsAgentWork"/>).
+/// </param>
+/// <param name="Provider">The provider of that same call, when reported.</param>
 /// <param name="PromptTokens">What went up (↑).</param>
 /// <param name="CompletionTokens">What came back (↓).</param>
 /// <param name="CacheHitTokens">Prompt tokens served from the provider's cache — a partition of <paramref name="PromptTokens"/>.</param>
 /// <param name="CacheMissTokens">Prompt tokens the provider had to compute.</param>
+/// <param name="EstimatedTokens">
+/// How much of <paramref name="Tokens"/> the runtime estimated because a provider counted
+/// nothing — spread over both directions, which the wire does not split. A screen marks the
+/// figures «≈» rather than pass an estimate off as a count.
+/// </param>
 /// <param name="Amount">What the vendor billed, as billed (0 for a free call) — never an estimate.</param>
 /// <param name="Currency">The ISO 4217 code of <paramref name="Amount"/>, when stated.</param>
 /// <param name="Source">Who stated <paramref name="Amount"/>: <c>vendor</c>, the one source the CLI emits.</param>
@@ -66,9 +76,53 @@ public sealed record RunCost(
     long? CompletionTokens,
     long? CacheHitTokens,
     long? CacheMissTokens,
+    long? EstimatedTokens,
     decimal? Amount,
     string? Currency,
     string? Source);
+
+/// <summary>
+/// The kinds of work a <c>cost.updated</c> reading names in its <c>operation</c>: the engine's
+/// own vocabulary, copied as Studio copies every runtime constant it needs and pinned against the
+/// original by a drift test. A script's <c>ctx.llm.*</c> call names its method instead —
+/// <c>complete</c>, <c>chat</c>, <c>act</c>… — and is not listed: it is the script's agents at work.
+/// </summary>
+public static class RunCostOperations
+{
+    /// <summary>An agent working on its task: each turn, each retry, each correction round.</summary>
+    public const string Agent = "agent";
+
+    /// <summary>The hierarchical manager assigning a task or reviewing its output.</summary>
+    public const string Manager = "manager";
+
+    /// <summary>The crew planner drafting the execution plan.</summary>
+    public const string Planning = "planning";
+
+    /// <summary>A RAG pipeline: query rewriting, reranking, grading and grounded generation.</summary>
+    public const string Rag = "rag";
+
+    /// <summary>The cognitive memory services: analysis, contradiction checks, consolidation.</summary>
+    public const string Memory = "memory";
+
+    /// <summary>An LLM step of a flow.</summary>
+    public const string Flow = "flow";
+
+    /// <summary>An LLM judge grading an output.</summary>
+    public const string Judge = "judge";
+
+    private static readonly HashSet<string> Machinery = new(StringComparer.Ordinal)
+    {
+        Manager, Planning, Rag, Memory, Flow, Judge,
+    };
+
+    /// <summary>
+    /// Whether a reading measured the agents' own work — an agent's turn, or a script's
+    /// <c>ctx.llm.*</c> call — rather than the machinery around them (STUDIO-30). A reading that
+    /// names no kind of work is not one: nothing says an agent made the call.
+    /// </summary>
+    public static bool IsAgentWork(string? operation) =>
+        !string.IsNullOrEmpty(operation) && !Machinery.Contains(operation);
+}
 
 /// <summary>A question a task is asking, waiting for this process to answer.</summary>
 public sealed record RunQuestion(
@@ -294,6 +348,12 @@ public sealed class RunProgressModel
     /// <summary>Cache-missed prompt tokens at the close; null when unmeasured.</summary>
     public long? FinalCacheMissTokens { get; private set; }
 
+    /// <summary>
+    /// How much of <see cref="FinalTokens"/> the runtime estimated because a provider counted
+    /// nothing; null when every call was counted.
+    /// </summary>
+    public long? FinalEstimatedTokens { get; private set; }
+
     /// <summary>Generated text accumulated from <c>llm.delta</c>, empty without <c>--stream</c>.</summary>
     public string GeneratedText => _generated.ToString();
 
@@ -380,14 +440,19 @@ public sealed class RunProgressModel
                 // `budgetRemaining` — fields the writer never produced — so the screen was
                 // built against a fiction. The split and the vendor's charge arrive with every
                 // reading since STUDIO-29; a field a line leaves out stays null here.
+                // Every call of the run is on the meter since STUDIO-42 — a judge's, a RAG
+                // pipeline's, the manager's: their readings move the figures and leave the model
+                // named, which is the one the agents work on.
+                var agentWork = RunCostOperations.IsAgentWork(orkeonEvent.GetString("operation"));
                 Cost = new RunCost(
                     orkeonEvent.GetInt64("tokens") ?? 0,
-                    orkeonEvent.GetString("model"),
-                    orkeonEvent.GetString("provider"),
+                    agentWork ? orkeonEvent.GetString("model") : Cost?.Model,
+                    agentWork ? orkeonEvent.GetString("provider") : Cost?.Provider,
                     orkeonEvent.GetInt64("promptTokens"),
                     orkeonEvent.GetInt64("completionTokens"),
                     orkeonEvent.GetInt64("cacheHitTokens"),
                     orkeonEvent.GetInt64("cacheMissTokens"),
+                    orkeonEvent.GetInt64("estimatedTokens"),
                     orkeonEvent.GetDecimal("cost"),
                     orkeonEvent.GetString("currency"),
                     orkeonEvent.GetString("costSource"));
@@ -464,6 +529,7 @@ public sealed class RunProgressModel
                 FinalDurationMs = orkeonEvent.GetInt64("durationMs");
                 FinalCacheHitTokens = orkeonEvent.GetInt64("cacheHitTokens");
                 FinalCacheMissTokens = orkeonEvent.GetInt64("cacheMissTokens");
+                FinalEstimatedTokens = orkeonEvent.GetInt64("estimatedTokens");
                 _finishedAt = ReadTimestamp(orkeonEvent);
                 _questions.Clear();       // nobody is left to answer them
                 _agentRequests.Clear();   // the asking agents are gone with the run

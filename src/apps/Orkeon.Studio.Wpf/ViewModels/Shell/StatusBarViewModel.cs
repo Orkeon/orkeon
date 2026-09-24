@@ -66,9 +66,10 @@ public sealed record StatusBarSources
 /// One group per activity — Run, Test, the assistant — each on the bar only while its activity
 /// runs; none is hidden behind another and none is merged into another (DD-2). At rest, the
 /// expert reads the default model profile: there is no «active» profile, each team picks its
-/// own, and during a run only the model the meter reports is true. A segment nothing measured
-/// is absent, never a zero. The novice reads each group's state and meters; the expert reads
-/// everything (D-03). A click on a group asks the shell for that activity's screen (D-04).
+/// own, and during a run only the model the meter reports for the agents' calls is true. A
+/// segment nothing measured is absent, never a zero. The novice reads each group's state and
+/// meters; the expert reads everything (D-03). A click on a group asks the shell for that
+/// activity's screen (D-04).
 /// </para>
 /// <para>
 /// Everything here is read off models the screens already hold — the launchers' progress models
