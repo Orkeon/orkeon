@@ -7,12 +7,12 @@ title:
   de: "Überwachung von Nebenwirkungen"
   zh-Hans: "药物不良反应监测"
 problem:
-  fr: "Je veux suivre les effets indésirables d'un médicament signalés dans les bases officielles, les publications et les forums, sans doublons"
-  en: "I want to track a drug's reported side effects across official databases, publications and forums, without duplicates"
-  es: "Quiero seguir los efectos adversos de un medicamento notificados en bases oficiales, publicaciones y foros, sin duplicados"
-  de: "Ich möchte gemeldete Nebenwirkungen eines Medikaments in offiziellen Datenbanken, Fachartikeln und Foren verfolgen, ohne doppelte Meldungen"
-  zh-Hans: "我想跟踪某种药物在官方数据库、学术文献和论坛中被报告的不良反应，并去除重复"
-tags: ["pharmacovigilance", "drug-safety", "adverse-events", "deduplication"]
+  fr: "Suivre les effets indésirables d'un médicament signalés dans les bases officielles, les publications et les forums, sans doublons"
+  en: "Track a drug's reported side effects across official databases, publications and forums, without duplicates"
+  es: "Seguir los efectos adversos de un medicamento notificados en bases oficiales, publicaciones y foros, sin duplicados"
+  de: "Gemeldete Nebenwirkungen eines Medikaments in offiziellen Datenbanken, Fachartikeln und Foren ohne doppelte Meldungen verfolgen"
+  zh-Hans: "跟踪某种药物在官方数据库、学术文献和论坛中被报告的不良反应，并去除重复"
+tags: ["drug-safety", "pharmacovigilance", "adverse-events", "deduplication"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -7,12 +7,12 @@ title:
   de: "Mentoring beim Programmieren"
   zh-Hans: "编程成长辅导"
 problem:
-  fr: "Je veux qu'on relise mon code, qu'on m'explique comment l'améliorer et ce que je dois apprendre ensuite"
-  en: "I want someone to review my code, explain how to improve it and tell me what to learn next"
-  es: "Quiero que revisen mi código, me expliquen cómo mejorarlo y qué debería aprender después"
-  de: "Ich möchte, dass jemand meinen Code prüft, mir erklärt, wie ich ihn verbessere, und sagt, was ich als Nächstes lernen sollte"
-  zh-Hans: "我想请人审阅我的代码，讲解如何改进，并告诉我下一步该学什么"
-tags: ["code-review", "mentoring", "software-development", "career-growth"]
+  fr: "Relire mon code, m'expliquer comment l'améliorer et me dire quoi apprendre ensuite"
+  en: "Review my code, explain how to improve it and tell me what to learn next"
+  es: "Revisar mi código, explicarme cómo mejorarlo y decirme qué aprender después"
+  de: "Meinen Code prüfen, mir erklären, wie ich ihn verbessere, und mir sagen, was ich als Nächstes lernen sollte"
+  zh-Hans: "审阅我的代码，讲解如何改进，并告诉我下一步该学什么"
+tags: ["software-development", "code-review", "mentoring", "career-growth"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -7,11 +7,11 @@ title:
   de: "Diagnoseansätze für die Arztpraxis"
   zh-Hans: "供医生参考的诊断思路"
 problem:
-  fr: "Je suis médecin : je veux organiser les symptômes d'un patient et les pistes à vérifier, en validant chaque étape"
-  en: "As a doctor, I want to organize a patient's symptoms and the leads to check, approving each step"
-  es: "En mi consulta, quiero ordenar los síntomas de un paciente y las pistas por verificar, validando cada paso"
-  de: "In meiner Praxis möchte ich die Symptome eines Patienten und die zu prüfenden Diagnoseansätze ordnen und jeden Schritt selbst freigeben"
-  zh-Hans: "作为医生，我想整理患者的症状和有待核实的诊断思路，并亲自确认每一步"
-tags: ["diagnosis-support", "symptoms", "drug-interactions", "human-review"]
+  fr: "Organiser les symptômes de mes patients et les pistes à vérifier, en me soumettant chaque étape"
+  en: "Organize my patients' symptoms and the leads to check, submitting each step for my approval"
+  es: "Ordenar los síntomas de mis pacientes y las pistas por verificar, sometiendo cada paso a mi aprobación"
+  de: "Die Symptome meiner Patienten und die zu prüfenden Diagnoseansätze ordnen und mir jeden Schritt zur Freigabe vorlegen"
+  zh-Hans: "整理我接诊患者的症状和待核实的诊断思路，每一步都交由我确认"
+tags: ["healthcare", "diagnosis-support", "drug-interactions", "human-review"]
 mounts: []
 importable: true

@@ -7,12 +7,12 @@ title:
   de: "Ausführliche Bewertung von Arbeiten"
   zh-Hans: "作业详细批改"
 problem:
-  fr: "Je veux corriger une copie sur le fond, la forme et la méthode, avec une note et des commentaires détaillés"
-  en: "I want to grade a paper on content, form and method, with a score and detailed comments"
-  es: "Quiero corregir un trabajo según el fondo, la forma y el método, con una nota y comentarios detallados"
-  de: "Ich möchte eine Arbeit nach Inhalt, Form und Methode bewerten, mit einer Note und ausführlichen Kommentaren"
-  zh-Hans: "我想从内容、形式和方法三方面批改一份作业，给出分数和详细评语"
-tags: ["grading", "assessment", "feedback", "teaching"]
+  fr: "Corriger une copie sur le fond, la forme et la méthode, avec une note et des commentaires détaillés"
+  en: "Grade a paper on content, form and method, with a score and detailed comments"
+  es: "Corregir un trabajo según el fondo, la forma y el método, con una nota y comentarios detallados"
+  de: "Eine Arbeit nach Inhalt, Form und Methode bewerten, mit einer Note und ausführlichen Kommentaren"
+  zh-Hans: "从内容、形式和方法三方面批改一份作业，给出分数和详细评语"
+tags: ["education", "grading", "assessment", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

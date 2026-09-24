@@ -7,12 +7,12 @@ title:
   de: "Kompetenzlandkarte des Teams"
   zh-Hans: "团队技能地图"
 problem:
-  fr: "Je veux savoir quelles compétences manquent à mon équipe et quelles formations suivre en priorité"
-  en: "I want to know which skills my team lacks and which training to prioritize"
-  es: "Quiero saber qué competencias le faltan a mi equipo y qué formaciones priorizar"
-  de: "Ich möchte wissen, welche Kompetenzen meinem Team fehlen und welche Schulungen Vorrang haben"
-  zh-Hans: "我想知道我的团队缺少哪些技能，以及应优先安排哪些培训"
-tags: ["skills-gap", "team-development", "training-plan"]
+  fr: "Trouver les compétences qui manquent à mon équipe et les formations à suivre en priorité"
+  en: "Find the skills my team lacks and the training to prioritize"
+  es: "Encontrar las competencias que le faltan a mi equipo y las formaciones prioritarias"
+  de: "Herausfinden, welche Kompetenzen meinem Team fehlen und welche Schulungen Vorrang haben"
+  zh-Hans: "找出我的团队欠缺的技能，以及应优先安排的培训"
+tags: ["hr", "skills-gap", "team-development", "training-plan"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

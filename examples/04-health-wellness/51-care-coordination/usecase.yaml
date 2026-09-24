@@ -7,12 +7,12 @@ title:
   de: "Koordinierter Versorgungsplan"
   zh-Hans: "协同照护计划"
 problem:
-  fr: "Je veux préparer un plan de soins partagé entre médecin, spécialiste, kiné et équipe infirmière"
-  en: "I want to prepare one care plan shared by the doctor, specialist, physical therapist and nursing team"
-  es: "Quiero preparar un plan de cuidados compartido entre médico, especialista, fisioterapeuta y personal de enfermería"
-  de: "Ich möchte einen gemeinsamen Versorgungsplan für das ganze Team aus Medizin, Physiotherapie und Pflege vorbereiten"
-  zh-Hans: "我想为医生、专科医生、康复治疗师和护理团队准备一份共享的照护计划"
-tags: ["care-coordination", "care-plan", "multidisciplinary-team"]
+  fr: "Préparer un plan de soins partagé entre médecin, spécialiste, kiné et équipe infirmière"
+  en: "Prepare one care plan shared by the doctor, specialist, physical therapist and nursing team"
+  es: "Preparar un plan de cuidados compartido entre médico, especialista, fisioterapeuta y personal de enfermería"
+  de: "Einen gemeinsamen Versorgungsplan für das ganze Team aus Medizin, Physiotherapie und Pflege vorbereiten"
+  zh-Hans: "为医生、专科医生、康复治疗师和护理团队准备一份共享的照护计划"
+tags: ["healthcare", "care-coordination", "care-plan"]
 mounts:
   - "./output:/output:rw"
 importable: true

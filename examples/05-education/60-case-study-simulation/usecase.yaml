@@ -7,12 +7,12 @@ title:
   de: "Training im Rollenspiel"
   zh-Hans: "情景模拟训练"
 problem:
-  fr: "Je veux m'entraîner face à un client dans une mise en situation réaliste, puis avoir un retour sur ma prestation"
-  en: "I want to practice with a client in a realistic role-play, then get feedback on how I did"
-  es: "Quiero practicar con un cliente en una simulación realista y luego recibir comentarios sobre mi desempeño"
-  de: "Ich möchte in einem realistischen Rollenspiel den Umgang mit Kunden üben und danach Feedback zu meiner Leistung erhalten"
-  zh-Hans: "我想在逼真的情景模拟中练习与客户打交道，然后获得对我表现的反馈"
-tags: ["role-play", "soft-skills", "feedback"]
+  fr: "Me mettre face à un client dans une mise en situation réaliste, puis me faire un retour sur ma prestation"
+  en: "Put me in a realistic role-play with a client, then give me feedback on how I did"
+  es: "Ponerme frente a un cliente en una simulación realista y luego darme comentarios sobre mi desempeño"
+  de: "Mich in einem realistischen Rollenspiel mit einem Kunden üben lassen und mir danach Feedback zu meiner Leistung geben"
+  zh-Hans: "让我在逼真的情景模拟中练习应对客户，然后对我的表现给出反馈"
+tags: ["training", "role-play", "soft-skills", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

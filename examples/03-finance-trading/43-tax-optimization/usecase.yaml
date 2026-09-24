@@ -7,12 +7,12 @@ title:
   de: "Steuervergleich zwischen Ländern"
   zh-Hans: "跨国税负比较"
 problem:
-  fr: "Je veux comparer l'imposition de mon entreprise aux États-Unis, en Europe et en Asie-Pacifique, et valider moi-même la stratégie"
-  en: "I want to compare how my company is taxed in the US, Europe and Asia-Pacific, and approve the strategy myself"
-  es: "Quiero comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y validar personalmente la estrategia"
-  de: "Ich möchte die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und die Strategie selbst freigeben"
-  zh-Hans: "我想比较我的公司在美国、欧洲和亚太地区的税负，并亲自审定最终策略"
-tags: ["tax-planning", "international-tax", "scenario-comparison", "human-review"]
+  fr: "Comparer l'imposition de mon entreprise aux États-Unis, en Europe et en Asie-Pacifique, puis me soumettre la stratégie pour validation"
+  en: "Compare how my company is taxed in the US, Europe and Asia-Pacific, then submit the strategy for my approval"
+  es: "Comparar la tributación de mi empresa en Estados Unidos, Europa y Asia-Pacífico, y someter la estrategia a mi aprobación"
+  de: "Die Besteuerung meines Unternehmens in den USA, Europa und im Asien-Pazifik-Raum vergleichen und mir die Strategie zur Freigabe vorlegen"
+  zh-Hans: "比较我的公司在美国、欧洲和亚太地区的税负，再把最终策略交给我审定"
+tags: ["tax", "tax-planning", "scenario-comparison", "human-review"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

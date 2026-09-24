@@ -7,12 +7,12 @@ title:
   de: "Prüfung von Kreditanträgen"
   zh-Hans: "贷款申请评估"
 problem:
-  fr: "Je veux évaluer une demande de crédit et recevoir une recommandation, en gardant le dernier mot"
-  en: "I want to assess a credit application and get a recommendation, while keeping the final say"
-  es: "Quiero evaluar una solicitud de crédito y recibir una recomendación, reservándome la última palabra"
-  de: "Ich möchte einen Kreditantrag bewerten und eine Empfehlung erhalten, wobei das letzte Wort bei mir bleibt"
-  zh-Hans: "我想评估一份贷款申请并获得建议，最终决定仍由我来做"
-tags: ["credit-scoring", "lending", "risk-assessment", "human-review"]
+  fr: "Évaluer une demande de crédit et me recommander une décision, sans décider à ma place"
+  en: "Assess a credit application and recommend a decision, without deciding for me"
+  es: "Evaluar una solicitud de crédito y recomendarme una decisión, sin decidir por mí"
+  de: "Einen Kreditantrag bewerten und mir eine Entscheidung empfehlen, ohne für mich zu entscheiden"
+  zh-Hans: "评估一份贷款申请并给我决策建议，但不替我做决定"
+tags: ["lending", "credit-scoring", "risk-assessment", "human-review"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

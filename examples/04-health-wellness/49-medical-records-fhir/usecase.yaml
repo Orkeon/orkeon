@@ -7,12 +7,12 @@ title:
   de: "Patientenakten im Standardformat"
   zh-Hans: "病历标准化"
 problem:
-  fr: "Je veux convertir des dossiers médicaux de formats variés au format standard des données de santé, en repérant les incohérences"
-  en: "I want to convert medical records in assorted formats to the standard health data format, flagging inconsistencies"
-  es: "Quiero convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias"
-  de: "Ich möchte Patientenakten in unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren"
-  zh-Hans: "我想把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
-tags: ["medical-records", "fhir", "data-extraction", "data-quality"]
+  fr: "Convertir des dossiers médicaux de formats variés au format standard des données de santé, en signalant les incohérences"
+  en: "Convert medical records in assorted formats to the standard health data format, flagging inconsistencies"
+  es: "Convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias"
+  de: "Patientenakten aus unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren"
+  zh-Hans: "把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
+tags: ["healthcare", "medical-records", "fhir", "data-conversion"]
 mounts:
   - "./output:/output:rw"
 importable: true

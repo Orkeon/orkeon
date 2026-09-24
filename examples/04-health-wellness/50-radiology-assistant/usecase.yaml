@@ -7,12 +7,12 @@ title:
   de: "Radiologischer Befundentwurf"
   zh-Hans: "影像报告草稿"
 problem:
-  fr: "Je suis radiologue : je veux un premier jet de mes comptes rendus, que je relis, corrige et signe moi-même"
-  en: "As a radiologist, I want a first draft of my reports that I review, correct and sign myself"
-  es: "Quiero un primer borrador de mis informes de radiología, que reviso, corrijo y firmo personalmente"
-  de: "Ich möchte einen ersten Entwurf meiner radiologischen Befunde, den ich selbst prüfe, korrigiere und unterschreibe"
-  zh-Hans: "作为放射科医生，我想先拿到报告初稿，再由我亲自审阅、修改并签字"
-tags: ["radiology", "medical-reporting", "human-review"]
+  fr: "Rédiger un premier jet de mes comptes rendus d'imagerie, que je relis, corrige et signe moi-même"
+  en: "Prepare a first draft of my imaging reports, which I review, correct and sign myself"
+  es: "Preparar un primer borrador de mis informes de imagen, que reviso, corrijo y firmo personalmente"
+  de: "Einen ersten Entwurf meiner radiologischen Befunde erstellen, den ich selbst prüfe, korrigiere und unterschreibe"
+  zh-Hans: "为我的影像报告准备初稿，再由我亲自审阅、修改并签字"
+tags: ["radiology", "medical-reports", "human-review"]
 mounts:
   - "./output:/output:rw"
 importable: true
