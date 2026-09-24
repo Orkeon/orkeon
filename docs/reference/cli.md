@@ -2,7 +2,7 @@
 
 # `orkeon` CLI reference
 
-The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
+The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -85,6 +85,46 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 The sandbox: the try runs in-process with writes confined to the session's own directory (`/output` for deliverables, `/forge` for its working files), the working directory — or the `--read` folder — mounted read-only as `/workspace`, and `shell_command`/`code_interpreter` removed from the tool catalogue — the team plan can only name tools the validation will accept.
 
 The promoted folder is ordinary: `crew/` (or `crew/crew.ork.ts`), `run.sh`/`run.cmd` composed against the `orkeon run` grammar with your sample inputs pre-filled, `FORGE.md` — the crew's identity card (goal, acceptance criteria, verdict, version), written in the interview's language — and `forge.json`, its machine-readable twin (the session's id, slug, title, format, promotion instant, brief) that `forge reopen` reads — the id is what links the folder back to its session wherever the folder goes. `orkeon run <dir>/crew` launches it — from inside `<dir>`, and without the `--mount` arguments `run.sh` supplies, so a team that writes deliverables writes nothing that way; the Studio launcher detects the folder and lays the mounts itself.
+
+## `orkeon usecases`
+
+```bash
+orkeon usecases search "summarize my emails every morning"          # the closest use cases
+orkeon usecases search "je veux un résumé de mes mails chaque matin" --top 3
+orkeon usecases list --category finance-trading --process parallel  # the catalogue, filtered
+orkeon usecases show 03-email-pipeline --crew                        # one sheet, and its crew file
+```
+
+The catalogue of the example use cases: the 105 numbered examples of `examples/`, each described by a sheet written in five languages ([usecases.json](../../examples/usecases.json)). The tool carries the catalogue itself — the manifest, each example's crew file and its `data/` folder — so all three subcommands work offline, read nothing from disk, and call no LLM. The finance examples are **reference only**: searchable and readable, not importable, since their crews depend on a shared `_tools/` folder the tool does not carry.
+
+**`search <text>`** ranks the catalogue against a need written in plain words, in French, English, Spanish, German or Simplified Chinese.
+
+- **By terms**: BM25 over each sheet's title and problem in the five languages, its tags, its tools and its category. The query and the sheets are normalized alike — lowercase, accents folded (`resume` finds `résumé`), Chinese cut into character bigrams — so a query matches whatever language it is typed in.
+- **By meaning**: the local embedding model (BGE-micro-v2, on-device) compares the query with each sheet's English text, and its ranking is fused with the terms' by RRF. The model reads English only (see [Known limitations](./limitations.md)), so meaning is fused in only for the languages where the golden set ([usecases.golden.yaml](../../examples/usecases.golden.yaml)) measured a gain: French, English and Spanish today; German and Chinese are searched by terms. The model loads at the first search that needs it — about a second — and each later search takes a few milliseconds.
+- **Without the model** (its files belong in `LocalEmbeddingsModel/default/` next to the binary; `orkeon doctor` checks them), the search runs by terms and every answer says so. It never degrades silently.
+
+| Option | Description |
+|---|---|
+| `--top <n>` | Number of use cases to answer with (default 5). |
+| `--lang fr\|en\|es\|de\|zh-Hans` | The query's language (`zh` is accepted for `zh-Hans`). Omitted, it is read from the text — function words, accented letters, Chinese characters — and keywords that give nothing away count as English. It picks the search mode and the titles shown. |
+| `--events jsonl` | Answer with one `usecases.results` line on stdout instead of the text rendering. **Without a text, session mode**: one query per stdin line, one answer per query, the model loaded once for all of them, and the end of stdin ends the process with exit 0. |
+
+Each result carries the use case's `id`, its `rank`, its `score` (BM25 by terms, RRF in hybrid mode — comparable within one answer only), the `reason` it matched (`terms`, `meaning` or `terms+meaning`), the `terms` it matched on, its `similarity` to the query in hybrid mode, and its title in the query's language. The answer carries the `mode` it ran in (`bm25` or `hybrid`), the language and how it was settled (`langSource`: `option`, `detected` or `default`), and `degraded`, the reason, when meaning was given up.
+
+Session mode is how Orkeon Studio suggests use cases while you type: the process opens with a `usecases.ready` line (catalogue size, languages, the mode of each), then answers every query with the query's `correlationId` in the envelope.
+
+```text
+→ {"kind":"usecases.query","correlationId":"q1","text":"relancer les factures impayées","lang":"fr","top":5}
+← {"v":2,"seq":2,"ts":"…","kind":"usecases.results","correlationId":"q1","query":"relancer les factures impayées","lang":"fr","langSource":"option","mode":"hybrid","results":[{"rank":1,"id":"40-invoice-processing","score":0.0325,"reason":"terms+meaning","terms":["factures"],"similarity":0.6912,"title":"…"}]}
+```
+
+A query without `top` or `lang` takes the command line's `--top` and `--lang`. A line that is not a query is skipped. A query that cannot run — no `text`, a `lang` outside the five, a `top` below 1 — is answered by an `error` line carrying its `correlationId` and the code `USECASES-QUERY-INVALID`, and the session goes on. The event kinds are declared once, in `Orkeon.Constants.Protocol.UseCaseEventKinds`.
+
+**`list`** prints the catalogue: id, process, title, and the flags `data` (sample data), `web` (needs the network), `keys` (needs a third-party key) and `reference only`. The filters combine: `--category` (`03-finance-trading`, or `finance-trading`), `--process` (`sequential`, `hierarchical`, `parallel`, `consensual`, `graph`, `autonomous`), `--tag`. An unknown category or process is refused with the list of valid ones. `--lang` picks the titles (default `en`). `--events jsonl` emits one `usecases.catalog` line holding every sheet in full, under the manifest's field names.
+
+**`show <id>`** prints one sheet: its category, process, agents and tasks, tools, tags, what it needs (network, keys), its mounts, whether it is importable, the files the tool carries for it, and its title and problem in every language written (`--lang` for one). `--crew` appends the crew file. `--events jsonl` emits a `usecases.sheet` line, with `crew` when asked. An unknown id exits 1 with `USECASES-UNKNOWN-ID` (an `error` line in `--events` mode).
+
+Exit codes: `0` answered (an empty answer included), `1` refused (an unknown id, an invalid option), `2` unexpected error, `130` Ctrl+C.
 
 ## `orkeon init`
 

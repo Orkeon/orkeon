@@ -56,6 +56,18 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- STUDIO-38: the example catalogue. The examples ship nowhere else, so the tool carries
+         what `orkeon usecases` serves: the manifest, and for each catalogued example its crew
+         file and its data/ folder, as usecases/<category>/<id>/<path>. The finance examples'
+         shared _tools/ stays out: they are reference-only (DC-3). No culture is inferred from a
+         file name - a data file named like x.fr.csv must not become a satellite resource. -->
+    <EmbeddedResource Include="..\..\..\examples\usecases.json"
+                      LogicalName="usecases/usecases.json" WithCulture="false" Visible="false" />
+    <EmbeddedResource Include="..\..\..\examples\0?-*\*\config.yaml;..\..\..\examples\0?-*\*\main.ork.ts;..\..\..\examples\0?-*\*\data\**\*"
+                      LogicalName="usecases/%(RecursiveDir)%(Filename)%(Extension)" WithCulture="false" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="CommandLineParser" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging" />

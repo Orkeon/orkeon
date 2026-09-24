@@ -233,6 +233,15 @@ an importable crew that imports `_tools/`). Its `--require-texts` flag also
 requires `title` and `problem` in the five languages; that requirement becomes the
 default once every sheet is written.
 
+**Searching it.** The `orkeon` tool embeds this manifest at build time, with each
+example's crew file and `data/` folder: `orkeon usecases search "<need>"` finds the
+closest use cases offline, in the five languages, and `list` and `show` browse them
+(see the [CLI reference](../docs/reference/cli.md#orkeon-usecases)); rebuild the CLI
+after regenerating the manifest. [usecases.golden.yaml](usecases.golden.yaml) holds the
+golden queries that measure that search: after rewriting sheets, run
+`UseCaseGoldenSetTests` (`tests/scripting/Orkeon.Scripting.Cli.Tests`) and read its
+recall report — it decides, language by language, whether the search fuses in meaning.
+
 ## Shared Resources & Showcases
 
 - [`appsettings/`](appsettings/) — LLM configuration profiles (committed default + provider templates; see [`appsettings/README.md`](appsettings/README.md))

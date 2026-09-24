@@ -1,1 +1,9 @@
 #nullable enable
+Orkeon.Constants.Protocol.UseCaseEventKinds
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Catalog = "usecases.catalog" -> string!
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Error = "error" -> string!
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Query = "usecases.query" -> string!
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Ready = "usecases.ready" -> string!
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Results = "usecases.results" -> string!
+const Orkeon.Constants.Protocol.UseCaseEventKinds.Sheet = "usecases.sheet" -> string!
+static Orkeon.Constants.Protocol.UseCaseEventKinds.All.get -> System.Collections.Generic.IReadOnlyList<string!>!
