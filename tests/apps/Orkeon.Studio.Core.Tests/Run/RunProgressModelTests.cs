@@ -1,5 +1,6 @@
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.Run;
+using Orkeon.Studio.Core.Tests.Doubles;
 
 namespace Orkeon.Studio.Core.Tests.Run;
 
@@ -33,6 +34,13 @@ public class RunProgressModelTests
         Assert.Null(model.PendingQuestion);
         Assert.False(model.Finished);
         Assert.Null(model.Success);
+
+        Assert.Empty(model.ActiveTools);
+        Assert.Equal(0, model.ToolCallCount);
+        Assert.Empty(model.ActiveDelegations);
+        Assert.Empty(model.SpawnedAgents);
+        Assert.False(model.IsWaitingForAnswer);
+        Assert.Null(model.Elapsed);
     }
 
     [Fact]
@@ -418,6 +426,198 @@ public class RunProgressModelTests
 
         model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"cost.updated","tokens":10}"""));
         Assert.Equal(1, announcements);
+    }
+
+    [Fact]
+    public void Tools_at_work_in_parallel_are_all_shown_with_their_start()
+    {
+        // STUDIO-30: the model named the latest tool only, and kept no start. A status bar lists
+        // every tool at work, and since when by the run's own clock.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:31:02Z","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":2,"ts":"2026-09-24T10:31:05Z","correlationId":"k-2","kind":"tool.called","toolName":"web_search"}""");
+
+        Assert.Equal(
+            [
+                new RunToolInFlight("pdf_reader", new DateTimeOffset(2026, 9, 24, 10, 31, 2, TimeSpan.Zero)),
+                new RunToolInFlight("web_search", new DateTimeOffset(2026, 9, 24, 10, 31, 5, TimeSpan.Zero)),
+            ],
+            model.ActiveTools);
+        Assert.Equal("web_search", model.ActiveToolName);   // still the latest call, for the activity line
+        Assert.Equal(2, model.ToolCallCount);
+    }
+
+    [Fact]
+    public void A_return_out_of_order_closes_the_call_it_answers()
+    {
+        // Two calls of one tool: only the correlation id tells them apart. The first returning
+        // leaves the second on screen, with the second's start — the latest call of that name
+        // would have been the wrong one.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:31:02Z","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":2,"ts":"2026-09-24T10:31:09Z","correlationId":"k-2","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":3,"ts":"2026-09-24T10:31:12Z","correlationId":"k-1","kind":"tool.returned","toolName":"pdf_reader","success":true,"durationMs":10000}""");
+
+        var remaining = Assert.Single(model.ActiveTools);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 10, 31, 9, TimeSpan.Zero), remaining.StartedAt);
+        Assert.Equal(1, model.SucceededToolCalls);
+    }
+
+    [Fact]
+    public void A_delegation_is_under_way_until_its_call_returns()
+    {
+        // The CLI reports a delegation instead of its tool call, then closes it with the
+        // tool.returned every call gets: there is no delegation.finished.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:32:00Z","correlationId":"d-1","kind":"delegation.started","toRole":"Writer"}""");
+
+        var delegation = Assert.Single(model.ActiveDelegations);
+        Assert.Equal("Writer", delegation.ToRole);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 10, 32, 0, TimeSpan.Zero), delegation.StartedAt);
+        Assert.Empty(model.ActiveTools);   // reported as a delegation, so not a tool at work
+        Assert.Equal(0, model.ToolCallCount);
+
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","correlationId":"d-1","kind":"tool.returned","toolName":"delegate_work_to_coworker","success":true,"durationMs":42000}"""));
+
+        Assert.Empty(model.ActiveDelegations);
+        Assert.Equal(0, model.SucceededToolCalls);   // its return closed the delegation, not a tool call
+    }
+
+    [Fact]
+    public void A_spawned_agent_is_counted()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:33:00Z","correlationId":"s-1","kind":"agent.spawned","role":"Fact checker","reason":"Verify the figures"}""",
+            """{"v":2,"seq":2,"ts":"t","correlationId":"s-1","kind":"tool.returned","toolName":"spawn_agent","success":true,"durationMs":5}""");
+
+        // The agent outlives its spawn call: it is a member of the team now, not work in flight.
+        var spawned = Assert.Single(model.SpawnedAgents);
+        Assert.Equal("Fact checker", spawned.Role);
+        Assert.Equal("Verify the figures", spawned.Reason);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 10, 33, 0, TimeSpan.Zero), spawned.SpawnedAt);
+    }
+
+    [Fact]
+    public void A_pending_question_or_agent_request_means_the_run_waits_for_an_answer()
+    {
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","correlationId":"c-1","kind":"input.needed","inputKind":"text","prompt":"Which client?"}""");
+
+        Assert.True(model.IsWaitingForAnswer);
+        Assert.Equal("Which client?", model.PendingQuestion!.Prompt);
+
+        model.AnswerAccepted();
+        Assert.False(model.IsWaitingForAnswer);
+
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"hub.message","correlationId":"r-1","expectsReply":true,"from":"agent://crew/worker","payload":{"q":"go?"}}"""));
+        Assert.True(model.IsWaitingForAnswer);
+    }
+
+    [Fact]
+    public void A_tool_that_never_returned_before_the_end_is_not_finished_and_never_a_success()
+    {
+        // D-03: the end of the run empties what is at work, but a call that never came back is
+        // kept aside as not finished. Dropped, it would read as one of the calls that went well.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:31:02Z","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":2,"ts":"t","correlationId":"k-2","kind":"tool.called","toolName":"docx_writer"}""",
+            """{"v":2,"seq":3,"ts":"t","correlationId":"k-2","kind":"tool.returned","toolName":"docx_writer","success":true,"durationMs":5}""",
+            """{"v":2,"seq":4,"ts":"t","correlationId":"k-3","kind":"tool.called","toolName":"web_search"}""",
+            """{"v":2,"seq":5,"ts":"t","correlationId":"k-3","kind":"tool.returned","toolName":"web_search","success":false,"durationMs":5}""",
+            """{"v":2,"seq":6,"ts":"t","correlationId":"d-1","kind":"delegation.started","toRole":"Writer"}""",
+            """{"v":2,"seq":7,"ts":"t","kind":"run.finished","success":false,"exitCode":1}""");
+
+        Assert.Empty(model.ActiveTools);
+        var unfinished = Assert.Single(model.UnfinishedTools);
+        Assert.Equal("pdf_reader", unfinished.ToolName);
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 10, 31, 2, TimeSpan.Zero), unfinished.StartedAt);
+
+        // Every call lands in exactly one place: one succeeded, one failed, one not finished.
+        Assert.Equal(3, model.ToolCallCount);
+        Assert.Equal(1, model.SucceededToolCalls);
+        Assert.Equal(1, model.FailedToolCalls);
+
+        // A delegation is a tool call underneath, and the same rule holds for it.
+        Assert.Empty(model.ActiveDelegations);
+        Assert.Equal("Writer", Assert.Single(model.UnfinishedDelegations).ToRole);
+    }
+
+    [Fact]
+    public void An_absent_cost_stays_absent_whatever_else_the_run_reported()
+    {
+        // ↑, ↓, cache and a price show only once the meter measured them. A run whose meter never
+        // moved has no cost — not a cost of zero — even when its close carries a token total.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"2026-09-24T10:30:00Z","kind":"run.started","target":"/ws/crew.yaml"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"task.started","taskId":"t1","agentRole":"analyst"}""",
+            """{"v":2,"seq":3,"ts":"t","correlationId":"k-1","kind":"tool.called","toolName":"pdf_reader"}""",
+            """{"v":2,"seq":4,"ts":"t","correlationId":"k-1","kind":"tool.returned","toolName":"pdf_reader","success":true,"durationMs":5}""",
+            """{"v":2,"seq":5,"ts":"t","kind":"run.finished","success":true,"exitCode":0,"tokens":1200,"durationMs":61000}""");
+
+        Assert.Null(model.Cost);
+    }
+
+    [Fact]
+    public void The_elapsed_time_counts_from_the_runs_own_start_and_stops_at_its_own_close()
+    {
+        var clock = new StubTimeProvider { Now = new DateTimeOffset(2026, 9, 24, 10, 32, 30, TimeSpan.Zero) };
+        var model = new RunProgressModel(clock);
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"2026-09-24T10:30:00Z","kind":"run.started","target":"/ws/crew.yaml"}"""));
+
+        Assert.Equal(new DateTimeOffset(2026, 9, 24, 10, 30, 0, TimeSpan.Zero), model.StartedAt);
+        Assert.Equal(TimeSpan.FromSeconds(150), model.Elapsed);
+
+        // A clock reading, not an event: it moves between two lines of the stream.
+        clock.Now = clock.Now.AddSeconds(10);
+        Assert.Equal(TimeSpan.FromSeconds(160), model.Elapsed);
+
+        // Once the run reported its end, its own wall time — frozen however late one reads it.
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"2026-09-24T10:32:41Z","kind":"run.finished","success":true,"exitCode":0,"durationMs":161250}"""));
+        clock.Now = clock.Now.AddMinutes(5);
+        Assert.Equal(TimeSpan.FromMilliseconds(161_250), model.Elapsed);
+    }
+
+    [Fact]
+    public void A_close_that_says_no_duration_stops_the_clock_at_its_own_stamp()
+    {
+        // An older CLI's leaner close: the two stamps of the run's own clock still measure it.
+        var clock = new StubTimeProvider { Now = new DateTimeOffset(2026, 9, 24, 11, 0, 0, TimeSpan.Zero) };
+        var model = new RunProgressModel(clock);
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"2026-09-24T10:30:00Z","kind":"run.started","target":"/ws/crew.yaml"}"""));
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"2026-09-24T10:31:40Z","kind":"run.finished","success":true,"exitCode":0}"""));
+
+        Assert.Equal(TimeSpan.FromSeconds(100), model.Elapsed);
+    }
+
+    [Fact]
+    public void A_run_that_gave_no_readable_start_has_no_elapsed_time()
+    {
+        var model = Fold("""{"v":2,"seq":1,"ts":"t","kind":"run.started","target":"/ws/crew.yaml"}""");
+
+        Assert.Null(model.StartedAt);
+        Assert.Null(model.Elapsed);
+    }
+
+    [Fact]
+    public void Each_announcement_names_the_kind_that_moved_the_state()
+    {
+        // A delegation and a spawn used to fall through unread. Both announce a change now, and
+        // every announcement says which kind moved the state: a token delta arrives per token,
+        // so a screen that shows no generated text can skip it. A change made on this side — an
+        // answer the run's stdin accepted — names no kind.
+        var model = new RunProgressModel();
+        var kinds = new List<string?>();
+        model.Changed += (_, change) => kinds.Add(change.Kind);
+
+        model.Apply(Parse("""{"v":2,"seq":1,"ts":"t","correlationId":"d-1","kind":"delegation.started","toRole":"Writer"}"""));
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","correlationId":"s-1","kind":"agent.spawned","role":"Checker"}"""));
+        model.Apply(Parse("""{"v":2,"seq":3,"ts":"t","kind":"llm.delta","text":"Hel"}"""));
+        model.Apply(Parse("""{"v":2,"seq":4,"ts":"t","correlationId":"c-1","kind":"input.needed","inputKind":"text","prompt":"Go?"}"""));
+        model.AnswerAccepted();
+
+        Assert.Equal(
+            [RunEventKinds.DelegationStarted, RunEventKinds.AgentSpawned, RunEventKinds.LlmDelta, RunEventKinds.InputNeeded, null],
+            kinds);
     }
 
     private static OrkeonEvent Parse(string line)
