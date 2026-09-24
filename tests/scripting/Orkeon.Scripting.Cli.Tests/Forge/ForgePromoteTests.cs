@@ -323,6 +323,50 @@ public sealed class ForgePromoteTests : IDisposable
         Assert.Equal("mine", File.ReadAllText(Path.Combine(Destination, "note.txt")));
     }
 
+    /// <summary>
+    /// Rule R, case 3 (STUDIO-25): the promoted folder moved or renamed since is still this
+    /// session's folder — its record carries the session's id and nothing is left where
+    /// <c>promotedTo</c> says. Re-adoption updates it where it now is.
+    /// </summary>
+    [Fact]
+    public void Re_adoption_follows_the_promoted_folder_where_it_was_moved()
+    {
+        var session = ReadySession();
+        ForgePromoter.Promote(session, Destination, null, null, false, ForgePromotePlatform.Linux, Now);
+        session.Document.PromotedTo = Destination;
+        var moved = Path.Combine(_workspace, "renamed");
+        Directory.Move(Destination, moved);
+        File.WriteAllText(Path.Combine(moved, "note.txt"), "mine");
+
+        var again = ForgePromoter.Promote(session, moved, null, null, false, ForgePromotePlatform.Linux, Now);
+
+        Assert.True(again.Updated);
+        Assert.True(File.Exists(Path.Combine(moved, "crew", "config.yaml")));
+        Assert.Equal("mine", File.ReadAllText(Path.Combine(moved, "note.txt")));
+    }
+
+    /// <summary>
+    /// Rule R, case 2 (STUDIO-25): a copy of the promoted folder carries the same id while its
+    /// original is still where the session says. It is not this session's folder: promoting into
+    /// it is refused like any non-empty directory, and the refusal says why and what to do.
+    /// </summary>
+    [Fact]
+    public void A_copy_of_the_promoted_folder_is_refused_as_a_destination()
+    {
+        var session = ReadySession();
+        ForgePromoter.Promote(session, Destination, null, null, false, ForgePromotePlatform.Linux, Now);
+        session.Document.PromotedTo = Destination;
+        var copy = Path.Combine(_workspace, "copie");
+        ForgePromoter.CopyDirectory(Destination, copy);
+
+        var refusal = Assert.Throws<InvalidOperationException>(() =>
+            ForgePromoter.Promote(session, copy, null, null, false, ForgePromotePlatform.Linux, Now));
+
+        Assert.Contains("not empty", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("copy", refusal.Message, StringComparison.Ordinal);
+        Assert.Contains("forge reopen", refusal.Message, StringComparison.Ordinal);
+    }
+
     [Fact]
     public void A_foreign_non_empty_destination_stays_refused_even_after_a_promotion()
     {
@@ -718,5 +762,24 @@ public sealed class ForgePromoteTests : IDisposable
         File.WriteAllText(Path.Combine(Destination, ForgeTeamRecord.FileName), "{not json");
         Assert.Null(ForgeTeamRecord.TryRead(Destination));
         Assert.Null(ForgeTeamRecord.TryRead(Path.Combine(Destination, "nowhere")));
+    }
+
+    /// <summary>
+    /// STUDIO-25: the promotion copies the session's id into <c>forge.json</c> — what links the
+    /// folder back to its session wherever the folder goes, and what tells a copy from it.
+    /// </summary>
+    [Fact]
+    public void The_promotion_copies_the_session_id_into_the_team_record()
+    {
+        var session = ReadySession();
+
+        ForgePromoter.Promote(
+            session, Destination, schedule: null, settingsPath: null, copySettings: false,
+            ForgePromotePlatform.Linux, Now);
+
+        Assert.NotNull(session.Document.Id);
+        Assert.Equal(session.Document.Id, ForgeTeamRecord.TryRead(Destination)?.SessionId);
+        Assert.Equal(session.Document.Id, ForgeTeamRecord.ReadSessionId(Destination));
+        Assert.Null(ForgeTeamRecord.ReadSessionId(Path.Combine(_workspace, "nowhere")));
     }
 }
