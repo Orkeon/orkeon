@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the status bar marks estimated tokens and names the model the agents work on (STUDIO-30 follow-up)
+
+- `cost.updated` gains an optional `operation`: the kind of work the engine attributed the call
+  to — `agent`, `manager`, `planning`, `rag`, `memory`, `flow`, `judge`, or a script's
+  `ctx.llm.*` method. It is omitted for a call no scope claimed, and the envelope stays `v: 2`.
+- Studio's `RunCost.Model` / `Provider` follow the agents' own calls only, a script's `ctx.llm.*`
+  included. A judge's, a RAG pipeline's or the manager's reading no longer renames the model on
+  the status bar or on the Launch card.
+- `RunCost.EstimatedTokens` and `RunProgressModel.FinalEstimatedTokens` carry the estimated part
+  of the meter. The Run and Test groups mark ↑ / ↓ with « ≈ » while part of them is an estimate.
+
 ### Changed — every LLM call of a run feeds the token counter (STUDIO-42)
 
 - **One measuring point.** `MeteredLlmProvider` wraps every provider that `LlmProviderFactory`
