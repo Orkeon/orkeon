@@ -56,7 +56,7 @@ The first version showed only what had **finished**. During a seven-minute task 
 
 ### The progress state of a run (STUDIO-30)
 
-`RunProgressModel` (Core, `Run/`) holds the whole live state of one watched run, so a screen that wants it — a status bar, say — reads the model and never the raw lines. Each launcher feeds its own: the Launch tab (`Launch.Progress`) and the Test screen (`Test.Launcher.Progress`, which folds the same events although its view does not show them yet). The terminal launcher, `orkeon-studio-run`, does not use the model.
+`RunProgressModel` (Core, `Run/`) holds the whole live state of one watched run, so a screen that wants it — a status bar, say — reads the model and never the raw lines. Each launcher feeds its own: the Launch tab (`Launch.Progress`) and the Test screen (`Test.Launcher.Progress`, which folds the same events; its own view does not show them, the status bar does — STUDIO-34). The terminal launcher, `orkeon-studio-run`, does not use the model.
 
 | State | Read from |
 |---|---|
@@ -77,6 +77,26 @@ The end of the run empties what is at work, and a call still open then **never c
 What was not measured stays absent. No `cost.updated`, no `Cost` — even when the close carries a token total — and a field the meter did not carry stays null, never a zero. `Elapsed` is the model's one reading of the local clock: while the run goes, the time since the start the run stamped, which moves between events, so a screen refreshes it on its own timer; once the run reported its end, the run's own wall time, frozen. While the run goes, a start whose `ts` does not parse gives no elapsed time rather than a guessed one.
 
 `Changed` fires once per event that moved the state and names its kind (`RunProgressChangedEventArgs.Kind`; null for an answer or reply accepted on this side), so a screen that shows no generated text can skip the per-token `llm.delta`.
+
+### The status bar (STUDIO-34)
+
+A third row at the foot of the window says what runs, what it spends and which tools are at work, without changing screen. `StatusBarViewModel` (`ViewModels/Shell/`) feeds it; it holds no view logic, and its whole behaviour is asserted in `Orkeon.Studio.Wpf.Tests`.
+
+Three activities can run at once, each with its own engine, and each gets **a group of its own** while it runs — none hidden, none merged (DD-2):
+
+| Group | On the bar while | Read from |
+|---|---|---|
+| **Run** | the Run screen's child process lives (`Launch.IsRunning`) | `Launch.Progress.Model`, the run's `RunProgressModel` (STUDIO-30) |
+| **Test** | the Test screen's own launcher runs (`Test.Launcher.IsRunning`) | `Test.Launcher.Progress.Model` |
+| **Create a team** — the assistant | the forge engine lives, working or waiting on the user | the wizard's progress card, `CreateTeam.Progress` |
+
+A launcher's group says the team (read when the run starts, and kept if the launcher is aimed at another team meanwhile), the state — running, **waiting for an answer**, then succeeded or failed between the run's own end and the process exit —, the task in progress, the elapsed time, ↑ and ↓, the cache chip, the vendor's real charge when there is one, the tools at work (their count and the first name; the whole list, each with the run's clock at its call, on hover), the delegations under way, and the provider and model **the meter reported**. During a run the bar never names a profile it supposed: each team picks its own. The assistant's group says the stage in the card's own words, ↑ and ↓ (marked «≈» when estimated), and what the session's token allowance has left (`budgetRemaining`, carried by the card as `TokensRemaining`). At rest the bar shows the provider and model of the **default** profile — there is no «active» one.
+
+A segment nothing measured is absent, never a zero. The novice reads each group's state and meters, and the Balance; the expert reads everything, a launcher's other segments as one line the bar trims on a narrow window and shows whole on hover (D-03). The active groups share the width, so a narrow window trims their expert line and never pushes a group off the bar. A click on a group opens its activity's screen — Run, Test or Create a team; in novice mode, which has no Test screen, the Test group does not answer the click (D-04). Runs started outside Studio are out of scope (D-05).
+
+The elapsed time moves between events, so the bar refreshes it on a one-second beat of its own — `IUiTicker`: a `DispatcherTimer` in the app, a beat that never fires in the tests and the screenshot campaign — kept only while a launcher's group is on the bar. The campaign pins the clock the elapsed time is read on (`StudioServices.Clock`), and its in-flight Run shot parks the scripted run before the line that reports its end, so the shot is of a run still in flight.
+
+The **Balance** segment on the right is a reserved slot, `StatusBar.Balance`: STUDIO-35 fills it, and nothing here calls a provider.
 
 ### Team folders end to end (remediation v2)
 

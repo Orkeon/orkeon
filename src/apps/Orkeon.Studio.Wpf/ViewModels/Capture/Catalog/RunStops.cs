@@ -55,10 +55,12 @@ internal static class RunStops
             Category = CaptureCategory.Run,
             Screen = CaptureScreen.Run,
             Because = "A run in flight — the plain-language progress card moving, the tone badge, "
-                    + "the token meter and the technical journal filling. It exists only while a "
+                    + "the token meter and the technical journal filling, and the Run group on the "
+                    + "status bar with its state and its meters (STUDIO-34). It exists only while a "
                     + "stream is open, so no artefact on disk can reproduce it: the scripted CLI is "
-                    + "held open across this shot and released by the next one.",
-            Covers = ["Launch.IsRunning", "Launch.HasTeamCard"],
+                    + "held open across this shot, before the line that reports its end, and "
+                    + "released by the teardown.",
+            Covers = ["Launch.IsRunning", "Launch.HasTeamCard", "StatusBar.Launch.IsActive", "StatusBar.Launch.ShowsTokensUp"],
             Arrange = static async c =>
             {
                 c.Shell.Launch.Target.Select(c.World.TeamDirectory("veille-concurrentielle"));
@@ -81,8 +83,9 @@ internal static class RunStops
             Category = CaptureCategory.Run,
             Screen = CaptureScreen.Run,
             Because = "The same run, finished: the badge in its success tone, the «ouvrir le "
-                    + "résultat» action live, and the journal holding what the stream said.",
-            CoversFalse = ["Launch.IsRunning"],
+                    + "résultat» action live, the journal holding what the stream said, and the "
+                    + "status bar back at rest.",
+            CoversFalse = ["Launch.IsRunning", "StatusBar.Launch.IsActive"],
             SweepsLanguages = true,
             Arrange = static async c =>
             {

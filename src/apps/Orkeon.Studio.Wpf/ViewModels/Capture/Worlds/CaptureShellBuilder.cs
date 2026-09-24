@@ -43,6 +43,8 @@ internal static class CaptureShellBuilder
                 Delay = world.Delay,
                 LlmProbe = world.LlmProbe,
                 KeyStore = world.KeyStore,
+                // No Ticker: the status bar's clocks never move on their own during a campaign.
+                Clock = world.Clock,
             },
             new StudioUiPreferences
             {

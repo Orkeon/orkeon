@@ -198,6 +198,42 @@ public sealed class ComposeProgressTests
         Assert.Empty(vm.Progress.TokensDown);
     }
 
+    /// <summary>
+    /// What the status bar reads off the card (STUDIO-34): whether the engine lives — the
+    /// assistant's group shows exactly that long — and what the session's token allowance has
+    /// left, the engine's own <c>budgetRemaining</c>.
+    /// </summary>
+    [Fact]
+    public async Task The_card_says_whether_the_engine_lives_and_what_its_budget_has_left()
+    {
+        var (vm, processes) = Build();
+        (bool Alive, long? Left)? during = null;
+        processes.WhileRunning = () =>
+        {
+            processes.Emit(Out(
+                """{"v":2,"seq":5,"ts":"t","kind":"cost.updated","tokens":14044,"promptTokens":12840,"completionTokens":1204,"budgetRemaining":185956}"""));
+            during = (vm.Progress.IsEngineRunning, vm.Progress.TokensRemaining);
+        };
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Equal((true, 185_956L), during);
+        Assert.False(vm.Progress.IsEngineRunning);
+    }
+
+    /// <summary>A session with no token cap has nothing left to show — not a zero.</summary>
+    [Fact]
+    public async Task A_session_without_a_budget_has_no_remainder()
+    {
+        var (vm, processes) = Build();
+        processes.WhileRunning = () => processes.Emit(Out(
+            """{"v":2,"seq":5,"ts":"t","kind":"cost.updated","tokens":14044,"promptTokens":12840,"completionTokens":1204}"""));
+
+        await vm.ComposeCommand.ExecuteAsync();
+
+        Assert.Null(vm.Progress.TokensRemaining);
+    }
+
     [Fact]
     public async Task What_is_already_acquired_is_listed_and_nothing_else()
     {

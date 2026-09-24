@@ -2,6 +2,7 @@ using System.IO;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
+using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
@@ -60,6 +61,9 @@ internal sealed class CaptureWorld
 
     /// <summary>The assistant's beats, holdable so a state between two of them can be photographed.</summary>
     public CaptureUiDelay Delay { get; } = new();
+
+    /// <summary>The clock a run's elapsed time is read on, stopped at the seeded world's own «now».</summary>
+    public TimeProvider Clock { get; } = new PinnedClock(StudioFixture.Now);
 
     /// <summary>A runner wired to this world's CLI and locator.</summary>
     public OrkeonProcessRunner Runner => new(Cli, Locator);

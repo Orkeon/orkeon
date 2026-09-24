@@ -83,6 +83,34 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Contains("task.completed", lines[1], StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// A held run is a run in flight: it parks before the line that reports its end, and the
+    /// release plays that line. Parked after it, the «in flight» shot photographed a run that had
+    /// already said it was over — the progress card and the status bar both read it as finished
+    /// under a badge that still said running (STUDIO-34).
+    /// </summary>
+    [Fact]
+    public async Task A_held_run_parks_before_it_reports_its_end()
+    {
+        var cli = new ScriptedOrkeonCli().Answer(
+            "run", 0, "{\"kind\":\"run.started\"}", "{\"kind\":\"run.finished\",\"success\":true}");
+        cli.Hold("run");
+
+        var lines = new List<string>();
+        var run = cli.RunAsync(
+            Ask("run", "crew.yaml"),
+            line => lines.Add(line.Text),
+            TestContext.Current.CancellationToken);
+
+        var whileParked = lines.ToList();
+        cli.Release();
+        await run;
+
+        Assert.Equal(["{\"kind\":\"run.started\"}"], whileParked);
+        Assert.Contains("run.finished", lines[^1], StringComparison.Ordinal);
+        Assert.Equal(2, lines.Count);
+    }
+
     /// <summary>Outside a run there is no listener, and a line falls on the floor — as a dead child would.</summary>
     [Fact]
     public void An_emit_outside_a_run_is_dropped()

@@ -127,8 +127,11 @@ internal static class StudioFixture
         + "un rédacteur qui écrit la note.",
     ];
 
-    /// <summary>Pinned so two runs of the campaign produce the same dates.</summary>
-    private static readonly DateTimeOffset Now = new(2026, 8, 28, 7, 12, 0, TimeSpan.Zero);
+    /// <summary>
+    /// Pinned so two runs of the campaign produce the same dates — and the same elapsed time for
+    /// a run in flight, whose clock stops here (STUDIO-34).
+    /// </summary>
+    internal static readonly DateTimeOffset Now = new(2026, 8, 28, 7, 12, 0, TimeSpan.Zero);
 
     /// <summary>The populated machine.</summary>
     public static CaptureWorldPlan Seeded { get; } = new()

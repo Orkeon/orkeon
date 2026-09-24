@@ -125,6 +125,34 @@
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
     <value>在新手模式下，每个界面右侧都有一栏说明。切换到专家模式后它会隐去。</value>
   </data>
+  <!-- STUDIO-34: the status bar at the foot of the window -->
+  <data name="Studio.Shell.StatusWaiting" xml:space="preserve">
+    <value>等待回答</value>
+  </data>
+  <data name="Studio.Shell.StatusTools" xml:space="preserve">
+    <value>{0} 个工具：{1}</value>
+  </data>
+  <data name="Studio.Shell.StatusToolsTitle" xml:space="preserve">
+    <value>运行中的工具</value>
+  </data>
+  <data name="Studio.Shell.StatusDelegations" xml:space="preserve">
+    <value>{0} 项委派</value>
+  </data>
+  <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve">
+    <value>进行中的委派</value>
+  </data>
+  <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
+    <value>剩余 {0} 个 token</value>
+  </data>
+  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
+    <value>默认模型设置：{0}</value>
+  </data>
+  <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
+    <value>{0} — 由提供方计费</value>
+  </data>
+  <data name="Studio.Shell.StatusOpenTip" xml:space="preserve">
+    <value>打开该活动的界面</value>
+  </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>测试连接</value>
   </data>

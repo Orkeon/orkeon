@@ -50,6 +50,8 @@ public partial class MainWindow : Window
         shell.Teams.LaunchRequested += (_, _) => NavRun.IsChecked = true;
         shell.Teams.ResumeRequested += (_, _) => NavCreate.IsChecked = true;
         shell.Import.TeamImported += (_, _) => NavTeams.IsChecked = true;
+        // STUDIO-34 (D-04): a click on a group of the status bar opens its activity's screen.
+        shell.StatusBar.OpenRequested += (_, e) => NavFor(e.Activity).IsChecked = true;
         // The lists refresh on arrival: a session stopped mid-wizard, or a folder dropped in
         // by hand, shows up without waiting for an adopt or an app restart.
         NavTeams.Checked += (_, _) => { shell.Teams.Refresh(); shell.Test.RefreshTeams(); };
@@ -88,6 +90,15 @@ public partial class MainWindow : Window
             }
         };
     }
+
+    /// <summary>The sidebar entry of the screen an activity of the status bar runs on.</summary>
+    private System.Windows.Controls.RadioButton NavFor(ViewModels.Shell.StatusBarActivity activity) =>
+        activity switch
+        {
+            ViewModels.Shell.StatusBarActivity.Test => NavTest,
+            ViewModels.Shell.StatusBarActivity.Atelier => NavCreate,
+            _ => NavRun,
+        };
 
     private static AssistantContext WizardContext(ViewModels.Shell.MainWindowViewModel shell) =>
         shell.CreateTeam.Step switch

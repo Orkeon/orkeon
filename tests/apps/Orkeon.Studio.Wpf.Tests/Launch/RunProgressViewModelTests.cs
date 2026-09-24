@@ -260,6 +260,37 @@ public class RunProgressViewModelTests
         Assert.Contains("llm.unreachable", panel.LastError, StringComparison.Ordinal);
         Assert.Equal("Finished with a failure.", panel.Summary);
     }
+
+    /// <summary>
+    /// The status bar reads the live state off the panel's model (STUDIO-34). The model is
+    /// replaced on every reset, so the replacement is announced: a reader holding the old one
+    /// would watch a run that is over.
+    /// </summary>
+    [Fact]
+    public void The_panel_hands_out_its_model_and_says_when_a_reset_replaces_it()
+    {
+        var panel = new RunProgressViewModel();
+        var before = panel.Model;
+        var raised = new List<string?>();
+        panel.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+
+        panel.Reset(answer: null);
+
+        Assert.NotSame(before, panel.Model);
+        Assert.Contains(nameof(RunProgressViewModel.Model), raised);
+    }
+
+    [Fact]
+    public void The_model_reads_the_clock_the_panel_was_given()
+    {
+        var clock = new Doubles.StubTimeProvider { Now = new DateTimeOffset(2026, 9, 24, 10, 30, 0, TimeSpan.Zero) };
+        var panel = new RunProgressViewModel(timeProvider: clock);
+        panel.Reset(answer: null);
+
+        panel.TryApply("""{"v":2,"seq":1,"ts":"2026-09-24T10:29:30Z","kind":"run.started"}""");
+
+        Assert.Equal(TimeSpan.FromSeconds(30), panel.Model.Elapsed);
+    }
 }
 
 /// <summary>

@@ -125,6 +125,34 @@
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve">
     <value>En modo Principiante, cada pantalla lleva una columna de explicaciones a la derecha. Desaparece en modo Experto.</value>
   </data>
+  <!-- STUDIO-34: the status bar at the foot of the window -->
+  <data name="Studio.Shell.StatusWaiting" xml:space="preserve">
+    <value>esperando una respuesta</value>
+  </data>
+  <data name="Studio.Shell.StatusTools" xml:space="preserve">
+    <value>{0} herramienta(s): {1}</value>
+  </data>
+  <data name="Studio.Shell.StatusToolsTitle" xml:space="preserve">
+    <value>Herramientas en curso</value>
+  </data>
+  <data name="Studio.Shell.StatusDelegations" xml:space="preserve">
+    <value>{0} delegación(es)</value>
+  </data>
+  <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve">
+    <value>Delegaciones en curso</value>
+  </data>
+  <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve">
+    <value>quedan {0} tokens</value>
+  </data>
+  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve">
+    <value>Ajuste de modelo predeterminado: {0}</value>
+  </data>
+  <data name="Studio.Shell.StatusCostBilled" xml:space="preserve">
+    <value>{0} — facturado por el proveedor</value>
+  </data>
+  <data name="Studio.Shell.StatusOpenTip" xml:space="preserve">
+    <value>Abrir la pantalla de esta actividad</value>
+  </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>Probar la conexión</value>
   </data>

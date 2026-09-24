@@ -959,6 +959,33 @@ public static class StudioStringKeys
     /// <summary>"Hub messages"</summary>
     public const string RunProgressHubMessages = "Studio.Run.HubMessages";
 
+    // ---- STUDIO-34: the status bar (Shell/StatusBarViewModel) ----------------
+    // A run's state reuses the Run screen's badge words (running, succeeded, failed); only
+    // what the badge never had to say is declared here.
+
+    /// <summary>"waiting for an answer" — the state of a run that asks a question or waits on a reply.</summary>
+    public const string StatusBarWaiting = "Studio.Shell.StatusWaiting";
+
+    /// <summary>"{0} tool(s): {1}" — how many tools are at work, and the first of them.</summary>
+    public const string StatusBarTools = "Studio.Shell.StatusTools";
+
+    /// <summary>"Tools at work" — the head of the tools list on hover.</summary>
+    public const string StatusBarToolsTitle = "Studio.Shell.StatusToolsTitle";
+
+    /// <summary>"{0} delegation(s)" — the delegations under way.</summary>
+    public const string StatusBarDelegations = "Studio.Shell.StatusDelegations";
+
+    /// <summary>"Delegations under way" — the head of the delegations list on hover.</summary>
+    public const string StatusBarDelegationsTitle = "Studio.Shell.StatusDelegationsTitle";
+
+    /// <summary>"{0} tokens left" — the assistant session's remaining token allowance.</summary>
+    public const string StatusBarBudgetLeft = "Studio.Shell.StatusBudgetLeft";
+
+    /// <summary>"Default model setting: {0}" — the tooltip of the profile shown at rest.</summary>
+    public const string StatusBarProfileTip = "Studio.Shell.StatusProfileTip";
+
+    /// <summary>"{0} — billed by the provider" — a real charge, never an estimate (DD-1).</summary>
+    public const string StatusBarCostBilled = "Studio.Shell.StatusCostBilled";
 
     // ---- Model profiles (settings screen, design v3) ------------------------
 
@@ -1927,6 +1954,16 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.RunProgressAgentAsks] = "An agent is asking:",
         [StudioStringKeys.RunProgressReply] = "Reply",
         [StudioStringKeys.RunProgressHubMessages] = "Hub messages",
+
+        // STUDIO-34: the status bar
+        [StudioStringKeys.StatusBarWaiting] = "waiting for an answer",
+        [StudioStringKeys.StatusBarTools] = "{0} tool(s): {1}",
+        [StudioStringKeys.StatusBarToolsTitle] = "Tools at work",
+        [StudioStringKeys.StatusBarDelegations] = "{0} delegation(s)",
+        [StudioStringKeys.StatusBarDelegationsTitle] = "Delegations under way",
+        [StudioStringKeys.StatusBarBudgetLeft] = "{0} tokens left",
+        [StudioStringKeys.StatusBarProfileTip] = "Default model setting: {0}",
+        [StudioStringKeys.StatusBarCostBilled] = "{0} — billed by the provider",
 
         [StudioStringKeys.ProfileNewName] = "New setting",
         [StudioStringKeys.ProfileGroupLocal] = "ON YOUR MACHINE · FREE, NO KEY",
