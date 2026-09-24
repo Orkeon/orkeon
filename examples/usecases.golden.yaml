@@ -1,0 +1,123 @@
+# Golden queries of `orkeon usecases search` (STUDIO-38 D-08).
+#
+# Each case is a need phrased the way a user types it, in one of the five catalogue languages,
+# and the ids of examples/usecases.json a good answer must hold in its first five results.
+# Mostly French — the product's first audience — with cases in each of the five languages.
+#
+# UseCaseGoldenSetTests runs every case twice, BM25 alone and hybrid (BM25 + the local English
+# embeddings fused by RRF), and reports recall@5 per language and per mode: the measure that
+# decides, language by language, whether meaning is fused in (D-02). No threshold is enforced
+# yet: a floor is set once the sheets carry their texts (STUDIO-37) and a first real
+# measurement exists.
+name: usecases-golden
+k: 5
+cases:
+  - id: g-01
+    lang: fr
+    query: "je veux un résumé de mes mails chaque matin"
+    expected: [03-email-pipeline]
+
+  - id: g-02
+    lang: fr
+    query: "détecter les fraudes sur les transactions bancaires"
+    expected: [32-fraud-detection]
+
+  - id: g-03
+    lang: fr
+    query: "rapprocher les factures fournisseurs des bons de commande"
+    expected: [40-invoice-processing]
+
+  - id: g-04
+    lang: fr
+    query: "relire le code d'une pull request et signaler les problèmes"
+    expected: [02-code-review]
+
+  - id: g-05
+    lang: fr
+    query: "préparer l'arrivée d'un nouveau salarié"
+    expected: [12-employee-onboarding]
+
+  - id: g-06
+    lang: fr
+    query: "traduire la documentation produit en plusieurs langues"
+    expected: [11-translation-consensus]
+
+  - id: g-07
+    lang: fr
+    query: "composer les repas d'un patient selon ses besoins nutritionnels"
+    expected: [47-nutrition-planner]
+
+  - id: g-08
+    lang: fr
+    query: "prévoir la trésorerie des prochains mois"
+    expected: [36-cash-flow-forecast]
+
+  - id: g-09
+    lang: fr
+    query: "surveiller les concurrents et leurs nouveaux produits"
+    expected: [06-competitive-intelligence]
+
+  - id: g-10
+    lang: fr
+    query: "analyser ce que les clients disent de nous sur les réseaux sociaux"
+    expected: [10-sentiment-analysis]
+
+  - id: g-11
+    lang: fr
+    query: "répondre aux questions des clients et escalader les cas difficiles"
+    expected: [05-customer-support]
+
+  - id: g-12
+    lang: fr
+    query: "migrer une base de données sans rien perdre"
+    expected: [68-database-migration]
+
+  - id: g-13
+    lang: en
+    query: "summarize my emails every morning"
+    expected: [03-email-pipeline]
+
+  - id: g-14
+    lang: en
+    query: "predict machine failures from sensor data before they happen"
+    expected: [91-predictive-maintenance]
+
+  - id: g-15
+    lang: en
+    query: "audit our cloud infrastructure against NIST"
+    expected: [71-cloud-audit-nist]
+
+  - id: g-16
+    lang: es
+    query: "generar un examen con preguntas de distinta dificultad"
+    expected: [57-exam-generation]
+
+  - id: g-17
+    lang: es
+    query: "gestionar una flota de vehículos y asignar las misiones"
+    expected: [87-fleet-management]
+
+  - id: g-18
+    lang: de
+    query: "Verträge prüfen und riskante Klauseln finden"
+    expected: [38-contract-analysis]
+
+  - id: g-19
+    lang: de
+    query: "einen Podcast von der Recherche bis zum fertigen Skript produzieren"
+    expected: [77-podcast-production]
+
+  - id: g-20
+    lang: zh-Hans
+    query: "每天早上总结我的邮件"
+    expected: [03-email-pipeline]
+
+  - id: g-21
+    lang: zh-Hans
+    query: "检测信用卡交易中的欺诈行为"
+    expected: [32-fraud-detection]
+
+  - id: g-22
+    lang: zh-Hans
+    query: "为新员工安排入职培训"
+    expected: [12-employee-onboarding]

@@ -2,7 +2,7 @@
 
 # Référence du CLI `orkeon`
 
-L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG et diagnostique une installation. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
+L'outil en ligne de commande `orkeon` est le point d'entrée principal du framework : il exécute les crews YAML et les scripts TypeScript (`.ork.ts`), génère une configuration, sonde les fournisseurs LLM, pilote le sous-système RAG, cherche dans les cas d'usage d'exemple et diagnostique une installation. Il est construit depuis `src/scripting/Orkeon.Scripting.Cli` et se packe comme dotnet tool `orkeon` :
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -85,6 +85,46 @@ Démarrer ou reprendre un cycle exige un LLM configuré (`orkeon init`) : la for
 Le bac à sable : l'essai tourne in-process avec les écritures confinées au dossier de la session (`/output` pour les livrables, `/forge` pour ses fichiers de travail), le répertoire de travail — ou le dossier `--read` — monté en lecture seule en `/workspace`, et `shell_command`/`code_interpreter` retirés du catalogue d'outils — le plan d'équipe ne peut nommer que des outils que la validation acceptera.
 
 Le dossier promu est ordinaire : `crew/` (ou `crew/crew.ork.ts`), `run.sh`/`run.cmd` composés contre la grammaire d'`orkeon run` avec vos entrées d'exemple pré-remplies, `FORGE.md` — la carte d'identité de l'équipe (objectif, critères d'acceptation, verdict, version), écrite dans la langue de l'entretien — et `forge.json`, son jumeau lisible par la machine (slug, titre, format, instant de promotion, brief) que `forge reopen` lit. `orkeon run <dir>/crew` le lance — depuis l'intérieur de `<dir>`, et sans les `--mount` que fournit `run.sh`, si bien qu'une équipe qui produit des livrables n'écrit rien par cette voie ; le lanceur Studio détecte le dossier et pose les montages lui-même.
+
+## `orkeon usecases`
+
+```bash
+orkeon usecases search "je veux un résumé de mes mails chaque matin"  # les cas d'usage les plus proches
+orkeon usecases search "summarize my emails every morning" --top 3
+orkeon usecases list --category finance-trading --process parallel   # le catalogue, filtré
+orkeon usecases show 03-email-pipeline --crew                         # une fiche, et son fichier de crew
+```
+
+Le catalogue des cas d'usage d'exemple : les 105 exemples numérotés d'`examples/`, chacun décrit par une fiche écrite en cinq langues ([usecases.json](../../../examples/usecases.json)). L'outil embarque le catalogue lui-même — le manifeste, le fichier de crew de chaque exemple et son dossier `data/` — si bien que les trois sous-commandes fonctionnent hors ligne, ne lisent rien sur le disque et n'appellent aucun LLM. Les exemples finance sont **référence seule** : on peut les chercher et les lire, pas les importer, car leurs crews dépendent d'un dossier `_tools/` partagé que l'outil n'embarque pas.
+
+**`search <texte>`** classe le catalogue selon un besoin écrit en langage naturel, en français, anglais, espagnol, allemand ou chinois simplifié.
+
+- **Par les termes** : BM25 sur le titre et le problème de chaque fiche dans les cinq langues, ses tags, ses outils et sa catégorie. La requête et les fiches sont normalisées de la même façon — minuscules, accents repliés (`resume` trouve `résumé`), chinois découpé en bigrammes de caractères —, si bien qu'une requête trouve ses termes dans la langue où elle est tapée.
+- **Par le sens** : le modèle d'embeddings local (BGE-micro-v2, sur la machine) compare la requête au texte anglais de chaque fiche, et son classement est fusionné avec celui des termes par RRF. Le modèle ne lit que l'anglais (voir [Limites connues](./limitations.md)) : le sens n'est donc ajouté que pour les langues où le jeu d'or ([usecases.golden.yaml](../../../examples/usecases.golden.yaml)) a mesuré un gain — aujourd'hui le français, l'anglais et l'espagnol ; l'allemand et le chinois sont cherchés par les termes. Le modèle se charge à la première recherche qui en a besoin — environ une seconde —, puis chaque recherche prend quelques millisecondes.
+- **Sans le modèle** (ses fichiers vont dans `LocalEmbeddingsModel/default/` à côté du binaire ; `orkeon doctor` les vérifie), la recherche passe par les termes seuls et chaque réponse le dit. Elle ne se dégrade jamais en silence.
+
+| Option | Description |
+|---|---|
+| `--top <n>` | Nombre de cas d'usage renvoyés (défaut 5). |
+| `--lang fr\|en\|es\|de\|zh-Hans` | La langue de la requête (`zh` est accepté pour `zh-Hans`). Omise, elle est lue dans le texte — mots grammaticaux, lettres accentuées, caractères chinois — et des mots-clés qui ne trahissent rien comptent comme de l'anglais. Elle choisit le mode de recherche et les titres affichés. |
+| `--events jsonl` | Répond par une ligne `usecases.results` sur stdout au lieu du rendu texte. **Sans texte, mode session** : une requête par ligne de stdin, une réponse par requête, le modèle chargé une seule fois pour toutes, et la fin de stdin termine le processus avec le code 0. |
+
+Chaque résultat porte l'`id` du cas d'usage, son `rank`, son `score` (BM25 par les termes, RRF en mode hybride — comparable au sein d'une même réponse seulement), la raison de la correspondance `reason` (`terms`, `meaning` ou `terms+meaning`), les termes trouvés `terms`, sa similarité `similarity` avec la requête en mode hybride, et son titre dans la langue de la requête. La réponse porte le mode employé `mode` (`bm25` ou `hybrid`), la langue et la façon dont elle a été établie (`langSource` : `option`, `detected` ou `default`), et `degraded`, la raison, quand le sens a été abandonné.
+
+Le mode session est ce qui permet à Orkeon Studio de suggérer des cas d'usage pendant la frappe : le processus s'ouvre sur une ligne `usecases.ready` (taille du catalogue, langues, mode de chacune), puis répond à chaque requête avec le `correlationId` de la requête dans l'enveloppe.
+
+```text
+→ {"kind":"usecases.query","correlationId":"q1","text":"relancer les factures impayées","lang":"fr","top":5}
+← {"v":2,"seq":2,"ts":"…","kind":"usecases.results","correlationId":"q1","query":"relancer les factures impayées","lang":"fr","langSource":"option","mode":"hybrid","results":[{"rank":1,"id":"40-invoice-processing","score":0.0325,"reason":"terms+meaning","terms":["factures"],"similarity":0.6912,"title":"…"}]}
+```
+
+Une ligne qui n'est pas une requête est ignorée. Une requête qui ne peut pas s'exécuter — pas de `text`, une `lang` hors des cinq, un `top` inférieur à 1 — reçoit une ligne `error` portant son `correlationId` et le code `USECASES-QUERY-INVALID`, et la session continue. Les types d'événement sont déclarés une seule fois, dans `Orkeon.Constants.Protocol.UseCaseEventKinds`.
+
+**`list`** imprime le catalogue : id, processus, titre, et les indicateurs `data` (données d'exemple), `web` (a besoin du réseau), `keys` (a besoin d'une clé tierce) et `reference only`. Les filtres se combinent : `--category` (`03-finance-trading`, ou `finance-trading`), `--process` (`sequential`, `hierarchical`, `parallel`, `consensual`, `graph`, `autonomous`), `--tag`. Une catégorie ou un processus inconnu est refusé, avec la liste des valeurs valides. `--lang` choisit les titres (défaut `en`). `--events jsonl` émet une ligne `usecases.catalog` qui contient chaque fiche en entier, sous les noms de champ du manifeste.
+
+**`show <id>`** imprime une fiche : sa catégorie, son processus, ses agents et tâches, ses outils, ses tags, ce dont elle a besoin (réseau, clés), ses montages, si elle est importable, les fichiers que l'outil embarque pour elle, et son titre et son problème dans chaque langue écrite (`--lang` pour une seule). `--crew` ajoute le fichier de crew. `--events jsonl` émet une ligne `usecases.sheet`, avec `crew` sur demande. Un id inconnu sort avec le code 1 et `USECASES-UNKNOWN-ID` (une ligne `error` en mode `--events`).
+
+Codes de sortie : `0` réponse donnée (réponse vide comprise), `1` refus (id inconnu, option invalide), `2` erreur inattendue, `130` Ctrl+C.
 
 ## `orkeon init`
 
