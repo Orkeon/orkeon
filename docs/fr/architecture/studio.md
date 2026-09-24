@@ -56,7 +56,7 @@ La première version ne montrait que ce qui était **terminé**. Pendant une tâ
 
 ### L'état de progression d'un run (STUDIO-30)
 
-`RunProgressModel` (Core, `Run/`) tient tout l'état vivant d'un run observé : un écran qui en a besoin — une barre d'état, par exemple — lit le modèle et jamais les lignes brutes. Chaque lanceur alimente le sien : l'onglet Lancer (`Launch.Progress`) et l'écran Tester (`Test.Launcher.Progress`, qui plie les mêmes événements même si sa vue ne les affiche pas encore). Le lanceur en terminal, `orkeon-studio-run`, n'utilise pas ce modèle.
+`RunProgressModel` (Core, `Run/`) tient tout l'état vivant d'un run observé : un écran qui en a besoin — une barre d'état, par exemple — lit le modèle et jamais les lignes brutes. Chaque lanceur alimente le sien : l'onglet Lancer (`Launch.Progress`) et l'écran Tester (`Test.Launcher.Progress`, qui plie les mêmes événements ; sa propre vue ne les affiche pas, la barre d'état si — STUDIO-34). Le lanceur en terminal, `orkeon-studio-run`, n'utilise pas ce modèle.
 
 | État | Lu dans |
 |---|---|
@@ -77,6 +77,26 @@ La fin du run vide ce qui est au travail, et un appel encore ouvert à ce moment
 Ce qui n'a pas été mesuré reste absent. Pas de `cost.updated`, pas de `Cost` — même quand la clôture porte un total de tokens — et un champ que le compteur n'a pas porté reste nul, jamais un zéro. `Elapsed` est la seule lecture de l'horloge locale que fait le modèle : pendant le run, le temps écoulé depuis le départ que le run a horodaté, qui avance entre deux événements — un écran le rafraîchit donc à son propre rythme ; une fois la fin rapportée, le temps mur du run lui-même, figé. Pendant le run, un départ dont le `ts` ne se lit pas ne donne aucune durée plutôt qu'une durée devinée.
 
 `Changed` se déclenche une fois par événement qui a fait bouger l'état et en nomme le type (`RunProgressChangedEventArgs.Kind` ; nul pour une réponse, à une question ou à un agent, acceptée de ce côté-ci), pour qu'un écran qui n'affiche pas le texte généré puisse ignorer les `llm.delta`, un par token.
+
+### La barre d'état (STUDIO-34)
+
+Une troisième ligne, au pied de la fenêtre, dit ce qui tourne, ce que ça consomme et quels outils sont au travail, sans changer d'écran. `StatusBarViewModel` (`ViewModels/Shell/`) l'alimente ; il ne contient aucune logique de vue, et tout son comportement est vérifié dans `Orkeon.Studio.Wpf.Tests`.
+
+Trois activités peuvent tourner en même temps, chacune avec son moteur, et chacune a **son propre groupe** pendant qu'elle tourne — rien n'est caché, rien n'est fusionné (DD-2) :
+
+| Groupe | Sur la barre tant que | Lu dans |
+|---|---|---|
+| **Exécuter** | le processus de l'écran Exécuter vit (`Launch.IsRunning`) | `Launch.Progress.Model`, le `RunProgressModel` du run (STUDIO-30) |
+| **Tester** | le lanceur propre à l'écran Tester tourne (`Test.Launcher.IsRunning`) | `Test.Launcher.Progress.Model` |
+| **Créer une équipe** — l'assistant | le moteur forge vit, au travail ou en attente de l'utilisateur | la carte de progression de l'assistant, `CreateTeam.Progress` |
+
+Le groupe d'un lanceur dit l'équipe (lue au départ du run, et gardée si le lanceur est pointé entre-temps sur une autre équipe), l'état — en cours, **en attente d'une réponse**, puis réussi ou échoué entre la fin que le run rapporte et la sortie du processus —, la tâche en cours, la durée écoulée, ↑ et ↓, la puce de cache, le coût réel facturé par le fournisseur quand il y en a un, les outils au travail (leur nombre et le premier nom ; la liste entière, chacun avec l'heure du run à son appel, au survol), les délégations en cours, et le fournisseur et le modèle **que rapporte le compteur**. Pendant un run, la barre ne nomme jamais un profil supposé : chaque équipe choisit le sien. Le groupe de l'assistant dit l'étape dans les mots mêmes de la carte, ↑ et ↓ (marqués « ≈ » quand ils sont estimés), et ce qu'il reste de l'allocation de jetons de la session (`budgetRemaining`, porté par la carte sous le nom `TokensRemaining`). Au repos, la barre montre le fournisseur et le modèle du profil **par défaut** — il n'existe pas de profil « actif ».
+
+Un segment que rien n'a mesuré est absent, jamais un zéro. Le novice lit l'état et les compteurs de chaque groupe, et le Solde ; l'expert lit tout, les autres segments d'un lanceur formant une ligne que la barre tronque sur une fenêtre étroite et montre en entier au survol (D-03). Les groupes actifs se partagent la largeur : une fenêtre étroite tronque leur ligne experte et ne pousse jamais un groupe hors de la barre. Un clic sur un groupe ouvre l'écran de son activité — Exécuter, Tester ou Créer une équipe ; en mode novice, qui n'a pas d'écran Tester, le groupe Tester ne répond pas au clic (D-04). Les runs lancés hors de Studio sont hors périmètre (D-05).
+
+La durée écoulée avance entre deux événements : la barre la rafraîchit donc à son propre rythme, une seconde — `IUiTicker` : un `DispatcherTimer` dans l'application, un rythme qui ne bat jamais dans les tests ni dans la campagne de captures —, tenu seulement tant qu'un groupe de lanceur est sur la barre. La campagne fige l'horloge sur laquelle la durée est lue (`StudioServices.Clock`), et sa capture du run en cours arrête le run scripté avant la ligne qui en rapporte la fin : la capture est bien celle d'un run encore en cours.
+
+Le segment **Solde**, à droite, est un emplacement réservé, `StatusBar.Balance` : STUDIO-35 le remplit, et rien ici n'interroge un fournisseur.
 
 ### Les dossiers d'équipe de bout en bout (remédiation v2)
 

@@ -1,10 +1,12 @@
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
 using Orkeon.Studio.Wpf.ViewModels.Services;
 using Orkeon.Studio.Wpf.ViewModels.Shell;
+using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
@@ -252,6 +254,84 @@ public sealed class MainWindowViewModelTests
         {
             Directory.Delete(root, recursive: true);
         }
+    }
+
+    // ── STUDIO-34: the status bar watches the three activities that can run at once ──
+
+    [Fact]
+    public async Task The_status_bar_gives_the_launcher_and_the_trial_screen_a_group_each_while_both_run()
+    {
+        var processes = new FakeProcessLauncher();
+        var window = new MainWindowViewModel(
+            new StudioServices
+            {
+                SettingsStore = new FakeAppSettingsStore(),
+                Directories = new FakeDirectoryProbe(),
+                TargetProbe = new FakeTargetProbe().WithFile("/crews/veille.yaml"),
+                Picker = new FakePathPicker(),
+                ProcessRunner = new OrkeonProcessRunner(
+                    processes, new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+                HistoryStore = new FakeLaunchHistoryStore(),
+            },
+            globalPathOverride: GlobalPath);
+        window.Launch.Target.Select("/crews/veille.yaml");
+        window.Test.Launcher.Target.Select("/crews/veille.yaml");
+
+        // One process double serves both launchers, which share the window's runner: the first
+        // spawn is the Run screen's, the second — started while the first is alive — the trial's.
+        var spawns = 0;
+        Task? trial = null;
+        (bool Launch, bool Test, bool AtRest)? both = null;
+        processes.WhileRunning = () =>
+        {
+            if (++spawns == 1)
+                trial = window.Test.Launcher.RunAsync(TestContext.Current.CancellationToken);
+            else
+                both = (window.StatusBar.Launch.IsActive, window.StatusBar.Test.IsActive, window.StatusBar.IsAtRest);
+        };
+
+        await window.Launch.RunAsync(TestContext.Current.CancellationToken);
+        await trial!;
+
+        Assert.Equal((true, true, false), both);
+        Assert.True(window.StatusBar.IsAtRest);
+    }
+
+    [Fact]
+    public void The_status_bar_follows_the_wizards_progress_card()
+    {
+        var window = Build();
+
+        window.CreateTeam.Progress.Update(new ComposeProgress(
+            "blueprint", EngineRunning: true, WaitingOnUser: false, Finished: false, Narration: null,
+            FileCount: 0, ValidationOk: null, PromptTokens: 1840, CompletionTokens: 620, Estimated: false));
+
+        Assert.True(window.StatusBar.Atelier.IsActive);
+
+        window.CreateTeam.Progress.Update(new ComposeProgress(
+            "blueprint", EngineRunning: false, WaitingOnUser: false, Finished: true, Narration: null,
+            FileCount: 0, ValidationOk: null, PromptTokens: 1840, CompletionTokens: 620, Estimated: false));
+
+        Assert.False(window.StatusBar.Atelier.IsActive);
+        Assert.True(window.StatusBar.IsAtRest);
+    }
+
+    [Fact]
+    public void The_status_bar_reads_the_window_mode_and_the_default_profile_of_the_settings()
+    {
+        var window = Build();
+        window.Settings.Profiles.CommitEdit(
+            new ModelProfile { Name = "Cloud", Provider = "DeepSeek", Model = "deepseek-chat" },
+            previousName: null);
+
+        window.Mode.SetExpertCommand.Execute(null);
+
+        Assert.True(window.StatusBar.ShowsProfile);
+        Assert.Equal("DeepSeek · deepseek-chat", window.StatusBar.Profile);
+
+        window.Mode.SetNoviceCommand.Execute(null);
+
+        Assert.False(window.StatusBar.ShowsProfile);
     }
 
     [Fact]

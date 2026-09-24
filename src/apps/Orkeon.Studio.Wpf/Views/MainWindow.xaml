@@ -36,9 +36,11 @@
         </Style.Triggers>
       </Style>
     </Grid.Style>
+    <!-- Title bar, body, status bar (STUDIO-34). Every overlay spans the three rows. -->
     <Grid.RowDefinitions>
       <RowDefinition Height="52"/>
       <RowDefinition Height="*"/>
+      <RowDefinition Height="Auto"/>
     </Grid.RowDefinitions>
 
     <!-- ══════════ TITLE BAR ══════════ -->
@@ -432,8 +434,203 @@
       </Grid>
     </Grid>
 
+    <!-- ══════════ STATUS BAR (STUDIO-34) ══════════ -->
+    <!-- What runs, what it spends and the tools at work, without changing screen. One group per
+         activity that runs — Run, Test, the assistant — each only while it runs, none hidden, none
+         merged (DD-2). At rest the expert reads the default profile; the Balance slot on the right
+         is STUDIO-35's. A segment nothing measured is absent, never a zero; the novice reads each
+         group's state and meters, the expert everything (D-03). A click on a group opens its
+         activity's screen (D-04). DataContext: StatusBarViewModel. -->
+    <Border x:Name="StatusStrip" Grid.Row="2" MinHeight="30" DataContext="{Binding StatusBar}"
+            Background="{DynamicResource PaperSunkBrush}"
+            BorderBrush="{DynamicResource LineBrush}" BorderThickness="0,1,0,0">
+      <Border.Resources>
+        <!-- A group is a flat button: no chrome at rest, the surface under the pointer. -->
+        <Style x:Key="StatusGroup" TargetType="Button">
+          <Setter Property="Cursor" Value="Hand"/>
+          <Setter Property="HorizontalAlignment" Value="Left"/>
+          <Setter Property="VerticalAlignment" Value="Center"/>
+          <Setter Property="Margin" Value="0,0,6,0"/>
+          <Setter Property="ToolTip" Value="{Binding [Studio.Shell.StatusOpenTip], Source={x:Static services:I18n.Instance}}"/>
+          <Setter Property="Template">
+            <Setter.Value>
+              <ControlTemplate TargetType="Button">
+                <Border x:Name="Bg" Background="Transparent" CornerRadius="6" Padding="8,3">
+                  <ContentPresenter VerticalAlignment="Center"/>
+                </Border>
+                <ControlTemplate.Triggers>
+                  <MultiTrigger>
+                    <MultiTrigger.Conditions>
+                      <Condition Property="IsMouseOver" Value="True"/>
+                      <Condition Property="IsEnabled" Value="True"/>
+                    </MultiTrigger.Conditions>
+                    <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SurfaceBrush}"/>
+                  </MultiTrigger>
+                  <Trigger Property="IsEnabled" Value="False">
+                    <Setter Property="Cursor" Value="Arrow"/>
+                  </Trigger>
+                </ControlTemplate.Triggers>
+              </ControlTemplate>
+            </Setter.Value>
+          </Setter>
+        </Style>
+        <Style x:Key="StatusGroupLabel" TargetType="TextBlock">
+          <Setter Property="FontSize" Value="11.5"/>
+          <Setter Property="FontWeight" Value="SemiBold"/>
+          <Setter Property="Foreground" Value="{DynamicResource InkBrush}"/>
+          <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <Style x:Key="StatusFigure" TargetType="TextBlock" BasedOn="{StaticResource MonoText}">
+          <Setter Property="FontSize" Value="10.5"/>
+          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+          <Setter Property="TextWrapping" Value="NoWrap"/>
+          <Setter Property="VerticalAlignment" Value="Center"/>
+        </Style>
+        <!-- The state's dot: accent while it works, warning while it waits on you, then its verdict. -->
+        <Style x:Key="StatusDot" TargetType="Ellipse">
+          <Setter Property="Width" Value="7"/>
+          <Setter Property="Height" Value="7"/>
+          <Setter Property="Margin" Value="8,0,5,0"/>
+          <Setter Property="VerticalAlignment" Value="Center"/>
+          <Setter Property="Fill" Value="{DynamicResource AccentBrush}"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding Tone}" Value="waiting">
+              <Setter Property="Fill" Value="{DynamicResource WarningBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tone}" Value="ok">
+              <Setter Property="Fill" Value="{DynamicResource SuccessBrush}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding Tone}" Value="fail">
+              <Setter Property="Fill" Value="{DynamicResource DangerBrush}"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+        <!-- The state in words; waiting on you is the one state that must catch the eye. -->
+        <Style x:Key="StatusState" TargetType="TextBlock">
+          <Setter Property="FontSize" Value="11.5"/>
+          <Setter Property="VerticalAlignment" Value="Center"/>
+          <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+          <Setter Property="Foreground" Value="{DynamicResource InkMutedBrush}"/>
+          <Style.Triggers>
+            <DataTrigger Binding="{Binding IsWaiting}" Value="True">
+              <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+              <Setter Property="FontWeight" Value="SemiBold"/>
+            </DataTrigger>
+          </Style.Triggers>
+        </Style>
+        <!-- The body of a launcher's group — the Run screen's and the Test screen's alike. -->
+        <DataTemplate x:Key="RunGroupBody">
+          <DockPanel>
+            <Ellipse DockPanel.Dock="Left" Style="{StaticResource StatusDot}"/>
+            <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusState}" Text="{Binding StateText}"/>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="10,0,0,0"
+                        ToolTip="{Binding [Studio.Create.TokensUp], Source={x:Static services:I18n.Instance}}"
+                        ToolTipService.ShowOnDisabled="True"
+                        Visibility="{Binding ShowsTokensUp, Converter={StaticResource BooleanToVisibility}}">
+              <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource InkMutedBrush}"/>
+              <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensUp}"/>
+            </StackPanel>
+            <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="8,0,0,0"
+                        ToolTip="{Binding [Studio.Create.TokensDown], Source={x:Static services:I18n.Instance}}"
+                        ToolTipService.ShowOnDisabled="True"
+                        Visibility="{Binding ShowsTokensDown, Converter={StaticResource BooleanToVisibility}}">
+              <controls:LucideIcon Kind="arrow-down" Size="11" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource InkMutedBrush}"/>
+              <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensDown}"/>
+            </StackPanel>
+            <!-- The expert's segments in one line the bar trims when the window is narrow; the
+                 whole of it, the tool and delegation lists written out, on hover. -->
+            <TextBlock Style="{StaticResource StatusFigure}" Margin="12,0,0,0" TextTrimming="CharacterEllipsis"
+                       Foreground="{DynamicResource InkFaintBrush}" Text="{Binding Details}"
+                       ToolTip="{Binding DetailsTip}" ToolTipService.ShowOnDisabled="True"
+                       Visibility="{Binding ShowsDetails, Converter={StaticResource BooleanToVisibility}}"/>
+          </DockPanel>
+        </DataTemplate>
+      </Border.Resources>
+
+      <DockPanel Margin="10,0">
+        <!-- The Balance segment (STUDIO-35 fills it): both modes, absent until a reading is shown. -->
+        <TextBlock DockPanel.Dock="Right" Margin="12,0,4,0" Text="{Binding Balance.Text}"
+                   ToolTip="{Binding Balance.Detail}"
+                   Visibility="{Binding Balance.HasBalance, Converter={StaticResource BooleanToVisibility}}">
+          <TextBlock.Style>
+            <Style TargetType="TextBlock" BasedOn="{StaticResource StatusFigure}">
+              <Style.Triggers>
+                <DataTrigger Binding="{Binding Balance.IsWarning}" Value="True">
+                  <Setter Property="Foreground" Value="{DynamicResource WarningBrush}"/>
+                  <Setter Property="FontWeight" Value="SemiBold"/>
+                </DataTrigger>
+              </Style.Triggers>
+            </Style>
+          </TextBlock.Style>
+        </TextBlock>
+
+        <!-- At rest, to the expert: provider · model of the default profile. -->
+        <StackPanel DockPanel.Dock="Left" Orientation="Horizontal" Margin="4,0,0,0" VerticalAlignment="Center"
+                    ToolTip="{Binding ProfileTip}"
+                    Visibility="{Binding ShowsProfile, Converter={StaticResource BooleanToVisibility}}">
+          <controls:LucideIcon Kind="sparkles" Size="12" VerticalAlignment="Center"
+                               Foreground="{DynamicResource InkFaintBrush}"/>
+          <TextBlock Style="{StaticResource StatusFigure}" Margin="6,0,0,0" Text="{Binding Profile}"/>
+        </StackPanel>
+
+        <!-- The active groups share the width, so a narrow window trims their expert line and
+             never pushes a group off the bar. -->
+        <UniformGrid Rows="1">
+          <Button Style="{StaticResource StatusGroup}" Command="{Binding Launch.OpenCommand}"
+                  Visibility="{Binding Launch.IsActive, Converter={StaticResource BooleanToVisibility}}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
+                         Text="{Binding [Studio.Shell.Run], Source={x:Static services:I18n.Instance}}"/>
+              <ContentPresenter Content="{Binding Launch}" ContentTemplate="{StaticResource RunGroupBody}"/>
+            </DockPanel>
+          </Button>
+          <Button Style="{StaticResource StatusGroup}" Command="{Binding Test.OpenCommand}"
+                  Visibility="{Binding Test.IsActive, Converter={StaticResource BooleanToVisibility}}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
+                         Text="{Binding [Studio.Shell.Test], Source={x:Static services:I18n.Instance}}"/>
+              <ContentPresenter Content="{Binding Test}" ContentTemplate="{StaticResource RunGroupBody}"/>
+            </DockPanel>
+          </Button>
+          <Button Style="{StaticResource StatusGroup}" Command="{Binding Atelier.OpenCommand}"
+                  Visibility="{Binding Atelier.IsActive, Converter={StaticResource BooleanToVisibility}}">
+            <!-- Stage first, then what it spent: the stage is the sentence the card already says. -->
+            <DockPanel DataContext="{Binding Atelier}">
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource StatusGroupLabel}"
+                         Text="{Binding [Studio.Shell.Create], Source={x:Static services:I18n.Instance}}"/>
+              <Ellipse DockPanel.Dock="Left" Style="{StaticResource StatusDot}"/>
+              <TextBlock DockPanel.Dock="Right" Style="{StaticResource StatusFigure}" Margin="12,0,0,0"
+                         Foreground="{DynamicResource InkFaintBrush}" Text="{Binding BudgetLeft}"
+                         Visibility="{Binding ShowsBudgetLeft, Converter={StaticResource BooleanToVisibility}}"/>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0"
+                          ToolTip="{Binding [Studio.Create.TokensDown], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding ShowsTokensDown, Converter={StaticResource BooleanToVisibility}}">
+                <controls:LucideIcon Kind="arrow-down" Size="11" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensDown}"/>
+              </StackPanel>
+              <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="10,0,0,0"
+                          ToolTip="{Binding [Studio.Create.TokensUp], Source={x:Static services:I18n.Instance}}"
+                          Visibility="{Binding ShowsTokensUp, Converter={StaticResource BooleanToVisibility}}">
+                <!-- «≈» when the runtime had to count for a provider that reported nothing, as on the card. -->
+                <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="≈"
+                           Foreground="{DynamicResource InkFaintBrush}"
+                           Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
+                <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource InkMutedBrush}"/>
+                <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensUp}"/>
+              </StackPanel>
+              <TextBlock Style="{StaticResource StatusState}" Text="{Binding Stage}"/>
+            </DockPanel>
+          </Button>
+        </UniformGrid>
+      </DockPanel>
+    </Border>
+
     <!-- ══════════ ÉDITEUR DE RÉGLAGE DE MODÈLE (overlay) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnProfileEditorBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnProfileEditorBackdropClick"
           Visibility="{Binding Settings.Profiles.IsEditorOpen, Converter={StaticResource BooleanToVisibility}}">
       <Grid.Resources>
         <views:IsEqualConverter x:Key="IsEqual"/>
@@ -735,7 +932,7 @@
     </Grid>
 
     <!-- ══════════ DOSSIERS DE L'ÉQUIPE (overlay, F-03) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnTeamMountsBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnTeamMountsBackdropClick"
           Visibility="{Binding TeamMounts.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -848,7 +1045,7 @@
     </Grid>
 
     <!-- ══════════ ÉDITEUR D'AGENT (overlay, F-01) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAgentEditorBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAgentEditorBackdropClick"
           Visibility="{Binding CreateTeam.AgentEditor.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="620" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -940,7 +1137,7 @@
          Réglages › Dossiers autorisés, droits compris. Déclarer reste le geste des Réglages,
          et « Déclarer un nouveau dossier… » enchaîne sur le sélecteur, qui s'empile au-dessus
          de cet overlay — d'où l'ordre : ce Grid AVANT celui du sélecteur. -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAllowedFoldersBackdropClick"
           Visibility="{Binding AllowedFolders.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="600" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -1076,7 +1273,7 @@
     </Grid>
 
     <!-- ══════════ À PROPOS (overlay) ══════════ -->
-    <Grid Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAboutBackdropClick"
+    <Grid Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource ScrimBrush}" MouseLeftButtonDown="OnAboutBackdropClick"
           Visibility="{Binding About.IsOpen, Converter={StaticResource BooleanToVisibility}}">
       <Border Width="660" HorizontalAlignment="Center" VerticalAlignment="Center" MouseLeftButtonDown="OnSwallowClick"
               Background="{DynamicResource SurfaceBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"
@@ -1126,7 +1323,7 @@
     </Grid>
 
     <!-- ══════════ DÉMARRAGE (overlay, 5 s, clic pour passer) ══════════ -->
-    <Border x:Name="Splash" Grid.Row="0" Grid.RowSpan="2" Background="{DynamicResource PaperBrush}" Cursor="Hand"
+    <Border x:Name="Splash" Grid.Row="0" Grid.RowSpan="3" Background="{DynamicResource PaperBrush}" Cursor="Hand"
             MouseLeftButtonDown="OnSplashClick"
             ToolTip="{Binding [Studio.Shell.SplashSkip], Source={x:Static services:I18n.Instance}}">
       <StackPanel HorizontalAlignment="Center" VerticalAlignment="Center">
@@ -1163,6 +1360,6 @@
     </Border>
 
     <!-- ══════════ GUIDED TOUR (last child = topmost) ══════════ -->
-    <controls:TourOverlay x:Name="Tour" Grid.Row="0" Grid.RowSpan="2"/>
+    <controls:TourOverlay x:Name="Tour" Grid.Row="0" Grid.RowSpan="3"/>
   </Grid>
 </Window>

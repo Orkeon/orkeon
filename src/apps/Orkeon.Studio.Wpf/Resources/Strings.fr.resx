@@ -54,6 +54,16 @@
   <data name="Studio.Shell.TourStep4Body" xml:space="preserve"><value>Deux réglages seulement : le modèle d'IA et les dossiers que les agents peuvent voir. Le diagnostic vous prévient quand quelque chose bloque.</value></data>
   <data name="Studio.Shell.TourStep5Title" xml:space="preserve"><value>L'aide est contextuelle</value></data>
   <data name="Studio.Shell.TourStep5Body" xml:space="preserve"><value>En mode Novice, chaque écran porte une colonne d'explications à droite. Elle s'efface en mode Expert.</value></data>
+  <!-- STUDIO-34: the status bar at the foot of the window -->
+  <data name="Studio.Shell.StatusWaiting" xml:space="preserve"><value>en attente d'une réponse</value></data>
+  <data name="Studio.Shell.StatusTools" xml:space="preserve"><value>{0} outil(s) : {1}</value></data>
+  <data name="Studio.Shell.StatusToolsTitle" xml:space="preserve"><value>Outils en cours</value></data>
+  <data name="Studio.Shell.StatusDelegations" xml:space="preserve"><value>{0} délégation(s)</value></data>
+  <data name="Studio.Shell.StatusDelegationsTitle" xml:space="preserve"><value>Délégations en cours</value></data>
+  <data name="Studio.Shell.StatusBudgetLeft" xml:space="preserve"><value>{0} jetons restants</value></data>
+  <data name="Studio.Shell.StatusProfileTip" xml:space="preserve"><value>Réglage de modèle par défaut : {0}</value></data>
+  <data name="Studio.Shell.StatusCostBilled" xml:space="preserve"><value>{0} — facturé par le fournisseur</value></data>
+  <data name="Studio.Shell.StatusOpenTip" xml:space="preserve"><value>Ouvrir l'écran de cette activité</value></data>
                 
 
       <data name="Studio.Settings.TestConnection" xml:space="preserve"><value>Tester la connexion</value></data>

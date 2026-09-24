@@ -129,6 +129,8 @@ public partial class App : System.Windows.Application
                 // The assistant's beats are timed; the ViewModels only know how to ask for
                 // "later", and this is the only place that knows what later means in WPF.
                 Delay = new WpfDelay(Dispatcher),
+                // The status bar's clocks move between a run's events (STUDIO-34).
+                Ticker = new WpfTicker(Dispatcher),
             },
             new StudioUiPreferences
             {

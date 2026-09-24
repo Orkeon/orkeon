@@ -18,6 +18,10 @@ namespace Orkeon.Studio.Wpf.ViewModels.Teams;
 /// <param name="PromptTokens">Ascending — everything sent to the models.</param>
 /// <param name="CompletionTokens">Descending — everything the models sent back.</param>
 /// <param name="Estimated">Whether any part of the two figures was approximated.</param>
+/// <param name="TokensRemaining">
+/// What the session's token allowance has left, as the engine's last meter reading said it;
+/// null for a session with no cap (STUDIO-34).
+/// </param>
 public sealed record ComposeProgress(
     string? Stage,
     bool EngineRunning,
@@ -28,7 +32,8 @@ public sealed record ComposeProgress(
     bool? ValidationOk,
     long PromptTokens,
     long CompletionTokens,
-    bool Estimated);
+    bool Estimated,
+    long? TokensRemaining = null);
 
 /// <summary>
 /// The card that stands between «Composer» and the proposal, and between «Essayer» and the
@@ -79,6 +84,15 @@ public sealed class ComposeProgressViewModel : ObservableObject
 
     /// <summary>Whether the engine is alive and waiting on you rather than on itself.</summary>
     public bool IsWaiting => _reading.EngineRunning && _reading.WaitingOnUser;
+
+    /// <summary>
+    /// Whether the engine process is alive, working or waiting — how long the assistant's group
+    /// stays on the status bar (STUDIO-34).
+    /// </summary>
+    public bool IsEngineRunning => _reading.EngineRunning;
+
+    /// <summary>What the session's token allowance has left; null when the session has no cap.</summary>
+    public long? TokensRemaining => _reading.TokensRemaining;
 
     /// <summary>
     /// What the engine is doing, in one line. Waiting outranks the stage: «I am waiting for
@@ -190,5 +204,5 @@ public sealed class ComposeProgressViewModel : ObservableObject
         nameof(IsVisible), nameof(IsWorking), nameof(IsWaiting), nameof(Title), nameof(Detail),
         nameof(TokensUp), nameof(TokensDown), nameof(HasTokens), nameof(TokensEstimated),
         nameof(TokensNote), nameof(TokensUpLabel), nameof(TokensDownLabel),
-        nameof(Facts), nameof(HasFacts));
+        nameof(Facts), nameof(HasFacts), nameof(IsEngineRunning), nameof(TokensRemaining));
 }

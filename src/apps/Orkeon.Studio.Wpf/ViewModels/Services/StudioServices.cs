@@ -65,4 +65,13 @@ public sealed record StudioServices
 
     /// <summary>The clipboard behind "copy the id" on the settings' mount rows (VFS-90); in-memory when absent.</summary>
     public IClipboardService? Clipboard { get; init; }
+
+    /// <summary>The beat the status bar's clocks move on (STUDIO-34); one that never beats when absent.</summary>
+    public IUiTicker? Ticker { get; init; }
+
+    /// <summary>
+    /// The clock a run's elapsed time is read on (STUDIO-34): the system's when absent, frozen by
+    /// the screenshot campaign so a run in flight shows the same duration in every pass.
+    /// </summary>
+    public TimeProvider? Clock { get; init; }
 }

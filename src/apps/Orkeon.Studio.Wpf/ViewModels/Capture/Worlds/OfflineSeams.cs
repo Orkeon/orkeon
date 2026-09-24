@@ -39,3 +39,18 @@ internal sealed class EphemeralApiKeyStore : IApiKeyStore
     /// <inheritdoc />
     public void Save(string envName, string value) => _keys[envName] = value;
 }
+
+/// <summary>
+/// The campaign's clock, stopped at the seeded world's own «now».
+/// <para>
+/// A run in flight shows on the status bar how long it has gone (STUDIO-34). Read off the
+/// machine's clock, that figure would differ in every pass — and read against a stream stamped on
+/// a fixed day, it would say how long ago that day was — so a diff of two campaigns would light
+/// up on a stop that changed nothing.
+/// </para>
+/// </summary>
+internal sealed class PinnedClock(DateTimeOffset now) : TimeProvider
+{
+    /// <inheritdoc />
+    public override DateTimeOffset GetUtcNow() => now;
+}

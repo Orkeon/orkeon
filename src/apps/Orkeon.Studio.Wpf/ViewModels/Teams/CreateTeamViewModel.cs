@@ -3033,7 +3033,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         _model.ValidationOk,
         _model.PromptTokens,
         _model.CompletionTokens,
-        _model.TokensAreEstimated));
+        _model.TokensAreEstimated,
+        _model.TokensRemaining));
 
     private void SyncActivity()
     {

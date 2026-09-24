@@ -52,7 +52,9 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
 
     /// <summary>
     /// The next run of <paramref name="verb"/> plays its lines and then parks, so a stop can
-    /// photograph a run in flight and the one after it can photograph how it ends.
+    /// photograph a run in flight and the one after it can photograph how it ends. It parks
+    /// before the line that reports its end, which the release plays: parked after it, the shot
+    /// «in flight» was of a run that had already said it was over (STUDIO-34).
     /// </summary>
     public void Hold(string verb) => _heldVerbs.Add(verb);
 
@@ -94,27 +96,52 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
         {
             request.OnInputReady?.Invoke(new ScriptedInputWriter(this));
 
-            foreach (var line in answer.Lines)
-                onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, line));
+            var held = _heldVerbs.Remove(verb);
+            var end = held ? EndOf(answer.Lines) : answer.Lines.Count;
+            Play(answer.Lines, 0, end, onOutput);
 
-            if (!_heldVerbs.Remove(verb))
+            if (!held)
                 return ProcessRunResult.FromExitCode(answer.ExitCode, TimeSpan.Zero);
 
             _parked = new TaskCompletionSource<int>(TaskCreationOptions.RunContinuationsAsynchronously);
             using var abandon = cancellationToken.Register(() => Release(OrkeonExitCodes.Cancelled));
             var exitCode = await _parked.Task;
 
-            return cancellationToken.IsCancellationRequested
-                ? ProcessRunResult.FromCancellation(
+            if (cancellationToken.IsCancellationRequested)
+            {
+                return ProcessRunResult.FromCancellation(
                     rawExitCode: -1,
                     ProcessTerminationOutcome.Of(ProcessTerminationMode.StoppedBySignal),
-                    TimeSpan.Zero)
-                : ProcessRunResult.FromExitCode(exitCode, TimeSpan.Zero);
+                    TimeSpan.Zero);
+            }
+
+            // Released: the run reports its end, then exits.
+            Play(answer.Lines, end, answer.Lines.Count, onOutput);
+            return ProcessRunResult.FromExitCode(exitCode, TimeSpan.Zero);
         }
         finally
         {
             _live = null;
         }
+    }
+
+    /// <summary>Plays the lines from <paramref name="from"/> up to, not including, <paramref name="to"/>.</summary>
+    private static void Play(IReadOnlyList<string> lines, int from, int to, Action<ProcessOutputLine>? onOutput)
+    {
+        for (var index = from; index < to; index++)
+            onOutput?.Invoke(ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, lines[index]));
+    }
+
+    /// <summary>Where a script's end starts: its last <c>run.finished</c> line, or its length when it reports none.</summary>
+    private static int EndOf(IReadOnlyList<string> lines)
+    {
+        for (var index = lines.Count - 1; index >= 0; index--)
+        {
+            if (lines[index].Contains("\"kind\":\"run.finished\"", StringComparison.Ordinal))
+                return index;
+        }
+
+        return lines.Count;
     }
 
     /// <summary>

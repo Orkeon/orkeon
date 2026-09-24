@@ -85,7 +85,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         Options = new LaunchOptionsViewModel(seams.Picker, _strings);
         Mounts = new LaunchMountsViewModel(seams.Directories, seams.Picker, _strings);
         Log = new RunLogViewModel(_strings);
-        Progress = new RunProgressViewModel(_strings);
+        Progress = new RunProgressViewModel(_strings, seams.Clock);
         History = new LaunchHistoryViewModel(seams.HistoryStore, _dispatcher, _strings, _shellOpener, _declaredMounts);
 
         Target.TargetChanged += OnTargetChanged;
@@ -1094,4 +1094,7 @@ public sealed record LaunchTabDependencies
 
     /// <summary>The clipboard behind "copy the command"; in-memory when absent (the tests).</summary>
     public IClipboardService? Clipboard { get; init; }
+
+    /// <summary>The clock a run's elapsed time is read on (STUDIO-34); the system's when absent.</summary>
+    public TimeProvider? Clock { get; init; }
 }

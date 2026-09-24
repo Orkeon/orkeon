@@ -101,6 +101,7 @@ public sealed class MainWindowViewModel : ObservableObject
             ShellOpener = shellOpener,
             DeclaredMounts = declaredMounts,
             Clipboard = seams.Clipboard,
+            Clock = seams.Clock,
         });
 
         var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
@@ -169,8 +170,22 @@ public sealed class MainWindowViewModel : ObservableObject
                 EnvironmentForTarget = TeamEnvironment,
                 ShellOpener = shellOpener,
                 DeclaredMounts = declaredMounts,
+                Clock = seams.Clock,
             }),
             teamsRoot);
+
+        // STUDIO-34: the bar at the foot of the window watches the three activities that can run
+        // at once — each with its own engine — and gives each a group while it runs (DD-2).
+        StatusBar = new StatusBarViewModel(new StatusBarSources
+        {
+            Launch = Launch,
+            Test = Test.Launcher,
+            Atelier = CreateTeam.Progress,
+            Profiles = Settings.Profiles,
+            Mode = Mode,
+            Strings = strings,
+            Ticker = seams.Ticker,
+        });
 
         Import = new ImportTeamViewModel(new ImportTeamDependencies
         {
@@ -293,6 +308,9 @@ public sealed class MainWindowViewModel : ObservableObject
 
     /// <summary>The expert Test screen — a trial launcher that never touches the history.</summary>
     public TestTeamViewModel Test { get; }
+
+    /// <summary>The bar at the foot of the window (STUDIO-34): one group per activity while it runs.</summary>
+    public StatusBarViewModel StatusBar { get; }
 
     /// <summary>The Import screen.</summary>
     public ImportTeamViewModel Import { get; }

@@ -97,22 +97,36 @@ public sealed class RunningTaskViewModel
 public sealed class RunProgressViewModel : ObservableObject
 {
     private readonly IStudioStrings _strings;
-    private RunProgressModel _model = new();
+    private readonly TimeProvider? _time;
+    private RunProgressModel _model;
     private Func<string, string, bool>? _answer;
     private Func<string, string, bool>? _reply;
     private string _answerText = string.Empty;
     private string _replyText = string.Empty;
 
-    /// <summary>Builds the panel over the localization port.</summary>
-    public RunProgressViewModel(IStudioStrings? strings = null)
+    /// <summary>
+    /// Builds the panel over the localization port. <paramref name="timeProvider"/> is the clock
+    /// each run's model reads its elapsed time on — the system's when absent, a frozen one in the
+    /// tests and the screenshot campaign.
+    /// </summary>
+    public RunProgressViewModel(IStudioStrings? strings = null, TimeProvider? timeProvider = null)
     {
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _time = timeProvider;
+        _model = new RunProgressModel(_time);
         _strings.CultureChanged += (_, _) => RaiseLabels();
 
         AnswerCommand = new RelayCommand(Answer, () => PendingQuestion is not null);
         ChooseCommand = new RelayCommand(parameter => Choose(parameter as string), parameter => parameter is string);
         ReplyCommand = new RelayCommand(Reply, () => PendingAgentRequest is not null && _reply is not null);
     }
+
+    /// <summary>
+    /// The whole live state of the watched run (STUDIO-30), for a reader that wants more than
+    /// this panel shows — the status bar (STUDIO-34). Replaced on every <see cref="Reset"/>, which
+    /// announces the replacement: a reader holding the old model would watch a run that is over.
+    /// </summary>
+    public RunProgressModel Model => _model;
 
     /// <summary>Tasks the run has finished, in the order it reported them.</summary>
     public ObservableCollection<RunTaskViewModel> Tasks { get; } = [];
@@ -276,7 +290,8 @@ public sealed class RunProgressViewModel : ObservableObject
         HubMessages.Clear();
         AnswerText = string.Empty;
         ReplyText = string.Empty;
-        _model = new RunProgressModel();
+        _model = new RunProgressModel(_time);
+        OnPropertyChanged(nameof(Model));
         RaiseLabels();
     }
 
