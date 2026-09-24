@@ -1,0 +1,3945 @@
+{
+  "$comment": "GENERATED FILE — DO NOT EDIT BY HAND. Built by scripts/generate_examples_index.py from each numbered example's crew and usecase.yaml; regenerate with: bash scripts/generate-examples-index.sh",
+  "languages": [
+    "fr",
+    "en",
+    "es",
+    "de",
+    "zh-Hans"
+  ],
+  "useCases": [
+    {
+      "agents": 3,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "01-research-assistant",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 1,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "json_tool",
+        "pdf_reader",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "02-code-review",
+      "importable": true,
+      "mounts": [],
+      "number": 2,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "03-email-pipeline",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 3,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "email_parser",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "04-financial-reports",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 4,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "05-customer-support",
+      "importable": true,
+      "mounts": [],
+      "number": 5,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "06-competitive-intelligence",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 6,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "07-due-diligence-nist",
+      "importable": true,
+      "mounts": [],
+      "number": 7,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "08-content-marketing",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 8,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "09-agile-scrum-master",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 9,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "10-sentiment-analysis",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 10,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "11-translation-consensus",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 11,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "12-employee-onboarding",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 12,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "13-security-audit",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 13,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "14-etl-pipeline",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 14,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "relational_database_query",
+        "xml_parser"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "15-commercial-proposals",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 15,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "01-enterprise",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "16-interactive-qa",
+      "importable": true,
+      "mounts": [],
+      "number": 16,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [
+        "ORKEON_TAVILY_API_KEY"
+      ],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "web_scrape",
+        "web_search"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "16-prisma-meta-analysis",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 16,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "17-scientific-debate",
+      "importable": true,
+      "mounts": [],
+      "number": 17,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "18-academic-writing",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 18,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "19-experimental-data",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 19,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "20-patent-monitoring",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 20,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "21-peer-review-calibration",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 21,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "22-clinical-trials-encrypted",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 22,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "23-genomic-analysis",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 23,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "24-grant-writing",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 24,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "25-lab-assistant-resume",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 25,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "26-knowledge-graph",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 26,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "27-trend-prediction",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 27,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "28-triple-validation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 28,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "29-hypothesis-generation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 29,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 1,
+      "category": "02-science-research",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "30-adaptive-summary",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 30,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 8,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "31-algo-trading",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 31,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 7,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "arima_prediction",
+        "backtesting",
+        "csv_reader",
+        "cvar_calculation",
+        "ensemble_prediction",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "market_regime_classification",
+        "mean_variance_optimization",
+        "portfolio_rebalancing",
+        "relational_database_query",
+        "smart_order_routing",
+        "technical_indicators",
+        "twap_execution",
+        "var_calculation",
+        "vwap_execution"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "32-fraud-detection",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 32,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "alert_management",
+        "audit_trail",
+        "correlation_analysis",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pattern_recognition",
+        "relational_database_query",
+        "semantic_search"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "33-credit-scoring",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 33,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "factor_exposure",
+        "file_write",
+        "fundamental_data",
+        "http_api",
+        "json_tool",
+        "relational_database_query",
+        "var_calculation"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": true,
+      "id": "34-portfolio-consensus",
+      "importable": false,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 34,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "black_litterman",
+        "correlation_analysis",
+        "csv_reader",
+        "file_write",
+        "hierarchical_risk_parity",
+        "http_api",
+        "json_tool",
+        "mean_variance_optimization",
+        "risk_parity",
+        "technical_indicators"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "35-accounting-reconciliation",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 35,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "csv_reader",
+        "dashboard_metrics",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "36-cash-flow-forecast",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 36,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "arima_prediction",
+        "csv_reader",
+        "ensemble_prediction",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "prophet_prediction",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "37-kyc-aml-compliance",
+      "importable": false,
+      "mounts": [],
+      "number": 37,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "compliance_check",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "regulatory_reporting"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "38-contract-analysis",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 38,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "csv_reader",
+        "file_write",
+        "json_tool",
+        "pdf_reader",
+        "regulatory_reporting"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "39-robo-advisor",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 39,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "human_input",
+        "json_tool",
+        "mean_variance_optimization",
+        "portfolio_rebalancing",
+        "risk_parity"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": true,
+      "id": "40-invoice-processing",
+      "importable": false,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 40,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "csv_reader",
+        "dashboard_metrics",
+        "file_write",
+        "json_tool",
+        "pdf_reader",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "41-insider-trading-detection",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 41,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "correlation_analysis",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pattern_recognition",
+        "regulatory_reporting",
+        "relational_database_query",
+        "semantic_search"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "42-dynamic-pricing",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 42,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "alternative_data",
+        "csv_reader",
+        "dashboard_metrics",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "market_regime_classification",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "43-tax-optimization",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 43,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "regulatory_reporting"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "44-esg-scoring",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 44,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "alternative_data",
+        "csv_reader",
+        "dashboard_metrics",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "03-finance-trading",
+      "format": "ork.ts",
+      "hasSampleData": false,
+      "id": "45-stress-testing",
+      "importable": false,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 45,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "audit_trail",
+        "correlation_analysis",
+        "csv_reader",
+        "cvar_calculation",
+        "factor_exposure",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "regulatory_reporting",
+        "relational_database_query",
+        "stress_testing",
+        "var_calculation"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "46-diagnostic-assistant",
+      "importable": true,
+      "mounts": [],
+      "number": 46,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "http_api",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "47-nutrition-planner",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 47,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "48-mental-health-monitoring",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 48,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "49-medical-records-fhir",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 49,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool",
+        "pdf_reader",
+        "xml_parser"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "50-radiology-assistant",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 50,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "51-care-coordination",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 51,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "52-pharmacovigilance",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 52,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "semantic_search",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "53-clinical-trials-nist",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 53,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "54-sports-coach",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 54,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "04-health-wellness",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "55-telemedicine-streaming",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 55,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "56-adaptive-tutor",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 56,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "57-exam-generation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 57,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "58-multi-criteria-grading",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 58,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "59-nonlinear-learning-path",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 59,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "60-case-study-simulation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 60,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "61-gamified-learning",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 61,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "62-plagiarism-detection",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 62,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "63-skills-gap-mapping",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 63,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 3,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "64-accessibility",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 64,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool",
+        "xml_parser"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "05-education",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "65-developer-mentoring",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 65,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "66-cicd-pipeline",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 66,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "github",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "67-incident-response",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 67,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "68-database-migration",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 68,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "69-performance-analysis",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 69,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "70-versioned-documentation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 70,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "github",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "71-cloud-audit-nist",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 71,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "72-load-testing",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 72,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "73-secure-refactoring",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 73,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "json_tool",
+        "shell_command"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "74-dependency-management",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 74,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "shell_command"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "75-chaos-engineering",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 75,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 7,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "102-ts-codebase-documentation",
+      "importable": true,
+      "mounts": [
+        "./src:/src:ro",
+        "./output:/output:rw"
+      ],
+      "number": 102,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 1,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 7,
+      "category": "06-engineering-devops",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "103-ts-codebase-with-fsm",
+      "importable": true,
+      "mounts": [
+        "./src:/src:ro",
+        "./output:/output:rw"
+      ],
+      "number": 103,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 1,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "76-narrative-studio",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 76,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "77-podcast-production",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 77,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "78-synthetic-data",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 78,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "79-music-composition",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 79,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "80-art-direction",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 80,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "81-worldbuilding",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 81,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "82-newsletter-curation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 82,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "pdf_reader",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 3,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "83-interactive-fiction",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 83,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "84-multi-perspective-critique",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 84,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "07-creative-media",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "85-cross-media-adaptation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 85,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_read",
+        "file_write",
+        "json_tool",
+        "pdf_reader"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "86-smart-home-a2a",
+      "importable": true,
+      "mounts": [],
+      "number": 86,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "87-fleet-management",
+      "importable": true,
+      "mounts": [
+        "./data:/data:ro",
+        "./output:/output:rw"
+      ],
+      "number": 87,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 7,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "88-precision-agriculture",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 88,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "89-environmental-monitoring",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 89,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "90-energy-management",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 90,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "91-predictive-maintenance",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 91,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "92-warehouse-logistics",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 92,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "relational_database_query"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "93-visual-quality-control",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 93,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "csv_reader",
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "94-smart-city-traffic",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 94,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 6,
+      "category": "08-iot-smart-systems",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "95-crisis-management",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 95,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "96-self-adaptive-crew",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 96,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 7,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": true,
+      "id": "97-multi-party-negotiation",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 97,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "consensual",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "98-legacy-code-archaeology",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 98,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 5,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "github",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 7,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "99-ethics-jury",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 99,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "parallel",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 7,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 8,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "100-civilization-simulator",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 100,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "sequential",
+      "requiresKeys": [],
+      "requiresNetwork": false,
+      "tags": [],
+      "tasks": 9,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "json_tool"
+      ]
+    },
+    {
+      "agents": 5,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "101-crew-of-crews",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 101,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "hierarchical",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 6,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "directory_read",
+        "file_read",
+        "file_write",
+        "http_api",
+        "json_tool",
+        "semantic_search",
+        "shell_command",
+        "web_scrape"
+      ]
+    },
+    {
+      "agents": 4,
+      "category": "09-experimental",
+      "format": "yaml",
+      "hasSampleData": false,
+      "id": "102-graph-orchestration",
+      "importable": true,
+      "mounts": [
+        "./output:/output:rw"
+      ],
+      "number": 102,
+      "problem": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "process": "graph",
+      "requiresKeys": [],
+      "requiresNetwork": true,
+      "tags": [],
+      "tasks": 4,
+      "title": {
+        "de": "",
+        "en": "",
+        "es": "",
+        "fr": "",
+        "zh-Hans": ""
+      },
+      "tools": [
+        "file_write",
+        "http_api",
+        "json_tool",
+        "web_scrape"
+      ]
+    }
+  ]
+}

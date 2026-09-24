@@ -1,0 +1,17 @@
+# Use-case sheet: the hand-written fields of this example in examples/usecases.json.
+# Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
+title:
+  fr: ""
+  en: ""
+  es: ""
+  de: ""
+  zh-Hans: ""
+problem:
+  fr: ""
+  en: ""
+  es: ""
+  de: ""
+  zh-Hans: ""
+tags: []
+mounts: []
+importable: true

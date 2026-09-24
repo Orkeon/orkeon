@@ -17,7 +17,8 @@ Scans every ``examples/NN-category/NN-slug/README.md`` and checks:
       directory (external ``http(s)://`` / ``mailto:`` and pure ``#anchor`` links are
       skipped). Broken relative links are ERRORS.
 
-  (d) INDEX       — ``examples/INDEX.md`` is up to date, verified by delegating to
+  (d) INDEX       — ``examples/INDEX.md`` (and the ``examples/usecases.json`` manifest
+      generated beside it) is up to date, verified by delegating to
       ``bash scripts/generate-examples-index.sh --check``. A stale index is an ERROR.
 
 Exit status: non-zero if any ERROR is found; warnings never fail the build.
@@ -221,8 +222,8 @@ def check_index() -> Finding | None:
     if res.returncode != 0:
         detail = (res.stdout + res.stderr).strip().splitlines()
         tail = detail[-1] if detail else "examples/INDEX.md is stale"
-        return Finding("error", 0, f"examples/INDEX.md is out of date — run "
-                                   f"'bash scripts/generate-examples-index.sh' ({tail})")
+        return Finding("error", 0, f"examples/INDEX.md or examples/usecases.json is out of date — "
+                                   f"run 'bash scripts/generate-examples-index.sh' ({tail})")
     return None
 
 

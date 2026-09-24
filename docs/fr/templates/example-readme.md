@@ -10,6 +10,12 @@
 > **Sections requises** : Ce qu'il fait · Prérequis · Données requises · L'exécuter ·
 > Sortie attendue · Durée & coût approximatifs.
 >
+> **À côté du README** : un exemple numéroté porte aussi un `usecase.yaml` — son titre
+> et sa formulation du problème en cinq langues, ses tags de recherche, les montages
+> dont il a besoin et s'il peut être importé comme équipe. Copiez celui d'un voisin et
+> suivez [le format de la fiche de cas d'usage](https://github.com/Orkeon/orkeon/blob/main/examples/README.md#use-case-sheet-usecaseyaml) ;
+> la CI échoue sans elle.
+>
 > NB : les README d'exemples sont rédigés en anglais (ils vivent hors de `docs/`,
 > le contrat de parité ne s'y applique pas) — ce gabarit est traduit pour référence.
 
@@ -42,6 +48,9 @@ monter. Supprimez cette section si l'exemple n'a besoin d'aucune donnée d'entr�
 | Chemin virtuel | Flag de montage | Rôle |
 |---|---|---|
 | `/data/<fichier>` | `--mount ./data:/data:ro` | <ce qu'il contient> |
+
+Reportez les mêmes montages sous `mounts:` dans le `usecase.yaml` de l'exemple,
+relatifs au dossier de l'équipe (`./data:/data:ro`, `./output:/output:rw`).
 
 ## L'exécuter
 

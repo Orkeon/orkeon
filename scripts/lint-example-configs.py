@@ -18,6 +18,15 @@ Scans every ``examples/NN-category/NN-slug/config.yaml`` and checks:
   (c) STRUCTURE   — the YAML parses and the top-level ``process``, ``agents`` and
       ``tasks`` sections are present and non-empty.
 
+  (d) USE CASES   — every example carries a valid ``usecase.yaml`` (the format
+      generate_examples_index.py reads), no two examples share an id (the folder
+      name), ``examples/usecases.json`` is what the generator would write, and each
+      sheet agrees with its crew: a crew that writes files has a writable mount, a
+      ``./data`` mount has a ``data/`` folder behind it, and a crew importing the
+      shared ``_tools/`` module is not importable. With ``--require-texts`` (or
+      REQUIRE_TEXTS), ``title`` and ``problem`` must also be written in the five
+      languages.
+
 Exit status: non-zero if any ERROR is found; warnings never fail the build.
 
 No third-party dependency: config.yaml is parsed with the same indentation-aware
@@ -27,11 +36,13 @@ Usage:
   python3 scripts/lint-example-configs.py
   python3 scripts/lint-example-configs.py --manifest path/to/standard.txt
   python3 scripts/lint-example-configs.py --list-tools   # regenerate the manifest from the CLI
+  python3 scripts/lint-example-configs.py --require-texts  # list the texts still to write
 """
 from __future__ import annotations
 
 import argparse
 import difflib
+import importlib.util
 import json
 import re
 import subprocess
@@ -314,6 +325,98 @@ def iter_examples():
                 yield cat.name, ts
 
 
+# ── use cases (usecase.yaml sheets, examples/usecases.json) ─────────────────
+def _load_catalog():
+    """generate_examples_index.py owns the sheet format and builds the manifest; the
+    lint reads both through it rather than through a second copy."""
+    path = Path(__file__).resolve().parent / "generate_examples_index.py"
+    spec = importlib.util.spec_from_file_location("generate_examples_index", path)
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module     # its dataclasses look their module up there
+    spec.loader.exec_module(module)
+    return module
+
+
+CATALOG = _load_catalog()
+
+# `title` and `problem` become mandatory in the five languages once every sheet has
+# them: the task that writes them (STUDIO-37) turns this on as its last step. Until
+# then an empty text passes, and --require-texts lists the ones still missing.
+REQUIRE_TEXTS = False
+
+# Tools that deliver files, and so need a writable mount to deliver them to.
+WRITING_TOOLS = {"file_write"}
+SHARED_MODULE_IMPORT_RE = re.compile(r"""\bfrom\s+["']\.\./_tools/""")
+
+
+def lint_use_case(example, use_case: dict, require_texts: bool) -> list[Finding]:
+    """A valid sheet (its format is the generator's check) against its own crew."""
+    findings: list[Finding] = []
+    if require_texts:
+        for key in CATALOG.TEXT_KEYS:
+            missing = [lang for lang in CATALOG.LANGUAGES if not use_case[key][lang]]
+            if missing:
+                findings.append(Finding(
+                    "error", 0, f"{key}: not written yet in {', '.join(missing)}"))
+    mounts = [CATALOG.MOUNT_RE.match(mount) for mount in use_case["mounts"]]
+    writers = sorted(WRITING_TOOLS & set(use_case["tools"]))
+    if writers and not any(m["rights"] == "rw" for m in mounts):
+        findings.append(Finding(
+            "error", 0,
+            f"the crew writes files ({', '.join(writers)}) but no mount is writable — "
+            'add "./output:/output:rw" to mounts'))
+    if not use_case["hasSampleData"] and any(m["folder"].split("/")[0] == "data" for m in mounts):
+        findings.append(Finding("error", 0, "mounts ./data, but the example ships no data/ folder"))
+    if use_case["importable"] and SHARED_MODULE_IMPORT_RE.search(
+            example.crew.read_text(encoding="utf-8", errors="replace")):
+        findings.append(Finding(
+            "error", 0,
+            "importable: true, but the crew imports the shared ../_tools/ module, which an "
+            "imported team does not carry — set importable: false"))
+    return findings
+
+
+def lint_use_cases(examples_root: Path,
+                   require_texts: bool) -> tuple[int, list[tuple[Path, Finding]]]:
+    """(examples scanned, findings by file). First what stops the manifest — a missing
+    or invalid sheet, an id two examples share, a tool with no classification — then a
+    stale examples/usecases.json, then every valid sheet against its crew."""
+    cats = CATALOG.collect_categories(examples_root)
+    manifest, problems = CATALOG.build_manifest(cats)
+    found = [(path, Finding("error", line, msg)) for path, line, msg in problems]
+
+    if not problems:
+        manifest_path = examples_root / CATALOG.MANIFEST_NAME
+        current = manifest_path.read_text(encoding="utf-8") if manifest_path.is_file() else None
+        if current != CATALOG.render_manifest(manifest):
+            found.append((manifest_path, Finding(
+                "error", 0, "missing or stale — run 'bash scripts/generate-examples-index.sh'")))
+
+    use_cases = {(u["category"], u["id"]): u for u in manifest["useCases"]}
+    for c in cats:
+        for e in c.examples:
+            use_case = use_cases.get((c.dirname, e.path.name))
+            if use_case is not None:
+                found.extend((e.path / CATALOG.USECASE_FILE, f)
+                             for f in lint_use_case(e, use_case, require_texts))
+    return sum(len(c.examples) for c in cats), found
+
+
+def report(rel: Path, findings: list[Finding]) -> tuple[int, int]:
+    """Print one file's findings, errors first; return (errors, warnings)."""
+    print(f"\n{rel}")
+    n_err = n_warn = 0
+    for f in sorted(findings, key=lambda x: (x.level != "error", x.line)):
+        loc = f":{f.line}" if f.line else ""
+        tag = "ERROR " if f.level == "error" else "warn  "
+        print(f"  {tag}{rel}{loc}: {f.msg}")
+        if f.level == "error":
+            n_err += 1
+        else:
+            n_warn += 1
+    return n_err, n_warn
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(description="Lint example config.yaml tool names / structure.")
     ap.add_argument("--manifest", type=Path, default=DEFAULT_STANDARD_MANIFEST,
@@ -322,6 +425,8 @@ def main() -> int:
                     help="regenerate manifests by invoking each runner's --list-tools")
     ap.add_argument("--root", type=Path, default=None,
                     help="override the examples scan root (defaults to ./examples)")
+    ap.add_argument("--require-texts", action="store_true",
+                    help="require title and problem in the five languages (see REQUIRE_TEXTS)")
     args = ap.parse_args()
 
     global EXAMPLES
@@ -346,6 +451,7 @@ def main() -> int:
 
     script_allowed = standard_allowed | module_tool_names(EXAMPLES)
 
+    base = EXAMPLES.parent if not args.root else EXAMPLES
     for category, cfg in iter_examples():
         total += 1
         if cfg.suffix == ".ts":
@@ -355,20 +461,23 @@ def main() -> int:
         if not findings:
             continue
         files_with_findings += 1
-        rel = cfg.relative_to(EXAMPLES.parent if not args.root else EXAMPLES)
-        print(f"\n{rel}")
-        for f in sorted(findings, key=lambda x: (x.level != "error", x.line)):
-            loc = f":{f.line}" if f.line else ""
-            tag = "ERROR " if f.level == "error" else "warn  "
-            print(f"  {tag}{rel}{loc}: {f.msg}")
-            if f.level == "error":
-                n_err += 1
-            else:
-                n_warn += 1
+        errors, warnings = report(cfg.relative_to(base), findings)
+        n_err += errors
+        n_warn += warnings
+
+    n_sheets, use_case_findings = lint_use_cases(EXAMPLES, args.require_texts or REQUIRE_TEXTS)
+    by_file: dict[Path, list[Finding]] = {}
+    for path, f in use_case_findings:
+        by_file.setdefault(path, []).append(f)
+    for path in sorted(by_file):
+        files_with_findings += 1
+        errors, warnings = report(path.relative_to(base), by_file[path])
+        n_err += errors
+        n_warn += warnings
 
     print(f"\n{'─' * 60}")
-    print(f"Linted {total} example config(s) — {n_err} error(s), {n_warn} warning(s) "
-          f"across {files_with_findings} file(s).")
+    print(f"Linted {total} example config(s) and {n_sheets} use-case sheet(s) — {n_err} error(s), "
+          f"{n_warn} warning(s) across {files_with_findings} file(s).")
     return 1 if n_err else 0
 
 

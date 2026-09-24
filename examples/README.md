@@ -150,7 +150,7 @@ Reports are generated in `examples/test-reports/`.
 
 ## Categories
 
-The full generated catalog (process, agents, tools per example) lives in [INDEX.md](INDEX.md) — regenerate it with `bash scripts/generate-examples-index.sh`.
+The full generated catalog (process, agents, tools per example) lives in [INDEX.md](INDEX.md) — regenerate it with `bash scripts/generate-examples-index.sh`, which also writes its machine-readable twin, [usecases.json](usecases.json) (see [Use-case sheet](#use-case-sheet-usecaseyaml)).
 
 | # | Category | Examples | Description |
 |---|----------|----------|-------------|
@@ -168,6 +168,70 @@ The counts above are crew examples (directories with a `config.yaml` or a
 `main.ork.ts`); standalone demo projects (`streaming-demo`,
 `llm-response-format`) are excluded. The numbered prefixes are historical and
 not contiguous — [INDEX.md](INDEX.md) is the authoritative list.
+
+## Use-case sheet (`usecase.yaml`)
+
+Every numbered example carries a `usecase.yaml` beside its `config.yaml` or
+`main.ork.ts`: the hand-written half of its entry in [usecases.json](usecases.json),
+the use-case manifest for the tools that search and present this catalogue. The
+generator joins each sheet to what it derives from the folder and the crew, so a
+sheet never repeats what the crew already says.
+
+```yaml
+# Use-case sheet: the hand-written fields of this example in examples/usecases.json.
+# Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
+title:
+  fr: "Revue de presse quotidienne"
+  en: "Daily news digest"
+  es: "Resumen diario de noticias"
+  de: "Täglicher Nachrichtenüberblick"
+  zh-Hans: "每日新闻摘要"
+problem:
+  fr: "Je veux un résumé de l'actualité de mes sites chaque matin"
+  en: "I want a summary of my sites' news every morning"
+  es: "Quiero un resumen de las noticias de mis sitios cada mañana"
+  de: "Ich möchte jeden Morgen eine Zusammenfassung der Neuigkeiten meiner Websites erhalten"
+  zh-Hans: "我想每天早上收到我关注的网站的新闻摘要"
+tags: ["news", "daily-digest"]
+mounts:
+  - "./output:/output:rw"
+importable: true
+```
+
+| Key | What it holds | Rule |
+|---|---|---|
+| `title` | The use case's name, in `fr`, `en`, `es`, `de` and `zh-Hans`, in that order | One line per language; French is the reference, the others are reviewed translations. `""` until written |
+| `problem` | The user's problem the example solves — never the feature that solves it | One line per language, first person or imperative, no jargon (agent, crew, RAG…) |
+| `tags` | English search identifiers, never displayed | Lowercase words joined by hyphens (`market-analysis`), each once; `[]` when none |
+| `mounts` | The folders the example needs, relative to the team folder: `./<folder>:<virtual root>:ro\|rw` | `./data:/data:ro` when the crew reads its `data/` folder; `./output:/output:rw` when it writes files (`file_write`); `[]` when it needs none |
+| `importable` | Whether the example can become a team as it is | `false` when the crew imports the shared `03-finance-trading/_tools/` module, which a team does not carry |
+
+The sheet is a strict subset of YAML, so the scripts read it without PyYAML: keys
+at column 0 in the order above, entries indented by exactly two spaces, no tabs;
+every text a `"double-quoted"` string on one line (JSON escapes: `\"`, `\\`,
+`é`); lists written `[...]` or as `- "item"` lines; `true` or `false`;
+`#` comments anywhere.
+
+**The manifest.** `usecases.json` is generated — never edit it. Each entry carries
+the sheet's fields plus `id` (the folder name: numbers repeat across categories,
+`16` and `102` do, so the folder name is the id and must be unique), `category`,
+`number`, `format` (`yaml` or `ork.ts`), `process`, `agents`, `tasks`, `tools`,
+`hasSampleData` (a `data/` folder exists), `requiresNetwork` (one of its tools
+reaches the internet) and `requiresKeys` (the third-party keys its tools read,
+beyond the LLM provider's, by environment variable — `ORKEON_TAVILY_API_KEY` for
+`web_search`). The last two come from the `TOOL_NEEDS` table of
+`scripts/generate_examples_index.py`; a tool that table does not know stops the
+generator.
+
+**Adding an example.** Copy a sibling's sheet, set `mounts` and `importable`, run
+`bash scripts/generate-examples-index.sh`, and commit the sheet with `INDEX.md`
+and `usecases.json`. CI runs `python3 scripts/lint-example-configs.py`, which fails
+on a numbered example without a sheet, a sheet that breaks the format, an id two
+examples share, a stale `usecases.json`, or a sheet its crew contradicts (a crew
+that writes files with no writable mount, a `./data` mount with no `data/` folder,
+an importable crew that imports `_tools/`). Its `--require-texts` flag also
+requires `title` and `problem` in the five languages; that requirement becomes the
+default once every sheet is written.
 
 ## Shared Resources & Showcases
 

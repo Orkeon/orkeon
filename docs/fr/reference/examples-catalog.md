@@ -11,6 +11,14 @@ process, ses comptes agents/tâches et ses outils — est le
 `scripts/generate_examples_index.py` et la CI échoue dès qu'il dérive des dossiers
 sur disque, si bien qu'aucun compte n'est maintenu à la main ici.
 
+Le même générateur écrit son jumeau lisible par machine,
+[`examples/usecases.json`](https://github.com/Orkeon/orkeon/blob/main/examples/usecases.json) :
+une entrée par exemple numéroté, qui joint ce que déclare son crew (process, outils,
+s'ils vont sur Internet ou exigent une clé tierce) à sa fiche `usecase.yaml` rédigée à
+la main (titre et formulation du problème en cinq langues, tags, montages, possibilité
+de l'importer comme équipe). La CI échoue aussi quand il dérive ; le format de la fiche
+est décrit dans [`examples/README.md`](https://github.com/Orkeon/orkeon/blob/main/examples/README.md#use-case-sheet-usecaseyaml).
+
 ## Les neuf catégories métier
 
 Les crews YAML numérotés vivent dans neuf dossiers thématiques :
