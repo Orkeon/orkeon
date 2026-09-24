@@ -7,6 +7,31 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — adoption names the team, and the session folder follows it (STUDIO-26)
+
+- **`forge promote --name <team>`** hands the engine the team's name, which titles `FORGE.md`,
+  `forge.json` and the session. The value is taken as written, a leading dash included, and
+  Orkeon Studio always passes it.
+- **The session folder follows its team.** Once the promotion is written,
+  `.orkeon/forge/<slug>/` takes the destination folder's name as it is.
+  - When another session already has that name, a `-2`, `-3`… suffix is added; nothing is ever
+    overwritten.
+  - `session.json` and `forge.json` take the new slug.
+  - The new event `session.renamed {from, to, dir, suffixed}` announces it, and Studio follows it.
+- **A rename the disk refuses is a warning, not a failure.** The promotion still exits 0, and a
+  new `warning {code, message}` event carries `FORGE-SESSION-NOT-RENAMED`. The session id keeps
+  the link.
+- **Generated files carry the team folder's name**, not the session slug:
+  `orkeon-<team>.service` / `.timer`, the task `Orkeon <team>`, the install command, the
+  launchers' header, and `FORGE.md`'s fallback title.
+- **A taken name never reaches the engine.** Before promoting a new team, the Studio wizard
+  checks its folder:
+  - it says what holds the name: a team, a folder or a file;
+  - it proposes a free name (« Ma veille (2) » → `ma-veille-2`);
+  - when a team holds the name, it offers to open it.
+- **Breaking** (no shim): `ForgeArgumentsBuilder.BuildPromote` and `ForgeClient.PromoteAsync` take
+  the team name.
+
 ### Added — Studio: the progress model holds everything in flight (STUDIO-30)
 
 - `RunProgressModel` now exposes:
