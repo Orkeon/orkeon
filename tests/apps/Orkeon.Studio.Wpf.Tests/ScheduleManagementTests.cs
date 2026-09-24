@@ -4,14 +4,17 @@ using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.Tests.Doubles;
+using Orkeon.Studio.Wpf.ViewModels.Config;
 using Orkeon.Studio.Wpf.ViewModels.Teams;
 
 namespace Orkeon.Studio.Wpf.Tests;
 
 /// <summary>
-/// STUDIO-27 through the view models: the adoption asks before the schedule is installed, and the
+/// STUDIO-27 through the view models: the adoption asks before the schedule is installed, the
 /// card shows what the engine answered — never what the sidecar says — and offers install and
-/// stop. The engine is a scripted child: no scheduler is ever touched.
+/// stop; a deletion stops the schedule first and takes the workshop session rule R links to the
+/// team, never its original's for a copy; the Diagnostic lists the orphan sessions and cleans
+/// one only once asked twice. The engine is a scripted child: no scheduler is ever touched.
 /// </summary>
 public sealed class ScheduleManagementTests : IDisposable
 {
@@ -52,6 +55,15 @@ public sealed class ScheduleManagementTests : IDisposable
         }
 
         return team;
+    }
+
+    private string Session(string slug, string id, string promotedTo)
+    {
+        var directory = Path.Combine(_root, ".orkeon", "forge", slug);
+        Directory.CreateDirectory(directory);
+        File.WriteAllText(Path.Combine(directory, ForgeSessionCatalog.SessionFileName),
+            $$"""{"v":1,"id":"{{id}}","slug":"{{slug}}","title":"{{slug}}","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{JsonSerializer.Serialize(promotedTo)}},"updatedAt":"2026-09-24T08:00:00Z"}""");
+        return directory;
     }
 
     private TeamsViewModel Teams(FakeProcessLauncher processes) =>
@@ -299,6 +311,153 @@ public sealed class ScheduleManagementTests : IDisposable
         Assert.Equal("daily@07:30", TeamCatalog.Describe(team).Schedule);
         Assert.Contains("Failed to connect to bus", card.ScheduleMessage, StringComparison.Ordinal);
         Assert.Equal("systemctl --user disable --now orkeon-veille.timer", card.ScheduleManualCommand);
+    }
+
+    // ── the deletion (D-06, D-07) ──
+
+    /// <summary>
+    /// A scheduled team is unscheduled before it goes — and a removal the system refuses keeps
+    /// the team, the banner saying why and what to run by hand.
+    /// </summary>
+    [Fact]
+    public async Task A_deletion_whose_schedule_cannot_be_stopped_keeps_the_team()
+    {
+        var team = Team("veille");
+        var processes = new FakeProcessLauncher();
+        processes.OutputToEmit.Add(Refused("The windows scheduler refused: ERROR: Access is denied.", "schtasks /Delete /TN \"Orkeon veille\" /F"));
+        processes.ExitCode = 1;
+        var teams = Teams(processes);
+        var card = Assert.Single(teams.Teams);
+
+        card.AskDeleteCommand.Execute(null);
+        await card.ConfirmDeleteCommand.ExecuteAsync();
+
+        Assert.Equal(["forge", "unschedule", team, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
+        Assert.True(Directory.Exists(team));
+        Assert.True(card.IsConfirmingDelete);
+        Assert.Contains("Access is denied", card.DeleteRefusal, StringComparison.Ordinal);
+        Assert.Equal("schtasks /Delete /TN \"Orkeon veille\" /F", card.DeleteManualCommand);
+
+        // A disarmed banner forgets the refusal it answered.
+        card.CancelDeleteCommand.Execute(null);
+        Assert.False(card.HasDeleteRefusal);
+    }
+
+    /// <summary>
+    /// D-07: the banner offers « Also delete the workshop session », ticked by default, for the
+    /// session rule R links to the team; the deletion takes it, and says so for the wizard.
+    /// </summary>
+    [Fact]
+    public async Task Deleting_a_team_takes_its_linked_session_by_default()
+    {
+        var team = Team("veille", schedule: null, id: OriginalId);
+        var session = Session("veille", OriginalId, team);
+        var processes = new FakeProcessLauncher();
+        var teams = Teams(processes);
+        var announced = new List<string>();
+        teams.SessionDeleted += (_, e) => announced.Add(e.Session.Directory);
+        var card = Assert.Single(teams.Teams);
+
+        card.AskDeleteCommand.Execute(null);
+        Assert.True(card.CanDeleteSessionToo);
+        Assert.True(card.DeleteSessionToo);
+        await card.ConfirmDeleteCommand.ExecuteAsync();
+
+        Assert.False(Directory.Exists(team));
+        Assert.False(Directory.Exists(session));
+        Assert.Equal([session], announced);
+        // No schedule: the engine was not asked anything.
+        Assert.Empty(processes.Requests);
+    }
+
+    /// <summary>Unticked, the box keeps the session.</summary>
+    [Fact]
+    public async Task Unticking_the_box_keeps_the_session()
+    {
+        var team = Team("veille", schedule: null, id: OriginalId);
+        var session = Session("veille", OriginalId, team);
+        var teams = Teams(new FakeProcessLauncher());
+        var card = Assert.Single(teams.Teams);
+
+        card.AskDeleteCommand.Execute(null);
+        card.DeleteSessionToo = false;
+        await card.ConfirmDeleteCommand.ExecuteAsync();
+
+        Assert.False(Directory.Exists(team));
+        Assert.True(Directory.Exists(session));
+    }
+
+    /// <summary>
+    /// D-07, rule R: a copy carries its original's id while the original is there — it is linked to
+    /// no session, the banner offers none, and deleting the copy leaves the original's session alone.
+    /// </summary>
+    [Fact]
+    public async Task Deleting_a_copy_never_touches_the_originals_session()
+    {
+        var original = Team("veille", schedule: null, id: OriginalId);
+        var session = Session("veille", OriginalId, original);
+        var copy = TeamCatalog.Duplicate(original)!;
+        var teams = Teams(new FakeProcessLauncher());
+        var copyCard = teams.Teams.Single(card => card.Summary.Path == copy);
+
+        copyCard.AskDeleteCommand.Execute(null);
+        Assert.False(copyCard.CanDeleteSessionToo);
+        await copyCard.ConfirmDeleteCommand.ExecuteAsync();
+
+        Assert.False(Directory.Exists(copy));
+        Assert.True(Directory.Exists(session));
+        Assert.True(Directory.Exists(original));
+    }
+
+    // ── the orphan sessions (D-08) ──
+
+    /// <summary>
+    /// D-08: the Diagnostic lists the adopted sessions whose team folder is gone — not the one whose
+    /// team is there — and « Clean » deletes one only once confirmed.
+    /// </summary>
+    [Fact]
+    public async Task Orphan_sessions_are_listed_and_cleaned_only_once_confirmed()
+    {
+        var kept = Team("presente", schedule: null, id: "11111111-2222-3333-4444-555555555555");
+        Session("presente", "11111111-2222-3333-4444-555555555555", kept);
+        var orphan = Session("disparue", OriginalId, Path.Combine(TeamsRoot, "disparue"));
+        var diagnostic = new DiagnosticViewModel(
+            new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())),
+            forgeWorkspace: _root,
+            teamsRoot: TeamsRoot);
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        var row = Assert.Single(diagnostic.OrphanSessions);
+        Assert.True(diagnostic.HasOrphanSessions);
+        Assert.Equal("disparue", row.Title);
+        Assert.Contains(Path.Combine(TeamsRoot, "disparue"), row.FolderLine, StringComparison.Ordinal);
+
+        row.AskCleanCommand.Execute(null);
+        Assert.True(row.IsConfirmingClean);
+        Assert.True(Directory.Exists(orphan));
+        row.CancelCleanCommand.Execute(null);
+        Assert.True(Directory.Exists(orphan));
+
+        row.AskCleanCommand.Execute(null);
+        row.ConfirmCleanCommand.Execute(null);
+
+        Assert.False(Directory.Exists(orphan));
+        Assert.Empty(diagnostic.OrphanSessions);
+        Assert.False(diagnostic.HasOrphanSessions);
+    }
+
+    /// <summary>A Diagnostic that was given no workspace lists no orphans.</summary>
+    [Fact]
+    public async Task Without_a_workspace_the_diagnostic_lists_no_orphans()
+    {
+        Session("disparue", OriginalId, Path.Combine(TeamsRoot, "disparue"));
+        var diagnostic = new DiagnosticViewModel(
+            new OrkeonProcessRunner(new FakeProcessLauncher(), new OrkeonBinaryLocator(FakeExecutableProbe.WithOrkeonInstalled())));
+
+        await diagnostic.RunAsync(cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.Empty(diagnostic.OrphanSessions);
     }
 
     // ── the shell ──

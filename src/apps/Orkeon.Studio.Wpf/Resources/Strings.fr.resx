@@ -1094,6 +1094,15 @@
   <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
     <value>La planification n'a pas pu être arrêtée : {0}</value>
   </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>Supprimer aussi la session d'atelier</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>Suppression refusée : sa planification n'a pas pu être arrêtée — {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>Suppression refusée par le disque — un fichier de l'équipe est peut-être ouvert.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Installer la planification (tous les jours à {0}) ?</value>
   </data>
@@ -1120,6 +1129,24 @@
   </data>
   <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
     <value>Sa planification est arrêtée.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>Sessions d'atelier orphelines</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>Ces sessions adoptées désignent un dossier d'équipe qui n'existe plus. Une équipe déplacée hors de Mes équipes apparaît aussi ici : ne nettoyez que ce dont vous n'avez plus besoin.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>Son dossier d'équipe a disparu : {0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>Nettoyer</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>Supprimer définitivement cette session ?</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>La session n'a pas pu être supprimée — un de ses fichiers est peut-être ouvert.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>lecture</value>

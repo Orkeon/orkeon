@@ -1094,6 +1094,15 @@
   <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
     <value>The schedule could not be stopped: {0}</value>
   </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>Also delete the workshop session</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>Not deleted: its schedule could not be stopped — {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>Not deleted: the disk refused — a file of the team may be open.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Install the schedule (every day at {0})?</value>
   </data>
@@ -1120,6 +1129,24 @@
   </data>
   <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
     <value>Its schedule is stopped.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>Orphan workshop sessions</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>These adopted sessions point to a team folder that no longer exists. A team moved outside My teams shows here too: clean only what you no longer need.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>Its team folder is gone: {0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>Clean</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>Delete this session for good?</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>The session could not be deleted — one of its files may be open.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>read</value>

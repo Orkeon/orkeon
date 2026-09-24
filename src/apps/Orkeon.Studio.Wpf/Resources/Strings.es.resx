@@ -2392,6 +2392,15 @@
   <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
     <value>No se pudo detener la planificación: {0}</value>
   </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>Eliminar también la sesión del taller</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>No se eliminó: no se pudo detener su planificación — {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>No se eliminó: el disco lo rechazó — quizá haya un archivo del equipo abierto.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>¿Instalar la planificación (cada día a las {0})?</value>
   </data>
@@ -2418,6 +2427,24 @@
   </data>
   <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
     <value>Su planificación está detenida.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>Sesiones del taller huérfanas</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>Estas sesiones adoptadas apuntan a una carpeta de equipo que ya no existe. Un equipo movido fuera de Mis equipos también aparece aquí: limpie solo lo que ya no necesite.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>Su carpeta de equipo ya no existe: {0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>Limpiar</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>¿Eliminar esta sesión definitivamente?</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>No se pudo eliminar la sesión — quizá uno de sus archivos esté abierto.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>lectura</value>

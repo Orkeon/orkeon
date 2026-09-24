@@ -2392,6 +2392,15 @@
   <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
     <value>Der Zeitplan konnte nicht gestoppt werden: {0}</value>
   </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>Auch die Werkstatt-Sitzung löschen</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>Nicht gelöscht: sein Zeitplan konnte nicht gestoppt werden — {0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>Nicht gelöscht: das Laufwerk hat abgelehnt — vielleicht ist eine Datei des Teams geöffnet.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Den Zeitplan installieren (täglich um {0})?</value>
   </data>
@@ -2418,6 +2427,24 @@
   </data>
   <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
     <value>Sein Zeitplan ist gestoppt.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>Verwaiste Werkstatt-Sitzungen</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>Diese übernommenen Sitzungen verweisen auf einen Teamordner, den es nicht mehr gibt. Ein aus „Meine Teams“ verschobenes Team erscheint hier ebenfalls: Bereinigen Sie nur, was Sie nicht mehr brauchen.</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>Sein Teamordner existiert nicht mehr: {0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>Bereinigen</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>Diese Sitzung endgültig löschen?</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>Die Sitzung konnte nicht gelöscht werden — vielleicht ist eine ihrer Dateien geöffnet.</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>Lesen</value>

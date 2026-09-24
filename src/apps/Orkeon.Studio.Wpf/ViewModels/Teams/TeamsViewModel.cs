@@ -93,6 +93,10 @@ public sealed class TeamCardViewModel : ObservableObject
     private TeamScheduleState _scheduleState;
     private string _scheduleMessage = "";
     private string? _scheduleManualCommand;
+    private ForgeSolutionSummary? _linkedSession;
+    private bool _deleteSessionToo = true;
+    private string _deleteRefusal = "";
+    private string? _deleteManualCommand;
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -125,7 +129,9 @@ public sealed class TeamCardViewModel : ObservableObject
         // and the Expert trash icon) arm the same confirmation: no path removes a team on
         // a single click. The banner replaces the action row in place — no MessageBox.
         AskDeleteCommand = new RelayCommand(() => owner.ArmDelete(this));
-        ConfirmDeleteCommand = new RelayCommand(() => owner.Delete(summary.Path));
+        // STUDIO-27 (D-06/D-07): the schedule goes first, then the folder, then — when the box
+        // is left ticked — the workshop session rule R links to it.
+        ConfirmDeleteCommand = new AsyncRelayCommand(() => owner.DeleteAsync(this));
         CancelDeleteCommand = new RelayCommand(() => IsConfirmingDelete = false);
         // STUDIO-27 (D-05): the engine installs and removes; the card shows what it answered.
         InstallScheduleCommand = new AsyncRelayCommand(() => owner.InstallScheduleAsync(this));
@@ -335,8 +341,12 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>Arms the in-place confirmation; deletes nothing on its own.</summary>
     public RelayCommand AskDeleteCommand { get; }
 
-    /// <summary>Deletes the folder, recursively — only reachable from the armed banner.</summary>
-    public RelayCommand ConfirmDeleteCommand { get; }
+    /// <summary>
+    /// Deletes the team — only reachable from the armed banner: its schedule stopped first (a
+    /// refusal keeps the team, and says what to run by hand), then the folder, then the workshop
+    /// session when <see cref="DeleteSessionToo"/> is ticked (STUDIO-27, D-06/D-07).
+    /// </summary>
+    public AsyncRelayCommand ConfirmDeleteCommand { get; }
 
     /// <summary>Disarms the confirmation and puts the action row back.</summary>
     public RelayCommand CancelDeleteCommand { get; }
@@ -347,9 +357,74 @@ public sealed class TeamCardViewModel : ObservableObject
         get => _isConfirmingDelete;
         internal set
         {
-            if (SetProperty(ref _isConfirmingDelete, value))
-                OnPropertyChanged(nameof(IsIdle));
+            if (!SetProperty(ref _isConfirmingDelete, value))
+                return;
+
+            OnPropertyChanged(nameof(IsIdle));
+            // A refusal belongs to the attempt it answered: a disarmed banner forgets it.
+            if (!value)
+                RefuseDelete("", null);
         }
+    }
+
+    /// <summary>
+    /// Whether the banner offers « Also delete the workshop session » (STUDIO-27, D-07): only when
+    /// rule R links a session to this team — a copy's id names its original's, never offered.
+    /// </summary>
+    public bool CanDeleteSessionToo => _linkedSession is not null;
+
+    /// <summary>The box « Also delete the workshop session », ticked by default.</summary>
+    public bool DeleteSessionToo
+    {
+        get => _deleteSessionToo;
+        set => SetProperty(ref _deleteSessionToo, value);
+    }
+
+    /// <summary>The session rule R linked to this team when the banner was armed; null when none.</summary>
+    internal ForgeSolutionSummary? LinkedSession => _linkedSession;
+
+    /// <summary>Why the delete did not happen — its schedule could not be stopped, or the disk refused; empty otherwise.</summary>
+    public string DeleteRefusal
+    {
+        get => _deleteRefusal;
+        private set
+        {
+            if (SetProperty(ref _deleteRefusal, value))
+                OnPropertyChanged(nameof(HasDeleteRefusal));
+        }
+    }
+
+    /// <summary>Whether the banner says why the team is still there.</summary>
+    public bool HasDeleteRefusal => _deleteRefusal.Length > 0;
+
+    /// <summary>The command a person runs to stop the schedule by hand, when the system refused Orkeon.</summary>
+    public string? DeleteManualCommand
+    {
+        get => _deleteManualCommand;
+        private set
+        {
+            if (SetProperty(ref _deleteManualCommand, value))
+                OnPropertyChanged(nameof(HasDeleteManualCommand));
+        }
+    }
+
+    /// <summary>Whether the banner shows the manual command.</summary>
+    public bool HasDeleteManualCommand => _deleteManualCommand is { Length: > 0 };
+
+    /// <summary>Arms the banner's answers: the linked session, the box ticked, no refusal yet.</summary>
+    internal void PrepareDelete(ForgeSolutionSummary? linkedSession)
+    {
+        _linkedSession = linkedSession;
+        OnPropertyChanged(nameof(CanDeleteSessionToo));
+        DeleteSessionToo = true;
+        RefuseDelete("", null);
+    }
+
+    /// <summary>Says why the team is still there, and what to run by hand when there is something to.</summary>
+    internal void RefuseDelete(string refusal, string? manualCommand)
+    {
+        DeleteRefusal = refusal;
+        DeleteManualCommand = manualCommand;
     }
 
     /// <summary>The action row's own visibility — the banner takes its place, never sits over it.</summary>
@@ -889,11 +964,48 @@ public sealed class TeamsViewModel : ObservableObject
         _ = CheckScheduleAsync(copy);
     }
 
-    internal void Delete(string path)
+    /// <summary>
+    /// Deletes a team, and leaves nothing behind (STUDIO-27, D-06/D-07). Rule R names the linked
+    /// session first — it reads this folder, and the copy test reads the original's. Then a
+    /// schedule, declared or recorded as installed, is stopped: a refusal keeps the team, says
+    /// why and what to run by hand. Then the folder; then, box ticked, the session — never the
+    /// original's for a copy, which rule R links to no session.
+    /// </summary>
+    internal async Task DeleteAsync(TeamCardViewModel card)
     {
-        if (TeamCatalog.Delete(path))
-            Refresh();
+        var team = card.Summary;
+        // Only a session the banner offered: the box is ticked by default, but never for a session
+        // the user was not shown.
+        var session = card.CanDeleteSessionToo && card.DeleteSessionToo ? LinkedSessionOf(team) : null;
+
+        if (team.HasSchedule || card.ScheduleState is TeamScheduleState.Installed or TeamScheduleState.Stale)
+        {
+            var report = await ScheduleAsync(team.Path, ForgeScheduleVerb.Remove).ConfigureAwait(true);
+            if (!report.Succeeded)
+            {
+                card.RefuseDelete(
+                    string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsDeleteUnscheduleFailed], report.FailureReason),
+                    report.ManualCommand);
+                return;
+            }
+        }
+
+        if (!TeamCatalog.Delete(team.Path))
+        {
+            card.RefuseDelete(_strings[StudioStringKeys.TeamsDeleteRefused], null);
+            return;
+        }
+
+        _scheduleStates.Remove(NormalizePath(team.Path));
+        if (session is not null && ForgeSessionCatalog.Delete(session.Directory))
+            SessionDeleted?.Invoke(this, new SessionDeletedEventArgs(session));
+
+        Refresh();
     }
+
+    /// <summary>The session rule R links <paramref name="team"/> to, among the sessions this screen lists; null for a copy or none.</summary>
+    private ForgeSolutionSummary? LinkedSessionOf(TeamSummary team) =>
+        team.ForgeSessionId is null ? null : ForgeSessionCatalog.LinkedSession(_loadSessions(), team.Path);
 
     /// <summary>
     /// Discards an abandoned wizard draft. The session directory is the whole of it —
@@ -918,7 +1030,13 @@ public sealed class TeamsViewModel : ObservableObject
     internal void ArmDelete(object row)
     {
         foreach (var card in Teams)
-            card.IsConfirmingDelete = ReferenceEquals(card, row);
+        {
+            var armed = ReferenceEquals(card, row);
+            // The banner's box needs the session before it opens (STUDIO-27, D-07).
+            if (armed)
+                card.PrepareDelete(LinkedSessionOf(card.Summary));
+            card.IsConfirmingDelete = armed;
+        }
 
         foreach (var session in InProgress)
             session.IsConfirmingDelete = ReferenceEquals(session, row);

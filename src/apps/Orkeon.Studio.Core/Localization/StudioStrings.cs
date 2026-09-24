@@ -1290,7 +1290,7 @@ public static class StudioStringKeys
     /// <summary>"Nothing to reopen: this team has no YAML crew (crew/config.yaml) the assistant can read back."</summary>
     public const string TeamsModifyNoSession = "Studio.Teams.ModifyNoSession";
 
-    // ---- STUDIO-27: the managed schedule ----
+    // ---- STUDIO-27: the managed schedule, the clean deletion, the orphan sessions ----
 
     /// <summary>"Scheduled — the system runs it, even with Studio closed." — the card's schedule row when the operating system runs the team (STUDIO-27).</summary>
     public const string TeamsScheduleInstalled = "Studio.Teams.ScheduleInstalled";
@@ -1307,7 +1307,11 @@ public static class StudioStringKeys
     /// <summary>"The schedule could not be stopped: {0}" — {0} is the engine's refusal (STUDIO-27, D-04).</summary>
     public const string TeamsScheduleStopFailed = "Studio.Teams.ScheduleStopFailed";
 
+    /// <summary>"Not deleted: its schedule could not be stopped — {0}" — the delete banner when the schedule could not be removed first; {0} is the engine's refusal (STUDIO-27, D-06).</summary>
+    public const string TeamsDeleteUnscheduleFailed = "Studio.Teams.DeleteUnscheduleFailed";
 
+    /// <summary>"Not deleted: the disk refused — a file of the team may be open." — the delete banner when the disk kept the folder (STUDIO-27).</summary>
+    public const string TeamsDeleteRefused = "Studio.Teams.DeleteRefused";
 
     /// <summary>"Install the schedule (every day at {0})?" — the question after adopting a daily team; {0} is its time (STUDIO-27, D-05).</summary>
     public const string WizardScheduleOfferDaily = "Studio.Create.ScheduleOfferDaily";
@@ -1327,7 +1331,11 @@ public static class StudioStringKeys
     /// <summary>"Its schedule is stopped." — after the adopted line, when a re-adoption on demand stopped the schedule (STUDIO-27).</summary>
     public const string WizardScheduleStopped = "Studio.Create.ScheduleStopped";
 
+    /// <summary>"Its team folder is gone: {0}" — an orphan session's row; {0} is the folder it names (STUDIO-27, D-08).</summary>
+    public const string DiagOrphanFolder = "Studio.Diagnostics.OrphanFolder";
 
+    /// <summary>"The session could not be deleted — one of its files may be open." — the orphan list when the disk kept a session (STUDIO-27, D-08).</summary>
+    public const string DiagOrphanCleanFailed = "Studio.Diagnostics.OrphanCleanFailed";
 
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
@@ -2078,12 +2086,16 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.TeamsScheduleStale] = "Schedule to reinstall — what is installed no longer matches this team.",
         [StudioStringKeys.TeamsScheduleInstallFailed] = "The schedule could not be installed: {0}",
         [StudioStringKeys.TeamsScheduleStopFailed] = "The schedule could not be stopped: {0}",
+        [StudioStringKeys.TeamsDeleteUnscheduleFailed] = "Not deleted: its schedule could not be stopped — {0}",
+        [StudioStringKeys.TeamsDeleteRefused] = "Not deleted: the disk refused — a file of the team may be open.",
         [StudioStringKeys.WizardScheduleOfferDaily] = "Install the schedule (every day at {0})?",
         [StudioStringKeys.WizardScheduleOfferHourly] = "Install the schedule (every hour)?",
         [StudioStringKeys.WizardScheduleInstalled] = "The schedule is installed: the system will run the team, even with Studio closed.",
         [StudioStringKeys.WizardScheduleDeclined] = "Schedule not installed — you can install it later from My teams.",
         [StudioStringKeys.WizardScheduleKept] = "Its schedule stays installed.",
         [StudioStringKeys.WizardScheduleStopped] = "Its schedule is stopped.",
+        [StudioStringKeys.DiagOrphanFolder] = "Its team folder is gone: {0}",
+        [StudioStringKeys.DiagOrphanCleanFailed] = "The session could not be deleted — one of its files may be open.",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

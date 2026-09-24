@@ -122,20 +122,36 @@
                 <Border Background="{DynamicResource DangerWeakBrush}" BorderBrush="{DynamicResource DangerBrush}"
                         BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
                         Visibility="{Binding IsConfirmingDelete, Converter={StaticResource BooleanToVisibility}}">
-                  <StackPanel Orientation="Horizontal">
-                    <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
-                               Foreground="{DynamicResource DangerBrush}"
-                               Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
-                    <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
-                      <StackPanel Orientation="Horizontal">
-                        <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
-                                             Foreground="{DynamicResource DangerFgBrush}"/>
-                        <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
-                      </StackPanel>
-                    </Button>
-                    <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
-                            Command="{Binding CancelDeleteCommand}"
-                            Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource DangerBrush}"
+                                 Text="{Binding [Studio.Teams.DeleteConfirm], Source={x:Static services:I18n.Instance}}"/>
+                      <Button Style="{StaticResource BtnDanger}" Margin="8,0,0,0" Command="{Binding ConfirmDeleteCommand}">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="trash-2" Size="12" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource DangerFgBrush}"/>
+                          <TextBlock Text="{Binding [Studio.Teams.Delete], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                              Command="{Binding CancelDeleteCommand}"
+                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                    <!-- STUDIO-27 (D-07): the workshop session rule R links to this team goes with
+                         it, unless unticked. A copy is linked to none, so it offers none: deleting
+                         a copy never touches its original's session. -->
+                    <CheckBox Margin="0,6,0,2" IsChecked="{Binding DeleteSessionToo}"
+                              Visibility="{Binding CanDeleteSessionToo, Converter={StaticResource BooleanToVisibility}}"
+                              Content="{Binding [Studio.Teams.DeleteSessionToo], Source={x:Static services:I18n.Instance}}"/>
+                    <!-- STUDIO-27 (D-06): the schedule is stopped first; when it cannot be, the team
+                         stays, and the banner says why and what to run by hand. -->
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
+                               MaxWidth="420" HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding DeleteRefusal}"
+                               Visibility="{Binding HasDeleteRefusal, Converter={StaticResource BooleanToVisibility}}"/>
+                    <TextBox Style="{StaticResource InputMono}" Margin="0,4,0,2" MaxWidth="420" HorizontalAlignment="Left"
+                             IsReadOnly="True" TextWrapping="Wrap" Text="{Binding DeleteManualCommand, Mode=OneWay}"
+                             Visibility="{Binding HasDeleteManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
               </Grid>

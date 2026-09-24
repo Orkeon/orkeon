@@ -2392,6 +2392,15 @@
   <data name="Studio.Teams.ScheduleStopFailed" xml:space="preserve">
     <value>无法停止计划：{0}</value>
   </data>
+  <data name="Studio.Teams.DeleteSessionToo" xml:space="preserve">
+    <value>同时删除工坊会话</value>
+  </data>
+  <data name="Studio.Teams.DeleteUnscheduleFailed" xml:space="preserve">
+    <value>未删除：无法停止其计划——{0}</value>
+  </data>
+  <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
+    <value>未删除：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>安装计划（每天 {0}）？</value>
   </data>
@@ -2418,6 +2427,24 @@
   </data>
   <data name="Studio.Create.ScheduleStopped" xml:space="preserve">
     <value>其计划已停止。</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansTitle" xml:space="preserve">
+    <value>孤立的工坊会话</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphansBody" xml:space="preserve">
+    <value>这些已采用的会话指向一个已不存在的团队文件夹。移出“我的团队”的团队也会出现在这里：只清理您不再需要的内容。</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanFolder" xml:space="preserve">
+    <value>其团队文件夹已不存在：{0}</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanClean" xml:space="preserve">
+    <value>清理</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanConfirm" xml:space="preserve">
+    <value>永久删除此会话？</value>
+  </data>
+  <data name="Studio.Diagnostics.OrphanCleanFailed" xml:space="preserve">
+    <value>无法删除该会话——它的某个文件可能处于打开状态。</value>
   </data>
   <data name="Studio.Settings.RightsBadgeRo" xml:space="preserve">
     <value>只读</value>

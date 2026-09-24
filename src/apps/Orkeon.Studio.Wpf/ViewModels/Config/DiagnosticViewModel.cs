@@ -1,5 +1,6 @@
 using System.Collections.ObjectModel;
 using System.Globalization;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Localization;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
@@ -81,30 +82,100 @@ public sealed class DoctorCheckViewModel
 }
 
 /// <summary>
+/// One orphan workshop session of the Diagnostic screen (STUDIO-27, D-08): an adopted session
+/// whose team folder is gone. « Clean » arms an in-place confirmation; only that deletes.
+/// </summary>
+public sealed class OrphanSessionViewModel : ObservableObject
+{
+    private bool _isConfirmingClean;
+
+    internal OrphanSessionViewModel(ForgeSolutionSummary summary, DiagnosticViewModel owner, IStudioStrings strings)
+    {
+        Summary = summary;
+        FolderLine = string.Format(CultureInfo.CurrentCulture, strings[StudioStringKeys.DiagOrphanFolder], summary.PromotedTo);
+        AskCleanCommand = new RelayCommand(() => owner.ArmClean(this));
+        ConfirmCleanCommand = new RelayCommand(() => owner.Clean(this));
+        CancelCleanCommand = new RelayCommand(() => IsConfirmingClean = false);
+    }
+
+    /// <summary>The session, as the forge catalog listed it.</summary>
+    public ForgeSolutionSummary Summary { get; }
+
+    /// <summary>Its title, falling back to its folder name.</summary>
+    public string Title => Summary.Title is { Length: > 0 } title ? title : Summary.Slug;
+
+    /// <summary>« Its team folder is gone: … » — the folder it names.</summary>
+    public string FolderLine { get; }
+
+    /// <summary>« Clean »: arms the confirmation, deletes nothing on its own.</summary>
+    public RelayCommand AskCleanCommand { get; }
+
+    /// <summary>Deletes the session directory — only reachable from the armed confirmation.</summary>
+    public RelayCommand ConfirmCleanCommand { get; }
+
+    /// <summary>Disarms the confirmation.</summary>
+    public RelayCommand CancelCleanCommand { get; }
+
+    /// <summary>Whether the row shows its confirmation in place of « Clean ».</summary>
+    public bool IsConfirmingClean
+    {
+        get => _isConfirmingClean;
+        internal set
+        {
+            if (SetProperty(ref _isConfirmingClean, value))
+                OnPropertyChanged(nameof(IsIdle));
+        }
+    }
+
+    /// <summary>The row's own « Clean » visibility — the confirmation takes its place.</summary>
+    public bool IsIdle => !_isConfirmingClean;
+}
+
+/// <summary>
 /// The "Diagnostic" button of spec §4.4: runs <c>orkeon doctor --json</c> as a child process and
 /// renders the parsed report. The CLI is the authority — Studio does not re-implement any check.
+/// Beside it, the orphan workshop sessions (STUDIO-27, D-08): adopted sessions whose team folder
+/// is gone, listed so that they can be cleaned — never without the user.
 /// </summary>
 public sealed class DiagnosticViewModel : ObservableObject
 {
     private readonly OrkeonProcessRunner _runner;
     private readonly IUiDispatcher _dispatcher;
     private readonly IStudioStrings _strings;
+    private readonly string? _forgeWorkspace;
+    private readonly string? _teamsRoot;
     private DoctorReport? _lastReport;
     private string? _summary;
     private string? _errorMessage;
     private bool _hasRun;
+    private string _orphanMessage = "";
 
     /// <summary>Binds the panel to the process runner that will invoke the CLI.</summary>
+    /// <param name="runner">The runner every screen invokes the CLI through.</param>
+    /// <param name="dispatcher">Where a continuation lands; the immediate one when null.</param>
+    /// <param name="strings">The localized strings; English when null.</param>
+    /// <param name="forgeWorkspace">
+    /// The workspace the workshop sessions live under (STUDIO-27, D-08) — what the orphan list
+    /// reads. Null lists none.
+    /// </param>
+    /// <param name="teamsRoot">
+    /// The teams directory: a team moved or renamed there is found by its id, so its session is no
+    /// orphan. Null consults none.
+    /// </param>
     public DiagnosticViewModel(
         OrkeonProcessRunner runner,
         IUiDispatcher? dispatcher = null,
-        IStudioStrings? strings = null)
+        IStudioStrings? strings = null,
+        string? forgeWorkspace = null,
+        string? teamsRoot = null)
     {
         ArgumentNullException.ThrowIfNull(runner);
 
         _runner = runner;
         _dispatcher = dispatcher ?? ImmediateUiDispatcher.Instance;
         _strings = strings ?? EnglishStudioStrings.Instance;
+        _forgeWorkspace = forgeWorkspace;
+        _teamsRoot = teamsRoot;
 
         // Only the verdict line re-describes on a language switch: the check names and details
         // are `orkeon doctor`'s own output and stay as the CLI printed them (STUDIO-11 decision).
@@ -233,6 +304,52 @@ public sealed class DiagnosticViewModel : ObservableObject
     public bool HasIssues =>
         HasRun && (ErrorMessage is { Length: > 0 } || Checks.Any(c => c.Status != DoctorStatus.Ok));
 
+    /// <summary>The orphan workshop sessions of the last run (STUDIO-27, D-08).</summary>
+    public ObservableCollection<OrphanSessionViewModel> OrphanSessions { get; } = [];
+
+    /// <summary>Whether the orphan section shows.</summary>
+    public bool HasOrphanSessions => OrphanSessions.Count > 0;
+
+    /// <summary>What the last clean could not do; empty while nothing failed.</summary>
+    public string OrphanMessage
+    {
+        get => _orphanMessage;
+        private set
+        {
+            if (SetProperty(ref _orphanMessage, value))
+                OnPropertyChanged(nameof(HasOrphanMessage));
+        }
+    }
+
+    /// <summary>Whether the orphan section says what a clean could not do.</summary>
+    public bool HasOrphanMessage => _orphanMessage.Length > 0;
+
+    /// <summary>Arms one row's confirmation and disarms every other: one question at a time.</summary>
+    internal void ArmClean(OrphanSessionViewModel row)
+    {
+        foreach (var orphan in OrphanSessions)
+            orphan.IsConfirmingClean = ReferenceEquals(orphan, row);
+    }
+
+    /// <summary>Deletes the session the user confirmed; a directory the disk keeps stays listed, said so.</summary>
+    internal void Clean(OrphanSessionViewModel row)
+    {
+        if (!ForgeSessionCatalog.Delete(row.Summary.Directory))
+        {
+            row.IsConfirmingClean = false;
+            OrphanMessage = _strings[StudioStringKeys.DiagOrphanCleanFailed];
+            return;
+        }
+
+        OrphanMessage = "";
+        OrphanSessions.Remove(row);
+        OnPropertyChanged(nameof(HasOrphanSessions));
+    }
+
+    /// <summary>The orphans as the disk holds them now; none without a workspace.</summary>
+    private IReadOnlyList<ForgeSolutionSummary> FindOrphans() =>
+        _forgeWorkspace is { Length: > 0 } workspace ? ForgeSessionCatalog.FindOrphans(workspace, _teamsRoot) : [];
+
     /// <summary>Runs <c>orkeon doctor --json</c> and republishes the panel.</summary>
     public async Task<DoctorReport> RunAsync(
         string? workingDirectory = null,
@@ -241,9 +358,16 @@ public sealed class DiagnosticViewModel : ObservableObject
         OnPropertyChanged(nameof(IsRunning));
 
         var report = await _runner.RunDoctorAsync(workingDirectory, onOutput: null, cancellationToken);
+        var orphans = FindOrphans();
 
         _dispatcher.Post(() =>
         {
+            OrphanSessions.Clear();
+            foreach (var orphan in orphans)
+                OrphanSessions.Add(new OrphanSessionViewModel(orphan, this, _strings));
+            OrphanMessage = "";
+            OnPropertyChanged(nameof(HasOrphanSessions));
+
             Checks.Clear();
             foreach (var check in report.Checks)
                 Checks.Add(new DoctorCheckViewModel(check, _strings));

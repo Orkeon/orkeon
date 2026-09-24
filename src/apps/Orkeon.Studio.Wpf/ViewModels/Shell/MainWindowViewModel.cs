@@ -76,12 +76,23 @@ public sealed class MainWindowViewModel : ObservableObject
         Chat = new ChatThreadViewModel(strings, delay);
         About = new AboutViewModel(runner, dispatcher);
 
+        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
+        // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
+        // on Windows — where the global appsettings, the model profiles and the history
+        // already live): sessions are resumable app state, not documents, unlike the
+        // adopted teams which stay under ~/Orkeon/teams. Never the process working
+        // directory: launched from the installed app or a dev tree, that is the
+        // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
+        // next clean, and the assistant's /workspace would show DLLs.
+        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
+
         // The tab is built over the window's own seams, the shared runner included: the doctor
         // panel and the launcher must never disagree about which binary is in use. The LLM probe
         // travels with them rather than being hard-coded null — the screenshot campaign passes
         // one that answers offline, which is what makes "the connection was tested"
         // photographable AND makes a live HTTP call from a headless run structurally impossible.
-        Config = new ConfigTabViewModel(seams with { ProcessRunner = runner }, globalPathOverride);
+        // The two roots are the diagnostic's orphan-session list (STUDIO-27, D-08).
+        Config = new ConfigTabViewModel(seams with { ProcessRunner = runner }, globalPathOverride, forgeHome, teamsHome);
 
         // The settings' folder list is read live everywhere it is needed: a team folder that is
         // not in it reads red — on the wizard's chips, the team cards and the team-mounts modal
@@ -105,18 +116,9 @@ public sealed class MainWindowViewModel : ObservableObject
             Clipboard = seams.Clipboard,
         });
 
-        var teamsHome = teamsRoot ?? TeamCatalog.DefaultRoot();
         // VFS-90: each settings row says which teams name it by id, and removing one asks
         // first — the composition root supplies the question, the view model the facts.
         Config.Mounts.LoadTeams = () => TeamCatalog.List(teamsHome);
-        // The forge workspace defaults to the per-user config directory (%APPDATA%\Orkeon
-        // on Windows — where the global appsettings, the model profiles and the history
-        // already live): sessions are resumable app state, not documents, unlike the
-        // adopted teams which stay under ~/Orkeon/teams. Never the process working
-        // directory: launched from the installed app or a dev tree, that is the
-        // executable's bin folder — sessions would land in bin/.orkeon and vanish on the
-        // next clean, and the assistant's /workspace would show DLLs.
-        var forgeHome = TeamCatalog.EnsureDirectory(forgeWorkspace ?? DefaultForgeHome(teamsHome));
         Settings = new SettingsScreenViewModel(
             Config,
             new ModelProfilesViewModel(profileStore, Config.Llm, strings, llmProbe, keyStore,
