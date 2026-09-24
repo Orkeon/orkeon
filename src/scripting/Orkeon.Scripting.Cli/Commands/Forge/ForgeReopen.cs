@@ -66,6 +66,13 @@ internal sealed record ForgeTeamRecord
     [JsonPropertyName("brief")]
     public ForgeBrief? Brief { get; init; }
 
+    /// <summary>
+    /// The use case the team was composed from, titled in the brief's language (STUDIO-40, D-04);
+    /// a rebuilt session takes it back. Null for a team composed from nothing.
+    /// </summary>
+    [JsonPropertyName("reference")]
+    public ForgeReferenceRecord? Reference { get; init; }
+
     /// <summary>Writes the record into <paramref name="destination"/> (overwriting a previous promotion's).</summary>
     public static void Write(string destination, ForgeSession session, ForgeBrief? brief, DateTimeOffset now)
     {
@@ -80,6 +87,7 @@ internal sealed record ForgeTeamRecord
             Format = session.Document.Format,
             PromotedAt = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             Brief = brief,
+            Reference = session.Document.Reference,
         });
     }
 
@@ -369,6 +377,8 @@ internal static class ForgeSessionRebuilder
         session.SaveArtifact(ForgeSession.BriefFileName, brief);
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
         session.Document.Title = record?.Title is { Length: > 0 } title ? title : blueprint!.Crew?.Name;
+        // The use case the team was composed from (STUDIO-40): a reopen keeps it, like a resume.
+        session.Document.Reference = record?.Reference;
         session.Document.PromotedTo = Path.GetFullPath(teamDirectory);
         session.AppendHistory(ForgeState.Brief, ForgeTrigger.Rebuilt, ForgeState.Test, now);
         session.SetState(ForgeState.Test);

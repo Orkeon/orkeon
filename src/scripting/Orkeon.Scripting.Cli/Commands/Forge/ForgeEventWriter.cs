@@ -29,6 +29,9 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
             id = session.Document.Id,
             dir = session.Directory,
             format = session.Document.Format,
+            // The use case the session is composed from (STUDIO-40): what a client reopening the
+            // session shows again. Absent for a session started from nothing.
+            reference = session.Document.Reference,
             resumed,
             // Which build is answering. A client that shows it can tell «this engine reports
             // nothing» from «this engine is too old to report it» — two states that look

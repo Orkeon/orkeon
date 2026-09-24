@@ -74,6 +74,22 @@ function stableHeader() {
       lines.push("- " + input.crewTools[t].name + ": " + (input.crewTools[t].description || ""));
   }
 
+  // The use case the user started from (STUDIO-40): its team, as a model of structure. Right
+  // after the catalogue its tools were cut down to, so everything above it stays the same for
+  // every session — and cacheable — whichever reference follows.
+  var reference = input.reference;
+  if (phase !== "brief" && reference && reference.outline) {
+    lines.push("");
+    lines.push("## Reference team — a model of STRUCTURE, not content to copy");
+    lines.push("The user started from the use case \"" + reference.title + "\" (" + reference.id + ").");
+    lines.push("Its team is outlined below. Take its STRUCTURE as a model: how many agents, how the");
+    lines.push("work is split into tasks and in which order, the orchestration, which kind of agent");
+    lines.push("uses which tool. Fit that structure to the brief — the brief alone decides what the");
+    lines.push("team does — and never copy the example's names, wording or domain details. Its tools");
+    lines.push("missing from the catalogue above were removed: the catalogue stays the only list.");
+    lines.push(reference.outline);
+  }
+
   lines.push("");
   lines.push("## Your own tools");
   var catalogue = readTools.concat([submitTool]).sort();

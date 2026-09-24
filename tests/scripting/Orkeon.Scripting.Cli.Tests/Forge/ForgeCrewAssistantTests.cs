@@ -9,7 +9,9 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
+using Orkeon.Infrastructure.CostTracking;
 using Orkeon.Scripting.Cli.Commands.Forge;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
@@ -143,14 +145,25 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             Directory.Delete(_workspace, recursive: true);
     }
 
-    private ForgeCrewAssistant Build(ScriptedLlmProvider provider)
+    /// <summary>
+    /// The production assistant over <paramref name="provider"/>; <paramref name="crewTools"/> are
+    /// stub tools added to the catalogue the blueprint prompt shows, <paramref name="reference"/>
+    /// the use case the composition starts from (STUDIO-40), <paramref name="session"/> another
+    /// session than the fixture's.
+    /// </summary>
+    private ForgeCrewAssistant Build(
+        ScriptedLlmProvider provider,
+        ForgeReference? reference = null,
+        IReadOnlyList<string>? crewTools = null,
+        ForgeSession? session = null)
     {
-        var packPath = ForgePack.Ensure(_session.Directory);
+        session ??= _session;
+        var packPath = ForgePack.Ensure(session.Directory);
 
         var services = new ServiceCollection()
             .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
             .AddSingleton<IConfiguration>(new ConfigurationBuilder().Build())
-            .AddSingleton<IFileSystemService>(new DiskBackedFileSystemService(_session.Directory, "/forge"))
+            .AddSingleton<IFileSystemService>(new DiskBackedFileSystemService(session.Directory, "/forge"))
             .AddSingleton(_box)
             .AddSingleton(_tally)
             .AddSingleton<ILlmUsageSink>(_tally)
@@ -159,10 +172,89 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             .AddSingleton<ILlmDeltaSink>(_tally)
             .AddSingleton<IBaseTool>(new BriefSubmitTool(_box))
             .AddSingleton<IBaseTool>(new BlueprintSubmitTool(_box))
-            .AddSingleton<ILlmProvider>(provider)
-            .BuildServiceProvider();
+            .AddSingleton<ILlmProvider>(provider);
+        foreach (var tool in crewTools ?? [])
+            services.AddSingleton<IBaseTool>(new StubBaseTool(tool) { Description = $"The {tool} tool." });
 
-        return new ForgeCrewAssistant(services, _session, packPath);
+        return new ForgeCrewAssistant(services.BuildServiceProvider(), session, packPath, reference: reference);
+    }
+
+    /// <summary>
+    /// STUDIO-40, D-02: the use case the user started from reaches the composer as a model of
+    /// structure — in the blueprint phase only, right after the tool catalogue, so the start of
+    /// the header stays the same for every session, and cut down to that catalogue.
+    /// </summary>
+    [Fact]
+    public async Task The_reference_reaches_the_composer_in_the_blueprint_phase_only()
+    {
+        var provider = new ScriptedLlmProvider().Answers("Quel est votre besoin ?").Answers("(no submission)");
+        var assistant = Build(provider, ForgeReference.Load("03-email-pipeline"), crewTools: ["json_tool"]);
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "trier mes e-mails" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        // The interview never sees it: the brief is the user's need, not the example's.
+        Assert.Equal(2, provider.Chats.Count);
+        Assert.All(provider.Chats[0], message =>
+            Assert.DoesNotContain("03-email-pipeline", message.Content, StringComparison.Ordinal));
+
+        var header = provider.Chats[1][0].Content;
+        Assert.Contains("## Reference team — a model of STRUCTURE, not content to copy", header, StringComparison.Ordinal);
+        // Titled in the brief's language.
+        Assert.Contains("\"Tri et réponse aux e-mails\" (03-email-pipeline)", header, StringComparison.Ordinal);
+        var catalogue = header.IndexOf("## Tools the team may use", StringComparison.Ordinal);
+        var reference = header.IndexOf("## Reference team", StringComparison.Ordinal);
+        var ownTools = header.IndexOf("## Your own tools", StringComparison.Ordinal);
+        Assert.True(catalogue >= 0 && catalogue < reference && reference < ownTools, header);
+
+        // Its tools the catalogue lacks were removed; the one it offers stays. No backstory.
+        Assert.Contains(
+            "- trieur (Trieur d'Emails): Classify incoming emails by urgency and category [tools: json_tool]",
+            header, StringComparison.Ordinal);
+        Assert.DoesNotContain("email_parser", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("executive assistant", header, StringComparison.Ordinal);
+
+        // The body carries the brief and the task, never the reference a second time.
+        Assert.DoesNotContain("03-email-pipeline", provider.Chats[1][^1].Content, StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// D-03, measured: the same composition with and without the same use case. The reference
+    /// adds its section to the stable header and nothing else, within the bound of its outline
+    /// plus the section's fixed text.
+    /// </summary>
+    [Fact]
+    public async Task A_reference_adds_no_more_than_its_bounded_section_to_the_composition()
+    {
+        Assert.True(ForgeBrief.TryParse(ForgeDocuments.ValidBrief, out var brief, out _));
+        var request = new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Blueprint, Brief = brief };
+
+        var without = new ScriptedLlmProvider().Answers("(no submission)");
+        await Build(without, crewTools: ["json_tool", "file_write"])
+            .NextAsync(request, spent: null, TestContext.Current.CancellationToken);
+        // A session of its own: the first turn's answer joined the fixture session's transcript.
+        var with = new ScriptedLlmProvider().Answers("(no submission)");
+        await Build(with, ForgeReference.Load("03-email-pipeline"), crewTools: ["json_tool", "file_write"],
+                ForgeSession.Create(_workspace, "essai-reference"))
+            .NextAsync(request, spent: null, TestContext.Current.CancellationToken);
+
+        var plain = Assert.Single(without.Chats);
+        var referenced = Assert.Single(with.Chats);
+        Assert.DoesNotContain("## Reference team", plain[0].Content, StringComparison.Ordinal);
+        Assert.Equal(plain[^1].Content, referenced[^1].Content);
+
+        var added = referenced[0].Content.Length - plain[0].Content.Length;
+        Assert.InRange(added, 1, ForgeReference.MaxOutlineLength + 1000);
+        Assert.True(
+            LlmUsageEstimator.Prompt(referenced) > LlmUsageEstimator.Prompt(plain),
+            "the forge's own estimate must see the section it pays for");
     }
 
     [Fact]

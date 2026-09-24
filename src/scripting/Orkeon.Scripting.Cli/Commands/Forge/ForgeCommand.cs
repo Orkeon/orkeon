@@ -106,6 +106,12 @@ internal sealed record ForgeCommandOptions
     /// </summary>
     public string? ReadDirectory { get; init; }
 
+    /// <summary>
+    /// <c>--reference &lt;id&gt;</c> (STUDIO-40): the use case of the catalogue a new session is
+    /// composed from — its crew's structure is the composer's model, and the session records it.
+    /// </summary>
+    public string? Reference { get; init; }
+
     /// <summary>What made the parse fail, when it did.</summary>
     public string? Error { get; init; }
 
@@ -125,6 +131,7 @@ internal sealed record ForgeCommandOptions
         ["--settings"] = "--settings needs a path.",
         ["--pack"] = "--pack needs a directory.",
         ["--read"] = "--read needs a directory.",
+        ["--reference"] = "--reference needs a use case id (see `orkeon usecases list`).",
     };
 
     /// <summary>
@@ -245,6 +252,7 @@ internal sealed record ForgeCommandOptions
         "--max-seconds" => WithMaxSeconds(options, value, invalid),
         "--settings" => options with { SettingsPath = value },
         "--read" => options with { ReadDirectory = value },
+        "--reference" => options with { Reference = value },
         _ => options with { PackDirectory = value },
     };
 
@@ -298,6 +306,9 @@ internal sealed record ForgeCommandOptions
             "--adopt and --edit are two different answers to the same pause."),
         ((o, _) => o.ReadDirectory is not null && (o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null),
             "--read only applies to a new session or to `forge resume`."),
+        ((o, _) => o.Reference is not null
+                   && (o.ResumeSlug is not null || o.PromoteSlug is not null || o.List || o.ReopenDirectory is not null),
+            "--reference only applies to a new session: a session keeps the reference it was created with."),
         ((o, needWords) => o.ReopenDirectory is not null && (ShapesACycle(o) || needWords > 0),
             "reopen takes no option but --events: it finds or rebuilds the team's session and starts nothing."),
     ];
@@ -438,12 +449,33 @@ internal static class ForgeCommand
             return ExitError;
         }
 
+        // A reference that names no use case is refused the same way, and just as early
+        // (STUDIO-40, D-05): before the session is opened and before any host boots, so a
+        // mistyped id leaves no stray session behind and no model is ever asked.
+        ForgeReference? reference = null;
+        if (options.Reference is { } referenceId)
+        {
+            try
+            {
+                reference = ForgeReference.Load(referenceId);
+            }
+            catch (UseCases.UnknownUseCaseException ex)
+            {
+                return await RefuseReferenceAsync(options, ex).ConfigureAwait(false);
+            }
+        }
+
         // Open or create the session first: it is cheap, offline, and `resume` must be
         // able to say "no such session" before any host boots.
         var resumed = options.ResumeSlug is not null;
-        var (session, openExitCode) = await OpenSessionAsync(workspace, options).ConfigureAwait(false);
+        var (session, openExitCode) = await OpenSessionAsync(workspace, options, reference).ConfigureAwait(false);
         if (session is null)
             return openExitCode;
+
+        // A resume composes with the reference the session recorded (D-01): the parser refuses
+        // another one there.
+        if (resumed)
+            reference = await RecordedReferenceAsync(session).ConfigureAwait(false);
 
         // The engine host: same settings chain as `orkeon run` (explicit --settings →
         // next to the workspace → global), the read folder readable, the session writable,
@@ -532,7 +564,7 @@ internal static class ForgeCommand
         }
 
         var packPath = ForgePack.Ensure(session.Directory, options.PackDirectory);
-        var assistant = new ForgeCrewAssistant(host.Services, session, packPath);
+        var assistant = new ForgeCrewAssistant(host.Services, session, packPath, reference: reference);
 
         // The sandbox catalogue: what the blueprint prompt shows is exactly what the
         // validation enforces (SPEC §9.1) — one list, two consumers.
@@ -638,14 +670,56 @@ internal static class ForgeCommand
         Path.Combine(session.Directory, TestStage.OutputDirectoryName);
 
     /// <summary>
-    /// Opens the session <c>resume</c> names, or creates a new one. A refusal is reported on
-    /// stderr and comes back as a null session carrying the exit code.
+    /// An unknown <c>--reference</c> (STUDIO-40, D-05): the catalogue's own typed error,
+    /// <c>USECASES-UNKNOWN-ID</c>. No session exists, so the stream carries the error and closes on
+    /// «failed», like a reopen that could produce none; the terminal gets the one line.
+    /// </summary>
+    private static async Task<int> RefuseReferenceAsync(ForgeCommandOptions options, UseCases.UnknownUseCaseException error)
+    {
+        if (!options.Events)
+        {
+            await Console.Error.WriteLineAsync($"orkeon forge: {error.Message}").ConfigureAwait(false);
+            return ExitError;
+        }
+
+        var events = new ForgeEventWriter(Console.Out);
+        events.Error(UseCases.UnknownUseCaseException.Code, error.Message, recoverable: false);
+        events.SessionFinished("failed", ExitError);
+        return ExitError;
+    }
+
+    /// <summary>
+    /// The reference a resumed session composes with: the one it recorded (D-01). A use case this
+    /// build no longer carries is said on stderr and composed without — the session still resumes,
+    /// and keeps its provenance as recorded.
+    /// </summary>
+    private static async Task<ForgeReference?> RecordedReferenceAsync(ForgeSession session)
+    {
+        if (session.Document.Reference is not { } recorded)
+            return null;
+
+        var reference = ForgeReference.Recorded(recorded);
+        if (reference is null)
+        {
+            await Console.Error.WriteLineAsync(
+                $"orkeon forge: the use case '{recorded.Id}' this session was composed from is no longer in the"
+                + " catalogue — the team is composed without it.")
+                .ConfigureAwait(false);
+        }
+
+        return reference;
+    }
+
+    /// <summary>
+    /// Opens the session <c>resume</c> names, or creates a new one — composed from
+    /// <paramref name="reference"/>, when there is one. A refusal is reported on stderr and comes
+    /// back as a null session carrying the exit code.
     /// </summary>
     private static async Task<(ForgeSession? Session, int ExitCode)> OpenSessionAsync(
-        string workspace, ForgeCommandOptions options)
+        string workspace, ForgeCommandOptions options, ForgeReference? reference)
     {
         if (options.ResumeSlug is not { } slug)
-            return (await CreateSessionAsync(workspace, options).ConfigureAwait(false), 0);
+            return (await CreateSessionAsync(workspace, options, reference).ConfigureAwait(false), 0);
 
         if (!ForgeSession.TryLoadBySlug(workspace, slug, out var loaded, out var loadError))
         {
@@ -690,8 +764,12 @@ internal static class ForgeCommand
         return (session, 0);
     }
 
-    /// <summary>A brand-new session, with the budget the command line asked for.</summary>
-    private static async Task<ForgeSession> CreateSessionAsync(string workspace, ForgeCommandOptions options)
+    /// <summary>
+    /// A brand-new session, with the budget the command line asked for and the reference it is
+    /// composed from, recorded in English until the promotion knows the brief's language (D-04).
+    /// </summary>
+    private static async Task<ForgeSession> CreateSessionAsync(
+        string workspace, ForgeCommandOptions options, ForgeReference? reference)
     {
         var format = options.Format ?? ForgeSession.FormatYaml;
         if (ForgeSession.IsScriptFormat(format) && !EsbuildAvailable())
@@ -714,7 +792,8 @@ internal static class ForgeCommand
                 MaxIterations = options.MaxIterations ?? ForgeBudget.DefaultMaxIterations,
                 MaxTokens = options.MaxTokens ?? 0,
                 MaxWallSeconds = options.MaxSeconds ?? 0,
-            });
+            },
+            reference: reference?.RecordIn(language: null));
     }
 
     /// <summary>
