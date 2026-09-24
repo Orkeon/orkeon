@@ -613,6 +613,14 @@ public sealed record TeamsDependencies
     /// state, offer no schedule action, and refuse to delete a team whose schedule they cannot stop.
     /// </summary>
     public ForgeClient? Forge { get; init; }
+
+    /// <summary>
+    /// What Studio is doing with a team folder right now (STUDIO-28, D-02; STUDIO-31, D-09):
+    /// running it on the Launch or Test screen, or holding it open in the wizard. A gesture that
+    /// moves or hides the folder is refused while it answers anything but
+    /// <see cref="TeamActivity.None"/>. Null wires none: no team is ever busy.
+    /// </summary>
+    public Func<string, TeamActivity>? ActivityOf { get; init; }
 }
 
 /// <summary>
@@ -629,6 +637,7 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly ILaunchHistoryStore? _historyStore;
     private readonly ForgeClient? _forge;
+    private readonly Func<string, TeamActivity>? _activityOf;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -646,6 +655,7 @@ public sealed class TeamsViewModel : ObservableObject
         _shellOpener = wired.ShellOpener;
         _historyStore = wired.HistoryStore;
         _forge = wired.Forge;
+        _activityOf = wired.ActivityOf;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
         var workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root));
@@ -698,6 +708,13 @@ public sealed class TeamsViewModel : ObservableObject
         if (CanReopen(team))
             ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team));
     }
+
+    /// <summary>
+    /// What Studio is doing with the team at <paramref name="teamPath"/> (STUDIO-28, D-02): asked
+    /// at the moment of a gesture that moves or hides its folder, never cached — a run starts and
+    /// ends between two clicks. <see cref="TeamActivity.None"/> when no hook is wired.
+    /// </summary>
+    internal TeamActivity ActivityOf(string teamPath) => _activityOf?.Invoke(teamPath) ?? TeamActivity.None;
 
     /// <summary>The team cards.</summary>
     public ObservableCollection<TeamCardViewModel> Teams { get; } = [];

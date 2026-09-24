@@ -175,6 +175,9 @@ public sealed class MainWindowViewModel : ObservableObject
             HistoryStore = historyStore,
             DeclaredMounts = declaredMounts,
             Forge = forgeClient,
+            // STUDIO-28 (D-02), STUDIO-31 (D-09): a team running, under test or open in the
+            // wizard does not move — read at the moment of the gesture.
+            ActivityOf = TeamActivityOf,
         });
 
 
@@ -620,6 +623,14 @@ public sealed class MainWindowViewModel : ObservableObject
             && System.IO.Path.GetDirectoryName(settingsPath) is { Length: > 0 } configDirectory
             ? configDirectory
             : System.IO.Path.GetDirectoryName(teamsHome) ?? teamsHome;
+
+    /// <summary>
+    /// What Studio is doing with a team folder (STUDIO-28, D-02; STUDIO-31, D-09): the run in
+    /// flight of either launcher, and the team the wizard reopened. The Test screen is built after
+    /// My teams, so the launchers are read when a gesture asks, never captured at construction.
+    /// </summary>
+    private TeamActivity TeamActivityOf(string teamPath) =>
+        TeamActivities.Of(teamPath, Launch.RunningTarget, Test.Launcher.RunningTarget, CreateTeam.ReopenedTeamPath);
 
     /// <summary>
     /// The environment an adopted team lays over its launches: the sidecar names a model

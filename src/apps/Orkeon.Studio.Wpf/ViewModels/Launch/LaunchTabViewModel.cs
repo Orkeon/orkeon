@@ -45,6 +45,7 @@ public sealed class LaunchTabViewModel : ObservableObject
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
     private readonly IDirectoryProbe _directories;
     private bool _isRunning;
+    private string? _runningTarget;
     private bool _isJournalOpen;
     private readonly IShellOpener? _shellOpener;
     private TargetDescription _team = new();
@@ -182,6 +183,18 @@ public sealed class LaunchTabViewModel : ObservableObject
             CancelCommand.RaiseCanExecuteChanged();
             RaiseRunStateChanged();
         }
+    }
+
+    /// <summary>
+    /// The target of the run in flight — the path its request carried when it started — or null
+    /// while nothing runs (STUDIO-28, D-02). Never <see cref="TargetSelectionViewModel.SelectedPath"/>:
+    /// the picker stays live during a run, and a folder browsed to since is not the one being read.
+    /// My teams asks it before a gesture that moves or hides a team's folder.
+    /// </summary>
+    public string? RunningTarget
+    {
+        get => _runningTarget;
+        private set => SetProperty(ref _runningTarget, value);
     }
 
     /// <summary>The exact command line that will be run, shown so nothing is hidden from the user.</summary>
@@ -575,6 +588,8 @@ public sealed class LaunchTabViewModel : ObservableObject
         bool dryRun,
         CancellationToken cancellationToken)
     {
+        // The target first, so whoever reacts to IsRunning already reads what is running.
+        RunningTarget = request.TargetPath;
         IsRunning = true;
 
         Log.AppendCommand(CommandLineDisplay.Format(request.Arguments));
@@ -620,6 +635,7 @@ public sealed class LaunchTabViewModel : ObservableObject
         finally
         {
             IsRunning = false;
+            RunningTarget = null;
             _input = null;
         }
     }
