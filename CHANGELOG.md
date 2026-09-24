@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio installs and removes a team's schedule; deleting a team leaves nothing behind (STUDIO-27)
+
+- **The operating system runs a scheduled team**; Orkeon still has no scheduler of its own.
+- **`orkeon forge schedule <team-folder>`** registers the schedule for the current user, without
+  elevation and never through a shell:
+  - a Windows task `Orkeon <team>`, which now runs on battery and catches up a missed run;
+  - a systemd user timer `orkeon-<team>.timer`;
+  - or a crontab line marked `# orkeon:<team>`.
+
+  `--check` answers installed, absent or stale. `orkeon forge unschedule` removes the registration
+  and `schedule/`.
+- **What was installed is recorded** in `forge.json` (`schedule.installed`). Check and removal act
+  only on those recorded names, so a copy never touches its original's task.
+  - An OS refusal is `FORGE-SCHEDULE-REFUSED`, carrying the command to run by hand.
+  - A new event, `schedule.state`, reports the state.
+- **In Studio:**
+  - adopting a scheduled team asks « Install the schedule (every day at 08:00)? »;
+  - the team card shows the real state (Scheduled, Not installed, To reinstall) with Install and
+    Stop actions;
+  - the assistant's answers that promised this are now true.
+- **Deleting a team stops its schedule first** (a refusal keeps the team). By default it also
+  deletes the workshop session that rule R links to it — never the original's, for a copy. The
+  Diagnostic lists orphan sessions and cleans each one after confirmation.
+
+### Added — `orkeon forge --reference <id>`: compose a team on the model of a use case (STUDIO-40)
+
+- A new session can start from a use case of the catalogue. The assistant that designs the team
+  sees its crew's STRUCTURE: agents with role, goal and tools; tasks with agent, order and output;
+  the process.
+  - It is shown as a model, not content to copy, in the blueprint phase only, right after the tool
+    catalogue.
+  - Tools the sandbox lacks are removed.
+  - Each text is bounded at 200 characters and the whole outline at 4,000. Measured on the real
+    catalogue, it adds 590 to 1,290 estimated tokens per team-design call (median 800, on about
+    3,000).
+- The session records the reference (`session.json` `reference`, announced on
+  `session.started`), and a resume or a `forge reopen` composes with it again.
+- The promotion traces it: « Inspiré de : <title> (<id>) » in `FORGE.md`, and `reference` in
+  `forge.json`.
+- An unknown id is refused with `USECASES-UNKNOWN-ID`, before any session or model call.
+- Orkeon Studio passes the use case chosen in the gallery, and reads it back on resume and on
+  « Modify ».
+
 ### Added — Studio: the provider balance, where you work (STUDIO-35)
 
 - **The status bar's Balance segment** says what the provider accounts behind the default
