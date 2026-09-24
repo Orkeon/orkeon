@@ -159,6 +159,13 @@ public sealed class ForgeSessionModel
     public bool Resumed { get; private set; }
 
     /// <summary>
+    /// The use case the session is composed from (STUDIO-40), from <c>session.started</c> — live,
+    /// or hydrated from <c>session.json</c> — so a resumed or reopened creation attaches its
+    /// reference again. Null for a session started from nothing, or by an engine older than it.
+    /// </summary>
+    public string? ReferenceUseCaseId { get; private set; }
+
+    /// <summary>
     /// Wire state of the session <c>forge reopen</c> found or rebuilt for a team folder
     /// (<c>team.reopened</c>, FORGE-09); null until such an event arrives. <c>test</c> is the
     /// dry pause — the wizard opens the Composer without an engine, as after <c>--dry</c>.
@@ -315,6 +322,7 @@ public sealed class ForgeSessionModel
                     : null;
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
+                ReferenceUseCaseId = ReadReferenceId(orkeonEvent);
                 Resumed = orkeonEvent.GetBool("resumed") ?? false;
                 EngineVersion = orkeonEvent.GetString("engine");
                 FinishedStatus = null;
@@ -538,6 +546,14 @@ public sealed class ForgeSessionModel
             : finding.Statement;
         return new ForgeChecklistItem(criterion.Statement, false, detail);
     }
+
+    /// <summary>The <c>id</c> of the event's <c>reference</c> object; null when there is none.</summary>
+    private static string? ReadReferenceId(OrkeonEvent orkeonEvent) =>
+        orkeonEvent.Root.TryGetProperty("reference", out var reference)
+        && reference.ValueKind == JsonValueKind.Object
+        && ReadString(reference, "id") is { Length: > 0 } id
+            ? id
+            : null;
 
     private void ReadBrief(OrkeonEvent orkeonEvent)
     {

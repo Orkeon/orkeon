@@ -1376,9 +1376,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     public RelayCommand ShowCloseUseCasesCommand { get; }
 
     /// <summary>
-    /// The use case this creation starts from (D-04): the id STUDIO-40 hands the engine as
-    /// <c>forge --reference</c>. Set by choosing a card, cleared by the chip's ✕ and by the end of
-    /// the creation; null when none.
+    /// The use case this creation starts from (D-04): the id a compose hands the engine as
+    /// <c>forge --reference</c> (STUDIO-40). Set by choosing a card, cleared by the chip's ✕ and by
+    /// the end of the creation, and read back from the session on a resume or a reopen — the
+    /// session keeps it in its <c>session.json</c> (STUDIO-40, D-01). Null when none.
     /// </summary>
     public string? ReferenceUseCaseId
     {
@@ -2425,6 +2426,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         ForgetUseCases();
         ResetProjection();
         ForgeSessionHydrator.Hydrate(_model, solution.Directory);
+        // The session's own reference, read back from its file (STUDIO-40, D-01).
+        ReferenceUseCaseId = _model.ReferenceUseCaseId;
         SessionActivated?.Invoke(this, EventArgs.Empty);
         SyncFromModel();
 
@@ -2545,6 +2548,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         }
 
         ForgeSessionHydrator.Hydrate(_model, session.Directory);
+        // The session's own reference, read back from its file (STUDIO-40, D-01).
+        ReferenceUseCaseId = _model.ReferenceUseCaseId;
 
         TeamName = team.Name;
         if (team.Profile is { Length: > 0 } profile)
@@ -2684,6 +2689,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             WorkingDirectory = _workspace,
             // The folder step 1 bound behind /workspace, when there is one (D-09).
             ReadDirectory = ReadRoot(),
+            // The use case chosen in the gallery, the composer's model of structure (STUDIO-40).
+            ReferenceUseCaseId = _referenceUseCaseId,
             EnvironmentOverrides = AssistantEnvironment(),
             // The Composer pause (owner, 2026-08-24): generate and validate, then STOP.
             // The trial is the user's click on "try the team", never a side effect
