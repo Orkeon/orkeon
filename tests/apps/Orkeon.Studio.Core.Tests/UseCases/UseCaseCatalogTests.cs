@@ -1,13 +1,12 @@
 using Orkeon.Studio.Core.Events;
 using Orkeon.Studio.Core.UseCases;
-using Orkeon.Tests.Shared.UseCases;
 
 namespace Orkeon.Studio.Core.Tests.UseCases;
 
 /// <summary>
-/// What Studio reads off the catalogue besides the sheets themselves: a title in the UI's
-/// language (Chinese included), the terms a text becomes — the CLI's own spelling — and which
-/// terms are rare enough to say something about a need.
+/// What Studio reads off the catalogue and off an answer: a title in the UI's language (Chinese
+/// included), the sheets as the CLI lists them, and which matches are close enough to a need to be
+/// suggested — how many use cases carry a term is read off the answer, never recomputed here.
 /// </summary>
 public sealed class UseCaseCatalogTests
 {
@@ -36,13 +35,6 @@ public sealed class UseCaseCatalogTests
         Category = "01-enterprise",
         Title = new Dictionary<string, string> { ["fr"] = frenchTitle },
     };
-
-    [Theory]
-    [MemberData(nameof(UseCaseTermsCorpus.Entries), MemberType = typeof(UseCaseTermsCorpus))]
-    public void A_text_becomes_the_terms_the_cli_reads(string text, string[] expected)
-    {
-        Assert.Equal(expected, UseCaseTerms.Tokenize(text));
-    }
 
     [Theory]
     [InlineData("fr", "Tri des e-mails")]
@@ -92,79 +84,82 @@ public sealed class UseCaseCatalogTests
         Assert.Equal(["fr", "en", "es", "de", "zh-Hans"], catalog.Languages);
     }
 
-    [Fact]
-    public void A_term_is_counted_in_every_text_the_cli_indexes()
+    /// <summary>An answer to <paramref name="query"/> for the whole catalogue: the given matches, then fillers carrying <paramref name="common"/>.</summary>
+    private static UseCaseAnswer Answer(string query, UseCaseMatch[] matches, params (string Term, int Carriers)[] common)
     {
-        var catalog = new UseCaseCatalog(
-        [
-            new UseCase
-            {
-                Id = "40-invoice-processing",
-                Category = "03-finance-trading",
-                Title = new Dictionary<string, string> { ["fr"] = "Contrôle des factures", ["zh-Hans"] = "供应商发票核对" },
-                Problem = new Dictionary<string, string> { ["en"] = "Check supplier invoices" },
-                Tags = ["invoices"],
-                Tools = ["pdf_reader"],
-            },
-            Sheet("35-accounting-reconciliation", "Rapprochement des factures"),
-        ]);
+        var all = new List<UseCaseMatch>(matches);
+        var filler = 0;
+        foreach (var (term, carriers) in common)
+        {
+            for (var i = 0; i < carriers; i++)
+                all.Add(Match($"{filler++:000}-filler", UseCaseMatchReason.Terms, term));
+        }
 
-        Assert.Equal(2, catalog.DocumentFrequency("factures"));
-        Assert.Equal(1, catalog.DocumentFrequency("controle"));   // accents folded, as the CLI answers it
-        Assert.Equal(1, catalog.DocumentFrequency("发票"));
-        Assert.Equal(1, catalog.DocumentFrequency("supplier"));
-        Assert.Equal(1, catalog.DocumentFrequency("pdf"));         // a tool, split into words
-        Assert.Equal(1, catalog.DocumentFrequency("trading"));     // the category, its number dropped
-        Assert.Equal(1, catalog.DocumentFrequency("reconciliation"));   // the id
-        Assert.Equal(0, catalog.DocumentFrequency("veille"));
+        return new UseCaseAnswer
+        {
+            Query = query,
+            Matches = [.. all.Select((match, index) => match with { Rank = index + 1 })],
+        };
     }
 
+    private static UseCaseMatch Match(string id, UseCaseMatchReason reason, params string[] terms) =>
+        new() { Rank = 0, Id = id, Reason = reason, Terms = terms };
+
+    private static UseCaseMatch Terms(string id, params string[] terms) => Match(id, UseCaseMatchReason.Terms, terms);
+
+    private static IReadOnlyList<string> Close(UseCaseAnswer answer, UseCaseCatalog catalog) =>
+        [.. UseCaseSuggestions.Close(answer, catalog).Select(match => match.Id)];
+
     [Fact]
-    public void A_term_is_rare_when_at_most_three_use_cases_in_a_hundred_share_it()
+    public void A_term_is_rare_when_the_answer_shows_it_in_at_most_three_use_cases_in_a_hundred()
     {
         var catalog = Padded(
             105,
             Sheet("06-competitive-intelligence", "Veille concurrentielle"),
             Sheet("20-patent-monitoring", "Veille sur les brevets"),
             Sheet("52-pharmacovigilance", "Veille des effets"),
-            Sheet("12-onboarding", "Accueil d'une recrue"));
+            Sheet("77-podcast-production", "Veille audio"));
+        Assert.Equal(3, UseCaseSuggestions.RareLimit(catalog.Count));
 
-        Assert.Equal(3, catalog.RareLimit);
-        Assert.True(catalog.IsRare("veille"));        // three sheets of 105
-        Assert.True(catalog.IsRare("recrue"));        // one
-        Assert.False(catalog.IsRare("exemple"));      // every filler sheet
-        Assert.False(catalog.IsRare("chat"));         // no sheet: a term Studio cannot vouch for
+        // An answer by terms lists every sheet sharing a term: the rare one in three, the article
+        // of the sentence in thirty.
+        var threeCarriers = Answer(
+            "une veille documentaire",
+            [Terms("06-competitive-intelligence", "veille"), Terms("20-patent-monitoring", "veille"), Terms("52-pharmacovigilance", "une", "veille")],
+            ("une", 30));
+        Assert.Equal(["06-competitive-intelligence", "20-patent-monitoring", "52-pharmacovigilance"], Close(threeCarriers, catalog));
+
+        // A fourth sheet carrying it, and it says nothing about the need any more.
+        var fourCarriers = Answer(
+            "une veille documentaire",
+            [Terms("06-competitive-intelligence", "veille"), Terms("20-patent-monitoring", "veille"), Terms("52-pharmacovigilance", "veille"), Terms("77-podcast-production", "veille")],
+            ("une", 30));
+        Assert.Empty(Close(fourCarriers, catalog));
     }
 
     /// <summary>
     /// A rare short term is a keyword in a search of one or two words, and a function word in a
-    /// sentence — the catalogue happens to hold «est» in three sheets, and a sentence about a sick
-    /// cat must not suggest them. Chinese terms are character pairs: no floor applies to them.
+    /// sentence — the catalogue happens to hold «est» in two sheets, and a sentence about a sick cat
+    /// must not suggest them. Chinese terms are character pairs: no floor applies to them.
     /// </summary>
     [Fact]
     public void A_short_term_counts_in_a_keyword_search_and_not_in_a_sentence_unless_it_is_chinese()
     {
         var catalog = Padded(
             105,
-            Sheet("45-kyc-onboarding", "Contrôle kyc des clients"),
+            Sheet("37-kyc-aml-compliance", "Conformité kyc"),
             Sheet("69-performance-analysis", "Une application qui est lente"),
-            new UseCase
-            {
-                Id = "30-adaptive-summary",
-                Category = "02-science-research",
-                Title = new Dictionary<string, string> { ["zh-Hans"] = "按读者水平定制的摘要" },
-            });
+            Sheet("70-versioned-documentation", "Une documentation qui est tenue"),
+            Sheet("30-adaptive-summary", "Résumé adapté"));
 
-        Assert.Equal(["45-kyc-onboarding"], Close("kyc", Match("45-kyc-onboarding", "kyc")));
-        Assert.Empty(Close("un contrôle kyc des nouveaux clients", Match("45-kyc-onboarding", "kyc")));
-        Assert.Empty(Close("le chat de ma voisine est malade", Match("69-performance-analysis", "de", "est")));
-        Assert.Equal(["30-adaptive-summary"], Close("每天早上总结新闻", Match("30-adaptive-summary", "读者")));
-
-        IReadOnlyList<string> Close(string query, UseCaseMatch match) =>
-            [.. UseCaseSuggestions.Close(new UseCaseAnswer { Query = query, Matches = [match] }, catalog).Select(close => close.Id)];
-
-        static UseCaseMatch Match(string id, params string[] terms) =>
-            new() { Rank = 1, Id = id, Reason = UseCaseMatchReason.Terms, Terms = terms };
+        Assert.Equal(["37-kyc-aml-compliance"], Close(Answer("kyc", [Terms("37-kyc-aml-compliance", "kyc")]), catalog));
+        Assert.Empty(Close(
+            Answer("un contrôle kyc de mes clients", [Terms("37-kyc-aml-compliance", "kyc", "de")], ("de", 40)),
+            catalog));
+        Assert.Empty(Close(
+            Answer("le chat de ma voisine est malade", [Terms("69-performance-analysis", "de", "est"), Terms("70-versioned-documentation", "de", "est")], ("de", 40)),
+            catalog));
+        Assert.Equal(["30-adaptive-summary"], Close(Answer("每天早上总结新闻", [Terms("30-adaptive-summary", "总结")]), catalog));
     }
 
     [Fact]
@@ -175,22 +170,38 @@ public sealed class UseCaseCatalogTests
             Sheet("03-email-pipeline", "Tri des mails"),
             Sheet("30-adaptive-summary", "Un résumé adapté"),
             Sheet("48-mental-health", "Suivi du bien-être"));
-        var answer = new UseCaseAnswer
-        {
-            Query = "je veux un résumé de mes mails",
-            Matches =
+        var answer = Answer(
+            "je veux un résumé de mes mails",
             [
-                new UseCaseMatch { Rank = 1, Id = "03-email-pipeline", Reason = UseCaseMatchReason.Terms, Terms = ["de", "mails"] },
-                new UseCaseMatch { Rank = 2, Id = "000-filler", Reason = UseCaseMatchReason.Terms, Terms = ["un", "de"] },
-                new UseCaseMatch { Rank = 3, Id = "48-mental-health", Reason = UseCaseMatchReason.Meaning, Terms = [] },
-                new UseCaseMatch { Rank = 4, Id = "30-adaptive-summary", Reason = UseCaseMatchReason.TermsAndMeaning, Terms = ["un", "resume"] },
-                new UseCaseMatch { Rank = 5, Id = "99-not-in-the-catalogue", Reason = UseCaseMatchReason.Terms, Terms = ["mails"] },
+                Terms("03-email-pipeline", "de", "mails"),
+                Terms("000-filler", "un", "de"),
+                Match("48-mental-health", UseCaseMatchReason.Meaning),
+                Match("30-adaptive-summary", UseCaseMatchReason.TermsAndMeaning, "un", "resume"),
+                Terms("99-not-in-the-catalogue", "mails"),
             ],
-        };
+            ("de", 40),
+            ("un", 20));
 
-        var close = UseCaseSuggestions.Close(answer, catalog);
+        Assert.Equal(["03-email-pipeline", "30-adaptive-summary"], Close(answer, catalog));
+    }
 
-        Assert.Equal(["03-email-pipeline", "30-adaptive-summary"], close.Select(match => match.Id));
+    [Fact]
+    public void Only_the_best_five_matches_can_be_suggested()
+    {
+        var catalog = Padded(105, Sheet("06-competitive-intelligence", "Veille concurrentielle"));
+        var answer = Answer(
+            "une veille documentaire",
+            [
+                Terms("001-filler", "une"),
+                Terms("002-filler", "une"),
+                Terms("003-filler", "une"),
+                Terms("004-filler", "une"),
+                Terms("005-filler", "une"),
+                Terms("06-competitive-intelligence", "veille"),
+            ],
+            ("une", 20));
+
+        Assert.Empty(Close(answer, catalog));
     }
 
     [Fact]

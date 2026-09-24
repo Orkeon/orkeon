@@ -276,7 +276,8 @@ public partial class CreateTeamWizardTests
     public async Task Suggestions_ask_the_cli_once_the_typing_pauses_never_on_every_keystroke()
     {
         var cli = UseCaseCli();
-        cli.Answer = _ => [new FakeUseCaseResult("03-email-pipeline", "terms", "trier", "mes")];
+        // As the CLI answers by terms: every sheet sharing a term, each with every term it shares.
+        cli.Answer = _ => [new FakeUseCaseResult("03-email-pipeline", "terms", "trier", "mes"), new FakeUseCaseResult("06-competitive-intelligence", "terms", "mes")];
         var delay = new ManualUiDelay();
         var vm = WizardWithGallery(cli, delay: delay);
         await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
@@ -292,6 +293,8 @@ public partial class CreateTeamWizardTests
         delay.Elapse();
 
         Assert.Equal(["trier mes e-mails"], cli.Queries);
+        // The whole catalogue, never the best five: the rule counts the sheets carrying each term.
+        Assert.Equal([6], cli.QueryTops);
         Assert.True(vm.HasCloseUseCases);
         Assert.Equal("1 close use case", vm.CloseUseCasesLabel);
         Assert.Equal("Tri et réponse aux e-mails", vm.CloseUseCasesTitles);
@@ -304,7 +307,7 @@ public partial class CreateTeamWizardTests
         // «mes» is in two sheets of six — not distinctive; «trier» is in one.
         cli.Answer = text => text.StartsWith("trier", StringComparison.Ordinal)
             ? [new FakeUseCaseResult("03-email-pipeline", "terms", "trier", "mes"), new FakeUseCaseResult("06-competitive-intelligence", "terms", "mes")]
-            : [new FakeUseCaseResult("06-competitive-intelligence", "terms", "mes"), new FakeUseCaseResult("56-adaptive-tutor", "meaning")];
+            : [new FakeUseCaseResult("06-competitive-intelligence", "terms", "mes"), new FakeUseCaseResult("03-email-pipeline", "terms", "mes"), new FakeUseCaseResult("56-adaptive-tutor", "meaning")];
         var vm = WizardWithGallery(cli);
         await vm.Gallery.LoadAsync(TestContext.Current.CancellationToken);
 

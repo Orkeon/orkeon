@@ -34,6 +34,9 @@ public sealed class FakeUseCaseCli : IProcessLauncher
     /// <summary>The text of every query a session received, in order.</summary>
     public List<string> Queries { get; } = [];
 
+    /// <summary>The <c>top</c> every query asked for, in order.</summary>
+    public List<int> QueryTops { get; } = [];
+
     /// <summary>The sheets <c>list</c> answers with.</summary>
     public List<FakeUseCase> Catalog { get; } = [];
 
@@ -87,6 +90,7 @@ public sealed class FakeUseCaseCli : IProcessLauncher
         var query = JsonNode.Parse(queryLine)!;
         var text = query["text"]!.GetValue<string>();
         Queries.Add(text);
+        QueryTops.Add(query["top"]!.GetValue<int>());
 
         var results = new JsonArray();
         var rank = 0;

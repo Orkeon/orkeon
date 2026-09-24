@@ -156,26 +156,43 @@ public sealed record UseCaseAnswer
 /// Which use cases of an answer are close enough to a need to be suggested (STUDIO-39, D-03) —
 /// the rule behind « N close use cases » under the need box.
 /// <para>
-/// A match counts when it shares with the need at least one DISTINCTIVE term: a rare one
-/// (<see cref="UseCaseCatalog.IsRare"/>: at most three use cases in a hundred contain it), long
-/// enough to be a word of the need rather than of the sentence — four characters or more in a
-/// sentence, three in a keyword search of one or two words (<c>kyc</c>, <c>etl</c>), any length in
-/// Chinese, whose terms are character pairs.
+/// Among the first <see cref="Shown"/> matches, one counts when it shares with the need at least
+/// one DISTINCTIVE term: a rare one — carried by at most three use cases in a hundred of the
+/// catalogue (<see cref="RarePercent"/>) — and long enough to be a word of the need rather than of
+/// the sentence: four characters or more in a sentence, three in a keyword search of one or two
+/// words (<c>kyc</c>, <c>etl</c>), any length in Chinese, whose terms are character pairs. When no
+/// match qualifies, nothing is suggested — no hint rather than noise.
 /// </para>
 /// <para>
-/// Measured against the real catalogue and the CLI's answers: a match by meaning alone never
-/// counts — in hybrid mode a nonsense query still gets five of them, with similarities in the same
-/// range as a real one — and "shares terms" alone is not enough either: a plain French sentence
-/// shares <c>de</c>, <c>un</c> or <c>mes</c> with almost every sheet, so all five matches of a
-/// sentence about a sick cat answered "terms". The rarity keeps the words that carry a need, the
-/// length floor the short ones the catalogue happens to hold rarely (<c>est</c>, <c>il</c>). When
-/// no match qualifies, nothing is suggested — no hint rather than noise.
+/// How many use cases carry a term is read off the answer, never recomputed on Studio's side: the
+/// wizard asks for the whole catalogue (<c>top</c> = its size), and an answer by terms lists every
+/// sheet that shares a term with the need, each with every term it shares, spelled by the CLI's
+/// own normalization. In hybrid mode (English) the terms half of the fusion is the best twenty
+/// sheets — where the sheets of a rare term rank anyway.
+/// </para>
+/// <para>
+/// Measured against the real catalogue: a match by meaning alone never counts — in hybrid mode a
+/// nonsense query still gets five of them, with similarities in the same range as a real one — and
+/// "shares terms" alone is not enough either: a plain French sentence shares <c>de</c>, <c>un</c>
+/// or <c>mes</c> with almost every sheet, so all five matches of a sentence about a sick cat
+/// answered "terms". Rarity keeps the words that carry a need; the length floor drops the short
+/// ones the catalogue happens to hold rarely (<c>est</c>, <c>il</c>).
 /// </para>
 /// </summary>
 public static class UseCaseSuggestions
 {
-    /// <summary>A need of at most this many terms is a keyword search: its short terms are keywords.</summary>
-    public const int KeywordSearchTerms = 2;
+    /// <summary>How many of the best matches may be suggested.</summary>
+    public const int Shown = 5;
+
+    /// <summary>
+    /// The share of the catalogue a rare term appears in at most: three use cases in a hundred. On
+    /// the 105 sheets, the words that carry a need — <c>veille</c>, <c>factures</c>, <c>mails</c> —
+    /// sit at one to three, while the words every sentence is made of reach a fifth and more.
+    /// </summary>
+    public const int RarePercent = 3;
+
+    /// <summary>A need of at most this many words is a keyword search: its short terms are keywords.</summary>
+    public const int KeywordSearchWords = 2;
 
     /// <summary>In a sentence, a shorter term is a function word far more often than a need (<c>est</c>, <c>are</c>).</summary>
     public const int SentenceMinimumLength = 4;
@@ -183,32 +200,60 @@ public static class UseCaseSuggestions
     /// <summary>In a keyword search, a three-letter term is a keyword (<c>kyc</c>, <c>seo</c>).</summary>
     public const int KeywordMinimumLength = 3;
 
-    /// <summary>The matches of <paramref name="answer"/> worth suggesting, best first; only those the catalogue knows.</summary>
+    /// <summary>The most use cases a rare term appears in, for a catalogue of <paramref name="catalogueSize"/>: never less than one.</summary>
+    public static int RareLimit(int catalogueSize) => Math.Max(1, catalogueSize * RarePercent / 100);
+
+    /// <summary>
+    /// The matches of <paramref name="answer"/> worth suggesting, best first — only those the
+    /// catalogue knows. <paramref name="answer"/> must be an answer for the whole catalogue
+    /// (<c>top</c> at least its size), or the rarity it reads is a guess.
+    /// </summary>
     public static IReadOnlyList<UseCaseMatch> Close(UseCaseAnswer answer, UseCaseCatalog catalog)
     {
         ArgumentNullException.ThrowIfNull(answer);
         ArgumentNullException.ThrowIfNull(catalog);
 
-        var minimumLength = UseCaseTerms.Tokenize(answer.Query).Count <= KeywordSearchTerms
-            ? KeywordMinimumLength
-            : SentenceMinimumLength;
+        var carriers = new Dictionary<string, int>(StringComparer.Ordinal);
+        foreach (var term in answer.Matches.SelectMany(match => match.Terms.Distinct(StringComparer.Ordinal)))
+            carriers[term] = carriers.GetValueOrDefault(term) + 1;
+
+        var rareLimit = RareLimit(catalog.Count);
+        var minimumLength = WordCount(answer.Query) <= KeywordSearchWords ? KeywordMinimumLength : SentenceMinimumLength;
 
         return
         [
-            .. answer.Matches.Where(match =>
-                match.Reason != UseCaseMatchReason.Meaning
-                && catalog.Find(match.Id) is not null
-                && match.Terms.Any(term => IsDistinctive(term, catalog, minimumLength))),
+            .. answer.Matches
+                .Take(Shown)
+                .Where(match =>
+                    match.Reason != UseCaseMatchReason.Meaning
+                    && catalog.Find(match.Id) is not null
+                    && match.Terms.Any(term => carriers[term] <= rareLimit && IsLongEnough(term, minimumLength))),
         ];
     }
 
-    /// <summary>Whether <paramref name="term"/> is rare in <paramref name="catalog"/> and long enough to carry a need.</summary>
-    public static bool IsDistinctive(string term, UseCaseCatalog catalog, int minimumLength)
-    {
-        ArgumentNullException.ThrowIfNull(catalog);
+    /// <summary>A Chinese term is a character pair: no floor applies to it.</summary>
+    private static bool IsLongEnough(string term, int minimumLength) =>
+        term.Length >= minimumLength || (term.Length > 0 && IsHan(term[0]));
 
-        return !string.IsNullOrEmpty(term)
-            && (UseCaseTerms.IsChinese(term) || term.Length >= minimumLength)
-            && catalog.IsRare(term);
+    /// <summary>
+    /// The words of the need as it was typed: runs of letters or digits. Only their number matters —
+    /// one or two is a keyword search — so no spelling is normalized here.
+    /// </summary>
+    private static int WordCount(string text)
+    {
+        var count = 0;
+        var inWord = false;
+        foreach (var ch in text)
+        {
+            var letter = char.IsLetterOrDigit(ch);
+            if (letter && !inWord)
+                count++;
+            inWord = letter;
+        }
+
+        return count;
     }
+
+    /// <summary>CJK unified ideographs, the blocks simplified Chinese is written with — where the CLI cuts pairs.</summary>
+    private static bool IsHan(char ch) => ch is (>= '\u4E00' and <= '\u9FFF') or (>= '\u3400' and <= '\u4DBF');
 }

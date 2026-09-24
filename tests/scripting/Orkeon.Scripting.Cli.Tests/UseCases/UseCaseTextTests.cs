@@ -1,5 +1,4 @@
 using Orkeon.Scripting.Cli.Commands.UseCases;
-using Orkeon.Tests.Shared.UseCases;
 
 namespace Orkeon.Scripting.Cli.Tests.UseCases;
 
@@ -24,17 +23,6 @@ public sealed class UseCaseTextTests
     [InlineData("Cœur d'œuvre", new[] { "coeur", "d", "oeuvre" })]
     [InlineData("Façade à l'intégration", new[] { "facade", "a", "l", "integration" })]
     public void Case_and_accents_fold_in_every_latin_language(string text, string[] expected)
-    {
-        Assert.Equal(expected, UseCaseText.Tokenize(text));
-    }
-
-    /// <summary>
-    /// Studio counts how many sheets share the terms this normalization answers with (STUDIO-39),
-    /// so it mirrors it; the shared corpus is the promise both sides keep, checked on both.
-    /// </summary>
-    [Theory]
-    [MemberData(nameof(UseCaseTermsCorpus.Entries), MemberType = typeof(UseCaseTermsCorpus))]
-    public void The_shared_corpus_reads_the_same_terms_as_studio(string text, string[] expected)
     {
         Assert.Equal(expected, UseCaseText.Tokenize(text));
     }
