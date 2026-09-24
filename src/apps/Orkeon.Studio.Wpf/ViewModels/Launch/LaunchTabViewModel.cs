@@ -733,6 +733,28 @@ public sealed class LaunchTabViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Follows a team renamed from My teams (STUDIO-28): a target inside <paramref name="from"/> —
+    /// the folder, or a crew file in it — is picked again at the same place under
+    /// <paramref name="to"/>, where the team now is. Any other target is left as it is.
+    /// </summary>
+    public void FollowRenamedTeam(string from, string to)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(from);
+        ArgumentException.ThrowIfNullOrWhiteSpace(to);
+
+        var folder = TeamCatalog.NormalizePath(from);
+        if (Target.SelectedPath is not { Length: > 0 } selected
+            || string.Equals(folder, TeamCatalog.NormalizePath(to), Orkeon.Domain.FileSystem.PhysicalPathContainment.Comparison)
+            || !Orkeon.Domain.FileSystem.PhysicalPathContainment.IsUnder(TeamCatalog.NormalizePath(selected), folder))
+        {
+            return;
+        }
+
+        var inside = System.IO.Path.GetRelativePath(folder, TeamCatalog.NormalizePath(selected));
+        Target.Select(inside == "." ? to : System.IO.Path.Combine(to, inside));
+    }
+
+    /// <summary>
     /// Display name of the selected team (sidecar-backed, file name otherwise) — one line,
     /// whatever the sidecar says (STUDIO-16, D-01): a TextBlock renders line breaks even
     /// without wrapping, and a pasted page in <c>name</c> used to fill the whole card.

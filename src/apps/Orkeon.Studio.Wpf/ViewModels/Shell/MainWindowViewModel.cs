@@ -284,6 +284,15 @@ public sealed class MainWindowViewModel : ObservableObject
         // A draft discarded from My teams is gone from the disk: the wizard it was open on
         // goes back to a blank step 1 rather than keep a session that no longer exists.
         Teams.SessionDeleted += (_, e) => CreateTeam.ForgetSession(e.Session.Directory);
+        // STUDIO-28: a renamed team's launches were rewritten in the history (D-04) — the Run
+        // screen's list reloads — and a launcher aimed at the former folder follows the team.
+        Teams.TeamRenamed += (_, e) =>
+        {
+            _ = Launch.History.LoadAsync();
+            Launch.FollowRenamedTeam(e.From, e.Path);
+            Test.Launcher.FollowRenamedTeam(e.From, e.Path);
+            Test.RefreshTeams();
+        };
         // An adoption or an import may bring a schedule: its card asks the engine where it stands
         // (STUDIO-27, D-05) — and the wizard's « Install » says what it did.
         CreateTeam.TeamAdopted += (_, e) => { Teams.Refresh(); Test.RefreshTeams(); _ = Teams.CheckScheduleAsync(e.Path); };

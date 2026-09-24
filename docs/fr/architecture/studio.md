@@ -483,7 +483,8 @@ donc à nouveau éditables, une nouvelle décision `retry` re-exécute l'essai t
 quel (zéro jeton de composition, une itération de budget), et la ré-adoption
 **met à jour le même dossier d'équipe** — les fichiers générés (`crew/`,
 lanceurs, `FORGE.md`, `schedule/`) sont régénérés, le sidecar et les fichiers de
-l'utilisateur survivent, renommer l'équipe ne change que son nom d'affichage.
+l'utilisateur survivent, renommer l'équipe là ne change que son titre — le dossier se
+renomme avec « Renommer » (STUDIO-28, plus bas).
 Après une adoption, l'assistant est de nouveau une étape 1 vierge (STUDIO-20) :
 modifier une équipe adoptée passe par « Modifier » sur sa carte, et l'arbitrage
 rouvert propose `retry`. La session à laquelle une équipe est liée est la réponse
@@ -592,6 +593,35 @@ retrouvée par son identifiant et n'en est pas une. Chaque ligne a un « Nettoye
 place avant de supprimer (`DiagnosticViewModel` reçoit le workspace de l'atelier et le dossier des
 équipes). Une équipe déplacée hors du dossier des équipes peut aussi y apparaître : rien n'est
 supprimé sans l'utilisateur.
+
+### Renommer une équipe : son titre et son dossier (STUDIO-28)
+
+Une équipe a deux noms. Son **titre** est ce que montrent les cartes, `FORGE.md`, `forge.json` et la
+session ; son **dossier** est là où elle vit, et ce vers quoi pointe tout le reste — la session liée,
+l'historique des lancements, la planification que le système exécute, les artefacts de planification,
+les lanceurs. « Modifier » ne change que le titre : l'assistant qu'il rouvre ré-adopte dans le dossier
+même où est l'équipe, et l'étape 4 le dit sous le champ du nom — pour renommer le dossier, utilisez
+Renommer dans Mes équipes. « Renommer », un bouton libellé de la carte dans les deux modes, ouvre un
+éditeur à la place de la rangée d'actions — pas de boîte de dialogue — et lance
+`forge rename <dossier-equipe> --name <nom>` dans le workspace de l'atelier
+([référence CLI](../reference/cli.md#orkeon-forge)) : le moteur déplace le dossier vers celui du nom
+(la règle unique des dossiers), la session liée le suit, chaque titre et chaque fichier généré prend le
+nouveau nom, et une planification que le système exécute est réinstallée sous ce nom — tout ou rien,
+une étape ratée remettant en place tout ce qui a été fait avant. Studio le refuse, dans l'éditeur,
+tant que l'équipe est la cible de l'exécution en cours dans Exécuter ou Tester
+(`LaunchTabViewModel.RunningTarget` : le chemin sur lequel l'exécution a démarré, jamais le sélecteur
+vivant) ou ouverte dans l'assistant (`CreateTeam.ReopenedTeamPath`) — le crochet d'occupation
+`TeamsDependencies.ActivityOf`, que l'archivage partage —, et quand le dossier du nouveau nom est pris,
+en disant ce qui l'occupe avec les mots mêmes de l'assistant. Une exécution lancée hors de Studio (le
+CLI, le planificateur du système) lui est invisible : c'est l'annulation du moteur qui la protège. Une
+fois que le moteur a répondu, Studio réécrit ce qui lui appartient : l'historique des lancements, dont
+les entrées de l'ancien dossier — cible, dossier de travail, fichier de réglages, arguments — sont
+réécrites sous le nouveau, si bien que la carte garde sa dernière exécution et que « Relancer » rejoue
+là où est l'équipe ; un lanceur pointé sur l'ancien dossier le suit. Un dossier autorisé que les
+réglages déclarent par un chemin absolu dans l'ancien dossier pointait dans l'équipe et ne pointe plus
+nulle part : la ligne qui suit le renommage le dit, et les réglages ne sont jamais réécrits. Les
+dossiers relatifs à l'équipe (`./input`, `./output`) n'ont besoin de rien — ils sont à l'équipe, et ont
+bougé avec elle.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 

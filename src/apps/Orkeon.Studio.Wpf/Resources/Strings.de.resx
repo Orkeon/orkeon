@@ -2517,6 +2517,37 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Nicht gelöscht: das Laufwerk hat abgelehnt — vielleicht ist eine Datei des Teams geöffnet.</value>
   </data>
+  <!-- STUDIO-28: rename a team — the card's action and in-place editor, its refusals, and the wizard's hint -->
+  <data name="Studio.Teams.Rename" xml:space="preserve">
+    <value>Umbenennen</value>
+  </data>
+  <data name="Studio.Teams.RenameTip" xml:space="preserve">
+    <value>Team umbenennen: Ordner, Werkstatt-Sitzung und Zeitplan folgen dem neuen Namen.</value>
+  </data>
+  <data name="Studio.Teams.RenameLabel" xml:space="preserve">
+    <value>Neuer Name</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
+    <value>Nicht umbenannt: Das Team läuft gerade unter „Ausführen“ — warten Sie das Ende des Laufs ab.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
+    <value>Nicht umbenannt: Das Team läuft gerade unter „Erproben“ — warten Sie das Ende der Erprobung ab.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
+    <value>Nicht umbenannt: Das Team ist im Assistenten geöffnet — speichern Sie es zuerst unter „Meine Teams“ oder beginnen Sie dort neu.</value>
+  </data>
+  <data name="Studio.Teams.RenameFailed" xml:space="preserve">
+    <value>Die Umbenennung ist nicht erfolgt: {0}</value>
+  </data>
+  <data name="Studio.Teams.Renamed" xml:space="preserve">
+    <value>Team umbenannt in „{0}“ — sein Ordner heißt jetzt {1}.</value>
+  </data>
+  <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
+    <value>Prüfen Sie Einstellungen › Erlaubte Ordner: {0} lag im früheren Ordner des Teams und existiert nicht mehr.</value>
+  </data>
+  <data name="Studio.Create.RenameHint" xml:space="preserve">
+    <value>Um den Ordner umzubenennen, nutzen Sie „Umbenennen“ unter „Meine Teams“.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Den Zeitplan installieren (täglich um {0})?</value>
   </data>

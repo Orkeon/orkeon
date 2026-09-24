@@ -2517,6 +2517,37 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>未删除：磁盘拒绝了操作——团队的某个文件可能处于打开状态。</value>
   </data>
+  <!-- STUDIO-28: rename a team — the card's action and in-place editor, its refusals, and the wizard's hint -->
+  <data name="Studio.Teams.Rename" xml:space="preserve">
+    <value>重命名</value>
+  </data>
+  <data name="Studio.Teams.RenameTip" xml:space="preserve">
+    <value>重命名团队：其文件夹、工坊会话和计划都随新名称更新。</value>
+  </data>
+  <data name="Studio.Teams.RenameLabel" xml:space="preserve">
+    <value>新名称</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
+    <value>未重命名：该团队正在「执行」界面中运行——请等待运行结束。</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
+    <value>未重命名：该团队正在「试运行」界面中运行——请等待试运行结束。</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
+    <value>未重命名：该团队正在助手中打开——请先将其保存到我的团队，或在助手中重新开始。</value>
+  </data>
+  <data name="Studio.Teams.RenameFailed" xml:space="preserve">
+    <value>重命名未完成：{0}</value>
+  </data>
+  <data name="Studio.Teams.Renamed" xml:space="preserve">
+    <value>团队已重命名为“{0}”——其文件夹现在是 {1}。</value>
+  </data>
+  <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
+    <value>请检查「设置 › 授权文件夹」：{0} 位于团队原来的文件夹中，现已不存在。</value>
+  </data>
+  <data name="Studio.Create.RenameHint" xml:space="preserve">
+    <value>要重命名文件夹，请在“我的团队”中使用“重命名”。</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>安装计划（每天 {0}）？</value>
   </data>

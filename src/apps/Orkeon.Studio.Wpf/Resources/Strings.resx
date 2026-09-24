@@ -1143,6 +1143,37 @@
   <data name="Studio.Teams.DeleteRefused" xml:space="preserve">
     <value>Not deleted: the disk refused — a file of the team may be open.</value>
   </data>
+  <!-- STUDIO-28: rename a team — the card's action and in-place editor, its refusals, and the wizard's hint -->
+  <data name="Studio.Teams.Rename" xml:space="preserve">
+    <value>Rename</value>
+  </data>
+  <data name="Studio.Teams.RenameTip" xml:space="preserve">
+    <value>Rename the team: its folder, its workshop session and its schedule follow the new name.</value>
+  </data>
+  <data name="Studio.Teams.RenameLabel" xml:space="preserve">
+    <value>New name</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
+    <value>Not renamed: the team is running on the Run screen — wait for the run to end.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
+    <value>Not renamed: the team is running on the Test screen — wait for the trial to end.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
+    <value>Not renamed: the team is open in the assistant — save it to My teams or start over there first.</value>
+  </data>
+  <data name="Studio.Teams.RenameFailed" xml:space="preserve">
+    <value>The rename did not go through: {0}</value>
+  </data>
+  <data name="Studio.Teams.Renamed" xml:space="preserve">
+    <value>Team renamed “{0}” — its folder is now {1}.</value>
+  </data>
+  <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
+    <value>Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists.</value>
+  </data>
+  <data name="Studio.Create.RenameHint" xml:space="preserve">
+    <value>To rename the folder, use Rename in My teams.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Install the schedule (every day at {0})?</value>
   </data>

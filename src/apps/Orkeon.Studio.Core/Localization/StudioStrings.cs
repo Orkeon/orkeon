@@ -1425,6 +1425,26 @@ public static class StudioStringKeys
     /// <summary>"The session could not be deleted — one of its files may be open." — the orphan list when the disk kept a session (STUDIO-27, D-08).</summary>
     public const string DiagOrphanCleanFailed = "Studio.Diagnostics.OrphanCleanFailed";
 
+    // ---- STUDIO-28: renaming a team, its folder and all that follows it ----
+
+    /// <summary>"Not renamed: the team is running on the Run screen — wait for the run to end." — the rename editor's refusal while the Run screen runs the team (STUDIO-28, D-02).</summary>
+    public const string TeamsRenameBusyRunning = "Studio.Teams.RenameBusyRunning";
+
+    /// <summary>"Not renamed: the team is running on the Test screen — wait for the trial to end." — the refusal while the Test screen runs it (STUDIO-28, D-02).</summary>
+    public const string TeamsRenameBusyTesting = "Studio.Teams.RenameBusyTesting";
+
+    /// <summary>"Not renamed: the team is open in the assistant — save it to My teams or start over there first." — the refusal while « Modify » has it open (STUDIO-28, D-02).</summary>
+    public const string TeamsRenameBusyWizard = "Studio.Teams.RenameBusyWizard";
+
+    /// <summary>"The rename did not go through: {0}" — {0} is the engine's refusal, after which nothing changed (STUDIO-28, D-01).</summary>
+    public const string TeamsRenameFailed = "Studio.Teams.RenameFailed";
+
+    /// <summary>"Team renamed “{0}” — its folder is now {1}." — {0} the new name, {1} the new folder's name (STUDIO-28).</summary>
+    public const string TeamsRenamed = "Studio.Teams.Renamed";
+
+    /// <summary>"Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists." — {0} lists the declared folders the rename stranded, said and never rewritten (STUDIO-28, D-05).</summary>
+    public const string TeamsRenameStrandedFolders = "Studio.Teams.RenameStrandedFolders";
+
 
     // ---- Target picker (WPF ViewModel) --------------------------------------
 
@@ -2295,6 +2315,13 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardScheduleStopped] = "Its schedule is stopped.",
         [StudioStringKeys.DiagOrphanFolder] = "Its team folder is gone: {0}",
         [StudioStringKeys.DiagOrphanCleanFailed] = "The session could not be deleted — one of its files may be open.",
+
+        [StudioStringKeys.TeamsRenameBusyRunning] = "Not renamed: the team is running on the Run screen — wait for the run to end.",
+        [StudioStringKeys.TeamsRenameBusyTesting] = "Not renamed: the team is running on the Test screen — wait for the trial to end.",
+        [StudioStringKeys.TeamsRenameBusyWizard] = "Not renamed: the team is open in the assistant — save it to My teams or start over there first.",
+        [StudioStringKeys.TeamsRenameFailed] = "The rename did not go through: {0}",
+        [StudioStringKeys.TeamsRenamed] = "Team renamed “{0}” — its folder is now {1}.",
+        [StudioStringKeys.TeamsRenameStrandedFolders] = "Check Settings › Authorized folders: {0} was inside the team's former folder and no longer exists.",
 
         [StudioStringKeys.TargetNone] = "No target selected.",
         [StudioStringKeys.TargetResolved] = "{0} — orkeon run {1}",

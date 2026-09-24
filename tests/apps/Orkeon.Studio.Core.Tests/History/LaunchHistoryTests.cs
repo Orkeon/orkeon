@@ -94,6 +94,50 @@ public sealed class LaunchHistoryTests
         Assert.Equal(expected.Arguments, actual.Arguments);
     }
 
+    /// <summary>
+    /// STUDIO-28 (D-04): renaming a team moves its launches with it — the folder's, and a crew
+    /// file's inside it: target, working directory, settings file, and every argument naming a
+    /// path in it, a quoted mount spec and a variable's value included. Every other launch is left
+    /// as it was — a sibling whose folder name starts like the team's among them.
+    /// </summary>
+    [Fact]
+    public void Rebasing_moves_the_launches_of_a_renamed_team_and_nothing_else()
+    {
+        var teams = Path.Combine(Path.GetTempPath(), "orkeon-rebase", "teams");
+        var team = Path.Combine(teams, "ma-veille");
+        var renamed = Path.Combine(teams, "veille-du-matin");
+        var sibling = Path.Combine(teams, "ma-veille-2");
+        var launch = LaunchHistoryEntry.Starting(
+            team,
+            ["run", team, "--mount", $"{Path.Combine(team, "output")}:/output:rw", $"\"{Path.Combine(team, "input")}\":/workspace:ro",
+             "-V", $"REPORT={Path.Combine(team, "output", "r.md")}"],
+            settingsPath: Path.Combine(team, "appsettings.json"),
+            workingDirectory: team);
+        var script = LaunchHistoryEntry.Starting(
+            Path.Combine(team, "crew", "crew.ork.ts"), ["run", Path.Combine(team, "crew", "crew.ork.ts")], workingDirectory: Path.Combine(team, "crew"));
+        var other = LaunchHistoryEntry.Starting(
+            sibling, ["run", sibling, "--mount", $"{Path.Combine(team, "output")}:/shared:ro"], workingDirectory: sibling);
+        var history = LaunchHistory.Empty.Add(other).Add(script).Add(launch);
+
+        var rebased = history.Rebase(team + Path.DirectorySeparatorChar, renamed);
+
+        var moved = rebased.Entries[0];
+        Assert.Equal(renamed, moved.Target);
+        Assert.Equal(renamed, moved.WorkingDirectory);
+        Assert.Equal(Path.Combine(renamed, "appsettings.json"), moved.SettingsPath);
+        Assert.Equal(
+            ["run", renamed, "--mount", $"{Path.Combine(renamed, "output")}:/output:rw", $"\"{Path.Combine(renamed, "input")}\":/workspace:ro",
+             "-V", $"REPORT={Path.Combine(renamed, "output", "r.md")}"],
+            moved.Arguments);
+        Assert.Equal(Path.Combine(renamed, "crew", "crew.ork.ts"), rebased.Entries[1].Target);
+        Assert.Equal(["run", Path.Combine(renamed, "crew", "crew.ork.ts")], rebased.Entries[1].Arguments);
+        Assert.Equal(Path.Combine(renamed, "crew"), rebased.Entries[1].WorkingDirectory);
+
+        // The sibling ran another team: its launch is left as it was, even where it names the renamed one.
+        AssertSameEntry(other, rebased.Entries[2]);
+        Assert.Equal(3, rebased.Entries.Count);
+    }
+
     [Fact]
     public void Outcomes_are_stored_by_name_so_the_file_stays_readable()
     {

@@ -68,5 +68,18 @@ internal static class TeamsStops
             Arrange = CaptureAction.Sync(static c => c.Shell.Teams.Teams[0].AskDeleteCommand.Execute(null)),
             Teardown = CaptureAction.Sync(static c => c.Shell.Teams.Teams[0].CancelDeleteCommand.Execute(null)),
         },
+
+        new()
+        {
+            Name = "equipes-renommage",
+            Category = CaptureCategory.Teams,
+            Screen = CaptureScreen.Teams,
+            Because = "The card's action row REPLACED by its rename editor (STUDIO-28, D-07), the name "
+                    + "ready to be typed over — not a modal, so only a screenshot shows where it sits.",
+            Covers = ["Teams.Teams[0].IsRenaming"],
+            CoversFalse = ["Teams.Teams[0].IsIdle"],
+            Arrange = CaptureAction.Sync(static c => c.Shell.Teams.Teams[0].RenameCommand.Execute(null)),
+            Teardown = CaptureAction.Sync(static c => c.Shell.Teams.Teams[0].CancelRenameCommand.Execute(null)),
+        },
     ];
 }
