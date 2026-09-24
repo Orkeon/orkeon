@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Mentorat en programmation"
+  en: "Programming mentorship"
+  es: "Mentoría en programación"
+  de: "Mentoring beim Programmieren"
+  zh-Hans: "编程成长辅导"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux qu'on relise mon code, qu'on m'explique comment l'améliorer et ce que je dois apprendre ensuite"
+  en: "I want someone to review my code, explain how to improve it and tell me what to learn next"
+  es: "Quiero que revisen mi código, me expliquen cómo mejorarlo y qué debería aprender después"
+  de: "Ich möchte, dass jemand meinen Code prüft, mir erklärt, wie ich ihn verbessere, und sagt, was ich als Nächstes lernen sollte"
+  zh-Hans: "我想请人审阅我的代码，讲解如何改进，并告诉我下一步该学什么"
+tags: ["code-review", "mentoring", "software-development", "career-growth"]
 mounts:
   - "./output:/output:rw"
 importable: true

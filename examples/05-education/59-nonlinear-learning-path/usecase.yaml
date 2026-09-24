@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Parcours de formation sur mesure"
+  en: "Tailored learning path"
+  es: "Itinerario formativo a medida"
+  de: "Maßgeschneiderter Lernpfad"
+  zh-Hans: "量身定制的学习路径"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux un parcours de formation qui s'adapte à mes lacunes, avec des ressources choisies et un calendrier"
+  en: "I want a learning path that adapts to my knowledge gaps, with hand-picked resources and a schedule"
+  es: "Quiero un itinerario de formación que se adapte a mis lagunas, con recursos seleccionados y un calendario"
+  de: "Ich möchte einen Lernpfad, der sich an meine Wissenslücken anpasst, mit ausgewählten Materialien und einem Zeitplan"
+  zh-Hans: "我想要一条针对我知识薄弱点的学习路径，并配有精选资源和时间安排"
+tags: ["learning-path", "knowledge-gaps", "study-plan"]
 mounts:
   - "./output:/output:rw"
 importable: true

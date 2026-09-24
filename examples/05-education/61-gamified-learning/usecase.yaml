@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Apprendre en jouant"
+  en: "Learning through play"
+  es: "Aprender jugando"
+  de: "Spielerisch lernen"
+  zh-Hans: "寓学于乐"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux apprendre en relevant des défis qui rapportent des points, des badges et des niveaux"
+  en: "I want to learn by taking on challenges that earn points, badges and levels"
+  es: "Quiero aprender superando retos que dan puntos, insignias y niveles"
+  de: "Ich möchte lernen, indem ich Herausforderungen meistere, die Punkte, Abzeichen und neue Level bringen"
+  zh-Hans: "我想通过完成挑战来学习，赢取积分、徽章并逐级升级"
+tags: ["gamification", "learning", "challenges"]
 mounts:
   - "./output:/output:rw"
 importable: true

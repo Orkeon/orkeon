@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Répartition de portefeuille par consensus"
+  en: "Portfolio allocation by consensus"
+  es: "Reparto de cartera por consenso"
+  de: "Portfolioaufteilung im Konsens"
+  zh-Hans: "共识式投资组合配置"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux répartir un portefeuille d'actions en croisant plusieurs analyses, sans dépasser mes limites de risque"
+  en: "I want to allocate a stock portfolio by combining several analyses, without exceeding my risk limits"
+  es: "Quiero repartir una cartera de acciones combinando varios análisis, sin superar mis límites de riesgo"
+  de: "Ich möchte ein Aktienportfolio auf Basis mehrerer Analysen aufteilen, ohne meine Risikogrenzen zu überschreiten"
+  zh-Hans: "我想综合多种分析来配置股票投资组合，同时不超出我的风险上限"
+tags: ["portfolio-allocation", "investment", "risk-management"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

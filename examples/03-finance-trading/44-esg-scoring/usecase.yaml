@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Note de durabilité d'une entreprise"
+  en: "Company sustainability rating"
+  es: "Calificación de sostenibilidad empresarial"
+  de: "Nachhaltigkeitsbewertung eines Unternehmens"
+  zh-Hans: "企业可持续发展评级"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux évaluer une entreprise sur l'environnement, le social et la gouvernance, avec une note comparable"
+  en: "I want to rate a company on environment, social impact and governance, with a score I can compare"
+  es: "Quiero evaluar una empresa en medio ambiente, impacto social y gobernanza, con una puntuación comparable"
+  de: "Ich möchte ein Unternehmen in den Bereichen Umwelt, Soziales und Unternehmensführung bewerten und eine vergleichbare Gesamtnote erhalten"
+  zh-Hans: "我想从环境、社会和公司治理三方面评估一家企业，并得到可横向比较的评分"
+tags: ["esg", "sustainability", "company-rating"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

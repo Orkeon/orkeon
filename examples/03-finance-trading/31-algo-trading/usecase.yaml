@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Salle des marchés simulée"
+  en: "Simulated trading desk"
+  es: "Mesa de operaciones simulada"
+  de: "Simulierter Handelsraum"
+  zh-Hans: "模拟交易室"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux simuler une stratégie de trading complète, de l'analyse du marché aux achats et ventes, sans argent réel"
+  en: "I want to simulate a complete trading strategy, from market analysis to buying and selling, without real money"
+  es: "Quiero simular una estrategia de trading completa, del análisis del mercado a la compra y venta, sin dinero real"
+  de: "Ich möchte eine vollständige Handelsstrategie von der Marktanalyse bis zum Kauf und Verkauf simulieren, ohne echtes Geld"
+  zh-Hans: "我想完整模拟一套交易策略，从市场分析到买卖操作，全程不动用真实资金"
+tags: ["algorithmic-trading", "trading-simulation", "risk-management", "compliance"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

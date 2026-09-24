@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Prévision de trésorerie"
+  en: "Cash flow forecast"
+  es: "Previsión de tesorería"
+  de: "Liquiditätsprognose"
+  zh-Hans: "现金流预测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux prévoir ma trésorerie sur trois mois et savoir quand je risque de manquer d'argent"
+  en: "I want to forecast my cash flow for the next three months and know when I might run short of money"
+  es: "Quiero prever mi tesorería a tres meses y saber cuándo podría quedarme sin liquidez"
+  de: "Ich möchte meine Liquidität für die nächsten drei Monate vorhersagen und wissen, wann mir das Geld knapp werden könnte"
+  zh-Hans: "我想预测未来三个月的现金流，并知道什么时候可能出现资金短缺"
+tags: ["cash-flow", "forecasting", "treasury", "stress-scenarios"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

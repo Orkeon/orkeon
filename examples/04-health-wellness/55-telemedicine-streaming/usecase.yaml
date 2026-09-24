@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Téléconsultation assistée"
+  en: "Assisted video consultation"
+  es: "Teleconsulta asistida"
+  de: "Unterstützte Videosprechstunde"
+  zh-Hans: "远程问诊辅助"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Pendant mes téléconsultations, je veux des questions suggérées et des brouillons d'ordonnance et de notes, que je valide"
+  en: "During my video consultations, I want suggested questions and draft prescriptions and notes that I approve"
+  es: "Durante mis teleconsultas, quiero preguntas sugeridas y borradores de recetas y de notas que luego valido"
+  de: "In meinen Videosprechstunden möchte ich Vorschläge für Fragen sowie Entwürfe für Rezepte und Notizen, die ich freigebe"
+  zh-Hans: "远程问诊时，我希望得到建议提问，以及由我审核的处方和病历草稿"
+tags: ["telemedicine", "consultation-support", "prescriptions", "human-review"]
 mounts:
   - "./output:/output:rw"
 importable: true

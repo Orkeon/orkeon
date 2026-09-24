@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Dossiers médicaux au format standard"
+  en: "Medical records in a standard format"
+  es: "Historias clínicas en formato estándar"
+  de: "Patientenakten im Standardformat"
+  zh-Hans: "病历标准化"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux convertir des dossiers médicaux de formats variés au format standard des données de santé, en repérant les incohérences"
+  en: "I want to convert medical records in assorted formats to the standard health data format, flagging inconsistencies"
+  es: "Quiero convertir historias clínicas de formatos diversos al formato estándar de datos de salud, señalando las incoherencias"
+  de: "Ich möchte Patientenakten in unterschiedlichen Formaten in das Standardformat für Gesundheitsdaten überführen und Unstimmigkeiten markieren"
+  zh-Hans: "我想把各种格式的病历转换成医疗健康数据的标准格式，并标出不一致之处"
+tags: ["medical-records", "fhir", "data-extraction", "data-quality"]
 mounts:
   - "./output:/output:rw"
 importable: true

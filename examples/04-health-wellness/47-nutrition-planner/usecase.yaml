@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Menus de la semaine sur mesure"
+  en: "Tailored weekly meal plan"
+  es: "Menús semanales a medida"
+  de: "Wochenspeiseplan nach Maß"
+  zh-Hans: "量身定制的一周菜单"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux des menus pour la semaine qui respectent mes allergies, mes goûts et mes besoins nutritionnels"
+  en: "I want a week of meals that respects my allergies, my tastes and my nutritional needs"
+  es: "Quiero menús para la semana que respeten mis alergias, mis gustos y mis necesidades nutricionales"
+  de: "Ich möchte einen Wochenspeiseplan, der meine Allergien, meinen Geschmack und meinen Nährstoffbedarf berücksichtigt"
+  zh-Hans: "我想要一份一周菜单，兼顾我的过敏情况、口味偏好和营养需求"
+tags: ["nutrition", "meal-planning", "dietary-restrictions"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

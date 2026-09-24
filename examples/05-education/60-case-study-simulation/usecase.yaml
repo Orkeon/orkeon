@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Entraînement par mise en situation"
+  en: "Role-play practice"
+  es: "Práctica con casos simulados"
+  de: "Training im Rollenspiel"
+  zh-Hans: "情景模拟训练"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux m'entraîner face à un client dans une mise en situation réaliste, puis avoir un retour sur ma prestation"
+  en: "I want to practice with a client in a realistic role-play, then get feedback on how I did"
+  es: "Quiero practicar con un cliente en una simulación realista y luego recibir comentarios sobre mi desempeño"
+  de: "Ich möchte in einem realistischen Rollenspiel den Umgang mit Kunden üben und danach Feedback zu meiner Leistung erhalten"
+  zh-Hans: "我想在逼真的情景模拟中练习与客户打交道，然后获得对我表现的反馈"
+tags: ["role-play", "soft-skills", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Rapprochement banque, comptabilité et factures"
+  en: "Bank, ledger and invoice reconciliation"
+  es: "Conciliación de banco, contabilidad y facturas"
+  de: "Abgleich von Bank, Buchhaltung und Rechnungen"
+  zh-Hans: "银行、账务与发票对账"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux vérifier que mes relevés bancaires, ma comptabilité et mes factures concordent, et savoir comment corriger les écarts"
+  en: "I want to check that my bank statements, accounting records and invoices agree, and know how to fix the differences"
+  es: "Quiero comprobar que mis extractos bancarios, mi contabilidad y mis facturas cuadran, y saber cómo corregir las diferencias"
+  de: "Ich möchte prüfen, ob meine Kontoauszüge, meine Buchhaltung und meine Rechnungen übereinstimmen, und wissen, wie ich Abweichungen korrigiere"
+  zh-Hans: "我想核对银行流水、账务记录和发票是否一致，并知道如何修正其中的差异"
+tags: ["accounting", "reconciliation", "bank-statements", "invoices"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an

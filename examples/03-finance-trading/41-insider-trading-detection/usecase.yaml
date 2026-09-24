@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Détection de délit d'initié"
+  en: "Insider trading detection"
+  es: "Detección de uso de información privilegiada"
+  de: "Erkennung von Insiderhandel"
+  zh-Hans: "内幕交易识别"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Je veux repérer les opérations boursières suspectes réalisées juste avant une annonce d'entreprise et préparer un signalement"
+  en: "I want to spot suspicious stock trades made just before a company announcement and prepare a report for the authorities"
+  es: "Quiero detectar operaciones bursátiles sospechosas realizadas justo antes de un anuncio de empresa y preparar un informe para las autoridades"
+  de: "Ich möchte verdächtige Börsengeschäfte kurz vor einer Unternehmensmeldung erkennen und eine Verdachtsmeldung vorbereiten"
+  zh-Hans: "我想找出公司发布公告前夕的可疑股票交易，并准备上报材料"
+tags: ["insider-trading", "market-surveillance", "regulatory-reporting"]
 mounts:
   - "./output:/output:rw"
 # Reference only: the crew imports the shared ../_tools/ module, which an
