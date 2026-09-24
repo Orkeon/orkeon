@@ -26,7 +26,7 @@ A library with no UI and no entry point, consumed only by the three front-ends. 
 - **Launch/ & Process/** — building the `orkeon run` command line (`RunArgumentsBuilder`, `RunLaunchOptions`), locating the binary (`OrkeonBinaryLocator` — in order: the `--cli-dir` argument, next to the executable, the `ORKEON_CLI_DIR` environment variable, `PATH`, then the development checkout), running it and streaming output (`OrkeonProcessRunner`, `IProcessLauncher`), interpreting exit codes (`OrkeonExitCodes`, `LaunchOutcomeFormatter`), and the `orkeon doctor` report (`DoctorReport`).
 - **Forge/** — the typed client of `orkeon forge --events jsonl` (the engine behind the creation wizard): a tolerant line parser pinned against the CLI's golden protocol lines, the session projection every front reads (`ForgeSessionModel`, milestone mapping, the ✔/✘ checklist rules), the child-process driver with the stdin answer channel (`ForgeClient`, whose start request carries environment overrides — how Studio's assistant profile reaches the engine), the on-disk session catalogue and the resume hydrator. Studio's process never touches an LLM — it only ever sees JSON lines.
 - **Profiles/** — the named model settings of the v3 design (`ModelProfile`, `ModelProfileSet`, `ModelProfileFileStore` → `studio-model-profiles.json` next to the settings file): reusable "model settings", a default election mirrored into the `Llm` section, the profile Studio's own assistant runs on, and per-profile `ORKEON_Llm__*` environment overrides for launches (model, endpoint, temperature, timeout and the response budget `MaxTokens` — empty leaves the cap to the engine, which sends the model's documented maximum, and the hint under the field says what that is for the chosen model, or that the model is unknown to the catalogue and gets 4096 unless pinned — LLM-10; the thinking switch — provider default / on / off — and the reasoning-effort hint, `ORKEON_Llm__Thinking__{Enabled,Effort}`, and a timeout pre-filled to 600 s when the picked provider's default model reasons before it answers — Kimi, DeepSeek, Z.AI, MiniMax — LLM-11). The profile editor offers the full provider catalogue (`LlmPresets.ProviderCatalogFor` — the two local runtimes plus every cloud the framework ships a provider for, endpoint/model pre-filled from the drift-pinned runtime defaults), and a novice pastes the API key right in the editor: it lands in a **user environment variable** (`IApiKeyStore`/`EnvironmentApiKeyStore`, the vendor's conventional name such as `DEEPSEEK_API_KEY`) — the store file only ever carries the *name* of that variable (`ModelProfile.KeyEnvName`), and launches lay the resolved value over the child process as `ORKEON_Llm__ApiKey`. The key itself never enters any file. The store reads its file with case-insensitive property names — it is hand-editable, and `"profiles"` is what people type — and a file that exists but cannot be parsed is reported on the settings screen instead of loading as an empty set indistinguishable from a first run.
-- **Teams/** — the teams directory (`TeamCatalog`, default `~/Orkeon/teams`): every adopted team is an ordinary folder — listed, duplicated, deleted, imported (with an inline-secret scan, and refused before any copy when the launcher's detector cannot resolve it to a crew definition, with the detector's message) — plus the `studio-team.json` sidecar recording what the crew definition cannot say (name, need, profile, displayed schedule). The recorded profile is not decorative: launching an adopted team resolves it against the profile store and lays it over the run as `ORKEON_Llm__*`.
+- **Teams/** — the teams directory (`TeamCatalog`, default `~/Orkeon/teams`): every adopted team is an ordinary folder — listed, duplicated, deleted, imported (with an inline-secret scan, and refused before any copy when the launcher's detector cannot resolve it to a crew definition, with the detector's message) — plus the `studio-team.json` sidecar recording what the crew definition cannot say (name, need, profile, the schedule chosen — whether the system runs it is the engine's answer, STUDIO-27). The recorded profile is not decorative: launching an adopted team resolves it against the profile store and lays it over the run as `ORKEON_Llm__*`.
 - **Run/** — the typed client of a **watched** `orkeon run --events jsonl` (BUS-06): `RunClient`, ForgeClient's sibling and deliberately its twin — same launcher, same locator, same envelope parser — and `RunProgressModel`, which folds the stream into what a screen shows (the tasks in progress and every tool at work, delegations under way, finished tasks, cost, the question the run is waiting on — the whole state is under *The progress state of a run*, below). The client also carries the seat the run's hub gives a watching process: post to an agent, publish, subscribe, reply — and the Launch screen staffs that seat too: an agent's `send` (marked `expectsReply`) shows up as a request panel, and the typed reply goes back down stdin. See [The run event bus](run-event-bus.md).
 - **Storage/ & History/** — settings locations and resolution chain (`SettingsLocations`, `AppSettingsFile`), launch history (`LaunchHistoryStore`).
 - **Validation/** — `AppSettingsValidator` + `ValidationMessageFormatter`.
@@ -457,6 +457,45 @@ the existing team », which brings My teams forward. The engine is not asked unt
 free, so its refusal of a non-empty destination never reaches the screen. A re-adoption writes
 into its own team's folder, which is no collision.
 
+### The schedule, installed and stopped (STUDIO-27)
+
+Studio installs and removes a team's schedule itself, with the user's consent. The operating
+system runs the team — Orkeon still has no scheduler of its own — and the CLI, which owns the
+artifacts, does the operating system's part: `forge schedule`, `forge schedule --check` and
+`forge unschedule` ([CLI reference](../reference/cli.md#orkeon-forge)). Studio never runs
+`schtasks`, `systemctl` or `crontab` itself; it reads the engine's `schedule.state` event, or its
+`error`, whose `command` is what a person can run by hand. After adopting a scheduled team, the
+wizard asks under its status line « Install the schedule (every day at 08:00)? »
+(`ScheduleOfferViewModel`): « Install » runs `forge schedule` on the new folder, « Later » leaves
+the team installable from its card, and the outcome stays on screen as one line — with the
+manual command when the system refused. A re-adoption asks only when the schedule is no longer
+installed as declared (it checks first); a re-adoption « on demand » of a scheduled team stops the
+schedule before promoting — choosing on demand is the consent — and a refusal stops the save, the
+manual command in the status line. The « My teams » card shows the real state, the engine's answer
+and never the sidecar's: « Scheduled » — the badge turns green only then — « Schedule not
+installed » or « Schedule to reinstall » (moved, renamed, rescheduled or disabled), both amber;
+before the engine answered, the card claims nothing. The state is checked at startup and after
+each gesture — an adoption, an import, a duplication, an install, a stop — and every refresh lays
+the answers back on the rebuilt cards without asking again. The card carries two actions:
+« Install the schedule » (a declared schedule nothing runs, or one to reinstall) and « Stop the
+schedule » (`forge unschedule`, then `schedule` is removed from `studio-team.json`: the team is on
+demand). A refusal changes nothing, and the card shows what to run by hand.
+
+### Deleting a team leaves nothing behind (STUDIO-27)
+
+The in-place delete banner stops the team's schedule first — declared in the sidecar, or recorded
+as installed in its `forge.json` (`TeamSummary.HasSchedule`) — through `forge unschedule`; when
+the system refuses, the team stays and the banner says why, with the command to run by hand. The
+banner offers « Also delete the workshop session », ticked by default, for the session rule R links
+to the team (`ForgeSessionCatalog.LinkedSession`): rule R links a copy to no session, so deleting a
+copy never offers — nor deletes — its original's. The folder goes, then the session, announced to
+the wizard, which forgets it if it was open on it. The Diagnostic screen lists the orphan workshop
+sessions (`ForgeSessionCatalog.FindOrphans`): adopted sessions — listed nowhere else — whose
+`promotedTo` folder no longer exists; a team moved or renamed inside the teams directory is found
+by its id and is not one. Each row has a « Clean » that asks in place before deleting
+(`DiagnosticViewModel` takes the forge workspace and the teams root). A team moved outside the
+teams directory can show there too: nothing is deleted without the user.
+
 ### Tools and MCP in the settings (STUDIO-21)
 
 Two tabs the settings screen lacked. **Tools**, open to both modes, is three cards. The
@@ -555,6 +594,7 @@ The two TUIs target plain `net10.0` and are therefore cross-platform builds; onl
 
 - **Not a NuGet package** — all four projects set `IsPackable=false`; the only distribution channel is the release installers.
 - **Not a separate engine** — Studio never re-implements a workflow: it edits the CLI's settings file and spawns the CLI itself (`OrkeonProcessRunner`), so its results are exactly `orkeon run`'s.
+- **Not a scheduler** — a scheduled team is run by the operating system; Studio asks the CLI to install and remove the registration, with the user's consent (STUDIO-27).
 
 ---
 

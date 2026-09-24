@@ -13,7 +13,7 @@ Until this, Orkeon could be run from a terminal or embedded in a program. Both a
 
 **It is** a long-lived process that hosts one or more crews, isolates each run, bounds concurrency, answers a chat channel, and stops without abandoning work in flight.
 
-**It is not a scheduler.** rc.2 ships none, deliberately. A crew that should run every morning still needs the artifact `orkeon forge promote --schedule` produces — a Windows task, a systemd timer or a cron line — installed by a person. The host lays the foundation for one; it does not pretend to be it, and no part of this document should be read as saying otherwise.
+**It is not a scheduler.** Orkeon ships none, deliberately. A crew that should run every morning is run by the operating system, from the artifact `orkeon forge promote --schedule` produces — a Windows task, a systemd timer or a cron line — which `orkeon forge schedule` installs (Orkeon Studio asks the user first) and `orkeon forge unschedule` removes. The host lays the foundation for one; it does not pretend to be it, and no part of this document should be read as saying otherwise.
 
 The same binary runs three ways: in a terminal, as a systemd unit, as a Windows service. `UseSystemd()` and `UseWindowsService()` are inert outside their supervisor, so nothing is built differently. A daemon you cannot run in the foreground is a daemon you cannot debug.
 

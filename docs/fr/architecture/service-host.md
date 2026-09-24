@@ -13,7 +13,7 @@ Jusqu'ici, Orkeon s'exécutait depuis un terminal ou s'embarquait dans un progra
 
 **C'est** un processus long-vivant qui héberge une ou plusieurs crews, isole chaque run, borne la concurrence, répond à un canal de chat, et s'arrête sans abandonner le travail en vol.
 
-**Ce n'est pas un ordonnanceur.** rc.2 n'en livre aucun, délibérément. Une crew qui doit tourner chaque matin a toujours besoin de l'artefact que produit `orkeon forge promote --schedule` — tâche Windows, timer systemd ou ligne cron — installé par une personne. Le host en pose la fondation ; il ne prétend pas l'être, et aucune partie de ce document ne doit se lire autrement.
+**Ce n'est pas un ordonnanceur.** Orkeon n'en livre aucun, délibérément. Une crew qui doit tourner chaque matin est lancée par le système, à partir de l'artefact que produit `orkeon forge promote --schedule` — tâche Windows, timer systemd ou ligne cron —, que `orkeon forge schedule` installe (Orkeon Studio demande d'abord son accord à l'utilisateur) et que `orkeon forge unschedule` retire. Le host en pose la fondation ; il ne prétend pas l'être, et aucune partie de ce document ne doit se lire autrement.
 
 Le même binaire tourne de trois façons : en terminal, en unité systemd, en service Windows. `UseSystemd()` et `UseWindowsService()` sont inertes hors de leur superviseur, donc rien n'est construit différemment. **Un daemon qu'on ne peut pas lancer au premier plan est un daemon qu'on ne peut pas déboguer.**
 
