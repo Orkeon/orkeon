@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Simulateur de civilisations"
+  en: "Civilization simulator"
+  es: "Simulador de civilizaciones"
+  de: "Zivilisationssimulator"
+  zh-Hans: "文明模拟器"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Imaginer comment trois peuples fictifs commercent, s'allient ou s'affrontent, et en écrire la chronique"
+  en: "Imagine how three fictional peoples trade, ally or clash, and write their chronicle"
+  es: "Imaginar cómo tres pueblos ficticios comercian, se alían o se enfrentan, y escribir su crónica"
+  de: "Durchspielen, wie drei erfundene Völker Handel treiben, Bündnisse schließen oder Krieg führen, und eine Chronik darüber schreiben"
+  zh-Hans: "设想三个虚构民族如何通商、结盟或交战，并为此撰写编年史"
+tags: ["simulation", "strategy-game", "worldbuilding", "storytelling"]
 mounts:
   - "./output:/output:rw"
 importable: true

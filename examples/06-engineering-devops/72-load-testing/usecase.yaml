@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Test de charge d'une application"
+  en: "Application load testing"
+  es: "Prueba de carga de una aplicación"
+  de: "Lasttest einer Anwendung"
+  zh-Hans: "应用负载测试"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Vérifier que mon application tient la charge, repérer ses ralentissements et savoir quoi améliorer"
+  en: "Check that my application holds up under heavy use, spot its slowdowns and know what to improve"
+  es: "Comprobar que mi aplicación aguanta la carga, detectar sus ralentizaciones y saber qué mejorar"
+  de: "Prüfen, ob meine Anwendung der Last standhält, Verlangsamungen erkennen und wissen, was zu verbessern ist"
+  zh-Hans: "检验我的应用能否扛住高负载，找出变慢的环节，并明确改进方向"
+tags: ["performance", "load-testing", "regression-detection", "benchmarking"]
 mounts:
   - "./output:/output:rw"
 importable: true

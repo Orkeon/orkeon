@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Studio d'écriture"
+  en: "Story writing studio"
+  es: "Estudio de escritura"
+  de: "Schreibstudio"
+  zh-Hans: "故事写作工作室"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Écrire un chapitre de mon histoire, de l'intrigue aux dialogues, et en vérifier la cohérence"
+  en: "Write a chapter of my story, from plot to dialogue, and check that it holds together"
+  es: "Escribir un capítulo de mi historia, de la trama a los diálogos, y comprobar su coherencia"
+  de: "Ein Kapitel meiner Geschichte schreiben, von der Handlung bis zu den Dialogen, und seine Stimmigkeit prüfen"
+  zh-Hans: "为我的故事写一章，从情节到对白，并检查是否前后连贯"
+tags: ["creative-writing", "storytelling", "fiction", "continuity"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Nettoyage de code vérifié"
+  en: "Verified code cleanup"
+  es: "Limpieza de código verificada"
+  de: "Geprüfte Code-Bereinigung"
+  zh-Hans: "经过验证的代码清理"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Remettre au propre un code difficile à maintenir, en vérifiant que rien ne casse"
+  en: "Clean up hard-to-maintain code while checking that nothing breaks"
+  es: "Poner en orden un código difícil de mantener, comprobando que nada se rompe"
+  de: "Schwer wartbaren Code aufräumen und dabei prüfen, dass nichts kaputtgeht"
+  zh-Hans: "整理难以维护的代码，并检查没有破坏任何功能"
+tags: ["code-quality", "refactoring", "security", "testing"]
 mounts:
   - "./output:/output:rw"
 importable: true

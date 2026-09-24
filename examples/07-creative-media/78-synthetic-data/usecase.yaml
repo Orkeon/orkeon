@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Données fictives anonymes"
+  en: "Privacy-safe fake data"
+  es: "Datos ficticios anónimos"
+  de: "Anonyme fiktive Daten"
+  zh-Hans: "匿名虚拟数据"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Imiter mon fichier clients avec des données fictives et vérifier que personne n'y est reconnaissable"
+  en: "Mimic my customer file with fake data and check that no one can be recognized in it"
+  es: "Imitar mi archivo de clientes con datos ficticios y comprobar que nadie es reconocible en ellos"
+  de: "Meine Kundendatei mit fiktiven Daten nachbilden und prüfen, dass darin niemand wiederzuerkennen ist"
+  zh-Hans: "用虚拟数据仿制我的客户文件，并核实其中无法识别出任何人"
+tags: ["synthetic-data", "privacy", "anonymization", "data-generation"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

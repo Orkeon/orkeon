@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Négociation à plusieurs parties"
+  en: "Multi-party negotiation"
+  es: "Negociación entre varias partes"
+  de: "Verhandlung mit mehreren Parteien"
+  zh-Hans: "多方谈判"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Négocier un contrat d'achat entre priorités opposées, et trancher moi-même en cas de blocage"
+  en: "Negotiate a purchasing contract between competing priorities, and have the final say if talks stall"
+  es: "Negociar un contrato de compra entre prioridades enfrentadas y tener la última palabra si se bloquea"
+  de: "Einen Einkaufsvertrag zwischen widerstreitenden Prioritäten aushandeln und bei einer Blockade selbst entscheiden"
+  zh-Hans: "在相互冲突的诉求之间谈成一份采购合同，陷入僵局时由我拍板"
+tags: ["procurement", "negotiation", "consensus", "human-in-the-loop"]
 # data/ holds a reference brief that no tool reads (see README.md): nothing to mount.
 mounts:
   - "./output:/output:rw"

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Projet TypeScript vers Orkeon, avec garde-fous"
+  en: "TypeScript project to Orkeon, with safeguards"
+  es: "Proyecto TypeScript a Orkeon, con salvaguardas"
+  de: "TypeScript-Projekt zu Orkeon, mit Schutzmechanismen"
+  zh-Hans: "从 TypeScript 项目到 Orkeon（带防护）"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Décrire mon projet TypeScript et planifier sa migration vers Orkeon, sans que l'analyse s'emballe"
+  en: "Describe my TypeScript project and plan its migration to Orkeon, without the analysis getting out of hand"
+  es: "Describir mi proyecto TypeScript y planificar su migración a Orkeon, sin que el análisis se descontrole"
+  de: "Mein TypeScript-Projekt beschreiben und seine Migration zu Orkeon planen, ohne dass die Analyse ausufert"
+  zh-Hans: "梳理我的 TypeScript 项目并规划迁移到 Orkeon，避免分析失控"
+tags: ["typescript", "codebase-analysis", "migration-planning", "circuit-breaker"]
 mounts:
   - "./src:/src:ro"        # the TypeScript project to analyze, supplied by the user
   - "./output:/output:rw"

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Du projet TypeScript à Orkeon"
+  en: "From TypeScript project to Orkeon"
+  es: "Del proyecto TypeScript a Orkeon"
+  de: "Vom TypeScript-Projekt zu Orkeon"
+  zh-Hans: "从 TypeScript 项目到 Orkeon"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Décrire ce que fait mon projet TypeScript et planifier sa migration vers Orkeon"
+  en: "Describe what my TypeScript project does and plan its migration to Orkeon"
+  es: "Describir lo que hace mi proyecto TypeScript y planificar su migración a Orkeon"
+  de: "Beschreiben, was mein TypeScript-Projekt tut, und seine Migration zu Orkeon planen"
+  zh-Hans: "梳理我的 TypeScript 项目的功能，并规划将其迁移到 Orkeon"
+tags: ["typescript", "codebase-analysis", "functional-specification", "migration-planning"]
 mounts:
   - "./src:/src:ro"        # the TypeScript project to analyze, supplied by the user
   - "./output:/output:rw"

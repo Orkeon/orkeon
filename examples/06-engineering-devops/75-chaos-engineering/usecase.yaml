@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Test de résistance aux pannes"
+  en: "Failure resilience test"
+  es: "Prueba de resistencia a fallos"
+  de: "Test der Ausfallsicherheit"
+  zh-Hans: "抗故障能力测试"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Simuler une panne pour voir si mon service tient le coup, avec mon feu vert avant de la déclencher"
+  en: "Simulate a failure to see whether my service holds up, with my go-ahead before it is triggered"
+  es: "Simular un fallo para ver si mi servicio resiste, con mi visto bueno antes de provocarlo"
+  de: "Einen Ausfall simulieren, um zu sehen, ob mein Dienst standhält, und ihn erst nach meiner Freigabe auslösen"
+  zh-Hans: "模拟一次故障，看看我的服务能否挺住，触发前须经我同意"
+tags: ["devops", "chaos-engineering", "resilience", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

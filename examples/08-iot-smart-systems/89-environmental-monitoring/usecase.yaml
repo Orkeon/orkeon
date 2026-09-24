@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Surveillance environnementale"
+  en: "Environmental monitoring"
+  es: "Vigilancia ambiental"
+  de: "Umweltüberwachung"
+  zh-Hans: "环境监测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Faire le point sur l'air, l'eau, les sols et la biodiversité d'une zone, et signaler les dépassements"
+  en: "Assess the air, water, soil and biodiversity of an area, and flag what exceeds the limits"
+  es: "Evaluar el aire, el agua, los suelos y la biodiversidad de una zona, y señalar lo que supera los límites"
+  de: "Luft, Wasser, Böden und Artenvielfalt eines Gebiets bewerten und Grenzwertüberschreitungen melden"
+  zh-Hans: "评估一个区域的空气、水、土壤和生物多样性，并标出超标项"
+tags: ["environment", "air-quality", "water-quality", "biodiversity"]
 mounts:
   - "./output:/output:rw"
 importable: true

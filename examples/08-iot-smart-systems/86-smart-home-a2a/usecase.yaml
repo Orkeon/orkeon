@@ -1,17 +1,17 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Maison connectée coordonnée"
+  en: "Coordinated smart home"
+  es: "Casa inteligente coordinada"
+  de: "Abgestimmtes Smart Home"
+  zh-Hans: "协同智能家居"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Accorder chauffage, éclairage, alarme et dépense d'énergie de ma maison en un seul plan"
+  en: "Reconcile my home's heating, lighting, alarm and energy use in a single plan"
+  es: "Conciliar calefacción, iluminación, alarma y consumo de energía de mi casa en un único plan"
+  de: "Heizung, Licht, Alarmanlage und Energieverbrauch meines Hauses in einem einzigen Plan abstimmen"
+  zh-Hans: "把我家的供暖、照明、安防和用电统一到一份方案中"
+tags: ["smart-home", "home-automation", "energy-management", "home-security"]
 mounts: []
 importable: true

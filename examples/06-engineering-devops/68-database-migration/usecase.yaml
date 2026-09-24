@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Migration de base de données"
+  en: "Database migration"
+  es: "Migración de base de datos"
+  de: "Datenbankmigration"
+  zh-Hans: "数据库迁移"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Préparer le transfert de ma base de données vers un nouveau système et vérifier que rien ne se perd"
+  en: "Prepare moving my database to a new system and check that nothing gets lost"
+  es: "Preparar el traslado de mi base de datos a un nuevo sistema y comprobar que no se pierde nada"
+  de: "Den Umzug meiner Datenbank auf ein neues System vorbereiten und prüfen, dass nichts verloren geht"
+  zh-Hans: "准备把我的数据库迁移到新系统，并核实没有数据丢失"
+tags: ["database", "data-migration", "data-integrity"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Critique littéraire sous trois angles"
+  en: "Literary critique from three angles"
+  es: "Crítica literaria desde tres enfoques"
+  de: "Literaturkritik aus drei Blickwinkeln"
+  zh-Hans: "三种视角的文学评论"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Analyser une œuvre littéraire sous trois angles critiques indépendants, puis en faire la synthèse"
+  en: "Analyze a literary work from three independent critical angles, then pull them together"
+  es: "Analizar una obra literaria desde tres enfoques críticos independientes y después sintetizarlos"
+  de: "Ein literarisches Werk aus drei unabhängigen kritischen Blickwinkeln analysieren und die Ergebnisse zusammenführen"
+  zh-Hans: "从三个相互独立的批评视角分析一部文学作品，再加以综合"
+tags: ["literature", "literary-criticism", "critical-analysis", "synthesis"]
 mounts:
   - "./output:/output:rw"
 importable: true

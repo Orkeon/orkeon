@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Projet logiciel à plusieurs équipes"
+  en: "Multi-team software project"
+  es: "Proyecto de software con varios equipos"
+  de: "Softwareprojekt mit mehreren Teams"
+  zh-Hans: "多团队软件项目"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Répartir un projet logiciel entre recherche, développement, tests et documentation, puis tout rassembler"
+  en: "Split a software project into research, development, testing and documentation, then bring it all together"
+  es: "Repartir un proyecto de software entre investigación, desarrollo, pruebas y documentación, y luego reunirlo todo"
+  de: "Ein Softwareprojekt auf Recherche, Entwicklung, Tests und Dokumentation aufteilen und am Ende alles zusammenführen"
+  zh-Hans: "把一个软件项目拆分为调研、开发、测试和文档，最后汇总整合"
+tags: ["software-development", "project-coordination", "testing", "documentation"]
 mounts:
   - "./output:/output:rw"
 importable: true

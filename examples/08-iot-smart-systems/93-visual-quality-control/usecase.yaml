@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Contrôle qualité visuel"
+  en: "Visual quality control"
+  es: "Control de calidad visual"
+  de: "Visuelle Qualitätskontrolle"
+  zh-Hans: "视觉质量检测"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Repérer les pièces défectueuses d'une production et savoir si la qualité se dégrade"
+  en: "Spot defective parts in a production run and detect whether quality is slipping"
+  es: "Detectar las piezas defectuosas de una producción y saber si la calidad empeora"
+  de: "Fehlerhafte Teile in einer Produktion erkennen und feststellen, ob die Qualität nachlässt"
+  zh-Hans: "找出生产中的缺陷零件，并发现质量是否在下滑"
+tags: ["manufacturing", "quality-control", "defect-detection", "statistical-process-control"]
 mounts:
   - "./output:/output:rw"
 importable: true

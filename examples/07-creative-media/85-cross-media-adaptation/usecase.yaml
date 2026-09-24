@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Adaptation d'un support à un autre"
+  en: "Adapting a story to another medium"
+  es: "Adaptación de un medio a otro"
+  de: "Adaption in ein anderes Medium"
+  zh-Hans: "跨媒介改编"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Adapter une histoire d'un format à un autre, par exemple un roman en scénario"
+  en: "Adapt a story from one format to another, for example a novel into a screenplay"
+  es: "Adaptar una historia de un formato a otro, por ejemplo una novela a un guion"
+  de: "Eine Geschichte von einem Format in ein anderes übertragen, etwa einen Roman in ein Drehbuch"
+  zh-Hans: "把一个故事从一种形式改编成另一种，比如把小说改编成剧本"
+tags: ["adaptation", "screenwriting", "storytelling", "transmedia"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -1,18 +1,18 @@
 # Use-case sheet: the hand-written fields of this example in examples/usecases.json.
 # Layout and rules: examples/README.md, "Use-case sheet (usecase.yaml)".
 title:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
+  fr: "Archéologie d'un vieux logiciel"
+  en: "Digging into old software"
+  es: "Arqueología de un programa antiguo"
+  de: "Archäologie einer alten Software"
+  zh-Hans: "老旧软件考古"
 problem:
-  fr: ""
-  en: ""
-  es: ""
-  de: ""
-  zh-Hans: ""
-tags: []
+  fr: "Comprendre un vieux logiciel que plus personne ne connaît, le documenter et planifier sa modernisation"
+  en: "Understand old software nobody knows anymore, document it and plan its modernization"
+  es: "Entender un programa antiguo que ya nadie conoce, documentarlo y planificar su modernización"
+  de: "Eine alte Software verstehen, die niemand mehr kennt, sie dokumentieren und ihre Modernisierung planen"
+  zh-Hans: "弄懂一套已无人熟悉的老旧软件，为其编写文档并规划现代化改造"
+tags: ["legacy-code", "codebase-analysis", "documentation", "modernization"]
 mounts:
   - "./output:/output:rw"
 importable: true
