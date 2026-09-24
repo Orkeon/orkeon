@@ -29,6 +29,19 @@ public sealed partial class FolderSlugDriftTests
         "src/apps/Orkeon.Studio.Run",
     ];
 
+    /// <summary>
+    /// Files that fold accents for another purpose than naming a folder, each with its reason.
+    /// Only the accent-stripping rule skips them — a method named after slugs is still flagged
+    /// there — and <see cref="Every_exemption_still_folds_accents_and_names_no_folder"/> keeps
+    /// the list from outliving the code it excuses.
+    /// </summary>
+    private static readonly Dictionary<string, string> AccentFoldingExemptions = new(StringComparer.Ordinal)
+    {
+        ["src/scripting/Orkeon.Scripting.Cli/Commands/UseCases/UseCaseText.cs"] =
+            "STUDIO-38: the search normalization folds a query and a use-case sheet alike (FormKD) "
+            + "so BM25 matches 'resume' with 'résumé'; it produces terms, never a folder name.",
+    };
+
     [GeneratedRegex(@"NormalizationForm\s*\.\s*FormK?D\b|UnicodeCategory\s*\.\s*NonSpacingMark\b")]
     private static partial Regex AccentStrippingPattern();
 
@@ -46,8 +59,14 @@ public sealed partial class FolderSlugDriftTests
     {
         var root = RepositoryRoot();
         var violations = SourceFiles(root)
-            .SelectMany(file => Findings(File.ReadAllText(file))
-                .Select(finding => $"{Path.GetRelativePath(root, file)}:{finding}"))
+            .SelectMany(file =>
+            {
+                var relative = Path.GetRelativePath(root, file).Replace('\\', '/');
+                var exempt = AccentFoldingExemptions.ContainsKey(relative);
+                return Findings(File.ReadAllText(file))
+                    .Where(finding => !(exempt && finding.Contains("accent stripping", StringComparison.Ordinal)))
+                    .Select(finding => $"{relative}:{finding}");
+            })
             .ToList();
 
         Assert.True(
@@ -75,6 +94,25 @@ public sealed partial class FolderSlugDriftTests
         Assert.Contains("TeamCatalog.cs", names);
         Assert.Contains("CreateTeamViewModel.cs", names);
         Assert.Contains("AgentEditorViewModel.cs", names);
+    }
+
+    /// <summary>
+    /// An exemption outlives its reason when its file moves, or stops folding accents: then it
+    /// would excuse whatever lands at that path next. It never excuses a slug method.
+    /// </summary>
+    [Fact]
+    public void Every_exemption_still_folds_accents_and_names_no_folder()
+    {
+        var root = RepositoryRoot();
+
+        Assert.All(AccentFoldingExemptions, exemption =>
+        {
+            var path = Path.Combine(root, exemption.Key);
+            Assert.True(File.Exists(path), $"Exempted file is gone: {exemption.Key} ({exemption.Value})");
+            var findings = Findings(File.ReadAllText(path));
+            Assert.Contains(findings, finding => finding.Contains("accent stripping", StringComparison.Ordinal));
+            Assert.DoesNotContain(findings, finding => finding.Contains("slug method", StringComparison.Ordinal));
+        });
     }
 
     [Theory]
