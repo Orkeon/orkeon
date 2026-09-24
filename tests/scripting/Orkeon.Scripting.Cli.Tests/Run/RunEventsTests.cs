@@ -1,9 +1,17 @@
 using System.Collections.Immutable;
 using System.Text.Json;
+using Microsoft.Extensions.AI;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Application.Crew;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Hosting;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.LLMs.Adapters;
+using Orkeon.Scripting.Cli.Commands;
 using Orkeon.Scripting.Cli.Commands.Run;
 using Orkeon.Scripting.Cli.Events;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 using Orkeon.Scripting.Cli.Tests.Forge;
 
 namespace Orkeon.Scripting.Cli.Tests.Run;
@@ -55,7 +63,12 @@ internal sealed class RecordingHook : ICrewExecutionHook
 /// <summary>
 /// The run observer (BUS-02): what a crew run puts on the shared stream, and — the part
 /// that matters most — that observing a run never costs it the hook it already had.
+/// <para>
+/// In the CLI collection because one test runs a crew in-process, and a run writes to the
+/// process-global console.
+/// </para>
 /// </summary>
+[Collection(CliCollection.Name)]
 public sealed class RunEventsTests : IDisposable
 {
     private readonly StringWriter _output = new();
@@ -182,25 +195,199 @@ public sealed class RunEventsTests : IDisposable
     }
 
     [Fact]
-    public void The_meter_accumulates_and_never_invents_a_price()
+    public void The_meter_carries_both_directions_at_every_call()
     {
+        // STUDIO-29: the split used to arrive with run.finished only — a watcher saw one number
+        // grow and learnt what went up and what came back once the run was over.
         var observer = new RunEventObserver(Writer(), inner: null, stream: false);
 
-        observer.Record(new CostUsageEvent { CrewId = "c-7f3a", AgentId = "a-91b", PromptTokens = 100, CompletionTokens = 20, Model = "m", Provider = "p" });
-        observer.Record(new CostUsageEvent { PromptTokens = 30, CompletionTokens = 5 });
+        observer.Record(new CostUsageEvent { CrewId = "c-7f3a", AgentId = "Writer", PromptTokens = 100, CompletionTokens = 20, Model = "m", Provider = "p" });
+        observer.Record(new CostUsageEvent { PromptTokens = 30, CompletionTokens = 5, CacheHitTokens = 24, CacheMissTokens = 6 });
 
         var events = Events();
         Assert.Equal(2, events.Count);
+        Assert.All(events, e => Assert.Equal("cost.updated", e.GetProperty("kind").GetString()));
         Assert.Equal(120, events[0].GetProperty("tokens").GetInt64());
+        Assert.Equal(100, events[0].GetProperty("promptTokens").GetInt64());
+        Assert.Equal(20, events[0].GetProperty("completionTokens").GetInt64());
         Assert.Equal(155, events[1].GetProperty("tokens").GetInt64());
+        Assert.Equal(130, events[1].GetProperty("promptTokens").GetInt64());
+        Assert.Equal(25, events[1].GetProperty("completionTokens").GetInt64());
         Assert.Equal(155, observer.TokensUsed);
+
+        // The cache pair only once a provider measured it — unmeasured is absent, never 0.
+        Assert.False(events[0].TryGetProperty("cacheHitTokens", out _));
+        Assert.False(events[0].TryGetProperty("cacheMissTokens", out _));
+        Assert.Equal(24, events[1].GetProperty("cacheHitTokens").GetInt64());
+        Assert.Equal(6, events[1].GetProperty("cacheMissTokens").GetInt64());
 
         // Identity travels in the envelope when known, and is omitted when it is not.
         Assert.Equal("c-7f3a", events[0].GetProperty("crewId").GetString());
+        Assert.Equal("Writer", events[0].GetProperty("agentId").GetString());
+        Assert.Equal("p", events[0].GetProperty("provider").GetString());
         Assert.False(events[1].TryGetProperty("crewId", out _));
+    }
 
-        // No currency anywhere: the framework has no price table, so the stream has no price.
-        Assert.All(events, e => Assert.False(e.TryGetProperty("usd", out _)));
+    [Fact]
+    public void No_cost_reaches_the_wire_without_a_vendor_cost()
+    {
+        // DD-1: real cost only. A vendor that bills nothing in its answer leaves the price out
+        // — no estimate from a price table, under any name.
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        observer.Record(new CostUsageEvent { PromptTokens = 100, CompletionTokens = 20, Model = "gpt-4o", Provider = "openai" });
+
+        var e = Assert.Single(Events());
+        Assert.False(e.TryGetProperty("cost", out _));
+        Assert.False(e.TryGetProperty("currency", out _));
+        Assert.False(e.TryGetProperty("costSource", out _));
+        Assert.False(e.TryGetProperty("usd", out _));
+    }
+
+    [Fact]
+    public void The_vendor_cost_is_relayed_as_billed_and_adds_up_call_by_call()
+    {
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        observer.Record(new CostUsageEvent { PromptTokens = 100, CompletionTokens = 20, Cost = 0.0021m, CostCurrency = "USD" });
+        observer.Record(new CostUsageEvent { PromptTokens = 80, CompletionTokens = 10, Cost = 0.0008m, CostCurrency = "USD" });
+
+        var events = Events();
+        Assert.Equal(0.0021m, events[0].GetProperty("cost").GetDecimal());
+        Assert.Equal(0.0029m, events[1].GetProperty("cost").GetDecimal());
+        Assert.All(events, e =>
+        {
+            Assert.Equal("USD", e.GetProperty("currency").GetString());
+            Assert.Equal("vendor", e.GetProperty("costSource").GetString());
+        });
+    }
+
+    [Fact]
+    public void A_free_call_is_relayed_as_a_cost_of_zero()
+    {
+        // A free model bills 0 — which is a price, and a different fact from "no price".
+        var observer = new RunEventObserver(Writer(), inner: null, stream: false);
+
+        observer.Record(new CostUsageEvent { PromptTokens = 100, CompletionTokens = 20, Cost = 0m, CostCurrency = "USD" });
+
+        var e = Assert.Single(Events());
+        Assert.Equal(0m, e.GetProperty("cost").GetDecimal());
+        Assert.Equal("USD", e.GetProperty("currency").GetString());
+        Assert.Equal("vendor", e.GetProperty("costSource").GetString());
+    }
+
+    /// <summary>Two tasks, one agent: two calls to the vendor, one per task.</summary>
+    private const string TwoTaskCrew =
+        """
+        name: billed-crew
+        goal: Spend twice on a vendor that bills
+        process: sequential
+
+        agents:
+          writer:
+            role: "Writer"
+            goal: "Write"
+            backstory: "An agent whose vendor bills every answer."
+
+        tasks:
+          draft:
+            description: "Draft it."
+            expected_output: "A draft."
+            agent: writer
+          polish:
+            description: "Polish it."
+            expected_output: "A polished text."
+            agent: writer
+        """;
+
+    /// <summary>
+    /// Runs <see cref="TwoTaskCrew"/> through the real runner on <paramref name="vendor"/>, the
+    /// way <c>orkeon run --events jsonl</c> wires it, and returns the meter readings — after
+    /// checking the run succeeded on two calls and read its meter before it finished.
+    /// </summary>
+    private async Task<IReadOnlyList<JsonElement>> MeterOfTwoTaskRunAsync(FakeBillingLlmProvider vendor)
+    {
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", TwoTaskCrew);
+        using var console = new TestConsole(stdin: string.Empty);
+        using var chatClient = new LlmProviderToChatClientAdapter(vendor);
+        await using var observed = new ObservedRunContext(Writer(), stream: false, clientName: "studio");
+
+        var exit = await RunnerExecution.RunOneShotAsync(
+            RunCommand.ToRunnerOptions(new RunCommandOptions { ScriptPath = crew, AllowExternalMounts = true, Events = "jsonl" }),
+            "orkeon",
+            configureServices: (_, services) =>
+            {
+                services.Replace(ServiceDescriptor.Singleton<IBasicLlmProvider>(new LlmProviderAdapter(vendor)));
+                services.Replace(ServiceDescriptor.Singleton<IChatClient>(chatClient));
+                observed.WireServices(services);
+            },
+            TestContext.Current.CancellationToken);
+        await observed.FinishAsync(exit);
+
+        Assert.Equal(0, exit);
+        Assert.Equal(2, vendor.Calls);
+
+        var events = Events();
+        var kinds = events.Select(e => e.GetProperty("kind").GetString()).ToList();
+        var meter = events.Where(e => e.GetProperty("kind").GetString() == "cost.updated").ToList();
+        Assert.Equal(2, meter.Count);
+        Assert.True(kinds.LastIndexOf("cost.updated") < kinds.IndexOf("run.finished"));
+
+        // Both directions at every call, whatever the vendor bills.
+        Assert.Equal([150L, 300L], meter.Select(e => e.GetProperty("tokens").GetInt64()));
+        Assert.Equal([120L, 240L], meter.Select(e => e.GetProperty("promptTokens").GetInt64()));
+        Assert.Equal([30L, 60L], meter.Select(e => e.GetProperty("completionTokens").GetInt64()));
+        Assert.All(meter, e =>
+        {
+            Assert.Equal("fake-billing", e.GetProperty("provider").GetString());
+            Assert.Equal("vendor/model-x", e.GetProperty("model").GetString());
+            Assert.Equal("Writer", e.GetProperty("agentId").GetString());
+            Assert.False(string.IsNullOrEmpty(e.GetProperty("crewId").GetString()));
+            // The fake measured no cache: absent, not zero.
+            Assert.False(e.TryGetProperty("cacheHitTokens", out _));
+        });
+        return meter;
+    }
+
+    [Fact]
+    public async Task A_crew_on_a_vendor_that_bills_puts_the_split_and_the_real_cost_on_the_wire_call_by_call()
+    {
+        // The whole path, provider to wire, through the real runner: the charge the vendor
+        // wrote in its answer crosses the chat-client adapter, the agent loop reports it with
+        // the provider and the crew, and each cost.updated carries the running split and the
+        // running charge — before run.finished, which is the point of a meter.
+        var meter = await MeterOfTwoTaskRunAsync(new FakeBillingLlmProvider { ChargePerCall = 0.0021 });
+
+        Assert.Equal([0.0021m, 0.0042m], meter.Select(e => e.GetProperty("cost").GetDecimal()));
+        Assert.All(meter, e =>
+        {
+            Assert.Equal("USD", e.GetProperty("currency").GetString());
+            Assert.Equal("vendor", e.GetProperty("costSource").GetString());
+        });
+    }
+
+    [Fact]
+    public async Task A_crew_on_a_free_model_gets_a_cost_of_zero_on_the_wire()
+    {
+        // The vendor billed 0: a price, relayed as such — not the silence of "no price".
+        var meter = await MeterOfTwoTaskRunAsync(new FakeBillingLlmProvider { ChargePerCall = 0.0 });
+
+        Assert.Equal([0m, 0m], meter.Select(e => e.GetProperty("cost").GetDecimal()));
+        Assert.All(meter, e => Assert.Equal("vendor", e.GetProperty("costSource").GetString()));
+    }
+
+    [Fact]
+    public async Task A_crew_on_a_vendor_that_bills_nothing_gets_the_split_and_no_price()
+    {
+        var meter = await MeterOfTwoTaskRunAsync(new FakeBillingLlmProvider { ChargePerCall = null });
+
+        Assert.All(meter, e =>
+        {
+            Assert.False(e.TryGetProperty("cost", out _));
+            Assert.False(e.TryGetProperty("currency", out _));
+            Assert.False(e.TryGetProperty("costSource", out _));
+        });
     }
 
     [Fact]

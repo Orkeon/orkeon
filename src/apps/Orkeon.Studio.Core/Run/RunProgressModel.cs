@@ -19,8 +19,33 @@ public sealed record RunTaskProgress(
     int? ToolCalls,
     bool Skipped = false);
 
-/// <summary>What the run has spent so far.</summary>
-public sealed record RunCost(long Tokens, string? Model, string? Provider);
+/// <summary>
+/// What the run has spent so far, as its latest <c>cost.updated</c> said it — every figure
+/// cumulative. A field the line did not carry stays null: an older CLI sends no split, a
+/// provider that measures no cache sends no cache pair, and a vendor that bills nothing in
+/// its answers sends no amount. None of them is a zero.
+/// </summary>
+/// <param name="Tokens">Both directions together.</param>
+/// <param name="Model">The model that answered last, when reported.</param>
+/// <param name="Provider">The provider that answered last, when reported.</param>
+/// <param name="PromptTokens">What went up (↑).</param>
+/// <param name="CompletionTokens">What came back (↓).</param>
+/// <param name="CacheHitTokens">Prompt tokens served from the provider's cache — a partition of <paramref name="PromptTokens"/>.</param>
+/// <param name="CacheMissTokens">Prompt tokens the provider had to compute.</param>
+/// <param name="Amount">What the vendor billed, as billed (0 for a free call) — never an estimate.</param>
+/// <param name="Currency">The ISO 4217 code of <paramref name="Amount"/>, when stated.</param>
+/// <param name="Source">Who stated <paramref name="Amount"/>: <c>vendor</c>, the one source the CLI emits.</param>
+public sealed record RunCost(
+    long Tokens,
+    string? Model,
+    string? Provider,
+    long? PromptTokens,
+    long? CompletionTokens,
+    long? CacheHitTokens,
+    long? CacheMissTokens,
+    decimal? Amount,
+    string? Currency,
+    string? Source);
 
 /// <summary>A question a task is asking, waiting for this process to answer.</summary>
 public sealed record RunQuestion(
@@ -193,14 +218,21 @@ public sealed class RunProgressModel
                 break;
 
             case RunEventKinds.CostUpdated:
-                // tokens/model/provider are what the CLI actually emits. The first version
-                // read `usd` and `budgetRemaining` — fields the writer never produced (its own
-                // test pins their absence: the framework has no price table), so the screen
-                // was built against a fiction.
+                // Only what the CLI actually emits. The first version read `usd` and
+                // `budgetRemaining` — fields the writer never produced — so the screen was
+                // built against a fiction. The split and the vendor's charge arrive with every
+                // reading since STUDIO-29; a field a line leaves out stays null here.
                 Cost = new RunCost(
                     orkeonEvent.GetInt64("tokens") ?? 0,
                     orkeonEvent.GetString("model"),
-                    orkeonEvent.GetString("provider"));
+                    orkeonEvent.GetString("provider"),
+                    orkeonEvent.GetInt64("promptTokens"),
+                    orkeonEvent.GetInt64("completionTokens"),
+                    orkeonEvent.GetInt64("cacheHitTokens"),
+                    orkeonEvent.GetInt64("cacheMissTokens"),
+                    orkeonEvent.GetDecimal("cost"),
+                    orkeonEvent.GetString("currency"),
+                    orkeonEvent.GetString("costSource"));
                 break;
 
             case RunEventKinds.LlmDelta:

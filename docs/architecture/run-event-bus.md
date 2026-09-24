@@ -33,6 +33,8 @@ Every outbound line is an object carrying these keys, and only these as reserved
 
 **An absent key is omitted, never written as `null`.** A client treats every identity field as optional.
 
+**`v` moves only for a change an existing client would misread** — a field removed, renamed, or given another meaning. Adding is not such a change: a client ignores the kinds and fields it does not know (§6), so a new kind or a new payload field keeps `v: 2`. That is how `task.started` arrived, and how `cost.updated` gained the prompt/completion split and the vendor's cost.
+
 The eight names above are **reserved**: a payload field colliding with one is dropped rather than allowed to impersonate the envelope. This is not theoretical — the human-input payload originally called its field `kind` and lost it, which is why the wire name is `inputKind`.
 
 Payload fields sit **flat** beside the envelope, not nested under a `payload` key. The one exception is `hub.message`, whose payload is opaque to the protocol and is carried as-is.
@@ -50,12 +52,12 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
 | `delegation.started` | `toRole?` | One agent handed work to another (the `delegate_work_to_coworker` tool). The task description stays off the stream, like every other argument value. |
 | `agent.spawned` | `role?`, `reason?` | The team grew at runtime — emitted when a `spawn_agent` tool call is observed. rc.2 wires that tool into no agent by default, so this kind only appears in deployments that attach it themselves. |
-| `cost.updated` | `tokens`, `model?`, `provider?` | The token meter moves. `tokens` is cumulative; `model` when the provider reports it; `provider` only on the scripting facade's calls. There is **no price field**: the framework has no price table, and inventing one would be worse than omitting it. |
+| `cost.updated` | `tokens`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?`, `model?`, `provider?`, `cost?`, `currency?`, `costSource?` | The meter moves — after each agent turn and each `ctx.llm.*` call, while the run goes. Every figure is the run's cumulative total, like `run.finished`'s: `promptTokens` is what went up, `completionTokens` what came back, and the cache pair (a partition of the prompt side) appears once a provider measured it — unmeasured is absent, never `0`. `model` and `provider` say who answered; the envelope carries `crewId` and, as `agentId`, the agent's role. **The price is the vendor's own or nothing**: `cost` appears once a vendor billed in its answer (OpenRouter's `usage.cost`), with `costSource: "vendor"` and `currency` (ISO 4217) when the provider states it; a free call bills `0`, relayed as `0`. No estimate ever travels here — the framework's price registry serves budgets, and a figure computed from it would read as a bill. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | A task declared `humanInput: true` is asking. |
 | `hub.message` | `from?`, `topic?`, `payload?`, `expectsReply?` | The run's hub relayed something to this process. `from` is the sender's own hub address (`agent://{crew}/{agent}`, `crew://{crew}`) so the peer can attribute and answer; it is absent when the hub does not know (the answer to a `send`, which pairs by `correlationId` instead). `expectsReply: true` appears only on an agent's `send`: the sender is blocked awaiting a `reply` under its own timeout, and silence past it is a refusal. The peer must not have to guess which correlated lines are questions — a topic relay can carry a `correlationId` too. |
 | `error` | `code`, `message`, `recoverable` | Something went wrong. A run that stops — cancelled or failed, in any mode — ends with `code: crew_cancelled` or `crew_failed` before `run.finished`. |
-| `run.finished` | `success`, `exitCode`, `tokens` | The run ends. |
+| `run.finished` | `success`, `exitCode`, `tokens`, `durationMs`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?` | The run ends, with what it spent: the token total and its split, the wall time, and the cache pair when a provider measured it. |
 
 A run that reports nothing is not a run going well — it is a run reporting nothing. A client should show the difference rather than hide it.
 
@@ -121,8 +123,9 @@ A minimal exchange:
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publish the report?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
 → {"v":2,"seq":3,"ts":"…","kind":"task.started","taskId":"t1","agentRole":"writer"}
-→ {"v":2,"seq":4,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
-→ {"v":2,"seq":5,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
+→ {"v":2,"seq":4,"ts":"…","kind":"cost.updated","crewId":"01K…","agentId":"writer","tokens":1840,"promptTokens":1600,"completionTokens":240,"model":"google/gemini-3.7-flash","provider":"openrouter","cost":0.0021,"currency":"USD","costSource":"vendor"}
+→ {"v":2,"seq":5,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
+→ {"v":2,"seq":6,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840,"durationMs":4300,"promptTokens":1600,"completionTokens":240}
 ```
 
 Two rules worth building against. **Ignore a `kind` you do not know** — a newer Orkeon says more than an older client understands, and crashing on an unread line is worse than showing a little less. And **keep what you could not parse**: a line that is not protocol is still something the run said, and losing it loses the diagnosis.

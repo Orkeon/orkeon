@@ -43,9 +43,19 @@ public record CostUsageEvent
     public bool Estimated { get; init; }
 
     /// <summary>
-    /// Pre-calculated cost in USD. If zero, the manager will auto-calculate from the pricing registry.
+    /// What the vendor billed for the call, as it wrote it in its answer (OpenRouter's
+    /// <c>usage.cost</c>). <see langword="null"/> means UNKNOWN — the vendor bills nothing in
+    /// the response — and never free: a free model bills a real 0, which stays 0.
+    /// <see cref="ICostBudgetManager"/> prices a null from its registry for its own accounting
+    /// (budgets, reports), and only a null; that estimate never travels onto the wire.
     /// </summary>
-    public decimal Cost { get; init; }
+    public decimal? Cost { get; init; }
+
+    /// <summary>
+    /// The ISO 4217 code <see cref="Cost"/> is billed in, when the provider states it
+    /// (<c>USD</c> for OpenRouter, whose credits are dollars); null otherwise.
+    /// </summary>
+    public string? CostCurrency { get; init; }
 
     /// <summary>Type of operation (e.g., "llm_call", "embedding").</summary>
     public string OperationType { get; init; } = "llm_call";
@@ -194,7 +204,9 @@ public record CostBudgetCheckResult
 public interface ICostBudgetManager
 {
     /// <summary>
-    /// Records a usage event, auto-calculates cost if not provided, and checks budgets.
+    /// Records a usage event and checks budgets. A vendor cost is taken as billed, 0
+    /// included; only an unknown one (<see cref="CostUsageEvent.Cost"/> null) is priced from
+    /// the registry.
     /// </summary>
     CostBudgetCheckResult RecordUsage(CostUsageEvent usageEvent);
 

@@ -8,6 +8,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Tools.Protocol;
+using Orkeon.Infrastructure.CostTracking;
 
 namespace Orkeon.Infrastructure.LLMs.Adapters;
 
@@ -211,11 +212,13 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         var message = new ChatMessage(ChatRole.Assistant, contents);
         AttachReasoningContent(message, response);
 
-        return new ChatResponse(message)
+        var chatResponse = new ChatResponse(message)
         {
             ModelId = response.Model,
             Usage = BuildUsageDetails(response)
         };
+        AttachVendorCost(chatResponse, response);
+        return chatResponse;
     }
 
     /// <summary>Builds a plain text <see cref="ChatResponse"/> when no tool calls are present.</summary>
@@ -224,11 +227,13 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
         var message = new ChatMessage(ChatRole.Assistant, response.Content);
         AttachReasoningContent(message, response);
 
-        return new ChatResponse(message)
+        var chatResponse = new ChatResponse(message)
         {
             ModelId = response.Model,
             Usage = BuildUsageDetails(response)
         };
+        AttachVendorCost(chatResponse, response);
+        return chatResponse;
     }
 
     /// <summary>
@@ -276,6 +281,25 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
 
     private const string ReasoningContentMetadataKey = "reasoning_content";
 
+    /// <summary>
+    /// Carries what the vendor billed for the call (<see cref="LlmVendorCost"/>) onto the
+    /// response's <see cref="ChatResponse.AdditionalProperties"/>, as a decimal under
+    /// <see cref="LlmUsageMetadataKeys.Cost"/> with its currency beside it. The provider
+    /// metadata it comes from does not cross this adapter, and OpenRouter's real charge used to
+    /// stop here — read, stored, and never seen by the agent loop that reports usage
+    /// (STUDIO-29). Nothing is written for a call the vendor did not bill: absent is unknown.
+    /// </summary>
+    private static void AttachVendorCost(ChatResponse chatResponse, LlmResponse response)
+    {
+        if (!LlmVendorCost.TryRead(response, out var cost, out var currency))
+            return;
+
+        chatResponse.AdditionalProperties ??= new AdditionalPropertiesDictionary();
+        chatResponse.AdditionalProperties[LlmUsageMetadataKeys.Cost] = cost;
+        if (currency is not null)
+            chatResponse.AdditionalProperties[LlmUsageMetadataKeys.CostCurrency] = currency;
+    }
+
     /// <inheritdoc />
     public async IAsyncEnumerable<ChatResponseUpdate> GetStreamingResponseAsync(
         IEnumerable<ChatMessage> messages,
@@ -306,9 +330,12 @@ public sealed class LlmProviderToChatClientAdapter : IChatClient
             if (string.IsNullOrEmpty(raw.Content) && ProviderFailure(raw) is { } refusal)
                 throw refusal;
 
+            // The one update is the whole answer, so it carries what the answer cost: a
+            // consumer folding the updates gets the charge the buffered path would have given.
             yield return new ChatResponseUpdate(ChatRole.Assistant, mapped.Text ?? string.Empty)
             {
-                ModelId = mapped.ModelId
+                ModelId = mapped.ModelId,
+                AdditionalProperties = mapped.AdditionalProperties,
             };
         }
     }

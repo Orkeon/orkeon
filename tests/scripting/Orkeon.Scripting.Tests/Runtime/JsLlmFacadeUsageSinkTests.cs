@@ -242,6 +242,70 @@ public sealed class JsLlmFacadeUsageSinkTests
         Assert.Equal(42, e.CompletionTokens);
     }
 
+    // ── STUDIO-29: the vendor's charge, when it bills in its answer ─────────────────
+
+    private static LlmResponse Billed(LlmResponse response, double charge) => response with
+    {
+        Metadata = new Dictionary<string, object>
+        {
+            [Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.Cost] = charge,
+            [Orkeon.Application.Common.DTOs.LlmUsageMetadataKeys.CostCurrency] = "USD",
+        },
+    };
+
+    [Fact]
+    public async Task The_vendor_charge_reaches_the_sink_as_billed_with_its_currency()
+    {
+        // OpenRouter bills in its answer; the charge used to stop at the response metadata.
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var facade = Facade(engine, new ScriptedProvider(Billed(WithUsage("ok", 100, 20), 0.0021)), sink);
+
+        await facade.complete("hello", null);
+
+        var e = Assert.Single(sink.Events);
+        Assert.Equal(0.0021m, e.Cost);
+        Assert.Equal("USD", e.CostCurrency);
+    }
+
+    [Fact]
+    public async Task A_streamed_turn_reports_the_charge_of_its_final_response_zero_included()
+    {
+        // The chat stream's usage chunk carries the charge too; a free call is billed 0,
+        // which is a price — not the "unknown" of a vendor that bills nothing.
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var provider = new OneTurnStreamingProvider(Billed(WithUsage("streamed final", 200, 30), 0.0));
+        var facade = new JsLlmFacade(engine, provider, CancellationToken.None, Array.Empty<IBaseTool>(),
+            observability: new JsLlmObservability
+            {
+                DeltaSink = new NullDeltaSink(),
+                UsageSink = sink,
+                CrewName = "main-loop",
+                AgentName = "assistant",
+            });
+
+        await facade.ActAsync(engine, "go", null);
+
+        var e = Assert.Single(sink.Events);
+        Assert.Equal(0m, e.Cost);
+        Assert.Equal("USD", e.CostCurrency);
+    }
+
+    [Fact]
+    public async Task A_response_the_vendor_did_not_bill_reports_an_unknown_cost()
+    {
+        using var engine = new Engine();
+        var sink = new RecordingUsageSink();
+        var facade = Facade(engine, new ScriptedProvider(WithUsage("ok", 100, 20)), sink);
+
+        await facade.complete("hello", null);
+
+        var e = Assert.Single(sink.Events);
+        Assert.Null(e.Cost);
+        Assert.Null(e.CostCurrency);
+    }
+
     [Fact]
     public async Task A_throwing_sink_never_fails_the_llm_call()
     {

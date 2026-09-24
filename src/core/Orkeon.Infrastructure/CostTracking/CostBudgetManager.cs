@@ -42,14 +42,12 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
     public CostBudgetCheckResult RecordUsage(CostUsageEvent usageEvent)
     {
         ArgumentNullException.ThrowIfNull(usageEvent);
-        // Auto-calculate cost if not provided
-        var cost = usageEvent.Cost;
-        if (cost == 0m && (usageEvent.PromptTokens > 0 || usageEvent.CompletionTokens > 0))
-        {
-            cost = _pricingRegistry.CalculateCost(usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens);
-        }
+        // The vendor's own figure whenever it billed — 0 included: a free model is free, and
+        // reading 0 as "not provided" charged the registry price for a call that cost nothing.
+        // Only a call nobody priced (null) is estimated, for this manager's accounting alone.
+        var cost = usageEvent.Cost ?? EstimateCost(usageEvent);
 
-        // Store the event (with calculated cost)
+        // Store the event (with its cost settled)
         var eventWithCost = usageEvent with { Cost = cost };
         _history.Add(eventWithCost);
 
@@ -58,6 +56,11 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         // Check budgets
         return CheckBudgets(eventWithCost);
     }
+
+    private decimal EstimateCost(CostUsageEvent usageEvent) =>
+        usageEvent.PromptTokens > 0 || usageEvent.CompletionTokens > 0
+            ? _pricingRegistry.CalculateCost(usageEvent.Model, usageEvent.PromptTokens, usageEvent.CompletionTokens)
+            : 0m;
 
     /// <inheritdoc />
     public CostReport GetReport(string? crewId = null, string? agentId = null)
@@ -160,7 +163,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         string crewId,
         string? agentId)
     {
-        var totalCost = events.Sum(e => e.Cost);
+        var totalCost = events.Sum(e => e.Cost ?? 0m);
         var totalTokens = events.Sum(e => e.PromptTokens + e.CompletionTokens);
         var scope = agentId is not null ? $"agent '{agentId}' in crew '{crewId}'" : $"crew '{crewId}'";
 
@@ -300,7 +303,7 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
                 g => g.Key,
                 g =>
                 {
-                    var totalCost = g.Sum(e => e.Cost);
+                    var totalCost = g.Sum(e => e.Cost ?? 0m);
                     var totalCalls = g.Count();
                     return new AgentCostSummary(
                         AgentId: g.Key,
@@ -313,16 +316,16 @@ public sealed partial class CostBudgetManager : ICostBudgetManager
         var byModel = list
             .GroupBy(e => e.Model)
             .Where(g => !string.IsNullOrEmpty(g.Key))
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Cost));
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Cost ?? 0m));
 
         var byOperationType = list
             .GroupBy(e => e.OperationType)
             .Where(g => !string.IsNullOrEmpty(g.Key))
-            .ToDictionary(g => g.Key, g => g.Sum(e => e.Cost));
+            .ToDictionary(g => g.Key, g => g.Sum(e => e.Cost ?? 0m));
 
         return new CostReport
         {
-            TotalCost = list.Sum(e => e.Cost),
+            TotalCost = list.Sum(e => e.Cost ?? 0m),
             TotalTokens = list.Sum(e => e.PromptTokens + e.CompletionTokens),
             TotalCalls = list.Count,
             ByAgent = byAgent,

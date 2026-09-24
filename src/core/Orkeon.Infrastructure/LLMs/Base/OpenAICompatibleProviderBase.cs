@@ -5,6 +5,7 @@ using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
+using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Interfaces.LLM;
 using Orkeon.Domain.SharedKernel.ValueObjects.Content;
 using Orkeon.Domain.Constants.Llm;
@@ -92,6 +93,16 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     /// field: it names a concept, not a wire field.
     /// </summary>
     protected virtual string ReasoningFieldName => "reasoning_content";
+
+    /// <summary>
+    /// The ISO 4217 code of the charge a vendor writes in <c>usage.cost</c>, stated by the
+    /// provider that knows how its vendor bills (<c>USD</c> for OpenRouter, whose credits are
+    /// dollars). Written beside the <c>cost</c> metadata, and only with it, so a reader
+    /// downstream never has to guess the unit of a figure. Null for a vendor whose provider
+    /// states no currency: its charge, if it ever sends one, travels alone rather than under a
+    /// unit someone assumed.
+    /// </summary>
+    protected virtual string? CostCurrency => null;
 
     private readonly IToolCallingStrategy? _toolCallingStrategy;
 
@@ -608,7 +619,7 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         else if (!string.IsNullOrEmpty(dialectReasoning))
             metadata.Add("reasoning_content", dialectReasoning);
         if (state.Cost is { } cost)
-            metadata.Add("cost", cost);
+            AddVendorCost(metadata, cost);
 
         // The chat stream's form of a mid-stream error: the response CreateApiErrorResponse
         // builds for a 4xx — `error` + `error_type` — over the partial content, so a caller
@@ -1381,6 +1392,19 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
     }
 
     /// <summary>
+    /// Writes what the vendor billed (<c>usage.cost</c>) and, when this provider states it,
+    /// the currency of that charge (<see cref="CostCurrency"/>) — the pair the chat client
+    /// adapter and the scripting facade read back (<c>LlmVendorCost</c>). One writer for the
+    /// buffered and the streamed paths, so the two can never disagree on the keys.
+    /// </summary>
+    private void AddVendorCost(LlmResponseMetadata.Builder metadata, double cost)
+    {
+        metadata.Add(LlmUsageMetadataKeys.Cost, cost);
+        if (CostCurrency is { Length: > 0 } currency)
+            metadata.Add(LlmUsageMetadataKeys.CostCurrency, currency);
+    }
+
+    /// <summary>
     /// Parses a successful JSON response into an <see cref="LlmResponse"/>.
     /// </summary>
     /// <param name="responseJson">The raw JSON response body.</param>
@@ -1428,10 +1452,11 @@ public abstract partial class OpenAICompatibleProviderBase : HttpLlmProviderBase
         if (!string.IsNullOrEmpty(extractedReasoning))
             metadata.Add("reasoning_content", extractedReasoning);
         // The one vendor of the fleet that bills in the response (OpenRouter, in credits/USD)
-        // writes it here; everyone else leaves the key absent. Exposed, not accounted for:
-        // CostBudgetManager keeps estimating from the pricing registry (D-08).
+        // writes it here; everyone else leaves the key absent. It travels from here to the
+        // run's meter as billed (STUDIO-29): the chat client adapter carries it onto the
+        // ChatResponse, the agent loop reports it, and CostBudgetManager takes it as is.
         if (TryReadDouble(usage, "cost") is { } cost)
-            metadata.Add("cost", cost);
+            AddVendorCost(metadata, cost);
 
         return new LlmResponse
         {

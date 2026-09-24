@@ -251,6 +251,9 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
         var completed = Assert.Single(events, e => e.Kind == LlmStreamEventKind.Completed).FinalResponse!;
         Assert.Equal(42, completed.TokensUsed);
         Assert.Equal(0.00042, Assert.IsType<double>(completed.Metadata["cost"]));
+        // A vendor whose provider states no billing currency: the amount travels alone rather
+        // than under a unit somebody guessed.
+        Assert.False(completed.Metadata.ContainsKey("cost_currency"));
     }
 
     [Fact]
@@ -260,6 +263,7 @@ public sealed class OpenAICompatibleProviderBaseStreamDialectTests : IDisposable
         using var billedProvider = CreateDeepSeekProvider(billed);
         var billedResponse = await billedProvider.ChatAsync(OneUserMessage, cancellationToken: TestContext.Current.CancellationToken);
         Assert.Equal(0.0125, Assert.IsType<double>(billedResponse.Metadata["cost"]));
+        Assert.False(billedResponse.Metadata.ContainsKey("cost_currency"));
 
         var unbilled = """{"choices":[{"message":{"content":"ok"}}],"usage":{"total_tokens":3}}""";
         using var unbilledProvider = CreateDeepSeekProvider(unbilled);

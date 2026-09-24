@@ -79,6 +79,13 @@ public class OpenRouterLlmProvider : OpenAICompatibleProviderBase
     protected override string ReasoningFieldName => "reasoning";
 
     /// <summary>
+    /// OpenRouter bills in credits, and one credit is one US dollar: the charge in
+    /// <c>usage.cost</c> is a dollar amount, and this provider says so rather than leaving
+    /// every reader to guess (STUDIO-29).
+    /// </summary>
+    protected override string? CostCurrency => "USD";
+
+    /// <summary>
     /// Adds the two attribution headers OpenRouter documents for its public app ranking
     /// (D-06). Constant and always emitted: neither a secret nor a preference. The referer
     /// header is spelled <c>HTTP-Referer</c> as the vendor writes it — the framework's

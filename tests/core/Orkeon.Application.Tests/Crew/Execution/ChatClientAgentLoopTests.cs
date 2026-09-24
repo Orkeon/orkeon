@@ -3,6 +3,7 @@ using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
@@ -45,6 +46,9 @@ public class ChatClientAgentLoopTests
         /// <summary>The next call fails with the exception the factory builds when the call is made.</summary>
         public void EnqueueFailure(Func<Exception> failure) => _responses.Enqueue(failure);
 
+        /// <summary>The next call answers exactly this response.</summary>
+        public void Enqueue(ChatResponse response) => _responses.Enqueue(response);
+
         public System.Threading.Tasks.Task<ChatResponse> GetResponseAsync(
             IEnumerable<ChatMessage> messages, ChatOptions? options = null, CancellationToken cancellationToken = default)
         {
@@ -86,13 +90,20 @@ public class ChatClientAgentLoopTests
     private static DomainTask BuildTask() =>
         DomainTask.Create(TaskDescription.From("Chat loop task"), ExpectedOutput.From("An answer"));
 
-    private static (ChatClientAgentLoop loop, ScriptedChatClient client) BuildLoop(params IBaseTool[] registeredTools)
+    /// <summary>The crew every loop of this suite works for.</summary>
+    private const string CrewIdText = "01K5CREW7F3A0000000000000A";
+
+    private static (ChatClientAgentLoop loop, ScriptedChatClient client) BuildLoop(params IBaseTool[] registeredTools) =>
+        BuildLoop(usageSink: null, registeredTools);
+
+    private static (ChatClientAgentLoop loop, ScriptedChatClient client) BuildLoop(
+        ILlmUsageSink? usageSink, params IBaseTool[] registeredTools)
     {
         var logger = new SpyExecutionLogger();
         var client = new ScriptedChatClient();
         var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
         var composer = new ChatOptionsComposer(logger, registeredTools, new FakeFileSystemService());
-        var loop = new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger));
+        var loop = new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger), usageSink);
         return (loop, client);
     }
 
@@ -119,7 +130,7 @@ public class ChatClientAgentLoopTests
         };
         System.Diagnostics.ActivitySource.AddActivityListener(listener);
 
-        await loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+        await loop.ExecuteAsync(agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         var agentSpan = Assert.Single(spans, s => s.Source.Name == "Orkeon.Agent" && s.DisplayName == "invoke_agent Span Agent 7f3e");
         Assert.Equal("invoke_agent", agentSpan.GetTagItem("gen_ai.operation.name"));
@@ -160,7 +171,7 @@ public class ChatClientAgentLoopTests
         });
 
         var result = await loop.ExecuteAsync(
-            BuildAgent(5), BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            BuildAgent(5), BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("final", result.Output);
         Assert.Equal(100, result.TokensUsed);
@@ -181,7 +192,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("DONE");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("DONE", result.Output);
         Assert.Equal(2, result.IterationsUsed);
@@ -203,7 +214,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("DONE");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("DONE", result.Output);
         Assert.Equal(3, result.IterationsUsed);
@@ -225,7 +236,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(broken);
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 6, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 6, TestContext.Current.CancellationToken);
 
         Assert.Equal(broken, result.Output);
         Assert.Equal(3, result.IterationsUsed);
@@ -244,7 +255,7 @@ public class ChatClientAgentLoopTests
 
         var toolsUsed = new List<ToolUsage>();
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", toolsUsed, 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", toolsUsed, 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("final after fallback", result.Output);
         Assert.Equal(2, result.IterationsUsed);
@@ -269,7 +280,7 @@ public class ChatClientAgentLoopTests
             client.EnqueueFunctionCall($"call-{i}", "flaky");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 10, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 10, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.CircuitBreakerTripped, result.ExitReason);
         Assert.Contains("identical tool call failures", result.Output, StringComparison.Ordinal);
@@ -290,7 +301,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("synthesized answer");  // the tool-free retry
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("synthesized answer", result.Output);
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
@@ -315,7 +326,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("synthesis from gathered context");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 99, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 99, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal("synthesis from gathered context", result.Output);
@@ -334,7 +345,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(""); // the synthesis retry also fails
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 99, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 99, TestContext.Current.CancellationToken);
 
         // The iteration budget is the cause and the empty answer its symptom: a failed exit
         // as before, with a reason written for the summary rather than a code (STUDIO-12 C5a).
@@ -357,7 +368,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText(""); // the tool-free retry stays empty
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         // Used to exit Completed with an empty output and LastError = "empty_final_message_after_retry":
         // task.completed success:true, run.finished success:true, exit code 0, no deliverable.
@@ -384,7 +395,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -402,7 +413,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));   // …which fails
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(KimiTimeout, result.LastError);
@@ -419,7 +430,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueFailure(() => new HttpRequestException(KimiTimeout));
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.LlmCallFailed, result.ExitReason);
         Assert.Equal(2, result.IterationsUsed);
@@ -441,7 +452,7 @@ public class ChatClientAgentLoopTests
         });
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() =>
-            loop.ExecuteAsync(agent, BuildTask(), "sys", "user", [], 5, cts.Token));
+            loop.ExecuteAsync(agent, BuildTask(), CrewIdText, "sys", "user", [], 5, cts.Token));
     }
 
     [Fact]
@@ -457,7 +468,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("the answer, at last");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.Completed, result.ExitReason);
         Assert.Equal("the answer, at last", result.Output);
@@ -474,7 +485,7 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("   ");
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal(AgentExitReason.EmptyFinalAnswer, result.ExitReason);
         Assert.Equal(string.Empty, result.Output);
@@ -495,9 +506,88 @@ public class ChatClientAgentLoopTests
         client.EnqueueText("clean final text");                     // escalated retry
 
         var result = await loop.ExecuteAsync(
-            agent, BuildTask(), "sys", "user", [], 5, TestContext.Current.CancellationToken);
+            agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
 
         Assert.Equal("clean final text", result.Output);
         Assert.Equal(4, client.Requests.Count);
+    }
+
+    // ── STUDIO-29: what each call cost reaches the run's meter ────────────────────────
+
+    private static ChatResponse Answer(ChatMessage message, int prompt, int completion, decimal? vendorCost = null)
+    {
+        var response = new ChatResponse(message)
+        {
+            ModelId = "google/gemini-3.7-flash",
+            Usage = new UsageDetails { InputTokenCount = prompt, OutputTokenCount = completion, TotalTokenCount = prompt + completion },
+        };
+        if (vendorCost is { } cost)
+        {
+            response.AdditionalProperties = new AdditionalPropertiesDictionary
+            {
+                [LlmUsageMetadataKeys.Cost] = cost,
+                [LlmUsageMetadataKeys.CostCurrency] = "USD",
+            };
+        }
+
+        return response;
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task Every_call_reaches_the_usage_sink_with_its_provider_its_crew_and_the_vendor_charge()
+    {
+        // The YAML path's only usage report used to leave the provider, the crew and the cost
+        // out: the wire could not say who answered, and the vendor's real charge never left
+        // the adapter.
+        var sink = new MockLlmUsageSink();
+        var tool = new SpyTool("worker", result: "did work");
+        var agent = BuildAgent(5, tool);
+        var (loop, client) = BuildLoop(sink, tool);
+        client.Enqueue(Answer(new ChatMessage(ChatRole.Assistant, [new FunctionCallContent("call-1", "worker")]), 100, 10, 0.0008m));
+        client.Enqueue(Answer(new ChatMessage(ChatRole.Assistant, "done"), 120, 30, 0.0021m));
+
+        await loop.ExecuteAsync(agent, BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, sink.Recorded.Count);
+        Assert.All(sink.Recorded, usage =>
+        {
+            Assert.Equal("scripted-basic", usage.Provider);
+            Assert.Equal(CrewIdText, usage.CrewId);
+            Assert.Equal("Chat Agent", usage.AgentId);
+            Assert.Equal("agent", usage.OperationType);
+            Assert.Equal("google/gemini-3.7-flash", usage.Model);
+            Assert.Equal("USD", usage.CostCurrency);
+        });
+        Assert.Equal([100, 120], sink.Recorded.Select(u => u.PromptTokens));
+        Assert.Equal([10, 30], sink.Recorded.Select(u => u.CompletionTokens));
+        Assert.Equal(new decimal?[] { 0.0008m, 0.0021m }, sink.Recorded.Select(u => u.Cost));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_call_the_vendor_did_not_bill_reaches_the_sink_with_an_unknown_cost()
+    {
+        // Unknown, not free: nothing downstream may read a missing charge as zero.
+        var sink = new MockLlmUsageSink();
+        var (loop, client) = BuildLoop(sink);
+        client.Enqueue(Answer(new ChatMessage(ChatRole.Assistant, "done"), 120, 30));
+
+        await loop.ExecuteAsync(BuildAgent(5), BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Null(usage.Cost);
+        Assert.Null(usage.CostCurrency);
+        Assert.Equal(120, usage.PromptTokens);
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task A_free_call_reaches_the_sink_as_zero()
+    {
+        var sink = new MockLlmUsageSink();
+        var (loop, client) = BuildLoop(sink);
+        client.Enqueue(Answer(new ChatMessage(ChatRole.Assistant, "done"), 120, 30, 0m));
+
+        await loop.ExecuteAsync(BuildAgent(5), BuildTask(), CrewIdText, "sys", "user", [], 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(0m, Assert.Single(sink.Recorded).Cost);
     }
 }

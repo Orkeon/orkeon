@@ -1,1 +1,3 @@
 #nullable enable
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.get -> double
+*REMOVED*Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse.Cost.init -> void

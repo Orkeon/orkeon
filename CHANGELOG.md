@@ -7,6 +7,34 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+<!-- STUDIO-29 -->
+### Changed — `cost.updated` carries the ↑/↓ split and the vendor's real cost while the run goes (STUDIO-29)
+
+- **The split no longer waits for the end.** Every `cost.updated` of `orkeon run --events
+  jsonl` now carries the run's cumulative `promptTokens` and `completionTokens`, and the
+  cache pair `cacheHitTokens` / `cacheMissTokens` once a provider measured it — the fields
+  `run.finished` already had. The event names the `provider` on the YAML path too, and its
+  envelope carries the `crewId` (the agent's role stays `agentId`). The envelope keeps
+  `v: 2`: the fields are additive, and `run-event-bus.md` now writes that rule down.
+- **The vendor's real charge reaches the wire, and nothing else does.** OpenRouter bills in
+  its answer (`usage.cost`): the provider base already read it into the `cost` metadata, and
+  it died at the chat client adapter. It now travels as billed — the provider states its
+  currency beside it (`cost_currency`, `USD` for OpenRouter's dollar credits), the adapter
+  carries both onto the `ChatResponse` (buffered and streamed fallback), the agent loop and
+  the scripting facade put them on the usage event, and `cost.updated` relays `cost`,
+  `currency` and `costSource: "vendor"`. A free model bills `0`, relayed as `0`; a vendor
+  that bills nothing in its answer leaves no price on the wire at all — the framework's
+  price registry never estimates one there (DD-1).
+- **`CostUsageEvent.Cost` is `decimal?`** (breaking): null means unknown, and
+  `CostBudgetManager` prices from its registry only a null — a vendor's `0` used to be read
+  as "not provided" and charged at the registry price. The event also gains `CostCurrency`,
+  and the agent loop now fills `Provider`, `CrewId` and `OperationType` (`agent`).
+- **`LlmResponse.Cost` is removed** (breaking): nothing read or wrote it; the charge
+  travels in the metadata and is read with `LlmVendorCost.TryRead`.
+- Studio's `RunProgressModel` folds the new fields into `RunCost` (`PromptTokens`,
+  `CompletionTokens`, the cache pair, `Amount`, `Currency`, `Source`); a field a line leaves
+  out stays null. The screens that show them are STUDIO-30 and STUDIO-34.
+
 ### Fixed — `Orkeon.Compliance.Vfs` is compiled against Roslyn 4.8.0 again
 
 - The 2026-09-21 dependency bump raised the analyzer's `Microsoft.CodeAnalysis.CSharp`

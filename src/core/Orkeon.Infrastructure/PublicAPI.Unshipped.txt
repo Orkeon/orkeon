@@ -1,1 +1,5 @@
 #nullable enable
+Orkeon.Infrastructure.CostTracking.LlmVendorCost
+static Orkeon.Infrastructure.CostTracking.LlmVendorCost.TryRead(Orkeon.Domain.SharedKernel.ValueObjects.LlmResponse! response, out decimal cost, out string? currency) -> bool
+virtual Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.CostCurrency.get -> string?
+override Orkeon.Infrastructure.LLMs.OpenRouterLlmProvider.CostCurrency.get -> string?

@@ -33,6 +33,8 @@ Chaque ligne sortante est un objet portant ces clés, et elles seules comme noms
 
 **Une clé absente est omise, jamais écrite à `null`.** Un client traite tout champ d'identité comme optionnel.
 
+**`v` ne bouge que pour un changement qu'un client existant lirait de travers** — un champ retiré, renommé ou qui change de sens. Ajouter n'en est pas un : un client ignore les kinds et les champs qu'il ne connaît pas (§6), si bien qu'un nouveau kind ou un nouveau champ de charge utile garde `v: 2`. C'est ainsi que `task.started` est arrivé, et que `cost.updated` a reçu la répartition prompt / completion et le coût du fournisseur.
+
 Les huit noms ci-dessus sont **réservés** : un champ de charge utile qui entre en collision avec l'un d'eux est supprimé plutôt qu'autorisé à se faire passer pour l'enveloppe. Ce n'est pas théorique — la charge utile de l'entrée humaine appelait d'abord son champ `kind` et le perdait, d'où le nom `inputKind` sur le fil.
 
 Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriqués sous une clé `payload`. Seule exception : `hub.message`, dont la charge est opaque au protocole et transportée telle quelle.
@@ -50,12 +52,12 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
 | `delegation.started` | `toRole?` | Un agent a confié du travail à un autre (l'outil `delegate_work_to_coworker`). La description de la tâche reste hors du flux, comme toute valeur d'argument. |
 | `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution — émis quand un appel à l'outil `spawn_agent` est observé. rc.2 ne câble cet outil sur aucun agent par défaut : ce kind n'apparaît que dans les déploiements qui l'attachent eux-mêmes. |
-| `cost.updated` | `tokens`, `model?`, `provider?` | Le compteur de jetons bouge. `tokens` est cumulatif ; `model` quand le fournisseur le rapporte ; `provider` seulement sur les appels de la façade de scripting. **Aucun champ de prix** : le framework n'a pas de table de prix, et en inventer une serait pire que l'omettre. |
+| `cost.updated` | `tokens`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?`, `model?`, `provider?`, `cost?`, `currency?`, `costSource?` | Le compteur bouge — après chaque tour d'agent et chaque appel `ctx.llm.*`, pendant que le run se déroule. Chaque chiffre est le cumul du run, comme ceux de `run.finished` : `promptTokens` est ce qui est monté, `completionTokens` ce qui est revenu, et la paire de cache (une partition du côté prompt) apparaît dès qu'un fournisseur l'a mesurée — non mesurée, elle est absente, jamais `0`. `model` et `provider` disent qui a répondu ; l'enveloppe porte `crewId` et, sous `agentId`, le rôle de l'agent. **Le prix est celui du fournisseur ou rien** : `cost` apparaît dès qu'un fournisseur a facturé dans sa réponse (le `usage.cost` d'OpenRouter), avec `costSource: "vendor"` et `currency` (ISO 4217) quand le provider l'énonce ; un appel gratuit est facturé `0`, relayé comme `0`. Aucune estimation ne passe ici — le registre de prix du framework sert les budgets, et un chiffre calculé depuis lui se lirait comme une facture. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | Une tâche déclarée `humanInput: true` pose une question. |
 | `hub.message` | `from?`, `topic?`, `payload?`, `expectsReply?` | Le hub du run a relayé quelque chose à ce processus. `from` est l'adresse hub de l'expéditeur (`agent://{crew}/{agent}`, `crew://{crew}`), pour que le pair puisse attribuer et répondre ; absent quand le hub ne la connaît pas (la réponse à un `send`, appariée par `correlationId`). `expectsReply: true` n'apparaît que sur le `send` d'un agent : l'expéditeur est bloqué en attente d'un `reply` sous son propre timeout, et le silence au-delà est un refus. Le pair n'a pas à deviner quelles lignes corrélées sont des questions — un relais de topic peut porter un `correlationId` lui aussi. |
 | `error` | `code`, `message`, `recoverable` | Quelque chose a échoué. Un run qui s'arrête — annulé ou en échec, dans n'importe quel mode — se termine par `code: crew_cancelled` ou `crew_failed` avant `run.finished`. |
-| `run.finished` | `success`, `exitCode`, `tokens` | Le run se termine. |
+| `run.finished` | `success`, `exitCode`, `tokens`, `durationMs`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?` | Le run se termine, avec ce qu'il a dépensé : le total de jetons et sa répartition, la durée réelle, et la paire de cache quand un fournisseur l'a mesurée. |
 
 Un run qui ne rapporte rien n'est pas un run qui se passe bien — c'est un run qui ne rapporte rien. Un client doit montrer la différence, pas la masquer.
 
@@ -121,8 +123,9 @@ Un échange minimal :
 → {"v":2,"seq":2,"ts":"…","correlationId":"c-1","kind":"input.needed","inputKind":"confirm","prompt":"Publier le rapport ?"}
 ← {"kind":"input.given","correlationId":"c-1","value":"yes"}
 → {"v":2,"seq":3,"ts":"…","kind":"task.started","taskId":"t1","agentRole":"writer"}
-→ {"v":2,"seq":4,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
-→ {"v":2,"seq":5,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840}
+→ {"v":2,"seq":4,"ts":"…","kind":"cost.updated","crewId":"01K…","agentId":"writer","tokens":1840,"promptTokens":1600,"completionTokens":240,"model":"google/gemini-3.7-flash","provider":"openrouter","cost":0.0021,"currency":"USD","costSource":"vendor"}
+→ {"v":2,"seq":5,"ts":"…","kind":"task.completed","taskId":"t1","agentRole":"writer","success":true,"durationMs":4200,"tokens":1840,"toolCalls":3}
+→ {"v":2,"seq":6,"ts":"…","kind":"run.finished","success":true,"exitCode":0,"tokens":1840,"durationMs":4300,"promptTokens":1600,"completionTokens":240}
 ```
 
 Deux règles à respecter en construisant votre client. **Ignorez un `kind` que vous ne connaissez pas** — un Orkeon plus récent en dit plus qu'un client plus ancien n'en comprend, et planter sur une ligne non lue est pire qu'en afficher un peu moins. Et **gardez ce que vous n'avez pas su analyser** : une ligne non protocolaire reste quelque chose que le run a dit, et la perdre perd le diagnostic.
