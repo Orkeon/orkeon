@@ -12,7 +12,7 @@ problem:
   es: "Comprobar que un resultado de mis datos se sostiene con tres métodos distintos"
   de: "Prüfen, ob ein Ergebnis aus meinen Daten mit drei verschiedenen Methoden standhält"
   zh-Hans: "用三种不同的方法检验我的数据得出的结论是否站得住"
-tags: ["validation", "statistics", "data-analysis", "cross-check"]
+tags: ["statistics", "validation", "data-analysis", "cross-check"]
 mounts:
   - "./output:/output:rw"
 importable: true

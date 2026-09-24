@@ -12,7 +12,7 @@ problem:
   es: "Dividir un proyecto de software en tareas, estimarlas y planificar cada una"
   de: "Ein Softwareprojekt in Aufgaben zerlegen, den Aufwand schätzen und jede einzelne planen"
   zh-Hans: "把软件项目拆分成任务，估算工作量，并为每项任务制定计划"
-tags: ["project-management", "agile", "planning", "software-development"]
+tags: ["software-development", "project-management", "agile", "planning"]
 mounts:
   - "./output:/output:rw"
 importable: true

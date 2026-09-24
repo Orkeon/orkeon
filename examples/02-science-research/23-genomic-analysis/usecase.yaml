@@ -12,7 +12,7 @@ problem:
   es: "Analizar el ADN de un paciente y clasificar sus variantes según el riesgo de enfermedad"
   de: "Die DNA eines Patienten analysieren und gefundene Varianten nach Krankheitsrisiko einstufen"
   zh-Hans: "分析患者的 DNA，并按致病风险对发现的变异进行分级"
-tags: ["genomics", "health", "genetic-variants", "clinical-report"]
+tags: ["health", "genomics", "genetic-variants", "clinical-report"]
 mounts:
   - "./output:/output:rw"
 importable: true

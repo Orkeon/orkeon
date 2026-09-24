@@ -12,7 +12,7 @@ problem:
   es: "Preparar mi solicitud de subvención de investigación, del texto científico al presupuesto"
   de: "Meinen Forschungsantrag vorbereiten, vom wissenschaftlichen Teil bis zum Budget"
   zh-Hans: "准备我的科研经费申请，从科学论证到预算"
-tags: ["grant-writing", "funding", "research", "budget"]
+tags: ["research", "funding", "grant-writing", "budget"]
 mounts:
   - "./output:/output:rw"
 importable: true

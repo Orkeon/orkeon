@@ -12,7 +12,7 @@ problem:
   es: "Sintetizar los estudios sobre una pregunta, justificando cada estudio incluido o descartado"
   de: "Die Studien zu einer Frage auswerten und jede Aufnahme oder jeden Ausschluss begründen"
   zh-Hans: "综合分析某个问题的相关研究，并说明每项研究纳入或排除的理由"
-tags: ["literature-review", "meta-analysis", "statistics", "research"]
+tags: ["research", "literature-review", "meta-analysis", "statistics"]
 mounts:
   - "./output:/output:rw"
 importable: true

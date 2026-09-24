@@ -12,7 +12,7 @@ problem:
   es: "Resumir un documento a mi nivel, de lo más técnico a lo más didáctico"
   de: "Ein Dokument auf meinem Niveau zusammenfassen, von sehr fachlich bis einsteigerfreundlich"
   zh-Hans: "按我的水平总结一份文档，可以很专业，也可以通俗易懂"
-tags: ["summarization", "documents", "personalization"]
+tags: ["documents", "summarization", "personalization"]
 mounts:
   - "./output:/output:rw"
 importable: true

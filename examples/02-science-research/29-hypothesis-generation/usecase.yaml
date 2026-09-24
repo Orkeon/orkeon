@@ -12,7 +12,7 @@ problem:
   es: "Encontrar pistas de investigación en mis datos y saber cómo ponerlas a prueba"
   de: "In meinen Daten Forschungsansätze finden und klären, wie sie sich überprüfen lassen"
   zh-Hans: "从我的数据中找出研究线索，并想清楚如何检验它们"
-tags: ["hypotheses", "experiment-design", "data-analysis", "research"]
+tags: ["research", "hypotheses", "experiment-design", "data-analysis"]
 mounts:
   - "./output:/output:rw"
 importable: true

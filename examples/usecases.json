@@ -356,10 +356,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "software-development",
         "project-management",
         "agile",
-        "planning",
-        "software-development"
+        "planning"
       ],
       "tasks": 4,
       "title": {
@@ -689,10 +689,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "research",
         "literature-review",
         "meta-analysis",
-        "statistics",
-        "research"
+        "statistics"
       ],
       "tasks": 4,
       "title": {
@@ -730,10 +730,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "science",
         "debate",
         "controversy",
-        "evidence",
-        "synthesis"
+        "evidence"
       ],
       "tasks": 4,
       "title": {
@@ -897,9 +897,9 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
+        "academic-publishing",
         "peer-review",
         "research-paper",
-        "academic-publishing",
         "feedback"
       ],
       "tasks": 4,
@@ -939,8 +939,8 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "clinical-trials",
         "health",
+        "clinical-trials",
         "patient-safety",
         "compliance"
       ],
@@ -981,8 +981,8 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "genomics",
         "health",
+        "genomics",
         "genetic-variants",
         "clinical-report"
       ],
@@ -1024,9 +1024,9 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "grant-writing",
-        "funding",
         "research",
+        "funding",
+        "grant-writing",
         "budget"
       ],
       "tasks": 5,
@@ -1151,9 +1151,9 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "technology-watch",
         "trends",
         "forecasting",
-        "technology-watch",
         "patents"
       ],
       "tasks": 4,
@@ -1194,8 +1194,8 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "validation",
         "statistics",
+        "validation",
         "data-analysis",
         "cross-check"
       ],
@@ -1235,10 +1235,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
+        "research",
         "hypotheses",
         "experiment-design",
-        "data-analysis",
-        "research"
+        "data-analysis"
       ],
       "tasks": 4,
       "title": {
@@ -1277,8 +1277,8 @@
       "requiresKeys": [],
       "requiresNetwork": false,
       "tags": [
-        "summarization",
         "documents",
+        "summarization",
         "personalization"
       ],
       "tasks": 3,
@@ -2821,23 +2821,28 @@
       ],
       "number": 66,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine Codeänderung vor der Veröffentlichung prüfen und bei einem Fehler zurücknehmen",
+        "en": "Check a code change before it goes live, and roll it back if it fails",
+        "es": "Revisar un cambio de código antes de publicarlo y deshacerlo si falla",
+        "fr": "Contrôler une modification de code avant sa mise en ligne, et revenir en arrière si elle échoue",
+        "zh-Hans": "上线前检查代码改动，出问题时退回原版本"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "devops",
+        "code-review",
+        "deployment",
+        "rollback"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Kontrollierte Code-Veröffentlichung",
+        "en": "Controlled code release",
+        "es": "Publicación controlada de código",
+        "fr": "Mise en ligne de code contrôlée",
+        "zh-Hans": "代码上线把关"
       },
       "tools": [
         "file_read",
@@ -2859,23 +2864,28 @@
       ],
       "number": 67,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Ausfall meines Onlinedienstes angehen, jede Maßnahme vorher selbst freigeben und danach Bilanz ziehen",
+        "en": "Handle an outage of my online service, with my go-ahead before each action, then review what happened",
+        "es": "Gestionar una caída de mi servicio en línea, con mi visto bueno antes de cada acción, y después hacer balance",
+        "fr": "Traiter une panne de mon service en ligne, avec mon feu vert avant chaque action, puis en faire le bilan",
+        "zh-Hans": "处理我的在线服务故障，每项操作前先经我同意，事后进行复盘"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "devops",
+        "incident-response",
+        "root-cause-analysis",
+        "human-in-the-loop"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Reaktion auf einen Dienstausfall",
+        "en": "Service outage response",
+        "es": "Respuesta a una caída del servicio",
+        "fr": "Réponse à une panne de service",
+        "zh-Hans": "服务故障应急处理"
       },
       "tools": [
         "file_write",
@@ -2896,23 +2906,27 @@
       ],
       "number": 68,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Den Umzug meiner Datenbank auf ein neues System vorbereiten und prüfen, dass nichts verloren geht",
+        "en": "Prepare moving my database to a new system and check that nothing gets lost",
+        "es": "Preparar el traslado de mi base de datos a un nuevo sistema y comprobar que no se pierde nada",
+        "fr": "Préparer le transfert de ma base de données vers un nouveau système et vérifier que rien ne se perd",
+        "zh-Hans": "准备把我的数据库迁移到新系统，并核实没有数据丢失"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "database",
+        "data-migration",
+        "data-integrity"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Datenbankmigration",
+        "en": "Database migration",
+        "es": "Migración de base de datos",
+        "fr": "Migration de base de données",
+        "zh-Hans": "数据库迁移"
       },
       "tools": [
         "file_read",
@@ -2933,23 +2947,28 @@
       ],
       "number": 69,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Verstehen, warum meine Anwendung langsam ist, und wissen, was zuerst zu beheben ist",
+        "en": "Find out why my application is slow and what to fix first",
+        "es": "Entender por qué mi aplicación va lenta y saber qué corregir primero",
+        "fr": "Comprendre pourquoi mon application est lente et savoir quoi corriger en premier",
+        "zh-Hans": "弄清我的应用为什么慢，以及应该先解决哪些问题"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "performance",
+        "bottleneck-analysis",
+        "observability",
+        "optimization"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Diagnose einer langsamen Anwendung",
+        "en": "Diagnosing a slow application",
+        "es": "Diagnóstico de una aplicación lenta",
+        "fr": "Diagnostic d'une application lente",
+        "zh-Hans": "应用性能诊断"
       },
       "tools": [
         "file_write",
@@ -2970,23 +2989,28 @@
       ],
       "number": 70,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die technische Dokumentation meines Codes schreiben und prüfen, ob sie stimmig ist",
+        "en": "Write the technical documentation of my code and check that it is consistent",
+        "es": "Redactar la documentación técnica de mi código y comprobar que es coherente",
+        "fr": "Rédiger la documentation technique de mon code et vérifier qu'elle est cohérente",
+        "zh-Hans": "为我的代码编写技术文档，并检查内容前后一致"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "documentation",
+        "api-docs",
+        "software-architecture",
+        "codebase-analysis"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Technische Dokumentation aus dem Code",
+        "en": "Technical documentation from code",
+        "es": "Documentación técnica a partir del código",
+        "fr": "Documentation technique tirée du code",
+        "zh-Hans": "从代码生成技术文档"
       },
       "tools": [
         "directory_read",
@@ -3009,23 +3033,28 @@
       ],
       "number": 71,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Sicherheitslücken und unnötige Ausgaben in meinem Cloud-Hosting aufspüren",
+        "en": "Spot the security gaps and wasted spending in my cloud hosting",
+        "es": "Detectar los fallos de seguridad y los gastos innecesarios de mi alojamiento en la nube",
+        "fr": "Repérer les failles de sécurité et les dépenses inutiles de mon hébergement cloud",
+        "zh-Hans": "找出我的云服务中的安全漏洞和不必要的开支"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "cloud",
+        "security-audit",
+        "cost-optimization",
+        "nist"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Sicherheits- und Kostenaudit der Cloud",
+        "en": "Cloud security and cost audit",
+        "es": "Auditoría cloud de seguridad y costes",
+        "fr": "Audit sécurité et coûts du cloud",
+        "zh-Hans": "云安全与成本审计"
       },
       "tools": [
         "csv_reader",
@@ -3046,23 +3075,28 @@
       ],
       "number": 72,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Prüfen, ob meine Anwendung der Last standhält, Verlangsamungen erkennen und wissen, was zu verbessern ist",
+        "en": "Check that my application holds up under heavy use, spot its slowdowns and know what to improve",
+        "es": "Comprobar que mi aplicación aguanta la carga, detectar sus ralentizaciones y saber qué mejorar",
+        "fr": "Vérifier que mon application tient la charge, repérer ses ralentissements et savoir quoi améliorer",
+        "zh-Hans": "检验我的应用能否扛住高负载，找出变慢的环节，并明确改进方向"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "performance",
+        "load-testing",
+        "regression-detection",
+        "benchmarking"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Lasttest einer Anwendung",
+        "en": "Application load testing",
+        "es": "Prueba de carga de una aplicación",
+        "fr": "Test de charge d'une application",
+        "zh-Hans": "应用负载测试"
       },
       "tools": [
         "csv_reader",
@@ -3083,23 +3117,28 @@
       ],
       "number": 73,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Schwer wartbaren Code aufräumen und dabei prüfen, dass nichts kaputtgeht",
+        "en": "Clean up hard-to-maintain code while checking that nothing breaks",
+        "es": "Poner en orden un código difícil de mantener, comprobando que nada se rompe",
+        "fr": "Remettre au propre un code difficile à maintenir, en vérifiant que rien ne casse",
+        "zh-Hans": "整理难以维护的代码，并检查没有破坏任何功能"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "code-quality",
+        "refactoring",
+        "security",
+        "testing"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Geprüfte Code-Bereinigung",
+        "en": "Verified code cleanup",
+        "es": "Limpieza de código verificada",
+        "fr": "Nettoyage de code vérifié",
+        "zh-Hans": "经过验证的代码清理"
       },
       "tools": [
         "directory_read",
@@ -3121,23 +3160,28 @@
       ],
       "number": 74,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Komponenten meines Projekts aktualisieren, die schwersten Sicherheitslücken zuerst",
+        "en": "Update my project's components, most serious security flaws first",
+        "es": "Actualizar los componentes de mi proyecto, primero los fallos de seguridad más graves",
+        "fr": "Mettre à jour les composants de mon projet, les failles de sécurité les plus graves d'abord",
+        "zh-Hans": "更新我项目中的组件，最严重的安全漏洞优先"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "dependencies",
+        "vulnerability-management",
+        "security",
+        "upgrades"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Aktualisierung anfälliger Komponenten",
+        "en": "Updating vulnerable components",
+        "es": "Actualización de componentes vulnerables",
+        "fr": "Mise à jour des composants vulnérables",
+        "zh-Hans": "更新存在漏洞的组件"
       },
       "tools": [
         "file_read",
@@ -3159,23 +3203,28 @@
       ],
       "number": 75,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Ausfall simulieren, um zu sehen, ob mein Dienst standhält, und ihn erst nach meiner Freigabe auslösen",
+        "en": "Simulate a failure to see whether my service holds up, with my go-ahead before it is triggered",
+        "es": "Simular un fallo para ver si mi servicio resiste, con mi visto bueno antes de provocarlo",
+        "fr": "Simuler une panne pour voir si mon service tient le coup, avec mon feu vert avant de la déclencher",
+        "zh-Hans": "模拟一次故障，看看我的服务能否挺住，触发前须经我同意"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "devops",
+        "chaos-engineering",
+        "resilience",
+        "human-in-the-loop"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Test der Ausfallsicherheit",
+        "en": "Failure resilience test",
+        "es": "Prueba de resistencia a fallos",
+        "fr": "Test de résistance aux pannes",
+        "zh-Hans": "抗故障能力测试"
       },
       "tools": [
         "file_write",
@@ -3196,23 +3245,28 @@
       ],
       "number": 102,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Beschreiben, was mein TypeScript-Projekt tut, und seine Migration zu Orkeon planen",
+        "en": "Describe what my TypeScript project does and plan its migration to Orkeon",
+        "es": "Describir lo que hace mi proyecto TypeScript y planificar su migración a Orkeon",
+        "fr": "Décrire ce que fait mon projet TypeScript et planifier sa migration vers Orkeon",
+        "zh-Hans": "梳理我的 TypeScript 项目的功能，并规划将其迁移到 Orkeon"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "typescript",
+        "codebase-analysis",
+        "functional-specification",
+        "migration-planning"
+      ],
       "tasks": 1,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Vom TypeScript-Projekt zu Orkeon",
+        "en": "From TypeScript project to Orkeon",
+        "es": "Del proyecto TypeScript a Orkeon",
+        "fr": "Du projet TypeScript à Orkeon",
+        "zh-Hans": "从 TypeScript 项目到 Orkeon"
       },
       "tools": [
         "directory_read",
@@ -3234,23 +3288,28 @@
       ],
       "number": 103,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Mein TypeScript-Projekt beschreiben und seine Migration zu Orkeon planen, ohne dass die Analyse ausufert",
+        "en": "Describe my TypeScript project and plan its migration to Orkeon, without the analysis getting out of hand",
+        "es": "Describir mi proyecto TypeScript y planificar su migración a Orkeon, sin que el análisis se descontrole",
+        "fr": "Décrire mon projet TypeScript et planifier sa migration vers Orkeon, sans que l'analyse s'emballe",
+        "zh-Hans": "梳理我的 TypeScript 项目并规划迁移到 Orkeon，避免分析失控"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "typescript",
+        "codebase-analysis",
+        "migration-planning",
+        "circuit-breaker"
+      ],
       "tasks": 1,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "TypeScript-Projekt zu Orkeon, mit Schutzmechanismen",
+        "en": "TypeScript project to Orkeon, with safeguards",
+        "es": "Proyecto TypeScript a Orkeon, con salvaguardas",
+        "fr": "Projet TypeScript vers Orkeon, avec garde-fous",
+        "zh-Hans": "从 TypeScript 项目到 Orkeon（带防护）"
       },
       "tools": [
         "directory_read",
@@ -3271,23 +3330,28 @@
       ],
       "number": 76,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Kapitel meiner Geschichte schreiben, von der Handlung bis zu den Dialogen, und seine Stimmigkeit prüfen",
+        "en": "Write a chapter of my story, from plot to dialogue, and check that it holds together",
+        "es": "Escribir un capítulo de mi historia, de la trama a los diálogos, y comprobar su coherencia",
+        "fr": "Écrire un chapitre de mon histoire, de l'intrigue aux dialogues, et en vérifier la cohérence",
+        "zh-Hans": "为我的故事写一章，从情节到对白，并检查是否前后连贯"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "creative-writing",
+        "storytelling",
+        "fiction",
+        "continuity"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Schreibstudio",
+        "en": "Story writing studio",
+        "es": "Estudio de escritura",
+        "fr": "Studio d'écriture",
+        "zh-Hans": "故事写作工作室"
       },
       "tools": [
         "file_read",
@@ -3307,23 +3371,28 @@
       ],
       "number": 77,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine Podcastfolge vorbereiten, von der Recherche zum Thema bis zum aufnahmebereiten Skript",
+        "en": "Prepare a podcast episode, from researching the topic to a script ready to record",
+        "es": "Preparar un episodio de pódcast, desde la investigación del tema hasta un guion listo para grabar",
+        "fr": "Préparer un épisode de podcast, des recherches sur le sujet jusqu'au script prêt à enregistrer",
+        "zh-Hans": "筹备一期播客节目，从选题调研到可直接录制的脚本"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "podcast",
+        "scriptwriting",
+        "content-production",
+        "research"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Vorbereitung einer Podcastfolge",
+        "en": "Podcast episode preparation",
+        "es": "Preparación de un episodio de pódcast",
+        "fr": "Préparation d'un épisode de podcast",
+        "zh-Hans": "播客节目筹备"
       },
       "tools": [
         "file_read",
@@ -3346,23 +3415,28 @@
       ],
       "number": 78,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meine Kundendatei mit fiktiven Daten nachbilden und prüfen, dass darin niemand wiederzuerkennen ist",
+        "en": "Mimic my customer file with fake data and check that no one can be recognized in it",
+        "es": "Imitar mi archivo de clientes con datos ficticios y comprobar que nadie es reconocible en ellos",
+        "fr": "Imiter mon fichier clients avec des données fictives et vérifier que personne n'y est reconnaissable",
+        "zh-Hans": "用虚拟数据仿制我的客户文件，并核实其中无法识别出任何人"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "synthetic-data",
+        "privacy",
+        "anonymization",
+        "data-generation"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Anonyme fiktive Daten",
+        "en": "Privacy-safe fake data",
+        "es": "Datos ficticios anónimos",
+        "fr": "Données fictives anonymes",
+        "zh-Hans": "匿名虚拟数据"
       },
       "tools": [
         "csv_reader",
@@ -3382,23 +3456,28 @@
       ],
       "number": 79,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Musikstück auf dem Papier komponieren, von der Melodie bis zu den Einstellungen für die Abmischung",
+        "en": "Compose a piece of music on paper, from the melody to the mixing settings",
+        "es": "Componer una pieza musical sobre el papel, de la melodía a los ajustes de mezcla",
+        "fr": "Composer un morceau sur le papier, de la mélodie aux réglages de mixage",
+        "zh-Hans": "以书面形式创作一首乐曲，从旋律一直到混音设置"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "music",
+        "composition",
+        "arrangement",
+        "consensus"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Gemeinsame Musikkomposition",
+        "en": "Collaborative music composition",
+        "es": "Composición musical colectiva",
+        "fr": "Composition musicale collective",
+        "zh-Hans": "协作式音乐创作"
       },
       "tools": [
         "file_write",
@@ -3417,23 +3496,28 @@
       ],
       "number": 80,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine Werbekampagne vorbereiten, von Bildideen und Slogans bis zur Wahl der Werbekanäle",
+        "en": "Prepare an advertising campaign, from visual ideas and slogans to where to run it",
+        "es": "Preparar una campaña publicitaria, de las ideas visuales y los eslóganes a la elección de los medios",
+        "fr": "Préparer une campagne publicitaire, des idées visuelles aux slogans et au choix des supports",
+        "zh-Hans": "策划一场广告活动，从视觉创意、广告语到投放渠道"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "marketing",
+        "advertising",
+        "copywriting",
+        "media-planning"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Konzeption einer Werbekampagne",
+        "en": "Ad campaign design",
+        "es": "Diseño de una campaña publicitaria",
+        "fr": "Conception d'une campagne publicitaire",
+        "zh-Hans": "广告活动策划"
       },
       "tools": [
         "file_write",
@@ -3454,23 +3538,28 @@
       ],
       "number": 81,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine stimmige Fantasiewelt für einen Roman oder ein Spiel erfinden, von der Geografie bis zu den Sprachen",
+        "en": "Invent a consistent imaginary world for a novel or a game, from its geography to its languages",
+        "es": "Inventar un mundo imaginario coherente para una novela o un juego, de su geografía a sus lenguas",
+        "fr": "Inventer un monde imaginaire cohérent pour un roman ou un jeu, de sa géographie à ses langues",
+        "zh-Hans": "为小说或游戏构建一个自洽的虚构世界，从地理到语言"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "worldbuilding",
+        "fiction",
+        "game-design",
+        "creative-writing"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Erschaffung einer Fantasiewelt",
+        "en": "Building an imaginary world",
+        "es": "Creación de un mundo imaginario",
+        "fr": "Création d'un monde imaginaire",
+        "zh-Hans": "虚构世界构建"
       },
       "tools": [
         "file_read",
@@ -3490,23 +3579,28 @@
       ],
       "number": 82,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meinen Newsletter aus online gefundenen Artikeln, Blogs und Studien zusammenstellen, ohne Duplikate",
+        "en": "Put together my newsletter from articles, blogs and studies found online, without duplicates",
+        "es": "Preparar mi boletín a partir de artículos, blogs y estudios encontrados en internet, sin duplicados",
+        "fr": "Préparer ma newsletter à partir d'articles, de blogs et d'études trouvés en ligne, sans doublons",
+        "zh-Hans": "从网上的新闻、博客和研究中为我的简报挑选内容，并去除重复"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "newsletter",
+        "content-curation",
+        "web-scraping",
+        "deduplication"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Inhaltsauswahl für den Newsletter",
+        "en": "Newsletter content selection",
+        "es": "Selección de contenidos para un boletín",
+        "fr": "Sélection de contenus pour newsletter",
+        "zh-Hans": "简报内容精选"
       },
       "tools": [
         "file_write",
@@ -3528,23 +3622,28 @@
       ],
       "number": 83,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Mir eine Geschichte erzählen lassen, deren Fortgang ich selbst wähle",
+        "en": "Play through a story where I choose what happens next",
+        "es": "Vivir una historia en la que yo elijo cómo continúa",
+        "fr": "Me faire raconter une histoire dont je choisis la suite",
+        "zh-Hans": "体验一个由我选择情节走向的故事"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "interactive-fiction",
+        "storytelling",
+        "games",
+        "branching-narrative"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Interaktive Geschichte",
+        "en": "Interactive story",
+        "es": "Historia interactiva",
+        "fr": "Histoire interactive",
+        "zh-Hans": "互动故事"
       },
       "tools": [
         "file_read",
@@ -3564,23 +3663,28 @@
       ],
       "number": 84,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein literarisches Werk aus drei unabhängigen kritischen Blickwinkeln analysieren und die Ergebnisse zusammenführen",
+        "en": "Analyze a literary work from three independent critical angles, then pull them together",
+        "es": "Analizar una obra literaria desde tres enfoques críticos independientes y después sintetizarlos",
+        "fr": "Analyser une œuvre littéraire sous trois angles critiques indépendants, puis en faire la synthèse",
+        "zh-Hans": "从三个相互独立的批评视角分析一部文学作品，再加以综合"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "literature",
+        "literary-criticism",
+        "critical-analysis",
+        "synthesis"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Literaturkritik aus drei Blickwinkeln",
+        "en": "Literary critique from three angles",
+        "es": "Crítica literaria desde tres enfoques",
+        "fr": "Critique littéraire sous trois angles",
+        "zh-Hans": "三种视角的文学评论"
       },
       "tools": [
         "file_read",
@@ -3601,23 +3705,28 @@
       ],
       "number": 85,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine Geschichte von einem Format in ein anderes übertragen, etwa einen Roman in ein Drehbuch",
+        "en": "Adapt a story from one format to another, for example a novel into a screenplay",
+        "es": "Adaptar una historia de un formato a otro, por ejemplo una novela a un guion",
+        "fr": "Adapter une histoire d'un format à un autre, par exemple un roman en scénario",
+        "zh-Hans": "把一个故事从一种形式改编成另一种，比如把小说改编成剧本"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "adaptation",
+        "screenwriting",
+        "storytelling",
+        "transmedia"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Adaption in ein anderes Medium",
+        "en": "Adapting a story to another medium",
+        "es": "Adaptación de un medio a otro",
+        "fr": "Adaptation d'un support à un autre",
+        "zh-Hans": "跨媒介改编"
       },
       "tools": [
         "file_read",
@@ -3636,23 +3745,28 @@
       "mounts": [],
       "number": 86,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Heizung, Licht, Alarmanlage und Energieverbrauch meines Hauses in einem einzigen Plan abstimmen",
+        "en": "Reconcile my home's heating, lighting, alarm and energy use in a single plan",
+        "es": "Conciliar calefacción, iluminación, alarma y consumo de energía de mi casa en un único plan",
+        "fr": "Accorder chauffage, éclairage, alarme et dépense d'énergie de ma maison en un seul plan",
+        "zh-Hans": "把我家的供暖、照明、安防和用电统一到一份方案中"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "smart-home",
+        "home-automation",
+        "energy-management",
+        "home-security"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Abgestimmtes Smart Home",
+        "en": "Coordinated smart home",
+        "es": "Casa inteligente coordinada",
+        "fr": "Maison connectée coordonnée",
+        "zh-Hans": "协同智能家居"
       },
       "tools": [
         "http_api",
@@ -3672,23 +3786,28 @@
       ],
       "number": 87,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die heutigen Lieferungen auf meine Fahrzeuge verteilen und erfahren, welche in die Wartung müssen",
+        "en": "Split today's deliveries across my vehicles and find out which ones need servicing",
+        "es": "Repartir las entregas del día entre mis vehículos y saber cuáles necesitan mantenimiento",
+        "fr": "Répartir les livraisons du jour entre mes véhicules et savoir lesquels doivent passer à l'entretien",
+        "zh-Hans": "把今天的配送任务分配给我的车辆，并找出哪些车需要保养"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "logistics",
+        "fleet-management",
+        "delivery-planning",
+        "vehicle-maintenance"
+      ],
       "tasks": 7,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Verwaltung einer Lieferflotte",
+        "en": "Delivery fleet management",
+        "es": "Gestión de una flota de reparto",
+        "fr": "Gestion d'une flotte de livraison",
+        "zh-Hans": "配送车队管理"
       },
       "tools": [
         "csv_reader",
@@ -3709,23 +3828,28 @@
       ],
       "number": 88,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Anhand der Sensoren wissen, was auf meinen Feldern zu bewässern oder zu behandeln ist, und jeden Eingriff freigeben",
+        "en": "Know what to water or treat in my fields from sensor readings, and approve each intervention",
+        "es": "Saber qué regar o tratar en mis campos según los sensores y aprobar cada intervención",
+        "fr": "Savoir quoi arroser ou traiter dans mes champs d'après les capteurs, et valider chaque intervention",
+        "zh-Hans": "根据传感器数据判断我的田地该浇水还是施药，并逐项批准作业"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "agriculture",
+        "irrigation",
+        "crop-health",
+        "human-in-the-loop"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Präzisionslandwirtschaft",
+        "en": "Precision farming",
+        "es": "Agricultura de precisión",
+        "fr": "Agriculture de précision",
+        "zh-Hans": "精准农业"
       },
       "tools": [
         "csv_reader",
@@ -3746,23 +3870,28 @@
       ],
       "number": 89,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Luft, Wasser, Böden und Artenvielfalt eines Gebiets bewerten und Grenzwertüberschreitungen melden",
+        "en": "Assess the air, water, soil and biodiversity of an area, and flag what exceeds the limits",
+        "es": "Evaluar el aire, el agua, los suelos y la biodiversidad de una zona, y señalar lo que supera los límites",
+        "fr": "Faire le point sur l'air, l'eau, les sols et la biodiversité d'une zone, et signaler les dépassements",
+        "zh-Hans": "评估一个区域的空气、水、土壤和生物多样性，并标出超标项"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "environment",
+        "air-quality",
+        "water-quality",
+        "biodiversity"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Umweltüberwachung",
+        "en": "Environmental monitoring",
+        "es": "Vigilancia ambiental",
+        "fr": "Surveillance environnementale",
+        "zh-Hans": "环境监测"
       },
       "tools": [
         "csv_reader",
@@ -3783,23 +3912,28 @@
       ],
       "number": 90,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Wege finden, den Energieverbrauch meines Gebäudes durch das Vorhersehen von Verbrauchsspitzen zu senken",
+        "en": "Find ways to cut my building's energy use by anticipating consumption peaks",
+        "es": "Encontrar cómo reducir el consumo de energía de mi edificio anticipando los picos de demanda",
+        "fr": "Trouver comment réduire la consommation d'énergie de mon bâtiment en anticipant les pics",
+        "zh-Hans": "预判用电高峰，找出降低我的楼宇能耗的办法"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "buildings",
+        "energy-management",
+        "demand-forecasting",
+        "energy-efficiency"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Energiesparen im Gebäude",
+        "en": "Building energy savings",
+        "es": "Ahorro energético en un edificio",
+        "fr": "Économies d'énergie dans un bâtiment",
+        "zh-Hans": "建筑节能"
       },
       "tools": [
         "csv_reader",
@@ -3820,23 +3954,28 @@
       ],
       "number": 91,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ausfälle meiner Maschinen vorhersehen und ihre Wartung nach Dringlichkeit planen",
+        "en": "Anticipate my machines' breakdowns and schedule their maintenance by urgency",
+        "es": "Anticipar las averías de mis máquinas y planificar su mantenimiento por orden de urgencia",
+        "fr": "Anticiper les pannes de mes machines et planifier leur entretien par ordre d'urgence",
+        "zh-Hans": "预判我的设备何时可能出故障，并按紧急程度安排维护"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "manufacturing",
+        "predictive-maintenance",
+        "maintenance-planning",
+        "sensors"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Vorhersage von Maschinenausfällen",
+        "en": "Machine breakdown forecasting",
+        "es": "Previsión de averías de máquinas",
+        "fr": "Prévision des pannes de machines",
+        "zh-Hans": "设备故障预测"
       },
       "tools": [
         "csv_reader",
@@ -3858,23 +3997,28 @@
       ],
       "number": 92,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Zusammenstellung der Bestellungen in meinem Lager organisieren, bis zur Kontrolle vor dem Versand",
+        "en": "Organize order picking in my warehouse, through to the checks before shipping",
+        "es": "Organizar la preparación de pedidos de mi almacén, hasta el control antes del envío",
+        "fr": "Organiser la préparation des commandes de mon entrepôt, jusqu'au contrôle avant expédition",
+        "zh-Hans": "组织我仓库里的订单拣货，直至发货前检查"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "warehouse",
+        "logistics",
+        "order-picking",
+        "inventory"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Auftragsabwicklung im Lager",
+        "en": "Warehouse order picking",
+        "es": "Preparación de pedidos en almacén",
+        "fr": "Préparation de commandes en entrepôt",
+        "zh-Hans": "仓库订单拣货"
       },
       "tools": [
         "file_write",
@@ -3895,23 +4039,28 @@
       ],
       "number": 93,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Fehlerhafte Teile in einer Produktion erkennen und feststellen, ob die Qualität nachlässt",
+        "en": "Spot defective parts in a production run and detect whether quality is slipping",
+        "es": "Detectar las piezas defectuosas de una producción y saber si la calidad empeora",
+        "fr": "Repérer les pièces défectueuses d'une production et savoir si la qualité se dégrade",
+        "zh-Hans": "找出生产中的缺陷零件，并发现质量是否在下滑"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "manufacturing",
+        "quality-control",
+        "defect-detection",
+        "statistical-process-control"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Visuelle Qualitätskontrolle",
+        "en": "Visual quality control",
+        "es": "Control de calidad visual",
+        "fr": "Contrôle qualité visuel",
+        "zh-Hans": "视觉质量检测"
       },
       "tools": [
         "csv_reader",
@@ -3932,23 +4081,28 @@
       ],
       "number": 94,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ampelschaltungen und Hinweise für Autofahrer vorschlagen, damit der Verkehr in der Stadt besser fließt",
+        "en": "Suggest traffic-light settings and messages for drivers to ease traffic across a city",
+        "es": "Proponer ajustes de semáforos y mensajes a los conductores para agilizar el tráfico de una ciudad",
+        "fr": "Proposer des réglages de feux et des messages aux automobilistes pour fluidifier la circulation en ville",
+        "zh-Hans": "提出红绿灯配时调整和给司机的提示信息，让城市交通更顺畅"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "smart-city",
+        "traffic-management",
+        "transportation",
+        "traffic-lights"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Stadtverkehr, Bezirk für Bezirk",
+        "en": "City traffic, district by district",
+        "es": "Tráfico urbano, barrio a barrio",
+        "fr": "Trafic urbain, quartier par quartier",
+        "zh-Hans": "城市交通分区疏导"
       },
       "tools": [
         "file_write",
@@ -3968,23 +4122,28 @@
       ],
       "number": 95,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Rettungskräfte und Warnungen an die Bevölkerung in einer Krise organisieren und schwere Entscheidungen selbst freigeben",
+        "en": "Organize rescue efforts and public alerts in a crisis, approving the serious decisions myself",
+        "es": "Organizar el socorro y los avisos a la población ante una crisis, aprobando las decisiones graves",
+        "fr": "Organiser secours et alertes au public face à une crise, en validant moi-même les décisions graves",
+        "zh-Hans": "在危机中组织救援和对公众的警报，重大决定由我拍板"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "public-safety",
+        "crisis-management",
+        "emergency-response",
+        "human-in-the-loop"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Krisenmanagement",
+        "en": "Crisis management",
+        "es": "Gestión de crisis",
+        "fr": "Gestion de crise",
+        "zh-Hans": "危机管理"
       },
       "tools": [
         "file_write",
@@ -4005,23 +4164,28 @@
       ],
       "number": 96,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Kosten und Qualität eines automatisierten Teams bewerten und dann eine bessere Aufstellung vorschlagen",
+        "en": "Assess the cost and quality of an automated team, then propose a better setup",
+        "es": "Evaluar el coste y la calidad de un equipo automatizado y proponer una organización mejor",
+        "fr": "Évaluer le coût et la qualité d'une équipe automatisée, puis proposer une meilleure organisation",
+        "zh-Hans": "评估一个自动化团队的成本与质量，再提出更好的组织方式"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "self-improvement",
+        "performance-monitoring",
+        "benchmarking",
+        "team-optimization"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Team, das sich selbst bewertet",
+        "en": "Self-assessing team",
+        "es": "Equipo que se autoevalúa",
+        "fr": "Équipe qui s'auto-évalue",
+        "zh-Hans": "自我评估的团队"
       },
       "tools": [
         "file_write",
@@ -4041,23 +4205,28 @@
       ],
       "number": 97,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Einkaufsvertrag zwischen widerstreitenden Prioritäten aushandeln und bei einer Blockade selbst entscheiden",
+        "en": "Negotiate a purchasing contract between competing priorities, and have the final say if talks stall",
+        "es": "Negociar un contrato de compra entre prioridades enfrentadas y tener la última palabra si se bloquea",
+        "fr": "Négocier un contrat d'achat entre priorités opposées, et trancher moi-même en cas de blocage",
+        "zh-Hans": "在相互冲突的诉求之间谈成一份采购合同，陷入僵局时由我拍板"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "procurement",
+        "negotiation",
+        "consensus",
+        "human-in-the-loop"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Verhandlung mit mehreren Parteien",
+        "en": "Multi-party negotiation",
+        "es": "Negociación entre varias partes",
+        "fr": "Négociation à plusieurs parties",
+        "zh-Hans": "多方谈判"
       },
       "tools": [
         "file_write",
@@ -4076,23 +4245,28 @@
       ],
       "number": 98,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine alte Software verstehen, die niemand mehr kennt, sie dokumentieren und ihre Modernisierung planen",
+        "en": "Understand old software nobody knows anymore, document it and plan its modernization",
+        "es": "Entender un programa antiguo que ya nadie conoce, documentarlo y planificar su modernización",
+        "fr": "Comprendre un vieux logiciel que plus personne ne connaît, le documenter et planifier sa modernisation",
+        "zh-Hans": "弄懂一套已无人熟悉的老旧软件，为其编写文档并规划现代化改造"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "legacy-code",
+        "codebase-analysis",
+        "documentation",
+        "modernization"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Archäologie einer alten Software",
+        "en": "Digging into old software",
+        "es": "Arqueología de un programa antiguo",
+        "fr": "Archéologie d'un vieux logiciel",
+        "zh-Hans": "老旧软件考古"
       },
       "tools": [
         "directory_read",
@@ -4114,23 +4288,28 @@
       ],
       "number": 99,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine von einer KI vorgeschlagene Entscheidung aus fünf ethischen Blickwinkeln prüfen und dann selbst entscheiden",
+        "en": "Examine a decision proposed by an AI from five ethical angles, then make the final call myself",
+        "es": "Examinar desde cinco enfoques éticos una decisión propuesta por una IA y luego tener la última palabra",
+        "fr": "Examiner une décision proposée par une IA sous cinq angles éthiques, puis trancher moi-même",
+        "zh-Hans": "从五个伦理角度审视 AI 提出的一项决定，最后由我亲自拍板"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "ai-ethics",
+        "decision-support",
+        "governance",
+        "human-in-the-loop"
+      ],
       "tasks": 7,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ethikjury für KI-Entscheidungen",
+        "en": "Ethics jury for AI decisions",
+        "es": "Jurado ético para decisiones de IA",
+        "fr": "Jury éthique pour décisions d'IA",
+        "zh-Hans": "AI 决策伦理评审团"
       },
       "tools": [
         "file_write",
@@ -4150,23 +4329,28 @@
       ],
       "number": 100,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Durchspielen, wie drei erfundene Völker Handel treiben, Bündnisse schließen oder Krieg führen, und eine Chronik darüber schreiben",
+        "en": "Imagine how three fictional peoples trade, ally or clash, and write their chronicle",
+        "es": "Imaginar cómo tres pueblos ficticios comercian, se alían o se enfrentan, y escribir su crónica",
+        "fr": "Imaginer comment trois peuples fictifs commercent, s'allient ou s'affrontent, et en écrire la chronique",
+        "zh-Hans": "设想三个虚构民族如何通商、结盟或交战，并为此撰写编年史"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "simulation",
+        "strategy-game",
+        "worldbuilding",
+        "storytelling"
+      ],
       "tasks": 9,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Zivilisationssimulator",
+        "en": "Civilization simulator",
+        "es": "Simulador de civilizaciones",
+        "fr": "Simulateur de civilisations",
+        "zh-Hans": "文明模拟器"
       },
       "tools": [
         "file_write",
@@ -4185,23 +4369,28 @@
       ],
       "number": 101,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Softwareprojekt auf Recherche, Entwicklung, Tests und Dokumentation aufteilen und am Ende alles zusammenführen",
+        "en": "Split a software project into research, development, testing and documentation, then bring it all together",
+        "es": "Repartir un proyecto de software entre investigación, desarrollo, pruebas y documentación, y luego reunirlo todo",
+        "fr": "Répartir un projet logiciel entre recherche, développement, tests et documentation, puis tout rassembler",
+        "zh-Hans": "把一个软件项目拆分为调研、开发、测试和文档，最后汇总整合"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "software-development",
+        "project-coordination",
+        "testing",
+        "documentation"
+      ],
       "tasks": 6,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Softwareprojekt mit mehreren Teams",
+        "en": "Multi-team software project",
+        "es": "Proyecto de software con varios equipos",
+        "fr": "Projet logiciel à plusieurs équipes",
+        "zh-Hans": "多团队软件项目"
       },
       "tools": [
         "directory_read",
@@ -4226,23 +4415,28 @@
       ],
       "number": 102,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Bericht zu einem Thema aus dem Web erstellen und fehlgeschlagene Schritte automatisch wiederholen",
+        "en": "Produce a report on a topic from the web, automatically retrying the steps that fail",
+        "es": "Elaborar un informe sobre un tema a partir de internet, repitiendo automáticamente los pasos fallidos",
+        "fr": "Produire un rapport sur un sujet à partir du web, en relançant automatiquement les étapes ratées",
+        "zh-Hans": "根据网上信息就某个主题撰写报告，失败的步骤自动重试"
       },
       "process": "graph",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "research",
+        "web-scraping",
+        "reporting",
+        "retries"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Webbericht mit automatischen Wiederholungen",
+        "en": "Web report with automatic retries",
+        "es": "Informe web con reintentos automáticos",
+        "fr": "Rapport web avec reprises automatiques",
+        "zh-Hans": "自动重试的网络调研报告"
       },
       "tools": [
         "file_write",

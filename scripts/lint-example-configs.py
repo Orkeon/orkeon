@@ -339,10 +339,10 @@ def _load_catalog():
 
 CATALOG = _load_catalog()
 
-# `title` and `problem` become mandatory in the five languages once every sheet has
-# them: the task that writes them (STUDIO-37) turns this on as its last step. Until
-# then an empty text passes, and --require-texts lists the ones still missing.
-REQUIRE_TEXTS = False
+# `title` and `problem` are mandatory in the five languages: every sheet has them since
+# STUDIO-37 (2026-09-24), which turned this on as its last step. A new example therefore
+# ships its texts with its sheet.
+REQUIRE_TEXTS = True
 
 # Tools that deliver files, and so need a writable mount to deliver them to.
 WRITING_TOOLS = {"file_write"}

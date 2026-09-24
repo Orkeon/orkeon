@@ -12,7 +12,7 @@ problem:
   es: "Anticipar las críticas de los revisores a mi artículo antes de enviarlo"
   de: "Vor der Einreichung erfahren, was Gutachter an meinem Artikel bemängeln könnten"
   zh-Hans: "在投稿前预判审稿人会对我的论文提出哪些意见"
-tags: ["peer-review", "research-paper", "academic-publishing", "feedback"]
+tags: ["academic-publishing", "peer-review", "research-paper", "feedback"]
 mounts:
   - "./output:/output:rw"
 importable: true

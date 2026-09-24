@@ -12,7 +12,7 @@ problem:
   es: "Anticipar las tecnologías emergentes cruzando publicaciones, patentes y financiación"
   de: "Aufstrebende Technologien anhand von Publikationen, Patenten und Fördermitteln früh erkennen"
   zh-Hans: "综合论文、专利和资助信息，预判正在兴起的技术"
-tags: ["trends", "forecasting", "technology-watch", "patents"]
+tags: ["technology-watch", "trends", "forecasting", "patents"]
 mounts:
   - "./output:/output:rw"
 importable: true

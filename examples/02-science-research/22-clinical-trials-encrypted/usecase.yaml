@@ -12,7 +12,7 @@ problem:
   es: "Hacer balance de la seguridad y los primeros resultados de un ensayo clínico en curso"
   de: "Sicherheit und erste Ergebnisse einer laufenden klinischen Studie prüfen"
   zh-Hans: "评估一项进行中的临床试验的安全性和初步结果"
-tags: ["clinical-trials", "health", "patient-safety", "compliance"]
+tags: ["health", "clinical-trials", "patient-safety", "compliance"]
 mounts:
   - "./output:/output:rw"
 importable: true

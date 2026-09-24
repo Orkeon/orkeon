@@ -12,6 +12,6 @@ problem:
   es: "Confrontar las dos posturas de una controversia científica y llegar a una síntesis"
   de: "Beide Seiten einer wissenschaftlichen Kontroverse gegenüberstellen und ein Fazit ziehen"
   zh-Hans: "让科学争议的双方各自陈述论据，并得出综合结论"
-tags: ["debate", "controversy", "evidence", "synthesis"]
+tags: ["science", "debate", "controversy", "evidence"]
 mounts: []
 importable: true
