@@ -84,8 +84,9 @@ public sealed class CapturePlannerTests
         // STUDIO-39: +6 stops (the close use cases under the need, the reference chip and the whole
         // gallery — both modes, both themes, language sweep = +24; the gallery on one category, on
         // the close cases, and on the machine without a CLI — both modes, both themes = +12).
-        Assert.Equal(59, CaptureCatalog.All.Count);
-        Assert.Equal(324, plan.Count);
+        // STUDIO-35: +1 stop (reglages-studio, both modes, both themes, language sweep) = +8 shots.
+        Assert.Equal(60, CaptureCatalog.All.Count);
+        Assert.Equal(332, plan.Count);
     }
 
     [Fact]

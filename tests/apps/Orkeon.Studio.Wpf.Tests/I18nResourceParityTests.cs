@@ -154,10 +154,12 @@ public sealed partial class I18nResourceParityTests
         // floor, measured, not above it.
         // VFS-90: raised by one for the pure format pattern of the declared team-folder row
         // (« {0} · {1} → {2} ({3}) », no words in it — the same floor), measured, not above it.
-        ["Strings.fr.resx"] = 57,
-        ["Strings.es.resx"] = 40,
-        ["Strings.de.resx"] = 43,
-        ["Strings.zh-Hans.resx"] = 34,
+        // STUDIO-35: raised by one for the « Studio » settings tab — the product's own name, which
+        // no language rewrites (the same floor), measured, not above it.
+        ["Strings.fr.resx"] = 58,
+        ["Strings.es.resx"] = 41,
+        ["Strings.de.resx"] = 44,
+        ["Strings.zh-Hans.resx"] = 35,
     };
 
     [Theory]

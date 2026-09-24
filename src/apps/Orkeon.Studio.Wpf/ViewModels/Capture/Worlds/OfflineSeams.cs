@@ -1,4 +1,7 @@
+using Orkeon.Constants.Llm;
+using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Llm;
+using Orkeon.Studio.Core.Presets;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
@@ -18,6 +21,43 @@ internal sealed class OfflineLlmProbe : ILlmEndpointProbe
     /// <inheritdoc />
     public Task<LlmProbeResult> ProbeAsync(LlmProbeRequest request, CancellationToken cancellationToken = default) =>
         Task.FromResult(Result);
+}
+
+/// <summary>
+/// A balance probe that answers without a network (STUDIO-35): the seeded amount for a provider
+/// whose balance an inference key reads, «not exposed» — with the vendor's console — for any
+/// other endpoint.
+/// <para>
+/// The same two things as the endpoint probe above: the Balance segment is photographable,
+/// and a request to a vendor from a headless campaign is structurally impossible. The reading
+/// is stamped on the world's own clock, so its «read at» is the same in every pass.
+/// </para>
+/// </summary>
+internal sealed class OfflineBalanceProbe(TimeProvider clock) : IProviderBalanceProbe
+{
+    /// <summary>What every readable account has left.</summary>
+    public const decimal SeededAmount = 110.00m;
+
+    /// <inheritdoc />
+    public Task<ProviderBalanceResult> ProbeAsync(LlmProbeRequest request, CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        var provider = LlmProviderDetector.Detect(request.BaseUrl);
+        var readable = HttpProviderBalanceProbe.ReadableProviders.Contains(provider, StringComparer.Ordinal);
+        // DeepSeek's reference answers in yuan; the other two readable providers bill in dollars.
+        var currency = provider == LlmProviderKeys.DeepSeek ? "CNY" : "USD";
+
+        return Task.FromResult(new ProviderBalanceResult
+        {
+            Provider = provider,
+            Status = readable ? ProviderBalanceStatus.Available : ProviderBalanceStatus.NotExposed,
+            Amounts = readable ? [new ProviderBalanceAmount(currency, SeededAmount)] : [],
+            CheckedAt = clock.GetUtcNow(),
+            Detail = readable ? $"{SeededAmount:0.00} {currency} available." : "This provider serves no balance to an API key.",
+            ConsoleUrl = LlmPresets.KeyConsoleFor(request.BaseUrl),
+        });
+    }
 }
 
 /// <summary>

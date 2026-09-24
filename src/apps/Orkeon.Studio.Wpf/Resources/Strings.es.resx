@@ -153,6 +153,94 @@
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve">
     <value>Abrir la pantalla de esta actividad</value>
   </data>
+  <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
+  <data name="Studio.Shell.BalanceTitle" xml:space="preserve">
+    <value>Saldo de los proveedores</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotRead" xml:space="preserve">
+    <value>aún no leído</value>
+  </data>
+  <data name="Studio.Shell.BalanceReading" xml:space="preserve">
+    <value>Leyendo el saldo…</value>
+  </data>
+  <data name="Studio.Shell.BalanceClickToRead" xml:space="preserve">
+    <value>Un clic vuelve a leer los saldos; en un proveedor que no expone su saldo, abre la consola.</value>
+  </data>
+  <data name="Studio.Shell.BalanceReadAt" xml:space="preserve">
+    <value>leído a las {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceAvailable" xml:space="preserve">
+    <value>{0} disponibles</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyLimit" xml:space="preserve">
+    <value>quedan {0} bajo el límite de esta clave</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnderThreshold" xml:space="preserve">
+    <value>por debajo de su umbral de alerta de {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve">
+    <value>no expuesto por la API</value>
+  </data>
+  <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve">
+    <value>legible solo con una clave de administración</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve">
+    <value>clave rechazada</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve">
+    <value>sin respuesta</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve">
+    <value>respuesta inesperada</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve">
+    <value>ninguna cuenta que consultar</value>
+  </data>
+  <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve">
+    <value>haga clic para abrir su consola</value>
+  </data>
+  <data name="Studio.Shell.StudioTab" xml:space="preserve">
+    <value>Studio</value>
+  </data>
+  <data name="Studio.Settings.StudioIntro" xml:space="preserve">
+    <value>Cómo se comporta el propio Studio en este equipo. Estas opciones se quedan en su perfil de Windows, nunca en el archivo de configuración de sus equipos.</value>
+  </data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve">
+    <value>La barra de estado muestra lo que queda en las cuentas de sus configuraciones de modelo: la predeterminada, la del asistente y las de sus equipos. Las lee al iniciar, al final de cada ejecución, prueba o composición, y cuando hace clic en ella. No se guarda nada: una cifra en pantalla se acaba de leer.</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve">
+    <value>Lectura automática</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve">
+    <value>Desactivada por defecto: Studio no envía ninguna solicitud que usted no haya pedido y respeta los límites de frecuencia de los proveedores.</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve">
+    <value>Nunca: el valor predeterminado</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshEvery" xml:space="preserve">
+    <value>cada {0} minutos</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsLabel" xml:space="preserve">
+    <value>Umbrales de alerta</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsHint" xml:space="preserve">
+    <value>Por debajo de su umbral, el saldo de un proveedor se vuelve naranja en la barra de estado. En la moneda que devuelve el proveedor: no se convierte nada. Vacío: sin alerta.</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdInvalid" xml:space="preserve">
+    <value>Escriba un importe, por ejemplo 5 o 12,50: el umbral no cambia.</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdLastRead" xml:space="preserve">
+    <value>última lectura: {0}</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdNoReading" xml:space="preserve">
+    <value>aún no leído en esta sesión</value>
+  </data>
+  <data name="Studio.Settings.ReadBalance" xml:space="preserve">
+    <value>Leer el saldo</value>
+  </data>
+  <data name="Studio.Settings.BalanceConsole" xml:space="preserve">
+    <value>Abrir la consola</value>
+  </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>Probar la conexión</value>
   </data>

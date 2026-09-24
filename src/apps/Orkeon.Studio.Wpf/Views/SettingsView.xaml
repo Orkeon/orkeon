@@ -1,7 +1,7 @@
-<!-- The unified "Réglages" screen (design v3): one nav entry, six inner tabs — the AI model
+<!-- The unified "Réglages" screen (design v3): one nav entry, seven inner tabs — the AI model
      (named profiles + the Studio assistant's own), the authorized folders, the tools (STUDIO-21),
-     and the three expert tabs (limits & logs, the MCP servers, the raw file).
-     DataContext: SettingsScreenViewModel (Settings). -->
+     Studio itself (STUDIO-35), and the three expert tabs (limits & logs, the MCP servers, the raw
+     file). DataContext: SettingsScreenViewModel (Settings). -->
 <UserControl x:Class="Orkeon.Studio.Wpf.Views.SettingsView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
@@ -79,6 +79,9 @@
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowToolsCommand}"
               Tag="{Binding IsToolsTab}"
               Content="{Binding [Studio.Shell.Tools], Source={x:Static services:I18n.Instance}}"/>
+      <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowStudioCommand}"
+              Tag="{Binding IsStudioTab}"
+              Content="{Binding [Studio.Shell.StudioTab], Source={x:Static services:I18n.Instance}}"/>
       <Button Style="{StaticResource SettingsTab}" Command="{Binding ShowLimitsCommand}"
               Tag="{Binding IsLimitsTab}"
               Content="{Binding [Studio.Shell.Limits], Source={x:Static services:I18n.Instance}}"
@@ -193,6 +196,25 @@
                               Visibility="{Binding IsStudio, Converter={StaticResource BooleanToVisibility}}">
                         <TextBlock Style="{StaticResource BadgeText}"
                                    Text="{Binding [Studio.Settings.StudioBadge], Source={x:Static services:I18n.Instance}}"/>
+                      </Border>
+                      <!-- STUDIO-35 (D-04): what the profile's account has left, once this session
+                           read it — in the warning tone under its provider's threshold. -->
+                      <Border Margin="10,0,0,0" ToolTip="{Binding BalanceTip}"
+                              Visibility="{Binding HasBalance, Converter={StaticResource BooleanToVisibility}}">
+                        <Border.Style>
+                          <Style TargetType="Border" BasedOn="{StaticResource BadgeNeutral}">
+                            <Style.Triggers>
+                              <DataTrigger Binding="{Binding IsBalanceLow}" Value="True">
+                                <Setter Property="Background" Value="{DynamicResource WarningWeakBrush}"/>
+                                <Setter Property="TextElement.Foreground" Value="{DynamicResource WarningBrush}"/>
+                              </DataTrigger>
+                            </Style.Triggers>
+                          </Style>
+                        </Border.Style>
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="wallet" Size="10" Margin="0,0,5,0" VerticalAlignment="Center"/>
+                          <TextBlock Style="{StaticResource BadgeText}" Text="{Binding Balance}"/>
+                        </StackPanel>
                       </Border>
                     </StackPanel>
                     <TextBlock FontSize="12.5" Foreground="{DynamicResource InkMutedBrush}" Margin="0,4,0,0" Text="{Binding Summary}"/>
@@ -412,6 +434,9 @@
 
     <!-- ══ OUTILS (STUDIO-21): the tool keys, the catalogue, the shell allow-list ══ -->
     <views:ToolsView Visibility="{Binding IsToolsTab, Converter={StaticResource BooleanToVisibility}}"/>
+
+    <!-- ══ STUDIO (STUDIO-35): how Studio itself behaves — the provider balance first ══ -->
+    <views:StudioSettingsView Visibility="{Binding IsStudioTab, Converter={StaticResource BooleanToVisibility}}"/>
 
     <!-- ══ MCP (expert, STUDIO-21) ══ -->
     <views:McpView DataContext="{Binding Config.Mcp}"

@@ -1,3 +1,4 @@
+using Orkeon.Constants.Llm;
 using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
@@ -20,6 +21,9 @@ internal static class StudioFixture
 {
     /// <summary>Name of the profile the assistant runs on; the wizard's gate keys on it.</summary>
     public const string AssistantProfile = "Studio";
+
+    /// <summary>The variable the assistant's DeepSeek key is remembered under.</summary>
+    public const string DeepSeekKeyVariable = "DEEPSEEK_API_KEY";
 
     /// <summary>
     /// The session parked at the dry pause: a blueprint and no verdict.
@@ -228,7 +232,16 @@ internal static class StudioFixture
         {
             Profiles =
             [
-                new() { Name = AssistantProfile, Provider = LlmPresets.DeepSeek, Model = "deepseek-chat" },
+                // On its real endpoint, with its key remembered (below): the default and the
+                // assistant's account, whose balance the status bar reads at startup (STUDIO-35).
+                new()
+                {
+                    Name = AssistantProfile,
+                    Provider = LlmPresets.DeepSeek,
+                    Model = "deepseek-chat",
+                    BaseUrl = LlmProviderEndpoints.DeepSeek,
+                    KeyEnvName = DeepSeekKeyVariable,
+                },
                 new() { Name = "Local", Provider = LlmPresets.Ollama, Model = "qwen3:8b", BaseUrl = "http://localhost:11434/v1" },
                 // No key stored: the orange chip on the API-keys card is what a first-run cloud
                 // profile actually looks like.
@@ -237,6 +250,10 @@ internal static class StudioFixture
             ],
             DefaultProfile = AssistantProfile,
             StudioProfile = AssistantProfile,
+        },
+        ApiKeys = new Dictionary<string, string>(StringComparer.Ordinal)
+        {
+            [DeepSeekKeyVariable] = "capture-only-deepseek-key",
         },
         DoctorJson = DoctorWithIssues,
         Sessions = [DryPauseSession, PassingSession, FailingSession, PromotedSession],

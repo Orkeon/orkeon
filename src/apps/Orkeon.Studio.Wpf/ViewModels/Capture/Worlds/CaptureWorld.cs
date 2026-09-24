@@ -59,6 +59,9 @@ internal sealed class CaptureWorld
     /// <summary>The key store that cannot reach the operator's environment.</summary>
     public EphemeralApiKeyStore KeyStore { get; } = new();
 
+    /// <summary>The balance probe that answers without a network, on the seeded world's own «now» (STUDIO-35).</summary>
+    public OfflineBalanceProbe BalanceProbe { get; } = new(new PinnedClock(StudioFixture.Now));
+
     /// <summary>The assistant's beats, holdable so a state between two of them can be photographed.</summary>
     public CaptureUiDelay Delay { get; } = new();
 

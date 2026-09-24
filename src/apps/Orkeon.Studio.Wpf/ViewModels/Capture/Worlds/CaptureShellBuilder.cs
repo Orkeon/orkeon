@@ -43,6 +43,8 @@ internal static class CaptureShellBuilder
                 Delay = world.Delay,
                 LlmProbe = world.LlmProbe,
                 KeyStore = world.KeyStore,
+                // STUDIO-35: the balance is read at startup — offline, so the shot has one.
+                BalanceProbe = world.BalanceProbe,
                 // No Ticker: the status bar's clocks never move on their own during a campaign.
                 Clock = world.Clock,
             },

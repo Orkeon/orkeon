@@ -7,6 +7,7 @@ using Orkeon.Studio.Core.Presets;
 using Orkeon.Studio.Core.Profiles;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Mvvm;
+using Orkeon.Studio.Wpf.ViewModels.Shell;
 using System.Globalization;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Config;
@@ -16,19 +17,26 @@ namespace Orkeon.Studio.Wpf.ViewModels.Config;
 /// <see cref="ModelProfile"/>; the commands are handed in by the list so every mutation goes
 /// through one place.
 /// </summary>
-public sealed class ModelProfileItemViewModel
+public sealed class ModelProfileItemViewModel : ObservableObject
 {
+    private readonly BalanceReadings? _balances;
+    private readonly IStudioStrings _strings;
+
     internal ModelProfileItemViewModel(
         ModelProfile profile,
         bool isDefault,
         bool isStudio,
         ModelProfilesViewModel owner,
-        IReadOnlyList<string>? usedByTeams = null)
+        IReadOnlyList<string>? usedByTeams = null,
+        BalanceReadings? balances = null,
+        IStudioStrings? strings = null)
     {
         Profile = profile;
         IsDefault = isDefault;
         IsStudio = isStudio;
         UsedByTeams = usedByTeams ?? [];
+        _balances = balances;
+        _strings = strings ?? EnglishStudioStrings.Instance;
         SetDefaultCommand = new RelayCommand(() => owner.SetDefault(profile.Name));
         EditCommand = new RelayCommand(() => owner.BeginEdit(profile));
         DuplicateCommand = new RelayCommand(() => owner.Duplicate(profile));
@@ -64,6 +72,26 @@ public sealed class ModelProfileItemViewModel
     /// <summary>Whether the "used by" row shows.</summary>
     public bool IsUsedByTeams => UsedByTeams.Count > 0;
 
+    /// <summary>
+    /// What the profile's account has left, when a read of this session told it (STUDIO-35
+    /// D-04): the amounts as the provider returned them; null when nothing was read, or the
+    /// provider does not tell.
+    /// </summary>
+    public string? Balance => Reading is { Status: ProviderBalanceStatus.Available } reading
+        ? BalanceText.Amounts(reading)
+        : null;
+
+    /// <summary>Whether the balance chip shows.</summary>
+    public bool HasBalance => Balance is not null;
+
+    /// <summary>Whether the balance is under its provider's alert threshold — the chip's warning tone (D-03).</summary>
+    public bool IsBalanceLow => Reading is { } reading && _balances is not null && _balances.IsUnderThreshold(reading);
+
+    /// <summary>The chip on hover: what the amount is, and when it was read.</summary>
+    public string? BalanceTip => Reading is { } reading && _balances is not null
+        ? BalanceText.Summary(reading, _balances, _strings)
+        : null;
+
     /// <summary>Elects this profile as the machine default.</summary>
     public RelayCommand SetDefaultCommand { get; }
 
@@ -75,6 +103,15 @@ public sealed class ModelProfileItemViewModel
 
     /// <summary>Removes this profile (disabled on the last one).</summary>
     public RelayCommand DeleteCommand { get; }
+
+    private ProviderBalanceResult? Reading =>
+        _balances is not null && ProviderBalanceAccount.HasAccount(Profile.BaseUrl)
+            ? _balances.Of(ProviderBalanceAccount.For(Profile))
+            : null;
+
+    /// <summary>A read landed, or a threshold moved: the chip says it again.</summary>
+    internal void RefreshBalance() =>
+        OnPropertiesChanged(nameof(Balance), nameof(HasBalance), nameof(IsBalanceLow), nameof(BalanceTip));
 }
 
 /// <summary>
@@ -93,7 +130,11 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     private readonly ILlmEndpointProbe _probe;
     private readonly IApiKeyStore _keyStore;
     private readonly IStudioStrings _strings;
+    private readonly BalanceReadings? _balances;
+    private readonly IShellOpener? _opener;
     private LlmPresetInfo? _selectedProvider;
+    private ProviderBalanceResult? _balanceReading;
+    private string? _balanceResult;
     private string _name;
     private string? _baseUrl;
     private string? _model;
@@ -113,12 +154,16 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         string? previousName,
         ILlmEndpointProbe probe,
         IApiKeyStore keyStore,
-        IStudioStrings strings)
+        IStudioStrings strings,
+        BalanceReadings? balances = null,
+        IShellOpener? opener = null)
     {
         _owner = owner;
         _probe = probe;
         _keyStore = keyStore;
         _strings = strings;
+        _balances = balances;
+        _opener = opener;
         Providers = providers;
         PreviousName = previousName;
         _name = profile.Name;
@@ -149,6 +194,14 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
         SelectProviderCommand = new RelayCommand(p => SelectedProvider = p as LlmPresetInfo);
         TestConnectionCommand = new AsyncRelayCommand(() => TestConnectionAsync(CancellationToken.None));
         StoreKeyCommand = new RelayCommand(StoreKey, () => _apiKeyInput.Trim().Length > 0);
+        ReadBalanceCommand = new AsyncRelayCommand(() => ReadBalanceAsync(CancellationToken.None));
+        OpenBalanceConsoleCommand = new RelayCommand(
+            () => _opener?.Open(_balanceReading!.ConsoleUrl!.AbsoluteUri),
+            () => BalanceOffersConsole && _opener is not null);
+
+        // The line opens on what this session already read for the profile's account, if anything.
+        if (balances is not null && ProviderBalanceAccount.HasAccount(profile.BaseUrl))
+            ShowBalance(balances.Of(ProviderBalanceAccount.For(profile)));
     }
 
     /// <summary>The provider choices — the same catalogue `orkeon init` offers.</summary>
@@ -191,6 +244,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             SeedTimeoutFor(value, previous);
             OnPropertyChanged(nameof(TimeoutHint));
             ConnectionTestResult = null;
+            ShowBalance(null);
             OnPropertyChanged(nameof(RequiresApiKey));
             OnPropertyChanged(nameof(ApiKeyEnvName));
             OnPropertyChanged(nameof(HasStoredKey));
@@ -203,6 +257,7 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
             OnPropertyChanged(nameof(ShowLocalNote));
             OnPropertyChanged(nameof(ShowNoneNote));
             OnPropertyChanged(nameof(ShowTestRow));
+            OnPropertyChanged(nameof(ShowBalanceRow));
             OnPropertyChanged(nameof(MaxTokensHint));   // an entry can hold on one provider only (LLM-10)
             OnPropertyChanged(nameof(CanSave));
             SaveCommand.RaiseCanExecuteChanged();
@@ -293,6 +348,28 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
     /// <summary>The probe row makes no sense for the echo fallback.</summary>
     public bool ShowTestRow => _selectedProvider is not null && !IsNone;
 
+    /// <summary>
+    /// The balance line beside « Test » (STUDIO-35 D-04): for a card with a key, hence an
+    /// account to ask, and only when a balance probe is wired.
+    /// </summary>
+    public bool ShowBalanceRow => ShowTestRow && RequiresApiKey && _balances is { CanRead: true };
+
+    /// <summary>What the last balance read said for this endpoint — never the key; null before any.</summary>
+    public string? BalanceResult
+    {
+        get => _balanceResult;
+        private set => SetProperty(ref _balanceResult, value);
+    }
+
+    /// <summary>The probe's own line on hover, in English like the connection test's (STUDIO-33).</summary>
+    public string? BalanceDetail => _balanceReading?.Detail;
+
+    /// <summary>Whether the balance read is under its provider's alert threshold (D-03).</summary>
+    public bool IsBalanceLow => _balanceReading is { } reading && _balances is not null && _balances.IsUnderThreshold(reading);
+
+    /// <summary>Whether the provider shows the balance in its console only — the line then offers to open it (D-01).</summary>
+    public bool BalanceOffersConsole => _balanceReading is { } reading && BalanceText.OffersConsole(reading);
+
     /// <summary>True when a key is already in place under the profile's variable.</summary>
     public bool HasStoredKey => _keyStore.Peek(ApiKeyEnvName) is not null;
 
@@ -354,6 +431,12 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
     /// <summary>The remember-the-key action — stores the draft under the profile's variable, now.</summary>
     public RelayCommand StoreKeyCommand { get; }
+
+    /// <summary>Reads the balance of the account behind the endpoint and the key (STUDIO-35 D-04).</summary>
+    public AsyncRelayCommand ReadBalanceCommand { get; }
+
+    /// <summary>Opens the vendor's console, where a balance no inference key reads is shown.</summary>
+    public RelayCommand OpenBalanceConsoleCommand { get; }
 
     private void StoreKey()
     {
@@ -562,6 +645,39 @@ public sealed class ModelProfileEditorViewModel : ObservableObject
 
         ConnectionTestResult = result.Message;
     }
+
+    /// <summary>
+    /// Reads the balance of the endpoint being edited, with the key a run would present — the
+    /// one typed here first, then the remembered one — and, like the connection test, refuses
+    /// to ask without a key rather than earn a certain refusal. Public so tests can await it.
+    /// </summary>
+    public async Task ReadBalanceAsync(CancellationToken cancellationToken)
+    {
+        if (_balances is not { CanRead: true } balances)
+            return;
+
+        var target = new ProviderBalanceTarget(
+            ProviderBalanceAccount.For(BaseUrl, RequiresApiKey ? ApiKeyEnvName : null), BaseUrl, [_name.Trim()]);
+        var typed = _apiKeyInput.Trim();
+        if (RequiresApiKey && target.RequestWith(_keyStore, typed).ApiKey is null)
+        {
+            ShowBalance(null);
+            BalanceResult = _strings[StudioStringKeys.ProfileKeyMissingTest];
+            return;
+        }
+
+        ShowBalance(await balances.ReadEndpointAsync(target, typed.Length > 0 ? typed : null, cancellationToken).ConfigureAwait(true));
+    }
+
+    private void ShowBalance(ProviderBalanceResult? reading)
+    {
+        _balanceReading = reading;
+        BalanceResult = reading is not null && _balances is not null
+            ? BalanceText.Summary(reading, _balances, _strings)
+            : null;
+        OnPropertiesChanged(nameof(BalanceDetail), nameof(IsBalanceLow), nameof(BalanceOffersConsole));
+        OpenBalanceConsoleCommand.RaiseCanExecuteChanged();
+    }
 }
 
 /// <summary>
@@ -579,19 +695,27 @@ public sealed class ModelProfilesViewModel : ObservableObject
     private readonly IStudioStrings _strings;
     private readonly ILlmEndpointProbe _probe;
     private readonly IApiKeyStore _keyStore;
+    private readonly BalanceReadings? _balances;
+    private readonly IShellOpener? _opener;
     private ModelProfileSet _set = ModelProfileSet.Empty;
     private readonly Func<IReadOnlyList<TeamSummary>>? _loadTeams;
     private ModelProfileEditorViewModel? _editor;
     private string? _loadError;
 
-    /// <summary>Builds the tab over its seams.</summary>
+    /// <summary>
+    /// Builds the tab over its seams. <paramref name="balances"/> are the provider balances read
+    /// this session (STUDIO-35): each row shows its account's, and the editor reads one; left
+    /// out, neither shows. <paramref name="shellOpener"/> opens a vendor's console from the editor.
+    /// </summary>
     public ModelProfilesViewModel(
         IModelProfileStore? store,
         LlmSectionViewModel llm,
         IStudioStrings? strings = null,
         ILlmEndpointProbe? probe = null,
         IApiKeyStore? keyStore = null,
-        Func<IReadOnlyList<TeamSummary>>? loadTeams = null)
+        Func<IReadOnlyList<TeamSummary>>? loadTeams = null,
+        BalanceReadings? balances = null,
+        IShellOpener? shellOpener = null)
     {
         ArgumentNullException.ThrowIfNull(llm);
 
@@ -603,7 +727,16 @@ public sealed class ModelProfilesViewModel : ObservableObject
         // Lives as long as the tab, which lives as long as the window.
         _probe = probe ?? HttpLlmEndpointProbe.ForCurrentMachine();
         _keyStore = keyStore ?? new EnvironmentApiKeyStore();
+        _balances = balances;
+        _opener = shellOpener;
         NewProfileCommand = new RelayCommand(BeginCreate);
+
+        // A read landed, a threshold moved or the language switched: every row's chip says it again.
+        if (balances is not null)
+        {
+            balances.Changed += (_, _) => RefreshBalances();
+            _strings.CultureChanged += (_, _) => RefreshBalances();
+        }
     }
 
     /// <summary>The profile cards, rebuilt after every mutation.</summary>
@@ -708,7 +841,8 @@ public sealed class ModelProfilesViewModel : ObservableObject
     }
 
     internal void BeginEdit(ModelProfile profile) =>
-        Editor = new ModelProfileEditorViewModel(this, ProviderCatalog(), profile, profile.Name, _probe, _keyStore, _strings);
+        Editor = new ModelProfileEditorViewModel(
+            this, ProviderCatalog(), profile, profile.Name, _probe, _keyStore, _strings, _balances, _opener);
 
     internal void Duplicate(ModelProfile profile)
     {
@@ -741,6 +875,12 @@ public sealed class ModelProfilesViewModel : ObservableObject
 
     internal void CancelEdit() => Editor = null;
 
+    private void RefreshBalances()
+    {
+        foreach (var row in Profiles)
+            row.RefreshBalance();
+    }
+
     /// <summary>Whether <paramref name="name"/> already belongs to a profile other than the one being edited.</summary>
     internal bool IsNameTaken(string name, string? previousName) =>
         _set.Profiles.Any(p =>
@@ -764,7 +904,9 @@ public sealed class ModelProfilesViewModel : ObservableObject
             previousName: null,
             _probe,
             _keyStore,
-            _strings);
+            _strings,
+            _balances,
+            _opener);
     }
 
     private IReadOnlyList<LlmPresetInfo> ProviderCatalog() => LlmPresets.ProviderCatalogFor(_strings);
@@ -811,7 +953,9 @@ public sealed class ModelProfilesViewModel : ObservableObject
                 isDefault: string.Equals(profile.Name, _set.DefaultProfile, StringComparison.Ordinal),
                 isStudio: string.Equals(profile.Name, _set.StudioProfile, StringComparison.Ordinal),
                 this,
-                usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : []));
+                usage.TryGetValue(profile.Name, out var usedBy) ? usedBy : [],
+                _balances,
+                _strings));
         }
 
         RebuildProfileNames();

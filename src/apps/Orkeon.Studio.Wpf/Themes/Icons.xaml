@@ -55,4 +55,7 @@
   <Geometry x:Key="Lucide.file-json-2">M14 22h4a2 2 0 0 0 2-2V8a2.4 2.4 0 0 0-.706-1.706l-3.588-3.588A2.4 2.4 0 0 0 14 2H6a2 2 0 0 0-2 2v6 M14 2v5a1 1 0 0 0 1 1h5 M5 14a1 1 0 0 0-1 1v2a1 1 0 0 1-1 1 1 1 0 0 1 1 1v2a1 1 0 0 0 1 1 M9 22a1 1 0 0 0 1-1v-2a1 1 0 0 1 1-1 1 1 0 0 1-1-1v-2a1 1 0 0 0-1-1</Geometry>
   <Geometry x:Key="Lucide.chevron-down">m6 9 6 6 6-6</Geometry>
   <Geometry x:Key="Lucide.key">m15.5 7.5 2.3 2.3a1 1 0 0 0 1.4 0l2.1-2.1a1 1 0 0 0 0-1.4L19 4 M21 2l-9.6 9.6 M15.5 7.5 6 17a5.07 5.07 0 1 0 1 1l9.5-9.5</Geometry>
+  <!-- STUDIO-35: the provider balance, and the vendor console it opens where only the console shows it. -->
+  <Geometry x:Key="Lucide.wallet">M19 7V4a1 1 0 0 0-1-1H5a2 2 0 0 0 0 4h15a1 1 0 0 1 1 1v4h-3a2 2 0 0 0 0 4h3a1 1 0 0 0 1-1v-2a1 1 0 0 0-1-1 M3 5v14a2 2 0 0 0 2 2h15a1 1 0 0 0 1-1v-4</Geometry>
+  <Geometry x:Key="Lucide.external-link">M15 3h6v6 M10 14 21 3 M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6</Geometry>
 </ResourceDictionary>

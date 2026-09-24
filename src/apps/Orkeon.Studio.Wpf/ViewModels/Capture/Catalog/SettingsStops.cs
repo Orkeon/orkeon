@@ -3,7 +3,7 @@ using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 
 namespace Orkeon.Studio.Wpf.ViewModels.Capture.Catalog;
 
-/// <summary>Settings and its six tabs.</summary>
+/// <summary>Settings and its seven tabs.</summary>
 internal static class SettingsStops
 {
     /// <summary>The stops.</summary>
@@ -105,6 +105,19 @@ internal static class SettingsStops
                     + "environment, and an HTTP server with its URL — the two transports side by "
                     + "side under the switch that connects them.",
             Covers = ["Config.Mcp.HasServers"],
+        },
+
+        new()
+        {
+            Name = "reglages-studio",
+            Category = CaptureCategory.Settings,
+            Screen = CaptureScreen.SettingsStudio,
+            Because = "The Studio tab (STUDIO-35): the provider balance card — the automatic reading, "
+                    + "off by default, and one alert threshold per provider whose balance a key reads, "
+                    + "the amount the startup read found beside DeepSeek's — with the same balance on "
+                    + "the status bar below.",
+            Covers = ["Settings.Studio.Thresholds", "StatusBar.Balance.HasBalance"],
+            SweepsLanguages = true,
         },
 
         new()

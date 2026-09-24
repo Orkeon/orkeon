@@ -28,4 +28,14 @@ public sealed record StudioUiPreferences
 
     /// <summary>The machine's own language, consulted when nobody has chosen one.</summary>
     public string? SystemLanguage { get; init; }
+
+    /// <summary>What Settings › Studio held last time; the defaults when null.</summary>
+    public StudioSettings? InitialStudio { get; init; }
+
+    /// <summary>
+    /// Writes Settings › Studio after each change; null keeps the choices for this session
+    /// only. The app merges them into <c>ui-preferences.json</c> (<see cref="UiPreferencesDocument"/>),
+    /// so the theme, the language and the mode written by the other gestures stay.
+    /// </summary>
+    public Action<StudioSettings>? PersistStudio { get; init; }
 }

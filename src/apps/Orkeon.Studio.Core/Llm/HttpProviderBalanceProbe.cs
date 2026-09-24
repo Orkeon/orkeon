@@ -108,6 +108,13 @@ public sealed class HttpProviderBalanceProbe : IProviderBalanceProbe, IDisposabl
     /// <summary>Probes over the real network, through a client this probe owns.</summary>
     public static HttpProviderBalanceProbe ForCurrentMachine() => new(new HttpClient(), ownsClient: true, timeProvider: null);
 
+    /// <summary>
+    /// The providers whose balance an inference key reads — the verified dialects, by name.
+    /// Every other provider answers without an amount, so a threshold on one of these is the
+    /// only kind that can ever fire (STUDIO-35 D-03).
+    /// </summary>
+    public static IReadOnlyList<string> ReadableProviders { get; } = [.. Dialects.Keys.Order(StringComparer.Ordinal)];
+
     /// <inheritdoc />
     public async Task<ProviderBalanceResult> ProbeAsync(
         LlmProbeRequest request,

@@ -97,7 +97,7 @@ internal static class CaptureWorldWriter
 
         var machine = new ScriptedExecutableProbe(binaryDirectory);
 
-        return new CaptureWorld
+        var world = new CaptureWorld
         {
             Plan = plan,
             Root = root,
@@ -111,6 +111,11 @@ internal static class CaptureWorldWriter
             HistoryStore = new LaunchHistoryFileStore(historyPath),
             ProfileStore = profileStore,
         };
+
+        foreach (var (variable, key) in plan.ApiKeys)
+            world.KeyStore.Save(variable, key);
+
+        return world;
     }
 
     /// <summary>

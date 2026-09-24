@@ -1,0 +1,66 @@
+<!-- The "Studio" settings tab (STUDIO-35): how Studio itself behaves on this machine, in both
+     modes — kept in ui-preferences.json, merged, never in the settings file the teams run on.
+     One card per concern: the provider balance first; STUDIO-32's archiving suggestion is the
+     next card. DataContext: SettingsScreenViewModel (inherited from SettingsView). -->
+<UserControl x:Class="Orkeon.Studio.Wpf.Views.StudioSettingsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:controls="clr-namespace:Orkeon.Studio.Wpf.Controls"
+             xmlns:services="clr-namespace:Orkeon.Studio.Wpf.Services">
+  <StackPanel>
+
+    <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,14"
+               Text="{Binding [Studio.Settings.StudioIntro], Source={x:Static services:I18n.Instance}}"/>
+
+    <!-- the provider balance: the status bar reads it at startup, at the end of each activity and
+         on a click (D-02); the automatic reading is off unless picked here, and a threshold turns
+         a provider's balance orange under it (D-03), in the currency the provider returns. -->
+    <Border Style="{StaticResource Card}" Margin="0,0,0,16">
+      <StackPanel>
+        <StackPanel Orientation="Horizontal" Margin="0,0,0,4">
+          <controls:LucideIcon Kind="wallet" Size="15" Foreground="{DynamicResource AccentBrush}" Margin="0,0,8,0"/>
+          <TextBlock Style="{StaticResource CardTitle}"
+                     Text="{Binding [Studio.Shell.BalanceTitle], Source={x:Static services:I18n.Instance}}"/>
+        </StackPanel>
+        <TextBlock Style="{StaticResource Hint}"
+                   Text="{Binding [Studio.Settings.BalanceIntro], Source={x:Static services:I18n.Instance}}"/>
+
+        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,5"
+                   Text="{Binding [Studio.Settings.BalanceRefreshLabel], Source={x:Static services:I18n.Instance}}"/>
+        <ComboBox Width="260" HorizontalAlignment="Left"
+                  ItemsSource="{Binding Studio.RefreshChoices}"
+                  SelectedItem="{Binding Studio.SelectedRefresh}"
+                  DisplayMemberPath="Label"/>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,4,0,0"
+                   Text="{Binding [Studio.Settings.BalanceRefreshHint], Source={x:Static services:I18n.Instance}}"/>
+
+        <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,5"
+                   Text="{Binding [Studio.Settings.BalanceThresholdsLabel], Source={x:Static services:I18n.Instance}}"/>
+        <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,10"
+                   Text="{Binding [Studio.Settings.BalanceThresholdsHint], Source={x:Static services:I18n.Instance}}"/>
+        <ItemsControl ItemsSource="{Binding Studio.Thresholds}">
+          <ItemsControl.ItemTemplate>
+            <DataTemplate>
+              <StackPanel Margin="0,0,0,8">
+                <DockPanel>
+                  <TextBlock DockPanel.Dock="Left" Width="130" VerticalAlignment="Center"
+                             FontSize="12.5" FontWeight="SemiBold" Foreground="{DynamicResource InkBrush}"
+                             Text="{Binding Title}"/>
+                  <TextBox DockPanel.Dock="Left" Style="{StaticResource InputMono}" Width="110"
+                           Text="{Binding AmountText, UpdateSourceTrigger=PropertyChanged}"/>
+                  <!-- the currency to type it in: the last amount this session read -->
+                  <TextBlock Style="{StaticResource Hint}" Margin="12,0,0,0" VerticalAlignment="Center"
+                             Text="{Binding Hint}"/>
+                </DockPanel>
+                <TextBlock Style="{StaticResource Hint}" Margin="130,4,0,0" Foreground="{DynamicResource WarningBrush}"
+                           Text="{Binding [Studio.Settings.BalanceThresholdInvalid], Source={x:Static services:I18n.Instance}}"
+                           Visibility="{Binding IsInvalid, Converter={StaticResource BooleanToVisibility}}"/>
+              </StackPanel>
+            </DataTemplate>
+          </ItemsControl.ItemTemplate>
+        </ItemsControl>
+      </StackPanel>
+    </Border>
+
+  </StackPanel>
+</UserControl>

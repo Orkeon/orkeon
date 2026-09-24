@@ -134,6 +134,8 @@ public partial class App : System.Windows.Application
                 // The wizard's pause before a need is searched for close use cases (STUDIO-39):
                 // a timer of its own, so dropping a superseded pause never drops a beat above.
                 SuggestionDelay = new WpfDelay(Dispatcher),
+                // The optional automatic balance reading keeps a beat of its own (STUDIO-35).
+                BalanceTicker = new WpfTicker(Dispatcher),
             },
             new StudioUiPreferences
             {
@@ -152,6 +154,10 @@ public partial class App : System.Windows.Application
                     // ever run on a user gesture, long after _viewModel is assigned.
                     _viewModel?.Mode.Mode ?? preferences.Mode ?? UiModeViewModel.Novice),
                 ApplyLanguage = I18n.Instance.SetLanguage,
+                // Settings › Studio (STUDIO-35): merged into the same file, so a theme, language
+                // or mode write keeps it, and its own writes keep them.
+                InitialStudio = preferences.Studio,
+                PersistStudio = UiPreferences.SaveStudio,
             });
 
         // VFS-90: removing an authorized folder a team names by id asks first — the one

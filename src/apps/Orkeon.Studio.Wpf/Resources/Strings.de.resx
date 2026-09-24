@@ -153,6 +153,94 @@
   <data name="Studio.Shell.StatusOpenTip" xml:space="preserve">
     <value>Den Bildschirm dieser Aktivität öffnen</value>
   </data>
+  <!-- STUDIO-35: the provider balance (status bar, profiles, Settings › Studio) -->
+  <data name="Studio.Shell.BalanceTitle" xml:space="preserve">
+    <value>Guthaben der Anbieter</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotRead" xml:space="preserve">
+    <value>noch nicht gelesen</value>
+  </data>
+  <data name="Studio.Shell.BalanceReading" xml:space="preserve">
+    <value>Guthaben wird gelesen…</value>
+  </data>
+  <data name="Studio.Shell.BalanceClickToRead" xml:space="preserve">
+    <value>Ein Klick liest die Guthaben erneut; bei einem Anbieter, der sein Guthaben nicht bereitstellt, öffnet er die Konsole.</value>
+  </data>
+  <data name="Studio.Shell.BalanceReadAt" xml:space="preserve">
+    <value>gelesen um {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceAvailable" xml:space="preserve">
+    <value>{0} verfügbar</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyLimit" xml:space="preserve">
+    <value>{0} unter dem Limit dieses Schlüssels verbleibend</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnderThreshold" xml:space="preserve">
+    <value>unter Ihrer Warnschwelle von {0}</value>
+  </data>
+  <data name="Studio.Shell.BalanceNotExposed" xml:space="preserve">
+    <value>von der API nicht bereitgestellt</value>
+  </data>
+  <data name="Studio.Shell.BalanceAdminKey" xml:space="preserve">
+    <value>nur mit einem Admin-Schlüssel lesbar</value>
+  </data>
+  <data name="Studio.Shell.BalanceKeyRefused" xml:space="preserve">
+    <value>Schlüssel abgelehnt</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAnswer" xml:space="preserve">
+    <value>keine Antwort</value>
+  </data>
+  <data name="Studio.Shell.BalanceUnexpected" xml:space="preserve">
+    <value>unerwartete Antwort</value>
+  </data>
+  <data name="Studio.Shell.BalanceNoAccount" xml:space="preserve">
+    <value>kein Konto abzufragen</value>
+  </data>
+  <data name="Studio.Shell.BalanceOpenConsole" xml:space="preserve">
+    <value>klicken, um seine Konsole zu öffnen</value>
+  </data>
+  <data name="Studio.Shell.StudioTab" xml:space="preserve">
+    <value>Studio</value>
+  </data>
+  <data name="Studio.Settings.StudioIntro" xml:space="preserve">
+    <value>Wie sich Studio selbst auf diesem Rechner verhält. Diese Einstellungen bleiben in Ihrem Windows-Profil – nie in der Einstellungsdatei, mit der Ihre Teams laufen.</value>
+  </data>
+  <data name="Studio.Settings.BalanceIntro" xml:space="preserve">
+    <value>Die Statusleiste zeigt, was auf den Konten Ihrer Modelleinstellungen verbleibt – der Standardeinstellung, der des Assistenten und der Ihrer Teams. Sie liest sie beim Start, am Ende jedes Laufs, Tests oder jeder Komposition und wenn Sie darauf klicken. Nichts wird gespeichert: Ein angezeigter Betrag wurde gerade gelesen.</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshLabel" xml:space="preserve">
+    <value>Automatisches Lesen</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshHint" xml:space="preserve">
+    <value>Standardmäßig aus: Studio sendet dann keine Anfrage, um die Sie nicht gebeten haben, und schont die Ratenlimits der Anbieter.</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshOff" xml:space="preserve">
+    <value>Nie – die Standardeinstellung</value>
+  </data>
+  <data name="Studio.Settings.BalanceRefreshEvery" xml:space="preserve">
+    <value>alle {0} Minuten</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsLabel" xml:space="preserve">
+    <value>Warnschwellen</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdsHint" xml:space="preserve">
+    <value>Unter seiner Schwelle wird das Guthaben eines Anbieters in der Statusleiste orange. In der Währung, die der Anbieter liefert – nichts wird umgerechnet. Leer: keine Warnung.</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdInvalid" xml:space="preserve">
+    <value>Geben Sie einen Betrag ein, etwa 5 oder 12,50 – die Schwelle bleibt unverändert.</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdLastRead" xml:space="preserve">
+    <value>zuletzt gelesen: {0}</value>
+  </data>
+  <data name="Studio.Settings.BalanceThresholdNoReading" xml:space="preserve">
+    <value>in dieser Sitzung noch nicht gelesen</value>
+  </data>
+  <data name="Studio.Settings.ReadBalance" xml:space="preserve">
+    <value>Guthaben lesen</value>
+  </data>
+  <data name="Studio.Settings.BalanceConsole" xml:space="preserve">
+    <value>Konsole öffnen</value>
+  </data>
   <data name="Studio.Settings.TestConnection" xml:space="preserve">
     <value>Verbindung testen</value>
   </data>
