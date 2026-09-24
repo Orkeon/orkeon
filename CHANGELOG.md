@@ -7,6 +7,43 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — My teams stays readable with many teams: search, order, the Archives view, an undo banner, the archive suggestion (STUDIO-32)
+
+- **A view over the cards, in memory.** The screen gains:
+  - a search on the name and the need: every word typed must start a word of them, accents and case
+    aside — the gallery's rule;
+  - an order, by last activity (the default) or by name;
+  - an « Archives (N) » toggle, which closes by itself once the last archive leaves.
+
+  None of these reads the disk again. The sidebar counts the active teams whatever the screen shows
+  (`TeamsViewModel.ActiveCount`, formerly `Count`). The empty screen now tells apart no team at all,
+  every team archived (« Open the archives ») and a search that found nothing.
+- **« Archive » asks no question.** It is a labelled button in novice mode and an icon in expert mode.
+  An undo banner then holds the top of the screen for a few seconds, on a timer of its own
+  (`StudioServices.UndoDelay`). An archived card offers only « Restore » and « Delete ». Undoing
+  « Stop the schedule and archive » says so on the banner and brings the team back without its
+  schedule: the card shows « Schedule not installed » with « Install the schedule », and nothing is
+  reinstalled.
+- **The archive suggestion.** A banner asks « N teams not launched for 60 days — archive them? ».
+  - It never lists a scheduled team, nor one whose activity is unknown, and it waits until the launch
+    history has been read.
+  - Accepting archives exactly the teams it names, each read again at the click, with one undo for all
+    of them. « Not now » puts it away for the session.
+  - Its switch and threshold are a new card in Settings › Studio, merged into `ui-preferences.json`
+    (`ArchiveSuggestion`, `ArchiveSuggestionDays`).
+- **Archiving holds even when Studio did not do it.** The Run and Test screens read a team's archived
+  state again right before a launch, so a team archived behind their back is refused. A copy's
+  arrival counts as activity: a duplicate or an import forgets the copied `lastRunAt` and stamps
+  `addedAt` in `studio-team.json` (in a minimal sidecar when the copy came without one), and the last
+  activity now reads four dates.
+- **Fixes and API changes.**
+  - A card's last run falls back on the sidecar's `lastRunAt` once the history has forgotten it.
+  - The Test screen's team picker now resolves the team it picks; it used to set only the path, which
+    left the trial's buttons disabled.
+  - `TeamCatalog.Duplicate`, `TeamCatalog.Import` and `UseCaseImporter.ImportAsync` take the arrival
+    date.
+  - `ArchiveChanged` now carries every folder one gesture moved (`ArchiveChangedEventArgs.Paths`).
+
 ### Added — renaming a team: its folder, session, titles and schedule follow, all or nothing (STUDIO-28)
 
 - **`orkeon forge rename <team-folder> --name <name>`** renames a promoted team, all of it or nothing:
