@@ -79,7 +79,19 @@ public sealed record LlmPresetInfo(
     string? DefaultApiKeyEnv = null,
     LlmPresetKind Kind = LlmPresetKind.Other,
     string? KeyConsoleUrl = null,
-    int? RecommendedTimeoutSeconds = null);
+    int? RecommendedTimeoutSeconds = null)
+{
+    /// <summary>
+    /// <see cref="KeyConsoleUrl"/> as a link a UI can open. The catalogue keeps the scheme-less
+    /// text the editor shows as help, and every vendor console is served over https — so the
+    /// link is that text behind <c>https://</c>, with no second copy to keep in step (STUDIO-33
+    /// D-03). Null when the card names no console.
+    /// </summary>
+    public Uri? KeyConsoleUri =>
+        string.IsNullOrWhiteSpace(KeyConsoleUrl)
+            ? null
+            : new Uri(Uri.UriSchemeHttps + Uri.SchemeDelimiter + KeyConsoleUrl.Trim(), UriKind.Absolute);
+}
 
 /// <summary>How the profile editor groups a provider card (design v3, "volets" rev. 2).</summary>
 public enum LlmPresetKind
@@ -304,6 +316,33 @@ public static class LlmPresets
             new(None, strings[StudioStringKeys.PresetNoneTitle], strings[StudioStringKeys.ProviderNoneShortDescription],
                 null, null, RequiresApiKey: false, null, LlmPresetKind.None),
         ];
+    }
+
+    /// <summary>
+    /// The key console of the provider behind <paramref name="baseUrl"/>, as a link: the
+    /// <see cref="LlmPresetInfo.KeyConsoleUri"/> of its card in <see cref="ProviderCatalogFor"/>.
+    /// Null when no card matches the endpoint, when the card names no console, or when the
+    /// endpoint's host is not the card's — Kimi's .cn and MiniMax's mainland twins keep their
+    /// accounts on a platform the card's console does not serve.
+    /// </summary>
+    [SuppressMessage("Design", "CA1054",
+        Justification = "The input is the raw 'Llm:BaseUrl' field of a profile, which may be half-typed; " +
+                        "an endpoint that does not parse simply has no console.")]
+    public static Uri? KeyConsoleFor(string? baseUrl)
+    {
+        var provider = LlmProviderDetector.Detect(baseUrl);
+        var card = ProviderCatalogFor(EnglishStudioStrings.Instance)
+            .FirstOrDefault(c => string.Equals(c.Name, provider, StringComparison.Ordinal));
+
+        if (card?.KeyConsoleUri is not { } console
+            || !Uri.TryCreate(baseUrl?.Trim(), UriKind.Absolute, out var endpoint)
+            || !Uri.TryCreate(card.DefaultBaseUrl, UriKind.Absolute, out var home)
+            || !string.Equals(endpoint.Host, home.Host, StringComparison.OrdinalIgnoreCase))
+        {
+            return null;
+        }
+
+        return console;
     }
 
     /// <summary>Returns the catalog entry of a preset, or <see langword="null"/> when unknown.</summary>
