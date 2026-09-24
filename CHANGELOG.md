@@ -7,6 +7,27 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio archives a team: out of the active list, every link kept (STUDIO-31)
+
+- **Archiving is a flag** in `studio-team.json` (`archived`, `archivedAt`); the folder does not move,
+  so its path, session link, scheduled task and history hold. `TeamCatalog.List` takes a filter
+  (active by default, archived, all) and never lists a dot folder, nor a hidden or system folder on
+  Windows. A duplicate or an import that fails halfway leaves no partial folder.
+- **The sidecar is merged, never rebuilt**: a « Modify » re-adoption keeps the archive flag and the
+  last run. A duplicate or an import lands active; an export carries the flag.
+- **Last activity**: a real run from the Run screen — never a trial, never `--validate` — stamps
+  `lastRunAt` into its team; a team's last activity is the most recent of that date, its latest
+  history entry and `forge.json` `promotedAt`.
+- **Nothing relaunches an archived team by mistake**: the Run and Test screens refuse it under
+  « Archived team — restore it? » with « Restore »; « Replay » in the History checks the entry's own
+  team and offers the restore instead of running; the Test picker lists active teams only.
+- **Rules**: a scheduled team is archived only by stopping its schedule first; archive and restore
+  are refused while the team runs on Run or Test, or is open in the assistant — the launchers now
+  name the run they have in flight (`TeamActivity`), a seam `forge rename` shares (STUDIO-28).
+  « Used by » still counts archived teams, Settings › Team folders marks them « (archived) », and
+  the balance covers the active teams. Archiving is Studio's notion: `orkeon run` and the terminal
+  launcher ignore it.
+
 ### Added — import a use case as it is: `orkeon usecases export` and the gallery's expert action (STUDIO-41)
 
 - **`orkeon usecases export <id> --to <folder> [--lang <code>]`** writes one use case as a team
