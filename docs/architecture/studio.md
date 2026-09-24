@@ -366,41 +366,55 @@ A metric the providers did not measure produces **no chip** — never a zero.
 
 ### Modify, re-try, re-adopt (remediation v3)
 
-Adoption is no longer a one-way door. « Modify » on a team card — resolved by
-the reverse lookup from the team folder to the forge session that promoted it
-(`promotedTo`) — reopens the wizard at the Composer step with the whole stepper
-reachable: the engine resumes the promoted session into a reopened arbitration
-(the stored verdict is re-announced first), so agents are editable again, a new
+Adoption is no longer a one-way door. « Modify » on a team card reopens the
+wizard at the Composer step with the whole stepper reachable: the engine resumes
+the team's session into a reopened arbitration (the stored verdict is re-announced
+first), so agents are editable again, a new
 `retry` decision re-runs the trial as-is (zero compose tokens, one budget
 iteration), and re-adoption **updates the same team folder** — generated files
 (`crew/`, launchers, `FORGE.md`, `schedule/`) are regenerated, the sidecar and
 the user's own files survive, and renaming the team only changes its display
 name. After an adoption the wizard is a blank step 1 again (STUDIO-20): modifying
 an adopted team goes through « Modify » on its card, and the reopened arbitration
-offers `retry`. A team no session points at — imported, or whose session was
-deleted — is modifiable too (FORGE-09): the card's « Modify » runs the engine's
-`forge reopen <team-folder>`, which rebuilds a session from the team's own `crew/`
-(brief from the promotion's `forge.json`, derived from the plan otherwise) and parks it
-at the dry pause; the wizard reads the session off `session.started` /
-`team.reopened` and opens the Composer without an engine, as after `--dry` — amend
-an agent, try the team, or keep it as it is, then re-adopt onto the same folder.
-`TeamSummary.HasYamlCrew` is the gate: only a team with no YAML crew under `crew/`
-(a script crew, a foreign layout) keeps « Modify » disabled, the tooltip saying why;
-the tooltip also says when the reopen goes through a rebuilt session. Discarding a
-session under « Sessions in progress » while the wizard is open on it ends that
+offers `retry`. Which session a team is linked to is the engine's answer, never
+Studio's (STUDIO-25): « Modify » always runs `forge reopen <team-folder>`. A session
+carries a stable id, announced on `session.started` and copied by its promotion into
+the team's `forge.json`, and one rule decides the link — rule R,
+`Orkeon.Domain.FileSystem.TeamSessionLink`, the same for the CLI and Studio: the
+session carrying the folder's id is linked when its `promotedTo` designates the
+folder, or when the folder it designates is gone or no longer carries the id — the
+team was moved or renamed, and the session follows it; when `promotedTo` designates
+another existing folder carrying the same id, this folder is a copy, linked to
+nothing. No path decides the link on its own. A team no session is linked to —
+imported, whose session was deleted, duplicated, or without an id — is modifiable
+too (FORGE-09): `forge reopen` rebuilds a session from the team's own `crew/` (brief
+from the promotion's `forge.json`, derived from the plan otherwise), writes the new
+session's id into the folder's `forge.json` — a duplicated team thereby becomes
+independent and can never reach its original's session — and parks it at the dry
+pause; the wizard reads the session off `session.started` / `team.reopened` and
+opens the Composer without an engine, as after `--dry` — amend an agent, try the
+team, or keep it as it is, then re-adopt onto the same folder. The card only gates
+the button: « Modify » is offered when the team's `forge.json` names a session
+(`TeamSummary.ForgeSessionId`) or its YAML crew can be read back
+(`TeamSummary.HasYamlCrew`); a team with neither (a script crew, a foreign layout,
+no record) keeps it disabled, the tooltip saying why; the tooltip also says when the
+reopen goes through a rebuilt session. Discarding a session under « Sessions in
+progress » while the wizard is open on it ends that
 creation as well: the wizard goes back to the blank step 1 of « Restart » (a running
 engine is stopped first) rather than keep a Composer over a directory that no longer
 exists; a session it is not open on leaves it untouched. « Modify » brings the wizard
-forward on the click itself, before any session exists — with none pointing at the team
-the engine rebuilds one first, and the screen used to move only once it had (the owner's
-« two clicks », 2026-09-21); the rebuild shows as the engine working. A click on « Modify »
-or « Resume » while the engine is busy on another creation is refused in words on the
+forward on the click itself, before the engine has answered — the reopen, a rebuild when
+no session is linked, takes a moment, and the screen used to move only once it was over
+(the owner's « two clicks », 2026-09-21); the reopen shows as the engine working. A click
+on « Modify » or « Resume » while the engine is busy on another creation is refused in words on the
 wizard's status line, nothing stopped, instead of being dropped. A forge run's task
 completes only once its epilogue has landed on the UI thread, and with it every event
 posted before: WPF resumes an await begun in an input handler at Send priority, above the
 Normal priority the reader thread's posts travel at, and the rebuild used to read the
 session off a model the events had not reached yet — step 1, with the session on disk for
-the second click to find. The disk is the fallback when the stream announces nothing, and
+the second click to find. The disk is the fallback when the stream announces nothing —
+the session named by the id the engine left in the team's `forge.json`, taken only when
+rule R links it to that very folder, so a copy never lands on its original's session — and
 a card says so when neither has it.
 
 ### Tools and MCP in the settings (STUDIO-21)

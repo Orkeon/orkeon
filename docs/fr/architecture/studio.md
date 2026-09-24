@@ -401,10 +401,9 @@ chip** — jamais un zéro.
 ### Modifier, ré-essayer, ré-adopter (remédiation v3)
 
 L'adoption n'est plus une porte à sens unique. « Modifier » sur une carte
-d'équipe — résolu par la recherche inverse du dossier d'équipe vers la session
-forge qui l'a promue (`promotedTo`) — rouvre le wizard à l'étape Composer avec
-tout le stepper accessible : le moteur reprend la session promue dans un
-arbitrage rouvert (le verdict stocké est ré-annoncé d'abord), les agents sont
+d'équipe rouvre le wizard à l'étape Composer avec tout le stepper accessible : le
+moteur reprend la session de l'équipe dans un arbitrage rouvert (le verdict stocké
+est ré-annoncé d'abord), les agents sont
 donc à nouveau éditables, une nouvelle décision `retry` re-exécute l'essai tel
 quel (zéro jeton de composition, une itération de budget), et la ré-adoption
 **met à jour le même dossier d'équipe** — les fichiers générés (`crew/`,
@@ -412,25 +411,40 @@ lanceurs, `FORGE.md`, `schedule/`) sont régénérés, le sidecar et les fichier
 l'utilisateur survivent, renommer l'équipe ne change que son nom d'affichage.
 Après une adoption, l'assistant est de nouveau une étape 1 vierge (STUDIO-20) :
 modifier une équipe adoptée passe par « Modifier » sur sa carte, et l'arbitrage
-rouvert propose `retry`. Une équipe vers laquelle aucune session ne pointe —
-importée, ou session supprimée — se modifie aussi (FORGE-09) : le « Modifier » de
-la carte lance le `forge reopen <dossier-equipe>` du moteur, qui reconstruit une
-session depuis le `crew/` de l'équipe (brief tiré du `forge.json` de la promotion,
-dérivé du plan sinon) et la pose à la pause sèche ; le wizard lit la session sur
-`session.started` / `team.reopened` et ouvre le Composer sans moteur, comme après
-`--dry` — amender un agent, essayer l'équipe ou la garder telle quelle, puis
-ré-adopter sur le même dossier. `TeamSummary.HasYamlCrew` est la porte : seule une
-équipe sans crew YAML sous `crew/` (crew script, disposition étrangère) garde
-« Modifier » désactivé, la raison en infobulle ; l'infobulle dit aussi quand la
-réouverture passe par une session reconstruite. Supprimer une session sous « Sessions
+rouvert propose `retry`. La session à laquelle une équipe est liée est la réponse
+du moteur, jamais celle de Studio (STUDIO-25) : « Modifier » lance toujours
+`forge reopen <dossier-equipe>`. Une session porte un identifiant stable, annoncé
+par `session.started` et recopié par sa promotion dans le `forge.json` de l'équipe,
+et une seule règle décide du lien — la règle R,
+`Orkeon.Domain.FileSystem.TeamSessionLink`, la même pour le CLI et Studio : la
+session qui porte l'identifiant du dossier lui est liée quand son `promotedTo`
+désigne ce dossier, ou quand le dossier qu'il désigne a disparu ou ne porte plus
+l'identifiant — l'équipe a été déplacée ou renommée, et la session la suit ; quand
+`promotedTo` désigne un autre dossier existant qui porte le même identifiant, ce
+dossier-ci est une copie, liée à rien. Aucun chemin ne décide seul du lien. Une
+équipe à laquelle aucune session n'est liée — importée, session supprimée,
+dupliquée, ou sans identifiant — se modifie aussi (FORGE-09) : `forge reopen`
+reconstruit une session depuis le `crew/` de l'équipe (brief tiré du `forge.json` de
+la promotion, dérivé du plan sinon), écrit l'identifiant de la nouvelle session dans
+le `forge.json` du dossier — une équipe dupliquée devient ainsi indépendante et ne
+peut plus atteindre la session de l'original — et la pose à la pause sèche ; le
+wizard lit la session sur `session.started` / `team.reopened` et ouvre le Composer
+sans moteur, comme après `--dry` — amender un agent, essayer l'équipe ou la garder
+telle quelle, puis ré-adopter sur le même dossier. La carte ne fait que garder le
+bouton : « Modifier » est proposé quand le `forge.json` de l'équipe nomme une session
+(`TeamSummary.ForgeSessionId`) ou que sa crew YAML peut être relue
+(`TeamSummary.HasYamlCrew`) ; une équipe sans l'un ni l'autre (crew script,
+disposition étrangère, pas d'enregistrement) le garde désactivé, la raison en
+infobulle ; l'infobulle dit aussi quand la réouverture passe par une session
+reconstruite. Supprimer une session sous « Sessions
 en cours » pendant que l'assistant est ouvert dessus termine aussi cette création :
 l'assistant revient à l'étape 1 vierge de « Recommencer » (un moteur en marche est
 arrêté d'abord) plutôt que de garder un Composer au-dessus d'un dossier qui n'existe
 plus ; une session sur laquelle il n'est pas ouvert le laisse intact. « Modifier » amène
-l'assistant au premier plan dès le clic, avant qu'une session existe — quand aucune ne
-pointe vers l'équipe, le moteur en reconstruit une d'abord, et l'écran ne bougeait qu'une
-fois la reconstruction finie (les « deux clics » du propriétaire, 2026-09-21) ; la
-reconstruction se voit comme le moteur au travail. Un clic sur « Modifier » ou
+l'assistant au premier plan dès le clic, avant que le moteur ait répondu — la
+réouverture, une reconstruction quand aucune session n'est liée, prend un moment, et
+l'écran ne bougeait qu'une fois celle-ci finie (les « deux clics » du propriétaire,
+2026-09-21) ; la réouverture se voit comme le moteur au travail. Un clic sur « Modifier » ou
 « Reprendre » pendant que le moteur est occupé sur une autre création est refusé en toutes
 lettres sur la ligne de statut de l'assistant, sans rien arrêter, au lieu d'être ignoré.
 La tâche d'un run forge ne se termine qu'une fois son épilogue posé sur le thread UI, et
@@ -438,7 +452,10 @@ avec lui chaque événement posté avant : WPF reprend un await commencé dans u
 de saisie à la priorité Send, au-dessus de la priorité Normal des posts du thread lecteur,
 et la reconstruction lisait la session sur un modèle que les événements n'avaient pas
 encore atteint — étape 1, la session sur disque pour le second clic. Le disque est le
-repli quand le flux n'annonce rien, et une carte le dit quand ni l'un ni l'autre ne l'a.
+repli quand le flux n'annonce rien — la session que nomme l'identifiant laissé par le
+moteur dans le `forge.json` de l'équipe, retenue seulement si la règle R la lie à ce
+dossier même, si bien qu'une copie n'atterrit jamais sur la session de l'original — et une
+carte le dit quand ni l'un ni l'autre ne l'a.
 
 ### Outils et MCP dans les réglages (STUDIO-21)
 
