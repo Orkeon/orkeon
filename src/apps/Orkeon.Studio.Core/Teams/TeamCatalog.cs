@@ -1,6 +1,7 @@
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Forge;
+using System.Globalization;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
@@ -164,6 +165,22 @@ public sealed record TeamSummary
     public Guid? ForgeSessionId { get; init; }
 }
 
+/// <summary>What sits where an adoption would write its team (STUDIO-26, D-07): <see cref="TeamCatalog.OccupantOf"/>.</summary>
+public enum TeamFolderOccupant
+{
+    /// <summary>Nothing: the folder is free.</summary>
+    None,
+
+    /// <summary>A team: a folder carrying the sidecar, a <c>forge.json</c> naming a session, or a crew the launcher can run.</summary>
+    Team,
+
+    /// <summary>A folder that holds no team — My teams still lists it, under its folder name.</summary>
+    Folder,
+
+    /// <summary>A file, where the team's folder would go.</summary>
+    File,
+}
+
 /// <summary>
 /// The teams directory: every adopted team is an ordinary folder under one root —
 /// copiable, shareable, deletable, runnable with <c>orkeon run &lt;folder&gt;</c> alone.
@@ -241,6 +258,47 @@ public static partial class TeamCatalog
             HasYamlCrew = HasYamlCrew(teamDirectory),
             ForgeSessionId = ForgeSessionCatalog.ReadTeamSessionId(teamDirectory),
         };
+    }
+
+    /// <summary>
+    /// What sits at <paramref name="teamDirectory"/> (STUDIO-26, D-07): nothing, a team, a folder
+    /// that holds none, or a file. An adoption asks before it promotes — the engine refuses a
+    /// destination that is not empty, and the user is owed what occupies the name, never that
+    /// raw refusal. A team is read the way the import reads one: the sidecar, a record naming a
+    /// session, or a crew the launcher's own detector can run.
+    /// </summary>
+    public static TeamFolderOccupant OccupantOf(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        if (File.Exists(teamDirectory))
+            return TeamFolderOccupant.File;
+        if (!Directory.Exists(teamDirectory))
+            return TeamFolderOccupant.None;
+
+        return TryReadMetadata(teamDirectory) is not null
+            || ForgeSessionCatalog.ReadTeamSessionId(teamDirectory) is not null
+            || new Targets.RunTargetDetector().Detect(teamDirectory).Status != Targets.RunTargetDetectionStatus.Failed
+            ? TeamFolderOccupant.Team
+            : TeamFolderOccupant.Folder;
+    }
+
+    /// <summary>
+    /// The first free sibling of <paramref name="teamDirectory"/>: its name suffixed <c>-2</c>,
+    /// <c>-3</c>… past files and folders alike — the collision rule of every folder Orkeon names
+    /// (a forge session, an import).
+    /// </summary>
+    public static string FreeSibling(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        var taken = Path.TrimEndingDirectorySeparator(teamDirectory);
+        for (var suffix = 2; ; suffix++)
+        {
+            var candidate = string.Create(CultureInfo.InvariantCulture, $"{taken}-{suffix}");
+            if (!Path.Exists(candidate))
+                return candidate;
+        }
     }
 
     /// <summary>The crew layout <c>forge reopen</c> reads: a YAML settings file under <c>crew/</c>, no script.</summary>

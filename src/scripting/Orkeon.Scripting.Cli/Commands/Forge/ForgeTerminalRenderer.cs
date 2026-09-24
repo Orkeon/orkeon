@@ -103,6 +103,18 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                     _console.WriteLine($"  schedule install (displayed, never executed): {install.GetString()}");
                 break;
 
+            case "session.renamed":
+                _console.WriteLine(
+                    $"  session renamed after the team: {Text(e, "from")} → {Text(e, "to")}"
+                    + (e.TryGetProperty("suffixed", out var suffixed) && suffixed.ValueKind == JsonValueKind.True
+                        ? " (another session already had that name)"
+                        : ""));
+                break;
+
+            case "warning":
+                _console.WriteLine($"⚠ [{Text(e, "code")}] {Text(e, "message")}");
+                break;
+
             case "error":
                 _console.WriteLine($"✖ [{Text(e, "code")}] {Text(e, "message")}");
                 break;

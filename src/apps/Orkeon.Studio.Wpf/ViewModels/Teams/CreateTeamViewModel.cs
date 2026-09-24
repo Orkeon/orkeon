@@ -348,6 +348,15 @@ public sealed class CreateTeamViewModel : ObservableObject
     private bool _isAdoptProfilePickerOpen;
     private string? _reopenedTeamPath;
     private string? _lastStderr;
+    /// <summary>What occupies the name the adoption would take (STUDIO-26, D-07); empty while nothing does.</summary>
+    private string _adoptConflict = "";
+    /// <summary>The free name the step proposes, and the free folder it goes with.</summary>
+    private string? _freeTeamName;
+    private string? _freeTeamFolder;
+    /// <summary>The team holding the taken folder, when a team does — « open the existing team » goes there.</summary>
+    private string? _conflictingTeamPath;
+    /// <summary>The folder an accepted proposal pinned the adoption to; null while the folder follows the name.</summary>
+    private string? _adoptionFolder;
 
     /// <summary>Builds the wizard; every collaborator is optional so tests inject doubles.</summary>
     public CreateTeamViewModel(ModelProfilesViewModel profiles, CreateTeamDependencies? dependencies = null)
@@ -462,6 +471,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         GoStep3Command = new RelayCommand(() => GoStep(3));
         GoStep4Command = new RelayCommand(() => GoStep(4));
         SaveTeamCommand = new AsyncRelayCommand(SaveTeamAsync, () => CanSaveTeam);
+        UseFreeTeamNameCommand = new RelayCommand(UseFreeTeamName, () => _freeTeamName is not null);
+        OpenConflictingTeamCommand = new RelayCommand(OpenConflictingTeam, () => CanOpenConflictingTeam);
         OpenSettingsCommand = new RelayCommand(() => OpenSettingsRequested?.Invoke(this, EventArgs.Empty));
         OpenDiagnosticCommand = new RelayCommand(() => OpenDiagnosticRequested?.Invoke(this, EventArgs.Empty));
         PickAssistantCommand = new RelayCommand(PickAssistant);
@@ -2003,6 +2014,10 @@ public sealed class CreateTeamViewModel : ObservableObject
 
             if (changed)
             {
+                // A name typed after a proposal is the user's own again: its folder follows it,
+                // and whatever occupied the previous one no longer concerns it (STUDIO-26, D-07).
+                _adoptionFolder = null;
+                ClearAdoptConflict();
                 OnPropertyChanged(nameof(CanSaveTeam));
                 SaveTeamCommand.RaiseCanExecuteChanged();
             }
@@ -2551,15 +2566,35 @@ public sealed class CreateTeamViewModel : ObservableObject
             return;
 
         // In reopened mode the destination is PINNED to the original team folder (W-09):
-        // re-adoption updates, never duplicates — renaming only changes the display name.
+        // re-adoption updates, never duplicates — renaming only changes the display name. A
+        // new adoption goes where the name says, or where an accepted proposal pinned it.
         var destination = _reopenedTeamPath
+            ?? _adoptionFolder
             ?? System.IO.Path.Combine(_teamsRoot, FolderSlug.From(_teamName) ?? FolderSlug.TeamFallback);
+
+        // STUDIO-26 (D-07): a new adoption never asks the engine to write where something
+        // already is — the engine would refuse, and its refusal is no sentence for a user. The
+        // step says what occupies the name and offers a free one instead. A re-adoption writes
+        // into its own team's folder, which is no collision.
+        if (_reopenedTeamPath is null && ReportAdoptConflict(destination))
+        {
+            // This save ends here, said under the name: a card or a line an earlier attempt
+            // left would contradict it (STUDIO-13, D-05 — a card never outlives its attempt).
+            _saveError = null;
+            Failure = null;
+            SyncFromModel();
+            return;
+        }
+
         var schedule = _scheduleChoice switch
         {
             1 => $"daily@{_scheduleTime.Trim()}",
             2 => "hourly",
             _ => null,
         };
+        // One line, <= 64, no markup (STUDIO-16, D-04) — the name the sidecar records, and the
+        // one the engine titles the card, the record and the session with (STUDIO-26, D-01).
+        var adopted = TeamCatalog.NormalizeName(_teamName);
 
         IsEngineRunning = true;
         _lastStderr = null;
@@ -2568,10 +2603,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         // STUDIO-13: the promote invocation, for the failure card's report — EngineCommandLine
         // keeps naming the last forge cycle, which is what the expert step-3 card shows.
         var commandLine = Orkeon.Studio.Core.Launch.CommandLineDisplay.Format(
-            ForgeArgumentsBuilder.BuildPromote(slug, destination, schedule));
+            ForgeArgumentsBuilder.BuildPromote(slug, destination, adopted, schedule));
         try
         {
-            var result = await _client.PromoteAsync(slug, destination, schedule, _workspace, OnEvent, OnRaw)
+            var result = await _client.PromoteAsync(slug, destination, adopted, schedule, _workspace, OnEvent, OnRaw)
                 .ConfigureAwait(false);
             _dispatcher.Post(() =>
             {
@@ -2584,7 +2619,6 @@ public sealed class CreateTeamViewModel : ObservableObject
                         ? need
                         : TeamCatalog.Describe(promotion.Path).Description ?? "";
                     var mounts = SidecarMounts();
-                    var adopted = TeamCatalog.NormalizeName(_teamName);   // one line, <= 64, no markup (STUDIO-16, D-04)
                     TeamCatalog.SaveMetadata(promotion.Path, new StudioTeamMetadata
                     {
                         Name = adopted,
@@ -2594,13 +2628,15 @@ public sealed class CreateTeamViewModel : ObservableObject
                         Mounts = mounts.Count > 0 ? mounts : null,
                     });
                     TeamAdopted?.Invoke(this, new TeamAdoptedEventArgs(promotion.Path));
+                    // A session folder the engine could not rename after the team is said, not
+                    // dropped (STUDIO-26, D-05) — read now: the reset below replaces the model.
+                    var warning = _model.LastWarning;
                     // The tunnel ends here (STUDIO-20): the team lives in My teams now, so the
                     // wizard goes back to a blank step 1 — the same slate as « Start over » — and
                     // the one line that stays says where the team went. The finally block's sync
                     // keeps it: a fresh model has no finished status to paint over it.
                     ResetToStepOne();
-                    StatusMessage = string.Format(
-                        CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardAdoptedLine], adopted);
+                    StatusMessage = AdoptedLine(adopted, warning);
                 }
                 else
                 {
@@ -2690,6 +2726,9 @@ public sealed class CreateTeamViewModel : ObservableObject
         Agents.Clear();
         Decisions.Clear();
         TeamName = "";
+        // A taken name and the proposal that answered it belonged to that creation (D-07).
+        _adoptionFolder = null;
+        ClearAdoptConflict();
         // The adoption fields too (review, lot 7): a reopened team seeds profile and
         // schedule — without this reset they would leak into the NEXT session's sidecar.
         _adoptProfileName = null;
@@ -3129,6 +3168,134 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// <summary>The folder the button opens: the team once there is one, the session before.</summary>
     private string? FolderToOpen() =>
         TeamFolderToOpen() ?? (SessionDirectory is { Length: > 0 } session ? session : null);
+
+    // ── STUDIO-26 — a name already taken (D-07) ──────────────────────────────
+    // The engine refuses to promote into a folder that is not empty, and its refusal named a
+    // path to a user who had typed a name. The save now looks first: when something occupies
+    // the team's folder, step 4 says what — a team, a folder holding none, a file — and offers
+    // a free name, and the way to the team that holds this one. Nothing reaches the engine
+    // until the name is free. A re-adoption writes into its own folder: no collision there.
+
+    /// <summary>What occupies the name the adoption would take; empty while nothing does.</summary>
+    public string AdoptConflict
+    {
+        get => _adoptConflict;
+        private set
+        {
+            if (SetProperty(ref _adoptConflict, value))
+                OnPropertiesChanged(nameof(HasAdoptConflict), nameof(UseFreeTeamNameLabel), nameof(CanOpenConflictingTeam));
+        }
+    }
+
+    /// <summary>Whether step 4 shows the taken-name block.</summary>
+    public bool HasAdoptConflict => _adoptConflict.Length > 0;
+
+    /// <summary>The free name the step proposes — « Ma veille (2) »; null while nothing is taken.</summary>
+    public string? FreeTeamName => _freeTeamName;
+
+    /// <summary>The proposal's button: « Name it “Ma veille (2)” ».</summary>
+    public string UseFreeTeamNameLabel =>
+        _freeTeamName is { } name
+            ? string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardUseFreeName], name)
+            : "";
+
+    /// <summary>Whether a team holds the taken folder — the only occupant there is a way to.</summary>
+    public bool CanOpenConflictingTeam => _conflictingTeamPath is not null;
+
+    /// <summary>Takes the free name, and the free folder it was chosen with.</summary>
+    public RelayCommand UseFreeTeamNameCommand { get; }
+
+    /// <summary>« Open the existing team » — My teams, where the team holding the name is.</summary>
+    public RelayCommand OpenConflictingTeamCommand { get; }
+
+    /// <summary>Raised by « Open the existing team »: the shell brings My teams forward.</summary>
+    public event EventHandler<TeamActionEventArgs>? OpenTeamRequested;
+
+    /// <summary>
+    /// Says what occupies <paramref name="destination"/>, when something does, and prepares the
+    /// ways out: the folder suffixed <c>-2</c>… with the name that goes with it, and — when a team
+    /// holds the folder — the way to that team. True when something occupies it: the save stops.
+    /// </summary>
+    private bool ReportAdoptConflict(string destination)
+    {
+        var occupant = TeamCatalog.OccupantOf(destination);
+        if (occupant == TeamFolderOccupant.None)
+            return false;
+
+        var folder = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(destination));
+        _freeTeamFolder = TeamCatalog.FreeSibling(destination);
+        _freeTeamName = FreeName(TeamCatalog.NormalizeName(_teamName), destination, _freeTeamFolder);
+        _conflictingTeamPath = occupant == TeamFolderOccupant.Team ? destination : null;
+        AdoptConflict = occupant switch
+        {
+            TeamFolderOccupant.Team => string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenTeam],
+                TeamCatalog.NormalizeName(TeamCatalog.Describe(destination).Name), folder),
+            TeamFolderOccupant.Folder => string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFolder], folder),
+            _ => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFile], folder),
+        };
+        OnPropertiesChanged(nameof(FreeTeamName), nameof(UseFreeTeamNameLabel), nameof(CanOpenConflictingTeam));
+        UseFreeTeamNameCommand.RaiseCanExecuteChanged();
+        OpenConflictingTeamCommand.RaiseCanExecuteChanged();
+        return true;
+    }
+
+    /// <summary>
+    /// The name that goes with the free folder: the one typed, followed by the folder's own suffix
+    /// — « Ma veille (2) » beside « Ma veille », so the two cards stay apart where novice mode shows
+    /// no folder — cut so the whole stays within the name's cap.
+    /// </summary>
+    private static string FreeName(string name, string takenFolder, string freeFolder)
+    {
+        var suffix = $" ({freeFolder[(System.IO.Path.TrimEndingDirectorySeparator(takenFolder).Length + 1)..]})";
+        var room = TeamCatalog.MaxNameLength - suffix.Length;
+        return (name.Length > room ? name[..room].TrimEnd() : name) + suffix;
+    }
+
+    /// <summary>
+    /// Takes the proposal. The folder is pinned after the name, because typing a name releases a
+    /// pinned folder: the name after the one rule would give the same folder in every ordinary
+    /// case, but not for a name at the cap, or written in a script the rule keeps nothing of.
+    /// </summary>
+    private void UseFreeTeamName()
+    {
+        if (_freeTeamName is not { } name || _freeTeamFolder is not { } folder)
+            return;
+
+        TeamName = name;
+        _adoptionFolder = folder;
+    }
+
+    private void OpenConflictingTeam()
+    {
+        if (_conflictingTeamPath is { } team)
+            OpenTeamRequested?.Invoke(this, new TeamActionEventArgs(team));
+    }
+
+    private void ClearAdoptConflict()
+    {
+        _freeTeamName = null;
+        _freeTeamFolder = null;
+        _conflictingTeamPath = null;
+        AdoptConflict = "";
+        OnPropertyChanged(nameof(FreeTeamName));
+        UseFreeTeamNameCommand.RaiseCanExecuteChanged();
+        OpenConflictingTeamCommand.RaiseCanExecuteChanged();
+    }
+
+    /// <summary>
+    /// The one line an adoption leaves (STUDIO-20) — followed, when the engine could not rename
+    /// the session folder after the team, by the reason it gave (STUDIO-26, D-05): said, never
+    /// dropped, and never a failure — the team is saved, and linked to its session by the id.
+    /// </summary>
+    private string AdoptedLine(string adopted, ForgeWarningInfo? warning)
+    {
+        var line = string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardAdoptedLine], adopted);
+        return warning is null
+            ? line
+            : line + " " + string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardSessionNotRenamed], warning.Message);
+    }
 
     // ── STUDIO-13 — failure card ─────────────────────────────────────────────
     // What "Compose the team" (or the save) could not do, said under the stepper in both

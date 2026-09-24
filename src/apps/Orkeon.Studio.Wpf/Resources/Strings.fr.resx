@@ -425,6 +425,12 @@
 <data name="Studio.Create.SchedLocalTime" xml:space="preserve"><value>heure locale de cette machine</value></data>
 <data name="Studio.Create.Save" xml:space="preserve"><value>Enregistrer dans mes équipes</value></data>
 <data name="Studio.Create.AdoptedLine" xml:space="preserve"><value>L'équipe « {0} » est enregistrée dans Mes équipes.</value></data>
+<data name="Studio.Create.SessionNotRenamed" xml:space="preserve"><value>Sa session d'atelier garde son ancien nom de dossier — {0}</value></data>
+<data name="Studio.Create.NameTakenTeam" xml:space="preserve"><value>Ce nom est déjà pris : le dossier {1} de Mes équipes contient déjà l'équipe « {0} ».</value></data>
+<data name="Studio.Create.NameTakenFolder" xml:space="preserve"><value>Ce nom est déjà pris : le dossier {0} existe déjà dans Mes équipes, et ne contient aucune équipe.</value></data>
+<data name="Studio.Create.NameTakenFile" xml:space="preserve"><value>Ce nom est déjà pris : un fichier nommé {0} occupe, dans Mes équipes, la place de son dossier.</value></data>
+<data name="Studio.Create.UseFreeName" xml:space="preserve"><value>L'appeler « {0} »</value></data>
+<data name="Studio.Create.OpenExistingTeam" xml:space="preserve"><value>Ouvrir l'équipe existante</value></data>
 <data name="Studio.Create.NotesCompose" xml:space="preserve"><value>Consigne de composition</value></data>
 <data name="Studio.Create.NotesTry" xml:space="preserve"><value>Consigne d'essai</value></data>
 <data name="Studio.Create.NotesAdopt" xml:space="preserve"><value>Consigne d'adoption</value></data>

@@ -335,6 +335,76 @@ internal sealed class ForgeSession
         return [.. summaries.OrderByDescending(s => s.UpdatedAt, StringComparer.Ordinal)];
     }
 
+    /// <summary>
+    /// The folder name this session takes to follow a team folder named
+    /// <paramref name="teamFolderName"/> (STUDIO-26): that name as it is, or suffixed <c>-2</c>,
+    /// <c>-3</c>… past any other entry of the session root — never over one (D-04). Null when the
+    /// session already stands there: its own folder is no collision, so a re-adoption finds
+    /// nothing to move. Compared the way the platform compares paths, so a name differing only in
+    /// case is this very folder on Windows.
+    /// </summary>
+    public string? FolderNameAfter(string teamFolderName)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamFolderName);
+
+        var root = Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Directory))!;
+        var self = Path.TrimEndingDirectorySeparator(Path.GetFullPath(Directory));
+        var candidate = teamFolderName;
+        for (var suffix = 2; ; suffix++)
+        {
+            var path = Path.GetFullPath(Path.Combine(root, candidate));
+            if (string.Equals(path, self, PhysicalPathContainment.Comparison))
+                return null;
+            if (!Path.Exists(path))
+                return candidate;
+
+            candidate = string.Create(CultureInfo.InvariantCulture, $"{teamFolderName}-{suffix}");
+        }
+    }
+
+    /// <summary>
+    /// Moves the session folder to <paramref name="slug"/> under the same root and returns the
+    /// session as it stands there: reloaded from its new folder, <c>session.json</c> rewritten
+    /// under the new slug. <see cref="Directory"/> is fixed for the life of an instance, so the
+    /// moved session is a new one — this one keeps naming the old folder and is not to be
+    /// written again. Throws what the disk throws; a rewrite refused after the move puts the
+    /// folder back first, so a failure never leaves a folder and its <c>session.json</c>
+    /// disagreeing on the session's name.
+    /// </summary>
+    public ForgeSession MoveTo(string slug, DateTimeOffset now)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(slug);
+
+        var target = Path.Combine(Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(Directory))!, slug);
+        System.IO.Directory.Move(Directory, target);
+        try
+        {
+            if (!TryLoad(target, out var reloaded, out var error))
+                throw new IOException(error);
+
+            var moved = new ForgeSession(target, reloaded!.Document with { Slug = slug });
+            moved.Save(now);
+            return moved;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MoveBackQuietly(target);
+            throw;
+        }
+    }
+
+    private void MoveBackQuietly(string target)
+    {
+        try
+        {
+            System.IO.Directory.Move(target, Directory);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: the error being reported is the rewrite the new folder refused.
+        }
+    }
+
     /// <summary>Writes <c>session.json</c> and stamps <see cref="ForgeSessionDocument.UpdatedAt"/>.</summary>
     public void Save(DateTimeOffset? now = null)
     {

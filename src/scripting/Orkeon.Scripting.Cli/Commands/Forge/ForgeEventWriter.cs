@@ -46,6 +46,24 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
     public void Error(string code, string message, bool recoverable) =>
         Emit("error", new { code, message, recoverable });
 
+    /// <summary>
+    /// The session folder followed its team (STUDIO-26): <paramref name="from"/> and
+    /// <paramref name="to"/> are its slugs, <paramref name="dir"/> its new absolute folder — what a
+    /// client that reads the session's files next must read from — and <paramref name="suffixed"/>
+    /// says the team's own name was already another session's (D-04).
+    /// </summary>
+    public void SessionRenamed(string from, string to, string dir, bool suffixed) =>
+        Emit("session.renamed", new { from, to, dir, suffixed });
+
+    /// <summary>
+    /// Something the command could not do while everything it was asked for stands — a session
+    /// folder the disk would not rename after a written promotion (STUDIO-26, D-05). Never an
+    /// <c>error</c>: a client that stops on one must not stop here, and the exit code is the
+    /// command's own.
+    /// </summary>
+    public void Warning(string code, string message) =>
+        Emit("warning", new { code, message });
+
     /// <summary>Closing event; mirrors the process exit code.</summary>
     public void SessionFinished(string status, int exitCode) =>
         Emit("session.finished", new { status, exitCode });

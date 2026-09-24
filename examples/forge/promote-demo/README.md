@@ -9,7 +9,7 @@ cd examples/forge/promote-demo
 orkeon forge list
 
 # Ship it as an ordinary folder, with a generated daily schedule.
-orkeon forge promote supplier-watch --to ./my-solution --schedule daily@07:30
+orkeon forge promote supplier-watch --to ./my-solution --name "Supplier watch" --schedule daily@07:30
 ```
 
 The promoted folder is ordinary — nothing in it is proprietary to the forge:
@@ -30,6 +30,6 @@ From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like an
 
 - `.orkeon/forge/supplier-watch/` — the session layout of the spec: `session.json` (state, status, budget consumed), `brief.json` (the need **and the acceptance criteria** everything was judged against), `verdict.json`, and `crew/` — the rendered files that actually ran in the sandbox.
 - `FORGE.md` in the promoted folder — written in the interview's language, for the colleague who picks the folder up.
-- The session stays listed after promotion (`status: Promoted`, with the destination recorded), which is how Studio's "My solutions" offers *run it again*.
+- The session stays listed after promotion (`status: Promoted`, with the destination recorded) — under the team's folder name now: once the promotion is written the session folder follows its team, `.orkeon/forge/supplier-watch/` becoming `.orkeon/forge/my-solution/`, and `--name` titled the card, the record and the session.
 
-> The promotion writes into the session (`status`, destination): only a `Ready` session promotes, so a second run is refused by design. To replay the demo, restore the folder: `git checkout -- .orkeon` and delete `my-solution/`.
+> The promotion writes into the session (`status`, destination) and renames its folder after the team: only a `Ready` session promotes, so a second run is refused by design. To replay the demo, delete `my-solution/` and `.orkeon/forge/my-solution/`, then restore the session: `git checkout -- .orkeon`.

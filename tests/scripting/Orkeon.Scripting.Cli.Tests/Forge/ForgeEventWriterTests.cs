@@ -48,6 +48,49 @@ public class ForgeEventWriterTests
         Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
     }
 
+    /// <summary>
+    /// STUDIO-26's two lines, pinned like the rest: <c>session.renamed</c> when the session folder
+    /// followed its team, <c>warning</c> when the disk refused — the promotion stands either way.
+    /// Studio.Core's <c>ForgeProtocolTests</c> carries the same lines, verbatim.
+    /// </summary>
+    [Fact]
+    public void The_rename_and_warning_lines_are_the_pinned_golden_form()
+    {
+        var output = new StringWriter();
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        writer.SessionRenamed("veille", "ma-veille-2", "/ws/.orkeon/forge/ma-veille-2", suffixed: true);
+        writer.Warning(ForgeErrorCodes.SessionNotRenamed, "The session folder 'veille' keeps its name: access denied.");
+
+        var expected = string.Join('\n',
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"session.renamed","from":"veille","to":"ma-veille-2","dir":"/ws/.orkeon/forge/ma-veille-2","suffixed":true}""",
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"warning","code":"FORGE-SESSION-NOT-RENAMED","message":"The session folder 'veille' keeps its name: access denied."}""",
+            "");
+
+        Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
+    }
+
+    /// <summary>
+    /// Without <c>--events</c>, both lines are said in words: a raw JSON line for an event every
+    /// adoption can carry would read as a bug to whoever runs <c>forge promote</c> by hand.
+    /// </summary>
+    [Fact]
+    public void The_terminal_says_the_rename_and_the_warning_in_words()
+    {
+        var console = new StringWriter();
+        using var renderer = new ForgeTerminalRenderer(console);
+        var writer = new ForgeEventWriter(renderer, new FakeOrkeonClock());
+
+        writer.SessionRenamed("veille", "ma-veille-2", "/ws/.orkeon/forge/ma-veille-2", suffixed: true);
+        writer.Warning(ForgeErrorCodes.SessionNotRenamed, "The session folder 'veille' keeps its name.");
+
+        var lines = console.ToString().ReplaceLineEndings("\n").Split('\n', StringSplitOptions.RemoveEmptyEntries);
+        Assert.Equal(
+            ["  session renamed after the team: veille → ma-veille-2 (another session already had that name)",
+             "⚠ [FORGE-SESSION-NOT-RENAMED] The session folder 'veille' keeps its name."],
+            lines);
+    }
+
     [Fact]
     public void The_sequence_is_strictly_increasing_from_one()
     {

@@ -83,16 +83,26 @@ public static class ForgeArgumentsBuilder
     public const string ForgeVerb = "forge";
 
     /// <summary>
-    /// Builds the argv of <c>forge promote</c>: destination required, schedule passed
-    /// through verbatim — the engine owns the grammar and refuses loudly, the client never
-    /// pre-validates what it does not own.
+    /// Builds the argv of <c>forge promote</c>: destination required, the team's name when there
+    /// is one (STUDIO-26) — the engine titles the card, the record and the session with it, and
+    /// takes the value as written, a leading dash included — and the schedule passed through
+    /// verbatim: the engine owns the grammar and refuses loudly, the client never pre-validates
+    /// what it does not own.
     /// </summary>
-    public static IReadOnlyList<string> BuildPromote(string slug, string destination, string? schedule)
+    public static IReadOnlyList<string> BuildPromote(string slug, string destination, string? teamName, string? schedule)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(slug);
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
 
-        var arguments = new List<string> { ForgeVerb, "promote", slug, "--to", destination, "--events", "jsonl" };
+        var arguments = new List<string> { ForgeVerb, "promote", slug, "--to", destination };
+        if (!string.IsNullOrWhiteSpace(teamName))
+        {
+            arguments.Add("--name");
+            arguments.Add(teamName);
+        }
+
+        arguments.Add("--events");
+        arguments.Add("jsonl");
         if (!string.IsNullOrWhiteSpace(schedule))
         {
             arguments.Add("--schedule");
@@ -259,13 +269,16 @@ public sealed class ForgeClient
     }
 
     /// <summary>
-    /// Promotes a Ready session to <paramref name="destination"/> — the "Adopter" card's
-    /// gesture. Same child process, same protocol; the <c>promoted</c> event carries the
-    /// folder, the launcher and the displayed-never-executed install command.
+    /// Promotes a Ready session to <paramref name="destination"/> under
+    /// <paramref name="teamName"/> — the "Adopter" card's gesture. Same child process, same
+    /// protocol; the <c>promoted</c> event carries the folder, the launcher and the
+    /// displayed-never-executed install command, and a <c>session.renamed</c> follows when the
+    /// session folder took the team folder's name (STUDIO-26).
     /// </summary>
     public async Task<ProcessRunResult> PromoteAsync(
         string slug,
         string destination,
+        string? teamName,
         string? schedule,
         string? workingDirectory,
         Action<OrkeonEvent> onEvent,
@@ -286,7 +299,7 @@ public sealed class ForgeClient
             var launch = new ProcessLaunchRequest
             {
                 FileName = location.Path!,
-                Arguments = ForgeArgumentsBuilder.BuildPromote(slug, destination, schedule),
+                Arguments = ForgeArgumentsBuilder.BuildPromote(slug, destination, teamName, schedule),
                 WorkingDirectory = workingDirectory,
             };
 

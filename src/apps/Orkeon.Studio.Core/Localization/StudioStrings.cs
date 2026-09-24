@@ -1137,6 +1137,27 @@ public static class StudioStringKeys
     /// <summary>"Team “{0}” is saved in My teams." — the one line left on a blank step 1 after an adoption (STUDIO-20).</summary>
     public const string WizardAdoptedLine = "Studio.Create.AdoptedLine";
 
+    /// <summary>
+    /// "Its workshop session keeps its former folder name — {0}" — after the adopted line, when the
+    /// engine could not rename the session folder after the team; {0} is its warning (STUDIO-26, D-05).
+    /// </summary>
+    public const string WizardSessionNotRenamed = "Studio.Create.SessionNotRenamed";
+
+    /// <summary>"This name is taken: the folder {1} in My teams already holds the team “{0}”." (STUDIO-26, D-07)</summary>
+    public const string WizardNameTakenTeam = "Studio.Create.NameTakenTeam";
+
+    /// <summary>"This name is taken: the folder {0} already exists in My teams, and holds no team." (STUDIO-26, D-07)</summary>
+    public const string WizardNameTakenFolder = "Studio.Create.NameTakenFolder";
+
+    /// <summary>"This name is taken: a file named {0} sits where its folder would go in My teams." (STUDIO-26, D-07)</summary>
+    public const string WizardNameTakenFile = "Studio.Create.NameTakenFile";
+
+    /// <summary>"Name it “{0}”" — the free name a taken one gets proposed (STUDIO-26, D-07).</summary>
+    public const string WizardUseFreeName = "Studio.Create.UseFreeName";
+
+    /// <summary>"Open the existing team" — My teams, where the team holding the name is (STUDIO-26, D-07).</summary>
+    public const string WizardOpenExistingTeam = "Studio.Create.OpenExistingTeam";
+
     /// <summary>"The import failed — nothing was copied. Check access to the source and try again."</summary>
     public const string ImportFailed = "Studio.Import.Failed";
 
@@ -1964,6 +1985,12 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardAgentFallback] = "Agent",
         [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
         [StudioStringKeys.WizardAdoptedLine] = "Team “{0}” is saved in My teams.",
+        [StudioStringKeys.WizardSessionNotRenamed] = "Its workshop session keeps its former folder name — {0}",
+        [StudioStringKeys.WizardNameTakenTeam] = "This name is taken: the folder {1} in My teams already holds the team “{0}”.",
+        [StudioStringKeys.WizardNameTakenFolder] = "This name is taken: the folder {0} already exists in My teams, and holds no team.",
+        [StudioStringKeys.WizardNameTakenFile] = "This name is taken: a file named {0} sits where its folder would go in My teams.",
+        [StudioStringKeys.WizardUseFreeName] = "Name it “{0}”",
+        [StudioStringKeys.WizardOpenExistingTeam] = "Open the existing team",
         [StudioStringKeys.ImportFailed] = "The import failed — nothing was copied. Check access to the source and try again.",
         [StudioStringKeys.ComposeStageBrief] = "I am noting what you want…",
         [StudioStringKeys.ComposeStageBlueprint] = "I am composing the team…",

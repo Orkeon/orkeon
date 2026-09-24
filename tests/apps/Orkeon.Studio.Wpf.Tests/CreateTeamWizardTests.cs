@@ -478,8 +478,11 @@ public class CreateTeamWizardTests
             ]);
             await vm.SaveTeamCommand.ExecuteAsync();
 
+            // The team's name travels with the promotion (STUDIO-26): the engine titles the card,
+            // the record and the session with it, and names the session folder after the team's.
             Assert.Equal(
-                ["forge", "promote", "veille", "--to", promoted, "--events", "jsonl", "--schedule", "daily@07:30"],
+                ["forge", "promote", "veille", "--to", promoted, "--name", "Ma veille quotidienne",
+                 "--events", "jsonl", "--schedule", "daily@07:30"],
                 processes.LastRequest!.Arguments);
             Assert.Equal(promoted, adoptedPath);
 
@@ -507,6 +510,187 @@ public class CreateTeamWizardTests
             if (Directory.Exists(root))
                 Directory.Delete(root, recursive: true);
         }
+    }
+
+    /// <summary>
+    /// STUDIO-26, D-07: the name is taken — My teams already holds a team in its folder. The engine
+    /// would refuse the destination, so it is never asked: step 4 says what holds the name, and
+    /// offers a free one, whose folder is the taken one suffixed -2. Taking it adopts there.
+    /// </summary>
+    [Fact]
+    public async Task A_taken_name_proposes_a_free_name_and_does_not_promote()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            TeamCatalog.SaveMetadata(Path.Combine(root, "ma-veille"), new StudioTeamMetadata { Name = "Ma veille" });
+            var (vm, processes) = await ReadyToAdoptAsync(root);
+            vm.TeamName = "Ma veille";
+            var launchesBefore = processes.Requests.Count;
+
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            // Nothing reached the engine, and nothing on screen is its refusal.
+            Assert.Equal(launchesBefore, processes.Requests.Count);
+            Assert.Null(vm.Failure);
+            Assert.True(vm.HasAdoptConflict);
+            Assert.Equal("This name is taken: the folder ma-veille in My teams already holds the team “Ma veille”.", vm.AdoptConflict);
+            Assert.Equal("Ma veille (2)", vm.FreeTeamName);
+            Assert.Equal("Name it “Ma veille (2)”", vm.UseFreeTeamNameLabel);
+            Assert.True(vm.CanOpenConflictingTeam);
+            Assert.Equal(4, vm.Step);
+
+            // Taking the free name adopts into the free folder, under that name.
+            vm.UseFreeTeamNameCommand.Execute(null);
+            Assert.Equal("Ma veille (2)", vm.TeamName);
+            Assert.False(vm.HasAdoptConflict);
+            var free = Path.Combine(root, "ma-veille-2");
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(free)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.Equal(
+                ["forge", "promote", "veille", "--to", free, "--name", "Ma veille (2)", "--events", "jsonl"],
+                processes.LastRequest!.Arguments);
+            Assert.Equal("Ma veille (2)", TeamCatalog.Describe(free).Name);
+            Assert.Equal("Ma veille", TeamCatalog.Describe(Path.Combine(root, "ma-veille")).Name);   // untouched
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// D-07: what holds the name is said as it is — a folder holding no team, or a file — and « open
+    /// the existing team » is offered only when there is a team to open, where it asks the shell for
+    /// My teams.
+    /// </summary>
+    [Fact]
+    public async Task A_taken_name_says_what_holds_it_and_opens_only_a_team()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            Directory.CreateDirectory(Path.Combine(root, "notes"));
+            await File.WriteAllTextAsync(Path.Combine(root, "notes", "idees.txt"), "rien", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(Path.Combine(root, "brouillon"), "un fichier", TestContext.Current.CancellationToken);
+            TeamCatalog.SaveMetadata(Path.Combine(root, "veille"), new StudioTeamMetadata { Name = "Veille des prix" });
+            var (vm, _) = await ReadyToAdoptAsync(root);
+            string? opened = null;
+            vm.OpenTeamRequested += (_, e) => opened = e.Path;
+
+            vm.TeamName = "Notes";
+            await vm.SaveTeamCommand.ExecuteAsync();
+            Assert.Equal("This name is taken: the folder notes already exists in My teams, and holds no team.", vm.AdoptConflict);
+            Assert.False(vm.CanOpenConflictingTeam);
+
+            vm.TeamName = "Brouillon";
+            Assert.False(vm.HasAdoptConflict);   // a new name is the user's own again
+            await vm.SaveTeamCommand.ExecuteAsync();
+            Assert.Equal("This name is taken: a file named brouillon sits where its folder would go in My teams.", vm.AdoptConflict);
+            Assert.False(vm.CanOpenConflictingTeam);
+
+            vm.TeamName = "Veille";
+            await vm.SaveTeamCommand.ExecuteAsync();
+            Assert.Equal("This name is taken: the folder veille in My teams already holds the team “Veille des prix”.", vm.AdoptConflict);
+            Assert.True(vm.OpenConflictingTeamCommand.CanExecute(null));
+            vm.OpenConflictingTeamCommand.Execute(null);
+            Assert.Equal(Path.Combine(root, "veille"), opened);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// D-07 after a refusal: the save that stops at a taken name is the attempt the screen speaks
+    /// of — the card and the line an earlier refused promotion left go, the taken name stays.
+    /// </summary>
+    [Fact]
+    public async Task A_taken_name_replaces_what_an_earlier_refusal_left_on_screen()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes) = await ReadyToAdoptAsync(root);
+            vm.TeamName = "Ma veille";
+            processes.OutputToEmit.Clear();   // the engine exits without a `promoted` event
+            await vm.SaveTeamCommand.ExecuteAsync();
+            Assert.NotNull(vm.Failure);
+            Assert.Contains("refused the promotion", vm.StatusMessage, StringComparison.Ordinal);
+
+            TeamCatalog.SaveMetadata(Path.Combine(root, "ma-veille"), new StudioTeamMetadata { Name = "Ma veille" });
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.True(vm.HasAdoptConflict);
+            Assert.Null(vm.Failure);
+            Assert.DoesNotContain("refused the promotion", vm.StatusMessage, StringComparison.Ordinal);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// D-05: the engine could not rename the session folder after the team. The adoption stands, so
+    /// the wizard ends as after any adoption — and the one line it leaves says what the engine said,
+    /// rather than dropping it with the rest of the creation.
+    /// </summary>
+    [Fact]
+    public async Task A_session_folder_the_engine_could_not_rename_is_said_after_the_adoption()
+    {
+        var root = Path.Combine(Path.GetTempPath(), $"orkeon-wizard-{Guid.NewGuid():N}");
+        try
+        {
+            var (vm, processes) = await ReadyToAdoptAsync(root);
+            vm.TeamName = "Ma veille";
+            var promoted = Path.Combine(root, "ma-veille");
+            processes.OutputToEmit.Clear();
+            processes.OutputToEmit.AddRange(
+            [
+                Out($$"""{"v":2,"seq":1,"ts":"t","kind":"promoted","path":{{System.Text.Json.JsonSerializer.Serialize(promoted)}},"launcher":"run.sh"}"""),
+                Out("""{"v":2,"seq":2,"ts":"t","kind":"warning","code":"FORGE-SESSION-NOT-RENAMED","message":"The session folder 'veille' keeps its name."}"""),
+                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+            ]);
+
+            await vm.SaveTeamCommand.ExecuteAsync();
+
+            Assert.Null(vm.Failure);
+            Assert.Equal(1, vm.Step);
+            Assert.Equal(
+                "Team “Ma veille” is saved in My teams. Its workshop session keeps its former folder name — The session folder 'veille' keeps its name.",
+                vm.StatusMessage);
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>A wizard whose session sits at Ready, the adoption step open, over <paramref name="teamsRoot"/>.</summary>
+    private static async Task<(CreateTeamViewModel Vm, FakeProcessLauncher Processes)> ReadyToAdoptAsync(string teamsRoot)
+    {
+        var (vm, processes, _) = Build(teamsRoot: teamsRoot);
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/d","format":"yaml","resumed":false}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+        await Compose(vm);
+        Assert.Equal(4, vm.Step);
+        return (vm, processes);
     }
 
     [Fact]

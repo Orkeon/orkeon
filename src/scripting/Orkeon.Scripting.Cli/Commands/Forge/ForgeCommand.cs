@@ -36,6 +36,14 @@ internal sealed record ForgeCommandOptions
     /// <summary><c>--to</c>: destination directory of a promotion.</summary>
     public string? Destination { get; init; }
 
+    /// <summary>
+    /// <c>--name</c>: the team's name (STUDIO-26, D-01) — the title the promotion gives
+    /// <c>FORGE.md</c>, <c>forge.json</c> and the session. Taken as written, a leading dash
+    /// included: it is the user's words, not the next option. On one line: a line break in it
+    /// would split the card's title in two.
+    /// </summary>
+    public string? TeamName { get; init; }
+
     /// <summary><c>--schedule daily@HH:mm|hourly</c>: generate the schedule artifacts.</summary>
     public ForgeSchedule? Schedule { get; init; }
 
@@ -108,6 +116,7 @@ internal sealed record ForgeCommandOptions
     private static readonly Dictionary<string, string> ValueOptionErrors = new(StringComparer.Ordinal)
     {
         ["--to"] = "--to needs a destination directory.",
+        ["--name"] = "--name needs the team's name.",
         ["--schedule"] = "--schedule needs a value: daily@HH:mm or hourly.",
         ["--format"] = "--format needs a value: yaml or script.",
         ["--max-iterations"] = "--max-iterations needs a positive integer.",
@@ -117,6 +126,13 @@ internal sealed record ForgeCommandOptions
         ["--pack"] = "--pack needs a directory.",
         ["--read"] = "--read needs a directory.",
     };
+
+    /// <summary>
+    /// The options whose value is taken as written, a leading dash included: a team's name is the
+    /// user's words, and « -Veille- » is one (STUDIO-26, D-01). Every other value starting with a
+    /// dash is read as the next option, so a missing value is said rather than swallowed.
+    /// </summary>
+    private static readonly HashSet<string> VerbatimValueOptions = new(StringComparer.Ordinal) { "--name" };
 
     /// <summary>Parses the <c>forge</c> arguments; unknown options fail loudly, never silently.</summary>
     public static ForgeCommandOptions Parse(string[] args)
@@ -181,7 +197,7 @@ internal sealed record ForgeCommandOptions
         {
             // The only stream format is jsonl; the value is accepted for the spec's
             // spelling (`--events jsonl`) and for forward compatibility.
-            TryTakeValue(args, ref i, out _);
+            TryTakeValue(args, ref i, verbatim: false, out _);
             return options with { Events = true };
         }
 
@@ -190,7 +206,7 @@ internal sealed record ForgeCommandOptions
 
         if (ValueOptionErrors.TryGetValue(arg, out var missing))
         {
-            return TryTakeValue(args, ref i, out var value)
+            return TryTakeValue(args, ref i, VerbatimValueOptions.Contains(arg), out var value)
                 ? ApplyValue(options, arg, value, missing)
                 : options with { Error = missing };
         }
@@ -221,6 +237,7 @@ internal sealed record ForgeCommandOptions
         ForgeCommandOptions options, string arg, string value, string invalid) => arg switch
     {
         "--to" => options with { Destination = value },
+        "--name" => WithTeamName(options, value, invalid),
         "--schedule" => WithSchedule(options, value),
         "--format" => options with { Format = value },
         "--max-iterations" => WithMaxIterations(options, value, invalid),
@@ -230,6 +247,13 @@ internal sealed record ForgeCommandOptions
         "--read" => options with { ReadDirectory = value },
         _ => options with { PackDirectory = value },
     };
+
+    /// <summary>The team's name on one line; a blank one says nothing and is refused like a missing one.</summary>
+    private static ForgeCommandOptions WithTeamName(ForgeCommandOptions options, string value, string invalid)
+    {
+        var name = string.Join(' ', value.Split((char[]?)null, StringSplitOptions.RemoveEmptyEntries));
+        return name.Length > 0 ? options with { TeamName = name } : options with { Error = invalid };
+    }
 
     private static ForgeCommandOptions WithSchedule(ForgeCommandOptions options, string value) =>
         ForgeSchedule.TryParse(value, out var schedule, out var scheduleError)
@@ -263,8 +287,9 @@ internal sealed record ForgeCommandOptions
     [
         ((o, _) => o.PromoteSlug is not null && o.Destination is null,
             "promote needs --to <directory>."),
-        ((o, _) => o.PromoteSlug is null && (o.Destination is not null || o.Schedule is not null || o.WithSettings),
-            "--to, --schedule and --with-settings only apply to `forge promote`."),
+        ((o, _) => o.PromoteSlug is null
+                   && (o.Destination is not null || o.TeamName is not null || o.Schedule is not null || o.WithSettings),
+            "--to, --name, --schedule and --with-settings only apply to `forge promote`."),
         ((o, _) => o.Edit && o.ResumeSlug is null,
             "--edit only applies to `forge resume`."),
         ((o, _) => o.Adopt && o.ResumeSlug is null,
@@ -295,9 +320,9 @@ internal sealed record ForgeCommandOptions
         return options with { Need = needWords.Count > 0 ? string.Join(' ', needWords) : null };
     }
 
-    private static bool TryTakeValue(string[] args, ref int i, out string value)
+    private static bool TryTakeValue(string[] args, ref int i, bool verbatim, out string value)
     {
-        if (i + 1 < args.Length && !args[i + 1].StartsWith('-'))
+        if (i + 1 < args.Length && (verbatim || !args[i + 1].StartsWith('-')))
         {
             value = args[++i];
             return true;
@@ -937,10 +962,16 @@ internal static class ForgeCommand
     };
 
     /// <summary>
-    /// <c>forge promote &lt;slug&gt; --to &lt;dir&gt;</c> (SPEC §11): ships a Ready session
-    /// as an ordinary folder. Fully offline — no host, no LLM. A failed write leaves the
-    /// session Ready and retryable; only success moves it to Promoted, with the transition
-    /// recorded in the history like any other.
+    /// <c>forge promote &lt;slug&gt; --to &lt;dir&gt; [--name &lt;team&gt;]</c> (SPEC §11): ships a
+    /// Ready session as an ordinary folder. Fully offline — no host, no LLM. A failed write
+    /// leaves the session Ready and retryable; only success moves it to Promoted, with the
+    /// transition recorded in the history like any other.
+    /// <para>
+    /// The team's name, when given, titles the session, <c>FORGE.md</c> and <c>forge.json</c>;
+    /// once the promotion is written the session folder follows the team folder's name
+    /// (STUDIO-26, <see cref="ForgeSessionFolder"/>) — a move the disk refuses is a warning, and
+    /// the command still succeeds: the promotion stands, the id links the two.
+    /// </para>
     /// </summary>
     private static async Task<int> PromoteAsync(string workspace, ForgeCommandOptions options)
     {
@@ -962,41 +993,35 @@ internal static class ForgeCommand
         var events = new ForgeEventWriter(renderer ?? Console.Out);
         events.SessionStarted(session, resumed: true);
 
+        // The team's name titles the session before the folder is written, so FORGE.md and
+        // forge.json carry it from their first line (D-02). In memory only until the promotion
+        // succeeds: a refused one saves nothing, and the session keeps the title it had.
+        if (options.TeamName is { } teamName)
+            session.Document.Title = teamName;
+
         // Quietly: promotion is offline by design and needs the path only to reference it
         // from the launch scripts. Warning that no model is configured would be a false
         // alarm on a command that never talks to one — a missing settings file simply means
         // the generated launcher carries no --settings line.
         var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, quiet: true);
+        ForgePromotionResult result;
+        var now = DateTimeOffset.UtcNow;
         try
         {
-            var result = ForgePromoter.Promote(
+            result = ForgePromoter.Promote(
                 session,
                 Path.GetFullPath(options.Destination!),
                 options.Schedule,
                 settingsPath,
                 options.WithSettings,
                 ForgePromoter.DetectPlatform(),
-                DateTimeOffset.UtcNow);
+                now);
 
-            var now = DateTimeOffset.UtcNow;
             session.AppendHistory(ForgeState.Ready, ForgeTrigger.Promote, ForgeState.Promoted, now);
             session.SetState(ForgeState.Promoted);
             session.SetStatus(ForgeSessionStatus.Promoted);
             session.Document.PromotedTo = result.Destination;
             session.Save(now);
-
-            events.Emit("promoted", result.ScheduleDirectory is null
-                ? new { path = result.Destination, launcher = result.Launcher, updated = result.Updated }
-                : (object)new
-                {
-                    path = result.Destination,
-                    launcher = result.Launcher,
-                    schedule = result.ScheduleDirectory,
-                    install = result.InstallCommand,
-                    updated = result.Updated,
-                });
-            events.SessionFinished("ready", 0);
-            return 0;
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException)
         {
@@ -1004,6 +1029,24 @@ internal static class ForgeCommand
             events.SessionFinished("ready", ExitError);
             return ExitError;
         }
+
+        events.Emit("promoted", result.ScheduleDirectory is null
+            ? new { path = result.Destination, launcher = result.Launcher, updated = result.Updated }
+            : (object)new
+            {
+                path = result.Destination,
+                launcher = result.Launcher,
+                schedule = result.ScheduleDirectory,
+                install = result.InstallCommand,
+                updated = result.Updated,
+            });
+
+        // The promotion is written: the session folder follows the team's (D-02). Outside the
+        // guard above on purpose — nothing that happens from here may read as a failed
+        // promotion: a move the disk refuses is a warning on the stream, and the command succeeds.
+        ForgeSessionFolder.FollowTeam(session, result.Destination, events, now);
+        events.SessionFinished("ready", 0);
+        return 0;
     }
 
     /// <summary>

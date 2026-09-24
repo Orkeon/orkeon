@@ -1189,6 +1189,24 @@
   <data name="Studio.Create.AdoptedLine" xml:space="preserve">
     <value>El equipo « {0} » está guardado en Mis equipos.</value>
   </data>
+  <data name="Studio.Create.SessionNotRenamed" xml:space="preserve">
+    <value>Su sesión del taller conserva su antiguo nombre de carpeta — {0}</value>
+  </data>
+  <data name="Studio.Create.NameTakenTeam" xml:space="preserve">
+    <value>Este nombre ya está ocupado: la carpeta {1} de Mis equipos ya contiene el equipo « {0} ».</value>
+  </data>
+  <data name="Studio.Create.NameTakenFolder" xml:space="preserve">
+    <value>Este nombre ya está ocupado: la carpeta {0} ya existe en Mis equipos y no contiene ningún equipo.</value>
+  </data>
+  <data name="Studio.Create.NameTakenFile" xml:space="preserve">
+    <value>Este nombre ya está ocupado: un archivo llamado {0} ocupa en Mis equipos el lugar de su carpeta.</value>
+  </data>
+  <data name="Studio.Create.UseFreeName" xml:space="preserve">
+    <value>Llamarlo « {0} »</value>
+  </data>
+  <data name="Studio.Create.OpenExistingTeam" xml:space="preserve">
+    <value>Abrir el equipo existente</value>
+  </data>
   <data name="Studio.Create.NotesCompose" xml:space="preserve">
     <value>Instrucción de composición</value>
   </data>

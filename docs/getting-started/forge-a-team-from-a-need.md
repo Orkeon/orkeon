@@ -77,8 +77,10 @@ Both renders converge on the same validator, and the try loads the crew **from t
 
 ```bash
 orkeon forge promote supplier-watch --to ~/solutions/supplier-watch \
-    --schedule daily@07:30
+    --name "Supplier watch" --schedule daily@07:30
 ```
+
+`--name` is the team's name: it titles the card, the record and the session. Once the folder is written, the session follows the team — its folder under `.orkeon/forge/` takes the destination folder's name (`-2` when another session already has it), so `forge list` shows it under the team it made.
 
 The promoted folder is ordinary — nothing about it is proprietary to the forge:
 
@@ -87,7 +89,7 @@ The promoted folder is ordinary — nothing about it is proprietary to the forge
 - `run.sh` / `run.cmd` — launch scripts that `cd` into the folder, carry the mounts binding those roots (`--mount "$DIR/output":/output:rw`) and have your sample inputs pre-filled (adapt them to the real run);
 - `FORGE.md` — the crew's identity card: goal, acceptance criteria, verdict, generation date and version — what a colleague reads when picking up the folder;
 - `forge.json` — the card's machine-readable twin: the session's id, slug, title, format, promotion instant and the brief — the id links the folder back to its session wherever the folder goes, and the rest is what `forge reopen` reads to rebuild a faithful session once the original is gone (nothing secret in it);
-- `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line. The install command is **displayed, never executed**: Orkeon has no scheduler, and pretending otherwise would promise supervision it cannot give.
+- `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line, all named after the team folder (`orkeon-supplier-watch.timer`). The install command is **displayed, never executed**: Orkeon has no scheduler, and pretending otherwise would promise supervision it cannot give.
 
 Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it: the promoted `config.yaml` names the roots the team uses (`mounts: [/workspace, /output]`), so a settings entry declaring `/output` is used as it stands, and with none the run is refused in one line (`the crew requires '/output' … pass --mount <folder>:/output:rw`) instead of writing nowhere.
 

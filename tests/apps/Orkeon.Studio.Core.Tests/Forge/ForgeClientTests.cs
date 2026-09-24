@@ -75,6 +75,34 @@ public class ForgeClientTests
             ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "veille", ReadDirectory = "  " }));
     }
 
+    /// <summary>
+    /// STUDIO-26, D-01: the promotion carries the team's name — the title the engine gives the
+    /// card, the record and the session — as one argument after <c>--name</c>, a leading dash
+    /// included: the engine takes that value as written. No name, no option.
+    /// </summary>
+    [Fact]
+    public async Task The_promote_argv_carries_the_team_name()
+    {
+        Assert.Equal(
+            ["forge", "promote", "veille", "--to", "/teams/ma-veille", "--name", "Ma veille", "--events", "jsonl",
+             "--schedule", "daily@07:30"],
+            ForgeArgumentsBuilder.BuildPromote("veille", "/teams/ma-veille", "Ma veille", "daily@07:30"));
+        Assert.Equal(
+            ["forge", "promote", "veille", "--to", "/teams/veille", "--name", "-Veille-", "--events", "jsonl"],
+            ForgeArgumentsBuilder.BuildPromote("veille", "/teams/veille", "-Veille-", schedule: null));
+        Assert.Equal(
+            ["forge", "promote", "veille", "--to", "/teams/veille", "--events", "jsonl"],
+            ForgeArgumentsBuilder.BuildPromote("veille", "/teams/veille", teamName: "  ", schedule: null));
+
+        var (client, processes) = Build();
+        await client.PromoteAsync(
+            "veille", "/teams/ma-veille", "Ma veille", schedule: null, "/ws", _ => { },
+            cancellationToken: TestContext.Current.CancellationToken);
+        Assert.Equal(
+            ["forge", "promote", "veille", "--to", "/teams/ma-veille", "--name", "Ma veille", "--events", "jsonl"],
+            Assert.Single(processes.Requests).Arguments);
+    }
+
     [Fact]
     public async Task Protocol_lines_become_events_and_everything_else_stays_visible_raw()
     {

@@ -122,6 +122,9 @@ public sealed record ForgePromotion(string Path, string Launcher, string? Instal
 /// <summary>An <c>error</c> event.</summary>
 public sealed record ForgeErrorInfo(string Code, string Message, bool Recoverable);
 
+/// <summary>A <c>warning</c> event: something not done while what was asked for stands (STUDIO-26).</summary>
+public sealed record ForgeWarningInfo(string Code, string Message);
+
 /// <summary>
 /// The client-side projection of one forge session: feed it the event stream, read the
 /// screen. Pure state — no I/O, no threads — so the WPF and terminal fronts share the
@@ -278,6 +281,12 @@ public sealed class ForgeSessionModel
     /// <summary>The last <c>error</c> event, recoverable or not.</summary>
     public ForgeErrorInfo? LastError { get; private set; }
 
+    /// <summary>
+    /// The last <c>warning</c> event — kept apart from <see cref="LastError"/>: it says what was not
+    /// done while the command succeeded, and must never read as a failure (STUDIO-26, D-05).
+    /// </summary>
+    public ForgeWarningInfo? LastWarning { get; private set; }
+
     /// <summary>Echoes the user's own turn into the conversation (the stream never replays it).</summary>
     public void AddUserMessage(string text)
     {
@@ -394,6 +403,16 @@ public sealed class ForgeSessionModel
                 Milestone = ForgeMilestone.Adopt;
                 break;
 
+            case ForgeEventKinds.SessionRenamed:
+                FollowRename(orkeonEvent);
+                break;
+
+            case ForgeEventKinds.Warning:
+                LastWarning = new ForgeWarningInfo(
+                    orkeonEvent.GetString("code") ?? "",
+                    orkeonEvent.GetString("message") ?? "");
+                break;
+
             case ForgeEventKinds.SessionFinished:
                 FinishedStatus = orkeonEvent.GetString("status");
                 _decisionOptions.Clear();
@@ -418,6 +437,25 @@ public sealed class ForgeSessionModel
             default:
                 break;
         }
+    }
+
+    /// <summary>
+    /// The session folder followed its team (STUDIO-26, D-03): the slug the next resume names,
+    /// and the folder the generated definition is read from, both move with it. An engine that
+    /// names no folder leaves it beside the old one, under the same session root; an event that
+    /// names no new slug moves nothing.
+    /// </summary>
+    private void FollowRename(OrkeonEvent orkeonEvent)
+    {
+        if (orkeonEvent.GetString("to") is not { Length: > 0 } slug)
+            return;
+
+        Slug = slug;
+        if (orkeonEvent.GetString("dir") is { Length: > 0 } directory)
+            Directory = directory;
+        else if (Directory is { Length: > 0 } current
+                 && Path.GetDirectoryName(Path.TrimEndingDirectorySeparator(current)) is { Length: > 0 } root)
+            Directory = Path.Combine(root, slug);
     }
 
     /// <summary>Turns an event's <c>text</c> into an assistant bubble; a textless event says nothing.</summary>
