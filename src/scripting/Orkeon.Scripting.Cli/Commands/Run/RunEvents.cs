@@ -86,6 +86,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     private long _cacheHitTokens;
     private long _cacheMissTokens;
     private bool _cacheMeasured;
+    private long _estimatedTokens;
     private decimal? _vendorCost;
     private string? _vendorCostCurrency;
 
@@ -128,6 +129,16 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     public long? CacheMissTokens
     {
         get { lock (_gate) { return _cacheMeasured ? _cacheMissTokens : null; } }
+    }
+
+    /// <summary>
+    /// How much of <see cref="TokensUsed"/> the runtime estimated because a provider counted
+    /// nothing (STUDIO-42 D-06), or null when every call was counted by its provider — a
+    /// figure a screen must mark as approximate rather than pass off as a count.
+    /// </summary>
+    public long? EstimatedTokens
+    {
+        get { lock (_gate) { return _estimatedTokens > 0 ? _estimatedTokens : null; } }
     }
 
     /// <inheritdoc />
@@ -203,15 +214,17 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
     /// <remarks>
     /// Every reading carries the run's standing meter, cumulative like <c>run.finished</c>: both
     /// directions at every call (STUDIO-29 — the split used to wait for the closing event),
-    /// the cache pair once a provider measured it, and the vendor's own charge once a vendor
-    /// billed one.
+    /// the cache pair once a provider measured it, the part the runtime had to estimate once a
+    /// provider counted nothing, and the vendor's own charge once a vendor billed one. Every
+    /// generation call of the run reaches here — the agents', the manager's, the planner's, the
+    /// RAG pipelines', the memory services' — through the one metered provider (STUDIO-42).
     /// </remarks>
     public void Record(CostUsageEvent usage)
     {
         ArgumentNullException.ThrowIfNull(usage);
 
         long total, prompt, completion;
-        long? cacheHit, cacheMiss;
+        long? cacheHit, cacheMiss, estimated;
         decimal? cost;
         string? currency;
         lock (_gate)
@@ -219,6 +232,10 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
             _tokens += usage.PromptTokens + usage.CompletionTokens;
             _promptTokens += usage.PromptTokens;
             _completionTokens += usage.CompletionTokens;
+
+            // The provider counted nothing for this one: the figure is the runtime's own.
+            if (usage.Estimated)
+                _estimatedTokens += usage.PromptTokens + usage.CompletionTokens;
 
             // The cache pair partitions the prompt tokens (never additive); one measured
             // call is enough to call the run "measured".
@@ -245,6 +262,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
             completion = _completionTokens;
             cacheHit = _cacheMeasured ? _cacheHitTokens : null;
             cacheMiss = _cacheMeasured ? _cacheMissTokens : null;
+            estimated = _estimatedTokens > 0 ? _estimatedTokens : null;
             cost = _vendorCost;
             currency = _vendorCostCurrency;
         }
@@ -262,6 +280,7 @@ internal sealed class RunEventObserver : ICrewExecutionHook, ILlmUsageSink, ILlm
                 completionTokens = completion,
                 cacheHitTokens = cacheHit,
                 cacheMissTokens = cacheMiss,
+                estimatedTokens = estimated,
                 model = Blank(usage.Model),
                 provider = Blank(usage.Provider),
                 cost,

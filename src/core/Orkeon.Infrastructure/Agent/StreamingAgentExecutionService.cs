@@ -13,6 +13,7 @@ using Orkeon.Tools.Abstractions.Adapters;
 using Orkeon.Domain.Task;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Agent;
 
@@ -79,8 +80,20 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
             {
                 cancellationToken.ThrowIfCancellationRequested();
 
-                var (fullResponse, toolCallThoughts) = await ProcessStreamingIterationAsync(
-                    messages, options, availableTools, cancellationToken).ConfigureAwait(false);
+                // Opened around the awaited turn, not across the yields below: an iterator
+                // resumes from a yield in its consumer's context, where the scope is gone.
+                (string fullResponse, List<AgentThought> toolCallThoughts) turn;
+                using (LlmUsageScope.Begin(
+                    LlmUsageOperations.Agent,
+                    crewId: context.CrewId.ToString(),
+                    agentId: agent.Role.Value,
+                    taskId: task.Id.ToString()))
+                {
+                    turn = await ProcessStreamingIterationAsync(
+                        messages, options, availableTools, cancellationToken).ConfigureAwait(false);
+                }
+
+                var (fullResponse, toolCallThoughts) = turn;
 
                 foreach (var thought in toolCallThoughts)
                     yield return thought;

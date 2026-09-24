@@ -168,6 +168,9 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Text);
         ArgumentException.ThrowIfNullOrWhiteSpace(query.Collection);
 
+        // Grades, rewrites, answers, checks: every call the graph makes is RAG work (STUDIO-42).
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Rag);
+
         var initialState = new RagGraphState { Query = query };
         var runner = BuildGraph().Compile();
 

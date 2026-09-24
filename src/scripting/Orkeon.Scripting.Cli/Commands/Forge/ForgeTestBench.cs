@@ -164,7 +164,6 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
             {
                 PermissionGate = _services.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
-                UsageSink = _services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>(),
             });
 
         var transpiler = _transpilerFactory();

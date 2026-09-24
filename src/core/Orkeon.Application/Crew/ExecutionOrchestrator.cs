@@ -42,7 +42,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private readonly Domain.SharedKernel.ILlmProvider? _fullProvider;
     private readonly Interfaces.LLM.IToolCallingStrategy? _toolCallingStrategy;
     private readonly IDeliverableResolverFactory? _deliverableResolverFactory;
-    private readonly Interfaces.Ports.ILlmUsageSink? _usageSink;
     private readonly Domain.FileSystem.IFileSystemService _fileSystem = null!;
 
     // ── Internally composed collaborators (R4.1) ─────────────────────────────
@@ -69,7 +68,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem);
 
     private ChatClientAgentLoop ChatLoop =>
-        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher, _usageSink);
+        _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher);
 
     private LegacyTextAgentLoop LegacyLoop =>
         _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate);
@@ -212,30 +211,6 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     }
 
     /// <summary>
-    /// Constructor adding the optional LLM usage sink — the seam an observed run's token
-    /// meter hangs on. Optional and last, so every existing composition keeps resolving.
-    /// </summary>
-    public ExecutionOrchestrator(
-        ILogger<ExecutionOrchestrator> logger,
-        IBasicLlmProvider llmProvider,
-        Domain.Crew.Planning.IAgentPlanner planner,
-        IChatClient chatClient,
-        IEnumerable<Domain.Tools.IBaseTool> registeredTools,
-        IOutputValidationPipeline validationPipeline,
-        IOutputParserFactory parserFactory,
-        ILlmRateLimiter rateLimiter,
-        Domain.SharedKernel.ILlmProvider? fullProvider,
-        Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy,
-        IDeliverableResolverFactory? deliverableResolverFactory,
-        Domain.FileSystem.IFileSystemService fileSystem,
-        Interfaces.Ports.ILlmUsageSink? usageSink)
-        : this(logger, llmProvider, planner, chatClient, registeredTools, validationPipeline, parserFactory,
-               rateLimiter, fullProvider, toolCallingStrategy, deliverableResolverFactory, fileSystem)
-    {
-        _usageSink = usageSink;
-    }
-
-    /// <summary>
     /// Execute Task Core Async.
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Service-boundary fault barrier: any failure during task execution is converted to a failed TaskResult (cancellation preserved via a separate filtered catch) so one task cannot crash the crew orchestration.")]
@@ -255,6 +230,15 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             var startTime = DateTime.UtcNow;
             var toolsUsed = new List<Domain.Tools.ToolUsage>();
 
+            // Whose calls these are: every LLM call this task makes — its turns, its retries,
+            // its correction round, its knowledge retrieval — is metered under this agent,
+            // this task, this crew (STUDIO-42). The scope never leaks past this method.
+            using var usageScope = LlmUsageScope.Begin(
+                LlmUsageOperations.Agent,
+                crewId: context.CrewId.ToString(),
+                agentId: agent.Role.Value,
+                taskId: task.Id.ToString());
+
             try
             {
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
@@ -273,7 +257,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var (validatedOutput, structuredOutput) = loopResult.ExitReason == AgentExitReason.LlmCallFailed
                     ? (loopResult.Output, null)
                     : await OutputValidation.ValidateAndParseOutputAsync(
-                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, context.CrewId.ToString(), systemPrompt, userPrompt, toolsUsed),
+                        new OutputValidationRequest(loopResult.Output, validationContext, task, agent, systemPrompt, userPrompt, toolsUsed),
                         MaxOutputRetries, MaxIterations, cancellationToken).ConfigureAwait(false);
 
                 // Unescape literal \n sequences that LLMs frequently emit in text output
@@ -390,7 +374,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         if (_chatClient != null)
         {
             var loopResult = await ChatLoop.ExecuteAsync(
-                agent, task, context.CrewId.ToString(), systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
+                agent, task, systemPrompt, userPrompt, toolsUsed, MaxIterations, cancellationToken).ConfigureAwait(false);
 
             sw.Stop();
             ExecutionLog.LogLlmResponse(_logger, agent.Role, sw.ElapsedMilliseconds, loopResult.Output.Length, loopResult.Output);

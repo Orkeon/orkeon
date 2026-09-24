@@ -1,12 +1,16 @@
 namespace Orkeon.Application.Interfaces.Ports;
 
 /// <summary>
-/// Host-registered receiver for LLM usage events emitted by the scripted runtime
-/// (<c>ctx.llm.*</c>): one event per completed LLM call, carrying the token counts the
-/// provider reported. A host typically forwards them to <see cref="ICostBudgetManager"/>
-/// (session accounting) and/or attributes them to the unit of work that made the call
-/// (per-agent token readouts). A host that registers no sink keeps the runtime behaviour
-/// byte-identical — usage is then simply not observed.
+/// Host-registered receiver for LLM usage events: one event per completed generation call,
+/// whoever made it — an agent turn or retry, the hierarchical manager, the planner, a RAG
+/// pipeline, a memory service, a flow step, an evaluator, a <c>ctx.llm.*</c> script call —
+/// carrying the token counts the provider reported and the attribution in effect
+/// (<see cref="LlmUsageScope"/>). The events come from a single place, the metering
+/// decorator every provider is wrapped in (STUDIO-42); no caller reports its own. A host
+/// typically forwards them to <see cref="ICostBudgetManager"/> (session accounting) and/or
+/// attributes them to the unit of work that made the call (per-agent token readouts).
+/// Embedding calls are not generation calls and are not reported. A host that registers no
+/// sink keeps the runtime behaviour byte-identical — usage is then simply not observed.
 /// </summary>
 /// <remarks>
 /// Called from the runtime's async flow, potentially on pool threads — implementations

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.AI;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Rag.Tests.Doubles;
 
@@ -33,12 +34,19 @@ public sealed class FakeChatClient : IChatClient
     /// <summary>Options received by the last call.</summary>
     public ChatOptions? LastOptions { get; private set; }
 
+    /// <summary>
+    /// The usage attribution in effect at every call, in order — what the token meter would
+    /// stamp on it (<see cref="LlmUsageScope"/>).
+    /// </summary>
+    public List<LlmUsageAttribution> Attributions { get; } = [];
+
     public Task<ChatResponse> GetResponseAsync(
         IEnumerable<ChatMessage> messages,
         ChatOptions? options = null,
         CancellationToken cancellationToken = default)
     {
         CallCount++;
+        Attributions.Add(LlmUsageScope.Current);
         LastMessages = messages.ToList();
         Calls.Add(LastMessages);
         LastOptions = options;

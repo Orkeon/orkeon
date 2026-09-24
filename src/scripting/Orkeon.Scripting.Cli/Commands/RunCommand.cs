@@ -718,10 +718,6 @@ internal static partial class RunCommand
         // loop keeps its buffered behaviour unless the script passes onDelta.
         var deltaSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>();
 
-        // Optional usage receiver: opt-in via DI — without a sink, per-call LLM usage
-        // is simply not observed (no accounting side effects).
-        var usageSink = host.Services.GetService<Orkeon.Application.Interfaces.Ports.ILlmUsageSink>();
-
         var ragBackend = BuildRagBackend(host.Services, fileSystem, logger);
 
         var engineFactory = new JsEngineFactory(
@@ -734,7 +730,6 @@ internal static partial class RunCommand
             {
                 PermissionGate = permissionGate,
                 DeltaSink = deltaSink,
-                UsageSink = usageSink,
             },
             ragBackend: ragBackend);
 

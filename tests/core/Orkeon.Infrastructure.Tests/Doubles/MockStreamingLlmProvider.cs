@@ -33,6 +33,14 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
     public void SetGenerateResult(LlmResponse result) => _generateResult = result;
     public void SetChatFunc(Func<LlmMessage[], LlmConfig?, LlmResponse> func) => _chatFunc = func;
     public void SetStreamingChunks(IReadOnlyList<string> chunks) => _streamingChunks = chunks;
+
+    /// <summary>
+    /// The final response the chat stream completes with; unset, it is the chunks' text with
+    /// no usage, the way a provider that counts nothing ends its stream.
+    /// </summary>
+    public void SetCompletedResponse(LlmResponse response) => _completedResponse = response;
+
+    private LlmResponse? _completedResponse;
     public bool SupportsStreaming
     {
         get => _supportsStreaming;
@@ -96,7 +104,7 @@ public sealed class MockStreamingLlmProvider : ILlmProvider, IStreamingLlmProvid
             yield return LlmStreamEvent.Content(chunk);
         }
 
-        yield return LlmStreamEvent.Complete(new LlmResponse
+        yield return LlmStreamEvent.Complete(_completedResponse ?? new LlmResponse
         {
             Content = string.Concat(_streamingChunks),
         });

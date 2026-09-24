@@ -202,7 +202,8 @@ internal sealed class ObservedRunContext : IAsyncDisposable
         await DisposeCoreAsync().ConfigureAwait(false);
 
         // W-08: the closing event carries what the run cost — duration, the token split,
-        // and the cache partition of the prompt side (null = not measured, never zero).
+        // and the cache partition of the prompt side (null = not measured, never zero) — and,
+        // since STUDIO-42, how much of it the runtime estimated (null = all counted).
         _events.Emit(RunEventKinds.RunFinished, new
         {
             success = exitCode == 0,
@@ -213,6 +214,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
             completionTokens = _observer?.CompletionTokens ?? 0,
             cacheHitTokens = _observer?.CacheHitTokens,
             cacheMissTokens = _observer?.CacheMissTokens,
+            estimatedTokens = _observer?.EstimatedTokens,
         });
 
         return exitCode;

@@ -46,7 +46,6 @@ public sealed partial class JsCrew
     private readonly IReadOnlyList<Orkeon.Domain.Tools.IBaseTool>? _builtInTools;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
-    private readonly Orkeon.Application.Interfaces.Ports.ILlmUsageSink? _usageSink;
 
     /// <summary>Crew display name (defaults to <c>"crew"</c> when none was supplied).</summary>
     public string name { get; }
@@ -77,7 +76,6 @@ public sealed partial class JsCrew
         _builtInTools = definition.BuiltInTools;
         _permissionGate = definition.PermissionGate;
         _deltaSink = definition.DeltaSink;
-        _usageSink = definition.UsageSink;
         _agents = new List<JsAgent>();
         _tasks = new List<object>(definition.Tasks);
 
@@ -107,7 +105,6 @@ public sealed partial class JsCrew
         Budget = budget,
         PermissionGate = _permissionGate,
         DeltaSink = _deltaSink,
-        UsageSink = _usageSink,
     };
 
     private JsEventBroker? _eventBroker;

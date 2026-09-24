@@ -521,9 +521,10 @@ public static class InfrastructureExtensions
                     "or ensure the LlmProviderFactory creates an ILlmProvider.");
             }
 
-            // Detect Anthropic provider and inject its native tool call parser
+            // Detect Anthropic provider and inject its native tool call parser. The vendor is
+            // read under the meter; the chat client keeps calling through it.
             Application.Interfaces.LLM.IToolCallParser? nativeParser = null;
-            if (llmProvider is AnthropicLlmProvider)
+            if (MeteredLlmProvider.Unwrap(llmProvider) is AnthropicLlmProvider)
                 nativeParser = new LLMs.ToolCalling.AnthropicToolCallParser();
 
             return new LlmProviderToChatClientAdapter(llmProvider, textFallbackParser: textParser, nativeToolCallParser: nativeParser);

@@ -11,6 +11,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Tools;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Infrastructure.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -159,7 +160,8 @@ public sealed class ForgeCrewAssistantTests : IDisposable
             .AddSingleton<ILlmDeltaSink>(_tally)
             .AddSingleton<IBaseTool>(new BriefSubmitTool(_box))
             .AddSingleton<IBaseTool>(new BlueprintSubmitTool(_box))
-            .AddSingleton<ILlmProvider>(provider)
+            // The way every provider reaches a host: metered for the tally above (STUDIO-42).
+            .AddOrkeonLlmProvider(_ => provider)
             .BuildServiceProvider();
 
         return new ForgeCrewAssistant(services, _session, packPath);

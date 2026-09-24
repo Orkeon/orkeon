@@ -668,4 +668,69 @@ public class SequentialCrewOrchestratorTests
 
         Assert.Equal(Orkeon.Domain.Common.CrewId.System, callerContext.Current.CrewId);
     }
+
+    #region LLM usage attribution (STUDIO-42)
+
+    [Fact]
+    public async Task The_planning_call_is_metered_as_planning_work_for_the_crew()
+    {
+        var repository = new TestCrewRepository();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), new TestProcessStrategyFactory(), new ExecutionPlanParser());
+        var agentId = AgentId.Create();
+        var taskId = TaskId.Create();
+        var provider = new MockLlmProvider();
+        provider.SetGenerateFunc((_, _) => new LlmResponse
+        {
+            Content = $$"""{"tasks":[{"task":"{{taskId}}","order":1,"agent":"{{agentId}}"}]}""",
+            PromptTokens = 80,
+            CompletionTokens = 20,
+            TokensUsed = 100,
+        });
+        var sink = new MockLlmUsageSink();
+        var crew = DomainCrew.Create(new CrewCreateOptions
+        {
+            Goal = "Planned crew",
+            ProcessType = ProcessType.Sequential,
+            Planning = true,
+            PlanningLlm = Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(provider, sink),
+        });
+        crew.AddAgent(agentId);
+        crew.AddTask(taskId);
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        Assert.Equal(1, provider.GenerateCallCount);
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Planning, usage.OperationType);
+        Assert.Equal(crew.Id.ToString(), usage.CrewId);
+        Assert.Equal(100, usage.PromptTokens + usage.CompletionTokens);
+    }
+
+    [Fact]
+    public async Task A_call_nothing_narrower_claims_is_still_metered_for_the_run_it_belongs_to()
+    {
+        var repository = new TestCrewRepository();
+        var strategyFactory = new TestProcessStrategyFactory();
+        var orchestrator = new SequentialCrewOrchestrator(
+            repository, new TestLogger(), new TestStateManager(), strategyFactory, new ExecutionPlanParser());
+        var provider = new MockLlmProvider();
+        provider.SetGenerateResult(new LlmResponse { Content = "orphan", PromptTokens = 1, CompletionTokens = 1, TokensUsed = 2 });
+        var sink = new MockLlmUsageSink();
+        var metered = Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(provider, sink);
+        strategyFactory.Strategy.OnExecuteAsync = () => metered.GenerateAsync("a call no scope claims");
+        var crew = DomainCrew.Create("Test crew", ProcessType.Sequential);
+        crew.AddAgent(AgentId.Create());
+        crew.AddTask(TaskId.Create());
+        repository.AddCrew(crew);
+
+        await orchestrator.KickoffAsync(crew.Id, new CrewInput("ctx", new Dictionary<string, object>()), TestContext.Current.CancellationToken);
+
+        var usage = Assert.Single(sink.Recorded);
+        Assert.Equal(Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Unattributed, usage.OperationType);
+        Assert.Equal(crew.Id.ToString(), usage.CrewId);
+    }
+
+    #endregion
 }

@@ -16,6 +16,12 @@ public sealed class MockLlmProvider : ILlmProvider
 
     public string Name { get; set; } = "MockLlmProvider";
 
+    /// <summary>The configuration the provider declares (<see cref="ILlmProvider.BaseConfig"/>).</summary>
+    public LlmConfig? BaseConfig { get; set; }
+
+    /// <summary>What the provider declares it supports (<see cref="ILlmProvider.Capabilities"/>).</summary>
+    public LlmProviderCapabilities Capabilities { get; set; } = LlmProviderCapabilities.Unknown;
+
     // --- Tracking ---
     public int GenerateCallCount { get; private set; }
     public int ChatCallCount { get; private set; }

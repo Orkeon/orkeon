@@ -7,6 +7,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using LogLevel = Microsoft.Extensions.Logging.LogLevel;
 using Orkeon.Domain.Constants.Llm;
+using Orkeon.Application.Interfaces.Ports;
 
 namespace Orkeon.Infrastructure.Memory.Cognitive;
 
@@ -62,6 +63,7 @@ public sealed partial class ContradictionDetector
             MaxTokens = 400
         };
 
+        using var usageScope = LlmUsageScope.Begin(LlmUsageOperations.Memory);
         try
         {
             var response = await _llmProvider.ChatAsync(messages, config, cancellationToken).ConfigureAwait(false);

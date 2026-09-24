@@ -846,14 +846,11 @@ public static partial class RunnerHost
     /// failed task, not an empty answer — the bundled demos then exited 2 where the warning had
     /// announced a run.
     /// </summary>
-    private static void RegisterEchoProvider(IServiceCollection services)
-    {
-        services.AddSingleton<UndefinedLlmProvider>();
-        services.AddSingleton<IBasicLlmProvider>(sp =>
-            new LlmProviderAdapter(sp.GetRequiredService<UndefinedLlmProvider>()));
-        services.AddSingleton<IChatClient>(sp =>
-            new LlmProviderToChatClientAdapter(
-                sp.GetRequiredService<UndefinedLlmProvider>(),
-                textFallbackParser: sp.GetService<Application.Interfaces.LLM.IToolCallParser>()));
-    }
+    /// <remarks>
+    /// Registered like any provider the factory does not build (<c>AddOrkeonLlmProvider</c>):
+    /// metered, so an observed run still reports each call — at the zero tokens the echo
+    /// declares (STUDIO-42).
+    /// </remarks>
+    private static void RegisterEchoProvider(IServiceCollection services) =>
+        services.AddOrkeonLlmProvider(_ => new UndefinedLlmProvider());
 }
