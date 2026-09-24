@@ -7,6 +7,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — every numbered example carries a use-case sheet, gathered in `examples/usecases.json` (STUDIO-36)
+
+- Each of the 105 numbered examples has a `usecase.yaml` beside its crew. It holds the
+  hand-written fields:
+  - title and problem in fr, en, es, de and zh-Hans, empty until STUDIO-37;
+  - tags;
+  - the mounts the example needs (`./data:/data:ro`, `./output:/output:rw`);
+  - `importable`, false for the 15 finance scripts, which depend on `_tools/`.
+- `scripts/generate_examples_index.py` also writes the deterministic manifest
+  `examples/usecases.json`, adding the derived fields:
+  - format, process, agent and task counts, tools;
+  - `hasSampleData` (a `data/` folder exists);
+  - `requiresNetwork`, from an explicit tool table that stops on an unknown tool;
+  - `requiresKeys`, the third-party key variables beyond the LLM, e.g. `ORKEON_TAVILY_API_KEY`.
+- `has_data` now means "a `data/` folder exists", so `examples/INDEX.md` does not change when
+  the new sheets are added.
+- `lint-example-configs.py` checks each sheet's format and three consistency rules, and fails
+  on a missing sheet, a duplicated id or a stale manifest. The five-language requirement waits
+  behind `--require-texts`.
+- The examples CI checks that the manifest is fresh. `scripts/test-examples-catalog.py`
+  (23 tests) covers the generator and the lint.
+
 ### Added — Studio can read what is left on a provider account (STUDIO-33)
 
 - `IProviderBalanceProbe` / `HttpProviderBalanceProbe` (Studio.Core) return a typed result
