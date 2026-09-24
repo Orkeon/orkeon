@@ -59,7 +59,7 @@ internal static class ForgePack
 /// <summary>
 /// The production <see cref="IForgeAssistant"/> (SPEC-ORKEON-FORGE §7.1): each turn runs
 /// the pack crew once through <see cref="ScriptHost"/>, in-process. The script gets the
-/// whole turn as <c>inputs</c> (phase, message, history, brief, errors, catalogue) and is
+/// whole turn as <c>inputs</c> (phase, message, history, brief, errors, catalogue, reference) and is
 /// stateless; the transcript persisted here is what makes a resumed interview remember.
 /// Submissions come back through the <see cref="ForgeSubmissionBox"/> the injected tools
 /// write into — never through the script's return value, which is only conversation.
@@ -82,19 +82,23 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
     private readonly ScriptHost _scriptHost;
     private readonly IReadOnlyList<string> _readTools;
     private readonly IReadOnlyList<ForgeToolInfo> _crewTools;
+    private readonly ForgeReference? _reference;
+    private readonly string? _referenceOutline;
     private readonly string _packPhysicalPath;
     private readonly string _packVirtualPath;
 
     /// <summary>
     /// Builds the assistant over the engine host's services. The pack must already be
     /// materialized (<see cref="ForgePack.Ensure"/>) and the session directory mounted at
-    /// <paramref name="sessionVirtualRoot"/>.
+    /// <paramref name="sessionVirtualRoot"/>. <paramref name="reference"/> is the use case the
+    /// composition starts from (STUDIO-40), when there is one.
     /// </summary>
     public ForgeCrewAssistant(
         IServiceProvider services,
         ForgeSession session,
         string packPhysicalPath,
-        string sessionVirtualRoot = "/forge")
+        string sessionVirtualRoot = "/forge",
+        ForgeReference? reference = null)
     {
         ArgumentNullException.ThrowIfNull(services);
         _session = session ?? throw new ArgumentNullException(nameof(session));
@@ -110,6 +114,11 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
         // What the designed team may use (SPEC §7.3): the sandbox catalogue with
         // descriptions — a closed list the blueprint prompt shows and validation enforces.
         _crewTools = ForgeSandbox.SelectCrewTools(tools);
+
+        // The reference's structure, cut down to that very catalogue (STUDIO-40, D-02): read
+        // once, since neither the crew file nor the catalogue changes during a session.
+        _reference = reference;
+        _referenceOutline = reference?.Outline([.. _crewTools.Select(tool => tool.Name)]);
 
         var configuration = services.GetRequiredService<IConfiguration>();
         var engineFactory = new JsEngineFactory(
@@ -263,6 +272,16 @@ internal sealed class ForgeCrewAssistant : IForgeAssistant
             crewTools = isBrief
                 ? null
                 : _crewTools.Select(tool => new { name = tool.Name, description = tool.Description }),
+            // The use case the composition starts from (STUDIO-40, D-02): its structure, for the
+            // blueprint phase only — the interview's brief is the user's need, not the example's.
+            reference = isBrief || _reference is null
+                ? null
+                : new
+                {
+                    id = _reference.Id,
+                    title = _reference.TitleIn(request.Brief?.Language),
+                    outline = _referenceOutline,
+                },
             submitTool = isBrief ? "brief_submit" : "blueprint_submit",
         }, InputsOptions);
     }

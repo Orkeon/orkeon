@@ -58,6 +58,15 @@ internal sealed record ForgeSessionDocument
     [JsonPropertyName("format")]
     public string Format { get; set; } = "yaml";
 
+    /// <summary>
+    /// The use case the session was composed from, <c>--reference</c> (STUDIO-40, D-01): recorded
+    /// at creation, so a resume composes with it again and a client reopening the session reads it
+    /// back. Titled in English until the promotion titles it in the brief's language (D-04). Null
+    /// for a session started from nothing.
+    /// </summary>
+    [JsonPropertyName("reference")]
+    public ForgeReferenceRecord? Reference { get; set; }
+
     /// <summary>The stage the cycle is in, as <see cref="ForgeState"/> spells it.</summary>
     [JsonPropertyName("state")]
     public string State { get; set; } = nameof(ForgeState.Brief);
@@ -204,13 +213,15 @@ internal sealed class ForgeSession
     /// <summary>
     /// Creates a fresh session directory. A slug collision gets a numeric suffix rather
     /// than an error: two sessions about the same problem are an ordinary situation.
+    /// <paramref name="reference"/> is the use case it is composed from, when there is one.
     /// </summary>
     public static ForgeSession Create(
         string workspaceDirectory,
         string? requestedSlug = null,
         string format = "yaml",
         ForgeBudget? budget = null,
-        DateTimeOffset? now = null)
+        DateTimeOffset? now = null,
+        ForgeReferenceRecord? reference = null)
     {
         var root = RootFor(workspaceDirectory);
         var stamp = (now ?? DateTimeOffset.UtcNow).UtcDateTime;
@@ -232,6 +243,7 @@ internal sealed class ForgeSession
             Id = Guid.NewGuid(),
             Slug = slug,
             Format = format,
+            Reference = reference,
             Budget = budget ?? new ForgeBudget(),
             CreatedAt = createdAt,
             UpdatedAt = createdAt,

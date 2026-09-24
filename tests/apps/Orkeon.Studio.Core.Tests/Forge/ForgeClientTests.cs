@@ -76,6 +76,33 @@ public class ForgeClientTests
     }
 
     /// <summary>
+    /// STUDIO-40: a new session composed from a use case names it with <c>--reference</c> — the id
+    /// the gallery attached. A new session's input, like the need: a resumed session keeps the
+    /// reference it was created with and the engine refuses the option there, so a resume's argv
+    /// never carries it. None attached, none on the argv — the golden argv above carries none.
+    /// </summary>
+    [Fact]
+    public void The_argv_carries_the_reference_of_a_new_session()
+    {
+        Assert.Equal(
+            ["forge", "trier mes e-mails", "--events", "jsonl", "--read", "/data/mails", "--reference", "03-email-pipeline", "--dry"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest
+            {
+                Need = "trier mes e-mails",
+                ReadDirectory = "/data/mails",
+                ReferenceUseCaseId = "03-email-pipeline",
+                Dry = true,
+            }));
+
+        Assert.Equal(
+            ["forge", "resume", "trier", "--events", "jsonl"],
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { ResumeSlug = "trier", ReferenceUseCaseId = "03-email-pipeline" }));
+        Assert.DoesNotContain(
+            "--reference",
+            ForgeArgumentsBuilder.Build(new ForgeStartRequest { Need = "trier mes e-mails", ReferenceUseCaseId = "  " }));
+    }
+
+    /// <summary>
     /// STUDIO-26, D-01: the promotion carries the team's name — the title the engine gives the
     /// card, the record and the session — as one argument after <c>--name</c>, a leading dash
     /// included: the engine takes that value as written. No name, no option.
@@ -277,6 +304,24 @@ public sealed class ForgeSessionHydratorTests : IDisposable
         Assert.Equal(_directory, model.Directory);
         Assert.Equal("yaml", model.Format);
         Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), model.SessionId);
+        Assert.Null(model.ReferenceUseCaseId);
+    }
+
+    /// <summary>
+    /// STUDIO-40, D-01: the use case the session was composed from is read back from
+    /// <c>session.json</c> — what the wizard attaches again on a resume or a reopen.
+    /// </summary>
+    [Fact]
+    public void The_reference_is_read_back_from_the_session_file()
+    {
+        File.WriteAllText(Path.Combine(_directory, "session.json"),
+            """{"v":1,"slug":"trier","format":"yaml","reference":{"id":"03-email-pipeline","title":"Tri et réponse aux e-mails"},"state":"Test","status":"Active"}""");
+
+        var model = new ForgeSessionModel();
+        ForgeSessionHydrator.Hydrate(model, _directory);
+
+        Assert.Equal("trier", model.Slug);
+        Assert.Equal("03-email-pipeline", model.ReferenceUseCaseId);
     }
 
     /// <summary>

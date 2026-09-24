@@ -199,6 +199,22 @@ public class ForgeSessionModelTests
         Assert.Equal(4_020, model.Verdict.CacheMissTokens);
     }
 
+    /// <summary>
+    /// STUDIO-40: <c>session.started</c> names the use case the session is composed from; a
+    /// session started from nothing — or by an engine older than the field — names none.
+    /// </summary>
+    [Fact]
+    public void The_session_started_names_the_use_case_the_session_is_composed_from()
+    {
+        var model = new ForgeSessionModel();
+
+        model.Feed(Event("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"trier","dir":"/ws/.orkeon/forge/trier","format":"yaml","reference":{"id":"03-email-pipeline","title":"Email triage and replies"},"resumed":false}"""));
+        Assert.Equal("03-email-pipeline", model.ReferenceUseCaseId);
+
+        model.Feed(Event("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"/ws/.orkeon/forge/veille","format":"yaml","resumed":true}"""));
+        Assert.Null(model.ReferenceUseCaseId);
+    }
+
     [Fact]
     public void The_checklist_reuses_the_success_cards_words_and_never_invents_a_check()
     {

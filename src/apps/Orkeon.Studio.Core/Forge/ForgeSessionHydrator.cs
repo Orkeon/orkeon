@@ -37,7 +37,8 @@ public static class ForgeSessionHydrator
 
     /// <summary>
     /// Wraps <c>session.json</c> into the <c>session.started</c> the live stream would
-    /// have opened with, so Slug/Id/Directory/Format have exactly one reading.
+    /// have opened with, so Slug/Id/Directory/Format — and the reference (STUDIO-40) — have
+    /// exactly one reading.
     /// </summary>
     private static void HydrateIdentity(ForgeSessionModel model, string sessionDirectory)
     {
@@ -54,6 +55,7 @@ public static class ForgeSessionHydrator
             ["id"] = session["id"]?.DeepClone(),
             ["dir"] = sessionDirectory,
             ["format"] = session["format"]?.DeepClone(),
+            ["reference"] = session["reference"]?.DeepClone(),
             ["resumed"] = true,
         };
         Feed(model, envelope.ToJsonString());

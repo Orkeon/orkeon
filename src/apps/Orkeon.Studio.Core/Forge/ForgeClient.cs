@@ -37,6 +37,14 @@ public sealed record ForgeStartRequest
     /// </summary>
     public string? ReadDirectory { get; init; }
 
+    /// <summary>
+    /// <c>--reference &lt;id&gt;</c> (STUDIO-40): the use case of the catalogue a new session is
+    /// composed from — the id the wizard's gallery attached (STUDIO-39). A new session's input,
+    /// like <see cref="Need"/>: a resumed session keeps the reference it was created with, and the
+    /// engine refuses the option there, so the argv of a resume never carries it.
+    /// </summary>
+    public string? ReferenceUseCaseId { get; init; }
+
     /// <summary>Arbitrate without a human — Studio keeps the human, so false by default.</summary>
     public bool Auto { get; init; }
 
@@ -147,6 +155,13 @@ public static class ForgeArgumentsBuilder
         {
             arguments.Add("--read");
             arguments.Add(request.ReadDirectory);
+        }
+
+        // A new session's only, like the need: a resume keeps the reference it was created with.
+        if (string.IsNullOrWhiteSpace(request.ResumeSlug) && !string.IsNullOrWhiteSpace(request.ReferenceUseCaseId))
+        {
+            arguments.Add("--reference");
+            arguments.Add(request.ReferenceUseCaseId);
         }
 
         if (request.Auto)
