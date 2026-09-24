@@ -12,7 +12,7 @@ problem:
   es: "Negociar un contrato de compra entre prioridades enfrentadas y tener la última palabra si se bloquea"
   de: "Einen Einkaufsvertrag zwischen widerstreitenden Prioritäten aushandeln und bei einer Blockade selbst entscheiden"
   zh-Hans: "在相互冲突的诉求之间谈成一份采购合同，陷入僵局时由我拍板"
-tags: ["negotiation", "procurement", "consensus", "human-in-the-loop"]
+tags: ["procurement", "negotiation", "consensus", "human-in-the-loop"]
 # data/ holds a reference brief that no tool reads (see README.md): nothing to mount.
 mounts:
   - "./output:/output:rw"

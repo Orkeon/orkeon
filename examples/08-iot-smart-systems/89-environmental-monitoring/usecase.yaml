@@ -12,7 +12,7 @@ problem:
   es: "Evaluar el aire, el agua, los suelos y la biodiversidad de una zona, y señalar lo que supera los límites"
   de: "Luft, Wasser, Böden und Artenvielfalt eines Gebiets bewerten und Grenzwertüberschreitungen melden"
   zh-Hans: "评估一个区域的空气、水、土壤和生物多样性，并标出超标项"
-tags: ["environment", "air-quality", "water-quality", "biodiversity", "alerting"]
+tags: ["environment", "air-quality", "water-quality", "biodiversity"]
 mounts:
   - "./output:/output:rw"
 importable: true

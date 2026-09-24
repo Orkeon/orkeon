@@ -12,7 +12,7 @@ problem:
   es: "Anticipar las averías de mis máquinas y planificar su mantenimiento por orden de urgencia"
   de: "Ausfälle meiner Maschinen vorhersehen und ihre Wartung nach Dringlichkeit planen"
   zh-Hans: "预判我的设备何时可能出故障，并按紧急程度安排维护"
-tags: ["predictive-maintenance", "manufacturing", "iot", "maintenance-planning"]
+tags: ["manufacturing", "predictive-maintenance", "maintenance-planning", "sensors"]
 mounts:
   - "./output:/output:rw"
 importable: true

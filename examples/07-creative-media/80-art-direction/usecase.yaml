@@ -12,7 +12,7 @@ problem:
   es: "Preparar una campaña publicitaria, de las ideas visuales y los eslóganes a la elección de los medios"
   de: "Eine Werbekampagne vorbereiten, von Bildideen und Slogans bis zur Wahl der Werbekanäle"
   zh-Hans: "策划一场广告活动，从视觉创意、广告语到投放渠道"
-tags: ["marketing", "advertising", "creative-direction", "copywriting", "media-planning"]
+tags: ["marketing", "advertising", "copywriting", "media-planning"]
 mounts:
   - "./output:/output:rw"
 importable: true

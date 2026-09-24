@@ -12,7 +12,7 @@ problem:
   es: "Organizar el socorro y los avisos a la población ante una crisis, aprobando las decisiones graves"
   de: "Rettungskräfte und Warnungen an die Bevölkerung in einer Krise organisieren und schwere Entscheidungen selbst freigeben"
   zh-Hans: "在危机中组织救援和对公众的警报，重大决定由我拍板"
-tags: ["crisis-management", "emergency-response", "public-safety", "human-in-the-loop"]
+tags: ["public-safety", "crisis-management", "emergency-response", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

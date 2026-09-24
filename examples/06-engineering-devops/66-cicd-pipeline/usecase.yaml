@@ -12,7 +12,7 @@ problem:
   es: "Revisar un cambio de código antes de publicarlo y deshacerlo si falla"
   de: "Eine Codeänderung vor der Veröffentlichung prüfen und bei einem Fehler zurücknehmen"
   zh-Hans: "上线前检查代码改动，出问题时退回原版本"
-tags: ["devops", "ci-cd", "code-review", "deployment", "rollback"]
+tags: ["devops", "code-review", "deployment", "rollback"]
 mounts:
   - "./output:/output:rw"
 importable: true

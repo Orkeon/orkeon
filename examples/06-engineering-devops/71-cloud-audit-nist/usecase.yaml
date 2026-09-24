@@ -12,7 +12,7 @@ problem:
   es: "Detectar los fallos de seguridad y los gastos innecesarios de mi alojamiento en la nube"
   de: "Sicherheitslücken und unnötige Ausgaben in meinem Cloud-Hosting aufspüren"
   zh-Hans: "找出我的云服务中的安全漏洞和不必要的开支"
-tags: ["cloud", "security-audit", "cost-optimization", "compliance", "nist"]
+tags: ["cloud", "security-audit", "cost-optimization", "nist"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

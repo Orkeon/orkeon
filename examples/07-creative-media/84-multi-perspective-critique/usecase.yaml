@@ -12,7 +12,7 @@ problem:
   es: "Analizar una obra literaria desde tres enfoques críticos independientes y después sintetizarlos"
   de: "Ein literarisches Werk aus drei unabhängigen kritischen Blickwinkeln analysieren und die Ergebnisse zusammenführen"
   zh-Hans: "从三个相互独立的批评视角分析一部文学作品，再加以综合"
-tags: ["literary-criticism", "literature", "critical-analysis", "synthesis"]
+tags: ["literature", "literary-criticism", "critical-analysis", "synthesis"]
 mounts:
   - "./output:/output:rw"
 importable: true

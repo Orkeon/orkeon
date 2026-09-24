@@ -12,7 +12,7 @@ problem:
   es: "Saber qué regar o tratar en mis campos según los sensores y aprobar cada intervención"
   de: "Anhand der Sensoren wissen, was auf meinen Feldern zu bewässern oder zu behandeln ist, und jeden Eingriff freigeben"
   zh-Hans: "根据传感器数据判断我的田地该浇水还是施药，并逐项批准作业"
-tags: ["agriculture", "iot", "irrigation", "crop-health", "human-in-the-loop"]
+tags: ["agriculture", "irrigation", "crop-health", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

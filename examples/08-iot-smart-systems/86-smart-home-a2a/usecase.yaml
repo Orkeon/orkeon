@@ -12,6 +12,6 @@ problem:
   es: "Conciliar calefacción, iluminación, alarma y consumo de energía de mi casa en un único plan"
   de: "Heizung, Licht, Alarmanlage und Energieverbrauch meines Hauses in einem einzigen Plan abstimmen"
   zh-Hans: "把我家的供暖、照明、安防和用电统一到一份方案中"
-tags: ["smart-home", "iot", "energy-management", "home-security"]
+tags: ["smart-home", "home-automation", "energy-management", "home-security"]
 mounts: []
 importable: true

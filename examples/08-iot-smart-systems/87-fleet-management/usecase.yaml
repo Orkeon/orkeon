@@ -12,7 +12,7 @@ problem:
   es: "Repartir las entregas del día entre mis vehículos y saber cuáles necesitan mantenimiento"
   de: "Die heutigen Lieferungen auf meine Fahrzeuge verteilen und erfahren, welche in die Wartung müssen"
   zh-Hans: "把今天的配送任务分配给我的车辆，并找出哪些车需要保养"
-tags: ["fleet-management", "logistics", "delivery-planning", "vehicle-maintenance"]
+tags: ["logistics", "fleet-management", "delivery-planning", "vehicle-maintenance"]
 mounts:
   - "./data:/data:ro"
   - "./output:/output:rw"

@@ -12,7 +12,7 @@ problem:
   es: "Detectar las piezas defectuosas de una producción y saber si la calidad empeora"
   de: "Fehlerhafte Teile in einer Produktion erkennen und feststellen, ob die Qualität nachlässt"
   zh-Hans: "找出生产中的缺陷零件，并发现质量是否在下滑"
-tags: ["quality-control", "manufacturing", "defect-detection", "statistical-process-control"]
+tags: ["manufacturing", "quality-control", "defect-detection", "statistical-process-control"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -12,7 +12,7 @@ problem:
   es: "Gestionar una caída de mi servicio en línea, con mi visto bueno antes de cada acción, y después hacer balance"
   de: "Einen Ausfall meines Onlinedienstes angehen, jede Maßnahme vorher selbst freigeben und danach Bilanz ziehen"
   zh-Hans: "处理我的在线服务故障，每项操作前先经我同意，事后进行复盘"
-tags: ["devops", "incident-response", "root-cause-analysis", "post-mortem", "human-in-the-loop"]
+tags: ["devops", "incident-response", "root-cause-analysis", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true
