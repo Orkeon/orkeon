@@ -138,6 +138,20 @@ public static class ForgeArgumentsBuilder
         };
     }
 
+    /// <summary>
+    /// Builds the argv of <c>forge rename &lt;team&gt; --name &lt;name&gt;</c> (STUDIO-28): the engine
+    /// renames the folder, the session, the titles, the generated files and the schedule — all of
+    /// it or nothing — and takes the name as written, a leading dash included. Studio rewrites
+    /// only what is its own afterwards: the launch history.
+    /// </summary>
+    public static IReadOnlyList<string> BuildRename(string teamDirectory, string name)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        return [ForgeVerb, "rename", teamDirectory, "--name", name, "--events", "jsonl"];
+    }
+
     /// <summary>Builds the argv of <paramref name="request"/>, <c>--events jsonl</c> always on.</summary>
     public static IReadOnlyList<string> Build(ForgeStartRequest request)
     {
@@ -398,6 +412,56 @@ public sealed class ForgeClient
             {
                 FileName = location.Path!,
                 Arguments = ForgeArgumentsBuilder.BuildSchedule(teamDirectory, verb),
+            },
+            line =>
+            {
+                if (line.Channel == ProcessOutputChannel.StandardOutput
+                    && OrkeonEventParser.TryParse(line.Text, out var orkeonEvent))
+                {
+                    reading.Read(orkeonEvent!);
+                }
+                else if (line.Channel == ProcessOutputChannel.StandardError)
+                {
+                    reading.ReadError(line.Text);
+                }
+            },
+            cancellationToken).ConfigureAwait(false);
+
+        return reading.Report(run);
+    }
+
+    /// <summary>
+    /// Renames the team at <paramref name="teamDirectory"/> <paramref name="name"/> (STUDIO-28) and
+    /// reads the engine's answer. A short child of its own, like a schedule verb, run in
+    /// <paramref name="workingDirectory"/> — the workshop's, where the session rule R links to the
+    /// team lives, so its folder follows the team's. A missing binary comes back as a not-started
+    /// run, never as an exception.
+    /// </summary>
+    public async Task<ForgeRenameReport> RenameAsync(
+        string teamDirectory,
+        string name,
+        string? workingDirectory,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+
+        var location = _locator.Locate();
+        if (!location.Found)
+        {
+            return new ForgeRenameReport
+            {
+                Run = ProcessRunResult.NotStarted(location.Error ?? $"`{OrkeonBinaryLocator.ExecutableBaseName}` was not found."),
+            };
+        }
+
+        var reading = new ForgeRenameReading();
+        var run = await _launcher.RunAsync(
+            new ProcessLaunchRequest
+            {
+                FileName = location.Path!,
+                Arguments = ForgeArgumentsBuilder.BuildRename(teamDirectory, name),
+                WorkingDirectory = workingDirectory,
             },
             line =>
             {

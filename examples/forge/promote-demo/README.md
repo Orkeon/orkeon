@@ -26,6 +26,12 @@ my-solution/
 
 The promotion never touches the operating system's scheduler. `orkeon forge schedule ./my-solution` installs the schedule on this machine (`--check` says where it stands), and `orkeon forge unschedule ./my-solution` removes it.
 
+The team can be renamed afterwards, all of it or nothing — the folder, its session's folder, the titles, the generated files, and a schedule already installed, reinstalled under the new name:
+
+```bash
+orkeon forge rename ./my-solution --name "Supplier watch"   # my-solution/ becomes supplier-watch/
+```
+
 From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like any crew (this one needs an LLM and network access for `web_scrape`), and the Orkeon Studio launcher detects the folder.
 
 ## What to look at
@@ -34,4 +40,4 @@ From there, `orkeon run my-solution/crew --var supplier_url=…` runs it like an
 - `FORGE.md` in the promoted folder — written in the interview's language, for the colleague who picks the folder up.
 - The session stays listed after promotion (`status: Promoted`, with the destination recorded) — under the team's folder name now: once the promotion is written the session folder follows its team, `.orkeon/forge/supplier-watch/` becoming `.orkeon/forge/my-solution/`, and `--name` titled the card, the record and the session.
 
-> The promotion writes into the session (`status`, destination) and renames its folder after the team: only a `Ready` session promotes, so a second run is refused by design. To replay the demo, delete `my-solution/` and `.orkeon/forge/my-solution/`, then restore the session: `git checkout -- .orkeon`.
+> The promotion writes into the session (`status`, destination) and renames its folder after the team: only a `Ready` session promotes, so a second run is refused by design. To replay the demo, delete the promoted folder (`my-solution/`, or the name a rename gave it) and the session folder named after it under `.orkeon/forge/`, then restore the session: `git checkout -- .orkeon`.

@@ -42,8 +42,9 @@ public static class ConventionalNames
     /// <summary>
     /// Orkeon Studio's sidecar at the root of a team folder: the team's name, its description,
     /// its model profile, its schedule and its mounts. Written by Studio at adoption and by
-    /// <c>orkeon usecases export</c>, read by Studio's team catalogue — a sidecar written under
-    /// another name is a team without a name, a description or its folders.
+    /// <c>orkeon usecases export</c>; <c>orkeon forge rename</c> renames the team in it
+    /// (STUDIO-28) and leaves every other field to Studio. Read by Studio's team catalogue — a
+    /// sidecar written under another name is a team without a name, a description or its folders.
     /// </summary>
     public const string TeamSidecarFile = "studio-team.json";
 

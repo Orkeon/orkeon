@@ -1,6 +1,7 @@
 using System.Collections.ObjectModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Globalization;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.FileSystem;
 using Orkeon.Studio.Core.History;
@@ -66,6 +67,25 @@ public sealed class TeamModifyEventArgs(TeamSummary team) : EventArgs
     public TeamSummary Team { get; } = team;
 }
 
+/// <summary>
+/// Payload of a rename that stands (STUDIO-28): the folder the team had, and the one it has now.
+/// The shell lets the screens aimed at the former one follow it.
+/// </summary>
+public sealed class TeamRenamedEventArgs(string from, string path) : EventArgs
+{
+    /// <summary>The team folder before the rename.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public string From { get; } = from;
+
+    /// <summary>The team folder now.</summary>
+    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
+        Justification = "False positive on a primary constructor: the initializer IS the only "
+                      + "assignment of the member, and removing it would leave it unset.")]
+    public string Path { get; } = path;
+}
+
 /// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
 /// <param name="Label">What the screen shows: the virtual path and its rights, never a folder.</param>
 /// <param name="IsReadWrite">Drives the folder-open / pencil icon.</param>
@@ -101,6 +121,9 @@ public sealed class TeamCardViewModel : ObservableObject
     private string? _archiveManualCommand;
     private bool _offersScheduleStop;
     private bool _offersRestore;
+    private bool _isRenaming;
+    private string _renameText = "";
+    private string _renameRefusal = "";
 
     internal TeamCardViewModel(
         TeamSummary summary, TeamsViewModel owner, IStudioStrings strings, IReadOnlyList<string> declaredMounts)
@@ -169,7 +192,68 @@ public sealed class TeamCardViewModel : ObservableObject
         ModifyTooltip = strings[modifyTipKey];
         ModifyCommand = new RelayCommand(() => owner.RequestModify(summary), () => CanModify);
         ToggleDescriptionCommand = new RelayCommand(() => IsDescriptionExpanded = !IsDescriptionExpanded);
+        // STUDIO-28 (D-07): « Rename » opens an editor in place of the action row, like the delete
+        // banner — no MessageBox. The engine renames the folder and everything that follows it.
+        RenameCommand = new RelayCommand(() => owner.BeginRename(this), () => owner.CanRename);
+        ConfirmRenameCommand = new AsyncRelayCommand(() => owner.RenameAsync(this), () => CanConfirmRename);
+        CancelRenameCommand = new RelayCommand(() => IsRenaming = false);
     }
+
+    /// <summary>« Rename » (STUDIO-28, D-07): opens the editor on the team's name, in place of the action row.</summary>
+    public RelayCommand RenameCommand { get; }
+
+    /// <summary>Renames the team <see cref="RenameText"/> — the engine moves the folder and all that follows it, or nothing.</summary>
+    public AsyncRelayCommand ConfirmRenameCommand { get; }
+
+    /// <summary>Closes the editor; nothing is renamed.</summary>
+    public RelayCommand CancelRenameCommand { get; }
+
+    /// <summary>Whether this card shows its rename editor — the action row's place, never over it.</summary>
+    public bool IsRenaming
+    {
+        get => _isRenaming;
+        internal set
+        {
+            if (!SetProperty(ref _isRenaming, value))
+                return;
+
+            OnPropertyChanged(nameof(IsIdle));
+            // A refusal belongs to the attempt it answered: a closed editor forgets it.
+            if (!value)
+                RefuseRename("");
+        }
+    }
+
+    /// <summary>The new name, as typed; the editor opens on the current one.</summary>
+    public string RenameText
+    {
+        get => _renameText;
+        set
+        {
+            if (SetProperty(ref _renameText, value ?? ""))
+                ConfirmRenameCommand.RaiseCanExecuteChanged();
+        }
+    }
+
+    /// <summary>Whether the typed name says something: one that strips to nothing names no folder.</summary>
+    public bool CanConfirmRename => TeamCatalog.TryNormalizeName(_renameText, out _);
+
+    /// <summary>Why the team was not renamed — busy, the name taken, the engine's refusal; empty otherwise.</summary>
+    public string RenameRefusal
+    {
+        get => _renameRefusal;
+        private set
+        {
+            if (SetProperty(ref _renameRefusal, value))
+                OnPropertyChanged(nameof(HasRenameRefusal));
+        }
+    }
+
+    /// <summary>Whether the editor says why the team was not renamed.</summary>
+    public bool HasRenameRefusal => _renameRefusal.Length > 0;
+
+    /// <summary>Says why the team was not renamed; empty clears it.</summary>
+    internal void RefuseRename(string refusal) => RenameRefusal = refusal;
 
     /// <summary>« Modifier » — reopens the wizard at step 2 on this team (W-09).</summary>
     public RelayCommand ModifyCommand { get; }
@@ -438,8 +522,8 @@ public sealed class TeamCardViewModel : ObservableObject
         DeleteManualCommand = manualCommand;
     }
 
-    /// <summary>The action row's own visibility — the banner takes its place, never sits over it.</summary>
-    public bool IsIdle => !_isConfirmingDelete;
+    /// <summary>The action row's own visibility — the banner or the rename editor takes its place, never sits over it.</summary>
+    public bool IsIdle => !_isConfirmingDelete && !_isRenaming;
 
     /// <summary>Whether the team is archived (STUDIO-31, D-01): out of the active list, its folder untouched.</summary>
     public bool IsArchived => Summary.IsArchived;
@@ -746,6 +830,7 @@ public sealed class TeamsViewModel : ObservableObject
     private readonly ForgeClient? _forge;
     private readonly Func<string, TeamActivity>? _activityOf;
     private readonly TimeProvider _clock;
+    private readonly string _workspace;
     private Dictionary<string, (DateTimeOffset StartedAt, RunOutcome Outcome)> _lastRuns = new(StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
@@ -766,10 +851,10 @@ public sealed class TeamsViewModel : ObservableObject
         _activityOf = wired.ActivityOf;
         _clock = wired.Clock ?? TimeProvider.System;
         var root = wired.TeamsRoot ?? TeamCatalog.DefaultRoot();
-        var workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
+        _workspace = wired.WorkspaceDirectory ?? Environment.CurrentDirectory;
         // Every team, archived or not: the screen splits them (STUDIO-31).
         _loadTeams = wired.LoadTeams ?? (() => TeamCatalog.List(root, TeamListFilter.All));
-        _loadSessions = wired.LoadSessions ?? (() => ForgeSessionCatalog.List(workspace));
+        _loadSessions = wired.LoadSessions ?? (() => ForgeSessionCatalog.List(_workspace));
         _strings = wired.Strings ?? EnglishStudioStrings.Instance;
         CreateCommand = new RelayCommand(() => CreateRequested?.Invoke(this, EventArgs.Empty));
         ImportCommand = new RelayCommand(() => ImportRequested?.Invoke(this, EventArgs.Empty));
@@ -811,6 +896,12 @@ public sealed class TeamsViewModel : ObservableObject
     /// the active teams elsewhere: the Test picker, and the two launchers' view of their target.
     /// </summary>
     public event EventHandler<TeamActionEventArgs>? ArchiveChanged;
+
+    /// <summary>
+    /// Raised once a team is renamed (STUDIO-28): the shell reloads the history the Run screen
+    /// lists (D-04) and lets a launcher aimed at the former folder follow the team.
+    /// </summary>
+    public event EventHandler<TeamRenamedEventArgs>? TeamRenamed;
 
     /// <summary>
     /// Whether «Modifier» can reopen the wizard on <paramref name="team"/> (STUDIO-25, D-04): its
@@ -894,6 +985,9 @@ public sealed class TeamsViewModel : ObservableObject
 
     /// <summary>Whether the schedule gestures can reach the engine at all.</summary>
     public bool CanSchedule => _forge is not null;
+
+    /// <summary>Whether « Rename » can reach the engine — the folder, its session and its schedule are the engine's to move (STUDIO-28).</summary>
+    public bool CanRename => _forge is not null;
 
     /// <summary>
     /// Asks the engine where every team's schedule stands (STUDIO-27, D-05) — the shell runs this
@@ -1217,6 +1311,193 @@ public sealed class TeamsViewModel : ObservableObject
     }
 
     /// <summary>
+    /// Opens <paramref name="card"/>'s rename editor on its current name (STUDIO-28, D-07), and
+    /// closes every other question on screen — another editor, a delete banner: one answer at a time.
+    /// </summary>
+    internal void BeginRename(TeamCardViewModel card)
+    {
+        foreach (var other in Teams)
+        {
+            other.IsConfirmingDelete = false;
+            other.IsRenaming = ReferenceEquals(other, card);
+        }
+
+        foreach (var session in InProgress)
+            session.IsConfirmingDelete = false;
+
+        card.RenameText = card.Name;
+    }
+
+    /// <summary>
+    /// « Rename » (STUDIO-28). Refused, on the card, while Studio runs the team, tests it or has it
+    /// open in the wizard (D-02), and when the new name's folder is taken (D-03). Otherwise the
+    /// engine renames the folder, the linked session, the titles, the generated files and the
+    /// schedule — all of it or nothing (D-01). Then what is Studio's own follows: the launch
+    /// history (D-04) and what the engine said of the schedule; an allowed folder the settings
+    /// declare inside the former folder is said, never rewritten (D-05).
+    /// </summary>
+    internal async Task RenameAsync(TeamCardViewModel card)
+    {
+        var team = card.Summary;
+        card.RefuseRename("");
+        if (!TeamCatalog.TryNormalizeName(card.RenameText, out var name))
+            return;
+
+        // The name the team already has: nothing to rename.
+        if (string.Equals(name, card.Name, StringComparison.Ordinal))
+        {
+            card.IsRenaming = false;
+            return;
+        }
+
+        if (BusyRefusal(team.Path) is { } busy)
+        {
+            card.RefuseRename(busy);
+            return;
+        }
+
+        var folder = System.IO.Path.Combine(
+            System.IO.Path.GetDirectoryName(System.IO.Path.TrimEndingDirectorySeparator(team.Path)) ?? team.Path,
+            FolderSlug.From(name) ?? FolderSlug.TeamFallback);
+        if (!string.Equals(NormalizePath(folder), NormalizePath(team.Path), PhysicalPathContainment.Comparison)
+            && TakenRefusal(folder) is { } taken)
+        {
+            card.RefuseRename(taken);
+            return;
+        }
+
+        var report = await RenameThroughEngineAsync(team.Path, name).ConfigureAwait(true);
+        if (!report.Succeeded)
+        {
+            card.RefuseRename(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameFailed], report.FailureReason));
+            return;
+        }
+
+        // A name whose folder is the team's own only retitled it: nothing Studio keeps moved.
+        var renamed = report.Path!;
+        if (!string.Equals(NormalizePath(renamed), NormalizePath(team.Path), PhysicalPathContainment.Comparison))
+        {
+            await RebaseHistoryAsync(team.Path, renamed).ConfigureAwait(true);
+            FollowScheduleState(team, renamed, report.ScheduleState);
+        }
+
+        StatusMessage = RenamedLine(name, team.Path, renamed, report.Warnings);
+        Refresh();
+        TeamRenamed?.Invoke(this, new TeamRenamedEventArgs(team.Path, renamed));
+    }
+
+    /// <summary>Why <paramref name="teamPath"/> cannot move right now (D-02); null when nothing holds it.</summary>
+    private string? BusyRefusal(string teamPath) => ActivityOf(teamPath) switch
+    {
+        TeamActivity.Running => _strings[StudioStringKeys.TeamsRenameBusyRunning],
+        TeamActivity.Testing => _strings[StudioStringKeys.TeamsRenameBusyTesting],
+        TeamActivity.OpenInWizard => _strings[StudioStringKeys.TeamsRenameBusyWizard],
+        _ => null,
+    };
+
+    /// <summary>
+    /// What occupies <paramref name="folder"/>, in the words the wizard uses for the same collision
+    /// (STUDIO-26): a team, by its name; a folder that holds none; a file. Null when it is free.
+    /// </summary>
+    private string? TakenRefusal(string folder)
+    {
+        var name = System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(folder));
+        return TeamCatalog.OccupantOf(folder) switch
+        {
+            TeamFolderOccupant.None => null,
+            TeamFolderOccupant.Team => string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenTeam],
+                TeamCatalog.NormalizeName(TeamCatalog.Describe(folder).Name), name),
+            TeamFolderOccupant.Folder => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFolder], name),
+            _ => string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardNameTakenFile], name),
+        };
+    }
+
+    /// <summary>The engine's rename, in the workshop's workspace; a screen wired without an engine gets a run that never started.</summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A launch fault is the refusal the card says, never an exception in a discarded task.")]
+    private async Task<ForgeRenameReport> RenameThroughEngineAsync(string teamPath, string name)
+    {
+        if (_forge is null)
+            return new ForgeRenameReport { Run = ProcessRunResult.NotStarted("No forge engine is wired to this screen.") };
+
+        try
+        {
+            return await _forge.RenameAsync(teamPath, name, _workspace).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException)
+        {
+            return new ForgeRenameReport { Run = ProcessRunResult.NotStarted(ex.Message) };
+        }
+    }
+
+    /// <summary>
+    /// D-04: the launches of the former folder are spelled under the new one, so the card keeps its
+    /// last run and « Relaunch » replays it where the team is. History is comfort: a store that
+    /// refuses costs the line, never the rename.
+    /// </summary>
+    private async Task RebaseHistoryAsync(string from, string to)
+    {
+        if (_historyStore is null)
+            return;
+
+        try
+        {
+            var history = await _historyStore.LoadAsync().ConfigureAwait(true);
+            await _historyStore.SaveAsync(history.Rebase(from, to)).ConfigureAwait(true);
+        }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            // The card forgets its last run; the team itself is renamed.
+        }
+
+        await LoadLastRunsAsync().ConfigureAwait(true);
+    }
+
+    /// <summary>
+    /// The schedule's state moves with the folder: what the engine said of the reinstalled schedule,
+    /// else a question to the engine for a team that has one — the former folder's answer spoke of
+    /// the former folder.
+    /// </summary>
+    private void FollowScheduleState(TeamSummary team, string renamed, TeamScheduleState reinstalled)
+    {
+        _scheduleStates.Remove(NormalizePath(team.Path));
+        if (reinstalled != TeamScheduleState.Unknown)
+            _scheduleStates[NormalizePath(renamed)] = reinstalled;
+        else if (team.HasSchedule)
+            _ = CheckScheduleAsync(renamed);
+    }
+
+    /// <summary>
+    /// The screen's line once renamed: the name and the folder — then, D-05, the folders the settings
+    /// allow inside the former folder, which pointed into the team and now point nowhere. The user's
+    /// settings are said, never rewritten. The engine's own warnings follow, in its words.
+    /// </summary>
+    private string RenamedLine(string name, string from, string renamed, IReadOnlyList<string> warnings)
+    {
+        var parts = new List<string>
+        {
+            string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenamed],
+                name, System.IO.Path.GetFileName(System.IO.Path.TrimEndingDirectorySeparator(renamed))),
+        };
+
+        var stranded = _declaredMounts()
+            .Where(entry => !TeamMountPaths.IsTeamRelative(entry) && DeclaredMounts.IsInsideTeam(entry, from))
+            .Select(entry => MountDefinition.TryParse(entry, out var mount, out _) && mount is not null ? mount.PhysicalPath : entry)
+            .Distinct(StringComparer.Ordinal)
+            .ToList();
+        if (stranded.Count > 0)
+        {
+            parts.Add(string.Format(
+                CultureInfo.CurrentCulture, _strings[StudioStringKeys.TeamsRenameStrandedFolders], string.Join(", ", stranded)));
+        }
+
+        parts.AddRange(warnings);
+        return string.Join(" ", parts);
+    }
+
+    /// <summary>
     /// Deletes a team, and leaves nothing behind (STUDIO-27, D-06/D-07). Rule R names the linked
     /// session first — it reads this folder, and the copy test reads the original's. Then a
     /// schedule, declared or recorded as installed, is stopped: a refusal keeps the team, says
@@ -1287,6 +1568,8 @@ public sealed class TeamsViewModel : ObservableObject
             // The banner's box needs the session before it opens (STUDIO-27, D-07).
             if (armed)
                 card.PrepareDelete(LinkedSessionOf(card.Summary));
+            // One question on screen at a time: a rename editor closes too (STUDIO-28).
+            card.IsRenaming = false;
             card.IsConfirmingDelete = armed;
         }
 

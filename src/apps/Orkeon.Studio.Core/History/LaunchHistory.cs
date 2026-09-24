@@ -39,6 +39,24 @@ public sealed record LaunchHistory
         return new LaunchHistory { Entries = entries };
     }
 
+    /// <summary>
+    /// The history with every launch of the team folder <paramref name="from"/> — of the folder, or
+    /// of a file inside it — spelled under <paramref name="to"/> instead (STUDIO-28, D-04): its
+    /// target, working directory, settings file and arguments. A renamed team's card keeps its last
+    /// run, and « Relaunch » replays it where the team now is. Every other launch, the order and
+    /// the bound are left as they were.
+    /// </summary>
+    public LaunchHistory Rebase(string from, string to)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(from);
+        ArgumentException.ThrowIfNullOrWhiteSpace(to);
+
+        return new LaunchHistory
+        {
+            Entries = [.. Entries.Select(entry => entry.Launches(from) ? entry.Rebased(from, to) : entry)],
+        };
+    }
+
     /// <summary>Serializes to the on-disk JSON shape.</summary>
     public string ToJson() => JsonSerializer.Serialize(this, SerializerOptions);
 

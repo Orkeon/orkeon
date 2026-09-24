@@ -18,7 +18,10 @@ namespace Orkeon.Studio.Core.Teams;
 /// </summary>
 public sealed record StudioTeamMetadata
 {
-    /// <summary>File name of the sidecar inside the team folder — the CLI writes it too (ADR-009).</summary>
+    /// <summary>
+    /// File name of the sidecar inside the team folder — the CLI writes it too (<c>usecases
+    /// export</c>) and <c>forge rename</c> retitles it (ADR-009).
+    /// </summary>
     public const string FileName = ConventionalNames.TeamSidecarFile;
 
     /// <summary>Display name; the folder name when absent.</summary>

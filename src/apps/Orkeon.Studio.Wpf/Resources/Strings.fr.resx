@@ -1173,6 +1173,37 @@
   <data name="Studio.Common.Restore" xml:space="preserve">
     <value>Restaurer</value>
   </data>
+  <!-- STUDIO-28: rename a team — the card's action and in-place editor, its refusals, and the wizard's hint -->
+  <data name="Studio.Teams.Rename" xml:space="preserve">
+    <value>Renommer</value>
+  </data>
+  <data name="Studio.Teams.RenameTip" xml:space="preserve">
+    <value>Renommer l'équipe : son dossier, sa session d'atelier et sa planification suivent le nouveau nom.</value>
+  </data>
+  <data name="Studio.Teams.RenameLabel" xml:space="preserve">
+    <value>Nouveau nom</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
+    <value>Pas renommée : l'équipe est en cours d'exécution dans Exécuter — attendez la fin de l'exécution.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
+    <value>Pas renommée : l'équipe est en cours d'essai dans Tester — attendez la fin de l'essai.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
+    <value>Pas renommée : l'équipe est ouverte dans l'assistant — enregistrez-la dans Mes équipes ou recommencez d'abord.</value>
+  </data>
+  <data name="Studio.Teams.RenameFailed" xml:space="preserve">
+    <value>Le renommage n'a pas abouti : {0}</value>
+  </data>
+  <data name="Studio.Teams.Renamed" xml:space="preserve">
+    <value>Équipe renommée « {0} » — son dossier est désormais {1}.</value>
+  </data>
+  <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
+    <value>Vérifiez Réglages › Dossiers autorisés : {0} se trouvait dans l'ancien dossier de l'équipe et n'existe plus.</value>
+  </data>
+  <data name="Studio.Create.RenameHint" xml:space="preserve">
+    <value>Pour renommer le dossier, utilisez Renommer dans Mes équipes.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>Installer la planification (tous les jours à {0}) ?</value>
   </data>

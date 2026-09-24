@@ -141,6 +141,32 @@ public class ForgeEventWriterTests
         Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
     }
 
+    /// <summary>
+    /// STUDIO-28's lines, pinned like the rest: the session's folder following its team, the team
+    /// renamed, and a refusal — after which nothing changed. Studio.Core's
+    /// <c>ForgeRenameClientTests</c> carries the same lines, verbatim.
+    /// </summary>
+    [Fact]
+    public void The_rename_lines_are_the_pinned_golden_form()
+    {
+        var output = new StringWriter();
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        writer.SessionRenamed("ma-veille", "veille-du-matin", "/home/u/.config/Orkeon/.orkeon/forge/veille-du-matin", suffixed: false);
+        writer.TeamRenamed("/home/u/Orkeon/teams/ma-veille", "/home/u/Orkeon/teams/veille-du-matin", "Veille du matin");
+        writer.Error(ForgeErrorCodes.RenameTaken,
+            "The name's folder '/home/u/Orkeon/teams/veille-du-matin' is taken: another team is already there. Choose another name.",
+            recoverable: true);
+
+        var expected = string.Join('\n',
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"session.renamed","from":"ma-veille","to":"veille-du-matin","dir":"/home/u/.config/Orkeon/.orkeon/forge/veille-du-matin","suffixed":false}""",
+            """{"v":2,"seq":2,"ts":"2026-08-19T12:00:01Z","kind":"team.renamed","from":"/home/u/Orkeon/teams/ma-veille","path":"/home/u/Orkeon/teams/veille-du-matin","name":"Veille du matin"}""",
+            """{"v":2,"seq":3,"ts":"2026-08-19T12:00:02Z","kind":"error","code":"FORGE-RENAME-TAKEN","message":"The name's folder '/home/u/Orkeon/teams/veille-du-matin' is taken: another team is already there. Choose another name.","recoverable":true}""",
+            "");
+
+        Assert.Equal(expected.ReplaceLineEndings("\n"), output.ToString().ReplaceLineEndings("\n"));
+    }
+
     /// <summary>Without <c>--events</c>, a folder's schedule and a refusal are said in words — the refusal with what to run by hand.</summary>
     [Fact]
     public void The_terminal_says_the_schedule_and_the_manual_command_in_words()

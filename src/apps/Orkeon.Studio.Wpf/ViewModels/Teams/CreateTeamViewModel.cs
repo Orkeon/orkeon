@@ -2391,6 +2391,13 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     internal string? ReopenedTeamPath => _reopenedTeamPath;
 
+    /// <summary>
+    /// Whether the wizard edits a team that exists — « Modify » reopened it (STUDIO-28, D-06). Its
+    /// name field is then the team's title, and a hint under it says the folder is renamed from My
+    /// teams: a re-adoption writes back into the same folder, whatever the title says.
+    /// </summary>
+    public bool IsModifyingTeam => _reopenedTeamPath is not null;
+
     /// <summary>Whether the "save to my teams" command may run.</summary>
     public bool CanSaveTeam =>
         !IsEngineRunning
@@ -2560,6 +2567,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         {
             // The failure card says why (no CLI, no readable crew…); the team stays as it is.
             _reopenedTeamPath = null;
+            OnPropertyChanged(nameof(IsModifyingTeam));
             return;
         }
 
@@ -3353,7 +3361,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             nameof(EngineVersion), nameof(HasEngineVersion), nameof(EngineLabel),
             nameof(CrewDefinitionYaml), nameof(HasCrewDefinition),
             nameof(CanSaveTeam), nameof(DecisionPending), nameof(CanEditAgents), nameof(CanTryTeam),
-            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking));
+            nameof(IsEngineWaitingOnUser), nameof(IsEngineWorking), nameof(IsModifyingTeam));
         SaveTeamCommand.RaiseCanExecuteChanged();
         AddAgentCommand.RaiseCanExecuteChanged();
         TryTeamCommand.RaiseCanExecuteChanged();

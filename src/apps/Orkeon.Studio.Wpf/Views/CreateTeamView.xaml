@@ -1171,6 +1171,12 @@
             <TextBlock Style="{StaticResource FieldLabel}" Margin="0,16,0,0"
                        Text="{Binding [Studio.Create.TeamName], Source={x:Static services:I18n.Instance}}"/>
             <TextBox Style="{StaticResource Input}" Text="{Binding TeamName, UpdateSourceTrigger=PropertyChanged}"/>
+            <!-- STUDIO-28 (D-06): on a team « Modify » reopened, the name is its title and the
+                 re-adoption writes back into the same folder; the folder is renamed from My teams,
+                 whose « Rename » carries the session and the schedule along. -->
+            <TextBlock Style="{StaticResource Hint}" Margin="0,6,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.RenameHint], Source={x:Static services:I18n.Instance}}"
+                       Visibility="{Binding IsModifyingTeam, Converter={StaticResource BooleanToVisibility}}"/>
             <!-- STUDIO-26 (D-07): the name is already taken in My teams. Said here, under the
                  field, with a free name and the way to the team that holds this one; the
                  engine's own refusal never reaches the screen. -->

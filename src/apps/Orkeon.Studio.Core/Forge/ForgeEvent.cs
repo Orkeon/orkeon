@@ -94,6 +94,15 @@ public static class ForgeEventKinds
     /// </summary>
     public const string TeamReopened = "team.reopened";
 
+    /// <summary>
+    /// <c>forge rename</c> renamed a team (STUDIO-28): <c>from</c> is the folder it had,
+    /// <c>path</c> the folder it has now, <c>name</c> the name every title carries. A
+    /// <c>session.renamed</c> precedes it when the linked session's folder followed, a
+    /// <c>schedule.state</c> when the schedule was reinstalled under the new name. A refusal is an
+    /// <c>error</c> instead — and then nothing changed.
+    /// </summary>
+    public const string TeamRenamed = "team.renamed";
+
     /// <summary>An anomaly, recoverable or not.</summary>
     public const string Error = "error";
 

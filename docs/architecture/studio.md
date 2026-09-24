@@ -452,8 +452,8 @@ first), so agents are editable again, a new
 `retry` decision re-runs the trial as-is (zero compose tokens, one budget
 iteration), and re-adoption **updates the same team folder** — generated files
 (`crew/`, launchers, `FORGE.md`, `schedule/`) are regenerated, the sidecar and
-the user's own files survive, and renaming the team only changes its display
-name. After an adoption the wizard is a blank step 1 again (STUDIO-20): modifying
+the user's own files survive, and renaming the team there only changes its
+title — the folder is renamed with « Rename » (STUDIO-28, below). After an adoption the wizard is a blank step 1 again (STUDIO-20): modifying
 an adopted team goes through « Modify » on its card, and the reopened arbitration
 offers `retry`. Which session a team is linked to is the engine's answer, never
 Studio's (STUDIO-25): « Modify » always runs `forge reopen <team-folder>`. A session
@@ -596,6 +596,32 @@ archive and restore refreshes the Test picker and the two launchers.
 `orkeon-studio-run` run an archived team like any other, and a run they start — or one the operating
 system starts — does not stamp its last run. The screen around it — search, sort by last activity,
 the Archives view, the undo banner, the archive suggestion — is STUDIO-32's.
+
+### Renaming a team: its title and its folder (STUDIO-28)
+
+A team has two names. Its **title** is what the cards, `FORGE.md`, `forge.json` and the session
+show; its **folder** is where it lives, and what everything else points at — the linked session,
+the launch history, the schedule the system runs, the schedule artifacts, the launchers.
+« Modify » changes the title only: the wizard it reopens re-adopts into the very folder the team is
+in, and step 4 says so under the name field — to rename the folder, use Rename in My teams.
+« Rename », a labelled button of the card in both modes, opens an editor in place of the action
+row — no dialog — and runs `forge rename <team-folder> --name <name>` in the workshop's workspace
+([CLI reference](../reference/cli.md#orkeon-forge)): the engine moves the folder to the name's own
+(the one folder rule), the linked session follows it, every title and generated file takes the new
+name, and a schedule the system runs is reinstalled under it — all of it or nothing, a failed step
+putting back everything done before it. Studio refuses it, in the editor, while the team is the
+target of the run in flight on the Run or Test screen (`LaunchTabViewModel.RunningTarget`: the path
+the run started on, never the live picker) or open in the wizard (`CreateTeam.ReopenedTeamPath`) —
+the busy hook `TeamsDependencies.ActivityOf`, which archiving shares — and when the new name's
+folder is taken, saying what holds it in the wizard's own words. A run started outside Studio (the
+CLI, the system's scheduler) is invisible to it: the engine's undo is what protects that one. Once
+the engine answered, Studio rewrites what is its own: the launch history, whose entries of the
+former folder — target, working directory, settings file, arguments — are spelled under the new
+one, so the card keeps its last run and « Relaunch » replays where the team is; a launcher aimed at
+the former folder follows it. An allowed folder the settings declare by an absolute path inside the
+former folder pointed into the team and now points nowhere: the line after the rename says so, and
+the settings are never rewritten. Team-relative folders (`./input`, `./output`) need nothing — they
+are the team's own, and they moved with it.
 
 ### Tools and MCP in the settings (STUDIO-21)
 

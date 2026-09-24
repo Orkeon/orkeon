@@ -86,6 +86,16 @@
                     <TextBlock Text="{Binding [Studio.Teams.Modify], Source={x:Static services:I18n.Instance}}"/>
                   </StackPanel>
                 </Button>
+                <!-- STUDIO-28 (D-07): « Rename », a labelled button in both modes like Launch and
+                     Modify. The editor takes the row's place; the folder, the workshop session,
+                     the titles and the schedule follow the new name — Modify only retitles. -->
+                <Button Style="{StaticResource BtnGhost}" Margin="8,0,0,0" Command="{Binding RenameCommand}"
+                        ToolTip="{Binding [Studio.Teams.RenameTip], Source={x:Static services:I18n.Instance}}">
+                  <StackPanel Orientation="Horizontal">
+                    <controls:LucideIcon Kind="pencil-line" Size="13" Margin="0,0,7,0"/>
+                    <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
+                  </StackPanel>
+                </Button>
                 <!-- Novice never sees the icon row, so it needs a delete of its own — until
                      now the gesture simply did not exist outside Expert. -->
                 <Button Style="{StaticResource BtnGhostDanger}" Margin="8,0,0,0" Command="{Binding AskDeleteCommand}"
@@ -152,6 +162,36 @@
                     <TextBox Style="{StaticResource InputMono}" Margin="0,4,0,2" MaxWidth="420" HorizontalAlignment="Left"
                              IsReadOnly="True" TextWrapping="Wrap" Text="{Binding DeleteManualCommand, Mode=OneWay}"
                              Visibility="{Binding HasDeleteManualCommand, Converter={StaticResource BooleanToVisibility}}"/>
+                  </StackPanel>
+                </Border>
+                <!-- STUDIO-28 (D-07): the rename editor, in place of the action row like the delete
+                     banner — no MessageBox. A refusal (the team running, under test or open in the
+                     assistant, the name taken, the engine's answer) is said under it, and then
+                     nothing moved. -->
+                <Border Background="{DynamicResource AccentWeakBrush}" BorderBrush="{DynamicResource AccentBrush}"
+                        BorderThickness="1" CornerRadius="11" Padding="12,6,8,6"
+                        Visibility="{Binding IsRenaming, Converter={StaticResource BooleanToVisibility}}">
+                  <StackPanel>
+                    <StackPanel Orientation="Horizontal">
+                      <TextBlock FontSize="12" FontWeight="SemiBold" VerticalAlignment="Center"
+                                 Foreground="{DynamicResource AccentBrush}"
+                                 Text="{Binding [Studio.Teams.RenameLabel], Source={x:Static services:I18n.Instance}}"/>
+                      <TextBox Style="{StaticResource Input}" Width="220" Margin="8,0,0,0" VerticalAlignment="Center"
+                               Text="{Binding RenameText, UpdateSourceTrigger=PropertyChanged}"/>
+                      <Button Style="{StaticResource BtnPrimary}" Margin="8,0,0,0" Command="{Binding ConfirmRenameCommand}">
+                        <StackPanel Orientation="Horizontal">
+                          <controls:LucideIcon Kind="pencil-line" Size="12" Margin="0,0,6,0"
+                                               Foreground="{DynamicResource AccentFgBrush}"/>
+                          <TextBlock Text="{Binding [Studio.Teams.Rename], Source={x:Static services:I18n.Instance}}"/>
+                        </StackPanel>
+                      </Button>
+                      <Button Style="{StaticResource BtnGhost}" Height="30" Padding="12,0" Margin="8,0,0,0"
+                              Command="{Binding CancelRenameCommand}"
+                              Content="{Binding [Studio.Common.Cancel], Source={x:Static services:I18n.Instance}}"/>
+                    </StackPanel>
+                    <TextBlock Style="{StaticResource Hint}" Foreground="{DynamicResource DangerBrush}" Margin="0,6,0,0"
+                               MaxWidth="420" HorizontalAlignment="Left" TextWrapping="Wrap" Text="{Binding RenameRefusal}"
+                               Visibility="{Binding HasRenameRefusal, Converter={StaticResource BooleanToVisibility}}"/>
                   </StackPanel>
                 </Border>
               </Grid>

@@ -119,6 +119,10 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                         : ""));
                 break;
 
+            case "team.renamed":
+                _console.WriteLine($"✔ renamed “{Text(e, "name")}”: {Text(e, "from")} → {Text(e, "path")}");
+                break;
+
             case "warning":
                 _console.WriteLine($"⚠ [{Text(e, "code")}] {Text(e, "message")}");
                 break;

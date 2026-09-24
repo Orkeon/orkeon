@@ -1,5 +1,8 @@
+using System.Text;
 using System.Text.Json.Serialization;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Process;
+using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.History;
 
@@ -103,5 +106,67 @@ public sealed record LaunchHistoryEntry
             Outcome = result.Outcome,
             DurationSeconds = result.Outcome == RunOutcome.NotStarted ? null : result.Duration.TotalSeconds,
         };
+    }
+
+    /// <summary>Whether this launch ran the team folder <paramref name="teamDirectory"/>: the folder itself, or a file inside it.</summary>
+    public bool Launches(string teamDirectory)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+
+        return PhysicalPathContainment.IsUnder(TeamCatalog.NormalizePath(Target), TeamCatalog.NormalizePath(teamDirectory));
+    }
+
+    /// <summary>
+    /// This launch with every path under the folder <paramref name="from"/> — its target, working
+    /// directory, settings file and each argument, a mount spec's folder included — spelled under
+    /// <paramref name="to"/> (STUDIO-28, D-04). The argument list is replayed verbatim, so it has to
+    /// name the folder the team is in now.
+    /// </summary>
+    public LaunchHistoryEntry Rebased(string from, string to)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(from);
+        ArgumentException.ThrowIfNullOrWhiteSpace(to);
+
+        var folder = TeamCatalog.NormalizePath(from);
+        var renamed = TeamCatalog.NormalizePath(to);
+        return this with
+        {
+            Target = Rebase(Target, folder, renamed),
+            WorkingDirectory = WorkingDirectory is null ? null : Rebase(WorkingDirectory, folder, renamed),
+            SettingsPath = SettingsPath is null ? null : Rebase(SettingsPath, folder, renamed),
+            Arguments = [.. Arguments.Select(argument => Rebase(argument, folder, renamed))],
+        };
+    }
+
+    /// <summary>
+    /// <paramref name="text"/> with <paramref name="folder"/> replaced by <paramref name="renamed"/>
+    /// wherever it starts a path — the text's start, or after a quote, a <c>=</c> or a mount id's
+    /// <c>|</c> — and ends one: the end, a separator, a closing quote, the mount grammar's
+    /// <c>:</c> or <c>;</c>. <c>/teams/veille-2</c> is not <c>/teams/veille</c>, and a path that
+    /// merely contains the folder deeper in is another path.
+    /// </summary>
+    private static string Rebase(string text, string folder, string renamed)
+    {
+        var rebased = new StringBuilder(text.Length);
+        var index = 0;
+        while (index < text.Length)
+        {
+            var found = text.IndexOf(folder, index, PhysicalPathContainment.Comparison);
+            if (found < 0)
+                break;
+
+            var end = found + folder.Length;
+            var startsAPath = found == 0 || text[found - 1] is '"' or '\'' or '=' or '|';
+            var endsAPath = end == text.Length || text[end] is '/' or '\\' or '"' or '\'' or ':' or ';';
+            rebased.Append(text, index, found - index);
+            if (startsAPath && endsAPath)
+                rebased.Append(renamed);
+            else
+                rebased.Append(text, found, folder.Length);
+
+            index = end;
+        }
+
+        return rebased.Append(text, index, text.Length - index).ToString();
     }
 }

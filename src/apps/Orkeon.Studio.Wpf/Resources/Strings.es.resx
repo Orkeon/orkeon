@@ -2547,6 +2547,37 @@
   <data name="Studio.Common.Restore" xml:space="preserve">
     <value>Restaurar</value>
   </data>
+  <!-- STUDIO-28: rename a team — the card's action and in-place editor, its refusals, and the wizard's hint -->
+  <data name="Studio.Teams.Rename" xml:space="preserve">
+    <value>Renombrar</value>
+  </data>
+  <data name="Studio.Teams.RenameTip" xml:space="preserve">
+    <value>Renombrar el equipo: su carpeta, su sesión del taller y su planificación siguen el nuevo nombre.</value>
+  </data>
+  <data name="Studio.Teams.RenameLabel" xml:space="preserve">
+    <value>Nuevo nombre</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyRunning" xml:space="preserve">
+    <value>No se renombró: el equipo se está ejecutando en la pantalla Ejecutar — espere a que termine la ejecución.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyTesting" xml:space="preserve">
+    <value>No se renombró: el equipo se está probando en la pantalla Probar — espere a que termine la prueba.</value>
+  </data>
+  <data name="Studio.Teams.RenameBusyWizard" xml:space="preserve">
+    <value>No se renombró: el equipo está abierto en el asistente — guárdelo en Mis equipos o empiece de nuevo allí primero.</value>
+  </data>
+  <data name="Studio.Teams.RenameFailed" xml:space="preserve">
+    <value>El cambio de nombre no se realizó: {0}</value>
+  </data>
+  <data name="Studio.Teams.Renamed" xml:space="preserve">
+    <value>Equipo renombrado « {0} » — su carpeta es ahora {1}.</value>
+  </data>
+  <data name="Studio.Teams.RenameStrandedFolders" xml:space="preserve">
+    <value>Revise Ajustes › Carpetas autorizadas: {0} estaba dentro de la antigua carpeta del equipo y ya no existe.</value>
+  </data>
+  <data name="Studio.Create.RenameHint" xml:space="preserve">
+    <value>Para renombrar la carpeta, use Renombrar en Mis equipos.</value>
+  </data>
   <data name="Studio.Create.ScheduleOfferDaily" xml:space="preserve">
     <value>¿Instalar la planificación (cada día a las {0})?</value>
   </data>

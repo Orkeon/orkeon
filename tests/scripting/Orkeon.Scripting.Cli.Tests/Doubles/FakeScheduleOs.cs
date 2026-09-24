@@ -48,10 +48,17 @@ internal sealed class FakeScheduleOs : IForgeOsCommands
     /// </summary>
     public Dictionary<string, string> Refusals { get; } = new(StringComparer.Ordinal);
 
+    /// <summary>
+    /// A refusal decided per command, after <see cref="Refusals"/>: the message the OS prints on
+    /// stderr, or null to let the command through — how a test refuses one name and not another.
+    /// </summary>
+    public Func<Invocation, string?>? RefuseWhen { get; set; }
+
     /// <inheritdoc />
     public ForgeOsCommandResult Run(string fileName, IReadOnlyList<string> arguments, string? standardInput = null)
     {
-        Invocations.Add(new Invocation(fileName, [.. arguments], standardInput));
+        var invocation = new Invocation(fileName, [.. arguments], standardInput);
+        Invocations.Add(invocation);
 
         if (MissingPrograms.Contains(fileName))
             return ForgeOsCommandResult.NotStarted($"'{fileName}' could not be started: No such file or directory");
@@ -59,6 +66,8 @@ internal sealed class FakeScheduleOs : IForgeOsCommands
         var key = $"{fileName} {Verb(fileName, arguments)}";
         if (Refusals.TryGetValue(key, out var refusal))
             return new ForgeOsCommandResult(true, 1, "", refusal);
+        if (RefuseWhen?.Invoke(invocation) is { } refused)
+            return new ForgeOsCommandResult(true, 1, "", refused);
 
         return fileName switch
         {

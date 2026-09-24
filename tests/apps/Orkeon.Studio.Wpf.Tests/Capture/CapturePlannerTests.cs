@@ -85,8 +85,9 @@ public sealed class CapturePlannerTests
         // gallery — both modes, both themes, language sweep = +24; the gallery on one category, on
         // the close cases, and on the machine without a CLI — both modes, both themes = +12).
         // STUDIO-35: +1 stop (reglages-studio, both modes, both themes, language sweep) = +8 shots.
-        Assert.Equal(60, CaptureCatalog.All.Count);
-        Assert.Equal(332, plan.Count);
+        // STUDIO-28: +1 stop (equipes-renommage, the card's rename editor, both modes, both themes) = +4 shots.
+        Assert.Equal(61, CaptureCatalog.All.Count);
+        Assert.Equal(336, plan.Count);
     }
 
     [Fact]
