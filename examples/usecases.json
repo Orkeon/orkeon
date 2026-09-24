@@ -21,23 +21,27 @@
       ],
       "number": 1,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Zusammentragen, was das Web und meine Dokumente zu einem Thema sagen, mit Quellenangaben",
+        "en": "Pull together what the web and my documents say about a topic, with sources",
+        "es": "Reunir lo que dicen la web y mis documentos sobre un tema, citando las fuentes",
+        "fr": "Rassembler ce que le web et mes documents disent d'un sujet, sources à l'appui",
+        "zh-Hans": "汇总网络资料和我的文档对某个主题的论述，并注明出处"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "research",
+        "report",
+        "citations"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Recherchebericht mit Quellen",
+        "en": "Research summary with sources",
+        "es": "Síntesis de investigación con fuentes",
+        "fr": "Synthèse de recherche avec sources",
+        "zh-Hans": "附出处的研究综述"
       },
       "tools": [
         "csv_reader",
@@ -57,23 +61,28 @@
       "mounts": [],
       "number": 2,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meinen Code prüfen lassen und erfahren, was zuerst behoben werden sollte",
+        "en": "Get my code reviewed and learn what to fix first",
+        "es": "Hacer revisar mi código y saber qué corregir primero",
+        "fr": "Faire relire mon code et savoir quoi corriger en priorité",
+        "zh-Hans": "审查我的代码，找出需要优先修复的问题"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "code-review",
+        "security",
+        "performance",
+        "testing"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Umfassendes Code-Review",
+        "en": "Thorough code review",
+        "es": "Revisión de código completa",
+        "fr": "Revue de code complète",
+        "zh-Hans": "全面代码审查"
       },
       "tools": [
         "directory_read",
@@ -92,23 +101,27 @@
       ],
       "number": 3,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meine E-Mails nach Dringlichkeit sortieren und Antworten zur Freigabe vorbereiten",
+        "en": "Sort my emails by urgency and draft replies for me to approve before sending",
+        "es": "Ordenar mis correos por urgencia y preparar respuestas que apruebo antes de enviarlas",
+        "fr": "Trier mes e-mails par urgence et préparer des réponses que je valide avant envoi",
+        "zh-Hans": "按紧急程度整理我的邮件，起草回复，经我确认后再发送"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "email",
+        "triage",
+        "replies"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "E-Mail-Sortierung mit Antwortentwürfen",
+        "en": "Email triage and replies",
+        "es": "Clasificación y respuesta de correos",
+        "fr": "Tri et réponse aux e-mails",
+        "zh-Hans": "邮件分类与回复"
       },
       "tools": [
         "email_parser",
@@ -128,23 +141,28 @@
       ],
       "number": 4,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Finanzzahlen eines Unternehmens sammeln, prüfen und zu einem Bericht aufbereiten",
+        "en": "Gather a company's financial figures, check them and turn them into a report",
+        "es": "Reunir las cifras financieras de una empresa, verificarlas y convertirlas en un informe",
+        "fr": "Réunir les chiffres financiers d'une entreprise, les vérifier et en tirer un rapport",
+        "zh-Hans": "汇总一家公司的财务数据，核查后整理成报告"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "finance",
+        "financial-analysis",
+        "report",
+        "compliance"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Bericht zur Finanzanalyse",
+        "en": "Financial analysis report",
+        "es": "Informe de análisis financiero",
+        "fr": "Rapport d'analyse financière",
+        "zh-Hans": "财务分析报告"
       },
       "tools": [
         "csv_reader",
@@ -163,23 +181,27 @@
       "mounts": [],
       "number": 5,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meinen Kunden antworten und schwierige Fälle an die Leitung weitergeben",
+        "en": "Answer my customers and pass the difficult cases up to a manager",
+        "es": "Responder a mis clientes y derivar los casos difíciles a un responsable",
+        "fr": "Répondre à mes clients et faire remonter les cas difficiles à un responsable",
+        "zh-Hans": "答复客户的咨询，并把棘手的问题上报给负责人"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "customer-support",
+        "escalation",
+        "helpdesk"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Kundensupport in drei Stufen",
+        "en": "Three-level customer support",
+        "es": "Atención al cliente en tres niveles",
+        "fr": "Support client à trois niveaux",
+        "zh-Hans": "三级客户支持"
       },
       "tools": [
         "http_api",
@@ -199,23 +221,28 @@
       ],
       "number": 6,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Preise, Ankündigungen und Patente meiner Wettbewerber verfolgen und Veränderungen erkennen",
+        "en": "Track my competitors' prices, announcements and patents, and spot what changes",
+        "es": "Seguir los precios, anuncios y patentes de mis competidores y detectar qué cambia",
+        "fr": "Suivre les prix, annonces et brevets de mes concurrents et repérer ce qui change",
+        "zh-Hans": "跟踪竞争对手的价格、公告和专利，找出其中的变化"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "competitive-intelligence",
+        "competitors",
+        "pricing",
+        "patents"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Wettbewerbsbeobachtung",
+        "en": "Competitor monitoring",
+        "es": "Vigilancia de la competencia",
+        "fr": "Veille concurrentielle",
+        "zh-Hans": "竞争对手监测"
       },
       "tools": [
         "csv_reader",
@@ -235,23 +262,28 @@
       "mounts": [],
       "number": 7,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Risiken eines Unternehmens vor einem Kauf oder einer Beteiligung bewerten",
+        "en": "Assess a company's risks before buying it or investing in it",
+        "es": "Evaluar los riesgos de una empresa antes de comprarla o invertir en ella",
+        "fr": "Évaluer les risques d'une entreprise avant de la racheter ou d'y investir",
+        "zh-Hans": "在收购或投资一家公司之前，评估它的各项风险"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "due-diligence",
+        "acquisition",
+        "risk-assessment",
+        "compliance"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Risikoprüfung vor einer Übernahme",
+        "en": "Risk assessment before an acquisition",
+        "es": "Evaluación previa a una adquisición",
+        "fr": "Évaluation des risques avant rachat",
+        "zh-Hans": "收购前的风险评估"
       },
       "tools": [
         "csv_reader",
@@ -273,23 +305,28 @@
       ],
       "number": 8,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen suchmaschinenoptimierten Marketingartikel schreiben und seine Aussagen prüfen",
+        "en": "Write a search-optimized marketing article and check its claims",
+        "es": "Escribir un artículo de marketing optimizado para buscadores y verificar sus afirmaciones",
+        "fr": "Écrire un article marketing optimisé pour le référencement et en vérifier les faits",
+        "zh-Hans": "撰写一篇针对搜索引擎优化的营销文章，并核实其中的说法"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "marketing",
+        "content-writing",
+        "seo",
+        "fact-checking"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Erstellung von Marketingartikeln",
+        "en": "Marketing article writing",
+        "es": "Redacción de artículos de marketing",
+        "fr": "Rédaction d'articles marketing",
+        "zh-Hans": "营销文章撰写"
       },
       "tools": [
         "file_write",
@@ -309,23 +346,28 @@
       ],
       "number": 9,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Softwareprojekt in Aufgaben zerlegen, den Aufwand schätzen und jede einzelne planen",
+        "en": "Break a software project into tasks, estimate them and plan each one",
+        "es": "Dividir un proyecto de software en tareas, estimarlas y planificar cada una",
+        "fr": "Découper un projet logiciel en tâches, les estimer et préparer un plan pour chacune",
+        "zh-Hans": "把软件项目拆分成任务，估算工作量，并为每项任务制定计划"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "project-management",
+        "agile",
+        "planning",
+        "software-development"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Aufteilung eines Softwareprojekts",
+        "en": "Software project breakdown",
+        "es": "Desglose de un proyecto de software",
+        "fr": "Découpage d'un projet logiciel",
+        "zh-Hans": "软件项目任务拆分"
       },
       "tools": [
         "file_write",
@@ -345,23 +387,27 @@
       ],
       "number": 10,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Anhand von Online-Bewertungen herausfinden, was meine Kunden von meinen Produkten halten",
+        "en": "Find out what my customers think of my products from their online reviews",
+        "es": "Saber qué opinan mis clientes de mis productos a partir de sus reseñas en línea",
+        "fr": "Savoir ce que mes clients pensent de mes produits d'après leurs avis en ligne",
+        "zh-Hans": "通过网上的评价，了解客户对我的产品有什么看法"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "customer-reviews",
+        "sentiment-analysis",
+        "social-media"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Analyse von Kundenbewertungen",
+        "en": "Customer review analysis",
+        "es": "Análisis de opiniones de clientes",
+        "fr": "Analyse des avis clients",
+        "zh-Hans": "客户评价分析"
       },
       "tools": [
         "csv_reader",
@@ -383,23 +429,28 @@
       ],
       "number": 11,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Dokument übersetzen und prüfen, ob es natürlich klingt und die Fachbegriffe stimmen",
+        "en": "Translate a document and check that it reads naturally and uses the right terms",
+        "es": "Traducir un documento y comprobar que suena natural y usa los términos adecuados",
+        "fr": "Traduire un document et vérifier qu'il sonne naturel et emploie les bons termes",
+        "zh-Hans": "翻译一份文档，并检查译文是否自然、术语是否准确"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "translation",
+        "localization",
+        "terminology",
+        "proofreading"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Übersetzung mit doppelter Prüfung",
+        "en": "Translation with double review",
+        "es": "Traducción con doble revisión",
+        "fr": "Traduction avec double relecture",
+        "zh-Hans": "翻译与双重审校"
       },
       "tools": [
         "file_read",
@@ -419,23 +470,27 @@
       ],
       "number": 12,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Den Start eines neuen Teammitglieds vorbereiten: Unterlagen, Schulung, Mentor und erste Woche",
+        "en": "Prepare a new hire's arrival: documents, training, mentor and first week",
+        "es": "Preparar la llegada de una nueva incorporación: documentos, formación, mentor y primera semana",
+        "fr": "Préparer l'arrivée d'une recrue : documents, formation, mentor et première semaine",
+        "zh-Hans": "为新员工入职做好准备：资料、培训、导师和第一周安排"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "human-resources",
+        "onboarding",
+        "training"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einarbeitung eines neuen Teammitglieds",
+        "en": "Onboarding a new hire",
+        "es": "Acogida de una nueva incorporación",
+        "fr": "Accueil d'une nouvelle recrue",
+        "zh-Hans": "新员工入职准备"
       },
       "tools": [
         "file_write",
@@ -455,23 +510,28 @@
       ],
       "number": 13,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Sicherheit meiner IT-Systeme bewerten und einen priorisierten Maßnahmenplan erhalten",
+        "en": "Assess the security of my systems and get a prioritized plan of fixes",
+        "es": "Evaluar la seguridad de mis sistemas y obtener un plan de correcciones priorizado",
+        "fr": "Évaluer la sécurité de mes systèmes et obtenir un plan de correction priorisé",
+        "zh-Hans": "评估我的系统安全状况，并得到按优先级排序的整改计划"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "security",
+        "audit",
+        "compliance",
+        "vulnerabilities"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "IT-Sicherheitsaudit",
+        "en": "IT security audit",
+        "es": "Auditoría de seguridad informática",
+        "fr": "Audit de sécurité informatique",
+        "zh-Hans": "IT 安全审计"
       },
       "tools": [
         "directory_read",
@@ -493,23 +553,28 @@
       ],
       "number": 14,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Daten aus unterschiedlichen Dateien bereinigen und in eine Datenbank laden",
+        "en": "Clean up data from assorted files and load it into a database",
+        "es": "Limpiar datos procedentes de archivos dispares y cargarlos en una base de datos",
+        "fr": "Nettoyer les données de fichiers disparates et les charger dans une base de données",
+        "zh-Hans": "清洗来自各种文件的数据，并导入数据库"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "data",
+        "etl",
+        "data-cleaning",
+        "database"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Datenbereinigung und -import",
+        "en": "Data cleanup and import",
+        "es": "Limpieza e importación de datos",
+        "fr": "Nettoyage et import de données",
+        "zh-Hans": "数据清洗与导入"
       },
       "tools": [
         "csv_reader",
@@ -533,23 +598,27 @@
       ],
       "number": 15,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Ausschreibung eines Kunden mit einem Angebot beantworten, das ich freigebe",
+        "en": "Answer a client's call for tenders with a sales proposal for me to approve",
+        "es": "Responder a la licitación de un cliente con una propuesta comercial lista para mi aprobación",
+        "fr": "Répondre à l'appel d'offres d'un client avec une proposition commerciale que je valide",
+        "zh-Hans": "针对客户的招标撰写商务方案，最终由我审批"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "sales",
+        "proposal",
+        "tender"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Antwort auf eine Ausschreibung",
+        "en": "Response to a call for tenders",
+        "es": "Respuesta a una licitación",
+        "fr": "Réponse à un appel d'offres",
+        "zh-Hans": "投标方案撰写"
       },
       "tools": [
         "file_write",
@@ -568,25 +637,30 @@
       "mounts": [],
       "number": 16,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Eine Frage stellen und eine klare Antwort in meiner Sprache samt Quellen erhalten",
+        "en": "Ask a question and get a clear answer, in my language, with its sources",
+        "es": "Hacer una pregunta y obtener una respuesta clara, en mi idioma, con sus fuentes",
+        "fr": "Poser une question et obtenir une réponse claire, dans ma langue, avec ses sources",
+        "zh-Hans": "提出一个问题，用我的语言得到清晰的回答，并附上出处"
       },
       "process": "sequential",
       "requiresKeys": [
         "ORKEON_TAVILY_API_KEY"
       ],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "question-answering",
+        "web-search",
+        "citations",
+        "multilingual"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Antworten mit Quellen",
+        "en": "Answers with sources",
+        "es": "Respuestas con fuentes",
+        "fr": "Réponses avec sources",
+        "zh-Hans": "附出处的问答"
       },
       "tools": [
         "web_scrape",
@@ -605,23 +679,28 @@
       ],
       "number": 16,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Studien zu einer Frage auswerten und jede Aufnahme oder jeden Ausschluss begründen",
+        "en": "Synthesize the studies on a question, justifying each study kept or left out",
+        "es": "Sintetizar los estudios sobre una pregunta, justificando cada estudio incluido o descartado",
+        "fr": "Synthétiser les études sur une question, en justifiant chaque étude retenue ou écartée",
+        "zh-Hans": "综合分析某个问题的相关研究，并说明每项研究纳入或排除的理由"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "literature-review",
+        "meta-analysis",
+        "statistics",
+        "research"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Systematische Literaturübersicht",
+        "en": "Systematic literature review",
+        "es": "Revisión sistemática de la literatura",
+        "fr": "Revue systématique de la littérature",
+        "zh-Hans": "系统性文献综述"
       },
       "tools": [
         "csv_reader",
@@ -641,23 +720,28 @@
       "mounts": [],
       "number": 17,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Beide Seiten einer wissenschaftlichen Kontroverse gegenüberstellen und ein Fazit ziehen",
+        "en": "Hear both sides of a scientific controversy and reach a synthesis",
+        "es": "Confrontar las dos posturas de una controversia científica y llegar a una síntesis",
+        "fr": "Confronter les deux camps d'une controverse scientifique et en tirer une synthèse",
+        "zh-Hans": "让科学争议的双方各自陈述论据，并得出综合结论"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "debate",
+        "controversy",
+        "evidence",
+        "synthesis"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Wissenschaftliche Debatte mit Gegenpositionen",
+        "en": "Two-sided scientific debate",
+        "es": "Debate científico contradictorio",
+        "fr": "Débat scientifique contradictoire",
+        "zh-Hans": "正反双方的科学辩论"
       },
       "tools": [
         "http_api",
@@ -677,23 +761,28 @@
       ],
       "number": 18,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Forschungsartikel von der Gliederung bis zur Endfassung schreiben und die Quellen prüfen",
+        "en": "Write a research paper from outline to final draft, checking its references",
+        "es": "Redactar un artículo científico, del esquema a la versión final, verificando sus referencias",
+        "fr": "Rédiger un article de recherche, du plan à la version finale, en vérifiant ses références",
+        "zh-Hans": "撰写一篇研究论文，从提纲到定稿，并逐条核实参考文献"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "academic-writing",
+        "research-paper",
+        "citations",
+        "editing"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Verfassen eines Fachartikels",
+        "en": "Writing a research paper",
+        "es": "Redacción de un artículo científico",
+        "fr": "Rédaction d'un article scientifique",
+        "zh-Hans": "学术论文撰写"
       },
       "tools": [
         "file_read",
@@ -715,23 +804,28 @@
       ],
       "number": 19,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Messwerte meines Versuchs auswerten und herausfinden, ob die Behandlung wirklich wirkt",
+        "en": "Analyze my experiment's measurements and find out whether the treatment really works",
+        "es": "Analizar las mediciones de mi experimento y saber si el tratamiento tiene un efecto real",
+        "fr": "Analyser les mesures de mon expérience et savoir si le traitement a vraiment un effet",
+        "zh-Hans": "分析我的实验测量数据，弄清治疗是否真的有效"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "experiments",
+        "statistics",
+        "data-analysis",
+        "report"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Auswertung von Versuchsdaten",
+        "en": "Experiment data analysis",
+        "es": "Análisis de datos experimentales",
+        "fr": "Analyse de données d'expérience",
+        "zh-Hans": "实验数据分析"
       },
       "tools": [
         "csv_reader",
@@ -751,23 +845,28 @@
       ],
       "number": 20,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Neue Patente in meinem Fachgebiet verfolgen und die wirklich wichtigen erkennen",
+        "en": "Keep track of patents filed in my field and spot the ones that really matter",
+        "es": "Seguir las patentes presentadas en mi sector y detectar las que de verdad importan",
+        "fr": "Suivre les brevets déposés dans mon domaine et repérer ceux qui comptent vraiment",
+        "zh-Hans": "跟踪我所在领域新申请的专利，找出真正值得关注的那些"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "patents",
+        "intellectual-property",
+        "technology-watch",
+        "alerts"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Patentbeobachtung",
+        "en": "Patent watch",
+        "es": "Vigilancia de patentes",
+        "fr": "Veille sur les brevets",
+        "zh-Hans": "专利动态监测"
       },
       "tools": [
         "file_write",
@@ -788,23 +887,28 @@
       ],
       "number": 21,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Vor der Einreichung erfahren, was Gutachter an meinem Artikel bemängeln könnten",
+        "en": "Anticipate reviewers' criticism of my paper before I submit it",
+        "es": "Anticipar las críticas de los revisores a mi artículo antes de enviarlo",
+        "fr": "Anticiper les critiques des relecteurs sur mon article avant de le soumettre",
+        "zh-Hans": "在投稿前预判审稿人会对我的论文提出哪些意见"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "peer-review",
+        "research-paper",
+        "academic-publishing",
+        "feedback"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Begutachtung vor der Einreichung",
+        "en": "Paper review before submission",
+        "es": "Revisión de artículo antes del envío",
+        "fr": "Relecture d'article avant soumission",
+        "zh-Hans": "投稿前论文预审"
       },
       "tools": [
         "file_read",
@@ -825,23 +929,28 @@
       ],
       "number": 22,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Sicherheit und erste Ergebnisse einer laufenden klinischen Studie prüfen",
+        "en": "Take stock of the safety and early results of an ongoing clinical trial",
+        "es": "Hacer balance de la seguridad y los primeros resultados de un ensayo clínico en curso",
+        "fr": "Faire le point sur la sécurité et les premiers résultats d'un essai clinique en cours",
+        "zh-Hans": "评估一项进行中的临床试验的安全性和初步结果"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "clinical-trials",
+        "health",
+        "patient-safety",
+        "compliance"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Überwachung einer klinischen Studie",
+        "en": "Clinical trial monitoring",
+        "es": "Seguimiento de un ensayo clínico",
+        "fr": "Suivi d'un essai clinique",
+        "zh-Hans": "临床试验监测"
       },
       "tools": [
         "csv_reader",
@@ -862,23 +971,28 @@
       ],
       "number": 23,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die DNA eines Patienten analysieren und gefundene Varianten nach Krankheitsrisiko einstufen",
+        "en": "Analyze a patient's DNA and classify the variants found by disease risk",
+        "es": "Analizar el ADN de un paciente y clasificar sus variantes según el riesgo de enfermedad",
+        "fr": "Analyser l'ADN d'un patient et classer les variations trouvées par risque de maladie",
+        "zh-Hans": "分析患者的 DNA，并按致病风险对发现的变异进行分级"
       },
       "process": "hierarchical",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "genomics",
+        "health",
+        "genetic-variants",
+        "clinical-report"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Klinische Genanalyse",
+        "en": "Clinical genetic analysis",
+        "es": "Análisis genético clínico",
+        "fr": "Analyse génétique clinique",
+        "zh-Hans": "临床基因分析"
       },
       "tools": [
         "csv_reader",
@@ -900,23 +1014,28 @@
       ],
       "number": 24,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Meinen Forschungsantrag vorbereiten, vom wissenschaftlichen Teil bis zum Budget",
+        "en": "Prepare my research grant application, from the scientific case to the budget",
+        "es": "Preparar mi solicitud de subvención de investigación, del texto científico al presupuesto",
+        "fr": "Préparer ma demande de subvention de recherche, du texte scientifique au budget",
+        "zh-Hans": "准备我的科研经费申请，从科学论证到预算"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "grant-writing",
+        "funding",
+        "research",
+        "budget"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Antrag auf Forschungsförderung",
+        "en": "Research grant application",
+        "es": "Solicitud de subvención de investigación",
+        "fr": "Demande de subvention de recherche",
+        "zh-Hans": "科研经费申请"
       },
       "tools": [
         "csv_reader",
@@ -938,23 +1057,28 @@
       ],
       "number": 25,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Einen Laborversuch vom Protokoll bis zum Abgleich mit der Fachliteratur begleiten",
+        "en": "Follow a lab experiment from protocol to comparison with published work",
+        "es": "Seguir un experimento de laboratorio, del protocolo a la comparación con lo publicado",
+        "fr": "Suivre une expérience de labo, du protocole à la comparaison avec les publications",
+        "zh-Hans": "跟进一项实验室实验，从制定方案到与已发表的文献对比"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "laboratory",
+        "experiments",
+        "instruments",
+        "literature"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Begleitung eines Laborversuchs",
+        "en": "Lab experiment follow-up",
+        "es": "Seguimiento de un experimento de laboratorio",
+        "fr": "Suivi d'une expérience de laboratoire",
+        "zh-Hans": "实验室实验跟进"
       },
       "tools": [
         "csv_reader",
@@ -976,23 +1100,28 @@
       ],
       "number": 26,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Die Begriffe meiner Dokumente samt Zusammenhängen und Widersprüchen kartieren",
+        "en": "Map the concepts in my documents, how they connect and where they contradict",
+        "es": "Trazar un mapa de los conceptos de mis documentos, sus vínculos y sus contradicciones",
+        "fr": "Cartographier les notions de mes documents, leurs liens et leurs contradictions",
+        "zh-Hans": "梳理我文档中的概念，理清它们之间的关联和矛盾"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "knowledge-graph",
+        "documents",
+        "concept-mapping",
+        "contradictions"
+      ],
       "tasks": 5,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Wissenslandkarte",
+        "en": "Knowledge map",
+        "es": "Mapa de conocimiento",
+        "fr": "Carte des connaissances",
+        "zh-Hans": "知识地图"
       },
       "tools": [
         "file_write",
@@ -1012,23 +1141,28 @@
       ],
       "number": 27,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Aufstrebende Technologien anhand von Publikationen, Patenten und Fördermitteln früh erkennen",
+        "en": "Anticipate rising technologies by cross-checking publications, patents and funding",
+        "es": "Anticipar las tecnologías emergentes cruzando publicaciones, patentes y financiación",
+        "fr": "Anticiper les technologies qui montent en croisant publications, brevets et financements",
+        "zh-Hans": "综合论文、专利和资助信息，预判正在兴起的技术"
       },
       "process": "parallel",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "trends",
+        "forecasting",
+        "technology-watch",
+        "patents"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Prognose technologischer Trends",
+        "en": "Technology trend forecasting",
+        "es": "Previsión de tendencias tecnológicas",
+        "fr": "Anticipation des tendances technologiques",
+        "zh-Hans": "科技趋势预测"
       },
       "tools": [
         "csv_reader",
@@ -1050,23 +1184,28 @@
       ],
       "number": 28,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Prüfen, ob ein Ergebnis aus meinen Daten mit drei verschiedenen Methoden standhält",
+        "en": "Check that a finding from my data holds up under three different methods",
+        "es": "Comprobar que un resultado de mis datos se sostiene con tres métodos distintos",
+        "fr": "Vérifier qu'un résultat tiré de mes données se confirme avec trois méthodes différentes",
+        "zh-Hans": "用三种不同的方法检验我的数据得出的结论是否站得住"
       },
       "process": "consensual",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "validation",
+        "statistics",
+        "data-analysis",
+        "cross-check"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Gegenprüfung eines Ergebnisses",
+        "en": "Cross-checking a finding",
+        "es": "Verificación cruzada de un resultado",
+        "fr": "Vérification croisée d'un résultat",
+        "zh-Hans": "结果交叉验证"
       },
       "tools": [
         "csv_reader",
@@ -1086,23 +1225,28 @@
       ],
       "number": 29,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "In meinen Daten Forschungsansätze finden und klären, wie sie sich überprüfen lassen",
+        "en": "Find research leads in my data and work out how to test them",
+        "es": "Encontrar pistas de investigación en mis datos y saber cómo ponerlas a prueba",
+        "fr": "Trouver des pistes de recherche dans mes données et savoir comment les tester",
+        "zh-Hans": "从我的数据中找出研究线索，并想清楚如何检验它们"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": true,
-      "tags": [],
+      "tags": [
+        "hypotheses",
+        "experiment-design",
+        "data-analysis",
+        "research"
+      ],
       "tasks": 4,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Prüfbare Forschungshypothesen",
+        "en": "Testable research hypotheses",
+        "es": "Hipótesis de investigación comprobables",
+        "fr": "Hypothèses de recherche à tester",
+        "zh-Hans": "可检验的研究假设"
       },
       "tools": [
         "csv_reader",
@@ -1123,23 +1267,27 @@
       ],
       "number": 30,
       "problem": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Ein Dokument auf meinem Niveau zusammenfassen, von sehr fachlich bis einsteigerfreundlich",
+        "en": "Summarize a document at my level, from highly technical to beginner-friendly",
+        "es": "Resumir un documento a mi nivel, de lo más técnico a lo más didáctico",
+        "fr": "Résumer un document à mon niveau, du plus technique au plus pédagogique",
+        "zh-Hans": "按我的水平总结一份文档，可以很专业，也可以通俗易懂"
       },
       "process": "sequential",
       "requiresKeys": [],
       "requiresNetwork": false,
-      "tags": [],
+      "tags": [
+        "summarization",
+        "documents",
+        "personalization"
+      ],
       "tasks": 3,
       "title": {
-        "de": "",
-        "en": "",
-        "es": "",
-        "fr": "",
-        "zh-Hans": ""
+        "de": "Zusammenfassung nach Kenntnisstand",
+        "en": "Summary tailored to the reader",
+        "es": "Resumen adaptado al lector",
+        "fr": "Résumé adapté au lecteur",
+        "zh-Hans": "按读者水平定制的摘要"
       },
       "tools": [
         "file_write",
