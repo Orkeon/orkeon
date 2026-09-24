@@ -7,6 +7,32 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — `orkeon usecases`: the example catalogue in the tool, searched offline in five languages (STUDIO-38)
+
+- `orkeon usecases search "<need>"` ranks the 105 example use cases against a need written in
+  French, English, Spanish, German or Simplified Chinese — no LLM, no network, no file read.
+  - **By terms (BM25):** each sheet's title and problem in the five languages, its tags, tools,
+    category and id words. The query and the sheets are normalized the same way: lowercase,
+    accents folded, Chinese split into character bigrams.
+  - **By meaning:** the local BGE-micro-v2 model (English) embeds each sheet's English text at
+    the first search that needs it. Its ranking is fused by RRF only for the languages where the
+    golden set shows a gain.
+  - **Without the model,** the search runs by terms and every answer says why.
+- Each result gives its id, score, reason (`terms`, `meaning`, `terms+meaning`) and matched terms.
+  The answer gives the mode and the language: `--lang`, or read from the text.
+- **Session mode.** `--events jsonl` without a text opens a session: `usecases.ready`, then one
+  `usecases.results` per `usecases.query` line on stdin, correlated by `correlationId`. The model
+  loads once, and closing stdin exits 0. The kinds are declared in
+  `Orkeon.Constants.Protocol.UseCaseEventKinds`.
+- `list` filters by category, process and tag. `show <id>` prints a sheet and its files, plus its
+  crew file with `--crew`. An unknown id is `USECASES-UNKNOWN-ID`. Both also answer in
+  `--events jsonl`.
+- **Embedded in the tool:** `examples/usecases.json`, each example's crew file and its `data/`
+  folder, about 217 KB compressed. The finance examples stay reference only: their shared
+  `_tools/` is not embedded.
+- **Golden set:** `examples/usecases.golden.yaml` holds 22 queries in the five languages, and
+  `UseCaseGoldenSetTests` (Slow) reports recall@5 and MRR per language and per mode.
+
 ### Changed — a stable session id and one rule link a team to its forge session (STUDIO-25)
 
 - **A team's link to its session no longer rests on an absolute path.**
