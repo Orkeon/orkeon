@@ -527,6 +527,10 @@
                         ToolTip="{Binding [Studio.Create.TokensUp], Source={x:Static services:I18n.Instance}}"
                         ToolTipService.ShowOnDisabled="True"
                         Visibility="{Binding ShowsTokensUp, Converter={StaticResource BooleanToVisibility}}">
+              <!-- «≈» when the runtime had to count for a provider that reported nothing, as in the assistant's group. -->
+              <TextBlock Style="{StaticResource StatusFigure}" Margin="0,0,2,0" Text="≈"
+                         Foreground="{DynamicResource InkFaintBrush}"
+                         Visibility="{Binding TokensEstimated, Converter={StaticResource BooleanToVisibility}}"/>
               <controls:LucideIcon Kind="arrow-up" Size="11" VerticalAlignment="Center"
                                    Foreground="{DynamicResource InkMutedBrush}"/>
               <TextBlock Style="{StaticResource StatusFigure}" Margin="3,0,0,0" Text="{Binding TokensUp}"/>

@@ -17,7 +17,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Shell;
 /// read off that run's progress model (STUDIO-30): the state, the meters the run reported, the
 /// tools and delegations at work. A segment the run did not measure is null — the view shows
 /// nothing for it, never a zero — and during a run the model named is the one the meter
-/// reported, not a profile the bar supposed.
+/// reported for the agents' calls, not a profile the bar supposed.
 /// </para>
 /// </summary>
 public sealed class StatusBarRunGroupViewModel : ObservableObject
@@ -105,6 +105,12 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     public bool ShowsTokensDown => TokensDown is not null;
 
     /// <summary>
+    /// Whether the runtime estimated part of ↑ and ↓ because a provider counted nothing — the bar
+    /// marks them «≈», as the assistant's group does, rather than pass an estimate off as a count.
+    /// </summary>
+    public bool TokensEstimated => _model.Cost?.EstimatedTokens is > 0;
+
+    /// <summary>
     /// The team the run is for, read when the run started and kept: the launcher can be aimed at
     /// another team while this one runs, and the group goes on naming the team that runs.
     /// </summary>
@@ -164,7 +170,10 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
             Environment.NewLine)
         : null;
 
-    /// <summary>«provider · model» as the meter reported them (STUDIO-29); null until it did.</summary>
+    /// <summary>
+    /// «provider · model» of the agents' calls, as the meter reported them (STUDIO-29): a judge's,
+    /// a RAG pipeline's or the manager's reading never renames them. Null until an agent's call did.
+    /// </summary>
     public string? ReportedModel => _model.Cost is { } cost
         ? StatusBarText.Join([cost.Provider, cost.Model], StatusBarText.Separator)
         : null;
@@ -218,7 +227,7 @@ public sealed class StatusBarRunGroupViewModel : ObservableObject
     /// <summary>Everything the group says, said again — a new run, a new event, a new language.</summary>
     internal void RefreshAll() => OnPropertiesChanged(
         nameof(Tone), nameof(StateText), nameof(IsWaiting),
-        nameof(TokensUp), nameof(TokensDown), nameof(ShowsTokensUp), nameof(ShowsTokensDown),
+        nameof(TokensUp), nameof(TokensDown), nameof(ShowsTokensUp), nameof(ShowsTokensDown), nameof(TokensEstimated),
         nameof(Team), nameof(CurrentTask), nameof(Duration), nameof(Cache), nameof(BilledCost),
         nameof(Tools), nameof(ToolsDetail), nameof(Delegations), nameof(DelegationsDetail),
         nameof(ReportedModel), nameof(Details), nameof(DetailsTip), nameof(ShowsDetails));

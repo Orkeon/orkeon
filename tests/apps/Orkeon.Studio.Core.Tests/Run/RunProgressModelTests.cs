@@ -55,6 +55,7 @@ public class RunProgressModelTests
         Assert.Equal(59_000, model.FinalDurationMs);
         Assert.Equal(7_980, model.FinalCacheHitTokens);
         Assert.Equal(4_020, model.FinalCacheMissTokens);
+        Assert.Null(model.FinalEstimatedTokens);   // every call counted: no part of it is an estimate
     }
 
     [Fact]
@@ -79,7 +80,7 @@ public class RunProgressModelTests
         var model = Fold(
             """{"v":2,"seq":1,"ts":"t","kind":"run.started","target":"/ws/crew.yaml","stream":true}""",
             """{"v":2,"seq":2,"ts":"t","kind":"task.completed","taskId":"t1","agentRole":"analyst","success":true,"durationMs":1200,"tokens":340,"toolCalls":2}""",
-            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":340,"model":"deepseek-chat","provider":"deepseek"}""",
+            """{"v":2,"seq":3,"ts":"t","kind":"cost.updated","tokens":340,"model":"deepseek-chat","provider":"deepseek","operation":"agent"}""",
             """{"v":2,"seq":4,"ts":"t","kind":"run.finished","success":true,"exitCode":0}""");
 
         Assert.Equal("/ws/crew.yaml", model.Target);
@@ -109,7 +110,7 @@ public class RunProgressModelTests
         // STUDIO-29: cost.updated says what goes up, what comes back and — when the vendor
         // billed it — what it cost, while the run is still going.
         var model = Fold(
-            """{"v":2,"seq":1,"ts":"t","crewId":"01K5","agentId":"Writer","kind":"cost.updated","tokens":300,"promptTokens":240,"completionTokens":60,"cacheHitTokens":200,"cacheMissTokens":40,"model":"google/gemini-3.7-flash","provider":"openrouter","cost":0.0042,"currency":"USD","costSource":"vendor"}""");
+            """{"v":2,"seq":1,"ts":"t","crewId":"01K5","agentId":"Writer","kind":"cost.updated","tokens":300,"promptTokens":240,"completionTokens":60,"cacheHitTokens":200,"cacheMissTokens":40,"model":"google/gemini-3.7-flash","provider":"openrouter","operation":"agent","cost":0.0042,"currency":"USD","costSource":"vendor"}""");
 
         var cost = model.Cost!;
         Assert.Equal(300, cost.Tokens);
@@ -138,6 +139,7 @@ public class RunProgressModelTests
         Assert.Null(cost.CompletionTokens);
         Assert.Null(cost.CacheHitTokens);
         Assert.Null(cost.CacheMissTokens);
+        Assert.Null(cost.EstimatedTokens);
         Assert.Null(cost.Amount);
         Assert.Null(cost.Currency);
         Assert.Null(cost.Source);
@@ -618,6 +620,71 @@ public class RunProgressModelTests
         Assert.Equal(
             [RunEventKinds.DelegationStarted, RunEventKinds.AgentSpawned, RunEventKinds.LlmDelta, RunEventKinds.InputNeeded, null],
             kinds);
+    }
+
+    [Fact]
+    public void The_part_of_the_meter_the_runtime_estimated_is_carried_live_and_at_the_close()
+    {
+        // A provider that counted nothing is estimated by the runtime (STUDIO-42). The model
+        // carries how much, so a screen marks the figures «≈» rather than pass an estimate off
+        // as a count — and carries nothing while every call was counted.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":300,"promptTokens":240,"completionTokens":60,"operation":"agent"}""");
+        Assert.Null(model.Cost!.EstimatedTokens);
+
+        model.Apply(Parse("""{"v":2,"seq":2,"ts":"t","kind":"cost.updated","tokens":420,"promptTokens":320,"completionTokens":100,"estimatedTokens":120,"operation":"agent"}"""));
+        Assert.Equal(120, model.Cost!.EstimatedTokens);
+
+        model.Apply(Parse("""{"v":2,"seq":3,"ts":"t","kind":"run.finished","success":true,"exitCode":0,"tokens":420,"promptTokens":320,"completionTokens":100,"estimatedTokens":120}"""));
+        Assert.Equal(120, model.FinalEstimatedTokens);
+    }
+
+    [Theory]
+    [InlineData("judge")]
+    [InlineData("rag")]
+    [InlineData("manager")]
+    [InlineData("planning")]
+    [InlineData("memory")]
+    [InlineData("flow")]
+    public void A_reading_from_the_machinery_around_the_agents_moves_the_meter_and_leaves_the_model_named(string operation)
+    {
+        // Every call of a run is on the meter since STUDIO-42. Naming the model of whichever call
+        // answered last would say the team switched models each time a judge or a RAG pipeline
+        // spoke: the name stays the one the agents work on.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":100,"model":"deepseek-chat","provider":"deepseek","operation":"agent"}""",
+            $$"""{"v":2,"seq":2,"ts":"t","kind":"cost.updated","tokens":250,"model":"gpt-4o-mini","provider":"openai","operation":"{{operation}}"}""");
+
+        Assert.Equal(250, model.Cost!.Tokens);
+        Assert.Equal("deepseek", model.Cost.Provider);
+        Assert.Equal("deepseek-chat", model.Cost.Model);
+    }
+
+    [Fact]
+    public void The_model_named_follows_the_agents_those_of_a_script_included()
+    {
+        // A script's agents call ctx.llm.* and their readings name the method, not "agent": they
+        // are the agents at work all the same. A reading that names no kind of work does not
+        // rename anything — nothing says an agent made that call.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":100,"model":"kimi-k2.6","provider":"kimi","operation":"complete"}""",
+            """{"v":2,"seq":2,"ts":"t","kind":"cost.updated","tokens":150,"model":"unknown-model","provider":"elsewhere"}""");
+
+        Assert.Equal(150, model.Cost!.Tokens);
+        Assert.Equal("kimi", model.Cost.Provider);
+        Assert.Equal("kimi-k2.6", model.Cost.Model);
+    }
+
+    [Fact]
+    public void Before_an_agent_answers_the_meter_moves_with_no_model_named()
+    {
+        // The plan is drafted before any agent works: its tokens count, its model is not the team's.
+        var model = Fold(
+            """{"v":2,"seq":1,"ts":"t","kind":"cost.updated","tokens":80,"promptTokens":60,"completionTokens":20,"model":"planner-model","provider":"openai","operation":"planning"}""");
+
+        Assert.Equal(80, model.Cost!.Tokens);
+        Assert.Null(model.Cost.Model);
+        Assert.Null(model.Cost.Provider);
     }
 
     private static OrkeonEvent Parse(string line)

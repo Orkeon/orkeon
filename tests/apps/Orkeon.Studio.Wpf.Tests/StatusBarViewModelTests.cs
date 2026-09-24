@@ -28,7 +28,7 @@ public sealed class StatusBarViewModelTests
         """{"v":2,"seq":2,"ts":"2026-09-24T10:29:01Z","kind":"task.started","taskId":"t1","agentRole":"analyst"}""";
 
     private const string FullMeter =
-        """{"v":2,"seq":3,"ts":"2026-09-24T10:29:05Z","kind":"cost.updated","tokens":1500,"promptTokens":1200,"completionTokens":300,"cacheHitTokens":800,"cacheMissTokens":400,"cost":0.0123,"currency":"USD","costSource":"vendor","model":"deepseek-chat","provider":"deepseek"}""";
+        """{"v":2,"seq":3,"ts":"2026-09-24T10:29:05Z","kind":"cost.updated","tokens":1500,"promptTokens":1200,"completionTokens":300,"cacheHitTokens":800,"cacheMissTokens":400,"cost":0.0123,"currency":"USD","costSource":"vendor","model":"deepseek-chat","provider":"deepseek","operation":"agent"}""";
 
     private static string N(long value) => value.ToString("N0", CultureInfo.CurrentCulture);
 
@@ -239,6 +239,61 @@ public sealed class StatusBarViewModelTests
         await launch.RunAsync(TestContext.Current.CancellationToken);
 
         Assert.Equal("deepseek · deepseek-chat", reported);
+    }
+
+    /// <summary>
+    /// Every call of a run is on the meter since STUDIO-42 — a judge's, a RAG pipeline's, the
+    /// manager's. The group names the model the agents work on: another kind of call moves the
+    /// meters and leaves the name, where it would have said the team switched models.
+    /// </summary>
+    [Fact]
+    public async Task The_group_goes_on_naming_the_agents_model_when_a_judge_answers()
+    {
+        var (launch, process) = Launcher();
+        var bar = new StatusBarViewModel(new StatusBarSources { Launch = launch, Mode = Expert() });
+        (string? Model, string? Up)? afterJudge = null;
+        process.WhileRunning = () =>
+        {
+            process.Emit(Event(RunStarted));
+            process.Emit(Event(FullMeter));
+            process.Emit(Event(
+                """{"v":2,"seq":4,"ts":"2026-09-24T10:29:20Z","kind":"cost.updated","tokens":1900,"promptTokens":1500,"completionTokens":400,"model":"gpt-4o-mini","provider":"openai","operation":"judge"}"""));
+            afterJudge = (bar.Launch.ReportedModel, bar.Launch.TokensUp);
+        };
+
+        await launch.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal(("deepseek · deepseek-chat", N(1500)), afterJudge);
+    }
+
+    /// <summary>
+    /// A provider that counted nothing is estimated by the runtime (STUDIO-42): the group marks
+    /// ↑ and ↓ «≈», as the assistant's group does, once part of them is an estimate — and not
+    /// before.
+    /// </summary>
+    [Fact]
+    public async Task Estimated_meters_are_marked_and_counted_ones_are_not()
+    {
+        var (launch, process) = Launcher();
+        var bar = new StatusBarViewModel(new StatusBarSources { Launch = launch });
+        var raised = new List<string?>();
+        (bool Counted, bool Estimated)? marks = null;
+        process.WhileRunning = () =>
+        {
+            process.Emit(Event(RunStarted));
+            process.Emit(Event(FullMeter));
+            var counted = bar.Launch.TokensEstimated;
+
+            bar.Launch.PropertyChanged += (_, e) => raised.Add(e.PropertyName);
+            process.Emit(Event(
+                """{"v":2,"seq":4,"ts":"2026-09-24T10:29:20Z","kind":"cost.updated","tokens":1800,"promptTokens":1400,"completionTokens":400,"estimatedTokens":300,"operation":"agent"}"""));
+            marks = (counted, bar.Launch.TokensEstimated);
+        };
+
+        await launch.RunAsync(TestContext.Current.CancellationToken);
+
+        Assert.Equal((false, true), marks);
+        Assert.Contains(nameof(StatusBarRunGroupViewModel.TokensEstimated), raised);
     }
 
     [Fact]
