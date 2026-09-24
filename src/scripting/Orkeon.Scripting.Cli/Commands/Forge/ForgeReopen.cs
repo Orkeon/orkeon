@@ -11,9 +11,10 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// <summary>
 /// <c>forge.json</c> — the machine-readable twin of <c>FORGE.md</c>, written by
 /// <c>forge promote</c> next to the crew (FORGE-09). It carries what the crew files cannot:
-/// the brief the team was built against, and the session's identity. <c>forge reopen</c>
-/// reads it to rebuild a faithful session; without it, the brief is derived from the plan.
-/// Nothing secret goes in it — the folder is made to be shared.
+/// the brief the team was built against, and the session's identity — its id above all, which
+/// rule R reads to link the folder to its session (STUDIO-25). <c>forge reopen</c> reads it to
+/// rebuild a faithful session; without it, the brief is derived from the plan. Nothing secret
+/// goes in it — the folder is made to be shared.
 /// </summary>
 internal sealed record ForgeTeamRecord
 {
@@ -33,7 +34,19 @@ internal sealed record ForgeTeamRecord
     [JsonPropertyName("v")]
     public int Version { get; init; } = 1;
 
-    /// <summary>Slug of the session that promoted the folder — a rebuild asks for the same one.</summary>
+    /// <summary>
+    /// The id of the session the folder is linked to (STUDIO-25): copied by the promotion,
+    /// rewritten by a rebuild. Kept as the text the file holds — a record hand-edited into an
+    /// id that does not parse stays readable, brief and all, and simply links to nothing.
+    /// </summary>
+    [JsonPropertyName("id")]
+    public string? Id { get; init; }
+
+    /// <summary><see cref="Id"/>, parsed; null when absent or not an id.</summary>
+    [JsonIgnore]
+    public Guid? SessionId => Guid.TryParse(Id, out var id) ? id : null;
+
+    /// <summary>Slug of the session the folder is linked to — a rebuild asks for the same one.</summary>
     [JsonPropertyName("slug")]
     public string? Slug { get; init; }
 
@@ -59,20 +72,51 @@ internal sealed record ForgeTeamRecord
         ArgumentException.ThrowIfNullOrWhiteSpace(destination);
         ArgumentNullException.ThrowIfNull(session);
 
-        var record = new ForgeTeamRecord
+        Save(destination, new ForgeTeamRecord
         {
+            Id = session.Document.Id?.ToString(),
             Slug = session.Document.Slug,
             Title = session.Document.Title,
             Format = session.Document.Format,
             PromotedAt = now.UtcDateTime.ToString("yyyy-MM-dd'T'HH:mm:ss'Z'", CultureInfo.InvariantCulture),
             Brief = brief,
-        };
+        });
+    }
 
+    /// <summary>
+    /// Links <paramref name="teamDirectory"/> to the session a rebuild just gave it (STUDIO-25):
+    /// the record takes that session's id and slug and keeps everything else the promotion
+    /// recorded. A folder without a readable record gets one holding the session's identity
+    /// alone — no brief, so a later rebuild still says its brief was derived, never recorded.
+    /// </summary>
+    public static void Relink(string teamDirectory, ForgeSession session)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
+        ArgumentNullException.ThrowIfNull(session);
+
+        var id = session.Document.Id?.ToString();
+        Save(teamDirectory, TryRead(teamDirectory) is { } recorded
+            ? recorded with { Id = id, Slug = session.Document.Slug }
+            : new ForgeTeamRecord
+            {
+                Id = id,
+                Slug = session.Document.Slug,
+                Title = session.Document.Title,
+                Format = session.Document.Format,
+            });
+    }
+
+    /// <summary>
+    /// The id of the session <paramref name="teamDirectory"/>'s record names — rule R's reader.
+    /// Null when the folder, its record or the id is absent or unreadable; never a throw.
+    /// </summary>
+    public static Guid? ReadSessionId(string teamDirectory) => TryRead(teamDirectory)?.SessionId;
+
+    private static void Save(string teamDirectory, ForgeTeamRecord record) =>
         File.WriteAllText(
-            Path.Combine(destination, FileName),
+            Path.Combine(teamDirectory, FileName),
             JsonSerializer.Serialize(record, SerializerOptions),
             new UTF8Encoding(encoderShouldEmitUTF8Identifier: false));
-    }
 
     /// <summary>Reads the record of <paramref name="teamDirectory"/>; null when absent or unreadable — never fatal.</summary>
     public static ForgeTeamRecord? TryRead(string teamDirectory)
@@ -273,7 +317,9 @@ internal sealed record ForgeRebuildResult(ForgeSession Session, ForgeBriefSource
 /// <c>crew/</c>, the brief from <c>forge.json</c> when the promotion left one, derived from
 /// the plan otherwise; the crew copied as it is, so what the session tries is what the folder
 /// runs. The session lands at the dry pause — Test, Active, nothing run — with
-/// <c>promotedTo</c> pointing back at the folder, so a later promotion updates it in place.
+/// <c>promotedTo</c> pointing back at the folder, and the folder's <c>forge.json</c> carrying
+/// the new session's id (STUDIO-25), so the next reopen finds it and a later promotion
+/// updates the folder in place.
 /// </summary>
 internal static class ForgeSessionRebuilder
 {
@@ -282,7 +328,14 @@ internal static class ForgeSessionRebuilder
     /// Throws <see cref="InvalidOperationException"/> with the reasons when the folder holds no
     /// plan the forge can read — the command maps it to exit 1.
     /// </summary>
-    public static ForgeRebuildResult Rebuild(string workspace, string teamDirectory, DateTimeOffset now)
+    /// <param name="workspace">The workspace the session is created under.</param>
+    /// <param name="teamDirectory">The team folder to rebuild a session for.</param>
+    /// <param name="now">The instant stamped on the session.</param>
+    /// <param name="isCopy">
+    /// Whether rule R found the folder to be a copy: its record names its original's session,
+    /// which still holds that slug, so the new session is named after the copy's own folder.
+    /// </param>
+    public static ForgeRebuildResult Rebuild(string workspace, string teamDirectory, DateTimeOffset now, bool isCopy = false)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
@@ -304,7 +357,7 @@ internal static class ForgeSessionRebuilder
         var folderName = Path.GetFileName(Path.TrimEndingDirectorySeparator(teamDirectory));
         var session = ForgeSession.Create(
             workspace,
-            requestedSlug: record?.Slug is { Length: > 0 } slug ? slug : folderName,
+            requestedSlug: !isCopy && record?.Slug is { Length: > 0 } slug ? slug : folderName,
             format: ForgeSession.FormatYaml,
             now: now);
 
@@ -322,7 +375,35 @@ internal static class ForgeSessionRebuilder
         session.SetStatus(ForgeSessionStatus.Active);
         session.Save(now);
 
+        // The folder takes the new session's id — a copy's rewritten (D-05), a gone session's
+        // replaced, a record written where there was none — so the next reopen finds this
+        // session rather than rebuilding another. Last, once the session is whole: a record
+        // naming a half-built session would be found, and resumed.
+        try
+        {
+            ForgeTeamRecord.Relink(teamDirectory, session);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // A session no folder names would be rebuilt again at every reopen; none is left
+            // behind instead, and the refusal is the command's to report.
+            DeleteQuietly(session.Directory);
+            throw;
+        }
+
         return new ForgeRebuildResult(session, briefSource);
+    }
+
+    private static void DeleteQuietly(string directory)
+    {
+        try
+        {
+            Directory.Delete(directory, recursive: true);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            // Best effort: the error being reported is the record the folder refused.
+        }
     }
 
     /// <summary>

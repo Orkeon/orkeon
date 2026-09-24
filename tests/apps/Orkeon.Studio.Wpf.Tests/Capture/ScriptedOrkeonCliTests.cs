@@ -28,6 +28,22 @@ public sealed class ScriptedOrkeonCliTests
         Assert.Equal(2, failed.ExitCode);
     }
 
+    /// <summary>
+    /// A sub-verb with a script of its own is answered by it — <c>forge reopen</c> is not the
+    /// cycle <c>forge</c> plays — and every other <c>forge</c> request still gets the verb's.
+    /// </summary>
+    [Fact]
+    public async Task A_sub_verb_with_a_script_of_its_own_is_answered_by_it()
+    {
+        var cli = new ScriptedOrkeonCli()
+            .Answer("forge", 0, "cycle")
+            .Answer("forge reopen", 0, "reopened");
+
+        Assert.Equal("reopened", await FirstLineAsync(cli, Ask("forge", "reopen", "/teams/veille")));
+        Assert.Equal("cycle", await FirstLineAsync(cli, Ask("forge", "resume", "veille")));
+        Assert.Equal("cycle", await FirstLineAsync(cli, Ask("forge")));
+    }
+
     [Fact]
     public async Task An_unscripted_verb_succeeds_silently_rather_than_throwing()
     {

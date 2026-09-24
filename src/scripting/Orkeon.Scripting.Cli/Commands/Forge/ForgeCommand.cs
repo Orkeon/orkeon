@@ -28,8 +28,8 @@ internal sealed record ForgeCommandOptions
 
     /// <summary>
     /// <c>forge reopen &lt;team-folder&gt;</c>: the promoted folder to reopen the atelier on
-    /// (FORGE-09). Offline: finds the session that promoted it, or rebuilds one from its
-    /// <c>crew/</c> when that session is gone or never existed here.
+    /// (FORGE-09). Offline: finds the session rule R links it to (STUDIO-25), or rebuilds one
+    /// from its <c>crew/</c> when none is — the session gone, never here, or the folder a copy.
     /// </summary>
     public string? ReopenDirectory { get; init; }
 
@@ -802,14 +802,19 @@ internal static class ForgeCommand
     /// promoted team, so the atelier can be reopened on it — « Modify » in Studio, or
     /// <c>forge resume</c> here. Fully offline — no host, no LLM.
     /// <para>
-    /// The session that promoted the folder is found through its <c>promotedTo</c> and
-    /// reported as it stands; nothing is moved — the resume that follows does the reopen, as
-    /// it always did. When no session points at the folder (deleted, imported, forged on
-    /// another machine), one is <b>rebuilt</b> from the folder itself: the plan read back from
-    /// <c>crew/</c>, the brief from <c>forge.json</c> when the promotion left one — derived
-    /// from the plan otherwise, and said so — and the crew copied verbatim. It lands at the
-    /// dry pause with <c>promotedTo</c> set, so an amendment, a trial or an adoption follow
-    /// exactly as after <c>--dry</c>, and the re-adoption updates the same folder in place.
+    /// Rule R (<see cref="ForgeTeamLink"/>, STUDIO-25) decides which session the folder is
+    /// linked to: the one whose id its <c>forge.json</c> carries, unless that session's
+    /// <c>promotedTo</c> names another folder still carrying the same id — then this one is a
+    /// copy. A linked session is reported as it stands; nothing is moved — the resume that
+    /// follows does the reopen, as it always did — except its <c>promotedTo</c>, pointed at the
+    /// folder when the folder was moved or renamed since. When no session is linked (deleted,
+    /// imported, forged on another machine, a copy, a folder without an id), one is
+    /// <b>rebuilt</b> from the folder itself: the plan read back from <c>crew/</c>, the brief
+    /// from <c>forge.json</c> when the promotion left one — derived from the plan otherwise, and
+    /// said so — and the crew copied verbatim. It lands at the dry pause with <c>promotedTo</c>
+    /// set and its new id written into the folder's <c>forge.json</c>, so an amendment, a trial
+    /// or an adoption follow exactly as after <c>--dry</c>, the re-adoption updates the same
+    /// folder in place, and the next reopen finds this session instead of rebuilding another.
     /// </para>
     /// </summary>
     private static async Task<int> ReopenAsync(string workspace, ForgeCommandOptions options)
@@ -824,8 +829,18 @@ internal static class ForgeCommand
                 .ConfigureAwait(false);
         }
 
-        if (ForgeSession.FindPromotedTo(workspace, teamDirectory) is { } existing)
+        var link = ForgeTeamLink.Resolve(workspace, teamDirectory);
+        if (link is { IsLinked: true, Session: { } existing })
         {
+            if (link.Kind == TeamSessionLinkKind.Moved)
+            {
+                // Case 3: the original, moved or renamed. The session follows it, so its next
+                // promotion updates the folder where it now is — and a copy made from here on
+                // is told apart from it by this path.
+                existing.Document.PromotedTo = teamDirectory;
+                existing.Save(DateTimeOffset.UtcNow);
+            }
+
             events.SessionStarted(existing, resumed: true);
             events.Emit("team.reopened", new
             {
@@ -838,18 +853,22 @@ internal static class ForgeCommand
             events.SessionFinished(StatusWord(existing), 0);
             if (!options.Events)
             {
+                var moved = link.Kind == TeamSessionLinkKind.Moved ? ", since moved here — it now points here" : "";
                 await Console.Out.WriteLineAsync(
-                    $"Session '{existing.Document.Slug}' promoted this folder. Reopen it: orkeon forge resume {existing.Document.Slug}")
+                    $"Session '{existing.Document.Slug}' promoted this folder{moved}. Reopen it: orkeon forge resume {existing.Document.Slug}")
                     .ConfigureAwait(false);
             }
 
             return 0;
         }
 
+        // A copy gets a session of its own (D-05): the rebuild rewrites the id the copy carried,
+        // so it can never reopen, nor update, its original's.
+        var isCopy = link.Kind == TeamSessionLinkKind.Copy;
         ForgeRebuildResult rebuilt;
         try
         {
-            rebuilt = ForgeSessionRebuilder.Rebuild(workspace, teamDirectory, DateTimeOffset.UtcNow);
+            rebuilt = ForgeSessionRebuilder.Rebuild(workspace, teamDirectory, DateTimeOffset.UtcNow, isCopy);
         }
         catch (InvalidOperationException ex)
         {
@@ -873,11 +892,15 @@ internal static class ForgeCommand
         if (!options.Events)
         {
             var slug = session.Document.Slug;
+            var copyOf = isCopy
+                ? $"This folder is a copy of '{link.Session!.Document.PromotedTo}': it gets a session of its own. "
+                : "";
             await Console.Out.WriteLineAsync(
-                $"Session '{slug}' rebuilt from {Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName)}"
+                copyOf
+                + $"Session '{slug}' rebuilt from {Path.Combine(teamDirectory, ForgeYamlRenderer.CrewDirectoryName)}"
                 + (rebuilt.BriefSource == ForgeBriefSource.Recorded
                     ? $" with the brief {ForgeTeamRecord.FileName} recorded."
-                    : $" — no {ForgeTeamRecord.FileName} here, so the brief was derived from the plan.")
+                    : $" — no brief recorded here ({ForgeTeamRecord.FileName}), so the brief was derived from the plan.")
                 + $" Amend it: orkeon forge resume {slug} --edit --dry · try it: orkeon forge resume {slug}"
                 + $" · keep it as it is: orkeon forge resume {slug} --adopt")
                 .ConfigureAwait(false);

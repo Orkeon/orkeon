@@ -269,6 +269,7 @@ internal static class StudioFixture
     private static SessionSeed DryPauseSession => new()
     {
         Slug = DryPauseSessionSlug,
+        Id = Guid.Parse("3c6a1f0e-2d4b-4a8c-9e71-5b0d2f6a8c41"),
         Title = "Assistant de support",
         State = "Test",
         Status = "Active",
@@ -286,6 +287,7 @@ internal static class StudioFixture
     private static SessionSeed PassingSession => new()
     {
         Slug = PassingSessionSlug,
+        Id = Guid.Parse("8e2d5b7a-1c3f-4e69-a0b4-7d9c2e5f1a36"),
         Title = "Veille matinale",
         State = "Test",
         Status = "Active",
@@ -301,6 +303,7 @@ internal static class StudioFixture
     private static SessionSeed PromotedSession => new()
     {
         Slug = PromotedSessionSlug,
+        Id = Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"),
         Title = "Veille concurrentielle",
         State = "Verdict",
         Status = "Promoted",
@@ -316,6 +319,7 @@ internal static class StudioFixture
     private static SessionSeed FailingSession => new()
     {
         Slug = FailingSessionSlug,
+        Id = Guid.Parse("b47e0c29-5a1d-4f38-8c6e-2a9f0d7b3e15"),
         Title = "Tri du courrier",
         State = "Verdict",
         Status = "Active",

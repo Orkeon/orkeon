@@ -36,7 +36,7 @@ orkeon forge "résumer chaque matin les nouvelles offres de mon fournisseur"
 4. **Le verdict.** Un juge note la sortie contre vos critères d'acceptation, un à un, et énonce des constats et des suggestions concrètes. Un critère *must* raté bloque quel que soit le score. Si aucun juge ne peut tourner, le verdict le dit (`judge: deterministic`) — il n'invente jamais un ✔.
 5. **Votre arbitrage.** Le mode interactif arbitre chaque verdict, conformes compris : accepter (une équipe conforme devient prête ; accepter une non conforme, c'est juger sur pièce), refaire l'essai tel quel (`retry` — zéro jeton de composition, une itération de budget), corriger (le diagnostic est réinjecté dans le plan, mot pour mot), rendre un plan édité à la main (`edit`), ou en rester là. `--auto` arbitre seul, dans les limites du budget.
 
-L'adoption elle-même n'est pas une porte à sens unique : `forge resume` d'une session **promue** la rouvre à l'arbitrage (le verdict stocké est ré-annoncé), et un second `forge promote` vers la **même** destination met le dossier à jour en place — fichiers générés régénérés, vos propres fichiers préservés. Toute autre destination non vide reste refusée. Et la session n'est pas non plus un prérequis : `forge reopen <dossier-equipe>` en reconstruit une depuis le `crew/` du dossier (et le `forge.json` que la promotion y a laissé) quand l'originale a disparu, en se posant à la pause `--dry` — une équipe importée ou orpheline peut donc être amendée, essayée et ré-adoptée sur le même dossier, pas seulement relancée.
+L'adoption elle-même n'est pas une porte à sens unique : `forge resume` d'une session **promue** la rouvre à l'arbitrage (le verdict stocké est ré-annoncé), et un second `forge promote` vers la **même** destination — ou vers ce dossier déplacé ou renommé depuis — met le dossier à jour en place — fichiers générés régénérés, vos propres fichiers préservés. Toute autre destination non vide reste refusée, copie du dossier comprise. Et la session n'est pas non plus un prérequis : `forge reopen <dossier-equipe>` retrouve la session à laquelle le dossier est lié par l'identifiant que porte son `forge.json`, ou en reconstruit une depuis le `crew/` du dossier (et ce `forge.json`) quand l'originale a disparu — ou quand le dossier est une copie, qui reçoit alors une session à elle — en se posant à la pause `--dry` : une équipe importée, orpheline ou dupliquée peut être amendée, essayée et ré-adoptée sur le même dossier, pas seulement relancée.
 
 Tout est borné : 3 itérations par défaut (`--max-iterations`), plafonds optionnels de jetons et de temps (`--max-tokens`, `--max-seconds`). Un budget épuisé arrête le cycle proprement ; une reprise peut le relever — la consommation est toujours reportée.
 
@@ -46,7 +46,7 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 
 ```
 .orkeon/forge/veille-fournisseur/
-├── session.json          état, statut, budget — le point de reprise
+├── session.json          identifiant, état, statut, budget — le point de reprise
 ├── brief.json            ce que vous avez demandé, critères compris
 ├── blueprint.json        le plan d'équipe (source unique des deux rendus)
 ├── crew/                 la crew rendue — ce qui tourne vraiment
@@ -86,7 +86,7 @@ Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 - un dossier par racine de livrable où l'équipe écrit (`output/` quand ses tâches déclarent `deliverable: /output/…`) — créé vide, pour que le premier lancement ait où écrire ;
 - `run.sh` / `run.cmd` — des scripts de lancement qui se placent (`cd`) dans le dossier, portent les montages liant ces racines (`--mount "$DIR/output":/output:rw`) et ont vos entrées d'exemple pré-remplies (à adapter au vrai usage) ;
 - `FORGE.md` — la carte d'identité de l'équipe : objectif, critères d'acceptation, verdict, date et version de génération — ce qu'un collègue lit en récupérant le dossier ;
-- `forge.json` — le jumeau lisible par la machine de la carte : slug, titre, format, instant de promotion de la session et le brief — ce que `forge reopen` lit pour reconstruire une session fidèle une fois l'originale disparue (rien de secret dedans) ;
+- `forge.json` — le jumeau lisible par la machine de la carte : identifiant, slug, titre, format, instant de promotion de la session et le brief — l'identifiant relie le dossier à sa session où qu'aille le dossier, et le reste est ce que `forge reopen` lit pour reconstruire une session fidèle une fois l'originale disparue (rien de secret dedans) ;
 - `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron. La commande d'installation est **affichée, jamais exécutée** : Orkeon n'a pas d'ordonnanceur, et prétendre le contraire promettrait une supervision qu'il ne peut pas donner.
 
 Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi : le `config.yaml` promu nomme les racines que l'équipe utilise (`mounts: [/workspace, /output]`), si bien qu'une entrée des settings déclarant `/output` est utilisée telle quelle, et qu'à défaut le run est refusé en une ligne (`the crew requires '/output' … pass --mount <folder>:/output:rw`) au lieu d'écrire nulle part.

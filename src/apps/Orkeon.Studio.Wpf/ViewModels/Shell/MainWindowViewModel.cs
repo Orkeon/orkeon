@@ -526,7 +526,7 @@ public sealed class MainWindowViewModel : ObservableObject
     {
         try
         {
-            await CreateTeam.ReopenTeamAsync(request.Team, request.Session).ConfigureAwait(true);
+            await CreateTeam.ReopenTeamAsync(request.Team).ConfigureAwait(true);
         }
         catch (Exception ex) when (ex is not OperationCanceledException)
         {

@@ -36,6 +36,16 @@ internal sealed record ForgeSessionDocument
     [JsonPropertyName("v")]
     public int Version { get; init; } = 1;
 
+    /// <summary>
+    /// The session's stable id (STUDIO-25): created with it, never changed — a rebuilt session
+    /// is a new session and gets a new one. The promotion copies it into the team's
+    /// <c>forge.json</c>, and rule R (<see cref="TeamSessionLink"/>) links a team folder to the
+    /// session carrying its id. Null for a file written before the id existed: such a session is
+    /// linked to no folder (D-06).
+    /// </summary>
+    [JsonPropertyName("id")]
+    public Guid? Id { get; init; }
+
     /// <summary>Directory name of the session under <c>.orkeon/forge/</c>.</summary>
     [JsonPropertyName("slug")]
     public required string Slug { get; init; }
@@ -183,6 +193,10 @@ internal sealed class ForgeSession
     public ForgeSessionStatus Status =>
         Enum.TryParse<ForgeSessionStatus>(Document.Status, out var status) ? status : ForgeSessionStatus.Failed;
 
+    /// <summary>What rule R reads of this session: its id and its <c>promotedTo</c>; null without an id (D-06).</summary>
+    public SessionPromotion? Promotion =>
+        Document.Id is { } id ? new SessionPromotion(id, Document.PromotedTo) : null;
+
     /// <summary>The session root for <paramref name="workspaceDirectory"/>.</summary>
     public static string RootFor(string workspaceDirectory) =>
         Path.Combine(workspaceDirectory, ConventionalNames.StateDirectory, "forge");
@@ -215,6 +229,7 @@ internal sealed class ForgeSession
         var createdAt = FormatInstant(stamp);
         var document = new ForgeSessionDocument
         {
+            Id = Guid.NewGuid(),
             Slug = slug,
             Format = format,
             Budget = budget ?? new ForgeBudget(),
@@ -275,47 +290,28 @@ internal sealed class ForgeSession
     }
 
     /// <summary>
-    /// The session that promoted <paramref name="teamDirectory"/>, or null — the reverse lookup
-    /// from a team folder to its session (every session records its <c>promotedTo</c>, no team
-    /// folder records its session). Corrupt sessions are skipped, like <see cref="List"/>.
+    /// The session of <paramref name="workspaceDirectory"/> whose id is <paramref name="id"/>, or
+    /// null. Two sessions only share an id when a session directory was copied by hand; the most
+    /// recently touched one answers then — the order Studio's catalog lists them in — so both
+    /// sides name the same one. Corrupt sessions are skipped, like <see cref="List"/>.
     /// </summary>
-    public static ForgeSession? FindPromotedTo(string workspaceDirectory, string teamDirectory)
+    public static ForgeSession? FindById(string workspaceDirectory, Guid id)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
-
         var root = RootFor(workspaceDirectory);
         if (!System.IO.Directory.Exists(root))
             return null;
 
+        var matches = new List<ForgeSession>();
         foreach (var directory in System.IO.Directory.EnumerateDirectories(root))
         {
-            if (TryLoad(directory, out var session, out _)
-                && session is not null
-                && IsSameDirectory(session.Document.PromotedTo, teamDirectory))
-            {
-                return session;
-            }
+            if (TryLoad(directory, out var session, out _) && session!.Document.Id == id)
+                matches.Add(session);
         }
 
-        return null;
-    }
-
-    /// <summary>
-    /// Whether <paramref name="candidate"/> is the very folder <paramref name="promotedTo"/>
-    /// names — full-path, trailing-separator-blind, case-blind on Windows. Shared by the
-    /// promoter (update in place) and the reopen (find the session).
-    /// </summary>
-    public static bool IsSameDirectory(string? promotedTo, string candidate)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(candidate);
-        if (string.IsNullOrWhiteSpace(promotedTo))
-            return false;
-
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        return string.Equals(
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(promotedTo)),
-            Path.TrimEndingDirectorySeparator(Path.GetFullPath(candidate)),
-            comparison);
+        return matches
+            .OrderByDescending(s => s.Document.UpdatedAt, StringComparer.Ordinal)
+            .ThenBy(s => s.Document.Slug, StringComparer.Ordinal)
+            .FirstOrDefault();
     }
 
     /// <summary>The sessions of a workspace, most recently touched first. Corrupt ones are skipped.</summary>

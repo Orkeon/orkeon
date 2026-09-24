@@ -2,6 +2,7 @@ using System.Globalization;
 using System.IO;
 using System.Text.Json;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.History;
 using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Profiles;
@@ -76,6 +77,17 @@ internal static class CaptureWorldWriter
             .Answer("--version", 0, plan.VersionLine)
             .Answer("run", 0, [.. plan.RunStream])
             .Answer("forge", 0, [.. plan.ForgeStream]);
+
+        // «Modifier» asks the engine first (STUDIO-25, D-04): `forge reopen` on the adopted team
+        // answers with the session its forge.json names, found where promotedTo says.
+        if (plan.Sessions.FirstOrDefault(session => session is { PromotedToTeamSlug: not null, Id: not null }) is { } promoted)
+        {
+            cli.Answer("forge reopen", 0, ReopenStream(
+                promoted,
+                Path.Combine(config, ".orkeon", "forge", promoted.Slug),
+                Path.Combine(teams, promoted.PromotedToTeamSlug!)));
+        }
+
         var machine = new ScriptedExecutableProbe(binaryDirectory);
 
         return new CaptureWorld
@@ -178,6 +190,7 @@ internal static class CaptureWorldWriter
 
         var document = new Dictionary<string, object?>(StringComparer.Ordinal)
         {
+            ["id"] = session.Id?.ToString(),
             ["slug"] = session.Slug,
             ["title"] = session.Title,
             ["state"] = session.State,
@@ -192,6 +205,23 @@ internal static class CaptureWorldWriter
             Path.Combine(directory, "session.json"),
             JsonSerializer.Serialize(document, Indented));
 
+        // The record the promotion leaves in the team: its id is the one link rule R reads back
+        // (STUDIO-25), and what lights «Modifier» up on the card.
+        if (session.PromotedToTeamSlug is { } teamSlug)
+        {
+            var record = new Dictionary<string, object?>(StringComparer.Ordinal)
+            {
+                ["v"] = 1,
+                ["id"] = session.Id?.ToString(),
+                ["slug"] = session.Slug,
+                ["title"] = session.Title,
+                ["format"] = session.Format,
+            };
+            await File.WriteAllTextAsync(
+                Path.Combine(teamsRoot, teamSlug, ForgeSessionCatalog.TeamRecordFileName),
+                JsonSerializer.Serialize(record, Indented));
+        }
+
         if (session.Transcript.Count > 0)
         {
             await File.WriteAllLinesAsync(
@@ -203,6 +233,34 @@ internal static class CaptureWorldWriter
         await WriteIfPresentAsync(directory, "verdict.json", session.Verdict);
         await WriteIfPresentAsync(directory, "last-run.json", session.LastRun);
     }
+
+    /// <summary>
+    /// The engine's answer to <c>forge reopen</c> on a promoted team — the session found, nothing
+    /// rebuilt — in the three lines the CLI writes, against this world's real paths. The wire
+    /// spells states and statuses in lowercase.
+    /// </summary>
+    private static string[] ReopenStream(SessionSeed session, string sessionDirectory, string teamDirectory) =>
+    [
+        JsonSerializer.Serialize(new
+        {
+            v = 2, seq = 1, ts = "2026-08-28T07:00:00Z", kind = ForgeEventKinds.SessionStarted,
+            slug = session.Slug, id = session.Id, dir = sessionDirectory, format = session.Format, resumed = true,
+        }),
+        JsonSerializer.Serialize(new
+        {
+            v = 2, seq = 2, ts = "2026-08-28T07:00:00Z", kind = ForgeEventKinds.TeamReopened,
+            slug = session.Slug, dir = sessionDirectory, path = teamDirectory, state = Wire(session.State), rebuilt = false,
+        }),
+        JsonSerializer.Serialize(new
+        {
+            v = 2, seq = 3, ts = "2026-08-28T07:00:00Z", kind = ForgeEventKinds.SessionFinished,
+            status = Wire(session.Status), exitCode = 0,
+        }),
+    ];
+
+    /// <summary>A document spelling (<c>Verdict</c>) as the wire spells it (<c>verdict</c>).</summary>
+    private static string Wire(string documentSpelling) =>
+        documentSpelling.Length == 0 ? "" : char.ToLowerInvariant(documentSpelling[0]) + documentSpelling[1..];
 
     private static Task WriteIfPresentAsync(string directory, string name, string? body) =>
         body is { Length: > 0 }

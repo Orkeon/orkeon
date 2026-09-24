@@ -56,6 +56,32 @@ public sealed class ForgeSessionTests : IDisposable
         Assert.Equal(1234, loaded.Document.Budget.ConsumedTokens);
     }
 
+    /// <summary>
+    /// STUDIO-25: a session carries an id from its creation, written into <c>session.json</c>
+    /// and read back unchanged — the one name left for it once its team folder is moved,
+    /// renamed or copied. Two sessions never share one, and a lookup by id finds the right one.
+    /// </summary>
+    [Fact]
+    public void A_session_gets_a_stable_id_that_survives_a_reload()
+    {
+        var session = ForgeSession.Create(_workspace, "demo", now: FixedNow);
+        var other = ForgeSession.Create(_workspace, "demo", now: FixedNow);
+
+        Assert.NotNull(session.Document.Id);
+        Assert.NotEqual(Guid.Empty, session.Document.Id);
+        Assert.NotEqual(session.Document.Id, other.Document.Id);
+
+        session.SetState(ForgeState.Blueprint);
+        session.Save(FixedNow);
+        Assert.True(ForgeSession.TryLoad(session.Directory, out var reloaded, out var error), error);
+        Assert.Equal(session.Document.Id, reloaded!.Document.Id);
+        var onDisk = JsonElement.Parse(File.ReadAllText(Path.Combine(session.Directory, ForgeSession.SessionFileName)));
+        Assert.Equal(session.Document.Id.ToString(), onDisk.GetProperty("id").GetString());
+
+        Assert.Equal(other.Directory, ForgeSession.FindById(_workspace, other.Document.Id!.Value)?.Directory);
+        Assert.Null(ForgeSession.FindById(_workspace, Guid.NewGuid()));
+    }
+
     [Fact]
     public void A_slug_collision_gets_a_numeric_suffix()
     {

@@ -23,6 +23,10 @@ internal sealed class ForgeEventWriter : OrkeonEventWriter
         Emit("session.started", new
         {
             slug = session.Document.Slug,
+            // The session's stable id (STUDIO-25): what its team's forge.json carries, and the
+            // one name that survives the folder being moved, renamed or copied. Absent for a
+            // session written before the id existed.
+            id = session.Document.Id,
             dir = session.Directory,
             format = session.Document.Format,
             resumed,

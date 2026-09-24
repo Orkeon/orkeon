@@ -1,4 +1,27 @@
 #nullable enable
+Orkeon.Domain.FileSystem.SessionPromotion
+Orkeon.Domain.FileSystem.SessionPromotion.<Clone>$() -> Orkeon.Domain.FileSystem.SessionPromotion!
+Orkeon.Domain.FileSystem.SessionPromotion.Deconstruct(out System.Guid Id, out string? PromotedTo) -> void
+Orkeon.Domain.FileSystem.SessionPromotion.Equals(Orkeon.Domain.FileSystem.SessionPromotion? other) -> bool
+Orkeon.Domain.FileSystem.SessionPromotion.Id.get -> System.Guid
+Orkeon.Domain.FileSystem.SessionPromotion.Id.init -> void
+Orkeon.Domain.FileSystem.SessionPromotion.PromotedTo.get -> string?
+Orkeon.Domain.FileSystem.SessionPromotion.PromotedTo.init -> void
+Orkeon.Domain.FileSystem.SessionPromotion.SessionPromotion(System.Guid Id, string? PromotedTo) -> void
+Orkeon.Domain.FileSystem.TeamSessionLink
+Orkeon.Domain.FileSystem.TeamSessionLinkKind
+Orkeon.Domain.FileSystem.TeamSessionLinkKind.Copy = 2 -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
+Orkeon.Domain.FileSystem.TeamSessionLinkKind.Linked = 3 -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
+Orkeon.Domain.FileSystem.TeamSessionLinkKind.Moved = 4 -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
+Orkeon.Domain.FileSystem.TeamSessionLinkKind.NoIdentity = 0 -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
+Orkeon.Domain.FileSystem.TeamSessionLinkKind.NoSession = 1 -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
+override Orkeon.Domain.FileSystem.SessionPromotion.Equals(object? obj) -> bool
+override Orkeon.Domain.FileSystem.SessionPromotion.GetHashCode() -> int
+override Orkeon.Domain.FileSystem.SessionPromotion.ToString() -> string!
+static Orkeon.Domain.FileSystem.SessionPromotion.operator !=(Orkeon.Domain.FileSystem.SessionPromotion? left, Orkeon.Domain.FileSystem.SessionPromotion? right) -> bool
+static Orkeon.Domain.FileSystem.SessionPromotion.operator ==(Orkeon.Domain.FileSystem.SessionPromotion? left, Orkeon.Domain.FileSystem.SessionPromotion? right) -> bool
+static Orkeon.Domain.FileSystem.TeamSessionLink.IsLinked(Orkeon.Domain.FileSystem.TeamSessionLinkKind kind) -> bool
+static Orkeon.Domain.FileSystem.TeamSessionLink.Resolve(string! teamDirectory, System.Guid? teamSessionId, Orkeon.Domain.FileSystem.SessionPromotion? session, System.Func<string!, System.Guid?>! recordedSessionIdAt) -> Orkeon.Domain.FileSystem.TeamSessionLinkKind
 Orkeon.Domain.FileSystem.FolderSlug
 const Orkeon.Domain.FileSystem.FolderSlug.MaxLength = 64 -> int
 const Orkeon.Domain.FileSystem.FolderSlug.TeamFallback = "equipe" -> string!

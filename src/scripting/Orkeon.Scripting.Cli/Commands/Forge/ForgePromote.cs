@@ -2,6 +2,7 @@ using Orkeon.Constants.FileSystem;
 using System.Globalization;
 using System.Security;
 using System.Text;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Hosting;
 
 namespace Orkeon.Scripting.Cli.Commands.Forge;
@@ -145,14 +146,23 @@ internal static class ForgePromoter
             throw new InvalidOperationException($"The session holds no rendered crew under '{ForgeYamlRenderer.CrewDirectoryName}/'.");
 
         // A non-empty destination is refused — with ONE exception (W-09): the folder this
-        // very session already promoted to. Re-adoption then UPDATES it in place: the
-        // generated artifacts (crew/, schedule/, launchers, FORGE.md) are regenerated,
-        // everything else — sidecar, user files, outputs — is preserved. Omitting the
-        // schedule on a re-adoption removes schedule/: the folder says what is true.
+        // very session is linked to by rule R (STUDIO-25) — where it promoted to, or that
+        // folder moved or renamed since; never a copy of it. Re-adoption then UPDATES it in
+        // place: the generated artifacts (crew/, schedule/, launchers, FORGE.md) are
+        // regenerated, everything else — sidecar, user files, outputs — is preserved. Omitting
+        // the schedule on a re-adoption removes schedule/: the folder says what is true.
         var updating = false;
         if (Directory.Exists(destination) && Directory.EnumerateFileSystemEntries(destination).Any())
         {
-            if (!ForgeSession.IsSameDirectory(session.Document.PromotedTo, destination))
+            var link = ForgeTeamLink.Of(session, destination);
+            if (link == TeamSessionLinkKind.Copy)
+            {
+                throw new InvalidOperationException(
+                    $"'{destination}' is not empty: it is a copy of '{session.Document.PromotedTo}', the folder this session"
+                    + " promoted to. Promote into a fresh directory, or give the copy a session of its own with `forge reopen`.");
+            }
+
+            if (!TeamSessionLink.IsLinked(link))
                 throw new InvalidOperationException($"'{destination}' is not empty — promote into a fresh directory.");
 
             updating = true;

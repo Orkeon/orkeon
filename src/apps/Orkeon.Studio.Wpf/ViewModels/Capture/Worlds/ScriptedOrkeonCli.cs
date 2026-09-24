@@ -18,7 +18,9 @@ internal sealed record CliAnswer(int ExitCode, IReadOnlyList<string> Lines);
 /// </para>
 /// <para>
 /// Routing is on argv[0], so one instance answers <c>doctor</c>, <c>--version</c>, <c>forge</c>
-/// and <c>run</c> for the whole campaign.
+/// and <c>run</c> for the whole campaign — or on argv[0] and argv[1] together when that pair has
+/// a script of its own: <c>forge reopen</c> is a conversation of its own, distinct from the
+/// cycle <c>forge</c> answers.
 /// </para>
 /// </summary>
 internal sealed class ScriptedOrkeonCli : IProcessLauncher
@@ -116,11 +118,18 @@ internal sealed class ScriptedOrkeonCli : IProcessLauncher
     }
 
     /// <summary>
-    /// The verb a request names. A bare flag — <c>--version</c> — is its own verb: the About
-    /// overlay asks for it exactly that way.
+    /// The verb a request names: its first two arguments when that pair is scripted (a sub-verb
+    /// such as <c>forge reopen</c>), else its first. A bare flag — <c>--version</c> — is its own
+    /// verb: the About overlay asks for it exactly that way.
     /// </summary>
-    private static string VerbOf(ProcessLaunchRequest request) =>
-        request.Arguments.Count > 0 ? request.Arguments[0] : "";
+    private string VerbOf(ProcessLaunchRequest request)
+    {
+        var arguments = request.Arguments;
+        if (arguments.Count > 1 && _answers.ContainsKey($"{arguments[0]} {arguments[1]}"))
+            return $"{arguments[0]} {arguments[1]}";
+
+        return arguments.Count > 0 ? arguments[0] : "";
+    }
 
     private sealed class ScriptedInputWriter(ScriptedOrkeonCli owner) : IProcessInputWriter
     {
