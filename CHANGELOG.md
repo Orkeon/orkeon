@@ -7,6 +7,23 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — Studio: the 105 use cases in the creation wizard, suggested as you type (STUDIO-39)
+
+- Step 1 of « Create a team » keeps its four quick examples first and adds « Browse the use
+  cases (N) ». It opens a side panel over the catalogue that `orkeon usecases list` answers:
+  - a search box and nine category chips;
+  - filters by process, without web access, and without a third-party key;
+  - cards with the title and the problem in the UI language, a process badge, and « Reference
+    only » on the cases that cannot be imported as they are.
+- Choosing a case fills the need with its problem in the UI language, Chinese included. It also
+  attaches the case as the creation's reference: a removable « Inspired by: … » chip
+  (`ReferenceUseCaseId`).
+- After a pause in the typing, the wizard asks one `orkeon usecases search` session and shows
+  « N close use cases ». A case counts only when it shares a distinctive term with the need;
+  matches by meaning alone never count.
+- Without the CLI, the panel shows the wizard's « engine not found » card; there is no
+  Studio-side fallback.
+
 ### Added — Studio: a status bar with one group per running activity (STUDIO-34)
 
 - A third row at the bottom of the window; the seven overlays now span the three rows.
