@@ -35,17 +35,18 @@ internal enum UseCaseMatchReason
 internal sealed class UseCaseSearchPolicy
 {
     /// <summary>
-    /// The shipped policy: hybrid where the golden set's recall@5 gains from it, terms elsewhere.
-    /// <c>UseCaseGoldenSetTests</c> prints the recall of each language in each mode; the first
-    /// measurement ran while the sheets' titles and problems were still empty (STUDIO-37), with
-    /// French, English and Spanish gaining and German and Chinese not. Measure again whenever the
-    /// texts change, and set each language from the report.
+    /// The shipped policy: hybrid where the golden set gains from it, terms elsewhere.
+    /// <c>UseCaseGoldenSetTests</c> prints the recall of each language in each mode. Measured on
+    /// 2026-09-24 with the five-language texts of STUDIO-37: terms alone reach recall@5 1.00 in
+    /// every language, and the English model helps only in English (MRR 1.00 against 0.57); in
+    /// French it costs recall (0.83) and elsewhere it lowers the ranking. Measure again whenever
+    /// the texts change, and set each language from the report.
     /// </summary>
     public static UseCaseSearchPolicy Default { get; } = new(new Dictionary<string, UseCaseSearchMode>(StringComparer.Ordinal)
     {
-        [UseCaseLanguages.French] = UseCaseSearchMode.Hybrid,
+        [UseCaseLanguages.French] = UseCaseSearchMode.Bm25,
         [UseCaseLanguages.English] = UseCaseSearchMode.Hybrid,
-        [UseCaseLanguages.Spanish] = UseCaseSearchMode.Hybrid,
+        [UseCaseLanguages.Spanish] = UseCaseSearchMode.Bm25,
         [UseCaseLanguages.German] = UseCaseSearchMode.Bm25,
         [UseCaseLanguages.SimplifiedChinese] = UseCaseSearchMode.Bm25,
     });

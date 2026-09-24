@@ -100,7 +100,7 @@ The catalogue of the example use cases: the 105 numbered examples of `examples/`
 **`search <text>`** ranks the catalogue against a need written in plain words, in French, English, Spanish, German or Simplified Chinese.
 
 - **By terms**: BM25 over each sheet's title and problem in the five languages, its tags, its tools and its category. The query and the sheets are normalized alike — lowercase, accents folded (`resume` finds `résumé`), Chinese cut into character bigrams — so a query matches whatever language it is typed in.
-- **By meaning**: the local embedding model (BGE-micro-v2, on-device) compares the query with each sheet's English text, and its ranking is fused with the terms' by RRF. The model reads English only (see [Known limitations](./limitations.md)), so meaning is fused in only for the languages where the golden set ([usecases.golden.yaml](../../examples/usecases.golden.yaml)) measured a gain: French, English and Spanish today; German and Chinese are searched by terms. The model loads at the first search that needs it — about a second — and each later search takes a few milliseconds.
+- **By meaning**: the local embedding model (BGE-micro-v2, on-device) compares the query with each sheet's English text, and its ranking is fused with the terms' by RRF. The model reads English only (see [Known limitations](./limitations.md)), so meaning is fused in only for the languages where the golden set ([usecases.golden.yaml](../../examples/usecases.golden.yaml)) measured a gain: English today (measured 2026-09-24 on the five-language texts — terms alone reach recall@5 1.00 in every language, and meaning helps the ranking in English only); French, Spanish, German and Chinese are searched by terms. The model loads at the first search that needs it — about a second — and each later search takes a few milliseconds.
 - **Without the model** (its files belong in `LocalEmbeddingsModel/default/` next to the binary; `orkeon doctor` checks them), the search runs by terms and every answer says so. It never degrades silently.
 
 | Option | Description |
@@ -115,7 +115,7 @@ Session mode is how Orkeon Studio suggests use cases while you type: the process
 
 ```text
 → {"kind":"usecases.query","correlationId":"q1","text":"relancer les factures impayées","lang":"fr","top":5}
-← {"v":2,"seq":2,"ts":"…","kind":"usecases.results","correlationId":"q1","query":"relancer les factures impayées","lang":"fr","langSource":"option","mode":"hybrid","results":[{"rank":1,"id":"40-invoice-processing","score":0.0325,"reason":"terms+meaning","terms":["factures"],"similarity":0.6912,"title":"…"}]}
+← {"v":2,"seq":2,"ts":"…","kind":"usecases.results","correlationId":"q1","query":"relancer les factures impayées","lang":"fr","langSource":"option","mode":"bm25","results":[{"rank":1,"id":"40-invoice-processing","score":7.8412,"reason":"terms","terms":["factures"],"title":"…"}]}
 ```
 
 A query without `top` or `lang` takes the command line's `--top` and `--lang`. A line that is not a query is skipped. A query that cannot run — no `text`, a `lang` outside the five, a `top` below 1 — is answered by an `error` line carrying its `correlationId` and the code `USECASES-QUERY-INVALID`, and the session goes on. The event kinds are declared once, in `Orkeon.Constants.Protocol.UseCaseEventKinds`.
