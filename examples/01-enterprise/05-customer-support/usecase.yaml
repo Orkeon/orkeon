@@ -12,6 +12,6 @@ problem:
   es: "Responder a mis clientes y derivar los casos difíciles a un responsable"
   de: "Meinen Kunden antworten und schwierige Fälle an die Leitung weitergeben"
   zh-Hans: "答复客户的咨询，并把棘手的问题上报给负责人"
-tags: ["customer-support", "escalation", "helpdesk"]
+tags: ["customer-support", "escalation", "helpdesk", "human-in-the-loop"]
 mounts: []
 importable: true

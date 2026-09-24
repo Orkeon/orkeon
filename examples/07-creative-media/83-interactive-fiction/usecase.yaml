@@ -12,7 +12,7 @@ problem:
   es: "Vivir una historia en la que yo elijo cómo continúa"
   de: "Mir eine Geschichte erzählen lassen, deren Fortgang ich selbst wähle"
   zh-Hans: "体验一个由我选择情节走向的故事"
-tags: ["interactive-fiction", "storytelling", "games", "branching-narrative"]
+tags: ["interactive-fiction", "storytelling", "games", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

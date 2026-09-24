@@ -113,7 +113,8 @@
       "tags": [
         "email",
         "triage",
-        "replies"
+        "replies",
+        "human-in-the-loop"
       ],
       "tasks": 4,
       "title": {
@@ -193,7 +194,8 @@
       "tags": [
         "customer-support",
         "escalation",
-        "helpdesk"
+        "helpdesk",
+        "human-in-the-loop"
       ],
       "tasks": 3,
       "title": {
@@ -610,7 +612,8 @@
       "tags": [
         "sales",
         "proposal",
-        "tender"
+        "tender",
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -689,7 +692,6 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "research",
         "literature-review",
         "meta-analysis",
         "statistics"
@@ -730,10 +732,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "science",
         "debate",
         "controversy",
-        "evidence"
+        "evidence",
+        "synthesis"
       ],
       "tasks": 4,
       "title": {
@@ -1024,10 +1026,10 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "research",
         "funding",
         "grant-writing",
-        "budget"
+        "budget",
+        "human-in-the-loop"
       ],
       "tasks": 5,
       "title": {
@@ -1235,7 +1237,6 @@
       "requiresKeys": [],
       "requiresNetwork": true,
       "tags": [
-        "research",
         "hypotheses",
         "experiment-design",
         "data-analysis"
@@ -3631,7 +3632,7 @@
         "interactive-fiction",
         "storytelling",
         "games",
-        "branching-narrative"
+        "human-in-the-loop"
       ],
       "tasks": 4,
       "title": {

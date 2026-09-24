@@ -12,7 +12,7 @@ problem:
   es: "Ordenar mis correos por urgencia y preparar respuestas que apruebo antes de enviarlas"
   de: "Meine E-Mails nach Dringlichkeit sortieren und Antworten zur Freigabe vorbereiten"
   zh-Hans: "按紧急程度整理我的邮件，起草回复，经我确认后再发送"
-tags: ["email", "triage", "replies"]
+tags: ["email", "triage", "replies", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

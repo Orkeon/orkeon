@@ -12,7 +12,7 @@ problem:
   es: "Responder a la licitación de un cliente con una propuesta comercial lista para mi aprobación"
   de: "Die Ausschreibung eines Kunden mit einem Angebot beantworten, das ich freigebe"
   zh-Hans: "针对客户的招标撰写商务方案，最终由我审批"
-tags: ["sales", "proposal", "tender"]
+tags: ["sales", "proposal", "tender", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true
