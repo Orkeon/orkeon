@@ -1,6 +1,7 @@
 using Orkeon.Constants.FileSystem;
 using System.Text.Json;
 using Orkeon.Compliance.Vfs;
+using Orkeon.Domain.FileSystem;
 
 namespace Orkeon.Studio.Core.Forge;
 
@@ -12,6 +13,12 @@ public sealed record ForgeSolutionSummary
 {
     /// <summary>Session slug (level 3; the display name is <see cref="Title"/>).</summary>
     public required string Slug { get; init; }
+
+    /// <summary>
+    /// The session's stable id (STUDIO-25), the one a team's <c>forge.json</c> names; null for a
+    /// session written before the id existed, or one whose id does not parse — linked to no team.
+    /// </summary>
+    public Guid? Id { get; init; }
 
     /// <summary>Display name, derived from the brief's goal; falls back to the slug.</summary>
     public string? Title { get; init; }
@@ -30,6 +37,12 @@ public sealed record ForgeSolutionSummary
 
     /// <summary>Absolute destination of the promotion, when the solution was adopted.</summary>
     public string? PromotedTo { get; init; }
+
+    /// <summary>
+    /// What rule R (<see cref="TeamSessionLink"/>) reads of this session: its id and its
+    /// <c>promotedTo</c>; null without an id, which links it to no team (D-06).
+    /// </summary>
+    public SessionPromotion? Promotion => Id is { } id ? new SessionPromotion(id, PromotedTo) : null;
 
     /// <summary>Absolute session directory.</summary>
     public required string Directory { get; init; }
@@ -53,7 +66,8 @@ public sealed record ForgeSolutionSummary
 /// CLI's own <c>forge list</c> discipline). Reading is all it did until <c>Delete</c>, which
 /// discards an abandoned draft — the one write, and it removes rather than produces. The file shape is re-declared
 /// here because Studio.Core does not reference the CLI; <c>ForgeSessionCatalogTests</c>
-/// pins it against a verbatim fixture.
+/// pins it against a verbatim fixture — and so is the <c>id</c> of a team's <c>forge.json</c>,
+/// the one field of that record Studio reads.
 /// </summary>
 [SuppressVfsCompliance(
     "EXCEPTION-BOOTSTRAP: Studio is a host application reading — and, for an abandoned draft, " +
@@ -67,6 +81,12 @@ public static class ForgeSessionCatalog
 
     /// <summary>Name of the session document inside a session directory.</summary>
     public const string SessionFileName = "session.json";
+
+    /// <summary>
+    /// Name of the record <c>forge promote</c> writes into a team folder — the CLI's
+    /// <c>forge.json</c>, whose <c>id</c> names the team's session (STUDIO-25).
+    /// </summary>
+    public const string TeamRecordFileName = "forge.json";
 
     /// <summary>Lists the workspace's sessions, most recently touched first.</summary>
     public static IReadOnlyList<ForgeSolutionSummary> List(string workspaceDirectory)
@@ -112,39 +132,41 @@ public static class ForgeSessionCatalog
     }
 
     /// <summary>
-    /// The session that adopted <paramref name="teamDirectory"/>, or null — the reverse
-    /// lookup «Modifier» rests on (W-09): the sidecar records no session, but every
-    /// session records its <c>promotedTo</c>. Path comparison is full-path,
-    /// trailing-separator-blind, and case-blind on Windows.
+    /// The session whose id is <paramref name="id"/>, or null (STUDIO-25). Two sessions only share
+    /// an id when a session directory was copied by hand; the most recently touched one answers
+    /// then — the CLI's pick too. Which session a TEAM is linked to is not asked here: « Modify »
+    /// asks the engine (<c>forge reopen</c>), which applies rule R.
     /// </summary>
-    public static ForgeSolutionSummary? FindByPromotedTo(string workspaceDirectory, string teamDirectory)
+    public static ForgeSolutionSummary? FindById(string workspaceDirectory, Guid id) =>
+        id == Guid.Empty
+            ? null
+            : List(workspaceDirectory)
+                .Where(summary => summary.Id == id)
+                .OrderByDescending(summary => summary.UpdatedAt, StringComparer.Ordinal)
+                .ThenBy(summary => summary.Slug, StringComparer.Ordinal)
+                .FirstOrDefault();
+
+    /// <summary>
+    /// The id of the session <paramref name="teamDirectory"/>'s <c>forge.json</c> names
+    /// (STUDIO-25) — read-only: the CLI writes the record. Null when the record, or its id, is
+    /// absent, unreadable or not an id; never a throw.
+    /// </summary>
+    public static Guid? ReadTeamSessionId(string teamDirectory)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(teamDirectory);
 
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        string target;
         try
         {
-            target = Path.TrimEndingDirectorySeparator(Path.GetFullPath(teamDirectory));
-        }
-        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
-        {
-            return null;
-        }
+            var path = Path.Combine(teamDirectory, TeamRecordFileName);
+            if (!File.Exists(path))
+                return null;
 
-        return List(workspaceDirectory).FirstOrDefault(summary =>
-            summary.PromotedTo is { Length: > 0 } promoted
-            && string.Equals(NormalizeOrNull(promoted), target, comparison));
-    }
-
-    /// <summary>A corrupt <c>promotedTo</c> must not take the lookup down — it just never matches.</summary>
-    private static string? NormalizeOrNull(string path)
-    {
-        try
-        {
-            return Path.TrimEndingDirectorySeparator(Path.GetFullPath(path));
+            using var document = JsonDocument.Parse(File.ReadAllText(path));
+            return document.RootElement.ValueKind == JsonValueKind.Object
+                ? ReadId(document.RootElement)
+                : null;
         }
-        catch (Exception ex) when (ex is ArgumentException or PathTooLongException or NotSupportedException)
+        catch (Exception ex) when (ex is JsonException or IOException or UnauthorizedAccessException)
         {
             return null;
         }
@@ -167,6 +189,7 @@ public static class ForgeSessionCatalog
             summary = new ForgeSolutionSummary
             {
                 Slug = ReadString(root, "slug") ?? Path.GetFileName(directory),
+                Id = ReadId(root),
                 Title = ReadString(root, "title"),
                 State = ReadString(root, "state") ?? "",
                 Status = ReadString(root, "status") ?? "",
@@ -184,6 +207,10 @@ public static class ForgeSessionCatalog
             return false;
         }
     }
+
+    /// <summary>The <c>id</c> of a session or team record; <see cref="Guid.Empty"/> is no id.</summary>
+    private static Guid? ReadId(JsonElement element) =>
+        Guid.TryParse(ReadString(element, "id"), out var id) && id != Guid.Empty ? id : null;
 
     private static string? ReadString(JsonElement element, string name) =>
         element.TryGetProperty(name, out var value) && value.ValueKind == JsonValueKind.String

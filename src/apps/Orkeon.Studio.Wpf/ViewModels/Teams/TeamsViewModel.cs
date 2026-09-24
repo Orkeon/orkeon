@@ -53,23 +53,17 @@ public sealed class SessionDeletedEventArgs(ForgeSolutionSummary session) : Even
 }
 
 /// <summary>
-/// Payload of a «Modifier» request (W-09): the team and the session that adopted it — or no
-/// session at all (FORGE-09), in which case the wizard has the engine rebuild one from the
-/// team's folder.
+/// Payload of a «Modifier» request (W-09): the team, and nothing else. Which session it reopens
+/// is the engine's answer (STUDIO-25, D-04): the wizard runs <c>forge reopen</c> on the folder,
+/// which finds the session rule R links it to, or rebuilds one (FORGE-09).
 /// </summary>
-public sealed class TeamModifyEventArgs(TeamSummary team, ForgeSolutionSummary? session) : EventArgs
+public sealed class TeamModifyEventArgs(TeamSummary team) : EventArgs
 {
     /// <summary>The adopted team, as the catalog listed it.</summary>
     [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
         Justification = "False positive on a primary constructor: the initializer IS the only "
                       + "assignment of the member, and removing it would leave it unset.")]
     public TeamSummary Team { get; } = team;
-
-    /// <summary>The forge session whose <c>promotedTo</c> is the team folder; null when none points at it.</summary>
-    [SuppressMessage("Minor Code Smell", "S3604:Member initializer values should not be redundant",
-        Justification = "False positive on a primary constructor: the initializer IS the only "
-                      + "assignment of the member, and removing it would leave it unset.")]
-    public ForgeSolutionSummary? Session { get; } = session;
 }
 
 /// <summary>One mount chip of a team card: virtual path plus its rights, in words.</summary>
@@ -132,15 +126,16 @@ public sealed class TeamCardViewModel : ObservableObject
         ChangeMountsCommand = new RelayCommand(() => owner.RequestMounts(this));
         ExportCommand = new RelayCommand(() => owner.Export(summary.Path));
         TestCommand = new RelayCommand(() => owner.RequestTest(summary.Path));
-        // «Modifier» (W-09, FORGE-09): through the session that promoted the team when one
-        // still points here, else through a session the engine rebuilds from the team's own
-        // crew/ — so an imported team, or one whose session is gone, is modifiable again and
-        // not only relaunchable. Only a team with no YAML crew keeps the button disabled,
-        // the tooltip saying why. Resolved at card build; Refresh() rebuilds the cards.
-        var session = owner.FindSessionFor(summary);
-        CanModify = session is not null || summary.HasYamlCrew;
+        // «Modifier» (W-09, FORGE-09, STUDIO-25): always through `forge reopen` on the folder —
+        // the engine finds the session rule R links it to, or rebuilds one from the team's own
+        // crew/, so an imported team, or one whose session is gone, is modifiable again and not
+        // only relaunchable. The card never looks the session up: it only knows whether the
+        // folder names one (its forge.json carries an id) or can be read back (a YAML crew).
+        // Neither keeps the button disabled, the tooltip saying why. Resolved at card build;
+        // Refresh() rebuilds the cards.
+        CanModify = TeamsViewModel.CanReopen(summary);
         string modifyTipKey;
-        if (session is not null)
+        if (summary.ForgeSessionId is not null)
             modifyTipKey = StudioStringKeys.TeamsModifyTip;
         else if (summary.HasYamlCrew)
             modifyTipKey = StudioStringKeys.TeamsModifyRebuild;
@@ -154,7 +149,7 @@ public sealed class TeamCardViewModel : ObservableObject
     /// <summary>« Modifier » — reopens the wizard at step 2 on this team (W-09).</summary>
     public RelayCommand ModifyCommand { get; }
 
-    /// <summary>Whether the wizard can reopen on this team: a session points at it, or its crew can be read back.</summary>
+    /// <summary>Whether the wizard can reopen on this team: its forge.json names a session, or its crew can be read back.</summary>
     public bool CanModify { get; }
 
     /// <summary>The Modify button's tooltip: reopen, reopen through a rebuilt session, or why neither is possible.</summary>
@@ -505,26 +500,16 @@ public sealed class TeamsViewModel : ObservableObject
     public event EventHandler<TeamModifyEventArgs>? ModifyRequested;
 
     /// <summary>
-    /// The session that adopted <paramref name="team"/>, or null — the reverse lookup by
-    /// <c>promotedTo</c>, over the same session loader the in-progress list reads.
+    /// Whether «Modifier» can reopen the wizard on <paramref name="team"/> (STUDIO-25, D-04): its
+    /// <c>forge.json</c> names a session, or its crew can be read back into one. Which session,
+    /// if any, is linked is never decided here — <c>forge reopen</c> applies rule R.
     /// </summary>
-    internal ForgeSolutionSummary? FindSessionFor(TeamSummary team)
-    {
-        var comparison = OperatingSystem.IsWindows() ? StringComparison.OrdinalIgnoreCase : StringComparison.Ordinal;
-        var target = NormalizePath(team.Path);
-        if (target.Length == 0)
-            return null;
-
-        return _loadSessions().FirstOrDefault(session =>
-            session.PromotedTo is { Length: > 0 } promoted
-            && string.Equals(NormalizePath(promoted), target, comparison));
-    }
+    internal static bool CanReopen(TeamSummary team) => team.ForgeSessionId is not null || team.HasYamlCrew;
 
     internal void RequestModify(TeamSummary team)
     {
-        var session = FindSessionFor(team);
-        if (session is not null || team.HasYamlCrew)
-            ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team, session));
+        if (CanReopen(team))
+            ModifyRequested?.Invoke(this, new TeamModifyEventArgs(team));
     }
 
     /// <summary>The team cards.</summary>

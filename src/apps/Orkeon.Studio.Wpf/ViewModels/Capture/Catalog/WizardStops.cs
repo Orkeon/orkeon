@@ -256,9 +256,10 @@ internal static class WizardStops
     ];
 
     /// <summary>
-    /// «Modifier» on the adopted team, through the real gesture. The card's command is gated on a
-    /// session pointing back at the folder, so this stop also proves the seeded <c>promotedTo</c>
-    /// is the one the reverse lookup accepts.
+    /// «Modifier» on the adopted team, through the real gesture. The card's command is gated on the
+    /// session id the team's <c>forge.json</c> carries, and the wizard asks the engine for the
+    /// session (<c>forge reopen</c>, STUDIO-25) — so this stop also proves the seeded record and
+    /// the scripted reopen agree on the promoted session.
     /// </summary>
     private static void ReopenAdoptedTeam(CaptureContext context)
     {

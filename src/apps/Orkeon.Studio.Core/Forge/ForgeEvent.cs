@@ -8,7 +8,11 @@ namespace Orkeon.Studio.Core.Forge;
 /// </summary>
 public static class ForgeEventKinds
 {
-    /// <summary>Opening event of an engine run.</summary>
+    /// <summary>
+    /// Opening event of an engine run: <c>slug</c>, <c>id</c> — the session's stable id, which
+    /// its team's <c>forge.json</c> carries once promoted (STUDIO-25) — <c>dir</c>,
+    /// <c>format</c>, <c>resumed</c>, <c>engine</c> and <c>budget</c>.
+    /// </summary>
     public const string SessionStarted = "session.started";
 
     /// <summary>The cycle entered a stage.</summary>

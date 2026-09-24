@@ -1,5 +1,6 @@
 using Orkeon.Constants.FileSystem;
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Forge;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Compliance.Vfs;
@@ -149,10 +150,18 @@ public sealed record TeamSummary
     /// <summary>
     /// Whether the folder holds a YAML crew under <c>crew/</c> (<c>config.yaml</c> or
     /// <c>crew.yaml</c>, no <c>crew.ork.ts</c>) — what <c>forge reopen</c> can read back into a
-    /// plan (FORGE-09). « Modify » stays possible on such a team even when no session points at
-    /// it; a script crew or a foreign layout cannot be reopened.
+    /// plan (FORGE-09). « Modify » stays possible on such a team even when no session is linked
+    /// to it; a script crew or a foreign layout cannot be reopened.
     /// </summary>
     public bool HasYamlCrew { get; init; }
+
+    /// <summary>
+    /// The id of the workshop session the folder's <c>forge.json</c> names (STUDIO-25); null
+    /// without the record or its id. It says a session MAY be linked, never which: a copied team
+    /// carries its original's id until the engine rewrites it — rule R decides, in the engine,
+    /// through <c>forge reopen</c>.
+    /// </summary>
+    public Guid? ForgeSessionId { get; init; }
 }
 
 /// <summary>
@@ -230,6 +239,7 @@ public static partial class TeamCatalog
             ResolvedMounts = resolved,
             AgentCount = CountAgents(teamDirectory),
             HasYamlCrew = HasYamlCrew(teamDirectory),
+            ForgeSessionId = ForgeSessionCatalog.ReadTeamSessionId(teamDirectory),
         };
     }
 

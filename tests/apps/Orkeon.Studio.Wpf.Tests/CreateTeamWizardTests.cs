@@ -24,7 +24,7 @@ public class CreateTeamWizardTests
     private static ProcessOutputLine Out(string json) =>
         ProcessOutputLine.Now(ProcessOutputChannel.StandardOutput, json);
 
-    private static (CreateTeamViewModel Vm, FakeProcessLauncher Processes, ModelProfilesViewModel Profiles) Build(
+    internal static (CreateTeamViewModel Vm, FakeProcessLauncher Processes, ModelProfilesViewModel Profiles) Build(
         string? teamsRoot = null,
         bool withAssistant = true,
         Func<IReadOnlyList<string>>? declaredMounts = null,
@@ -289,14 +289,19 @@ public class CreateTeamWizardTests
         Directory.CreateDirectory(sessionDir);
         Directory.CreateDirectory(teamDir);
         await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
-            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
+            $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
             """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read"]}],"tasks":[{"key":"t","description":"d","agent":"a"}]}""", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(teamDir, "studio-team.json"),
             """{"name":"Veille docs","description":"le besoin d'origine","profile":"Local","schedule":"daily@07:30","mounts":["/data/docs:/docs:ro"]}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "forge.json"),
+            $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille"}""", TestContext.Current.CancellationToken);
         try
         {
             var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            // The engine answers first (STUDIO-25, D-04): `forge reopen` names the session it
+            // found for the folder, and the wizard resumes that one.
+            processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
             processes.OutputToEmit.AddRange(
             [
                 Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"SESSION","format":"yaml","resumed":true}""".Replace("SESSION", System.Text.Json.JsonSerializer.Serialize(sessionDir).Trim('"'), StringComparison.Ordinal)),
@@ -305,12 +310,7 @@ public class CreateTeamWizardTests
             ]);
 
             var team = TeamCatalog.Describe(teamDir);
-            var session = new ForgeSolutionSummary
-            {
-                Slug = "veille", State = "Promoted", Status = "Promoted",
-                Directory = sessionDir, PromotedTo = teamDir,
-            };
-            await vm.ReopenTeamAsync(team, session);
+            await vm.ReopenTeamAsync(team);
 
             // The wizard reopened at Composer with the whole stepper reachable and the
             // adoption fields seeded from the sidecar.
@@ -321,7 +321,8 @@ public class CreateTeamWizardTests
             Assert.Equal(1, vm.ScheduleChoice);
             Assert.Equal("07:30", vm.ScheduleTime);
             Assert.Contains("/data/docs:/docs:ro", vm.TeamMounts);
-            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[0].Arguments);
+            Assert.Equal(["forge", "reopen", teamDir, "--events", "jsonl"], processes.Requests[0].Arguments);
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[1].Arguments);
 
             // Re-adoption is pinned to the ORIGINAL folder: renaming only renames.
             vm.TeamName = "Veille renommée";
@@ -332,7 +333,7 @@ public class CreateTeamWizardTests
             Assert.True(vm.SaveTeamCommand.CanExecute(null));
             await vm.SaveTeamCommand.ExecuteAsync();
 
-            var promote = processes.Requests[1].Arguments.ToList();
+            var promote = processes.Requests[2].Arguments.ToList();
             Assert.Equal(teamDir, promote[promote.IndexOf("--to") + 1]);
 
             // The sidecar kept its description (no step-1 need on a reopen) and took the
@@ -1542,19 +1543,30 @@ public class CreateTeamWizardTests
         Directory.CreateDirectory(sessionDir);
         Directory.CreateDirectory(teamDir);
         await File.WriteAllTextAsync(Path.Combine(sessionDir, "session.json"),
-            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
+            $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(sessionDir, "blueprint.json"),
             """{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"/output/rapport.md"}]}""", TestContext.Current.CancellationToken);
         await File.WriteAllTextAsync(Path.Combine(teamDir, "studio-team.json"),
             $$"""{"name":"Veille docs","description":"le besoin","profile":"Local","mounts":{{mountsJson}}}""", TestContext.Current.CancellationToken);
+        await File.WriteAllTextAsync(Path.Combine(teamDir, "forge.json"),
+            $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille"}""", TestContext.Current.CancellationToken);
         return (root, teamDir, sessionDir);
     }
 
-    private static ForgeSolutionSummary ReopenedSession(string sessionDir, string teamDir) => new()
-    {
-        Slug = "veille", State = "Promoted", Status = "Promoted",
-        Directory = sessionDir, PromotedTo = teamDir,
-    };
+    /// <summary>The id of the adopted team's session, in its session.json and its forge.json alike.</summary>
+    private static readonly Guid ReopenedSessionId = Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f");
+
+    /// <summary>
+    /// The engine's answer to <c>forge reopen</c> on a team whose session rule R found
+    /// (STUDIO-25): the session as it stands, promoted, nothing rebuilt. The wizard resumes it
+    /// next, as its own child.
+    /// </summary>
+    private static ProcessOutputLine[] FoundStream(string sessionDir, string teamDir) =>
+    [
+        Out($$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","id":"{{ReopenedSessionId}}","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"format":"yaml","resumed":true}"""),
+        Out($$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille","dir":{{System.Text.Json.JsonSerializer.Serialize(sessionDir)}},"path":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}},"state":"promoted","rebuilt":false}"""),
+        Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"promoted","exitCode":0}"""),
+    ];
 
     /// <summary>
     /// D-07. «Modifier» seeds the rows from the sidecar's OWN spelling: a team-relative entry
@@ -1572,8 +1584,9 @@ public class CreateTeamWizardTests
                 Out("""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille","dir":"SESSION","format":"yaml","resumed":true}""".Replace("SESSION", System.Text.Json.JsonSerializer.Serialize(sessionDir).Trim('"'), StringComparison.Ordinal)),
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
             ]);
+            processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "/data/docs:/docs:ro"], vm.TeamMounts);
             var documents = vm.MountRows.Single(r => r.VirtualPath == "/workspace");
@@ -1639,13 +1652,14 @@ public class CreateTeamWizardTests
         try
         {
             var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
+            processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.Equal(
                 ["forge", "resume", "veille", "--events", "jsonl", "--read", Path.Combine(teamDir, "input")],
-                processes.Requests[0].Arguments);
+                processes.Requests[1].Arguments);
         }
         finally
         {
@@ -1840,9 +1854,10 @@ public class CreateTeamWizardTests
             FillStepOne(vm);
             Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
             Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+            processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.Equal(["/data/docs:/docs:ro"], vm.TeamMounts);
             Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
@@ -1850,7 +1865,7 @@ public class CreateTeamWizardTests
             Assert.Equal(["/data/docs:/docs:ro", "./input:/workspace:ro", "./output:/output:rw"], vm.SidecarMounts());
             Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/workspace", IsBound: false });
             // No step-1 folder, no --read: the argv is the one the golden test pins.
-            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[0].Arguments);
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[1].Arguments);
         }
         finally
         {
@@ -1918,9 +1933,10 @@ public class CreateTeamWizardTests
         {
             var opener = new RecordingShellOpener();
             var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"), shellOpener: opener);
+            processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.True(vm.CanOpenFolder);
             Assert.Equal("Opens the folder of the adopted team.", vm.OpenFolderTooltip);
@@ -2104,6 +2120,10 @@ public class CreateTeamWizardTests
     }
 
     /// <summary>The engine's own write of <c>session.json</c>, in the shape the catalog reads.</summary>
+    /// <summary>
+    /// The engine's writes: the session, and — once promoted — the record it leaves in the team,
+    /// carrying the session's id (STUDIO-25).
+    /// </summary>
     private static void WriteEngineSession(string sessionDir, string status, string? promotedTo)
     {
         Directory.CreateDirectory(sessionDir);
@@ -2112,7 +2132,12 @@ public class CreateTeamWizardTests
             : $$""","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(promotedTo)}}""";
         File.WriteAllText(
             Path.Combine(sessionDir, "session.json"),
-            $$"""{"v":1,"slug":"veille","title":"Veille","format":"yaml","state":"{{status}}","status":"{{status}}"{{promotedField}}}""");
+            $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille","title":"Veille","format":"yaml","state":"{{status}}","status":"{{status}}"{{promotedField}}}""");
+        if (promotedTo is not null)
+        {
+            Directory.CreateDirectory(promotedTo);
+            File.WriteAllText(Path.Combine(promotedTo, "forge.json"), $$"""{"v":1,"id":"{{ReopenedSessionId}}","slug":"veille"}""");
+        }
     }
 
     private static string SelectFolderTitle => EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder];
@@ -2218,10 +2243,12 @@ public class CreateTeamWizardTests
         try
         {
             var input = Path.Combine(teamDir, "input");
-            var (shell, store, picker) = Shell(new FakeDirectoryProbe(teamDir, input), teamsRoot: Path.Combine(root, "teams"));
+            var forge = new FakeProcessLauncher();
+            forge.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
+            var (shell, store, picker) = Shell(new FakeDirectoryProbe(teamDir, input), teamsRoot: Path.Combine(root, "teams"), forge: forge);
             picker.FolderToReturn = input;
             var wizard = shell.CreateTeam;
-            await wizard.ReopenTeamAsync(TeamCatalog.Describe(teamDir), ReopenedSession(sessionDir, teamDir));
+            await wizard.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             wizard.PickFolderCommand.Execute("/workspace");
 
@@ -2536,12 +2563,19 @@ public class CreateTeamWizardTests
         return (root, teamDir, sessionDir);
     }
 
-    /// <summary>The engine's own writes during <c>forge reopen</c>: the rebuilt session, parked at the dry pause.</summary>
+    /// <summary>The id of the session a rebuild writes, in its session.json and the team's forge.json alike.</summary>
+    private static readonly Guid RebuiltSessionId = Guid.Parse("0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b");
+
+    /// <summary>
+    /// The engine's own writes during <c>forge reopen</c>: the rebuilt session, parked at the dry
+    /// pause, and its id in the team's forge.json (STUDIO-25).
+    /// </summary>
     private static void WriteRebuiltSession(string sessionDir, string teamDir)
     {
         Directory.CreateDirectory(sessionDir);
         File.WriteAllText(Path.Combine(sessionDir, "session.json"),
-            $$"""{"v":1,"slug":"veille-docs","title":"veille","format":"yaml","state":"Test","status":"Active","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""");
+            $$"""{"v":1,"id":"{{RebuiltSessionId}}","slug":"veille-docs","title":"veille","format":"yaml","state":"Test","status":"Active","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDir)}}}""");
+        File.WriteAllText(Path.Combine(teamDir, "forge.json"), $$"""{"v":1,"id":"{{RebuiltSessionId}}","slug":"veille-docs"}""");
         File.WriteAllText(Path.Combine(sessionDir, "blueprint.json"),
             """{"crew":{"name":"veille","goal":"g"},"agents":[{"key":"a","role":"Scanner","goal":"g","tools":["file_write"]}],"tasks":[{"key":"t","description":"d","expectedOutput":"e","agent":"a","deliverable":"/output/rapport.md"}],"rationale":"read back"}""");
     }
@@ -2570,7 +2604,7 @@ public class CreateTeamWizardTests
             var team = TeamCatalog.Describe(teamDir);
             Assert.True(team.HasYamlCrew);
 
-            await vm.ReopenTeamAsync(team, session: null);
+            await vm.ReopenTeamAsync(team);
 
             // One child, the reopen — no resume: the dry pause opens without an engine.
             Assert.Equal(["forge", "reopen", teamDir, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
@@ -2632,7 +2666,7 @@ public class CreateTeamWizardTests
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"failed","exitCode":1}"""),
             ]);
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.True(vm.HasFailure);
             Assert.Equal(WizardFailureKind.ConfigRefused, vm.Failure!.Kind);
@@ -2676,7 +2710,7 @@ public class CreateTeamWizardTests
                 Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
             ]);
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             // Once, and before the engine was even asked — not a second time on arrival.
             Assert.Equal(1, activated);
@@ -2715,7 +2749,7 @@ public class CreateTeamWizardTests
             var childrenWhileBusy = -1;
             processes.WhileRunning = () =>
             {
-                var refused = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+                var refused = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
                 Assert.True(refused.IsCompletedSuccessfully);
                 saidWhileBusy = vm.StatusMessage;
                 childrenWhileBusy = processes.Requests.Count;
@@ -2771,7 +2805,7 @@ public class CreateTeamWizardTests
             processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
             processes.OutputToEmit.AddRange(RebuiltStream(sessionDir, teamDir));
 
-            var reopen = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+            var reopen = vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             // The child has run and exited; its events and the epilogue are queued, not landed
             // — and the reopen waits for them instead of reading an empty model.
@@ -2812,7 +2846,7 @@ public class CreateTeamWizardTests
             processes.WhileRunning = () => WriteRebuiltSession(sessionDir, teamDir);
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.False(vm.HasFailure);
             Assert.Equal(2, vm.Step);
@@ -2836,11 +2870,45 @@ public class CreateTeamWizardTests
             var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
 
-            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir), session: null);
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.True(vm.HasFailure);
             Assert.Equal(WizardFailureKind.Unknown, vm.Failure!.Kind);
             Assert.Contains("team.reopened", vm.Failure.Detail, StringComparison.Ordinal);
+            Assert.Equal(1, vm.Step);
+            Assert.Null(vm.ReopenedTeamPath);
+        }
+        finally
+        {
+            Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-25: the disk fallback only takes a session the engine LINKED to the folder — one
+    /// pointing back at it, as every session <c>forge reopen</c> answers with does. A duplicated
+    /// team whose record still carries its original's id, behind an engine that announced
+    /// nothing, never opens the original's session: the card says nothing was announced.
+    /// </summary>
+    [Fact]
+    public async Task The_disk_fallback_never_opens_a_session_the_team_is_not_linked_to()
+    {
+        var (root, originalDir, _) = await WriteReopenableTeam("""["/data/docs:/docs:ro"]""");
+        try
+        {
+            var copyDir = Path.Combine(root, "teams", "veille-docs-copie");
+            Directory.CreateDirectory(copyDir);
+            File.Copy(Path.Combine(originalDir, "forge.json"), Path.Combine(copyDir, "forge.json"));
+            File.Copy(Path.Combine(originalDir, "studio-team.json"), Path.Combine(copyDir, "studio-team.json"));
+            var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"), workspace: root);
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+            await vm.ReopenTeamAsync(TeamCatalog.Describe(copyDir));
+
+            Assert.Equal(["forge", "reopen", copyDir, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
+            Assert.True(vm.HasFailure);
+            Assert.Contains("no session linked to this team", vm.Failure!.Detail, StringComparison.Ordinal);
+            Assert.Null(vm.SessionSlug);
             Assert.Equal(1, vm.Step);
             Assert.Null(vm.ReopenedTeamPath);
         }

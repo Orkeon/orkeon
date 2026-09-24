@@ -2236,15 +2236,17 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// sidecar. Re-adoption then updates the SAME folder: the destination is pinned,
     /// renaming only changes the display name.
     /// <para>
-    /// With no <paramref name="session"/> (FORGE-09) — an imported team, or one whose session
-    /// was deleted — the engine's <c>forge reopen</c> rebuilds one from the team's own
-    /// <c>crew/</c> first: offline, no LLM. It lands at the dry pause, so the wizard opens the
+    /// The session is always the engine's answer (STUDIO-25, D-04): <c>forge reopen</c> on the
+    /// folder, offline and without an LLM, finds the session rule R links it to — the one whose
+    /// id the folder's <c>forge.json</c> carries, unless the folder is a copy — or rebuilds one
+    /// from the team's own <c>crew/</c> (FORGE-09): an imported team, one whose session was
+    /// deleted, a duplicated one. Studio never looks the session up itself, so a copy can never
+    /// open its original's. A rebuilt session lands at the dry pause, so the wizard opens the
     /// Composer without an engine, exactly as after <c>--dry</c>: amend an agent, try the team,
-    /// or keep it as it is. A reopen that finds an existing session at any other state resumes
-    /// it through the engine, as above.
+    /// or keep it as it is. A session found at any other state resumes through the engine.
     /// </para>
     /// </summary>
-    public async Task ReopenTeamAsync(TeamSummary team, ForgeSolutionSummary? session)
+    public async Task ReopenTeamAsync(TeamSummary team)
     {
         ArgumentNullException.ThrowIfNull(team);
         if (RefuseWhileEngineBusy())
@@ -2254,21 +2256,18 @@ public sealed class CreateTeamViewModel : ObservableObject
         ClearStepOneFolders();
         ResetProjection();
         _reopenedTeamPath = team.Path;
-        // The screen comes forward on the click, not once the session exists: with none to
-        // hydrate, the engine rebuilds one first (FORGE-09), and a click that showed nothing
-        // for a second or two got clicked again — onto a busy engine, which dropped it (owner
-        // report of 2026-09-21, « two clicks »). The rebuild shows as the engine working.
+        // The screen comes forward on the click, not once the engine has answered: the reopen —
+        // a rebuild when no session is linked (FORGE-09) — takes a second or two, and a click
+        // that showed nothing for that long got clicked again, onto a busy engine, which dropped
+        // it (owner report of 2026-09-21, « two clicks »). The reopen shows as the engine working.
         SessionActivated?.Invoke(this, EventArgs.Empty);
 
+        var session = await ReopenSessionAsync(team).ConfigureAwait(true);
         if (session is null)
         {
-            session = await RebuildSessionAsync(team).ConfigureAwait(true);
-            if (session is null)
-            {
-                // The failure card says why (no CLI, no readable crew…); the team stays as it is.
-                _reopenedTeamPath = null;
-                return;
-            }
+            // The failure card says why (no CLI, no readable crew…); the team stays as it is.
+            _reopenedTeamPath = null;
+            return;
         }
 
         ForgeSessionHydrator.Hydrate(_model, session.Directory);
@@ -2308,10 +2307,10 @@ public sealed class CreateTeamViewModel : ObservableObject
 
     /// <summary>
     /// Runs <c>forge reopen &lt;team&gt;</c> and reads the session it found or rebuilt off the
-    /// stream: <c>session.started</c> gives the slug and directory, <c>team.reopened</c> the
+    /// stream: <c>session.started</c> gives the slug, id and directory, <c>team.reopened</c> the
     /// state. Null when the engine produced none — the run's own failure card is up by then.
     /// </summary>
-    private async Task<ForgeSolutionSummary?> RebuildSessionAsync(TeamSummary team)
+    private async Task<ForgeSolutionSummary?> ReopenSessionAsync(TeamSummary team)
     {
         await RunEngineAsync(new ForgeStartRequest
         {
@@ -2327,16 +2326,25 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (HasFailure)
                 return null;
 
-            // A clean exit that announced no session: the one it wrote is on the disk, where
-            // My teams reads it — the source the second click used to reach. And when the
-            // disk has none either, say so rather than sit on step 1 as if nothing happened.
-            if (ForgeSessionCatalog.FindByPromotedTo(_workspace, team.Path) is { } written)
+            // A clean exit that announced no session: the engine's answer is on the disk all
+            // the same — the id it left in the team's forge.json, found or rebuilt (STUDIO-25),
+            // names the session, and a session the engine linked points back at this very
+            // folder. Anything short of that link is not taken: a copy whose record still
+            // carries its original's id must never open the original's session. And when the
+            // disk has no such session either, say so rather than sit on step 1 as if nothing
+            // happened.
+            if (ForgeSessionCatalog.ReadTeamSessionId(team.Path) is { } id
+                && ForgeSessionCatalog.FindById(_workspace, id) is { } written
+                && TeamSessionLink.Resolve(team.Path, id, written.Promotion, ForgeSessionCatalog.ReadTeamSessionId)
+                    == TeamSessionLinkKind.Linked)
+            {
                 return written;
+            }
 
             FailWith(
                 WizardFailureKind.Unknown,
                 "The engine exited without announcing the reopened session (no session.started / "
-                + "team.reopened on the stream), and no session pointing at this team was found on disk.",
+                + "team.reopened on the stream), and no session linked to this team was found on disk.",
                 EngineCommandLine,
                 exitCode: null);
             return null;
@@ -2348,6 +2356,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         return new ForgeSolutionSummary
         {
             Slug = slug,
+            Id = _model.SessionId,
             State = documentState,
             Status = documentState is "Ready" or "Promoted" or "Abandoned" or "Failed" ? documentState : "Active",
             Directory = directory,

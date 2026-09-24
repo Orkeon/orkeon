@@ -57,6 +57,13 @@ internal sealed record SessionSeed
     /// <summary>Session slug, and its directory name.</summary>
     public required string Slug { get; init; }
 
+    /// <summary>
+    /// The session's stable id (STUDIO-25), pinned like every other value of the scenario. A
+    /// session the engine writes today always has one; the promoted team's <c>forge.json</c>
+    /// carries it too.
+    /// </summary>
+    public Guid? Id { get; init; }
+
     /// <summary>Engine state, as <c>session.json</c> spells it.</summary>
     public required string State { get; init; }
 
@@ -70,9 +77,9 @@ internal sealed record SessionSeed
     public required string UpdatedAt { get; init; }
 
     /// <summary>
-    /// The team this session was promoted to, by slug. Resolved to a path at write time — and it
-    /// is that path which makes «Modifier» light up on the team card, since the reverse lookup goes
-    /// through <c>promotedTo</c> and nothing else.
+    /// The team this session was promoted to, by slug. Resolved to a path at write time: the
+    /// session's <c>promotedTo</c>, and the team's <c>forge.json</c> carrying the session's
+    /// <see cref="Id"/> — what lights «Modifier» up on the card and what rule R links (STUDIO-25).
     /// </summary>
     public string? PromotedToTeamSlug { get; init; }
 

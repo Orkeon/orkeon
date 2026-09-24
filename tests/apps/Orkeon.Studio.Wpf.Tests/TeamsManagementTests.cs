@@ -282,31 +282,34 @@ public sealed class TeamsManagementTests
     }
 
     /// <summary>
-    /// FORGE-09. « Modify » is no longer hostage to the session: a team some session promoted
-    /// reopens through it; a team no session points at but whose <c>crew/</c> is YAML reopens
-    /// through a session the engine rebuilds — the request then carries no session, and the
-    /// tooltip says so; only a team with nothing to read back keeps the button disabled.
+    /// STUDIO-25, D-04. The card never looks a session up: « Modify » is offered on a team whose
+    /// forge.json names a session — the engine finds it — and on a team whose YAML crew can be
+    /// read back — the engine rebuilds one — the tooltip saying which; only a team with neither
+    /// keeps it disabled. The request carries the team and nothing else, whatever sessions
+    /// exist: even one whose promotedTo names the folder decides nothing.
     /// </summary>
     [Fact]
-    public void Modify_is_offered_through_the_session_or_through_a_rebuild_and_refused_only_without_a_crew()
+    public void Modify_is_offered_on_a_team_naming_a_session_or_readable_back_and_carries_only_the_team()
     {
         var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
         try
         {
             var promoted = SeedTeam(root, "promue", "Promue");
-            Directory.CreateDirectory(Path.Combine(promoted, "crew"));
-            File.WriteAllText(Path.Combine(promoted, "crew", "config.yaml"), "name: promue\n");
+            File.WriteAllText(
+                Path.Combine(promoted, ForgeSessionCatalog.TeamRecordFileName),
+                """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"promue"}""");
             var orphan = SeedTeam(root, "orpheline", "Orpheline");
             Directory.CreateDirectory(Path.Combine(orphan, "crew"));
             File.WriteAllText(Path.Combine(orphan, "crew", "config.yaml"), "name: orpheline\n");
             var bare = SeedTeam(root, "nue", "Nue");
 
-            var session = new ForgeSolutionSummary
+            // A session whose promotedTo names the bare folder: a path alone links nothing.
+            var pointing = new ForgeSolutionSummary
             {
-                Slug = "promue", State = "Promoted", Status = "Promoted",
-                Directory = Path.Combine(root, "session"), PromotedTo = promoted,
+                Slug = "nue", State = "Promoted", Status = "Promoted",
+                Directory = Path.Combine(root, "session"), PromotedTo = bare,
             };
-            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [session] });
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = root, LoadSessions = () => [pointing] });
             var requests = new List<TeamModifyEventArgs>();
             teams.ModifyRequested += (_, e) => requests.Add(e);
             var strings = Orkeon.Studio.Core.Localization.EnglishStudioStrings.Instance;
@@ -322,11 +325,75 @@ public sealed class TeamsManagementTests
 
             byName["Promue"].ModifyCommand.Execute(null);
             byName["Orpheline"].ModifyCommand.Execute(null);
-            Assert.Equal(2, requests.Count);
-            Assert.Same(session, requests[0].Session);
-            Assert.Equal(promoted, requests[0].Team.Path);
-            Assert.Null(requests[1].Session);
-            Assert.Equal(orphan, requests[1].Team.Path);
+            byName["Nue"].ModifyCommand.Execute(null);
+            Assert.Equal([promoted, orphan], requests.Select(request => request.Team.Path));
+        }
+        finally
+        {
+            if (Directory.Exists(root))
+                Directory.Delete(root, recursive: true);
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-25, the owner's copy case end to end through the ViewModels: a team duplicated from
+    /// its card carries its original's forge.json, id included, while the original's session
+    /// still points at the original. « Modify » on the copy asks the engine about the COPY's
+    /// folder — <c>forge reopen</c>, one child — and opens the session the engine gives the copy;
+    /// the original's session is never resumed, nor even named on an argv.
+    /// </summary>
+    [Fact]
+    public async Task Modify_on_a_duplicated_team_goes_through_forge_reopen_and_never_opens_the_originals_session()
+    {
+        var root = Path.Combine(Path.GetTempPath(), "orkeon-teams-" + Guid.NewGuid().ToString("N"));
+        try
+        {
+            var teamsRoot = Path.Combine(root, "teams");
+            var original = SeedTeam(teamsRoot, "veille", "Veille");
+            Directory.CreateDirectory(Path.Combine(original, "crew"));
+            await File.WriteAllTextAsync(
+                Path.Combine(original, "crew", "config.yaml"), "name: veille\ngoal: g\n", TestContext.Current.CancellationToken);
+            await File.WriteAllTextAsync(
+                Path.Combine(original, ForgeSessionCatalog.TeamRecordFileName),
+                """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille"}""",
+                TestContext.Current.CancellationToken);
+            var originalSession = Path.Combine(root, ".orkeon", "forge", "veille");
+            Directory.CreateDirectory(originalSession);
+            await File.WriteAllTextAsync(
+                Path.Combine(originalSession, ForgeSessionCatalog.SessionFileName),
+                $$"""{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml","state":"Promoted","status":"Promoted","promotedTo":{{System.Text.Json.JsonSerializer.Serialize(original)}}}""",
+                TestContext.Current.CancellationToken);
+
+            var copy = TeamCatalog.Duplicate(original);
+            Assert.NotNull(copy);
+            var teams = new TeamsViewModel(new TeamsDependencies { TeamsRoot = teamsRoot, WorkspaceDirectory = root });
+            var copyCard = teams.Teams.Single(card => card.Summary.Path == copy);
+            Assert.True(copyCard.CanModify);
+
+            // The engine's answer for a copy: a session of its own, rebuilt from the copy's crew
+            // and parked at the dry pause, its id written into the copy's forge.json.
+            var (wizard, processes, _) = CreateTeamWizardTests.Build(teamsRoot: teamsRoot, workspace: root);
+            var ownSession = Path.Combine(root, ".orkeon", "forge", "veille-copie");
+            processes.OutputToEmit.AddRange(
+            [
+                Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
+                    $$"""{"v":2,"seq":1,"ts":"t","kind":"session.started","slug":"veille-copie","id":"0b9e8d7c-6a5f-4e3d-8c2b-1a0f9e8d7c6b","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"format":"yaml","resumed":false}"""),
+                Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
+                    $$"""{"v":2,"seq":2,"ts":"t","kind":"team.reopened","slug":"veille-copie","dir":{{System.Text.Json.JsonSerializer.Serialize(ownSession)}},"path":{{System.Text.Json.JsonSerializer.Serialize(copy)}},"state":"test","rebuilt":true,"brief":"derived"}"""),
+                Orkeon.Studio.Core.Process.ProcessOutputLine.Now(Orkeon.Studio.Core.Process.ProcessOutputChannel.StandardOutput,
+                    """{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+            ]);
+            Task? reopening = null;
+            teams.ModifyRequested += (_, e) => reopening = wizard.ReopenTeamAsync(e.Team);
+
+            copyCard.ModifyCommand.Execute(null);
+            Assert.NotNull(reopening);
+            await reopening;
+
+            Assert.Equal(["forge", "reopen", copy!, "--events", "jsonl"], Assert.Single(processes.Requests).Arguments);
+            Assert.Equal("veille-copie", wizard.SessionSlug);
+            Assert.Equal(copy, wizard.ReopenedTeamPath);
+            Assert.DoesNotContain(processes.Requests, request => request.Arguments.Contains("veille"));
         }
         finally
         {

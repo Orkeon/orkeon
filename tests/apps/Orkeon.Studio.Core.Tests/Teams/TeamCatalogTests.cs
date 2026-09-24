@@ -1,4 +1,5 @@
 using Orkeon.Domain.FileSystem;
+using Orkeon.Studio.Core.Forge;
 using Orkeon.Studio.Core.Teams;
 
 namespace Orkeon.Studio.Core.Tests.Teams;
@@ -410,6 +411,29 @@ public sealed class TeamCatalogDescribeTargetTests : IDisposable
         File.WriteAllText(Path.Combine(flat, "agents", "a.yaml"), "role: a\n");
         Assert.False(TeamCatalog.Describe(flat).HasYamlCrew);
         Assert.False(TeamCatalog.Describe(Path.Combine(_root, "absent")).HasYamlCrew);
+    }
+
+    /// <summary>
+    /// STUDIO-25: a team names its workshop session by the id its <c>forge.json</c> carries — the
+    /// only link « Modify » needs to know exists; which session it is, rule R decides in the
+    /// engine. A copy carries the same id as its original until the engine rewrites it, and a
+    /// folder without the record carries none.
+    /// </summary>
+    [Fact]
+    public void A_team_names_its_session_by_the_id_its_forge_json_carries()
+    {
+        var team = Path.Combine(_root, "veille");
+        Directory.CreateDirectory(team);
+        Assert.Null(TeamCatalog.Describe(team).ForgeSessionId);
+
+        File.WriteAllText(
+            Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName),
+            """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille"}""");
+        Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), TeamCatalog.Describe(team).ForgeSessionId);
+
+        var copy = TeamCatalog.Duplicate(team);
+        Assert.NotNull(copy);
+        Assert.Equal(TeamCatalog.Describe(team).ForgeSessionId, TeamCatalog.Describe(copy!).ForgeSessionId);
     }
 }
 

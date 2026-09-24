@@ -12,6 +12,14 @@ public sealed class FakeProcessLauncher : IProcessLauncher
 
     public List<ProcessOutputLine> OutputToEmit { get; } = [];
 
+    /// <summary>
+    /// Scripts for the next runs, in order: each launch plays the next one instead of
+    /// <see cref="OutputToEmit"/>, which answers again once the queue is empty. « Modify » is two
+    /// children — <c>forge reopen</c>, then the resume of the session it named — and each
+    /// speaks its own lines.
+    /// </summary>
+    public Queue<IReadOnlyList<ProcessOutputLine>> NextRuns { get; } = new();
+
     public int ExitCode { get; set; }
 
     public bool HonourCancellation { get; set; }
@@ -67,10 +75,11 @@ public sealed class FakeProcessLauncher : IProcessLauncher
         _onOutput = onOutput;
         try
         {
+            var lines = NextRuns.TryDequeue(out var scripted) ? scripted : OutputToEmit;
             request.OnInputReady?.Invoke(new RecordingInputWriter(this));
             WhileRunning?.Invoke();
 
-            foreach (var line in OutputToEmit)
+            foreach (var line in lines)
                 onOutput?.Invoke(line);
         }
         finally

@@ -233,6 +233,25 @@ public sealed class ForgeSessionHydratorTests : IDisposable
     }
 
     /// <summary>
+    /// The identity comes from <c>session.json</c> as the live <c>session.started</c> would carry
+    /// it — slug, directory, format and, since STUDIO-25, the session's stable id.
+    /// </summary>
+    [Fact]
+    public void The_identity_is_read_from_the_session_file_id_included()
+    {
+        File.WriteAllText(Path.Combine(_directory, "session.json"),
+            """{"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml","state":"Test","status":"Active"}""");
+
+        var model = new ForgeSessionModel();
+        ForgeSessionHydrator.Hydrate(model, _directory);
+
+        Assert.Equal("veille", model.Slug);
+        Assert.Equal(_directory, model.Directory);
+        Assert.Equal("yaml", model.Format);
+        Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), model.SessionId);
+    }
+
+    /// <summary>
     /// The recalled verdict carries the whole cost of the last trial, not a subset of it.
     /// The live <c>verdict.ready</c> declares six figures (W-08) and <c>last-run.json</c>
     /// persists all six, so a resume that folds in only some of them shows a screen the
@@ -319,7 +338,7 @@ public sealed class ForgeSessionCatalogTests : IDisposable
     {
         // Verbatim shape of the CLI's session.json (v1) — the drift pin.
         WriteSession("veille", """
-            {"v":2,"slug":"veille","title":"Veille fournisseurs","format":"yaml","state":"Promoted","status":"Promoted",
+            {"v":2,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","title":"Veille fournisseurs","format":"yaml","state":"Promoted","status":"Promoted",
              "iteration":2,"repairAttempts":0,"budget":{"maxIterations":3},"promotedTo":"/solutions/veille",
              "createdAt":"2026-08-18T09:00:00Z","updatedAt":"2026-08-19T08:00:00Z"}
             """);
@@ -343,6 +362,8 @@ public sealed class ForgeSessionCatalogTests : IDisposable
         Assert.True(adopted.CanRelaunch);
         Assert.False(adopted.CanResume);
         Assert.Equal("/solutions/veille", adopted.PromotedTo);
+        Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), adopted.Id);
+        Assert.Null(inProgress.Id);
     }
 
     [Fact]
@@ -352,24 +373,67 @@ public sealed class ForgeSessionCatalogTests : IDisposable
         Assert.Empty(ForgeSessionCatalog.List(_workspace));
     }
 
+    /// <summary>
+    /// STUDIO-25: a session is found by the id its <c>session.json</c> carries — the id a team's
+    /// <c>forge.json</c> names — never by comparing paths. A session written before the id
+    /// carries none and is found by nothing (D-06); two sessions sharing an id (a session
+    /// directory copied by hand) answer with the most recently touched, the CLI's pick too.
+    /// </summary>
     [Fact]
-    public void The_reverse_lookup_finds_the_session_that_adopted_a_team()
+    public void A_session_is_found_by_its_id_and_never_by_a_path()
     {
-        // W-09 «Modifier»: the sidecar records no session; promotedTo is the only link.
-        var teamDirectory = Path.Combine(_workspace, "teams", "veille-docs");
-        Directory.CreateDirectory(teamDirectory);
-        WriteSession("veille", $$"""
-            {"v":2,"slug":"veille","title":"Veille","format":"yaml","state":"Promoted","status":"Promoted",
-             "promotedTo":{{System.Text.Json.JsonSerializer.Serialize(teamDirectory + Path.DirectorySeparatorChar)}},
-             "updatedAt":"2026-08-19T08:00:00Z"}
+        var id = Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f");
+        WriteSession("veille", """
+            {"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","format":"yaml","state":"Promoted",
+             "status":"Promoted","promotedTo":"/teams/veille","updatedAt":"2026-08-19T08:00:00Z"}
             """);
-        WriteSession("autre", """
-            {"v":2,"slug":"autre","format":"yaml","state":"Test","status":"Active","updatedAt":"2026-08-19T09:00:00Z"}
+        WriteSession("veille-copie-a-la-main", """
+            {"v":1,"id":"6F1C2A0E-4B7D-4E9A-9F53-1D2C3B4A5E6F","slug":"veille-copie-a-la-main","format":"yaml","state":"Promoted",
+             "status":"Promoted","promotedTo":"/teams/veille","updatedAt":"2026-08-19T09:00:00Z"}
+            """);
+        WriteSession("ancienne", """
+            {"v":1,"slug":"ancienne","format":"yaml","state":"Promoted","status":"Promoted",
+             "promotedTo":"/teams/ancienne","updatedAt":"2026-08-19T10:00:00Z"}
+            """);
+        WriteSession("illisible", """
+            {"v":1,"id":"pas-un-id","slug":"illisible","format":"yaml","state":"Test","status":"Active","updatedAt":"2026-08-19T11:00:00Z"}
             """);
 
-        // Trailing separators do not defeat the match; an unadopted folder finds nothing.
-        Assert.Equal("veille", ForgeSessionCatalog.FindByPromotedTo(_workspace, teamDirectory)?.Slug);
-        Assert.Null(ForgeSessionCatalog.FindByPromotedTo(_workspace, Path.Combine(_workspace, "teams", "inconnue")));
+        Assert.Equal("veille-copie-a-la-main", ForgeSessionCatalog.FindById(_workspace, id)?.Slug);
+        Assert.Null(ForgeSessionCatalog.FindById(_workspace, Guid.NewGuid()));
+        Assert.Null(ForgeSessionCatalog.FindById(_workspace, Guid.Empty));
+        var listed = ForgeSessionCatalog.List(_workspace);
+        Assert.Null(listed.Single(s => s.Slug == "ancienne").Id);
+        Assert.Null(listed.Single(s => s.Slug == "illisible").Id);
+    }
+
+    /// <summary>
+    /// STUDIO-25: Studio reads the id a team folder's <c>forge.json</c> carries — read-only, the
+    /// CLI writes it. Absent, broken, or not an id: no id, never a throw.
+    /// </summary>
+    [Fact]
+    public void The_id_a_team_folder_carries_is_read_from_its_forge_json()
+    {
+        var team = Path.Combine(_workspace, "teams", "veille");
+        Directory.CreateDirectory(team);
+        var record = Path.Combine(team, ForgeSessionCatalog.TeamRecordFileName);
+
+        Assert.Null(ForgeSessionCatalog.ReadTeamSessionId(team));
+
+        // Verbatim shape of the CLI's forge.json — the drift pin.
+        File.WriteAllText(record, """
+            {"v":1,"id":"6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f","slug":"veille","title":"Veille","format":"yaml",
+             "promotedAt":"2026-08-19T08:00:00Z","brief":{"goal":"Veille fournisseurs"}}
+            """);
+        Assert.Equal(Guid.Parse("6f1c2a0e-4b7d-4e9a-9f53-1d2c3b4a5e6f"), ForgeSessionCatalog.ReadTeamSessionId(team));
+
+        File.WriteAllText(record, """{"v":1,"id":"pas-un-id","slug":"veille"}""");
+        Assert.Null(ForgeSessionCatalog.ReadTeamSessionId(team));
+        File.WriteAllText(record, """{"v":1,"slug":"veille"}""");
+        Assert.Null(ForgeSessionCatalog.ReadTeamSessionId(team));
+        File.WriteAllText(record, "{ not json");
+        Assert.Null(ForgeSessionCatalog.ReadTeamSessionId(team));
+        Assert.Null(ForgeSessionCatalog.ReadTeamSessionId(Path.Combine(_workspace, "nulle-part")));
     }
 
     /// <summary>

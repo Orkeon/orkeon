@@ -139,6 +139,13 @@ public sealed class ForgeSessionModel
     /// <summary>Session slug, once <c>session.started</c> arrived.</summary>
     public string? Slug { get; private set; }
 
+    /// <summary>
+    /// The session's stable id from <c>session.started</c> (STUDIO-25) — what the team's
+    /// <c>forge.json</c> carries once the session is promoted. Null when the engine sent none,
+    /// or something that is not an id.
+    /// </summary>
+    public Guid? SessionId { get; private set; }
+
     /// <summary>Absolute session directory (level 3).</summary>
     public string? Directory { get; private set; }
 
@@ -294,6 +301,9 @@ public sealed class ForgeSessionModel
         {
             case ForgeEventKinds.SessionStarted:
                 Slug = orkeonEvent.GetString("slug");
+                SessionId = Guid.TryParse(orkeonEvent.GetString("id"), out var sessionId) && sessionId != Guid.Empty
+                    ? sessionId
+                    : null;
                 Directory = orkeonEvent.GetString("dir");
                 Format = orkeonEvent.GetString("format");
                 Resumed = orkeonEvent.GetBool("resumed") ?? false;

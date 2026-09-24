@@ -1,4 +1,6 @@
+using Orkeon.Domain.FileSystem;
 using Orkeon.Studio.Core.Forge;
+using Orkeon.Studio.Core.Process;
 using Orkeon.Studio.Core.Teams;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Fixtures;
 using Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
@@ -87,19 +89,39 @@ public sealed class CaptureWorldWriterTests : IAsyncLifetime
     }
 
     /// <summary>
-    /// «Modifier» on a team card is gated on a session pointing back at the folder through
-    /// <c>promotedTo</c>. Seeding that link is what makes step 4 of the wizard reachable at all,
-    /// so it is worth an assertion of its own rather than a discovery on Windows.
+    /// «Modifier» on a team card is gated on the session id the team's <c>forge.json</c> carries,
+    /// and the wizard asks the engine which session that is (<c>forge reopen</c>, STUDIO-25).
+    /// Seeding both halves of the link — the record in the team, the scripted reopen naming the
+    /// promoted session — is what makes step 4 of the wizard reachable at all, so it is worth an
+    /// assertion of its own rather than a discovery on Windows.
     /// </summary>
     [Fact]
-    public void The_adopted_team_is_found_from_its_own_session()
+    public async Task The_adopted_team_names_its_own_session_and_the_engine_reopens_that_one()
     {
-        var session = ForgeSessionCatalog.FindByPromotedTo(
-            _worlds.Seeded.ForgeWorkspace,
-            _worlds.Seeded.TeamDirectory("veille-concurrentielle"));
-
+        var team = _worlds.Seeded.TeamDirectory("veille-concurrentielle");
+        var id = ForgeSessionCatalog.ReadTeamSessionId(team);
+        Assert.NotNull(id);
+        var session = ForgeSessionCatalog.FindById(_worlds.Seeded.ForgeWorkspace, id.Value);
         Assert.NotNull(session);
         Assert.Equal(StudioFixture.PromotedSessionSlug, session.Slug);
+        Assert.Equal(TeamSessionLinkKind.Linked, TeamSessionLink.Resolve(team, id, session.Promotion, ForgeSessionCatalog.ReadTeamSessionId));
+
+        var lines = new List<string>();
+        await _worlds.Seeded.Cli.RunAsync(
+            new ProcessLaunchRequest { FileName = "orkeon", Arguments = ["forge", "reopen", team, "--events", "jsonl"] },
+            line => lines.Add(line.Text),
+            TestContext.Current.CancellationToken);
+        var model = new ForgeSessionModel();
+        foreach (var line in lines)
+        {
+            Assert.True(Orkeon.Studio.Core.Events.OrkeonEventParser.TryParse(line, out var parsed), line);
+            model.Feed(parsed!);
+        }
+
+        Assert.Equal(StudioFixture.PromotedSessionSlug, model.Slug);
+        Assert.Equal(id, model.SessionId);
+        Assert.Equal(session.Directory, model.Directory);
+        Assert.False(model.ReopenedRebuilt);
     }
 
     [Fact]
