@@ -12,7 +12,7 @@ problem:
   es: "Preparar un primer borrador de mis informes de imagen, que reviso, corrijo y firmo personalmente"
   de: "Einen ersten Entwurf meiner radiologischen Befunde erstellen, den ich selbst prüfe, korrigiere und unterschreibe"
   zh-Hans: "为我的影像报告准备初稿，再由我亲自审阅、修改并签字"
-tags: ["radiology", "medical-reports", "human-review"]
+tags: ["radiology", "medical-reports", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

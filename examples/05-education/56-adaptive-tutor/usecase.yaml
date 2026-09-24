@@ -12,7 +12,7 @@ problem:
   es: "Proponer explicaciones y ejercicios adaptados al nivel y a la forma de aprender de un alumno"
   de: "Erklärungen und Übungen anbieten, die zu Niveau und Lernstil der Lernenden passen"
   zh-Hans: "根据学习者的水平和学习方式，提供量身定制的讲解和练习"
-tags: ["education", "tutoring", "personalized-learning", "exercises"]
+tags: ["tutoring", "personalized-learning", "exercises"]
 mounts:
   - "./output:/output:rw"
 importable: true

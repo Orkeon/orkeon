@@ -12,7 +12,7 @@ problem:
   es: "Convertir mi aprendizaje en un juego, con retos, puntos, insignias y niveles"
   de: "Mein Lernen in ein Spiel verwandeln, mit Herausforderungen, Punkten, Abzeichen und Levels"
   zh-Hans: "把我的学习变成游戏，设置挑战、积分、徽章和等级"
-tags: ["education", "gamification", "challenges"]
+tags: ["gamification", "challenges", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true

@@ -12,7 +12,7 @@ problem:
   es: "Supervisar un ensayo clínico, desde el reclutamiento hasta la seguridad de los participantes, y someter los siguientes pasos a mi aprobación"
   de: "Eine klinische Studie von der Rekrutierung bis zur Sicherheit der Teilnehmenden begleiten und mir das weitere Vorgehen zur Freigabe vorlegen"
   zh-Hans: "跟踪一项临床试验，从招募到受试者安全全程把关，并把下一步安排交给我审定"
-tags: ["clinical-trials", "patient-safety", "human-review"]
+tags: ["clinical-trials", "patient-safety", "human-in-the-loop"]
 mounts:
   - "./output:/output:rw"
 importable: true
