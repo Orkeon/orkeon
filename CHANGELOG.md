@@ -7,6 +7,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — Studio finds the CLI it was installed with on Windows
+
+- **The zip and MSI installs no longer leave Studio without an engine.** Studio lives in
+  `libexec\orkeon-studio\` and the CLI in `libexec\orkeon\orkeon.exe`, a directory the lookup never
+  probed; `bin\` on `PATH` holds only `.cmd` wrappers, which the Windows lookup (`orkeon.exe` only)
+  rejects. Studio therefore reported « the orkeon command-line tool was not located », or silently
+  drove an older `orkeon.exe` found on `PATH` (a global dotnet tool). `OrkeonBinaryLocator` now probes
+  the `libexec/orkeon` sibling right after the install directories.
+
 ### Added — My teams stays readable with many teams: search, order, the Archives view, an undo banner, the archive suggestion (STUDIO-32)
 
 - **A view over the cards, in memory.** The screen gains:

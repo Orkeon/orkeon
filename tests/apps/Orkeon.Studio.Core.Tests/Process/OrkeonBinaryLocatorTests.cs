@@ -48,6 +48,26 @@ public sealed class OrkeonBinaryLocatorTests
     }
 
     [Fact]
+    public void The_cli_sibling_under_libexec_is_found_from_the_packaged_studio()
+    {
+        // Windows zip/MSI layout: Studio in libexec\orkeon-studio\, the CLI in
+        // libexec\orkeon\orkeon.exe, and bin\ holds only .cmd wrappers — which the
+        // Windows lookup (orkeon.exe only) can never accept from PATH.
+        var root = Path.Combine("C:", "Users", "me", "AppData", "Local", "Programs", "Orkeon");
+        var cli = Path.Combine(root, "libexec", "orkeon", "orkeon.exe");
+        var probe = new FakeExecutableProbe { BaseDirectory = Path.Combine(root, "libexec", "orkeon-studio") }
+            .WithPathDirectories(Path.Combine(root, "bin"))
+            .WithFile(Path.Combine(root, "bin", "orkeon.cmd"))
+            .WithFile(cli);
+
+        var location = new OrkeonBinaryLocator(probe, WindowsNames).Locate();
+
+        Assert.True(location.Found);
+        Assert.Equal(cli, location.Path);
+        Assert.Equal(BinarySource.InstallDirectory, location.Source);
+    }
+
+    [Fact]
     public void The_search_path_is_the_fallback()
     {
         var probe = new FakeExecutableProbe { BaseDirectory = Path.Combine("/", "opt", "studio") }

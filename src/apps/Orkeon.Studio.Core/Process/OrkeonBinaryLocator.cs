@@ -236,14 +236,19 @@ public sealed class OrkeonBinaryLocator
             yield break;
 
         var trimmed = baseDirectory.TrimEnd(System.IO.Path.DirectorySeparatorChar, System.IO.Path.AltDirectorySeparatorChar);
+        var parent = System.IO.Path.GetDirectoryName(trimmed) ?? trimmed;
         var seen = new HashSet<string>(StringComparer.Ordinal);
 
+        // The libexec/orkeon sibling is the archive and MSI layout: Studio publishes into
+        // libexec/<studio-app>/, the CLI into libexec/orkeon/. On Windows it is the only way
+        // to reach it — bin\ holds .cmd wrappers, never the orkeon.exe the lookup accepts.
         foreach (var candidate in new[]
                  {
                      trimmed,
                      System.IO.Path.Combine(trimmed, "bin"),
-                     System.IO.Path.GetDirectoryName(trimmed),
-                     System.IO.Path.Combine(System.IO.Path.GetDirectoryName(trimmed) ?? trimmed, "bin"),
+                     parent,
+                     System.IO.Path.Combine(parent, "bin"),
+                     System.IO.Path.Combine(parent, ExecutableBaseName),
                  })
         {
             if (!string.IsNullOrWhiteSpace(candidate) && seen.Add(candidate))
