@@ -587,7 +587,10 @@ accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out,
   and the marks, attachments and dates are then applied to each page client-side — such a
   page can hold fewer messages than asked, while `next_cursor` keeps going.
 - **Custom IMAP servers**: `raw_query` needs Gmail's `X-GM-RAW`; a permanent delete needs
-  UIDPLUS.
+  UIDPLUS; a delete to the trash needs a trash folder and a draft a drafts folder — flagged by
+  the server, or named conventionally (`Trash`, `Deleted Items`, `Drafts`…); without UIDPLUS
+  a saved draft or a moved message comes back without its new id. On Gmail a permanent delete
+  goes through `[Gmail]/Trash`, since expunging a label only archives.
 - **Not in this version**: deleting folders, copying a message or giving it several Gmail
   labels, interactive human approval of a send (use `email_draft`), a generic OAuth tool for
   other APIs.

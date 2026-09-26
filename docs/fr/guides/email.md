@@ -614,7 +614,11 @@ les comptes, en connecter un via un `IEmailLoginInteraction` à vous, le déconn
   page côté client — une telle page peut contenir moins de messages que demandé, tandis que
   `next_cursor` continue.
 - **Serveurs IMAP personnalisés** : `raw_query` exige le `X-GM-RAW` de Gmail ; une suppression
-  définitive exige UIDPLUS.
+  définitive exige UIDPLUS ; une mise à la corbeille exige un dossier corbeille, et un brouillon
+  un dossier de brouillons — signalés par le serveur, ou nommés selon l'usage (`Trash`,
+  `Deleted Items`, `Drafts`…) ; sans UIDPLUS, un brouillon enregistré ou un message déplacé
+  revient sans son nouvel id. Sur Gmail, une suppression définitive passe par `[Gmail]/Trash`,
+  puisque purger un libellé ne fait qu'archiver.
 - **Pas dans cette version** : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.
