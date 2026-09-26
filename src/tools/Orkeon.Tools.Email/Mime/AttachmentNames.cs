@@ -32,7 +32,9 @@ internal static class AttachmentNames
         var cleaned = new StringBuilder(name.Length);
         foreach (var c in name)
         {
-            if (char.IsControl(c) || Array.IndexOf(ForbiddenCharacters, c) >= 0)
+            // Format characters are invisible and reorder or hide text: "invoice\u202Efdp.exe"
+            // reads "invoiceexe.pdf" to a human, and to an agent that shows it one.
+            if (char.IsControl(c) || char.GetUnicodeCategory(c) == UnicodeCategory.Format || Array.IndexOf(ForbiddenCharacters, c) >= 0)
                 cleaned.Append('_');
             else
                 cleaned.Append(c);

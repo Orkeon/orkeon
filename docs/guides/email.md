@@ -568,8 +568,6 @@ accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out,
   `archive` is All Mail.
 - **"The TLS handshake … failed"** — the port and `Security` do not match: `SslOnConnect` for
   993, 995 and 465, `StartTls` for 143, 110 and 587.
-- **A permanent delete is refused** on an IMAP server without the UIDPLUS extension: it
-  could also remove other messages already marked deleted. Move to the trash instead.
 - **"This host keeps no OAuth tokens"** — the host has no token store: `orkeon-repl`, a host
   of your own that registered none, or a container where no per-user directory exists (set
   `CredentialsDirectory`).
@@ -586,11 +584,12 @@ accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out,
   upload session, not implemented). A search with text criteria goes through KQL (`$search`),
   and the marks, attachments and dates are then applied to each page client-side — such a
   page can hold fewer messages than asked, while `next_cursor` keeps going.
-- **Custom IMAP servers**: `raw_query` needs Gmail's `X-GM-RAW`; a permanent delete needs
-  UIDPLUS; a delete to the trash needs a trash folder and a draft a drafts folder — flagged by
-  the server, or named conventionally (`Trash`, `Deleted Items`, `Drafts`…); without UIDPLUS
-  a saved draft or a moved message comes back without its new id. On Gmail a permanent delete
-  goes through `[Gmail]/Trash`, since expunging a label only archives.
+- **Custom IMAP servers**: `raw_query` needs Gmail's `X-GM-RAW`; a delete to the trash needs a
+  trash folder and a draft a drafts folder — flagged by the server, or named conventionally
+  (`Trash`, `Deleted Items`, `Drafts`…); without UIDPLUS a saved draft or a moved message comes
+  back without its new id, and a move or a permanent delete still removes only its own
+  messages (MailKit takes the deleted mark off the others for the time of the expunge). On
+  Gmail a permanent delete goes through `[Gmail]/Trash`, since expunging a label only archives.
 - **Not in this version**: deleting folders, copying a message or giving it several Gmail
   labels, interactive human approval of a send (use `email_draft`), a generic OAuth tool for
   other APIs.

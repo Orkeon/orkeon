@@ -136,7 +136,7 @@ public sealed class EmailComposeToolsTests
 
         var error = ToolResults.Failure(await fixture.CallAsync("email_draft", ("account", "drafter"), ("reply_to_id", "orig"), ("text", "Hi")));
 
-        Assert.Contains("does not grant the Read, Draft right", error, StringComparison.Ordinal);
+        Assert.Contains("does not grant the Read right (it grants: Draft)", error, StringComparison.Ordinal);
         Assert.Empty(fixture.Mailbox("drafter").Fetched);
     }
 

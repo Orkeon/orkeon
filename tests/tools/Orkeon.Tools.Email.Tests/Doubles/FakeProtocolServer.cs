@@ -15,6 +15,7 @@ internal abstract class FakeProtocolServer : IAsyncDisposable
     private readonly TcpListener _listener = new(IPAddress.Loopback, 0);
     private readonly CancellationTokenSource _stop = new();
     private readonly List<Task> _connections = [];
+    private readonly List<TcpClient> _open = [];
     private readonly List<string> _transcript = [];
     private readonly List<string> _unknown = [];
     private readonly List<Exception> _errors = [];
@@ -65,6 +66,16 @@ internal abstract class FakeProtocolServer : IAsyncDisposable
     {
         _listener.Start();
         _acceptLoop = AcceptLoopAsync();
+    }
+
+    /// <summary>Closes every open connection, as a server does to a session it considers idle or expired.</summary>
+    public void DropConnections()
+    {
+        TcpClient[] open;
+        lock (Gate)
+            open = [.. _open];
+        foreach (var client in open)
+            client.Client.Close();
     }
 
     /// <summary>Fails the test with the transcript when the server met an unknown command or broke.</summary>
@@ -138,6 +149,8 @@ internal abstract class FakeProtocolServer : IAsyncDisposable
 
     private async Task HandleAsync(TcpClient client)
     {
+        lock (Gate)
+            _open.Add(client);
         using (client)
         {
             await using var connection = new MailConnection(client.GetStream());
@@ -153,6 +166,11 @@ internal abstract class FakeProtocolServer : IAsyncDisposable
             {
                 lock (Gate)
                     _errors.Add(ex);
+            }
+            finally
+            {
+                lock (Gate)
+                    _open.Remove(client);
             }
         }
     }

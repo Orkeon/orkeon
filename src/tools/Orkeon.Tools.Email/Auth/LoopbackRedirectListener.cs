@@ -13,7 +13,13 @@ namespace Orkeon.Tools.Email.Auth;
 internal sealed class LoopbackRedirectListener : IDisposable
 {
     private const int MaxRequestLineBytes = 8 * 1024;
-    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
+    private const int MaxHeaderLines = 100;
+
+    /// <summary>
+    /// How long a connection may stay silent. A browser opens spare connections it may never
+    /// use, and the redirect waits behind one: short, so it waits little.
+    /// </summary>
+    private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(3);
     private static readonly Uri LoopbackBase = new("http://127.0.0.1/");
 
     private readonly TcpListener _listener;
@@ -33,11 +39,13 @@ internal sealed class LoopbackRedirectListener : IDisposable
     }
 
     /// <summary>
-    /// Waits for the redirect carrying a code or an error; any other request (a favicon) is
-    /// answered 404 and the wait goes on.
+    /// Waits for the redirect carrying a code or an error for <paramref name="expectedState"/>;
+    /// any other request — a favicon, or an outcome another local process forged without the
+    /// state of this sign-in — is answered 404 and the wait goes on.
     /// </summary>
-    public async Task<AuthorizationRedirect> WaitAsync(CancellationToken cancellationToken)
+    public async Task<AuthorizationRedirect> WaitAsync(string expectedState, CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(expectedState);
         while (true)
         {
             using var client = await _listener.AcceptTcpClientAsync(cancellationToken).ConfigureAwait(false);
@@ -50,6 +58,12 @@ internal sealed class LoopbackRedirectListener : IDisposable
             {
                 var requestLine = await ReadLineAsync(stream, connection.Token).ConfigureAwait(false);
                 redirect = ParseRequestLine(requestLine);
+                if (redirect.IsOutcome && !string.Equals(redirect.State, expectedState, StringComparison.Ordinal))
+                    redirect = new AuthorizationRedirect(null, null, null);
+
+                // The headers are read before answering: closing on unread input resets the
+                // connection on some systems, and the browser then shows an error, not the page.
+                await DrainHeadersAsync(stream, connection.Token).ConfigureAwait(false);
                 await RespondAsync(stream, redirect.IsOutcome, connection.Token).ConfigureAwait(false);
             }
             catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
@@ -84,6 +98,15 @@ internal sealed class LoopbackRedirectListener : IDisposable
         }
 
         return AuthorizationRedirect.Parse(target);
+    }
+
+    private static async Task DrainHeadersAsync(NetworkStream stream, CancellationToken cancellationToken)
+    {
+        for (var lines = 0; lines < MaxHeaderLines; lines++)
+        {
+            if ((await ReadLineAsync(stream, cancellationToken).ConfigureAwait(false)).Length == 0)
+                return;
+        }
     }
 
     private static async Task<string> ReadLineAsync(NetworkStream stream, CancellationToken cancellationToken)

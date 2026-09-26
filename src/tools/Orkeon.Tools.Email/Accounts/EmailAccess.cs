@@ -77,9 +77,12 @@ internal sealed class EmailAccess
         if (right == EmailRights.None || account.Grants(right))
             return;
 
+        // Only what is missing: "the Read, Organize right" would name one the account has.
+        var missing = right & ~account.Rights;
+        var several = (missing & (missing - 1)) != 0;
         throw new EmailToolException(
             EmailErrorCode.RightDenied,
-            $"E-mail account '{account.Name}' does not grant the {right} right (it grants: {account.Rights}). " +
-            $"An operator adds it under {Constants.EmailDefaults.SectionName}:Accounts:{account.Name}:Rights.");
+            $"E-mail account '{account.Name}' does not grant the {missing} {(several ? "rights" : "right")} (it grants: {account.Rights}). " +
+            $"An operator adds {(several ? "them" : "it")} under {Constants.EmailDefaults.SectionName}:Accounts:{account.Name}:Rights.");
     }
 }

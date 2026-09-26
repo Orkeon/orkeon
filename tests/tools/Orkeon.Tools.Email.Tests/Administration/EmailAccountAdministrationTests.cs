@@ -35,7 +35,7 @@ public sealed class EmailAccountAdministrationTests
         Assert.Equal(["broken", "hotmail", "perso"], statuses.Select(s => s.Name));
         var broken = statuses[0];
         Assert.Equal(("?", false, false), (broken.Provider, broken.Ready, broken.IsDefault));
-        Assert.StartsWith("account 'broken': Rights is required", broken.Problem, StringComparison.Ordinal);
+        Assert.StartsWith("Rights is required", broken.Problem, StringComparison.Ordinal);
         var hotmail = statuses[1];
         Assert.Equal(("someone@outlook.com", "Outlook", "Graph", "Graph", "Read, Send", "OAuth2"),
             (hotmail.Address, hotmail.Provider, hotmail.Reads, hotmail.Sends, hotmail.Rights, hotmail.Auth));
@@ -140,10 +140,22 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_not_take_a_refusal_that_carries_another_sign_in_s_state()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        var interaction = new FakeLoginInteraction().Paste(_ => "http://127.0.0.1:1/?error=access_denied&state=from-an-earlier-attempt");
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await fixture.Administration.LoginAsync("google", interaction, Token));
+
+        Assert.Equal(EmailErrorCode.AuthenticationFailed, error.Code);
+        Assert.StartsWith("The redirect did not come from this sign-in (state mismatch)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_report_a_sign_in_the_user_refused()
     {
         using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
-        var interaction = new FakeLoginInteraction().Paste(_ => "http://127.0.0.1:1/?error=access_denied");
+        var interaction = new FakeLoginInteraction().Paste(shown => $"http://127.0.0.1:1/?error=access_denied&state={Uri.EscapeDataString(Query(shown)["state"])}");
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await fixture.Administration.LoginAsync("google", interaction, Token));
 

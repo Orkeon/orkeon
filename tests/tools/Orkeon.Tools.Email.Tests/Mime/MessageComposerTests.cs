@@ -29,6 +29,26 @@ public sealed class MessageComposerTests
     }
 
     [Fact]
+    public async Task Should_never_let_a_subject_smuggle_a_header()
+    {
+        using var message = await Compose(new ComposeInput
+        {
+            To = ["client@example.com"],
+            Subject = "Hello\r\nBcc: attacker@evil.test\r\nX-Injected: yes",
+            Text = "Hi",
+        });
+
+        using var written = new MemoryStream();
+        await message.WriteToAsync(written, Token);
+        var reparsed = MimeSamples.Load(Encoding.UTF8.GetString(written.ToArray()));
+
+        Assert.Empty(message.Bcc);
+        Assert.Empty(reparsed.Bcc);
+        Assert.False(reparsed.Headers.Contains("X-Injected"));
+        Assert.Equal(["client@example.com"], reparsed.To.Mailboxes.Select(m => m.Address));
+    }
+
+    [Fact]
     public async Task Should_address_to_cc_and_bcc_once_each_accepting_display_names()
     {
         using var message = await Compose(new ComposeInput

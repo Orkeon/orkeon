@@ -61,7 +61,7 @@ public sealed class GraphQueriesTests
     }
 
     [Fact]
-    public void Should_build_KQL_with_one_property_term_per_word_and_strip_quote_escapes()
+    public void Should_build_KQL_that_needs_every_word_and_strip_quote_escapes()
     {
         var kql = GraphQueries.Kql(new MailSearch
         {
@@ -72,7 +72,13 @@ public sealed class GraphQueriesTests
             RawQuery = "received>=2026-09-01 \"x\"",
         });
 
-        Assert.Equal("from:Alice from:Martin to:team subject:Q3 subject:budget forecast draft received>=2026-09-01 x", kql);
+        Assert.Equal("from:Alice AND from:Martin AND to:team AND subject:Q3 AND subject:budget AND forecast AND draft AND (received>=2026-09-01 x)", kql);
+    }
+
+    [Fact]
+    public void Should_pass_a_raw_query_alone_as_it_is()
+    {
+        Assert.Equal("from:bank OR from:insurer", GraphQueries.Kql(new MailSearch { RawQuery = " from:bank OR from:insurer " }));
     }
 
     [Fact]

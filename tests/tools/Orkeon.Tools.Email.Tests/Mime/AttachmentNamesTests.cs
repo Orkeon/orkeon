@@ -20,6 +20,16 @@ public sealed class AttachmentNamesTests
     }
 
     [Theory]
+    [InlineData("invoice\u202Efdp.exe", "invoice_fdp.exe")]
+    [InlineData("report\u200B.pdf", "report_.pdf")]
+    [InlineData("\u2066quote\u2069.txt", "_quote_.txt")]
+    [InlineData("\uFEFFnotes.txt", "_notes.txt")]
+    public void Should_replace_the_invisible_characters_that_reorder_or_hide_a_name(string declared, string expected)
+    {
+        Assert.Equal(expected, AttachmentNames.Sanitize(declared, 0, null));
+    }
+
+    [Theory]
     [InlineData("bell\u0007name.txt", "bell_name.txt")]
     [InlineData("new\r\nline.txt", "new__line.txt")]
     [InlineData("what?<is>*this|\"thing\":.txt", "what__is__this__thing__.txt")]

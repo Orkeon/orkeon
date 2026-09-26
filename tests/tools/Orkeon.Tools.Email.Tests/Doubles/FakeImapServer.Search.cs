@@ -3,13 +3,26 @@ using System.Text;
 
 namespace Orkeon.Tools.Email.Tests.Doubles;
 
-/// <summary>SEARCH of the fake: the RFC 3501 keys MailKit emits, plus a naive X-GM-RAW.</summary>
+/// <summary>
+/// SEARCH of the fake: the RFC 3501 keys MailKit emits, plus a naive X-GM-RAW, answered as
+/// <c>* SEARCH</c> or — for <c>SEARCH RETURN (…)</c>, which only a server advertising ESEARCH
+/// accepts — as <c>* ESEARCH</c> (RFC 4731).
+/// </summary>
 internal sealed partial class FakeImapServer
 {
     private async Task<bool> SearchAsync(ImapRequest request)
     {
         var tokens = request.Arguments;
         var index = 0;
+        List<string>? returning = null;
+        if (index + 1 < tokens.Count && tokens[index].Text.Equals("RETURN", StringComparison.OrdinalIgnoreCase) && tokens[index + 1].Kind == TokenKind.List)
+        {
+            if (!Advertises("ESEARCH"))
+                throw new NotSupportedException("SEARCH RETURN needs the ESEARCH extension, which this server does not advertise");
+            returning = tokens[index + 1].Items.Select(item => item.Text.ToUpperInvariant()).ToList();
+            index += 2;
+        }
+
         if (index + 1 < tokens.Count && tokens[index].Text.Equals("CHARSET", StringComparison.OrdinalIgnoreCase))
             index += 2;
 
@@ -21,18 +34,64 @@ internal sealed partial class FakeImapServer
             while (index < tokens.Count)
                 criteria.Add(ParseKey(folder, tokens, ref index));
 
-            var hits = new StringBuilder("* SEARCH");
+            var hits = new List<uint>();
             for (var i = 0; i < folder.Messages.Count; i++)
             {
                 var message = folder.Messages[i];
                 if (criteria.TrueForAll(criterion => criterion(message, i + 1)))
-                    hits.Append(' ').Append((request.Uid ? message.Uid : (uint)(i + 1)).ToString(CultureInfo.InvariantCulture));
+                    hits.Add(request.Uid ? message.Uid : (uint)(i + 1));
             }
 
-            line = hits.ToString();
+            line = returning is null
+                ? "* SEARCH" + string.Concat(hits.Select(hit => " " + hit.ToString(CultureInfo.InvariantCulture)))
+                : ExtendedSearchLine(request, hits, returning);
         }
 
         return await ReplyAsync(request, line, "OK SEARCH completed");
+    }
+
+    private static string ExtendedSearchLine(ImapRequest request, List<uint> hits, List<string> returning)
+    {
+        var line = new StringBuilder("* ESEARCH (TAG \"").Append(request.Tag).Append("\")");
+        if (request.Uid)
+            line.Append(" UID");
+        if (hits.Count > 0)
+        {
+            if (returning.Count == 0 || returning.Contains("ALL"))
+                line.Append(" ALL ").Append(SequenceSet(hits));
+            if (returning.Contains("MIN"))
+                line.Append(" MIN ").Append(hits.Min().ToString(CultureInfo.InvariantCulture));
+            if (returning.Contains("MAX"))
+                line.Append(" MAX ").Append(hits.Max().ToString(CultureInfo.InvariantCulture));
+        }
+
+        if (returning.Contains("COUNT"))
+            line.Append(" COUNT ").Append(hits.Count.ToString(CultureInfo.InvariantCulture));
+        return line.ToString();
+    }
+
+    /// <summary><c>1:3,5</c> for 1, 2, 3 and 5.</summary>
+    private static string SequenceSet(List<uint> numbers)
+    {
+        var sorted = numbers.Order().ToList();
+        var ranges = new List<string>();
+        var start = sorted[0];
+        var previous = start;
+        foreach (var number in sorted.Skip(1).Append(uint.MaxValue))
+        {
+            if (number == previous + 1)
+            {
+                previous = number;
+                continue;
+            }
+
+            ranges.Add(start == previous
+                ? start.ToString(CultureInfo.InvariantCulture)
+                : string.Create(CultureInfo.InvariantCulture, $"{start}:{previous}"));
+            start = previous = number;
+        }
+
+        return string.Join(',', ranges);
     }
 
     private static Func<FakeImapMessage, int, bool> ParseKey(FakeImapFolder folder, List<Token> tokens, ref int index)

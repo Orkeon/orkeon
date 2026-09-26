@@ -139,7 +139,7 @@ public sealed class GraphMailboxTests
         }, Token);
 
         var query = QueryOf(Assert.Single(graph.Http.RequestsTo(HttpMethod.Get, $"{Base}me/mailFolders/id-inbox/messages?")));
-        Assert.Equal("\"from:alice subject:budget subject:Q3 forecast hasAttachments:true\"", query["$search"]);
+        Assert.Equal("\"from:alice AND subject:budget AND subject:Q3 AND forecast AND (hasAttachments:true)\"", query["$search"]);
         Assert.False(query.ContainsKey("$orderby"));
         Assert.False(query.ContainsKey("$filter"));
         Assert.Equal(["graph:m-unread"], page.Messages.Select(m => m.Id));

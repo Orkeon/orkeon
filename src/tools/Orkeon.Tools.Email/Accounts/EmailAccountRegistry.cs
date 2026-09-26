@@ -102,7 +102,7 @@ internal sealed class EmailAccountRegistry : IEmailAccountRegistry
     {
         var problems = new List<string>(_options.SectionProblems);
         if (_options.AccountProblems.TryGetValue(account, out var own))
-            problems.AddRange(own.Select(problem => $"account '{account}': {problem}"));
+            problems.AddRange(own);
         return problems;
     }
 }

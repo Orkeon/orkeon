@@ -29,7 +29,17 @@ public sealed class EmailAccessTests
 
         var error = Assert.Throws<EmailToolException>(() => access.Authorize("acct", EmailRights.Read | EmailRights.Organize));
 
-        Assert.Contains("does not grant the Read, Organize right", error.Message, StringComparison.Ordinal);
+        Assert.Contains("does not grant the Organize right (it grants: Read)", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Should_name_every_missing_right_and_only_those()
+    {
+        var access = Access(out _, TestAccounts.Custom(EmailRights.Read));
+
+        var error = Assert.Throws<EmailToolException>(() => access.Authorize("acct", EmailRights.Read | EmailRights.Send | EmailRights.Purge));
+
+        Assert.Contains("does not grant the Send, Purge rights (it grants: Read). An operator adds them under", error.Message, StringComparison.Ordinal);
     }
 
     [Fact]

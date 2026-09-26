@@ -123,7 +123,9 @@ internal static class ToolParameterValidator
     {
         "string" => je.ValueKind == JsonValueKind.String,
         "number" => je.ValueKind == JsonValueKind.Number,
-        "integer" => je.ValueKind == JsonValueKind.Number && je.TryGetInt64(out _),
+        // 20.0 and 2e1 are integers too, as on the CLR side below.
+        "integer" => je.ValueKind == JsonValueKind.Number
+                     && (je.TryGetInt64(out _) || (je.TryGetDouble(out var whole) && IsWholeNumber(whole))),
         "boolean" => je.ValueKind is JsonValueKind.True or JsonValueKind.False,
         "array" => je.ValueKind == JsonValueKind.Array,
         "object" => je.ValueKind == JsonValueKind.Object,

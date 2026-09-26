@@ -44,4 +44,17 @@ public class ToolParameterValidatorIntegerTests
         Assert.True(ToolParameterValidator.IsValidType("42", "integer"));
         Assert.False(ToolParameterValidator.IsValidType("4.2", "integer"));
     }
+
+    [Theory]
+    [InlineData("20", true)]
+    [InlineData("20.0", true)]
+    [InlineData("2e1", true)]
+    [InlineData("2.5", false)]
+    [InlineData("\"20\"", false)]
+    public void A_json_number_is_an_integer_when_it_is_whole(string json, bool integer)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(json);
+
+        Assert.Equal(integer, ToolParameterValidator.IsValidType(document.RootElement.Clone(), "integer"));
+    }
 }

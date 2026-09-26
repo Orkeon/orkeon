@@ -6,8 +6,10 @@ namespace Orkeon.Tools.Email.Tests.Doubles;
 
 /// <summary>
 /// <see cref="IFileSystemService"/> over the shared <see cref="FakeFileSystemService"/> that, unlike
-/// it, enforces each mount's rights in <see cref="ResolveAndValidate"/> and records the right every
-/// validation asked for, so a test can tell a read-only mount from a writable one.
+/// it, enforces each mount's rights — in <see cref="ResolveAndValidate"/>, and on every write with
+/// the rights the real service demands (Write and Create for a file, Create for a directory) —
+/// and records the right every validation asked for, so a test can tell a read-only mount from a
+/// writable one, and one that may not create from one that may.
 /// </summary>
 internal sealed class FakeRightsFileSystemService : IFileSystemService
 {
@@ -73,19 +75,19 @@ internal sealed class FakeRightsFileSystemService : IFileSystemService
     public Task<VirtualEntryKind> GetEntryKindAsync(string virtualPath, CancellationToken ct) => _inner.GetEntryKindAsync(virtualPath, ct);
 
     /// <inheritdoc />
-    public Task<int> WriteAllTextAsync(string virtualPath, string content, CancellationToken ct) => _inner.WriteAllTextAsync(virtualPath, content, ct);
+    public Task<int> WriteAllTextAsync(string virtualPath, string content, CancellationToken ct) => Demand(virtualPath, FileAccessRights.Write | FileAccessRights.Create, () => _inner.WriteAllTextAsync(virtualPath, content, ct));
 
     /// <inheritdoc />
     public Task<bool> ExistsAsync(string virtualPath, CancellationToken ct) => _inner.ExistsAsync(virtualPath, ct);
 
     /// <inheritdoc />
-    public Task CreateDirectoryAsync(string virtualPath, CancellationToken ct) => _inner.CreateDirectoryAsync(virtualPath, ct);
+    public Task CreateDirectoryAsync(string virtualPath, CancellationToken ct) => Demand(virtualPath, FileAccessRights.Create, () => _inner.CreateDirectoryAsync(virtualPath, ct));
 
     /// <inheritdoc />
     public Task<bool> DeleteAsync(string virtualPath, bool recursive, CancellationToken ct) => _inner.DeleteAsync(virtualPath, recursive, ct);
 
     /// <inheritdoc />
-    public Task<Stream> OpenWriteStreamAsync(string virtualPath, CancellationToken ct = default) => _inner.OpenWriteStreamAsync(virtualPath, ct);
+    public Task<Stream> OpenWriteStreamAsync(string virtualPath, CancellationToken ct = default) => Demand(virtualPath, FileAccessRights.Write | FileAccessRights.Create, () => _inner.OpenWriteStreamAsync(virtualPath, ct));
 
     /// <inheritdoc />
     public Task<Stream> OpenAppendStreamAsync(string virtualPath, CancellationToken ct = default) => _inner.OpenAppendStreamAsync(virtualPath, ct);
@@ -95,11 +97,24 @@ internal sealed class FakeRightsFileSystemService : IFileSystemService
         _inner.CopyAsync(srcVirtualPath, dstVirtualPath, overwrite, ct);
 
     /// <inheritdoc />
-    public Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct) => _inner.WriteAllBytesAsync(virtualPath, content, ct);
+    public Task<int> WriteAllBytesAsync(string virtualPath, byte[] content, CancellationToken ct) => Demand(virtualPath, FileAccessRights.Write | FileAccessRights.Create, () => _inner.WriteAllBytesAsync(virtualPath, content, ct));
 
     /// <inheritdoc />
     public Task<int> AppendAllTextAsync(string virtualPath, string content, CancellationToken ct) => _inner.AppendAllTextAsync(virtualPath, content, ct);
 
     /// <inheritdoc />
     public Task<VirtualFileEntry?> TryGetEntryAsync(string virtualPath, CancellationToken ct) => _inner.TryGetEntryAsync(virtualPath, ct);
+
+    /// <summary>Runs <paramref name="write"/> once the mount grants <paramref name="rights"/>, else throws as the real service does.</summary>
+    private Task<T> Demand<T>(string virtualPath, FileAccessRights rights, Func<Task<T>> write)
+    {
+        var check = ResolveAndValidate(virtualPath, rights);
+        return check.IsAllowed ? write() : throw new FileAccessDeniedException(check.DenialReason!, virtualPath, rights);
+    }
+
+    private Task Demand(string virtualPath, FileAccessRights rights, Func<Task> write)
+    {
+        var check = ResolveAndValidate(virtualPath, rights);
+        return check.IsAllowed ? write() : throw new FileAccessDeniedException(check.DenialReason!, virtualPath, rights);
+    }
 }

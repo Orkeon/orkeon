@@ -177,15 +177,15 @@ internal sealed partial class FakeImapServer
     private static uint Bound(string value, uint highest) =>
         value == "*" ? highest : uint.Parse(value, CultureInfo.InvariantCulture);
 
-    /// <summary>Whether an IMAP LIST pattern (<c>*</c> anything, <c>%</c> anything but '/') matches <paramref name="name"/>.</summary>
-    private static bool NameMatches(string pattern, string name)
+    /// <summary>Whether an IMAP LIST pattern (<c>*</c> anything, <c>%</c> anything but the separator) matches <paramref name="name"/>.</summary>
+    private static bool NameMatches(string pattern, string name, char separator)
     {
         if (name.Equals("INBOX", StringComparison.OrdinalIgnoreCase) && pattern.Equals("INBOX", StringComparison.OrdinalIgnoreCase))
             return true;
-        return WildcardMatches(pattern, 0, name, 0);
+        return WildcardMatches(pattern, 0, name, 0, separator);
     }
 
-    private static bool WildcardMatches(string pattern, int p, string name, int n)
+    private static bool WildcardMatches(string pattern, int p, string name, int n, char separator)
     {
         while (p < pattern.Length)
         {
@@ -194,9 +194,9 @@ internal sealed partial class FakeImapServer
             {
                 for (var k = n; k <= name.Length; k++)
                 {
-                    if (WildcardMatches(pattern, p + 1, name, k))
+                    if (WildcardMatches(pattern, p + 1, name, k, separator))
                         return true;
-                    if (k < name.Length && c == '%' && name[k] == '/')
+                    if (k < name.Length && c == '%' && name[k] == separator)
                         return false;
                 }
 

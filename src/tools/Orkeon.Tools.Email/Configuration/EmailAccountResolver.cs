@@ -40,12 +40,10 @@ internal static class EmailAccountResolver
         if (options.Rights.HasFlag(EmailRights.Send) && outgoing is null)
             problems.Add("Rights grant Send but the account declares no outgoing server (Outgoing:Host)");
 
+        // The problems name no account: whoever shows them says which (the registry's message,
+        // the account list).
         if (problems.Count > 0 || address is null || auth is null)
-        {
-            return new EmailAccountResolution(
-                null,
-                problems.Select(problem => $"account '{name}': {problem}").ToList());
-        }
+            return new EmailAccountResolution(null, problems);
 
         var account = new ResolvedEmailAccount
         {

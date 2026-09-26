@@ -148,7 +148,7 @@ public sealed class EmailOptionsBinderTests
 
         Assert.Equal(EmailErrorCode.InvalidConfiguration, error.Code);
         Assert.StartsWith(
-            "The e-mail account 'perso' is misconfigured: account 'perso': Rights 'Read, Organise' is not a list of",
+            "The e-mail account 'perso' is misconfigured: Rights 'Read, Organise' is not a list of",
             error.Message,
             StringComparison.Ordinal);
     }

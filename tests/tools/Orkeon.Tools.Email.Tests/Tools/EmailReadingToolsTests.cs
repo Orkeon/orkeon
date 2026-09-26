@@ -333,7 +333,7 @@ public sealed class EmailReadingToolsTests
         Assert.Equal(["unread"], update.Ids);
         Assert.True(update.Seen);
         Assert.Null(update.Flagged);
-        Assert.Contains("does not grant the Read, Organize right", refused, StringComparison.Ordinal);
+        Assert.Contains("does not grant the Organize right (it grants: Read)", refused, StringComparison.Ordinal);
         Assert.Empty(fixture.Mailbox("reader").Fetched);
     }
 

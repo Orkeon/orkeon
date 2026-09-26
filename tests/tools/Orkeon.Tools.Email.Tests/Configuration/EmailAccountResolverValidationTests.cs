@@ -11,7 +11,7 @@ public sealed class EmailAccountResolverValidationTests
     {
         var problem = SingleProblem(TestAccounts.Custom(EmailRights.None));
 
-        Assert.Equal("account 'acct': Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Organize, Draft\"", problem);
+        Assert.Equal("Rights is required and says what an agent may do, e.g. \"Rights\": \"Read, Organize, Draft\"", problem);
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom();
         options.Address = "  ";
 
-        Assert.Equal("account 'acct': Address is required", SingleProblem(options));
+        Assert.Equal("Address is required", SingleProblem(options));
     }
 
     [Theory]
@@ -31,7 +31,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom();
         options.Address = address;
 
-        Assert.Equal($"account 'acct': Address '{address}' is not an e-mail address", SingleProblem(options));
+        Assert.Equal($"Address '{address}' is not an e-mail address", SingleProblem(options));
     }
 
     [Fact]
@@ -77,7 +77,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom();
         options.Incoming.Host = null;
 
-        Assert.Equal("account 'acct': Incoming:Host is required for a Custom account", SingleProblem(options));
+        Assert.Equal("Incoming:Host is required for a Custom account", SingleProblem(options));
     }
 
     [Fact]
@@ -100,8 +100,8 @@ public sealed class EmailAccountResolverValidationTests
         var problems = Problems(options);
 
         Assert.Equal(2, problems.Count);
-        Assert.Contains("account 'acct': Incoming:Security None is only accepted towards a local test server (localhost); 'imap.example.test' needs SslOnConnect or StartTls", problems);
-        Assert.Contains("account 'acct': Outgoing:Security None is only accepted towards a local test server (localhost); 'smtp.example.test' needs SslOnConnect or StartTls", problems);
+        Assert.Contains("Incoming:Security None is only accepted towards a local test server (localhost); 'imap.example.test' needs SslOnConnect or StartTls", problems);
+        Assert.Contains("Outgoing:Security None is only accepted towards a local test server (localhost); 'smtp.example.test' needs SslOnConnect or StartTls", problems);
     }
 
     [Theory]
@@ -126,7 +126,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Gmail();
         options.Incoming.Protocol = IncomingProtocol.Graph;
 
-        Assert.Contains("account 'acct': Incoming:Protocol Graph is only available with the Outlook preset", Problems(options));
+        Assert.Contains("Incoming:Protocol Graph is only available with the Outlook preset", Problems(options));
     }
 
     [Fact]
@@ -144,7 +144,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Gmail();
         options.Outgoing.Protocol = OutgoingProtocol.Graph;
 
-        Assert.Equal("account 'acct': Outgoing:Protocol Graph needs Incoming:Protocol Graph", SingleProblem(options));
+        Assert.Equal("Outgoing:Protocol Graph needs Incoming:Protocol Graph", SingleProblem(options));
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom(EmailRights.Read | EmailRights.Send);
         options.Outgoing.Host = null;
 
-        Assert.Equal("account 'acct': Rights grant Send but the account declares no outgoing server (Outgoing:Host)", SingleProblem(options));
+        Assert.Equal("Rights grant Send but the account declares no outgoing server (Outgoing:Host)", SingleProblem(options));
     }
 
     [Theory]
@@ -168,7 +168,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom(EmailRights.Send);
         options.Send.AllowedRecipients.Add(pattern);
 
-        Assert.Equal($"account 'acct': Send:AllowedRecipients entry '{pattern}' is neither an address, '*@domain' nor '*'", SingleProblem(options));
+        Assert.Equal($"Send:AllowedRecipients entry '{pattern}' is neither an address, '*@domain' nor '*'", SingleProblem(options));
     }
 
     [Theory]
@@ -180,7 +180,7 @@ public sealed class EmailAccountResolverValidationTests
         options.Send.MaxRecipients = maxRecipients;
         options.Send.MaxPerHour = maxPerHour;
 
-        Assert.Equal($"account 'acct': {expected}", SingleProblem(options));
+        Assert.Equal($"{expected}", SingleProblem(options));
     }
 
     [Fact]
@@ -189,7 +189,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom();
         options.TimeoutSeconds = 0;
 
-        Assert.Equal("account 'acct': TimeoutSeconds must be positive", SingleProblem(options));
+        Assert.Equal("TimeoutSeconds must be positive", SingleProblem(options));
     }
 
     [Theory]
@@ -200,7 +200,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Custom();
         options.Incoming.Port = port;
 
-        Assert.Equal($"account 'acct': Incoming:Port {port} is not a TCP port", SingleProblem(options));
+        Assert.Equal($"Incoming:Port {port} is not a TCP port", SingleProblem(options));
     }
 
     [Fact]
@@ -209,7 +209,7 @@ public sealed class EmailAccountResolverValidationTests
         var options = TestAccounts.Outlook();
         options.Auth.Tenant = "contoso/../evil";
 
-        Assert.Equal("account 'acct': Auth:Tenant 'contoso/../evil' is not a tenant alias or id", SingleProblem(options));
+        Assert.Equal("Auth:Tenant 'contoso/../evil' is not a tenant alias or id", SingleProblem(options));
     }
 
     [Theory]
@@ -222,7 +222,7 @@ public sealed class EmailAccountResolverValidationTests
 
         Assert.Null(resolution.Account);
         Assert.Equal(
-            $"account '{name}': the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most",
+            $"the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most",
             Assert.Single(resolution.Problems));
     }
 
@@ -234,10 +234,10 @@ public sealed class EmailAccountResolverValidationTests
 
         var problems = Problems(options);
 
-        Assert.Contains("account 'acct': Address is required", problems);
-        Assert.Contains("account 'acct': Incoming:Host is required for a Custom account", problems);
-        Assert.Contains("account 'acct': Rights grant Send but the account declares no outgoing server (Outgoing:Host)", problems);
-        Assert.Contains("account 'acct': Send:MaxPerHour must be positive", problems);
+        Assert.Contains("Address is required", problems);
+        Assert.Contains("Incoming:Host is required for a Custom account", problems);
+        Assert.Contains("Rights grant Send but the account declares no outgoing server (Outgoing:Host)", problems);
+        Assert.Contains("Send:MaxPerHour must be positive", problems);
         Assert.Contains(problems, p => p.Contains("Auth:PasswordEnvVar is required", StringComparison.Ordinal));
         Assert.True(problems.Count >= 5);
     }

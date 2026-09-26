@@ -13,7 +13,7 @@ public sealed class LoopbackRedirectListenerTests
     public async Task Should_return_the_code_and_state_of_the_redirect_and_answer_200()
     {
         using var listener = LoopbackRedirectListener.Start();
-        var waiting = listener.WaitAsync(Token);
+        var waiting = listener.WaitAsync("xyz", Token);
 
         var response = await BrowseAsync(listener.RedirectUri, "GET /?code=4%2F0AbCd&state=xyz&scope=mail HTTP/1.1");
         var redirect = await waiting;
@@ -27,7 +27,7 @@ public sealed class LoopbackRedirectListenerTests
     public async Task Should_answer_404_to_anything_else_and_keep_waiting()
     {
         using var listener = LoopbackRedirectListener.Start();
-        var waiting = listener.WaitAsync(Token);
+        var waiting = listener.WaitAsync("xyz", Token);
 
         var favicon = await BrowseAsync(listener.RedirectUri, "GET /favicon.ico HTTP/1.1");
         var post = await BrowseAsync(listener.RedirectUri, "POST /?code=forged HTTP/1.1");
@@ -41,14 +41,30 @@ public sealed class LoopbackRedirectListenerTests
     }
 
     [Fact]
+    public async Task Should_ignore_an_outcome_that_does_not_carry_the_state_of_this_sign_in()
+    {
+        using var listener = LoopbackRedirectListener.Start();
+        var waiting = listener.WaitAsync("xyz", Token);
+
+        var forgedError = await BrowseAsync(listener.RedirectUri, "GET /?error=access_denied&state=forged HTTP/1.1");
+        var stolenCode = await BrowseAsync(listener.RedirectUri, "GET /?code=stolen HTTP/1.1");
+        Assert.False(waiting.IsCompleted);
+        await BrowseAsync(listener.RedirectUri, "GET /?code=genuine&state=xyz HTTP/1.1");
+
+        Assert.StartsWith("HTTP/1.1 404 Not Found", forgedError, StringComparison.Ordinal);
+        Assert.StartsWith("HTTP/1.1 404 Not Found", stolenCode, StringComparison.Ordinal);
+        Assert.Equal(new AuthorizationRedirect("genuine", "xyz", null), await waiting);
+    }
+
+    [Fact]
     public async Task Should_survive_a_connection_that_sends_nothing()
     {
         using var listener = LoopbackRedirectListener.Start();
-        var waiting = listener.WaitAsync(Token);
+        var waiting = listener.WaitAsync("xyz", Token);
 
         using (var silent = new TcpClient())
             await silent.ConnectAsync("127.0.0.1", listener.RedirectUri.Port, Token);
-        await BrowseAsync(listener.RedirectUri, "GET /?code=c&state=s HTTP/1.1");
+        await BrowseAsync(listener.RedirectUri, "GET /?code=c&state=xyz HTTP/1.1");
 
         Assert.Equal("c", (await waiting).Code);
     }
@@ -59,7 +75,7 @@ public sealed class LoopbackRedirectListenerTests
         using var listener = LoopbackRedirectListener.Start();
         using var cancel = CancellationTokenSource.CreateLinkedTokenSource(Token);
 
-        var waiting = listener.WaitAsync(cancel.Token);
+        var waiting = listener.WaitAsync("xyz", cancel.Token);
         await cancel.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(async () => await waiting);

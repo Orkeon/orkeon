@@ -177,6 +177,7 @@ internal sealed partial class FakeImapServer
             "HEADER" => message.Raw[..message.Facts.HeaderLength],
             "TEXT" => message.Raw[message.Facts.HeaderLength..],
             _ when section.StartsWith("HEADER.FIELDS", StringComparison.Ordinal) => message.Raw[..message.Facts.HeaderLength],
+            _ when section.Length > 0 && section.All(c => char.IsAsciiDigit(c) || c == '.') => PartBytes(message, section),
             _ => throw new NotSupportedException($"The fake IMAP server cannot FETCH the section '{section}'."),
         };
 
@@ -192,6 +193,31 @@ internal sealed partial class FakeImapServer
         }
 
         return new LiteralPart(name, bytes);
+    }
+
+    /// <summary>
+    /// The body of the leaf part a numbered section names (<c>1</c>, <c>1.2</c>), transfer
+    /// encoding kept, as a server returns it — what a client without PREVIEW fetches the start
+    /// of to show one.
+    /// </summary>
+    private static byte[] PartBytes(FakeImapMessage message, string section)
+    {
+        using var mime = MimeMessage.Load(new MemoryStream(message.Raw));
+        var entity = mime.Body;
+        foreach (var number in section.Split('.').Select(part => int.Parse(part, CultureInfo.InvariantCulture)))
+        {
+            if (entity is Multipart multipart && number >= 1 && number <= multipart.Count)
+                entity = multipart[number - 1];
+            else if (entity is not MimePart || number != 1)
+                throw new NotSupportedException($"The fake IMAP server finds no part '{section}'.");
+        }
+
+        if (entity is not MimePart { Content: { } content })
+            throw new NotSupportedException($"The fake IMAP server only serves leaf parts, not '{section}'.");
+
+        using var output = new MemoryStream();
+        content.WriteTo(output);
+        return output.ToArray();
     }
 
     private static string Envelope(MimeMessage message)

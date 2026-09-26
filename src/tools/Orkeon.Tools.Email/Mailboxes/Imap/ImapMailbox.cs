@@ -20,6 +20,9 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
     private const int MaxBatch = 100;
     private static readonly TimeSpan IdleReconnect = TimeSpan.FromMinutes(5);
 
+    /// <summary>After this long unused, the pooled connection is checked with a NOOP before a real command.</summary>
+    private static readonly TimeSpan IdleCheck = TimeSpan.FromSeconds(30);
+
     /// <summary>The roles a server that flags no folder has by folder name (see <see cref="ConventionalNames"/>).</summary>
     private static readonly string[] ConventionalRoles = [FolderRoles.Sent, FolderRoles.Drafts, FolderRoles.Trash, FolderRoles.Junk, FolderRoles.Archive];
 
@@ -294,8 +297,12 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
 
     private async Task<ImapClient> EnsureClientAsync(CancellationToken cancellationToken)
     {
-        if (_client is { IsConnected: true, IsAuthenticated: true } && _time.GetUtcNow() - _lastUse < IdleReconnect)
-            return _client;
+        if (_client is { IsConnected: true, IsAuthenticated: true } pooled)
+        {
+            var idle = _time.GetUtcNow() - _lastUse;
+            if (idle < IdleCheck || (idle < IdleReconnect && await IsAliveAsync(pooled, cancellationToken).ConfigureAwait(false)))
+                return pooled;
+        }
 
         await DropClientAsync().ConfigureAwait(false);
         var client = new ImapClient();
@@ -312,6 +319,24 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         _client = client;
         _lastUse = _time.GetUtcNow();
         return client;
+    }
+
+    /// <summary>
+    /// A server drops an idle session — a timeout, a BYE when an OAuth token expires — and the
+    /// client only learns it from its next command. A NOOP learns it first, so the real command,
+    /// which a server may have applied before the line broke, is never sent twice.
+    /// </summary>
+    private static async Task<bool> IsAliveAsync(ImapClient client, CancellationToken cancellationToken)
+    {
+        try
+        {
+            await client.NoOpAsync(cancellationToken).ConfigureAwait(false);
+            return client.IsConnected;
+        }
+        catch (Exception ex) when (ex is IOException or ProtocolException or CommandException or ServiceNotConnectedException or System.Net.Sockets.SocketException)
+        {
+            return false;
+        }
     }
 
     private async Task DropClientAsync()
@@ -337,7 +362,9 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
 
     private static SearchQuery BuildQuery(ImapClient client, MailSearch search)
     {
-        var parts = new List<SearchQuery>();
+        // A message marked deleted is on its way out: a move emulated without MOVE (a copy, then
+        // the original marked) or another client's delete leaves it until an expunge.
+        var parts = new List<SearchQuery> { SearchQuery.NotDeleted };
         if (search.UnreadOnly)
             parts.Add(SearchQuery.NotSeen);
         if (search.FlaggedOnly)
@@ -361,7 +388,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             parts.Add(SearchQuery.GMailRawSearch(search.RawQuery.Trim()));
         }
 
-        return parts.Count == 0 ? SearchQuery.All : parts.Aggregate((left, right) => left.And(right));
+        return parts.Aggregate((left, right) => left.And(right));
     }
 
     private static async Task<MessagePage> CollectPageAsync(IMailFolder folder, List<UniqueId> ordered, MailSearch search, CancellationToken cancellationToken)
@@ -423,15 +450,13 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         throw new EmailToolException(EmailErrorCode.InvalidRequest, "`cursor` is not a cursor of this account: pass `next_cursor` exactly as a previous page returned it.");
     }
 
+    /// <summary>
+    /// Deletes for good. Without UIDPLUS, MailKit expunges only these messages all the same: it
+    /// takes the deleted mark off the others for the time of the EXPUNGE and puts it back — the
+    /// guard a move without MOVE already relies on.
+    /// </summary>
     private static async Task<DeleteOutcome> PurgeAsync(ImapClient client, IReadOnlyList<string> ids, IMailFolder? trash, CancellationToken cancellationToken)
     {
-        if (!client.Capabilities.HasFlag(ImapCapabilities.UidPlus))
-        {
-            throw new EmailToolException(
-                EmailErrorCode.Unsupported,
-                "This server lacks UIDPLUS: a permanent delete could also remove other messages already marked deleted, so it is refused.");
-        }
-
         var gmail = client.Capabilities.HasFlag(ImapCapabilities.GMailExt1);
         var count = 0;
         foreach (var group in GroupByFolder(ids))
@@ -556,8 +581,25 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         if (displayPath.Equals("INBOX", StringComparison.OrdinalIgnoreCase))
             return client.Inbox;
 
-        var separator = client.PersonalNamespaces.Count > 0 ? client.PersonalNamespaces[0].DirectorySeparator : '/';
+        var personal = client.PersonalNamespaces.Count > 0 ? client.PersonalNamespaces[0] : null;
+        var separator = personal?.DirectorySeparator ?? '/';
         var serverPath = separator is '/' or '\0' ? displayPath : displayPath.Replace('/', separator);
+        if (await TryGetServerFolderAsync(client, serverPath, cancellationToken).ConfigureAwait(false) is { } folder)
+            return folder;
+
+        // A server whose personal folders live under a prefix (Courier, Cyrus: "INBOX.") lists
+        // them as INBOX/<name>, and creates a new one there: the path without it is the same
+        // folder. MailKit keeps the namespace without its trailing separator.
+        var prefix = personal is { Path.Length: > 0 } ns
+            ? (ns.Path.EndsWith(separator) ? ns.Path : ns.Path + separator)
+            : string.Empty;
+        return prefix.Length > 0 && !serverPath.StartsWith(prefix, StringComparison.Ordinal)
+            ? await TryGetServerFolderAsync(client, prefix + serverPath, cancellationToken).ConfigureAwait(false)
+            : null;
+    }
+
+    private static async Task<IMailFolder?> TryGetServerFolderAsync(ImapClient client, string serverPath, CancellationToken cancellationToken)
+    {
         try
         {
             return await client.GetFolderAsync(serverPath, cancellationToken).ConfigureAwait(false);

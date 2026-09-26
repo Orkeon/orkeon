@@ -220,7 +220,7 @@ public sealed class EmailAccountAdministration
         await interaction.ShowAuthorizationUrlAsync(account.Name, authorization, cancellationToken).ConfigureAwait(false);
 
         using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-        var viaBrowser = listener.WaitAsync(race.Token);
+        var viaBrowser = listener.WaitAsync(session.State, race.Token);
         // The paste prompt gets a thread of its own: a terminal read blocks its caller until a
         // line comes, whatever its signature (Console.In does), and the browser's redirect must
         // still end the sign-in while nobody types anything.
@@ -229,10 +229,14 @@ public sealed class EmailAccountAdministration
         var redirect = await first.ConfigureAwait(false);
         await race.CancelAsync().ConfigureAwait(false);
 
+        // The state first: an address from an earlier attempt, or forged, is not this sign-in's
+        // answer, whatever it says.
+        if (!string.Equals(redirect.State, session.State, StringComparison.Ordinal))
+            throw new EmailToolException(EmailErrorCode.AuthenticationFailed, "The redirect did not come from this sign-in (state mismatch); run the login again.");
         if (redirect.Error is { } error)
             throw new EmailToolException(EmailErrorCode.LoginRequired, $"The sign-in was refused: {error}.");
-        if (!string.Equals(redirect.State, session.State, StringComparison.Ordinal) || redirect.Code is not { } code)
-            throw new EmailToolException(EmailErrorCode.AuthenticationFailed, "The redirect did not come from this sign-in (state mismatch); run the login again.");
+        if (redirect.Code is not { } code)
+            throw new EmailToolException(EmailErrorCode.AuthenticationFailed, "The redirect carries no authorization code; run the login again.");
 
         return await _oauth.ExchangeCodeAsync(settings, secret, code, listener.RedirectUri, session, cancellationToken).ConfigureAwait(false);
     }

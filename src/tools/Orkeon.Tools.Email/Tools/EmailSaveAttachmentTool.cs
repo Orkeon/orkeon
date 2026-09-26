@@ -46,7 +46,8 @@ internal sealed class EmailSaveAttachmentTool : ToolBase<EmailSaveAttachmentRequ
         ArgumentNullException.ThrowIfNull(request);
         var account = _access.Authorize(request.Account, EmailRights.Read);
         var directory = request.Directory.Trim().TrimEnd('/');
-        var check = _fileSystem.ResolveAndValidate(directory + "/_", FileAccessRights.Write);
+        // Every file written is a new one (nothing is overwritten): the mount must let the crew create.
+        var check = _fileSystem.ResolveAndValidate(directory + "/_", FileAccessRights.Write | FileAccessRights.Create);
         if (!check.IsAllowed)
             throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot write into '{directory}': {(check.DenialReason ?? "the directory is not writable").TrimEnd('.')}.");
 

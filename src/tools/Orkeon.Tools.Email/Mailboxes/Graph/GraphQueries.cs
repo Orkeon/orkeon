@@ -68,7 +68,12 @@ internal static class GraphQueries
         return string.Join(" and ", clauses);
     }
 
-    /// <summary>The KQL of a text search; each word of a property criterion must match.</summary>
+    /// <summary>
+    /// The KQL of a text search; each word of a property criterion must match. The terms are
+    /// joined with an explicit AND: KQL joins two restrictions of one property with OR, so
+    /// <c>from:Alice from:Martin</c> would widen the search it was meant to narrow. A raw query
+    /// is grouped, so an OR inside it stays inside it.
+    /// </summary>
     public static string Kql(MailSearch search)
     {
         ArgumentNullException.ThrowIfNull(search);
@@ -77,9 +82,9 @@ internal static class GraphQueries
         AddProperty(terms, "to", search.To);
         AddProperty(terms, "subject", search.Subject);
         terms.AddRange(Words(search.Text));
-        if (!string.IsNullOrWhiteSpace(search.RawQuery))
-            terms.Add(Clean(search.RawQuery));
-        return string.Join(' ', terms);
+        if (!string.IsNullOrWhiteSpace(search.RawQuery) && Clean(search.RawQuery) is { Length: > 0 } raw)
+            terms.Add(terms.Count == 0 ? raw : $"({raw})");
+        return string.Join(" AND ", terms);
     }
 
     /// <summary>Applies to a <c>$search</c> page the criteria KQL did not carry.</summary>

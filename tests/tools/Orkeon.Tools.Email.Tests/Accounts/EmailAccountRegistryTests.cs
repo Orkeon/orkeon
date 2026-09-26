@@ -91,8 +91,8 @@ public sealed class EmailAccountRegistryTests
         var error = Assert.Throws<EmailToolException>(() => registry.Resolve("broken"));
 
         Assert.Equal(EmailErrorCode.InvalidConfiguration, error.Code);
-        Assert.StartsWith("The e-mail account 'broken' is misconfigured: account 'broken': Rights is required", error.Message, StringComparison.Ordinal);
-        Assert.Contains("; account 'broken': Incoming:Host is required for a Custom account", error.Message, StringComparison.Ordinal);
+        Assert.StartsWith("The e-mail account 'broken' is misconfigured: Rights is required", error.Message, StringComparison.Ordinal);
+        Assert.Contains("; Incoming:Host is required for a Custom account", error.Message, StringComparison.Ordinal);
         Assert.EndsWith("(see the e-mail guide, docs/guides/email.md).", error.Message, StringComparison.Ordinal);
     }
 

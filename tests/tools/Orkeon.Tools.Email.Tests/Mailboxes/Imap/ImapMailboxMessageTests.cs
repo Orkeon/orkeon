@@ -118,7 +118,7 @@ public sealed class ImapMailboxMessageTests
 
         server.AssertHealthy();
         var search = Assert.Single(server.Commands, c => c.StartsWith("UID SEARCH", StringComparison.Ordinal));
-        Assert.Equal("UID SEARCH UNSEEN FLAGGED FROM alice TO agent SUBJECT figures OR SUBJECT budget BODY budget SINCE 1-Sep-2026 BEFORE 30-Sep-2026", search);
+        Assert.Equal("UID SEARCH UNDELETED UNSEEN FLAGGED FROM alice TO agent SUBJECT figures OR SUBJECT budget BODY budget SINCE 1-Sep-2026 BEFORE 30-Sep-2026", search);
         Assert.Equal(match, uint.Parse(Assert.Single(page.Messages).Id.Split(':')[^1], System.Globalization.CultureInfo.InvariantCulture));
     }
 
@@ -219,7 +219,7 @@ public sealed class ImapMailboxMessageTests
 
         server.AssertHealthy();
         Assert.Equal(MailboxCapabilities.RawQuery, mailbox.Capabilities & MailboxCapabilities.RawQuery);
-        Assert.Contains(server.Commands, c => c.StartsWith("UID SEARCH X-GM-RAW", StringComparison.Ordinal) && c.Contains("has:attachment", StringComparison.Ordinal));
+        Assert.Contains(server.Commands, c => c.StartsWith("UID SEARCH UNDELETED X-GM-RAW", StringComparison.Ordinal) && c.Contains("has:attachment", StringComparison.Ordinal));
         Assert.Equal("Report attached", Assert.Single(page.Messages).Subject);
     }
 
@@ -415,19 +415,20 @@ public sealed class ImapMailboxMessageTests
     }
 
     [Fact]
-    public async Task Should_refuse_a_permanent_delete_When_the_server_lacks_UIDPLUS()
+    public async Task Should_delete_for_good_without_UIDPLUS_and_spare_what_another_client_marked_deleted()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, "IMAP4rev1 AUTH=PLAIN SASL-IR MOVE SPECIAL-USE NAMESPACE PREVIEW");
-        var uid = server.AddMessage("INBOX", MimeSamples.Plain());
+        var spared = server.AddMessage("INBOX", MimeSamples.Plain(subject: "Marked elsewhere"), deleted: true);
+        var doomed = server.AddMessage("INBOX", MimeSamples.Plain(subject: "Doomed"));
         using var credentials = new CredentialsFixture();
         await using var mailbox = Open(server, credentials);
 
-        var error = await Assert.ThrowsAsync<EmailToolException>(async () =>
-            await mailbox.DeleteAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid)], permanent: true, Token));
+        var outcome = await mailbox.DeleteAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), doomed)], permanent: true, Token);
 
-        Assert.Equal(EmailErrorCode.Unsupported, error.Code);
-        Assert.Contains("lacks UIDPLUS", error.Message, StringComparison.Ordinal);
-        Assert.Single(server.UidsOf("INBOX"));
+        server.AssertHealthy();
+        Assert.Equal(new DeleteOutcome(1, true, null), outcome);
+        Assert.Equal([spared], server.UidsOf("INBOX"));
+        Assert.Contains("\\Deleted", server.FlagsOf("INBOX", spared));
     }
 
     [Fact]

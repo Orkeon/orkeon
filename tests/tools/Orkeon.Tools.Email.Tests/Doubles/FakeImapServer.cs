@@ -74,6 +74,15 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
     /// <summary>The capabilities advertised by default.</summary>
     public const string DefaultCapabilities = "IMAP4rev1 AUTH=PLAIN AUTH=XOAUTH2 SASL-IR UIDPLUS MOVE SPECIAL-USE NAMESPACE PREVIEW";
 
+    /// <summary>
+    /// What Gmail advertises once signed in: no PREVIEW (a client fetches the start of a body
+    /// part instead), ESEARCH (a UID SEARCH answers with RETURN (ALL)), CONDSTORE, LIST-STATUS,
+    /// UTF8=ACCEPT, XLIST. COMPRESS=DEFLATE is left out: the double does not compress.
+    /// </summary>
+    public const string GmailCapabilities =
+        "IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN X-GM-EXT-1 UIDPLUS ENABLE MOVE CONDSTORE ESEARCH " +
+        "UTF8=ACCEPT LIST-EXTENDED LIST-STATUS LITERAL- SPECIAL-USE APPENDLIMIT=35651584 AUTH=PLAIN AUTH=XOAUTH2 SASL-IR";
+
     private static readonly DateTimeOffset DefaultInternalDate = new(2026, 9, 20, 8, 0, 0, TimeSpan.Zero);
 
     private readonly List<FakeImapFolder> _folders = [];
@@ -100,7 +109,7 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             ["LOGOUT"] = LogoutAsync,
             ["LOGIN"] = LoginAsync,
             ["AUTHENTICATE"] = AuthenticateAsync,
-            ["NAMESPACE"] = r => Authenticated(r, () => ReplyAsync(r, "* NAMESPACE ((\"\" \"/\")) NIL NIL", "OK NAMESPACE completed")),
+            ["NAMESPACE"] = r => Authenticated(r, () => ReplyAsync(r, $"* NAMESPACE ((\"{NamespacePrefix}\" \"{Separator}\")) NIL NIL", "OK NAMESPACE completed")),
             ["LIST"] = r => Authenticated(r, () => ListAsync(r)),
             ["LSUB"] = r => Authenticated(r, () => ReplyAsync(r, null, "OK LSUB completed")),
             ["STATUS"] = r => Authenticated(r, () => StatusAsync(r)),
@@ -138,6 +147,12 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
     /// <summary>The bearer token XOAUTH2 accepts, when set.</summary>
     public string? AccessToken { get; set; }
 
+    /// <summary>The hierarchy separator of the folder names (<c>/</c> by default; Courier and Cyrus use <c>.</c>).</summary>
+    public char Separator { get; init; } = '/';
+
+    /// <summary>The prefix of the personal namespace, e.g. <c>INBOX.</c> (none by default).</summary>
+    public string NamespacePrefix { get; init; } = string.Empty;
+
     /// <summary>Commands starting with this text (tag excluded) are never answered.</summary>
     public string? StallOn { get; set; }
 
@@ -172,13 +187,15 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             .AddFolder("Junk", "\\Junk").AddFolder("Archive", "\\Archive");
 
     /// <summary>Adds a message to <paramref name="folder"/>; returns its UID.</summary>
-    public uint AddMessage(string folder, string rawMime, bool seen = false, bool flagged = false, DateTimeOffset? internalDate = null)
+    public uint AddMessage(string folder, string rawMime, bool seen = false, bool flagged = false, DateTimeOffset? internalDate = null, bool deleted = false)
     {
         var flags = new List<string>();
         if (seen)
             flags.Add("\\Seen");
         if (flagged)
             flags.Add("\\Flagged");
+        if (deleted)
+            flags.Add("\\Deleted");
 
         lock (Gate)
         {
@@ -285,7 +302,8 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             }
 
             var request = new ImapRequest(session, tokens[0].Text, name, uid, arguments, command.Display, cancellationToken);
-            if (!_handlers.TryGetValue(name, out var handler) || (uid && name is not ("SEARCH" or "FETCH" or "STORE" or "COPY" or "MOVE" or "EXPUNGE")))
+            var unadvertised = (name == "MOVE" && !Advertises("MOVE")) || (uid && name == "EXPUNGE" && !Advertises("UIDPLUS"));
+            if (unadvertised || !_handlers.TryGetValue(name, out var handler) || (uid && name is not ("SEARCH" or "FETCH" or "STORE" or "COPY" or "MOVE" or "EXPUNGE")))
             {
                 RecordUnknown(command.Display);
                 await TaggedAsync(request, "BAD Unknown command");
@@ -386,7 +404,7 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
         var lines = new List<string>();
         if (patterns is [""])
         {
-            lines.Add("* LIST (\\Noselect) \"/\" \"\"");
+            lines.Add($"* LIST (\\Noselect) \"{Separator}\" \"\"");
         }
         else
         {
@@ -394,13 +412,13 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             {
                 foreach (var folder in _folders.OrderBy(f => f.Name, StringComparer.Ordinal))
                 {
-                    if (!patterns.Exists(pattern => NameMatches(pattern, folder.Name)) || (selectSpecialUse && folder.SpecialUse is null))
+                    if (!patterns.Exists(pattern => NameMatches(pattern, folder.Name, Separator)) || (selectSpecialUse && folder.SpecialUse is null))
                         continue;
 
-                    var attributes = new List<string> { _folders.Exists(f => f.Name.StartsWith(folder.Name + "/", StringComparison.Ordinal)) ? "\\HasChildren" : "\\HasNoChildren" };
+                    var attributes = new List<string> { _folders.Exists(f => f.Name.StartsWith(folder.Name + Separator, StringComparison.Ordinal)) ? "\\HasChildren" : "\\HasNoChildren" };
                     if (folder.SpecialUse is { } specialUse)
                         attributes.Add(specialUse);
-                    lines.Add($"* LIST ({string.Join(' ', attributes)}) \"/\" {Quote(folder.Name)}");
+                    lines.Add($"* LIST ({string.Join(' ', attributes)}) \"{Separator}\" {Quote(folder.Name)}");
                     if (statusItems is not null)
                         lines.Add(StatusLine(folder, statusItems));
                 }
@@ -500,11 +518,11 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
 
     private async Task<bool> CreateAsync(ImapRequest request)
     {
-        var name = request.Arguments.Count > 0 ? request.Arguments[0].Text.TrimEnd('/') : string.Empty;
+        var name = request.Arguments.Count > 0 ? request.Arguments[0].Text.TrimEnd(Separator) : string.Empty;
         string answer;
         lock (Gate)
         {
-            var cut = name.LastIndexOf('/');
+            var cut = name.LastIndexOf(Separator);
             if (name.Length == 0)
                 answer = "BAD CREATE needs a name";
             else if (FindFolder(name) is not null)
@@ -535,7 +553,7 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             return await ReplyAsync(request, null, "BAD RENAME needs two names");
 
         var from = request.Arguments[0].Text;
-        var to = request.Arguments[1].Text.TrimEnd('/');
+        var to = request.Arguments[1].Text.TrimEnd(Separator);
         string answer;
         lock (Gate)
         {
@@ -545,7 +563,7 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
                 answer = "NO [ALREADYEXISTS] Target mailbox exists";
             else
             {
-                foreach (var folder in _folders.Where(f => f.Name == source.Name || f.Name.StartsWith(source.Name + "/", StringComparison.Ordinal)).ToList())
+                foreach (var folder in _folders.Where(f => f.Name == source.Name || f.Name.StartsWith(source.Name + Separator, StringComparison.Ordinal)).ToList())
                     folder.Name = to + folder.Name[source.Name.Length..];
                 answer = "OK RENAME completed";
             }
@@ -573,7 +591,9 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             {
                 var uid = folder.UidNext++;
                 folder.Messages.Add(new FakeImapMessage(uid, bytes, DefaultInternalDate, flags));
-                answer = string.Create(CultureInfo.InvariantCulture, $"OK [APPENDUID {folder.UidValidity} {uid}] APPEND completed");
+                answer = Advertises("UIDPLUS")
+                    ? string.Create(CultureInfo.InvariantCulture, $"OK [APPENDUID {folder.UidValidity} {uid}] APPEND completed")
+                    : "OK APPEND completed";
             }
         }
 
@@ -679,17 +699,19 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
             {
                 var copies = messages.Select(message => (message.Uid, Copy: new FakeImapMessage(target.UidNext++, message.Raw, message.InternalDate, message.Flags))).ToList();
                 target.Messages.AddRange(copies.Select(c => c.Copy));
-                var copyUid = string.Create(CultureInfo.InvariantCulture,
-                    $"[COPYUID {target.UidValidity} {string.Join(',', copies.Select(c => c.Uid))} {string.Join(',', copies.Select(c => c.Copy.Uid))}]");
+                var copyUid = Advertises("UIDPLUS")
+                    ? string.Create(CultureInfo.InvariantCulture,
+                        $"[COPYUID {target.UidValidity} {string.Join(',', copies.Select(c => c.Uid))} {string.Join(',', copies.Select(c => c.Copy.Uid))}] ")
+                    : string.Empty;
                 if (move)
                 {
-                    lines.Add($"* OK {copyUid} Moved");
+                    lines.Add($"* OK {copyUid}Moved");
                     lines.AddRange(RemoveMessages(source, messages));
                     answer = "OK MOVE completed";
                 }
                 else
                 {
-                    answer = $"OK {copyUid} COPY completed";
+                    answer = $"OK {copyUid}COPY completed";
                 }
             }
         }
@@ -722,6 +744,10 @@ internal sealed partial class FakeImapServer : FakeProtocolServer
         !request.Session.Authenticated ? ReplyAsync(request, null, "NO Not authenticated")
         : request.Session.Selected is null ? ReplyAsync(request, null, "BAD No mailbox selected")
         : handler();
+
+    /// <summary>Whether the server advertises <paramref name="capability"/>: an extension it does not advertise, it refuses.</summary>
+    private bool Advertises(string capability) =>
+        Capabilities.Split(' ', StringSplitOptions.RemoveEmptyEntries).Contains(capability, StringComparer.OrdinalIgnoreCase);
 
     private FakeImapFolder? FindFolder(string name) =>
         _folders.Find(f => f.Name == name || (f.Name.Equals("INBOX", StringComparison.OrdinalIgnoreCase) && name.Equals("INBOX", StringComparison.OrdinalIgnoreCase)));

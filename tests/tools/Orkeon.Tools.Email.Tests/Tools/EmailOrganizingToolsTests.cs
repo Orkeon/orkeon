@@ -178,7 +178,7 @@ public sealed class EmailOrganizingToolsTests
         Assert.Equal((0, "report (1).pdf", "/output/att/report (1).pdf"), (saved["index"], saved["file_name"], saved["path"]));
         Assert.Equal(MimeSamples.PdfBytes, await fixture.Files.TryReadAllBytesAsync("/output/att/report (1).pdf", TestContext.Current.CancellationToken));
         Assert.Equal([1, 2, 3], await fixture.Files.TryReadAllBytesAsync("/output/att/report.pdf", TestContext.Current.CancellationToken));
-        Assert.Contains(("/output/att/_", FileAccessRights.Write), fixture.Files.Validations);
+        Assert.Contains(("/output/att/_", FileAccessRights.Write | FileAccessRights.Create), fixture.Files.Validations);
         Assert.Equal(("full", "id-1"), (result["account"], result["id"]));
     }
 
@@ -205,6 +205,19 @@ public sealed class EmailOrganizingToolsTests
 
         Assert.Equal("Tool execution failed: Cannot write into '/workspace/att': The mount '/workspace' does not grant the right this needs.", readOnly);
         Assert.StartsWith("Tool execution failed: Cannot write into '/etc': No mount", nowhere, StringComparison.Ordinal);
+        Assert.Empty(fixture.Mailbox().Fetched);
+    }
+
+    [Fact]
+    public async Task Should_refuse_a_directory_where_it_may_write_but_not_create_files()
+    {
+        using var fixture = new ToolFixture();
+        fixture.Files.AddMount("/drop", FileAccessRights.Read | FileAccessRights.Write);
+        fixture.Mailbox().Add("id-1", MimeSamples.WithAttachment());
+
+        var refused = ToolResults.Failure(await fixture.CallAsync("email_save_attachment", ("id", "id-1"), ("directory", "/drop")));
+
+        Assert.Equal("Tool execution failed: Cannot write into '/drop': The mount '/drop' does not grant the right this needs.", refused);
         Assert.Empty(fixture.Mailbox().Fetched);
     }
 
