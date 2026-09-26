@@ -1,0 +1,42 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+
+    <PackageId>Orkeon.Tools.Email</PackageId>
+    <!-- PUB-25: shipped inside the `Orkeon.Tools` umbrella package (src/packaging/Orkeon.Tools) — no standalone nupkg. -->
+    <IsPackable>false</IsPackable>
+    <Description>E-mail agent tools for Orkeon: IMAP, POP3 and SMTP through MailKit, Outlook.com and Microsoft 365 through Microsoft Graph, with Gmail and Outlook presets, OAuth2 sign-in and per-account rights.</Description>
+    <PackageTags>AI;Agents;LLM;Orkeon;Tools;Email;IMAP;SMTP;POP3;Gmail;Outlook</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Orkeon.Tools.Email.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\..\constants\Orkeon.Constants.Configuration\Orkeon.Constants.Configuration.csproj" />
+    <ProjectReference Include="..\..\core\Orkeon.Domain\Orkeon.Domain.csproj" />
+    <ProjectReference Include="..\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
+    <!-- The prompt-injection detector screens every message an agent reads (ADR-012). -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="MimeKit" />
+    <PackageReference Include="HtmlAgilityPack" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Http" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+</Project>

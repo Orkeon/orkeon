@@ -84,7 +84,7 @@ public partial class FileReadTool : FileToolBase<FileReadRequest, FileReadRespon
     public override string Name => "file_read";
 
     /// <inheritdoc />
-    public override string Description => "Read content from files. Supports text, JSON, XML, and email files (.eml, .msg).";
+    public override string Description => "Read content from files: text, JSON, XML and the like. Parse .eml e-mail files with email_parser.";
 
     /// <summary>Declared access class for permission gates.</summary>
     public override ToolAccess Access => ToolAccess.Read;

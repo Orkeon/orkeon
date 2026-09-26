@@ -3,7 +3,7 @@ namespace Orkeon.Constants.Configuration;
 /// <summary>
 /// The configuration paths more than one project has to spell identically.
 /// <para>
-/// Only those. Orkeon declares 56 distinct <c>Orkeon:*</c> keys and 51 of them are written in a
+/// Only those. Orkeon declares 57 distinct <c>Orkeon:*</c> keys and 51 of them are written in a
 /// single project, where they belong — a key one component reads is that component's business.
 /// What lands here is the handful the engine and the tooling must agree on and cannot share by
 /// reference, because <c>Orkeon.Studio.Core</c> may not reference <c>Orkeon.Hosting</c> or
@@ -36,6 +36,13 @@ public static class ConfigurationKeys
     /// show what a machine has configured.
     /// </summary>
     public const string Rag = "Orkeon:Rag";
+
+    /// <summary>
+    /// Root of the e-mail tool family's settings: its accounts, their rights and the credentials
+    /// directory. Bound by <c>AddOrkeonEmailTools</c>, read by the runner host to decide whether
+    /// the OAuth token store needs a mount, and named by Studio's tool catalogue.
+    /// </summary>
+    public const string ToolsEmail = "Orkeon:Tools:Email";
 
     /// <summary>
     /// The context window a session budgets against. Read by the token-budget tool and by the

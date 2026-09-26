@@ -10,7 +10,7 @@ namespace Orkeon.Tools.FileSystem.DependencyInjection;
 public static class FileSystemToolExtensions
 {
     /// <summary>
-    /// Adds file system tools (FileRead, FileWrite, DirectoryRead, EmailParser, DirectorySearch) to the service collection.
+    /// Adds file system tools (FileRead, FileWrite, DirectoryRead, DirectorySearch) to the service collection.
     /// The directory_search facade rides on the shared ephemeral-collection RAG search
     /// (RAG-03/C5): the host must register the RAG subsystem (<c>AddOrkeonRag</c> + an
     /// embedding provider) for it to run — without it, registration and construction
@@ -24,7 +24,6 @@ public static class FileSystemToolExtensions
         services.AddTransient<IBaseTool, FileReadTool>();
         services.AddTransient<IBaseTool, FileWriteTool>();
         services.AddTransient<IBaseTool, DirectoryReadTool>();
-        services.AddTransient<IBaseTool, EmailParserTool>();
         services.AddTransient<IBaseTool, DirectorySearchTool>();
         services.AddTransient<IBaseTool, CountPatternTool>();
         return services;

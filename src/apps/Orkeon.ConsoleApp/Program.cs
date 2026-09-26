@@ -21,6 +21,7 @@ using Orkeon.ConsoleApp.Services;
 using Orkeon.Application.DependencyInjection;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.Abstractions.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
@@ -181,6 +182,9 @@ static class Program
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
         services.AddOrkeonAbstractionTools();
+        // E-mail tools (MAIL): password accounts work here; OAuth accounts need the token store
+        // the `orkeon` runners mount, and say so when called from the REPL.
+        services.AddOrkeonEmailTools(context.Configuration);
         // Session buffer + session_store/session_snip/token_budget tools. The
         // configuration is passed so the session metadata carries `Llm:AvailableModels` —
         // what a scripted /model can offer as a choice.
