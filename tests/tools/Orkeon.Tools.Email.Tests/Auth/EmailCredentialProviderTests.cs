@@ -214,6 +214,20 @@ public sealed class EmailCredentialProviderTests
     }
 
     [Fact]
+    public async Task Should_not_call_an_account_ready_While_the_client_secret_it_names_is_unset()
+    {
+        using var fixture = new CredentialsFixture();
+        var account = GoogleAccount;
+        fixture.SeedFreshToken(account);
+
+        var diagnosis = await fixture.Provider.DiagnoseAsync(account, Token);
+
+        Assert.NotNull(diagnosis);
+        Assert.Contains("ORKEON_TEST_GOOGLE_SECRET", diagnosis, StringComparison.Ordinal);
+        Assert.Empty(fixture.Handler.Requests);
+    }
+
+    [Fact]
     public async Task Should_say_where_tokens_come_from_When_the_host_keeps_none()
     {
         using var fixture = new CredentialsFixture();

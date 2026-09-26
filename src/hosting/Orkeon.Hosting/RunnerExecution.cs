@@ -323,7 +323,8 @@ public static partial class RunnerExecution
     /// <param name="userMounts">The user-supplied mount strings, typically <c>--mount</c>.</param>
     /// <param name="settingsPath">Resolved settings file whose declared mounts also count, or
     /// <see langword="null"/> when the command resolves none.</param>
-    /// <param name="reserved">The virtual roots this runner keeps for itself.</param>
+    /// <param name="reserved">The virtual roots this runner keeps for itself; <c>/credentials</c>,
+    /// which the host keeps for every command, is always added.</param>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
     public static bool EnsureReservedRootsAreFree(
         IEnumerable<string> userMounts,
@@ -332,6 +333,12 @@ public static partial class RunnerExecution
     {
         ArgumentNullException.ThrowIfNull(userMounts);
         ArgumentNullException.ThrowIfNull(reserved);
+
+        // /credentials belongs to the runner host whatever the command: the OAuth tokens of the
+        // e-mail accounts live there (ADR-012), so every entry point refuses it.
+        reserved = reserved.Contains(RunnerVirtualRoots.Credentials, StringComparer.Ordinal)
+            ? reserved
+            : [.. reserved, RunnerVirtualRoots.Credentials];
 
         foreach (var mountString in userMounts.Concat(RunnerSettings.ReadDeclaredMounts(settingsPath)))
         {

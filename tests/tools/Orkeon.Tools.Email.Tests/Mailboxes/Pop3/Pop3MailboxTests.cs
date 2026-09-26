@@ -75,8 +75,7 @@ public sealed class Pop3MailboxTests
     [InlineData("from", "bob", "pop3:uid-3")]
     [InlineData("subject", "LUNCH", "pop3:uid-2")]
     [InlineData("to", "team@", "pop3:uid-2")]
-    [InlineData("to", "cc-person", "pop3:uid-1")]
-    public async Task Should_match_from_to_cc_and_subject_case_insensitively(string criterion, string value, string expectedId)
+    public async Task Should_match_from_to_and_subject_case_insensitively(string criterion, string value, string expectedId)
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
@@ -91,6 +90,18 @@ public sealed class Pop3MailboxTests
         var page = await mailbox.SearchAsync(search, Token);
 
         Assert.Equal(expectedId, Assert.Single(page.Messages).Id);
+    }
+
+    [Fact]
+    public async Task Should_search_the_To_header_only_like_the_other_backends()
+    {
+        await using var server = Seeded();
+        using var credentials = new CredentialsFixture();
+        var mailbox = Open(server, credentials);
+
+        var page = await mailbox.SearchAsync(new MailSearch { To = "cc-person" }, Token);
+
+        Assert.Empty(page.Messages);
     }
 
     [Fact]
@@ -280,15 +291,19 @@ public sealed class Pop3MailboxTests
     }
 
     [Fact]
-    public async Task Should_ignore_a_request_to_file_a_sent_copy()
+    public async Task Should_say_it_has_no_Sent_folder_to_file_a_copy_in_without_connecting()
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
         var mailbox = Open(server, credentials);
         using var message = new MimeMessage();
 
-        await mailbox.AppendToSentAsync(message, Token);
+        var error = await Assert.ThrowsAsync<EmailToolException>(() => mailbox.AppendToSentAsync(message, Token));
 
+        Assert.Equal(EmailErrorCode.Unsupported, error.Code);
+        Assert.Equal(
+            "E-mail account 'local' reads mail over POP3, which has no Sent folder to file a copy in: an operator sets SaveSentCopy to false, or switch the account to IMAP (Incoming:Protocol Imap).",
+            error.Message);
         Assert.Equal(0, server.ConnectionCount);
     }
 

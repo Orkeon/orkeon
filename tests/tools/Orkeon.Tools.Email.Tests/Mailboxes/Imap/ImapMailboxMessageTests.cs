@@ -415,6 +415,24 @@ public sealed class ImapMailboxMessageTests
     }
 
     [Fact]
+    public async Task Should_archive_to_All_Mail_on_Gmail_which_has_no_archive_folder()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, GmailCapabilities);
+        server.AddFolder("[Gmail]").AddFolder("[Gmail]/All Mail", "\\All").AddFolder("[Gmail]/Trash", "\\Trash");
+        var uid = server.AddMessage("INBOX", MimeSamples.Plain(subject: "Done with it"));
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = new ImapMailbox(
+            TestAccounts.AsGmail(TestAccounts.Loopback(IncomingProtocol.Imap, server.Port)), new NetworkMailServiceConnector(), credentials.Provider, credentials.Time);
+
+        var moved = await mailbox.MoveAsync([MessageIds.Imap("INBOX", server.UidValidityOf("INBOX"), uid)], "archive", Token);
+
+        server.AssertHealthy();
+        Assert.Equal(MessageIds.Imap("[Gmail]/All Mail", server.UidValidityOf("[Gmail]/All Mail"), 1), Assert.Single(moved).NewId);
+        Assert.Empty(server.UidsOf("INBOX"));
+        Assert.Single(server.UidsOf("[Gmail]/All Mail"));
+    }
+
+    [Fact]
     public async Task Should_purge_through_the_trash_on_Gmail_where_expunging_a_label_only_archives()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, GmailCapabilities);

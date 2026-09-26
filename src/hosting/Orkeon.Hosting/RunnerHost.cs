@@ -449,11 +449,13 @@ public static partial class RunnerHost
     /// legitimately have declared 0 and 2.
     /// </summary>
     /// <summary>
-    /// Where the OAuth tokens of the declared e-mail accounts live, creating the directory
-    /// (owner-only on Unix), or null when no account signs in with OAuth2 — no mount, then, and
-    /// nothing created. The directory sits next to the per-user settings unless the operator names
-    /// one (<c>Orkeon:Tools:Email:CredentialsDirectory</c>, for a service account). A user mount
-    /// claiming <see cref="RunnerVirtualRoots.Credentials"/> is refused: the root is reserved.
+    /// Where the OAuth tokens of the declared e-mail accounts live, creating the directory and
+    /// its <c>email</c> subdirectory, or null when no account signs in with OAuth2 — no mount,
+    /// then, and nothing created. The directory sits next to the per-user settings unless the
+    /// operator names one (<c>Orkeon:Tools:Email:CredentialsDirectory</c>, for a service
+    /// account). On Unix the subdirectory holding the tokens is owner-only, narrowed to it if it
+    /// already existed wider. A user mount claiming <see cref="RunnerVirtualRoots.Credentials"/>
+    /// is refused whatever the accounts: the root is reserved, like the other internal ones.
     /// </summary>
     private static string? PlanEmailCredentials(
         DeclaredConfiguration declared,
@@ -461,10 +463,6 @@ public static partial class RunnerHost
         List<(int Index, string? Value)> declaredInternal,
         IReadOnlyList<string> cliMounts)
     {
-        var section = declared.Section(ConfigurationKeys.ToolsEmail);
-        if (section is null || !section.Exists() || !EmailCredentialsLocation.NeedsTokenStore(section))
-            return null;
-
         var claimed = declaredMounts.Select(entry => entry.Value)
             .Concat(declaredInternal.Select(entry => entry.Value))
             .Concat(cliMounts)
@@ -476,15 +474,30 @@ public static partial class RunnerHost
                 $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail accounts there. Mount the folder under another name.");
         }
 
+        var section = declared.Section(ConfigurationKeys.ToolsEmail);
+        if (section is null || !section.Exists() || !EmailCredentialsLocation.NeedsTokenStore(section))
+            return null;
+
         var directory = EmailCredentialsLocation.ConfiguredDirectory(section) ?? DefaultCredentialsDirectory();
         if (directory is null)
             return null;
 
         directory = Path.GetFullPath(directory);
+        var tokens = Path.Combine(directory, EmailCredentialsLocation.TokenSubdirectory);
         if (OperatingSystem.IsWindows())
-            Directory.CreateDirectory(directory);
+        {
+            Directory.CreateDirectory(tokens);
+        }
         else
-            Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        {
+            // The mode applies to the one directory each call creates, never to its parents.
+            const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+            Directory.CreateDirectory(directory, ownerOnly);
+            Directory.CreateDirectory(tokens, ownerOnly);
+            if ((File.GetUnixFileMode(tokens) & ~ownerOnly) != 0)
+                File.SetUnixFileMode(tokens, ownerOnly);
+        }
+
         return directory;
     }
 

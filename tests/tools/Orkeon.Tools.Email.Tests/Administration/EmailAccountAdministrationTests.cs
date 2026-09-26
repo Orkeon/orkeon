@@ -161,7 +161,7 @@ public sealed class EmailAccountAdministrationTests
         var error = await Assert.ThrowsAsync<EmailToolException>(async () =>
             await fixture.Administration.LoginAsync("hotmail", new FakeLoginInteraction(), Token));
 
-        Assert.Equal(EmailErrorCode.AuthenticationFailed, error.Code);
+        Assert.Equal(EmailErrorCode.LoginRequired, error.Code);
         Assert.StartsWith("The provider issued no refresh token", error.Message, StringComparison.Ordinal);
         Assert.Contains("offline_access", error.Message, StringComparison.Ordinal);
         Assert.Empty(fixture.Credentials.Store.Tokens);
@@ -201,6 +201,17 @@ public sealed class EmailAccountAdministrationTests
         Assert.True(await fixture.Administration.LogoutAsync("hotmail", Token));
         Assert.False(await fixture.Administration.LogoutAsync("hotmail", Token));
         Assert.Empty(fixture.Credentials.Store.Tokens);
+    }
+
+    [Fact]
+    public async Task Should_find_no_tokens_to_forget_for_a_password_account()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("perso", TestAccounts.Custom())));
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await fixture.Administration.LogoutAsync("perso", Token));
+
+        Assert.Equal(EmailErrorCode.InvalidRequest, error.Code);
+        Assert.Equal("E-mail account 'perso' signs in with a password (Auth:PasswordEnvVar); there are no tokens to forget.", error.Message);
     }
 
     [Fact]

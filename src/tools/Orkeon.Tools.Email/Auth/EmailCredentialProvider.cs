@@ -76,7 +76,8 @@ internal sealed class EmailCredentialProvider
 
     /// <summary>
     /// Whether <paramref name="account"/> has what it needs to connect, without any network:
-    /// the password variable is set, or a token (fresh or refreshable) is stored.
+    /// the password variable is set, or the client secret it names is set and a token (fresh
+    /// or refreshable) is stored.
     /// </summary>
     public async Task<string?> DiagnoseAsync(ResolvedEmailAccount account, CancellationToken cancellationToken)
     {
@@ -89,6 +90,8 @@ internal sealed class EmailCredentialProvider
                 return null;
             }
 
+            // A refresh needs the client secret too, when the account names one (Google).
+            _ = ReadClientSecret(account);
             var tokens = await _store.ReadAsync(TokenKey(account), cancellationToken).ConfigureAwait(false);
             return tokens is not null && (_oauth.IsFresh(tokens) || tokens.RefreshToken is not null)
                 ? null

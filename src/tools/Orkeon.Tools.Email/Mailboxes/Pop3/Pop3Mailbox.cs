@@ -139,7 +139,8 @@ internal sealed class Pop3Mailbox : IMailbox
         throw Unsupported("has no drafts folder: " + SwitchToImap + " for that");
 
     /// <inheritdoc />
-    public Task AppendToSentAsync(MimeMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
+    public Task AppendToSentAsync(MimeMessage message, CancellationToken cancellationToken) =>
+        throw Unsupported("has no Sent folder to file a copy in: an operator sets SaveSentCopy to false, or " + SwitchToImap);
 
     private async Task<T> RunAsync<T>(Func<Pop3Client, Task<T>> operation, CancellationToken cancellationToken)
     {
@@ -191,11 +192,8 @@ internal sealed class Pop3Mailbox : IMailbox
     {
         if (!string.IsNullOrWhiteSpace(search.From) && !summary.From.Contains(search.From.Trim(), StringComparison.OrdinalIgnoreCase))
             return false;
-        if (!string.IsNullOrWhiteSpace(search.To)
-            && !((headers[HeaderId.To] ?? string.Empty) + " " + (headers[HeaderId.Cc] ?? string.Empty)).Contains(search.To.Trim(), StringComparison.OrdinalIgnoreCase))
-        {
+        if (!string.IsNullOrWhiteSpace(search.To) && !(headers[HeaderId.To] ?? string.Empty).Contains(search.To.Trim(), StringComparison.OrdinalIgnoreCase))
             return false;
-        }
 
         if (!string.IsNullOrWhiteSpace(search.Subject) && !summary.Subject.Contains(search.Subject.Trim(), StringComparison.OrdinalIgnoreCase))
             return false;

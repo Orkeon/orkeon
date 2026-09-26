@@ -42,9 +42,28 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         var mount = Assert.Single(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials);
         Assert.Equal(tokens, mount.BasePath);
         Assert.IsType<FileSystemEmailTokenStore>(host.Services.GetRequiredService<IEmailTokenStore>());
-        Assert.True(Directory.Exists(tokens));
+        Assert.True(Directory.Exists(Path.Combine(tokens, "email")));
         if (!OperatingSystem.IsWindows())
-            Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(tokens));
+        {
+            Assert.Equal(OwnerOnly, File.GetUnixFileMode(tokens));
+            Assert.Equal(OwnerOnly, File.GetUnixFileMode(Path.Combine(tokens, "email")));
+        }
+    }
+
+    [Fact]
+    public void The_directory_holding_the_tokens_is_narrowed_to_its_owner_when_it_already_existed_wider()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var tokens = Path.Combine(_root, "tokens");
+        var email = Path.Combine(tokens, "email");
+        Directory.CreateDirectory(email);
+        File.SetUnixFileMode(email, OwnerOnly | UnixFileMode.GroupRead | UnixFileMode.GroupExecute | UnixFileMode.OtherRead | UnixFileMode.OtherExecute);
+
+        using var host = RunnerHost.Build(WriteSettings(OAuthAccount(tokens)), new RunnerMountPlan());
+
+        Assert.Equal(OwnerOnly, File.GetUnixFileMode(email));
     }
 
     [Fact]
@@ -86,6 +105,43 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
     }
 
     [Fact]
+    public void A_user_mount_on_the_credentials_root_is_refused_even_without_an_OAuth_account()
+    {
+        var elsewhere = Path.Combine(_root, "elsewhere");
+        Directory.CreateDirectory(elsewhere);
+        var settings = WriteSettings(PasswordAccount(Path.Combine(_root, "tokens")));
+
+        var error = Assert.Throws<InvalidOperationException>(() => RunnerHost.Build(
+            settings,
+            new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"] }));
+
+        Assert.StartsWith("The virtual root /credentials is reserved", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public void Every_command_s_early_guard_refuses_the_credentials_root_by_name()
+    {
+        var elsewhere = Path.Combine(_root, "elsewhere");
+        using var stderr = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(stderr);
+        bool free;
+        try
+        {
+            free = RunnerExecution.EnsureReservedRootsAreFree(
+                [$"{FileSystemMount.Quote(elsewhere)}:{RunnerVirtualRoots.Credentials}:rw"], settingsPath: null, RunnerVirtualRoots.Crew);
+        }
+        finally
+        {
+            Console.SetError(original);
+        }
+
+        Assert.False(free);
+        Assert.Contains("'/credentials' is a virtual root reserved by the runner", stderr.ToString(), StringComparison.Ordinal);
+        Assert.Contains("reserved here: /crew, /credentials", stderr.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void An_e_mail_section_the_binder_cannot_convert_leaves_the_host_and_every_tool_standing()
     {
         var crew = Path.Combine(_root, "crew");
@@ -108,6 +164,8 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
         Assert.Contains("email_send", tools);
         Assert.Contains("file_read", tools);
     }
+
+    private const UnixFileMode OwnerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
 
     private static IReadOnlyList<FileSystemMount> Mounts(Microsoft.Extensions.Hosting.IHost host) =>
         host.Services.GetService<FileSystemRegistry>()?.GetMounts().ToList() ?? [];

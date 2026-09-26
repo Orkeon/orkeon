@@ -543,6 +543,11 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
                 return found;
         }
 
+        // Gmail has no archive folder: archiving is leaving the inbox for All Mail, where the
+        // message keeps its other labels.
+        if (role == FolderRoles.Archive && client.Capabilities.HasFlag(ImapCapabilities.GMailExt1) && FlagsRoles(client))
+            return client.GetFolder(SpecialFolder.All);
+
         return null;
     }
 

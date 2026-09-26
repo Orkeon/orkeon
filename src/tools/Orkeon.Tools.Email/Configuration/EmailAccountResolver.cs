@@ -25,7 +25,7 @@ internal static class EmailAccountResolver
 
         var problems = new List<string>();
         if (!IsValidName(name))
-            problems.Add("the account name may only hold letters, digits, '.', '_' and '-' (64 characters at most)");
+            problems.Add("the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most");
 
         var address = ResolveAddress(options, problems);
         if (options.Rights == EmailRights.None)
@@ -60,7 +60,9 @@ internal static class EmailAccountResolver
             OutgoingEndpoint = outgoingEndpoint,
             Auth = auth,
             Send = send,
-            SaveSentCopy = options.SaveSentCopy ?? (options.Provider == EmailProvider.Custom && outgoing == OutgoingProtocol.Smtp),
+            // A custom SMTP server usually files nothing; a POP3 mailbox has no Sent folder to file into.
+            SaveSentCopy = options.SaveSentCopy
+                ?? (options.Provider == EmailProvider.Custom && outgoing == OutgoingProtocol.Smtp && incoming.Protocol != IncomingProtocol.Pop3),
             Timeout = timeout,
         };
         return new EmailAccountResolution(account, []);
@@ -83,6 +85,7 @@ internal static class EmailAccountResolver
     public static bool IsValidName(string name) =>
         !string.IsNullOrEmpty(name)
         && name.Length <= MaxNameLength
+        && char.IsAsciiLetterOrDigit(name[0])
         && name.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '_' or '-');
 
     /// <summary>Whether <paramref name="host"/> designates this machine.</summary>

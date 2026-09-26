@@ -172,6 +172,15 @@ public sealed class EmailAccountResolverTests
     }
 
     [Fact]
+    public void Should_file_no_sent_copy_by_default_for_a_POP3_account_which_has_no_Sent_folder()
+    {
+        var pop = TestAccounts.Custom(EmailRights.Send);
+        pop.Incoming.Protocol = IncomingProtocol.Pop3;
+
+        Assert.False(TestAccounts.Resolve("pop", pop).SaveSentCopy);
+    }
+
+    [Fact]
     public void Should_normalize_the_address_the_user_name_the_display_name_and_the_allow_list()
     {
         var options = TestAccounts.Custom(EmailRights.Send);

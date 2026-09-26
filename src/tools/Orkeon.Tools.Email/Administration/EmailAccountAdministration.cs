@@ -1,3 +1,4 @@
+using System.Text.Json.Serialization;
 using Orkeon.Tools.Email.Accounts;
 using Orkeon.Tools.Email.Auth;
 using Orkeon.Tools.Email.Configuration;
@@ -23,37 +24,50 @@ public interface IEmailLoginInteraction
     Task<string?> ReadRedirectAsync(CancellationToken cancellationToken);
 }
 
-/// <summary>One declared account, as <c>orkeon email accounts</c> lists it. No secret ever appears here.</summary>
+/// <summary>
+/// One declared account, as <c>orkeon email accounts</c> lists it — with <c>--json</c>, under the
+/// names <c>email_accounts</c> uses. No secret ever appears here.
+/// </summary>
 public sealed record EmailAccountStatus
 {
     /// <summary>The account name.</summary>
+    [JsonPropertyName("name")]
     public required string Name { get; init; }
 
     /// <summary>Its address, when the declaration has a valid one.</summary>
+    [JsonPropertyName("address")]
     public string? Address { get; init; }
 
     /// <summary>The preset.</summary>
+    [JsonPropertyName("provider")]
     public required string Provider { get; init; }
 
     /// <summary>How it reads mail (<c>Imap</c>, <c>Pop3</c>, <c>Graph</c>).</summary>
+    [JsonPropertyName("reads")]
     public string? Reads { get; init; }
 
     /// <summary>How it sends mail (<c>Smtp</c>, <c>Graph</c>), or null.</summary>
+    [JsonPropertyName("sends")]
     public string? Sends { get; init; }
 
     /// <summary>The rights it grants.</summary>
+    [JsonPropertyName("rights")]
     public string? Rights { get; init; }
 
     /// <summary>How it signs in (<c>Password</c>, <c>OAuth2</c>).</summary>
+    [JsonPropertyName("auth")]
     public string? Auth { get; init; }
 
     /// <summary>Whether it is the account a call without <c>account</c> uses.</summary>
+    [JsonPropertyName("default")]
     public bool IsDefault { get; init; }
 
     /// <summary>Whether it has everything it needs to connect (checked without network).</summary>
+    [JsonPropertyName("ready")]
     public bool Ready { get; init; }
 
     /// <summary>What to fix, when it is not ready.</summary>
+    [JsonPropertyName("problem")]
     public string? Problem { get; init; }
 }
 
@@ -152,7 +166,7 @@ public sealed class EmailAccountAdministration
         if (tokens.RefreshToken is null)
         {
             throw new EmailToolException(
-                EmailErrorCode.AuthenticationFailed,
+                EmailErrorCode.LoginRequired,
                 "The provider issued no refresh token, so the sign-in would expire within the hour. " +
                 "For Microsoft, the application must allow the offline_access permission; for Google, revoke the app's access and log in again.");
         }
@@ -164,6 +178,13 @@ public sealed class EmailAccountAdministration
     public Task<bool> LogoutAsync(string account, CancellationToken cancellationToken)
     {
         var resolved = _accounts.Resolve(account);
+        if (resolved.Auth.OAuth is null)
+        {
+            throw new EmailToolException(
+                EmailErrorCode.InvalidRequest,
+                $"E-mail account '{resolved.Name}' signs in with a password (Auth:PasswordEnvVar); there are no tokens to forget.");
+        }
+
         return _credentials.ForgetAsync(resolved, cancellationToken);
     }
 

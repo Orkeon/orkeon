@@ -150,7 +150,7 @@ declare global {
         flagged_only?: boolean;
         /** The sender's name or address contains this. */
         from?: string;
-        /** A recipient contains this. */
+        /** The To header contains this (Cc is not searched). */
         to?: string;
         /** The subject contains this. */
         subject?: string;

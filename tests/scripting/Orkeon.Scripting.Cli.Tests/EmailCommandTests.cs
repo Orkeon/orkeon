@@ -71,7 +71,7 @@ public sealed class EmailCommandTests
         using var document = JsonDocument.Parse(console.Stdout);
         var account = Assert.Single(document.RootElement.EnumerateArray());
         Assert.Equal("perso", account.GetProperty("name").GetString());
-        Assert.True(account.GetProperty("isDefault").GetBoolean());
+        Assert.True(account.GetProperty("default").GetBoolean());
         Assert.False(account.GetProperty("ready").GetBoolean());
     }
 

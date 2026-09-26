@@ -122,7 +122,7 @@ internal sealed record EmailSearchRequest
 
     /// <summary>Recipient contains.</summary>
     [JsonPropertyName("to")]
-    [FieldSchema(Description = "Recipient contains", IsRequired = false)]
+    [FieldSchema(Description = "The To header contains", IsRequired = false)]
     public string? To { get; init; }
 
     /// <summary>Subject contains.</summary>

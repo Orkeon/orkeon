@@ -212,14 +212,17 @@ public sealed class EmailAccountResolverValidationTests
         Assert.Equal("account 'acct': Auth:Tenant 'contoso/../evil' is not a tenant alias or id", SingleProblem(options));
     }
 
-    [Fact]
-    public void Should_refuse_an_invalid_account_name()
+    [Theory]
+    [InlineData("my account")]
+    [InlineData(".hidden")]
+    [InlineData("-dash")]
+    public void Should_refuse_an_invalid_account_name(string name)
     {
-        var resolution = EmailAccountResolver.Resolve("my account", TestAccounts.Custom());
+        var resolution = EmailAccountResolver.Resolve(name, TestAccounts.Custom());
 
         Assert.Null(resolution.Account);
         Assert.Equal(
-            "account 'my account': the account name may only hold letters, digits, '.', '_' and '-' (64 characters at most)",
+            $"account '{name}': the account name may only hold letters, digits, '.', '_' and '-', starts with a letter or a digit, and has 64 characters at most",
             Assert.Single(resolution.Problems));
     }
 
