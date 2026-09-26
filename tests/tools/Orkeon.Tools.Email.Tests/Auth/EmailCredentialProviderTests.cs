@@ -157,9 +157,22 @@ public sealed class EmailCredentialProviderTests
         using var fixture = new CredentialsFixture();
         var account = OutlookAccount;
         fixture.Store.With(EmailCredentialProvider.TokenKey(account), new EmailTokenSet { AccessToken = "old", RefreshToken = "rt", ExpiresAt = fixture.Time.GetUtcNow() });
-        fixture.Handler.EnqueueJson("""{"access_token":"new","expires_in":3600}""");
+        using var inFlight = new SemaphoreSlim(0);
+        using var release = new ManualResetEventSlim();
+        fixture.Handler.Enqueue(_ =>
+        {
+            // The refresh answers only once the other calls are waiting too: without the gate,
+            // each would send its own, and find no answer queued.
+            inFlight.Release();
+            release.Wait(TimeSpan.FromSeconds(30));
+            return FakeHttpResponse.Json("""{"access_token":"new","expires_in":3600}""");
+        });
 
-        var tokens = await Task.WhenAll(Enumerable.Range(0, 8).Select(_ => fixture.Provider.GetAccessTokenAsync(account, Token)));
+        var calls = Enumerable.Range(0, 8).Select(_ => Task.Run(() => fixture.Provider.GetAccessTokenAsync(account, Token), Token)).ToArray();
+        await inFlight.WaitAsync(Token);
+        await Task.Delay(200, Token);
+        release.Set();
+        var tokens = await Task.WhenAll(calls);
 
         Assert.All(tokens, token => Assert.Equal("new", token));
         Assert.Single(fixture.Handler.Requests);

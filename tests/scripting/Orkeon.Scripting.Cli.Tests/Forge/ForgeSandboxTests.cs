@@ -1,5 +1,11 @@
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Domain.FileSystem;
+using Orkeon.Domain.Tools;
 using Orkeon.Scripting.Cli.Commands.Forge;
 using Orkeon.Tests.Shared.Doubles;
+using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Tools.Email.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli.Tests.Forge;
 
@@ -28,6 +34,24 @@ public sealed class ForgeSandboxTests
         var catalogue = ForgeSandbox.SelectCrewTools(registered).Select(tool => tool.Name).ToList();
 
         Assert.Equal(["email_parser", "file_read"], catalogue);
+    }
+
+    [Fact]
+    public void Every_tool_the_e_mail_family_registers_is_denied_but_the_eml_parser()
+    {
+        // From the registration itself, not from a copy of the list: a mailbox tool added to the
+        // family later fails here until the forge denies it too.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        services.AddOrkeonEmailTools(new ConfigurationBuilder().Build());
+        using var provider = services.BuildServiceProvider();
+
+        var family = provider.GetServices<IBaseTool>().Select(tool => tool.Name).ToList();
+
+        Assert.Equal(13, family.Count);
+        Assert.All(family.Where(name => name != "email_parser"), name => Assert.Contains(name, ForgeSandbox.DeniedTools));
+        Assert.DoesNotContain("email_parser", ForgeSandbox.DeniedTools);
     }
 
     [Fact]

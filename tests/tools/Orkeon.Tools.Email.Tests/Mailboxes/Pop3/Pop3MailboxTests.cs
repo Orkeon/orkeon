@@ -219,6 +219,20 @@ public sealed class Pop3MailboxTests
     }
 
     [Fact]
+    public async Task Should_delete_nothing_When_one_id_of_the_batch_is_gone()
+    {
+        await using var server = Seeded();
+        using var credentials = new CredentialsFixture();
+        using var mailbox = Open(server, credentials);
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(() => mailbox.DeleteAsync(["pop3:uid-1", "pop3:uid-gone"], permanent: true, Token));
+
+        Assert.Equal(EmailErrorCode.MessageNotFound, error.Code);
+        Assert.Equal(["uid-1", "uid-2", "uid-3"], server.Uids);
+        Assert.DoesNotContain(server.Transcript, line => line.StartsWith("DELE", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task Should_open_a_new_session_for_every_operation()
     {
         await using var server = Seeded();

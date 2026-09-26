@@ -153,6 +153,43 @@ public sealed class SmtpMailSenderTests
     }
 
     [Fact]
+    public async Task Should_send_nothing_When_the_server_refuses_one_of_the_recipients()
+    {
+        await using var server = new FakeSmtpServer(TestAccounts.Address, TestAccounts.Password);
+        server.RejectedRecipients.Add("ghost@example.com");
+        using var credentials = new CredentialsFixture();
+        var sender = Sender(server, credentials);
+        using var message = MimeSamples.Load(MimeSamples.Plain());
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await sender.SendAsync(
+            message, new MailboxAddress(null, TestAccounts.Address),
+            [new MailboxAddress(null, "client@example.com"), new MailboxAddress(null, "ghost@example.com")], Token));
+
+        Assert.Contains("refused the recipient ghost@example.com", error.Message, StringComparison.Ordinal);
+        Assert.Empty(server.Accepted);
+        Assert.DoesNotContain("DATA", server.Transcript);
+    }
+
+    [Fact]
+    public async Task Should_fail_closed_When_StartTls_is_required_and_the_server_does_not_offer_it()
+    {
+        await using var server = new FakeSmtpServer(TestAccounts.Address, TestAccounts.Password);
+        using var credentials = new CredentialsFixture();
+        var account = TestAccounts.Loopback(IncomingProtocol.Imap, 1, smtpPort: server.Port);
+        account = account with { OutgoingEndpoint = account.OutgoingEndpoint! with { Security = TransportSecurity.StartTls } };
+        var sender = new SmtpMailSender(account, new NetworkMailServiceConnector(), credentials.Provider);
+        using var message = MimeSamples.Load(MimeSamples.Plain());
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () =>
+            await sender.SendAsync(message, new MailboxAddress(null, TestAccounts.Address), [new MailboxAddress(null, "client@example.com")], Token));
+
+        Assert.Equal(EmailErrorCode.ServerError, error.Code);
+        Assert.Contains("does not offer STARTTLS", error.Message, StringComparison.Ordinal);
+        Assert.DoesNotContain(server.Transcript, line => line.StartsWith("AUTH", StringComparison.Ordinal) || line.StartsWith("MAIL", StringComparison.Ordinal));
+        Assert.Empty(server.Accepted);
+    }
+
+    [Fact]
     public async Task Should_fail_with_CredentialMissing_before_dialling_When_the_password_variable_is_unset()
     {
         await using var server = new FakeSmtpServer(TestAccounts.Address, TestAccounts.Password);

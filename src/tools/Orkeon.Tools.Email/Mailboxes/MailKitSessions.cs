@@ -98,6 +98,10 @@ internal static class MailKitSessions
                 EmailErrorCode.AuthenticationFailed,
                 $"{server} refused the credentials of e-mail account '{account.Name}'. {AuthenticationHint(account)}{InUseHint(account, endpoint)} ({exception.Message})",
                 exception),
+            NotSupportedException when exception.Message.Contains("STARTTLS", StringComparison.OrdinalIgnoreCase) => new EmailToolException(
+                EmailErrorCode.ServerError,
+                $"{server} does not offer STARTTLS, which Security StartTls requires: nothing was sent unencrypted. Check the port and Security (SslOnConnect for 993/995/465).",
+                exception),
             SslHandshakeException => new EmailToolException(
                 EmailErrorCode.ServerError,
                 $"The TLS handshake with {server} failed: check the host, the port and Security (SslOnConnect for 993/995/465, StartTls for 143/110/587).",
