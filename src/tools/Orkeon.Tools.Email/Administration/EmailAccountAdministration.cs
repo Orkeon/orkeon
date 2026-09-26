@@ -17,6 +17,8 @@ public interface IEmailLoginInteraction
     /// <summary>
     /// Reads a redirect address the user pasted — the fallback when the browser cannot reach this
     /// machine's loopback port (WSL, a container, a remote shell). Returns null when nothing can be read.
+    /// It may block its thread until a line comes, as a console read does: the sign-in calls it
+    /// apart from the wait for the browser.
     /// </summary>
     Task<string?> ReadRedirectAsync(CancellationToken cancellationToken);
 }
@@ -198,7 +200,10 @@ public sealed class EmailAccountAdministration
 
         using var race = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
         var viaBrowser = listener.WaitAsync(race.Token);
-        var viaPaste = WaitForPastedRedirectAsync(interaction, race.Token);
+        // The paste prompt gets a thread of its own: a terminal read blocks its caller until a
+        // line comes, whatever its signature (Console.In does), and the browser's redirect must
+        // still end the sign-in while nobody types anything.
+        var viaPaste = Task.Run(() => WaitForPastedRedirectAsync(interaction, race.Token), CancellationToken.None);
         var first = await Task.WhenAny(viaBrowser, viaPaste).ConfigureAwait(false);
         var redirect = await first.ConfigureAwait(false);
         await race.CancelAsync().ConfigureAwait(false);

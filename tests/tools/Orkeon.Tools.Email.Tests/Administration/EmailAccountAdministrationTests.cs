@@ -90,6 +90,22 @@ public sealed class EmailAccountAdministrationTests
     }
 
     [Fact]
+    public async Task Should_finish_on_the_browser_redirect_While_the_terminal_blocks_on_its_read()
+    {
+        using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
+        fixture.Credentials.Handler.EnqueueJson("""{"access_token":"ya29.at","refresh_token":"1//rt","expires_in":3599}""");
+        using var terminal = new StubTerminalLoginInteraction();
+
+        // Started on a thread of its own: before the fix, the blocked read held the caller too.
+        var login = Task.Run(() => fixture.Administration.LoginAsync("google", terminal, Token), Token);
+        var query = Query(await terminal.AuthorizationShown.WaitAsync(Token));
+        await BrowseAsync(new Uri(query["redirect_uri"]), $"GET /?state={Uri.EscapeDataString(query["state"])}&code=4%2F0AbCd HTTP/1.1");
+        await login.WaitAsync(TimeSpan.FromSeconds(30), Token);
+
+        Assert.Equal("1//rt", Assert.Single(fixture.Credentials.Store.Tokens).Value.RefreshToken);
+    }
+
+    [Fact]
     public async Task Should_accept_a_pasted_redirect_When_the_browser_cannot_reach_the_listener()
     {
         using var fixture = new AdministrationFixture(Accounts(("google", TestAccounts.GmailOAuth())), (GoogleSecretVariable, "GOCSPX-secret"));
