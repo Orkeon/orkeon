@@ -101,7 +101,10 @@ The registration order is deliberate:
    `Orkeon:Security:PermissionGate:Enabled`; a no-op otherwise).
 6. **Core tool suites** — file system, data, web, code, abstractions, session tools; then the
    in-memory EventHub plus its agent tools and the EventHub ACL (`AddOrkeonEventHubAcl`,
-   permissive default so a crew without a `links:` block behaves as before).
+   permissive default so a crew without a `links:` block behaves as before); then the e-mail
+   tools (`AddOrkeonEmailTools(configuration)`, inert until an account is declared) and, when an
+   OAuth e-mail account is declared, their token store over the internal `/credentials` root —
+   mounted by the configuration step, reached through `PrivilegedFileSystemAccess`.
 7. **VFS mounts** — `AddOrkeonFileSystem` when `Orkeon:FileSystem:Mounts` **or**
    `Orkeon:FileSystem:InternalMounts` exists **and holds at least one entry** (two empty arrays
    register nothing). Either list alone makes the VFS real: `--list-tools` has only the second.

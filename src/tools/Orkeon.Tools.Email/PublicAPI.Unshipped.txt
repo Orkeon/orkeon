@@ -1,0 +1,112 @@
+#nullable enable
+Orkeon.Tools.Email.Administration.EmailAccountAdministration
+Orkeon.Tools.Email.Administration.EmailAccountAdministration.CheckAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Email.Administration.EmailCheckResult!>!
+Orkeon.Tools.Email.Administration.EmailAccountAdministration.ListAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Tools.Email.Administration.EmailAccountStatus!>!>!
+Orkeon.Tools.Email.Administration.EmailAccountAdministration.LoginAsync(string! account, Orkeon.Tools.Email.Administration.IEmailLoginInteraction! interaction, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.Administration.EmailAccountAdministration.LogoutAsync(string! account, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Email.Administration.EmailAccountStatus
+Orkeon.Tools.Email.Administration.EmailAccountStatus.<Clone>$() -> Orkeon.Tools.Email.Administration.EmailAccountStatus!
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Address.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Address.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Auth.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Auth.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.EmailAccountStatus() -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Equals(Orkeon.Tools.Email.Administration.EmailAccountStatus? other) -> bool
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IsDefault.get -> bool
+Orkeon.Tools.Email.Administration.EmailAccountStatus.IsDefault.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Name.get -> string!
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Name.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Problem.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Problem.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Provider.get -> string!
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Provider.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Reads.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Reads.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Ready.get -> bool
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Ready.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Rights.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Rights.init -> void
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Sends.get -> string?
+Orkeon.Tools.Email.Administration.EmailAccountStatus.Sends.init -> void
+Orkeon.Tools.Email.Administration.EmailCheckResult
+Orkeon.Tools.Email.Administration.EmailCheckResult.<Clone>$() -> Orkeon.Tools.Email.Administration.EmailCheckResult!
+Orkeon.Tools.Email.Administration.EmailCheckResult.Account.get -> string!
+Orkeon.Tools.Email.Administration.EmailCheckResult.Account.init -> void
+Orkeon.Tools.Email.Administration.EmailCheckResult.EmailCheckResult() -> void
+Orkeon.Tools.Email.Administration.EmailCheckResult.Equals(Orkeon.Tools.Email.Administration.EmailCheckResult? other) -> bool
+Orkeon.Tools.Email.Administration.EmailCheckResult.Folders.get -> int
+Orkeon.Tools.Email.Administration.EmailCheckResult.Folders.init -> void
+Orkeon.Tools.Email.Administration.EmailCheckResult.InboxTotal.get -> int?
+Orkeon.Tools.Email.Administration.EmailCheckResult.InboxTotal.init -> void
+Orkeon.Tools.Email.Administration.EmailCheckResult.InboxUnread.get -> int?
+Orkeon.Tools.Email.Administration.EmailCheckResult.InboxUnread.init -> void
+Orkeon.Tools.Email.Administration.IEmailLoginInteraction
+Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ReadRedirectAsync(System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<string?>!
+Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ShowAuthorizationUrlAsync(string! account, System.Uri! authorizationUri, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.Administration.IEmailLoginInteraction.ShowDeviceCodeAsync(string! account, System.Uri! verificationUri, string! userCode, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.Auth.EmailTokenSet
+Orkeon.Tools.Email.Auth.EmailTokenSet.<Clone>$() -> Orkeon.Tools.Email.Auth.EmailTokenSet!
+Orkeon.Tools.Email.Auth.EmailTokenSet.AccessToken.get -> string!
+Orkeon.Tools.Email.Auth.EmailTokenSet.AccessToken.init -> void
+Orkeon.Tools.Email.Auth.EmailTokenSet.EmailTokenSet() -> void
+Orkeon.Tools.Email.Auth.EmailTokenSet.Equals(Orkeon.Tools.Email.Auth.EmailTokenSet? other) -> bool
+Orkeon.Tools.Email.Auth.EmailTokenSet.ExpiresAt.get -> System.DateTimeOffset
+Orkeon.Tools.Email.Auth.EmailTokenSet.ExpiresAt.init -> void
+Orkeon.Tools.Email.Auth.EmailTokenSet.RefreshToken.get -> string?
+Orkeon.Tools.Email.Auth.EmailTokenSet.RefreshToken.init -> void
+Orkeon.Tools.Email.Auth.EmailTokenSet.Scopes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Tools.Email.Auth.EmailTokenSet.Scopes.init -> void
+Orkeon.Tools.Email.Auth.FileSystemEmailTokenStore
+Orkeon.Tools.Email.Auth.FileSystemEmailTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Email.Auth.FileSystemEmailTokenStore.FileSystemEmailTokenStore(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, string! virtualDirectory) -> void
+Orkeon.Tools.Email.Auth.FileSystemEmailTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Email.Auth.EmailTokenSet?>!
+Orkeon.Tools.Email.Auth.FileSystemEmailTokenStore.WriteAsync(string! key, Orkeon.Tools.Email.Auth.EmailTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.Auth.IEmailTokenStore
+Orkeon.Tools.Email.Auth.IEmailTokenStore.DeleteAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Tools.Email.Auth.IEmailTokenStore.ReadAsync(string! key, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Tools.Email.Auth.EmailTokenSet?>!
+Orkeon.Tools.Email.Auth.IEmailTokenStore.WriteAsync(string! key, Orkeon.Tools.Email.Auth.EmailTokenSet! tokens, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task!
+Orkeon.Tools.Email.DependencyInjection.EmailToolsServiceCollectionExtensions
+Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.AuthenticationFailed = 13 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.CredentialMissing = 6 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.FolderNotFound = 10 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.InvalidConfiguration = 2 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.InvalidRequest = 12 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.LoginRequired = 5 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.MessageNotFound = 11 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.NotConfigured = 0 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.QuotaExceeded = 8 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.RecipientNotAllowed = 7 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.RightDenied = 3 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.ServerError = 14 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.TooLarge = 9 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.UnknownAccount = 1 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailErrorCode.Unsupported = 4 -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailToolException
+Orkeon.Tools.Email.EmailToolException.Code.get -> Orkeon.Tools.Email.EmailErrorCode
+Orkeon.Tools.Email.EmailToolException.EmailToolException() -> void
+Orkeon.Tools.Email.EmailToolException.EmailToolException(Orkeon.Tools.Email.EmailErrorCode code, string! message) -> void
+Orkeon.Tools.Email.EmailToolException.EmailToolException(Orkeon.Tools.Email.EmailErrorCode code, string! message, System.Exception! innerException) -> void
+Orkeon.Tools.Email.EmailToolException.EmailToolException(string! message) -> void
+Orkeon.Tools.Email.EmailToolException.EmailToolException(string! message, System.Exception! innerException) -> void
+override Orkeon.Tools.Email.Administration.EmailAccountStatus.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Administration.EmailAccountStatus.GetHashCode() -> int
+override Orkeon.Tools.Email.Administration.EmailAccountStatus.ToString() -> string!
+override Orkeon.Tools.Email.Administration.EmailCheckResult.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Administration.EmailCheckResult.GetHashCode() -> int
+override Orkeon.Tools.Email.Administration.EmailCheckResult.ToString() -> string!
+override Orkeon.Tools.Email.Auth.EmailTokenSet.Equals(object? obj) -> bool
+override Orkeon.Tools.Email.Auth.EmailTokenSet.GetHashCode() -> int
+override Orkeon.Tools.Email.Auth.EmailTokenSet.ToString() -> string!
+static Orkeon.Tools.Email.Administration.EmailAccountStatus.operator !=(Orkeon.Tools.Email.Administration.EmailAccountStatus? left, Orkeon.Tools.Email.Administration.EmailAccountStatus? right) -> bool
+static Orkeon.Tools.Email.Administration.EmailAccountStatus.operator ==(Orkeon.Tools.Email.Administration.EmailAccountStatus? left, Orkeon.Tools.Email.Administration.EmailAccountStatus? right) -> bool
+static Orkeon.Tools.Email.Administration.EmailCheckResult.operator !=(Orkeon.Tools.Email.Administration.EmailCheckResult? left, Orkeon.Tools.Email.Administration.EmailCheckResult? right) -> bool
+static Orkeon.Tools.Email.Administration.EmailCheckResult.operator ==(Orkeon.Tools.Email.Administration.EmailCheckResult? left, Orkeon.Tools.Email.Administration.EmailCheckResult? right) -> bool
+static Orkeon.Tools.Email.Auth.EmailTokenSet.operator !=(Orkeon.Tools.Email.Auth.EmailTokenSet? left, Orkeon.Tools.Email.Auth.EmailTokenSet? right) -> bool
+static Orkeon.Tools.Email.Auth.EmailTokenSet.operator ==(Orkeon.Tools.Email.Auth.EmailTokenSet? left, Orkeon.Tools.Email.Auth.EmailTokenSet? right) -> bool
+static Orkeon.Tools.Email.DependencyInjection.EmailToolsServiceCollectionExtensions.AddOrkeonEmailTokenStore(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.FileSystem.IFileSystemService!>! fileSystem, string! virtualDirectory) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+static Orkeon.Tools.Email.DependencyInjection.EmailToolsServiceCollectionExtensions.AddOrkeonEmailTools(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, Microsoft.Extensions.Configuration.IConfiguration! configuration) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+Orkeon.Tools.Email.Configuration.EmailCredentialsLocation
+const Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.TokenSubdirectory = "email" -> string!
+static Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.ConfiguredDirectory(Microsoft.Extensions.Configuration.IConfiguration! emailSection) -> string?
+static Orkeon.Tools.Email.Configuration.EmailCredentialsLocation.NeedsTokenStore(Microsoft.Extensions.Configuration.IConfiguration! emailSection) -> bool

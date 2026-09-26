@@ -7,8 +7,9 @@ the `orkeon` CLI:
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/01-hello-world.ork.ts
 ```
 
-All examples fall back to the `UndefinedLlm` echo provider when no real provider is
-configured, so they are runnable without API keys.
+All examples but `13-email-triage` fall back to the `UndefinedLlm` echo provider when no real
+provider is configured, so they are runnable without API keys. `13` works on a real mailbox,
+and refuses the echo rather than misfile your mail (see below).
 
 | File | What it shows |
 |------|---------------|
@@ -24,6 +25,7 @@ configured, so they are runnable without API keys.
 | `10-inputs-and-memory.ork.ts` | `globalThis.inputs`, agent state, crew memory, `ErrorAction.retry` |
 | `11-await-before-run.ork.ts` | A file read as the first top-level await, `crew.run()` as the second |
 | `12-events-async-handlers.ork.ts` | Topic handlers that await the LLM, then two crews run in sequence |
+| `13-email-triage.ork.ts` | `tools.email*` on a real mailbox: files unread mail by kind, drafts the replies for a human to send |
 
 Every file above is the **procedural** shape — it runs its crew(s) with `await crew.run()`
 (`08-rag` has no crew and only exercises `rag.*`; `12` runs two in sequence) and never assigns
@@ -33,11 +35,11 @@ the other one: a three-agent crew with tasks, a dependency chain and a deliverab
 off with `globalThis.crew = crew`. Mixing the two endings is the mistake this catalogue is
 arranged to prevent.
 
-Every numbered file but `08-rag` (which needs the RAG backend) is also run by the test suite
-against a provider that really suspends — `Task.Delay` before every answer, the way an HTTP
-provider behaves — not only against the echo. `11` and `12` exist because the two shapes they
-use, an await before `crew.run()` and a topic handler that awaits, once hung under exactly
-that provider.
+Every numbered file but `08-rag` and `13-email-triage` (they need a RAG backend and a real
+mailbox) is also run by the test suite against a provider that really suspends — `Task.Delay`
+before every answer, the way an HTTP provider behaves — not only against the echo. `11` and
+`12` exist because the two shapes they use, an await before `crew.run()` and a topic handler
+that awaits, once hung under exactly that provider.
 
 `08-rag.ork.ts` ingests a corpus shipped in `data/08-rag/` and needs two extra
 flags for the full offline experience — a writable `/output` mount (persists
@@ -55,6 +57,16 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scriptin
 ```bash
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/10-inputs-and-memory.ork.ts \
   --inputs '{"topic":"espresso"}'
+```
+
+`13-email-triage.ork.ts` works on a real mailbox and never sends: its settings file declares a
+Gmail account with the rights `Read, Organize, Draft` and a password the file only names, plus
+the model that sorts the mail. The script's header explains each field:
+
+```bash
+export TRIAGE_GMAIL_APP_PASSWORD='abcdefghijklmnop'   # the Gmail app password, without its spaces
+dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/13-email-triage.ork.ts \
+  --settings examples/scripting/13-email-triage.appsettings.json
 ```
 
 ## Where to go next

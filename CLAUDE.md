@@ -50,6 +50,7 @@ dotnet test tests/tools/Orkeon.Tools.Code.Tests/Orkeon.Tools.Code.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Data.Tests/Orkeon.Tools.Data.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.FileSystem.Tests/Orkeon.Tools.FileSystem.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Web.Tests/Orkeon.Tools.Web.Tests.csproj
+dotnet test tests/tools/Orkeon.Tools.Email.Tests/Orkeon.Tools.Email.Tests.csproj
 dotnet test tests/tools/Orkeon.Tools.Embeddings.Local.Tests/Orkeon.Tools.Embeddings.Local.Tests.csproj   # local BGE ONNX (loads the ONNX Runtime native library — see docs/reference/limitations.md)
 
 # Run RAG subsystem tests
@@ -135,7 +136,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 **Working Features**:
 - ✅ Complete Agent, Task, Crew domain models with the full attribute surface
-- ✅ 79 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XLSX (read/write), XML, DirectoryRead, EmailParser, DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
+- ✅ 91 built-in tool classes (FileRead, FileWrite, WebScrape, HttpApi, JSON, PDF, CSV, XLSX (read/write), XML, DirectoryRead, the e-mail family (IMAP/POP3/SMTP/Graph, EmailParser included), DatabaseQuery, RagSearchTool (opt-in, `Orkeon.Tools.Rag`), SearchTool, AskQuestion, DelegateWork, SecureCodeInterpreter, EventHub tools, RaggableTree analysis tools, etc.)
 - ✅ 16 LLM providers: OpenAI, Ollama, Anthropic, AzureOpenAI, Mistral AI, DeepSeek, Kimi, Qwen, TogetherAI, HuggingFace, Z.AI (GLM), Gemini, Grok (x.AI), MiniMax, plus the two aggregators OpenRouter and Mammouth AI (LLM-09 — documentation-first, campaign-pending)
 - ✅ YAML configuration support
 - ✅ Memory abstractions (IMemoryProvider interface)
@@ -193,6 +194,15 @@ The project follows Clean Architecture with clear separation of concerns:
   validated by `PromptInjectionDocumentValidator`; offline eval compares all
   five profiles (honest numbers + analysis in `examples/rag/eval/README.md`);
   see `docs/architecture/rag-pipeline.md`
+- ✅ **NEW**: E-mail tools (MAIL-01..06, [ADR-012](docs/adr/ADR-012-email-tool-family.md) — the
+  second motivated exception to the scope freeze) — `Orkeon.Tools.Email`, 13 `email_*` tools
+  (`email_parser` moved in from FileSystem, rebuilt on MimeKit): IMAP/POP3/SMTP via MailKit,
+  Microsoft Graph for Outlook.com/Microsoft 365, Gmail/Outlook/Custom presets under
+  `Orkeon:Tools:Email`, mandatory per-account `Rights`, fail-closed
+  `Send:AllowedRecipients`, prompt-injection screening of what is read, hand-written OAuth2
+  (`orkeon email login`) with tokens in the internal `/credentials` VFS root; registered by
+  `AddOrkeonEmailTools(configuration)` in the runner host and the REPL, denied to forged
+  crews. Live Gmail/Hotmail campaign pending (MAIL-07); see `docs/guides/email.md`
 
 **Infrastructure Layer Components**:
 - ✅ Redis memory provider with vector search (`RedisMemoryProvider`, `EncryptedRedisMemoryProvider`)
@@ -223,7 +233,7 @@ The project follows Clean Architecture with clear separation of concerns:
 
 Each provider declares an `LlmProviderCapabilities` (Domain value object, exposed on `ILlmProvider`) stating what its API really supports: `ResponseFormat` (`None`/`JsonObject`/`JsonSchema`), `Thinking` (`None`/`EffortOnly`/`Toggle`/`Budget`), `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`. `OpenAICompatibleProviderBase` writes the OpenAI dialect once from that declaration; Anthropic (`output_config`, `thinking: adaptive`, `cache_control`), Ollama (`format`, `think`, `images`) and Qwen (`enable_thinking`, `thinking_budget`) override the hook for their own. **An option declared on a provider that cannot honour it produces a structured warning — never a silent drop.** Add a capability to the record and every provider that declares it inherits the translation.
 
-**Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 79 built-in tool classes.
+**Tool System**: Extensible architecture with IBaseTool interface, validation, batch execution, and 91 built-in tool classes.
 
 **Memory System**: Provider-based architecture supporting Redis, In-Memory, ChromaDB, Pinecone, LanceDB, and SQLite.
 
@@ -462,13 +472,13 @@ Extend `HttpLlmProviderBase` or implement `ILlmProvider`:
 
 ## Working Directory Structure
 
-The repository contains **47 src projects** and **35 test projects**, plus two solutions:
+The repository contains **48 src projects** and **36 test projects**, plus two solutions:
 `Orkeon.sln` (root) and `examples/Orkeon.Examples.sln`.
 
 ```
 /workspace/
 ├── Orkeon.sln                    # Main solution file (root level)
-├── src/                          # 47 projects
+├── src/                          # 48 projects
 │   ├── Directory.Build.props     # Shared build properties (version, NoWarn, VFS analyzer)
 │   ├── core/
 │   │   ├── Orkeon.Domain/        # ✅ Core entities (95% complete)
@@ -495,6 +505,7 @@ The repository contains **47 src projects** and **35 test projects**, plus two s
 │   │   ├── Orkeon.Tools.Analysis/      # RaggableTree agent tools (15 tools)
 │   │   ├── Orkeon.Tools.Code/          # Code-related tools
 │   │   ├── Orkeon.Tools.Data/          # Data manipulation tools
+│   │   ├── Orkeon.Tools.Email/         # E-mail tools (13 email_*: IMAP/POP3/SMTP via MailKit, Microsoft Graph; AddOrkeonEmailTools)
 │   │   ├── Orkeon.Tools.Embeddings.Local/ # Local on-device embeddings (SmartComponents BGE-micro-v2 ONNX, 384 dims, CPU, no API key)
 │   │   ├── Orkeon.Tools.EventHub/      # EventHub agent tools (publish_event, post_message, send_request, reply_to, receive_message, wait_for_event, get_last_value)
 │   │   ├── Orkeon.Tools.FileSystem/    # File system tools
@@ -518,19 +529,19 @@ The repository contains **47 src projects** and **35 test projects**, plus two s
 │   │   └── Orkeon.Plugins/       # Plugin system (IOrkeonPlugin, ALC-isolated discovery/loading, AddOrkeonPlugins — see docs/architecture/plugins.md)
 │   ├── interop/
 │   │   └── Orkeon.Interop.AgentFramework/ # Microsoft Agent Framework bridge, both directions (ADR-010): CrewAgent : AIAgent, AIAgentLlmProvider, AIAgentTool
-│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 7 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
+│   ├── packaging/                # NuGet packaging projects (PUB-25, 6 incl. the Interop and Aspire wrappers): the `Orkeon` umbrella (the 11-assembly core closure in one nupkg), `Orkeon.Tools` (the 8 tool families), plus the `Orkeon.Rag.Onnx.Package` / `Orkeon.Tools.Embeddings.Local.Package` wrappers packing the two opt-ins with a nuspec dependency on `Orkeon`
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/    # Interactive REPL (dotnet tool `orkeon-repl`, Terminal.Gui split-pane)
 │       ├── Orkeon.Studio.Config/ # Studio: config TUI (orkeon init flows)
 │       ├── Orkeon.Studio.Core/   # Studio: shared core (settings model, target detection, process runner, localization port)
 │       ├── Orkeon.Studio.Run/    # Studio: run TUI
 │       └── Orkeon.Studio.Wpf/    # Studio: WPF desktop app (net10.0-windows, AssemblyName=Orkeon.Studio, IsPackable=false ×4)
-├── tests/                        # 35 projects
+├── tests/                        # 36 projects
 │   ├── core/                     # Orkeon.Domain.Tests, Orkeon.Application.Tests, Orkeon.Infrastructure.Tests
 │   ├── cli/                      # Orkeon.Cli.Abstractions.Tests, Orkeon.Cli.Tests, Orkeon.Cli.Commands.Scripting.Tests, Orkeon.Cli.TerminalGui.Tests
 │   ├── scripting/                # Orkeon.Scripting.Tests, Orkeon.Scripting.Cli.Tests
 │   ├── analyzers/                # Orkeon.Compliance.Vfs.Tests
-│   ├── tools/                    # Abstractions, Analysis, Code, Data, Embeddings.Local, EventHub, FileSystem, Rag, Web (9 projects)
+│   ├── tools/                    # Abstractions, Analysis, Code, Data, Email, Embeddings.Local, EventHub, FileSystem, Rag, Web (10 projects)
 │   ├── rag/                      # Orkeon.Rag.Abstractions.Tests (incl. ArchitectureTests), Orkeon.Rag.Tests, Orkeon.Rag.Onnx.Tests
 │   ├── analysis/                 # Orkeon.Analysis.Tests (RaggableTree)
 │   ├── hosting/                  # Orkeon.Hosting.Tests, Orkeon.Host.Tests, Orkeon.Hosting.Aspire.Tests

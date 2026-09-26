@@ -162,6 +162,7 @@ public sealed class MountDefinitionTests
     [InlineData("/crew")]
     [InlineData("/script")]
     [InlineData("/llm-logs")]
+    [InlineData("/credentials")]
     [InlineData("/crew/")]
     public void A_virtual_path_the_runner_reserves_is_refused(string virtualPath)
     {
@@ -218,7 +219,7 @@ public sealed class MountDefinitionTests
     {
         string[] claimedSomewhere =
         [
-            .. MountAutoInjection.ReservedVirtualRoots,   // /crew, /script, /llm-logs
+            .. MountAutoInjection.ReservedVirtualRoots,   // /crew, /script, /llm-logs, /sandbox, /credentials
             "/sandbox",                                   // AddOrkeonFileSystem, unconditionally
             "/workspace", "/forge", "/output",             // orkeon forge's trial bench
         ];

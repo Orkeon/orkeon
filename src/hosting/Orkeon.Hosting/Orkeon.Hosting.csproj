@@ -32,6 +32,7 @@
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Code\Orkeon.Tools.Code.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.EventHub\Orkeon.Tools.EventHub.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />

@@ -158,9 +158,25 @@ requires the opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjecti
 | `Orkeon:CodeSandbox` (+ `:Docker`) | Secure code interpreter sandbox | Infrastructure | — (registered by `AddOrkeonInfrastructure()`; the section gates behavior) |
 | `Orkeon:Sandbox` | Sandbox file-system mount (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`Mounts`) | VFS mounts (see [VFS compliance](../architecture/vfs-compliance.md)). An entry may carry an **id** — `<ulid>|<physical>:<virtual>:<rights>` (VFS-90): what a crew's `mounts:` block, Studio's team sidecar and `--mount-id` name it by; Studio writes one on every save. A CLI `--mount` on the same virtual root **replaces every entry of that root** for that run; on a new root it is appended (never merged, never dropped). One root declared twice is legitimate only when every entry of it carries an id — `--mount-id`, or the crew's `mounts:`, then selects one and the others are withdrawn for the run; with nothing selecting one the run is refused before any host builds (`'/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`), and so is a root declared twice with an entry that has no id (`… and '<entry>' has no id. Give every entry an id …`) or an id carried by two entries. Every declared entry's base path is **whitelisted for `PathValidator`** without `--allow-external-mounts` — a declared folder is the machine owner's intent, so it is reachable even when it lies outside the process working directory; a withdrawn entry is not | `AddOrkeonFileSystem(...)` | — |
-| `Orkeon:FileSystem` (`InternalMounts`) | Same grammar as `Mounts`, registered `MountVisibility.Internal`: resolvable by the VFS, **absent from `list_mounts`, from the agent prompt's mount table and from access-denied messages**. Where a host puts what the VFS must reach and no agent has any business addressing — the `--llm-log` directory lives here ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:FileSystem` (`InternalMounts`) | Same grammar as `Mounts`, registered `MountVisibility.Internal`: resolvable by the VFS, **absent from `list_mounts`, from the agent prompt's mount table and from access-denied messages**. Where a host puts what the VFS must reach and no agent has any business addressing — the `--llm-log` directory lives here, and so does `/credentials`, the OAuth tokens of the e-mail accounts, when one is declared ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Allow interpreters/mutating git in `ShellCommandTool` (**RCE-equivalent**, warning emitted) | `AddOrkeonCodeTools()` | config-only |
 | `Orkeon:Tools:Shell:ExtraAllowedCommands` / `AllowedCommands` | Shell allowlist: additive / full replacement (replacement cancels `AllowInterpreters`) | idem | config-only |
+
+### E-mail (`Orkeon:Tools:Email`)
+
+Bound by `AddOrkeonEmailTools(configuration)` — the shared runner host and `orkeon-repl` call
+it — and read lazily: an account is validated the first time a tool or an `orkeon email`
+command uses it, every problem reported at once, so a broken section never breaks a crew that
+sends no mail. Secrets are never values here, only the **names** of the environment variables
+that hold them — names without the `ORKEON_` prefix, since the runner loads every `ORKEON_*`
+variable into its configuration. Provider walkthroughs and the key-by-key table: [E-mail tools](../guides/email.md).
+
+| Section | Configures |
+|---|---|
+| `Orkeon:Tools:Email:DefaultAccount` | The account a call that names none uses (optional with a single account) |
+| `Orkeon:Tools:Email:CredentialsDirectory` | Physical directory of the OAuth tokens. The runner mounts it at the internal root `/credentials` when an OAuth account is declared; default: `credentials` next to the per-user settings file |
+| `Orkeon:Tools:Email:Screening:WithholdRejected` | Withhold the body of a message the prompt-injection screen rejects (default `false`: flag only) |
+| `Orkeon:Tools:Email:Accounts:<name>` | One account. `Provider` (`Gmail`, `Outlook` or `Custom` — the default), `Address`, `DisplayName`, `Rights` (**mandatory** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` or `Graph`; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` or `None` — the last towards a loopback host only), `Outgoing` (`Protocol` `Smtp` or `Graph`; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` or `OAuth2`; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — an empty list allows nobody —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. The name holds letters, digits, `.`, `_` and `-` (64 at most) |
 
 ### Scripting and CLI
 

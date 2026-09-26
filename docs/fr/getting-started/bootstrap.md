@@ -52,7 +52,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddOrkeonInfrastructure();
 
         // 3. Suites d'outils
-        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, EmailParser, CountPattern
+        // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, CountPattern
         services.AddOrkeonFileSystemTools();
 
         // Data : CSV, PDF, JSON, XML, DOCX, XLSX, requêtes SQL, requêtes MongoDB, etc.

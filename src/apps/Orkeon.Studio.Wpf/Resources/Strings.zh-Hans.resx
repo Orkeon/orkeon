@@ -1797,6 +1797,9 @@
   <data name="Studio.Settings.ToolFamilyData" xml:space="preserve">
     <value>数据</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
+    <value>电子邮件</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>代码</value>
   </data>
@@ -1829,6 +1832,9 @@
   </data>
   <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve">
     <value>下方的专家设置：{0}</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
+    <value>需要在设置文件的 {0} 下声明一个电子邮件账户；OAuth 账户随后使用 orkeon email login 登录</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} 个工具，无需配置</value>

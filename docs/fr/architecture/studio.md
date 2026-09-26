@@ -742,8 +742,9 @@ ligne dit où obtenir une clé). Le catalogue : tous les outils qu'`orkeon run` 
 famille, chacun en chip, et sous chaque famille une ligne par outil qui demande quelque chose
 — une clé mémorisée au-dessus, un outil présent seulement une fois sa clé en place
 (`brave_search`), une clé fournie à l'appel par l'agent (`image_generation`), des paramètres
-de connexion fournis à l'appel (les outils de bases de données et de graphes), un réglage
-expert plus bas (`shell_command`). Le catalogue est déclaré dans Core (`ToolCatalog`) : le
+de connexion fournis à l'appel (les outils de bases de données et de graphes), un compte
+e-mail déclaré sous `Orkeon:Tools:Email` (les douze outils de boîte aux lettres — voir
+[Outils e-mail](../guides/email.md)), un réglage expert plus bas (`shell_command`). Le catalogue est déclaré dans Core (`ToolCatalog`) : le
 framework ne porte aucune métadonnée « réglages requis » et son registre ne liste que des
 noms, donc la liste est la colonne `orkeon run` de la matrice de disponibilité de
 `docs/tools/inventory.md`, et un test pinne chaque nom contre ce fichier. La carte expert :

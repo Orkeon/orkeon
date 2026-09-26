@@ -225,20 +225,26 @@ public async Task Agent_Should_Execute_Task_Successfully()
 ### Le périmètre est gelé
 
 Orkeon embarque déjà 16 fournisseurs LLM (quatorze vendeurs et deux
-agrégateurs), 79 outils intégrés, 6 stores de mémoire, deux pipelines RAG,
+agrégateurs), 91 outils intégrés, 6 stores de mémoire, deux pipelines RAG,
 RaggableTree, un DSL de scripting, des plugins, MCP, A2A et un Studio —
 maintenus par une seule personne. Tant que de vrais utilisateurs n'en
 demandent pas davantage, **la surface fonctionnelle ne grandit pas** :
 
 - pas de 17ᵉ fournisseur LLM — la base compatible OpenAI couvre tout endpoint
   qui parle ce dialecte ; pointez `Orkeon:Llm:BaseUrl` dessus. Les deux
-  agrégateurs (OpenRouter, Mammouth AI) sont l'unique exception motivée, actée
+  agrégateurs (OpenRouter, Mammouth AI) sont la première exception motivée, actée
   par le propriétaire le 2026-09-18 : un agrégateur déclare ses propres
   capacités, écrit des champs que le socle ne lit pas (`reasoning`,
   `usage.cost`) et doit être reconnu par l'outillage — rien de ce qu'une
   `BaseUrl` apporte. La règle vaut pour tout le reste ;
 - pas de nouvel outil intégré — écrivez le vôtre dans un script `.ork.ts` ou
-  un plugin, tous deux de premier rang et sans modification ici ;
+  un plugin, tous deux de premier rang et sans modification ici. La famille
+  e-mail (`Orkeon.Tools.Email`, treize outils) est la deuxième exception
+  motivée, actée par le propriétaire le 2026-09-26 : un script `.ork.ts` ne
+  peut pas ouvrir de socket, et un plugin ne mettrait pas l'e-mail dans Orkeon
+  lui-même, ce qui était demandé
+  ([ADR-012](docs/fr/adr/ADR-012-email-tool-family.md)). La règle vaut pour
+  tout le reste ;
 - pas de nouveau store de mémoire, adaptateur de langage ou mode d'orchestration.
 
 Une pull request qui ajoute l'un d'eux sera fermée avec un lien vers cette

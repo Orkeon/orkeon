@@ -134,6 +134,13 @@
     <PackageVersion Include="AWSSDK.SecretsManager" Version="4.0.100.14" />
     <PackageVersion Include="System.Security.Cryptography.ProtectedData" Version="10.0.12" />
   </ItemGroup>
+  <ItemGroup Label="Email">
+    <!-- MAIL: the e-mail tool family (Orkeon.Tools.Email). Both are referenced directly:
+         central management pins no transitive version, so MimeKit's own pin only takes
+         effect through a direct reference (MailKit alone would resolve its minimum). -->
+    <PackageVersion Include="MailKit" Version="4.18.0" />
+    <PackageVersion Include="MimeKit" Version="4.18.1" />
+  </ItemGroup>
   <ItemGroup Label="OpenTelemetry">
     <PackageVersion Include="OpenTelemetry" Version="1.19.0" />
     <PackageVersion Include="OpenTelemetry.Api" Version="1.19.0" />

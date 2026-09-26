@@ -218,20 +218,25 @@ public async Task Agent_Should_Execute_Task_Successfully()
 
 ### The scope is frozen
 
-Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators), 79
+Orkeon already ships 16 LLM providers (fourteen vendors and two aggregators), 91
 built-in tools, 6 memory stores, two RAG pipelines, RaggableTree, a scripting
 DSL, plugins, MCP, A2A and a Studio — maintained by one person. Until real users
 ask for more, **the functional surface does not grow**:
 
 - no 17th LLM provider — the OpenAI-compatible base covers any endpoint that
   speaks that dialect; point `Orkeon:Llm:BaseUrl` at it. The two aggregators
-  (OpenRouter, Mammouth AI) are the one motivated exception, decided by the
+  (OpenRouter, Mammouth AI) are the first motivated exception, decided by the
   owner on 2026-09-18: an aggregator declares capabilities of its own, writes
   fields the base does not read (`reasoning`, `usage.cost`), and has to be
   recognised by the tooling — none of which a `BaseUrl` gives. The rule
   stands for everything else;
 - no new built-in tool — write yours in a `.ork.ts` script or a plugin, both
-  are first-class and need no change here;
+  are first-class and need no change here. The e-mail family
+  (`Orkeon.Tools.Email`, thirteen tools) is the second motivated exception,
+  decided by the owner on 2026-09-26: an `.ork.ts` script cannot open a
+  socket, and a plugin would not put e-mail in Orkeon itself, which is what
+  was asked ([ADR-012](docs/adr/ADR-012-email-tool-family.md)). The rule
+  stands for everything else;
 - no new memory store, language adapter, or orchestration mode.
 
 A pull request adding one of these will be closed with a link to this section,

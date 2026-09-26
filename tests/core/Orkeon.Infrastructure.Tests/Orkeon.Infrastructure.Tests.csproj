@@ -36,6 +36,7 @@
     <ProjectReference Include="..\..\..\src\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <!-- Needed for TypedPipelineIntegrationTests (JsonTool) -->
     <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\..\src\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj" />
     <ProjectReference Include="..\..\shared\Orkeon.Tests.Shared\Orkeon.Tests.Shared.csproj" />
     <!-- Needed for RaggableTree embedding logging tests -->
     <ProjectReference Include="..\..\..\src\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />

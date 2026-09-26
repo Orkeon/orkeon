@@ -97,6 +97,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "OrkeonAppHost", "aspire\App
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Hosting.Aspire", "..\src\hosting\Orkeon.Hosting.Aspire\Orkeon.Hosting.Aspire.csproj", "{71E9D897-66B9-43BD-AB23-67F26B1B59E4}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Orkeon.Tools.Email", "..\src\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj", "{AC4E499D-B03F-4DE7-939A-543F9DC7793E}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -563,6 +565,18 @@ Global
 		{71E9D897-66B9-43BD-AB23-67F26B1B59E4}.Release|x64.Build.0 = Release|Any CPU
 		{71E9D897-66B9-43BD-AB23-67F26B1B59E4}.Release|x86.ActiveCfg = Release|Any CPU
 		{71E9D897-66B9-43BD-AB23-67F26B1B59E4}.Release|x86.Build.0 = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|x64.Build.0 = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Debug|x86.Build.0 = Debug|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|x64.ActiveCfg = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|x64.Build.0 = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|x86.ActiveCfg = Release|Any CPU
+		{AC4E499D-B03F-4DE7-939A-543F9DC7793E}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

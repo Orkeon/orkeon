@@ -41,6 +41,53 @@ The defense is layered; no single layer is trusted on its own:
 
 **Honest limits**: these heuristics are pattern-based and can be evaded — paraphrased directives, languages other than English/French, novel encodings or split payloads will pass. Conversely, legitimate technical documents *about* prompts or CSS may score `Suspicious` (they are flagged, never silently dropped). A content validator is a filter, **not a privilege boundary**: the real containment is architectural — retrieved text must stay data (never executed as instructions), agents consuming web content should run with least-privilege tools, and sensitive actions must not be triggerable by retrieved content alone.
 
+### E-mail tools
+
+The e-mail family (`Orkeon.Tools.Email` — [guide](../guides/email.md)) reads mail written by
+strangers and acts on a real mailbox, so its defense does not rest on the model's judgment:
+
+- **The model only picks an account name.** Servers, credentials and rights are the operator's
+  configuration (`Orkeon:Tools:Email`). A secret is the *name* of an environment variable,
+  never a value in that configuration, and never a tool argument — tool arguments are logged.
+- **Rights are declared per account, and mandatory.** `Read`, `Organize`, `Draft`, `Send`,
+  `Delete`, `Purge`: an account that declares none is refused, and every call is checked
+  against the right its operation needs. Each tool also declares its `ToolAccess` (Read, Edit,
+  Execute — `email_send` and `email_delete` are Execute), which is what the permission gate reads.
+- **Sending fails closed.** `email_send` reaches only the addresses `Send:AllowedRecipients`
+  allows (an address, `*@domain` or `*`; an empty list allows nobody), checked on To, Cc and
+  Bcc by address, never by display name. The SMTP envelope is passed explicitly — the checked
+  list, never derived from headers, so no `Resent-*` header can widen it — `From` is forced to
+  the account, and `Send:MaxRecipients` / `Send:MaxPerHour` cap the volume. Over Graph, which
+  reads the envelope from the headers, a message naming anyone outside the checked list is
+  refused. `email_draft` is the human-review path: the agent writes, a person sends.
+- **Received content is untrusted.** Every search page and read result opens with a notice
+  that it is data, never instructions. `email_read` and `email_parser` carry the verdict of
+  the same `PromptInjectionDocumentValidator` as the web fallback above, run on the
+  **rendered** text — what the agent sees, not the raw HTML or MIME. Text the HTML hides from
+  a human reader is left out and flagged `hidden_content`. The default policy flags;
+  `Screening:WithholdRejected` withholds the body of a rejected message.
+- **Tokens stay out of the agents' reach.** OAuth tokens are written by `orkeon email login`
+  into the internal root `/credentials`, mounted only when an OAuth account is declared and
+  reached through `PrivilegedFileSystemAccess`, which no agent-facing tool resolves
+  ([VFS compliance](./vfs-compliance.md)). The tools never start an interactive sign-in, and a
+  Graph paging link is followed only while it still points at `graph.microsoft.com` over
+  HTTPS, so the bearer token never leaves for another host. Transport is TLS
+  (`SslOnConnect` or `StartTls`) — `None` is accepted towards a loopback test server only, and
+  no option accepts an invalid certificate.
+- **Forged crews get no mailbox.** `orkeon forge` removes the twelve mailbox tools from the
+  catalogue of the crews it tries on its bench (`email_parser`, which reads a file, stays).
+
+**Honest limits.** The screen is the pattern-based detector described above: it flags, and a
+paraphrased injection passes it. The boundary is the account's rights, the fail-closed
+allow-list and drafts. Every account is visible to every crew and every `.ork.ts` script that
+resolves the same settings file — scripts call `tools.email*` directly, and the crews hosted
+by `orkeon-host` share the host's settings — so declare accounts in the crew's own
+`appsettings.json` (a run reads exactly one settings file), grant the fewest rights, prefer
+`email_draft`, and do not give an untrusted crew both e-mail `Read` and an outbound channel
+(`http_api`, the web tools): a message could ask the agent to carry the mailbox out. The token
+files are plain JSON: shielded from the VFS tools, **not** from a shell or code tool running
+as the same operating-system user.
+
 ## Resilience
 
 `ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) exposes the Polly-based policies — `GetRetryPolicy`, `GetCircuitBreakerPolicy`, `GetTimeoutPolicy`, `GetCombinedPolicy`, `GetLlmApiPolicy` — used by the LLM providers and the HTTP tools.

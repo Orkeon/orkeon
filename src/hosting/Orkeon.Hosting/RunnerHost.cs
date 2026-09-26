@@ -30,6 +30,8 @@ using Orkeon.Tools.Analysis.DependencyInjection;
 using Orkeon.Tools.Embeddings.Local.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.Email.Configuration;
+using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.EventHub.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
@@ -361,6 +363,13 @@ public static partial class RunnerHost
         foreach (var mount in mounts.InternalMounts)
             overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
 
+        var credentialsDirectory = PlanEmailCredentials(declared, declaredMounts, declaredInternal, mounts.CliMounts);
+        if (credentialsDirectory is not null)
+        {
+            overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
+                $"{FileSystemMount.Quote(credentialsDirectory)}:{RunnerVirtualRoots.Credentials}:rw";
+        }
+
         // The whitelist "additionally" extends what the settings declare (the flag's own
         // documented wording), so every entry continues AFTER the declared ones: starting the
         // count at 0 silently replaced the operator's first allowed directory instead of
@@ -374,6 +383,8 @@ public static partial class RunnerHost
             .Select(entry => entry.Value);
         nextWhitelistIndex = WhitelistBases(overrides, inForce, nextWhitelistIndex);
         nextWhitelistIndex = WhitelistBases(overrides, declaredInternal.Select(entry => entry.Value), nextWhitelistIndex);
+        if (credentialsDirectory is not null)
+            overrides[$"{PathSecurityWhitelistSection}:{nextWhitelistIndex++}"] = credentialsDirectory;
 
         // --allow-external-mounts: the --mount arguments (and the runner's own internal
         // mounts) may point outside the working directory. Unchanged: a folder named on the
@@ -437,6 +448,64 @@ public static partial class RunnerHost
     /// index, not the count. Configuration is a sparse key/value space and an operator may
     /// legitimately have declared 0 and 2.
     /// </summary>
+    /// <summary>
+    /// Where the OAuth tokens of the declared e-mail accounts live, creating the directory
+    /// (owner-only on Unix), or null when no account signs in with OAuth2 — no mount, then, and
+    /// nothing created. The directory sits next to the per-user settings unless the operator names
+    /// one (<c>Orkeon:Tools:Email:CredentialsDirectory</c>, for a service account). A user mount
+    /// claiming <see cref="RunnerVirtualRoots.Credentials"/> is refused: the root is reserved.
+    /// </summary>
+    private static string? PlanEmailCredentials(
+        DeclaredConfiguration declared,
+        List<(int Index, string? Value)> declaredMounts,
+        List<(int Index, string? Value)> declaredInternal,
+        IReadOnlyList<string> cliMounts)
+    {
+        var section = declared.Section(ConfigurationKeys.ToolsEmail);
+        if (section is null || !section.Exists() || !EmailCredentialsLocation.NeedsTokenStore(section))
+            return null;
+
+        var claimed = declaredMounts.Select(entry => entry.Value)
+            .Concat(declaredInternal.Select(entry => entry.Value))
+            .Concat(cliMounts)
+            .Any(mount => mount is { Length: > 0 }
+                && string.Equals(MountSelection.TryGetVirtualRoot(mount), RunnerVirtualRoots.Credentials, StringComparison.Ordinal));
+        if (claimed)
+        {
+            throw new InvalidOperationException(
+                $"The virtual root {RunnerVirtualRoots.Credentials} is reserved: the runner keeps the OAuth tokens of e-mail accounts there. Mount the folder under another name.");
+        }
+
+        var directory = EmailCredentialsLocation.ConfiguredDirectory(section) ?? DefaultCredentialsDirectory();
+        if (directory is null)
+            return null;
+
+        directory = Path.GetFullPath(directory);
+        if (OperatingSystem.IsWindows())
+            Directory.CreateDirectory(directory);
+        else
+            Directory.CreateDirectory(directory, UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute);
+        return directory;
+    }
+
+    /// <summary>
+    /// <c>credentials</c> next to the per-user settings, or null when no per-user directory can be
+    /// determined (a bare container without HOME): OAuth accounts then report that no token store
+    /// is available instead of failing the whole run.
+    /// </summary>
+    private static string? DefaultCredentialsDirectory()
+    {
+        try
+        {
+            var settingsDirectory = Path.GetDirectoryName(RunnerSettings.GetGlobalSettingsPath());
+            return settingsDirectory is null ? null : Path.Combine(settingsDirectory, "credentials");
+        }
+        catch (InvalidOperationException)
+        {
+            return null;
+        }
+    }
+
     private static int NextIndex(List<(int Index, string? Value)> entries) =>
         entries.Count == 0 ? 0 : entries.Max(entry => entry.Index) + 1;
 
@@ -488,6 +557,9 @@ public static partial class RunnerHost
                 return new DeclaredConfiguration(null);
             }
         }
+
+        /// <summary>The declared section at <paramref name="key"/>, or null when nothing could be read.</summary>
+        public IConfigurationSection? Section(string key) => _snapshot?.GetSection(key);
 
         /// <summary>The numerically-keyed children of <paramref name="section"/>, by ascending index.</summary>
         public List<(int Index, string? Value)> Entries(string section)
@@ -570,6 +642,18 @@ public static partial class RunnerHost
         // wants the closed door swaps the policy in its own configureServices.
         services.AddOrkeonEventHubAcl();
 
+        // E-mail (MAIL): the thirteen email_* tools, inert until an account is declared under
+        // Orkeon:Tools:Email. OAuth tokens live under the internal /credentials root the
+        // configuration step mounted for them, reached through the privileged view of the VFS
+        // that no agent-facing tool resolves (ADR-008, ADR-012).
+        services.AddOrkeonEmailTools(context.Configuration);
+        if (HasInternalRoot(RunnerVirtualRoots.Credentials))
+        {
+            services.AddOrkeonEmailTokenStore(
+                sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
+                $"{RunnerVirtualRoots.Credentials}/{EmailCredentialsLocation.TokenSubdirectory}");
+        }
+
         // Virtual file system mounts (from appsettings + CLI --mount args, plus the
         // infrastructure mounts a runner declares for itself). Either list alone is enough
         // to make the VFS real: --list-tools has only the latter, and without the service
@@ -582,6 +666,11 @@ public static partial class RunnerHost
             var section = context.Configuration.GetSection(key);
             return section.Exists() && section.GetChildren().Any();
         }
+
+        bool HasInternalRoot(string root) =>
+            context.Configuration.GetSection(ConfigurationKeys.FileSystemInternalMounts).GetChildren()
+                .Any(entry => entry.Value is { Length: > 0 } mount
+                    && string.Equals(MountSelection.TryGetVirtualRoot(mount), root, StringComparison.Ordinal));
 
         // RaggableTree — available by default (crew-driven). Enables the semantic-graph
         // tools (codebase_map, symbol_detail, flow_trace, …) backed by a singleton

@@ -1,5 +1,5 @@
 # Runtime tool manifest — standard `orkeon` CLI registry (one tool name per line).
-# Regenerate via: dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run --list-tools 2>/dev/null > scripts/data/tool-manifest-standard.txt
+# Regenerate with neutral settings (an empty appsettings.json: no MCP server or API key of this machine may add a tool): dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run --list-tools --settings <empty appsettings.json> 2>/dev/null, then put these three header lines back on top.
 # Consumed by scripts/lint-example-configs.py as the manifest for every category.
 arcadedb_query
 cache_search
@@ -14,7 +14,19 @@ directory_read
 directory_search
 docx_reader
 docx_writer
+email_accounts
+email_create_folder
+email_delete
+email_draft
+email_folders
+email_mark
+email_move
 email_parser
+email_read
+email_rename_folder
+email_save_attachment
+email_search
+email_send
 file_read
 file_write
 flow_trace

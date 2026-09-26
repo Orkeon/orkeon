@@ -44,7 +44,7 @@ La documentation est organisée en 6 sections thématiques.
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 15 tools, 5 langages, réindexation incrémentale, watcher, injection de contexte |
 | [Pipeline RAG](./architecture/rag-pipeline.md) | Le sous-système `src/rag/` : ingestion, pipeline à 7 étages (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), graphe correctif CRAG, repli web, 5 profils, évaluation mesurée |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Décision graphe stratifié à 6 niveaux via Tree-sitter, alternatives rejetées, conséquences |
-| [Décisions d'architecture (ADR)](./adr/README.md) | ADR-002 (shared kernel Tools.Abstractions), ADR-003 (shared kernels Analysis), ADR-004 (jumeaux de nommage scripting — remplacé par l'ADR-007), ADR-005 (famille Tools.* hétérogène), ADR-006 (sous-système RAG `src/rag/`), ADR-007 (D3 : renommage `Orkeon.Cli.Commands.Scripting`), ADR-008 (les chemins virtuels sont la seule monnaie versée aux agents), ADR-009 (satellites de constantes partagées), ADR-010 (interop Microsoft Agent Framework en paquet séparé, dans les deux sens), ADR-011 (le dashboard Aspire est la surface d'observabilité ; pas de Studio web) |
+| [Décisions d'architecture (ADR)](./adr/README.md) | ADR-002 (shared kernel Tools.Abstractions), ADR-003 (shared kernels Analysis), ADR-004 (jumeaux de nommage scripting — remplacé par l'ADR-007), ADR-005 (famille Tools.* hétérogène), ADR-006 (sous-système RAG `src/rag/`), ADR-007 (D3 : renommage `Orkeon.Cli.Commands.Scripting`), ADR-008 (les chemins virtuels sont la seule monnaie versée aux agents), ADR-009 (satellites de constantes partagées), ADR-010 (interop Microsoft Agent Framework en paquet séparé, dans les deux sens), ADR-011 (le dashboard Aspire est la surface d'observabilité ; pas de Studio web), ADR-012 (la famille d'outils e-mail, deuxième exception motivée au gel du périmètre) |
 
 ### Orchestration
 
@@ -59,7 +59,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
-| [Inventaire des outils](./tools/inventory.md) | 79 outils par catégorie, résolution YAML, enregistrement DI, gaps identifiés |
+| [Inventaire des outils](./tools/inventory.md) | 91 outils par catégorie, résolution YAML, enregistrement DI, gaps identifiés |
 | [Créer un nouvel outil](./tools/new-tool-pattern.md) | Pipeline typé, attributs FieldSchema/ReturnSchema, pattern composition, enregistrement |
 
 ### Guides
@@ -75,6 +75,7 @@ La documentation est organisée en 6 sections thématiques.
 | [Quality Gate SonarQube](./guides/quality-gate.md) | Analyse SonarQube locale avec la gate « Orkeon Transitional » : seuils transitoires, trajectoire de durcissement, provisionnement automatique par les scripts |
 | [Modèles locaux](./guides/local-models.md) | Tout exécuter sur sa machine : Docker Model Runner (pull/configure/inspect, contextes 128K), Ollama, variante d'image `local-llm` embarquée, changement de modèle, dépannage |
 | [Vérifier ce que vous installez](./guides/verify-what-you-install.md) | Ce que la chaîne de provenance prouve et ne prouve pas (Trusted Publishing OIDC, attestations SLSA, `SHA256SUMS`, SBOM), les commandes exactes `gh attestation verify` / `dotnet nuget verify`, et pourquoi un paquet nuget.org doit être dé-signé avant que son digest corresponde |
+| [Outils e-mail](./guides/email.md) | Donner une boîte aux lettres aux agents : Gmail (mot de passe d'application ou OAuth2), Hotmail/Outlook.com via Microsoft Graph, votre propre serveur IMAP/POP3/SMTP ; droits par compte, liste d'autorisation d'envoi fermée par défaut, filtrage anti-injection, `orkeon email login`, emplacement des jetons, dépannage — campagne en attente |
 
 ### Référence
 
@@ -82,7 +83,7 @@ La documentation est organisée en 6 sections thématiques.
 |---------|-------------|
 | [Référence du DSL de scripting](./reference/scripting-dsl.md) | Chaque builder et chaque méthode `.ork.ts`, avec la colonne qui n'existe nulle part ailleurs : laquelle des deux formes l'honore. Plus les écarts connus entre les typings et le runtime |
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
-| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `doctor`) avec options et exemples, plus `orkeon-repl` |
+| [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des sections d'`appsettings.json` (`Llm`, `Orkeon:*`, `MCP`), sources et précédence, colonne opt-in |
 | [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |

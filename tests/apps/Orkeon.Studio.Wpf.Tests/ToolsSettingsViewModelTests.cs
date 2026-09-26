@@ -67,4 +67,42 @@ public sealed class ToolsSettingsViewModelTests
         Assert.False(events.HasRequirements);
         Assert.Equal("7 tools, nothing to configure", events.QuietLine);
     }
+
+    /// <summary>
+    /// MAIL-05 — there is no form for an e-mail account, so the line points at the file and at
+    /// the one interactive step an OAuth account needs; it is not a key of the card above.
+    /// </summary>
+    [Fact]
+    public void The_email_family_says_its_mailbox_tools_need_an_account_declared_in_the_file()
+    {
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
+
+        var email = Assert.Single(tools.Families, f => f.Key == ToolCatalog.EmailFamily);
+        Assert.Equal("E-mail", email.Label);
+        Assert.Equal(13, email.Tools.Count);
+        Assert.Equal(12, email.Requirements.Count);
+        Assert.All(email.Requirements, r =>
+        {
+            Assert.Equal(
+                "needs an e-mail account declared in the settings file under Orkeon:Tools:Email; "
+                + "an OAuth account then signs in with orkeon email login",
+                r.Text);
+            Assert.False(r.IsKey);
+        });
+        Assert.Contains(email.Tools, t => t.Name == "email_parser" && !t.NeedsSomething);
+        Assert.DoesNotContain(email.Requirements, r => r.Name == "email_parser");
+    }
+
+    /// <summary>
+    /// A family the label switch forgets must not pass for another one: it shows its raw key,
+    /// and this is what fails on it.
+    /// </summary>
+    [Fact]
+    public void Every_family_wears_a_label_of_its_own()
+    {
+        var tools = new ToolsSettingsViewModel(new FakeApiKeyStore());
+
+        Assert.All(tools.Families, f => Assert.NotEqual(f.Key, f.Label));
+        Assert.Equal(tools.Families.Count, tools.Families.Select(f => f.Label).Distinct(StringComparer.Ordinal).Count());
+    }
 }

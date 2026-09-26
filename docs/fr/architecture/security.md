@@ -41,6 +41,59 @@ La défense est en couches ; aucune couche n'est digne de confiance à elle seul
 
 **Limites honnêtes** : ces heuristiques sont fondées sur des motifs et peuvent être contournées — directives paraphrasées, langues autres que l'anglais/le français, encodages inédits ou payloads fractionnés passeront. Inversement, des documents techniques légitimes *sur* les prompts ou le CSS peuvent scorer `Suspicious` (ils sont marqués, jamais écartés en silence). Un validateur de contenu est un filtre, **pas une frontière de privilèges** : le vrai confinement est architectural — le texte récupéré doit rester de la donnée (jamais exécuté comme instruction), les agents consommant du contenu web devraient tourner avec des outils au moindre privilège, et les actions sensibles ne doivent pas être déclenchables par du seul contenu récupéré.
 
+### Outils e-mail
+
+La famille e-mail (`Orkeon.Tools.Email` — [guide](../guides/email.md)) lit du courrier écrit par
+des inconnus et agit sur une vraie boîte aux lettres : sa défense ne repose donc pas sur le
+jugement du modèle.
+
+- **Le modèle ne choisit qu'un nom de compte.** Serveurs, identifiants et droits relèvent de la
+  configuration de l'opérateur (`Orkeon:Tools:Email`). Un secret est le *nom* d'une variable
+  d'environnement, jamais une valeur de cette configuration, et jamais un argument d'outil — les
+  arguments d'outil sont journalisés.
+- **Les droits sont déclarés par compte, et obligatoires.** `Read`, `Organize`, `Draft`, `Send`,
+  `Delete`, `Purge` : un compte qui n'en déclare aucun est refusé, et chaque appel est contrôlé
+  contre le droit qu'exige son opération. Chaque outil déclare aussi son `ToolAccess` (Read,
+  Edit, Execute — `email_send` et `email_delete` sont Execute), ce que lit la permission gate.
+- **L'envoi échoue fermé.** `email_send` n'atteint que les adresses qu'autorise
+  `Send:AllowedRecipients` (une adresse, `*@domaine` ou `*` ; une liste vide n'autorise
+  personne), contrôlées sur To, Cc et Bcc par adresse, jamais par nom affiché. L'enveloppe SMTP
+  est passée explicitement — la liste contrôlée, jamais déduite des en-têtes, si bien qu'aucun
+  en-tête `Resent-*` ne peut l'élargir —, `From` est imposé au compte, et `Send:MaxRecipients` /
+  `Send:MaxPerHour` plafonnent le volume. Via Graph, qui lit l'enveloppe dans les en-têtes, un
+  message qui nomme quelqu'un hors de la liste contrôlée est refusé. `email_draft` est la voie de
+  la relecture humaine : l'agent rédige, une personne envoie.
+- **Le contenu reçu n'est pas fiable.** Chaque page de recherche et chaque résultat de lecture
+  s'ouvre sur un avis disant que c'est une donnée, jamais une instruction. `email_read` et
+  `email_parser` portent le verdict du même `PromptInjectionDocumentValidator` que le repli web
+  ci-dessus, calculé sur le texte **rendu** — ce que voit l'agent, pas le HTML ni le MIME bruts.
+  Le texte que le HTML cache à un lecteur humain est laissé de côté et signalé par
+  `hidden_content`. La politique par défaut signale ; `Screening:WithholdRejected` retient le
+  corps d'un message rejeté.
+- **Les jetons restent hors de portée des agents.** Les jetons OAuth sont écrits par
+  `orkeon email login` dans la racine interne `/credentials`, montée seulement quand un compte
+  OAuth est déclaré et atteinte par `PrivilegedFileSystemAccess`, qu'aucun outil destiné aux
+  agents ne résout ([conformité VFS](./vfs-compliance.md)). Les outils ne lancent jamais de
+  connexion interactive, et un lien de pagination Graph n'est suivi que s'il pointe encore vers
+  `graph.microsoft.com` en HTTPS : le jeton porteur ne part jamais vers un autre hôte. Le
+  transport est chiffré (`SslOnConnect` ou `StartTls`) — `None` n'est accepté que vers un serveur
+  de test en bouclage, et aucune option n'accepte un certificat invalide.
+- **Les crews forgés n'ont pas de boîte aux lettres.** `orkeon forge` retire les douze outils de
+  boîte aux lettres du catalogue des crews qu'il essaie sur son banc (`email_parser`, qui lit un
+  fichier, reste).
+
+**Limites honnêtes.** Le filtre est le détecteur par motifs décrit plus haut : il signale, et une
+injection paraphrasée passe. La frontière, ce sont les droits du compte, la liste d'autorisation
+qui échoue fermée et les brouillons. Chaque compte est visible de chaque crew et de chaque
+script `.ork.ts` qui résout le même fichier de réglages — les scripts appellent `tools.email*`
+directement, et les crews hébergés par `orkeon-host` partagent les réglages de l'hôte — : déclarez
+donc les comptes dans le propre `appsettings.json` du crew (un run lit exactement un fichier de
+réglages), accordez le moins de droits possible, préférez `email_draft`, et ne donnez pas à un
+crew non fiable à la fois le `Read` e-mail et un canal sortant (`http_api`, les outils web) : un
+message pourrait demander à l'agent d'emporter la boîte au-dehors. Les fichiers de jetons sont du
+JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne sous
+le même utilisateur du système.
+
 ## Résilience
 
 `ResiliencePolicies` (`Orkeon.Infrastructure.Resilience`) expose les politiques Polly — `GetRetryPolicy`, `GetCircuitBreakerPolicy`, `GetTimeoutPolicy`, `GetCombinedPolicy`, `GetLlmApiPolicy` — utilisées par les providers LLM et les outils HTTP.

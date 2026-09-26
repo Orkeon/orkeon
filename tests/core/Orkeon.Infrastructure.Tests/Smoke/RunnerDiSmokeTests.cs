@@ -1,3 +1,4 @@
+using Orkeon.Tools.Email.DependencyInjection;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -56,6 +57,7 @@ public class RunnerDiSmokeTests
         services.AddOrkeonWebTools();
         services.AddOrkeonCodeTools();
         services.AddOrkeonAbstractionTools();
+        services.AddOrkeonEmailTools(configuration);
 
         return (services.BuildServiceProvider(), mountBase);
     }
@@ -88,6 +90,9 @@ public class RunnerDiSmokeTests
             Assert.Contains(tools, t => t.GetType().Name == "CountPatternTool");
             // list_mounts comes from Orkeon.Tools.Abstractions — added in experiment 07 #13.
             Assert.Contains(tools, t => t.Name == "list_mounts");
+            // The e-mail family resolves with no account configured (MAIL): inert, not absent.
+            Assert.Contains(tools, t => t.Name == "email_send");
+            Assert.Contains(tools, t => t.Name == "email_parser");
         }
         finally
         {

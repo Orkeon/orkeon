@@ -1,3 +1,4 @@
+using Orkeon.Constants.Configuration;
 using Orkeon.Studio.Core.Configuration;
 
 namespace Orkeon.Studio.Core.Tools;
@@ -22,6 +23,15 @@ public enum ToolRequirement
 
     /// <summary>An expert setting of the file, under the section named in <see cref="ToolInfo.Argument"/>.</summary>
     ExpertSetting,
+
+    /// <summary>
+    /// An e-mail account declared in the settings file, under the section named in
+    /// <see cref="ToolInfo.Argument"/>. Neither a key nor a call parameter: the tool is registered
+    /// with or without one and refuses every call until an account is declared, saying what to
+    /// declare. Studio has no form for it — the account is written in the file, and an OAuth
+    /// account then signs in once with <c>orkeon email login</c>.
+    /// </summary>
+    EmailAccount,
 }
 
 /// <summary>One tool of the catalogue: its registry name and what it needs.</summary>
@@ -47,6 +57,13 @@ public sealed record ToolSecret(string EnvName, string UsedBy, Uri ConsoleUrl);
 /// settings" metadata, the registry lists names only and a tool absent from it (a key not
 /// set) is invisible there. The list is the <c>orkeon run</c> column of the availability
 /// matrix in <c>docs/tools/inventory.md</c>, and a test pins every name against that file.
+/// <para>
+/// The e-mail family (MAIL-05) is the opposite case: its tools are registered whether or not
+/// an account is declared, so the registry lists them all the same, and only this catalogue
+/// says that twelve of them refuse every call until an account is declared under
+/// <see cref="ConfigurationKeys.ToolsEmail"/>. A test pins that family against the tool
+/// contracts the e-mail assembly declares, not only against the inventory.
+/// </para>
 /// </summary>
 public static class ToolCatalog
 {
@@ -58,6 +75,8 @@ public static class ToolCatalog
     public const string FilesFamily = "files";
     /// <summary>Data.</summary>
     public const string DataFamily = "data";
+    /// <summary>E-mail: the mailbox tools and the <c>.eml</c> parser.</summary>
+    public const string EmailFamily = "email";
     /// <summary>Code.</summary>
     public const string CodeFamily = "code";
     /// <summary>Session and memory.</summary>
@@ -111,7 +130,6 @@ public static class ToolCatalog
             new("file_write"),
             new("directory_read"),
             new("directory_search"),
-            new("email_parser"),
             new("count_pattern"),
         ]),
         new(DataFamily,
@@ -138,6 +156,23 @@ public static class ToolCatalog
             new("arcadedb_query", ToolRequirement.ParametersAtCall),
             new("janusgraph_query", ToolRequirement.ParametersAtCall),
             new("graph_schema", ToolRequirement.ParametersAtCall),
+        ]),
+        new(EmailFamily,
+        [
+            new("email_accounts", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_folders", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_search", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_read", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_save_attachment", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_create_folder", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_rename_folder", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_move", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_mark", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_delete", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_draft", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_send", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            // Reads an .eml file from a mount: no account involved.
+            new("email_parser"),
         ]),
         new(CodeFamily,
         [

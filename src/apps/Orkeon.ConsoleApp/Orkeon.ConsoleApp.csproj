@@ -48,6 +48,7 @@
     <!-- Concrete tool packages — composition root responsibility -->
     <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Data\Orkeon.Tools.Data.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />

@@ -90,6 +90,8 @@
       href: guides/local-models.md
     - name: Verify what you install
       href: guides/verify-what-you-install.md
+    - name: E-mail tools
+      href: guides/email.md
 - name: Reference
   items:
     - name: Scripting DSL reference
@@ -140,6 +142,8 @@
       href: adr/ADR-010-agent-framework-interop.md
     - name: ADR-011 — Aspire dashboard as the observability surface
       href: adr/ADR-011-aspire-dashboard-observability.md
+    - name: ADR-012 — The e-mail tool family
+      href: adr/ADR-012-email-tool-family.md
     - name: ADR — RaggableTree semantic graph
       href: architecture/raggable-tree-adr.md
 - name: Templates

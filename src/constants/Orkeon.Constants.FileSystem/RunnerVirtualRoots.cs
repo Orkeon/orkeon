@@ -71,9 +71,17 @@ public static class RunnerVirtualRoots
     public const string Forge = "/forge";
 
     /// <summary>
-    /// The roots EVERY runner mounts on its own behalf, for a caller that has to refuse a user
-    /// mount claiming one. A set, not four comparisons: an omission is what the pairwise drift
-    /// test could not see.
+    /// Where the runner keeps credentials it obtained for the run — the OAuth tokens of e-mail
+    /// accounts. Registered as an <b>internal</b> mount, and only when an OAuth e-mail account is
+    /// declared: the tokens are written through the privileged view of the VFS, which no
+    /// agent-facing tool resolves (ADR-008).
     /// </summary>
-    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, Sandbox];
+    public const string Credentials = "/credentials";
+
+    /// <summary>
+    /// The roots a runner mounts on its own behalf — every run, or (<see cref="Credentials"/>)
+    /// whenever the settings need them — for a caller that has to refuse a user mount claiming
+    /// one. A set, not five comparisons: an omission is what the pairwise drift test could not see.
+    /// </summary>
+    public static IReadOnlyList<string> All { get; } = [Crew, Script, LlmLogs, Sandbox, Credentials];
 }

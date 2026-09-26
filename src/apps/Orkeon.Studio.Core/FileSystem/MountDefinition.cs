@@ -273,7 +273,7 @@ public sealed record MountDefinition
 
     /// <summary>
     /// The virtual roots a runner mounts for itself (<c>/crew</c>, <c>/script</c>,
-    /// <c>/llm-logs</c>, <c>/sandbox</c> - <see cref="Orkeon.Constants.FileSystem.RunnerVirtualRoots.All"/>, asked for as a
+    /// <c>/llm-logs</c>, <c>/sandbox</c>, <c>/credentials</c> - <see cref="Orkeon.Constants.FileSystem.RunnerVirtualRoots.All"/>, asked for as a
     /// set precisely so this list cannot fall behind it). A user mount claiming one is refused by
     /// the engine at launch, so
     /// the editor and the folder picker refuse it here rather than letting a folder happening

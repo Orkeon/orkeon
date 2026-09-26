@@ -166,9 +166,27 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 | `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
 | `Orkeon:Sandbox` | Montage sandbox du système de fichiers (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Une entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` (VFS-90) : ce par quoi le bloc `mounts:` d'une crew, le sidecar d'équipe de Studio et `--mount-id` la désignent ; Studio en écrit un à chaque enregistrement. Un `--mount` CLI sur la même racine virtuelle **remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté (jamais fusionné, jamais perdu). Une racine déclarée deux fois n'est légitime que si chacune de ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé avant tout host (`'/output' is declared twice in <settings> (<idA>: <dossierA>, <idB>: <dossierB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`), de même qu'une racine déclarée deux fois avec une entrée sans identifiant (`… and '<entrée>' has no id. Give every entry an id …`) ou un identifiant porté par deux entrées. Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il reste donc accessible même hors du répertoire de travail du processus ; une entrée retirée ne l'est pas | `AddOrkeonFileSystem(...)` | — |
-| `Orkeon:FileSystem` (`InternalMounts`) | Même grammaire que `Mounts`, enregistrés en `MountVisibility.Internal` : résolubles par le VFS, **absents de `list_mounts`, de la table de montages du prompt agent et des messages de refus d'accès**. C'est là qu'un hôte met ce que le VFS doit atteindre et qu'aucun agent n'a à adresser — le répertoire `--llm-log` y vit ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:FileSystem` (`InternalMounts`) | Même grammaire que `Mounts`, enregistrés en `MountVisibility.Internal` : résolubles par le VFS, **absents de `list_mounts`, de la table de montages du prompt agent et des messages de refus d'accès**. C'est là qu'un hôte met ce que le VFS doit atteindre et qu'aucun agent n'a à adresser — le répertoire `--llm-log` y vit, et `/credentials`, les jetons OAuth des comptes e-mail, quand un tel compte est déclaré ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Autorise interpréteurs/git mutant dans `ShellCommandTool` (**équivalent RCE**, avertissement émis) | `AddOrkeonCodeTools()` | config seule |
 | `Orkeon:Tools:Shell:ExtraAllowedCommands` / `AllowedCommands` | Allowlist shell : additive / remplacement complet (le remplacement annule `AllowInterpreters`) | idem | config seule |
+
+### E-mail (`Orkeon:Tools:Email`)
+
+Lié par `AddOrkeonEmailTools(configuration)` — l'hôte partagé des runners et `orkeon-repl`
+l'appellent — et lu paresseusement : un compte est validé la première fois qu'un outil ou une
+commande `orkeon email` s'en sert, tous ses problèmes signalés d'un coup, si bien qu'une section
+cassée ne casse jamais un crew qui n'envoie pas de courrier. Les secrets n'y sont jamais des
+valeurs, seulement les **noms** des variables d'environnement qui les contiennent — des noms
+sans le préfixe `ORKEON_`, puisque le runner charge toute variable `ORKEON_*` dans sa
+configuration. Parcours par
+fournisseur et table clé par clé : [Outils e-mail](../guides/email.md).
+
+| Section | Configure |
+|---|---|
+| `Orkeon:Tools:Email:DefaultAccount` | Le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un seul compte) |
+| `Orkeon:Tools:Email:CredentialsDirectory` | Répertoire physique des jetons OAuth. Le runner le monte sur la racine interne `/credentials` quand un compte OAuth est déclaré ; par défaut : `credentials` à côté du fichier de réglages de l'utilisateur |
+| `Orkeon:Tools:Email:Screening:WithholdRejected` | Retenir le corps d'un message que le filtre anti-injection de prompt rejette (défaut `false` : signaler seulement) |
+| `Orkeon:Tools:Email:Accounts:<nom>` | Un compte. `Provider` (`Gmail`, `Outlook` ou `Custom` — le défaut), `Address`, `DisplayName`, `Rights` (**obligatoire** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` ou `Graph` ; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` ou `None` — ce dernier vers un hôte de bouclage seulement), `Outgoing` (`Protocol` `Smtp` ou `Graph` ; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` ou `OAuth2` ; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — une liste vide n'autorise personne —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. Le nom contient des lettres, des chiffres, `.`, `_` et `-` (64 au plus) |
 
 ### Scripting et CLI
 

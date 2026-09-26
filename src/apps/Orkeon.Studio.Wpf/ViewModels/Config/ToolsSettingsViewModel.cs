@@ -67,19 +67,24 @@ public sealed class ToolFamilyViewModel : ObservableObject
     /// <summary>The family key, for tests and the capture catalogue.</summary>
     public string Key => _family.Key;
 
-    /// <summary>The localized family name.</summary>
+    /// <summary>
+    /// The localized family name. A family with no label of its own shows its raw key, which
+    /// a test catches, rather than borrowing another family's label, which nothing would.
+    /// </summary>
     public string Label => _strings[_family.Key switch
     {
         ToolCatalog.WebFamily => StudioStringKeys.ToolFamilyWeb,
         ToolCatalog.SearchFamily => StudioStringKeys.ToolFamilySearch,
         ToolCatalog.FilesFamily => StudioStringKeys.ToolFamilyFiles,
         ToolCatalog.DataFamily => StudioStringKeys.ToolFamilyData,
+        ToolCatalog.EmailFamily => StudioStringKeys.ToolFamilyEmail,
         ToolCatalog.CodeFamily => StudioStringKeys.ToolFamilyCode,
         ToolCatalog.SessionFamily => StudioStringKeys.ToolFamilySession,
         ToolCatalog.EventsFamily => StudioStringKeys.ToolFamilyEvents,
         ToolCatalog.AnalysisFamily => StudioStringKeys.ToolFamilyAnalysis,
         ToolCatalog.CollaborationFamily => StudioStringKeys.ToolFamilyCollaboration,
-        _ => StudioStringKeys.ToolFamilyMounts,
+        ToolCatalog.MountsFamily => StudioStringKeys.ToolFamilyMounts,
+        _ => _family.Key,
     }];
 
     /// <summary>The tools, as chips.</summary>
@@ -142,6 +147,7 @@ public sealed class ToolRequirementViewModel : ObservableObject
         ToolRequirement.KeyAtCall => _strings[StudioStringKeys.ToolKeyAtCall],
         ToolRequirement.ParametersAtCall => _strings[StudioStringKeys.ToolParametersAtCall],
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
+        ToolRequirement.EmailAccount => Format(StudioStringKeys.ToolNeedsEmailAccount),
         _ => "",
     };
 

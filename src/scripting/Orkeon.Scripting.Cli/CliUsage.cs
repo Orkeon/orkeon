@@ -45,6 +45,7 @@ internal static class CliUsage
         new("rag", "Ingest, search and evaluate a RAG collection."),
         new("forge", "The Atelier: turn a need in plain words into a validated crew."),
         new("usecases", "Search, list, show and export the example use cases — offline, in five languages."),
+        new("email", "List the e-mail accounts, sign an OAuth account in or out, check a connection."),
     ];
 
     /// <summary>This build's version, without the build metadata SourceLink appends.</summary>

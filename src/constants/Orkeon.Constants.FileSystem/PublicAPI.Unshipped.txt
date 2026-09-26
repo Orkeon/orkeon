@@ -1,2 +1,3 @@
 #nullable enable
 const Orkeon.Constants.FileSystem.ConventionalNames.TeamSidecarFile = "studio-team.json" -> string!
+const Orkeon.Constants.FileSystem.RunnerVirtualRoots.Credentials = "/credentials" -> string!

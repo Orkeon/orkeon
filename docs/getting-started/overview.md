@@ -265,16 +265,17 @@ Collaboration between agents is also supported at the domain level: `Agent.Colla
 
 ```
 Orkeon.sln
-├── src/                            # 43 projects, 13 zones
+├── src/                            # 48 projects, 14 zones
 │   ├── core/
 │   │   ├── Orkeon.Domain/          # Entities, value objects, interfaces, events
 │   │   ├── Orkeon.Application/     # CQRS, services, orchestration, ports
 │   │   └── Orkeon.Infrastructure/  # Implementations, LLM providers, memory, DI
-│   ├── tools/                      # 9 tool packs
+│   ├── tools/                      # 10 tool packs
 │   │   ├── Orkeon.Tools.Abstractions/     # Tool base classes
 │   │   ├── Orkeon.Tools.Analysis/         # RaggableTree agent tools (15)
 │   │   ├── Orkeon.Tools.Code/             # Code tools (ShellCommand)
 │   │   ├── Orkeon.Tools.Data/             # Data tools (CSV, PDF, JSON, SQL, MongoDB…)
+│   │   ├── Orkeon.Tools.Email/            # E-mail tools (IMAP, POP3, SMTP, Microsoft Graph)
 │   │   ├── Orkeon.Tools.Embeddings.Local/ # On-device embeddings (BGE-micro ONNX)
 │   │   ├── Orkeon.Tools.EventHub/         # EventHub messaging tools
 │   │   ├── Orkeon.Tools.FileSystem/       # File tools (Read, Write, Directory…)
@@ -286,6 +287,7 @@ Orkeon.sln
 │   ├── cli/                        # CLI building blocks (Abstractions, Cli, Commands.Scripting, TerminalGui)
 │   ├── hosting/                    # Orkeon.Hosting (RunnerHost) + Orkeon.Host (`orkeon-host` service daemon)
 │   ├── plugins/                    # Orkeon.Plugins (runtime plugin loading)
+│   ├── interop/                    # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge)
 │   ├── generators/                 # Orkeon.Generators (source generators)
 │   ├── constants/                  # Satellites of SHARED constants, zero runtime dependency (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (Roslyn analyzer)
@@ -293,7 +295,7 @@ Orkeon.sln
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # Interactive REPL (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)
-├── tests/                          # 33 projects (src mirrors + e2e, shared)
+├── tests/                          # 36 projects (src mirrors + e2e, shared)
 ├── examples/                       # 105 bundled examples (9 categories + showcases)
 └── docs/                           # Documentation (EN + docs/fr mirror)
 ```
