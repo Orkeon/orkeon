@@ -165,18 +165,19 @@ requires the opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjecti
 ### E-mail (`Orkeon:Tools:Email`)
 
 Bound by `AddOrkeonEmailTools(configuration)` — the shared runner host and `orkeon-repl` call
-it — and read lazily: an account is validated the first time a tool or an `orkeon email`
-command uses it, every problem reported at once, so a broken section never breaks a crew that
-sends no mail. Secrets are never values here, only the **names** of the environment variables
-that hold them — names without the `ORKEON_` prefix, since the runner loads every `ORKEON_*`
-variable into its configuration. Provider walkthroughs and the key-by-key table: [E-mail tools](../guides/email.md).
+it — and validated lazily: an account is validated the first time a tool or an `orkeon email`
+command uses it, every problem reported at once, and a value the binder cannot even read (a
+misspelt right, a port in words) sets that one account aside instead of failing the host — a
+broken section never breaks a crew that sends no mail. Secrets are never values here, only the
+**names** of the environment variables that hold them. Provider walkthroughs and the
+key-by-key table: [E-mail tools](../guides/email.md).
 
 | Section | Configures |
 |---|---|
 | `Orkeon:Tools:Email:DefaultAccount` | The account a call that names none uses (optional with a single account) |
-| `Orkeon:Tools:Email:CredentialsDirectory` | Physical directory of the OAuth tokens. The runner mounts it at the internal root `/credentials` when an OAuth account is declared; default: `credentials` next to the per-user settings file |
+| `Orkeon:Tools:Email:CredentialsDirectory` | Physical directory whose `email` subdirectory holds the OAuth tokens — an absolute path. The runner mounts it at the internal root `/credentials` when an OAuth account is declared; default: `credentials` next to the per-user settings file |
 | `Orkeon:Tools:Email:Screening:WithholdRejected` | Withhold the body of a message the prompt-injection screen rejects (default `false`: flag only) |
-| `Orkeon:Tools:Email:Accounts:<name>` | One account. `Provider` (`Gmail`, `Outlook` or `Custom` — the default), `Address`, `DisplayName`, `Rights` (**mandatory** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` or `Graph`; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` or `None` — the last towards a loopback host only), `Outgoing` (`Protocol` `Smtp` or `Graph`; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` or `OAuth2`; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — an empty list allows nobody —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. The name holds letters, digits, `.`, `_` and `-` (64 at most) |
+| `Orkeon:Tools:Email:Accounts:<name>` | One account. `Provider` (`Gmail`, `Outlook` or `Custom` — the default), `Address`, `DisplayName`, `Rights` (**mandatory** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` or `Graph`; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` or `None` — the last towards a loopback host only), `Outgoing` (`Protocol` `Smtp` or `Graph`; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` or `OAuth2`; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — an empty list allows nobody —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. The name holds letters, digits, `.`, `_` and `-`, starts with a letter or a digit (64 at most) |
 
 ### Scripting and CLI
 

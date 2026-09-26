@@ -173,20 +173,20 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 ### E-mail (`Orkeon:Tools:Email`)
 
 Lié par `AddOrkeonEmailTools(configuration)` — l'hôte partagé des runners et `orkeon-repl`
-l'appellent — et lu paresseusement : un compte est validé la première fois qu'un outil ou une
-commande `orkeon email` s'en sert, tous ses problèmes signalés d'un coup, si bien qu'une section
-cassée ne casse jamais un crew qui n'envoie pas de courrier. Les secrets n'y sont jamais des
-valeurs, seulement les **noms** des variables d'environnement qui les contiennent — des noms
-sans le préfixe `ORKEON_`, puisque le runner charge toute variable `ORKEON_*` dans sa
-configuration. Parcours par
-fournisseur et table clé par clé : [Outils e-mail](../guides/email.md).
+l'appellent — et validé paresseusement : un compte est validé la première fois qu'un outil ou une
+commande `orkeon email` s'en sert, tous ses problèmes signalés d'un coup, et une valeur que le
+binder ne sait même pas lire (un droit mal orthographié, un port en toutes lettres) met ce seul
+compte de côté au lieu de faire échouer l'hôte — une section cassée ne casse jamais un crew qui
+n'envoie pas de courrier. Les secrets n'y sont jamais des valeurs, seulement les **noms** des
+variables d'environnement qui les contiennent. Parcours par fournisseur et table clé par clé :
+[Outils e-mail](../guides/email.md).
 
 | Section | Configure |
 |---|---|
 | `Orkeon:Tools:Email:DefaultAccount` | Le compte qu'utilise un appel qui n'en nomme aucun (facultatif avec un seul compte) |
-| `Orkeon:Tools:Email:CredentialsDirectory` | Répertoire physique des jetons OAuth. Le runner le monte sur la racine interne `/credentials` quand un compte OAuth est déclaré ; par défaut : `credentials` à côté du fichier de réglages de l'utilisateur |
+| `Orkeon:Tools:Email:CredentialsDirectory` | Répertoire physique dont le sous-répertoire `email` contient les jetons OAuth — un chemin absolu. Le runner le monte sur la racine interne `/credentials` quand un compte OAuth est déclaré ; par défaut : `credentials` à côté du fichier de réglages de l'utilisateur |
 | `Orkeon:Tools:Email:Screening:WithholdRejected` | Retenir le corps d'un message que le filtre anti-injection de prompt rejette (défaut `false` : signaler seulement) |
-| `Orkeon:Tools:Email:Accounts:<nom>` | Un compte. `Provider` (`Gmail`, `Outlook` ou `Custom` — le défaut), `Address`, `DisplayName`, `Rights` (**obligatoire** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` ou `Graph` ; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` ou `None` — ce dernier vers un hôte de bouclage seulement), `Outgoing` (`Protocol` `Smtp` ou `Graph` ; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` ou `OAuth2` ; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — une liste vide n'autorise personne —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. Le nom contient des lettres, des chiffres, `.`, `_` et `-` (64 au plus) |
+| `Orkeon:Tools:Email:Accounts:<nom>` | Un compte. `Provider` (`Gmail`, `Outlook` ou `Custom` — le défaut), `Address`, `DisplayName`, `Rights` (**obligatoire** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` ou `Graph` ; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` ou `None` — ce dernier vers un hôte de bouclage seulement), `Outgoing` (`Protocol` `Smtp` ou `Graph` ; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` ou `OAuth2` ; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — une liste vide n'autorise personne —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. Le nom contient des lettres, des chiffres, `.`, `_` et `-`, commence par une lettre ou un chiffre (64 au plus) |
 
 ### Scripting et CLI
 

@@ -25,7 +25,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   regression of 2026-09-24), `Custom` (explicit hosts, password only). TLS only; `None` towards
   a loopback test server only.
 - **Configuration `Orkeon:Tools:Email`**, validated at first use with every problem reported at
-  once: `DefaultAccount`, `CredentialsDirectory`, `Screening:WithholdRejected`, and per account
+  once — a value the binder cannot even read sets its one account aside instead of failing the
+  host: `DefaultAccount`, `CredentialsDirectory`, `Screening:WithholdRejected`, and per account
   `Provider`, `Address`, `DisplayName`, a **mandatory** `Rights` list (`Read`, `Organize`,
   `Draft`, `Send`, `Delete`, `Purge`), `Incoming`, `Outgoing`, `Auth`, `Send`, `TimeoutSeconds`,
   `SaveSentCopy`. Secrets are only ever the **names** of environment variables.
@@ -36,7 +37,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   read result opens with an untrusted-content notice and carries the verdict of the RAG
   prompt-injection detector, run on the rendered text; HTML-hidden text is left out and flagged.
   Each tool declares its `ToolAccess`, and `orkeon forge` keeps the twelve mailbox tools out of
-  forged crews.
+  forged crews. Results fit the agent loop's 4000-character cap: a search page is cut after a
+  whole message and a body slice where its rendering ends, and `next_cursor` / `next_offset`
+  resume exactly there.
 - **OAuth2, written by hand, and `orkeon email`.** Device code for Microsoft, authorization code
   with PKCE on a `127.0.0.1` listener for Google — with a paste-the-address fallback for WSL,
   containers and SSH — and refresh with rotation; no MSAL, no Google SDK. The new verb
@@ -46,9 +49,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - **Tokens in a new internal VFS root, `/credentials`** (`RunnerVirtualRoots.Credentials`),
   mounted by the runner host only when an OAuth account is declared and written through
   `PrivilegedFileSystemAccess`; physically `<per-user settings directory>/credentials/email/`,
-  owner-only on Unix, or `CredentialsDirectory` for a service. A user mount claiming
-  `/credentials` is refused. The files are plain JSON — out of reach of the VFS tools, not of a
-  shell or code tool running as the same user.
+  or the `email` subdirectory of `CredentialsDirectory` for a service, owner-only on Unix. A user
+  mount claiming `/credentials` is refused by every command, whatever the accounts. The files are
+  plain JSON — out of reach of the VFS tools, not of a shell or code tool running as the same
+  user.
 - **Everywhere a tool family shows up.** `AddOrkeonEmailTools(configuration)` is called by the
   runner host (`orkeon run`, scripts, `orkeon-host`) and by `orkeon-repl`, where OAuth accounts
   are refused for want of a token store; the `Orkeon.Tools` umbrella embeds the assembly; Studio

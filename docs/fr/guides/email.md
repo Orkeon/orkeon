@@ -53,12 +53,14 @@ lui-même. La décision et les alternatives écartées sont dans
 | `email_send` | Send (+ Read pour répondre ou transférer) | Envoie un nouveau message, une réponse ou un transfert — aux seuls destinataires autorisés |
 | `email_parser` | aucun (pas de compte) | Parse un fichier `.eml` depuis un chemin virtuel, avec la même sortie qu'`email_read` |
 
-Paramètres, exemples d'appel et classe de chaque outil pour la permission gate sont dans
-l'[inventaire des outils](../tools/inventory.md). `AddOrkeonEmailTools(configuration)` enregistre
-les treize. L'hôte partagé des runners l'appelle — `orkeon run`, les scripts `.ork.ts` et
-`orkeon-host` ont donc les outils — et `orkeon-repl` aussi ; `orkeon forge` écarte les douze
-outils de boîte aux lettres des crews qu'il forge. Les outils restent inertes tant qu'aucun
-compte n'est déclaré.
+Chaque paramètre est listé [plus bas](#paramètres) ; les exemples d'appel et la classe de
+chaque outil pour la permission gate sont dans l'[inventaire des outils](../tools/inventory.md).
+`AddOrkeonEmailTools(configuration)` enregistre les treize. L'hôte partagé des runners l'appelle
+— `orkeon run`, les scripts `.ork.ts` et `orkeon-host` ont donc les outils — et `orkeon-repl`
+aussi ; `orkeon forge` écarte les douze outils de boîte aux lettres des crews qu'il forge. Tant
+qu'aucun compte n'est déclaré, les outils de boîte aux lettres refusent tout appel avec un message
+qui dit quoi déclarer, `email_accounts` n'en liste aucun, et `email_parser`, qui ne demande aucun
+compte, fonctionne.
 
 ## Démarrage rapide : Gmail avec un mot de passe d'application
 
@@ -74,8 +76,7 @@ passe d'application**, un mot de passe de 16 caractères que Google génère pou
    Workspace dont l'administrateur les a désactivés — passez par
    [Gmail avec OAuth2](#gmail-avec-oauth2).
 3. Mettez le mot de passe dans une variable d'environnement du processus qui lance vos crews —
-   pas dans un fichier. Choisissez un nom sans le préfixe `ORKEON_` : le runner charge les
-   variables `ORKEON_*` dans sa configuration, et un mot de passe n'a rien à y faire.
+   pas dans un fichier. N'importe quel nom convient : le compte le nomme (`PasswordEnvVar`).
 
    ```bash
    export GMAIL_APP_PASSWORD='abcdefghijklmnop'        # bash / zsh
@@ -196,8 +197,8 @@ avec *« User is authenticated but not connected »*. C'est pourquoi Graph est l
 
 Une alternative au mot de passe d'application, pour les comptes qui ne peuvent pas en avoir ou
 les opérateurs qui préfèrent des jetons. Le *device flow* de Google refuse les scopes Gmail : le
-login ouvre donc la page de consentement de Google dans un navigateur et reçoit la réponse sur
-une adresse de bouclage (`127.0.0.1`), avec PKCE.
+login affiche donc l'adresse de la page de consentement de Google, à ouvrir dans un navigateur,
+et reçoit la réponse sur une adresse de bouclage (`127.0.0.1`), avec PKCE.
 
 1. Dans la [console Google Cloud](https://console.cloud.google.com), créez un projet Google
    Cloud et activez-y l'**API Gmail**.
@@ -269,29 +270,30 @@ n'accepte un certificat invalide. Un port omis suit la sécurité :
 Un compte sans `Outgoing:Host` ne peut pas envoyer, et un compte qui accorde `Send` sans serveur
 sortant est signalé comme mal configuré. Un serveur personnalisé ne classe en général pas ce
 que vous envoyez : la famille ajoute donc une copie au dossier Envoyés (`SaveSentCopy`, actif
-par défaut pour un compte `Custom` seulement ; le préréglage Gmail et Graph classent eux-mêmes
-le courrier envoyé). Un serveur sans dossier Envoyés ne reçoit pas de copie, et `email_send` le
-signale dans son `warning` — le message, lui, est bien envoyé.
+par défaut pour un compte `Custom` lu en IMAP ; le préréglage Gmail et Graph classent eux-mêmes
+le courrier envoyé, et une boîte POP3 n'a pas de dossier Envoyés). Quand aucune copie ne peut
+être classée — un serveur sans dossier Envoyés, `SaveSentCopy` forcé pour un compte POP3 —
+`email_send` le signale dans son `warning` ; le message, lui, est bien envoyé.
 
 `"Incoming": { "Protocol": "Pop3" }` lit en POP3 à la place : la boîte de réception seulement
 — voir [Limites](#limites).
 
 ## Référence des réglages
 
-Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est vérifié au démarrage d'un hôte : un compte
-est validé la première fois qu'un outil ou une commande s'en sert, et tous les problèmes de sa
-déclaration sont signalés d'un coup — une section e-mail cassée ne casse donc jamais un crew qui
-n'envoie pas de courrier. `orkeon email accounts` montre ces problèmes sans se connecter. Nommez
-les variables d'environnement qui contiennent un mot de passe ou un secret client sans le
-préfixe `ORKEON_` (`GMAIL_APP_PASSWORD`, `GOOGLE_CLIENT_SECRET`) : le runner charge toute
-variable `ORKEON_*` dans sa configuration, et un secret n'a rien à y faire.
+Tout se trouve sous `Orkeon:Tools:Email`. Rien n'est validé au démarrage d'un hôte — le runner lit
+seulement si un compte OAuth a besoin du magasin de jetons. Un compte est validé la première fois
+qu'un outil ou une commande s'en sert, et tous les problèmes de sa déclaration sont signalés d'un
+coup : une section e-mail cassée ne casse donc jamais un crew qui n'envoie pas de courrier. Une
+valeur qui ne se lit même pas — un droit mal orthographié, un port écrit en toutes lettres — met
+ce seul compte de côté de la même façon, et est signalée en premier. `orkeon email accounts`
+montre ces problèmes sans se connecter.
 
 | Clé | Rôle | Défaut |
 |---|---|---|
 | `DefaultAccount` | Le compte qu'utilise un appel qui n'en nomme aucun | le seul compte, quand il n'y en a qu'un |
-| `CredentialsDirectory` | Répertoire physique des jetons OAuth, pour un compte de service ([plus bas](#où-vivent-les-jetons)) | `credentials` à côté des réglages de l'utilisateur |
+| `CredentialsDirectory` | Répertoire physique dont le sous-répertoire `email` contient les jetons OAuth, pour un compte de service ([plus bas](#où-vivent-les-jetons)) ; donnez un chemin absolu | `credentials` à côté des réglages de l'utilisateur |
 | `Screening:WithholdRejected` | Retenir le corps d'un message que le filtre anti-injection rejette | `false` |
-| `Accounts:<nom>` | Un compte. `<nom>` est ce qu'un agent passe en `account` : lettres, chiffres, `.`, `_` et `-`, 64 caractères au plus | — |
+| `Accounts:<nom>` | Un compte. `<nom>` est ce qu'un agent passe en `account` : lettres, chiffres, `.`, `_` et `-`, en commençant par une lettre ou un chiffre, 64 caractères au plus | — |
 | `…:Provider` | `Gmail`, `Outlook` ou `Custom` | `Custom` |
 | `…:Address` | L'adresse du compte — aussi le `From` de tout ce qu'il envoie | obligatoire |
 | `…:DisplayName` | Le nom affiché avec l'adresse dans `From` | aucun |
@@ -308,7 +310,7 @@ variable `ORKEON_*` dans sa configuration, et un secret n'a rien à y faire.
 | `…:Send:MaxRecipients` | Nombre maximal de destinataires d'un message | pas de plafond |
 | `…:Send:MaxPerHour` | Nombre maximal de messages envoyés par heure par le compte, par processus | pas de plafond |
 | `…:TimeoutSeconds` | Délai des connexions IMAP, POP3 et SMTP | celui de la bibliothèque |
-| `…:SaveSentCopy` | Ajouter chaque message envoyé au dossier Envoyés | `true` pour un compte `Custom` qui envoie en SMTP, sinon `false` |
+| `…:SaveSentCopy` | Ajouter chaque message envoyé au dossier Envoyés | `true` pour un compte `Custom` qui envoie en SMTP et lit en IMAP, sinon `false` |
 
 ## Droits et liste d'autorisation d'envoi
 
@@ -326,7 +328,9 @@ dit. C'est une liste séparée par des virgules de :
 
 Un appel refusé nomme le droit manquant et l'endroit où l'ajouter. Accordez le moins de droits
 possible : `Read, Organize, Draft` couvre le tri et les réponses préparées, et laisse tout acte
-irréversible à un humain.
+irréversible à un humain. Ce sont les droits qui bornent un crew : la classe de permission gate
+que déclare chaque outil (inventaire) n'est consultée que par la boucle scriptée `ctx.llm.act`,
+quand la gate est activée, et `email_read` y compte comme une lecture même avec `mark_read`.
 
 **L'envoi est fermé par défaut.** `email_send` refuse tout message tant que le compte ne liste
 pas ses destinataires dans `Send:AllowedRecipients` :
@@ -340,15 +344,16 @@ pas ses destinataires dans `Send:AllowedRecipients` :
 - l'enveloppe SMTP est exactement la liste contrôlée — aucun en-tête ne peut l'élargir — et
   `From` est toujours l'adresse du compte ;
 - `Send:MaxRecipients` plafonne les destinataires d'un message, et `Send:MaxPerHour` les
-  messages qu'un processus envoie depuis le compte sur une heure glissante (le compte repart à
-  zéro avec le processus).
+  messages qu'un processus envoie depuis le compte sur une heure glissante (le décompte repart
+  à zéro avec le processus).
 
 `email_draft` n'a pas besoin de liste d'autorisation : c'est la voie de la relecture humaine —
 l'agent rédige, une personne relit le brouillon dans son client de messagerie et l'envoie.
 Préférez-le dès qu'un message part vers quelqu'un d'autre que vos propres adresses.
 
 **Filtrage du courrier reçu.** Chaque page de recherche et chaque résultat de lecture s'ouvre
-sur un avis disant que le contenu vient d'un expéditeur externe. `email_read` et `email_parser`
+sur un avis disant que le contenu vient d'un expéditeur externe, et chaque résultat de recherche
+porte `suspicious`, le même filtre appliqué à son objet et à son aperçu. `email_read` et `email_parser`
 portent aussi un bloc `security` : le verdict du détecteur d'injection de prompt du sous-système
 RAG (`clean`, `suspicious` ou `rejected`, avec un score de risque et les raisons), calculé sur le
 texte rendu — ce que l'agent voit réellement. Le texte qu'un message HTML cache à un lecteur
@@ -377,8 +382,11 @@ agents:
 
 Avec plusieurs comptes, l'agent passe `account` (`email_accounts` liste les noms), sinon les
 appels vont à `DefaultAccount`. Mettez les comptes dans **le propre** `appsettings.json` du
-crew : un run lit exactement un fichier de réglages, les comptes n'existent alors que pour ce
-crew — et ce fichier doit aussi contenir la section `Llm` du crew.
+crew : un run résout un seul fichier de réglages, les comptes n'existent alors que pour ce crew —
+et ce fichier doit aussi contenir la section `Llm` du crew. L'hôte .NET sous-jacent lit aussi un
+`appsettings.json` du répertoire d'où part le run, et toutes les variables d'environnement
+(`Orkeon__Tools__Email__Accounts__…` déclare un compte pour chaque run) : gardez les comptes
+hors des deux.
 
 ### Depuis un script `.ork.ts`
 
@@ -395,30 +403,57 @@ for (const message of page.messages) {
 }
 ```
 
-Un champ que l'outil laisse vide est absent du résultat, jamais `null`. Appeler un outil
+Un champ que l'outil laisse à `null` est absent du résultat. Appeler un outil
 impérativement exige la forme procédurale — voir
 [Écrire un crew en TypeScript](./write-a-crew-in-typescript.md) ;
 [`13-email-triage.ork.ts`](../../../examples/scripting/13-email-triage.ork.ts) classe le courrier
 non lu par nature et rédige les réponses qu'un humain enverra. Un script lancé par `orkeon run`
 voit tous les comptes du fichier de réglages qu'il résout.
 
+### Paramètres
+
+`account` est facultatif partout : un appel sans lui utilise `DefaultAccount`, ou l'unique compte.
+
+| Outil | Paramètres |
+|---|---|
+| `email_accounts` | aucun |
+| `email_folders` | `account` |
+| `email_search` | `account`, `folder` (un chemin ou un rôle, `inbox` par défaut), `unread_only`, `flagged_only`, `from`, `to`, `subject`, `text`, `since`, `before`, `has_attachments`, `raw_query`, `limit` (1–50, 10 par défaut), `cursor` (le `next_cursor` d'une page, avec les mêmes critères) |
+| `email_read` | `account`, `id`, `offset`, `max_chars` (200–3000, 2500 par défaut), `mark_read` |
+| `email_save_attachment` | `account`, `id`, `directory` (un répertoire virtuel accessible en écriture), `index` (tiré d'`email_read` ; omis, toutes les pièces jointes) |
+| `email_create_folder` | `account`, `path` |
+| `email_rename_folder` | `account`, `path`, `new_name` (le dernier segment, sans `/`) |
+| `email_move` | `account`, `ids`, `destination` (un chemin ou un rôle) |
+| `email_mark` | `account`, `ids`, `seen`, `flagged` (au moins l'un des deux) |
+| `email_delete` | `account`, `ids`, `permanent` |
+| `email_draft`, `email_send` | `account`, `to`, `cc`, `bcc` (`adresse` ou `Nom <adresse>`), `subject`, `text`, `html`, `attachments` (chemins virtuels), `reply_to_id`, `reply_all`, `quote_original` (`true` par défaut), `forward_id` |
+| `email_parser` | `path` (un chemin virtuel `.eml`), `offset`, `max_chars` |
+
 ### Ce que voit un agent
 
 - **Les ids sont opaques.** `email_search` les rend ; tous les autres outils les reprennent
   tels quels. Un id IMAP désigne le dossier et le message : un message déplacé reçoit donc un
-  nouvel id (`email_move` le rend quand le serveur le donne) ; un id Graph survit au
-  déplacement. Un id périmé répond
-  « cherchez à nouveau ».
-- **Les résultats restent petits.** Une page de recherche contient 10 messages par défaut (50
-  au plus), chacun avec un aperçu de 100 caractères, et `next_cursor` va chercher la page
-  suivante avec les mêmes critères. `email_read` rend le corps par tranches de `max_chars`
-  caractères (2500 par défaut, entre 200 et 3000) et `next_offset` continue ; l'avis et le
-  verdict viennent d'abord, le corps en dernier, pour que tout tienne sous le plafond de 4000
-  caractères de la boucle d'agent sur un résultat d'outil.
+  nouvel id (`email_move` le rend quand le serveur le donne), et renommer un dossier périme les
+  ids de ses messages (un appel avec l'un d'eux répond que le dossier n'existe pas) ; un id
+  Graph survit aux deux. Un id périmé répond « search again ».
+- **Les résultats tiennent dans ce que garde la boucle d'agent** — les 4000 premiers caractères
+  d'un résultat d'outil. Une page de recherche contient jusqu'à `limit` messages, chacun avec un
+  aperçu de 100 caractères, et un objet et un expéditeur coupés à 200 caractères ; une page qui
+  ne tiendrait pas est coupée après un message entier, et `next_cursor` reprend juste après le
+  dernier rendu : rien n'est sauté. `email_read` rend au plus `max_chars` caractères du corps —
+  moins quand les en-têtes et les sauts de ligne échappés prennent la place — et `next_offset`
+  reprend exactement là où la tranche s'arrête ; les listes d'adresses qui évinceraient le corps
+  gardent cinq adresses et une dernière entrée comme `(+37 more)`. L'avis et le verdict viennent
+  d'abord, le corps en dernier.
+- **Les critères de recherche se combinent en ET.** `from`, `to` (l'en-tête To), `subject` et
+  `text` (objet ou corps) cherchent une sous-chaîne, sans tenir compte de la casse ; `since` et
+  `before` prennent une date ou une date-heure ISO 8601 — IMAP compare des jours entiers.
+  `limit`, `max_chars` et `offset` hors de leur plage y sont ramenés, pas refusés.
 - **Les dossiers prennent un chemin ou un rôle.** Un chemin est séparé par `/` quel que soit le
-  séparateur du serveur (`Clients/ACME`) ; un rôle (`inbox`, `sent`, `drafts`, `trash`, `junk`,
-  `archive`, `all` sur Gmail) désigne le dossier quel que soit le nom que lui donne le
-  fournisseur.
+  séparateur du serveur (`Clients/ACME`) ; un rôle (`inbox`, `sent`, `drafts`, `trash`, `junk` —
+  `spam` marche aussi —, `archive`, `all` sur Gmail) désigne le dossier quel que soit le nom que
+  lui donne le fournisseur. Gmail n'a pas de dossier d'archives : `archive` y est Tous les
+  messages (*All Mail*), où le message quitte la boîte de réception et garde ses autres libellés.
 - **`raw_query`** transmet une requête native du fournisseur, combinée en ET avec les autres
   critères : la syntaxe de recherche de Gmail (`from:bank has:attachment older_than:30d`) sur
   un compte Gmail, KQL sur un compte Outlook lu via Graph. Les autres serveurs, et POP3, la
@@ -427,26 +462,50 @@ voit tous les comptes du fichier de réglages qu'il résout.
   chaque refus nomme donc le correctif — le droit manquant, la commande à lancer
   (`orkeon email login <compte>`), la variable qui n'est pas définie.
 
+### Écrire et envoyer
+
+- Un nouveau message demande un destinataire (`to`, `cc` ou `bcc`), un `subject` et un corps —
+  `text`, ou `html` seul, dont une partie texte est dérivée. Une réponse (`reply_to_id`) dérive
+  `Re:`, pose les en-têtes du fil de discussion et part vers le Reply-To ou l'expéditeur de
+  l'original sauf si `to` est donné ; `reply_all` ajoute les To et Cc de l'original, moins
+  l'adresse du compte ; le texte d'origine est cité sauf si `quote_original` vaut `false`
+  (20 000 caractères au plus). Un transfert (`forward_id`) dérive `Fwd:` et joint l'original en
+  entier.
+- `attachments` sont des chemins virtuels que le crew peut lire ; le nom du fichier voyage, pas
+  le chemin.
+- En SMTP, les destinataires en Bcc reçoivent le message mais l'en-tête Bcc ne voyage pas ; la
+  copie classée dans Envoyés le garde.
+- `email_send` répond avec le Message-Id et les destinataires. Un `warning` signifie que le
+  message est parti mais qu'une étape suivante a échoué — le classement de la copie dans
+  Envoyés : ne le renvoyez pas.
+- `email_save_attachment` n'écrase jamais un fichier, et écrit sous un nom assaini : le dernier
+  segment du nom donné par l'expéditeur seulement, `_` pour les caractères de contrôle et
+  `<>:"/\|?*`, ni point en tête ni point ou espace en fin, un `_` devant un nom de périphérique
+  Windows (`CON`, `NUL`, `COM1`…), 120 caractères au plus, `attachment-1.pdf` pour une première
+  pièce jointe sans nom, `nom (1).ext` pour une seconde du même nom.
+
 ## Les commandes `orkeon email`
 
 Le côté opérateur de la famille — jamais celui d'un agent :
 
 | Commande | Ce qu'elle fait |
 |---|---|
-| `orkeon email accounts [--settings <fichier>] [--json]` | Liste les comptes déclarés, leur préréglage, leurs protocoles, leurs droits et s'ils sont prêts, avec ce qu'il faut corriger. Sans réseau, sans afficher aucun secret |
+| `orkeon email accounts [--settings <fichier>] [--json]` | Liste les comptes déclarés, leur préréglage, leurs protocoles, leurs droits et s'ils sont prêts, avec ce qu'il faut corriger — prêt signifie que la variable du mot de passe est définie, ou que le secret client que nomme le compte est défini et qu'un jeton est enregistré. Sans réseau, sans afficher aucun secret. `--json` reprend les noms d'`email_accounts` (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `auth`, `default`, `ready`, `problem`) |
 | `orkeon email login <compte> [--settings <fichier>]` | Connecte un compte OAuth2 et enregistre ses jetons (code d'appareil pour Microsoft, navigateur et bouclage pour Google) |
-| `orkeon email logout <compte> [--settings <fichier>]` | Oublie les jetons enregistrés d'un compte |
+| `orkeon email logout <compte> [--settings <fichier>]` | Oublie les jetons enregistrés d'un compte OAuth |
 | `orkeon email check <compte> [--settings <fichier>]` | Se connecte, s'authentifie, liste les dossiers et affiche les compteurs de la boîte de réception |
 
 Les réglages se résolvent comme pour `orkeon run`, ancrés sur le répertoire courant :
 `--settings`, sinon `appsettings.json` dans le répertoire courant, sinon un
 `appsettings/appsettings.json` trouvé en remontant, sinon le fichier de réglages de
 l'utilisateur. Lancez les commandes depuis le dossier qui contient le fichier de réglages du
-crew, ou passez ce fichier avec `--settings`. Codes de sortie : `0` succès, `1` usage,
-configuration ou refus, `2` erreur réseau ou serveur, `130` annulation. Les outils ne lancent
-jamais de connexion eux-mêmes : un compte OAuth sans jeton utilisable répond « lancez `orkeon
-email login <compte>` ». La référence complète est dans la
-[référence CLI](../reference/cli.md#orkeon-email).
+crew, ou passez ce fichier avec `--settings`. Codes de sortie : `0` succès ; `1` ce que
+l'opérateur corrige — usage, configuration, compte inconnu, variable non définie, connexion à
+faire (fournisseur qui n'a délivré aucun jeton de rafraîchissement compris) ; `2` ce qu'ont fait
+le serveur ou le réseau — échec de connexion, identifiants ou autorisation refusés par le
+fournisseur ; `130` annulation. Les outils ne lancent jamais de connexion eux-mêmes : un compte
+OAuth sans jeton utilisable répond « run `orkeon email login <account>` ». La référence
+complète est dans la [référence CLI](../reference/cli.md#orkeon-email).
 
 ## Où vivent les jetons
 
@@ -463,24 +522,45 @@ répertoire est à côté du fichier de réglages de l'utilisateur :
 | Linux, macOS | `$XDG_CONFIG_HOME/Orkeon/credentials/email/`, sinon `~/.config/Orkeon/credentials/email/` |
 | Windows | `%APPDATA%\Orkeon\credentials\email\` |
 
-Sous Unix, le runner crée le répertoire `credentials` réservé au propriétaire (`0700`).
-`Orkeon:Tools:Email:CredentialsDirectory` remplace le répertoire `credentials` — pour un service
-comme `orkeon-host` qui tourne sous un compte de service systemd ou Windows : lancez le login
-sous ce compte et avec le fichier de réglages du service, pour que les jetons arrivent là où le
-service les lit et lui appartiennent.
+Sous Unix, le runner crée le répertoire `credentials` et son sous-répertoire `email` réservés
+au propriétaire (`0700`), et restreint `email` à son propriétaire s'il existait avec des droits
+plus larges. `Orkeon:Tools:Email:CredentialsDirectory` remplace le répertoire `credentials` —
+pour un service comme `orkeon-host` qui tourne sous un compte de service systemd ou Windows :
+lancez le login sous ce compte et avec le fichier de réglages du service, pour que les jetons
+arrivent là où le service les lit et lui appartiennent. Donnez-le en chemin absolu : un chemin
+relatif se résout contre le répertoire d'où part la commande, et un login et un run partis
+d'ailleurs ne le partageraient pas.
 
 Soyons clairs sur ce que cela protège : les fichiers de jetons sont du JSON en clair, à l'abri
 des outils du VFS — **pas** d'un outil shell ou de code qui tourne sous le même utilisateur du
 système. Tenez `shell_command` et l'interpréteur de code à l'écart des crews qui disposent d'un
-compte OAuth.
+compte OAuth. Ce bouclier ne tient d'ailleurs que tant que le runner monte `/credentials` : ne
+donnez jamais à un crew un montage qui couvre le répertoire des réglages de l'utilisateur ou un
+`CredentialsDirectory`, car un run dont les réglages ne déclarent aucun compte OAuth, ou
+`orkeon-repl`, y montrerait les fichiers de jetons.
 
 Le nom du fichier porte une empreinte de l'adresse, du client, du point d'accès du tenant et des
-scopes : changez l'un d'eux et le compte redemande un login au lieu d'envoyer un jeton là où il
-n'a pas été délivré. Lancez `orkeon email logout` avant un tel changement, ou supprimez l'ancien
-fichier. `orkeon-repl` enregistre les outils mais ne tient aucun magasin de jetons : les comptes
-à mot de passe y fonctionnent, les comptes OAuth y sont refusés avec un message qui le dit. Un
-montage utilisateur qui revendique `/credentials` est refusé dès qu'un compte OAuth est déclaré,
-et Orkeon Studio le refuse dans son éditeur de montages.
+scopes : changez l'un d'eux et le compte redemande un login au lieu d'envoyer un jeton vers un
+destinataire pour lequel il n'a pas été délivré. Lancez `orkeon email logout` avant un tel
+changement, ou supprimez l'ancien fichier. `orkeon-repl` enregistre les outils mais ne tient
+aucun magasin de jetons : les comptes à mot de passe y fonctionnent, les comptes OAuth y sont
+refusés avec un message qui le dit. Un montage utilisateur qui revendique `/credentials` est
+refusé quels que soient les comptes — par chaque commande avant qu'elle ne démarre, et par
+Orkeon Studio dans son éditeur de montages.
+
+## Dans un hôte à vous
+
+`services.AddOrkeonEmailTools(configuration)` enregistre la famille dans n'importe quelle
+collection de services. Les outils qui lisent ou écrivent des fichiers (`email_save_attachment`,
+`email_draft`, `email_send`, `email_parser`) résolvent un `IFileSystemService` : enregistrez
+d'abord le système de fichiers virtuel. Les comptes à mot de passe fonctionnent alors comme sous
+le runner. Les comptes OAuth ont besoin d'un magasin de jetons :
+`services.AddOrkeonEmailTokenStore(sp => fileSystem, "/credentials/email")` garde les jetons sous
+un répertoire virtuel du système de fichiers qu'il rend — une vue privilégiée sur un montage
+interne, comme le fait le runner — ou enregistrez votre propre `IEmailTokenStore`, adossé à un
+coffre par exemple. Sans magasin, les comptes OAuth répondent « This host keeps no OAuth
+tokens ». Le service public `EmailAccountAdministration` fait ce que fait `orkeon email` — lister
+les comptes, en connecter un via un `IEmailLoginInteraction` à vous, le déconnecter, le vérifier.
 
 ## Dépannage
 
@@ -507,7 +587,10 @@ et Orkeon Studio le refuse dans son éditeur de montages.
   que le jeton a été refusé : reconnectez-vous.
 - **« The message is … KB once encoded »** — Microsoft Graph accepte 4 Mo par requête, soit
   environ 3 Mo de pièces jointes une fois encodées en base64. La limite propre d'un serveur SMTP
-  (`SIZE`) est signalée de la même façon.
+  (`SIZE`) est signalée par « The message is … KB; <hôte> accepts at most … KB ».
+- **« … has no archive folder »** — le serveur n'en signale ni n'en nomme aucun (`Archive`,
+  `Archives`) ; créez un dossier nommé `Archive`, ou déplacez vers un chemin. Gmail n'en a pas
+  besoin : `archive` y est Tous les messages.
 - **« The TLS handshake … failed »** — le port et `Security` ne correspondent pas :
   `SslOnConnect` pour 993, 995 et 465, `StartTls` pour 143, 110 et 587.
 - **Une suppression définitive est refusée** sur un serveur IMAP sans l'extension UIDPLUS : elle
@@ -536,13 +619,22 @@ et Orkeon Studio le refuse dans son éditeur de montages.
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.
 - **`Send:MaxPerHour` se compte par processus, tentatives comprises.** Deux processus qui
-  envoient depuis le même compte ont chacun leur propre compte, et une tentative que le serveur
+  envoient depuis le même compte ont chacun leur propre décompte, et une tentative que le serveur
   a refusée occupe quand même sa place — une boucle en échec ne peut pas dépasser le plafond en
   réessayant.
-- **Le contenu caché n'est détecté que par les styles en ligne et l'attribut `hidden`.** Un
-  texte masqué par une classe CSS d'un bloc `<style>` n'est ni retiré ni signalé
-  `hidden_content`. Un corps qui imbrique des éléments sur plus de 5000 niveaux n'est pas
-  rendu : l'agent lit à la place un avis d'une ligne, signalé `hidden_content`.
+- **Le contenu caché n'est détecté que par une courte liste de déclarations en ligne et
+  l'attribut `hidden`** : `display:none`, `visibility:hidden`, `opacity:0`, `font-size:0`,
+  `max-height:0`, `width:0`, `height:0` et `mso-hide:all`. Un texte masqué autrement — par une
+  classe CSS d'un bloc `<style>`, une police d'un pixel, du blanc sur blanc, un positionnement
+  hors écran — n'est ni retiré ni signalé `hidden_content`. Quand un message a aussi une partie
+  texte brut, c'est elle que lit l'agent, bien qu'un humain qui regarde le HTML ne la voie
+  jamais ; `hidden_content` ne décrit que le HTML. Un corps qui imbrique des éléments sur plus de
+  5000 niveaux n'est pas rendu : l'agent lit à la place un avis d'une ligne, signalé
+  `hidden_content`.
+- **Les pages POP3 se comptent depuis le message le plus récent** : du courrier qui arrive ou
+  part entre deux appels les décale, et une page peut alors répéter ou sauter un message.
+- **`email_folders` liste les dossiers qui tiennent dans le résultat d'un agent** (une
+  quarantaine avec des noms longs) : au-delà, la boucle d'agent tronque la liste et le dit.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
 - **La validation réelle sur de vrais comptes Gmail et Hotmail reste à faire** (MAIL-07).

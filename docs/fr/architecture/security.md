@@ -67,8 +67,11 @@ jugement du modèle.
   s'ouvre sur un avis disant que c'est une donnée, jamais une instruction. `email_read` et
   `email_parser` portent le verdict du même `PromptInjectionDocumentValidator` que le repli web
   ci-dessus, calculé sur le texte **rendu** — ce que voit l'agent, pas le HTML ni le MIME bruts.
-  Le texte que le HTML cache à un lecteur humain est laissé de côté et signalé par
-  `hidden_content`. La politique par défaut signale ; `Screening:WithholdRejected` retient le
+  Le texte que le HTML cache à un lecteur humain par les déclarations en ligne que connaît le
+  rendu (`display:none`, `font-size:0`…) ou par l'attribut `hidden` est laissé de côté et
+  signalé par `hidden_content` ; une classe CSS, une police d'un pixel ou du blanc sur blanc ne
+  sont pas détectés, et une partie texte brut — ce que lit l'agent quand il y en a une — n'est
+  pas comparée au HTML. La politique par défaut signale ; `Screening:WithholdRejected` retient le
   corps d'un message rejeté.
 - **Les jetons restent hors de portée des agents.** Les jetons OAuth sont écrits par
   `orkeon email login` dans la racine interne `/credentials`, montée seulement quand un compte
@@ -87,8 +90,10 @@ injection paraphrasée passe. La frontière, ce sont les droits du compte, la li
 qui échoue fermée et les brouillons. Chaque compte est visible de chaque crew et de chaque
 script `.ork.ts` qui résout le même fichier de réglages — les scripts appellent `tools.email*`
 directement, et les crews hébergés par `orkeon-host` partagent les réglages de l'hôte — : déclarez
-donc les comptes dans le propre `appsettings.json` du crew (un run lit exactement un fichier de
-réglages), accordez le moins de droits possible, préférez `email_draft`, et ne donnez pas à un
+donc les comptes dans le propre `appsettings.json` du crew (un run résout un seul fichier de
+réglages ; gardez les comptes hors d'un `appsettings.json` du répertoire d'où partent les runs et
+hors des variables d'environnement `Orkeon__Tools__Email__…`, que l'hôte .NET lit pour chaque
+run), accordez le moins de droits possible, préférez `email_draft`, et ne donnez pas à un
 crew non fiable à la fois le `Read` e-mail et un canal sortant (`http_api`, les outils web) : un
 message pourrait demander à l'agent d'emporter la boîte au-dehors. Les fichiers de jetons sont du
 JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne sous

@@ -133,13 +133,16 @@ La sémantique complète vit dans [EventHub et le cycle de vie du crew](../archi
 ## Tools e-mail (`Orkeon.Tools.Email`) — `AddOrkeonEmailTools(configuration)`
 
 Treize tools sur les comptes qu'un opérateur déclare sous `Orkeon:Tools:Email` : IMAP, POP3 et
-SMTP via MailKit, Outlook.com et Microsoft 365 via Microsoft Graph. La famille reste inerte tant
-qu'aucun compte n'est déclaré. Un agent nomme un compte (`account`, ou celui par défaut) — jamais
+SMTP via MailKit, Outlook.com et Microsoft 365 via Microsoft Graph. Tant qu'aucun compte n'est
+déclaré, les tools de boîte aux lettres refusent tout appel, `email_accounts` n'en liste aucun et
+`email_parser`, qui lit un fichier, fonctionne. Un agent nomme un compte (`account`, ou celui par défaut) — jamais
 un serveur ni un identifiant — et les `Rights` du compte décident de ce qu'il peut faire ;
 `email_send` n'atteint que les destinataires qu'autorise la liste `Send:AllowedRecipients` du
 compte. Les ids de message sont opaques : repassez-les tels que `email_search` les a rendus. La
 colonne **Accès** est la classe que voit la [permission gate](../reference/opt-in-subsystems.md).
-Mise en place pour Gmail, Hotmail/Outlook.com et votre propre serveur, modèle de sécurité et
+Chaque paramètre est listé dans le [guide e-mail](../guides/email.md#paramètres) ; les résultats
+sont dimensionnés à ce que garde la boucle d'agent, et `cursor` / `offset` reprennent exactement
+là où une page ou une tranche s'arrête. Mise en place pour Gmail, Hotmail/Outlook.com et votre propre serveur, modèle de sécurité et
 commandes `orkeon email` : [Outils e-mail](../guides/email.md).
 
 | Tool | Classe | Droit requis | Accès | Cas d'usage | Exemple d'appel |
@@ -238,7 +241,7 @@ le REPL.
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
 | FileSystem (5), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
-| E-mail (13) — inertes tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
+| E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ (provider d'embeddings local par défaut) | ✅ |
@@ -290,7 +293,7 @@ services.AddOrkeonAbstractionTools();  // list_mounts
 services.AddOrkeonSessionTools();      // session_store, session_snip, session_stats, session_cost, token_budget, memory_store
 services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
-services.AddOrkeonEmailTools(configuration); // les 13 tools email_*, inertes tant qu'aucun compte n'est déclaré
+services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddRaggableTreeTools();       // les 15 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (Orkeon.Hosting)

@@ -13,13 +13,12 @@
 //   "PasswordEnvVar"      NAMES the variable holding a Gmail app password (Google Account >
 //                         Security > 2-Step Verification > App passwords): the 16 letters Google
 //                         shows, without the spaces between the groups. The password itself never
-//                         goes in a file. No ORKEON_ prefix: the runner loads ORKEON_* variables
-//                         into its configuration, and a password has no business there.
+//                         goes in a file; the variable may have any name.
 //   "Rights"              "Read, Organize, Draft" is what this script uses, and no more. A call
 //                         outside them fails with a message naming the missing right.
-//   "Llm"                 the model that sorts. A run reads ONE settings file, so it is declared
-//                         here too: the catalogue's local Docker Model Runner, which any profile
-//                         of examples/appsettings/ can replace.
+//   "Llm"                 the model that sorts. A run resolves ONE settings file, so it is
+//                         declared here too: the catalogue's local Docker Model Runner, which any
+//                         profile of examples/appsettings/ can replace.
 //
 //   export TRIAGE_GMAIL_APP_PASSWORD='abcdefghijklmnop'
 //   dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/13-email-triage.ork.ts \

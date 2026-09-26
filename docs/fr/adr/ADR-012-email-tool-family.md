@@ -5,7 +5,7 @@
 # ADR-012 — La famille d'outils e-mail, deuxième exception motivée au gel du périmètre
 
 **Statut** : Accepté · **Date** : 2026-09-26
-· **Périmètre** : `src/tools/Orkeon.Tools.Email`, `Orkeon.Hosting` (la racine `/credentials` et le magasin de jetons), `orkeon email` (`Orkeon.Scripting.Cli`), le paquet parapluie `Orkeon.Tools`
+· **Portée** : `src/tools/Orkeon.Tools.Email`, `Orkeon.Hosting` (la racine `/credentials` et le magasin de jetons), `orkeon email` (`Orkeon.Scripting.Cli`), le paquet parapluie `Orkeon.Tools`
 
 ## Contexte
 
@@ -43,7 +43,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    `Orkeon.Rag` atteint lui-même `Application`, la route que documente l'amendement de
    l'ADR-006 ; aucune référence directe à `Application` ni à `Infrastructure`. Tout est
    `internal` sauf les extensions DI, le port du magasin de jetons et son implémentation
-   fichier, le type d'erreur, l'utilitaire par lequel l'hôte lit l'emplacement des jetons, et la
+   fichier, le type d'erreur, l'utilitaire par lequel l'hôte lit l'emplacement des identifiants, et la
    surface d'administration qu'utilisent les verbes `orkeon email`.
 2. **MailKit 4.18.0 et MimeKit 4.18.1** (MIT) portent IMAP, POP3, SMTP et le modèle de message.
    Tous deux sont référencés directement — la gestion centrale des paquets n'épingle aucune
@@ -62,18 +62,19 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    redirection reçue par un `TcpListener` lié à `127.0.0.1` — pas `HttpListener`, qui exige une
    réservation d'URL sous Windows — avec un repli par collage de l'adresse de retour pour WSL,
    les conteneurs et les shells distants ; rafraîchissement avec rotation du jeton. Les outils
-   ne lancent jamais de connexion interactive : un outil sans jeton utilisable répond « lancez
-   `orkeon email login <compte>` ».
+   ne lancent jamais de connexion interactive : un outil sans jeton utilisable répond « run
+   `orkeon email login <account>` ».
 5. **Les jetons vivent dans la racine interne `/credentials`, par la vue privilégiée du VFS.**
-   `RunnerVirtualRoots.Credentials` est une nouvelle racine réservée. L'hôte des runners la
-   monte en montage interne seulement quand un compte OAuth est déclaré, et
-   `FileSystemEmailTokenStore` y écrit par `PrivilegedFileSystemAccess` (ADR-008), qu'aucun
-   outil destiné aux agents ne résout. Physiquement : `<répertoire des réglages de
-   l'utilisateur>/credentials/email/`, ou `CredentialsDirectory` pour un service. Créer ce
-   répertoire avant qu'aucun montage n'existe (réservé au propriétaire sous Unix) relève du
-   bootstrap du runner — la portée `EXCEPTION-BOOTSTRAP` de `Hosting/Runner*`, déjà ratifiée —
-   il n'y a donc pas de nouvelle catégorie d'exception VFS. `IEmailTokenStore` reste
-   remplaçable par un hôte à soi (un coffre, par exemple).
+   `RunnerVirtualRoots.Credentials` est une nouvelle racine réservée, refusée à un montage
+   utilisateur par toutes les commandes. L'hôte des runners la monte en montage interne
+   seulement quand un compte OAuth est déclaré, et `FileSystemEmailTokenStore` y écrit par
+   `PrivilegedFileSystemAccess` (ADR-008), qu'aucun outil destiné aux agents ne résout.
+   Physiquement : `<répertoire des réglages de l'utilisateur>/credentials/email/`, ou le
+   sous-répertoire `email` de `CredentialsDirectory` pour un service. Créer ces répertoires
+   avant qu'aucun montage n'existe (réservés au propriétaire sous Unix) relève du bootstrap du
+   runner — la portée `EXCEPTION-BOOTSTRAP` de `Hosting/Runner*`, déjà ratifiée — il n'y a donc
+   pas de nouvelle catégorie d'exception VFS. `IEmailTokenStore` reste remplaçable par un hôte à
+   soi (un coffre, par exemple).
 6. **Les garde-fous sont la frontière, pas le jugement du modèle.** Le modèle nomme un compte ;
    la configuration de l'opérateur porte les serveurs, les identifiants — sous forme de noms de
    variables d'environnement — et les `Rights` obligatoires (`Read`, `Organize`, `Draft`, `Send`,
@@ -84,9 +85,10 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    fiable et filtré par `PromptInjectionDocumentValidator` sur le texte rendu — signalement par
    défaut, `Screening:WithholdRejected` pour retenir. Chaque outil déclare son `ToolAccess` pour
    la permission gate, et `orkeon forge` refuse les douze outils de boîte aux lettres aux crews
-   qu'il forge. Les résultats sont dimensionnés sous le plafond de 4000 caractères de la boucle
-   d'agent sur un résultat d'outil, sans nouvel override : le contenu d'un courrier n'est pas un
-   livrable de confiance.
+   qu'il forge. Les résultats tiennent sous le plafond de 4000 caractères de la boucle d'agent
+   sur un résultat d'outil, sans nouvel override — le contenu d'un courrier n'est pas un
+   livrable de confiance : une page de recherche est coupée après un message entier et une
+   tranche de corps là où s'arrête son rendu, et le curseur ou l'offset reprend exactement là.
 7. **`email_parser` rejoint la famille, reconstruit sur MimeKit** — même nom, paramètres
    `path`, `offset` et `max_chars`, la sortie d'`email_read`, `.msg` retiré (il n'a jamais été
    parsé). C'est un changement cassant assumé, avec sa migration dans le CHANGELOG.

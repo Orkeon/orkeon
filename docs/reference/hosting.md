@@ -65,8 +65,9 @@ A virtual path is always a name starting with `/` — never a disk path
 `RunnerVirtualRoots` — in the dependency-free `Orkeon.Constants.FileSystem` package
 ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)) so the engine and the tooling read one
 declaration — names the roots the shipped runners take for themselves: `/crew` (the crew
-definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`, and
-`/sandbox` (where the code sandboxes stage what they run). `RunnerVirtualRoots.All` is the set a
+definition's directory), `/script` (a scripting entry point's directory), `/llm-logs`,
+`/sandbox` (where the code sandboxes stage what they run) and `/credentials` (the OAuth tokens
+of the e-mail accounts, refused to a user mount by every command). `RunnerVirtualRoots.All` is the set a
 caller refuses a user `--mount` against; asking for the set rather than comparing the roots one by
 one is deliberate, because the omission of `/sandbox` survived a pairwise check for as long as it
 was green. A caller that enables exchange logging mounts its log directory internally and passes

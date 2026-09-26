@@ -64,7 +64,10 @@ strangers and acts on a real mailbox, so its defense does not rest on the model'
   that it is data, never instructions. `email_read` and `email_parser` carry the verdict of
   the same `PromptInjectionDocumentValidator` as the web fallback above, run on the
   **rendered** text — what the agent sees, not the raw HTML or MIME. Text the HTML hides from
-  a human reader is left out and flagged `hidden_content`. The default policy flags;
+  a human reader through the inline declarations the renderer knows (`display:none`,
+  `font-size:0`…) or the `hidden` attribute is left out and flagged `hidden_content`; a CSS
+  class, a 1-pixel font or white on white is not detected, and a plain-text part — what the
+  agent reads when there is one — is not compared with the HTML. The default policy flags;
   `Screening:WithholdRejected` withholds the body of a rejected message.
 - **Tokens stay out of the agents' reach.** OAuth tokens are written by `orkeon email login`
   into the internal root `/credentials`, mounted only when an OAuth account is declared and
@@ -82,7 +85,9 @@ paraphrased injection passes it. The boundary is the account's rights, the fail-
 allow-list and drafts. Every account is visible to every crew and every `.ork.ts` script that
 resolves the same settings file — scripts call `tools.email*` directly, and the crews hosted
 by `orkeon-host` share the host's settings — so declare accounts in the crew's own
-`appsettings.json` (a run reads exactly one settings file), grant the fewest rights, prefer
+`appsettings.json` (a run resolves one settings file; keep accounts out of an
+`appsettings.json` in the directory runs start from and out of `Orkeon__Tools__Email__…`
+environment variables, which the .NET host reads for every run), grant the fewest rights, prefer
 `email_draft`, and do not give an untrusted crew both e-mail `Read` and an outbound channel
 (`http_api`, the web tools): a message could ask the agent to carry the mailbox out. The token
 files are plain JSON: shielded from the VFS tools, **not** from a shell or code tool running

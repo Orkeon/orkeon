@@ -61,14 +61,15 @@ The provider constraints, checked on 2026-09-26:
    remote shells; refresh with token rotation. The tools never sign in interactively: a tool
    without a usable token answers "run `orkeon email login <account>`".
 5. **Tokens live in the internal `/credentials` root, through the privileged VFS view.**
-   `RunnerVirtualRoots.Credentials` is a new reserved root. The runner host mounts it as an
-   internal mount only when an OAuth account is declared, and `FileSystemEmailTokenStore`
-   writes through `PrivilegedFileSystemAccess` (ADR-008), which no agent-facing tool resolves.
-   Physically: `<per-user settings directory>/credentials/email/`, or `CredentialsDirectory`
-   for a service. Creating that directory before any mount exists (owner-only on Unix) is
-   runner bootstrap — the `Hosting/Runner*` `EXCEPTION-BOOTSTRAP` scope already ratified — so
-   there is no new VFS exception category. `IEmailTokenStore` stays replaceable by a host of its
-   own (a vault, for instance).
+   `RunnerVirtualRoots.Credentials` is a new reserved root, refused to a user mount by every
+   command. The runner host mounts it as an internal mount only when an OAuth account is
+   declared, and `FileSystemEmailTokenStore` writes through `PrivilegedFileSystemAccess`
+   (ADR-008), which no agent-facing tool resolves. Physically:
+   `<per-user settings directory>/credentials/email/`, or the `email` subdirectory of
+   `CredentialsDirectory` for a service. Creating those directories before any mount exists
+   (owner-only on Unix) is runner bootstrap — the `Hosting/Runner*` `EXCEPTION-BOOTSTRAP` scope
+   already ratified — so there is no new VFS exception category. `IEmailTokenStore` stays
+   replaceable by a host of its own (a vault, for instance).
 6. **The guard rails are the boundary, not the model's judgment.** The model names an account;
    the operator's configuration holds the servers, the credentials — as environment-variable
    names — and the mandatory `Rights` (`Read`, `Organize`, `Draft`, `Send`, `Delete`, `Purge`).
@@ -78,9 +79,10 @@ The provider constraints, checked on 2026-09-26:
    Received content is marked untrusted and screened by `PromptInjectionDocumentValidator` on
    the rendered text — flag by default, `Screening:WithholdRejected` to withhold. Every tool
    declares its `ToolAccess` for the permission gate, and `orkeon forge` denies the twelve
-   mailbox tools to the crews it forges. Results are sized under the agent loop's
-   4000-character cap on a tool result, without a new override: mail content is not a
-   trusted deliverable.
+   mailbox tools to the crews it forges. Results fit the agent loop's 4000-character cap on a
+   tool result, without a new override — mail content is not a trusted deliverable: a search
+   page is cut after a whole message and a body slice where its rendering ends, and the
+   cursor or the offset resumes exactly there.
 7. **`email_parser` joins the family, rebuilt on MimeKit** — same name, parameters `path`,
    `offset` and `max_chars`, the output of `email_read`, `.msg` dropped (it was never parsed).
    This is a deliberate breaking change, with its migration in the CHANGELOG.

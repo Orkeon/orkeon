@@ -9,7 +9,7 @@
 Before any of the code below compiles, add the two NuGet packages it uses. The framework
 itself ships as a single package, `Orkeon`; the built-in tool suites wired below
 (`AddOrkeonFileSystemTools`, `AddOrkeonDataTools`, `AddOrkeonWebTools`,
-`AddOrkeonCodeTools`) live in a second one, `Orkeon.Tools`:
+`AddOrkeonCodeTools`, `AddOrkeonEmailTools`) live in a second one, `Orkeon.Tools`:
 
 ```bash
 dotnet add package Orkeon --prerelease
@@ -40,6 +40,7 @@ using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
 using Orkeon.Tools.Code.DependencyInjection;
+using Orkeon.Tools.Email.DependencyInjection;
 
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
@@ -63,6 +64,10 @@ var host = Host.CreateDefaultBuilder(args)
 
         // Code: ShellCommand (SecureCodeInterpreter is wired by AddOrkeonInfrastructure's sandbox)
         services.AddOrkeonCodeTools();
+
+        // E-mail: the 13 email_* tools, EmailParser included, over the accounts declared under
+        // Orkeon:Tools:Email (see docs/guides/email.md)
+        services.AddOrkeonEmailTools(context.Configuration);
     })
     .Build();
 

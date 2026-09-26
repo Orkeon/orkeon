@@ -68,7 +68,9 @@ Un chemin virtuel est toujours un nom commençant par `/` — jamais un chemin d
 ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)), pour que le moteur et l'outillage
 lisent une seule déclaration — nomme les racines que les runners livrés se réservent : `/crew`
 (le dossier de définition du crew), `/script` (le dossier d'un point d'entrée scripté),
-`/llm-logs`, et `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent).
+`/llm-logs`, `/sandbox` (où les bacs à sable de code déposent ce qu'ils exécutent) et
+`/credentials` (les jetons OAuth des comptes e-mail, refusée à un montage utilisateur par toutes
+les commandes).
 `RunnerVirtualRoots.All` est l'ensemble contre lequel un appelant refuse un `--mount` utilisateur ;
 demander l'ensemble plutôt que comparer les racines une à une est délibéré, car l'oubli de
 `/sandbox` a survécu à une comparaison deux à deux tant qu'elle restait verte. Un appelant qui

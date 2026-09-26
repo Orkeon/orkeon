@@ -1,5 +1,5 @@
 {
-  "_comment": "Settings for 13-email-triage.ork.ts, whose header explains every field. The account's password is read from the TRIAGE_GMAIL_APP_PASSWORD environment variable, never from this file. A run reads one settings file, so the model that sorts the mail is declared here too.",
+  "_comment": "Settings for 13-email-triage.ork.ts, whose header explains every field. The account's password is read from the TRIAGE_GMAIL_APP_PASSWORD environment variable, never from this file. A run resolves one settings file, so the model that sorts the mail is declared here too.",
   "Llm": {
     "Model": "ai/granite-4.0-h-tiny",
     "BaseUrl": "http://localhost:12434/engines/llama.cpp/v1",

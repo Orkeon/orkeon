@@ -124,10 +124,10 @@ doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom :
 échanges, les sandboxes de code et le magasin de jetons e-mail (`FileSystemEmailTokenStore`, que
 l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
-`credentials` (réservé au propriétaire sous Unix) avant qu'aucun montage n'existe — du bootstrap
-`Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà ratifiée, pas une nouvelle catégorie. Un
-montage utilisateur qui revendique l'une de ces racines est refusé (`RunnerVirtualRoots.All` ;
-`/credentials` dès qu'un compte OAuth est déclaré).
+`credentials` et de son sous-répertoire `email` (réservés au propriétaire sous Unix) avant
+qu'aucun montage n'existe — du bootstrap `Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà
+ratifiée, pas une nouvelle catégorie. Un montage utilisateur qui revendique l'une de ces racines
+est refusé (`RunnerVirtualRoots.All`, `/credentials` compris quels que soient les comptes).
 
 ## Mounts par scope (surcharge ambiante des mounts)
 
@@ -165,10 +165,10 @@ du mécanisme, puisque deux crews recevant chacun `/output` sur des dossiers dif
 précisément ce qu'un registre plat ne sait pas exprimer.
 
 Les deux moitiés du jeu de boot doivent survivre, pour des raisons différentes. Les mounts
-**internes** — `/llm-logs`, `/sandbox` — relèvent de la confidentialité : les perdre arrête la
-journalisation des échanges et les deux sandboxes de code, et fait tomber
-`IsUnderInternalMountUnsafe`, le contrôle qui empêche l'un d'eux de gagner une seconde adresse
-atteignable par un agent via un mount de l'exécution. Les mounts **agent-facing** portent tout
+**internes** — `/llm-logs`, `/sandbox`, `/credentials` — relèvent de la confidentialité : les
+perdre arrête la journalisation des échanges, les deux sandboxes de code et le magasin de jetons
+e-mail, et fait tomber `IsUnderInternalMountUnsafe`, le contrôle qui empêche l'un d'eux de gagner
+une seconde adresse atteignable par un agent via un mount de l'exécution. Les mounts **agent-facing** portent tout
 autant : `orkeon-host` monte le dossier de chaque crew hébergé sous `/crews` puis charge le crew
 *par ce chemin virtuel, depuis l'intérieur du scope*. Ne composer que les mounts de l'exécution
 rendait `Orkeon:Host:Crews:*:Mounts` — la clé de configuration de la fonctionnalité elle-même —

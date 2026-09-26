@@ -132,12 +132,15 @@ The full semantics live in [EventHub and the crew lifecycle](../architecture/eve
 ## E-mail tools (`Orkeon.Tools.Email`) — `AddOrkeonEmailTools(configuration)`
 
 Thirteen tools over the accounts an operator declares under `Orkeon:Tools:Email`: IMAP, POP3
-and SMTP through MailKit, Outlook.com and Microsoft 365 through Microsoft Graph. The family is
-inert until an account is declared. An agent names an account (`account`, or the default one) —
+and SMTP through MailKit, Outlook.com and Microsoft 365 through Microsoft Graph. Until an
+account is declared the mailbox tools refuse every call, `email_accounts` lists none and
+`email_parser`, which reads a file, works. An agent names an account (`account`, or the default one) —
 never a server or a credential — and the account's `Rights` decide what it may do; `email_send`
 reaches only the recipients the account's `Send:AllowedRecipients` list allows. Message ids are
 opaque: pass them back exactly as `email_search` returned them. The **Access** column is the
-class the [permission gate](../reference/opt-in-subsystems.md) sees. Setup for Gmail,
+class the [permission gate](../reference/opt-in-subsystems.md) sees. Every parameter is listed in
+the [e-mail guide](../guides/email.md#parameters); results are sized to what the agent loop keeps,
+and `cursor` / `offset` resume exactly where a page or a slice ends. Setup for Gmail,
 Hotmail/Outlook.com and your own server, the security model and the `orkeon email` commands:
 [E-mail tools](../guides/email.md).
 
@@ -236,7 +239,7 @@ the REPL.
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
 | FileSystem (5), Data (22), Web core (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
-| E-mail (13) — inert until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
+| E-mail (13) — the mailbox tools refuse every call until an account is declared under `Orkeon:Tools:Email` | ✅ (OAuth tokens under the internal `/credentials` root) | ✅ password accounts only — the REPL keeps no token store, so an OAuth account is refused |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (unless `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ (default local embedding provider) | ✅ |
@@ -287,7 +290,7 @@ services.AddOrkeonAbstractionTools();  // list_mounts
 services.AddOrkeonSessionTools();      // session_store, session_snip, session_stats, session_cost, token_budget, memory_store
 services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // the 7 event-hub tools
-services.AddOrkeonEmailTools(configuration); // the 13 email_* tools, inert until an account is declared
+services.AddOrkeonEmailTools(configuration); // the 13 email_* tools; the mailbox ones need a declared account
 services.AddRaggableTreeTools();       // the 15 analysis tools
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (Orkeon.Hosting)
