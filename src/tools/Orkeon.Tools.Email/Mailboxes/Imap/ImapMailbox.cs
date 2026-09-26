@@ -20,6 +20,9 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
     private const int MaxBatch = 100;
     private static readonly TimeSpan IdleReconnect = TimeSpan.FromMinutes(5);
 
+    /// <summary>The roles a server that flags no folder has by folder name (see <see cref="ConventionalNames"/>).</summary>
+    private static readonly string[] ConventionalRoles = [FolderRoles.Sent, FolderRoles.Drafts, FolderRoles.Trash, FolderRoles.Junk, FolderRoles.Archive];
+
     private const MessageSummaryItems SummaryItems =
         MessageSummaryItems.UniqueId | MessageSummaryItems.Envelope | MessageSummaryItems.Flags
         | MessageSummaryItems.InternalDate | MessageSummaryItems.BodyStructure | MessageSummaryItems.PreviewText;
@@ -516,8 +519,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
 
         // MailKit throws rather than answer null when the server has neither SPECIAL-USE nor XLIST;
         // such a server is exactly the one the conventional names below are for.
-        var flagsRoles = (client.Capabilities & (ImapCapabilities.SpecialUse | ImapCapabilities.XList)) != 0;
-        var special = !flagsRoles ? null : role switch
+        var special = !FlagsRoles(client) ? null : role switch
         {
             FolderRoles.Sent => client.GetFolder(SpecialFolder.Sent),
             FolderRoles.Drafts => client.GetFolder(SpecialFolder.Drafts),
@@ -582,6 +584,11 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         if (ReferenceEquals(folder, client.Inbox) || folder.FullName.Equals("INBOX", StringComparison.OrdinalIgnoreCase))
             return FolderRoles.Inbox;
 
+        // A server that flags no folder is named by convention: the same names the role lookup
+        // tries, so a folder listed as "sent" is the one a search of role sent opens.
+        if (!FlagsRoles(client))
+            return Array.Find(ConventionalRoles, role => ConventionalNames(role).Contains(DisplayPath(folder), StringComparer.Ordinal));
+
         var attributes = folder.Attributes;
         return attributes switch
         {
@@ -594,6 +601,10 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             _ => null,
         };
     }
+
+    /// <summary>Whether the server flags folder roles itself (SPECIAL-USE or XLIST).</summary>
+    private static bool FlagsRoles(ImapClient client) =>
+        (client.Capabilities & (ImapCapabilities.SpecialUse | ImapCapabilities.XList)) != 0;
 
     private static string DisplayPath(IMailFolder folder) =>
         folder.DirectorySeparator is '/' or '\0' ? folder.FullName : folder.FullName.Replace(folder.DirectorySeparator, '/');

@@ -14,8 +14,9 @@ internal static class Previews
 
         var builder = new StringBuilder(Math.Min(text.Length, EmailDefaults.PreviewChars + 1));
         var pendingSpace = false;
-        foreach (var c in text)
+        for (var i = 0; i < text.Length; i++)
         {
+            var c = text[i];
             if (char.IsWhiteSpace(c))
             {
                 pendingSpace = builder.Length > 0;
@@ -28,7 +29,9 @@ internal static class Previews
             pendingSpace = false;
             if (builder.Length >= EmailDefaults.PreviewChars)
             {
-                builder.Append('…');
+                // Only a real cut earns the ellipsis: trailing blanks are not text.
+                if (!text.AsSpan(i + 1).IsWhiteSpace())
+                    builder.Append('…');
                 break;
             }
         }

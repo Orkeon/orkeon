@@ -40,20 +40,25 @@ public sealed class MailboxHelpersTests
         Assert.Equal(expected, Previews.Shorten(text));
     }
 
-    [Fact]
-    public void Should_cut_a_long_preview_at_a_hundred_characters_with_an_ellipsis()
+    [Theory]
+    [InlineData(250, "", true)]
+    [InlineData(101, "", true)]
+    [InlineData(100, "", false)]
+    [InlineData(100, "  \r\n\t ", false)]
+    [InlineData(99, "", false)]
+    public void Should_add_an_ellipsis_only_When_the_preview_cut_something(int length, string tail, bool cut)
     {
-        var preview = Previews.Shorten(new string('x', 250));
+        var preview = Previews.Shorten(new string('x', length) + tail);
 
-        Assert.Equal(new string('x', 100) + "…", preview);
+        Assert.Equal(new string('x', Math.Min(length, 100)) + (cut ? "…" : string.Empty), preview);
     }
 
     [Fact]
-    public void Should_measure_a_message_as_it_will_be_written()
+    public void Should_measure_a_message_as_it_travels_with_CRLF_line_endings_whatever_the_platform()
     {
         using var message = MimeSamples.Load(MimeSamples.WithAttachment());
         using var buffer = new MemoryStream();
-        message.WriteTo(buffer, TestContext.Current.CancellationToken);
+        message.WriteTo(new FormatOptions { NewLineFormat = NewLineFormat.Dos }, buffer, TestContext.Current.CancellationToken);
 
         Assert.Equal(buffer.Length, MessageSizes.Measure(message));
     }

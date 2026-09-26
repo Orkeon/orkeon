@@ -19,7 +19,8 @@ namespace Orkeon.Tools.Email.Tests.Fixtures;
 /// <item><c>organizer</c>: Organize only;</item>
 /// <item><c>drafter</c>: Draft only, no allow-list;</item>
 /// <item><c>closed</c>: Read, Draft and Send, but an empty allow-list;</item>
-/// <item><c>nocopy</c>: Read and Send to anyone, no copy filed in Sent.</item>
+/// <item><c>nocopy</c>: Read and Send to anyone, no copy filed in Sent;</item>
+/// <item><c>pop</c>: every right, but read over POP3.</item>
 /// </list>
 /// </summary>
 internal sealed class ToolFixture : IDisposable
@@ -45,6 +46,9 @@ internal sealed class ToolFixture : IDisposable
         noCopy.SaveSentCopy = false;
         noCopy.Send.AllowedRecipients.Add("*");
         Options.Accounts["nocopy"] = noCopy;
+        var pop = TestAccounts.Custom(TestAccounts.AllRights);
+        pop.Incoming.Protocol = IncomingProtocol.Pop3;
+        Options.Accounts["pop"] = pop;
 
         var options = Microsoft.Extensions.Options.Options.Create(Options);
         var registry = new EmailAccountRegistry(options);

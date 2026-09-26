@@ -40,7 +40,7 @@ internal sealed class EmailAccountsTool : ToolBase<EmailAccountsRequest, EmailAc
                 Reads = status.Reads,
                 Sends = status.Sends,
                 Rights = status.Rights,
-                IsDefault = status.IsDefault,
+                Default = status.IsDefault,
                 Ready = status.Ready,
                 Problem = status.Problem,
             }).ToList(),

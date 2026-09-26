@@ -18,7 +18,7 @@ public sealed class EmailReadingToolsTests
 
         Assert.Equal("full", result["default_account"]);
         var accounts = ToolResults.Objects(result, "accounts");
-        Assert.Equal(["closed", "drafter", "full", "nocopy", "organizer", "reader"], accounts.Select(a => (string)a["name"]!));
+        Assert.Equal(["closed", "drafter", "full", "nocopy", "organizer", "pop", "reader"], accounts.Select(a => (string)a["name"]!));
         var full = accounts.Single(a => (string)a["name"]! == "full");
         Assert.Equal(TestAccounts.Address, full["address"]);
         Assert.Equal(("Custom", "Imap", "Smtp"), (full["provider"], full["reads"], full["sends"]));
@@ -323,7 +323,7 @@ public sealed class EmailReadingToolsTests
         var outside = ToolResults.Failure(await fixture.CallAsync("email_parser", ("path", "/secret/mail.eml")));
 
         Assert.Equal("Tool execution failed: '/workspace/notes.txt' is not an e-mail message (.eml): Failed to parse message headers.", notMail);
-        Assert.Equal("Tool execution failed: Cannot read '/secret/mail.eml': No mount for virtual path '/secret/mail.eml'..", outside);
+        Assert.Equal("Tool execution failed: Cannot read '/secret/mail.eml': No mount for virtual path '/secret/mail.eml'.", outside);
     }
 
     [Fact]

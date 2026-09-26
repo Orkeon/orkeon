@@ -212,9 +212,9 @@ public sealed class MessageComposerTests
     }
 
     [Theory]
-    [InlineData("/secret/keys.pem", "No mount for virtual path '/secret/keys.pem'.")]
-    [InlineData("/drop/upload.bin", "The mount '/drop' does not grant the right this needs.")]
-    public async Task Should_refuse_an_attachment_the_file_system_does_not_let_it_read(string path, string reason)
+    [InlineData("/secret/keys.pem", "Cannot attach '/secret/keys.pem': No mount for virtual path '/secret/keys.pem'.")]
+    [InlineData("/drop/upload.bin", "Cannot attach '/drop/upload.bin': The mount '/drop' does not grant the right this needs.")]
+    public async Task Should_refuse_an_attachment_the_file_system_does_not_let_it_read(string path, string message)
     {
         var files = new FakeRightsFileSystemService().AddMount("/drop", FileAccessRights.Write | FileAccessRights.Create)
             .AddFile("/drop/upload.bin", [1, 2, 3]);
@@ -223,7 +223,7 @@ public sealed class MessageComposerTests
             await Compose(new ComposeInput { To = ["a@example.com"], Subject = "S", Text = "T", Attachments = [path] }, fileSystem: files));
 
         Assert.Equal(EmailErrorCode.InvalidRequest, error.Code);
-        Assert.Equal($"Cannot attach '{path}': {reason}.", error.Message);
+        Assert.Equal(message, error.Message);
     }
 
     private static MimeMessage Original(

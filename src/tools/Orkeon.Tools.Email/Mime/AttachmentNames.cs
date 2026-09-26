@@ -42,7 +42,9 @@ internal static class AttachmentNames
         if (safe.Length == 0)
             safe = Fallback(index, contentType);
 
-        var stem = Path.GetFileNameWithoutExtension(safe);
+        // Windows reserves a device name whatever follows its first dot: CON.tar.gz is CON too.
+        var dot = safe.IndexOf('.', StringComparison.Ordinal);
+        var stem = (dot < 0 ? safe : safe[..dot]).TrimEnd(' ');
         if (ReservedDeviceNames.Contains(stem))
             safe = "_" + safe;
 

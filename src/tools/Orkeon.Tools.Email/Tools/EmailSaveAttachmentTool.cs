@@ -48,7 +48,7 @@ internal sealed class EmailSaveAttachmentTool : ToolBase<EmailSaveAttachmentRequ
         var directory = request.Directory.Trim().TrimEnd('/');
         var check = _fileSystem.ResolveAndValidate(directory + "/_", FileAccessRights.Write);
         if (!check.IsAllowed)
-            throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot write into '{directory}': {check.DenialReason ?? "the directory is not writable"}.");
+            throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot write into '{directory}': {(check.DenialReason ?? "the directory is not writable").TrimEnd('.')}.");
 
         using var fetched = await _access.Mailbox(account).GetMessageAsync(request.Id.Trim(), cancellationToken).ConfigureAwait(false);
         var attachments = MimeMessageReader.ReadAttachments(fetched.Message);

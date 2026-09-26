@@ -43,7 +43,12 @@ public sealed class AttachmentNamesTests
     [InlineData("NUL", "_NUL")]
     [InlineData("COM1.log", "_COM1.log")]
     [InlineData("lpt9", "_lpt9")]
+    [InlineData("CON.tar.gz", "_CON.tar.gz")]
+    [InlineData("nul.txt.bak", "_nul.txt.bak")]
+    [InlineData("Com1.backup.zip", "_Com1.backup.zip")]
+    [InlineData("AUX .txt", "_AUX .txt")]
     [InlineData("CONSOLE.txt", "CONSOLE.txt")]
+    [InlineData("report.con.txt", "report.con.txt")]
     public void Should_defuse_windows_device_names(string declared, string expected)
     {
         Assert.Equal(expected, AttachmentNames.Sanitize(declared, 0, null));

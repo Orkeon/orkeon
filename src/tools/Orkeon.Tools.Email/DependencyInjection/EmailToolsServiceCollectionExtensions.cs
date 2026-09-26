@@ -23,7 +23,8 @@ public static class EmailToolsServiceCollectionExtensions
     /// Registers the thirteen e-mail tools and their services, bound to the
     /// <c>Orkeon:Tools:Email</c> section of <paramref name="configuration"/>. Nothing is validated
     /// or dialled here: the tools can be listed with no account configured, and an account is
-    /// checked when a call first uses it. Calling this twice registers each tool once.
+    /// checked when a call first uses it. A second call adds nothing: the first configuration
+    /// wins, and the section is never bound twice.
     /// </summary>
     /// <remarks>
     /// OAuth accounts keep their tokens in the registered <see cref="IEmailTokenStore"/>. This
@@ -38,7 +39,10 @@ public static class EmailToolsServiceCollectionExtensions
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
+        if (services.Any(descriptor => descriptor.ServiceType == typeof(EmailToolsRegistration)))
+            return services;
 
+        services.AddSingleton(new EmailToolsRegistration());
         services.AddOptions<EmailToolsOptions>().Bind(configuration.GetSection(EmailDefaults.SectionName));
         services.AddHttpClient(EmailDefaults.HttpClientName);
         services.TryAddSingleton(TimeProvider.System);
@@ -111,4 +115,10 @@ public static class EmailToolsServiceCollectionExtensions
         services.TryAddEnumerable(ServiceDescriptor.Transient<IBaseTool, TTool>(factory));
 
     private static ILogger<T>? Logger<T>(IServiceProvider services) => services.GetService<ILogger<T>>();
+
+    /// <summary>
+    /// Marks the family as registered. Binding the section a second time would append every
+    /// list setting (the recipient allow-list among them) to itself.
+    /// </summary>
+    private sealed class EmailToolsRegistration;
 }

@@ -211,7 +211,7 @@ internal sealed class MessageComposer
         {
             var check = _fileSystem.ResolveAndValidate(path, FileAccessRights.Read);
             if (!check.IsAllowed)
-                throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot attach '{path}': {check.DenialReason ?? "the path is not readable"}.");
+                throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot attach '{path}': {(check.DenialReason ?? "the path is not readable").TrimEnd('.')}.");
 
             var fileName = AttachmentNames.Sanitize(path, body.Attachments.Count, null);
             var stream = await _fileSystem.OpenReadStreamAsync(path, cancellationToken).ConfigureAwait(false);

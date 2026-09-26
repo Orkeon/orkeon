@@ -73,6 +73,23 @@ public sealed class SmtpMailSenderTests
     }
 
     [Fact]
+    public async Task Should_refuse_a_message_that_exceeds_the_advertised_SIZE_only_once_its_lines_end_in_CRLF()
+    {
+        using var message = MimeSamples.Load(MimeSamples.Plain(body: string.Join("\r\n", Enumerable.Repeat("a short line", 200))));
+        using var unix = new MemoryStream();
+        await message.WriteToAsync(new FormatOptions { NewLineFormat = NewLineFormat.Unix }, unix, Token);
+        await using var server = new FakeSmtpServer(TestAccounts.Address, TestAccounts.Password, maxSize: unix.Length);
+        using var credentials = new CredentialsFixture();
+        var sender = Sender(server, credentials);
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () =>
+            await sender.SendAsync(message, new MailboxAddress(null, TestAccounts.Address), [new MailboxAddress(null, "a@example.com")], Token));
+
+        Assert.Equal(EmailErrorCode.TooLarge, error.Code);
+        Assert.Empty(server.Accepted);
+    }
+
+    [Fact]
     public async Task Should_send_a_message_under_the_advertised_SIZE()
     {
         await using var server = new FakeSmtpServer(TestAccounts.Address, TestAccounts.Password, maxSize: 64 * 1024);

@@ -42,7 +42,7 @@ internal sealed record EmailAccountDto
     /// <summary>Whether it is the default.</summary>
     [JsonPropertyName("default")]
     [ReturnSchema(Description = "True for the account used when `account` is omitted")]
-    public bool IsDefault { get; init; }
+    public bool Default { get; init; }
 
     /// <summary>Ready to connect.</summary>
     [JsonPropertyName("ready")]

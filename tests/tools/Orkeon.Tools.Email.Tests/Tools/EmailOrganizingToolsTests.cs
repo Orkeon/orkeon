@@ -43,20 +43,20 @@ public sealed class EmailOrganizingToolsTests
     }
 
     [Theory]
-    [InlineData("email_create_folder", "folders (switch the account to IMAP for that)")]
-    [InlineData("email_rename_folder", "folders (switch the account to IMAP for that)")]
-    [InlineData("email_move", "folders to move messages into")]
-    [InlineData("email_mark", "read or flagged marks")]
-    [InlineData("email_delete", "trash: delete for good with `permanent: true`")]
-    public async Task Should_refuse_what_the_backend_cannot_do(string tool, string missing)
+    [InlineData("email_create_folder", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("email_rename_folder", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("email_move", "has no folders to move messages into: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("email_mark", "has no read or flagged marks: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("email_delete", "has no trash and deletes for good: pass `permanent: true` (needs the Purge right)")]
+    public async Task Should_refuse_what_the_backend_cannot_do(string tool, string clause)
     {
         using var fixture = new ToolFixture();
-        fixture.Mailbox().Capabilities = MailboxCapabilities.None;
+        fixture.Mailbox("pop").Capabilities = MailboxCapabilities.None;
 
         var error = ToolResults.Failure(await fixture.CallAsync(tool,
-            ("path", "A"), ("new_name", "B"), ("ids", ToolResults.Of("id-1")), ("destination", "archive"), ("seen", true)));
+            ("account", "pop"), ("path", "A"), ("new_name", "B"), ("ids", ToolResults.Of("id-1")), ("destination", "archive"), ("seen", true)));
 
-        Assert.StartsWith($"Tool execution failed: E-mail account 'full' reads mail over Imap, which has no {missing}", error, StringComparison.Ordinal);
+        Assert.Equal($"Tool execution failed: E-mail account 'pop' reads mail over POP3, which {clause}.", error);
     }
 
     [Fact]
@@ -203,7 +203,7 @@ public sealed class EmailOrganizingToolsTests
         var readOnly = ToolResults.Failure(await fixture.CallAsync("email_save_attachment", ("id", "id-1"), ("directory", "/workspace/att")));
         var nowhere = ToolResults.Failure(await fixture.CallAsync("email_save_attachment", ("id", "id-1"), ("directory", "/etc")));
 
-        Assert.Equal("Tool execution failed: Cannot write into '/workspace/att': The mount '/workspace' does not grant the right this needs..", readOnly);
+        Assert.Equal("Tool execution failed: Cannot write into '/workspace/att': The mount '/workspace' does not grant the right this needs.", readOnly);
         Assert.StartsWith("Tool execution failed: Cannot write into '/etc': No mount", nowhere, StringComparison.Ordinal);
         Assert.Empty(fixture.Mailbox().Fetched);
     }

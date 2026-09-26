@@ -5,13 +5,26 @@ namespace Orkeon.Tools.Email.Mailboxes;
 /// <summary>Measures a message as it will travel, without buffering it.</summary>
 internal static class MessageSizes
 {
+    /// <summary>
+    /// The message as SMTP carries it: CRLF line endings, where the platform default is LF on
+    /// Linux and a message just under the server's SIZE would pass the check and fail at DATA.
+    /// </summary>
+    private static readonly FormatOptions Wire = CreateWire();
+
     /// <summary>The size in bytes of <paramref name="message"/> once written.</summary>
     public static long Measure(MimeMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
         using var counter = new CountingStream();
-        message.WriteTo(counter);
+        message.WriteTo(Wire, counter);
         return counter.Length;
+    }
+
+    private static FormatOptions CreateWire()
+    {
+        var format = FormatOptions.Default.Clone();
+        format.NewLineFormat = NewLineFormat.Dos;
+        return format;
     }
 
     /// <summary>A write-only sink that only counts.</summary>

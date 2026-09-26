@@ -1,7 +1,9 @@
 using System.Reflection;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 using Orkeon.Domain.Tools;
 using Orkeon.Tools.Abstractions.Base;
+using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.Email.Tests.Fixtures;
 
 namespace Orkeon.Tools.Email.Tests.Tools;
@@ -53,6 +55,35 @@ public sealed class EmailToolContractTests
             Assert.True(declared.SetEquals(returns),
                 $"{tool.Name}: fields [{string.Join(", ", declared)}] vs return schema [{string.Join(", ", returns)}]");
         }
+    }
+
+    /// <summary>
+    /// The schema describes a nested DTO under its C# property names, the payload uses the JSON
+    /// names: the two must be the same, or the agent reads about a field it never receives.
+    /// </summary>
+    [Fact]
+    public void Should_describe_nested_fields_under_the_names_the_payload_uses()
+    {
+        using var fixture = new ToolFixture();
+        var dtos = typeof(EmailToolsServiceCollectionExtensions).Assembly.GetTypes()
+            .Where(type => type.Namespace == "Orkeon.Tools.Email.Dtos" && !type.IsNested)
+            .ToDictionary(type => JsonNamingPolicy.SnakeCaseLower.ConvertName(type.Name), StringComparer.Ordinal);
+        var checkedTypes = 0;
+
+        foreach (var tool in fixture.Tools.Values)
+        {
+            foreach (var (typeName, definition) in tool.Schema.Types ?? [])
+            {
+                var properties = Assert.IsType<Dictionary<string, object>>(Assert.IsType<Dictionary<string, object>>(definition)["properties"]);
+                var described = properties.Keys.ToHashSet(StringComparer.Ordinal);
+                var sent = JsonNames(dtos[typeName]);
+                Assert.True(described.SetEquals(sent),
+                    $"{tool.Name} / {typeName}: schema [{string.Join(", ", described)}] vs payload [{string.Join(", ", sent)}]");
+                checkedTypes++;
+            }
+        }
+
+        Assert.True(checkedTypes >= 8, $"Only {checkedTypes} nested types were checked.");
     }
 
     [Theory]

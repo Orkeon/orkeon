@@ -198,19 +198,19 @@ public sealed class Pop3MailboxTests
     }
 
     [Theory]
-    [InlineData("create", "folders")]
-    [InlineData("rename", "folders")]
-    [InlineData("move", "folders")]
-    [InlineData("mark", "read and flagged marks")]
-    [InlineData("draft", "drafts")]
-    [InlineData("trash", "a trash folder: POP3 deletes for good")]
-    [InlineData("search-unread", "read and flagged marks")]
-    [InlineData("search-flagged", "read and flagged marks")]
-    [InlineData("search-text", "body search")]
-    [InlineData("search-attachments", "body search")]
-    [InlineData("search-raw", "body search")]
-    [InlineData("search-folder", "folders other than the inbox")]
-    public async Task Should_refuse_what_POP3_cannot_do_without_connecting(string operation, string missing)
+    [InlineData("create", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("rename", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("move", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("mark", "has no read or flagged marks: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("draft", "has no drafts folder: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("trash", "has no trash and deletes for good: pass `permanent: true` (needs the Purge right)")]
+    [InlineData("search-unread", "has no read or flagged marks: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("search-flagged", "has no read or flagged marks: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("search-text", "cannot search message bodies (`text`, `has_attachments`, `raw_query`): search on from, to, subject and dates, or switch the account to IMAP (Incoming:Protocol Imap)")]
+    [InlineData("search-attachments", "cannot search message bodies (`text`, `has_attachments`, `raw_query`): search on from, to, subject and dates, or switch the account to IMAP (Incoming:Protocol Imap)")]
+    [InlineData("search-raw", "cannot search message bodies (`text`, `has_attachments`, `raw_query`): search on from, to, subject and dates, or switch the account to IMAP (Incoming:Protocol Imap)")]
+    [InlineData("search-folder", "only has the inbox: switch the account to IMAP (Incoming:Protocol Imap) for other folders")]
+    public async Task Should_refuse_what_POP3_cannot_do_without_connecting(string operation, string clause)
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
@@ -234,8 +234,7 @@ public sealed class Pop3MailboxTests
         }));
 
         Assert.Equal(EmailErrorCode.Unsupported, error.Code);
-        Assert.StartsWith($"E-mail account 'local' reads mail over POP3, which has no {missing}", error.Message, StringComparison.Ordinal);
-        Assert.EndsWith("Switch it to IMAP (Incoming:Protocol Imap) for that.", error.Message, StringComparison.Ordinal);
+        Assert.Equal($"E-mail account 'local' reads mail over POP3, which {clause}.", error.Message);
         Assert.Equal(0, server.ConnectionCount);
     }
 

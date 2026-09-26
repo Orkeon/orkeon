@@ -10,6 +10,8 @@ namespace Orkeon.Tools.Email.Accounts;
 /// </summary>
 internal sealed class EmailAccess
 {
+    private const string SwitchToImap = "switch the account to IMAP (Incoming:Protocol Imap) for that";
+
     private readonly IEmailAccountRegistry _accounts;
     private readonly IMailboxProvider _mailboxes;
 
@@ -42,7 +44,7 @@ internal sealed class EmailAccess
         {
             throw new EmailToolException(
                 EmailErrorCode.Unsupported,
-                $"E-mail account '{account.Name}' reads mail over {account.Incoming}, which has no {Describe(capability)}.");
+                $"E-mail account '{account.Name}' reads mail over {ProtocolName(account.Incoming)}, which {Describe(capability)}.");
         }
 
         return mailbox;
@@ -50,12 +52,19 @@ internal sealed class EmailAccess
 
     private static string Describe(MailboxCapabilities capability) => capability switch
     {
-        MailboxCapabilities.Folders => "folders (switch the account to IMAP for that)",
-        MailboxCapabilities.Move => "folders to move messages into (switch the account to IMAP for that)",
-        MailboxCapabilities.Flags => "read or flagged marks (switch the account to IMAP for that)",
-        MailboxCapabilities.Drafts => "drafts folder (switch the account to IMAP for that)",
-        MailboxCapabilities.Trash => "trash: delete for good with `permanent: true` (needs the Purge right)",
-        _ => capability.ToString(),
+        MailboxCapabilities.Folders => "has no folders: " + SwitchToImap,
+        MailboxCapabilities.Move => "has no folders to move messages into: " + SwitchToImap,
+        MailboxCapabilities.Flags => "has no read or flagged marks: " + SwitchToImap,
+        MailboxCapabilities.Drafts => "has no drafts folder: " + SwitchToImap,
+        MailboxCapabilities.Trash => "has no trash and deletes for good: pass `permanent: true` (needs the Purge right)",
+        _ => $"has no {capability}",
+    };
+
+    private static string ProtocolName(IncomingProtocol protocol) => protocol switch
+    {
+        IncomingProtocol.Imap => "IMAP",
+        IncomingProtocol.Pop3 => "POP3",
+        _ => "Microsoft Graph",
     };
 
     /// <summary>The sender of an authorized account.</summary>

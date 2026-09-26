@@ -16,6 +16,9 @@ namespace Orkeon.Tools.Email.Mailboxes.Pop3;
 internal sealed class Pop3Mailbox : IMailbox
 {
     private const string CursorPrefix = "o:";
+    private const string SwitchToImap = "switch the account to IMAP (Incoming:Protocol Imap)";
+    private const string NoFolders = "has no folders: " + SwitchToImap + " for that";
+    private const string NoMarks = "has no read or flagged marks: " + SwitchToImap + " for that";
 
     private readonly ResolvedEmailAccount _account;
     private readonly MailEndpoint _endpoint;
@@ -46,11 +49,11 @@ internal sealed class Pop3Mailbox : IMailbox
 
     /// <inheritdoc />
     public Task<(MailFolderInfo Folder, bool Created)> CreateFolderAsync(string path, CancellationToken cancellationToken) =>
-        throw Unsupported("folders");
+        throw Unsupported(NoFolders);
 
     /// <inheritdoc />
     public Task<MailFolderInfo> RenameFolderAsync(string path, string newName, CancellationToken cancellationToken) =>
-        throw Unsupported("folders");
+        throw Unsupported(NoFolders);
 
     /// <inheritdoc />
     public Task<MessagePage> SearchAsync(MailSearch search, CancellationToken cancellationToken)
@@ -58,9 +61,9 @@ internal sealed class Pop3Mailbox : IMailbox
         ArgumentNullException.ThrowIfNull(search);
         RequireInbox(search.Folder);
         if (search.UnreadOnly || search.FlaggedOnly)
-            throw Unsupported("read and flagged marks");
+            throw Unsupported(NoMarks);
         if (!string.IsNullOrWhiteSpace(search.Text) || search.HasAttachments is not null || !string.IsNullOrWhiteSpace(search.RawQuery))
-            throw Unsupported("body search (`text`, `has_attachments`, `raw_query`); search on from, to, subject and dates");
+            throw Unsupported("cannot search message bodies (`text`, `has_attachments`, `raw_query`): search on from, to, subject and dates, or " + SwitchToImap);
 
         return RunAsync(async client =>
         {
@@ -101,18 +104,18 @@ internal sealed class Pop3Mailbox : IMailbox
 
     /// <inheritdoc />
     public Task<IReadOnlyList<MovedMessage>> MoveAsync(IReadOnlyList<string> ids, string destination, CancellationToken cancellationToken) =>
-        throw Unsupported("folders");
+        throw Unsupported(NoFolders);
 
     /// <inheritdoc />
     public Task<int> SetFlagsAsync(IReadOnlyList<string> ids, bool? seen, bool? flagged, CancellationToken cancellationToken) =>
-        throw Unsupported("read and flagged marks");
+        throw Unsupported(NoMarks);
 
     /// <inheritdoc />
     public Task<DeleteOutcome> DeleteAsync(IReadOnlyList<string> ids, bool permanent, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(ids);
         if (!permanent)
-            throw Unsupported("a trash folder: POP3 deletes for good, pass `permanent: true` (needs the Purge right)");
+            throw Unsupported("has no trash and deletes for good: pass `permanent: true` (needs the Purge right)");
 
         var uids = ids.Select(MessageIds.ParsePop3).Distinct(StringComparer.Ordinal).ToList();
         return RunAsync(async client =>
@@ -130,7 +133,7 @@ internal sealed class Pop3Mailbox : IMailbox
 
     /// <inheritdoc />
     public Task<(string? Id, string Folder)> SaveDraftAsync(MimeMessage message, CancellationToken cancellationToken) =>
-        throw Unsupported("drafts");
+        throw Unsupported("has no drafts folder: " + SwitchToImap + " for that");
 
     /// <inheritdoc />
     public Task AppendToSentAsync(MimeMessage message, CancellationToken cancellationToken) => Task.CompletedTask;
@@ -214,10 +217,10 @@ internal sealed class Pop3Mailbox : IMailbox
     private void RequireInbox(string folder)
     {
         if (FolderRoles.Parse(folder) != FolderRoles.Inbox && !folder.Trim().Equals("INBOX", StringComparison.OrdinalIgnoreCase))
-            throw Unsupported("folders other than the inbox");
+            throw Unsupported("only has the inbox: " + SwitchToImap + " for other folders");
     }
 
-    private EmailToolException Unsupported(string what) =>
-        new(EmailErrorCode.Unsupported,
-            $"E-mail account '{_account.Name}' reads mail over POP3, which has no {what}. Switch it to IMAP (Incoming:Protocol Imap) for that.");
+    /// <summary>A refusal; <paramref name="clause"/> completes "…reads mail over POP3, which …".</summary>
+    private EmailToolException Unsupported(string clause) =>
+        new(EmailErrorCode.Unsupported, $"E-mail account '{_account.Name}' reads mail over POP3, which {clause}.");
 }

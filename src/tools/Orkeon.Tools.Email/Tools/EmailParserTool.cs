@@ -42,7 +42,7 @@ internal sealed class EmailParserTool : ToolBase<EmailParserRequest, EmailReadRe
         var path = request.Path.Trim();
         var check = _fileSystem.ResolveAndValidate(path, FileAccessRights.Read);
         if (!check.IsAllowed)
-            throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot read '{path}': {check.DenialReason ?? "the path is not readable"}.");
+            throw new EmailToolException(EmailErrorCode.InvalidRequest, $"Cannot read '{path}': {(check.DenialReason ?? "the path is not readable").TrimEnd('.')}.");
 
         var stream = await _fileSystem.OpenReadStreamAsync(path, cancellationToken).ConfigureAwait(false);
         await using (stream.ConfigureAwait(false))

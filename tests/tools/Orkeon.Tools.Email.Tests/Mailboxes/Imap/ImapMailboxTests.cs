@@ -355,6 +355,42 @@ public sealed class ImapMailboxTests
     }
 
     [Fact]
+    public async Task Should_list_roles_from_conventional_names_When_the_server_flags_no_folder()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, "IMAP4rev1 AUTH=PLAIN SASL-IR UIDPLUS MOVE NAMESPACE PREVIEW");
+        server.AddFolder("Sent Items").AddFolder("Drafts").AddFolder("Deleted Items").AddFolder("Spam").AddFolder("Archives").AddFolder("Clients");
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = Open(server, credentials);
+
+        var roles = (await mailbox.ListFoldersAsync(Token)).ToDictionary(folder => folder.Path, folder => folder.Role, StringComparer.Ordinal);
+        var rename = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.RenameFolderAsync("Sent Items", "Outbox", Token));
+
+        server.AssertHealthy();
+        Assert.Equal(FolderRoles.Inbox, roles["INBOX"]);
+        Assert.Equal(FolderRoles.Sent, roles["Sent Items"]);
+        Assert.Equal(FolderRoles.Drafts, roles["Drafts"]);
+        Assert.Equal(FolderRoles.Trash, roles["Deleted Items"]);
+        Assert.Equal(FolderRoles.Junk, roles["Spam"]);
+        Assert.Equal(FolderRoles.Archive, roles["Archives"]);
+        Assert.Null(roles["Clients"]);
+        Assert.Equal("The sent folder is a system folder and cannot be renamed.", rename.Message);
+    }
+
+    [Fact]
+    public async Task Should_trust_only_the_flags_When_the_server_speaks_SPECIAL_USE()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);
+        server.AddFolder("Sent").AddFolder("Sent Mail", "\\Sent");
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = Open(server, credentials);
+
+        var roles = (await mailbox.ListFoldersAsync(Token)).ToDictionary(folder => folder.Path, folder => folder.Role, StringComparer.Ordinal);
+
+        Assert.Null(roles["Sent"]);
+        Assert.Equal(FolderRoles.Sent, roles["Sent Mail"]);
+    }
+
+    [Fact]
     public async Task Should_find_role_folders_by_conventional_names_When_the_server_lacks_SPECIAL_USE()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password, "IMAP4rev1 AUTH=PLAIN SASL-IR UIDPLUS MOVE NAMESPACE PREVIEW");

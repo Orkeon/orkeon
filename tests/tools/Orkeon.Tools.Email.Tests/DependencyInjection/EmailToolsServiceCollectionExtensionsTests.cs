@@ -47,6 +47,20 @@ public sealed class EmailToolsServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public void Should_bind_the_options_once_When_called_twice()
+    {
+        var configuration = new ConfigurationBuilder().AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["Orkeon:Tools:Email:Accounts:perso:Send:AllowedRecipients:0"] = "boss@example.com",
+        }).Build();
+
+        using var provider = Build(services => services.AddOrkeonEmailTools(configuration).AddOrkeonEmailTools(configuration));
+
+        var options = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<EmailToolsOptions>>().Value;
+        Assert.Equal(["boss@example.com"], options.Accounts["perso"].Send.AllowedRecipients);
+    }
+
+    [Fact]
     public async Task Should_keep_the_tools_inert_and_say_what_to_configure()
     {
         using var provider = Build(services => services.AddOrkeonEmailTools(EmptyConfiguration()));

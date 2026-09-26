@@ -43,34 +43,24 @@ public sealed class EmailAccessTests
         EmailAccess.Demand(account, EmailRights.None);
     }
 
-    [Fact]
-    public void Should_refuse_a_capability_the_backend_lacks_with_a_way_out()
-    {
-        var access = Access(out var mailboxes, TestAccounts.Custom());
-        mailboxes.MailboxOf("acct").Capabilities = MailboxCapabilities.None;
-        var account = access.Authorize("acct", EmailRights.Read);
-
-        var folders = Assert.Throws<EmailToolException>(() => access.Mailbox(account, MailboxCapabilities.Folders));
-        var trash = Assert.Throws<EmailToolException>(() => access.Mailbox(account, MailboxCapabilities.Trash));
-
-        Assert.Equal(EmailErrorCode.Unsupported, folders.Code);
-        Assert.Equal("E-mail account 'acct' reads mail over Imap, which has no folders (switch the account to IMAP for that).", folders.Message);
-        Assert.Contains("which has no trash: delete for good with `permanent: true` (needs the Purge right)", trash.Message, StringComparison.Ordinal);
-    }
-
     [Theory]
-    [InlineData("Move", "folders to move messages into")]
-    [InlineData("Flags", "read or flagged marks")]
-    [InlineData("Drafts", "drafts folder")]
-    public void Should_name_each_missing_capability(string capability, string description)
+    [InlineData("Folders", "has no folders: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("Move", "has no folders to move messages into: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("Flags", "has no read or flagged marks: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("Drafts", "has no drafts folder: switch the account to IMAP (Incoming:Protocol Imap) for that")]
+    [InlineData("Trash", "has no trash and deletes for good: pass `permanent: true` (needs the Purge right)")]
+    public void Should_refuse_a_capability_the_backend_lacks_in_a_sentence_that_says_the_way_out(string capability, string clause)
     {
-        var access = Access(out var mailboxes, TestAccounts.Custom());
+        var pop = TestAccounts.Custom();
+        pop.Incoming.Protocol = IncomingProtocol.Pop3;
+        var access = Access(out var mailboxes, pop);
         mailboxes.MailboxOf("acct").Capabilities = MailboxCapabilities.None;
         var account = access.Authorize("acct", EmailRights.Read);
 
         var error = Assert.Throws<EmailToolException>(() => access.Mailbox(account, Enum.Parse<MailboxCapabilities>(capability)));
 
-        Assert.Contains(description, error.Message, StringComparison.Ordinal);
+        Assert.Equal(EmailErrorCode.Unsupported, error.Code);
+        Assert.Equal($"E-mail account 'acct' reads mail over POP3, which {clause}.", error.Message);
     }
 
     [Fact]
