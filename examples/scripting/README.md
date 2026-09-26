@@ -64,7 +64,7 @@ Gmail account with the rights `Read, Organize, Draft` and a password the file on
 the model that sorts the mail. The script's header explains each field:
 
 ```bash
-export TRIAGE_GMAIL_APP_PASSWORD='abcd efgh ijkl mnop'   # a Gmail app password
+export TRIAGE_GMAIL_APP_PASSWORD='abcdefghijklmnop'   # the Gmail app password, without its spaces
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/13-email-triage.ork.ts \
   --settings examples/scripting/13-email-triage.appsettings.json
 ```
