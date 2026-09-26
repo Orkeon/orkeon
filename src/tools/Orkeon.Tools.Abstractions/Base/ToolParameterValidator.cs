@@ -135,7 +135,12 @@ internal static class ToolParameterValidator
         "string" => value is string,
         "number" => value is int or long or float or double or decimal
                     || (value is string ns && double.TryParse(ns, System.Globalization.NumberStyles.Any, System.Globalization.CultureInfo.InvariantCulture, out _)),
-        "integer" => value is int or long
+        // A whole number held as a floating-point value is an integer (JSON Schema's own
+        // definition): every number a script passes arrives as a double (Jint), so 20 is 20.0.
+        "integer" => value is int or long or short or byte or sbyte or ushort or uint
+                     || (value is double d && IsWholeNumber(d))
+                     || (value is float f && IsWholeNumber(f))
+                     || (value is decimal m && decimal.Truncate(m) == m && m >= long.MinValue && m <= long.MaxValue)
                      || (value is string istr && long.TryParse(istr, out _)),
         "boolean" => value is bool
                      || (value is string bs && (bs is "true" or "false" or "True" or "False" or "0" or "1")),
@@ -143,4 +148,7 @@ internal static class ToolParameterValidator
         "object" => value is IDictionary<string, object> or JsonElement { ValueKind: JsonValueKind.Object },
         _ => true // Unknown types pass validation
     };
+
+    private static bool IsWholeNumber(double value) =>
+        double.IsFinite(value) && Math.Floor(value) == value && value >= long.MinValue && value <= long.MaxValue;
 }
