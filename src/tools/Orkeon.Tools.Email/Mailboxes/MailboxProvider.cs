@@ -12,7 +12,7 @@ namespace Orkeon.Tools.Email.Mailboxes;
 /// Builds each account's backend once and keeps it, so an IMAP account reuses its connection
 /// across tool calls. Disposing the provider closes every pooled connection.
 /// </summary>
-internal sealed class MailboxProvider : IMailboxProvider, IAsyncDisposable
+internal sealed class MailboxProvider : IMailboxProvider, IAsyncDisposable, IDisposable
 {
     private readonly IMailServiceConnector _connector;
     private readonly EmailCredentialProvider _credentials;
@@ -56,6 +56,17 @@ internal sealed class MailboxProvider : IMailboxProvider, IAsyncDisposable
                 EmailErrorCode.Unsupported,
                 $"E-mail account '{account.Name}' declares no outgoing server (Outgoing:Host), so it cannot send."),
         };
+    }
+
+    /// <summary>
+    /// Closes the pooled connections without a goodbye, for a container disposed synchronously
+    /// (a host that disposes asynchronously gets the orderly LOGOUT of <see cref="DisposeAsync"/>).
+    /// </summary>
+    public void Dispose()
+    {
+        foreach (var mailbox in _mailboxes.Values.Where(lazy => lazy.IsValueCreated).Select(lazy => lazy.Value))
+            (mailbox as IDisposable)?.Dispose();
+        _mailboxes.Clear();
     }
 
     /// <inheritdoc />

@@ -22,7 +22,8 @@ internal static class Program
     /// The verb table: every top-level command and the entry point that owns it. Each verb
     /// parses its own tail — `orkeon rag ingest` (RAG-03/C3, RAG-04/C1), `orkeon llm probe`
     /// (LLM-08/C1), `orkeon init` (WIN-02), `orkeon doctor` (WIN-03), `orkeon forge`
-    /// (FORGE-03), `orkeon usecases search` (STUDIO-38) — so the option grammars never collide.
+    /// (FORGE-03), `orkeon usecases search` (STUDIO-38), `orkeon email login` (MAIL-05) — so the
+    /// option grammars never collide.
     /// </summary>
     private static readonly Dictionary<string, Func<string[], Task<int>>> Verbs =
         new(StringComparer.OrdinalIgnoreCase)
@@ -37,6 +38,7 @@ internal static class Program
             // conversion.
             ["forge"] = tail => Commands.Forge.ForgeCommand.DispatchAsync(tail),
             ["usecases"] = Commands.UseCases.UseCasesCommand.DispatchAsync,
+            ["email"] = EmailCommand.DispatchAsync,
         };
 
     /// <summary>The verbs the dispatch answers to, so the usage listing can be checked against it.</summary>

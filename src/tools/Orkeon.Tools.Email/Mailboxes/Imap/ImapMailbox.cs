@@ -14,7 +14,7 @@ namespace Orkeon.Tools.Email.Mailboxes.Imap;
 /// thread-safe, so every operation holds the account's gate; a connection idle for a while, or
 /// broken (a cancelled command makes MailKit drop it), is replaced on the next call.
 /// </summary>
-internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable
+internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposable
 {
     private const string CursorPrefix = "u:";
     private const int MaxBatch = 100;
@@ -230,6 +230,14 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable
                 await sent.AppendAsync(new AppendRequest(message, MessageFlags.Seen), cancellationToken).ConfigureAwait(false);
             return true;
         }, cancellationToken);
+
+    /// <summary>Drops the pooled connection without a LOGOUT (synchronous container disposal).</summary>
+    public void Dispose()
+    {
+        _client?.Dispose();
+        _client = null;
+        _gate.Dispose();
+    }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()

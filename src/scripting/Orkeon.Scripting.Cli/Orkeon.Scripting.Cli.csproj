@@ -36,6 +36,8 @@
          and agent tools (AddOrkeonRagTools, shared report formatting). -->
     <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
+    <!-- `orkeon email` (MAIL-05): the operator's side of the e-mail tool family. -->
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Email\Orkeon.Tools.Email.csproj" />
     <!-- RAG-04/C4: ONNX cross-encoder reranker for the balanced/quality profiles
          (`orkeon rag eval` compare mode: fast,balanced,quality). The .Model companion
          embeds the ms-marco-MiniLM-L-6-v2 int8 weights: offline guaranteed,
