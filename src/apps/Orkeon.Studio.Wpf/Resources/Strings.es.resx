@@ -1797,6 +1797,9 @@
   <data name="Studio.Settings.ToolFamilyData" xml:space="preserve">
     <value>Datos</value>
   </data>
+  <data name="Studio.Settings.ToolFamilyEmail" xml:space="preserve">
+    <value>Correo electrónico</value>
+  </data>
   <data name="Studio.Settings.ToolFamilyCode" xml:space="preserve">
     <value>Código</value>
   </data>
@@ -1829,6 +1832,9 @@
   </data>
   <data name="Studio.Settings.ToolExpertSetting" xml:space="preserve">
     <value>ajuste experto más abajo: {0}</value>
+  </data>
+  <data name="Studio.Settings.ToolNeedsEmailAccount" xml:space="preserve">
+    <value>necesita una cuenta de correo declarada en el archivo de ajustes, en {0}; una cuenta OAuth inicia sesión después con orkeon email login</value>
   </data>
   <data name="Studio.Settings.ToolFamilyQuietPattern" xml:space="preserve">
     <value>{0} herramientas, nada que configurar</value>

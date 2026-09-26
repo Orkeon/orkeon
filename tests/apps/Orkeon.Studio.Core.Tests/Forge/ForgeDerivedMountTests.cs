@@ -79,6 +79,7 @@ public sealed class ForgeDerivedMountTests
     [InlineData("/crew")]
     [InlineData("/script")]
     [InlineData("/llm-logs")]
+    [InlineData("/credentials")]
     public void A_reserved_virtual_root_is_never_derived(string reserved)
     {
         var mounts = Derive("[]", Tasks($"{reserved}/notes.md", "/output/r.md"));

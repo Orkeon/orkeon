@@ -1,7 +1,11 @@
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
+using Orkeon.Constants.Configuration;
+using Orkeon.Domain.Attributes;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Tools;
+using Orkeon.Tools.Email.DependencyInjection;
 
 namespace Orkeon.Studio.Core.Tests;
 
@@ -14,11 +18,15 @@ public sealed partial class ToolCatalogTests
 {
     /// <summary>
     /// The <c>orkeon run</c> column, counted by hand from the matrix: Web core 5, search 5
-    /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 6,
-    /// data 22, shell_command, session 6, EventHub 7, Analysis 15, collaboration 3 (human_input
+    /// (web_search, brave_search, cache_search, semantic_search, local_embed_text), files 5,
+    /// data 22, e-mail 13 (the twelve account tools and email_parser, which left the files
+    /// family), shell_command, session 6, EventHub 7, Analysis 15, collaboration 3 (human_input
     /// and the two per-agent coworker tools), list_mounts.
     /// </summary>
-    private const int ToolsARunExposes = 71;
+    private const int ToolsARunExposes = 83;
+
+    /// <summary>The one e-mail tool that works on a file rather than on an account.</summary>
+    private const string EmailParser = "email_parser";
 
     // The package cell may carry a note after the code span (« `Orkeon.Hosting` (opt-in) »).
     [GeneratedRegex(@"^\| `([a-z0-9_]+)` \| `[A-Za-z]+` \| `Orkeon\.[A-Za-z.]+`[^|]*\|", RegexOptions.Multiline)]
@@ -82,5 +90,48 @@ public sealed partial class ToolCatalogTests
         Assert.Equal("shell_command", shell.Name);
         Assert.Equal(ShellToolsSection.SectionPath, shell.Argument);
         Assert.Equal("Orkeon:Tools:Shell", ShellToolsSection.SectionPath);
+    }
+
+    /// <summary>
+    /// MAIL-05 — the e-mail family is pinned against the code, not only against the inventory:
+    /// it carries exactly the tool contracts the e-mail assembly declares, so a tool added
+    /// there and forgotten here, or a name misspelt here, fails on its own.
+    /// </summary>
+    [Fact]
+    public void The_email_family_carries_every_tool_the_email_assembly_declares()
+    {
+        var email = Assert.Single(ToolCatalog.Families, f => f.Key == ToolCatalog.EmailFamily);
+        var declared = typeof(EmailToolsServiceCollectionExtensions).Assembly.GetTypes()
+            .Select(type => type.GetCustomAttribute<ToolContractAttribute>()?.UniqueName)
+            .OfType<string>()
+            .Order(StringComparer.Ordinal)
+            .ToList();
+
+        Assert.Equal(13, declared.Count);
+        Assert.Equal(declared, email.Tools.Select(t => t.Name).Order(StringComparer.Ordinal));
+        // email_parser changed family: it is listed once, here, and no longer under Files.
+        var files = Assert.Single(ToolCatalog.Families, f => f.Key == ToolCatalog.FilesFamily);
+        Assert.DoesNotContain(files.Tools, t => t.Name == EmailParser);
+    }
+
+    /// <summary>
+    /// Without an account the twelve mailbox tools are still registered and refuse every call,
+    /// so what they need is neither a key nor a call parameter: an account declared in the
+    /// section the runtime binds. The parser reads an .eml file and needs nothing.
+    /// </summary>
+    [Fact]
+    public void The_email_account_requirement_names_the_email_section_the_runtime_binds()
+    {
+        var needAccount = ToolCatalog.All.Where(t => t.Requirement == ToolRequirement.EmailAccount).ToList();
+        var email = Assert.Single(ToolCatalog.Families, f => f.Key == ToolCatalog.EmailFamily);
+
+        Assert.Equal(12, needAccount.Count);
+        Assert.All(needAccount, t =>
+        {
+            Assert.Contains(t, email.Tools);
+            Assert.Equal(ConfigurationKeys.ToolsEmail, t.Argument);
+        });
+        Assert.Equal("Orkeon:Tools:Email", ConfigurationKeys.ToolsEmail);
+        Assert.Equal(ToolRequirement.None, Assert.Single(email.Tools, t => t.Name == EmailParser).Requirement);
     }
 }
