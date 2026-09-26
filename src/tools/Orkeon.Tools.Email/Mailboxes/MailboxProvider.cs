@@ -74,8 +74,10 @@ internal sealed class MailboxProvider : IMailboxProvider, IAsyncDisposable, IDis
     {
         foreach (var mailbox in _mailboxes.Values.Where(lazy => lazy.IsValueCreated).Select(lazy => lazy.Value))
         {
-            if (mailbox is IAsyncDisposable disposable)
-                await disposable.DisposeAsync().ConfigureAwait(false);
+            if (mailbox is IAsyncDisposable asyncDisposable)
+                await asyncDisposable.DisposeAsync().ConfigureAwait(false);
+            else
+                (mailbox as IDisposable)?.Dispose();
         }
 
         _mailboxes.Clear();

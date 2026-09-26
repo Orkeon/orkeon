@@ -63,14 +63,17 @@ internal sealed class EmailCredentialProvider
     /// <summary>The store tokens are kept in.</summary>
     public IEmailTokenStore Store => _store;
 
-    /// <summary>The credential <paramref name="account"/> connects with.</summary>
-    public async Task<EmailCredential> GetAsync(ResolvedEmailAccount account, CancellationToken cancellationToken)
+    /// <summary>
+    /// The credential <paramref name="account"/> connects with; never <paramref name="refused"/>,
+    /// a bearer credential the server has just turned down.
+    /// </summary>
+    public async Task<EmailCredential> GetAsync(ResolvedEmailAccount account, CancellationToken cancellationToken, EmailCredential? refused = null)
     {
         ArgumentNullException.ThrowIfNull(account);
         if (account.Auth.Method == EmailAuthMethod.Password)
             return new PasswordCredential(account.Auth.Username, ReadPassword(account));
 
-        var token = await GetAccessTokenAsync(account, cancellationToken).ConfigureAwait(false);
+        var token = await GetAccessTokenAsync(account, cancellationToken, (refused as BearerCredential)?.AccessToken).ConfigureAwait(false);
         return new BearerCredential(account.Auth.Username, token);
     }
 
@@ -122,14 +125,19 @@ internal sealed class EmailCredentialProvider
         return value;
     }
 
-    /// <summary>A valid access token for <paramref name="account"/>, refreshed if needed.</summary>
-    public async Task<string> GetAccessTokenAsync(ResolvedEmailAccount account, CancellationToken cancellationToken)
+    /// <summary>
+    /// A valid access token for <paramref name="account"/>, refreshed if needed. A token a server
+    /// has just refused (<paramref name="refused"/>) is not served again, however fresh it looks:
+    /// the store is read again — a new <c>orkeon email login</c> may have replaced it — and the
+    /// refresh token asked for another one.
+    /// </summary>
+    public async Task<string> GetAccessTokenAsync(ResolvedEmailAccount account, CancellationToken cancellationToken, string? refused = null)
     {
         ArgumentNullException.ThrowIfNull(account);
         var settings = account.Auth.OAuth
             ?? throw new EmailToolException(EmailErrorCode.InvalidConfiguration, $"E-mail account '{account.Name}' does not use OAuth2.");
         var key = TokenKey(account);
-        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached))
+        if (_fresh.TryGetValue(key, out var cached) && _oauth.IsFresh(cached) && cached.AccessToken != refused)
             return cached.AccessToken;
 
         var gate = _refreshGates.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
@@ -137,7 +145,7 @@ internal sealed class EmailCredentialProvider
         try
         {
             var tokens = await _store.ReadAsync(key, cancellationToken).ConfigureAwait(false);
-            if (tokens is not null && _oauth.IsFresh(tokens))
+            if (tokens is not null && _oauth.IsFresh(tokens) && tokens.AccessToken != refused)
             {
                 _fresh[key] = tokens;
                 return tokens.AccessToken;

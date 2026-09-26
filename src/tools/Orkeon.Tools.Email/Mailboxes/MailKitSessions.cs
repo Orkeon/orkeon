@@ -55,14 +55,18 @@ internal static class MailKitSessions
         try
         {
             await connector.ConnectAsync(client, endpoint, cancellationToken).ConfigureAwait(false);
-            switch (credential)
+            try
             {
-                case BearerCredential bearer:
-                    await client.AuthenticateAsync(new SaslMechanismOAuth2(bearer.Username, bearer.AccessToken), cancellationToken).ConfigureAwait(false);
-                    break;
-                case PasswordCredential password:
-                    await client.AuthenticateAsync(password.Username, password.Password, cancellationToken).ConfigureAwait(false);
-                    break;
+                await AuthenticateAsync(client, credential, cancellationToken).ConfigureAwait(false);
+            }
+            catch (AuthenticationException) when (credential is BearerCredential)
+            {
+                // A token refused once may have been revoked, or replaced by a new sign-in: the
+                // store is read again and the token refreshed, and the server is asked once more.
+                credential = await credentials.GetAsync(account, cancellationToken, refused: credential).ConfigureAwait(false);
+                if (!client.IsConnected)
+                    await connector.ConnectAsync(client, endpoint, cancellationToken).ConfigureAwait(false);
+                await AuthenticateAsync(client, credential, cancellationToken).ConfigureAwait(false);
             }
         }
         catch (Exception ex) when (Translate(ex, account, endpoint) is { } translated)
@@ -70,6 +74,13 @@ internal static class MailKitSessions
             throw translated;
         }
     }
+
+    private static Task AuthenticateAsync(IMailService client, EmailCredential credential, CancellationToken cancellationToken) => credential switch
+    {
+        BearerCredential bearer => client.AuthenticateAsync(new SaslMechanismOAuth2(bearer.Username, bearer.AccessToken), cancellationToken),
+        PasswordCredential password => client.AuthenticateAsync(password.Username, password.Password, cancellationToken),
+        _ => throw new ArgumentOutOfRangeException(nameof(credential), credential.GetType().Name, "Unknown credential."),
+    };
 
     /// <summary>
     /// The actionable form of a MailKit or socket failure, or null for anything else (a
@@ -85,7 +96,7 @@ internal static class MailKitSessions
             EmailToolException or OperationCanceledException => null,
             AuthenticationException => new EmailToolException(
                 EmailErrorCode.AuthenticationFailed,
-                $"{server} refused the credentials of e-mail account '{account.Name}'. {AuthenticationHint(account)} ({exception.Message})",
+                $"{server} refused the credentials of e-mail account '{account.Name}'. {AuthenticationHint(account)}{InUseHint(account, endpoint)} ({exception.Message})",
                 exception),
             SslHandshakeException => new EmailToolException(
                 EmailErrorCode.ServerError,
@@ -111,6 +122,13 @@ internal static class MailKitSessions
             _ => null,
         };
     }
+
+    // MailKit reports a POP3 maildrop another session holds ([IN-USE]) as a plain
+    // authentication failure: the message says it may be that.
+    private static string InUseHint(ResolvedEmailAccount account, MailEndpoint? endpoint) =>
+        account.Incoming == IncomingProtocol.Pop3 && endpoint == account.IncomingEndpoint
+            ? " A POP3 mailbox also refuses a session while another mail client holds it: if the credentials are right, retry in a moment."
+            : string.Empty;
 
     private static string AuthenticationHint(ResolvedEmailAccount account) => account.Provider switch
     {

@@ -79,6 +79,56 @@ public sealed class RunnerHostEmailCredentialsTests : IDisposable
     }
 
     [Fact]
+    public void A_relative_CredentialsDirectory_is_read_from_the_settings_file_s_directory()
+    {
+        var settings = WriteSettings(OAuthAccount("tokens"));
+
+        using var host = RunnerHost.Build(settings, new RunnerMountPlan());
+
+        var mount = Assert.Single(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials);
+        Assert.Equal(Path.Combine(_root, "tokens"), mount.BasePath);
+    }
+
+    [Fact]
+    public void A_token_directory_that_cannot_be_created_leaves_the_run_standing_and_says_why()
+    {
+        if (OperatingSystem.IsWindows())
+            return;
+
+        var locked = Path.Combine(_root, "locked");
+        Directory.CreateDirectory(locked);
+        File.SetUnixFileMode(locked, UnixFileMode.UserRead | UnixFileMode.UserExecute);
+        var tokens = Path.Combine(locked, "tokens");
+        try
+        {
+            Directory.CreateDirectory(tokens);
+            return; // Permissions are not enforced for this user (root): nothing to prove here.
+        }
+        catch (UnauthorizedAccessException)
+        {
+            // Expected: the runner meets the same refusal below.
+        }
+
+        using var stderr = new StringWriter();
+        var original = Console.Error;
+        Console.SetError(stderr);
+        try
+        {
+            using var host = RunnerHost.Build(WriteSettings(OAuthAccount(tokens)), new RunnerMountPlan());
+
+            Assert.DoesNotContain(Mounts(host), m => m.VirtualPath == RunnerVirtualRoots.Credentials);
+            Assert.IsNotType<FileSystemEmailTokenStore>(host.Services.GetRequiredService<IEmailTokenStore>());
+        }
+        finally
+        {
+            Console.SetError(original);
+            File.SetUnixFileMode(locked, OwnerOnly);
+        }
+
+        Assert.Contains("WARNING: The directory of the e-mail OAuth tokens, " + tokens + ", cannot be prepared", stderr.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void Password_accounts_mount_nothing_and_create_nothing()
     {
         var tokens = Path.Combine(_root, "tokens");

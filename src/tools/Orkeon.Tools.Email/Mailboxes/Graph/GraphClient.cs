@@ -44,19 +44,14 @@ internal sealed class GraphClient
         && string.Equals(link.Host, EmailDefaults.GraphHost, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>GETs JSON.</summary>
-    public async Task<JsonDocument> GetJsonAsync(Uri address, CancellationToken cancellationToken)
-    {
-        using var request = await CreateAsync(HttpMethod.Get, address, cancellationToken).ConfigureAwait(false);
-        return await SendForJsonAsync(request, cancellationToken).ConfigureAwait(false);
-    }
+    public Task<JsonDocument> GetJsonAsync(Uri address, CancellationToken cancellationToken) =>
+        SendForJsonAsync(HttpMethod.Get, address, () => null, cancellationToken);
 
     /// <summary>Sends a JSON body; returns the response JSON (empty object when none).</summary>
-    public async Task<JsonDocument> SendJsonAsync(HttpMethod method, Uri address, JsonNode? body, CancellationToken cancellationToken)
+    public Task<JsonDocument> SendJsonAsync(HttpMethod method, Uri address, JsonNode? body, CancellationToken cancellationToken)
     {
-        using var request = await CreateAsync(method, address, cancellationToken).ConfigureAwait(false);
-        if (body is not null)
-            request.Content = new StringContent(body.ToJsonString(), Encoding.UTF8, "application/json");
-        return await SendForJsonAsync(request, cancellationToken).ConfigureAwait(false);
+        var json = body?.ToJsonString();
+        return SendForJsonAsync(method, address, () => json is null ? null : new StringContent(json, Encoding.UTF8, "application/json"), cancellationToken);
     }
 
     /// <summary>POSTs a MIME message, base64-encoded as Graph wants it (sendMail, draft creation).</summary>
@@ -80,16 +75,14 @@ internal sealed class GraphClient
             payload = Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
         }
 
-        using var request = await CreateAsync(HttpMethod.Post, address, cancellationToken).ConfigureAwait(false);
-        request.Content = new StringContent(payload, Encoding.ASCII, "text/plain");
-        return await SendForJsonAsync(request, cancellationToken).ConfigureAwait(false);
+        return await SendForJsonAsync(HttpMethod.Post, address, () => new StringContent(payload, Encoding.ASCII, "text/plain"), cancellationToken)
+            .ConfigureAwait(false);
     }
 
     /// <summary>GETs a MIME message (<c>$value</c>).</summary>
     public async Task<MimeMessage> GetMimeAsync(Uri address, CancellationToken cancellationToken)
     {
-        using var request = await CreateAsync(HttpMethod.Get, address, cancellationToken).ConfigureAwait(false);
-        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(HttpMethod.Get, address, () => null, cancellationToken).ConfigureAwait(false);
         var stream = await response.Content.ReadAsStreamAsync(cancellationToken).ConfigureAwait(false);
         await using (stream.ConfigureAwait(false))
         {
@@ -97,49 +90,61 @@ internal sealed class GraphClient
         }
     }
 
-    private async Task<HttpRequestMessage> CreateAsync(HttpMethod method, Uri address, CancellationToken cancellationToken)
+    private async Task<JsonDocument> SendForJsonAsync(HttpMethod method, Uri address, Func<HttpContent?> content, CancellationToken cancellationToken)
     {
-        if (!IsGraphAddress(address))
-            throw new EmailToolException(EmailErrorCode.InvalidRequest, "Refusing to send the account's token to an address outside Microsoft Graph.");
-
-        var token = await _credentials.GetAccessTokenAsync(_account, cancellationToken).ConfigureAwait(false);
-        var request = new HttpRequestMessage(method, address);
-        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        request.Headers.TryAddWithoutValidation("Prefer", "IdType=\"ImmutableId\"");
-        return request;
-    }
-
-    private async Task<JsonDocument> SendForJsonAsync(HttpRequestMessage request, CancellationToken cancellationToken)
-    {
-        using var response = await SendAsync(request, cancellationToken).ConfigureAwait(false);
+        using var response = await SendAsync(method, address, content, cancellationToken).ConfigureAwait(false);
         var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
         return JsonDocument.Parse(string.IsNullOrWhiteSpace(body) ? "{}" : body);
     }
 
-    private async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    /// <summary>
+    /// Sends one request with the account's token, building it with <paramref name="content"/>.
+    /// A 401 is answered once more with another token: the refused one may have been revoked,
+    /// or replaced in the store by a new sign-in, so it is read again and refreshed.
+    /// </summary>
+    private async Task<HttpResponseMessage> SendAsync(HttpMethod method, Uri address, Func<HttpContent?> content, CancellationToken cancellationToken)
     {
-        HttpResponseMessage response;
-        try
-        {
-            response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        }
-        catch (HttpRequestException ex)
-        {
-            throw new EmailToolException(EmailErrorCode.ServerError, $"Microsoft Graph could not be reached: {ex.Message}", ex);
-        }
-        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
-        {
-            // The HTTP client's own timeout, not a cancellation by the caller.
-            throw new EmailToolException(EmailErrorCode.ServerError, "Microsoft Graph did not answer in time; retry later.", ex);
-        }
+        if (!IsGraphAddress(address))
+            throw new EmailToolException(EmailErrorCode.InvalidRequest, "Refusing to send the account's token to an address outside Microsoft Graph.");
 
-        if (response.IsSuccessStatusCode)
-            return response;
-
-        using (response)
+        string? refused = null;
+        while (true)
         {
-            var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
-            throw Describe(response, body);
+            var token = await _credentials.GetAccessTokenAsync(_account, cancellationToken, refused).ConfigureAwait(false);
+            using var request = new HttpRequestMessage(method, address) { Content = content() };
+            request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            request.Headers.TryAddWithoutValidation("Prefer", "IdType=\"ImmutableId\"");
+
+            HttpResponseMessage response;
+            try
+            {
+                response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new EmailToolException(EmailErrorCode.ServerError, $"Microsoft Graph could not be reached: {ex.Message}", ex);
+            }
+            catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+            {
+                // The HTTP client's own timeout, not a cancellation by the caller.
+                throw new EmailToolException(EmailErrorCode.ServerError, "Microsoft Graph did not answer in time; retry later.", ex);
+            }
+
+            if (response.IsSuccessStatusCode)
+                return response;
+
+            if (response.StatusCode == HttpStatusCode.Unauthorized && refused is null)
+            {
+                response.Dispose();
+                refused = token;
+                continue;
+            }
+
+            using (response)
+            {
+                var body = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
+                throw Describe(response, body);
+            }
         }
     }
 

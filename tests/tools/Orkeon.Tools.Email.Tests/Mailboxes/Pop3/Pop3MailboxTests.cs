@@ -20,7 +20,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var folders = await mailbox.ListFoldersAsync(Token);
 
@@ -34,7 +34,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var first = await mailbox.SearchAsync(new MailSearch { Limit = 1 }, Token);
         var second = await mailbox.SearchAsync(new MailSearch { Limit = 1, Cursor = first.NextCursor }, Token);
@@ -57,11 +57,47 @@ public sealed class Pop3MailboxTests
     }
 
     [Fact]
+    public async Task Should_take_turns_on_the_maildrop_instead_of_being_refused_as_in_use()
+    {
+        await using var server = Seeded();
+        using var credentials = new CredentialsFixture();
+        using var mailbox = Open(server, credentials);
+
+        var pages = await Task.WhenAll(Enumerable.Range(0, 4).Select(_ => mailbox.SearchAsync(new MailSearch { Limit = 5 }, Token)));
+
+        server.AssertHealthy();
+        Assert.All(pages, page => Assert.Equal(3, page.Messages.Count));
+        Assert.Equal(4, server.ConnectionCount);
+    }
+
+    [Fact]
+    public async Task Should_mention_another_client_holding_the_maildrop_When_the_login_is_refused()
+    {
+        await using var server = Seeded();
+        using var credentials = new CredentialsFixture();
+        using var mailbox = Open(server, credentials);
+        using var otherClient = new System.Net.Sockets.TcpClient();
+        await otherClient.ConnectAsync("127.0.0.1", server.Port, Token);
+        using var reader = new StreamReader(otherClient.GetStream());
+        await using var writer = new StreamWriter(otherClient.GetStream()) { AutoFlush = true, NewLine = "\r\n" };
+        await reader.ReadLineAsync(Token);
+        await writer.WriteLineAsync($"USER {TestAccounts.Address}".AsMemory(), Token);
+        await reader.ReadLineAsync(Token);
+        await writer.WriteLineAsync($"PASS {TestAccounts.Password}".AsMemory(), Token);
+        Assert.StartsWith("+OK", await reader.ReadLineAsync(Token), StringComparison.Ordinal);
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(() => mailbox.SearchAsync(new MailSearch(), Token));
+
+        Assert.Equal(EmailErrorCode.AuthenticationFailed, error.Code);
+        Assert.Contains("A POP3 mailbox also refuses a session while another mail client holds it", error.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Should_hand_each_message_the_cursor_that_resumes_right_after_it()
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var page = await mailbox.SearchAsync(new MailSearch { Limit = 5 }, Token);
         var resumed = await mailbox.SearchAsync(new MailSearch { Limit = 5, Cursor = page.Messages[0].ResumeCursor }, Token);
@@ -79,7 +115,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
         var search = criterion switch
         {
             "from" => new MailSearch { From = value },
@@ -97,7 +133,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var page = await mailbox.SearchAsync(new MailSearch { To = "cc-person" }, Token);
 
@@ -109,7 +145,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var page = await mailbox.SearchAsync(new MailSearch
         {
@@ -127,7 +163,7 @@ public sealed class Pop3MailboxTests
         for (var i = 1; i <= 201; i++)
             server.Add($"uid-{i}", MimeSamples.Plain(subject: $"Newsletter {i}"));
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var page = await mailbox.SearchAsync(new MailSearch { Subject = "no such subject" }, Token);
 
@@ -141,7 +177,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         using var fetched = await mailbox.GetMessageAsync("pop3:uid-2", Token);
 
@@ -158,7 +194,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.GetMessageAsync("pop3:uid-99", Token));
 
@@ -171,7 +207,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var outcome = await mailbox.DeleteAsync(["pop3:uid-1", "pop3:uid-3"], permanent: true, Token);
 
@@ -187,7 +223,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         await mailbox.ListFoldersAsync(Token);
         await mailbox.SearchAsync(new MailSearch { Limit = 1 }, Token);
@@ -201,7 +237,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = new FakePop3Server(TestAccounts.Address, TestAccounts.Password, advertiseSasl: true);
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         await mailbox.ListFoldersAsync(Token);
 
@@ -215,7 +251,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = new FakePop3Server(TestAccounts.Address, "the-real-password");
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.ListFoldersAsync(Token));
 
@@ -240,7 +276,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
         using var draft = new MimeMessage();
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await (operation switch
@@ -271,7 +307,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var page = await mailbox.SearchAsync(new MailSearch { Folder = folder, Limit = 1 }, Token);
 
@@ -283,7 +319,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
 
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await mailbox.SearchAsync(new MailSearch { Cursor = "u:12" }, Token));
 
@@ -295,7 +331,7 @@ public sealed class Pop3MailboxTests
     {
         await using var server = Seeded();
         using var credentials = new CredentialsFixture();
-        var mailbox = Open(server, credentials);
+        using var mailbox = Open(server, credentials);
         using var message = new MimeMessage();
 
         var error = await Assert.ThrowsAsync<EmailToolException>(() => mailbox.AppendToSentAsync(message, Token));

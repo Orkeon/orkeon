@@ -13,6 +13,8 @@ internal sealed class FakePop3Server : FakeProtocolServer
 {
     private readonly List<(string Uid, byte[] Raw)> _maildrop = [];
 
+    private bool _maildropLocked;
+
     /// <summary>Creates and starts the server.</summary>
     /// <param name="username">The user name it accepts.</param>
     /// <param name="password">The password it accepts.</param>
@@ -62,97 +64,129 @@ internal sealed class FakePop3Server : FakeProtocolServer
         var deleted = new HashSet<int>();
         var authenticated = false;
         string? user = null;
-
-        while (await connection.ReadLineAsync(cancellationToken) is { } line)
+        try
         {
-            Record(line);
-            var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-            var verb = parts.Length == 0 ? string.Empty : parts[0].ToUpperInvariant();
-            switch (verb)
+            while (await connection.ReadLineAsync(cancellationToken) is { } line)
             {
-                case "CAPA":
-                    await connection.WriteLineAsync("+OK Capability list follows", cancellationToken);
-                    foreach (var capability in Capabilities())
-                        await connection.WriteLineAsync(capability, cancellationToken);
-                    await connection.WriteLineAsync(".", cancellationToken);
-                    break;
+                Record(line);
+                var parts = line.Split(' ', StringSplitOptions.RemoveEmptyEntries);
+                var verb = parts.Length == 0 ? string.Empty : parts[0].ToUpperInvariant();
+                switch (verb)
+                {
+                    case "CAPA":
+                        await connection.WriteLineAsync("+OK Capability list follows", cancellationToken);
+                        foreach (var capability in Capabilities())
+                            await connection.WriteLineAsync(capability, cancellationToken);
+                        await connection.WriteLineAsync(".", cancellationToken);
+                        break;
 
-                case "USER":
-                    user = parts.Length > 1 ? parts[1] : null;
-                    await connection.WriteLineAsync("+OK send PASS", cancellationToken);
-                    break;
+                    case "USER":
+                        user = parts.Length > 1 ? parts[1] : null;
+                        await connection.WriteLineAsync("+OK send PASS", cancellationToken);
+                        break;
 
-                case "PASS":
-                    authenticated = user == Username && line.Length > 5 && line[5..] == Password;
-                    await connection.WriteLineAsync(authenticated ? "+OK maildrop locked and ready" : "-ERR [AUTH] invalid user name or password", cancellationToken);
-                    break;
+                    case "PASS":
+                        var passed = user == Username && line.Length > 5 && line[5..] == Password;
+                        authenticated = passed && TryLockMaildrop();
+                        await connection.WriteLineAsync(
+                            authenticated ? "+OK maildrop locked and ready" : passed ? MaildropInUse : "-ERR [AUTH] invalid user name or password", cancellationToken);
+                        break;
 
-                case "AUTH" when parts.Length > 1 && parts[1].Equals("PLAIN", StringComparison.OrdinalIgnoreCase):
-                    var response = parts.Length > 2 ? parts[2] : await ChallengeAsync(connection, cancellationToken);
-                    var fields = Decode(response).Split('\0');
-                    authenticated = fields.Length == 3 && fields[1] == Username && fields[2] == Password;
-                    await connection.WriteLineAsync(authenticated ? "+OK authenticated" : "-ERR [AUTH] authentication failed", cancellationToken);
-                    break;
+                    case "AUTH" when parts.Length > 1 && parts[1].Equals("PLAIN", StringComparison.OrdinalIgnoreCase):
+                        var response = parts.Length > 2 ? parts[2] : await ChallengeAsync(connection, cancellationToken);
+                        var fields = Decode(response).Split('\0');
+                        var valid = fields.Length == 3 && fields[1] == Username && fields[2] == Password;
+                        authenticated = valid && TryLockMaildrop();
+                        await connection.WriteLineAsync(
+                            authenticated ? "+OK authenticated" : valid ? MaildropInUse : "-ERR [AUTH] authentication failed", cancellationToken);
+                        break;
 
-                case "QUIT":
-                    if (authenticated)
-                    {
-                        lock (Gate)
+                    case "QUIT":
+                        if (authenticated)
                         {
-                            foreach (var index in deleted.OrderDescending())
-                                _maildrop.RemoveAll(message => message.Uid == session[index].Uid);
+                            lock (Gate)
+                            {
+                                foreach (var index in deleted.OrderDescending())
+                                    _maildrop.RemoveAll(message => message.Uid == session[index].Uid);
+                            }
                         }
-                    }
 
-                    await connection.WriteLineAsync("+OK bye", cancellationToken);
-                    return;
+                        await connection.WriteLineAsync("+OK bye", cancellationToken);
+                        return;
 
-                case "NOOP":
-                    await connection.WriteLineAsync("+OK", cancellationToken);
-                    break;
+                    case "NOOP":
+                        await connection.WriteLineAsync("+OK", cancellationToken);
+                        break;
 
-                case "STAT" or "LIST" or "UIDL" or "TOP" or "RETR" or "DELE" or "RSET" when !authenticated:
-                    await connection.WriteLineAsync("-ERR not authenticated", cancellationToken);
-                    break;
+                    case "STAT" or "LIST" or "UIDL" or "TOP" or "RETR" or "DELE" or "RSET" when !authenticated:
+                        await connection.WriteLineAsync("-ERR not authenticated", cancellationToken);
+                        break;
 
-                case "STAT":
-                    var live = Enumerable.Range(0, session.Count).Where(i => !deleted.Contains(i)).ToList();
-                    await connection.WriteLineAsync(
-                        string.Create(CultureInfo.InvariantCulture, $"+OK {live.Count} {live.Sum(i => session[i].Raw.Length)}"), cancellationToken);
-                    break;
+                    case "STAT":
+                        var live = Enumerable.Range(0, session.Count).Where(i => !deleted.Contains(i)).ToList();
+                        await connection.WriteLineAsync(
+                            string.Create(CultureInfo.InvariantCulture, $"+OK {live.Count} {live.Sum(i => session[i].Raw.Length)}"), cancellationToken);
+                        break;
 
-                case "LIST" or "UIDL":
-                    await ListAsync(connection, verb, parts, session, deleted, cancellationToken);
-                    break;
+                    case "LIST" or "UIDL":
+                        await ListAsync(connection, verb, parts, session, deleted, cancellationToken);
+                        break;
 
-                case "TOP" or "RETR":
-                    await RetrieveAsync(connection, verb, parts, session, deleted, cancellationToken);
-                    break;
+                    case "TOP" or "RETR":
+                        await RetrieveAsync(connection, verb, parts, session, deleted, cancellationToken);
+                        break;
 
-                case "DELE":
-                    if (TryIndex(parts, session, deleted, out var target))
-                    {
-                        deleted.Add(target);
-                        await connection.WriteLineAsync("+OK message deleted", cancellationToken);
-                    }
-                    else
-                    {
-                        await connection.WriteLineAsync("-ERR no such message", cancellationToken);
-                    }
+                    case "DELE":
+                        if (TryIndex(parts, session, deleted, out var target))
+                        {
+                            deleted.Add(target);
+                            await connection.WriteLineAsync("+OK message deleted", cancellationToken);
+                        }
+                        else
+                        {
+                            await connection.WriteLineAsync("-ERR no such message", cancellationToken);
+                        }
 
-                    break;
+                        break;
 
-                case "RSET":
-                    deleted.Clear();
-                    await connection.WriteLineAsync("+OK", cancellationToken);
-                    break;
+                    case "RSET":
+                        deleted.Clear();
+                        await connection.WriteLineAsync("+OK", cancellationToken);
+                        break;
 
-                default:
-                    RecordUnknown(line);
-                    await connection.WriteLineAsync("-ERR unknown command", cancellationToken);
-                    break;
+                    default:
+                        RecordUnknown(line);
+                        await connection.WriteLineAsync("-ERR unknown command", cancellationToken);
+                        break;
+                }
             }
         }
+        finally
+        {
+            // A session ending any way — QUIT, a dropped connection — releases the maildrop.
+            if (authenticated)
+                UnlockMaildrop();
+        }
+    }
+
+    /// <summary>What a server answers a login while another session holds the maildrop (RFC 2449).</summary>
+    private const string MaildropInUse = "-ERR [IN-USE] maildrop already locked";
+
+    private bool TryLockMaildrop()
+    {
+        lock (Gate)
+        {
+            if (_maildropLocked)
+                return false;
+            _maildropLocked = true;
+            return true;
+        }
+    }
+
+    private void UnlockMaildrop()
+    {
+        lock (Gate)
+            _maildropLocked = false;
     }
 
     private IEnumerable<string> Capabilities()

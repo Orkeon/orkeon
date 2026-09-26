@@ -140,6 +140,7 @@ public static partial class RunnerHost
         var host = builder.Build();
 
         LogMountDecisions(host, decisions);
+        WarnIfEmailTokensUnavailable(host, decisions);
         WarnIfLlmNotConfigured(host);
         ActivateTelemetry(host);
         return host;
@@ -196,7 +197,29 @@ public static partial class RunnerHost
         public List<string> ReplacedRoots { get; } = [];
 
         public MountSelectionPlan Plan { get; set; } = MountSelectionPlan.Empty;
+
+        /// <summary>Why the OAuth accounts of the settings have no token store in this run, when they have none.</summary>
+        public string? EmailTokensUnavailable { get; set; }
     }
+
+    /// <summary>
+    /// An OAuth e-mail account is declared, but the runner could not provide its token store:
+    /// said once, on the log and on stderr, because the run goes on — a crew that sends no mail
+    /// must not fail for it — and each e-mail call of such an account will then refuse.
+    /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Globalization", "CA1303", Justification = "Framework is not localized; literals are CLI diagnostic/console messages.")]
+    private static void WarnIfEmailTokensUnavailable(IHost host, MountDecisions decisions)
+    {
+        if (decisions.EmailTokensUnavailable is not { } reason)
+            return;
+
+        Console.Error.WriteLine("WARNING: " + reason);
+        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.RunnerHost");
+        LogEmailTokensUnavailable(logger, reason);
+    }
+
+    [LoggerMessage(EventId = 8, Level = LogLevel.Warning, Message = "{Reason}")]
+    private static partial void LogEmailTokensUnavailable(ILogger logger, string reason);
 
     /// <summary>
     /// OpenTelemetry creates its tracer and meter providers in a hosted service, and the
@@ -363,7 +386,7 @@ public static partial class RunnerHost
         foreach (var mount in mounts.InternalMounts)
             overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] = mount;
 
-        var credentialsDirectory = PlanEmailCredentials(declared, declaredMounts, declaredInternal, mounts.CliMounts);
+        var credentialsDirectory = PlanEmailCredentials(declared, declaredMounts, declaredInternal, mounts.CliMounts, settingsPath, decisions);
         if (credentialsDirectory is not null)
         {
             overrides[$"{ConfigurationKeys.FileSystemInternalMounts}:{nextInternalIndex++}"] =
@@ -444,24 +467,24 @@ public static partial class RunnerHost
     }
 
     /// <summary>
-    /// The index a new entry of an indexed section lands on: one past the highest declared
-    /// index, not the count. Configuration is a sparse key/value space and an operator may
-    /// legitimately have declared 0 and 2.
-    /// </summary>
-    /// <summary>
     /// Where the OAuth tokens of the declared e-mail accounts live, creating the directory and
     /// its <c>email</c> subdirectory, or null when no account signs in with OAuth2 — no mount,
     /// then, and nothing created. The directory sits next to the per-user settings unless the
     /// operator names one (<c>Orkeon:Tools:Email:CredentialsDirectory</c>, for a service
-    /// account). On Unix the subdirectory holding the tokens is owner-only, narrowed to it if it
-    /// already existed wider. A user mount claiming <see cref="RunnerVirtualRoots.Credentials"/>
-    /// is refused whatever the accounts: the root is reserved, like the other internal ones.
+    /// account; a relative one is read from the settings file's directory). On Unix the
+    /// subdirectory holding the tokens is owner-only, narrowed to it if it already existed wider.
+    /// A directory that cannot be prepared is reported in <paramref name="decisions"/>, not
+    /// thrown: the run goes on and only the OAuth accounts refuse. A user mount claiming
+    /// <see cref="RunnerVirtualRoots.Credentials"/> is refused whatever the accounts: the root
+    /// is reserved, like the other internal ones.
     /// </summary>
     private static string? PlanEmailCredentials(
         DeclaredConfiguration declared,
         List<(int Index, string? Value)> declaredMounts,
         List<(int Index, string? Value)> declaredInternal,
-        IReadOnlyList<string> cliMounts)
+        IReadOnlyList<string> cliMounts,
+        string? settingsPath,
+        MountDecisions decisions)
     {
         var claimed = declaredMounts.Select(entry => entry.Value)
             .Concat(declaredInternal.Select(entry => entry.Value))
@@ -480,22 +503,38 @@ public static partial class RunnerHost
 
         var directory = EmailCredentialsLocation.ConfiguredDirectory(section) ?? DefaultCredentialsDirectory();
         if (directory is null)
+        {
+            decisions.EmailTokensUnavailable =
+                $"No per-user settings directory can be found to keep the OAuth tokens of e-mail accounts: set {ConfigurationKeys.ToolsEmail}:CredentialsDirectory.";
             return null;
-
-        directory = Path.GetFullPath(directory);
-        var tokens = Path.Combine(directory, EmailCredentialsLocation.TokenSubdirectory);
-        if (OperatingSystem.IsWindows())
-        {
-            Directory.CreateDirectory(tokens);
         }
-        else
+
+        try
         {
-            // The mode applies to the one directory each call creates, never to its parents.
-            const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
-            Directory.CreateDirectory(directory, ownerOnly);
-            Directory.CreateDirectory(tokens, ownerOnly);
-            if ((File.GetUnixFileMode(tokens) & ~ownerOnly) != 0)
-                File.SetUnixFileMode(tokens, ownerOnly);
+            // Relative to the settings file that names it, so a login and a run started from
+            // different directories share one token store.
+            var settingsDirectory = settingsPath is null ? null : Path.GetDirectoryName(Path.GetFullPath(settingsPath));
+            directory = Path.GetFullPath(settingsDirectory is null ? directory : Path.Combine(settingsDirectory, directory));
+            var tokens = Path.Combine(directory, EmailCredentialsLocation.TokenSubdirectory);
+            if (OperatingSystem.IsWindows())
+            {
+                Directory.CreateDirectory(tokens);
+            }
+            else
+            {
+                // The mode applies to the one directory each call creates, never to its parents.
+                const UnixFileMode ownerOnly = UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute;
+                Directory.CreateDirectory(directory, ownerOnly);
+                Directory.CreateDirectory(tokens, ownerOnly);
+                if ((File.GetUnixFileMode(tokens) & ~ownerOnly) != 0)
+                    File.SetUnixFileMode(tokens, ownerOnly);
+            }
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or ArgumentException or NotSupportedException)
+        {
+            decisions.EmailTokensUnavailable =
+                $"The directory of the e-mail OAuth tokens, {directory}, cannot be prepared ({ex.Message}): OAuth e-mail accounts have no token store in this run.";
+            return null;
         }
 
         return directory;
@@ -503,8 +542,8 @@ public static partial class RunnerHost
 
     /// <summary>
     /// <c>credentials</c> next to the per-user settings, or null when no per-user directory can be
-    /// determined (a bare container without HOME): OAuth accounts then report that no token store
-    /// is available instead of failing the whole run.
+    /// determined (a bare container without HOME): the run goes on, says why at start, and OAuth
+    /// accounts report that no token store is available.
     /// </summary>
     private static string? DefaultCredentialsDirectory()
     {
@@ -519,6 +558,11 @@ public static partial class RunnerHost
         }
     }
 
+    /// <summary>
+    /// The index a new entry of an indexed section lands on: one past the highest declared
+    /// index, not the count. Configuration is a sparse key/value space and an operator may
+    /// legitimately have declared 0 and 2.
+    /// </summary>
     private static int NextIndex(List<(int Index, string? Value)> entries) =>
         entries.Count == 0 ? 0 : entries.Max(entry => entry.Index) + 1;
 

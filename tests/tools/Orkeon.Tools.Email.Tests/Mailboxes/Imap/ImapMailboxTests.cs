@@ -86,6 +86,24 @@ public sealed class ImapMailboxTests
     }
 
     [Fact]
+    public async Task Should_refresh_and_sign_in_again_When_the_server_refuses_a_token_that_looked_fresh()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password) { AccessToken = "ya29.renewed" };
+        using var credentials = new CredentialsFixture();
+        var account = TestAccounts.AsGmailOAuth(TestAccounts.Loopback(IncomingProtocol.Imap, server.Port));
+        credentials.SeedFreshToken(account, "ya29.revoked");
+        credentials.Handler.EnqueueJson("""{"access_token":"ya29.renewed","expires_in":3599}""");
+        await using var mailbox = new ImapMailbox(account, new NetworkMailServiceConnector(), credentials.Provider, credentials.Time);
+
+        await mailbox.ListFoldersAsync(Token);
+
+        server.AssertHealthy();
+        Assert.Equal(["XOAUTH2", "XOAUTH2"], server.Authentications);
+        Assert.Equal("refresh_token", Assert.Single(credentials.Handler.Requests).Form["grant_type"]);
+        Assert.Equal("ya29.renewed", credentials.Store.Tokens.Single().Value.AccessToken);
+    }
+
+    [Fact]
     public async Task Should_report_AuthenticationFailed_with_the_app_password_hint_When_Gmail_refuses_the_password()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, "the-real-password");

@@ -40,6 +40,22 @@ public sealed class ImapMailboxMessageTests
     }
 
     [Fact]
+    public async Task Should_serve_concurrent_calls_one_at_a_time_over_the_pooled_connection()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);
+        for (var i = 1; i <= 3; i++)
+            server.AddMessage("INBOX", MimeSamples.Plain(subject: $"Message {i}"));
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = Open(server, credentials);
+
+        var pages = await Task.WhenAll(Enumerable.Range(0, 6).Select(_ => mailbox.SearchAsync(new MailSearch { Limit = 3 }, Token)));
+
+        server.AssertHealthy();
+        Assert.All(pages, page => Assert.Equal(3, page.Messages.Count));
+        Assert.Equal(1, server.ConnectionCount);
+    }
+
+    [Fact]
     public async Task Should_hand_each_message_the_cursor_that_resumes_right_after_it()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);

@@ -14,7 +14,6 @@ public sealed class GraphClientTests
     private static CancellationToken Token => TestContext.Current.CancellationToken;
 
     [Theory]
-    [InlineData(HttpStatusCode.Unauthorized, "AuthenticationFailed", "Microsoft Graph refused the token of e-mail account 'hotmail': run `orkeon email login hotmail` again (InvalidAuthenticationToken: Lifetime validation failed).")]
     [InlineData(HttpStatusCode.Forbidden, "AuthenticationFailed", "Microsoft Graph denied the operation for account 'hotmail': check that the application holds the delegated permissions Mail.ReadWrite and Mail.Send (ErrorAccessDenied: Access is denied.).")]
     [InlineData(HttpStatusCode.NotFound, "MessageNotFound", "Microsoft Graph found no such item (moved or deleted): search again (ErrorItemNotFound: The specified object was not found in the store.).")]
     [InlineData(HttpStatusCode.RequestEntityTooLarge, "TooLarge", "Microsoft Graph refused the request as too large (ErrorMessageSizeExceeded: Too big.).")]
@@ -24,7 +23,6 @@ public sealed class GraphClientTests
         using var graph = new GraphFixture();
         var (errorCode, errorMessage) = status switch
         {
-            HttpStatusCode.Unauthorized => ("InvalidAuthenticationToken", "Lifetime validation failed"),
             HttpStatusCode.Forbidden => ("ErrorAccessDenied", "Access is denied."),
             HttpStatusCode.NotFound => ("ErrorItemNotFound", "The specified object was not found in the store."),
             HttpStatusCode.RequestEntityTooLarge => ("ErrorMessageSizeExceeded", "Too big."),
@@ -35,6 +33,66 @@ public sealed class GraphClientTests
         var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Client.GetJsonAsync(new Uri($"{Base}me/messages/x"), Token));
 
         Assert.Equal((Enum.Parse<EmailErrorCode>(code), message), (error.Code, error.Message));
+    }
+
+    [Fact]
+    public async Task Should_refresh_and_retry_once_When_Graph_refuses_a_token_that_looked_fresh()
+    {
+        using var graph = new GraphFixture();
+        graph.Http.Map(HttpMethod.Get, Base, request => request.Authorization == "Bearer renewed-token"
+            ? FakeHttpResponse.Json("""{"id":"me"}""")
+            : GraphFixture.Error(HttpStatusCode.Unauthorized, "InvalidAuthenticationToken", "Token revoked"));
+        graph.Http.Map(HttpMethod.Post, "https://login.microsoftonline.com/", FakeHttpResponse.Json("""{"access_token":"renewed-token","refresh_token":"rt-2","expires_in":3600}"""));
+
+        using var document = await graph.Client.GetJsonAsync(new Uri($"{Base}me"), Token);
+
+        Assert.Equal("me", document.RootElement.GetProperty("id").GetString());
+        Assert.Equal(["Bearer graph-access-token", "Bearer renewed-token"], graph.Http.RequestsTo(HttpMethod.Get, Base).Select(r => r.Authorization));
+        Assert.Equal("refresh_token", Assert.Single(graph.Http.RequestsTo(HttpMethod.Post, "https://login.microsoftonline.com/")).Form["grant_type"]);
+        Assert.Equal("renewed-token", graph.Credentials.Store.Tokens.Single().Value.AccessToken);
+    }
+
+    [Fact]
+    public async Task Should_take_the_token_a_new_sign_in_stored_meanwhile_without_refreshing()
+    {
+        using var graph = new GraphFixture();
+        var revoked = false;
+        graph.Http.Map(HttpMethod.Get, Base, request => request.Authorization switch
+        {
+            "Bearer signed-in-again" => FakeHttpResponse.Json("{}"),
+            "Bearer graph-access-token" when !revoked => FakeHttpResponse.Json("{}"),
+            _ => GraphFixture.Error(HttpStatusCode.Unauthorized, "InvalidAuthenticationToken", "Token revoked"),
+        });
+        using (await graph.Client.GetJsonAsync(new Uri($"{Base}me"), Token))
+        {
+            // The first call caches the stored token, as a long-lived host would.
+        }
+
+        revoked = true;
+        graph.Credentials.SeedFreshToken(graph.Account, "signed-in-again");
+
+        using var document = await graph.Client.GetJsonAsync(new Uri($"{Base}me"), Token);
+
+        Assert.Equal(
+            ["Bearer graph-access-token", "Bearer graph-access-token", "Bearer signed-in-again"],
+            graph.Http.RequestsTo(HttpMethod.Get, Base).Select(request => request.Authorization));
+        Assert.Empty(graph.Http.RequestsTo(HttpMethod.Post, "https://login.microsoftonline.com/"));
+    }
+
+    [Fact]
+    public async Task Should_ask_for_a_new_sign_in_When_Graph_refuses_the_refreshed_token_too()
+    {
+        using var graph = new GraphFixture();
+        graph.Http.Map(HttpMethod.Get, Base, GraphFixture.Error(HttpStatusCode.Unauthorized, "InvalidAuthenticationToken", "Lifetime validation failed"));
+        graph.Http.Map(HttpMethod.Post, "https://login.microsoftonline.com/", FakeHttpResponse.Json("""{"access_token":"renewed-token","expires_in":3600}"""));
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Client.GetJsonAsync(new Uri($"{Base}me/messages/x"), Token));
+
+        Assert.Equal(EmailErrorCode.AuthenticationFailed, error.Code);
+        Assert.Equal(
+            "Microsoft Graph refused the token of e-mail account 'hotmail': run `orkeon email login hotmail` again (InvalidAuthenticationToken: Lifetime validation failed).",
+            error.Message);
+        Assert.Equal(2, graph.Http.RequestsTo(HttpMethod.Get, Base).Count);
     }
 
     [Theory]

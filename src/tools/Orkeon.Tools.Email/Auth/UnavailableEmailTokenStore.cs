@@ -7,8 +7,9 @@ namespace Orkeon.Tools.Email.Auth;
 internal sealed class UnavailableEmailTokenStore : IEmailTokenStore
 {
     private const string Message =
-        "This host keeps no OAuth tokens for e-mail accounts. The `orkeon` runners provide a token store " +
-        "once an OAuth2 account is declared; a host of its own registers an IEmailTokenStore.";
+        "This host keeps no OAuth tokens for e-mail accounts. Use a password account here, or `orkeon run`, " +
+        "which keeps them once an OAuth2 account is declared and its token directory can be created (it warns " +
+        "at start when it cannot); a host of its own registers an IEmailTokenStore.";
 
     /// <inheritdoc />
     public Task<EmailTokenSet?> ReadAsync(string key, CancellationToken cancellationToken) =>

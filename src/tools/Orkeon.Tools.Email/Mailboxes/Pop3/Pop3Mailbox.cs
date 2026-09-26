@@ -11,9 +11,10 @@ namespace Orkeon.Tools.Email.Mailboxes.Pop3;
 /// A POP3 mailbox: the inbox, read and deleted, nothing else. POP3 has no folders, no marks and
 /// no server search, so a search scans the newest messages' headers client-side and everything
 /// else is refused with a message that says so. Each operation opens its own session: POP3
-/// locks the maildrop while connected, and deletions are committed at QUIT.
+/// locks the maildrop while connected, and deletions are committed at QUIT. The sessions of
+/// one account take turns — a second one at the same time would be refused as "in use".
 /// </summary>
-internal sealed class Pop3Mailbox : IMailbox
+internal sealed class Pop3Mailbox : IMailbox, IDisposable
 {
     private const string CursorPrefix = "o:";
     private const string SwitchToImap = "switch the account to IMAP (Incoming:Protocol Imap)";
@@ -24,6 +25,7 @@ internal sealed class Pop3Mailbox : IMailbox
     private readonly MailEndpoint _endpoint;
     private readonly IMailServiceConnector _connector;
     private readonly EmailCredentialProvider _credentials;
+    private readonly SemaphoreSlim _turn = new(1, 1);
 
     /// <summary>Creates the mailbox of <paramref name="account"/>.</summary>
     public Pop3Mailbox(ResolvedEmailAccount account, IMailServiceConnector connector, EmailCredentialProvider credentials)
@@ -142,11 +144,15 @@ internal sealed class Pop3Mailbox : IMailbox
     public Task AppendToSentAsync(MimeMessage message, CancellationToken cancellationToken) =>
         throw Unsupported("has no Sent folder to file a copy in: an operator sets SaveSentCopy to false, or " + SwitchToImap);
 
+    /// <inheritdoc />
+    public void Dispose() => _turn.Dispose();
+
     private async Task<T> RunAsync<T>(Func<Pop3Client, Task<T>> operation, CancellationToken cancellationToken)
     {
-        using var client = new Pop3Client();
+        await _turn.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
+            using var client = new Pop3Client();
             await MailKitSessions.OpenAsync(client, _endpoint, _account, _connector, _credentials, cancellationToken).ConfigureAwait(false);
             var result = await operation(client).ConfigureAwait(false);
             // QUIT commits the deletions; a session closed without it rolls them back.
@@ -156,6 +162,10 @@ internal sealed class Pop3Mailbox : IMailbox
         catch (Exception ex) when (MailKitSessions.Translate(ex, _account, _endpoint) is { } translated)
         {
             throw translated;
+        }
+        finally
+        {
+            _turn.Release();
         }
     }
 
