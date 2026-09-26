@@ -99,7 +99,7 @@ Source responsibility  : NotificationService
 → Constraints         : MaxIterations=3, MaxRpm=5
 ```
 
-**Key decision**: SMTP sending stays outside the agent perimeter — only the generation of the email content is ported. The actual sending is a mechanical operation that will be triggered by the calling system after receiving the Crew's result. A custom `SmtpSendTool` could be created if the sending must be integrated.
+**Key decision**: SMTP sending stays outside the agent perimeter — only the generation of the email content is ported. The actual sending is a mechanical operation that will be triggered by the calling system after receiving the Crew's result. If the sending must be integrated, the built-in `email_send` tool does it, restricted to the recipients an operator allows — or `email_draft` leaves each message in Drafts for a human to send (see [E-mail tools](./email.md)).
 
 ## Step 3 — Tool identification
 

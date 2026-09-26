@@ -111,6 +111,24 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 3. Ne jamais ajouter de fallback `System.IO` par chemin `string`. Il n'existe pas de constructeur de rétro-compatibilité — la DI est la seule voie de construction.
 4. Pour énumérer, streamer, copier ou observer, utiliser les méthodes dédiées de `IFileSystemService` plutôt que les primitives `System.IO` équivalentes (y compris `StreamReader`/`StreamWriter` — envelopper un `Stream` issu de `OpenReadStreamAsync`/`OpenWriteStreamAsync`, jamais un chemin).
 
+## Racines internes et accès privilégié
+
+Un runner monte pour lui-même quelques racines en montages **internes**
+(`Orkeon:FileSystem:InternalMounts`, `MountVisibility.Internal`) : `/llm-logs` (les fichiers
+d'échanges de `--llm-log`), `/sandbox` (où les sandboxes de code déposent ce qu'elles exécutent)
+et `/credentials` (les jetons OAuth des comptes e-mail — montée seulement quand un compte OAuth
+est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
+un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
+([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
+doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : le journal des
+échanges, les sandboxes de code et le magasin de jetons e-mail (`FileSystemEmailTokenStore`, que
+l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours par le VFS. Le seul
+`System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique
+`credentials` (réservé au propriétaire sous Unix) avant qu'aucun montage n'existe — du bootstrap
+`Hosting/Runner*`, une portée `EXCEPTION-BOOTSTRAP` déjà ratifiée, pas une nouvelle catégorie. Un
+montage utilisateur qui revendique l'une de ces racines est refusé (`RunnerVirtualRoots.All` ;
+`/credentials` dès qu'un compte OAuth est déclaré).
+
 ## Mounts par scope (surcharge ambiante des mounts)
 
 L'ensemble des mounts est un singleton défini au démarrage : `AddOrkeonFileSystem` construit un

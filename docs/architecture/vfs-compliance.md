@@ -109,6 +109,22 @@ These accesses cannot go through the VFS by nature and are **permanently** allow
 3. Never add a `string`-path `System.IO` fallback. There is no back-compat ctor — DI is the only construction path.
 4. If you need to enumerate, stream, copy, or watch, use the dedicated `IFileSystemService` methods rather than the equivalent `System.IO` primitives (including `StreamReader`/`StreamWriter` — wrap a `Stream` from `OpenReadStreamAsync`/`OpenWriteStreamAsync`, never a path).
 
+## Internal roots and privileged access
+
+A runner mounts a few roots for itself as **internal** mounts (`Orkeon:FileSystem:InternalMounts`,
+`MountVisibility.Internal`): `/llm-logs` (the `--llm-log` exchange files), `/sandbox` (where the
+code sandboxes stage what they run) and `/credentials` (the OAuth tokens of the e-mail accounts —
+mounted only when an OAuth account is declared). The registry refuses an internal mount to every
+ordinary caller and reports it like a path that does not exist, so no agent-facing tool can reach
+or even name one ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). The few
+components that must write there ask DI for `PrivilegedFileSystemAccess` by name: the exchange
+logger, the code sandboxes and the e-mail token store (`FileSystemEmailTokenStore`, which the
+runner host registers over `/credentials/email`). They still go through the VFS. The only raw
+`System.IO` on that path is the runner creating the physical `credentials` directory (owner-only
+on Unix) before any mount exists — `Hosting/Runner*` bootstrap, an already-ratified
+`EXCEPTION-BOOTSTRAP` scope, not a new category. A user mount claiming one of these roots is
+refused (`RunnerVirtualRoots.All`; `/credentials` as soon as an OAuth account is declared).
+
 ## Per-scope mounts (ambient mount override)
 
 The mount set is a boot-time singleton: `AddOrkeonFileSystem` builds one `FileSystemRegistry` from

@@ -26,7 +26,9 @@ distributed under the Apache License 2.0. Section 6 covers the embedded ECMAScri
 interpreter of the scripting DSL (`src/scripting/Orkeon.Scripting/`), distributed
 under the BSD 2-Clause License. Section 7 covers the cross-encoder
 reranker model embedded in `src/rag/Orkeon.Rag.Onnx.Model/`, distributed under
-the Apache License 2.0.
+the Apache License 2.0. Sections 8-10 cover the e-mail tool family
+(`src/tools/Orkeon.Tools.Email/`) — MailKit, MimeKit and MimeKit's cryptography
+dependency BouncyCastle.Cryptography — all distributed under the MIT License.
 
 **Which shipped artefacts actually embed model weights.** Two sets of weights leave
 this repository, and it is worth being explicit about where. (1) The **BGE-micro-v2**
@@ -545,3 +547,132 @@ which ships inside the NuGet package. Training data note: the model was trained
 on the MS MARCO passage-ranking dataset (Microsoft; the dataset itself carries a
 non-commercial research license, while the trained model is distributed by its
 authors under Apache-2.0).
+
+---
+
+## 8. MailKit
+
+- **Version**: `4.18.0` (pinned in `Directory.Packages.props`)
+- **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element) —
+  Copyright (C) 2013-2026 .NET Foundation and Contributors
+- **Source**: https://github.com/jstedfast/MailKit
+- **NuGet**: https://www.nuget.org/packages/MailKit
+- **Authors**: Jeffrey Stedfast (per the package's `<authors>` field in `MailKit.nuspec`)
+- **Role**: the IMAP, POP3 and SMTP clients of the e-mail tool family
+  (`src/tools/Orkeon.Tools.Email/Mailboxes/`), including their SASL `XOAUTH2`
+  authentication. Its assembly is redistributed inside the `orkeon` and `orkeon-repl`
+  dotnet tools and the installers built from the CLI (criterion (a)); the `Orkeon.Tools`
+  package references it as an ordinary NuGet dependency.
+
+MailKit 4.18.0 ships no separate license file. License text reproduced verbatim from the
+"License Information" section of the `docs/README.md` inside the package (the package's
+`<copyright>` field reads `.NET Foundation and Contributors`):
+
+```
+MIT License
+
+Copyright (C) 2013-2026 .NET Foundation and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+---
+
+## 9. MimeKit
+
+- **Version**: `4.18.1` (pinned in `Directory.Packages.props`, and referenced directly:
+  central package management pins no transitive version, and MailKit alone would resolve
+  its own minimum)
+- **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element) —
+  Copyright (C) 2012-2026 .NET Foundation and Contributors
+- **Source**: https://github.com/jstedfast/MimeKit
+- **NuGet**: https://www.nuget.org/packages/MimeKit
+- **Authors**: Jeffrey Stedfast (per the package's `<authors>` field in `MimeKit.nuspec`)
+- **Role**: the message model of the e-mail tool family — parsing and composing MIME for
+  every backend, Microsoft Graph included, and for `email_parser`
+  (`src/tools/Orkeon.Tools.Email/Mime/`). Redistributed like MailKit (criterion (a)).
+
+MimeKit 4.18.1 ships no separate license file. License text reproduced verbatim from the
+"License Information" section of the `docs/README.md` inside the package (the package's
+`<copyright>` field reads `.NET Foundation and Contributors`):
+
+```
+MIT License
+
+Copyright (C) 2012-2026 .NET Foundation and Contributors
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
+THE SOFTWARE.
+```
+
+Note (dependency footprint): on `net10.0`, `MimeKit 4.18.1` declares two dependencies:
+`BouncyCastle.Cryptography 2.7.0` (section 10) and `System.Security.Cryptography.Pkcs
+10.0.0`, a Microsoft .NET package under the MIT License.
+
+---
+
+## 10. BouncyCastle.Cryptography
+
+- **Version**: `2.7.0` (transitive: the version `MimeKit 4.18.1` declares; not pinned in
+  `Directory.Packages.props`)
+- **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element) —
+  Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org)
+- **Source**: https://github.com/bcgit/bc-csharp
+- **NuGet**: https://www.nuget.org/packages/BouncyCastle.Cryptography
+- **Authors**: Legion of the Bouncy Castle Inc. (per the package's `<authors>` field in
+  `BouncyCastle.Cryptography.nuspec`)
+- **Role**: the cryptography library MimeKit is built on (S/MIME, OpenPGP, DKIM). Orkeon
+  calls none of it directly, but the assembly travels with MimeKit into the `orkeon` and
+  `orkeon-repl` dotnet tools and the installers (criterion (a)).
+
+License text reproduced from the `LICENSE.md` inside the package, verbatim except for the
+Markdown bold markers around its disclaimer:
+
+```
+MIT License (https://opensource.org/licenses/MIT)
+
+Copyright (c) 2000-2026 The Legion of the Bouncy Castle Inc. (https://www.bouncycastle.org).
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and
+associated documentation files (the "Software"), to deal in the Software without restriction,
+including without limitation the rights to use, copy, modify, merge, publish, distribute,
+sub license, and/or sell copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions: The above copyright notice and this
+permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT
+NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
+DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
+OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```

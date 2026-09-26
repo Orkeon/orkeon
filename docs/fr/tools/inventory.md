@@ -4,10 +4,10 @@
 
 # Inventaire des tools Orkeon
 
-Cette page est le catalogue de référence des **79 classes de tools intégrées**. La règle
+Cette page est le catalogue de référence des **91 classes de tools intégrées**. La règle
 de comptage est celle qu'applique `scripts/check-doc-claims.py` : chaque fichier
 `*Tool.cs` sous `src/`, sauf l'interface (`IBaseTool.cs`) et l'infrastructure non-tool
-qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`). Le même script
+qui matche le glob (`MockTool.cs`, `JsTool.cs`, `ObservedTool.cs`, `AIAgentTool.cs`). Le même script
 vérifie que **chaque nom de tool ci-dessous existe dans le code et que chaque tool du
 code est nommé ici** — cette page ne peut plus dériver silencieusement de l'implémentation.
 
@@ -59,11 +59,10 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
-| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML, .eml, .msg) | `{ "file_path": "/data/report.txt" }` |
+| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML et assimilés — un message `.eml` passe par `email_parser`) | `{ "file_path": "/data/report.txt" }` |
 | `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire du contenu dans un fichier, en créant les dossiers si nécessaire | `{ "file_path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
 | `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "directory": "/data", "pattern": "*.csv", "recursive": true }` |
 | `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire | `{ "directory": "/docs", "query": "deployment instructions", "file_pattern": "*.md" }` |
-| `email_parser` | `EmailParserTool` | `FileToolBase<EmailParserRequest, EmailParserResponse>` | Parser des emails .eml/.msg et extraire en-têtes, corps, pièces jointes | `{ "file_path": "/emails/invoice.eml" }` |
 | `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "file_path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
 
 ## Tools de données (`Orkeon.Tools.Data`) — `AddOrkeonDataTools()`
@@ -131,6 +130,34 @@ La sémantique complète vit dans [EventHub et le cycle de vie du crew](../archi
 | `wait_for_event` | `WaitForEventTool` | Attendre le prochain événement d'un topic (exactement un de `timeout_ms`/`wait_forever`) |
 | `get_last_value` | `GetLastValueTool` | Lire la dernière charge retenue pour une clé (cache dernière-valeur) |
 
+## Tools e-mail (`Orkeon.Tools.Email`) — `AddOrkeonEmailTools(configuration)`
+
+Treize tools sur les comptes qu'un opérateur déclare sous `Orkeon:Tools:Email` : IMAP, POP3 et
+SMTP via MailKit, Outlook.com et Microsoft 365 via Microsoft Graph. La famille reste inerte tant
+qu'aucun compte n'est déclaré. Un agent nomme un compte (`account`, ou celui par défaut) — jamais
+un serveur ni un identifiant — et les `Rights` du compte décident de ce qu'il peut faire ;
+`email_send` n'atteint que les destinataires qu'autorise la liste `Send:AllowedRecipients` du
+compte. Les ids de message sont opaques : repassez-les tels que `email_search` les a rendus. La
+colonne **Accès** est la classe que voit la [permission gate](../reference/opt-in-subsystems.md).
+Mise en place pour Gmail, Hotmail/Outlook.com et votre propre serveur, modèle de sécurité et
+commandes `orkeon email` : [Outils e-mail](../guides/email.md).
+
+| Tool | Classe | Droit requis | Accès | Cas d'usage | Exemple d'appel |
+|-------|--------|------|------|-------------|-----------------|
+| `email_accounts` | `EmailAccountsTool` | aucun | Read | Lister les comptes configurés : le nom à passer en `account`, leurs droits, si chacun est prêt | `{}` |
+| `email_folders` | `EmailFoldersTool` | Read | Read | Lister les dossiers avec leur rôle (inbox, sent, drafts, trash, junk, archive) et leurs compteurs | `{ "account": "work" }` |
+| `email_search` | `EmailSearchTool` | Read | Read | Chercher dans un dossier, du plus récent au plus ancien : non lus, suivis, expéditeur, destinataire, objet, texte, dates, pièces jointes, ou une `raw_query` native (syntaxe de recherche Gmail, KQL Outlook) ; 10 par page par défaut, 50 au plus, `cursor` pour la page suivante | `{ "folder": "inbox", "unread_only": true, "since": "2026-09-01" }` |
+| `email_read` | `EmailReadTool` | Read (+ Organize avec `mark_read`) | Read | Lire un message : l'avis de contenu non fiable et le verdict de filtrage d'abord, puis les en-têtes, les pièces jointes et le corps par tranches (`offset`, `max_chars` 200–3000, 2500 par défaut, puis `next_offset`) | `{ "id": "<id rendu par email_search>" }` |
+| `email_save_attachment` | `EmailSaveAttachmentTool` | Read, plus un montage accessible en écriture | Edit | Enregistrer une pièce jointe (`index`) ou toutes dans un répertoire virtuel ; noms assainis, rien n'est écrasé | `{ "id": "…", "directory": "/output/attachments" }` |
+| `email_create_folder` | `EmailCreateFolderTool` | Organize | Edit | Créer un dossier (un libellé sur Gmail) ; les parents manquants sont créés | `{ "path": "Clients/ACME" }` |
+| `email_rename_folder` | `EmailRenameFolderTool` | Organize | Edit | Renommer le dernier segment d'un dossier ; les dossiers système sont refusés | `{ "path": "Clients/ACME", "new_name": "ACME Corp" }` |
+| `email_move` | `EmailMoveTool` | Organize | Edit | Déplacer des messages vers un chemin de dossier ou un rôle ; rend le nouvel id de chaque message quand le serveur le donne | `{ "ids": ["…"], "destination": "archive" }` |
+| `email_mark` | `EmailMarkTool` | Organize | Edit | Marquer lu ou non lu (`seen`), suivre ou non (`flagged`, une étoile sur Gmail) | `{ "ids": ["…"], "seen": true }` |
+| `email_delete` | `EmailDeleteTool` | Delete ; Purge avec `permanent: true` | Execute | Mettre des messages à la corbeille, ou les supprimer définitivement | `{ "ids": ["…"] }` |
+| `email_draft` | `EmailDraftTool` | Draft (+ Read pour répondre ou transférer) | Edit | Enregistrer un nouveau message, une réponse (`reply_to_id`, `reply_all`) ou un transfert (`forward_id`) dans les brouillons sans l'envoyer — la voie de la relecture humaine, sans liste d'autorisation | `{ "to": ["client@example.com"], "subject": "Devis", "text": "…" }` |
+| `email_send` | `EmailSendTool` | Send (+ Read pour répondre ou transférer) | Execute | Envoyer un nouveau message, une réponse ou un transfert aux destinataires qu'autorise `Send:AllowedRecipients` (une liste vide n'autorise personne) ; `From` est toujours le compte | `{ "reply_to_id": "…", "text": "Bien reçu, merci." }` |
+| `email_parser` | `EmailParserTool` | aucun (pas de compte) | Read | Parser un fichier `.eml` depuis un chemin virtuel ; même sortie que `email_read` | `{ "path": "/workspace/mail/invoice.eml" }` |
+
 ## Tools d'analyse de codebase (`Orkeon.Tools.Analysis`) — `AddRaggableTreeTools()`
 
 Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet est
@@ -169,7 +196,7 @@ Quinze tools sur le graphe sémantique de code RaggableTree — le guide complet
 
 ## Hors catalogue
 
-Délibérément **hors** des 79 classes de tools intégrées :
+Délibérément **hors** des 91 classes de tools intégrées :
 
 - `brief_submit` / `blueprint_submit` — internes à la commande `orkeon forge`
   (`ForgeSubmission.cs`, `Orkeon.Scripting.Cli`) ; les agents du moteur les utilisent,
@@ -178,25 +205,29 @@ Délibérément **hors** des 79 classes de tools intégrées :
   externe en `IBaseTool` ; son nom est celui du tool distant, décidé à l'exécution
   (voir [MCP](../architecture/mcp.md)).
 - `JsTool` (tools dynamiques définis en script), `MockTool` (double de test),
-  `ObservedTool` (décorateur de télémétrie) — infrastructure qui matche le glob de
-  fichiers, exclue par la règle de comptage.
+  `ObservedTool` (décorateur de télémétrie) et `AIAgentTool`
+  (`Orkeon.Interop.AgentFramework` — enveloppe un agent Microsoft Agent Framework que vous
+  fournissez) — infrastructure qui matche le glob de fichiers, exclue par la règle de
+  comptage.
 
 ## Synthèse par catégorie
 
-En comptant les **classes de tools concrètes** avec la règle énoncée en tête de page
-(le « 75+ outils intégrés » du README plancher ce nombre) :
+En comptant les **classes de tools concrètes** avec la règle énoncée en tête de page —
+le nombre qu'affichent le README et l'index de la documentation, vérifié par
+`scripts/check-doc-claims.py` :
 
 | Package | Classes de tools |
 |---------|--------------|
 | `Orkeon.Tools.Data` | 22 |
 | `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 15 |
+| `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
 | `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
-| `Orkeon.Tools.FileSystem` | 6 |
+| `Orkeon.Tools.FileSystem` | 5 |
 | `Orkeon.Tools.Rag` | 3 |
 | `Orkeon.Tools.Abstractions` / `Orkeon.Tools.Code` / `Orkeon.Tools.Embeddings.Local` / `Orkeon.Cli.Commands.Scripting` | 1 chacun |
-| **Total** | **79** |
+| **Total** | **91** |
 
 ## Disponibilité par racine de composition
 
@@ -206,7 +237,8 @@ le REPL.
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
-| FileSystem (6), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| FileSystem (5), Data (22), Web cœur (5), `shell_command`, `list_mounts`, session (6) | ✅ | ✅ |
+| E-mail (13) — inertes tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
 | `local_embed_text` | ✅ (provider d'embeddings local par défaut) | ✅ |
@@ -221,6 +253,11 @@ le REPL.
 | `spawn_agent` | ❌ (l'hôte doit l'enregistrer) | ❌ |
 | `code_interpreter` | enregistrement en type concret seulement — non résoluble par nom | idem |
 | `progress_report` | ❌ | ✅ (commandes scriptées) |
+
+`orkeon forge` s'appuie sur l'hôte des runners mais retire `shell_command`,
+`code_interpreter` et les douze tools de boîte aux lettres du catalogue où puise un crew
+forgé : un crew essayé sur le banc de test ne doit pas atteindre la vraie boîte de
+l'opérateur (`email_parser`, qui lit un fichier, reste).
 
 ## Résolution des tools par nom (YAML → instance)
 
@@ -245,7 +282,7 @@ Les tools sont enregistrés dans `IToolRegistry` au démarrage de l'application 
 extensions DI (chaque table ci-dessus nomme celle qui possède ses tools) :
 
 ```csharp
-services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, email_parser, count_pattern
+services.AddOrkeonFileSystemTools();   // file_read, file_write, directory_read, directory_search, count_pattern
 services.AddOrkeonDataTools();         // les 22 tools de données (relationnel + MongoDB + graphe chaînés en interne)
 services.AddOrkeonWebTools();          // http_api, web_scrape, scrape_element, github, image_generation
 services.AddOrkeonCodeTools();         // shell_command
@@ -253,6 +290,7 @@ services.AddOrkeonAbstractionTools();  // list_mounts
 services.AddOrkeonSessionTools();      // session_store, session_snip, session_stats, session_cost, token_budget, memory_store
 services.AddOrkeonInMemoryEventHub();
 services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
+services.AddOrkeonEmailTools(configuration); // les 13 tools email_*, inertes tant qu'aucun compte n'est déclaré
 services.AddRaggableTreeTools();       // les 15 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
 services.AddSemanticSearchTool();      // semantic_search (Orkeon.Hosting)
@@ -288,7 +326,19 @@ correspondance alphabétique complète :
 | `directory_search` | `DirectorySearchTool` | `Orkeon.Tools.FileSystem` |
 | `docx_reader` | `DocxReadTool` | `Orkeon.Tools.Data` |
 | `docx_writer` | `DocxWriteTool` | `Orkeon.Tools.Data` |
-| `email_parser` | `EmailParserTool` | `Orkeon.Tools.FileSystem` |
+| `email_accounts` | `EmailAccountsTool` | `Orkeon.Tools.Email` |
+| `email_create_folder` | `EmailCreateFolderTool` | `Orkeon.Tools.Email` |
+| `email_delete` | `EmailDeleteTool` | `Orkeon.Tools.Email` |
+| `email_draft` | `EmailDraftTool` | `Orkeon.Tools.Email` |
+| `email_folders` | `EmailFoldersTool` | `Orkeon.Tools.Email` |
+| `email_mark` | `EmailMarkTool` | `Orkeon.Tools.Email` |
+| `email_move` | `EmailMoveTool` | `Orkeon.Tools.Email` |
+| `email_parser` | `EmailParserTool` | `Orkeon.Tools.Email` |
+| `email_read` | `EmailReadTool` | `Orkeon.Tools.Email` |
+| `email_rename_folder` | `EmailRenameFolderTool` | `Orkeon.Tools.Email` |
+| `email_save_attachment` | `EmailSaveAttachmentTool` | `Orkeon.Tools.Email` |
+| `email_search` | `EmailSearchTool` | `Orkeon.Tools.Email` |
+| `email_send` | `EmailSendTool` | `Orkeon.Tools.Email` |
 | `file_read` | `FileReadTool` | `Orkeon.Tools.FileSystem` |
 | `file_write` | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
 | `flow_trace` | `FlowTraceTool` | `Orkeon.Tools.Analysis` |
@@ -379,9 +429,9 @@ Les catégories suivantes ne sont pas couvertes par les tools existants :
 
 - **Écriture de fichiers structurés** : `docx_writer` et `xlsx_writer` couvrent Word et Excel, mais il n'y a pas d'écrivain structuré CSV ou PDF. `FileWriteTool` n'écrit que du texte brut (un CSV peut bien sûr s'écrire comme du texte).
 - **Transformation de données** : pas de tool ETL pour convertir entre formats (CSV → JSON, XML → CSV, etc.).
-- **Notifications et alertes** : pas de tool pour envoyer des emails (l'email n'est couvert qu'en lecture/parsing).
+- **Notifications et alertes** : l'e-mail est couvert — `email_send`, limité à la liste d'autorisation de chaque compte (voir [Outils e-mail](../guides/email.md)) — et Slack par un opt-in de l'hôte ; il n'y a pas de tool SMS, push ou Teams.
 - **Contrôle de version** : pas de tool Git natif pour commit, branche, diff (`shell_command` autorise par défaut les sous-commandes git en lecture seule).
 - **Calendrier / Planification** : pas de tool pour interagir avec des calendriers (Google Calendar, Outlook, etc.).
 - **Stockage cloud** : pas de tool pour interagir avec S3, Azure Blob, GCS.
-- **Authentification OAuth** : pas de tool générique pour les flux OAuth exigés par des APIs tierces.
+- **Authentification OAuth** : pas de tool générique pour les flux OAuth exigés par des APIs tierces — OAuth n'existe que pour les comptes e-mail, connectés une fois avec `orkeon email login`.
 - **Traitement d'images** : `MultiModalProcessor` existe dans l'infrastructure mais n'est pas exposé comme tool.

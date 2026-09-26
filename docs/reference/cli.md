@@ -2,7 +2,7 @@
 
 # `orkeon` CLI reference
 
-The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
+The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, signs e-mail accounts in, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -24,7 +24,7 @@ Runs a crew definition and prints its result on stdout. Dispatch is by target ty
 | Option | Description |
 |---|---|
 | `-s, --settings <path>` | Path to `appsettings.json`. Without it, a fallback chain applies (below). |
-| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Several mounts go **space-separated after one flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A Windows drive letter needs nothing special (`C:\src:/workspace:ro`); a path the bare form cannot carry — one containing a `:` or a `;`, or ending with a backslash — is **quoted**: `"/data/odd:name":/data:ro`, `"C:\src\":/workspace:ro`. Those double quotes belong to the *mount* grammar, so your shell must not eat them: write the whole spec inside single quotes in bash/zsh (`--mount '"/data/odd:name":/data:ro'`) and double the quotes in PowerShell (`--mount '""/data/odd:name"":/data:ro'`). Backslashes are never escape characters. The virtual path is always a name starting with `/` — never a disk path ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)), and `/crew`, `/script`, `/llm-logs` and `/sandbox` are reserved by the runner (`RunnerVirtualRoots.All`): a mount claiming one is refused with exit 1, and refused the same way whether it was written here or declared in the settings file — the guard reads both, and names the roots *this* command reserves rather than a fixed list. `orkeon forge` reserves only `/sandbox`: it takes no `--mount`, mounts `/workspace`, `/forge` and `/output` itself, and places those three against the settings exactly as a `--mount` is placed (next sentence) — a settings entry on one of them is replaced for the trial, so a settings file naming `/output`, an ordinary mount for a normal run and the name Studio gives a team's write folder, forges unchanged. **Against the settings file, a `--mount` is placed by virtual root**: on a root `Orkeon:FileSystem:Mounts` already declares (settings file or `ORKEON_` environment), the `--mount` **replaces every settings entry of that root for this run** — it is written at the first entry's own index, the others are withdrawn, and the log says `mount /x: --mount replaces the settings entry`; on a new root it is **appended** after every declared entry. Settings entries no `--mount` names stay in force. A root is a duplicate only when one *source* claims it twice and nothing can tell the claims apart: two `--mount` on the same root (`--mount a:/x:ro b:/x:rw`), or a settings file declaring one root twice with an entry that carries no id (next row), are refused with exit 1 and one line (`ERROR: '/x' is mounted twice on the command line: … Keep one.` / `… declared twice in <settings> (…) and '<entry>' has no id. Give every entry an id …`) before any host is built. |
+| `-m, --mount <spec>` | VFS mount, Docker-style `<physical>:<virtual>:<rights>[;sub:rights]`. Several mounts go **space-separated after one flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A Windows drive letter needs nothing special (`C:\src:/workspace:ro`); a path the bare form cannot carry — one containing a `:` or a `;`, or ending with a backslash — is **quoted**: `"/data/odd:name":/data:ro`, `"C:\src\":/workspace:ro`. Those double quotes belong to the *mount* grammar, so your shell must not eat them: write the whole spec inside single quotes in bash/zsh (`--mount '"/data/odd:name":/data:ro'`) and double the quotes in PowerShell (`--mount '""/data/odd:name"":/data:ro'`). Backslashes are never escape characters. The virtual path is always a name starting with `/` — never a disk path ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)), and `/crew`, `/script`, `/llm-logs` and `/sandbox` are reserved by the runner (`RunnerVirtualRoots.All`): a mount claiming one is refused with exit 1, and refused the same way whether it was written here or declared in the settings file — the guard reads both, and names the roots *this* command reserves rather than a fixed list. `/credentials` is reserved as well as soon as the settings declare an OAuth e-mail account — the runner keeps the tokens there ([`orkeon email`](#orkeon-email)) — and a mount claiming it is then refused before the run starts. `orkeon forge` reserves only `/sandbox`: it takes no `--mount`, mounts `/workspace`, `/forge` and `/output` itself, and places those three against the settings exactly as a `--mount` is placed (next sentence) — a settings entry on one of them is replaced for the trial, so a settings file naming `/output`, an ordinary mount for a normal run and the name Studio gives a team's write folder, forges unchanged. **Against the settings file, a `--mount` is placed by virtual root**: on a root `Orkeon:FileSystem:Mounts` already declares (settings file or `ORKEON_` environment), the `--mount` **replaces every settings entry of that root for this run** — it is written at the first entry's own index, the others are withdrawn, and the log says `mount /x: --mount replaces the settings entry`; on a new root it is **appended** after every declared entry. Settings entries no `--mount` names stay in force. A root is a duplicate only when one *source* claims it twice and nothing can tell the claims apart: two `--mount` on the same root (`--mount a:/x:ro b:/x:rw`), or a settings file declaring one root twice with an entry that carries no id (next row), are refused with exit 1 and one line (`ERROR: '/x' is mounted twice on the command line: … Keep one.` / `… declared twice in <settings> (…) and '<entry>' has no id. Give every entry an id …`) before any host is built. |
 | `--mount-id <ulid>` | Selects, among several settings entries declaring **one virtual root**, the entry this run keeps (VFS-90). A settings entry may carry an id — the 26-character ULID before its `|`, `01J9Z3K4M5N6P7Q8R9S0T1V2W3|C:\data:/output:rw`; Orkeon Studio writes one on every save — and two entries may share a root only when both carry one. Several ids go **space-separated after one flag**, like `--mount`. The entry named is kept as declared (folder, rights); the other entries of its root are **withdrawn for the run** — not mounted, not whitelisted, their folder not probed. Without the option, the crew's `mounts:` block (`<ulid>|/output`, see the [YAML schema](../architecture/yaml-schema.md)) selects the same way; with neither, a root declared several times is refused with exit 1 and one line naming every id (`ERROR: '/output' is declared twice in <settings> (<idA>: <folderA>, <idB>: <folderB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`). An id no entry carries, or a malformed one, is refused the same way; a `--mount` on the same root wins over the option, with a `WARNING:` line; a root the crew requires that nothing provides is refused too (`the crew requires '/output' … pass --mount <folder>:/output:rw`). Agents never see an id: `list_mounts` and the access-denied messages name virtual paths only. |
 | `--allow-external-mounts` | Allow `--mount` arguments outside the working directory (or `ORKEON_ALLOW_EXTERNAL_MOUNTS=1`): each `--mount` base path is added to the `PathSecurity:AdditionalAllowedDirectories` whitelist `PathValidator` checks resolved paths against, after whatever the settings already list there. A mount **declared in the settings file** (or through `ORKEON_` variables) needs no flag: its base path is always whitelisted, because a declared folder is the machine owner's explicit intent — until then such a folder was mounted and every access to it refused as "outside the allowed workspace directory", and no flag could rescue it. |
 | `-v, --verbose <0-2>` | `0` quiet, `1` LLM & tool exchanges, `2` full debug. |
@@ -193,6 +193,45 @@ Three verbs over the RAG subsystem (`ingest`, `search`, `eval`). All share the h
 orkeon rag eval --dataset examples/rag/eval/golden.yaml \
   --compare fast,balanced,quality,corrective,adaptive --offline
 ```
+
+## `orkeon email`
+
+```bash
+orkeon email accounts [--settings <file>] [--json]   # the declared accounts, their rights, whether each is ready
+orkeon email login <account> [--settings <file>]     # sign an OAuth2 account in and store its tokens
+orkeon email logout <account> [--settings <file>]    # forget the stored tokens of an account
+orkeon email check <account> [--settings <file>]     # connect, authenticate, list the folders
+```
+
+The operator's side of the e-mail tools ([guide](../guides/email.md)): what is declared under
+`Orkeon:Tools:Email`, the one interactive step an OAuth2 account needs, and a connection check.
+Agents never run these — a tool that finds no usable token answers
+"run `orkeon email login <account>`".
+
+- **`accounts`** lists every declared account — its preset, how it reads and sends, how it
+  signs in, its rights, whether it is the default — and says `ready`, or what to fix: an
+  invalid declaration, a password variable that is not set, a sign-in still to do. It opens no
+  connection and prints no secret; `--json` writes the same list as JSON.
+- **`login`** signs an OAuth2 account in. A Microsoft account uses the device-code flow: the
+  command prints the verification address Microsoft returns and a code, and waits while you
+  sign in from any browser. A Google account uses the authorization code with PKCE: the
+  command prints Google's authorization address and listens on a free port of `127.0.0.1`;
+  when the browser cannot reach this machine (WSL, a container, an SSH session), paste the
+  address the browser ends on into the terminal. The tokens go to the runner's internal
+  `/credentials` root ([where the tokens live](../guides/email.md#where-the-tokens-live)). A
+  password account has nothing to log in to and is refused.
+- **`logout`** deletes the stored tokens of an account, and says so when there were none.
+- **`check`** connects, authenticates and lists the folders, then prints how many there are
+  and the inbox counts.
+
+`-s, --settings <path>` resolves like `orkeon run`, anchored at the current directory: the
+explicit file, else `appsettings.json` in the current directory, else an
+`appsettings/appsettings.json` found walking up, else the per-user file of `orkeon init`.
+Exit codes: `0` success, `1` usage, configuration or refusal (an unknown account, a variable
+that is not set, a sign-in to do, a missing right or capability), `2` what the network or the
+server did (a connection failure, credentials the server refused), `130` Ctrl+C. The verb is
+matched before crew-path detection, like every verb: a crew folder named `email` runs as
+`orkeon run email`.
 
 ## `orkeon doctor`
 

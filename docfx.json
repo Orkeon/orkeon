@@ -16,6 +16,7 @@
             "src/tools/Orkeon.Tools.Analysis/bin/Release/net10.0/Orkeon.Tools.Analysis.dll",
             "src/tools/Orkeon.Tools.Code/bin/Release/net10.0/Orkeon.Tools.Code.dll",
             "src/tools/Orkeon.Tools.Data/bin/Release/net10.0/Orkeon.Tools.Data.dll",
+            "src/tools/Orkeon.Tools.Email/bin/Release/net10.0/Orkeon.Tools.Email.dll",
             "src/tools/Orkeon.Tools.Embeddings.Local/bin/Release/net10.0/Orkeon.Tools.Embeddings.Local.dll",
             "src/tools/Orkeon.Tools.EventHub/bin/Release/net10.0/Orkeon.Tools.EventHub.dll",
             "src/tools/Orkeon.Tools.FileSystem/bin/Release/net10.0/Orkeon.Tools.FileSystem.dll",

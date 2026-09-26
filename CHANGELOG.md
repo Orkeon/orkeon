@@ -7,6 +7,93 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — native e-mail tools: IMAP, POP3, SMTP and Microsoft Graph, Gmail and Outlook presets, OAuth2 sign-in (MAIL-01..06)
+
+- **A new tool family, `Orkeon.Tools.Email`** — the eighth of the `Orkeon.Tools` umbrella, and
+  the second motivated exception to the scope freeze, decided by the owner on 2026-09-26 (an
+  `.ork.ts` script cannot open a socket, and a plugin would not put e-mail in Orkeon itself;
+  [ADR-012](docs/adr/ADR-012-email-tool-family.md)). Thirteen tools: `email_accounts`,
+  `email_folders`, `email_search`, `email_read`, `email_save_attachment`,
+  `email_create_folder`, `email_rename_folder`, `email_move`, `email_mark`, `email_delete`,
+  `email_draft`, `email_send`, and `email_parser`, rebuilt (below). Built-in tool classes go
+  from 79 to 91.
+- **Three backends, one message model.** MailKit 4.18.0 and MimeKit 4.18.1 (MIT) for IMAP,
+  POP3 and SMTP; Microsoft Graph over plain HTTP — no SDK — for Outlook.com, Hotmail and
+  Microsoft 365, read and written as MIME, with ids that survive a move. Presets: `Gmail`
+  (`imap.gmail.com:993` or `pop.gmail.com:995`, `smtp.gmail.com:465`), `Outlook` (Graph by
+  default; an IMAP/POP3 + SMTP variant exists and inherits Microsoft's consumer IMAP OAuth
+  regression of 2026-09-24), `Custom` (explicit hosts, password only). TLS only; `None` towards
+  a loopback test server only.
+- **Configuration `Orkeon:Tools:Email`**, validated at first use with every problem reported at
+  once: `DefaultAccount`, `CredentialsDirectory`, `Screening:WithholdRejected`, and per account
+  `Provider`, `Address`, `DisplayName`, a **mandatory** `Rights` list (`Read`, `Organize`,
+  `Draft`, `Send`, `Delete`, `Purge`), `Incoming`, `Outgoing`, `Auth`, `Send`, `TimeoutSeconds`,
+  `SaveSentCopy`. Secrets are only ever the **names** of environment variables.
+- **Guard rails that do not rely on the model.** An agent names an account, never a server or
+  a credential. Sending fails closed: `Send:AllowedRecipients` (address, `*@domain`, `*`) empty
+  means nobody; the SMTP envelope is the checked list, passed explicitly; `From` is forced;
+  `MaxRecipients` / `MaxPerHour` cap the volume; `email_draft` is the human-review path. Every
+  read result opens with an untrusted-content notice and carries the verdict of the RAG
+  prompt-injection detector, run on the rendered text; HTML-hidden text is left out and flagged.
+  Each tool declares its `ToolAccess`, and `orkeon forge` keeps the twelve mailbox tools out of
+  forged crews.
+- **OAuth2, written by hand, and `orkeon email`.** Device code for Microsoft, authorization code
+  with PKCE on a `127.0.0.1` listener for Google — with a paste-the-address fallback for WSL,
+  containers and SSH — and refresh with rotation; no MSAL, no Google SDK. The new verb
+  `orkeon email accounts | login | logout | check` lists the accounts and their readiness
+  without network, signs an account in, forgets its tokens, checks a connection. The tools never
+  sign in themselves.
+- **Tokens in a new internal VFS root, `/credentials`** (`RunnerVirtualRoots.Credentials`),
+  mounted by the runner host only when an OAuth account is declared and written through
+  `PrivilegedFileSystemAccess`; physically `<per-user settings directory>/credentials/email/`,
+  owner-only on Unix, or `CredentialsDirectory` for a service. A user mount claiming
+  `/credentials` is refused. The files are plain JSON — out of reach of the VFS tools, not of a
+  shell or code tool running as the same user.
+- **Everywhere a tool family shows up.** `AddOrkeonEmailTools(configuration)` is called by the
+  runner host (`orkeon run`, scripts, `orkeon-host`) and by `orkeon-repl`, where OAuth accounts
+  are refused for want of a token store; the `Orkeon.Tools` umbrella embeds the assembly; Studio
+  lists the family, twelve of its tools with a new "e-mail account" requirement, in its five
+  languages; the scripting typings declare `tools.email*` — arguments and results keep the
+  tools' own snake_case keys (`unread_only`, `reply_to_id`, `new_name`) — with
+  `examples/scripting/13-email-triage.ork.ts`. Documentation: the
+  [e-mail guide](docs/guides/email.md), the tool inventory, security, configuration, CLI,
+  limitations and VFS pages, ADR-012 and the `SECURITY.md` threat model, EN and FR.
+  `THIRD-PARTY-NOTICES.md` gains MailKit, MimeKit and BouncyCastle.Cryptography, now
+  redistributed inside the `orkeon` and `orkeon-repl` tools and the installers.
+- **Campaign-pending.** Nothing has run against a real Gmail or Hotmail account yet: the live
+  campaign is the owner's (MAIL-07).
+
+### Changed — `email_parser` moves to `Orkeon.Tools.Email`, rebuilt on MimeKit **[breaking]**
+
+- **Registration.** `AddOrkeonFileSystemTools()` no longer registers `email_parser`;
+  `AddOrkeonEmailTools(configuration)` does, and both shipped runners call it — a crew listing
+  `email_parser` under `orkeon run` or `orkeon-repl` needs no change. A host of your own adds
+  the call. The public types `Orkeon.Tools.FileSystem.EmailParserTool`, `EmailParserRequest`,
+  `EmailParserResponse` and `EmailAttachmentInfo` are removed, no shim.
+- **Parameters.** `path` (the virtual path of the `.eml` file), `offset` and `max_chars` (the
+  body comes in slices of 200 to 3000 characters, 2500 by default; `next_offset` continues).
+  `extract_attachments` and `parse_html` are gone: attachments are always listed and HTML is
+  always rendered as text.
+- **Output.** The shape of `email_read`: `notice`, `security` (the prompt-injection verdict),
+  `message_id`, `from`, `reply_to`, `to`, `cc`, `date`, `subject`, `attachments` (`index`,
+  `file_name`, `content_type`, `size_bytes`, `inline`), `text_offset`, `text_length`,
+  `next_offset`, `text` — with `folder` set to the file's path. Migration: read `text` where
+  `body` was; `headers` and `priority` have no successor; an attachment's `filename` becomes
+  `file_name` and its `encoded_size` / `estimated_size` become one `size_bytes`.
+- **`.msg` is no longer supported.** It was never parsed — the old tool returned a placeholder
+  for it. Save an Outlook message as `.eml` before handing it to `email_parser`.
+
+### Fixed — a whole number from an `.ork.ts` script passes an integer tool parameter (MAIL-05)
+
+- **Scripts could not pass an integer to a typed tool.** Every number a script passes reaches
+  the tool as a `double` — Jint maps each JavaScript number to `System.Double` — and
+  `ToolParameterValidator` accepted only `int` and `long` for an `integer` parameter, so
+  `tools.emailSearch({ limit: 20 })`, like a script call to any typed tool with an integer
+  parameter, was refused with "invalid type. Expected: integer". A finite whole number now
+  passes whatever carries it — a `double`, a `float`, a `decimal` or a smaller integer type —
+  which is JSON Schema's own definition of an integer; the typed deserializer already turned
+  `20.0` into `20`. Found while typing the e-mail tools for scripts.
+
 ### Fixed — Studio finds the CLI it was installed with on Windows
 
 - **The zip and MSI installs no longer leave Studio without an engine.** Studio lives in

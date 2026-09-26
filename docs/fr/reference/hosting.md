@@ -106,7 +106,11 @@ L'ordre d'enregistrement est délibéré :
    `Orkeon:Security:PermissionGate:Enabled` ; no-op sinon).
 6. **Suites d'outils cœur** — système de fichiers, data, web, code, abstractions, outils de
    session ; puis l'EventHub en mémoire plus ses outils agents et l'ACL EventHub
-   (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` se comporte comme avant).
+   (`AddOrkeonEventHubAcl`, défaut permissif : une crew sans bloc `links:` se comporte comme avant) ;
+   puis les outils e-mail (`AddOrkeonEmailTools(configuration)`, inertes tant qu'aucun compte n'est
+   déclaré) et, quand un compte e-mail OAuth est déclaré, leur magasin de jetons sur la racine
+   interne `/credentials` — montée par l'étape de configuration, atteinte par
+   `PrivilegedFileSystemAccess`.
 7. **Montages VFS** — `AddOrkeonFileSystem` quand `Orkeon:FileSystem:Mounts` **ou**
    `Orkeon:FileSystem:InternalMounts` existe **et contient au moins une entrée** (deux tableaux
    vides n'enregistrent rien). L'une ou l'autre liste suffit à rendre le VFS réel : `--list-tools`

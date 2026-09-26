@@ -215,7 +215,8 @@ Every number below is recomputed from the tree on each CI run — `bash scripts/
 
 | Capability | Details |
 |---|---|
-| **79 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
+| **91 built-in tools** | File system, web scraping (AngleSharp), HTTP APIs, JSON/CSV/XML/PDF/Office (DOCX & XLSX read/write), databases, e-mail, secure code execution, RAG and semantic search, EventHub messaging, RaggableTree code analysis, delegation/collaboration — see the [tool inventory](docs/tools/inventory.md) |
+| **E-mail** | Thirteen `email_*` tools give agents a mailbox: IMAP, POP3 and SMTP through MailKit, Outlook.com / Hotmail / Microsoft 365 through Microsoft Graph, Gmail and Outlook presets, OAuth2 signed in once with `orkeon email login`. Per-account rights, a send allow-list that is closed until an operator opens it, and every message read screened for prompt injection. Live campaign against real accounts pending — see the [e-mail guide](docs/guides/email.md) |
 | **16 LLM providers** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) and MiniMax, plus two aggregators — OpenRouter (one key, a 445-model marketplace) and Mammouth AI (a subscription's included credits) — all HTTP-based, extending `HttpLlmProviderBase`; local models via Docker Model Runner, Ollama, or embedded llama.cpp — see the [local models guide](docs/guides/local-models.md) |
 | **Vision / multimodal** | Image content flows end-to-end (`MultiModalContent` → Anthropic image blocks / OpenAI `image_url`) with a VFS-backed loader; opt-in via `AddOrkeonMultiModal(...)` — see the [multimodal guide](docs/guides/multimodal.md) |
 | **6 memory providers** | Redis (vector search), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (remote REST server) — one `IMemoryProvider` port, composable decorators |
@@ -291,7 +292,7 @@ live with the first tagged release and always documents a tagged version.
 
 - **Three authoring surfaces, one engine** — the same crew can be a YAML file an analyst edits, a TypeScript script a developer iterates on (both run with zero rebuild), or C# embedded in your product. No rewrite when you graduate from one to the next.
 - **Orchestration beyond pipelines** — six strategies, including LangGraph-style state graphs with conditional edges and a fully autonomous mode where agents delegate, spawn, and communicate under a multi-dimensional execution budget (tool calls, depth, wall time, tokens, spawns).
-- **Batteries included** — 79 tools, 16 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
+- **Batteries included** — 91 tools, 16 LLM providers, 6 memory stores, vision, RAG, code analysis: usable out of the box, replaceable through Clean Architecture ports.
 - **Local-first** — every example runs against a model on your own machine (Docker Model Runner, Ollama, or llama.cpp embedded in the container image). No API key required to evaluate it.
 - **The boundary is the product** — a rights-audited virtual filesystem in front of every file access, a Roslyn analyzer that refuses raw `System.IO` in your own code, execution budgets and circuit breakers for autonomy, checkpoint and resume for long runs. Rate limiting, monitoring and the rest are one `AddOrkeonXxx()` away.
 - **Typed all the way down** — no `Dictionary<string, object>` plumbing; source generators keep the typed surface boilerplate-free.

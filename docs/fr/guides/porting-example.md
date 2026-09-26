@@ -99,7 +99,7 @@ Responsabilité source : NotificationService
 → Contraintes        : MaxIterations=3, MaxRpm=5
 ```
 
-**Décision clé** : L'envoi SMTP reste hors périmètre agent — seule la génération du contenu de l'email est portée. L'envoi effectif est une opération mécanique qui sera déclenchée par le système appelant après réception du résultat de la Crew. Un outil custom `SmtpSendTool` pourrait être créé si l'envoi doit être intégré.
+**Décision clé** : L'envoi SMTP reste hors périmètre agent — seule la génération du contenu de l'email est portée. L'envoi effectif est une opération mécanique qui sera déclenchée par le système appelant après réception du résultat de la Crew. Si l'envoi doit être intégré, l'outil intégré `email_send` le fait, limité aux destinataires qu'un opérateur autorise — ou `email_draft` laisse chaque message dans les brouillons pour qu'un humain l'envoie (voir [Outils e-mail](./email.md)).
 
 ## Étape 3 — Identification des outils
 

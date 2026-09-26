@@ -85,7 +85,8 @@ def tool_files() -> list[Path]:
     Skipped: interfaces, doubles, adapters and decorators that match the glob without
     being built-in tools (ObservedTool is BUS-03's instrumentation decorator; AIAgentTool
     wraps a Microsoft Agent Framework agent the user supplies -- an interop adapter, not a
-    catalogue entry, and the scope freeze adds no built-in tool)."""
+    catalogue entry; the scope freeze admits a new built-in tool only as a motivated
+    exception of the owner, such as the e-mail family)."""
     skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs", "AIAgentTool.cs"}
     return [f for f in walk(ROOT / "src", ("Tool.cs",)) if f.name not in skip]
 

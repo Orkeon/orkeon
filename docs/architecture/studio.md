@@ -682,7 +682,8 @@ issued). The catalogue: every tool `orkeon run` registers, by family, each as a 
 under each family one line per tool that needs something — a key remembered above, a
 tool present only once its key is (`brave_search`), a key given at the call by the agent
 (`image_generation`), connection parameters given at the call (the database and graph
-tools), an expert setting below (`shell_command`). The catalogue is declared in Core
+tools), an e-mail account declared under `Orkeon:Tools:Email` (the twelve mailbox tools —
+see [E-mail tools](../guides/email.md)), an expert setting below (`shell_command`). The catalogue is declared in Core
 (`ToolCatalog`): the framework carries no "required settings" metadata and its registry
 lists names only, so the list is the `orkeon run` column of the availability matrix in
 `docs/tools/inventory.md`, and a test pins every name against that file. The expert card:

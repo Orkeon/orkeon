@@ -628,7 +628,8 @@ TOOL_NEEDS: dict[str, ToolNeeds] = {
     "web_search": ToolNeeds(network=True, keys=(TAVILY_KEY_ENV,)),
     # Offline: the run's mounts, its memory, a local process or the console.
     **dict.fromkeys((
-        "directory_read", "email_parser", "file_read", "file_write",   # Orkeon.Tools.FileSystem
+        "directory_read", "file_read", "file_write",   # Orkeon.Tools.FileSystem
+        "email_parser",                     # Orkeon.Tools.Email: an .eml file on the run's mounts
         "csv_reader", "json_tool", "pdf_reader", "xml_parser",         # Orkeon.Tools.Data
         # Orkeon.Tools.Data: the connection comes in the call and names a database, not
         # a web service — and no example ships or names one.
