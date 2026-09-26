@@ -29,6 +29,12 @@ internal sealed record OAuthSettings
 
     /// <summary>Scopes requested at sign-in and refresh.</summary>
     public required IReadOnlyList<string> Scopes { get; init; }
+
+    /// <summary>
+    /// Whether a refresh repeats the scopes. The Microsoft identity platform takes them on every
+    /// token request; Google documents none on a refresh and keeps the ones consented to.
+    /// </summary>
+    public bool ScopesOnRefresh { get; init; }
 }
 
 /// <summary>How an account authenticates, once resolved.</summary>

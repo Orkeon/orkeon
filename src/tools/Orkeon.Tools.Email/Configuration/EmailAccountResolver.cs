@@ -238,6 +238,7 @@ internal static class EmailAccountResolver
                     AuthorizationEndpoint = new Uri(authority, "authorize"),
                     DeviceCodeEndpoint = new Uri(authority, "devicecode"),
                     Scopes = MicrosoftScopes(incoming),
+                    ScopesOnRefresh = true,
                 };
 
             default:

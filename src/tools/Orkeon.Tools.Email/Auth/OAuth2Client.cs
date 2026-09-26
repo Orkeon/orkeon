@@ -203,8 +203,9 @@ internal sealed class OAuth2Client
             new("grant_type", "refresh_token"),
             new("client_id", settings.ClientId),
             new("refresh_token", refreshToken),
-            new("scope", string.Join(' ', settings.Scopes)),
         };
+        if (settings.ScopesOnRefresh)
+            form.Add(new("scope", string.Join(' ', settings.Scopes)));
         AddSecret(form, clientSecret);
 
         using var document = await PostAsync(settings.TokenEndpoint, form, cancellationToken).ConfigureAwait(false);
