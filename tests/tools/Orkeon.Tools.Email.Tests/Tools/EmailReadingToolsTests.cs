@@ -1,5 +1,6 @@
 using System.Globalization;
 using System.Text.Json;
+using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Tools.Email.Mailboxes;
 using Orkeon.Tools.Email.Tests.Fixtures;
@@ -174,6 +175,90 @@ public sealed class EmailReadingToolsTests
     }
 
     [Fact]
+    public async Task Should_cut_a_page_too_long_for_the_agent_loop_after_a_whole_message_and_resume_there()
+    {
+        using var fixture = new ToolFixture();
+        var summaries = Enumerable.Range(1, 50).Select(i => new MessageSummaryInfo
+        {
+            Id = string.Create(CultureInfo.InvariantCulture, $"imap:SU5CT1g:7:{1000 - i}"),
+            From = string.Create(CultureInfo.InvariantCulture, $"Sender number {i} <sender{i}@example.com>"),
+            Subject = string.Create(CultureInfo.InvariantCulture, $"Quarterly figures, part {i}, with a subject long enough to count"),
+            Date = new DateTimeOffset(2026, 9, 20, 8, 0, 0, TimeSpan.Zero),
+            Seen = false,
+            Flagged = false,
+            HasAttachments = false,
+            Preview = new string('p', 100),
+            ResumeCursor = string.Create(CultureInfo.InvariantCulture, $"u:{1000 - i}"),
+        }).ToList();
+        fixture.Mailbox().NextPage = new MessagePage(summaries, "u:950");
+
+        var result = ToolResults.Success(await fixture.CallAsync("email_search", ("limit", 50)));
+
+        Assert.InRange(Rendered(result).Length, 1, AgentDefaults.MaxToolResultLength);
+        var messages = ToolResults.Objects(result, "messages");
+        Assert.InRange(messages.Count, 2, 49);
+        Assert.Equal(messages.Count, result["count"]);
+        Assert.Equal(summaries[messages.Count - 1].Id, messages[^1]["id"]);
+        Assert.Equal(summaries[messages.Count - 1].ResumeCursor, result["next_cursor"]);
+    }
+
+    [Fact]
+    public async Task Should_clip_a_huge_subject_in_a_search_result()
+    {
+        using var fixture = new ToolFixture();
+        fixture.Mailbox().NextPage = new MessagePage(
+            [new MessageSummaryInfo { Id = "imap:a:1:1", From = "spam@evil.example", Subject = new string('s', 10_000) }], null);
+
+        var result = ToolResults.Success(await fixture.CallAsync("email_search"));
+
+        var subject = (string)Assert.Single(ToolResults.Objects(result, "messages"))["subject"]!;
+        Assert.Equal(200, subject.Length);
+        Assert.EndsWith("…", subject, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_read_a_body_in_slices_that_fit_the_agent_loop_and_cover_it_exactly()
+    {
+        using var fixture = new ToolFixture();
+        var body = string.Concat(Enumerable.Repeat("a line with \"quotes\" and a \\ backslash\r\n", 300));
+        fixture.Mailbox().Add("id-lines", MimeSamples.Plain(body: body));
+        var expected = Orkeon.Tools.Email.Mime.HtmlTextRenderer.Normalize(body);
+
+        var read = new System.Text.StringBuilder();
+        int? offset = 0;
+        var calls = 0;
+        while (offset is { } at && calls++ < 50)
+        {
+            var result = ToolResults.Success(await fixture.CallAsync("email_read", ("id", "id-lines"), ("offset", at), ("max_chars", 3000)));
+
+            Assert.InRange(Rendered(result).Length, 1, AgentDefaults.MaxToolResultLength);
+            Assert.Equal(at, Convert.ToInt32(result["text_offset"], CultureInfo.InvariantCulture));
+            read.Append((string)result["text"]!);
+            offset = result.TryGetValue("next_offset", out var next) ? Convert.ToInt32(next, CultureInfo.InvariantCulture) : null;
+        }
+
+        Assert.Equal(expected, read.ToString());
+        Assert.True(calls > 3, "the escaped lines should need more slices than the characters alone");
+    }
+
+    [Fact]
+    public async Task Should_crowd_out_long_address_lists_before_the_body()
+    {
+        using var fixture = new ToolFixture();
+        var copied = string.Join(", ", Enumerable.Range(1, 300).Select(i => string.Create(CultureInfo.InvariantCulture, $"colleague{i}@corp.example")));
+        fixture.Mailbox().Add("id-crowd", MimeSamples.Plain(body: new string('x', 5000), extraHeaders: $"Cc: {copied}\r\n"));
+
+        var result = ToolResults.Success(await fixture.CallAsync("email_read", ("id", "id-crowd"), ("max_chars", 3000)));
+
+        Assert.InRange(Rendered(result).Length, 1, AgentDefaults.MaxToolResultLength);
+        var cc = ToolResults.Strings(result, "cc");
+        Assert.Equal(6, cc.Count);
+        Assert.Equal("(+295 more)", cc[^1]);
+        Assert.True(((string)result["text"]!).Length >= 300);
+        Assert.Equal(((string)result["text"]!).Length, Convert.ToInt32(result["next_offset"], CultureInfo.InvariantCulture));
+    }
+
+    [Fact]
     public async Task Should_read_a_message_notice_and_verdict_first_and_body_last()
     {
         using var fixture = new ToolFixture();
@@ -337,4 +422,9 @@ public sealed class EmailReadingToolsTests
         Assert.Equal((1000, 1500, 500), (result["text_offset"], result["next_offset"], ((string)result["text"]!).Length));
         Assert.Equal(4000, Convert.ToInt32(result["text_length"], CultureInfo.InvariantCulture));
     }
+
+    /// <summary>How the agent loop renders a result before applying its cap (ToolCallFormatting).</summary>
+    private static readonly JsonSerializerOptions LoopRendering = new() { Encoder = System.Text.Encodings.Web.JavaScriptEncoder.UnsafeRelaxedJsonEscaping };
+
+    private static string Rendered(Dictionary<string, object?> result) => JsonSerializer.Serialize(result, LoopRendering);
 }

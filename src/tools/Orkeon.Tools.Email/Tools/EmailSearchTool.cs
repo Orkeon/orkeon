@@ -56,14 +56,31 @@ internal sealed class EmailSearchTool : ToolBase<EmailSearchRequest, EmailSearch
         };
 
         var page = await _access.Mailbox(account).SearchAsync(search, cancellationToken).ConfigureAwait(false);
-        return new EmailSearchResponse
+        var messages = page.Messages.Select(message => EmailToolHelpers.ToDto(message, _screen)).ToList();
+        var response = Respond(account.Name, search.Folder, messages, page.NextCursor);
+
+        // A page longer than what the agent loop keeps is cut here, after a whole message, with
+        // the cursor that resumes right after the last one kept. Cut by the loop, it would end
+        // mid-list while next_cursor, written first, already pointed past the messages it hid.
+        var budget = EmailToolHelpers.ResultBudget(Name);
+        while (messages.Count > 1
+               && EmailToolHelpers.RenderedLength(response) > budget
+               && page.Messages[messages.Count - 2].ResumeCursor is { } resume)
         {
-            Notice = EmailContentScreen.UntrustedNotice,
-            Account = account.Name,
-            Folder = search.Folder,
-            Count = page.Messages.Count,
-            NextCursor = page.NextCursor,
-            Messages = page.Messages.Select(message => EmailToolHelpers.ToDto(message, _screen)).ToList(),
-        };
+            messages.RemoveAt(messages.Count - 1);
+            response = Respond(account.Name, search.Folder, messages, resume);
+        }
+
+        return response;
     }
+
+    private static EmailSearchResponse Respond(string account, string folder, List<EmailSummaryDto> messages, string? nextCursor) => new()
+    {
+        Notice = EmailContentScreen.UntrustedNotice,
+        Account = account,
+        Folder = folder,
+        Count = messages.Count,
+        NextCursor = nextCursor,
+        Messages = [.. messages],
+    };
 }

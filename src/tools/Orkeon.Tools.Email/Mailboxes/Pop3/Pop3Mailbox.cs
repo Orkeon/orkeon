@@ -78,7 +78,10 @@ internal sealed class Pop3Mailbox : IMailbox
                 scanned++;
                 position++;
                 var headers = await client.GetMessageHeadersAsync(index, cancellationToken).ConfigureAwait(false);
-                var summary = Summarize(uids[index], headers);
+                var summary = Summarize(uids[index], headers) with
+                {
+                    ResumeCursor = string.Create(CultureInfo.InvariantCulture, $"{CursorPrefix}{position}"),
+                };
                 if (Matches(search, headers, summary))
                     page.Add(summary);
             }

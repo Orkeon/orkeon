@@ -56,6 +56,21 @@ public sealed class Pop3MailboxTests
         Assert.DoesNotContain(server.Transcript, line => line.StartsWith("RETR", StringComparison.Ordinal));
     }
 
+    [Fact]
+    public async Task Should_hand_each_message_the_cursor_that_resumes_right_after_it()
+    {
+        await using var server = Seeded();
+        using var credentials = new CredentialsFixture();
+        var mailbox = Open(server, credentials);
+
+        var page = await mailbox.SearchAsync(new MailSearch { Limit = 5 }, Token);
+        var resumed = await mailbox.SearchAsync(new MailSearch { Limit = 5, Cursor = page.Messages[0].ResumeCursor }, Token);
+
+        server.AssertHealthy();
+        Assert.Equal(["o:1", "o:2", "o:3"], page.Messages.Select(m => m.ResumeCursor));
+        Assert.Equal(["pop3:uid-2", "pop3:uid-1"], resumed.Messages.Select(m => m.Id));
+    }
+
     [Theory]
     [InlineData("from", "bob", "pop3:uid-3")]
     [InlineData("subject", "LUNCH", "pop3:uid-2")]

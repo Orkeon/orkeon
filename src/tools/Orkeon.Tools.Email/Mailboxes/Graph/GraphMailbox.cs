@@ -116,9 +116,10 @@ internal sealed class GraphMailbox : IMailbox
     {
         ArgumentNullException.ThrowIfNull(search);
         Uri address;
+        var skip = 0;
         if (!string.IsNullOrWhiteSpace(search.Cursor))
         {
-            address = ParseCursor(search.Cursor);
+            (address, skip) = ParseCursor(search.Cursor);
         }
         else
         {
@@ -129,20 +130,27 @@ internal sealed class GraphMailbox : IMailbox
         using var document = await _graph.GetJsonAsync(address, cancellationToken).ConfigureAwait(false);
         var root = document.RootElement;
         var textual = GraphQueries.UsesSearch(search);
+
+        // Only a link the next call will follow becomes a cursor: one pointing outside Graph would
+        // be refused as "not a cursor of this account" although the agent passed it back verbatim.
+        var next = NextLink(root) is { } nextLink ? Cursor(nextLink, 0) : null;
         var messages = new List<MessageSummaryInfo>();
         if (root.TryGetProperty("value", out var value) && value.ValueKind == JsonValueKind.Array)
         {
+            var count = value.GetArrayLength();
+            var position = 0;
             foreach (var item in value.EnumerateArray())
             {
-                var summary = Summarize(item);
+                // A cursor into this server page resumes past what an earlier call returned of it.
+                if (++position <= skip)
+                    continue;
+
+                var summary = Summarize(item) with { ResumeCursor = position < count ? Cursor(address, position) : next };
                 if (!textual || GraphQueries.PostFilter(search, summary))
                     messages.Add(summary);
             }
         }
 
-        // Only a link the next call will follow becomes a cursor: one pointing outside Graph would
-        // be refused as "not a cursor of this account" although the agent passed it back verbatim.
-        var next = NextLink(root) is { } nextLink ? CursorPrefix + Base64Url(nextLink.OriginalString) : null;
         return new MessagePage(messages, next);
     }
 
@@ -337,14 +345,29 @@ internal sealed class GraphMailbox : IMailbox
         return Uri.TryCreate(text, UriKind.Absolute, out var next) && GraphClient.IsGraphAddress(next) ? next : null;
     }
 
-    private static Uri ParseCursor(string cursor)
+    /// <summary>
+    /// A cursor: the Graph page to fetch, and how many of its messages were already returned
+    /// (<c>n:&lt;page&gt;</c>, or <c>n:&lt;page&gt;.&lt;skip&gt;</c> for a page a tool cut short).
+    /// </summary>
+    private static string Cursor(Uri page, int skip) =>
+        skip == 0
+            ? CursorPrefix + Base64Url(page.OriginalString)
+            : string.Create(CultureInfo.InvariantCulture, $"{CursorPrefix}{Base64Url(page.OriginalString)}.{skip}");
+
+    private static (Uri Page, int Skip) ParseCursor(string cursor)
     {
-        if (cursor.StartsWith(CursorPrefix, StringComparison.Ordinal)
-            && TryFromBase64Url(cursor[CursorPrefix.Length..], out var text)
-            && Uri.TryCreate(text, UriKind.Absolute, out var next)
-            && GraphClient.IsGraphAddress(next))
+        if (cursor.StartsWith(CursorPrefix, StringComparison.Ordinal))
         {
-            return next;
+            var body = cursor[CursorPrefix.Length..];
+            var dot = body.IndexOf('.', StringComparison.Ordinal);
+            var skip = 0;
+            if ((dot < 0 || (int.TryParse(body.AsSpan(dot + 1), NumberStyles.None, CultureInfo.InvariantCulture, out skip) && skip > 0))
+                && TryFromBase64Url(dot < 0 ? body : body[..dot], out var text)
+                && Uri.TryCreate(text, UriKind.Absolute, out var page)
+                && GraphClient.IsGraphAddress(page))
+            {
+                return (page, skip);
+            }
         }
 
         throw new EmailToolException(EmailErrorCode.InvalidRequest, "`cursor` is not a cursor of this account: pass `next_cursor` exactly as a previous page returned it.");

@@ -406,6 +406,7 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
             Flagged = flags.HasFlag(MessageFlags.Flagged),
             HasAttachments = hasAttachments,
             Preview = Previews.Shorten(summary.PreviewText),
+            ResumeCursor = string.Create(CultureInfo.InvariantCulture, $"{CursorPrefix}{summary.UniqueId.Id}"),
         };
     }
 

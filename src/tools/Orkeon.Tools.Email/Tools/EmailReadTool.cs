@@ -53,7 +53,7 @@ internal sealed class EmailReadTool : ToolBase<EmailReadRequest, EmailReadRespon
         }
 
         return EmailToolHelpers.BuildRead(
-            fetched.Message, _screen, request.Offset, request.MaxChars,
+            fetched.Message, _screen, request.Offset, request.MaxChars, EmailToolHelpers.ResultBudget(Name),
             account.Name, fetched.Id, fetched.Folder, seen, fetched.Flagged);
     }
 }

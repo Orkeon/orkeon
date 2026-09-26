@@ -40,6 +40,23 @@ public sealed class ImapMailboxMessageTests
     }
 
     [Fact]
+    public async Task Should_hand_each_message_the_cursor_that_resumes_right_after_it()
+    {
+        await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);
+        for (var i = 1; i <= 5; i++)
+            server.AddMessage("INBOX", MimeSamples.Plain(subject: $"Message {i}"));
+        using var credentials = new CredentialsFixture();
+        await using var mailbox = Open(server, credentials);
+
+        var page = await mailbox.SearchAsync(new MailSearch { Limit = 4 }, Token);
+        var resumed = await mailbox.SearchAsync(new MailSearch { Limit = 4, Cursor = page.Messages[1].ResumeCursor }, Token);
+
+        server.AssertHealthy();
+        Assert.Equal(["u:5", "u:4", "u:3", "u:2"], page.Messages.Select(m => m.ResumeCursor));
+        Assert.Equal(["Message 3", "Message 2", "Message 1"], resumed.Messages.Select(m => m.Subject));
+    }
+
+    [Fact]
     public async Task Should_summarize_sender_subject_date_marks_attachments_and_preview()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);

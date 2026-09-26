@@ -109,6 +109,12 @@ internal sealed record MessageSummaryInfo
 
     /// <summary>First characters of the body, when known.</summary>
     public string? Preview { get; init; }
+
+    /// <summary>
+    /// The cursor of a page that starts right after this message, with the same criteria: what
+    /// lets a tool cut a page short and still resume exactly where it cut.
+    /// </summary>
+    public string? ResumeCursor { get; init; }
 }
 
 /// <summary>A page of search results.</summary>

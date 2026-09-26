@@ -1,5 +1,9 @@
 using System.Globalization;
+using System.Text.Encodings.Web;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 using MimeKit;
+using Orkeon.Domain.Constants.Agent;
 using Orkeon.Tools.Email.Constants;
 using Orkeon.Tools.Email.Dtos;
 using Orkeon.Tools.Email.Mailboxes;
@@ -11,9 +15,44 @@ namespace Orkeon.Tools.Email;
 /// <summary>Mapping shared by the e-mail tools.</summary>
 internal static class EmailToolHelpers
 {
-    /// <summary>The <c>email_read</c>/<c>email_parser</c> view of <paramref name="message"/>, body sliced.</summary>
+    /// <summary>Room kept free under the agent loop's cap, for what its rendering may add.</summary>
+    private const int RenderingMargin = 200;
+
+    /// <summary>The least body text a read returns, whatever the headers take, so that reading always advances.</summary>
+    private const int MinTextWidth = 300;
+
+    /// <summary>How many addresses a list keeps when the headers alone would crowd the body out.</summary>
+    private const int CrowdedAddressList = 5;
+
+    /// <summary>The longest subject or sender a search result shows.</summary>
+    private const int MaxSummaryField = 200;
+
+    /// <summary>
+    /// A result as the agent loop renders it: compact JSON, relaxed escaping, and no null
+    /// member (the tool pipeline drops them). Measured with it, a result is cut where the tool
+    /// decides — at a message, at a body offset — with a cursor or an offset that resumes
+    /// exactly there, instead of where the loop truncates it, after the cursor it already sent.
+    /// </summary>
+    private static readonly JsonSerializerOptions Rendering = new()
+    {
+        Encoder = JavaScriptEncoder.UnsafeRelaxedJsonEscaping,
+        DefaultIgnoreCondition = JsonIgnoreCondition.WhenWritingNull,
+    };
+
+    /// <summary>The characters a result of <paramref name="toolName"/> may take: what the agent loop keeps of it, less a margin.</summary>
+    public static int ResultBudget(string toolName) => AgentDefaults.ResolveMaxToolResultLength(toolName) - RenderingMargin;
+
+    /// <summary>The length of <paramref name="result"/> as the agent loop renders it.</summary>
+    public static int RenderedLength<T>(T result) => JsonSerializer.Serialize(result, Rendering).Length;
+
+    /// <summary>
+    /// The <c>email_read</c>/<c>email_parser</c> view of <paramref name="message"/>: the body
+    /// sliced to at most <paramref name="maxChars"/> characters, and further to what fits in
+    /// <paramref name="budget"/> once the headers are counted — <c>next_offset</c> then resumes
+    /// exactly where the slice ends.
+    /// </summary>
     public static EmailReadResponse BuildRead(
-        MimeMessage message, EmailContentScreen screen, int? offset, int? maxChars,
+        MimeMessage message, EmailContentScreen screen, int? offset, int? maxChars, int budget,
         string? account = null, string? id = null, string? folder = null, bool? seen = null, bool? flagged = null)
     {
         ArgumentNullException.ThrowIfNull(message);
@@ -24,9 +63,13 @@ internal static class EmailToolHelpers
         var text = screening.Withhold
             ? "[Body withheld: the prompt-injection screen rejected this message. An operator can lift Orkeon:Tools:Email:Screening:WithholdRejected.]"
             : body.Text;
-        var (slice, start, next) = Slice(text, offset, maxChars);
+        var start = Math.Clamp(offset ?? 0, 0, text.Length);
+        var maxLength = Math.Clamp(maxChars ?? EmailDefaults.DefaultReadChars, 200, EmailDefaults.MaxReadChars);
 
-        return new EmailReadResponse
+        var replyTo = MimeMessageReader.Format(message.ReplyTo);
+        var to = MimeMessageReader.Format(message.To);
+        var cc = MimeMessageReader.Format(message.Cc);
+        var shell = new EmailReadResponse
         {
             Notice = EmailContentScreen.UntrustedNotice,
             Security = new EmailSecurityDto
@@ -44,16 +87,34 @@ internal static class EmailToolHelpers
             Flagged = flagged,
             MessageId = message.MessageId,
             From = message.From.Mailboxes.Select(MimeMessageReader.Format).FirstOrDefault() ?? string.Empty,
-            ReplyTo = MimeMessageReader.Format(message.ReplyTo),
-            To = MimeMessageReader.Format(message.To),
-            Cc = MimeMessageReader.Format(message.Cc),
+            ReplyTo = replyTo,
+            To = to,
+            Cc = cc,
             Date = MimeMessageReader.FormatDate(message),
             Subject = message.Subject ?? string.Empty,
             Attachments = MimeMessageReader.ReadAttachments(message).Select(ToDto).ToList(),
             TextOffset = start,
             TextLength = text.Length,
-            NextOffset = next,
-            Text = slice,
+            NextOffset = text.Length,
+            Text = string.Empty,
+        };
+
+        // Everything but the body, measured with the widest next_offset it can carry. Headers
+        // that would leave the body no room (a message copied to hundreds) keep their first
+        // addresses and say how many they leave out.
+        var overhead = RenderedLength(shell);
+        if (overhead > budget - MinTextWidth)
+        {
+            shell = shell with { ReplyTo = Crowded(replyTo), To = Crowded(to), Cc = Crowded(cc) };
+            overhead = RenderedLength(shell);
+        }
+
+        var length = FitText(text, start, maxLength, Math.Max(budget - overhead, MinTextWidth));
+        var end = start + length;
+        return shell with
+        {
+            NextOffset = end < text.Length ? end : null,
+            Text = text.Substring(start, length),
         };
     }
 
@@ -65,8 +126,8 @@ internal static class EmailToolHelpers
         return new EmailSummaryDto
         {
             Id = summary.Id,
-            From = summary.From,
-            Subject = summary.Subject,
+            From = Clip(summary.From),
+            Subject = Clip(summary.Subject),
             Date = summary.Date?.ToString("O", CultureInfo.InvariantCulture),
             Seen = summary.Seen,
             Flagged = summary.Flagged,
@@ -123,12 +184,35 @@ internal static class EmailToolHelpers
         return list;
     }
 
-    private static (string Slice, int Start, int? Next) Slice(string text, int? offset, int? maxChars)
+    /// <summary>
+    /// The longest slice of <paramref name="text"/> from <paramref name="start"/>, at most
+    /// <paramref name="maxLength"/> characters, whose rendering (quotes and line breaks escaped)
+    /// takes at most <paramref name="width"/> characters. A surrogate pair is never split.
+    /// </summary>
+    private static int FitText(string text, int start, int maxLength, int width)
     {
-        var size = Math.Clamp(maxChars ?? EmailDefaults.DefaultReadChars, 200, EmailDefaults.MaxReadChars);
-        var start = Math.Clamp(offset ?? 0, 0, text.Length);
-        var length = Math.Min(size, text.Length - start);
-        var end = start + length;
-        return (text.Substring(start, length), start, end < text.Length ? end : null);
+        var low = 0;
+        var high = Math.Min(maxLength, text.Length - start);
+        while (low < high)
+        {
+            var middle = low + ((high - low + 1) / 2);
+            if (JsonSerializer.Serialize(text.Substring(start, middle), Rendering).Length - 2 <= width)
+                low = middle;
+            else
+                high = middle - 1;
+        }
+
+        if (low > 0 && char.IsHighSurrogate(text[start + low - 1]))
+            low--;
+        return low;
     }
+
+    /// <summary>The first addresses of <paramref name="addresses"/>, then how many were left out.</summary>
+    private static IReadOnlyList<string> Crowded(IReadOnlyList<string> addresses) =>
+        addresses.Count <= CrowdedAddressList
+            ? addresses
+            : [.. addresses.Take(CrowdedAddressList), string.Create(CultureInfo.InvariantCulture, $"(+{addresses.Count - CrowdedAddressList} more)")];
+
+    private static string Clip(string value) =>
+        value.Length <= MaxSummaryField ? value : string.Concat(value.AsSpan(0, MaxSummaryField - 1), "…");
 }

@@ -191,6 +191,40 @@ public sealed class GraphMailboxTests
     }
 
     [Fact]
+    public async Task Should_resume_inside_a_server_page_from_a_message_s_own_cursor()
+    {
+        using var graph = new GraphFixture().WithFolders();
+        const string next = Base + "me/mailFolders/id-inbox/messages?$skiptoken=abc";
+        graph.Http.Map(HttpMethod.Get, $"{Base}me/mailFolders/id-inbox/messages?$select", FakeHttpResponse.Json($$"""
+            {"value":[{{GraphFixture.Summary("p1", "One")}},{{GraphFixture.Summary("p2", "Two")}},{{GraphFixture.Summary("p3", "Three")}}],"@odata.nextLink":"{{next}}"}
+            """));
+
+        var page = await graph.Mailbox.SearchAsync(new MailSearch { Limit = 3 }, Token);
+        var resumed = await graph.Mailbox.SearchAsync(new MailSearch { Limit = 3, Cursor = page.Messages[0].ResumeCursor }, Token);
+
+        Assert.EndsWith(".1", page.Messages[0].ResumeCursor, StringComparison.Ordinal);
+        Assert.Equal(page.NextCursor, page.Messages[2].ResumeCursor);
+        Assert.Equal(["graph:p2", "graph:p3"], resumed.Messages.Select(m => m.Id));
+        Assert.Equal(page.NextCursor, resumed.NextCursor);
+        Assert.Equal(graph.Http.Requests[^2].Uri.OriginalString, graph.Http.Requests[^1].Uri.OriginalString);
+    }
+
+    [Theory]
+    [InlineData(".0")]
+    [InlineData(".-1")]
+    [InlineData(".x")]
+    public async Task Should_refuse_a_cursor_whose_position_it_did_not_write(string position)
+    {
+        using var graph = new GraphFixture();
+        var cursor = "n:" + Convert.ToBase64String(Encoding.UTF8.GetBytes(Base + "me/messages")).TrimEnd('=').Replace('+', '-').Replace('/', '_') + position;
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Mailbox.SearchAsync(new MailSearch { Cursor = cursor }, Token));
+
+        Assert.StartsWith("`cursor` is not a cursor of this account", error.Message, StringComparison.Ordinal);
+        Assert.Empty(graph.Http.Requests);
+    }
+
+    [Fact]
     public async Task Should_hand_out_no_cursor_for_a_next_link_outside_Graph()
     {
         using var graph = new GraphFixture().WithFolders();
