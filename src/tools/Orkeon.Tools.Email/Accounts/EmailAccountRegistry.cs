@@ -92,6 +92,17 @@ internal sealed class EmailAccountRegistry : IEmailAccountRegistry
                 $"Unknown e-mail account '{name}'. Configured: {(Names.Count == 0 ? "none" : string.Join(", ", Names))}.");
         }
 
-        return _resolved.GetOrAdd(key, k => EmailAccountResolver.Resolve(k, _options.Accounts[k]));
+        return _resolved.GetOrAdd(key, k => Unreadable(k) is { Count: > 0 } problems
+            ? new EmailAccountResolution(null, problems)
+            : EmailAccountResolver.Resolve(k, _options.Accounts[k]));
+    }
+
+    /// <summary>The settings of <paramref name="account"/>, and of the section, that could not even be read.</summary>
+    private List<string> Unreadable(string account)
+    {
+        var problems = new List<string>(_options.SectionProblems);
+        if (_options.AccountProblems.TryGetValue(account, out var own))
+            problems.AddRange(own.Select(problem => $"account '{account}': {problem}"));
+        return problems;
     }
 }

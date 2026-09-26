@@ -1,9 +1,9 @@
 namespace Orkeon.Tools.Email.Configuration;
 
 /// <summary>
-/// The <c>Orkeon:Tools:Email</c> section, bound as declared. Nothing here is validated at bind
-/// time: an account is checked when a tool or a command first uses it, so a broken e-mail
-/// section never breaks a crew that sends no mail.
+/// The <c>Orkeon:Tools:Email</c> section, bound by <see cref="EmailOptionsBinder"/>. Nothing here
+/// is validated at bind time, and binding never throws: an account is checked when a tool or a
+/// command first uses it, so a broken e-mail section never breaks a crew that sends no mail.
 /// </summary>
 internal sealed class EmailToolsOptions
 {
@@ -21,6 +21,12 @@ internal sealed class EmailToolsOptions
 
     /// <summary>How received content is screened before an agent reads it.</summary>
     public EmailScreeningOptions Screening { get; } = new();
+
+    /// <summary>Section settings that could not be read; every account reports them until they are fixed.</summary>
+    internal List<string> SectionProblems { get; } = [];
+
+    /// <summary>The values each account declares that could not be read, by account name.</summary>
+    internal Dictionary<string, List<string>> AccountProblems { get; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 /// <summary>Screening policy for received content.</summary>

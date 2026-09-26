@@ -29,10 +29,11 @@ public static class EmailCredentialsLocation
         return string.IsNullOrWhiteSpace(directory) ? null : directory.Trim();
     }
 
+    // Never throws: a value the binder cannot convert leaves its account out, reported when used.
     private static EmailToolsOptions Bind(IConfiguration emailSection)
     {
         var options = new EmailToolsOptions();
-        emailSection.Bind(options);
+        EmailOptionsBinder.Bind(emailSection, options);
         return options;
     }
 }

@@ -43,7 +43,8 @@ public static class EmailToolsServiceCollectionExtensions
             return services;
 
         services.AddSingleton(new EmailToolsRegistration());
-        services.AddOptions<EmailToolsOptions>().Bind(configuration.GetSection(EmailDefaults.SectionName));
+        var section = configuration.GetSection(EmailDefaults.SectionName);
+        services.AddOptions<EmailToolsOptions>().Configure(options => EmailOptionsBinder.Bind(section, options));
         services.AddHttpClient(EmailDefaults.HttpClientName);
         services.TryAddSingleton(TimeProvider.System);
 
