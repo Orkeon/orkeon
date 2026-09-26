@@ -50,6 +50,12 @@ internal static class EmailComposeHelpers
 
             return await new MessageComposer(fileSystem).ComposeAsync(account, input, cancellationToken).ConfigureAwait(false);
         }
+        catch
+        {
+            // Composed, the forwarded original belongs to the new message; refused, it is ours.
+            forward?.Dispose();
+            throw;
+        }
         finally
         {
             // A forwarded original now lives inside the composed message, which disposes it.
