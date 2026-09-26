@@ -507,8 +507,13 @@ refuses it in its mount editor.
 - **Not in this version**: deleting folders, copying a message or giving it several Gmail
   labels, interactive human approval of a send (use `email_draft`), a generic OAuth tool for
   other APIs.
-- **`Send:MaxPerHour` is counted per process.** Two processes sending from the same account
-  each have their own count.
+- **`Send:MaxPerHour` is counted per process, attempts included.** Two processes sending from
+  the same account each have their own count, and an attempt the server refused still takes
+  its slot — a failing loop cannot retry past the cap.
+- **Hidden content is detected from inline styles and the `hidden` attribute only.** Text a
+  `<style>` block hides through a CSS class is neither left out nor flagged
+  `hidden_content`. A body nesting elements more than 5000 levels deep is not rendered: the
+  agent reads a one-line notice instead, flagged `hidden_content`.
 - **Every account is visible to every crew and script that resolves the same settings
   file** — see the threat model in [SECURITY.md](../../SECURITY.md).
 - **Live validation against real Gmail and Hotmail accounts is pending** (MAIL-07).

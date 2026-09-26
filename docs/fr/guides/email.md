@@ -534,8 +534,14 @@ et Orkeon Studio le refuse dans son éditeur de montages.
 - **Pas dans cette version** : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.
-- **`Send:MaxPerHour` se compte par processus.** Deux processus qui envoient depuis le même
-  compte ont chacun leur propre compte.
+- **`Send:MaxPerHour` se compte par processus, tentatives comprises.** Deux processus qui
+  envoient depuis le même compte ont chacun leur propre compte, et une tentative que le serveur
+  a refusée occupe quand même sa place — une boucle en échec ne peut pas dépasser le plafond en
+  réessayant.
+- **Le contenu caché n'est détecté que par les styles en ligne et l'attribut `hidden`.** Un
+  texte masqué par une classe CSS d'un bloc `<style>` n'est ni retiré ni signalé
+  `hidden_content`. Un corps qui imbrique des éléments sur plus de 5000 niveaux n'est pas
+  rendu : l'agent lit à la place un avis d'une ligne, signalé `hidden_content`.
 - **Chaque compte est visible de chaque crew et de chaque script qui résout le même fichier de
   réglages** — voir le modèle de menace dans [SECURITY.fr.md](../../../SECURITY.fr.md).
 - **La validation réelle sur de vrais comptes Gmail et Hotmail reste à faire** (MAIL-07).
