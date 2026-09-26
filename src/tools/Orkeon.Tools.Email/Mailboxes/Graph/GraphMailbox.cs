@@ -140,9 +140,9 @@ internal sealed class GraphMailbox : IMailbox
             }
         }
 
-        var next = root.TryGetProperty("@odata.nextLink", out var link) && link.GetString() is { } nextLink
-            ? CursorPrefix + Base64Url(nextLink)
-            : null;
+        // Only a link the next call will follow becomes a cursor: one pointing outside Graph would
+        // be refused as "not a cursor of this account" although the agent passed it back verbatim.
+        var next = NextLink(root) is { } nextLink ? CursorPrefix + Base64Url(nextLink.OriginalString) : null;
         return new MessagePage(messages, next);
     }
 

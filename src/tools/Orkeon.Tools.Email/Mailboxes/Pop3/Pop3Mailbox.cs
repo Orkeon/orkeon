@@ -114,14 +114,15 @@ internal sealed class Pop3Mailbox : IMailbox
         if (!permanent)
             throw Unsupported("a trash folder: POP3 deletes for good, pass `permanent: true` (needs the Purge right)");
 
-        var uids = ids.Select(MessageIds.ParsePop3).ToList();
+        var uids = ids.Select(MessageIds.ParsePop3).Distinct(StringComparer.Ordinal).ToList();
         return RunAsync(async client =>
         {
-            foreach (var uid in uids)
-            {
-                var index = await IndexOfAsync(client, uid, cancellationToken).ConfigureAwait(false);
+            // One UIDL before the first DELE: an RFC 1939 server stops listing a message once it is
+            // marked deleted, and MailKit refuses the gapped listing a second UIDL would return.
+            var listed = await client.GetMessageUidsAsync(cancellationToken).ConfigureAwait(false);
+            var indexes = uids.Select(uid => IndexOf(listed, uid)).ToList();
+            foreach (var index in indexes)
                 await client.DeleteMessageAsync(index, cancellationToken).ConfigureAwait(false);
-            }
 
             return new DeleteOutcome(uids.Count, true, null);
         }, cancellationToken);
@@ -151,9 +152,11 @@ internal sealed class Pop3Mailbox : IMailbox
         }
     }
 
-    private static async Task<int> IndexOfAsync(Pop3Client client, string uid, CancellationToken cancellationToken)
+    private static async Task<int> IndexOfAsync(Pop3Client client, string uid, CancellationToken cancellationToken) =>
+        IndexOf(await client.GetMessageUidsAsync(cancellationToken).ConfigureAwait(false), uid);
+
+    private static int IndexOf(IList<string> uids, string uid)
     {
-        var uids = await client.GetMessageUidsAsync(cancellationToken).ConfigureAwait(false);
         var index = uids.IndexOf(uid);
         if (index < 0)
             throw new EmailToolException(EmailErrorCode.MessageNotFound, "The message is no longer on the server: search again.");

@@ -12,6 +12,12 @@ namespace Orkeon.Tools.Email.Mailboxes.Smtp;
 /// </summary>
 internal sealed class SmtpMailSender : IMailSender
 {
+    /// <summary>
+    /// The message as it goes on the wire: without the Bcc and Resent-Bcc headers, which would
+    /// show every recipient who was copied blind. They stay in the message itself (the Sent copy).
+    /// </summary>
+    private static readonly FormatOptions WireFormat = CreateWireFormat();
+
     private readonly ResolvedEmailAccount _account;
     private readonly MailEndpoint _endpoint;
     private readonly IMailServiceConnector _connector;
@@ -52,7 +58,7 @@ internal sealed class SmtpMailSender : IMailSender
                 }
             }
 
-            var response = await client.SendAsync(MimeKit.FormatOptions.Default, message, sender, recipients, cancellationToken).ConfigureAwait(false);
+            var response = await client.SendAsync(WireFormat, message, sender, recipients, cancellationToken).ConfigureAwait(false);
             await client.DisconnectAsync(quit: true, cancellationToken).ConfigureAwait(false);
             return new SendReceipt(response);
         }
@@ -67,5 +73,13 @@ internal sealed class SmtpMailSender : IMailSender
         {
             throw translated;
         }
+    }
+
+    private static FormatOptions CreateWireFormat()
+    {
+        var format = FormatOptions.Default.Clone();
+        format.HiddenHeaders.Add(HeaderId.Bcc);
+        format.HiddenHeaders.Add(HeaderId.ResentBcc);
+        return format;
     }
 }

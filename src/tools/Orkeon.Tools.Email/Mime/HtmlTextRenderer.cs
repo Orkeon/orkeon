@@ -19,7 +19,16 @@ internal sealed record RenderedHtml(string Text, bool HadHiddenContent);
 /// </summary>
 internal static class HtmlTextRenderer
 {
+    /// <summary>What a body nested beyond <see cref="MaxNesting"/> reads as: its content is left out.</summary>
+    internal const string TooDeepNotice = "[The HTML body was not rendered: it nests elements more than 5000 levels deep.]";
+
     private const int MaxLinkLength = 100;
+
+    /// <summary>
+    /// The deepest nesting parsed. HtmlAgilityPack's parser itself recurses once per level (and
+    /// slows quadratically): real mail nests a few dozen levels, only a hostile message thousands.
+    /// </summary>
+    private const int MaxNesting = 5000;
 
     private static readonly HashSet<string> SkippedElements = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -43,8 +52,17 @@ internal static class HtmlTextRenderer
     public static RenderedHtml Render(string html)
     {
         ArgumentNullException.ThrowIfNull(html);
-        var document = new HtmlDocument();
-        document.LoadHtml(html);
+        var document = new HtmlDocument { OptionMaxNestedChildNodes = MaxNesting };
+        try
+        {
+            document.LoadHtml(html);
+        }
+        catch (Exception ex) when (ex.GetType() == typeof(Exception))
+        {
+            // HtmlAgilityPack signals its nesting limit with a bare Exception. The body is left
+            // out, so it is reported as hidden content.
+            return new RenderedHtml(TooDeepNotice, HadHiddenContent: true);
+        }
 
         var text = new StringBuilder(Math.Min(html.Length, 64 * 1024));
         var hidden = false;
@@ -70,7 +88,7 @@ internal static class HtmlTextRenderer
                     break;
 
                 case HtmlNodeType.Element when IsHidden(node):
-                    hidden |= !string.IsNullOrWhiteSpace(node.InnerText);
+                    hidden |= !string.IsNullOrWhiteSpace(TextOf(node));
                     break;
 
                 case HtmlNodeType.Element:
@@ -140,8 +158,31 @@ internal static class HtmlTextRenderer
         if (style.Length == 0)
             return false;
 
-        var compact = style.Replace(" ", string.Empty, StringComparison.Ordinal) + ";";
-        return HiddenStyleMarkers.Any(marker => compact.Contains(marker, StringComparison.OrdinalIgnoreCase));
+        // Each marker is matched at the start of a declaration, so "width:0" does not fire on
+        // "border-width:0", a style that hides nothing and wraps whole newsletters.
+        var compact = ";" + string.Concat(style.Where(c => !char.IsWhiteSpace(c))) + ";";
+        return HiddenStyleMarkers.Any(marker => compact.Contains(";" + marker, StringComparison.OrdinalIgnoreCase));
+    }
+
+    /// <summary>
+    /// The raw text under <paramref name="node"/>, gathered with an explicit stack: HtmlAgilityPack's
+    /// <c>InnerText</c> recurses once per level and a deeply nested message overflows the stack.
+    /// </summary>
+    private static string TextOf(HtmlNode node)
+    {
+        var text = new StringBuilder();
+        var pending = new Stack<HtmlNode>();
+        pending.Push(node);
+        while (pending.Count > 0)
+        {
+            var current = pending.Pop();
+            if (current is HtmlTextNode textNode)
+                text.Append(textNode.Text);
+            for (var i = current.ChildNodes.Count - 1; i >= 0; i--)
+                pending.Push(current.ChildNodes[i]);
+        }
+
+        return text.ToString();
     }
 
     private static void AppendLinkTarget(HtmlNode anchor, StringBuilder text)
@@ -155,7 +196,7 @@ internal static class HtmlTextRenderer
         }
 
         href = HtmlEntity.DeEntitize(href);
-        var label = HtmlEntity.DeEntitize(anchor.InnerText).Trim();
+        var label = HtmlEntity.DeEntitize(TextOf(anchor)).Trim();
         if (string.Equals(label, href, StringComparison.OrdinalIgnoreCase))
             return;
 

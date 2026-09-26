@@ -514,7 +514,10 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
         if (role == FolderRoles.Inbox)
             return client.Inbox;
 
-        var special = role switch
+        // MailKit throws rather than answer null when the server has neither SPECIAL-USE nor XLIST;
+        // such a server is exactly the one the conventional names below are for.
+        var flagsRoles = (client.Capabilities & (ImapCapabilities.SpecialUse | ImapCapabilities.XList)) != 0;
+        var special = !flagsRoles ? null : role switch
         {
             FolderRoles.Sent => client.GetFolder(SpecialFolder.Sent),
             FolderRoles.Drafts => client.GetFolder(SpecialFolder.Drafts),

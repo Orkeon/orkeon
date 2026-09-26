@@ -25,8 +25,11 @@ internal static class RecipientPolicy
             return domain.Length > 0 && !domain.Contains('@', StringComparison.Ordinal) && !domain.Contains('*', StringComparison.Ordinal);
         }
 
+        // MimeKit also parses a bare local part ("boss.example.com"): without the '@' check such a
+        // typo would pass validation and then never match anyone.
         return !pattern.Contains('*', StringComparison.Ordinal)
             && MailboxAddress.TryParse(pattern, out var mailbox)
+            && mailbox.Address.Contains('@', StringComparison.Ordinal)
             && string.Equals(mailbox.Address, pattern, StringComparison.OrdinalIgnoreCase);
     }
 
