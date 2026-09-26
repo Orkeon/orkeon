@@ -20,10 +20,14 @@ namespace Orkeon.Scripting.Tests.Examples;
 /// hangs reproducible. <c>11-await-before-run</c> and <c>12-events-async-handlers</c> were added
 /// to the catalogue for exactly those shapes; the older files pin that the fix cost nothing
 /// they relied on.</para>
-/// <para><c>08-rag</c> is not here: it has no crew at all and needs the RAG backend
-/// (<c>rag.ingest</c> / <c>rag.query</c> over an embedding provider and a document store) — an
-/// engine without one fails loudly on the first call by design. <c>crew-review-desk/</c> is the
-/// declarative shape, whose bodies never run; the CI validates it separately.</para>
+/// <para>The files of <see cref="NeedsALiveService"/> are not here: each drives an external
+/// service that no test double stands in for. <c>08-rag</c> has no crew at all and needs the RAG
+/// backend (<c>rag.ingest</c> / <c>rag.query</c> over an embedding provider and a document
+/// store); <c>13-email-triage</c> needs a real mailbox behind <c>tools.email*</c>, declared under
+/// <c>Orkeon:Tools:Email</c>. An engine without the service fails loudly on the first call by
+/// design. Both still typecheck against the shipped typings (<c>scripts/check-scripting-typings.sh</c>).
+/// <c>crew-review-desk/</c> is the declarative shape, whose bodies never run; the CI validates it
+/// separately.</para>
 /// <para>The scripts are real files bundled by esbuild (<c>RunFromFileAsync</c> with the physical
 /// path), so a relative import would resolve; a 20 s guard turns a hang into a failure.</para>
 /// </remarks>
@@ -34,8 +38,16 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
     /// <summary>Time given to a cancelled drain to surface its cancellation before the wait itself gives up.</summary>
     private static readonly TimeSpan ReleaseSlack = TimeSpan.FromSeconds(5);
 
-    /// <summary>The one file of the catalogue this class cannot run, and why — see the class remarks.</summary>
-    private const string RagExample = "08-rag.ork.ts";
+    /// <summary>
+    /// The files of the catalogue this class cannot run, because each needs a live external
+    /// service — see the class remarks. An entry is an exemption from running, not from being
+    /// listed: <see cref="Every_numbered_example_is_listed"/> still accounts for it.
+    /// </summary>
+    private static readonly string[] NeedsALiveService =
+    [
+        "08-rag.ork.ts",          // the RAG backend: an embedding provider and a document store
+        "13-email-triage.ork.ts", // a real mailbox, declared under Orkeon:Tools:Email
+    ];
 
 
     private static readonly string[] Files =
@@ -171,16 +183,22 @@ public sealed class ProceduralExamplesUnderSuspendingProviderTests
     }
 
     /// <summary>
-    /// A new numbered example must be added to <see cref="Files"/>: this class is what guarantees
-    /// that the catalogue runs under a suspending provider, and a theory that silently missed a
-    /// file would leave it uncovered.
+    /// A new numbered example must be added to <see cref="Files"/>, or to
+    /// <see cref="NeedsALiveService"/> when it cannot run here: this class is what guarantees that
+    /// the catalogue runs under a suspending provider, and a theory that silently missed a file
+    /// would leave it uncovered. An exemption must name a file that exists — a stale one would
+    /// exempt nothing today and whatever takes its name tomorrow.
     /// </summary>
     [Fact]
     public void Every_numbered_example_is_listed()
     {
-        var onDisk = Directory.EnumerateFiles(ExamplesDirectory(), "*.ork.ts")
+        var examplesDir = ExamplesDirectory();
+        Assert.All(NeedsALiveService, f =>
+            Assert.True(File.Exists(Path.Combine(examplesDir, f)), $"Exempted example '{f}' is not in {examplesDir}."));
+
+        var onDisk = Directory.EnumerateFiles(examplesDir, "*.ork.ts")
             .Select(Path.GetFileName)
-            .Where(f => f != RagExample)
+            .Where(f => !NeedsALiveService.Contains(f, StringComparer.Ordinal))
             .OrderBy(f => f, StringComparer.Ordinal)
             .ToArray();
         var listed = Files.OrderBy(f => f, StringComparer.Ordinal).ToArray();
