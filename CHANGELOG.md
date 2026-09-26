@@ -94,6 +94,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   which is JSON Schema's own definition of an integer; the typed deserializer already turned
   `20.0` into `20`. Found while typing the e-mail tools for scripts.
 
+### Fixed — the third-party notices cover HtmlAgilityPack and read the AngleSharp version actually pinned
+
+- **HtmlAgilityPack gets its entry** (section 11). The parser behind the RAG HTML loader,
+  `web_scrape`, the infrastructure's HTML parsing and the e-mail family's text rendering rides
+  inside the `orkeon` and `orkeon-repl` tools and the installers, which is the file's own
+  criterion (a), yet had no notice. The package ships no license text and the upstream
+  `LICENSE` carries no copyright line: the notice is the package's own
+  (`Copyright © ZZZ Projects Inc.`), with the MIT text reproduced verbatim from upstream.
+- **AngleSharp reads `1.8.2`**, the version `Directory.Packages.props` pins, instead of the
+  `1.7.2` it replaced. Its license text is re-sourced from the commit the 1.8.2 package was
+  built from (unchanged), and its dependency note is re-checked against that nuspec.
+
 ### Fixed — Studio finds the CLI it was installed with on Windows
 
 - **The zip and MSI installs no longer leave Studio without an engine.** Studio lives in

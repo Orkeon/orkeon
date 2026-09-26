@@ -28,7 +28,10 @@ under the BSD 2-Clause License. Section 7 covers the cross-encoder
 reranker model embedded in `src/rag/Orkeon.Rag.Onnx.Model/`, distributed under
 the Apache License 2.0. Sections 8-10 cover the e-mail tool family
 (`src/tools/Orkeon.Tools.Email/`) — MailKit, MimeKit and MimeKit's cryptography
-dependency BouncyCastle.Cryptography — all distributed under the MIT License.
+dependency BouncyCastle.Cryptography — all distributed under the MIT License. Section 11
+covers HtmlAgilityPack, the HTML parser of the RAG loader, `web_scrape`, the
+infrastructure's HTML parsing and the e-mail family's text rendering, distributed under
+the MIT License.
 
 **Which shipped artefacts actually embed model weights.** Two sets of weights leave
 this repository, and it is worth being explicit about where. (1) The **BGE-micro-v2**
@@ -179,7 +182,7 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 ## 4. AngleSharp
 
-- **Version**: `1.7.2` (pinned in `Directory.Packages.props`)
+- **Version**: `1.8.2` (pinned in `Directory.Packages.props`)
 - **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element
   and GitHub's license detection) — Copyright (c) 2013 - 2026 AngleSharp
 - **Source**: https://github.com/AngleSharp/AngleSharp
@@ -194,9 +197,9 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
   `Fizzler` / `Fizzler.Systems.HtmlAgilityPack`, which is no longer referenced.
 
 License text reproduced verbatim from
-`https://raw.githubusercontent.com/AngleSharp/AngleSharp/devel/LICENSE`
-(file last changed by upstream commit `8033a5c690af9c2c443f58e34875343fa4cc1d07`,
-2026-06-06; retrieved 2026-06-11):
+`https://raw.githubusercontent.com/AngleSharp/AngleSharp/35b26db83557a6a74ce286907833e3b17806d9eb/LICENSE`
+— the commit the 1.8.2 package was built from (its nuspec `<repository commit>`);
+retrieved 2026-09-26:
 
 ```
 The MIT License (MIT)
@@ -223,7 +226,7 @@ SOFTWARE.
 ```
 
 Note (dependency footprint): on `net10.0` — the repository's target framework —
-`AngleSharp 1.7.2` declares **no** package dependencies (its
+`AngleSharp 1.8.2` declares **no** package dependencies (its
 `System.Text.Encoding.CodePages` dependency only applies to the
 `netstandard2.0` / `.NET Framework` target groups).
 
@@ -675,4 +678,51 @@ NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPO
 NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
 DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT
 OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+---
+
+## 11. HtmlAgilityPack
+
+- **Version**: `1.13.0` (pinned in `Directory.Packages.props`)
+- **License**: MIT (SPDX: `MIT`, per the package's `<license type="expression">` element) —
+  Copyright © ZZZ Projects Inc. (the package's `<copyright>` field)
+- **Source**: https://github.com/zzzprojects/html-agility-pack
+- **NuGet**: https://www.nuget.org/packages/HtmlAgilityPack
+- **Authors**: ZZZ Projects, Simon Mourrier, Jeff Klawiter, Stephan Grell (per the package's
+  `<authors>` field in `HtmlAgilityPack.nuspec`; owner: ZZZ Projects Inc.)
+- **Role**: the tolerant HTML parser behind the RAG HTML loader
+  (`src/rag/Orkeon.Rag/Loaders/HtmlDocumentLoader.cs`), the infrastructure's HTML parsing
+  (`src/core/Orkeon.Infrastructure/Serialization/HtmlAgilityPackParser.cs`), `web_scrape`
+  (`src/tools/Orkeon.Tools.Web/WebScrapeTool.cs`) and the e-mail family's HTML-to-text
+  rendering (`src/tools/Orkeon.Tools.Email/Mime/HtmlTextRenderer.cs`). Its assembly is
+  redistributed inside the `orkeon` and `orkeon-repl` dotnet tools and the installers built
+  from the CLI (criterion (a)); the `Orkeon` package references it as an ordinary NuGet
+  dependency.
+
+HtmlAgilityPack 1.13.0 ships no license file, and the upstream `LICENSE` carries no copyright
+line: the notice that goes with the text is the package's own, `Copyright © ZZZ Projects Inc.`
+License text reproduced verbatim from
+`https://raw.githubusercontent.com/zzzprojects/html-agility-pack/master/LICENSE` (branch
+`master` at commit `195cd0601fcf6bb033f2385c1255da132e330ffb`; retrieved 2026-09-26):
+
+```
+The MIT License (MIT)
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
 ```
