@@ -228,9 +228,13 @@ internal sealed partial class ImapMailbox : IMailbox, IAsyncDisposable, IDisposa
     public Task AppendToSentAsync(MimeMessage message, CancellationToken cancellationToken) =>
         RunAsync(async client =>
         {
-            var sent = await TryGetRoleFolderAsync(client, FolderRoles.Sent, cancellationToken).ConfigureAwait(false);
-            if (sent is not null)
-                await sent.AppendAsync(new AppendRequest(message, MessageFlags.Seen), cancellationToken).ConfigureAwait(false);
+            // Said, not skipped: the operator asked for copies (SaveSentCopy), and email_send
+            // reports this as a warning next to the message it did send.
+            var sent = await TryGetRoleFolderAsync(client, FolderRoles.Sent, cancellationToken).ConfigureAwait(false)
+                ?? throw new EmailToolException(
+                    EmailErrorCode.FolderNotFound,
+                    "This account has no Sent folder to file a copy in: an operator creates one named Sent, or sets SaveSentCopy to false.");
+            await sent.AppendAsync(new AppendRequest(message, MessageFlags.Seen), cancellationToken).ConfigureAwait(false);
             return true;
         }, cancellationToken);
 

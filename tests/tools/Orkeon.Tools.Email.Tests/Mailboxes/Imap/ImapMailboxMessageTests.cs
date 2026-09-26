@@ -466,15 +466,17 @@ public sealed class ImapMailboxMessageTests
     }
 
     [Fact]
-    public async Task Should_skip_the_sent_copy_When_there_is_no_Sent_folder()
+    public async Task Should_say_there_is_no_Sent_folder_instead_of_skipping_the_copy()
     {
         await using var server = new FakeImapServer(TestAccounts.Address, TestAccounts.Password);
         using var credentials = new CredentialsFixture();
         await using var mailbox = Open(server, credentials);
         using var sent = MimeSamples.Load(MimeSamples.Plain());
 
-        await mailbox.AppendToSentAsync(sent, Token);
+        var error = await Assert.ThrowsAsync<EmailToolException>(() => mailbox.AppendToSentAsync(sent, Token));
 
+        Assert.Equal(EmailErrorCode.FolderNotFound, error.Code);
+        Assert.Equal("This account has no Sent folder to file a copy in: an operator creates one named Sent, or sets SaveSentCopy to false.", error.Message);
         server.AssertHealthy();
         Assert.DoesNotContain(server.Commands, c => c.StartsWith("APPEND", StringComparison.Ordinal));
     }

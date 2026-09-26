@@ -156,9 +156,9 @@ declare global {
         subject?: string;
         /** The subject or the body contains this. */
         text?: string;
-        /** Received on or after this date: `YYYY-MM-DD` or ISO 8601. */
+        /** Received on or after this date: `YYYY-MM-DD` or ISO 8601 (IMAP compares whole days). */
         since?: string;
-        /** Received before this date: `YYYY-MM-DD` or ISO 8601. */
+        /** Received before this date: `YYYY-MM-DD` or ISO 8601 (IMAP compares whole days). */
         before?: string;
         /** Only messages with (true) or without (false) attachments. */
         has_attachments?: boolean;

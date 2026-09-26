@@ -137,12 +137,12 @@ internal sealed record EmailSearchRequest
 
     /// <summary>Received on or after.</summary>
     [JsonPropertyName("since")]
-    [FieldSchema(Description = "Received on or after this date (YYYY-MM-DD or ISO 8601)", IsRequired = false)]
+    [FieldSchema(Description = "Received on or after this date (YYYY-MM-DD or ISO 8601; IMAP compares whole days)", IsRequired = false)]
     public string? Since { get; init; }
 
     /// <summary>Received before.</summary>
     [JsonPropertyName("before")]
-    [FieldSchema(Description = "Received before this date (YYYY-MM-DD or ISO 8601)", IsRequired = false)]
+    [FieldSchema(Description = "Received before this date (YYYY-MM-DD or ISO 8601; IMAP compares whole days)", IsRequired = false)]
     public string? Before { get; init; }
 
     /// <summary>With or without attachments.</summary>

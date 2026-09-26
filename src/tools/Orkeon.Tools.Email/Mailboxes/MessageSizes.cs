@@ -6,10 +6,11 @@ namespace Orkeon.Tools.Email.Mailboxes;
 internal static class MessageSizes
 {
     /// <summary>
-    /// The message as SMTP carries it: CRLF line endings, where the platform default is LF on
-    /// Linux and a message just under the server's SIZE would pass the check and fail at DATA.
+    /// The message as it travels, over SMTP or to Microsoft Graph: CRLF line endings, as MIME
+    /// requires, where the platform default is LF on Linux (and a message just under the
+    /// server's SIZE would pass the check and fail at DATA).
     /// </summary>
-    private static readonly FormatOptions Wire = CreateWire();
+    internal static readonly FormatOptions Wire = CreateWire();
 
     /// <summary>The size in bytes of <paramref name="message"/> once written.</summary>
     public static long Measure(MimeMessage message)

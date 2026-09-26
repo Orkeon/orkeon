@@ -98,6 +98,7 @@ public sealed class MailboxHelpersTests
     [InlineData("io", "ServerError", "The connection to imap.example.test:993 failed: reset")]
     [InlineData("socket", "ServerError", "The connection to imap.example.test:993 failed")]
     [InlineData("disconnected", "ServerError", "The connection to imap.example.test:993 failed")]
+    [InlineData("timeout", "ServerError", "The connection to imap.example.test:993 failed: timed out")]
     public void Should_turn_MailKit_and_socket_failures_into_actionable_errors(string failure, string code, string message)
     {
         var account = TestAccounts.Resolve("acct", TestAccounts.Custom());
@@ -110,6 +111,7 @@ public sealed class MailboxHelpersTests
             "protocol" => new ImapProtocolException("garbled"),
             "io" => new IOException("reset"),
             "socket" => new SocketException((int)SocketError.ConnectionRefused),
+            "timeout" => new TimeoutException("timed out"),
             _ => new ServiceNotConnectedException("not connected"),
         };
 
@@ -149,6 +151,18 @@ public sealed class MailboxHelpersTests
         Assert.DoesNotContain("hunter2", password.ToString(), StringComparison.Ordinal);
         Assert.DoesNotContain("ya29.secret", bearer.ToString(), StringComparison.Ordinal);
         Assert.Contains("user@example.com", password.ToString(), StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task Should_refuse_to_dial_with_a_transport_security_it_does_not_know()
+    {
+        using var client = new ImapClient();
+        var endpoint = new MailEndpoint("imap.example.test", 993, (TransportSecurity)7);
+
+        await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
+            new NetworkMailServiceConnector().ConnectAsync(client, endpoint, TestContext.Current.CancellationToken));
+
+        Assert.False(client.IsConnected);
     }
 
     [Fact]

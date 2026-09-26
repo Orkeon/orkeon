@@ -24,11 +24,13 @@ internal sealed class NetworkMailServiceConnector : IMailServiceConnector
     {
         ArgumentNullException.ThrowIfNull(client);
         ArgumentNullException.ThrowIfNull(endpoint);
+        // No catch-all arm: a value outside the three would otherwise dial in clear text.
         var options = endpoint.Security switch
         {
             TransportSecurity.SslOnConnect => SecureSocketOptions.SslOnConnect,
             TransportSecurity.StartTls => SecureSocketOptions.StartTls,
-            _ => SecureSocketOptions.None,
+            TransportSecurity.None => SecureSocketOptions.None,
+            _ => throw new ArgumentOutOfRangeException(nameof(endpoint), endpoint.Security, "Unknown transport security."),
         };
         return client.ConnectAsync(endpoint.Host, endpoint.Port, options, cancellationToken);
     }
@@ -101,7 +103,8 @@ internal static class MailKitSessions
                 EmailErrorCode.ServerError,
                 $"{server} refused the command: {exception.Message}",
                 exception),
-            ProtocolException or ServiceNotConnectedException or ServiceNotAuthenticatedException or IOException or SocketException => new EmailToolException(
+            ProtocolException or ServiceNotConnectedException or ServiceNotAuthenticatedException or IOException or SocketException
+                or TimeoutException => new EmailToolException(
                 EmailErrorCode.ServerError,
                 $"The connection to {server} failed: {exception.Message}",
                 exception),

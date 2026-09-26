@@ -256,7 +256,9 @@ certificate. A port left out follows the security:
 An account without `Outgoing:Host` cannot send, and one that grants `Send` without an
 outgoing server is reported as misconfigured. A custom server usually does not file what
 you send, so the family appends a copy to the Sent folder (`SaveSentCopy`, on by default
-for a `Custom` account only; the Gmail preset and Graph file sent mail themselves).
+for a `Custom` account only; the Gmail preset and Graph file sent mail themselves). A server
+with no Sent folder gets no copy, and `email_send` says so in its `warning` — the message
+itself is sent.
 
 `"Incoming": { "Protocol": "Pop3" }` reads over POP3 instead: the inbox only — see
 [Limits](#limits).

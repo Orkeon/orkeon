@@ -82,6 +82,7 @@ public sealed class LoopbackRedirectListenerTests
     [InlineData("GET", null, null, false)]
     [InlineData("", null, null, false)]
     [InlineData("GET http://evil.example/?code=x HTTP/1.1", null, null, false)]
+    [InlineData("GET //[not-an-address/?code=x&state=y HTTP/1.1", null, null, false)]
     public void Should_parse_only_a_GET_request_line(string requestLine, string? code, string? state, bool outcome)
     {
         var redirect = LoopbackRedirectListener.ParseRequestLine(requestLine);

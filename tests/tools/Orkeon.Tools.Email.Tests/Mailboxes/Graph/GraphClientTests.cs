@@ -115,6 +115,17 @@ public sealed class GraphClientTests
     }
 
     [Fact]
+    public async Task Should_report_a_Graph_timeout_as_a_server_error_not_a_cancellation()
+    {
+        using var graph = new GraphFixture();
+        graph.Http.Enqueue(_ => throw new TaskCanceledException("timeout", new TimeoutException()));
+
+        var error = await Assert.ThrowsAsync<EmailToolException>(async () => await graph.Client.GetJsonAsync(new Uri($"{Base}me"), Token));
+
+        Assert.Equal((EmailErrorCode.ServerError, "Microsoft Graph did not answer in time; retry later."), (error.Code, error.Message));
+    }
+
+    [Fact]
     public async Task Should_refresh_an_expiring_token_before_calling_Graph()
     {
         using var graph = new GraphFixture();

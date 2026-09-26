@@ -14,6 +14,7 @@ internal sealed class LoopbackRedirectListener : IDisposable
 {
     private const int MaxRequestLineBytes = 8 * 1024;
     private static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(10);
+    private static readonly Uri LoopbackBase = new("http://127.0.0.1/");
 
     private readonly TcpListener _listener;
 
@@ -69,14 +70,20 @@ internal sealed class LoopbackRedirectListener : IDisposable
     /// <summary>Stops listening.</summary>
     public void Dispose() => _listener.Stop();
 
-    /// <summary>Parses <c>GET /?code=…&amp;state=… HTTP/1.1</c>.</summary>
+    /// <summary>
+    /// Parses <c>GET /?code=…&amp;state=… HTTP/1.1</c>. Anything else, a target that is not even
+    /// a valid address included, is no outcome: it is answered 404 and the wait goes on.
+    /// </summary>
     internal static AuthorizationRedirect ParseRequestLine(string requestLine)
     {
         var parts = requestLine.Split(' ', StringSplitOptions.RemoveEmptyEntries);
-        if (parts.Length < 2 || !parts[0].Equals("GET", StringComparison.Ordinal) || !parts[1].StartsWith('/'))
+        if (parts.Length < 2 || !parts[0].Equals("GET", StringComparison.Ordinal) || !parts[1].StartsWith('/')
+            || !Uri.TryCreate(LoopbackBase, parts[1], out var target))
+        {
             return new AuthorizationRedirect(null, null, null);
+        }
 
-        return AuthorizationRedirect.Parse(new Uri(new Uri("http://127.0.0.1/"), parts[1]));
+        return AuthorizationRedirect.Parse(target);
     }
 
     private static async Task<string> ReadLineAsync(NetworkStream stream, CancellationToken cancellationToken)

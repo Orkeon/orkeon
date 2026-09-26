@@ -239,6 +239,11 @@ internal sealed class OAuth2Client
         {
             throw new EmailToolException(EmailErrorCode.ServerError, $"The identity provider at {endpoint.Host} could not be reached: {ex.Message}", ex);
         }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The HTTP client's own timeout, not a cancellation by the caller.
+            throw new EmailToolException(EmailErrorCode.ServerError, $"The identity provider at {endpoint.Host} did not answer in time; retry later.", ex);
+        }
 
         using (response)
         {

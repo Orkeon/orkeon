@@ -250,6 +250,17 @@ public sealed class OAuth2ClientTests : IDisposable
     }
 
     [Fact]
+    public async Task Should_report_an_identity_provider_that_does_not_answer_in_time_as_a_server_error()
+    {
+        _handler.Enqueue(_ => throw new TaskCanceledException("timeout", new TimeoutException()));
+
+        var failure = await Assert.ThrowsAsync<EmailToolException>(async () => await _client.RefreshAsync(Google, null, "rt", Token));
+
+        Assert.Equal(EmailErrorCode.ServerError, failure.Code);
+        Assert.Equal("The identity provider at oauth2.googleapis.com did not answer in time; retry later.", failure.Message);
+    }
+
+    [Fact]
     public async Task Should_exchange_an_authorization_code_with_the_PKCE_verifier()
     {
         _handler.EnqueueJson("""{"access_token":"at","refresh_token":"rt","expires_in":3600}""");

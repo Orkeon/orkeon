@@ -27,9 +27,9 @@ public enum ToolRequirement
     /// <summary>
     /// An e-mail account declared in the settings file, under the section named in
     /// <see cref="ToolInfo.Argument"/>. Neither a key nor a call parameter: the tool is registered
-    /// with or without one and refuses every call until an account is declared, saying what to
-    /// declare. Studio has no form for it — the account is written in the file, and an OAuth
-    /// account then signs in once with <c>orkeon email login</c>.
+    /// with or without one and, until an account is declared, refuses every call saying what to
+    /// declare (<c>email_accounts</c> lists none). Studio has no form for it — the account is
+    /// written in the file, and an OAuth account then signs in once with <c>orkeon email login</c>.
     /// </summary>
     EmailAccount,
 }
@@ -60,9 +60,10 @@ public sealed record ToolSecret(string EnvName, string UsedBy, Uri ConsoleUrl);
 /// <para>
 /// The e-mail family (MAIL-05) is the opposite case: its tools are registered whether or not
 /// an account is declared, so the registry lists them all the same, and only this catalogue
-/// says that twelve of them refuse every call until an account is declared under
-/// <see cref="ConfigurationKeys.ToolsEmail"/>. A test pins that family against the tool
-/// contracts the e-mail assembly declares, not only against the inventory.
+/// says that the twelve mailbox tools need an account declared under
+/// <see cref="ConfigurationKeys.ToolsEmail"/> (until then eleven refuse every call and
+/// <c>email_accounts</c> lists none). A test pins that family against the tool contracts the
+/// e-mail assembly declares, not only against the inventory.
 /// </para>
 /// </summary>
 public static class ToolCatalog

@@ -270,7 +270,8 @@ Un compte sans `Outgoing:Host` ne peut pas envoyer, et un compte qui accorde `Se
 sortant est signalé comme mal configuré. Un serveur personnalisé ne classe en général pas ce
 que vous envoyez : la famille ajoute donc une copie au dossier Envoyés (`SaveSentCopy`, actif
 par défaut pour un compte `Custom` seulement ; le préréglage Gmail et Graph classent eux-mêmes
-le courrier envoyé).
+le courrier envoyé). Un serveur sans dossier Envoyés ne reçoit pas de copie, et `email_send` le
+signale dans son `warning` — le message, lui, est bien envoyé.
 
 `"Incoming": { "Protocol": "Pop3" }` lit en POP3 à la place : la boîte de réception seulement
 — voir [Limites](#limites).

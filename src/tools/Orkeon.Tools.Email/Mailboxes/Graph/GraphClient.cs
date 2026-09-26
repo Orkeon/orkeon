@@ -65,16 +65,19 @@ internal sealed class GraphClient
         string payload;
         using (var buffer = new MemoryStream())
         {
-            await message.WriteToAsync(buffer, cancellationToken).ConfigureAwait(false);
-            payload = Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
-        }
+            await message.WriteToAsync(MessageSizes.Wire, buffer, cancellationToken).ConfigureAwait(false);
 
-        if (payload.Length > EmailDefaults.GraphMaxRequestBytes)
-        {
-            throw new EmailToolException(
-                EmailErrorCode.TooLarge,
-                string.Create(CultureInfo.InvariantCulture,
-                    $"The message is {payload.Length / 1024} KB once encoded; Microsoft Graph accepts at most {EmailDefaults.GraphMaxRequestBytes / 1024} KB per request (about 3 MB of attachments)."));
+            // Measured before encoding: an oversized message is refused without its base64 copy.
+            var encodedLength = (buffer.Length + 2) / 3 * 4;
+            if (encodedLength > EmailDefaults.GraphMaxRequestBytes)
+            {
+                throw new EmailToolException(
+                    EmailErrorCode.TooLarge,
+                    string.Create(CultureInfo.InvariantCulture,
+                        $"The message is {encodedLength / 1024} KB once encoded; Microsoft Graph accepts at most {EmailDefaults.GraphMaxRequestBytes / 1024} KB per request (about 3 MB of attachments)."));
+            }
+
+            payload = Convert.ToBase64String(buffer.GetBuffer(), 0, (int)buffer.Length);
         }
 
         using var request = await CreateAsync(HttpMethod.Post, address, cancellationToken).ConfigureAwait(false);
@@ -123,6 +126,11 @@ internal sealed class GraphClient
         catch (HttpRequestException ex)
         {
             throw new EmailToolException(EmailErrorCode.ServerError, $"Microsoft Graph could not be reached: {ex.Message}", ex);
+        }
+        catch (OperationCanceledException ex) when (!cancellationToken.IsCancellationRequested)
+        {
+            // The HTTP client's own timeout, not a cancellation by the caller.
+            throw new EmailToolException(EmailErrorCode.ServerError, "Microsoft Graph did not answer in time; retry later.", ex);
         }
 
         if (response.IsSuccessStatusCode)
