@@ -61,13 +61,16 @@ public sealed record ToolSecret(string EnvName, string UsedBy, Uri ConsoleUrl);
 /// The e-mail family (MAIL-05) is the opposite case: its tools are registered whether or not
 /// an account is declared, so the registry lists them all the same, and only this catalogue
 /// says that the twelve mailbox tools need an account declared under
-/// <see cref="ConfigurationKeys.ToolsEmail"/> (until then eleven refuse every call and
+/// <see cref="EmailAccounts"/> (until then eleven refuse every call and
 /// <c>email_accounts</c> lists none). A test pins that family against the tool contracts the
 /// e-mail assembly declares, not only against the inventory.
 /// </para>
 /// </summary>
 public static class ToolCatalog
 {
+    /// <summary>Where an e-mail account is declared: one entry per account, keyed by its name.</summary>
+    public const string EmailAccounts = ConfigurationKeys.ToolsEmail + ":Accounts";
+
     /// <summary>Family keys, in display order.</summary>
     public const string WebFamily = "web";
     /// <summary>Search and knowledge.</summary>
@@ -160,18 +163,18 @@ public static class ToolCatalog
         ]),
         new(EmailFamily,
         [
-            new("email_accounts", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_folders", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_search", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_read", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_save_attachment", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_create_folder", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_rename_folder", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_move", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_mark", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_delete", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_draft", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
-            new("email_send", ToolRequirement.EmailAccount, ConfigurationKeys.ToolsEmail),
+            new("email_accounts", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_folders", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_search", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_read", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_save_attachment", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_create_folder", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_rename_folder", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_move", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_mark", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_delete", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_draft", ToolRequirement.EmailAccount, EmailAccounts),
+            new("email_send", ToolRequirement.EmailAccount, EmailAccounts),
             // Reads an .eml file from a mount: no account involved.
             new("email_parser"),
         ]),

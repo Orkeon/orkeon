@@ -1,3 +1,4 @@
+using System.Runtime.ExceptionServices;
 using Orkeon.Tools.Email.Mime;
 
 namespace Orkeon.Tools.Email.Tests.Mime;
@@ -158,10 +159,27 @@ public sealed class HtmlTextRendererTests
 
     private static RenderedHtml RenderOnSmallStack(string html)
     {
+        // What the renderer throws on its own thread is brought back here, so a regression fails
+        // this test instead of the test host; only a stack overflow still ends the process.
         RenderedHtml? rendered = null;
-        var thread = new Thread(() => rendered = HtmlTextRenderer.Render(html), maxStackSize: 256 * 1024);
+        ExceptionDispatchInfo? failure = null;
+        var thread = new Thread(
+            () =>
+            {
+                try
+                {
+                    rendered = HtmlTextRenderer.Render(html);
+                }
+                catch (Exception ex)
+                {
+                    failure = ExceptionDispatchInfo.Capture(ex);
+                }
+            },
+            maxStackSize: 256 * 1024);
         thread.Start();
-        thread.Join();
+
+        Assert.True(thread.Join(TimeSpan.FromSeconds(60)), "The renderer did not finish within a minute.");
+        failure?.Throw();
         Assert.NotNull(rendered);
         return rendered;
     }

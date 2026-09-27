@@ -253,6 +253,11 @@ public sealed class EmailAccountResolverTests
     [InlineData("my account", false)]
     [InlineData("a/b", false)]
     [InlineData("été", false)]
+    [InlineData("2nd", true)]
+    [InlineData(".hidden", false)]
+    [InlineData("..", false)]
+    [InlineData("-x", false)]
+    [InlineData("_perso", false)]
     public void Should_accept_only_letters_digits_dots_underscores_and_dashes_as_account_names(string name, bool valid)
     {
         Assert.Equal(valid, EmailAccountResolver.IsValidName(name));

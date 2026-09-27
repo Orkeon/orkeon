@@ -8,7 +8,8 @@ namespace Orkeon.Tools.Email.Mailboxes;
 
 /// <summary>
 /// Opens the transport of a MailKit client. The network implementation dials the configured
-/// server; the tests hand MailKit a scripted in-memory stream through the same seam.
+/// server; the tests dial it too, at scripted servers listening on the loopback interface,
+/// the one place where Security None is accepted.
 /// </summary>
 internal interface IMailServiceConnector
 {

@@ -206,11 +206,12 @@ internal static class EmailCommand
         string verb, EmailCommandOptionsBase options, Func<EmailAccountAdministration, CancellationToken, Task<int>> body)
     {
         using var cts = new CancellationTokenSource();
-        Console.CancelKeyPress += (_, e) =>
+        ConsoleCancelEventHandler onCancel = (_, e) =>
         {
             e.Cancel = true;
             cts.Cancel();
         };
+        Console.CancelKeyPress += onCancel;
 
         try
         {
@@ -218,8 +219,9 @@ internal static class EmailCommand
             var administration = host.Services.GetRequiredService<EmailAccountAdministration>();
             return await body(administration, cts.Token).ConfigureAwait(false);
         }
-        catch (OperationCanceledException)
+        catch (OperationCanceledException) when (cts.IsCancellationRequested)
         {
+            // Only the operator's Ctrl+C: a cancellation nobody asked for is a failure, below.
             return Program.ExitCancelled;
         }
         catch (EmailToolException ex)
@@ -238,6 +240,10 @@ internal static class EmailCommand
             if (Environment.GetEnvironmentVariable("ORKEON_DEBUG") == "1")
                 await Console.Error.WriteLineAsync(ex.ToString()).ConfigureAwait(false);
             return Program.ExitRuntimeError;
+        }
+        finally
+        {
+            Console.CancelKeyPress -= onCancel;
         }
     }
 

@@ -84,7 +84,7 @@ public sealed class ToolsSettingsViewModelTests
         Assert.All(email.Requirements, r =>
         {
             Assert.Equal(
-                "needs an e-mail account declared in the settings file under Orkeon:Tools:Email; "
+                "needs an e-mail account declared in the settings file under Orkeon:Tools:Email:Accounts; "
                 + "an OAuth account then signs in with orkeon email login",
                 r.Text);
             Assert.False(r.IsKey);

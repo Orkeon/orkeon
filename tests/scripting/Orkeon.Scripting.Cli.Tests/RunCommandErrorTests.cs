@@ -74,4 +74,28 @@ public sealed class RunCommandErrorTests
         Assert.Contains("reserved by the runner", console.Stderr, StringComparison.Ordinal);
         Assert.Contains("/script", console.Stderr, StringComparison.Ordinal);
     }
+
+    /// <summary>
+    /// The e-mail token root is reserved on every run, not only on the runs that declare an
+    /// OAuth account: a user mount there would hand the agents' file tools the place a later
+    /// sign-in writes its tokens to.
+    /// </summary>
+    [Fact]
+    public async Task A_user_mount_claiming_the_credentials_root_is_refused_without_any_e_mail_account()
+    {
+        using var scratch = new ScriptScratch();
+        var script = scratch.WriteScript("ok.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            """);
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = script,
+            Mounts = [$"{scratch.OutDir}:/credentials:rw"],
+        });
+
+        Assert.Equal(Program.ExitScriptError, exit);
+        Assert.Contains("'/credentials' is a virtual root reserved by the runner", console.Stderr, StringComparison.Ordinal);
+    }
 }

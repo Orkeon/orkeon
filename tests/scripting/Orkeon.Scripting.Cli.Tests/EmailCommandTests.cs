@@ -1,18 +1,18 @@
 using System.Net;
-using System.Text;
 using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 using Orkeon.Scripting.Cli.Commands;
-using Orkeon.Tools.Email.Administration;
+using Orkeon.Scripting.Cli.Tests.Doubles;
 
 namespace Orkeon.Scripting.Cli.Tests;
 
 /// <summary>
 /// <c>orkeon email accounts | login | logout | check</c> driven in-process (MAIL-05). The runner
 /// host is built for real over a settings file in a scratch directory, credentials directory
-/// included; only the identity provider is replaced, through the named HTTP client, so the
-/// whole path — device-code sign-in, token written through the privileged VFS view, readiness,
-/// sign-out — runs offline.
+/// included; only the Microsoft endpoints are replaced, through the named HTTP client, so the
+/// whole path — device-code sign-in, token written through the privileged VFS view, connection
+/// check over Graph, readiness, sign-out — runs offline.
 /// </summary>
 [Collection(CliCollection.Name)]
 public sealed class EmailCommandTests
@@ -113,20 +113,13 @@ public sealed class EmailCommandTests
     }
 
     [Fact]
-    public async Task DeviceCodeLogin_StoresTheTokens_ThenTheAccountIsReady_ThenLogoutForgetsThem()
+    public async Task DeviceCodeLogin_StoresTheTokens_ThenCheckConnects_ThenTheAccountIsReady_ThenLogoutForgetsThem()
     {
         using var scratch = new ScriptScratch();
         var credentials = Path.Combine(scratch.Root, "credentials");
-        scratch.WriteFile("appsettings.json", $$"""
-            { "Orkeon": { "Tools": { "Email": {
-                "CredentialsDirectory": {{JsonSerializer.Serialize(credentials)}},
-                "Accounts": {
-                  "hotmail": { "Provider": "Outlook", "Address": "me@hotmail.com", "Rights": "Read",
-                               "Auth": { "ClientId": "client-123" } }
-                } } } } }
-            """);
-        using var identity = new StubIdentityProvider();
-        var interaction = new RecordingLoginInteraction();
+        WriteOutlookSettings(scratch, credentials);
+        using var identity = new StubOutlookHttpMessageHandler();
+        var interaction = new FakeEmailLoginInteraction();
 
         using (var console = new TestConsole())
         {
@@ -135,9 +128,7 @@ public sealed class EmailCommandTests
                 WorkingDirectoryOverride = scratch.Root,
                 Account = "hotmail",
                 Interaction = interaction,
-                ConfigureTestServices = (_, services) => services
-                    .AddHttpClient("orkeon.email")
-                    .ConfigurePrimaryHttpMessageHandler(() => identity),
+                ConfigureTestServices = Answering(identity),
             });
 
             Assert.Equal(Program.ExitOk, exit);
@@ -155,6 +146,22 @@ public sealed class EmailCommandTests
         if (!OperatingSystem.IsWindows())
         {
             Assert.Equal(UnixFileMode.UserRead | UnixFileMode.UserWrite | UnixFileMode.UserExecute, File.GetUnixFileMode(credentials));
+        }
+
+        using (var graph = new StubOutlookHttpMessageHandler())
+        using (var console = new TestConsole())
+        {
+            var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
+            {
+                WorkingDirectoryOverride = scratch.Root,
+                Account = "hotmail",
+                ConfigureTestServices = Answering(graph),
+            });
+
+            Assert.Equal(Program.ExitOk, exit);
+            Assert.Contains("E-mail account 'hotmail' is reachable: 2 folder(s), inbox 12 message(s), 3 unread.", console.Stdout, StringComparison.Ordinal);
+            // The stored access token was still fresh: the check went to Graph only.
+            Assert.All(graph.Requests, path => Assert.StartsWith("/v1.0/me/mailFolders", path, StringComparison.Ordinal));
         }
 
         using (var console = new TestConsole())
@@ -192,43 +199,50 @@ public sealed class EmailCommandTests
             Assert.Contains(verb, console.Stdout, StringComparison.Ordinal);
     }
 
-    /// <summary>Hand-written double: records what the sign-in showed the user.</summary>
-    private sealed class RecordingLoginInteraction : IEmailLoginInteraction
+    [Fact]
+    public async Task Check_WhenTheServerFails_ExitsWithTheRuntimeCode()
     {
-        public Uri? VerificationUri { get; private set; }
-
-        public string? UserCode { get; private set; }
-
-        public Task ShowDeviceCodeAsync(string account, Uri verificationUri, string userCode, CancellationToken cancellationToken)
+        using var scratch = new ScriptScratch();
+        WriteOutlookSettings(scratch, Path.Combine(scratch.Root, "credentials"));
+        using (var identity = new StubOutlookHttpMessageHandler())
+        using (new TestConsole())
         {
-            VerificationUri = verificationUri;
-            UserCode = userCode;
-            return Task.CompletedTask;
+            Assert.Equal(Program.ExitOk, await EmailCommand.ExecuteLoginAsync(new EmailLoginCommandOptions
+            {
+                WorkingDirectoryOverride = scratch.Root,
+                Account = "hotmail",
+                Interaction = new FakeEmailLoginInteraction(),
+                ConfigureTestServices = Answering(identity),
+            }));
         }
 
-        public Task ShowAuthorizationUrlAsync(string account, Uri authorizationUri, CancellationToken cancellationToken) =>
-            throw new InvalidOperationException("The Outlook preset signs in with a device code.");
+        using var graph = new StubOutlookHttpMessageHandler { GraphStatus = HttpStatusCode.ServiceUnavailable };
+        using var console = new TestConsole();
 
-        public Task<string?> ReadRedirectAsync(CancellationToken cancellationToken) => Task.FromResult<string?>(null);
-    }
-
-    /// <summary>Hand-written double: the Microsoft identity platform's device-code and token endpoints.</summary>
-    private sealed class StubIdentityProvider : HttpMessageHandler
-    {
-        public List<string> Requests { get; } = [];
-
-        public List<string> Bodies { get; } = [];
-
-        protected override async Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+        var exit = await EmailCommand.ExecuteCheckAsync(new EmailCheckCommandOptions
         {
-            var path = request.RequestUri!.AbsolutePath;
-            Requests.Add(path);
-            Bodies.Add(request.Content is null ? string.Empty : await request.Content.ReadAsStringAsync(cancellationToken));
+            WorkingDirectoryOverride = scratch.Root,
+            Account = "hotmail",
+            ConfigureTestServices = Answering(graph),
+        });
 
-            var json = path.EndsWith("/devicecode", StringComparison.Ordinal)
-                ? """{ "device_code": "device-1", "user_code": "WXYZ-1234", "verification_uri": "https://microsoft.com/devicelogin", "expires_in": 900, "interval": 1 }"""
-                : """{ "token_type": "Bearer", "access_token": "access-1", "refresh_token": "refresh-1", "expires_in": 3600, "scope": "https://graph.microsoft.com/Mail.ReadWrite" }""";
-            return new HttpResponseMessage(HttpStatusCode.OK) { Content = new StringContent(json, Encoding.UTF8, "application/json") };
-        }
+        Assert.Equal(Program.ExitRuntimeError, exit);
+        Assert.Contains("orkeon email check: Microsoft Graph is throttling or unavailable", console.Stderr, StringComparison.Ordinal);
+        Assert.Empty(console.Stdout);
     }
+
+    /// <summary>One Outlook account signing in with OAuth, its tokens kept under <paramref name="credentials"/>.</summary>
+    private static void WriteOutlookSettings(ScriptScratch scratch, string credentials) =>
+        scratch.WriteFile("appsettings.json", $$"""
+            { "Orkeon": { "Tools": { "Email": {
+                "CredentialsDirectory": {{JsonSerializer.Serialize(credentials)}},
+                "Accounts": {
+                  "hotmail": { "Provider": "Outlook", "Address": "me@hotmail.com", "Rights": "Read",
+                               "Auth": { "ClientId": "client-123" } }
+                } } } } }
+            """);
+
+    /// <summary>Routes the e-mail family's named HTTP client — identity platform and Graph alike — to <paramref name="handler"/>.</summary>
+    private static Action<HostBuilderContext, IServiceCollection> Answering(HttpMessageHandler handler) =>
+        (_, services) => services.AddHttpClient("orkeon.email").ConfigurePrimaryHttpMessageHandler(() => handler);
 }

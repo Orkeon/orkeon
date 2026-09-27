@@ -276,45 +276,43 @@ internal sealed class GraphMailbox : IMailbox
 
     private async Task<IReadOnlyList<GraphFolder>> LoadFoldersAsync(bool refresh, CancellationToken cancellationToken)
     {
+        if (!refresh && _folders is not null && _time.GetUtcNow() - _foldersLoadedAt < FolderCacheLifetime)
+            return _folders;
+
+        var roles = await LoadRolesAsync(cancellationToken).ConfigureAwait(false);
+        var folders = new List<GraphFolder>();
+        var pending = new Queue<(string? ParentId, string Prefix, int Depth)>();
+        pending.Enqueue((null, string.Empty, 0));
+        while (pending.Count > 0 && folders.Count < MaxFolders)
         {
-            if (!refresh && _folders is not null && _time.GetUtcNow() - _foldersLoadedAt < FolderCacheLifetime)
-                return _folders;
-
-            var roles = await LoadRolesAsync(cancellationToken).ConfigureAwait(false);
-            var folders = new List<GraphFolder>();
-            var pending = new Queue<(string? ParentId, string Prefix, int Depth)>();
-            pending.Enqueue((null, string.Empty, 0));
-            while (pending.Count > 0 && folders.Count < MaxFolders)
+            var (parentId, prefix, depth) = pending.Dequeue();
+            var relative = parentId is null
+                ? $"me/mailFolders?$top=250&$select={FolderSelect}"
+                : $"me/mailFolders/{Escape(parentId)}/childFolders?$top=250&$select={FolderSelect}";
+            Uri? address = GraphClient.Resolve(relative);
+            while (address is not null && folders.Count < MaxFolders)
             {
-                var (parentId, prefix, depth) = pending.Dequeue();
-                var relative = parentId is null
-                    ? $"me/mailFolders?$top=250&$select={FolderSelect}"
-                    : $"me/mailFolders/{Escape(parentId)}/childFolders?$top=250&$select={FolderSelect}";
-                Uri? address = GraphClient.Resolve(relative);
-                while (address is not null && folders.Count < MaxFolders)
-                {
-                    using var document = await _graph.GetJsonAsync(address, cancellationToken).ConfigureAwait(false);
-                    address = NextLink(document.RootElement);
-                    if (!document.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
-                        break;
+                using var document = await _graph.GetJsonAsync(address, cancellationToken).ConfigureAwait(false);
+                address = NextLink(document.RootElement);
+                if (!document.RootElement.TryGetProperty("value", out var value) || value.ValueKind != JsonValueKind.Array)
+                    break;
 
-                    foreach (var item in value.EnumerateArray())
-                    {
-                        var name = ReadString(item, "displayName") ?? string.Empty;
-                        var path = prefix.Length == 0 ? name : $"{prefix}/{name}";
-                        var id = ReadString(item, "id") ?? string.Empty;
-                        var folder = ReadFolder(item, path, roles.GetValueOrDefault(id));
-                        folders.Add(folder);
-                        if (ReadInt(item, "childFolderCount") > 0 && depth + 1 < MaxDepth)
-                            pending.Enqueue((folder.Id, path, depth + 1));
-                    }
+                foreach (var item in value.EnumerateArray())
+                {
+                    var name = ReadString(item, "displayName") ?? string.Empty;
+                    var path = prefix.Length == 0 ? name : $"{prefix}/{name}";
+                    var id = ReadString(item, "id") ?? string.Empty;
+                    var folder = ReadFolder(item, path, roles.GetValueOrDefault(id));
+                    folders.Add(folder);
+                    if (ReadInt(item, "childFolderCount") > 0 && depth + 1 < MaxDepth)
+                        pending.Enqueue((folder.Id, path, depth + 1));
                 }
             }
-
-            _folders = folders;
-            _foldersLoadedAt = _time.GetUtcNow();
-            return folders;
         }
+
+        _folders = folders;
+        _foldersLoadedAt = _time.GetUtcNow();
+        return folders;
     }
 
     private async Task<Dictionary<string, string>> LoadRolesAsync(CancellationToken cancellationToken)

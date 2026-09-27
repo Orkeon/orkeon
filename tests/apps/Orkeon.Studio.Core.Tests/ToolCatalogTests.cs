@@ -1,7 +1,6 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.RegularExpressions;
-using Orkeon.Constants.Configuration;
 using Orkeon.Domain.Attributes;
 using Orkeon.Studio.Core.Configuration;
 using Orkeon.Studio.Core.Tools;
@@ -129,9 +128,9 @@ public sealed partial class ToolCatalogTests
         Assert.All(needAccount, t =>
         {
             Assert.Contains(t, email.Tools);
-            Assert.Equal(ConfigurationKeys.ToolsEmail, t.Argument);
+            Assert.Equal(ToolCatalog.EmailAccounts, t.Argument);
         });
-        Assert.Equal("Orkeon:Tools:Email", ConfigurationKeys.ToolsEmail);
+        Assert.Equal("Orkeon:Tools:Email:Accounts", ToolCatalog.EmailAccounts);
         Assert.Equal(ToolRequirement.None, Assert.Single(email.Tools, t => t.Name == EmailParser).Requirement);
     }
 }
