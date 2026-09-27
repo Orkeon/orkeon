@@ -279,7 +279,7 @@ connecting.
 | Key | Meaning | Default |
 |---|---|---|
 | `DefaultAccount` | The account a call that names none uses | the only account, when there is one |
-| `CredentialsDirectory` | Physical directory whose `email` subdirectory holds the OAuth tokens, for a service account ([below](#where-the-tokens-live)); give an absolute path | `credentials` next to the per-user settings |
+| `CredentialsDirectory` | Physical directory whose `email` subdirectory holds the OAuth tokens, for a service account ([below](#where-the-tokens-live)); a relative path is read from the settings file's directory | `credentials` next to the per-user settings |
 | `Screening:WithholdRejected` | Withhold the body of a message the injection screen rejects | `false` |
 | `Accounts:<name>` | One account. `<name>` is what an agent passes as `account`: letters, digits, `.`, `_` and `-`, starting with a letter or a digit, 64 characters at most | — |
 | `…:Provider` | `Gmail`, `Outlook` or `Custom` | `Custom` |
@@ -502,13 +502,16 @@ Physically, the directory sits next to the per-user settings file:
 | Windows | `%APPDATA%\Orkeon\credentials\email\` |
 
 On Unix the runner creates the `credentials` directory and its `email` subdirectory
-owner-only (`0700`), and narrows `email` to its owner if it existed with a wider mode.
+owner-only (`0700`), and narrows `email` to its owner if it existed with a wider mode. On
+Windows both inherit the access rules of their parent: under `%APPDATA%` that is the user's
+own profile, but a `CredentialsDirectory` elsewhere is only as private as the folder it sits
+in — restrict it yourself.
 `Orkeon:Tools:Email:CredentialsDirectory` replaces the `credentials` directory — for a
 service such as `orkeon-host` running under a systemd or Windows service account: run the
 login as that account and with the service's settings file, so the tokens land where the
-service reads them and belong to it. Give it as an absolute path: a relative one resolves
-against the directory the command starts from, so a login and a run started elsewhere would
-not share it.
+service reads them and belong to it. A relative path is read from the directory of the
+settings file that declares it: a login and a run over the same settings file share the
+tokens wherever each one starts.
 
 Be clear about what this protects: the token files are plain JSON, shielded from the VFS
 tools — **not** from a shell or code tool running as the same operating-system user. Keep

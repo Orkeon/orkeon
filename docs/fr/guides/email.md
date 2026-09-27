@@ -7,12 +7,12 @@
 La famille e-mail (`Orkeon.Tools.Email`) donne une boîte aux lettres aux agents. Ils peuvent
 chercher dans un dossier, lire un message, enregistrer ses pièces jointes, ranger le courrier
 dans des dossiers, le marquer, le supprimer, rédiger des brouillons qu'un humain enverra — et,
-quand un opérateur l'autorise, envoyer eux-mêmes. La famille parle IMAP, POP3 et SMTP via
-MailKit, et Microsoft Graph pour Outlook.com, Hotmail et Microsoft 365. Des préréglages
+quand un opérateur l'autorise, envoyer eux-mêmes du courrier. La famille parle IMAP, POP3 et
+SMTP via MailKit, et Microsoft Graph pour Outlook.com, Hotmail et Microsoft 365. Des préréglages
 renseignent les serveurs de Gmail et d'Outlook, et un compte OAuth2 se connecte une fois, depuis
 un terminal, avec `orkeon email login`.
 
-Trois règles tiennent toute la famille :
+Trois règles structurent toute la famille :
 
 - **Un agent ne fait que nommer un compte.** Serveurs, identifiants et droits relèvent de la
   configuration de l'opérateur (`Orkeon:Tools:Email`). Un secret n'y est jamais une valeur —
@@ -291,7 +291,7 @@ montre ces problèmes sans se connecter.
 | Clé | Rôle | Défaut |
 |---|---|---|
 | `DefaultAccount` | Le compte qu'utilise un appel qui n'en nomme aucun | le seul compte, quand il n'y en a qu'un |
-| `CredentialsDirectory` | Répertoire physique dont le sous-répertoire `email` contient les jetons OAuth, pour un compte de service ([plus bas](#où-vivent-les-jetons)) ; donnez un chemin absolu | `credentials` à côté des réglages de l'utilisateur |
+| `CredentialsDirectory` | Répertoire physique dont le sous-répertoire `email` contient les jetons OAuth, pour un compte de service ([plus bas](#où-vivent-les-jetons)) ; un chemin relatif part du répertoire du fichier de réglages | `credentials` à côté des réglages de l'utilisateur |
 | `Screening:WithholdRejected` | Retenir le corps d'un message que le filtre anti-injection rejette | `false` |
 | `Accounts:<nom>` | Un compte. `<nom>` est ce qu'un agent passe en `account` : lettres, chiffres, `.`, `_` et `-`, en commençant par une lettre ou un chiffre, 64 caractères au plus | — |
 | `…:Provider` | `Gmail`, `Outlook` ou `Custom` | `Custom` |
@@ -309,7 +309,7 @@ montre ces problèmes sans se connecter.
 | `…:Send:AllowedRecipients` | Qui peut recevoir : des adresses, `*@domaine`, `*` | vide — personne |
 | `…:Send:MaxRecipients` | Nombre maximal de destinataires d'un message | pas de plafond |
 | `…:Send:MaxPerHour` | Nombre maximal de messages envoyés par heure par le compte, par processus | pas de plafond |
-| `…:TimeoutSeconds` | Délai des connexions IMAP, POP3 et SMTP | celui de la bibliothèque |
+| `…:TimeoutSeconds` | Délai d'expiration des connexions IMAP, POP3 et SMTP | celui de la bibliothèque |
 | `…:SaveSentCopy` | Ajouter chaque message envoyé au dossier Envoyés | `true` pour un compte `Custom` qui envoie en SMTP et lit en IMAP, sinon `false` |
 
 ## Droits et liste d'autorisation d'envoi
@@ -353,10 +353,10 @@ Préférez-le dès qu'un message part vers quelqu'un d'autre que vos propres adr
 
 **Filtrage du courrier reçu.** Chaque page de recherche et chaque résultat de lecture s'ouvre
 sur un avis disant que le contenu vient d'un expéditeur externe, et chaque résultat de recherche
-porte `suspicious`, le même filtre appliqué à son objet et à son aperçu. `email_read` et `email_parser`
-portent aussi un bloc `security` : le verdict du détecteur d'injection de prompt du sous-système
-RAG (`clean`, `suspicious` ou `rejected`, avec un score de risque et les raisons), calculé sur le
-texte rendu — ce que l'agent voit réellement. Le texte qu'un message HTML cache à un lecteur
+porte `suspicious`, le même filtre appliqué à son objet et à son aperçu. `email_read` et
+`email_parser` portent aussi un bloc `security` : le verdict du détecteur d'injection de prompt
+du sous-système RAG (`clean`, `suspicious` ou `rejected`, avec un score de risque et les
+raisons), calculé sur le texte rendu — ce que l'agent voit réellement. Le texte qu'un message HTML cache à un lecteur
 humain est laissé hors du corps et signalé par `hidden_content`. Le filtre signale ; il ne
 bloque pas, sauf si l'opérateur met `Screening:WithholdRejected` à `true`, ce qui remplace le
 corps d'un message rejeté par une ligne disant qu'il a été retenu. Ce réglage est désactivé par
@@ -393,7 +393,8 @@ hors des deux.
 Un script atteint les mêmes outils par l'espace de noms `tools` : les noms d'outils passent en
 camelCase (`tools.emailSearch`), tandis que les clés d'argument et de résultat gardent les noms
 snake_case propres aux outils (`unread_only`, `reply_to_id`, `new_name`, `next_cursor`) — un
-argument obligatoire écrit en camelCase est refusé comme manquant. Les typings livrés déclarent chaque signature :
+argument obligatoire écrit en camelCase est refusé comme manquant. Les typings livrés déclarent
+chaque signature :
 
 ```ts
 const page = await tools.emailSearch({ account: "gmail", unread_only: true, limit: 5 }, ctx);
@@ -522,14 +523,17 @@ répertoire est à côté du fichier de réglages de l'utilisateur :
 | Linux, macOS | `$XDG_CONFIG_HOME/Orkeon/credentials/email/`, sinon `~/.config/Orkeon/credentials/email/` |
 | Windows | `%APPDATA%\Orkeon\credentials\email\` |
 
-Sous Unix, le runner crée le répertoire `credentials` et son sous-répertoire `email` réservés
-au propriétaire (`0700`), et restreint `email` à son propriétaire s'il existait avec des droits
-plus larges. `Orkeon:Tools:Email:CredentialsDirectory` remplace le répertoire `credentials` —
-pour un service comme `orkeon-host` qui tourne sous un compte de service systemd ou Windows :
-lancez le login sous ce compte et avec le fichier de réglages du service, pour que les jetons
-arrivent là où le service les lit et lui appartiennent. Donnez-le en chemin absolu : un chemin
-relatif se résout contre le répertoire d'où part la commande, et un login et un run partis
-d'ailleurs ne le partageraient pas.
+Sous Unix, le runner crée le répertoire `credentials` et son sous-répertoire `email` réservés au
+propriétaire (`0700`), et restreint `email` à son propriétaire s'il existait avec des droits
+plus larges. Sous Windows, les deux héritent des règles d'accès de leur parent : sous
+`%APPDATA%`, c'est le profil de l'utilisateur, mais un `CredentialsDirectory` placé ailleurs
+n'est pas plus privé que le dossier qui le contient — restreignez-le vous-même.
+`Orkeon:Tools:Email:CredentialsDirectory` remplace le répertoire `credentials` — pour un service
+comme `orkeon-host` qui tourne sous un compte de service systemd ou Windows : lancez le login
+sous ce compte et avec le fichier de réglages du service, pour que les jetons arrivent là où le
+service les lit et lui appartiennent. Un chemin relatif part du répertoire du fichier de
+réglages qui le déclare : un login et un run qui lisent le même fichier de réglages partagent
+les jetons, d'où qu'ils partent.
 
 Soyons clairs sur ce que cela protège : les fichiers de jetons sont du JSON en clair, à l'abri
 des outils du VFS — **pas** d'un outil shell ou de code qui tourne sous le même utilisateur du
@@ -593,8 +597,6 @@ les comptes, en connecter un via un `IEmailLoginInteraction` à vous, le déconn
   besoin : `archive` y est Tous les messages.
 - **« The TLS handshake … failed »** — le port et `Security` ne correspondent pas :
   `SslOnConnect` pour 993, 995 et 465, `StartTls` pour 143, 110 et 587.
-- **Une suppression définitive est refusée** sur un serveur IMAP sans l'extension UIDPLUS : elle
-  pourrait aussi effacer d'autres messages déjà marqués supprimés. Passez par la corbeille.
 - **« This host keeps no OAuth tokens »** — l'hôte n'a pas de magasin de jetons :
   `orkeon-repl`, un hôte à vous qui n'en a enregistré aucun, ou un conteneur où aucun
   répertoire utilisateur n'existe (réglez `CredentialsDirectory`).
@@ -609,16 +611,17 @@ les comptes, en connecter un via un `IEmailLoginInteraction` à vous, le déconn
   `subject` et les dates, et parcourt au plus 200 messages par appel, du plus récent au plus
   ancien ; `next_cursor` remonte plus loin.
 - **Microsoft Graph** : 4 Mo par requête, soit environ 3 Mo de pièces jointes (au-delà, il
-  faudrait une session d'upload, non implémentée). Une recherche avec des critères texte passe
-  par KQL (`$search`), et les marques, pièces jointes et dates sont alors appliquées à chaque
-  page côté client — une telle page peut contenir moins de messages que demandé, tandis que
-  `next_cursor` continue.
-- **Serveurs IMAP personnalisés** : `raw_query` exige le `X-GM-RAW` de Gmail ; une suppression
-  définitive exige UIDPLUS ; une mise à la corbeille exige un dossier corbeille, et un brouillon
-  un dossier de brouillons — signalés par le serveur, ou nommés selon l'usage (`Trash`,
-  `Deleted Items`, `Drafts`…) ; sans UIDPLUS, un brouillon enregistré ou un message déplacé
-  revient sans son nouvel id. Sur Gmail, une suppression définitive passe par `[Gmail]/Trash`,
-  puisque purger un libellé ne fait qu'archiver.
+  faudrait une session de chargement, non implémentée). Une recherche avec des critères texte
+  passe par KQL (`$search`), et les marques, pièces jointes et dates sont alors appliquées à
+  chaque page côté client — une telle page peut contenir moins de messages que demandé, tandis
+  que `next_cursor` continue.
+- **Serveurs IMAP personnalisés** : `raw_query` exige le `X-GM-RAW` de Gmail ; une mise à la
+  corbeille exige un dossier corbeille, et un brouillon un dossier de brouillons — signalés par
+  le serveur, ou nommés selon l'usage (`Trash`, `Deleted Items`, `Drafts`…) ; sans UIDPLUS, un
+  brouillon enregistré ou un message déplacé revient sans son nouvel id, et un déplacement ou
+  une suppression définitive n'efface toujours que ses propres messages (MailKit retire la
+  marque de suppression des autres le temps de la purge). Sur Gmail, une suppression définitive
+  passe par `[Gmail]/Trash`, puisque purger un libellé ne fait qu'archiver.
 - **Pas dans cette version** : supprimer des dossiers, copier un message ou lui donner plusieurs
   libellés Gmail, l'approbation humaine interactive d'un envoi (utilisez `email_draft`), un outil
   OAuth générique pour d'autres API.

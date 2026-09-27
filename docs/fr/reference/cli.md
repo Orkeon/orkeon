@@ -236,7 +236,7 @@ Codes de sortie : `0` succès, `1` usage, configuration ou refus (un compte inco
 non définie, une connexion à faire — fournisseur qui n'a délivré aucun jeton de rafraîchissement
 compris —, un droit ou une capacité manquants), `2` ce qu'ont fait le réseau ou le serveur (un
 échec de connexion, des identifiants ou une autorisation refusés par le fournisseur), `130`
-Ctrl+C. Le verbe est reconnu avant la détection d'un chemin d'équipe, comme tous les verbes : un
+Ctrl+C. Le verbe est reconnu avant la détection d'un chemin de crew, comme tous les verbes : un
 dossier de crew nommé `email` se lance avec `orkeon run email`.
 
 ## `orkeon doctor`

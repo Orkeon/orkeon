@@ -120,7 +120,7 @@ et `/credentials` (les jetons OAuth des comptes e-mail — montée seulement qua
 est déclaré). Le registre refuse un montage interne à tout appelant ordinaire et le signale comme
 un chemin inexistant : aucun outil destiné aux agents ne peut l'atteindre ni même le nommer
 ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Les quelques composants qui
-doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : le journal des
+doivent y écrire demandent `PrivilegedFileSystemAccess` à la DI, par son nom : l'enregistreur des
 échanges, les sandboxes de code et le magasin de jetons e-mail (`FileSystemEmailTokenStore`, que
 l'hôte des runners enregistre sur `/credentials/email`). Ils passent toujours par le VFS. Le seul
 `System.IO` brut sur ce chemin est la création, par le runner, du répertoire physique

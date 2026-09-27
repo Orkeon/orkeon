@@ -28,7 +28,7 @@ un amont en pré-release).
 | PackageId | Pourquoi |
 |---|---|
 | `Orkeon` | Le paquet ombrelle — les onze assemblies de la fermeture du cœur (`Orkeon.Domain`, `Orkeon.Application`, `Orkeon.Infrastructure`, `Orkeon.Constants.{Llm,FileSystem,Configuration}`, `Orkeon.Tools.Abstractions`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag.Abstractions`, `Orkeon.Analysis`, `Orkeon.Rag`) embarquées dans un seul nupkg. Une installation = le framework complet : agents, crews, six modes d'orchestration, 16 fournisseurs LLM, 6 stores mémoire, RAG, RaggableTree. Le découpage Clean Architecture reste une discipline d'arborescence source, pas un contrat de distribution. |
-| `Orkeon.Tools` | Les huit familles d'outils intégrés (`Analysis`, `Code`, `Data`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur, les outils e-mail MailKit et MimeKit — des dépendances qu'un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
+| `Orkeon.Tools` | Les huit familles d'outils intégrés (`Analysis`, `Code`, `Data`, `Email`, `EventHub`, `FileSystem`, `Rag`, `Web`) dans un seul nupkg. Séparé d'`Orkeon` **uniquement pour le poids des dépendances** : les outils Data tirent des drivers de bases de données, des bibliothèques PDF et tableur, les outils e-mail MailKit et MimeKit — des dépendances dont un consommateur qui ne s'en sert jamais ne devrait pas hériter. Dépend d'`Orkeon`. |
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Paire opt-in du reranker cross-encoder ONNX (runtime + poids int8 embarqués) — poussés ensemble ; charge native onnxruntime. `Orkeon.Rag.Onnx` dépend d'`Orkeon` ; `Orkeon.Rag.Onnx.Model` n'a aucune dépendance (ressources embarquées seulement) et se référence à côté de lui. |
 | `Orkeon.Tools.Embeddings.Local` | Embeddings locaux sur la machine (BGE-micro-v2 ONNX). Reste **hors de l'ombrelle** parce qu'il porte une dépendance SmartComponents en pré-release, d'un amont archivé — l'inclure dans `Orkeon` imposerait cette pré-release à chaque consommateur. Dépend d'`Orkeon`. |
 | `Orkeon.Scripting.Cli` | Le tool dotnet `orkeon` (`PackAsTool` ; le PackageId est la commande d'installation — ADR-007). Publiable sur NuGet.org depuis l'exclusion des natifs onnxruntime iOS/Android qu'un tool CLI ne peut jamais charger : 262,5 Mo → 137,6 Mo, sous la limite de taille de nuget.org. |
@@ -39,9 +39,10 @@ un amont en pré-release).
 ### Comment les projets d'empaquetage sont construits
 
 - Les nupkgs du lineup sortent de **projets d'empaquetage** dédiés sous `src/packaging/` —
-  quatre au total : les ombrelles `Orkeon` et `Orkeon.Tools`, plus les **wrappers**
-  `Orkeon.Rag.Onnx.Package` et `Orkeon.Tools.Embeddings.Local.Package`, qui packent les deux
-  assemblies opt-in avec une dépendance nuspec sur l'ombrelle `Orkeon`. Les projets de
+  six au total : les ombrelles `Orkeon` et `Orkeon.Tools`, plus les **wrappers**
+  `Orkeon.Rag.Onnx.Package`, `Orkeon.Tools.Embeddings.Local.Package`,
+  `Orkeon.Interop.AgentFramework.Package` et `Orkeon.Hosting.Aspire.Package`, qui packent les
+  quatre assemblies opt-in avec une dépendance nuspec sur l'ombrelle `Orkeon`. Les projets de
   bibliothèques embarqués sont eux-mêmes `IsPackable=false` et leur arborescence source,
   leurs namespaces et leur gel PublicAPI par assembly sont intouchés ; les projets opt-in
   réels gardent des `ProjectReference` normales, les consommateurs in-repo ne voient donc

@@ -285,13 +285,13 @@ Orkeon.sln
 │   ├── analysis/                   # Moteur RaggableTree (Abstractions, Analysis)
 │   ├── scripting/                  # DSL .ork.ts (Orkeon.Scripting) + la CLI `orkeon` (Orkeon.Scripting.Cli)
 │   ├── cli/                        # Briques CLI (Abstractions, Cli, Commands.Scripting, TerminalGui)
-│   ├── hosting/                    # Orkeon.Hosting (RunnerHost) + Orkeon.Host (daemon de service `orkeon-host`)
+│   ├── hosting/                    # Orkeon.Hosting (RunnerHost), Orkeon.Host (daemon `orkeon-host`), Orkeon.Hosting.Aspire
 │   ├── plugins/                    # Orkeon.Plugins (chargement de plugins au runtime)
 │   ├── interop/                    # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework)
 │   ├── generators/                 # Orkeon.Generators (générateurs de source)
-│   ├── constants/                  # Satellites de constantes PARTAGEES, zero dependance d'execution (ADR-009)
+│   ├── constants/                  # Satellites de constantes PARTAGÉES, zéro dépendance d'exécution (ADR-009)
 │   ├── analyzers/                  # Orkeon.Compliance.Vfs (analyseur Roslyn)
-│   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools + 2 wrappers opt-in)
+│   ├── packaging/                  # Projets d'empaquetage NuGet (Orkeon, Orkeon.Tools + 4 wrappers opt-in)
 │   └── apps/
 │       ├── Orkeon.ConsoleApp/      # REPL interactif (`orkeon-repl`)
 │       └── Orkeon.Studio.*/        # Orkeon Studio (Config, Core, Run, Wpf)

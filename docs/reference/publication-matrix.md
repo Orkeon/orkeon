@@ -37,10 +37,11 @@ runtimes, a pre-release upstream).
 
 ### How the packaging projects are built
 
-- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — four
-  of them: the `Orkeon` and `Orkeon.Tools` umbrellas, plus the `Orkeon.Rag.Onnx.Package` and
-  `Orkeon.Tools.Embeddings.Local.Package` **wrappers**, which pack the two opt-in assemblies
-  with a nuspec dependency on the `Orkeon` umbrella. The embedded library projects themselves
+- The lineup nupkgs come from dedicated **packaging projects** under `src/packaging/` — six
+  of them: the `Orkeon` and `Orkeon.Tools` umbrellas, plus the `Orkeon.Rag.Onnx.Package`,
+  `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package` and
+  `Orkeon.Hosting.Aspire.Package` **wrappers**, which pack the four opt-in assemblies with a
+  nuspec dependency on the `Orkeon` umbrella. The embedded library projects themselves
   are `IsPackable=false` and their source layout, namespaces and per-assembly PublicAPI
   freeze are untouched; the real opt-in projects keep normal `ProjectReference`s, so in-repo
   consumers are unaffected — only the wrappers carry the embed pattern below.

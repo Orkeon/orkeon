@@ -95,31 +95,34 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 
 ## Structure du projet
 
-La solution compte **43 projets src répartis en 13 zones** et **33 projets de tests**.
-Trente et un projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
-forment les deux autres. Douze projets src n'ont volontairement pas de miroir : les cinq
+La solution compte **48 projets src répartis en 14 zones** et **36 projets de tests**.
+Trente-quatre projets src ont un projet de tests miroir ; `tests/e2e` et `tests/shared`
+forment les deux autres. Quatorze projets src n'ont volontairement pas de miroir : les cinq
 satellites `Orkeon.Constants.*` et `Orkeon.Rag.Onnx.Model` ne portent que des constantes et
 des ressources embarquées, `Orkeon.Analysis.Abstractions` est exercé via
 `Orkeon.Analysis.Tests`, `Orkeon.Generators` est couvert par la compilation des projets qui
-le consomment, et les quatre projets `src/packaging/` sont de pur empaquetage :
+le consomment, et les six projets `src/packaging/` sont de pur empaquetage :
 
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (cœur Clean Architecture)
-├── tools/       # 9 packs d'outils : Abstractions, Analysis (RaggableTree), Code, Data,
+├── tools/       # 10 packs d'outils : Abstractions, Analysis (RaggableTree), Code, Data, Email,
 │                #   Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # Sous-système RAG : Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # Moteur RaggableTree : Analysis.Abstractions, Analysis
 ├── scripting/   # Orkeon.Scripting (DSL .ork.ts) + Orkeon.Scripting.Cli (le tool `orkeon`)
 ├── cli/         # Cli.Abstractions, Cli, Cli.Commands.Scripting, Cli.TerminalGui
-├── constants/   # Satellites sans dependance de constantes PARTAGEES (ADR-009) :
+├── constants/   # Satellites sans dépendance de constantes PARTAGÉES (ADR-009) :
 │                #   Constants.Llm, Constants.FileSystem, Constants.Configuration, Constants.Protocol, Constants.Cli
 ├── hosting/     # Orkeon.Hosting (RunnerHost) + Orkeon.Host (le daemon `orkeon-host`)
+│                #   + Orkeon.Hosting.Aspire (intégration AppHost .NET Aspire, ADR-011)
 ├── plugins/     # Orkeon.Plugins (chargement de plugins au runtime)
+├── interop/     # Orkeon.Interop.AgentFramework (pont Microsoft Agent Framework, ADR-010)
 ├── generators/  # Orkeon.Generators (générateurs de source)
 ├── analyzers/   # Orkeon.Compliance.Vfs (analyseur Roslyn VFS-only)
 ├── packaging/   # Projets d'empaquetage NuGet (PUB-25) : Orkeon (le framework en un nupkg), Orkeon.Tools,
-│                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local dépendant de l'ombrelle Orkeon
+│                #   + les wrappers Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework /
+│                #   Hosting.Aspire dépendant de l'ombrelle Orkeon
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 105 exemples embarqués (9 catégories + vitrines) — solution dédiée

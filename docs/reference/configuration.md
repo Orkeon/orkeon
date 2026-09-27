@@ -175,7 +175,7 @@ key-by-key table: [E-mail tools](../guides/email.md).
 | Section | Configures |
 |---|---|
 | `Orkeon:Tools:Email:DefaultAccount` | The account a call that names none uses (optional with a single account) |
-| `Orkeon:Tools:Email:CredentialsDirectory` | Physical directory whose `email` subdirectory holds the OAuth tokens — an absolute path. The runner mounts it at the internal root `/credentials` when an OAuth account is declared; default: `credentials` next to the per-user settings file |
+| `Orkeon:Tools:Email:CredentialsDirectory` | Physical directory whose `email` subdirectory holds the OAuth tokens; a relative path is read from the settings file's directory. The runner mounts it at the internal root `/credentials` when an OAuth account is declared; default: `credentials` next to the per-user settings file |
 | `Orkeon:Tools:Email:Screening:WithholdRejected` | Withhold the body of a message the prompt-injection screen rejects (default `false`: flag only) |
 | `Orkeon:Tools:Email:Accounts:<name>` | One account. `Provider` (`Gmail`, `Outlook` or `Custom` — the default), `Address`, `DisplayName`, `Rights` (**mandatory** — `Read, Organize, Draft, Send, Delete, Purge`), `Incoming` (`Protocol` `Imap`, `Pop3` or `Graph`; `Host`, `Port`, `Security` `SslOnConnect`, `StartTls` or `None` — the last towards a loopback host only), `Outgoing` (`Protocol` `Smtp` or `Graph`; `Host`, `Port`, `Security`), `Auth` (`Method` `Password` or `OAuth2`; `Username`, `PasswordEnvVar`, `ClientId`, `ClientSecretEnvVar`, `Tenant`), `Send` (`AllowedRecipients` — an empty list allows nobody —, `MaxRecipients`, `MaxPerHour`), `TimeoutSeconds`, `SaveSentCopy`. The name holds letters, digits, `.`, `_` and `-`, starts with a letter or a digit (64 at most) |
 

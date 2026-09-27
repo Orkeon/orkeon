@@ -5,7 +5,7 @@
 # ADR-012 — La famille d'outils e-mail, deuxième exception motivée au gel du périmètre
 
 **Statut** : Accepté · **Date** : 2026-09-26
-· **Portée** : `src/tools/Orkeon.Tools.Email`, `Orkeon.Hosting` (la racine `/credentials` et le magasin de jetons), `orkeon email` (`Orkeon.Scripting.Cli`), le paquet parapluie `Orkeon.Tools`
+· **Portée** : `src/tools/Orkeon.Tools.Email`, `Orkeon.Hosting` (la racine `/credentials` et le magasin de jetons), `orkeon email` (`Orkeon.Scripting.Cli`), le paquet ombrelle `Orkeon.Tools`
 
 ## Contexte
 
@@ -35,7 +35,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
 
 ## Décision
 
-1. **Une nouvelle famille, `Orkeon.Tools.Email`, la huitième du paquet parapluie
+1. **Une nouvelle famille, `Orkeon.Tools.Email`, la huitième du paquet ombrelle
    `Orkeon.Tools`** — la deuxième exception motivée au gel du périmètre, après les agrégateurs
    OpenRouter et Mammouth (2026-09-18). Treize outils : douze nouveaux, et `email_parser`
    reconstruit (point 7). Les dépendances suivent l'ADR-005 : `Domain`, `Tools.Abstractions`,
@@ -47,7 +47,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    surface d'administration qu'utilisent les verbes `orkeon email`.
 2. **MailKit 4.18.0 et MimeKit 4.18.1** (MIT) portent IMAP, POP3, SMTP et le modèle de message.
    Tous deux sont référencés directement — la gestion centrale des paquets n'épingle aucune
-   version transitive — et le parapluie les déclare à nouveau. Il n'y a qu'un modèle de message
+   version transitive — et l'ombrelle les déclare à nouveau. Il n'y a qu'un modèle de message
    pour tous les moteurs : les messages Graph sont lus (`$value`) et écrits en MIME eux aussi, et
    une seule conversion produit ce que rendent les outils.
 3. **Trois moteurs derrière un même port interne, choisis par le préréglage du compte.**
@@ -55,7 +55,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    moteur déclare ses capacités et toute demande au-delà est refusée explicitement, jamais
    abandonnée en silence), et Microsoft Graph sur un simple `HttpClient` — sans SDK Graph — pour
    Outlook.com, Hotmail et Microsoft 365, le défaut du préréglage `Outlook`. Le transport est
-   chiffré (`SslOnConnect` ou `StartTls`) ; `None` n'est accepté que vers un hôte de bouclage, et
+   en TLS (`SslOnConnect` ou `StartTls`) ; `None` n'est accepté que vers un hôte de bouclage, et
    aucune option n'accepte un certificat invalide.
 4. **OAuth2 est écrit à la main**, sur `HttpClient` : le flux par code d'appareil RFC 8628 pour
    Microsoft (tenant `consumers` par défaut) ; le code d'autorisation avec PKCE pour Google, la
@@ -78,7 +78,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
 6. **Les garde-fous sont la frontière, pas le jugement du modèle.** Le modèle nomme un compte ;
    la configuration de l'opérateur porte les serveurs, les identifiants — sous forme de noms de
    variables d'environnement — et les `Rights` obligatoires (`Read`, `Organize`, `Draft`, `Send`,
-   `Delete`, `Purge`). L'envoi échoue fermé sur `Send:AllowedRecipients` (vide : personne),
+   `Delete`, `Purge`). L'envoi n'atteint que ce qu'ouvre `Send:AllowedRecipients` (vide : personne),
    l'enveloppe SMTP est passée explicitement pour qu'aucun en-tête `Resent-*` ne puisse
    l'élargir, `From` est imposé au compte, et `MaxRecipients` / `MaxPerHour` plafonnent le
    volume ; `email_draft` est la voie de la relecture humaine. Le contenu reçu est marqué non
@@ -86,7 +86,7 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
    défaut, `Screening:WithholdRejected` pour retenir. Chaque outil déclare son `ToolAccess` pour
    la permission gate, et `orkeon forge` refuse les douze outils de boîte aux lettres aux crews
    qu'il forge. Les résultats tiennent sous le plafond de 4000 caractères de la boucle d'agent
-   sur un résultat d'outil, sans nouvel override — le contenu d'un courrier n'est pas un
+   sur un résultat d'outil, sans nouvelle dérogation — le contenu d'un courrier n'est pas un
    livrable de confiance : une page de recherche est coupée après un message entier et une
    tranche de corps là où s'arrête son rendu, et le curseur ou l'offset reprend exactement là.
 7. **`email_parser` rejoint la famille, reconstruit sur MimeKit** — même nom, paramètres
@@ -129,5 +129,5 @@ Les contraintes des fournisseurs, vérifiées le 2026-09-26 :
   (MAIL-07). Tant qu'elle n'est pas archivée, la prise en charge des fournisseurs est documentée
   comme en attente de campagne.
 - Hors de cette version : supprimer des dossiers, copier un message ou lui donner plusieurs
-  libellés Gmail, les envois Graph au-delà d'environ 3 Mo (une session d'upload), l'approbation
-  humaine interactive d'un envoi.
+  libellés Gmail, les envois Graph au-delà d'environ 3 Mo (une session de chargement),
+  l'approbation humaine interactive d'un envoi.

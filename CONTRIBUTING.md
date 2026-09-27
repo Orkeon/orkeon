@@ -92,18 +92,18 @@ dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
 
 ## Project Structure
 
-The solution has **43 src projects across 13 zones** and **33 test projects**. Thirty-one
+The solution has **48 src projects across 14 zones** and **36 test projects**. Thirty-four
 src projects are mirrored one-for-one by a test project; `tests/e2e` and `tests/shared` make
-up the other two test projects. Twelve src projects carry no test mirror by design: the five
+up the other two test projects. Fourteen src projects carry no test mirror by design: the five
 `Orkeon.Constants.*` satellites and `Orkeon.Rag.Onnx.Model` hold constants and embedded
 resources only, `Orkeon.Analysis.Abstractions` is exercised through `Orkeon.Analysis.Tests`,
-`Orkeon.Generators` is covered by the consuming projects' compilation, and the four
+`Orkeon.Generators` is covered by the consuming projects' compilation, and the six
 `src/packaging/` projects are packaging-only:
 
 ```
 src/
 ├── core/        # Orkeon.Domain, Orkeon.Application, Orkeon.Infrastructure (Clean Architecture core)
-├── tools/       # 9 tool packs: Abstractions, Analysis (RaggableTree), Code, Data,
+├── tools/       # 10 tool packs: Abstractions, Analysis (RaggableTree), Code, Data, Email,
 │                #   Embeddings.Local, EventHub, FileSystem, Rag, Web
 ├── rag/         # RAG subsystem: Rag.Abstractions, Rag, Rag.Onnx, Rag.Onnx.Model
 ├── analysis/    # RaggableTree engine: Analysis.Abstractions, Analysis
@@ -112,11 +112,14 @@ src/
 ├── constants/   # Zero-dependency satellites of SHARED constants (ADR-009):
 │                #   Constants.Llm, Constants.FileSystem, Constants.Configuration, Constants.Protocol, Constants.Cli
 ├── hosting/     # Orkeon.Hosting (RunnerHost) + Orkeon.Host (the `orkeon-host` daemon)
+│                #   + Orkeon.Hosting.Aspire (.NET Aspire AppHost integration, ADR-011)
 ├── plugins/     # Orkeon.Plugins (runtime plugin loading)
+├── interop/     # Orkeon.Interop.AgentFramework (Microsoft Agent Framework bridge, ADR-010)
 ├── generators/  # Orkeon.Generators (source generators)
 ├── analyzers/   # Orkeon.Compliance.Vfs (VFS-only Roslyn analyzer)
 ├── packaging/   # NuGet packaging projects (PUB-25): Orkeon (the framework in one nupkg), Orkeon.Tools,
-│                #   + the Rag.Onnx / Tools.Embeddings.Local wrappers depending on the Orkeon umbrella
+│                #   + the Rag.Onnx / Tools.Embeddings.Local / Interop.AgentFramework / Hosting.Aspire
+│                #   wrappers depending on the Orkeon umbrella
 └── apps/        # Orkeon.ConsoleApp (orkeon-repl) + Orkeon.Studio.{Config,Core,Run,Wpf}
 
 examples/        # 105 bundled examples (9 categories + showcases) — own solution

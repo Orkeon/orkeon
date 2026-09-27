@@ -52,10 +52,10 @@ jugement du modèle.
   d'environnement, jamais une valeur de cette configuration, et jamais un argument d'outil — les
   arguments d'outil sont journalisés.
 - **Les droits sont déclarés par compte, et obligatoires.** `Read`, `Organize`, `Draft`, `Send`,
-  `Delete`, `Purge` : un compte qui n'en déclare aucun est refusé, et chaque appel est contrôlé
-  contre le droit qu'exige son opération. Chaque outil déclare aussi son `ToolAccess` (Read,
+  `Delete`, `Purge` : un compte qui n'en déclare aucun est refusé, et chaque appel est vérifié
+  au regard du droit qu'exige son opération. Chaque outil déclare aussi son `ToolAccess` (Read,
   Edit, Execute — `email_send` et `email_delete` sont Execute), ce que lit la permission gate.
-- **L'envoi échoue fermé.** `email_send` n'atteint que les adresses qu'autorise
+- **L'envoi est fermé par défaut.** `email_send` n'atteint que les adresses qu'autorise
   `Send:AllowedRecipients` (une adresse, `*@domaine` ou `*` ; une liste vide n'autorise
   personne), contrôlées sur To, Cc et Bcc par adresse, jamais par nom affiché. L'enveloppe SMTP
   est passée explicitement — la liste contrôlée, jamais déduite des en-têtes, si bien qu'aucun
@@ -79,7 +79,7 @@ jugement du modèle.
   agents ne résout ([conformité VFS](./vfs-compliance.md)). Les outils ne lancent jamais de
   connexion interactive, et un lien de pagination Graph n'est suivi que s'il pointe encore vers
   `graph.microsoft.com` en HTTPS : le jeton porteur ne part jamais vers un autre hôte. Le
-  transport est chiffré (`SslOnConnect` ou `StartTls`) — `None` n'est accepté que vers un serveur
+  transport est en TLS (`SslOnConnect` ou `StartTls`) — `None` n'est accepté que vers un serveur
   de test en bouclage, et aucune option n'accepte un certificat invalide.
 - **Les crews forgés n'ont pas de boîte aux lettres.** `orkeon forge` retire les douze outils de
   boîte aux lettres du catalogue des crews qu'il essaie sur son banc (`email_parser`, qui lit un
@@ -87,7 +87,7 @@ jugement du modèle.
 
 **Limites honnêtes.** Le filtre est le détecteur par motifs décrit plus haut : il signale, et une
 injection paraphrasée passe. La frontière, ce sont les droits du compte, la liste d'autorisation
-qui échoue fermée et les brouillons. Chaque compte est visible de chaque crew et de chaque
+fermée par défaut et les brouillons. Chaque compte est visible de chaque crew et de chaque
 script `.ork.ts` qui résout le même fichier de réglages — les scripts appellent `tools.email*`
 directement, et les crews hébergés par `orkeon-host` partagent les réglages de l'hôte — : déclarez
 donc les comptes dans le propre `appsettings.json` du crew (un run résout un seul fichier de
@@ -95,9 +95,9 @@ réglages ; gardez les comptes hors d'un `appsettings.json` du répertoire d'où
 hors des variables d'environnement `Orkeon__Tools__Email__…`, que l'hôte .NET lit pour chaque
 run), accordez le moins de droits possible, préférez `email_draft`, et ne donnez pas à un
 crew non fiable à la fois le `Read` e-mail et un canal sortant (`http_api`, les outils web) : un
-message pourrait demander à l'agent d'emporter la boîte au-dehors. Les fichiers de jetons sont du
-JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui tourne sous
-le même utilisateur du système.
+message pourrait demander à l'agent d'exfiltrer le contenu de la boîte. Les fichiers de jetons
+sont du JSON en clair : à l'abri des outils du VFS, **pas** d'un outil shell ou de code qui
+tourne sous le même utilisateur du système.
 
 ## Résilience
 
