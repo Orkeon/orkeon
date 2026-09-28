@@ -23,7 +23,7 @@ RUN dotnet restore src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj
 RUN dotnet publish src/apps/Orkeon.ConsoleApp/Orkeon.ConsoleApp.csproj -c Release -o /app/publish --no-restore
 
 # Stage 2: Runtime
-FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:8a153b5889d796b6450295b383596b13308c24c230515f8a7770ce1b94e0c460 AS runtime
+FROM mcr.microsoft.com/dotnet/runtime:10.0@sha256:ff17a18b639a0327e52c7c296fa2e1abe6e03eb61d8121a8ef67cc6aa430a27e AS runtime
 WORKDIR /app
 COPY --from=build /app/publish .
 
