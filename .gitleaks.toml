@@ -40,6 +40,13 @@ useDefault = true
 #                                     var to prove the provider reads it back.
 #   orkeon-encryption-key-v2          documentation of ProvisionNewKeyAsync(store, NAME).
 #                                     A key *name*, not a key — not a credential at all.
+#   sk-live-0123456789                the API key ProviderBalanceTests (Studio.Wpf.Tests) and
+#                                     HttpProviderBalanceProbeTests (Studio.Core.Tests) hand
+#                                     to a fake HTTP handler, to assert the Bearer header.
+#   03-finance-trading                not a credential at all: the examples category of that
+#                                     name (examples/03-finance-trading/). It fires only after
+#                                     a property called `Key` — `chip.Key == "..."` in
+#                                     ModalStops and the use-case wizard tests.
 [[allowlists]]
 description = "Reviewed fake fixture and documentation values (listed individually, never by path)"
 regexes = [
@@ -54,6 +61,8 @@ regexes = [
   '''^"?\$\{ORKEON_Llm__ApiKey\}"?$''',
   '''^"?sk-test1234567890abcdef"?$''',
   '''^"?orkeon-encryption-key-v2"?$''',
+  '''^"?sk-live-0123456789"?$''',
+  '''^"?03-finance-trading"?$''',
 ]
 
 # ── A credential that is a variable, not a value ─────────────────────────────────────
