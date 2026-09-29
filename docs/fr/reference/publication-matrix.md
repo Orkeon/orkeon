@@ -3,7 +3,8 @@
 # Matrice de publication NuGet
 
 Ce fichier est la source de vérité unique pour **les projets publiés sur NuGet**, afin que les
-workflows (`ci.yml` validation, `publish.yml` pack + push sur tag, `release.yml` installateurs)
+workflows (`ci.yml` validation, `publish.yml` pack + push sur tag et canal dev sur `main` au
+vert, `release.yml` installateurs)
 ne divergent plus jamais (OSS-011 / R8.3).
 
 > **Statut — lineup consolidé implémenté (PUB-25, 2026-09-01).** La distribution est un
@@ -129,6 +130,48 @@ NuGet.org ci-dessus **plus** les paquets build-time et runners qui restent hors 
 | `Orkeon.ConsoleApp` | `orkeon-repl` | `src/apps/Orkeon.ConsoleApp` |
 | `Orkeon.Scripting.Cli` | `orkeon` | `src/scripting/Orkeon.Scripting.Cli` |
 
+### Canal dev : le dernier `main`, entre deux tags
+
+Dès que `ci.yml` passe au vert sur un push vers `main`, le job `publish-dev` de `publish.yml`
+packe les mêmes projets en `<version des props>.dev.<n>`, `n` étant le numéro de ce run de CI
+— `1.0.0-rc.4.dev.412` est donc le commit validé par le run de CI n° 412 — et les pousse
+**uniquement sur GitHub Packages** : jamais sur NuGet.org, qui sait masquer une version mais
+jamais la supprimer. `scripts/prune-dev-packages.sh` supprime ensuite les builds dev plus
+anciens : le feed contient **chaque version taggée plus le dernier `main` au vert**, rien
+entre les deux. Une version taggée n'est jamais supprimée ; une version ni taggée ni build dev
+est signalée, pas supprimée — le même script les retire lors d'un passage ponctuel et relu
+(`--include-untagged`, à blanc d'abord).
+
+- En SemVer, `1.0.0-rc.4.dev.<n>` est au-dessus de `1.0.0-rc.4` et sous la rc suivante :
+  `--prerelease` résout donc le build dev. Quand la version des props n'a pas de suffixe (une
+  release stable), les builds dev passent au patch suivant — `1.0.1-dev.<n>` après `1.0.0` —
+  car `1.0.0-dev.<n>` tomberait sous la release.
+- Une version dev vit jusqu'au merge vert suivant. Un `PackageReference` qui en épingle une
+  se restaure encore — NuGet lit la version comme un minimum et prend le build suivant, avec
+  l'avertissement NU1603 (une erreur si les avertissements sont traités en erreurs) — mais les
+  épinglages exacts cassent : un manifeste `dotnet tool`, un `packages.lock.json` en mode
+  verrouillé. Utilisez une version flottante (`*-*`, et `dotnet restore --force-evaluate` pour
+  passer à la plus récente) pour suivre le canal ; épinglez une version taggée pour tout usage
+  durable.
+- Un build dev n'est pas une release : ni attestation, ni SBOM, rien sur NuGet.org.
+- Une fois le flux déclaré comme source, `--prerelease` et les versions flottantes résolvent
+  les builds dev de tous les paquets Orkeon, ceux de NuGet.org compris ; `--version` épingle
+  une release.
+- GitHub Packages exige un jeton même pour un dépôt public : un personal access token
+  (classic) avec `read:packages`. Lancez les commandes hors d'un clone de ce dépôt — dans un
+  clone, son `nuget.config` garde nuget.org comme unique source et vous obtiendriez le
+  dernier tag à la place.
+
+```bash
+dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
+  --name orkeon-github \
+  --username <votre-utilisateur-github> \
+  --password <PAT-avec-read:packages> --store-password-in-clear-text
+
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # déjà installé : dotnet tool update, mêmes arguments
+# dans un projet : <PackageReference Include="Orkeon" Version="*-*" />
+```
+
 ## Archives d'installation (`release.yml`)
 
 Sur un tag `v*`, `release.yml` construit tous les artefacts d'installation, **smoke-teste chaque
@@ -249,9 +292,10 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `dotnet pack Orkeon.sln` piloté par `IsPackable`, le gate
   `scripts/check-package-closure.py` sur les artefacts packés, un push de tout vers
   **GitHub Packages** avec `--skip-duplicate` (ré-exécutions idempotentes), puis le **lineup
-  NuGet.org** (le tableau ci-dessus, `Orkeon` en premier) vers **NuGet.org**. `ci.yml` valide
-  (build + tests) et ne package rien ; `release.yml` construit les archives d'installation et
-  l'image conteneur, sans packaging NuGet.
+  NuGet.org** (le tableau ci-dessus, `Orkeon` en premier) vers **NuGet.org**. Son job
+  `publish-dev` packe en plus chaque push vert sur `main`, pour GitHub Packages seulement (voir
+  *Canal dev* plus haut). `ci.yml` valide (build + tests) et ne package rien ; `release.yml`
+  construit les archives d'installation et l'image conteneur, sans packaging NuGet.
 - L'authentification NuGet.org est le **Trusted Publishing (OIDC)** — aucune clé API longue
   durée. Une politique nuget.org (dépôt `Orkeon/orkeon`, workflow `publish.yml`) permet à
   `NuGet/login` d'échanger le jeton OIDC du job contre une clé éphémère ; les étapes sont
@@ -269,7 +313,8 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   Le garde maintient `--skip-duplicate` honnête.
 - **Provenance et SBOM.** Les deux workflows attestent ce qu'ils publient avec
   `actions/attest-build-provenance` (SLSA v1, signé par l'instance Sigstore de GitHub) :
-  `publish.yml` chaque `*.nupkg`, `release.yml` chaque archive, `.deb` et MSI. Tous deux
+  `publish.yml` chaque `*.nupkg` d'un tag (les builds du canal dev ne sont pas attestés),
+  `release.yml` chaque archive, `.deb` et MSI. Tous deux
   génèrent un **SBOM CycloneDX** de `Orkeon.sln` juste après le build (outil dotnet
   `CycloneDX`, version épinglée, aucune action tierce) — `orkeon-<version>.sbom.cdx.json` — et
   le couvrent par la **même** attestation : un asset de release à côté des archives et une
@@ -277,4 +322,4 @@ commandes d'installation du runtime plutôt que d'échouer au premier lancement.
   `publish.yml`. Comment vérifier tout cela, et pourquoi un téléchargement nuget.org doit
   d'abord perdre sa signature repository, est dans
   [Vérifier ce que vous installez](../guides/verify-what-you-install.md).
-- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit.
+- La version provient de `src/Directory.Build.props` (actuellement `1.0.0-rc.4`), la source de vérité unique : aucun projet ne la surcharge, et le garde-fou de tag du workflow de publication refuse tout tag `v*` qui la contredit. Le canal dev en dérive son `<version>.dev.<n>`.

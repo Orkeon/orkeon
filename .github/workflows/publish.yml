@@ -1,7 +1,8 @@
 # Publishes NuGet packages on a v* tag: every packable to GitHub Packages (the
 # internal tooling feed), plus the consolidated v1 public set to NuGet.org (PUB-25):
 # the `Orkeon` umbrella, `Orkeon.Tools`, and the opt-ins — per
-# docs/reference/publication-matrix.md.
+# docs/reference/publication-matrix.md. Between two tags, the `publish-dev` job
+# keeps the latest main installable from GitHub Packages (see the end of this header).
 #
 # NuGet.org auth is Trusted Publishing (OIDC): a nuget.org policy for
 # Orkeon/orkeon + publish.yml exchanges this job's OIDC token for a short-lived
@@ -24,12 +25,23 @@
 # own so a native-runtime failure names itself.
 # `dotnet test` drives Microsoft.Testing.Platform (global.json), not VSTest — see
 # ci.yml's header for what that changes about filters and flags.
+#
+# Dev channel (job `publish-dev`): once CI is green on a push to main, the same
+# packables are packed as `<props version>.dev.<CI run number>` and pushed to GitHub
+# Packages ONLY — never NuGet.org, which cannot delete a version, only unlist it.
+# scripts/prune-dev-packages.sh then deletes the older dev builds, so the feed holds
+# the tagged releases plus the latest main and nothing in between. Tagged versions
+# are never touched. No tests (CI just ran them on this very commit), no attestation
+# or SBOM: a dev build is not a release.
 name: Publish packages
-on: { push: { tags: [ 'v*' ] } }
+on:
+  push: { tags: [ 'v*' ] }
+  workflow_run: { workflows: [ CI ], types: [ completed ], branches: [ main ] }
 # id-token is required by the NuGet.org Trusted Publishing OIDC exchange.
 permissions: { contents: read, packages: write, id-token: write }
 jobs:
   publish:
+    if: github.event_name == 'push'
     # Restated at job scope so that attestations: write is granted here and
     # nowhere else. The three others are what the workflow default already
     # carries: contents to read the tree, packages to push to GitHub Packages,
@@ -189,3 +201,99 @@ jobs:
                 --api-key "$NUGET_API_KEY" --skip-duplicate
             done
           done
+
+  publish-dev:
+    # Only a push to main whose CI passed, in this repository. workflow_run also fires
+    # for pull-request runs, and a fork's branch may well be called main: the event and
+    # the head repository are what rule those out, not the branch filter above.
+    if: >-
+      github.event_name == 'workflow_run'
+      && github.event.workflow_run.conclusion == 'success'
+      && github.event.workflow_run.event == 'push'
+      && github.event.workflow_run.head_branch == 'main'
+      && github.event.workflow_run.head_repository.full_name == github.repository
+    # packages: write covers the push and the prune's deletions.
+    permissions: { contents: read, packages: write }
+    # No concurrency group, on purpose. The version carries the CI run number, which
+    # follows push order, and the prune only deletes LOWER numbers, so two runs that
+    # overlap cannot roll the channel back: the newer one wins. A group would let a
+    # late run (a re-run of an old CI run, say) cancel or replace a newer one mid-push.
+    runs-on: ubuntu-latest
+    env:
+      CI_RUN: ${{ github.event.workflow_run.run_number }}
+    steps:
+      - name: Free up runner disk space
+        run: |
+          echo "Before:"; df -h / | tail -1
+          sudo rm -rf /usr/local/lib/android /opt/ghc /usr/local/.ghcup /opt/hostedtoolcache/CodeQL /usr/share/swift
+          sudo docker image prune --all --force >/dev/null 2>&1 || true
+          echo "After:"; df -h / | tail -1
+      # The commit CI validated, not whatever main points to by now.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha }}
+          persist-credentials: false
+      # <prefix>-<suffix>.dev.<n> sorts ABOVE <prefix>-<suffix> (SemVer: on equal
+      # leading identifiers the longer prerelease wins) and below the next suffix, so
+      # after 1.0.0-rc.4 the channel serves 1.0.0-rc.4.dev.<n> to `--prerelease`.
+      # A props version without a suffix is a stable one, released or about to be:
+      # <prefix>-dev.<n> would sort BELOW it and the channel would silently serve the
+      # release instead, so the dev builds move to the next patch (1.0.1-dev.<n>).
+      - name: Resolve the dev version
+        id: ver
+        run: |
+          prefix=$(sed -n 's/.*<VersionPrefix>\(.*\)<\/VersionPrefix>.*/\1/p' src/Directory.Build.props)
+          suffix=$(sed -n 's/.*<VersionSuffix>\(.*\)<\/VersionSuffix>.*/\1/p' src/Directory.Build.props)
+          if [[ ! "$prefix" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::src/Directory.Build.props: VersionPrefix '$prefix' is not Major.Minor.Patch."
+            exit 1
+          fi
+          if [ -n "$suffix" ]; then
+            suffix="$suffix.dev.$CI_RUN"
+          else
+            prefix="${BASH_REMATCH[1]}.${BASH_REMATCH[2]}.$((BASH_REMATCH[3] + 1))"
+            suffix="dev.$CI_RUN"
+          fi
+          { echo "prefix=$prefix"; echo "suffix=$suffix"; echo "version=$prefix-$suffix"; } >> "$GITHUB_OUTPUT"
+          echo "Dev version: $prefix-$suffix (CI run #$CI_RUN)"
+      - uses: actions/setup-dotnet@67a3573c9a986a3f9c594539f4ab511d57bb3ce9 # v4
+        with: { dotnet-version: '10.0.x' }
+      # One pack, restore and build included. ContinuousIntegrationBuild must reach the
+      # build, not only the pack: it is what maps the source paths in the PDBs.
+      - name: Pack
+        env:
+          PREFIX: ${{ steps.ver.outputs.prefix }}
+          SUFFIX: ${{ steps.ver.outputs.suffix }}
+        run: dotnet pack Orkeon.sln -c Release -o artifacts "/p:VersionPrefix=$PREFIX" "/p:VersionSuffix=$SUFFIX" /p:ContinuousIntegrationBuild=true
+      # The tag job's gate, on the canonical lineup (the script's LINEUP default): no
+      # third hand-written copy of the list for check-doc-claims.py to miss.
+      - name: Check package closure
+        run: python3 scripts/check-package-closure.py --artifacts artifacts
+      # The version must reach the dependencies between the packages too: a dev
+      # Orkeon.Tools declaring `Orkeon >= <props version>` would restore the last
+      # released Orkeon under it, silently mixing two builds.
+      - name: Check the Orkeon dependencies name the dev version
+        env:
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: |
+          stale=$(for f in artifacts/*.nupkg; do
+                    unzip -p "$f" '*.nuspec' | grep -o '<dependency id="Orkeon[^"]*" version="[^"]*"' \
+                      | grep -vF "version=\"$VERSION\"" | sed "s|^|${f##*/}: |"
+                  done || true)
+          if [ -n "$stale" ]; then
+            echo "::error::Orkeon dependencies not on $VERSION:"; echo "$stale"; exit 1
+          fi
+          echo "Every Orkeon dependency names $VERSION."
+      # --skip-duplicate for re-runs: re-running this workflow, or the CI run behind it,
+      # packs the same version again, and must not trip over what the first attempt pushed.
+      - run: >
+          dotnet nuget push "artifacts/*.nupkg"
+          --source "https://nuget.pkg.github.com/Orkeon/index.json"
+          --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
+      # After the push, never before: a prune followed by a failed push would leave the
+      # channel empty. --artifacts limits it to the packages this run has just pushed.
+      - name: Prune older dev versions
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ steps.ver.outputs.version }}
+        run: bash scripts/prune-dev-packages.sh --keep "$VERSION" --artifacts artifacts --apply

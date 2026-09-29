@@ -321,7 +321,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `PublicAPI.Unshipped.txt` ne sont pas réduits à leur en-tête),
    `scripts/check-package-closure.py`, les linters d'exemples
    (`scripts/generate-examples-index.sh --check`, `scripts/lint-example-configs.py`,
-   `scripts/lint-example-readmes.py`, `scripts/test-examples-catalog.py`), la gate des
+   `scripts/lint-example-readmes.py`, `scripts/test-examples-catalog.py`), le test de la
+   purge du canal dev (`scripts/test-prune-dev-packages.sh`), la gate des
    bits exécutables (`file-modes.yml`), le scan de secrets (`secret-scan.yml`) et le
    build docfx strict.
 6. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;

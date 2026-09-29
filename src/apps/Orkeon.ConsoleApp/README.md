@@ -9,11 +9,12 @@ Not to be confused with the `orkeon` CLI (package `Orkeon.Scripting.Cli`), which
 ## Install
 
 ```
-dotnet tool install --global Orkeon.ConsoleApp --prerelease
+dotnet tool install --global Orkeon.ConsoleApp --version <version>
 orkeon-repl
 ```
 
 > This package is published on the [GitHub Packages feed](https://github.com/orgs/Orkeon/packages); add the feed as a NuGet source first — see the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md).
+> `<version>` is a release: a tag of the [releases page](https://github.com/Orkeon/orkeon/releases) without its leading `v`. On this feed, `--prerelease` in its place installs the dev channel instead — the latest `main` build, replaced at every merge.
 
 ## Documentation
 

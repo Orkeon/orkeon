@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — a dev channel: the latest `main` is installable between two tags
+
+- **`publish.yml` gains a `publish-dev` job.** Once CI is green on a push to `main`, every
+  packable is packed as `<props version>.dev.<CI run number>` — `1.0.1-dev.<n>` after a
+  stable `1.0.0`, which `1.0.0-dev.<n>` would sort below — and pushed to **GitHub Packages
+  only**: never NuGet.org, which cannot delete a version. The new
+  `scripts/prune-dev-packages.sh` then deletes the older dev builds, so the feed keeps each
+  tagged release plus the latest `main`. Tagged versions are never touched and dev builds
+  are not attested. `dotnet tool install -g Orkeon.Scripting.Cli --prerelease` against that
+  feed installs the latest `main`; the setup is in `docs/reference/publication-matrix.md`.
+- **`scripts/test-prune-dev-packages.sh`** proves the retention rules in CI against a fake
+  `gh` — no network, no token: tags are never deleted, nor the kept build, a newer one or a
+  package's last version; a 404 from an overlapping run is not a failure, a 403 is.
+- **The `Orkeon.ConsoleApp` and `Orkeon.Generators` READMEs pin a release with `--version`.**
+  On the GitHub feed, `--prerelease` now resolves the dev channel.
+
 ### Added — native e-mail tools: IMAP, POP3, SMTP and Microsoft Graph, Gmail and Outlook presets, OAuth2 sign-in (MAIL-01..06)
 
 - **A new tool family, `Orkeon.Tools.Email`** — the eighth of the `Orkeon.Tools` umbrella, and

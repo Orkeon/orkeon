@@ -56,6 +56,11 @@ jobs:
       # build-free like its two neighbours, so it runs before setup-dotnet.
       - name: Check comments carry no accented letter
         run: python3 scripts/check-comment-accents.py
+      # The dev channel's retention (scripts/prune-dev-packages.sh, run by publish.yml)
+      # deletes versions from the GitHub feed; its rules are proved here against a fake
+      # `gh`, with no network and no token, before any of it can run for real.
+      - name: Test the dev-channel prune against a fake gh
+        run: bash scripts/test-prune-dev-packages.sh
       # Scripting-DSL contract gate: the shipped .ork.ts examples are typechecked against
       # the shipped Typings/*.d.ts. The examples are also executed by the test suite, so
       # agreement here means the declarations and the Jint runtime describe one API. Seven

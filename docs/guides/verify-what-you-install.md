@@ -100,6 +100,9 @@ Measured on `Orkeon.1.0.0-rc.3.nupkg`: the recovered digest has one statement, b
 pushed to nuget.org at that tag plus the three that only reached GitHub Packages
 (`Orkeon.Compliance.Vfs`, `Orkeon.ConsoleApp`, `Orkeon.Generators`). Packages downloaded
 from **GitHub Packages** are not repository-signed and verify directly, without the strip.
+The exception is the dev channel (`<version>.dev.<n>`, see the
+[publication matrix](../reference/publication-matrix.md)): those builds are not releases and
+carry no attestation, so there is nothing to verify them against.
 
 `scripts/nupkg-unsign.py` refuses to guess: if the signature is not the last entry of
 the archive it stops rather than emit something that would fail verification anyway.

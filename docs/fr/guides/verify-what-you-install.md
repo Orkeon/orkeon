@@ -101,7 +101,9 @@ Mesuré sur `Orkeon.1.0.0-rc.3.nupkg` : le digest retrouvé a une déclaration, 
 poussés sur nuget.org à ce tag plus les trois qui n'ont atteint que GitHub Packages
 (`Orkeon.Compliance.Vfs`, `Orkeon.ConsoleApp`, `Orkeon.Generators`). Les paquets
 téléchargés depuis **GitHub Packages** ne sont pas re-signés et se vérifient directement,
-sans retrait.
+sans retrait. Seule exception, le canal dev (`<version>.dev.<n>`, voir la
+[matrice de publication](../reference/publication-matrix.md)) : ces builds ne sont pas des
+releases et ne portent aucune attestation, il n'y a donc rien contre quoi les vérifier.
 
 `scripts/nupkg-unsign.py` refuse de deviner : si la signature n'est pas la dernière entrée
 de l'archive, il s'arrête plutôt que d'émettre un fichier qui échouerait de toute façon.

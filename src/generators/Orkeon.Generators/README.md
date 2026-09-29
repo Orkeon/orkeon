@@ -18,8 +18,12 @@ dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
   --username <your-github-username> \
   --password <PAT-with-read:packages> --store-password-in-clear-text
 
-dotnet add package Orkeon.Generators --prerelease --source orkeon-github
+dotnet add package Orkeon.Generators --version <version> --source orkeon-github
 ```
+
+`<version>` is a release: a tag of the [releases page](https://github.com/Orkeon/orkeon/releases)
+without its leading `v`. On this feed, `--prerelease` in its place takes the dev channel — the
+latest `main` build, replaced at every merge — which is not what a build-time dependency wants.
 
 See the [publication matrix](https://github.com/Orkeon/orkeon/blob/main/docs/reference/publication-matrix.md)
 for the full list of what ships where.

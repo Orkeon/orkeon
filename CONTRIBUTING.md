@@ -307,7 +307,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
    `PublicAPI.Unshipped.txt` files are not header-only), `scripts/check-package-closure.py`,
    the examples linters (`scripts/generate-examples-index.sh --check`,
    `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`,
-   `scripts/test-examples-catalog.py`), the executable-bit gate (`file-modes.yml`), the
+   `scripts/test-examples-catalog.py`), the dev-channel prune test
+   (`scripts/test-prune-dev-packages.sh`), the executable-bit gate (`file-modes.yml`), the
    secret scan (`secret-scan.yml`) and the strict docfx build.
 6. Tag `v<version>` and push the tag. This triggers: `publish.yml` (packs everything;
    pushes the **nine-package v1 lineup to NuGet.org** — `Orkeon`, `Orkeon.Tools`,
