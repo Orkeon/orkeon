@@ -83,9 +83,10 @@ class Orkeon < Formula
     EOS
   end
 
-  # `orkeon --version` exits 1 (known gap, WIN-00 §7), so liveness is proven
-  # with `doctor` instead: it exits 0 when no check fails, and an unconfigured
-  # LLM is a warning rather than a failure.
+  # Liveness is proven with `doctor` rather than `orkeon --version`: doctor also
+  # runs the bundled esbuild and checks that the native libraries are in place.
+  # It exits 0 when no check fails, and an unconfigured LLM is a warning rather
+  # than a failure.
   test do
     system bin/"orkeon", "doctor"
   end

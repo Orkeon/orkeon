@@ -16,12 +16,21 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   `scripts/prune-dev-packages.sh` then deletes the older dev builds, so the feed keeps each
   tagged release plus the latest `main`. Tagged versions are never touched and dev builds
   are not attested. `dotnet tool install -g Orkeon.Scripting.Cli --prerelease` against that
-  feed installs the latest `main`; the setup is in `docs/reference/publication-matrix.md`.
+  feed installs the latest `main`; the steps are in *Update Orkeon*
+  (`docs/getting-started/three-ways-to-run-orkeon.md`), the mechanism in
+  `docs/reference/publication-matrix.md`.
 - **`scripts/test-prune-dev-packages.sh`** proves the retention rules in CI against a fake
   `gh` — no network, no token: tags are never deleted, nor the kept build, a newer one or a
   package's last version; a 404 from an overlapping run is not a failure, a 403 is.
 - **The `Orkeon.ConsoleApp` and `Orkeon.Generators` READMEs pin a release with `--version`.**
   On the GitHub feed, `--prerelease` now resolves the dev channel.
+- **An *Update Orkeon* section in *Three ways to run Orkeon*, EN and FR.** The update of
+  every channel in one table, then the dev channel step by step: the token, the feed in bash
+  and PowerShell, install then update, `orkeon --version` to check, the `PATH` and Studio
+  traps when a package already installed `orkeon`, floating versions in a project, and the
+  way back to the releases. The README, `index.md`, the documentation index and the CLI
+  reference point to it. The publication matrix and the Homebrew formula no longer say that
+  `orkeon --version` exits `1`: it prints the version and exits `0`.
 
 ### Added — native e-mail tools: IMAP, POP3, SMTP and Microsoft Graph, Gmail and Outlook presets, OAuth2 sign-in (MAIL-01..06)
 

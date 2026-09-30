@@ -33,8 +33,9 @@
     9. install.ps1 -Uninstall removes the directory, the ARP key and the PATH
        entry, and leaves %APPDATA%\Orkeon alone.
 
-  Note on `orkeon --version` / `--help`: both exit 1 (a pre-existing
-  CommandLineParser behaviour), so `orkeon doctor` is the liveness probe here.
+  Note on `orkeon --version` / `--help`: both exit 0 since D3-05, but
+  `orkeon doctor` stays the liveness probe here: a version line proves the
+  entry point started, doctor proves the payload shipped.
 
   Compatible with Windows PowerShell 5.1 and PowerShell 7.
 

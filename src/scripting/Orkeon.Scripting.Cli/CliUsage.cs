@@ -120,8 +120,7 @@ internal static class CliUsage
         if (string.IsNullOrWhiteSpace(informational))
             return typeof(CliUsage).Assembly.GetName().Version?.ToString() ?? UnknownVersion;
 
-        // SourceLink appends "+<commit sha>"; the release is what a person asked for, and the
-        // commit belongs to `orkeon doctor`.
+        // SourceLink appends "+<commit sha>"; the release is what a person asked for.
         var metadata = informational.IndexOf('+', StringComparison.Ordinal);
         return metadata < 0 ? informational : informational[..metadata];
     }

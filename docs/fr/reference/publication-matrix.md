@@ -162,6 +162,9 @@ est signalée, pas supprimée — le même script les retire lors d'un passage p
   clone, son `nuget.config` garde nuget.org comme unique source et vous obtiendriez le
   dernier tag à la place.
 
+Pas à pas — le jeton, les deux shells, la vérification de ce qui tourne, le retour aux
+releases : [Suivre `main` : le canal dev](../getting-started/three-ways-to-run-orkeon.md#suivre-main--le-canal-dev).
+
 ```bash
 dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
   --name orkeon-github \
@@ -251,8 +254,9 @@ Le CLI `orkeon` est distribué via **sept canaux** :
 une formule binaire : elle télécharge l'archive osx correspondant à l'architecture de la
 machine (`on_arm` / `on_intel`), installe la charge utile sous le `libexec` du Cellar, et écrit
 un wrapper `bin/orkeon` qui pointe `ORKEON_ESBUILD_PATH` vers l'esbuild embarqué — le même
-contrat que `wrapper.sh.tmpl`. Son bloc `test do` exécute `orkeon doctor` et non
-`orkeon --version`, qui sort en `1`.
+contrat que `wrapper.sh.tmpl`. Son bloc `test do` exécute `orkeon doctor` plutôt que
+`orkeon --version` : doctor lance aussi l'esbuild embarqué et vérifie que les bibliothèques
+natives sont en place, et un LLM non configuré n'y est qu'un avertissement.
 
 `version` et les deux couples `url` / `sha256` sont **générés**, jamais édités à la main :
 `scripts/update-homebrew-formula.sh --release <tag>` (ou `--sums <fichier>`) réécrit les cinq

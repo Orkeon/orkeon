@@ -490,3 +490,99 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 
 Whichever you choose, the flags and the `appsettings` profile story are identical
 — read them once in [Run your first example](./run-your-first-example.md).
+
+---
+
+## Update Orkeon
+
+Updating is installing the newer version through the channel you installed with. Your
+settings are not part of any install: the `appsettings.json` that `orkeon init` wrote stays
+where it is, whichever channel you update.
+
+| Installed with | Move to the latest release |
+|---|---|
+| The dotnet tool | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
+| NuGet packages, in a project | `dotnet add package Orkeon --prerelease` — and `Orkeon.Tools` if the project references it — rewrites the version |
+| Windows zip, macOS or Linux tarball | Extract the new archive and run its `install.ps1` / `install.sh`: it deletes the previous install and puts the new one in its place |
+| Windows MSI | Run the new MSI: it replaces the installed one, between two pre-releases too |
+| Debian package | `sudo apt install ./orkeon_<version>_amd64.deb` |
+| Container | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` moves with each release |
+| From source | `git pull`; the next `dotnet run` rebuilds |
+
+`orkeon --version` then prints the version that runs: `orkeon <version>`.
+
+### Follow `main`: the dev channel
+
+Between two releases, every commit CI validates on `main` is published as
+`<version>.dev.<n>` — `n` being the number of that CI run — to the Orkeon feed on GitHub
+Packages, where the next one replaces it. How the versions are numbered and pruned is in the
+[publication matrix](../reference/publication-matrix.md#dev-channel-the-latest-main-between-two-tags).
+The channel reaches the **NuGet channels only**: the `orkeon` tool, the `orkeon-repl` tool
+(package `Orkeon.ConsoleApp`) and the packages. The installers, the container image and
+Orkeon Studio are built from tags alone.
+
+1. **Create a token.** GitHub Packages asks for one even to read a public package: a personal
+   access token (classic) with the `read:packages` scope —
+   [create it here](https://github.com/settings/tokens/new?scopes=read:packages).
+2. **Declare the feed, once.** Run this command, and every other one in this section, from a
+   directory outside any clone of this repository: inside one, its `nuget.config` keeps
+   nuget.org as the only source, and you would get the last release instead.
+
+   ```bash
+   dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
+     --name orkeon-github \
+     --username <your-github-username> \
+     --password <PAT-with-read:packages> --store-password-in-clear-text
+   ```
+
+   ```powershell
+   dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json --name orkeon-github --username <your-github-username> --password <PAT-with-read:packages>
+   ```
+
+   Windows encrypts the token. Linux and macOS cannot, hence the flag: the token is then
+   stored as is in `~/.nuget/NuGet/NuGet.Config`.
+3. **Install, then update.** The update takes you to the newest `main` each time you run it:
+
+   ```bash
+   dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the first time
+   dotnet tool update -g Orkeon.Scripting.Cli --prerelease    # every time after
+   ```
+
+   NuGet keeps a feed's version list for 30 minutes: right after a merge, add
+   `--no-http-cache` to see the new build.
+4. **Check.** `orkeon --version` prints `orkeon <version>.dev.<n>`. Run `#<n>` of the
+   [CI workflow](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml) names the commit,
+   and the `[Unreleased]` section of the [CHANGELOG](../../CHANGELOG.md) lists what changed
+   since the last release. The documentation site follows the tags: for a dev build, read the
+   documentation on `main`.
+
+**Already installed from a package** — the `.deb`, the zip, the MSI, a tarball? Two `orkeon`
+now sit on the machine, and the first one on `PATH` is the one that runs. On Linux, the
+`.deb`'s `/usr/bin/orkeon` usually comes before `~/.dotnet/tools`, so `orkeon` keeps running
+the release. `command -v orkeon` (PowerShell: `Get-Command orkeon`) shows which one answers;
+uninstall the package, or call `~/.dotnet/tools/orkeon` explicitly. Orkeon Studio launches
+the `orkeon` installed next to it, which stays the release; the Windows app takes `--cli-dir`
+to launch another one: `orkeon-studio --cli-dir "$env:USERPROFILE\.dotnet\tools"`.
+
+**In a project**, float the version rather than pin it:
+`<PackageReference Include="Orkeon" Version="*-*" />` (and the same for `Orkeon.Tools`), then
+`dotnet restore --force-evaluate` (with `--no-http-cache` right after a merge) to move to the
+newest build. Under central package management the floating version goes in
+`Directory.Packages.props` and needs
+`<CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>` —
+without it, restore fails with NU1011. An exact pin on a dev build — a tool manifest, a
+`packages.lock.json` in locked mode — breaks as soon as the next build replaces it; a plain
+`Version="<version>.dev.<n>"` still restores, onto the next build, with warning NU1603. Pin a
+release for anything that has to last.
+
+**Back to the releases:**
+
+```bash
+dotnet nuget remove source orkeon-github   # or `dotnet nuget disable source orkeon-github`, to keep the token
+dotnet tool update -g Orkeon.Scripting.Cli --version <release> --allow-downgrade
+```
+
+`<release>` is a tag of the [releases page](https://github.com/Orkeon/orkeon/releases)
+without its leading `v`. As long as the feed stays declared, `--prerelease` and floating
+versions resolve the dev build for every Orkeon package, the NuGet.org ones included;
+`--version` pins a release.

@@ -14,7 +14,7 @@ The documentation is organized into 6 thematic sections.
 
 | File | Description |
 |------|-------------|
-| [Three ways to run Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Hub page: from source vs. release binary vs. container — prerequisites, commands, and a comparison table |
+| [Three ways to run Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Hub page: from source vs. release binary vs. container — prerequisites, commands, and a comparison table; how to update, to the latest release or to the latest `main` (dev channel) |
 | [Run your first example (from source)](./getting-started/run-your-first-example.md) | End-to-end first run: prerequisites, LLM profile matrix, the full crew command, every runner flag, settings resolution, troubleshooting |
 | [Overview](./getting-started/overview.md) | Architecture, core concepts (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap and execution](./getting-started/bootstrap.md) | Dependency injection, running a Crew, batch/streaming/fire-and-forget modes |
@@ -93,7 +93,7 @@ The documentation is organized into 6 thematic sections.
 | [Hosting & runner bootstrap](./reference/hosting.md) | `Orkeon.Hosting`: `RunnerHost.Build`, `ConfigureRunnerServices` wiring order (LLM-first, tool suites, VFS, `ServiceProviderToolRegistry`), `RunnerExecution` flows, and the web-host consumption pattern |
 | [Example README template](./templates/example-readme.md) | Template for `examples/**/README.md`: What it does / Prerequisites / Required data / Run it (per way) / Expected output / Duration & cost |
 | [LLM provider comparison](./reference/llm-providers-comparison.md) | Capability matrix per provider (SSE streaming, native tool calling, GBNF grammar, `response_format`, thinking, metrics, resilience), derived from the source code |
-| [Publication matrix](./reference/publication-matrix.md) | **Source of truth** for what ships where: NuGet.org vs GitHub Packages, dotnet tools, installer artifacts, version flow |
+| [Publication matrix](./reference/publication-matrix.md) | **Source of truth** for what ships where: NuGet.org vs GitHub Packages, dotnet tools, installer artifacts, version flow, the dev channel (the latest `main` between two tags) |
 
 ---
 

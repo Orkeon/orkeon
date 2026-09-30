@@ -38,6 +38,8 @@ mkdir -p out && orkeon run examples/quickstart/crew.yaml --mount ./out:/output:r
 
 The tool comes from [nuget.org](https://www.nuget.org/packages/Orkeon.Scripting.Cli) — no extra feed, no token. The agent writes `./out/hello.md` — and only there: `/output` is the single mount, `rw`. Change the crew's task to write anywhere else and watch the file-system service refuse it. The block above is executed literally by CI on every change ([Quickstart workflow](https://github.com/Orkeon/orkeon/actions/workflows/quickstart.yml)): if it stops working, the build goes red before you find out. Everything about local models — Docker Model Runner, Ollama, a model baked into the container image — is in the [local models guide](docs/guides/local-models.md).
 
+To update the tool later: `dotnet tool update -g Orkeon.Scripting.Cli --prerelease`. To follow `main` between two releases, and for every other channel, see [Update Orkeon](docs/getting-started/three-ways-to-run-orkeon.md#update-orkeon).
+
 ## Forge a team from a need
 
 You do not have to write the crew. Describe the need; `orkeon forge` interviews you, drafts the team, renders it (YAML or `.ork.ts`), validates it, **runs it in a sandbox**, diagnoses the run and asks for your verdict — then promotes the result into your project when you say so:

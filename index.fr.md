@@ -40,7 +40,9 @@ orkeon run crew.ork.ts
 
 Voir la [matrice de publication](docs/fr/reference/publication-matrix.md) pour le lineup
 complet (dont les paquets opt-in reranker ONNX et embeddings locaux) et la
-[section installation du README](README.fr.md) pour les canaux CLI et conteneur.
+[section installation du README](README.fr.md) pour les canaux CLI et conteneur. Pour
+mettre à jour — vers la dernière release, ou vers le dernier `main` entre deux releases —
+voir [Mettre à jour Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md#mettre-à-jour-orkeon).
 
 ## Projet
 

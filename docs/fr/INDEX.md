@@ -14,7 +14,7 @@ La documentation est organisée en 6 sections thématiques.
 
 | Fichier | Description |
 |---------|-------------|
-| [Trois façons d'exécuter Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Page centrale : depuis les sources vs binaire de release vs conteneur — prérequis, commandes, canaux d'installation par OS et tableau comparatif |
+| [Trois façons d'exécuter Orkeon](./getting-started/three-ways-to-run-orkeon.md) | Page centrale : depuis les sources vs binaire de release vs conteneur — prérequis, commandes, canaux d'installation par OS et tableau comparatif ; la mise à jour, vers la dernière release ou vers le dernier `main` (canal dev) |
 | [Exécuter votre premier exemple (depuis les sources)](./getting-started/run-your-first-example.md) | Première exécution de bout en bout : prérequis, matrice de profils LLM, la commande complète, chaque flag du runner, résolution des settings, dépannage |
 | [Vue d'ensemble](./getting-started/overview.md) | Architecture, concepts fondamentaux (Agent, Task, Tool, Crew), YAML vs Fluent Builder |
 | [Bootstrap et exécution](./getting-started/bootstrap.md) | Injection de dépendances, exécution d'une Crew, modes batch/streaming/fire-and-forget |
@@ -93,7 +93,7 @@ La documentation est organisée en 6 sections thématiques.
 | [Gabarit de README d'exemple](./templates/example-readme.md) | Gabarit pour `examples/**/README.md` : Ce qu'il fait / Prérequis / Données requises / L'exécuter / Sortie attendue / Durée & coût |
 | [Sous-systèmes opt-in](./reference/opt-in-subsystems.md) | A2A, monitoring, NIST, DLP, rate-limiting d'outils, rotation de clés, benchmarking, multi-modal, hooks de kickoff, sous-système RAG — activation explicite `AddOrkeonXxx()` (hors DI par défaut) |
 | [Comparatif des fournisseurs LLM](./reference/llm-providers-comparison.md) | Matrice de capacités par provider (streaming SSE, tool calling natif, grammaire GBNF, `response_format`, thinking, métriques, résilience), dérivée du code source |
-| [Matrice de publication](./reference/publication-matrix.md) | **Source de vérité** de ce qui est publié où : NuGet.org vs GitHub Packages, tools dotnet, artefacts d'installation, flux de version |
+| [Matrice de publication](./reference/publication-matrix.md) | **Source de vérité** de ce qui est publié où : NuGet.org vs GitHub Packages, tools dotnet, artefacts d'installation, flux de version, le canal dev (le dernier `main` entre deux tags) |
 
 ---
 

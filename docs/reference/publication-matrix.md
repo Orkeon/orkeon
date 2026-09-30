@@ -151,6 +151,9 @@ same script removes those in a one-off, reviewed run (`--include-untagged`, dry 
   inside one, its `nuget.config` keeps nuget.org as the only source and you would get the
   latest tag instead.
 
+Step by step — the token, both shells, checking what runs, going back to the releases:
+[Follow `main`: the dev channel](../getting-started/three-ways-to-run-orkeon.md#follow-main-the-dev-channel).
+
 ```bash
 dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
   --name orkeon-github \
@@ -240,7 +243,8 @@ is a binary formula: it downloads the osx tarball matching the machine's archite
 (`on_arm` / `on_intel`), installs the payload under the Cellar's `libexec`, and writes a
 `bin/orkeon` wrapper that points `ORKEON_ESBUILD_PATH` at the bundled esbuild — the same
 contract as `wrapper.sh.tmpl`. Its `test do` block runs `orkeon doctor` rather than
-`orkeon --version`, which exits `1`.
+`orkeon --version`: doctor also runs the bundled esbuild and checks that the native libraries
+are in place, and an unconfigured LLM is only a warning there.
 
 `version` and both `url` / `sha256` pairs are **generated**, never hand-edited:
 `scripts/update-homebrew-formula.sh --release <tag>` (or `--sums <file>`) rewrites the five

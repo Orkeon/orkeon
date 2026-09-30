@@ -14,9 +14,8 @@ ce que vous acceptez d'installer :
 | **3. Conteneur** | Docker | ~1 min (après le pull de l'image) | CI, exécutions reproductibles, aucun .NET local |
 
 Les trois pilotent le même **CLI `orkeon`** et acceptent les mêmes flags. La
-config de la crew est l'argument positionnel de `orkeon run <config>` (le runner
-; les flags optionnels
-(`--settings`, `-v`, `--mount`, `--var`, `--llm-log`, …) sont documentés une
+config de la crew est l'argument positionnel de `orkeon run <config>` ; les flags
+optionnels (`--settings`, `-v`, `--mount`, `--var`, `--llm-log`, …) sont documentés une
 seule fois, en détail, dans
 [Lancer votre premier exemple](./run-your-first-example.md#chaque-flag-expliqué).
 
@@ -524,3 +523,103 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD:/workspace" \
 Quel que soit votre choix, les flags et l'histoire des profils `appsettings`
 sont identiques — lisez-les une fois dans
 [Lancer votre premier exemple](./run-your-first-example.md).
+
+---
+
+## Mettre à jour Orkeon
+
+Mettre à jour, c'est installer la version plus récente par le canal qui a servi à
+l'installation. Vos réglages ne font partie d'aucune installation : l'`appsettings.json`
+écrit par `orkeon init` reste où il est, quel que soit le canal mis à jour.
+
+| Installé avec | Passer à la dernière release |
+|---|---|
+| Le tool dotnet | `dotnet tool update -g Orkeon.Scripting.Cli --prerelease` |
+| Des paquets NuGet, dans un projet | `dotnet add package Orkeon --prerelease` — et `Orkeon.Tools` si le projet le référence — réécrit la version |
+| Zip Windows, tarball macOS ou Linux | Extraire la nouvelle archive et lancer son `install.ps1` / `install.sh` : il supprime l'installation précédente et met la nouvelle à sa place |
+| MSI Windows | Lancer le nouveau MSI : il remplace celui qui est installé, y compris entre deux pré-releases |
+| Paquet Debian | `sudo apt install ./orkeon_<version>_amd64.deb` |
+| Conteneur | `docker pull ghcr.io/orkeon/orkeon-runners` — `:latest` avance à chaque release |
+| Depuis les sources | `git pull` ; le prochain `dotnet run` recompile |
+
+`orkeon --version` affiche ensuite la version qui tourne : `orkeon <version>`.
+
+### Suivre `main` : le canal dev
+
+Entre deux releases, chaque commit validé par la CI sur `main` est publié en
+`<version>.dev.<n>` — `n` étant le numéro de ce run de CI — sur le flux Orkeon de GitHub
+Packages, où le suivant le remplace. La numérotation et l'élagage des versions sont décrits
+dans la
+[matrice de publication](../reference/publication-matrix.md#canal-dev--le-dernier-main-entre-deux-tags).
+Le canal ne sert que les **canaux NuGet** : le tool `orkeon`, le tool `orkeon-repl` (paquet
+`Orkeon.ConsoleApp`) et les paquets. Les installeurs, l'image conteneur et Orkeon Studio ne
+sont construits que sur les tags.
+
+1. **Créez un jeton.** GitHub Packages en exige un même pour lire un paquet public : un
+   personal access token (classic) avec le scope `read:packages` —
+   [le créer ici](https://github.com/settings/tokens/new?scopes=read:packages).
+2. **Déclarez le flux, une fois.** Lancez cette commande, comme toutes celles de cette
+   section, depuis un répertoire hors de tout clone de ce dépôt : dans un clone, son
+   `nuget.config` garde nuget.org comme unique source, et vous obtiendriez la dernière
+   release à la place.
+
+   ```bash
+   dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json \
+     --name orkeon-github \
+     --username <votre-utilisateur-github> \
+     --password <PAT-avec-read:packages> --store-password-in-clear-text
+   ```
+
+   ```powershell
+   dotnet nuget add source https://nuget.pkg.github.com/Orkeon/index.json --name orkeon-github --username <votre-utilisateur-github> --password <PAT-avec-read:packages>
+   ```
+
+   Windows chiffre le jeton. Linux et macOS ne le peuvent pas, d'où le flag : le jeton est
+   alors stocké tel quel dans `~/.nuget/NuGet/NuGet.Config`.
+3. **Installez, puis mettez à jour.** La mise à jour vous amène au `main` le plus récent à
+   chaque exécution :
+
+   ```bash
+   dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # la première fois
+   dotnet tool update -g Orkeon.Scripting.Cli --prerelease    # toutes les fois suivantes
+   ```
+
+   NuGet garde la liste des versions d'un flux pendant 30 minutes : juste après un merge,
+   ajoutez `--no-http-cache` pour voir le nouveau build.
+4. **Vérifiez.** `orkeon --version` affiche `orkeon <version>.dev.<n>`. Le run `#<n>` du
+   [workflow CI](https://github.com/Orkeon/orkeon/actions/workflows/ci.yml) donne le commit, et
+   la section `[Unreleased]` du [CHANGELOG](../../../CHANGELOG.md) liste ce qui a changé depuis
+   la dernière release. Le site de documentation suit les tags : pour un build dev, lisez la
+   documentation sur `main`.
+
+**Déjà installé par un paquet** — le `.deb`, le zip, le MSI, un tarball ? Deux `orkeon` se
+trouvent alors sur la machine, et c'est le premier du `PATH` qui s'exécute. Sous Linux, le
+`/usr/bin/orkeon` du `.deb` passe en général avant `~/.dotnet/tools` : `orkeon` continue donc
+de lancer la release. `command -v orkeon` (PowerShell : `Get-Command orkeon`) montre lequel
+répond ; désinstallez le paquet, ou appelez `~/.dotnet/tools/orkeon` explicitement. Orkeon
+Studio lance l'`orkeon` installé à côté de lui, qui reste la release ; l'application Windows
+prend `--cli-dir` pour en lancer un autre :
+`orkeon-studio --cli-dir "$env:USERPROFILE\.dotnet\tools"`.
+
+**Dans un projet**, faites flotter la version plutôt que de l'épingler :
+`<PackageReference Include="Orkeon" Version="*-*" />` (et de même pour `Orkeon.Tools`), puis
+`dotnet restore --force-evaluate` (avec `--no-http-cache` juste après un merge) pour passer au
+build le plus récent. En gestion centrale des paquets, la version flottante va dans
+`Directory.Packages.props` et exige
+`<CentralPackageFloatingVersionsEnabled>true</CentralPackageFloatingVersionsEnabled>` — sans
+ce réglage, la restauration échoue avec NU1011. Un épinglage exact sur un build dev — un
+manifeste de tools, un `packages.lock.json` en mode verrouillé — casse dès que le build
+suivant le remplace ; un simple `Version="<version>.dev.<n>"` se restaure encore, sur le
+build suivant, avec l'avertissement NU1603. Épinglez une release pour tout ce qui doit durer.
+
+**Revenir aux releases :**
+
+```bash
+dotnet nuget remove source orkeon-github   # ou `dotnet nuget disable source orkeon-github`, pour garder le jeton
+dotnet tool update -g Orkeon.Scripting.Cli --version <release> --allow-downgrade
+```
+
+`<release>` est un tag de la [page des releases](https://github.com/Orkeon/orkeon/releases)
+sans son `v` initial. Tant que le flux reste déclaré, `--prerelease` et les versions
+flottantes résolvent le build dev de tous les paquets Orkeon, ceux de NuGet.org compris ;
+`--version` épingle une release.
