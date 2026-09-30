@@ -36,7 +36,7 @@ public sealed class CovAgentMcp_StreamingAgentExecutionServiceTests
         public void Log<TState>(LogLevel l, EventId e, TState s, Exception? ex, Func<TState, Exception?, string> f) { }
     }
 
-    private sealed class EchoTool : ITool
+    private sealed class EchoTool : IBaseTool
     {
         private readonly bool _succeed;
         public EchoTool(string name, bool succeed = true)

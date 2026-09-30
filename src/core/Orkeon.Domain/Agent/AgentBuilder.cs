@@ -5,6 +5,7 @@ using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Knowledge;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Agent;
 
@@ -28,7 +29,7 @@ public sealed class AgentBuilder
     private string? _responseTemplate;
     private int _maxRetryLimit = AgentDefaults.MaxRetryLimit;
     private ILlmProvider? _functionCallingLlm;
-    private readonly List<ITool> _tools = [];
+    private readonly List<IBaseTool> _tools = [];
     private IStepCallback? _stepCallback;
     private ToolAccessPolicy? _toolAccessPolicy;
     private GuardrailsConfig? _guardrails;
@@ -78,21 +79,21 @@ public sealed class AgentBuilder
     }
 
     /// <summary>Adds a single tool to the agent.</summary>
-    public AgentBuilder WithTool(ITool tool)
+    public AgentBuilder WithTool(IBaseTool tool)
     {
         _tools.Add(tool);
         return this;
     }
 
     /// <summary>Adds multiple tools to the agent.</summary>
-    public AgentBuilder WithTools(params ITool[] tools)
+    public AgentBuilder WithTools(params IBaseTool[] tools)
     {
         _tools.AddRange(tools);
         return this;
     }
 
     /// <summary>Adds multiple tools to the agent from an enumerable.</summary>
-    public AgentBuilder WithTools(IEnumerable<ITool> tools)
+    public AgentBuilder WithTools(IEnumerable<IBaseTool> tools)
     {
         _tools.AddRange(tools);
         return this;

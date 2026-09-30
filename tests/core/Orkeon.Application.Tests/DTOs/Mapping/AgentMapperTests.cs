@@ -453,7 +453,7 @@ public class AgentMapperTests
     }
 
     [Fact]
-    public void ShouldIgnoreIncompatibleTools_WhenUsingCreateFromRequestWithNonIToolTools()
+    public void ShouldAttachEveryTool_WhenUsingCreateFromRequestWithBaseTools()
     {
         // Arrange
         var request = new CreateAgentRequest
@@ -462,15 +462,15 @@ public class AgentMapperTests
             Goal = GoalAnalyzeData
         };
 
-        // Create a mock non-ITool that implements IBaseTool
-        var nonIToolArray = new IBaseTool[] { new NonIToolImplementation() };
+        // GAP-01: a tool is an IBaseTool; nothing narrower is required to reach an agent.
+        var baseTools = new IBaseTool[] { new BaseOnlyTool() };
 
         // Act
-        var agent = AgentMapper.CreateFromRequest(request, nonIToolArray);
+        var agent = AgentMapper.CreateFromRequest(request, baseTools);
 
         // Assert
         Assert.NotNull(agent);
-        Assert.Empty(agent.Tools); // Should not add non-ITool tools
+        Assert.Equal("BaseOnlyTool", Assert.Single(agent.Tools).Name);
     }
 
     [Fact]
@@ -538,8 +538,8 @@ public class AgentMapperTests
     }
 }
 
-// Test implementation of ITool
-internal class TestTool : ITool
+// Test implementation of IBaseTool
+internal class TestTool : IBaseTool
 {
     public TestTool(string name, string description)
     {
@@ -581,23 +581,23 @@ internal class TestTool : ITool
     public override string ToString() => Name;
 }
 
-// Test implementation of IBaseTool that is NOT ITool
-internal class NonIToolImplementation : IBaseTool
+// A second IBaseTool implementation, distinct from TestTool
+internal class BaseOnlyTool : IBaseTool
 {
-    public string Name => "NonITool";
-    public string Description => "Not an ITool";
+    public string Name => "BaseOnlyTool";
+    public string Description => "A plain IBaseTool";
     public static bool RequiresConfirmation => false;
 
     public ToolSchema Schema => new ToolSchema(
-        Name: "NonITool",
-        Description: "Not an ITool",
+        Name: "BaseOnlyTool",
+        Description: "A plain IBaseTool",
         Parameters: []);
 
     public System.Threading.Tasks.Task<ToolCallResponse> CallAsync(Orkeon.Domain.Tools.Protocol.ToolCallRequest request, CancellationToken cancellationToken = default)
     {
         return System.Threading.Tasks.Task.FromResult(new ToolCallResponse(
             Success: true,
-            Result: "NonITool called",
+            Result: "BaseOnlyTool called",
             Error: null,
             Metadata: null));
     }
@@ -607,7 +607,7 @@ internal class NonIToolImplementation : IBaseTool
         return System.Threading.Tasks.Task.FromResult(new ToolResult
         {
             Success = true,
-            Output = "NonITool executed"
+            Output = "BaseOnlyTool executed"
         });
     }
 

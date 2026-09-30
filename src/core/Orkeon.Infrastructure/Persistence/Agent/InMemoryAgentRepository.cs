@@ -110,7 +110,7 @@ public sealed class InMemoryAgentRepository : IAgentRepository
     /// <inheritdoc />
     public System.Threading.Tasks.Task<IReadOnlyList<DomainAgent>> GetAgentsWithToolsAsync(IEnumerable<ToolId> toolIds, CancellationToken cancellationToken = default)
     {
-        // ToolId is Guid-based but ITool uses string Name - return agents that have any tools
+        // ToolId is Guid-based but IBaseTool uses string Name - return agents that have any tools
         // as a reasonable approximation for in-memory implementation
         return System.Threading.Tasks.Task.FromResult<IReadOnlyList<DomainAgent>>(
             _store.Values.Where(a => a.Tools.Count > 0).ToList());

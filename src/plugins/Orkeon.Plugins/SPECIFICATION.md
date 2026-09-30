@@ -1134,13 +1134,12 @@ public interface IToolRegistry
     Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync();
     Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags);
     Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability);
-    Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools);
     Task<bool> IsRegisteredAsync(string toolId);
     Task ClearAsync();
 }
 ```
 
-**Known issue**: `GetToolsAsync(IEnumerable<ITool>)` references `ITool`. While `ITool` exists as a type alias for `IBaseTool` in Domain, the plugin system's `IToolPlugin.GetToolTypes()` returns `Type` objects rather than `ITool` instances. The integration layer must bridge this gap by instantiating tool types and registering them.
+`RegisterToolAsync` refuses a name another tool already holds: it returns `false` and the registered tool keeps the name (registering the same instance again is an idempotent success). A plugin tool named like a built-in is therefore not registered; the integration layer must report that refusal. `IToolPlugin.GetToolTypes()` returns `Type` objects rather than tool instances, so the integration layer also bridges that gap by instantiating tool types and registering them. Any `IBaseTool` can be assigned to a crew agent; there is no narrower marker interface.
 
 ### 11.4 Required Integration Work (P1 — after Configuration)
 
@@ -1447,7 +1446,6 @@ loader.Dispose();
 | **`PluginLoader` update** | Add config loading step between assembly load and initialize | **P0** |
 | **`PluginContext` update** | Add `Configuration` property | **P0** |
 | **`IToolRegistry` implementation** | Infrastructure adapter bridging plugins → agents | **P1** |
-| **`IToolRegistry` fix** | Fix `GetToolsAsync(IEnumerable<ITool>)` — `ITool` doesn't exist | **P1** |
 | **DI bridge** | Register plugin tool types in host container after loading | **P1** |
 | **Infrastructure call** | Wire `PluginLoader` into `AddOrkeonInfrastructure()` | **P1** |
 

@@ -826,7 +826,7 @@ public class LlmBasedManagerTests
             System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
         if (toolsField != null)
         {
-            var tools = new List<Domain.Common.ITool>
+            var tools = new List<Domain.Tools.IBaseTool>
             {
                 new TestTool { Name = "CodeAnalyzer" },
                 new TestTool { Name = "Debugger" }
@@ -896,7 +896,7 @@ public class TestLlmProvider : IBasicLlmProvider
     }
 }
 
-public class TestTool : Domain.Tools.IBaseTool, Domain.Common.ITool
+public class TestTool : Domain.Tools.IBaseTool
 {
     public string Name { get; set; } = "TestTool";
     public string Description => "Test tool";

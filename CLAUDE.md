@@ -167,9 +167,9 @@ The project follows Clean Architecture with clear separation of concerns:
   in `Orkeon.Tools.Rag`. Opt-in: `AddOrkeonRag(configuration)`
   (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` — called by the `.ork.ts` path of
   `orkeon run`, `orkeon rag` and the REPL (`orkeon-repl` registers both by default), **not** by
-  the YAML path of `orkeon run`, where crew `rag:`/`knowledge:` blocks are therefore inert; and
-  the `rag_*` tools implement only `IBaseTool`, so no YAML crew agent can be given them
-  (backstage GAP-01/GAP-02). The legacy
+  the YAML path of `orkeon run`, where crew `rag:`/`knowledge:` blocks are therefore inert and
+  the `rag_*` tools cannot be named by a crew agent (backstage GAP-02); wherever the host
+  registers them, a crew agent that lists one receives it. The legacy
   `Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
   namespaces are **removed** (breaking, no shims — migration table in `CHANGELOG.md`).
 - ✅ **NEW**: RAG quality phase (RAG-04) — offline evaluation harness
@@ -385,7 +385,7 @@ public class MyTool : ToolBase<MyToolRequest, MyToolResponse>
 }
 ```
 
-For file or HTTP tools, inherit `FileToolBase<TReq, TRes>` or `HttpToolBase<TReq, TRes>` (see `FileReadTool.cs`): the typed pipeline lives as a private `ComponentBase` inner class **inside those bases**, so a derived tool writes none. Name and describe a tool either with `[ToolContract]` (60 of the 91 shipped tools) or by overriding `Name`/`Description`. A tool a YAML crew agent can be given must implement `ITool` (the `ToolBase` family does); `IBaseTool`-only classes (`rag_*`, `McpToolAdapter`) are dropped by `CrewFactory` today (backstage GAP-01).
+For file or HTTP tools, inherit `FileToolBase<TReq, TRes>` or `HttpToolBase<TReq, TRes>` (see `FileReadTool.cs`): the typed pipeline lives as a private `ComponentBase` inner class **inside those bases**, so a derived tool writes none. Name and describe a tool either with `[ToolContract]` (60 of the 91 shipped tools) or by overriding `Name`/`Description`. `IBaseTool` is the one tool contract: any registered tool (`ToolBase` family, script tools, `rag_*`, `McpToolAdapter`) reaches the crew agent that names it. A tool name belongs to one tool: `IToolRegistry.RegisterToolAsync` refuses (returns `false`) a name another instance already holds, so an MCP tool never shadows a built-in.
 
 **Key classes**:
 - `ComponentBase<TRequest, TResponse>` (Domain) — Core pipeline: normalize → deserialize → validate → execute → serialize

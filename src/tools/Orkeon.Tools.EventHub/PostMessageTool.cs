@@ -3,7 +3,6 @@ using Orkeon.Application.EventHub;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -12,7 +11,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "post_message",
     Description = "Fire-and-forget a message to a mailbox (agent://, crew://, or topic://).",
     Category = "EventHub")]
-public sealed class PostMessageTool : ToolBase<PostMessageRequest, PostMessageResponse>, ITool
+public sealed class PostMessageTool : ToolBase<PostMessageRequest, PostMessageResponse>
 {
     private readonly IEventHub _hub;
 

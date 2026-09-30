@@ -3,7 +3,6 @@ using Orkeon.Application.EventHub;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -15,7 +14,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "wait_for_event",
     Description = "Wait for the next event on a topic. Requires exactly one of timeout_ms / wait_forever.",
     Category = "EventHub")]
-public sealed class WaitForEventTool : ToolBase<WaitForEventRequest, WaitForEventResponse>, ITool
+public sealed class WaitForEventTool : ToolBase<WaitForEventRequest, WaitForEventResponse>
 {
     private readonly IEventHub _hub;
 

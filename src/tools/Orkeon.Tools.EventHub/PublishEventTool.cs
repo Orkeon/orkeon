@@ -5,7 +5,6 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Common;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -17,7 +16,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "publish_event",
     Description = "Publish an event on a topic (broadcast 1→N). Optional crew scope and metadata.",
     Category = "EventHub")]
-public sealed class PublishEventTool : ToolBase<PublishEventRequest, PublishEventResponse>, ITool
+public sealed class PublishEventTool : ToolBase<PublishEventRequest, PublishEventResponse>
 {
     private readonly IEventHub _hub;
 

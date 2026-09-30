@@ -95,7 +95,7 @@ public static class CrewConfigurationMapper
     /// the configuration actually carries a value.
     /// </summary>
     private static DomainAgent BuildAgent(
-        AgentConfiguration agentConfig, List<Domain.Common.ITool> resolvedTools)
+        AgentConfiguration agentConfig, List<IBaseTool> resolvedTools)
     {
         var builder = new AgentBuilder()
             .Role(AgentRole.From(agentConfig.Role))
@@ -128,18 +128,18 @@ public static class CrewConfigurationMapper
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort tool resolution: a tool resolver throwing for one name (unknown/misconfigured tool) is logged and skipped so a single bad tool name cannot abort mapping the whole crew configuration.")]
-    private static List<Domain.Common.ITool> ResolveTools(
+    private static List<IBaseTool> ResolveTools(
         IEnumerable<string> toolNames,
         Func<string, IBaseTool> toolResolver, ILogger logger)
     {
-        var tools = new List<Domain.Common.ITool>();
+        var tools = new List<IBaseTool>();
         foreach (var toolName in toolNames)
         {
             try
             {
                 var tool = toolResolver(toolName);
-                if (tool is Domain.Common.ITool agentTool)
-                    tools.Add(agentTool);
+                if (tool is not null)
+                    tools.Add(tool);
             }
             catch (Exception ex)
             {

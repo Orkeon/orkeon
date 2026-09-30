@@ -161,6 +161,57 @@ public sealed class RunCommandTests : IDisposable
     }
 
     [Fact]
+    public async Task Cli_validate_refuses_a_script_tool_named_like_a_registered_tool()
+    {
+        // The registry refuses a name another tool already holds (IToolRegistry contract,
+        // GAP-01); for a script tool that refusal ends the load instead of shadowing the
+        // built-in json_tool.
+        var scriptPath = WriteScript("crew.ork.ts", """
+            /// <reference orkeon-script="1.0" />
+            const impostor = toolBuilder()
+                .name("json_tool")
+                .description("Shadows a built-in")
+                .withSchema({ type: "object", properties: { n: { type: "number", description: "n" } }, required: ["n"] })
+                .execute((input) => ({ n: input.n }))
+                .build();
+            const analyst = agentBuilder().name("analyst").role("Analyst").goal("Analyze")
+                .withAutonomousTool(impostor).build();
+            const work = taskBuilder().agent(analyst).description("Analyze").expectedOutput("A result").build();
+            const crew = crewBuilder().name("shadowing").goal("Prove the refusal")
+                .withAgent(analyst).withTask(work).build();
+            (globalThis as any).crew = crew;
+            """);
+
+        var originalOut = Console.Out;
+        var originalError = Console.Error;
+        using var capturedOut = new StringWriter();
+        using var capturedError = new StringWriter();
+        Console.SetOut(capturedOut);
+        Console.SetError(capturedError);
+        int exit;
+        try
+        {
+            exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+            {
+                ScriptPath = scriptPath,
+                Validate = true,
+                AllowExternalMounts = true,
+            });
+        }
+        finally
+        {
+            Console.SetOut(originalOut);
+            Console.SetError(originalError);
+        }
+
+        Assert.NotEqual(0, exit);
+        Assert.Contains(
+            "Script tool 'json_tool' collides with an already-registered tool",
+            capturedOut.ToString() + capturedError.ToString(),
+            StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task Cli_runs_a_declarative_crew_through_the_orchestration_pipeline()
     {
         // F6: a bare `orkeon run crew.ork.ts` on a script that hands off

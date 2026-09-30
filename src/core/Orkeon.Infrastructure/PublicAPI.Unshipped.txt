@@ -18,3 +18,6 @@ Orkeon.Infrastructure.LLMs.MeteredLlmProvider.SupportsStreaming.get -> bool
 static Orkeon.Infrastructure.DependencyInjection.LlmProviderRegistrationExtensions.AddOrkeonLlmProvider(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services, System.Func<System.IServiceProvider!, Orkeon.Domain.SharedKernel.ILlmProvider!>! provider, Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig? baseConfig = null) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
 static Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Unwrap(Orkeon.Domain.SharedKernel.ILlmProvider! provider) -> Orkeon.Domain.SharedKernel.ILlmProvider!
 static Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(Orkeon.Domain.SharedKernel.ILlmProvider! provider, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? sink) -> Orkeon.Domain.SharedKernel.ILlmProvider!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.RejectedToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
+[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.RejectedToolNames.init -> void
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!

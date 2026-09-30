@@ -220,7 +220,7 @@ public class ExecutionOrchestratorTests
     /// <summary>
     /// Test tool for testing.
     /// </summary>
-    private class TestTool : ITool
+    private class TestTool : IBaseTool
     {
         private readonly string _name;
         private readonly string _description;
@@ -290,8 +290,7 @@ public class ExecutionOrchestratorTests
         var agentRole = AgentRole.From(role ?? "Test Agent");
         var agentGoal = AgentGoal.From(goal ?? "Complete test tasks");
 
-        // IBaseTool and ITool are the same (ITool is alias), so cast directly
-        var adaptedTools = tools?.Cast<ITool>().ToList();
+                var adaptedTools = tools?.Cast<IBaseTool>().ToList();
 
         var agent = DomainAgent.Create(
             agentRole,

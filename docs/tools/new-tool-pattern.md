@@ -17,10 +17,9 @@ Orkeon provides three base classes in `Orkeon.Tools.Abstractions.Base`:
 | `HttpToolBase<TRequest, TResponse>` | HTTP/API operations | A shared, redirect-free `HttpClient` (or yours, or one from `IHttpClientFactory`), `ValidateUrlAsync(uri, ct)` — the given `IUrlValidator`, else a fail-closed default SSRF guard — and `SanitizeHeaders(...)` when an `HttpHeaderSanitizer` is given |
 
 The `ToolBase<TRequest, TResponse>` base class inherits from `ToolBase` (non-generic), which
-implements `ITool` (`Orkeon.Domain.Common`, itself an `IBaseTool` from `Orkeon.Domain.Tools`).
-That matters: `CrewFactory` attaches only an `ITool` to an agent, so a class implementing
-`IBaseTool` alone is registered but never reaches a YAML agent. The two specialized bases
-derive from `ToolBase` too.
+implements `IBaseTool` (`Orkeon.Domain.Tools`), the one contract every tool shares: any
+registered `IBaseTool` reaches the agent that names it. The two specialized bases derive
+from `ToolBase` too.
 
 A file tool must never touch `System.IO.File`/`Directory` itself: it resolves every path
 through the VFS (see [VFS compliance](../architecture/vfs-compliance.md)) — the

@@ -6,9 +6,9 @@ using ProtocolRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 namespace Orkeon.Infrastructure.Tests.Doubles;
 
 /// <summary>
-/// Manual mock for ITool with configurable Name and Description.
+/// Manual mock for IBaseTool with configurable Name and Description.
 /// </summary>
-public class MockTool : ITool
+public class MockTool : IBaseTool
 {
     public MockTool(string name = "mock_tool", string description = "A mock tool")
     {

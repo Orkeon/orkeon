@@ -4,7 +4,6 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Common;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -13,7 +12,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "get_last_value",
     Description = "Read the last retained payload for a given key (LastValueCache).",
     Category = "EventHub")]
-public sealed class GetLastValueTool : ToolBase<GetLastValueRequest, GetLastValueResponse>, ITool
+public sealed class GetLastValueTool : ToolBase<GetLastValueRequest, GetLastValueResponse>
 {
     private readonly IEventHub _hub;
     private readonly IEventHubCallerContext _callerContext;

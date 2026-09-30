@@ -5,7 +5,6 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Autonomous;
 using Orkeon.Domain.Common;
 using Orkeon.Tools.Abstractions.Base;
-using ITool = Orkeon.Domain.Common.ITool;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.Tools;
@@ -79,7 +78,7 @@ public record SpawnAgentResponse
     Description = "Dynamically create and execute a specialised sub-agent for a specific task",
     Category = "Autonomous")]
 [Experimental("ORKEXP002", UrlFormat = "https://github.com/Orkeon/orkeon/blob/main/docs/reference/experimental-apis.md")]
-public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResponse>, ITool
+public partial class SpawnAgentTool : ToolBase<SpawnAgentRequest, SpawnAgentResponse>
 {
     private readonly IAgentFactory _agentFactory;
     private readonly AgentId _parentAgentId;

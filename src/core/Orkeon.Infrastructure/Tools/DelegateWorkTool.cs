@@ -9,7 +9,6 @@ using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Tools.Abstractions.Base;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Infrastructure.Tools;
 
@@ -80,7 +79,7 @@ public record DelegateWorkResponse
 [ToolContract("delegate_work_to_coworker", Name = "Delegate work to coworker",
     Description = "Delegate a task to a coworker with specific expertise",
     Category = "Collaboration")]
-public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWorkResponse>, ITool
+public partial class DelegateWorkTool : ToolBase<DelegateWorkRequest, DelegateWorkResponse>
 {
     private readonly IAgentCommunicationService _communicationService;
     private readonly AgentId _currentAgentId;

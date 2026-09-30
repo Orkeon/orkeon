@@ -24,7 +24,6 @@ public class MockToolRegistry : IToolRegistry
     public int GetToolsByTagsCallCount { get; private set; }
     public int IsRegisteredCallCount { get; private set; }
     public int GetToolsByCapabilityCallCount { get; private set; }
-    public int GetToolsCallCount { get; private set; }
     public int ClearCallCount { get; private set; }
 
     // --- Configuration ---
@@ -39,8 +38,10 @@ public class MockToolRegistry : IToolRegistry
     {
         RegisterToolCallCount++;
         LastRegisteredTool = tool;
-        var id = tool.Name;
-        _toolsById[id] = tool;
+        // IToolRegistry contract: a name held by another instance is refused.
+        if (_toolsByName.TryGetValue(tool.Name, out var holder))
+            return Task.FromResult(ReferenceEquals(holder, tool));
+        _toolsById[tool.Name] = tool;
         _toolsByName[tool.Name] = tool;
         return Task.FromResult(true);
     }
@@ -49,8 +50,10 @@ public class MockToolRegistry : IToolRegistry
     {
         UnregisterToolCallCount++;
         LastUnregisteredToolId = toolId;
-        var removed = _toolsById.Remove(toolId);
-        return Task.FromResult(removed);
+        if (!_toolsById.Remove(toolId, out var removed))
+            return Task.FromResult(false);
+        _toolsByName.Remove(removed.Name);
+        return Task.FromResult(true);
     }
 
     public Task<IBaseTool?> GetToolAsync(string toolId)
@@ -92,19 +95,6 @@ public class MockToolRegistry : IToolRegistry
         GetToolsByCapabilityCallCount++;
         IReadOnlyList<IBaseTool> tools = _toolsById.Values.ToList().AsReadOnly();
         return Task.FromResult(tools);
-    }
-
-    public Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools)
-    {
-        GetToolsCallCount++;
-        var result = new List<IBaseTool>();
-        foreach (var tool in tools)
-        {
-            if (_toolsByName.TryGetValue(tool.Name, out var found))
-                result.Add(found);
-        }
-        IReadOnlyList<IBaseTool> readOnly = result.AsReadOnly();
-        return Task.FromResult(readOnly);
     }
 
     public Task ClearAsync()

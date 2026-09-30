@@ -13,6 +13,7 @@ using PromptShieldBuilderSut = Orkeon.Infrastructure.Security.PromptShieldBuilde
 using PromptSanitizerImpl = Orkeon.Infrastructure.Security.PromptSanitizer;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Infrastructure.Tests.Security;
 
@@ -36,7 +37,7 @@ public class PromptShieldBuilderTests
         string role = "Researcher",
         string goal = "Find information",
         string? backstory = "A skilled researcher",
-        IEnumerable<ITool>? tools = null)
+        IEnumerable<IBaseTool>? tools = null)
     {
         var builder = new AgentBuilder()
             .Role(role)

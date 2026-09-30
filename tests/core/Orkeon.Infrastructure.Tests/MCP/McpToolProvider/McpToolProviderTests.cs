@@ -1,4 +1,7 @@
 using System.Text.Json;
+using Microsoft.Extensions.Logging.Abstractions;
+using Orkeon.Infrastructure.Stubs;
+using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Infrastructure.MCP;
 using Orkeon.Infrastructure.Tests.Doubles;
 using McpToolProviderSut = Orkeon.Infrastructure.MCP.McpToolProvider;
@@ -171,6 +174,56 @@ public sealed class McpToolProviderTests : IAsyncDisposable
         // Assert
         var statuses = provider.GetServerStatuses();
         Assert.Empty(statuses);
+    }
+
+    // GAP-01: an MCP tool whose name is already taken is refused, never substituted. The
+    // tool that held the name stays, and the server's disconnection cannot take it away.
+
+    [Fact]
+    public async Task McpToolNamedLikeARegisteredTool_IsRefused_AndTheOriginalSurvivesDisconnect()
+    {
+        var registry = new InMemoryToolRegistry(NullLogger<InMemoryToolRegistry>.Instance);
+        var builtIn = new StubBaseTool("file_read");
+        Assert.True(await registry.RegisterToolAsync(builtIn));
+        await using var transport = McpDiscoveryTransport.Exposing("file_read", "search_issues");
+        using var logs = new RecordingLoggerFactory();
+        await using var provider = new McpToolProviderSut(registry, logs);
+
+        await provider.ConnectServerAsync("x", transport, TestContext.Current.CancellationToken);
+
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read"));
+        Assert.IsType<McpToolAdapter>(await registry.GetToolByNameAsync("search_issues"));
+        Assert.Equal(["file_read"], Assert.Single(provider.GetServerStatuses()).RejectedToolNames);
+        Assert.True(logs.Logger.HasEntry(e =>
+            e.Level == Microsoft.Extensions.Logging.LogLevel.Error
+            && e.Message.Contains("tool 'file_read' of MCP server 'x' collides with an already-registered tool", StringComparison.Ordinal)));
+
+        await provider.DisconnectServerAsync("x");
+
+        Assert.Same(builtIn, await registry.GetToolByNameAsync("file_read"));
+        Assert.Null(await registry.GetToolByNameAsync("search_issues"));
+    }
+
+    [Fact]
+    public async Task TwoServersExposingTheSameName_TheSecondIsRefused_AndSurvivesItsDisconnect()
+    {
+        var registry = new InMemoryToolRegistry(NullLogger<InMemoryToolRegistry>.Instance);
+        await using var first = McpDiscoveryTransport.Exposing("search");
+        await using var second = McpDiscoveryTransport.Exposing("search", "fetch");
+        await using var provider = new McpToolProviderSut(registry);
+
+        await provider.ConnectServerAsync("one", first, TestContext.Current.CancellationToken);
+        var owner = await registry.GetToolByNameAsync("search");
+        await provider.ConnectServerAsync("two", second, TestContext.Current.CancellationToken);
+
+        Assert.NotNull(owner);
+        Assert.Same(owner, await registry.GetToolByNameAsync("search"));
+        Assert.NotNull(await registry.GetToolByNameAsync("fetch"));
+
+        await provider.DisconnectServerAsync("two");
+
+        Assert.Same(owner, await registry.GetToolByNameAsync("search"));
+        Assert.Null(await registry.GetToolByNameAsync("fetch"));
     }
 
     public async ValueTask DisposeAsync()

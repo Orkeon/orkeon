@@ -87,20 +87,6 @@ public class TestToolRegistry : IToolRegistry
         return ToolResult.CreateError($"Tool '{toolName}' not found");
     }
 
-    public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools)
-    {
-        var result = new List<IBaseTool>();
-        foreach (var tool in tools)
-        {
-            if (tool is IBaseTool baseTool && _tools.TryGetValue(baseTool.Name, out var registeredTool))
-            {
-                result.Add(registeredTool);
-            }
-        }
-        return System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(result);
-    }
-
-
     public void SetupToolExists(string name, IBaseTool tool)
     {
         _tools[name] = tool;

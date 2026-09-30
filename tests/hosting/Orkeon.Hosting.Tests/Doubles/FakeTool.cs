@@ -1,4 +1,3 @@
-using Orkeon.Domain.Common;
 using Orkeon.Domain.Tools;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using ToolCallResponse = Orkeon.Domain.Tools.Protocol.ToolCallResponse;
@@ -8,11 +7,11 @@ using ParameterSchema = Orkeon.Domain.Tools.Protocol.ParameterSchema;
 namespace Orkeon.Hosting.Tests.Doubles;
 
 /// <summary>
-/// Hand-rolled <see cref="ITool"/> double (CLAUDE.md convention — no mocking framework).
-/// Only carries an identity (<see cref="Name"/>); used to exercise the name-based
-/// filtering of <c>ServiceProviderToolRegistry.GetToolsAsync(IEnumerable&lt;ITool&gt;)</c>.
+/// Hand-rolled <see cref="IBaseTool"/> double (CLAUDE.md convention — no mocking framework).
+/// Only carries an identity (<see cref="Name"/>); a second tool type, so the name-collision
+/// tests of <c>ServiceProviderToolRegistry</c> can check that both types are named.
 /// </summary>
-public sealed class FakeTool : ITool
+public sealed class FakeTool : IBaseTool
 {
     /// <summary>Initialises a fake tool exposed under <paramref name="name"/>.</summary>
     public FakeTool(string name)

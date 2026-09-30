@@ -18,14 +18,14 @@ graph TB
         Agent["Agent<br/>(AggregateRoot&lt;AgentId&gt;)"]
         CrewTask["CrewTask<br/>(AggregateRoot&lt;TaskId&gt;)"]
         Crew["Crew<br/>(AggregateRoot&lt;CrewId&gt;)"]
-        ITool["IBaseTool<br/>(Interface)"]
+        IBaseTool["IBaseTool<br/>(Interface)"]
         ILlm["ILlmProvider<br/>(Interface)"]
         IMem["IMemoryProvider<br/>(Interface)"]
         DomainEvents["Domain Events"]
 
         Crew -->|"contains"| Agent
         Crew -->|"contains"| CrewTask
-        Agent -->|"uses"| ITool
+        Agent -->|"uses"| IBaseTool
         Agent -->|"uses"| ILlm
         CrewTask -->|"assigned to"| Agent
         Agent -->|"emits"| DomainEvents
@@ -55,7 +55,7 @@ graph TB
         SeqOrch --> Orchestrator
         LlmProviders -.->|"implements"| ILlm
         MemProviders -.->|"implements"| IMem
-        ToolImpl -.->|"implements"| ITool
+        ToolImpl -.->|"implements"| IBaseTool
     end
 
     subgraph Tools["Orkeon.Tools.* — Tool packages"]
@@ -65,7 +65,7 @@ graph TB
         ToolsCode["Tools.Code<br/>(ShellCommand)"]
     end
 
-    Tools -.->|"implements"| ITool
+    Tools -.->|"implements"| IBaseTool
 
     style Domain fill:#e8f5e9,stroke:#2e7d32
     style Application fill:#e3f2fd,stroke:#1565c0
@@ -79,7 +79,7 @@ graph TB
 
 An Agent is the intelligent unit of work of the framework. It is a DDD *Aggregate Root* identified by an `AgentId`. An agent is defined by two mandatory elements, a **role** (`AgentRole`) and a **goal** (`AgentGoal`), plus an optional **backstory** (`AgentBackstory`) which contextualizes its personality for the LLM.
 
-Each agent has a list of tools (`IReadOnlyList<ITool> Tools`), a status (`AgentStatus`: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
+Each agent has a list of tools (`IReadOnlyList<IBaseTool> Tools`), a status (`AgentStatus`: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
 
 There is only one `Agent` class — the manager behavior in hierarchical mode is handled by the `IManagerAgent` interface and its `LlmBasedManager` implementation.
 

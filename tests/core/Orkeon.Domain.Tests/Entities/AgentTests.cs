@@ -257,7 +257,7 @@ public class AgentTests
         var tools = agent.Tools;
 
         // Assert
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<ITool>>(tools);
+        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<IBaseTool>>(tools);
     }
 
     [Fact]
@@ -1441,7 +1441,7 @@ public class AgentTests
     public void ShouldCreateWithToolsViaOptions_WhenToolsProvided()
     {
         // Arrange
-        var tools = new ITool[] { new StubTool("A"), new StubTool("B") };
+        var tools = new IBaseTool[] { new StubTool("A"), new StubTool("B") };
         var options = new AgentCreateOptions
         {
             Role = AgentRole.From("Dev"),
@@ -1462,7 +1462,7 @@ public class AgentTests
 
     #region Test Doubles
 
-    private sealed class StubTool : Orkeon.Domain.Common.ITool
+    private sealed class StubTool : Orkeon.Domain.Tools.IBaseTool
     {
         public string Name { get; }
         public string Description => $"Stub tool {Name}";
@@ -1502,7 +1502,6 @@ public class AgentTests
         public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
         public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId) => System.Threading.Tasks.Task.FromResult(false);
         public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
-        public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
         public System.Threading.Tasks.Task ClearAsync() => System.Threading.Tasks.Task.CompletedTask;
     }
 

@@ -128,8 +128,8 @@ Le builder prend des instances d'outils ; les suites d'outils enregistrées à l
 ```csharp
 // Les outils par leur nom YAML, depuis le registre adossé à la DI de l'Étape 4c
 var registry = host.Services.GetRequiredService<IToolRegistry>();
-async Task<ITool> Tool(string name) =>
-    await registry.GetToolByNameAsync(name) as ITool
+async Task<IBaseTool> Tool(string name) =>
+    await registry.GetToolByNameAsync(name)
     ?? throw new InvalidOperationException($"Tool '{name}' is not registered.");
 
 var orderCollector = new AgentBuilder()

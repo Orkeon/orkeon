@@ -21,7 +21,7 @@ namespace Orkeon.Application.Tests.Crew.Execution;
 /// </summary>
 public class NativeToolCallingAgentLoopTests
 {
-    private static DomainAgent BuildAgent(int maxIterations = 5, params ITool[] tools)
+    private static DomainAgent BuildAgent(int maxIterations = 5, params IBaseTool[] tools)
     {
         var builder = new AgentBuilder()
             .Role("Native Agent")

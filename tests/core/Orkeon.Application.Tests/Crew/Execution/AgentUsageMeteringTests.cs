@@ -31,7 +31,7 @@ public sealed class AgentUsageMeteringTests
 {
     private const string Role = "Metered Agent";
 
-    private static DomainAgent BuildAgent(int maxIterations = 5, params ITool[] tools)
+    private static DomainAgent BuildAgent(int maxIterations = 5, params IBaseTool[] tools)
     {
         var builder = new AgentBuilder().Role(Role).Goal("Spend tokens").MaxIterations(maxIterations);
         foreach (var tool in tools)

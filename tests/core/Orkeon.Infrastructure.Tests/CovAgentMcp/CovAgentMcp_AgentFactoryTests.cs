@@ -31,7 +31,7 @@ public sealed class CovAgentMcp_AgentFactoryTests
             => _inner.Log(l, e, s, ex, f);
     }
 
-    private sealed class FakeTool : ITool
+    private sealed class FakeTool : IBaseTool
     {
         public FakeTool(string name)
         {
@@ -64,7 +64,7 @@ public sealed class CovAgentMcp_AgentFactoryTests
     {
         var factory = new AgentFactory();
         var request = new AgentSpawnRequest(
-            _role, _goal, _crewId, tools: new ITool[] { new FakeTool("toolA"), new FakeTool("toolB") });
+            _role, _goal, _crewId, tools: new IBaseTool[] { new FakeTool("toolA"), new FakeTool("toolB") });
 
         var agent = await factory.CreateAgentAsync(request, TestContext.Current.CancellationToken);
 

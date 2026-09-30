@@ -19,6 +19,8 @@ namespace Orkeon.Hosting;
 /// never completes its handshake — costs one error line naming it, on the log and on stderr,
 /// and nothing else: the run goes on, and a crew that names one of that server's tools fails
 /// at load under <c>StrictTools</c> with the ordinary "unknown tool" line rather than here.
+/// A server tool named like a tool already registered is refused, never substituted: the
+/// registered tool keeps the name, and one error line names the server and the tool.
 /// </para>
 /// </summary>
 internal static partial class McpStartup
@@ -71,6 +73,7 @@ internal static partial class McpStartup
             try
             {
                 await provider.ConnectServerAsync(serverId, config, guard.Token).ConfigureAwait(false);
+                ReportCollisions(provider, serverId);
             }
             catch (OperationCanceledException) when (!ct.IsCancellationRequested)
             {
@@ -80,6 +83,21 @@ internal static partial class McpStartup
             {
                 Report(logger, serverId, ex.Message);
             }
+        }
+    }
+
+    /// <summary>
+    /// A server tool whose name is already held — by a built-in tool or another server's — is
+    /// refused by the registry and named on the log by <see cref="McpToolProvider"/>; stderr
+    /// carries the same line, for the same reason as <see cref="Report"/>.
+    /// </summary>
+    private static void ReportCollisions(McpToolProvider provider, string serverId)
+    {
+        var status = provider.GetServerStatuses().FirstOrDefault(s => s.ServerId == serverId);
+        foreach (var name in status?.RejectedToolNames ?? [])
+        {
+            Console.Error.WriteLine(
+                $"The tool '{name}' of MCP server '{serverId}' collides with an already-registered tool and was not registered.");
         }
     }
 

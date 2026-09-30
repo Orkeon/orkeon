@@ -23,6 +23,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         McpClient Client,
         IMcpTransport Transport,
         List<string> RegisteredToolNames,
+        List<string> RejectedToolNames,
         McpServerCapabilities? Capabilities);
 
     /// <summary>Initializes a new instance of <see cref="McpToolProvider"/>.</summary>
@@ -73,26 +74,7 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
             try
             {
-                // Dual-era connection: server/discover probe, legacy initialize fallback.
-                await client.ConnectAsync(ct).ConfigureAwait(false);
-                var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
-
-                var registeredNames = new List<string>();
-                foreach (var toolDef in tools)
-                {
-                    var adapter = new McpToolAdapter(toolDef, client);
-                    var registered = await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false);
-                    if (registered)
-                    {
-                        registeredNames.Add(toolDef.Name);
-                        LogRegisteredMcpTool(toolDef.Name, serverId);
-                    }
-                }
-
-                _clients[serverId] = new McpClientEntry(
-                    client, transport, registeredNames, client.Capabilities);
-
-                LogConnectedToMcpServer(serverId, registeredNames.Count);
+                await ConnectAndRegisterAsync(serverId, client, transport, ct).ConfigureAwait(false);
             }
             catch
             {
@@ -106,6 +88,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
     /// Connects to an MCP server using an externally-provided transport
     /// (useful for testing or custom transports).
     /// </summary>
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Reliability", "CA2000",
+        Justification = "Ownership of the client passes to _clients in ConnectAndRegisterAsync, disposed by DisconnectServerAsync; on failure the catch path here disposes it.")]
     public async Task ConnectServerAsync(
         string serverId, IMcpTransport transport, CancellationToken ct = default)
     {
@@ -116,28 +100,50 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
         try
         {
-            await client.ConnectAsync(ct).ConfigureAwait(false);
-            var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
-
-            var registeredNames = new List<string>();
-            foreach (var toolDef in tools)
-            {
-                var adapter = new McpToolAdapter(toolDef, client);
-                var registered = await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false);
-                if (registered)
-                {
-                    registeredNames.Add(toolDef.Name);
-                }
-            }
-
-            _clients[serverId] = new McpClientEntry(
-                client, transport, registeredNames, client.Capabilities);
+            await ConnectAndRegisterAsync(serverId, client, transport, ct).ConfigureAwait(false);
         }
         catch
         {
             await client.DisposeAsync().ConfigureAwait(false);
             throw;
         }
+    }
+
+    /// <summary>
+    /// The one path both <c>ConnectServerAsync</c> overloads share: handshake, discovery, and
+    /// registration under each tool's own name. A name already held in the registry — by a
+    /// built-in tool, a script tool or another server's tool — is refused by the registry; that
+    /// tool is left out, named on the log, and never unregistered at disconnection, so the
+    /// tool that held the name keeps it.
+    /// </summary>
+    private async Task ConnectAndRegisterAsync(
+        string serverId, McpClient client, IMcpTransport transport, CancellationToken ct)
+    {
+        // Dual-era connection: server/discover probe, legacy initialize fallback.
+        await client.ConnectAsync(ct).ConfigureAwait(false);
+        var tools = await client.ListToolsAsync(ct).ConfigureAwait(false);
+
+        var registeredNames = new List<string>();
+        var rejectedNames = new List<string>();
+        foreach (var toolDef in tools)
+        {
+            var adapter = new McpToolAdapter(toolDef, client);
+            if (await _toolRegistry.RegisterToolAsync(adapter).ConfigureAwait(false))
+            {
+                registeredNames.Add(toolDef.Name);
+                LogRegisteredMcpTool(toolDef.Name, serverId);
+            }
+            else
+            {
+                rejectedNames.Add(toolDef.Name);
+                LogMcpToolNameCollision(toolDef.Name, serverId);
+            }
+        }
+
+        _clients[serverId] = new McpClientEntry(
+            client, transport, registeredNames, rejectedNames, client.Capabilities);
+
+        LogConnectedToMcpServer(serverId, registeredNames.Count);
     }
 
     /// <summary>
@@ -167,7 +173,8 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
         {
             ServerId = kvp.Key,
             IsConnected = kvp.Value.Transport.IsConnected,
-            Capabilities = kvp.Value.Capabilities
+            Capabilities = kvp.Value.Capabilities,
+            RejectedToolNames = kvp.Value.RejectedToolNames.AsReadOnly()
         }).ToList();
     }
 
@@ -204,6 +211,9 @@ public sealed partial class McpToolProvider : IAsyncDisposable, IDisposable
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Registered MCP tool '{Name}' from server '{ServerId}'")]
     private partial void LogRegisteredMcpTool(string name, string serverId);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "The tool '{Name}' of MCP server '{ServerId}' collides with an already-registered tool and was not registered; the registered tool keeps the name")]
+    private partial void LogMcpToolNameCollision(string name, string serverId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Connected to MCP server '{ServerId}' with {ToolCount} tools")]
     private partial void LogConnectedToMcpServer(string serverId, int toolCount);

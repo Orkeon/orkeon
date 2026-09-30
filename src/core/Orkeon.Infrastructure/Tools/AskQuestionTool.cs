@@ -4,7 +4,6 @@ using Orkeon.Domain.Attributes;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.AgentCommunication;
 using Orkeon.Tools.Abstractions.Base;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Infrastructure.Tools;
 
@@ -47,7 +46,7 @@ public record AskQuestionResponse
 [ToolContract("ask_question_to_coworker", Name = "Ask question to coworker",
     Description = "Ask a specific question to a coworker with relevant expertise",
     Category = "Collaboration")]
-public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionResponse>, ITool
+public partial class AskQuestionTool : ToolBase<AskQuestionRequest, AskQuestionResponse>
 {
     private readonly IAgentCommunicationService _communicationService;
     private readonly AgentId _currentAgentId;

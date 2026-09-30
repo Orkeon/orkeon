@@ -49,18 +49,30 @@ public sealed class CovStubs_InMemoryToolRegistryTests
     }
 
     [Fact]
-    public async Task RegisterTool_SameName_UpdatesExisting()
+    public async Task RegisterTool_SameNameOtherInstance_IsRefused()
     {
         var sut = CreateSut();
         var first = new StubBaseTool("dup") { Description = "first" };
-        var second = new StubBaseTool("dup") { Description = "second" };
+        var second = new StubBaseTool("DUP") { Description = "second" };
 
-        await sut.RegisterToolAsync(first);
-        await sut.RegisterToolAsync(second);
+        Assert.True(await sut.RegisterToolAsync(first));
+        Assert.False(await sut.RegisterToolAsync(second));
 
-        Assert.Same(second, await sut.GetToolAsync("dup"));
-        var all = await sut.GetAllToolsAsync();
-        Assert.Single(all);
+        Assert.Same(first, await sut.GetToolAsync("dup"));
+        Assert.Single(await sut.GetAllToolsAsync());
+    }
+
+    [Fact]
+    public async Task RegisterTool_SameInstanceTwice_IsIdempotentSuccess()
+    {
+        var sut = CreateSut();
+        var tool = new StubBaseTool("again");
+
+        Assert.True(await sut.RegisterToolAsync(tool));
+        Assert.True(await sut.RegisterToolAsync(tool));
+
+        Assert.Same(tool, await sut.GetToolAsync("again"));
+        Assert.Single(await sut.GetAllToolsAsync());
     }
 
     [Fact]
@@ -128,20 +140,6 @@ public sealed class CovStubs_InMemoryToolRegistryTests
         var matched = await sut.GetToolsByCapabilityAsync("zzz-not-found");
 
         Assert.Empty(matched);
-    }
-
-    [Fact]
-    public async Task GetToolsAsync_FiltersByNamesFromTools()
-    {
-        var sut = CreateSut();
-        await sut.RegisterToolAsync(new StubBaseTool("keep"));
-        await sut.RegisterToolAsync(new StubBaseTool("drop"));
-
-        var requested = new[] { new Orkeon.Infrastructure.Tests.Doubles.MockTool("keep") };
-        var result = await sut.GetToolsAsync(requested);
-
-        Assert.Single(result);
-        Assert.Equal("keep", result[0].Name);
     }
 
     [Fact]

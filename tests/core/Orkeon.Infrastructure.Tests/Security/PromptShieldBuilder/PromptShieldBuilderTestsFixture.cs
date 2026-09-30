@@ -10,6 +10,7 @@ using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Infrastructure.Security;
 using System.Diagnostics.CodeAnalysis;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Infrastructure.Tests.Security;
 
@@ -43,7 +44,7 @@ public class PromptShieldBuilderTestsFixture
         string role = "Researcher",
         string goal = "Find information",
         string? backstory = "A skilled researcher",
-        IEnumerable<ITool>? tools = null)
+        IEnumerable<IBaseTool>? tools = null)
     {
         var builder = new AgentBuilder()
             .Role(role)

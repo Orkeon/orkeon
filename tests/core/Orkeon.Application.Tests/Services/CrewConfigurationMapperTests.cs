@@ -24,7 +24,7 @@ public class CrewConfigurationMapperTests
 
     #region Test Doubles
 
-    private class TestTool : IBaseTool, ITool
+    private class TestTool : IBaseTool
     {
         public string Name { get; }
         public string Description { get; }

@@ -125,8 +125,7 @@ internal sealed class ObservedRunContext : IAsyncDisposable
 
         // BUS-03: wrap every registered tool so its calls become events. Doing it here —
         // where tools enter the process — covers the agent loops and the scripting facade at
-        // once. The decorator implements ITool, not just IBaseTool, because CrewFactory
-        // assigns with `tool is ITool`: a base-only decorator would leave agents toolless.
+        // once.
         foreach (var descriptor in services.Where(d => d.ServiceType == typeof(IBaseTool) && !d.IsKeyedService).ToList())
         {
             services.Remove(descriptor);

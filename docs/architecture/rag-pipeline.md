@@ -481,18 +481,11 @@ Keys actually consumed today:
 | `rag_ingest` | `collection`, `sources` (paths / globs) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
 | `rag_eval` | `dataset` (required), `collection`, `profile` (default `default`), `compare`, `k` (default 5), `use_llm_judge`, `reindex` | The offline harness below |
 
-> **Known limitation — not assignable from a YAML crew.** The three tools implement
-> `IBaseTool` only, while crew construction keeps only `ITool` instances
-> (`CrewFactory` and `AgentMapper` filter on `ITool`). A crew listing
-> `tools: [rag_search]` therefore loses the tool: dropped with a *"not found in
-> registry"* warning under lenient resolution (the `CrewFactory` default), rejected
-> as an unknown tool under `StrictTools` (the runners' default) — even in a host
-> that called `AddOrkeonRagTools()`. The only wrapper that turns them into `ITool`
-> is the `--events` observer of `orkeon run`, and the YAML path of `orkeon run`
-> does not register the RAG tools in the first place. What works today: the
-> scripting facade (`tools.ragSearch` / `tools.ragIngest` and `rag.*` in `.ork.ts`
-> scripts), direct calls from C#, and, for grounding an agent in a YAML crew, the
-> `knowledge:` attachment above.
+A crew agent that lists one of the three tools (`tools: [rag_search]`) receives it
+wherever the host registered them: a C# host that calls `AddOrkeonRagTools()`, a `.ork.ts`
+crew run by `orkeon run`, and the REPL. The YAML path of `orkeon run` does not register the
+RAG tools, so a YAML crew run there cannot name them; grounding an agent of such a crew
+goes through the `knowledge:` attachment above.
 
 ## Retrieval without generation
 

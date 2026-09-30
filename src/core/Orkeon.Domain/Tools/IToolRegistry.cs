@@ -1,5 +1,3 @@
-using Orkeon.Domain.Common;
-
 namespace Orkeon.Domain.Tools;
 
 /// <summary>
@@ -8,8 +6,16 @@ namespace Orkeon.Domain.Tools;
 public interface IToolRegistry
 {
     /// <summary>
-    /// Registers a tool with the registry.
+    /// Registers a tool with the registry, under its <see cref="IBaseTool.Name"/>.
     /// </summary>
+    /// <remarks>
+    /// A name belongs to the first tool registered under it (names compare case-insensitively).
+    /// Registering another instance under a name already held returns <see langword="false"/>
+    /// and leaves the registered tool in place: a tool is never replaced behind the back of the
+    /// agents that name it. Registering the instance that already holds the name is an
+    /// idempotent success. To replace a tool, unregister it first.
+    /// </remarks>
+    /// <returns><see langword="true"/> when <paramref name="tool"/> holds its name afterwards.</returns>
     System.Threading.Tasks.Task<bool> RegisterToolAsync(IBaseTool tool);
 
     /// <summary>
@@ -46,11 +52,6 @@ public interface IToolRegistry
     /// Gets tools that match a specific capability.
     /// </summary>
     System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability);
-
-    /// <summary>
-    /// Gets multiple tools by their interfaces.
-    /// </summary>
-    System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools);
 
     /// <summary>
     /// Clears all registered tools.

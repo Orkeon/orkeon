@@ -1,5 +1,6 @@
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Common;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Agent;
 
@@ -10,7 +11,7 @@ namespace Orkeon.Domain.Agent;
 /// </summary>
 internal sealed class AgentToolManager
 {
-    private readonly List<ITool> _tools;
+    private readonly List<IBaseTool> _tools;
     private readonly Func<ToolAccessPolicy>? _policyProvider;
 
     /// <param name="tools">The backing tool collection (shared with the owning <see cref="Agent"/>).</param>
@@ -19,7 +20,7 @@ internal sealed class AgentToolManager
     /// When supplied, tool addition is validated against the live policy so that a tool
     /// denied by the policy cannot be attached to the agent.
     /// </param>
-    public AgentToolManager(List<ITool> tools, Func<ToolAccessPolicy>? policyProvider = null)
+    public AgentToolManager(List<IBaseTool> tools, Func<ToolAccessPolicy>? policyProvider = null)
     {
         ArgumentNullException.ThrowIfNull(tools);
         _tools = tools;
@@ -29,14 +30,14 @@ internal sealed class AgentToolManager
     /// <summary>
     /// Gets the tools as a read-only list.
     /// </summary>
-    public IReadOnlyList<ITool> Tools => _tools.AsReadOnly();
+    public IReadOnlyList<IBaseTool> Tools => _tools.AsReadOnly();
 
     /// <summary>
     /// Adds a tool to the collection. Throws if a tool with the same name already exists
     /// or if tool permissions are invalid.
     /// </summary>
     /// <returns>The name of the added tool (for event raising).</returns>
-    public string AddTool(ITool tool, string agentRole)
+    public string AddTool(IBaseTool tool, string agentRole)
     {
         ArgumentNullException.ThrowIfNull(tool);
 
@@ -78,7 +79,7 @@ internal sealed class AgentToolManager
     /// </summary>
     /// <param name="tool">The tool whose access is being validated.</param>
     /// <returns><see langword="true"/> if the policy allows the tool; otherwise <see langword="false"/>.</returns>
-    public bool ValidateToolPermissions(ITool tool)
+    public bool ValidateToolPermissions(IBaseTool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
 

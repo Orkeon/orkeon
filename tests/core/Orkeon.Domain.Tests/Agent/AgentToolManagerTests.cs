@@ -3,6 +3,7 @@ using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Common;
 using static Orkeon.Tests.Shared.Constants.TestAgentConstants;
 using static Orkeon.Tests.Shared.Constants.TestToolConstants;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Tests.Agent;
 
@@ -18,7 +19,7 @@ public class AgentToolManagerTests
     public void ShouldAddTool_WhenToolIsValid()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         var tool = new StubTool(ToolSearch);
 
@@ -35,7 +36,7 @@ public class AgentToolManagerTests
     public void ShouldThrow_WhenAddingDuplicateTool()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool(ToolSearch), RoleDeveloper);
 
@@ -50,7 +51,7 @@ public class AgentToolManagerTests
     public void ShouldThrow_WhenAddingNullTool()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
 
         // Act & Assert
@@ -70,7 +71,7 @@ public class AgentToolManagerTests
     public void ShouldAddMultipleTools_WhenToolsHaveDifferentNames()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
 
         // Act
@@ -145,7 +146,7 @@ public class AgentToolManagerTests
     public void ShouldRemoveTool_WhenToolExists()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool(ToolSearch), RoleDeveloper);
 
@@ -161,7 +162,7 @@ public class AgentToolManagerTests
     public void ShouldThrow_WhenRemovingNonExistentTool()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
 
         // Act & Assert
@@ -175,7 +176,7 @@ public class AgentToolManagerTests
     public void ShouldOnlyRemoveSpecifiedTool_WhenMultipleToolsExist()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool("ToolA"), RoleDeveloper);
         manager.AddTool(new StubTool("ToolB"), RoleDeveloper);
@@ -199,7 +200,7 @@ public class AgentToolManagerTests
     public void ShouldReturnTrue_WhenToolExists()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool(ToolSearch), RoleDeveloper);
 
@@ -214,7 +215,7 @@ public class AgentToolManagerTests
     public void ShouldReturnFalse_WhenToolDoesNotExist()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
 
         // Act
@@ -228,7 +229,7 @@ public class AgentToolManagerTests
     public void ShouldReturnTrue_WhenToolNameMatchesCaseInsensitively()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool(ToolSearch), RoleDeveloper);
 
@@ -246,7 +247,7 @@ public class AgentToolManagerTests
     public void ShouldReturnReadOnlyList_WhenAccessingTools()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
         manager.AddTool(new StubTool("ToolA"), RoleDeveloper);
 
@@ -254,7 +255,7 @@ public class AgentToolManagerTests
         var result = manager.Tools;
 
         // Assert
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<ITool>>(result);
+        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<IBaseTool>>(result);
         Assert.Single(result);
     }
 
@@ -262,7 +263,7 @@ public class AgentToolManagerTests
     public void ShouldReturnEmptyReadOnlyList_WhenNoToolsAdded()
     {
         // Arrange
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         var manager = new AgentToolManager(tools);
 
         // Act
@@ -270,14 +271,14 @@ public class AgentToolManagerTests
 
         // Assert
         Assert.Empty(result);
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<ITool>>(result);
+        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<IBaseTool>>(result);
     }
 
     #endregion
 
     #region Test Doubles
 
-    private sealed class StubTool : ITool
+    private sealed class StubTool : IBaseTool
     {
         public string Name { get; }
         public string Description => $"Stub tool {Name}";

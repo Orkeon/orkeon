@@ -181,6 +181,12 @@ public class McpServerStatus
 
     /// <summary>Gets or sets the capabilities advertised by the server.</summary>
     public McpServerCapabilities? Capabilities { get; set; }
+
+    /// <summary>
+    /// Gets the names of the tools this server exposes that were not registered because another
+    /// tool already holds the name (a built-in tool, a script tool, or another server's tool).
+    /// </summary>
+    public IReadOnlyList<string> RejectedToolNames { get; init; } = [];
 }
 
 /// <summary>

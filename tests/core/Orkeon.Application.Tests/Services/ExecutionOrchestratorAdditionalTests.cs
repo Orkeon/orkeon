@@ -99,7 +99,7 @@ public class ExecutionOrchestratorAdditionalTests
             => System.Threading.Tasks.Task.FromResult(new PlanValidationResult { IsValid = true });
     }
 
-    private class TestTool : Domain.Common.ITool
+    private class TestTool : Domain.Tools.IBaseTool
     {
         private bool _shouldSucceed = true;
         private string _result = "Tool result";
@@ -269,7 +269,7 @@ public class ExecutionOrchestratorAdditionalTests
             AgentGoal.From(goal),
             allowDelegation: allowDelegation,
             maxIterations: maxIterations,
-            tools: tools?.Cast<Domain.Common.ITool>().ToList());
+            tools: tools?.Cast<Domain.Tools.IBaseTool>().ToList());
     }
 
     private static DomainTask CreateTestTask(string description = "Test task", string expectedOutput = "Expected")

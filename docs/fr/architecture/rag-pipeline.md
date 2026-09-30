@@ -484,18 +484,11 @@ Clés réellement consommées aujourd'hui :
 | `rag_ingest` | `collection`, `sources` (chemins / globs) — tous deux obligatoires ; `chunking_strategy`, `reindex` | `IIngestionPipeline` avec dépliage des globs ; affiche le rapport d'ingestion |
 | `rag_eval` | `dataset` (obligatoire), `collection`, `profile` (défaut `default`), `compare`, `k` (défaut 5), `use_llm_judge`, `reindex` | Le harnais offline ci-dessous |
 
-> **Limitation connue — non assignables depuis une crew YAML.** Les trois outils
-> n'implémentent que `IBaseTool`, alors que la construction de crew ne conserve que des
-> instances `ITool` (`CrewFactory` et `AgentMapper` filtrent sur `ITool`). Une crew qui
-> liste `tools: [rag_search]` perd donc l'outil : écarté avec un avertissement
-> *« not found in registry »* en résolution permissive (le défaut de `CrewFactory`),
-> rejeté comme outil inconnu sous `StrictTools` (le défaut des runners) — même dans un
-> hôte qui a appelé `AddOrkeonRagTools()`. Le seul enrobage qui en fait des `ITool` est
-> l'observateur `--events` d'`orkeon run`, et le chemin YAML d'`orkeon run`
-> n'enregistre de toute façon pas les outils RAG. Ce qui fonctionne aujourd'hui : la
-> façade de scripting (`tools.ragSearch` / `tools.ragIngest` et `rag.*` dans les scripts
-> `.ork.ts`), les appels directs depuis le C#, et, pour ancrer un agent d'une crew YAML,
-> la pièce jointe `knowledge:` ci-dessus.
+Un agent de crew qui liste l'un des trois outils (`tools: [rag_search]`) le reçoit partout
+où l'hôte les a enregistrés : un hôte C# qui appelle `AddOrkeonRagTools()`, une crew
+`.ork.ts` lancée par `orkeon run`, et le REPL. Le chemin YAML d'`orkeon run` n'enregistre
+pas les outils RAG : une crew YAML lancée par lui ne peut donc pas les nommer ; ancrer un
+agent d'une telle crew passe par la pièce jointe `knowledge:` ci-dessus.
 
 ## Retrieval sans génération
 

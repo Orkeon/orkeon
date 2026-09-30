@@ -4,6 +4,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Knowledge;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Agent;
 
@@ -85,7 +86,7 @@ public sealed class AgentCreateOptions
     /// <summary>
     /// Optional collection of tools to assign to the agent.
     /// </summary>
-    public IEnumerable<ITool>? Tools { get; init; }
+    public IEnumerable<IBaseTool>? Tools { get; init; }
 
     /// <summary>
     /// Optional knowledge (RAG) collections attached to the agent. Each attachment is

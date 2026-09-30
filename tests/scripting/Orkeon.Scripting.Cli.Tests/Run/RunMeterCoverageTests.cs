@@ -79,7 +79,7 @@ public sealed class RunMeterCoverageTests : IDisposable
 
         var manager = new AgentBuilder().Role("Manager").Goal("Hand out the work").Build();
         var researcher = new AgentBuilder().Role("Researcher").Goal("Answer from the knowledge base")
-            .WithTool(new AgentToolAdapter(new RagSearchTool(pipeline)))
+            .WithTool(new RagSearchTool(pipeline))
             .Build();
         var task = new CrewTaskBuilder().Description("How long is the warranty?").ExpectedOutput("A duration").Build();
         var crew = DomainCrew.Create(new CrewCreateOptions

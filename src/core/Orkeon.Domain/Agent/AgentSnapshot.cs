@@ -3,6 +3,7 @@ using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Knowledge;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Agent;
 
@@ -69,7 +70,7 @@ public sealed record AgentSnapshot
     public ToolAccessPolicy? ToolAccessPolicy { get; init; }
 
     /// <summary>The tools assigned to the agent.</summary>
-    public IEnumerable<ITool>? Tools { get; init; }
+    public IEnumerable<IBaseTool>? Tools { get; init; }
 
     /// <summary>The tasks assigned to the agent.</summary>
     public IEnumerable<TaskId>? AssignedTasks { get; init; }

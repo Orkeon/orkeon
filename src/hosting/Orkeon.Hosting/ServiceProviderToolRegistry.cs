@@ -1,4 +1,3 @@
-using Orkeon.Domain.Common;
 using Orkeon.Domain.Tools;
 
 namespace Orkeon.Hosting;
@@ -12,16 +11,34 @@ public class ServiceProviderToolRegistry : IToolRegistry
     private readonly Dictionary<string, IBaseTool> _tools;
 
     /// <summary>Initializes the registry from the DI-provided tool collection.</summary>
+    /// <exception cref="InvalidOperationException">
+    /// Two DI-registered tools share a name; the message names it and both tool types.
+    /// </exception>
     public ServiceProviderToolRegistry(IEnumerable<IBaseTool> tools)
     {
-        _tools = tools.ToDictionary(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
+        ArgumentNullException.ThrowIfNull(tools);
+        _tools = new Dictionary<string, IBaseTool>(StringComparer.OrdinalIgnoreCase);
+        foreach (var tool in tools)
+        {
+            if (_tools.TryGetValue(tool.Name, out var holder))
+            {
+                throw new InvalidOperationException(
+                    $"Two registered tools are named '{tool.Name}': {holder.GetType().FullName} and " +
+                    $"{tool.GetType().FullName}. A tool name must be unique; remove or rename one of them.");
+            }
+
+            _tools.Add(tool.Name, tool);
+        }
     }
 
     /// <inheritdoc />
     public Task<bool> RegisterToolAsync(IBaseTool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
-        _tools[tool.Name] = tool;
+        if (_tools.TryGetValue(tool.Name, out var holder))
+            return Task.FromResult(ReferenceEquals(holder, tool));
+
+        _tools.Add(tool.Name, tool);
         return Task.FromResult(true);
     }
 
@@ -52,14 +69,6 @@ public class ServiceProviderToolRegistry : IToolRegistry
     /// <inheritdoc />
     public Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability)
         => Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
-
-    /// <inheritdoc />
-    public Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools)
-    {
-        var names = tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        return Task.FromResult<IReadOnlyList<IBaseTool>>(
-            _tools.Values.Where(t => names.Contains(t.Name)).ToList());
-    }
 
     /// <inheritdoc />
     public Task ClearAsync()

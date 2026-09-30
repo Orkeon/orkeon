@@ -73,7 +73,7 @@ public class ChatClientAgentLoopTests
         }
     }
 
-    private static DomainAgent BuildAgent(int maxIterations, params ITool[] tools)
+    private static DomainAgent BuildAgent(int maxIterations, params IBaseTool[] tools)
     {
         var builder = new AgentBuilder()
             .Role("Chat Agent")

@@ -17,7 +17,7 @@ namespace Orkeon.Domain.Agent;
 [System.Diagnostics.CodeAnalysis.SuppressMessage("Naming", "CA1724", Justification = "Agent is the core aggregate-root type; the Orkeon.Domain.Agent namespace deliberately shares the name. Renaming would break the entire public API.")]
 public sealed class Agent : AggregateRoot<AgentId>
 {
-    private readonly List<ITool> _tools;
+    private readonly List<IBaseTool> _tools;
     private readonly List<TaskId> _assignedTasks;
     private readonly List<AgentMemory> _memories;
     private readonly List<KnowledgeAttachment> _knowledgeAttachments;
@@ -128,7 +128,7 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// <summary>
     /// Gets the tools available to this agent.
     /// </summary>
-    public IReadOnlyList<ITool> Tools => _tools.AsReadOnly();
+    public IReadOnlyList<IBaseTool> Tools => _tools.AsReadOnly();
 
     /// <summary>
     /// Gets the knowledge (RAG) collections attached to this agent. Empty by default.
@@ -249,7 +249,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         string? responseTemplate = null,
         int maxRetryLimit = AgentDefaults.MaxRetryLimit,
         ILlmProvider? functionCallingLlm = null,
-        IEnumerable<ITool>? tools = null,
+        IEnumerable<IBaseTool>? tools = null,
         IStepCallback? stepCallback = null,
         GuardrailsConfig? guardrails = null)
     {
@@ -300,7 +300,7 @@ public sealed class Agent : AggregateRoot<AgentId>
         ILlmProvider? functionCallingLlm,
         IStepCallback? stepCallback,
         ToolAccessPolicy? toolAccessPolicy = null,
-        IEnumerable<ITool>? tools = null,
+        IEnumerable<IBaseTool>? tools = null,
         IEnumerable<TaskId>? assignedTasks = null,
         IEnumerable<AgentMemory>? memories = null,
         TaskId? currentTask = null,
@@ -490,7 +490,7 @@ public sealed class Agent : AggregateRoot<AgentId>
     /// <summary>
     /// Adds a tool to the agent's capabilities.
     /// </summary>
-    public void AddTool(ITool tool)
+    public void AddTool(IBaseTool tool)
     {
         var toolName = _toolManager.AddTool(tool, Role.ToString());
 

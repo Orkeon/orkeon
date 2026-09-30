@@ -56,18 +56,6 @@ public class ObservedToolTests
             .Select(line => JsonElement.Parse(line).Clone())];
 
     [Fact]
-    public void The_decorator_is_an_ITool_or_the_agents_would_get_no_tools_at_all()
-    {
-        // CrewFactory assigns with `tool is ITool` and AgentMapper with OfType<ITool>(). A
-        // decorator implementing only IBaseTool would be filtered out silently, and a crew
-        // would run with an empty toolbox while every test still passed.
-        var (tool, _) = Observe();
-
-        Assert.IsType<ITool>(tool, exactMatch: false);
-        Assert.IsType<IBaseTool>(tool, exactMatch: false);
-    }
-
-    [Fact]
     public void The_decorator_forwards_the_tool_s_own_identity()
     {
         var (tool, _) = Observe("web_scrape");

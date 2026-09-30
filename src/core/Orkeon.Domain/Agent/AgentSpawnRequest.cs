@@ -1,6 +1,7 @@
 using Orkeon.Domain.Agent.ValueObjects;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Constants.Agent;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Agent;
 
@@ -58,7 +59,7 @@ public sealed record AgentSpawnRequest
     /// <summary>
     /// Gets the tools to assign to the spawned agent.
     /// </summary>
-    public IReadOnlyList<ITool> Tools { get; }
+    public IReadOnlyList<IBaseTool> Tools { get; }
 
     /// <summary>
     /// Gets the parent crew ID that requested this agent spawn.
@@ -93,7 +94,7 @@ public sealed record AgentSpawnRequest
         bool verbose = false,
         TimeSpan? maxExecutionTime = null,
         bool cacheEnabled = true,
-        IEnumerable<ITool>? tools = null,
+        IEnumerable<IBaseTool>? tools = null,
         AgentId? requestingAgentId = null,
         IReadOnlyDictionary<string, object>? metadata = null)
 #pragma warning restore S107
@@ -117,7 +118,7 @@ public sealed record AgentSpawnRequest
         Verbose = verbose;
         MaxExecutionTime = maxExecutionTime;
         CacheEnabled = cacheEnabled;
-        Tools = (tools as IReadOnlyList<ITool>) ?? (tools?.ToList().AsReadOnly() ?? new List<ITool>().AsReadOnly());
+        Tools = (tools as IReadOnlyList<IBaseTool>) ?? (tools?.ToList().AsReadOnly() ?? new List<IBaseTool>().AsReadOnly());
         ParentCrewId = parentCrewId;
         RequestingAgentId = requestingAgentId;
         Metadata = metadata ?? new Dictionary<string, object>().AsReadOnly();
@@ -147,7 +148,7 @@ public sealed class AgentSpawnRequestBuilder
     private bool _verbose;
     private TimeSpan? _maxExecutionTime;
     private bool _cacheEnabled = true;
-    private readonly List<ITool> _tools = [];
+    private readonly List<IBaseTool> _tools = [];
     private AgentId? _requestingAgentId;
     private readonly Dictionary<string, object> _metadata = [];
 
@@ -208,21 +209,21 @@ public sealed class AgentSpawnRequestBuilder
     }
 
     /// <summary>Adds a tool to the agent.</summary>
-    public AgentSpawnRequestBuilder WithTool(ITool tool)
+    public AgentSpawnRequestBuilder WithTool(IBaseTool tool)
     {
         _tools.Add(tool);
         return this;
     }
 
     /// <summary>Adds multiple tools to the agent.</summary>
-    public AgentSpawnRequestBuilder WithTools(params ITool[] tools)
+    public AgentSpawnRequestBuilder WithTools(params IBaseTool[] tools)
     {
         _tools.AddRange(tools);
         return this;
     }
 
     /// <summary>Adds multiple tools to the agent from an enumerable.</summary>
-    public AgentSpawnRequestBuilder WithTools(IEnumerable<ITool> tools)
+    public AgentSpawnRequestBuilder WithTools(IEnumerable<IBaseTool> tools)
     {
         _tools.AddRange(tools);
         return this;

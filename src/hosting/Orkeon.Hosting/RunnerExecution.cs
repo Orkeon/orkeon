@@ -1367,23 +1367,22 @@ public static partial class RunnerExecution
 
         // Script-defined tools become first-class (EX-01): register the instances with
         // the runtime registry BEFORE the factory's strict resolution runs — the same
-        // late-registration path MCP tools use. Shadowing an already-registered name is
-        // refused loudly: silently replacing a built-in is exactly the kind of surprise
-        // strict resolution exists to prevent.
+        // late-registration path MCP tools use. The registry refuses a name another tool
+        // already holds (IToolRegistry.RegisterToolAsync returns false); for a script tool
+        // that refusal ends the run loudly: silently replacing a built-in is exactly the
+        // kind of surprise strict resolution exists to prevent.
         var scriptTools = JsCrewConfigurationAdapter.CollectScriptTools(jsCrew);
         if (scriptTools.Count > 0)
         {
             var registry = sp.GetRequiredService<Orkeon.Domain.Tools.IToolRegistry>();
             foreach (var tool in scriptTools)
             {
-                var existing = await registry.GetToolByNameAsync(tool.Name).ConfigureAwait(false);
-                if (existing is not null && !ReferenceEquals(existing, tool))
+                if (!await registry.RegisterToolAsync(tool).ConfigureAwait(false))
                 {
                     throw new InvalidOperationException(
                         $"Script tool '{tool.Name}' collides with an already-registered tool of the same name. "
                         + "Rename the script tool — shadowing a registered tool is refused.");
                 }
-                _ = await registry.RegisterToolAsync(tool).ConfigureAwait(false);
             }
             LogRegisteredScriptTools(logger, scriptTools.Count, jsCrew.name);
         }

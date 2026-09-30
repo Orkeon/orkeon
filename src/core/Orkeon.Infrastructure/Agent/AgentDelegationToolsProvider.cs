@@ -99,7 +99,7 @@ public partial class AgentDelegationToolsProvider
         LogAddedDelegationToolsToAgent(agent.Id, agent.Role);
     }
 
-    private Orkeon.Domain.Common.ITool Decorate(Orkeon.Domain.Common.ITool tool) =>
+    private Orkeon.Domain.Tools.IBaseTool Decorate(Orkeon.Domain.Tools.IBaseTool tool) =>
         _toolDecorator?.Decorate(tool) ?? tool;
 
     /// <summary>

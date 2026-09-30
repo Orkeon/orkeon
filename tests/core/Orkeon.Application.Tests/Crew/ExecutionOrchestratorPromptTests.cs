@@ -242,9 +242,9 @@ public class ExecutionOrchestratorPromptTests
     }
 
     /// <summary>
-    /// Minimal ITool stub for testing prompt generation.
+    /// Minimal IBaseTool stub for testing prompt generation.
     /// </summary>
-    private sealed class StubTool : ITool
+    private sealed class StubTool : IBaseTool
     {
         public string Name { get; }
         public string Description { get; }

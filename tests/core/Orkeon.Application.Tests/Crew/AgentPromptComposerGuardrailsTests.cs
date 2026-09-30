@@ -102,8 +102,8 @@ public class AgentPromptComposerGuardrailsTests
         Assert.DoesNotContain("web_search", prompt, StringComparison.Ordinal);
     }
 
-    /// <summary>Minimal ITool stub — only Name matters for tool-rule gating.</summary>
-    private sealed class StubTool : ITool
+    /// <summary>Minimal IBaseTool stub — only Name matters for tool-rule gating.</summary>
+    private sealed class StubTool : IBaseTool
     {
         public string Name { get; }
         public string Description => "stub";

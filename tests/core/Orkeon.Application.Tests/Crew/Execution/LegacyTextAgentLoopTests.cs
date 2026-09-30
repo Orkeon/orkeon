@@ -6,6 +6,7 @@ using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Task.ValueObjects;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Application.Tests.Crew.Execution;
 
@@ -16,7 +17,7 @@ namespace Orkeon.Application.Tests.Crew.Execution;
 /// </summary>
 public class LegacyTextAgentLoopTests
 {
-    private static DomainAgent BuildAgent(int maxIterations = 5, params ITool[] tools)
+    private static DomainAgent BuildAgent(int maxIterations = 5, params IBaseTool[] tools)
     {
         var builder = new AgentBuilder()
             .Role("Legacy Agent")

@@ -118,10 +118,13 @@ que les trois voient la même surface d'outils. Un serveur qui ne peut pas être
 (commande inexistante, point de terminaison muet, poignée de main toujours en attente
 après 30 s) coûte une ligne d'erreur qui le nomme, dans le journal et sur stderr, et le run
 continue. Les outils sont enregistrés sous leur propre nom, sans préfixe de serveur, et un
-nom déjà tenu par le registre est **remplacé** — l'outil MCP prend en silence la place de
-l'outil intégré, et comme un outil MCP ne peut pas être confié à une crew (plus bas), une
-crew qui nomme cet outil intégré le perd aussi ; vérifiez les noms d'un serveur contre ceux
-des outils intégrés (`--list-tools` montre la surface fusionnée). Orkeon Studio écrit la section depuis son onglet « Réglages › MCP ».
+nom déjà tenu par le registre — un outil intégré, un outil de script ou l'outil d'un
+serveur connecté plus tôt — est **refusé** : l'outil MCP n'est pas enregistré, une ligne
+d'erreur nomme le serveur et l'outil (`The tool 'file_read' of MCP server 'x' collides with
+an already-registered tool and was not registered`), dans le journal et sur stderr, et
+l'outil qui tenait le nom le garde, y compris après la déconnexion de ce serveur. Les
+autres outils du serveur sont enregistrés normalement (`--list-tools` montre la surface
+fusionnée). Orkeon Studio écrit la section depuis son onglet « Réglages › MCP ».
 Les autres racines livrées ne connectent rien : `orkeon-host`, bâti sur `RunnerHost`,
 enregistre `McpToolProvider` depuis la même section, mais charge ses crews sans le pas de
 démarrage et ne connecte jamais de serveur ; le REPL appelle `AddOrkeonInfrastructure()`
@@ -136,19 +139,23 @@ de démarrage de l'hôte des runners.
 
 ### Outils MCP et crews
 
-Les outils MCP connectés sont dans le registre, mais **aucun agent de crew ne peut en
-recevoir un**, ni en YAML ni dans un script `.ork.ts`. `McpToolAdapter` n'implémente
-qu'`IBaseTool`, alors que `CrewFactory` ne garde un outil résolu que s'il est un `ITool` (le
-contrat côté agent), tout comme le mapper d'agents. Un agent qui liste un outil MCP échoue
-donc au chargement sous `StrictTools` — le défaut des runners — avec la ligne ordinaire
-`unknown tool(s)`, dont la liste des outils disponibles nomme pourtant l'outil MCP ; avec
-`StrictTools` désactivé, l'outil est écarté (journalisé comme introuvable) et l'agent tourne
-sans lui. Le décorateur des runs observés de `--events jsonl` n'y change rien : il enveloppe
-les outils enregistrés dans la DI, et les outils MCP arrivent dans le registre à l'exécution.
+Un outil MCP connecté est un outil comme les autres : un agent de crew le liste par son nom,
+en YAML ou dans un script `.ork.ts`, et le reçoit.
 
-Ce qui fonctionne aujourd'hui : `--list-tools` et `--validate` voient les outils MCP,
-`McpServer` ré-expose ce que contient le registre, et du code C# peut en résoudre un par
-`IToolRegistry.GetToolByNameAsync(name)` et appeler directement son `ExecuteAsync`.
+```yaml
+agents:
+  analyst:
+    tools: [search_issues]   # un outil exposé par un serveur MCP déclaré dans MCP:Servers
+```
+
+`CrewFactory` attache tout outil que le registre résout ; il n'y a pas d'interface plus
+étroite qu'`IBaseTool` à implémenter. Les serveurs sont connectés avant le chargement de la
+crew : sous `StrictTools` — le défaut des runners — une crew qui nomme l'outil d'un serveur
+qui n'a pas pu être connecté échoue au chargement avec la ligne ordinaire `unknown tool(s)`.
+`--list-tools` et `--validate` voient les outils MCP, `McpServer` ré-expose ce que contient
+le registre, et du code C# peut en résoudre un par `IToolRegistry.GetToolByNameAsync(name)`.
+Le décorateur des runs observés de `--events jsonl` enveloppe les outils enregistrés dans la
+DI ; les outils MCP arrivent dans le registre à l'exécution et ne sont pas enveloppés.
 
 ## Limites honnêtes
 
@@ -164,8 +171,6 @@ changelog :
 - **HTTP = mode réponse JSON uniquement** — en-têtes modernes envoyés, corps SSE
   déballés, mais pas de streaming initié par le serveur.
 - **`2025-03-26` exclue** (batching JSON-RPC obligatoire).
-- **Les outils MCP ne peuvent pas être confiés à des agents de crew** (YAML ou `.ork.ts`) —
-  voir [Outils MCP et crews](#outils-mcp-et-crews).
 - **L'interop contre les serveurs de référence (MCP Inspector) n'a pas encore tourné** —
   suivie dans la note de clôture de PUB-07.
 

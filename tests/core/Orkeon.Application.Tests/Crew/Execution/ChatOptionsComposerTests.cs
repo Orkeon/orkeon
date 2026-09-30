@@ -10,6 +10,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Tools.Protocol;
 using Orkeon.Tests.Shared.FileSystem;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Application.Tests.Crew.Execution;
 
@@ -20,7 +21,7 @@ namespace Orkeon.Application.Tests.Crew.Execution;
 /// </summary>
 public class ChatOptionsComposerTests
 {
-    private static DomainAgent BuildAgent(LlmConfig? llmConfig = null, params ITool[] tools)
+    private static DomainAgent BuildAgent(LlmConfig? llmConfig = null, params IBaseTool[] tools)
     {
         var builder = new AgentBuilder()
             .Role("Composer Agent")

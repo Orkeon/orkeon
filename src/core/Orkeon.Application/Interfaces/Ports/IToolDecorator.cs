@@ -1,4 +1,4 @@
-using Orkeon.Domain.Common;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Application.Interfaces.Ports;
 
@@ -13,5 +13,5 @@ namespace Orkeon.Application.Interfaces.Ports;
 public interface IToolDecorator
 {
     /// <summary>Returns the tool to hand out in place of <paramref name="tool"/> — possibly the same one.</summary>
-    ITool Decorate(ITool tool);
+    IBaseTool Decorate(IBaseTool tool);
 }

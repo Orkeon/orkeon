@@ -3,7 +3,6 @@ using Orkeon.Application.EventHub;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -15,7 +14,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "receive_message",
     Description = "Pull the next message from a mailbox (default: current agent). Only mailboxes of the calling crew are readable — reading is destructive, and a mailbox belongs to its owner. Requires exactly one of timeout_ms / wait_forever.",
     Category = "EventHub")]
-public sealed class ReceiveMessageTool : ToolBase<ReceiveMessageRequest, ReceiveMessageResponse>, ITool
+public sealed class ReceiveMessageTool : ToolBase<ReceiveMessageRequest, ReceiveMessageResponse>
 {
     private readonly IEventHub _hub;
     private readonly IEventHubCallerContext _callerContext;

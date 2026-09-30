@@ -1,1 +1,2 @@
 #nullable enable
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!

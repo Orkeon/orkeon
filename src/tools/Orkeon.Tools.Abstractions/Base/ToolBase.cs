@@ -23,7 +23,7 @@ namespace Orkeon.Tools.Abstractions.Base;
 /// Provides common functionality for validation, execution, and error handling.
 /// Reads [ToolContract] attribute for default Name, Description, Category.
 /// </summary>
-public abstract partial class ToolBase : ITool
+public abstract partial class ToolBase : IBaseTool
 {
     private static readonly ConcurrentDictionary<Type, ToolContractAttribute?> s_contractCache = new();
 

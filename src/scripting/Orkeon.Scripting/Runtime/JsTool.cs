@@ -12,10 +12,8 @@ namespace Orkeon.Scripting.Runtime;
 
 /// <summary>
 /// The tool produced by <c>toolBuilder()</c> — a first-class citizen of the tool
-/// pipeline (EX-01): it implements <see cref="ITool"/> (the marker
-/// <see cref="Orkeon.Domain.Common.ITool"/> the crew factory's strict resolution
-/// requires), so a script-defined tool registered with the runtime registry is
-/// callable by the LLM exactly like a C# tool.
+/// pipeline (EX-01): it implements <see cref="IBaseTool"/>, so a script-defined tool
+/// registered with the runtime registry is callable by the LLM exactly like a C# tool.
 /// </summary>
 /// <remarks>
 /// Two call paths, two threading realities:
@@ -33,11 +31,11 @@ namespace Orkeon.Scripting.Runtime;
 /// </list>
 /// </remarks>
 #pragma warning disable IDE1006
-#pragma warning disable CS1591 // Suppresses only the camelCase JS mirror of Tool in Typings/tool.d.ts; the CLR-facing ITool members below carry their own docs.
+#pragma warning disable CS1591 // Suppresses only the camelCase JS mirror of Tool in Typings/tool.d.ts; the CLR-facing IBaseTool members below carry their own docs.
 // CA1708: the lowercase name/description/execute members are the deliberate JS mirror
 // (Jint member resolution is ordinal); the PascalCase members are the CLR contract.
 #pragma warning disable CA1708
-public sealed class JsTool : ITool
+public sealed class JsTool : IBaseTool
 {
     /// <inheritdoc />
     public string Name { get; }

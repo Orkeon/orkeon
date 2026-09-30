@@ -37,18 +37,17 @@ celui ci-dessus — est ce que le YAML référence.
 | `rag_ingest` | `RagIngestTool` | Même opt-in que `rag_search` | Ingestion incrémentale dans une collection RAG (pilotée par manifeste — les sources inchangées coûtent 0 embedding) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Même opt-in que `rag_search` | Évaluer une collection contre un dataset doré YAML : recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
-> **Non assignables depuis un crew YAML aujourd'hui.** Les tools `rag_*` — comme les tools
-> des serveurs MCP — n'implémentent que `IBaseTool`, et `CrewFactory` n'attache à un agent
-> qu'un `ITool` (voir [le pipeline de résolution](#pipeline-de-résolution)) ; de plus, le
-> chemin YAML d'`orkeon run` ne les enregistre pas du tout. Ils fonctionnent depuis la façade
-> de scripting (`tools.ragSearch`, l'espace de noms `rag.*`) sous `orkeon run script.ork.ts` et
-> dans `orkeon-repl`, depuis `orkeon rag`, et depuis du C# qui appelle le tool ou
-> `IRagPipeline` directement. Les blocs `rag:` et `knowledge:` d'un crew ne contournent pas
-> non plus le problème sous `orkeon run crew.yaml` : le runner YAML n'appelle jamais
-> `AddOrkeonRag`, ils y sont donc inertes (un avertissement est journalisé). Ils ne prennent
-> effet que dans un hôte C# qui appelle `AddOrkeonRag(configuration)` — comme le fait
+> **Enregistrés par l'hôte, pas par `orkeon run crew.yaml`.** Un agent de crew qui liste un
+> tool `rag_*` le reçoit partout où l'hôte a enregistré les tools RAG : un hôte C# qui appelle
+> `AddOrkeonRagTools()`, un crew `.ork.ts` sous `orkeon run`, `orkeon-repl`. Le chemin YAML
+> d'`orkeon run` ne les enregistre pas : un crew YAML lancé par lui ne peut donc pas les
+> nommer ; la façade de scripting (`tools.ragSearch`, l'espace de noms `rag.*`),
+> `orkeon rag` et les appels C# les atteignent aussi. Les blocs `rag:` et `knowledge:` d'un
+> crew sont inertes sous `orkeon run crew.yaml` pour la même raison : le runner YAML
+> n'appelle jamais `AddOrkeonRag` (un avertissement est journalisé). Ils prennent effet dans
+> un hôte C# qui appelle `AddOrkeonRag(configuration)` — comme le fait
 > [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/Program.cs).
-> Voir la limitation connue dans [Pipeline RAG](../architecture/rag-pipeline.md#surfaces-scripting-et-cli).
+> Voir [Pipeline RAG](../architecture/rag-pipeline.md#surfaces-scripting-et-cli).
 
 ## Tools d'exécution de code (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
@@ -301,17 +300,21 @@ CrewFactory appelle IToolRegistry.GetToolByNameAsync("relational_database_query"
        ↓
 IToolRegistry cherche le tool enregistré avec Name == "relational_database_query"
        ↓
-Trouvé et ITool → attaché à l'Agent (AgentBuilder.WithTools())
-Absent, ou IBaseTool qui n'est pas un ITool →
+Trouvé → attaché à l'Agent (AgentBuilder.WithTools())
+Absent →
     StrictTools (défaut des runners)       → le crew ne se charge pas, avec la liste des tools disponibles
     mode tolérant (défaut de la bibliothèque) → un avertissement, et l'agent tourne sans ce tool
 ```
 
 La sévérité est `Orkeon:CrewFactory:StrictTools` (`true` dans les runners, `CrewFactoryOptions.StrictTools`
-à `false` pour un hôte à vous). Seul un `ITool` atteint un agent : tout tool dérivé de
-`ToolBase` en est un, mais les trois tools RAG et les adaptateurs MCP n'implémentent
-aujourd'hui que `IBaseTool` ; un agent YAML qui les liste ne les reçoit donc pas — les
-scripts les atteignent par `tools.*`.
+à `false` pour un hôte à vous). Tout tool que tient le registre atteint un agent qui le
+nomme — un tool `ToolBase`, un tool de script, un tool RAG, le tool d'un serveur MCP
+connecté : `IBaseTool` est l'unique contrat.
+
+Un nom appartient à un seul tool. Deux tools enregistrés dans la DI sous le même nom
+arrêtent l'hôte au démarrage avec une erreur qui nomme le nom et les deux types ; un tool
+enregistré plus tard sous un nom déjà tenu (`IToolRegistry.RegisterToolAsync`) est refusé
+— l'appel renvoie `false` et le tool enregistré garde le nom.
 
 ### Enregistrement des tools
 
@@ -451,7 +454,7 @@ var registry = host.Services.GetRequiredService<IToolRegistry>();
 await registry.RegisterToolAsync(new MyCustomTool());
 ```
 
-Dérivez le tool de `ToolBase` (ou implémentez `ITool`, pas seulement `IBaseTool`) — voir
+Dérivez le tool de `ToolBase` (ou implémentez directement `IBaseTool`) — voir
 [Créer un nouveau tool](./new-tool-pattern.md). Le tool sera alors accessible en YAML via
 son `Name` :
 

@@ -1,5 +1,4 @@
 using Microsoft.Extensions.Logging;
-using Orkeon.Domain.Common;
 using Orkeon.Domain.Tools;
 using System.Collections.Concurrent;
 
@@ -34,9 +33,11 @@ public sealed partial class InMemoryToolRegistry : IToolRegistry
     {
         WarnOnce();
         ArgumentNullException.ThrowIfNull(tool);
-        var added = _tools.TryAdd(tool.Name, tool);
-        if (!added)
-            _tools[tool.Name] = tool; // update existing
+        // A name belongs to the first tool registered under it: another instance is refused,
+        // never substituted (IToolRegistry.RegisterToolAsync); the holder itself is a no-op.
+        var holder = _tools.GetOrAdd(tool.Name, tool);
+        if (!ReferenceEquals(holder, tool))
+            return Task.FromResult(false);
         if (_logger.IsEnabled(LogLevel.Debug))
             LogToolRegistered(tool.Name);
         return Task.FromResult(true);
@@ -96,18 +97,6 @@ public sealed partial class InMemoryToolRegistry : IToolRegistry
         // Simple keyword match on tool description
         IReadOnlyList<IBaseTool> result = _tools.Values
             .Where(t => t.Description?.Contains(capability, StringComparison.OrdinalIgnoreCase) == true)
-            .ToList()
-            .AsReadOnly();
-        return Task.FromResult(result);
-    }
-
-    /// <inheritdoc />
-    public Task<IReadOnlyList<IBaseTool>> GetToolsAsync(IEnumerable<ITool> tools)
-    {
-        WarnOnce();
-        var names = tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        IReadOnlyList<IBaseTool> result = _tools.Values
-            .Where(t => names.Contains(t.Name))
             .ToList()
             .AsReadOnly();
         return Task.FromResult(result);

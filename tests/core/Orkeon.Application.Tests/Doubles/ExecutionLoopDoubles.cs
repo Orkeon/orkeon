@@ -145,7 +145,7 @@ internal sealed class FakeToolCallingStrategy : IToolCallingStrategy
 /// A recording tool whose outcome the test scripts: success text, failure text, or a thrown
 /// exception. Records every <see cref="ToolCallRequest"/> it receives.
 /// </summary>
-internal sealed class SpyTool : ITool
+internal sealed class SpyTool : IBaseTool
 {
     private readonly string _result;
     private readonly bool _succeed;

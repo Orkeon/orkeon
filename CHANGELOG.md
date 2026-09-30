@@ -7,6 +7,49 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — MCP and `rag_*` tools reach the crew agents that name them; an MCP tool no longer replaces a built-in
+
+- **A crew agent receives every tool the registry resolves.** `CrewFactory` kept a resolved
+  tool only when it implemented the empty `ITool` marker, which the three RAG tools and
+  `McpToolAdapter` did not. A crew listing `rag_search` (in a host that calls
+  `AddOrkeonRagTools()`) or a tool of a connected MCP server failed to load under
+  `StrictTools` with an `unknown tool(s)` line whose *available tools* named that same tool,
+  and lost the tool silently without it. `AgentMapper.CreateFromRequest` and
+  `CrewConfigurationMapper.ToDomainCrew` dropped such tools without a word. All three now
+  attach any `IBaseTool`.
+- **A tool name belongs to one tool.** `IToolRegistry.RegisterToolAsync` returns `false` when
+  another instance already holds the name, and leaves that tool in place; registering the
+  same instance again is an idempotent success. Both registries follow the contract:
+  `ServiceProviderToolRegistry` and `InMemoryToolRegistry` used to overwrite.
+- **An MCP tool named like a registered tool is refused.** Before, a server exposing
+  `file_read` replaced the built-in silently, and disconnecting the server unregistered the
+  name, so the built-in was gone for the rest of the process. Now the MCP tool is not
+  registered, one error line names the server and the tool, on the log and on stderr
+  (`McpServerStatus.RejectedToolNames` lists them), the rest of the server's tools are
+  registered, and the built-in survives the disconnection. Two servers exposing one name
+  behave the same way: the first keeps it. Both `McpToolProvider.ConnectServerAsync` overloads
+  now log alike.
+- **Two DI tools with one name stop the host with an error that names them.**
+  `ServiceProviderToolRegistry` threw a bare "An item with the same key has already been
+  added"; the `InvalidOperationException` now names the tool and both types.
+- The refusal of a `.ork.ts` script tool that shadows a registered tool is unchanged; it now
+  rests on the registry's answer rather than on a lookup made beforehand.
+
+### Changed — `ITool` is removed; `IBaseTool` is the one tool contract **[breaking]**
+
+`Orkeon.Domain.Common.ITool` was an empty interface over `IBaseTool`, and the filter on it is
+what kept the tools above from the agents. It is deleted, with no shim, and every signature
+that took or returned it takes or returns `IBaseTool`: `Agent.Tools`, `Agent.AddTool`,
+`Agent.Create`, `AgentBuilder.WithTool`/`WithTools`, `AgentCreateOptions.Tools`,
+`AgentSnapshot.Tools`, `AgentSpawnRequest` and its builder, and
+`IToolDecorator.Decorate`. `IToolRegistry.GetToolsAsync(IEnumerable<ITool>)`, which nothing
+called, is removed with its two implementations.
+
+| Before | After |
+|---|---|
+| `ITool` (`Orkeon.Domain.Common`) | `IBaseTool` (`Orkeon.Domain.Tools`) |
+| `registry.GetToolsAsync(tools)` | `GetToolByNameAsync(name)` for each name |
+
 ### Added — e-mail is a chapter of its own, with a tutorial
 
 - **A new getting-started tutorial, *Give your agents a mailbox*, EN and FR**

@@ -78,7 +78,7 @@ public static class AgentMapper
         // Assign tools to the agent via builder
         if (tools != null && tools.Length > 0)
         {
-            builder.WithTools(tools.OfType<ITool>());
+            builder.WithTools(tools);
         }
 
         return builder.Build();

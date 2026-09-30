@@ -37,17 +37,17 @@ what YAML references.
 | `rag_ingest` | `RagIngestTool` | Same opt-in as `rag_search` | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
-> **Not assignable from a YAML crew today.** The `rag_*` tools — like the tools of MCP
-> servers — implement `IBaseTool` alone, and `CrewFactory` attaches only an `ITool` to an
-> agent (see [the resolution pipeline](#resolution-pipeline)); on top of that, the YAML path
-> of `orkeon run` does not register them at all. They work from the scripting facade
-> (`tools.ragSearch`, the `rag.*` namespace) under `orkeon run script.ork.ts` and in
-> `orkeon-repl`, from `orkeon rag`, and from C# calling the tool or `IRagPipeline` directly.
-> A crew's `rag:` and `knowledge:` blocks are no way around it under `orkeon run crew.yaml`
-> either: the YAML runner never calls `AddOrkeonRag`, so they are inert there (a warning is
-> logged). They take effect only in a C# host that calls `AddOrkeonRag(configuration)` — as
+> **Registered by the host, not by `orkeon run crew.yaml`.** A crew agent that lists a
+> `rag_*` tool receives it wherever the host registered the RAG tools: a C# host calling
+> `AddOrkeonRagTools()`, a `.ork.ts` crew under `orkeon run`, `orkeon-repl`. The YAML path
+> of `orkeon run` does not register them, so a YAML crew run there cannot name them; the
+> scripting facade (`tools.ragSearch`, the `rag.*` namespace), `orkeon rag` and C# calls
+> reach them too. A crew's `rag:` and `knowledge:` blocks are inert under
+> `orkeon run crew.yaml` for the same reason: the YAML runner never calls `AddOrkeonRag`
+> (a warning is logged). They take effect in a C# host that calls
+> `AddOrkeonRag(configuration)` — as
 > [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/Program.cs)
-> does. See the known limitation in
+> does. See
 > [RAG pipeline](../architecture/rag-pipeline.md#scripting-and-cli-surfaces).
 
 ## Code execution tools (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
@@ -297,17 +297,21 @@ CrewFactory calls IToolRegistry.GetToolByNameAsync("relational_database_query")
        ↓
 IToolRegistry looks up the registered tool with Name == "relational_database_query"
        ↓
-Found and an ITool → attached to the Agent (AgentBuilder.WithTools())
-Missing, or an IBaseTool that is not an ITool →
+Found → attached to the Agent (AgentBuilder.WithTools())
+Missing →
     StrictTools (the runners' default) → the crew fails to load, listing the available tools
     lenient (the library default)      → a warning, and the agent runs without that tool
 ```
 
 The strictness is `Orkeon:CrewFactory:StrictTools` (`true` in the runners, `CrewFactoryOptions.StrictTools`
-`false` for a host of your own). Only an `ITool` reaches an agent: every tool deriving from
-`ToolBase` is one, but the three RAG tools and the MCP adapters implement `IBaseTool` alone
-today, so a YAML agent that lists them does not get them — scripts reach them through
-`tools.*` instead.
+`false` for a host of your own). Every tool the registry holds reaches an agent that names
+it — a `ToolBase` tool, a script tool, a RAG tool, the tool of a connected MCP server:
+`IBaseTool` is the one contract.
+
+A name belongs to one tool. Two tools registered in DI under the same name stop the host
+at startup with an error naming the name and both types; a tool registered later under a
+name already held (`IToolRegistry.RegisterToolAsync`) is refused — the call returns
+`false` and the registered tool keeps the name.
 
 ### Tool registration
 
@@ -446,7 +450,7 @@ var registry = host.Services.GetRequiredService<IToolRegistry>();
 await registry.RegisterToolAsync(new MyCustomTool());
 ```
 
-Derive the tool from `ToolBase` (or implement `ITool`, not just `IBaseTool`) — see
+Derive the tool from `ToolBase` (or implement `IBaseTool` directly) — see
 [Creating a new tool](./new-tool-pattern.md). The tool will then be accessible in YAML
 through its `Name`:
 

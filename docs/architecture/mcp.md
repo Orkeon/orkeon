@@ -115,10 +115,13 @@ server in an explicit startup step (`McpStartup`) before the crew loads — and 
 same tool surface. A server that cannot be connected (a command that does not exist, an
 endpoint that does not answer, a handshake still pending after 30 s) costs one error line
 naming it, on the log and on stderr, and the run goes on. The tools are registered under
-their own names, without a server prefix, and a name the registry already holds is
-**replaced** — the MCP tool takes the built-in tool's place, silently, and since an MCP
-tool cannot be given to a crew (below), a crew naming that built-in then loses it too; check
-a server's names against the built-in ones (`--list-tools` shows the merged surface). Orkeon Studio writes the section from its
+their own names, without a server prefix, and a name the registry already holds — a
+built-in tool, a script tool, or a tool of a server connected earlier — is **refused**: the
+MCP tool is not registered, one error line names the server and the tool (`The tool
+'file_read' of MCP server 'x' collides with an already-registered tool and was not
+registered`), on the log and on stderr, and the tool that held the name keeps it, including
+after that server disconnects. The server's other tools are registered normally
+(`--list-tools` shows the merged surface). Orkeon Studio writes the section from its
 «Settings › MCP» tab. The other shipped roots do not connect anything: `orkeon-host` is
 built on `RunnerHost`, so it registers `McpToolProvider` from the same section, but it
 loads its crews without the startup step and never connects a server; the REPL calls the
@@ -133,19 +136,23 @@ host's startup step does.
 
 ### MCP tools and crews
 
-Connected MCP tools are in the registry, but **no crew agent can be given one**, in YAML or
-in a `.ork.ts` script. `McpToolAdapter` implements `IBaseTool` only, while `CrewFactory`
-keeps a resolved tool only when it is an `ITool` (the agent-facing contract), and so does
-the agent mapper. An agent that lists an MCP tool therefore fails to load under
-`StrictTools` — the runners' default — with the ordinary `unknown tool(s)` line, whose
-*available tools* list names the MCP tool all the same; with `StrictTools` off, the tool is
-dropped (logged as not found) and the agent runs without it. The observed-run decorator of
-`--events jsonl` does not change this: it wraps the tools registered in DI, and MCP tools
-reach the registry at run time.
+A connected MCP tool is a tool like any other: a crew agent lists it by name, in YAML or in
+a `.ork.ts` script, and receives it.
 
-What does work today: `--list-tools` and `--validate` see the MCP tools, `McpServer`
-re-exposes whatever the registry holds, and C# code can resolve one with
-`IToolRegistry.GetToolByNameAsync(name)` and call `ExecuteAsync` on it directly.
+```yaml
+agents:
+  analyst:
+    tools: [search_issues]   # a tool exposed by an MCP server declared in MCP:Servers
+```
+
+`CrewFactory` attaches every tool the registry resolves; there is no narrower interface
+than `IBaseTool` to implement. The servers are connected before the crew loads, so under
+`StrictTools` — the runners' default — a crew that names a tool of a server that could not
+be connected fails at load with the ordinary `unknown tool(s)` line. `--list-tools` and
+`--validate` see the MCP tools, `McpServer` re-exposes whatever the registry holds, and C#
+code can resolve one with `IToolRegistry.GetToolByNameAsync(name)`. The observed-run
+decorator of `--events jsonl` wraps the tools registered in DI; MCP tools reach the
+registry at run time and are not wrapped.
 
 ## Honest limitations
 
@@ -159,8 +166,6 @@ entry:
 - **HTTP = JSON-response mode only** — modern headers sent, SSE bodies unwrapped, but no
   server-initiated streaming.
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
-- **MCP tools cannot be assigned to crew agents** (YAML or `.ork.ts`) — see
-  [MCP tools and crews](#mcp-tools-and-crews).
 - **Interop against reference servers (MCP Inspector) has not run yet** — tracked in
   PUB-07's closure note.
 

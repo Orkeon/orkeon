@@ -3,7 +3,6 @@ using Orkeon.Application.EventHub;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -12,7 +11,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "reply_to",
     Description = "Reply to a pending request identified by correlation_id.",
     Category = "EventHub")]
-public sealed class ReplyToTool : ToolBase<ReplyToRequest, ReplyToResponse>, ITool
+public sealed class ReplyToTool : ToolBase<ReplyToRequest, ReplyToResponse>
 {
     private readonly IEventHub _hub;
 

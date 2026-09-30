@@ -4,7 +4,6 @@ using Orkeon.Application.EventHub;
 using Orkeon.Domain.Attributes;
 using Orkeon.Tools.Abstractions.Base;
 using Orkeon.Tools.EventHub.Dtos;
-using ITool = Orkeon.Domain.Common.ITool;
 
 namespace Orkeon.Tools.EventHub;
 
@@ -16,7 +15,7 @@ namespace Orkeon.Tools.EventHub;
     Name = "send_request",
     Description = "Send a request to a mailbox and wait for a correlated reply (timeout_ms required).",
     Category = "EventHub")]
-public sealed class SendRequestTool : ToolBase<SendRequestRequest, SendRequestResponse>, ITool
+public sealed class SendRequestTool : ToolBase<SendRequestRequest, SendRequestResponse>
 {
     private readonly IEventHub _hub;
 

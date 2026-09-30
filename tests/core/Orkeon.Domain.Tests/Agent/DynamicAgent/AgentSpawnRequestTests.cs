@@ -92,7 +92,7 @@ public class AgentSpawnRequestTests
     public void Constructor_WithTools_StoresTools()
     {
         // Arrange
-        var tools = new List<ITool> { new FakeTool("TestTool") };
+        var tools = new List<IBaseTool> { new FakeTool("TestTool") };
 
         // Act
         var request = new AgentSpawnRequest(_role, _goal, _crewId, tools: tools);
@@ -102,7 +102,7 @@ public class AgentSpawnRequestTests
         Assert.Equal("TestTool", request.Tools[0].Name);
     }
 
-    private sealed class FakeTool : ITool
+    private sealed class FakeTool : IBaseTool
     {
         public FakeTool(string name)
         {
@@ -223,7 +223,7 @@ public class AgentSpawnRequestBuilderTests
         Assert.Equal("WebSearch", request.Tools[0].Name);
     }
 
-    private sealed class FakeTool : ITool
+    private sealed class FakeTool : IBaseTool
     {
         public FakeTool(string name)
         {

@@ -9,7 +9,10 @@ using Orkeon.Infrastructure.Configuration;
 using Orkeon.Infrastructure.Persistence.Agent;
 using Orkeon.Infrastructure.Persistence.Crew;
 using Orkeon.Infrastructure.Persistence.Task;
+using Orkeon.Infrastructure.MCP;
 using Orkeon.Infrastructure.Tests.Doubles;
+using Orkeon.Infrastructure.Tests.MCP;
+using Orkeon.Tests.Shared.Doubles;
 
 namespace Orkeon.Infrastructure.Tests.Configuration;
 
@@ -98,6 +101,55 @@ public class CrewFactoryStrictToolsTests
         var agent = await agentRepo.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
         Assert.NotNull(agent);
         Assert.Contains(agent!.Tools, t => t.Name == "known_tool");
+    }
+
+    // GAP-01: a tool that implements IBaseTool alone (the rag_* tools, McpToolAdapter, any
+    // plugin tool) is a tool like any other. It used to be found in the registry, dropped by
+    // a filter on an empty marker interface (`ITool`, since deleted), and then reported as
+    // unknown AND available in the same message.
+
+    [Fact]
+    public async Task StrictMode_RegisteredBaseOnlyTool_IsAttached()
+    {
+        var (factory, agentRepo, registry) = BuildFactory(strictTools: true);
+        registry.AddTool("base_only", new StubBaseTool("base_only"));
+        var config = BuildConfigWithAgentTools("base_only");
+
+        var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+
+        var agent = await agentRepo.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
+        Assert.NotNull(agent);
+        Assert.Contains(agent!.Tools, t => t.Name == "base_only");
+    }
+
+    [Fact]
+    public async Task LenientMode_RegisteredBaseOnlyTool_IsAttached()
+    {
+        var (factory, agentRepo, registry) = BuildFactory(strictTools: false);
+        registry.AddTool("base_only", new StubBaseTool("base_only"));
+        var config = BuildConfigWithAgentTools("base_only");
+
+        var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+
+        var agent = await agentRepo.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
+        Assert.NotNull(agent);
+        Assert.Contains(agent!.Tools, t => t.Name == "base_only");
+    }
+
+    [Fact]
+    public async Task StrictMode_ConnectedMcpTool_IsAttached()
+    {
+        var (factory, agentRepo, registry) = BuildFactory(strictTools: true);
+        await using var transport = McpDiscoveryTransport.Exposing("search_issues");
+        await using var provider = new McpToolProvider(registry);
+        await provider.ConnectServerAsync("tracker", transport, TestContext.Current.CancellationToken);
+        var config = BuildConfigWithAgentTools("search_issues");
+
+        var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
+
+        var agent = await agentRepo.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
+        Assert.NotNull(agent);
+        Assert.IsType<McpToolAdapter>(Assert.Single(agent!.Tools, t => t.Name == "search_issues"));
     }
 
     [Fact]

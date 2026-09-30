@@ -358,10 +358,10 @@ public partial class CrewFactory : ICrewFactory
         }
     }
 
-    private async Task<List<ITool>> ResolveToolsAsync(
+    private async Task<List<IBaseTool>> ResolveToolsAsync(
         IReadOnlyList<string> toolNames)
     {
-        var tools = new List<ITool>();
+        var tools = new List<IBaseTool>();
         if (toolNames == null || toolNames.Count == 0)
             return tools;
 
@@ -369,9 +369,9 @@ public partial class CrewFactory : ICrewFactory
         foreach (var toolName in toolNames)
         {
             var tool = await _toolRegistry.GetToolByNameAsync(toolName).ConfigureAwait(false);
-            if (tool is ITool domainTool)
+            if (tool is not null)
             {
-                tools.Add(domainTool);
+                tools.Add(tool);
             }
             else
             {

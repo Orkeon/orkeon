@@ -16,19 +16,13 @@ namespace Orkeon.Scripting.Cli.Commands.Run;
 /// paths written after it.
 /// </para>
 /// <para>
-/// It implements <see cref="ITool"/> and not merely <see cref="IBaseTool"/> **on purpose**:
-/// <c>CrewFactory</c> assigns tools with <c>tool is ITool</c> and <c>AgentMapper</c> with
-/// <c>OfType&lt;ITool&gt;()</c>, so a decorator that only implemented the base interface would
-/// be silently filtered out and the agents would run with no tools at all.
-/// </para>
-/// <para>
 /// Two tool names get a richer event than the rest, because what they mean is not "a tool ran":
 /// <c>delegate_work</c> is one agent handing work to another, and <c>spawn_agent</c> is a team
 /// growing at runtime. Those are the two things that make an autonomous run hard to follow, so
 /// they are named rather than buried among tool calls.
 /// </para>
 /// </summary>
-internal sealed class ObservedTool : ITool, IDisposable
+internal sealed class ObservedTool : IBaseTool, IDisposable
 {
     /// <summary>
     /// The tool whose call means one agent delegated to another — the wire name of
@@ -196,7 +190,7 @@ internal sealed class ObservedToolDecorator : Orkeon.Application.Interfaces.Port
         _events = events ?? throw new ArgumentNullException(nameof(events));
 
     /// <inheritdoc />
-    public ITool Decorate(ITool tool)
+    public IBaseTool Decorate(IBaseTool tool)
     {
         ArgumentNullException.ThrowIfNull(tool);
         return tool is ObservedTool ? tool : new ObservedTool(tool, _events);

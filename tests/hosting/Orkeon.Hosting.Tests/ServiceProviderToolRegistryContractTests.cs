@@ -1,4 +1,3 @@
-using Orkeon.Domain.Common;
 using Orkeon.Hosting.Tests.Doubles;
 using Orkeon.Tests.Shared.Doubles;
 
@@ -44,17 +43,51 @@ public class ServiceProviderToolRegistryContractTests
     }
 
     [Fact]
-    public async Task RegisterToolAsync_adds_and_overwrites_by_name()
+    public async Task RegisterToolAsync_refuses_a_name_held_by_another_instance()
     {
         var registry = CreateRegistry();
         var first = new StubBaseTool("dup");
-        var second = new StubBaseTool("dup");
+        var second = new StubBaseTool("DUP");
 
         Assert.True(await registry.RegisterToolAsync(first));
-        Assert.True(await registry.RegisterToolAsync(second));
+        Assert.False(await registry.RegisterToolAsync(second));
 
-        var resolved = await registry.GetToolAsync("dup");
-        Assert.Same(second, resolved);
+        Assert.Same(first, await registry.GetToolAsync("dup"));
+        Assert.Single(await registry.GetAllToolsAsync());
+    }
+
+    [Fact]
+    public async Task RegisterToolAsync_refuses_to_shadow_a_seeded_tool()
+    {
+        var seeded = new StubBaseTool("file_read");
+        var registry = new ServiceProviderToolRegistry([seeded]);
+
+        Assert.False(await registry.RegisterToolAsync(new FakeTool("file_read")));
+
+        Assert.Same(seeded, await registry.GetToolByNameAsync("file_read"));
+    }
+
+    [Fact]
+    public async Task RegisterToolAsync_same_instance_twice_is_an_idempotent_success()
+    {
+        var registry = CreateRegistry();
+        var tool = new StubBaseTool("again");
+
+        Assert.True(await registry.RegisterToolAsync(tool));
+        Assert.True(await registry.RegisterToolAsync(tool));
+
+        Assert.Same(tool, await registry.GetToolAsync("again"));
+    }
+
+    [Fact]
+    public void Two_DI_tools_with_one_name_fail_with_the_name_and_both_types()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(
+            () => new ServiceProviderToolRegistry([new StubBaseTool("file_read"), new FakeTool("FILE_READ")]));
+
+        Assert.Contains("file_read", ex.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Contains(typeof(StubBaseTool).FullName!, ex.Message, StringComparison.Ordinal);
+        Assert.Contains(typeof(FakeTool).FullName!, ex.Message, StringComparison.Ordinal);
     }
 
     [Fact]
@@ -75,19 +108,6 @@ public class ServiceProviderToolRegistryContractTests
         var all = await registry.GetAllToolsAsync();
 
         Assert.Equal(3, all.Count);
-    }
-
-    [Fact]
-    public async Task GetToolsAsync_filters_by_requested_tool_names()
-    {
-        var registry = CreateRegistry("file_read", "web_scrape", "csv_parse");
-        var wanted = new ITool[] { new FakeTool("FILE_READ"), new FakeTool("csv_parse") };
-
-        var resolved = await registry.GetToolsAsync(wanted);
-
-        Assert.Equal(2, resolved.Count);
-        Assert.Contains(resolved, t => t.Name == "file_read");
-        Assert.Contains(resolved, t => t.Name == "csv_parse");
     }
 
     [Fact]

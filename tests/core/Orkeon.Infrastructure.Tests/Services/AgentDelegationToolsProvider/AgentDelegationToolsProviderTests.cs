@@ -712,7 +712,7 @@ internal sealed class TestMemoryScope : Orkeon.Application.Interfaces.Ports.IMem
 }
 
 // Simple tool for testing
-internal class SimpleTool : Orkeon.Domain.Common.ITool
+internal class SimpleTool : Orkeon.Domain.Tools.IBaseTool
 {
     public string Name { get; }
     public string Description => $"{Name} description";

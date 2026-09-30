@@ -217,7 +217,7 @@ public class AgentBuilderTests
 
     #region Test Doubles
 
-    private sealed class StubTool : ITool
+    private sealed class StubTool : IBaseTool
     {
         public string Name { get; }
         public string Description => $"Stub tool {Name}";
