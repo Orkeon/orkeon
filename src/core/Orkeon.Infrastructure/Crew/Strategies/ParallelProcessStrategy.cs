@@ -121,12 +121,13 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             : [];
 
         var taskSnapshots = new System.Collections.Concurrent.ConcurrentBag<TaskExecutionSnapshot>();
-        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>>();
+        var executionTasks = new List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)>>();
 
         // The barrier covers setup AND the fan-out loop, not only the WhenAll: a cancellation
         // firing mid-fan-out used to escape with tasks 1..n-1 already launched — no terminal
         // event, and orphans still emitting task.completed after the strategy had returned.
         var results = new List<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>();
+        var outcome = new CrewRunOutcome();
         try
         {
         // Setup stays inside the barrier: an agent-less crew is the everyday failure, and it
@@ -152,6 +153,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             // same context, and the list must not be mutated while they run.
             var previousOutputs = completedOutputs.ToList();
 
+            var launched = new List<(DomainTask Task, DomainAgent Agent)>();
             foreach (var task in wave)
             {
                 // The agent the crew declared, round-robin only when it declared none — the same
@@ -163,6 +165,21 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
                 cancellationToken.ThrowIfCancellationRequested();
 
+                // A task depending on one that did not succeed is skipped, as in Sequential
+                // (GAP-03): it used to run in the next wave with "Task failed: …" as its input.
+                if (outcome.BlockingDependency(task) is { } blockedBy)
+                {
+                    var skipReason = outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+                    LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
+                    var skipped = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+                    results.Add((skipped.Domain, skipped.Application));
+                    completedOutputs.Add(skipped.Application);
+                    var skippedSnapshot = CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, skipReason);
+                    taskSnapshots.Add(skippedSnapshot);
+                    await _hooks.TaskCompletedAsync(skippedSnapshot, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
+
                 var context = new SimpleExecutionContext(
                     crew.Id,
                     variables,
@@ -173,6 +190,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
                 var capturedTask = task;
                 var capturedAgent = agent;
 
+                launched.Add((task, agent));
                 executionTasks.Add(System.Threading.Tasks.Task.Run(async () => await ExecuteWaveTaskAsync(
                     capturedAgent, capturedTask, context, tokenTally, taskSnapshots, cancellationToken)
                     .ConfigureAwait(false)));
@@ -182,7 +200,16 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
             // must still go out, or a watcher sees a run frozen at its last completed sibling.
             var waveResults = await System.Threading.Tasks.Task.WhenAll(executionTasks).ConfigureAwait(false);
 
-            results.AddRange(waveResults);
+            // The wave has joined: its failures are recorded in declaration order, so the
+            // crew's error reads the same whichever task finished first.
+            for (var i = 0; i < waveResults.Length; i++)
+            {
+                var (domainOutput, appOutput, error) = waveResults[i];
+                if (!domainOutput.Success)
+                    outcome.RecordFailure(launched[i].Task.Id, launched[i].Agent.Role.Value, error);
+                results.Add((domainOutput, appOutput));
+            }
+
             completedOutputs.AddRange(waveResults.Select(r => r.appOutput));
         }
         }
@@ -214,21 +241,15 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         // Aggregate: combine all outputs
         var allOutputs = string.Join("\n\n", domainResults.Select(r => r.Output));
 
-        LogParallelExecutionCompletedForCrew(crew.Id, totalTime);
+        if (outcome.HasFailures)
+            LogParallelExecutionFailedForCrew(crew.Id, outcome.Failures.Count, outcome.Reason);
+        else
+            LogParallelExecutionCompletedForCrew(crew.Id, totalTime);
 
-        await _hooks.CrewCompletedAsync(
-            CrewHookDispatcher.Snapshot(
-                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
-            cancellationToken).ConfigureAwait(false);
-
-        return DomainCrewOutput.CreateSuccess(
-            output: allOutputs,
-            structuredOutput: null,
-            taskOutputs: domainResults,
-            executionTime: totalTime,
-            metadata: tokenTally
-                .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
-                .Build());
+        return await outcome.CompleteAsync(
+            _hooks, crew.Id.ToString(), startTime, taskSnapshots, domainResults, totalTime,
+            tokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
+            allOutputs).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -288,7 +309,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// One task of a wave, from the pool thread the fan-out launched it on: execute, record the
     /// usage, normalise the output and publish the completion snapshot.
     /// </summary>
-    private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)> ExecuteWaveTaskAsync(
+    private async System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)> ExecuteWaveTaskAsync(
         DomainAgent agent,
         DomainTask task,
         SimpleExecutionContext context,
@@ -307,13 +328,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         tokenTally.Record(result);
 
         // Guard against empty output (e.g., LLM call failed)
-        string rawOutput;
-        if (!string.IsNullOrEmpty(result.Output))
-            rawOutput = result.Output;
-        else if (result.Success)
-            rawOutput = "(no output)";
-        else
-            rawOutput = $"Task failed: {result.Error ?? "unknown error"}";
+        var rawOutput = CrewRunOutcome.RawOutputOf(result);
 
         var domainOutput = DomainTaskOutput.Create(
             rawOutput: rawOutput,
@@ -350,7 +365,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
         taskSnapshots.Add(snapshot);
         await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
 
-        return (domainOutput, appOutput);
+        return (domainOutput, appOutput, result.Error ?? result.LastError);
     }
 
     /// <summary>
@@ -403,7 +418,7 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
     /// </summary>
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Quiescing already-launched tasks before the terminal dispatch; their individual outcomes are already in the snapshots.")]
     private static async System.Threading.Tasks.Task SettleAsync(
-        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput)>> tasks)
+        List<System.Threading.Tasks.Task<(DomainTaskOutput domainOutput, ApplicationTaskOutput appOutput, string? error)>> tasks)
     {
         try
         {
@@ -426,6 +441,12 @@ public sealed partial class ParallelProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Completed parallel execution of task {TaskId}, success: {Success}")]
     private partial void LogCompletedParallelExecutionOfTask(TaskId taskId, bool success);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Parallel execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
+    private partial void LogParallelExecutionFailedForCrew(CrewId crewId, int failedTasks, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} ({AgentRole}) skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, string agentRole, TaskId dependencyId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Parallel execution completed for crew {CrewId} in {Duration}")]
     private partial void LogParallelExecutionCompletedForCrew(CrewId crewId, TimeSpan duration);

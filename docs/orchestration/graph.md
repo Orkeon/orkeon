@@ -77,7 +77,7 @@ The engine components live in `Orkeon.Domain.Graph`:
 ## Graph topology
 
 ```
-START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tasks pending, or failed ones re-enqueued)
+START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tasks pending, or a failed one put back first)
                                        │
                                        └──► END              (nothing left)
 ```
@@ -86,11 +86,11 @@ The `execute_task` node dequeues the next task (in the order resolved from the p
 
 The `route` node inspects the state:
 
+- If the task just run failed with retries left → puts it back at the head of the queue, so it is retried before the next task, and loops back
 - If tasks remain in the queue → loops back to `execute_task`
-- If the queue is empty and some tasks failed with retries left → re-enqueues them and loops back
 - Otherwise → routes to END
 
-The crew's output is the last result produced. A task still failing after its retries stays in the outputs as failed, but the crew is reported as **completed**: only the circuit breaker fails a graph run. Unlike the Sequential mode, a failed task does not skip the tasks that depend on it.
+The crew's output is the last result produced. A task still failing after its retries stays in the outputs as failed and **fails the crew**, as in every mode: `Success = false`, an error naming it, a `Failed` hook, exit code 2. The tasks that depend on it are **skipped**. Because a failed task is retried before the next one runs, a dependant only ever sees a dependency that succeeded or gave up.
 
 ## Circuit breaker
 
@@ -108,12 +108,14 @@ The StateGraph reuses `CircuitBreakerPolicy` from `Orkeon.Domain.Common.StateMac
 
 In the Graph mode, each task attempt is one visit of `execute_task` (and one of `route`), so:
 
-- `MaxStateVisits` caps the number of **task attempts** in the whole run — 5 under the Strict default;
+- `MaxStateVisits` caps the number of **task attempts** in the whole run;
 - `MaxTransitions` caps them at half its value (two node executions per attempt).
 
-Size `maxStateVisits` for the number of tasks plus their retries. When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete trace; `GraphProcessStrategy` catches it and returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") that keeps the outputs and the token usage produced so far.
+Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — the most a crew can make, every task spending all its retries — and `2 × visits + 1` transitions. A healthy crew is never cut short whatever its size; a real loop still trips the breaker. An explicit value (in `graphConfig`, else in a crew-level `circuitBreaker`) wins. `MaxTotalDuration` stays the preset's — 10 minutes under Strict, the default — a cost bound `maxTotalDurationSeconds` overrides. When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete trace; `GraphProcessStrategy` catches it and returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") that keeps the outputs and the token usage produced so far.
 
 ### Presets
+
+The preset supplies what is not computed — the total duration first. Its visit and transition caps apply only where the strategy is given a fixed policy (`GraphProcessStrategy.CircuitPolicy`, in C#) and the crew carries no configuration.
 
 | Preset | MaxTransitions | MaxStateVisits | MaxTotalDuration |
 |--------|---------------|----------------|------------------|
@@ -141,8 +143,8 @@ The `GraphProcessStrategy` adds a retry mechanism on top of the circuit breaker:
 How it works:
 
 1. When a task fails, its counter in `RetryCounts` increases; while it stays ≤ `MaxRetryCycles`, the task goes to `FailedTaskIds`
-2. When `PendingTaskIds` is empty, the `route` node moves every task of `FailedTaskIds` back to the pending queue
-3. A task whose counter exceeds `MaxRetryCycles` is abandoned (its failed output stays)
+2. The `route` node moves it back to the **head** of `PendingTaskIds`: it is retried before the next task runs
+3. A task whose counter exceeds `MaxRetryCycles` is abandoned: its failed output stays, it fails the crew, and its dependants are skipped
 4. Every attempt is recorded (one output and one usage entry per attempt), and counts against the circuit breaker
 
 ## YAML configuration
@@ -159,8 +161,8 @@ process: "graph"
 graphConfig:
   maxRetryCycles: int           # default: 2 — retries per failed task
   circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
-  maxTransitions: int           # Overrides the preset
-  maxStateVisits: int           # Cycle detection / task-attempt cap (overrides the preset)
+  maxTransitions: int           # Default: computed, 2 × visits + 1
+  maxStateVisits: int           # Task-attempt cap — default: computed, tasks × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 
 agents:
@@ -184,7 +186,7 @@ Without graphConfig:
 4. CircuitBreakerPolicy.Strict       (fallback when nothing is configured)
 ```
 
-`maxRetryCycles` comes from `graphConfig` only (2 otherwise).
+Whatever the level, `maxStateVisits` and `maxTransitions` left unset are **computed from the crew** rather than taken from the preset (see [Circuit breaker](#circuit-breaker)); the preset supplies the duration. `maxRetryCycles` comes from `graphConfig` only (2 otherwise).
 
 ### Configuration flow to execution
 
@@ -198,7 +200,7 @@ The `graphConfig` block travels all the way to the running graph:
    Reading from the crew (not from the shared, scoped strategy instance) keeps per-crew settings from
    leaking between concurrent executions.
 
-When the crew carries neither block, the strategy uses its own `CircuitPolicy` (`Strict`) and `MaxRetryCycles` (2) properties.
+When the crew carries neither block, the strategy uses its own `MaxRetryCycles` (2) and computes the visit and transition bounds on the Strict preset's duration; its `CircuitPolicy` property, null by default, replaces that computed policy when a C# caller sets it.
 
 ### YAML models
 

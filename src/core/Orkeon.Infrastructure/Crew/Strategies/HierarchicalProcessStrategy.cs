@@ -33,6 +33,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
     private readonly IMemoryScope _memoryScope;
     private readonly CrewHookDispatcher _hooks;
 
+    /// <summary>The role a skipped task reports: the manager was never asked to assign it.</summary>
+    private const string UnassignedRole = "unassigned";
+
     /// <summary>Initializes a new instance of <see cref="HierarchicalProcessStrategy"/>.</summary>
     /// <param name="taskRepository">The task repository.</param>
     /// <param name="agentRepository">The agent repository.</param>
@@ -132,9 +135,35 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             var taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
+            var outcome = new CrewRunOutcome();
+
             foreach (var taskId in taskIds)
             {
                 cancellationToken.ThrowIfCancellationRequested();
+
+                var task = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
+                if (task == null)
+                {
+                    LogTaskNotFoundSkipping(taskId);
+                    continue;
+                }
+
+                // A task depending on one that did not succeed is skipped, as in Sequential
+                // (GAP-03): the manager is not asked to assign work that would run on a
+                // "Task failed: …" where its input should be.
+                if (outcome.BlockingDependency(task) is { } blockedBy)
+                {
+                    var skipReason = outcome.RecordSkip(task.Id, UnassignedRole, blockedBy);
+                    LogTaskSkippedAfterDependency(task.Id, blockedBy);
+                    var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
+                    results.Add(skippedDomain);
+                    applicationTaskOutputs.Add(skippedApp);
+                    context = context with { PreviousOutputs = applicationTaskOutputs };
+                    var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, UnassignedRole, skipReason);
+                    taskSnapshots.Add(skipped);
+                    await _hooks.TaskCompletedAsync(skipped, cancellationToken).ConfigureAwait(false);
+                    continue;
+                }
 
                 // The loop is sequential, so the tally's delta around one task IS that
                 // task's usage — revision re-executions included (W-08).
@@ -142,23 +171,32 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 var cacheHitBefore = tokenTally.CacheHitTokens;
                 var cacheMissBefore = tokenTally.CacheMissTokens;
 
-                var (domainOutput, appOutput, updatedContext) = await ProcessSingleTaskAsync(
-                    taskId, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+                var processed = await ProcessSingleTaskAsync(
+                    task, workerAgents, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
 
-                if (domainOutput == null || appOutput == null)
+                if (processed.Assignee is null)
+                {
+                    // The manager named an agent the crew does not carry: the task never ran,
+                    // and a crew with a task that never ran did not complete.
+                    outcome.RecordFailure(task.Id, managerAgent.Role.Value,
+                        $"the manager assigned it to agent {processed.AssignedAgentId}, who is not a worker of this crew");
                     continue;
+                }
 
+                var (domainOutput, appOutput) = (processed.Domain!, processed.Application!);
                 results.Add(domainOutput);
                 applicationTaskOutputs.Add(appOutput);
-                context = updatedContext!;
+                context = processed.Context!;
+
+                if (!domainOutput.Success)
+                    outcome.RecordFailure(task.Id, processed.Assignee.Role.Value, processed.Error);
 
                 var snapshot = new TaskExecutionSnapshot
                 {
                     TaskId = taskId.Value.ToString(),
                     // The role, not the agent's GUID the output carries: the start event names
                     // the role and a watcher pairs the two by it (STUDIO-17).
-                    AgentRole = workerAgents.FirstOrDefault(a => a.Id.ToString() == appOutput.AgentId)?.Role.Value
-                        ?? appOutput.AgentId ?? string.Empty,
+                    AgentRole = processed.Assignee.Role.Value,
                     Success = domainOutput.Success,
                     Duration = domainOutput.ExecutionTime,
                     CompletedAt = DateTimeOffset.UtcNow,
@@ -171,12 +209,9 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 await _hooks.TaskCompletedAsync(snapshot, cancellationToken).ConfigureAwait(false);
             }
 
-            await _hooks.CrewCompletedAsync(
-                CrewHookDispatcher.Snapshot(
-                    crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
-                cancellationToken).ConfigureAwait(false);
-
-            return BuildCrewOutput(results, workerAgents, managerAgent, crew, startTime, tokenTally);
+            return await BuildCrewOutputAsync(
+                outcome, results, taskSnapshots, workerAgents, managerAgent, crew, startTime, tokenTally)
+                .ConfigureAwait(false);
         }
         catch (OperationCanceledException)
         {
@@ -212,22 +247,28 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         return workerAgents;
     }
 
-    private async Task<(DomainTaskOutput?, ApplicationTaskOutput?, SimpleExecutionContext?)> ProcessSingleTaskAsync(
-        TaskId taskId,
+    /// <summary>
+    /// One task handed out by the manager: who it was assigned to (null when the manager named
+    /// an agent the crew does not carry), its outputs, the context the next task reads, and
+    /// the cause of its failure when it failed.
+    /// </summary>
+    private sealed record ProcessedTask(
+        DomainAgent? Assignee,
+        AgentId AssignedAgentId,
+        DomainTaskOutput? Domain = null,
+        ApplicationTaskOutput? Application = null,
+        SimpleExecutionContext? Context = null,
+        string? Error = null);
+
+    private async Task<ProcessedTask> ProcessSingleTaskAsync(
+        CrewTask task,
         List<DomainAgent> workerAgents,
         SimpleExecutionContext context,
         List<ApplicationTaskOutput> applicationTaskOutputs,
         TokenUsageTally tokenTally,
         CancellationToken cancellationToken)
     {
-        LogManagerProcessingTask(taskId);
-
-        var task = await _taskRepository.GetByIdAsync(taskId, cancellationToken).ConfigureAwait(false);
-        if (task == null)
-        {
-            LogTaskNotFoundSkipping(taskId);
-            return (null, null, null);
-        }
+        LogManagerProcessingTask(task.Id);
 
         var assignment = await _managerAgent.AssignTaskAsync(task, workerAgents, context).ConfigureAwait(false);
         LogManagerAssignedTaskToAgent(assignment.TaskId, assignment.AssignedAgent, assignment.Reason);
@@ -236,24 +277,24 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         if (assignedAgent == null)
         {
             LogAssignedAgentNotFound(assignment.AssignedAgent);
-            return (null, null, null);
+            return new ProcessedTask(null, assignment.AssignedAgent);
         }
 
         await _hooks.TaskStartedAsync(
-            CrewHookDispatcher.Started(taskId.Value.ToString(), assignedAgent.Role.Value), cancellationToken)
+            CrewHookDispatcher.Started(task.Id.Value.ToString(), assignedAgent.Role.Value), cancellationToken)
             .ConfigureAwait(false);
 
-        var (domainOutput, appOutput) = await ExecuteWithRevisionLoopAsync(
-            assignedAgent, task, taskId, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
+        var (domainOutput, appOutput, error) = await ExecuteWithRevisionLoopAsync(
+            assignedAgent, task, task.Id, context, applicationTaskOutputs, tokenTally, cancellationToken).ConfigureAwait(false);
 
         var updatedContext = new SimpleExecutionContext(
             context.CrewId, context.Variables, context.Memory,
             applicationTaskOutputs, context.CancellationToken);
 
-        return (domainOutput, appOutput, updatedContext);
+        return new ProcessedTask(assignedAgent, assignment.AssignedAgent, domainOutput, appOutput, updatedContext, error);
     }
 
-    private async Task<(DomainTaskOutput, ApplicationTaskOutput)> ExecuteWithRevisionLoopAsync(
+    private async Task<(DomainTaskOutput Domain, ApplicationTaskOutput Application, string? Error)> ExecuteWithRevisionLoopAsync(
         DomainAgent assignedAgent,
         CrewTask task,
         TaskId taskId,
@@ -268,6 +309,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
         var appOutput = BuildApplicationTaskOutput(task, assignedAgent, executionResult);
         var domainOutput = BuildDomainTaskOutput(task, executionResult);
+        var error = executionResult.Error ?? executionResult.LastError;
 
         const int MaxRevisions = 3;
         var revisionContext = new TaskRevisionContext(
@@ -282,17 +324,18 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
             if (revision < MaxRevisions - 1)
             {
-                (domainOutput, appOutput) = await ReExecuteTaskAsync(
+                (domainOutput, appOutput, error) = await ReExecuteTaskAsync(
                     revisionContext, revision, tokenTally, cancellationToken).ConfigureAwait(false);
             }
             else
             {
                 (domainOutput, appOutput) = MarkAsNeedsRevision(
                     taskId, MaxRevisions, domainOutput, appOutput);
+                error = $"the manager rejected its output after {MaxRevisions} revisions";
             }
         }
 
-        return (domainOutput, appOutput);
+        return (domainOutput, appOutput, error);
     }
 
     /// <summary>
@@ -306,7 +349,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         List<ApplicationTaskOutput> ApplicationTaskOutputs,
         int MaxRevisions);
 
-    private async Task<(DomainTaskOutput, ApplicationTaskOutput)> ReExecuteTaskAsync(
+    private async Task<(DomainTaskOutput, ApplicationTaskOutput, string?)> ReExecuteTaskAsync(
         TaskRevisionContext revisionContext,
         int revision,
         TokenUsageTally tokenTally,
@@ -329,7 +372,8 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         tokenTally.Record(executionResult);
 
         return (BuildDomainTaskOutput(task, executionResult),
-                BuildApplicationTaskOutput(task, assignedAgent, executionResult));
+                BuildApplicationTaskOutput(task, assignedAgent, executionResult),
+                executionResult.Error ?? executionResult.LastError);
     }
 
     private (DomainTaskOutput, ApplicationTaskOutput) MarkAsNeedsRevision(
@@ -367,7 +411,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         return new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
             AgentId: agent.Id.ToString(),
-            Content: result.Output,
+            Content: CrewRunOutcome.RawOutputOf(result),
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
             ExecutionTime: result.ExecutionTime,
@@ -378,7 +422,7 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         CrewTask task, TaskResult result)
     {
         return DomainTaskOutput.Create(
-            rawOutput: result.Output,
+            rawOutput: CrewRunOutcome.RawOutputOf(result),
             format: "text",
             formattedOutput: null,
             taskId: task.Id,
@@ -387,8 +431,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
             structuredOutput: result.StructuredOutput);
     }
 
-    private DomainCrewOutput BuildCrewOutput(
+    private async Task<DomainCrewOutput> BuildCrewOutputAsync(
+        CrewRunOutcome outcome,
         List<DomainTaskOutput> results,
+        List<TaskExecutionSnapshot> taskSnapshots,
         List<DomainAgent> workerAgents,
         DomainAgent managerAgent,
         DomainCrew crew,
@@ -398,7 +444,10 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
         var finalOutput = string.Join("\n\n", results.Select(r => r.Output));
         var totalExecutionTime = DateTime.UtcNow - startTime;
 
-        LogHierarchicalExecutionCompletedForCrew(crew.Id, totalExecutionTime);
+        if (outcome.HasFailures)
+            LogHierarchicalExecutionFailedForCrew(crew.Id, outcome.Failures.Count, outcome.Reason);
+        else
+            LogHierarchicalExecutionCompletedForCrew(crew.Id, totalExecutionTime);
 
         var metadata = tokenTally
             .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()
@@ -407,12 +456,11 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
                 .Add("worker_count", workerAgents.Count))
             .Build();
 
-        return DomainCrewOutput.CreateSuccess(
-            output: finalOutput,
-            structuredOutput: null,
-            taskOutputs: results,
-            executionTime: totalExecutionTime,
-            metadata: metadata);
+        // A task the manager kept rejecting, or whose worker failed, fails the crew (GAP-03):
+        // "[NEEDS REVISION]" used to sit in a crew reported as completed.
+        return await outcome.CompleteAsync(
+            _hooks, crew.Id.ToString(), startTime, taskSnapshots,
+            results, totalExecutionTime, metadata, finalOutput).ConfigureAwait(false);
     }
 
     /// <inheritdoc />
@@ -448,6 +496,12 @@ public sealed partial class HierarchicalProcessStrategy : IProcessStrategy
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Manager rejected output for task {TaskId} after {Max} revisions, marking as needs revision")]
     private partial void LogManagerRejectedOutputForTask2(TaskId taskId, int max);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Hierarchical execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
+    private partial void LogHierarchicalExecutionFailedForCrew(CrewId crewId, int failedTasks, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, TaskId dependencyId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Hierarchical execution completed for crew {CrewId} in {Duration}")]
     private partial void LogHierarchicalExecutionCompletedForCrew(CrewId crewId, TimeSpan duration);

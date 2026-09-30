@@ -219,8 +219,8 @@ When `process: "graph"` is used, an additional `graphConfig` block configures th
 graphConfig:
   maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
   circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
-  maxTransitions: int           # Overrides the preset
-  maxStateVisits: int           # Cycle detection (overrides the preset)
+  maxTransitions: int           # Default: computed, 2 × visits + 1
+  maxStateVisits: int           # Task-attempt cap — default: computed, tasks × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
@@ -233,7 +233,8 @@ The graph engine enforces three limits only — transitions, visits of one state
 The `circuitBreaker` block with all available parameters. **What reaches execution today**: the
 **crew-level** block, read by the Graph mode only (`GraphProcessStrategy`, when no `graphConfig`
 is declared) — its preset and `maxTransitions`, `maxStateVisits` and `maxTotalDurationSeconds`
-bound the graph run. `stateTimeoutSeconds` and `useDegradedMode` reach the policy too, but the
+bound the graph run (visits and transitions it leaves unset are computed from the crew, see
+[Graph](../orchestration/graph.md)). `stateTimeoutSeconds` and `useDegradedMode` reach the policy too, but the
 graph engine reads neither: they only mean something to the domain FSM, which no strategy runs. The
 task-level block and the three guard limits (`maxRetries`, `maxToolCallsPerRound`,
 `maxValidationRetries`) are parsed into `CircuitBreakerConfig` and resolved by

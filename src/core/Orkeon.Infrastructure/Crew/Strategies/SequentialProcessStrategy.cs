@@ -135,7 +135,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                     .ForTaskAsync(task, agents, agentIndex++, cancellationToken)
                     .ConfigureAwait(false);
 
-                var snapshot = BlockingDependency(task, run.NotSucceeded) is { } blockedBy
+                var snapshot = run.Outcome.BlockingDependency(task) is { } blockedBy
                     ? SkipBlockedTask(run, task, agent, blockedBy)
                     : await RunTaskAsync(run, task, agent, cancellationToken).ConfigureAwait(false);
 
@@ -158,37 +158,14 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
             // A pipeline with a failed step is a failed pipeline: the crew used to report
             // success whatever its tasks did, so an empty deliverable went green all the way
             // to the runner's exit code (STUDIO-12 C5a). The reason names every failed task.
-            if (run.Failures.Count > 0)
-            {
-                var reason = string.Join("; ", run.Failures);
-                LogSequentialExecutionFailedForCrew(crew.Id, run.Failures.Count, reason);
+            if (run.Outcome.HasFailures)
+                LogSequentialExecutionFailedForCrew(crew.Id, run.Outcome.Failures.Count, run.Outcome.Reason);
+            else
+                LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
 
-                await _hooks.CrewFailedAsync(
-                    CrewHookDispatcher.Snapshot(
-                        crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Failed, reason),
-                    null, CancellationToken.None).ConfigureAwait(false);
-
-                return DomainCrewOutput.CreateFailure(
-                    error: reason,
-                    taskOutputs: run.DomainResults,
-                    executionTime: totalTime,
-                    metadata: metadata,
-                    output: finalOutput);
-            }
-
-            LogSequentialExecutionCompletedForCrew(crew.Id, totalTime);
-
-            await _hooks.CrewCompletedAsync(
-                CrewHookDispatcher.Snapshot(
-                    crew.Id.Value.ToString(), startedAt, run.TaskSnapshots, CrewHookStatus.Completed),
-                CancellationToken.None).ConfigureAwait(false);
-
-            return DomainCrewOutput.CreateSuccess(
-                output: finalOutput,
-                structuredOutput: null,
-                taskOutputs: run.DomainResults,
-                executionTime: totalTime,
-                metadata: metadata);
+            return await run.Outcome.CompleteAsync(
+                _hooks, crew.Id.Value.ToString(), startedAt, run.TaskSnapshots,
+                run.DomainResults, totalTime, metadata, finalOutput).ConfigureAwait(false);
         }
         catch (OperationCanceledException) when (_hooks.HasHook)
         {
@@ -227,27 +204,35 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         public List<DomainTaskOutput> DomainResults { get; } = [];
         public List<TaskExecutionSnapshot> TaskSnapshots { get; } = [];
         public TokenUsageTally TokenTally { get; } = new();
-        public List<string> Failures { get; } = [];
 
         /// <summary>
-        /// Every task that failed or was skipped: a task depending on one of them is skipped in
-        /// its turn, so a broken step never runs the rest of the chain on a context that says
-        /// "Task failed: …" where the deliverable it needed should have been (LLM-11).
+        /// The failures so far, and the tasks that did not succeed: a task depending on one of
+        /// them is skipped in its turn, so a broken step never runs the rest of the chain on a
+        /// context that says "Task failed: …" where the deliverable it needed should have been
+        /// (LLM-11). The rule is shared by the six modes (GAP-03).
         /// </summary>
-        public HashSet<TaskId> NotSucceeded { get; } = [];
+        public CrewRunOutcome Outcome { get; } = new();
     }
 
-    /// <summary>A task blocked by a dependency that did not succeed: recorded as skipped, never run.</summary>
+    /// <summary>
+    /// A task blocked by a dependency that did not succeed (LLM-11): recorded as skipped, never
+    /// run — a failed output for the next tasks' context and the crew's result, and a snapshot
+    /// marked <see cref="TaskExecutionSnapshot.Skipped"/> for the summary and the run events.
+    /// No agent is asked anything, so nothing is started and no token is spent.
+    /// </summary>
     private TaskExecutionSnapshot SkipBlockedTask(
         SequentialRun run, Orkeon.Domain.Task.CrewTask task, DomainAgent agent, TaskId blockedBy)
     {
-        TaskExecutionSnapshot snapshot;
-        (run.Context, snapshot) = RecordSkippedTask(
-            task, agent, blockedBy, run.Context, run.ApplicationOutputs, run.DomainResults);
-        run.NotSucceeded.Add(task.Id);
-        run.Failures.Add(snapshot.SkipReason!);
+        var reason = run.Outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+        LogTaskSkippedAfterDependency(task.Id, agent.Role, blockedBy);
+
+        var (domainOutput, applicationOutput) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+        run.ApplicationOutputs.Add(applicationOutput);
+        run.DomainResults.Add(domainOutput);
+        run.Context = run.Context with { PreviousOutputs = run.ApplicationOutputs };
         _delegationProvider.UpdateExecutionContext(run.Context);
-        return snapshot;
+
+        return CrewRunOutcome.SkippedSnapshot(task.Id, agent.Role.Value, reason);
     }
 
     /// <summary>One task run by its agent, its outcome folded into the pass.</summary>
@@ -271,11 +256,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         LogTaskCompletedSuccess(task.Id, snapshot.Success);
 
         if (!taskResult.Success)
-        {
-            run.NotSucceeded.Add(task.Id);
-            run.Failures.Add(
-                $"Task {task.Id} ({agent.Role}) failed: {taskResult.Error ?? taskResult.LastError ?? "unknown error"}");
-        }
+            run.Outcome.RecordFailure(task.Id, agent.Role.Value, taskResult.Error ?? taskResult.LastError);
 
         return snapshot;
     }
@@ -300,7 +281,7 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
                 executionResult.LastError ?? executionResult.Error ?? "(none)");
         }
 
-        var rawOutput = GetRawOutput(executionResult);
+        var rawOutput = CrewRunOutcome.RawOutputOf(executionResult);
 
         var appOutput = new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
@@ -359,79 +340,6 @@ public sealed partial class SequentialProcessStrategy : IProcessStrategy
         return agents;
     }
 
-    /// <summary>
-    /// The first declared dependency of <paramref name="task"/> that failed or was skipped,
-    /// or null when the task may run. Only the direct dependencies are read: a skipped task
-    /// joins <paramref name="notSucceeded"/> itself, so the transitive closure follows.
-    /// </summary>
-    private static TaskId? BlockingDependency(Orkeon.Domain.Task.CrewTask task, HashSet<TaskId> notSucceeded) =>
-        task.Dependencies.FirstOrDefault(notSucceeded.Contains);
-
-    /// <summary>
-    /// Records a task that does not run because <paramref name="blockedBy"/> did not succeed
-    /// (LLM-11): a failed output for the next tasks' context and the crew's result, and a
-    /// snapshot marked <see cref="TaskExecutionSnapshot.Skipped"/> for the summary and the
-    /// run events. No agent is asked anything, so nothing is started and no token is spent.
-    /// </summary>
-    private (SimpleExecutionContext Context, TaskExecutionSnapshot Snapshot) RecordSkippedTask(
-        Orkeon.Domain.Task.CrewTask task,
-        DomainAgent agent,
-        TaskId blockedBy,
-        SimpleExecutionContext context,
-        List<ApplicationTaskOutput> applicationOutputs,
-        List<DomainTaskOutput> domainResults)
-    {
-        var reason = $"Task {task.Id} ({agent.Role}) skipped: it depends on task {blockedBy}, which did not succeed";
-        LogTaskSkippedAfterDependency(task.Id, agent.Role, blockedBy);
-
-        var rawOutput = $"Task skipped: dependency {blockedBy} did not succeed";
-        applicationOutputs.Add(new ApplicationTaskOutput(
-            TaskId: task.Id.Value.ToString(),
-            AgentId: agent.Id.ToString(),
-            Content: rawOutput,
-            CompletedAt: DateTime.UtcNow,
-            Success: false,
-            ExecutionTime: TimeSpan.Zero));
-
-        domainResults.Add(DomainTaskOutput.Create(
-            rawOutput: rawOutput,
-            format: "text",
-            formattedOutput: null,
-            taskId: task.Id,
-            success: false,
-            executionTime: TimeSpan.Zero,
-            structuredOutput: null,
-            agentId: agent.Id.ToString()));
-
-        var updatedContext = new SimpleExecutionContext(
-            context.CrewId,
-            context.Variables,
-            context.Memory,
-            applicationOutputs,
-            context.CancellationToken);
-
-        var snapshot = new TaskExecutionSnapshot
-        {
-            TaskId = task.Id.Value.ToString(),
-            AgentRole = agent.Role?.ToString() ?? string.Empty,
-            Success = false,
-            Duration = TimeSpan.Zero,
-            CompletedAt = DateTimeOffset.UtcNow,
-            Skipped = true,
-            SkipReason = reason,
-        };
-
-        return (updatedContext, snapshot);
-    }
-
-    private static string GetRawOutput(Orkeon.Application.Interfaces.Services.TaskResult result)
-    {
-        if (!string.IsNullOrEmpty(result.Output))
-            return result.Output;
-        if (result.Success)
-            return "(no output)";
-        return $"Task failed: {result.Error ?? "unknown error"}";
-    }
 
     /// <inheritdoc />
     public System.Threading.Tasks.Task<DomainCrewOutput> ExecuteHierarchicalAsync(DomainCrew crew, AgentId managerAgentId, IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken cancellationToken = default)

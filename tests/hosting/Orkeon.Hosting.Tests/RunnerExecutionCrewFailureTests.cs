@@ -1,7 +1,9 @@
 using System.Text;
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Common;
+using Orkeon.Hosting.Tests.Doubles;
 
 namespace Orkeon.Hosting.Tests;
 
@@ -77,11 +79,56 @@ public sealed class RunnerExecutionCrewFailureTests : IDisposable
         Assert.DoesNotContain("ERROR:", stderr, StringComparison.Ordinal);
     }
 
-    private async Task<(int exit, string stderr)> RunAsync(CrewOutput scripted)
+    [Fact]
+    public async Task A_hierarchical_crew_whose_manager_rejected_a_task_exits_2_with_the_reason_as_the_last_stderr_line()
+    {
+        // GAP-03, end to end: the real orchestrator and the real hierarchical strategy — only
+        // the manager (which rejects every output) and the agent execution are doubles. The
+        // crew used to be reported as completed with its task "[NEEDS REVISION]", and exit 0.
+        await File.WriteAllTextAsync(Path.Combine(_tempDir, "hierarchical.yaml"), """
+            name: "exit-code-hierarchical"
+            goal: "Crew whose manager rejects every output"
+            process: "hierarchical"
+            managerAgent: lead
+            agents:
+              lead:
+                role: "Lead"
+                goal: "Review"
+                backstory: "A demanding manager."
+                maxIter: 1
+              worker:
+                role: "Worker"
+                goal: "Work"
+                backstory: "A minimal test agent."
+                maxIter: 1
+            tasks:
+              do_work:
+                description: "Do the work."
+                expectedOutput: "The work."
+            """, TestContext.Current.CancellationToken);
+
+        var (exit, stderr) = await RunAsync(
+            "hierarchical.yaml",
+            services =>
+            {
+                services.AddScoped<IManagerAgent>(_ => new StubRejectingManagerAgent());
+                services.AddScoped<IAgentExecutionService>(_ => new StubAgentExecutionService());
+            });
+
+        Assert.Equal(2, exit);
+        var lastLine = stderr.TrimEnd().Split('\n').Last().TrimEnd('\r');
+        Assert.StartsWith("ERROR: Task ", lastLine, StringComparison.Ordinal);
+        Assert.Contains("(Worker) failed: the manager rejected its output", lastLine, StringComparison.Ordinal);
+    }
+
+    private Task<(int exit, string stderr)> RunAsync(CrewOutput scripted) =>
+        RunAsync("config.yaml", services => services.AddSingleton<ICrewOrchestrationService>(new ScriptedOrchestrator(scripted)));
+
+    private async Task<(int exit, string stderr)> RunAsync(string configFile, Action<IServiceCollection> configure)
     {
         var opts = new TestOptions
         {
-            ConfigPath = Path.Combine(_tempDir, "config.yaml"),
+            ConfigPath = Path.Combine(_tempDir, configFile),
             AllowExternalMounts = true,
         };
 
@@ -96,7 +143,7 @@ public sealed class RunnerExecutionCrewFailureTests : IDisposable
             var exit = await RunnerExecution.RunOneShotAsync(
                 opts,
                 "Orkeon.Hosting.Tests",
-                (_, services) => services.AddSingleton<ICrewOrchestrationService>(new ScriptedOrchestrator(scripted)),
+                (_, services) => configure(services),
                 TestContext.Current.CancellationToken);
             return (exit, stderr.ToString());
         }

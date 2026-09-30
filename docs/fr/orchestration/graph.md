@@ -77,7 +77,7 @@ Les composants du moteur se trouvent dans `Orkeon.Domain.Graph` :
 ## Topologie du graphe
 
 ```
-START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tâches en attente, ou échouées remises en file)
+START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tâches en attente, ou une échouée remise en tête)
                                        │
                                        └──► END              (plus rien)
 ```
@@ -86,11 +86,11 @@ Le nœud `execute_task` retire la tâche suivante (dans l'ordre résolu depuis l
 
 Le nœud `route` inspecte l'état :
 
+- Si la tâche qui vient de tourner a échoué avec des retries restants → la remet en tête de file, pour qu'elle soit relancée avant la tâche suivante, et reboucle
 - S'il reste des tâches dans la file → reboucle vers `execute_task`
-- Si la file est vide et que des tâches ont échoué avec des retries restants → les remet en file et reboucle
 - Sinon → route vers END
 
-La sortie de la crew est le dernier résultat produit. Une tâche qui échoue encore après ses retries reste dans les sorties comme échouée, mais la crew est déclarée **terminée** : seul le circuit breaker fait échouer un run en graphe. Contrairement au mode Sequential, une tâche échouée ne fait pas sauter les tâches qui en dépendent.
+La sortie de la crew est le dernier résultat produit. Une tâche qui échoue encore après ses retries reste dans les sorties comme échouée et **fait échouer la crew**, comme dans tous les modes : `Success = false`, une erreur qui la nomme, un hook `Failed`, code de sortie 2. Les tâches qui en dépendent sont **sautées**. Comme une tâche échouée est relancée avant la suivante, une dépendante ne voit jamais qu'une dépendance réussie ou abandonnée.
 
 ## Circuit breaker
 
@@ -108,12 +108,14 @@ Le StateGraph réutilise `CircuitBreakerPolicy` de `Orkeon.Domain.Common.StateMa
 
 En mode Graph, chaque tentative de tâche est une visite de `execute_task` (et une de `route`), donc :
 
-- `MaxStateVisits` plafonne le nombre de **tentatives de tâches** sur tout le run — 5 avec le défaut Strict ;
+- `MaxStateVisits` plafonne le nombre de **tentatives de tâches** sur tout le run ;
 - `MaxTransitions` les plafonne à la moitié de sa valeur (deux exécutions de nœuds par tentative).
 
-Dimensionnez `maxStateVisits` pour le nombre de tâches plus leurs retries. Quand une condition est violée, une `GraphCircuitBrokenException` est levée avec la trace complète ; `GraphProcessStrategy` l'intercepte et renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») qui conserve les sorties et l'usage de tokens produits jusque-là.
+Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — le maximum qu'une crew peut faire, chaque tâche épuisant ses retries — et `2 × visites + 1` transitions. Une crew saine n'est jamais coupée, quelle que soit sa taille ; une vraie boucle déclenche encore le disjoncteur. Une valeur explicite (dans `graphConfig`, sinon dans un `circuitBreaker` de crew) l'emporte. `MaxTotalDuration` reste celle du preset — 10 minutes en Strict, le défaut — une borne de coût que `maxTotalDurationSeconds` surcharge. Quand une condition est violée, une `GraphCircuitBrokenException` est levée avec la trace complète ; `GraphProcessStrategy` l'intercepte et renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») qui conserve les sorties et l'usage de tokens produits jusque-là.
 
 ### Presets
+
+Le preset fournit ce qui n'est pas calculé — la durée totale d'abord. Ses plafonds de visites et de transitions ne s'appliquent que là où la stratégie reçoit une politique fixe (`GraphProcessStrategy.CircuitPolicy`, en C#) et où la crew ne porte aucune configuration.
 
 | Preset | MaxTransitions | MaxStateVisits | MaxTotalDuration |
 |--------|---------------|----------------|------------------|
@@ -141,8 +143,8 @@ Le `GraphRunner<TState>` expose deux événements :
 Fonctionnement :
 
 1. Quand une tâche échoue, son compteur dans `RetryCounts` augmente ; tant qu'il reste ≤ `MaxRetryCycles`, la tâche va dans `FailedTaskIds`
-2. Quand `PendingTaskIds` est vide, le nœud `route` replace toutes les tâches de `FailedTaskIds` dans la file d'attente
-3. Une tâche dont le compteur dépasse `MaxRetryCycles` est abandonnée (sa sortie en échec reste)
+2. Le nœud `route` la replace en **tête** de `PendingTaskIds` : elle est relancée avant la tâche suivante
+3. Une tâche dont le compteur dépasse `MaxRetryCycles` est abandonnée : sa sortie en échec reste, elle fait échouer la crew, et ses dépendantes sont sautées
 4. Chaque tentative est enregistrée (une sortie et une entrée d'usage par tentative) et compte pour le circuit breaker
 
 ## Configuration YAML
@@ -159,8 +161,8 @@ process: "graph"
 graphConfig:
   maxRetryCycles: int           # défaut : 2 — retries par tâche échouée
   circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
-  maxTransitions: int           # Surcharge le preset
-  maxStateVisits: int           # Détection de cycles / plafond de tentatives (surcharge le preset)
+  maxTransitions: int           # Défaut : calculé, 2 × visites + 1
+  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 
 agents:
@@ -184,7 +186,7 @@ Sans graphConfig :
 4. CircuitBreakerPolicy.Strict            (repli quand rien n'est configuré)
 ```
 
-`maxRetryCycles` ne vient que de `graphConfig` (2 sinon).
+Quel que soit le niveau, `maxStateVisits` et `maxTransitions` non fixés sont **calculés depuis la crew** plutôt que pris dans le preset (voir [Circuit breaker](#circuit-breaker)) ; le preset fournit la durée. `maxRetryCycles` ne vient que de `graphConfig` (2 sinon).
 
 ### Flux de configuration jusqu'à l'exécution
 
@@ -198,7 +200,7 @@ Le bloc `graphConfig` voyage jusqu'au graphe en cours d'exécution :
    Lire depuis la crew (et non depuis l'instance de stratégie scoped partagée) empêche les réglages
    d'une crew de fuir entre exécutions concurrentes.
 
-Quand la crew ne porte aucun des deux blocs, la stratégie utilise ses propres propriétés `CircuitPolicy` (`Strict`) et `MaxRetryCycles` (2).
+Quand la crew ne porte aucun des deux blocs, la stratégie utilise son propre `MaxRetryCycles` (2) et calcule les bornes de visites et de transitions sur la durée du preset Strict ; sa propriété `CircuitPolicy`, nulle par défaut, remplace cette politique calculée quand un appelant C# la fixe.
 
 ### Modèles YAML
 

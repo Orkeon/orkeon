@@ -90,13 +90,13 @@ Task<CrewOutput> ExecuteAutonomousAsync(
                     │    1. manager.AssignTaskAsync (LLM) → agent      │
                     │    2. budget.RecordToolCall()                    │
                     │    3. ExecuteTaskAsync(agent, tâche)             │
-                    │    4. échec + AllowDelegation + profondeur :     │
+                    │    4. échec + AllowDelegation + profondeur + pair│
                     │       ├─ budget.RecordDelegation()               │
                     │       ├─ channel.RequestAsync("delegate",        │
                     │       │    premier autre agent, timeout 2 min)   │
                     │       └─ le pair exécute sous un budget enfant   │
                     │    5. BudgetExhausted dans la tâche → sortie     │
-                    │       partielle « [BUDGET EXHAUSTED] … »         │
+                    │       partielle « [BUDGET EXHAUSTED] … », arrêt  │
                     │  BudgetExhausted entre deux tâches → arrêt       │
                     └──────────────────────────────────────────────────┘
 ```
@@ -107,7 +107,7 @@ Les détails qui comptent pour dimensionner un run :
 - **Appels d'outils** : la stratégie enregistre **un** `RecordToolCall()` par tâche distribuée (l'assignation) ; les appels d'outils de l'agent dans sa boucle ne sont pas imputés au budget. `MaxToolCalls` borne donc le nombre de tâches tentées.
 - **Profondeur de délégation** : `RecordDelegation()` incrémente un compteur commun à la crew qui n'est jamais décrémenté, si bien que `MaxDelegationDepth` se comporte comme le nombre de délégations permises dans le run. Le délégué est le **premier autre agent** dans l'ordre de la crew ; il exécute une nouvelle tâche construite à partir de la description (variables de contexte `delegation_context` et `autonomous_child_budget_snapshot`) et ne délègue pas plus loin.
 - **Tokens** : les tokens d'une exécution déléguée sont imputés au budget enfant et au budget parent ; les exécutions directes alimentent la télémétrie de tokens de la crew mais pas `MaxTokensConsumed`.
-- **Résultat** : la sortie de la crew concatène les sorties des tâches et est déclarée **terminée** même quand des tâches ont échoué ou que le budget s'est épuisé ; `ICrewExecutionHook` reçoit le statut `Canceled` (« Execution budget exhausted ») quand une dimension est épuisée.
+- **Résultat** : la sortie de la crew concatène les sorties des tâches. Une tâche en échec — directement, sans pair à qui déléguer, ou déléguée à un pair qui échoue aussi — **fait échouer la crew**, et les tâches qui en dépendent sont sautées sans être réclamées. Un budget épuisé fait aussi échouer la crew, son erreur commençant par `Execution budget exhausted: <dimension>` et nommant chaque tâche qu'il n'a pas atteinte ; `ICrewExecutionHook` reçoit `Failed` avec cette raison (`Canceled` reste réservé à une vraie annulation). `orkeon run` sort en 2 dans les deux cas.
 
 ## Budget multi-dimensionnel
 

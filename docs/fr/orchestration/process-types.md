@@ -44,6 +44,7 @@ Ce que toutes les stratégies partagent :
 
 - **Ordre des tâches** — les modes qui distribuent les tâches l'une après l'autre (tous sauf Parallel) les exécutent dans l'ordre résolu par `CrewTaskSequencer` : celui du planificateur quand `planning: true` en a produit un, sinon un tri topologique stable sur les `dependencies` déclarées (détaillé sous Sequential).
 - **Hooks de cycle de vie** — chaque mode rend compte via `ICrewExecutionHook` (`OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`), sur toutes les sorties, annulation comprise ; c'est ce qui alimente `AUTO_SUMMARY.md`, le flux `orkeon run --events` et la progression affichée par l'hôte.
+- **Issue** — une tâche échouée fait échouer la crew et saute ses dépendantes, dans tous les modes (détaillé sous Sequential) : `Success = false`, une `Error` qui nomme chaque tâche échouée ou sautée, un hook `Failed`, code de sortie 2.
 - **Télémétrie des tokens** — l'usage réel (prompt, complétion, hits/misses de cache quand le fournisseur les rapporte) voyage dans les métadonnées de `CrewOutput` ; `CrewOutput.TokensUsed` reste `null` quand rien n'a été mesuré.
 
 ### Qui exécute une tâche qui ne nomme aucun agent
@@ -66,8 +67,8 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 |---------|-----------|-------------|---------|-----------|-------|-----------|
 | **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + vote | Linéaire + cycle de retry | Assignation par le manager, délégation sur échec |
 | **Choix de l'agent** | Déclaré, sinon sélecteur | LLM manager | Déclaré, sinon sélecteur | Tous les agents | Déclaré, sinon sélecteur | LLM manager |
-| **Dépendances entre tâches** | Ordre + saut sur échec | Ordre | Vagues | Ordre | Ordre | Ordre |
-| **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | — | — | Seulement avec `FallbackStrategy: Fail` | — (circuit breaker uniquement) | — |
+| **Dépendances entre tâches** | Ordre + saut sur échec | Ordre + saut sur échec | Vagues + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec |
+| **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ après ses retries (dépendantes sautées) | ✅ (dépendantes sautées ; un budget épuisé aussi) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mécanismes | — |
 | **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
@@ -85,7 +86,7 @@ Les tâches s'exécutent **une par une**. Chaque tâche reçoit en contexte les 
 
 **Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche passe après toutes celles dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew qui ne déclare aucune dépendance s'exécute exactement comme écrite. Cela vaut dans toutes les dispositions : la disposition multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichier, si bien que sans ce tri `consolidate.yaml` passait avant l'`extract.yaml` dont elle dépend. Une dépendance qui nomme un identifiant de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dedans et un avertissement les nomme. La même règle ordonne les modes hierarchical, consensual, graph et autonomous, qui distribuent eux aussi leurs tâches l'une après l'autre ; le mode parallel garde sa propre sémantique (des **vagues** de dépendances, et un cycle y est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel.
 
-**Gestion des échecs (Sequential uniquement)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée (LLM-11). Les autres modes ne sautent pas les dépendantes et déclarent la crew terminée même quand une tâche a échoué (voir la matrice).
+**Gestion des échecs (tous les modes)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée (LLM-11). La règle est la même dans les six modes : une crew dont une tâche a échoué rend `Success = false`, son hook reçoit `Failed` avec la même raison, et `orkeon run` sort en 2. Un mode qui tolère un échec — Graph et ses retries, Autonomous et sa délégation — le fait avant que la tâche compte comme échouée.
 
 ### Mécanisme interne
 
@@ -139,7 +140,7 @@ var crew = new CrewBuilder()
 - **Simplicité maximale** : aucune configuration complexe, comportement prévisible
 - **Traçabilité** : chaque étape est clairement identifiable dans les logs
 - **Contexte cumulatif** : chaque tâche bénéficie des résultats précédents
-- **Résultat honnête** : le seul mode où une étape échouée fait échouer la crew et arrête ses dépendantes
+- **Résultat honnête** : une étape échouée fait échouer la crew et arrête ses dépendantes (comme dans tous les modes)
 
 ### Inconvénients
 
@@ -171,7 +172,8 @@ Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne l
 - La crew doit nommer son manager : `managerAgent:` en YAML (ou `.Hierarchical(manager)` / `.WithManagerId(...)`) ; sans lui, l'exécution échoue avec « Hierarchical process requires a manager agent ». Cet agent est retiré du pool de workers.
 - Les décisions du manager passent par le **LLM enregistré par l'hôte** (`IChatClient` s'il est présent, sinon `IBasicLlmProvider` — la section `Llm` d'un hôte runner), pas par le bloc `llm:` de l'agent manager ; elles sont comptabilisées sous le rôle du manager.
 - Assignation : le LLM manager répond en JSON ; une réponse illisible retombe sur une heuristique rôle/mots-clés, une erreur du LLM sur le premier worker. L'`agent:` d'une tâche n'est pas consulté.
-- Revue : jusqu'à **3 revues par tâche**, donc au plus **2 ré-exécutions** (chacune avec une variable de contexte `revision_feedback`). Un troisième rejet conserve la dernière sortie, préfixée `[NEEDS REVISION]` et marquée en échec. Une revue qui échoue vaut approbation.
+- Revue : jusqu'à **3 revues par tâche**, donc au plus **2 ré-exécutions** (chacune avec une variable de contexte `revision_feedback`). Un troisième rejet conserve la dernière sortie, préfixée `[NEEDS REVISION]` et marquée en échec — et la tâche fait échouer la crew. Une revue qui échoue vaut approbation.
+- Une tâche assignée à un agent absent de la crew ne s'exécute jamais, et fait échouer la crew. Une tâche dont une dépendance a échoué est sautée sans consulter le manager.
 
 ### Mécanisme interne
 
@@ -229,7 +231,6 @@ agents:
 - **Surcoût LLM** : un appel d'assignation + un à trois appels de revue par tâche, en plus des workers
 - **Goulot d'étranglement** : tout passe par le manager (pas de parallélisme)
 - **Révisions fixes** : 3 revues par tâche, en dur
-- **Échec silencieux** : une tâche rejetée ou échouée ne fait pas échouer la crew — lisez les sorties des tâches
 
 ### Quand l'utiliser
 
@@ -253,7 +254,7 @@ Les tâches sont groupées en **vagues de dépendances**. Une vague contient tou
 
 - Une dépendance qui nomme une tâche absente de la crew compte comme satisfaite.
 - Un **cycle de dépendances est refusé** : l'exécution échoue en nommant les tâches prises dedans.
-- Une tâche échouée n'arrête ni ses voisines de vague, ni ses dépendantes de la vague suivante, et la crew est déclarée terminée.
+- Une tâche échouée n'arrête pas ses voisines de vague ; ses dépendantes des vagues suivantes sont **sautées**, et la crew échoue en nommant chaque tâche échouée ou sautée.
 - Il n'y a pas de plafond de concurrence : toutes les tâches d'une vague appellent leur LLM en même temps.
 
 ### Mécanisme interne
@@ -296,7 +297,7 @@ tasks:
 
 - **Ordonnancement grossier** : une tâche attend toute sa vague, pas seulement ce qu'elle a déclaré
 - **Pics de consommation d'API** : toutes les requêtes LLM d'une vague partent en même temps (rate limiting)
-- **Pas de retry**, et une tâche échouée alimente quand même (sous forme de message d'échec) la vague suivante
+- **Pas de retry** : une tâche échouée fait échouer la crew, et saute ce qui en dépend
 
 ### Quand l'utiliser
 
@@ -308,7 +309,6 @@ tasks:
 
 - Relance de tâches instables (utilisez Graph)
 - API au rate limiting strict
-- Pipelines où une étape échouée doit arrêter ce qui en dépend (utilisez Sequential)
 
 ---
 
@@ -341,7 +341,7 @@ Le pipeline **ne compare pas** le contenu des sorties. Chaque exécution d'un ag
 
 - `Majority`, `SuperMajority` et `Unanimity` sans pondération **n'atteignent jamais le consensus** (chaque choix détient 1/N des voix) ; avec `UseWeightedVotes: true` (ou `WeightedConsensus`), un choix l'emporte quand les exécutions des autres agents ont échoué.
 - `BordaCount` attend des classements séparés par des virgules ; un bulletin à choix unique donne 0 point à tous, il désigne donc le **premier agent** vainqueur dès le round 1.
-- Le repli `AcceptBestScore` **ré-exécute la tâche avec le premier agent** et garde cette sortie ; `ManagerDecision` fait de même aujourd'hui ; `Fail` arrête la crew (« Consensus could not be reached for task … »).
+- Le repli `AcceptBestScore` **ré-exécute la tâche avec le premier agent** et garde cette sortie ; `ManagerDecision` fait de même aujourd'hui ; `Fail` fait échouer la tâche (« Consensus could not be reached for task … »). Le résultat retenu est celui de la tâche : s'il est en échec — `Fail`, ou une exécution gagnante qui a échoué — la crew échoue et les dépendantes de la tâche sont sautées ; les tâches qui n'en dépendent pas s'exécutent quand même.
 
 En pratique, pour une crew dont tous les agents réussissent, chaque tâche coûte `MaxVotingRounds` × N exécutions plus une exécution de repli (N exécutions avec `BordaCount`). Les variables d'entrée de la crew ne sont pas interpolées dans ce mode ; les sorties gagnantes des tâches précédentes sont transmises en contexte.
 
@@ -420,7 +420,7 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
 
 ### Principe
 
-La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à topologie fixe : `execute_task` exécute la prochaine tâche en attente, `route` remet en file les tâches échouées qui ont encore des retries et reboucle tant qu'il reste du travail. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
+La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à topologie fixe : `execute_task` exécute la prochaine tâche en attente, `route` remet une tâche échouée qui a encore des retries en tête de file — elle est relancée avant la tâche suivante — et reboucle tant qu'il reste du travail. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
 
 ### Mécanisme interne
 
@@ -442,7 +442,7 @@ START ──→ execute_task ──→ route ──┬── tâches en attente 
 | Propriété | Type | Description |
 |-----------|------|-------------|
 | `PendingTaskIds` | `Queue<TaskId>` | Tâches restant à exécuter |
-| `FailedTaskIds` | `Queue<TaskId>` | Tâches en attente d'un cycle de retry |
+| `FailedTaskIds` | `Queue<TaskId>` | Tâches échouées que le nœud `route` remet en tête de file |
 | `RetryCounts` | `Dictionary<string, int>` | Compteur de retries par tâche |
 | `MaxRetryCycles` | `int` | Retries par tâche échouée (défaut : 2) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Sorties accumulées, une par tentative |
@@ -453,13 +453,13 @@ START ──→ execute_task ──→ route ──┬── tâches en attente 
 
 ### Circuit breaker — 3 mécanismes de protection
 
-| Mécanisme | Strict (défaut) | Default | Permissive |
-|-----------|--------|---------|------------|
-| `MaxTransitions` (exécutions de nœuds) | 50 | 100 | 1000 |
-| `MaxStateVisits` (visites d'un nœud) | 5 | 10 | 50 |
-| `MaxTotalDuration` | 10 min | 30 min | 2 h |
+| Mécanisme | Calculé (défaut) | Preset Strict | Preset Default | Preset Permissive |
+|-----------|--------|--------|---------|------------|
+| `MaxTransitions` (exécutions de nœuds) | 2 × visites + 1 | 50 | 100 | 1000 |
+| `MaxStateVisits` (visites d'un nœud) | tâches × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
+| `MaxTotalDuration` | celle du preset (10 min en Strict) | 10 min | 30 min | 2 h |
 
-Chaque tentative de tâche est une visite de `execute_task`, donc `MaxStateVisits` plafonne le nombre de tentatives de tâches sur tout le run : **5 en Strict** — relevez `maxStateVisits` pour une crew qui a plus de tâches (retries compris). Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
+Chaque tentative de tâche est une visite de `execute_task` (et une de `route`). Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — le maximum qu'une crew peut faire, chaque tâche épuisant ses retries — et deux fois plus une transitions ; une crew saine n'est donc jamais coupée, quelle que soit sa taille, et une vraie boucle déclenche encore le disjoncteur. Une valeur explicite l'emporte ; le preset (`circuitBreakerPreset`, Strict par défaut) ne fournit plus que ce qui n'est pas calculé, à commencer par la durée totale. Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
 
 ### Configuration YAML
 
@@ -468,9 +468,9 @@ name: "review-loop"
 goal: "Démo graphe"
 process: graph
 graphConfig:
-  circuitBreakerPreset: "strict"   # ou "default", "permissive"
+  circuitBreakerPreset: "strict"   # ou "default", "permissive" — fournit la durée
   maxRetryCycles: 3
-  # Surcharges individuelles possibles :
+  # Surcharges individuelles possibles (visites et transitions sont calculées sinon) :
   maxTransitions: 75
   maxStateVisits: 20
   maxTotalDurationSeconds: 1800
@@ -478,15 +478,14 @@ graphConfig:
 
 ### Avantages
 
-- **Retry intégré** : les tâches échouées sont relancées après celles en attente, jusqu'à `maxRetryCycles`
+- **Retry intégré** : une tâche échouée est relancée avant la suivante, jusqu'à `maxRetryCycles`
 - **Sûreté** : un circuit breaker borne les exécutions, les visites et la durée
 - **Observabilité** : événements `OnNodeCompleted` / `OnCircuitBroken`, journalisés par la stratégie
-- **Presets** : Strict (défaut) vs Permissive
+- **Bornes à la taille de la crew** : visites et transitions calculées depuis le nombre de tâches et les retries
 
 ### Inconvénients
 
-- **Strict est serré** : le défaut plafonne le run à 5 tentatives de tâches
-- **Échec silencieux** : une tâche qui échoue encore après ses retries ne fait pas échouer la crew (seul le disjoncteur le fait)
+- **Durée par défaut de 10 minutes** : la `MaxTotalDuration` du preset Strict borne encore le run — relevez `maxTotalDurationSeconds` pour une crew longue
 - **Topologie fixe en YAML** : le routage conditionnel exige l'API C# `StateGraph<TState>`
 
 ### Quand l'utiliser
@@ -496,7 +495,7 @@ graphConfig:
 
 ### Quand ne pas l'utiliser
 
-- Pipelines linéaires simples où un échec doit arrêter l'exécution (Sequential)
+- Pipelines linéaires simples sans étape qui mérite d'être relancée (Sequential)
 - Tâches indépendantes (Parallel)
 
 > **Voir aussi** : [Orchestration Graph](./graph.md) pour tous les détails.
@@ -507,7 +506,7 @@ graphConfig:
 
 ### Principe
 
-Pour chaque tâche, le LLM manager (`LlmBasedManager`, comme en Hierarchical) choisit l'agent qui la **réclame**. Quand l'exécution de cet agent échoue et que l'agent autorise la délégation, la tâche est **déléguée à un pair** via le canal A2A (`IAgentChannel`), sous un budget enfant dérivé. Un **budget multi-dimensionnel** (5 axes) borne le run. L'API est expérimentale (`ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md)).
+Pour chaque tâche, le LLM manager (`LlmBasedManager`, comme en Hierarchical) choisit l'agent qui la **réclame**. Quand l'exécution de cet agent échoue et que l'agent autorise la délégation, la tâche est **déléguée à un pair** via le canal A2A (`IAgentChannel`), sous un budget enfant dérivé. Sans pair dans la crew, l'échec est maintenu. Un **budget multi-dimensionnel** (5 axes) borne le run. L'API est expérimentale (`ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md)).
 
 ### Mécanisme interne
 
@@ -586,7 +585,7 @@ process: autonomous
 
 - **Expérimental** : `ORKEXP002`, la sémantique peut encore bouger
 - **Non déterministe** : les choix du manager varient d'une exécution à l'autre
-- **Budget épuisé = run écourté** : les tâches restantes ne sont pas exécutées, et la crew est quand même déclarée terminée
+- **Budget épuisé = run écourté** : les tâches restantes ne sont pas exécutées, et la crew échoue en nommant la dimension épuisée et chaque tâche qu'elle n'a pas atteinte
 - **Budget fixe** via l'orchestrateur (Permissive)
 
 ### Quand l'utiliser

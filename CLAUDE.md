@@ -250,7 +250,7 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 - `Graph` — LangGraph-style state graph with conditional edges, cycles, circuit breaker (`StateGraph<TState>`, `GraphProcessStrategy`)
 - `Autonomous` — Manager-assigned tasks, delegation to a peer on failure, host-provided spawn, multi-dimensional budget (`AgentExecutionBudget`, `AutonomousProcessStrategy`)
 
-Only `Sequential` (and `Consensual` with `FallbackStrategy: Fail`) fails the crew when a task fails; the other modes report success today (backstage GAP-03). `FlowEngine` (typed steps over a shared state, `docs/orchestration/flows.md`) is a C# API that no CLI or host runs yet.
+In every mode a failed task fails the crew and its dependants are skipped (`CrewRunOutcome`, shared by the six strategies), so `orkeon run` exits 2; Graph sizes its circuit breaker from the crew (`tasks × (1 + maxRetryCycles)` visits) unless `graphConfig` sets explicit bounds. `FlowEngine` (typed steps over a shared state, `docs/orchestration/flows.md`) is a C# API that no CLI or host runs yet.
 
 **Autonomous Orchestration** (key components):
 - `AgentExecutionBudget` (Domain) — 5-dimension budget: tool calls, delegation depth, wall time, tokens, spawned agents. Thread-safe, presets (Strict/Default/Permissive), child budget derivation.

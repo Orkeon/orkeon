@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a failed task fails the crew in all six modes **[breaking]**
+
+Sequential was the only mode that failed a crew with a failed task (STUDIO-12 C5a, LLM-11).
+The five others reported success whatever their tasks did, so `orkeon run` exited 0, the
+`run.finished` event said `success: true` and `AUTO_SUMMARY.md` said *completed* over a
+half-wrong deliverable. The rule is now one type shared by the six strategies:
+
+- **A failed task fails the crew**: `CrewOutput.Success` is `false`, `Error` names every task
+  that did not succeed and why, the execution hook hears `Failed` with that same reason, and
+  `orkeon run` exits **2** with it as the last stderr line. The outputs and the tokens the
+  crew did produce are kept.
+- **A task whose dependency failed is skipped**, as in Sequential: no agent runs it on a
+  context that says `Task failed: …`, it shows `⊘ skipped`, and it counts as a failure. The
+  tasks that do not depend on it still run.
+- **Hierarchical**: a task the manager rejected three times (`[NEEDS REVISION]`), a worker
+  that failed, and a task assigned to an agent the crew does not carry each fail the crew.
+- **Parallel**: a failed task no longer feeds its failure message to the next wave; its
+  dependants are skipped.
+- **Graph**: a task still failing after its retries fails the crew — only the circuit breaker
+  did. A failed task is now retried **before the next task runs** (it waited for the end of
+  the queue), so a dependant only sees a dependency that succeeded or gave up.
+- **Autonomous**: an exhausted budget fails the crew, its error opening with
+  `Execution budget exhausted: <dimension>` and naming every task it never reached; the hook
+  hears `Failed`, no longer `Canceled`, which stays for an actual cancellation. A failed task
+  with no peer to delegate to fails the crew instead of throwing `No delegation candidates
+  available.` out of the strategy, and no longer spends a delegation level first.
+- **Consensual**: a retained result that failed fails the crew. The `Fail` fallback fails its
+  task and skips its dependants instead of stopping the crew on the spot; the error still
+  reads `Consensus could not be reached for task …`.
+- An agent that fails without a word (no final answer) no longer makes the hierarchical,
+  autonomous and consensual modes throw `info.RawOutput cannot be empty`: its output reads
+  `Task failed: <cause>`, as in the other three.
+
+Migration: a pipeline that read `Success` (or the exit code) and then inspected each task's
+result keeps working; one that relied on these modes always reporting success must treat
+exit code 2, or `Success == false`, as the run's failure.
+
+### Changed — Graph sizes its circuit breaker from the crew
+
+The Graph mode took its bounds from the Strict preset: five visits of the task node, so a
+healthy crew of six tasks was cut short. Without an explicit `graphConfig.maxStateVisits` /
+`maxTransitions`, they are now computed from the crew — `tasks × (1 + maxRetryCycles)` visits
+and twice that plus one transitions — so the breaker still stops a real loop without capping
+the size of a crew. An explicit value wins. `MaxTotalDuration` keeps the preset's (10 minutes
+under Strict), a cost bound `maxTotalDurationSeconds` overrides.
+`GraphProcessStrategy.CircuitPolicy` is now nullable and null by default (computed); a C#
+caller that sets it keeps a fixed policy.
+
+| Before | After |
+|---|---|
+| a graph crew with more than five task attempts: `maxStateVisits` to raise by hand | nothing to declare |
+| `strategy.CircuitPolicy` (`Strict` by default) | `null` by default: bounds computed from the crew |
+
 ### Fixed — MCP and `rag_*` tools reach the crew agents that name them; an MCP tool no longer replaces a built-in
 
 - **A crew agent receives every tool the registry resolves.** `CrewFactory` kept a resolved

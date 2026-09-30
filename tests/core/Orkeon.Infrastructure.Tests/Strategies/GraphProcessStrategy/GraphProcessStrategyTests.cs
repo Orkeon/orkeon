@@ -310,9 +310,13 @@ public sealed class GraphProcessStrategyTests : IDisposable
 
         var result = await retryStrategy.ExecuteSequentialAsync(crew, plan, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Should complete (not hang) — circuit breaker or retry limit should stop it
+        // Should complete (not hang) — the retry limit stops it, and a task still failing
+        // after its retries fails the crew, naming it (GAP-03)
         Assert.NotNull(result);
-        Assert.True(_logger.HasLoggedError("failed after") || _logger.HasLoggedWarning("will retry"));
+        Assert.True(_logger.HasLoggedError("failed after"));
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.DoesNotContain("circuit breaker", result.Error, StringComparison.OrdinalIgnoreCase);
     }
 
     #endregion
@@ -441,7 +445,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
     [Fact]
     public async Task ShouldHonorCrewGraphConfigMaxRetryCycles_WhenStrategyUsesDefaults()
     {
-        // The strategy is built with its DEFAULT init props (MaxRetryCycles = 2, CircuitPolicy = Strict).
+        // The strategy is built with its DEFAULT init props (MaxRetryCycles = 2, CircuitPolicy = null: computed).
         // The crew carries GraphConfig{ MaxRetryCycles = 5, permissive } — proving the per-crew config,
         // not the strategy default, drives execution: a task that only succeeds on its 5th attempt
         // completes, which the default of 2 retry cycles could never reach.
@@ -506,7 +510,7 @@ public sealed class GraphProcessStrategyTests : IDisposable
     public async Task ShouldUseStrategyDefaults_WhenCrewHasNoGraphConfig()
     {
         // Regression: a crew without GraphConfig must fall back to the strategy's built-in defaults
-        // (MaxRetryCycles = 2, CircuitPolicy = Strict) — the pre-P2-O-01 behavior, unchanged.
+        // (MaxRetryCycles = 2, bounds computed from the crew — GAP-03).
         var agent = CreateAgent("doomed");
         var task = CreateTask("always_fails");
         _agents[agent.Id] = agent;

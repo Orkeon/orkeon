@@ -45,12 +45,15 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly TaskAgentSelector _agentSelector;
 
     /// <summary>
-    /// Fallback circuit breaker policy used when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>
-    /// (nor a crew-level circuit-breaker config). Defaults to Strict. Per-crew config, when present,
-    /// takes precedence and is resolved off the crew at execution time — never stored on this
-    /// (scoped, potentially shared) strategy instance.
+    /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>
+    /// (nor a crew-level circuit-breaker config). Null — the default — sizes the breaker from the
+    /// crew instead: <c>tasks × (1 + maxRetryCycles)</c> visits of <c>execute_task</c> and twice
+    /// that plus one transitions, on the Strict preset's duration (GAP-03). A fixed preset used
+    /// to cap every crew: Strict's five visits failed any healthy crew of six tasks. Per-crew
+    /// config, when present, takes precedence and is resolved off the crew at execution time —
+    /// never stored on this (scoped, potentially shared) strategy instance.
     /// </summary>
-    public CircuitBreakerPolicy CircuitPolicy { get; init; } = CircuitBreakerPolicy.Strict;
+    public CircuitBreakerPolicy? CircuitPolicy { get; init; }
 
     /// <summary>
     /// Fallback maximum retry cycles for failed tasks, used when the crew carries no
@@ -131,9 +134,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         // then a crew-level circuit-breaker config, then this strategy's fallback defaults. The
         // config travels with the crew argument, not on the shared scoped strategy, so concurrent
         // crews can never clobber one another's policy.
-        var effectivePolicy = CircuitBreakerPolicyFactory.ResolveGraph(
-            crew.GraphConfig, crew.CircuitBreaker, CircuitPolicy);
         var effectiveMaxRetryCycles = crew.GraphConfig?.MaxRetryCycles ?? MaxRetryCycles;
+        var effectivePolicy = ResolvePolicy(crew, taskIds.Count, effectiveMaxRetryCycles);
 
         // Build the initial graph state
         var initialState = new CrewGraphState
@@ -178,17 +180,15 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             // A graph's nodes are not tasks, so there is no per-task moment to hook into
             // mid-run: the results are reported when the graph joins.
             var snapshots = await NotifyResultsAsync(domainResults, finalState).ConfigureAwait(false);
-            await _hooks.CrewCompletedAsync(
-                CrewHookDispatcher.Snapshot(
-                    crew.Id.ToString(), startTime, snapshots, CrewHookStatus.Completed),
-                cancellationToken).ConfigureAwait(false);
 
-            return DomainCrewOutput.CreateSuccess(
-                output: finalOutput,
-                structuredOutput: null,
-                taskOutputs: finalState.DomainResults,
-                executionTime: totalTime,
-                metadata: BuildTokenMetadata(finalState));
+            // A task still failing after its retries fails the crew (GAP-03): the graph
+            // reaching END used to be reported as a success whatever its tasks did.
+            if (finalState.Outcome.HasFailures)
+                LogGraphExecutionFailed(crew.Id, finalState.Outcome.Failures.Count, finalState.Outcome.Reason);
+
+            return await finalState.Outcome.CompleteAsync(
+                _hooks, crew.Id.ToString(), startTime, snapshots, domainResults, totalTime,
+                BuildTokenMetadata(finalState), finalOutput).ConfigureAwait(false);
         }
         catch (GraphCircuitBrokenException ex)
         {
@@ -203,8 +203,10 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
                     crew.Id.ToString(), startTime, brokenSnapshots, CrewHookStatus.Failed, ex.Message),
                 ex, CancellationToken.None).ConfigureAwait(false);
 
+            // The break heads the error; the tasks that had already failed follow it.
+            initialState.Outcome.RecordRunFailure($"Graph execution stopped by circuit breaker: {ex.Message}");
             return DomainCrewOutput.CreateFailure(
-                error: $"Graph execution stopped by circuit breaker: {ex.Message}",
+                error: initialState.Outcome.Reason,
                 taskOutputs: initialState.DomainResults,
                 executionTime: totalTime,
                 metadata: BuildTokenMetadata(initialState));
@@ -256,17 +258,19 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             var result = results[index];
             var taskId = result.TaskId?.Value.ToString() ?? string.Empty;
             var usage = index < state.ResultUsage.Count ? state.ResultUsage[index] : default;
-            var snapshot = new TaskExecutionSnapshot
-            {
-                TaskId = taskId,
-                AgentRole = "graph",
-                Success = result.Success,
-                Duration = result.ExecutionTime,
-                CompletedAt = DateTimeOffset.UtcNow,
-                TokensUsed = usage.Tokens,
-                CacheHitTokens = usage.CacheHit,
-                CacheMissTokens = usage.CacheMiss,
-            };
+            var snapshot = state.SkipReasons.TryGetValue(index, out var skipReason)
+                ? CrewRunOutcome.SkippedSnapshot(result.TaskId!, "graph", skipReason)
+                : new TaskExecutionSnapshot
+                {
+                    TaskId = taskId,
+                    AgentRole = "graph",
+                    Success = result.Success,
+                    Duration = result.ExecutionTime,
+                    CompletedAt = DateTimeOffset.UtcNow,
+                    TokensUsed = usage.Tokens,
+                    CacheHitTokens = usage.CacheHit,
+                    CacheMissTokens = usage.CacheMiss,
+                };
             snapshots.Add(snapshot);
             await _hooks.TaskCompletedAsync(snapshot).ConfigureAwait(false);
         }
@@ -346,6 +350,21 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             .ForTaskAsync(task, state.Agents, state.AgentIndex++, ct)
             .ConfigureAwait(false);
 
+        // A task depending on one that did not succeed is skipped, as in Sequential (GAP-03).
+        // A failed task is retried before the next task runs (see RouteNodeAsync), so by the
+        // time a dependant is dequeued its dependency has either succeeded or given up.
+        if (state.Outcome.BlockingDependency(task) is { } blockedBy)
+        {
+            var reason = state.Outcome.RecordSkip(task.Id, agent.Role.Value, blockedBy);
+            LogTaskSkippedAfterDependency(task.Id, agent.Role.Value, blockedBy);
+            var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agent.Id.ToString(), blockedBy);
+            state.SkipReasons[state.DomainResults.Count] = reason;
+            state.AddResultUsage(0, 0, 0);
+            state.AddApplicationOutput(skippedApp);
+            state.AddDomainResult(skippedDomain);
+            return state;
+        }
+
         // Completions are reported when the graph settles (NotifyResultsAsync); the start is
         // the one per-task moment this mode can announce live.
         await _hooks.TaskStartedAsync(
@@ -355,7 +374,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         var executionResult = await RunTaskAsync(state, task, agent, ct).ConfigureAwait(false);
 
         AppendTaskOutputs(state, task, agent, executionResult);
-        EvaluateFailureForRetry(state, taskId, executionResult);
+        EvaluateFailureForRetry(state, taskId, agent, executionResult);
 
         LogTaskCompleted(taskId, executionResult.Success);
         return state;
@@ -392,7 +411,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         DomainAgent agent,
         TaskResult executionResult)
     {
-        var rawOutput = GetRawOutput(executionResult);
+        var rawOutput = CrewRunOutcome.RawOutputOf(executionResult);
         state.TotalTokensUsed += executionResult.TokensUsed;
         state.PromptTokensUsed += executionResult.PromptTokens;
         state.CompletionTokensUsed += executionResult.CompletionTokens;
@@ -429,6 +448,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private void EvaluateFailureForRetry(
         CrewGraphState state,
         TaskId taskId,
+        DomainAgent agent,
         TaskResult executionResult)
     {
         if (executionResult.Success)
@@ -447,20 +467,27 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         else
         {
             LogTaskFailedMaxRetries(taskId, state.MaxRetryCycles);
+            state.Outcome.RecordFailure(taskId, agent.Role.Value, executionResult.Error ?? executionResult.LastError);
         }
     }
 
     /// <summary>
-    /// Route node body: promotes failed tasks back to the pending queue when
-    /// no pending tasks remain, enabling the controlled retry cycle.
+    /// Route node body: puts a failed task with retries left back at the head of the queue,
+    /// so it is retried before the next task runs. Retries used to wait until the queue was
+    /// empty, and a task depending on the failed one ran in between on its failed output; now a
+    /// dependant only ever sees a dependency that succeeded or gave up (GAP-03).
     /// </summary>
     private Task<CrewGraphState> RouteNodeAsync(CrewGraphState state, CancellationToken _)
     {
-        if (state.PendingTaskIds.Count == 0 && state.FailedTaskIds.Count > 0)
+        if (state.FailedTaskIds.Count > 0)
         {
             LogPromotingFailedTasks(state.FailedTaskIds.Count);
+            var remaining = state.PendingTaskIds.ToArray();
+            state.PendingTaskIds.Clear();
             while (state.FailedTaskIds.Count > 0)
                 state.PendingTaskIds.Enqueue(state.FailedTaskIds.Dequeue());
+            foreach (var pending in remaining)
+                state.PendingTaskIds.Enqueue(pending);
         }
 
         return Task.FromResult(state);
@@ -477,6 +504,42 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
 
     #region Helpers
 
+    /// <summary>
+    /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> — in
+    /// <c>graphConfig</c>, else in a crew-level <c>circuitBreaker</c> — wins; otherwise both are
+    /// computed from the crew, since every attempt of a task is one visit of <c>execute_task</c>
+    /// and one of <c>route</c>: <c>tasks × (1 + maxRetryCycles)</c> visits and twice that plus
+    /// one transitions. The breaker keeps its job — stopping a real loop — without capping the
+    /// size of a healthy crew. The duration stays the preset's (10 min under Strict), a cost
+    /// choice <c>graphConfig.maxTotalDurationSeconds</c> overrides.
+    /// </summary>
+    private CircuitBreakerPolicy ResolvePolicy(DomainCrew crew, int taskCount, int maxRetryCycles)
+    {
+        if (crew.GraphConfig is null && crew.CircuitBreaker is null && CircuitPolicy is not null)
+            return CircuitPolicy;
+
+        var policy = CircuitBreakerPolicyFactory.ResolveGraph(
+            crew.GraphConfig, crew.CircuitBreaker, CircuitBreakerPolicy.Strict);
+        var explicitVisits = crew.GraphConfig is not null
+            ? crew.GraphConfig.MaxStateVisits
+            : crew.CircuitBreaker?.MaxStateVisits;
+        var explicitTransitions = crew.GraphConfig is not null
+            ? crew.GraphConfig.MaxTransitions
+            : crew.CircuitBreaker?.MaxTransitions;
+
+        // An empty crew still visits execute_task once on its way to END. Clamped so the
+        // transition bound never overflows.
+        var visits = (int)Math.Min(
+            (long)Math.Max(1, taskCount) * (1 + Math.Max(0, maxRetryCycles)),
+            (int.MaxValue - 1) / 2);
+
+        return policy with
+        {
+            MaxStateVisits = explicitVisits ?? visits,
+            MaxTransitions = explicitTransitions ?? (2 * visits) + 1,
+        };
+    }
+
     private async Task<List<DomainAgent>> LoadAgentsAsync(DomainCrew crew)
     {
         var agents = new List<DomainAgent>();
@@ -488,12 +551,6 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
         return agents;
     }
 
-    private static string GetRawOutput(TaskResult result)
-    {
-        if (!string.IsNullOrEmpty(result.Output))
-            return result.Output;
-        return result.Success ? "(no output)" : $"Task failed: {result.Error ?? "unknown error"}";
-    }
 
     #endregion
 
@@ -555,7 +612,13 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     [LoggerMessage(Level = LogLevel.Error, Message = "Task {TaskId} failed after {MaxRetries} retries, giving up")]
     private partial void LogTaskFailedMaxRetries(TaskId taskId, int maxRetries);
 
-    [LoggerMessage(Level = LogLevel.Debug, Message = "Promoting {Count} failed tasks for retry cycle")]
+    [LoggerMessage(Level = LogLevel.Error, Message = "Graph execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
+    private partial void LogGraphExecutionFailed(CrewId crewId, int failedTasks, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Task {TaskId} ({AgentRole}) skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, string agentRole, TaskId dependencyId);
+
+    [LoggerMessage(Level = LogLevel.Debug, Message = "Retrying {Count} failed task(s) before the next pending one")]
     private partial void LogPromotingFailedTasks(int count);
 
     #endregion
@@ -633,4 +696,10 @@ public sealed class CrewGraphState
 
     /// <summary>Max retry cycles per failed task.</summary>
     public required int MaxRetryCycles { get; init; }
+
+    /// <summary>The failures of this run and the tasks that did not succeed (GAP-03).</summary>
+    internal CrewRunOutcome Outcome { get; } = new();
+
+    /// <summary>Skip reasons, keyed by the index of the skipped task's entry in <see cref="DomainResults"/>.</summary>
+    internal Dictionary<int, string> SkipReasons { get; } = [];
 }

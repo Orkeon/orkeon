@@ -56,6 +56,9 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private readonly CrewHookDispatcher _hooks;
     private readonly ILogger<AutonomousProcessStrategy> _logger;
 
+    /// <summary>The role every autonomous task reports: the manager picks its agent per task.</summary>
+    private const string AutonomousRole = "autonomous";
+
     /// <summary>Initializes a new instance of <see cref="AutonomousProcessStrategy"/>.</summary>
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
     /// <param name="channel">The A2A channel agents register on.</param>
@@ -120,6 +123,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var domainResults = new List<TaskOutput>();
         var agents = new List<DomainAgent>();
         var tokenTally = new TokenUsageTally();
+        var taskSnapshots = new List<TaskExecutionSnapshot>();
+        var outcome = new CrewRunOutcome();
+        IReadOnlyList<TaskId> taskIds = [];
+        var nextTask = 0;
         List<IDisposable> registrations = [];
 
         try
@@ -145,11 +152,12 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
 
             // The crew's tasks are handed out one after another, so the order is the
             // sequential one: the declared order sorted on the dependencies (STUDIO-12 C2).
-            var taskIds = await CrewTaskSequencer.ResolveAsync(
+            taskIds = await CrewTaskSequencer.ResolveAsync(
                 crew, plan: null, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
-            foreach (var taskId in taskIds)
+            for (; nextTask < taskIds.Count; nextTask++)
             {
+                var taskId = taskIds[nextTask];
                 cancellationToken.ThrowIfCancellationRequested();
                 budget.AssertWallTime();
 
@@ -160,25 +168,61 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                     continue;
                 }
 
-                var (domainOutput, appOutput) = await ExecuteTaskAutonomouslyAsync(
+                // A task depending on one that did not succeed is skipped, as in Sequential
+                // (GAP-03): no agent claims it, and it spends nothing from the budget.
+                if (outcome.BlockingDependency(task) is { } blockedBy)
+                {
+                    var skipReason = outcome.RecordSkip(task.Id, AutonomousRole, blockedBy);
+                    LogTaskSkippedAfterDependency(task.Id, blockedBy);
+                    var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, agentId: null, blockedBy);
+                    domainResults.Add(skippedDomain);
+                    applicationOutputs.Add(skippedApp);
+                    taskSnapshots.Add(CrewRunOutcome.SkippedSnapshot(task.Id, AutonomousRole, skipReason));
+                    continue;
+                }
+
+                var executed = await ExecuteTaskAutonomouslyAsync(
                     new AutonomousTaskContext(task, agents, budget, crew.Id, variables, applicationOutputs, tokenTally),
                     cancellationToken)
                     .ConfigureAwait(false);
 
-                domainResults.Add(domainOutput);
-                applicationOutputs.Add(appOutput);
+                domainResults.Add(executed.Domain);
+                applicationOutputs.Add(executed.App);
+                taskSnapshots.Add(new TaskExecutionSnapshot
+                {
+                    TaskId = task.Id.Value.ToString(),
+                    AgentRole = AutonomousRole,
+                    Success = executed.Domain.Success,
+                    Duration = executed.Domain.ExecutionTime,
+                    CompletedAt = DateTimeOffset.UtcNow,
+                    // Deliberately no per-task tool count: the budget counter is crew-wide, and
+                    // stamping it on every task over-reported by a factor of N. The real totals
+                    // travel in the crew metadata (budget_tool_calls).
+                });
+
+                if (!executed.Domain.Success)
+                    outcome.RecordFailure(task.Id, executed.AgentRole, executed.Error);
 
                 // Guard snapshot allocation: only materialize when the log level is enabled
                 if (_logger.IsEnabled(LogLevel.Information))
                 {
                     var snapshot = budget.ToSnapshot();
-                    LogTaskCompleted(taskId, domainOutput.Success, snapshot);
+                    LogTaskCompleted(taskId, executed.Domain.Success, snapshot);
+                }
+
+                if (executed.Exhausted is { } exhausted)
+                {
+                    // The budget is crew-wide: once one dimension ran out inside a task, no
+                    // later task can run either.
+                    RecordBudgetExhaustion(outcome, crew.Id, exhausted, taskIds.Skip(nextTask + 1));
+                    break;
                 }
             }
         }
         catch (BudgetExhaustedException ex)
         {
-            LogBudgetExhausted(crew.Id, ex.Dimension, ex.Message);
+            // Between two tasks: the wall time ran out before the next one could start.
+            RecordBudgetExhaustion(outcome, crew.Id, ex, taskIds.Skip(nextTask));
         }
         catch (OperationCanceledException)
         {
@@ -205,10 +249,23 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 reg.Dispose();
         }
 
-        return await BuildOutputAsync(domainResults, agents, crew, startTime, budget, tokenTally).ConfigureAwait(false);
+        return await BuildOutputAsync(
+            outcome, domainResults, taskSnapshots, agents, crew, startTime, budget, tokenTally).ConfigureAwait(false);
     }
 
     // ── Private methods ──────────────────────────────────────────────────
+
+    /// <summary>
+    /// An exhausted budget fails the crew, naming the dimension and every task it never reached
+    /// (GAP-03). It used to be swallowed: the crew reported success while the hook said Canceled.
+    /// </summary>
+    private void RecordBudgetExhaustion(
+        CrewRunOutcome outcome, CrewId crewId, BudgetExhaustedException ex, IEnumerable<TaskId> notExecuted)
+    {
+        LogBudgetExhausted(crewId, ex.Dimension, ex.Message);
+        outcome.RecordRunFailure($"Execution budget exhausted: {ex.Dimension} ({ex.Message})");
+        outcome.RecordNotExecuted([.. notExecuted]);
+    }
 
     private async Task<List<DomainAgent>> LoadAgentsAsync(DomainCrew crew)
     {
@@ -311,7 +368,18 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         List<ApplicationTaskOutput> PreviousOutputs,
         TokenUsageTally TokenTally);
 
-    private async Task<(TaskOutput Domain, ApplicationTaskOutput App)> ExecuteTaskAutonomouslyAsync(
+    /// <summary>
+    /// What one task produced: its outputs, the role that answers for it, the cause of its
+    /// failure when it failed, and the budget exhaustion that interrupted it, if any.
+    /// </summary>
+    private sealed record ExecutedTask(
+        TaskOutput Domain,
+        ApplicationTaskOutput App,
+        string AgentRole,
+        string? Error = null,
+        BudgetExhaustedException? Exhausted = null);
+
+    private async Task<ExecutedTask> ExecuteTaskAutonomouslyAsync(
         AutonomousTaskContext taskContext,
         CancellationToken cancellationToken)
     {
@@ -343,18 +411,26 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             // takes over below — record it before any branching.
             tokenTally.Record(result);
 
-            // If the agent wants to delegate and budget allows, try recursive delegation
+            var error = result.Error ?? result.LastError;
+
+            // A failed task is handed to a peer when the agent may delegate and the budget
+            // allows it. With no peer in the crew, the failure stands — it used to throw out
+            // of the strategy instead.
             if (!result.Success && agent.AllowDelegation && budget.CurrentDelegationDepth < budget.MaxDelegationDepth)
             {
-                return await AttemptDelegationAsync(
-                    task, agent, agents, budget).ConfigureAwait(false);
+                if (agents.Exists(a => a.Id != agent.Id))
+                    return await AttemptDelegationAsync(task, agent, agents, budget).ConfigureAwait(false);
+
+                error = $"{error ?? "unknown error"}; no peer to delegate it to";
             }
 
-            return (
+            return new ExecutedTask(
                 BuildDomainTaskOutput(task, result),
-                BuildAppTaskOutput(task, agent, result));
+                BuildAppTaskOutput(task, agent, result),
+                agent.Role.Value,
+                error);
         }
-        catch (BudgetExhaustedException)
+        catch (BudgetExhaustedException ex)
         {
             // Return partial output
             var partialOutput = TaskOutput.Create(
@@ -371,11 +447,13 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
                 Success: false, ExecutionTime: budget.Elapsed,
                 ToolsUsed: []);
 
-            return (partialOutput, partialApp);
+            return new ExecutedTask(
+                partialOutput, partialApp, agent.Role.Value,
+                $"interrupted: execution budget exhausted ({ex.Dimension})", ex);
         }
     }
 
-    private async Task<(TaskOutput, ApplicationTaskOutput)> AttemptDelegationAsync(
+    private async Task<ExecutedTask> AttemptDelegationAsync(
         CrewTask task,
         DomainAgent originalAgent,
         List<DomainAgent> agents,
@@ -383,13 +461,8 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     {
         budget.RecordDelegation();
 
-        // Find a different agent to delegate to
-        var candidates = agents.Where(a => a.Id != originalAgent.Id).ToList();
-        if (candidates.Count == 0)
-            throw new InvalidOperationException("No delegation candidates available.");
-
-        // Use channel for delegation (request/response)
-        var delegateAgent = candidates[0];
+        // Delegate to the first other agent (the caller checked there is one)
+        var delegateAgent = agents.First(a => a.Id != originalAgent.Id);
         var request = AgentChannelRequest.Create(
             originalAgent.Id,
             delegateAgent.Id,
@@ -418,7 +491,9 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             ExecutionTime: budget.Elapsed,
             ToolsUsed: []);
 
-        return (output, appOutput);
+        return new ExecutedTask(
+            output, appOutput, delegateAgent.Role.Value,
+            response.Success ? null : $"delegated to {delegateAgent.Role}, who failed: {response.Error}");
     }
 
     /// <summary>
@@ -436,7 +511,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     private static TaskOutput BuildDomainTaskOutput(CrewTask task, AppTaskResult result)
     {
         return TaskOutput.Create(
-            rawOutput: result.Output,
+            rawOutput: CrewRunOutcome.RawOutputOf(result),
             format: "text",
             formattedOutput: null,
             taskId: task.Id,
@@ -451,7 +526,7 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         return new ApplicationTaskOutput(
             TaskId: task.Id.Value.ToString(),
             AgentId: agent.Id.ToString(),
-            Content: result.Output,
+            Content: CrewRunOutcome.RawOutputOf(result),
             CompletedAt: DateTime.UtcNow,
             Success: result.Success,
             ExecutionTime: result.ExecutionTime,
@@ -459,7 +534,9 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     }
 
     private async Task<DomainCrewOutput> BuildOutputAsync(
+        CrewRunOutcome outcome,
         List<TaskOutput> results,
+        List<TaskExecutionSnapshot> taskSnapshots,
         List<DomainAgent> agents,
         DomainCrew crew,
         DateTime startTime,
@@ -470,7 +547,10 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
         var totalTime = DateTime.UtcNow - startTime;
         var snapshot = budget.ToSnapshot();
 
-        LogAutonomousExecutionCompleted(crew.Id, totalTime, snapshot.ToolCalls, snapshot.DelegationDepth);
+        if (outcome.HasFailures)
+            LogAutonomousExecutionFailed(crew.Id, outcome.Reason);
+        else
+            LogAutonomousExecutionCompleted(crew.Id, totalTime, snapshot.ToolCalls, snapshot.DelegationDepth);
 
         var metadata = tokenTally
             .WriteTo(Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()
@@ -484,39 +564,15 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
             .Build();
 
         // Autonomous agents delegate and spawn: there is no ordered task loop to hook
-        // into, so the outcome is reported when the run settles. The budget snapshot is
-        // what makes that report worth reading here.
-        var taskSnapshots = new List<TaskExecutionSnapshot>(results.Count);
-        foreach (var result in results)
-        {
-            var taskSnapshot = new TaskExecutionSnapshot
-            {
-                TaskId = result.TaskId?.Value.ToString() ?? string.Empty,
-                AgentRole = "autonomous",
-                Success = result.Success,
-                Duration = result.ExecutionTime,
-                CompletedAt = DateTimeOffset.UtcNow,
-                // Deliberately no per-task tool count: the budget counter is crew-wide, and
-                // stamping it on every task over-reported by a factor of N. The real totals
-                // travel in the crew metadata (budget_tool_calls).
-            };
-            taskSnapshots.Add(taskSnapshot);
+        // into, so the outcome is reported when the run settles.
+        foreach (var taskSnapshot in taskSnapshots)
             await _hooks.TaskCompletedAsync(taskSnapshot).ConfigureAwait(false);
-        }
 
-        await _hooks.CrewCompletedAsync(
-            CrewHookDispatcher.Snapshot(
-                crew.Id.ToString(), startTime, taskSnapshots,
-                snapshot.IsExhausted ? CrewHookStatus.Canceled : CrewHookStatus.Completed,
-                snapshot.IsExhausted ? "Execution budget exhausted" : null))
+        // An exhausted budget is a failure, reported as Failed with the dimension — Canceled
+        // stays reserved for an actual cancellation (GAP-03).
+        return await outcome.CompleteAsync(
+            _hooks, crew.Id.ToString(), startTime, taskSnapshots, results, totalTime, metadata, finalOutput)
             .ConfigureAwait(false);
-
-        return DomainCrewOutput.CreateSuccess(
-            output: finalOutput,
-            structuredOutput: null,
-            taskOutputs: results,
-            executionTime: totalTime,
-            metadata: metadata);
     }
 
     // ── Logging ──────────────────────────────────────────────────────────
@@ -543,6 +599,14 @@ public sealed partial class AutonomousProcessStrategy : IProcessStrategy
     [LoggerMessage(Level = LogLevel.Warning,
         Message = "Budget exhausted for crew {CrewId}: dimension={Dimension}, {Message}")]
     private partial void LogBudgetExhausted(CrewId crewId, BudgetDimension dimension, string message);
+
+    [LoggerMessage(Level = LogLevel.Error,
+        Message = "Autonomous execution of crew {CrewId} failed: {Reason}")]
+    private partial void LogAutonomousExecutionFailed(CrewId crewId, string reason);
+
+    [LoggerMessage(Level = LogLevel.Warning,
+        Message = "Task {TaskId} skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, TaskId dependencyId);
 
     [LoggerMessage(Level = LogLevel.Information,
         Message = "Autonomous execution completed for crew {CrewId} in {Duration} (tool calls: {ToolCalls}, delegation depth: {Depth})")]

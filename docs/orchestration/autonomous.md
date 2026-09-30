@@ -90,13 +90,13 @@ Task<CrewOutput> ExecuteAutonomousAsync(
                     │    1. manager.AssignTaskAsync (LLM) → agent      │
                     │    2. budget.RecordToolCall()                    │
                     │    3. ExecuteTaskAsync(agent, task)              │
-                    │    4. failed + AllowDelegation + depth left:     │
+                    │    4. failed + AllowDelegation + depth + a peer: │
                     │       ├─ budget.RecordDelegation()               │
                     │       ├─ channel.RequestAsync("delegate",        │
                     │       │    first other agent, timeout 2 min)     │
                     │       └─ peer executes under a child budget      │
                     │    5. BudgetExhausted in the task → partial      │
-                    │       output "[BUDGET EXHAUSTED] …"              │
+                    │       output "[BUDGET EXHAUSTED] …", stop        │
                     │  BudgetExhausted between tasks → stop the loop   │
                     └──────────────────────────────────────────────────┘
 ```
@@ -107,7 +107,7 @@ Details that matter when sizing a run:
 - **Tool calls**: the strategy records **one** `RecordToolCall()` per task handed out (the assignment); the agent's own tool calls inside its loop are not counted against the budget. `MaxToolCalls` therefore bounds the number of tasks attempted.
 - **Delegation depth**: `RecordDelegation()` increments a crew-wide counter that is never decremented, so `MaxDelegationDepth` behaves as the number of delegations allowed in the run. The delegate is the **first other agent** in the crew's order; it executes a new task built from the description (context variables `delegation_context` and `autonomous_child_budget_snapshot`) and does not delegate further.
 - **Tokens**: the tokens of a delegated execution are recorded on both the child and the parent budget; the direct executions feed the crew's token telemetry but not `MaxTokensConsumed`.
-- **Outcome**: the crew output concatenates the task outputs and is reported as **completed** even when tasks failed or the budget ran out; `ICrewExecutionHook` receives the status `Canceled` ("Execution budget exhausted") when a dimension is spent.
+- **Outcome**: the crew output concatenates the task outputs. A task that failed — directly, with no peer to delegate to, or delegated to a peer who failed too — **fails the crew**, and the tasks that depend on it are skipped without being claimed. An exhausted budget fails the crew too, its error opening with `Execution budget exhausted: <dimension>` and naming every task it never reached; `ICrewExecutionHook` receives `Failed` with that reason (`Canceled` is kept for an actual cancellation). `orkeon run` exits 2 in both cases.
 
 ## Multi-dimensional budget
 

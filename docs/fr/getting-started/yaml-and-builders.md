@@ -90,8 +90,8 @@ Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire con
 graphConfig:
   maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
   circuitBreakerPreset: string  # "strict" | "permissive" | "default"
-  maxTransitions: int           # Surcharge le preset
-  maxStateVisits: int           # Détection de cycles (surcharge le preset)
+  maxTransitions: int           # Défaut : calculé, 2 × visites + 1
+  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 

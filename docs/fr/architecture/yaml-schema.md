@@ -226,8 +226,8 @@ Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire con
 graphConfig:
   maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
   circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
-  maxTransitions: int           # Surcharge le preset
-  maxStateVisits: int           # Détection de cycles (surcharge le preset)
+  maxTransitions: int           # Défaut : calculé, 2 × visites + 1
+  maxStateVisits: int           # Plafond de tentatives — défaut : calculé, tâches × (1 + maxRetryCycles)
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
@@ -240,7 +240,8 @@ totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun eff
 Le bloc `circuitBreaker` avec tous les paramètres disponibles. **Ce qui atteint l'exécution
 aujourd'hui** : le bloc **de crew**, lu par le seul mode Graph (`GraphProcessStrategy`, quand aucun
 `graphConfig` n'est déclaré) — son preset et `maxTransitions`, `maxStateVisits` et
-`maxTotalDurationSeconds` bornent le run du graphe. `stateTimeoutSeconds` et `useDegradedMode`
+`maxTotalDurationSeconds` bornent le run du graphe (les visites et transitions qu'il ne fixe pas sont
+calculées depuis la crew, voir [Graph](../orchestration/graph.md)). `stateTimeoutSeconds` et `useDegradedMode`
 atteignent aussi la politique, mais le moteur de graphe ne lit ni l'un ni l'autre : ils ne servent
 qu'à la FSM du domaine, qu'aucune stratégie n'exécute. Le bloc de tâche et les trois limites de garde (`maxRetries`,
 `maxToolCallsPerRound`, `maxValidationRetries`) sont parsés dans `CircuitBreakerConfig` et résolus

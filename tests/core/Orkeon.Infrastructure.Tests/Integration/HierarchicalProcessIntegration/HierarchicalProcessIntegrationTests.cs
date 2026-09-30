@@ -447,11 +447,12 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, manager.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.True(result.Success); // Overall crew succeeds
+        // Assert — a task the manager kept rejecting fails the crew (GAP-03)
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         var taskOutput = result.TaskOutputs[0];
-        Assert.False(taskOutput.Success); // But individual task marked as failed
+        Assert.False(taskOutput.Success);
         Assert.Contains("[NEEDS REVISION]", taskOutput.Output);
 
         // Verify warning logged
@@ -608,8 +609,9 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, manager.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.True(result.Success); // Crew overall still succeeds
+        // Assert — the failed task fails the crew, and its cause is the crew's error (GAP-03)
+        Assert.False(result.Success);
+        Assert.Contains("Timeout after 30 seconds", result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         Assert.False(result.TaskOutputs[0].Success);
         Assert.Equal("Execution failed: timeout", result.TaskOutputs[0].Output);
@@ -705,9 +707,10 @@ public sealed class HierarchicalProcessIntegrationTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, manager.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
-        Assert.True(result.Success);
-        Assert.Empty(result.TaskOutputs); // Task was skipped
+        // Assert — the task never ran, so the crew did not complete (GAP-03)
+        Assert.False(result.Success);
+        Assert.Contains(unknownAgentId.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.Empty(result.TaskOutputs); // Task was never run
         Assert.Empty(testExecution.Executions); // No execution happened
         Assert.True(_logger.HasLogged(LogLevel.Error, "Assigned agent"));
     }

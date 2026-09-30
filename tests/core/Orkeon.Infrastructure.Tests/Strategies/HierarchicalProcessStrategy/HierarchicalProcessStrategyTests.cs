@@ -533,12 +533,14 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, managerAgent.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert — a task the manager kept rejecting fails the crew (GAP-03)
         Assert.NotNull(result);
-        Assert.True(result.Success); // Overall crew execution is successful
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.Contains("rejected", result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         var taskOutput = result.TaskOutputs[0];
-        Assert.False(taskOutput.Success); // But the task output is marked as failed
+        Assert.False(taskOutput.Success);
         Assert.Contains("[NEEDS REVISION]", taskOutput.Output);
         Assert.True(_logger.HasLoggedWarning("Manager rejected output"));
     }
@@ -617,9 +619,11 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, managerAgent.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert — the task never ran, so the crew did not complete (GAP-03)
         Assert.NotNull(result);
-        Assert.True(result.Success);
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.Contains(unknownAgentId.ToString(), result.Error, StringComparison.Ordinal);
         Assert.Empty(result.TaskOutputs); // No tasks executed
         Assert.True(_logger.HasLoggedError($"Assigned agent {unknownAgentId} not found"));
     }
@@ -667,12 +671,14 @@ public sealed class HierarchicalProcessStrategyTests : IDisposable
         // Act
         var result = await strategy.ExecuteHierarchicalAsync(crew, managerAgent.Id, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert
+        // Assert — a failed task fails the crew, naming the task and the cause (GAP-03)
         Assert.NotNull(result);
-        Assert.True(result.Success); // Overall crew execution is successful
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.Contains("Execution error", result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         var taskOutput = result.TaskOutputs[0];
-        Assert.False(taskOutput.Success); // But the task output shows failure
+        Assert.False(taskOutput.Success);
         Assert.Equal("Execution failed due to error", taskOutput.Output);
     }
 

@@ -21,3 +21,5 @@ static Orkeon.Infrastructure.LLMs.MeteredLlmProvider.Wrap(Orkeon.Domain.SharedKe
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.RejectedToolNames.get -> System.Collections.Generic.IReadOnlyList<string!>!
 [ORKEXP004]Orkeon.Infrastructure.MCP.McpServerStatus.RejectedToolNames.init -> void
 *REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.CircuitPolicy.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
+Orkeon.Infrastructure.Crew.Strategies.GraphProcessStrategy.CircuitPolicy.get -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy?

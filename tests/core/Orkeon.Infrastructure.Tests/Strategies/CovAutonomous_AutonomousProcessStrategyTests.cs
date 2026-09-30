@@ -303,7 +303,10 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
 
         var result = await CreateStrategy().ExecuteAutonomousAsync(crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Crew output is always success=true (it aggregates), but the task output is a failure.
+        // A failed task fails the crew, naming the task and the cause (GAP-03).
+        Assert.False(result.Success);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
+        Assert.Contains("boom", result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         Assert.False(result.TaskOutputs[0].Success);
     }
@@ -311,9 +314,9 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
     [Fact]
     public async Task ExecuteAutonomousAsync_DelegationWithNoOtherAgent_YieldsFailedTaskOutput()
     {
-        // Delegating agent fails but there are no other candidates → AttemptDelegationAsync
-        // throws InvalidOperationException, which propagates out as a crew failure is not
-        // caught here (only BudgetExhausted is). Verify it surfaces.
+        // Delegating agent fails but there are no other candidates: the failure stands and
+        // fails the crew (GAP-03) — it used to throw InvalidOperationException out of the
+        // strategy, and the delegation depth was spent before finding no one.
         var solo = CreateAgent("solo", allowDelegation: true);
         var task = CreateTask("task");
         var crew = BuildCrew([solo], [task]);
@@ -321,8 +324,12 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         _manager.SetAssignResult(new TaskAssignment(task.Id, solo.Id, "x", DateTime.UtcNow));
         _execService.SetExecuteResult(new TaskResult(false, "", null, [], TimeSpan.Zero, "fail"));
 
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
-            CreateStrategy().ExecuteAutonomousAsync(crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken));
+        var result = await CreateStrategy().ExecuteAutonomousAsync(
+            crew, AgentExecutionBudget.Default, cancellationToken: TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("no peer", result.Error, StringComparison.Ordinal);
+        Assert.False(Assert.Single(result.TaskOutputs).Success);
     }
 
     // ── Budget exhaustion ────────────────────────────────────────────────────
@@ -343,6 +350,8 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
 
         var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
 
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: ToolCalls", result.Error, StringComparison.Ordinal);
         Assert.Single(result.TaskOutputs);
         Assert.False(result.TaskOutputs[0].Success);
         Assert.Contains("BUDGET EXHAUSTED", result.TaskOutputs[0].Output);
@@ -358,12 +367,15 @@ public sealed class CovAutonomous_AutonomousProcessStrategyTests : IDisposable
         _manager.SetAssignResult(new TaskAssignment(task.Id, agent.Id, "x", DateTime.UtcNow));
 
         // Zero wall time → the budget.AssertWallTime() at the top of the loop throws
-        // BudgetExhaustedException, caught by the orchestrator → empty results, still success.
+        // BudgetExhaustedException, caught by the orchestrator → no task ran, and the crew
+        // fails naming the dimension and the task it never reached (GAP-03).
         var budget = new AgentExecutionBudget { MaxWallTime = TimeSpan.Zero };
 
         var result = await CreateStrategy().ExecuteAutonomousAsync(crew, budget, cancellationToken: TestContext.Current.CancellationToken);
 
-        Assert.True(result.Success);
+        Assert.False(result.Success);
+        Assert.StartsWith("Execution budget exhausted: WallTime", result.Error, StringComparison.Ordinal);
+        Assert.Contains(task.Id.ToString(), result.Error, StringComparison.Ordinal);
         Assert.Empty(result.TaskOutputs);
     }
 

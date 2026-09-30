@@ -44,6 +44,7 @@ What every strategy shares:
 
 - **Task order** — the modes that hand tasks out one after another (all but Parallel) run them in the order resolved by `CrewTaskSequencer`: the planner's order when `planning: true` produced one, otherwise a stable topological sort on the declared `dependencies` (detailed under Sequential).
 - **Lifecycle hooks** — every mode reports through `ICrewExecutionHook` (`OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`), on every exit including cancellation; this is what feeds `AUTO_SUMMARY.md`, the `orkeon run --events` stream and the host's progress.
+- **Outcome** — a failed task fails the crew and skips its dependents, in every mode (detailed under Sequential): `Success = false`, an `Error` naming every failed and skipped task, a `Failed` hook, exit code 2.
 - **Token telemetry** — the real token usage (prompt, completion, cache hits/misses when the provider reports them) travels in the `CrewOutput` metadata; `CrewOutput.TokensUsed` stays `null` when nothing was measured.
 
 ### Who runs a task that names no agent
@@ -66,8 +67,8 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 |---------|-----------|-------------|---------|-----------|-------|-----------|
 | **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + vote | Linear + retry cycle | Manager-assigned, delegation on failure |
 | **Agent choice** | Declared, else selector | Manager LLM | Declared, else selector | All agents | Declared, else selector | Manager LLM |
-| **Task dependencies** | Order + skip on failure | Order | Waves | Order | Order | Order |
-| **A failed task fails the crew** | ✅ (dependents skipped) | — | — | Only with `FallbackStrategy: Fail` | — (circuit breaker only) | — |
+| **Task dependencies** | Order + skip on failure | Order + skip on failure | Waves + skip on failure | Order + skip on failure | Order + skip on failure | Order + skip on failure |
+| **A failed task fails the crew** | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ after its retries (dependents skipped) | ✅ (dependents skipped; an exhausted budget too) |
 | **Circuit breaker** | — | — | — | — | ✅ 3 mechanisms | — |
 | **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
 | **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
@@ -85,7 +86,7 @@ Tasks execute **one by one**. Each task receives the outputs of the tasks that r
 
 **Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is.
 
-**Failure handling (Sequential only)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The other modes do not skip dependents and report the crew as completed even when a task failed (see the matrix).
+**Failure handling (every mode)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The rule is the same in the six modes: a crew with a failed task returns `Success = false`, its hook hears `Failed` with the same reason, and `orkeon run` exits 2. A mode that tolerates a failure — Graph and its retries, Autonomous and its delegation — does so before the task counts as failed.
 
 ### Internal mechanism
 
@@ -138,7 +139,7 @@ var crew = new CrewBuilder()
 - **Maximum simplicity**: no complex configuration, predictable behavior
 - **Traceability**: each step is clearly identifiable in the logs
 - **Cumulative context**: each task benefits from the previous results
-- **Honest outcome**: the only mode where a failed step fails the crew and stops its dependents
+- **Honest outcome**: a failed step fails the crew and stops its dependents (as in every mode)
 
 ### Drawbacks
 
@@ -170,7 +171,8 @@ A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates th
 - The crew must name its manager: `managerAgent:` in YAML (or `.Hierarchical(manager)` / `.WithManagerId(...)`); without one the run fails with "Hierarchical process requires a manager agent". That agent is removed from the worker pool.
 - The manager's decisions go through the **host's registered LLM** (`IChatClient` when present, else `IBasicLlmProvider` — the `Llm` section in a runner host), not through the manager agent's own `llm:` block; they are metered under the manager's role.
 - Assignment: the manager LLM answers with JSON; an unparseable answer falls back to a role/keyword heuristic, an LLM error to the first worker. A task's `agent:` is not consulted.
-- Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed. A review that errors counts as an approval.
+- Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed — and the task fails the crew. A review that errors counts as an approval.
+- A task assigned to an agent the crew does not carry never runs, and fails the crew. A task whose dependency failed is skipped without asking the manager.
 
 ### Internal mechanism
 
@@ -228,7 +230,6 @@ agents:
 - **Extra LLM cost**: one assignment call + one to three review calls per task, on top of the workers
 - **Bottleneck**: everything goes through the manager (no parallelism)
 - **Fixed revisions**: 3 reviews per task, hardcoded
-- **Soft failure**: a rejected or failed task does not fail the crew — read the task outputs
 
 ### When to use it
 
@@ -252,7 +253,7 @@ Tasks are grouped into **dependency waves**. A wave holds every task whose decla
 
 - A dependency naming a task the crew does not carry counts as satisfied.
 - A dependency **cycle is refused**: the run fails naming the tasks caught in it.
-- A failed task does not stop its wave siblings, nor its dependents in the next wave, and the crew is reported as completed.
+- A failed task does not stop its wave siblings; its dependents in the next waves are **skipped**, and the crew fails naming every failed and skipped task.
 - There is no concurrency cap: every task of a wave calls its LLM at the same time.
 
 ### Internal mechanism
@@ -295,7 +296,7 @@ tasks:
 
 - **Coarse ordering**: a task waits for its whole wave, not only for what it declared
 - **API consumption spikes**: all the LLM requests of a wave fire at once (rate limiting)
-- **No retry**, and a failed task still feeds (as a failure message) the next wave
+- **No retry**: a failed task fails the crew, and skips what depends on it
 
 ### When to use it
 
@@ -307,7 +308,6 @@ tasks:
 
 - Retry of flaky tasks (use Graph)
 - APIs with strict rate limiting
-- Pipelines where a failed step must stop what depends on it (use Sequential)
 
 ---
 
@@ -340,7 +340,7 @@ The pipeline does **not** compare the contents of the outputs. Each agent's exec
 
 - `Majority`, `SuperMajority` and `Unanimity` without weighting **never reach consensus** (each choice holds 1/N of the votes); with `UseWeightedVotes: true` (or `WeightedConsensus`), a choice wins when the other agents' executions failed.
 - `BordaCount` expects comma-separated rankings; a single-choice ballot scores 0 for everyone, so it declares the **first agent** the winner in round 1.
-- The fallback `AcceptBestScore` **re-executes the task with the first agent** and keeps that output; `ManagerDecision` does the same today; `Fail` stops the crew ("Consensus could not be reached for task …").
+- The fallback `AcceptBestScore` **re-executes the task with the first agent** and keeps that output; `ManagerDecision` does the same today; `Fail` fails the task ("Consensus could not be reached for task …"). The retained result is the task's result: when it failed — `Fail`, or a winning execution that failed — the crew fails and the task's dependents are skipped; the tasks that do not depend on it still run.
 
 In practice, for a crew whose agents all succeed, every task costs `MaxVotingRounds` × N executions plus one fallback execution (N executions with `BordaCount`). The crew's input variables are not interpolated in this mode; earlier tasks' winning outputs are passed as context.
 
@@ -419,7 +419,7 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
 
 ### Principle
 
-The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with a fixed topology: `execute_task` runs the next pending task, `route` re-enqueues the failed tasks that still have retries left and loops back while work remains. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
+The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with a fixed topology: `execute_task` runs the next pending task, `route` puts a failed task that still has retries left back at the head of the queue — it is retried before the next task runs — and loops back while work remains. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
 
 ### Internal mechanism
 
@@ -441,7 +441,7 @@ START ──→ execute_task ──→ route ──┬── tasks pending (or f
 | Property | Type | Description |
 |-----------|------|-------------|
 | `PendingTaskIds` | `Queue<TaskId>` | Remaining tasks to execute |
-| `FailedTaskIds` | `Queue<TaskId>` | Tasks waiting for a retry cycle |
+| `FailedTaskIds` | `Queue<TaskId>` | Failed tasks the `route` node puts back at the head of the queue |
 | `RetryCounts` | `Dictionary<string, int>` | Per-task retry counter |
 | `MaxRetryCycles` | `int` | Retries per failed task (default: 2) |
 | `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Accumulated outputs, one per attempt |
@@ -452,13 +452,13 @@ START ──→ execute_task ──→ route ──┬── tasks pending (or f
 
 ### Circuit breaker — 3 protection mechanisms
 
-| Mechanism | Strict (default) | Default | Permissive |
-|-----------|--------|---------|------------|
-| `MaxTransitions` (node executions) | 50 | 100 | 1000 |
-| `MaxStateVisits` (visits of one node) | 5 | 10 | 50 |
-| `MaxTotalDuration` | 10 min | 30 min | 2 h |
+| Mechanism | Computed (default) | Strict preset | Default preset | Permissive preset |
+|-----------|--------|--------|---------|------------|
+| `MaxTransitions` (node executions) | 2 × visits + 1 | 50 | 100 | 1000 |
+| `MaxStateVisits` (visits of one node) | tasks × (1 + `maxRetryCycles`) | 5 | 10 | 50 |
+| `MaxTotalDuration` | the preset's (10 min under Strict) | 10 min | 30 min | 2 h |
 
-Every task attempt is one visit of `execute_task`, so `MaxStateVisits` caps the number of task attempts in the whole run: **5 under Strict** — raise `maxStateVisits` for a crew with more tasks (retries included). The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
+Every task attempt is one visit of `execute_task` (and one of `route`). Without an explicit `maxStateVisits` / `maxTransitions`, both are **computed from the crew**: `tasks × (1 + maxRetryCycles)` visits — the most a crew can make, every task spending all its retries — and twice that plus one transitions, so a healthy crew is never cut short whatever its size, and a real loop still trips the breaker. An explicit value wins; the preset (`circuitBreakerPreset`, Strict when absent) then only supplies what is not computed, the total duration first. The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
 
 ### YAML configuration
 
@@ -467,9 +467,9 @@ name: "review-loop"
 goal: "Graph demo"
 process: graph
 graphConfig:
-  circuitBreakerPreset: "strict"   # or "default", "permissive"
+  circuitBreakerPreset: "strict"   # or "default", "permissive" — supplies the duration
   maxRetryCycles: 3
-  # Individual overrides possible:
+  # Individual overrides possible (visits and transitions are computed otherwise):
   maxTransitions: 75
   maxStateVisits: 20
   maxTotalDurationSeconds: 1800
@@ -477,15 +477,14 @@ graphConfig:
 
 ### Advantages
 
-- **Built-in retry**: failed tasks are retried after the pending ones, up to `maxRetryCycles`
+- **Built-in retry**: a failed task is retried before the next one runs, up to `maxRetryCycles`
 - **Safety**: a circuit breaker bounds executions, visits and duration
 - **Observability**: `OnNodeCompleted` / `OnCircuitBroken` events, logged by the strategy
-- **Presets**: Strict (default) vs Permissive
+- **Bounds sized to the crew**: visits and transitions computed from the task count and the retries
 
 ### Drawbacks
 
-- **Strict is tight**: the default caps the run at 5 task attempts
-- **Soft failure**: a task still failing after its retries does not fail the crew (only the breaker does)
+- **10-minute default duration**: the Strict preset's `MaxTotalDuration` still bounds the run — raise `maxTotalDurationSeconds` for a long crew
 - **Fixed topology in YAML**: conditional routing needs the C# `StateGraph<TState>` API
 
 ### When to use it
@@ -495,7 +494,7 @@ graphConfig:
 
 ### When not to use it
 
-- Simple linear pipelines where a failure should stop the run (Sequential)
+- Simple linear pipelines with no step worth retrying (Sequential)
 - Independent tasks (Parallel)
 
 > **See also**: [Graph orchestration](./graph.md) for the full details.
@@ -506,7 +505,7 @@ graphConfig:
 
 ### Principle
 
-For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
+For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. With no peer in the crew, the failure stands. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
 
 ### Internal mechanism
 
@@ -584,7 +583,7 @@ process: autonomous
 
 - **Experimental**: `ORKEXP002`, semantics may still move
 - **Non-deterministic**: the manager's choices vary between runs
-- **Budget exhausted = run cut short**: the remaining tasks are not executed, and the crew is still reported as completed
+- **Budget exhausted = run cut short**: the remaining tasks are not executed, and the crew fails naming the exhausted dimension and every task it never reached
 - **Fixed budget** through the orchestrator (Permissive)
 
 ### When to use it

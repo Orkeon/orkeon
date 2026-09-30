@@ -44,6 +44,11 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     private readonly ConsensualProcessOptions _options;
     private readonly CrewHookDispatcher _hooks;
 
+    /// <summary>
+    /// The role a consensual task reports: it has no single author, the vote is the agent.
+    /// </summary>
+    private const string ConsensusRole = "consensus";
+
     /// <summary>Initializes a new instance of <see cref="ConsensualProcessStrategy"/>.</summary>
     /// <param name="votingStrategy">The voting strategy.</param>
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
@@ -136,6 +141,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         // re-execution), so the real cost is the sum of all executions, not just the
         // winning result.
         var tokenTally = new TokenUsageTally();
+        var outcome = new CrewRunOutcome();
 
         // The terminal event goes out on EVERY exit — setup included: "consensus not
         // reached" was the only failure this mode reported, and a throwing round, a Ctrl+C
@@ -169,11 +175,26 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 continue;
             }
 
+            // A task depending on one that did not succeed is skipped, as in Sequential
+            // (GAP-03): no agent runs it, no vote is held.
+            if (outcome.BlockingDependency(task) is { } blockedBy)
+            {
+                var skipReason = outcome.RecordSkip(task.Id, ConsensusRole, blockedBy);
+                LogTaskSkippedAfterDependency(task.Id, blockedBy);
+                var (skippedDomain, skippedApp) = CrewRunOutcome.SkippedOutputs(task.Id, ConsensusRole, blockedBy);
+                domainResults.Add(skippedDomain);
+                applicationOutputs.Add(skippedApp);
+                var skipped = CrewRunOutcome.SkippedSnapshot(task.Id, ConsensusRole, skipReason);
+                taskSnapshots.Add(skipped);
+                await _hooks.TaskCompletedAsync(skipped, ct).ConfigureAwait(false);
+                continue;
+            }
+
             LogStartingConsensualExecutionForTask(taskId);
 
             // Consensus has no single author: the vote is the agent, on the start as on the end.
             await _hooks.TaskStartedAsync(
-                CrewHookDispatcher.Started(task.Id.Value.ToString(), "consensus"), ct)
+                CrewHookDispatcher.Started(task.Id.Value.ToString(), ConsensusRole), ct)
                 .ConfigureAwait(false);
 
             // The loop is sequential, so the tally's delta around one task IS what the
@@ -183,34 +204,20 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             var cacheHitBefore = tokenTally.CacheHitTokens;
             var cacheMissBefore = tokenTally.CacheMissTokens;
 
+            // Null when the Fail fallback was triggered: no consensus, so no result. That is a
+            // failed task like any other — its dependants are skipped and the crew fails — not
+            // an end of the crew on the spot (GAP-03).
             var taskResult = await ExecuteTaskWithConsensusAsync(
-                crew, task, agents, applicationOutputs, tokenTally, ct).ConfigureAwait(false);
-
-            if (taskResult == null)
-            {
-                // Fallback = Fail was triggered. Tokens were still consumed by the
-                // voting rounds — propagate the measured cost with the failure.
-                var totalTime = DateTime.UtcNow - startTime;
-                await _hooks.CrewFailedAsync(
-                    CrewHookDispatcher.Snapshot(
-                        crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Failed,
-                        $"Consensus could not be reached for task {taskId}"),
-                    cause: null, ct).ConfigureAwait(false);
-
-                return DomainCrewOutput.CreateFailure(
-                    error: $"Consensus could not be reached for task {taskId}",
-                    taskOutputs: domainResults,
-                    executionTime: totalTime,
-                    metadata: tokenTally
-                        .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
-                        .Build());
-            }
+                crew, task, agents, applicationOutputs, tokenTally, ct).ConfigureAwait(false)
+                ?? new TaskResult(
+                    false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
+                    Error: ConsensusNotReached(task.Id));
 
             // Build application output for context propagation
             var appOutput = new ApplicationTaskOutput(
                 TaskId: task.Id.Value.ToString(),
-                AgentId: "consensus",
-                Content: taskResult.Output,
+                AgentId: ConsensusRole,
+                Content: CrewRunOutcome.RawOutputOf(taskResult),
                 CompletedAt: DateTime.UtcNow,
                 Success: taskResult.Success,
                 ExecutionTime: taskResult.ExecutionTime,
@@ -219,7 +226,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
             // Build domain output
             domainResults.Add(DomainTaskOutput.Create(
-                rawOutput: taskResult.Output,
+                rawOutput: CrewRunOutcome.RawOutputOf(taskResult),
                 format: "text",
                 formattedOutput: null,
                 taskId: task.Id,
@@ -227,13 +234,18 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
                 executionTime: taskResult.ExecutionTime,
                 structuredOutput: taskResult.StructuredOutput));
 
+            // The retained result is the task's result: when it failed, the task failed,
+            // whatever the vote said (GAP-03).
+            if (!taskResult.Success)
+                outcome.RecordFailure(task.Id, ConsensusRole, taskResult.Error ?? taskResult.LastError);
+
             LogTaskCompletedViaConsensusSuccess(taskId, taskResult.Success);
 
             var snapshot = new TaskExecutionSnapshot
             {
                 TaskId = task.Id.Value.ToString(),
                 // Consensus has no single author: the vote is the agent.
-                AgentRole = "consensus",
+                AgentRole = ConsensusRole,
                 Success = taskResult.Success,
                 Duration = taskResult.ExecutionTime,
                 CompletedAt = DateTimeOffset.UtcNow,
@@ -266,22 +278,20 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         var totalExecutionTime = DateTime.UtcNow - startTime;
         var finalOutput = domainResults.LastOrDefault()?.Output ?? string.Empty;
 
-        LogConsensualExecutionCompletedForCrew(crew.Id, totalExecutionTime);
+        if (outcome.HasFailures)
+            LogConsensualExecutionFailedForCrew(crew.Id, outcome.Failures.Count, outcome.Reason);
+        else
+            LogConsensualExecutionCompletedForCrew(crew.Id, totalExecutionTime);
 
-        await _hooks.CrewCompletedAsync(
-            CrewHookDispatcher.Snapshot(
-                crew.Id.ToString(), startTime, taskSnapshots, CrewHookStatus.Completed),
-            ct).ConfigureAwait(false);
-
-        return DomainCrewOutput.CreateSuccess(
-            output: finalOutput,
-            structuredOutput: null,
-            taskOutputs: domainResults,
-            executionTime: totalExecutionTime,
-            metadata: tokenTally
-                .WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder())
-                .Build());
+        return await outcome.CompleteAsync(
+            _hooks, crew.Id.ToString(), startTime, taskSnapshots, domainResults, totalExecutionTime,
+            tokenTally.WriteTo(Orkeon.Domain.Crew.ValueObjects.CrewMetadata.CreateBuilder()).Build(),
+            finalOutput).ConfigureAwait(false);
     }
+
+    /// <summary>The cause a task reports when the <c>Fail</c> fallback found no consensus.</summary>
+    private string ConsensusNotReached(TaskId taskId) =>
+        $"Consensus could not be reached for task {taskId} after {_options.MaxVotingRounds} voting round(s)";
 
     private async Task<TaskResult?> ExecuteTaskWithConsensusAsync(
         DomainCrew crew,
@@ -484,6 +494,12 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Task {TaskId} completed via consensus, success: {Success}")]
     private partial void LogTaskCompletedViaConsensusSuccess(TaskId taskId, bool success);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Consensual execution of crew {CrewId} failed: {FailedTasks} task(s) did not succeed. {Reason}")]
+    private partial void LogConsensualExecutionFailedForCrew(CrewId crewId, int failedTasks, string reason);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId} skipped: it depends on task {DependencyId}, which did not succeed")]
+    private partial void LogTaskSkippedAfterDependency(TaskId taskId, TaskId dependencyId);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Consensual execution completed for crew {CrewId} in {Duration}")]
     private partial void LogConsensualExecutionCompletedForCrew(CrewId crewId, TimeSpan duration);
