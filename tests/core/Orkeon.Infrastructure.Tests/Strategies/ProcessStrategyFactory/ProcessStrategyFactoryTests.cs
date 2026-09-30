@@ -319,6 +319,7 @@ public class ProcessStrategyFactoryTests
         // (no more NotSupportedException).
         var services = CreateServiceCollectionWithMocks();
         services.AddSingleton<IVotingStrategy>(new MajorityVotingStrategy());
+        services.AddSingleton<IBallotCollector>(new Orkeon.Infrastructure.Tests.Doubles.FakeBallotCollector());
         services.AddTransient<ConsensualProcessStrategy>();
         var serviceProvider = services.BuildServiceProvider();
         var logger = new TestLogger();

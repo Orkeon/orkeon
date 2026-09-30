@@ -697,6 +697,10 @@ public static class InfrastructureExtensions
                 .Create(options.VotingOptions.ConsensusType);
         });
 
+        // Each agent casts its ballot through its own execution (GAP-04): scoped like the
+        // execution service it runs on.
+        services.TryAddScoped<IBallotCollector, AgentBallotCollector>();
+
         // Concrete registration lets ProcessStrategyFactory route ProcessType.Consensual
         // like every other process type (R3.3 — FON-010); the application port maps to
         // the same scoped instance.

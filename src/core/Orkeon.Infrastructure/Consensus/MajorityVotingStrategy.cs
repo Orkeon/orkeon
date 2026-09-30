@@ -6,8 +6,29 @@ namespace Orkeon.Infrastructure.Consensus;
 /// Voting strategy that supports Majority, SuperMajority, and Unanimity consensus types.
 /// Also handles weighted votes when enabled.
 /// </summary>
+/// <remarks>
+/// <para>
+/// A choice's share is its score divided by the weight of the ballots that could name it
+/// (GAP-04): a ballot whose <see cref="Vote.OwnChoice"/> is that choice is left out, since a
+/// voter may not vote for its own answer. Without <see cref="Vote.OwnChoice"/>, every ballot
+/// could name every choice and the share is the plain share of the expressed score.
+/// </para>
+/// <para>
+/// An empty <see cref="Vote.Choice"/> is an abstention. Consensus also requires the quorum
+/// (<see cref="VotingOptions.QuorumPercent"/>, the share of expressed ballots) and a single
+/// leading choice: a tie at the top is no consensus. With
+/// <see cref="VotingOptions.AllowAbstention"/> false, an abstention counts as a vote against
+/// every choice.
+/// </para>
+/// </remarks>
 public sealed class MajorityVotingStrategy : IVotingStrategy
 {
+    /// <summary>
+    /// Tolerance (in percentage points) absorbing the floating-point gap between an exact
+    /// share (e.g. 66.666…% for 2 ballots out of 3) and a one-decimal threshold (66.7%).
+    /// </summary>
+    internal const float RoundingTolerancePercent = 0.05f;
+
     /// <inheritdoc />
     public Task<VoteResult> TallyVotesAsync(
         IReadOnlyList<Vote> votes,
@@ -17,93 +38,97 @@ public sealed class MajorityVotingStrategy : IVotingStrategy
         ArgumentNullException.ThrowIfNull(votes);
         ArgumentNullException.ThrowIfNull(options);
 
-        if (votes.Count == 0)
-        {
-            return Task.FromResult(new VoteResult
-            {
-                ConsensusReached = false,
-                WinningChoice = null,
-                AgreementScore = 0f,
-                TotalVotes = 0,
-                VotesForWinner = 0,
-                Scores = new Dictionary<string, float>(),
-                AllVotes = votes
-            });
-        }
-
-        // Calculate scores per choice
-        var scores = new Dictionary<string, float>();
-        var voteCounts = new Dictionary<string, int>();
-
-        foreach (var vote in votes)
-        {
-            var choice = vote.Choice;
-            if (string.IsNullOrWhiteSpace(choice))
-                continue;
-
-            var weight = options.UseWeightedVotes ? vote.Weight * vote.Confidence : 1f;
-
-            if (!scores.TryGetValue(choice, out var currentScore))
-            {
-                currentScore = 0f;
-                voteCounts[choice] = 0;
-            }
-
-            scores[choice] = currentScore + weight;
-            voteCounts[choice]++;
-        }
-
-        if (scores.Count == 0)
-        {
-            return Task.FromResult(new VoteResult
-            {
-                ConsensusReached = false,
-                WinningChoice = null,
-                AgreementScore = 0f,
-                TotalVotes = votes.Count,
-                VotesForWinner = 0,
-                Scores = scores,
-                AllVotes = votes
-            });
-        }
-
-        // Find the winner
-        var totalScore = scores.Values.Sum();
-        var winner = scores.OrderByDescending(kvp => kvp.Value).First();
-        var winnerChoice = winner.Key;
-        var winnerScore = winner.Value;
-        var winnerVoteCount = voteCounts.GetValueOrDefault(winnerChoice, 0);
-
-        // Calculate agreement as percentage of total score
-        var agreementScore = totalScore > 0 ? (winnerScore / totalScore) * 100f : 0f;
-
-        // Determine threshold based on consensus type
         var threshold = options.ConsensusType switch
         {
-            ConsensusType.Majority => 50f,
             ConsensusType.SuperMajority => options.ConsensusThreshold,
-            ConsensusType.Unanimity => 100f,
             ConsensusType.WeightedConsensus => options.ConsensusThreshold,
             _ => 50f
         };
 
-        var consensusReached = agreementScore > threshold;
+        return Task.FromResult(Tally(votes, options, share => share > threshold));
+    }
 
-        // For unanimity, also check that there is only one choice
-        if (options.ConsensusType == ConsensusType.Unanimity)
+    /// <summary>
+    /// The tally every majority-family strategy shares: scores, shares, quorum, abstention,
+    /// unanimity and the single-leader rule. <paramref name="carries"/> decides whether the
+    /// leading share passes the threshold of the calling strategy.
+    /// </summary>
+    internal static VoteResult Tally(IReadOnlyList<Vote> votes, VotingOptions options, Func<float, bool> carries)
+    {
+        if (votes.Count == 0)
+            return NoConsensus(votes, new Dictionary<string, float>());
+
+        var expressed = votes.Where(v => !string.IsNullOrWhiteSpace(v.Choice)).ToList();
+        var abstentions = votes.Where(v => string.IsNullOrWhiteSpace(v.Choice)).ToList();
+
+        float WeightOf(Vote vote) => options.UseWeightedVotes ? vote.Weight * vote.Confidence : 1f;
+
+        // Calculate scores per choice
+        var scores = new Dictionary<string, float>();
+        var voteCounts = new Dictionary<string, int>();
+        foreach (var vote in expressed)
         {
-            consensusReached = scores.Count == 1;
+            scores[vote.Choice] = scores.GetValueOrDefault(vote.Choice) + WeightOf(vote);
+            voteCounts[vote.Choice] = voteCounts.GetValueOrDefault(vote.Choice) + 1;
         }
 
-        return Task.FromResult(new VoteResult
+        if (scores.Count == 0)
+            return NoConsensus(votes, scores);
+
+        // A choice's share counts only the ballots that could name it; a refused abstention
+        // stays in every denominator, as a vote against every choice.
+        float ShareOf(string choice)
         {
-            ConsensusReached = consensusReached,
+            var eligible = expressed.Where(v => v.OwnChoice != choice).Sum(WeightOf);
+            if (!options.AllowAbstention)
+                eligible += abstentions.Where(v => v.OwnChoice != choice).Sum(WeightOf);
+            return eligible > 0 ? scores[choice] / eligible * 100f : 0f;
+        }
+
+        var shares = scores.Keys.ToDictionary(choice => choice, ShareOf);
+
+        // Find the winner (the first met among equals, so a tie never depends on scoring order)
+        var winner = shares.OrderByDescending(kvp => kvp.Value).First();
+        var winnerChoice = winner.Key;
+        var agreementScore = winner.Value;
+
+        var singleLeader = !shares.Any(kvp => kvp.Key != winnerChoice
+            && Math.Abs(kvp.Value - agreementScore) < RoundingTolerancePercent);
+        var quorumMet = (float)expressed.Count / votes.Count * 100f + RoundingTolerancePercent >= options.QuorumPercent;
+
+        var carried = options.ConsensusType == ConsensusType.Unanimity
+            ? IsUnanimous(winnerChoice, expressed, abstentions, options.AllowAbstention)
+            : carries(agreementScore);
+
+        return new VoteResult
+        {
+            ConsensusReached = carried && singleLeader && quorumMet,
             WinningChoice = winnerChoice,
             AgreementScore = agreementScore,
             TotalVotes = votes.Count,
-            VotesForWinner = winnerVoteCount,
+            VotesForWinner = voteCounts.GetValueOrDefault(winnerChoice, 0),
             Scores = scores,
             AllVotes = votes
-        });
+        };
     }
+
+    /// <summary>
+    /// Unanimity: every expressed ballot that could name the winner named it, and — when
+    /// abstention is refused — no ballot that could name it abstained.
+    /// </summary>
+    private static bool IsUnanimous(
+        string winner, List<Vote> expressed, List<Vote> abstentions, bool allowAbstention)
+        => expressed.Where(v => v.OwnChoice != winner).All(v => v.Choice == winner)
+           && (allowAbstention || abstentions.TrueForAll(v => v.OwnChoice == winner));
+
+    private static VoteResult NoConsensus(IReadOnlyList<Vote> votes, Dictionary<string, float> scores) => new()
+    {
+        ConsensusReached = false,
+        WinningChoice = null,
+        AgreementScore = 0f,
+        TotalVotes = votes.Count,
+        VotesForWinner = 0,
+        Scores = scores,
+        AllVotes = votes
+    };
 }

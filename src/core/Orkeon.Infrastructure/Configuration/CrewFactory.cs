@@ -316,7 +316,8 @@ public partial class CrewFactory : ICrewFactory
         if (!string.IsNullOrWhiteSpace(config.MemoryProvider))
             builder.WithMemoryProvider(config.MemoryProvider);
 
-        if (config.Process == ProcessType.Hierarchical
+        // A consensual crew's manager is the arbiter of the ManagerDecision fallback (GAP-04).
+        if ((config.Process == ProcessType.Hierarchical || config.Process == ProcessType.Consensual)
             && config.ManagerAgentId is not null
             && agentMap.TryGetValue(config.ManagerAgentId.ToString(), out var managerAgent))
         {

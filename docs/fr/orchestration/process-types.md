@@ -65,7 +65,7 @@ Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe 
 
 | Critère | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + vote | Linéaire + cycle de retry | Assignation par le manager, délégation sur échec |
+| **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + bulletins de pairs | Linéaire + cycle de retry | Assignation par le manager, délégation sur échec |
 | **Choix de l'agent** | Déclaré, sinon sélecteur | LLM manager | Déclaré, sinon sélecteur | Tous les agents | Déclaré, sinon sélecteur | LLM manager |
 | **Dépendances entre tâches** | Ordre + saut sur échec | Ordre + saut sur échec | Vagues + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec | Ordre + saut sur échec |
 | **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ (dépendantes sautées) | ✅ après ses retries (dépendantes sautées) | ✅ (dépendantes sautées ; un budget épuisé aussi) |
@@ -316,46 +316,62 @@ tasks:
 
 ### Principe
 
-Pour chaque tâche, **chaque agent de la crew l'exécute** (en concurrence). Les exécutions sont transformées en bulletins et dépouillées par l'`IVotingStrategy` configurée. Si aucun consensus n'est atteint et que `EnableDiscussion` est actif, un nouveau round a lieu où chaque agent voit les sorties précédentes des autres (une variable de contexte `discussion_context`). Après `MaxVotingRounds` rounds sans consensus, la `FallbackStrategy` tranche.
+Pour chaque tâche, **chaque agent de la crew l'exécute** (en concurrence). Puis **chaque agent remplit un bulletin** : il classe les réponses réussies des autres agents, anonymisées sous des étiquettes (`A`, `B`, …). L'`IVotingStrategy` configurée dépouille les bulletins. Si aucun consensus n'est atteint et que `EnableDiscussion` est actif, un nouveau round a lieu où chaque agent voit les réponses précédentes des autres (une variable de contexte `discussion_context`). Après `MaxVotingRounds` rounds sans consensus, la `FallbackStrategy` tranche.
 
 ### Mécanisme interne
 
 ```
-Tâche N ──┬── Agent A → résultat A ────┐
-          ├── Agent B → résultat B ────┼── Dépouillement ── Consensus ? ── oui → résultat gagnant
-          └── Agent C → résultat C ────┘                        │
-                                                                non
-                                                                 ↓
-                                          Round suivant (avec discussion_context)
-                                                                 ↓
-                                        Rounds épuisés → FallbackStrategy
+Tâche N ──┬── Agent A → réponse A ──┐                   ┌── A classe les réponses de B, C ──┐
+          ├── Agent B → réponse B ──┼── étiquettes A,B,C ┼── B classe les réponses de A, C ──┼── Dépouillement ── Consensus ? ── oui → réponse gagnante
+          └── Agent C → réponse C ──┘                   └── C classe les réponses de A, B ──┘                        │
+                                                                                                                   non
+                                                                                                                    ↓
+                                                                               Round suivant (avec discussion_context)
+                                                                                                                    ↓
+                                                                                 Rounds épuisés → FallbackStrategy
 ```
 
-**Enregistrement** : `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) lie `ConsensualProcessOptions` à la section `Orkeon:Consensus`, enregistre `IVotingStrategyFactory` → `VotingStrategyFactory` et l'`IVotingStrategy` construite à partir du `ConsensusType` configuré (singletons, `TryAdd`), ainsi que `ConsensualProcessStrategy` (scoped) avec `IConsensualProcessStrategy` associée à la même instance. `AddOrkeonInfrastructure()` l'appelle déjà — ne l'appelez vous-même que dans un hôte qui n'utilise pas `AddOrkeonInfrastructure()` ; enregistrer votre propre `IVotingStrategy` avant lui remplace celle configurée.
+**Enregistrement** : `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) lie `ConsensualProcessOptions` à la section `Orkeon:Consensus`, enregistre `IVotingStrategyFactory` → `VotingStrategyFactory` et l'`IVotingStrategy` construite à partir du `ConsensusType` configuré (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), ainsi que `ConsensualProcessStrategy` (scoped) avec `IConsensualProcessStrategy` associée à la même instance. `AddOrkeonInfrastructure()` l'appelle déjà — ne l'appelez vous-même que dans un hôte qui n'utilise pas `AddOrkeonInfrastructure()` ; enregistrer votre propre `IVotingStrategy` ou `IBallotCollector` avant lui remplace celui par défaut.
 
-**Classes clés** : `ConsensualProcessStrategy` (aussi `IConsensualProcessStrategy`), `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+**Classes clés** : `ConsensualProcessStrategy` (aussi `IConsensualProcessStrategy`), `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
 
-### Comment un bulletin est formé — à lire avant de se fier au vote
+### Comment un bulletin est formé
 
-Le pipeline **ne compare pas** le contenu des sorties. Chaque exécution d'un agent devient **un bulletin pour lui-même** : `Choice` = son propre id d'agent, `Confidence` = 1,0 si son exécution a réussi et 0,1 si elle a échoué, `Weight` = 1,0. Conséquences à partir de deux agents :
+- **Candidats** : seules les exécutions réussies. Une exécution en échec n'est jamais candidate — son agent vote quand même, sur toutes les réponses. Une réponse réussie seule est retenue sans bulletin ; quand toutes les exécutions d'un round ont échoué, la tâche échoue avec l'erreur des agents, sans round de plus.
+- **Anonymisés** : les réponses portent les étiquettes `A`, `B`, … dans un ordre mélangé par tâche et par round (déterministe : la même exécution donne les mêmes étiquettes). Le votant ne voit ni le rôle ni l'identifiant des auteurs : il vote pour la réponse, pas pour l'agent.
+- **Pas de vote pour soi** : un agent classe les réponses des autres agents, jamais la sienne. La part d'un choix est donc comptée parmi les bulletins qui pouvaient le désigner (`Vote.OwnChoice`) : trois agents qui rendent la même réponse atteignent `Majority`, `SuperMajority` et `Unanimity` au premier round.
+- **Qui le remplit** : l'agent votant lui-même, via `IAgentExecutionService` — sa propre configuration LLM, et ses jetons comptés dans la télémétrie de la tâche. On lui demande un objet JSON (format de réponse `json_object`) : `{"ranking": ["B", "A"], "abstain": false, "confidence": 0.8, "justification": "…"}`. Une réponse qui n'est pas cet objet, un classement qui ne nomme aucune étiquette proposée, une exécution de bulletin en échec ou `"abstain": true` est une **abstention** : elle est journalisée et ne fait jamais échouer la tâche.
+- **Ce qui est compté** : `Majority`, `SuperMajority`, `Unanimity` et `WeightedConsensus` comptent le premier choix ; `BordaCount` compte le classement entier. La `confidence` du bulletin est lue avec `UseWeightedVotes`.
+- **Égalités** : une égalité en tête n'est pas un consensus. Deux agents ne peuvent désigner que l'autre, leur vote est donc toujours à égalité — une crew consensuelle a besoin de trois agents ou plus pour trancher par le vote.
+- **Le manager** : le `managerAgent` d'une crew (`CrewBuilder.WithManager` en C#) ne répond ni ne vote ; il arbitre seulement en `ManagerDecision`.
 
-- `Majority`, `SuperMajority` et `Unanimity` sans pondération **n'atteignent jamais le consensus** (chaque choix détient 1/N des voix) ; avec `UseWeightedVotes: true` (ou `WeightedConsensus`), un choix l'emporte quand les exécutions des autres agents ont échoué.
-- `BordaCount` attend des classements séparés par des virgules ; un bulletin à choix unique donne 0 point à tous, il désigne donc le **premier agent** vainqueur dès le round 1.
-- Le repli `AcceptBestScore` **ré-exécute la tâche avec le premier agent** et garde cette sortie ; `ManagerDecision` fait de même aujourd'hui ; `Fail` fait échouer la tâche (« Consensus could not be reached for task … »). Le résultat retenu est celui de la tâche : s'il est en échec — `Fail`, ou une exécution gagnante qui a échoué — la crew échoue et les dépendantes de la tâche sont sautées ; les tâches qui n'en dépendent pas s'exécutent quand même.
+**Replis**, après `MaxVotingRounds` rounds sans consensus :
 
-En pratique, pour une crew dont tous les agents réussissent, chaque tâche coûte `MaxVotingRounds` × N exécutions plus une exécution de repli (N exécutions avec `BordaCount`). Les variables d'entrée de la crew ne sont pas interpolées dans ce mode ; les sorties gagnantes des tâches précédentes sont transmises en contexte.
+- `AcceptBestScore` garde la réponse que le dernier dépouillement a placée en tête, **sans rien relancer**. Quand aucun bulletin de ce round n'a désigné de réponse (tous les votants se sont abstenus), la tâche échoue.
+- `ManagerDecision` : l'agent manager de la crew classe les réponses du dernier round, anonymisées comme les pairs les ont vues, et son premier choix est retenu ; s'il s'abstient, la tâche échoue. Une crew sans agent manager est **refusée au lancement, avant qu'aucun agent ne s'exécute**, avec un message qui nomme la correction (le repli est un réglage d'hôte : le validateur YAML ne le voit pas).
+- `Fail` fait échouer la tâche (« Consensus could not be reached for task … »).
+
+Le résultat retenu est celui de la tâche : s'il est en échec, la crew échoue et les dépendantes de la tâche sont sautées ; les tâches qui n'en dépendent pas s'exécutent quand même.
+
+**Coût** : un round coûte N exécutions plus N bulletins — un appel LLM court par votant, dont le prompt contient les réponses soumises au vote : son entrée croît avec N × la longueur des réponses (une réponse longue est tronquée pour tenir dans une description de tâche). Trois agents d'accord coûtent 3 exécutions + 3 bulletins par tâche. Une tâche qui n'atteint jamais le consensus coûte `MaxVotingRounds` × (N + N) appels, plus un bulletin du manager en `ManagerDecision` ; `AcceptBestScore` ne relance rien. Les variables d'entrée de la crew atteignent chaque exécution et chaque bulletin ; les sorties gagnantes des tâches précédentes sont transmises en contexte.
+
+```yaml
+name: review-board
+process: consensual
+managerAgent: chair             # l'arbitre de FallbackStrategy: ManagerDecision
+```
 
 ### Types de consensus disponibles
 
-Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consensus:VotingOptions:ConsensusType` (`appsettings.json` .NET) choisit la stratégie via `IVotingStrategyFactory`. Défaut : `Majority`.
+Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consensus:VotingOptions:ConsensusType` (`appsettings.json` .NET) choisit la stratégie via `IVotingStrategyFactory`. Défaut : `Majority`. Chaque type exige aussi le quorum (`QuorumPercent`) et une seule réponse en tête ; une part est comptée parmi les bulletins qui pouvaient désigner la réponse.
 
 | Type | Stratégie résolue | Règle de consensus | Seuil par défaut |
 |------|-------------------|--------------------|------------------|
-| `Majority` | `MajorityVotingStrategy` | Part gagnante strictement supérieure à 50 % | 50 % |
-| `SuperMajority` | `SuperMajorityVotingStrategy` | Part gagnante ≥ `ConsensusThreshold` | 66,7 % |
-| `Unanimity` | `UnanimityVotingStrategy` | Un seul choix distinct | 100 % |
+| `Majority` | `MajorityVotingStrategy` | Part en tête strictement supérieure à 50 % | 50 % |
+| `SuperMajority` | `SuperMajorityVotingStrategy` | Part en tête ≥ `ConsensusThreshold` | 66,7 % |
+| `Unanimity` | `UnanimityVotingStrategy` | Chaque bulletin qui pouvait désigner le gagnant l'a désigné | 100 % |
 | `WeightedConsensus` | `WeightedConsensusStrategy` | Poids du rôle (`RoleWeights`) × confiance, part au-dessus de `ConsensusThreshold` | 66,7 % |
-| `BordaCount` | `BordaCountStrategy` | Classement par score de Borda, toujours un vainqueur | N/A |
+| `BordaCount` | `BordaCountStrategy` | Meilleur score de Borda sur les classements complets ; pas de consensus en cas d'égalité en tête | N/A |
 
 ### Configuration (.NET, section `Orkeon:Consensus`)
 
@@ -367,7 +383,9 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
       "VotingOptions": {
         "ConsensusType": "SuperMajority",
         "ConsensusThreshold": 75,
-        "UseWeightedVotes": true
+        "UseWeightedVotes": true,
+        "QuorumPercent": 50,
+        "AllowAbstention": true
       },
       "EnableDiscussion": true,
       "FallbackStrategy": "AcceptBestScore",
@@ -382,36 +400,39 @@ Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consen
 
 | Clé | Défaut | Effet |
 |-----|--------|-------|
-| `MaxVotingRounds` | 3 | Rounds avant le repli (la copie `VotingOptions:MaxVotingRounds` n'est pas lue) |
+| `MaxVotingRounds` | 3 | Rounds avant le repli ; un round = N exécutions + N bulletins |
 | `VotingOptions:ConsensusType` | `Majority` | Stratégie de vote |
 | `VotingOptions:ConsensusThreshold` | 66,7 | Seuil de `SuperMajority` / `WeightedConsensus`, en **pourcentage (0–100)** — 75 % s'écrit `75` |
-| `VotingOptions:UseWeightedVotes` | `false` | Poids × confiance au lieu d'une voix par bulletin |
-| `VotingOptions:QuorumPercent`, `VotingOptions:AllowAbstention` | 50, `true` | Transmis aux stratégies mais appliqués par aucune |
-| `EnableDiscussion` | `true` | Les rounds après le premier voient les sorties des autres agents |
-| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore`, `Fail`, `ManagerDecision` (identique à `AcceptBestScore` aujourd'hui) |
+| `VotingOptions:UseWeightedVotes` | `false` | Poids × confiance du bulletin au lieu d'une voix par bulletin |
+| `VotingOptions:QuorumPercent` | 50 | Part minimale, en pourcentage, de bulletins exprimés (hors abstentions) parmi les votants ; en dessous, pas de consensus |
+| `VotingOptions:AllowAbstention` | `true` | `false` : une abstention compte comme un vote contre toutes les réponses — elle reste au dénominateur de chaque part et rompt l'unanimité ; avec `BordaCount`, toute abstention empêche le consensus |
+| `EnableDiscussion` | `true` | Les rounds après le premier voient les réponses des autres agents |
+| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore` (la tête du dernier dépouillement, rien n'est relancé), `Fail`, `ManagerDecision` (l'agent manager de la crew choisit ; obligatoire) |
 | `RoleWeights` | vide | Rôle → poids, lu par `WeightedConsensus` |
 
 ### Avantages
 
 - **Plusieurs tentatives indépendantes** par tâche, exécutées en concurrence
-- **Vote configurable** : 5 stratégies, pondération par rôle
-- **Discussion** : les agents voient les sorties des autres entre les rounds
+- **Un vote sur les réponses** : chaque agent classe les réponses anonymisées des autres ; une tentative en échec n'est jamais retenue
+- **Vote configurable** : 5 stratégies, quorum, abstention, pondération par rôle
+- **Discussion** : les agents voient les réponses des autres entre les rounds
 
 ### Inconvénients
 
-- **Coût LLM élevé** : N agents × rounds (+ repli) exécutions par tâche
-- **Le vote n'est pas sémantique** (voir ci-dessus) : il mesure quelles exécutions ont réussi, pas quelle réponse est la meilleure
-- **Complexité de configuration** : beaucoup de paramètres, dont certains transmis sans être appliqués
+- **Coût LLM élevé** : N exécutions + N bulletins par tâche et par round (+ un bulletin du manager en `ManagerDecision`)
+- **Les juges sont des LLM** : un bulletin est l'avis d'un modèle ; un angle mort partagé par les modèles de tous les agents n'est pas corrigé par le vote
+- **Deux agents sont toujours à égalité** : le vote tranche à partir de trois agents
+- **Complexité de configuration** : beaucoup de paramètres
 
 ### Quand l'utiliser
 
 - Tâches où des tentatives indépendantes de plusieurs agents valent leur coût
-- Crews où l'échec d'un agent doit être absorbé par les autres (votes pondérés)
+- Crews où l'échec d'un agent doit être absorbé par les autres (une réponse en échec n'est jamais candidate)
 
 ### Quand ne pas l'utiliser
 
 - Tâches factuelles à réponse unique
-- Contraintes de budget LLM (multiplié par N agents × R rounds)
+- Contraintes de budget LLM (multiplié par 2 × N agents × R rounds : réponses et bulletins)
 - Workflows à haute fréquence (trop lent)
 
 ---
@@ -649,7 +670,7 @@ Les ProcessTypes sont exclusifs à l'échelle d'une crew, mais se combinent avec
 | Sequential | N | — | Σ(durées) | ⭐⭐⭐⭐⭐ |
 | Hierarchical | N × (1 à 3) | N assignations + N × (1 à 3) revues | Σ(durées) × 1,5–3 | ⭐⭐⭐⭐ |
 | Parallel | N | — | Σ(tâche la plus longue de chaque vague) | ⭐⭐⭐⭐ |
-| Consensual | N × M × rounds (+ N repli) | — | Σ(max(durées) × rounds) | ⭐⭐⭐ |
+| Consensual | N × M × rounds | N × M × rounds bulletins (+ N bulletins du manager en `ManagerDecision`) | Σ((max(durées) + max(durées des bulletins)) × rounds) | ⭐⭐⭐ |
 | Graph | N × (1 + retries) | — | Σ(durées des tentatives) | ⭐⭐⭐⭐ |
 | Autonomous | N (+ délégations) | N assignations | Bornée par la durée maximale | ⭐⭐ |
 

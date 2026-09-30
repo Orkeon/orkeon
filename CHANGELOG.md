@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the consensual vote weighs the answers **[breaking]**
+
+A consensual crew's vote did not read what its agents wrote: every agent cast one ballot for
+itself. Three agents that gave the same answer never reached `Majority`, `SuperMajority` or
+`Unanimity`; `BordaCount` handed the task to the first agent declared, failed or not; and the
+`AcceptBestScore` and `ManagerDecision` fallbacks both re-ran the first agent, under a crew id
+that did not exist. The vote is now a vote on the answers (GAP-04):
+
+- **Peer ballots**: once every agent has answered, every agent ranks the other agents'
+  answers, anonymised under labels `A`, `B`, … shuffled per task and round. It casts its
+  ballot through its own execution (its LLM configuration, its tokens counted), as a JSON
+  object. A reply that cannot be read counts as an abstention and never fails the task. The
+  port is `IBallotCollector` (`Orkeon.Application.Interfaces`, default
+  `AgentBallotCollector`); a host can register its own.
+- **No vote for oneself**, and a share is counted among the ballots that could name the answer
+  (`Vote.OwnChoice`): three agents that agree reach every consensus type in round one. A tie
+  at the top is no consensus, so two agents, who can only name each other, never decide by
+  vote.
+- **A failed execution is never a candidate.** A lone successful answer is kept without a
+  ballot; a round where every execution failed fails the task with the agents' error, without
+  another round.
+- **`AcceptBestScore`** keeps the last count's leader and re-runs nothing. **`ManagerDecision`**
+  asks the crew's manager agent (`managerAgent`, now kept on consensual crews) to rank the
+  last round's answers; a crew without one is refused at kickoff, before any agent runs. A
+  declared manager neither answers nor votes.
+- **`QuorumPercent` and `AllowAbstention` are enforced**: the quorum is the share of expressed
+  ballots; with `AllowAbstention: false` an abstention counts against every answer. The dead
+  copy `VotingOptions.MaxVotingRounds` is removed — `Orkeon:Consensus:MaxVotingRounds` is the
+  one that counts.
+- **The crew's input variables reach every execution and ballot**;
+  `IConsensualProcessStrategy.ExecuteConsensualAsync` takes them.
+- Cost: a round is N executions + N ballots; a task that agrees in round one costs 2N calls,
+  one that never agrees `MaxVotingRounds` × 2N (+ one manager ballot).
+
+Migration: remove `Orkeon:Consensus:VotingOptions:MaxVotingRounds` from your settings. With
+`FallbackStrategy: ManagerDecision`, declare a `managerAgent`. A consensual crew of two
+agents now always reaches the fallback: give it a third. `new ConsensualProcessStrategy(...)`
+takes an `IBallotCollector` after the voting strategy, and a positional `CancellationToken`
+passed to `ExecuteConsensualAsync` is now named (`ct:`).
+
 ### Changed — a failed task fails the crew in all six modes **[breaking]**
 
 Sequential was the only mode that failed a crew with a failed task (STUDIO-12 C5a, LLM-11).

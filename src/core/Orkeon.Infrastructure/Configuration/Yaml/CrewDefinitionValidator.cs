@@ -26,6 +26,7 @@ public static class CrewDefinitionValidator
         ValidateAgents(config, errors);
         ValidateTasks(config, errors);
         ValidateHierarchicalProcess(config, errors, warnings);
+        ValidateConsensualManager(config, errors);
         ValidateMounts(config, errors);
 
         return new CrewDefinitionValidationResult(
@@ -136,6 +137,20 @@ public static class CrewDefinitionValidator
             warnings.Add("Hierarchical process without an explicit manager agent. The first agent will be used as manager.");
             return;
         }
+
+        var agentIds = config.Agents?.Select(a => a.Id).ToHashSet() ?? [];
+        if (!agentIds.Contains(config.ManagerAgentId))
+            errors.Add($"Manager agent '{config.ManagerAgentId}' is not defined in agents.");
+    }
+
+    /// <summary>
+    /// A consensual crew's manager (the arbiter of the <c>ManagerDecision</c> fallback, GAP-04)
+    /// must be one of its agents.
+    /// </summary>
+    private static void ValidateConsensualManager(CrewConfiguration config, List<string> errors)
+    {
+        if (config.Process != ProcessType.Consensual || config.ManagerAgentId is null)
+            return;
 
         var agentIds = config.Agents?.Select(a => a.Id).ToHashSet() ?? [];
         if (!agentIds.Contains(config.ManagerAgentId))

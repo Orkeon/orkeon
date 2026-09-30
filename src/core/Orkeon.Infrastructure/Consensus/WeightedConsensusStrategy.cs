@@ -47,7 +47,6 @@ public sealed class WeightedConsensusStrategy : IVotingStrategy
             QuorumPercent = options.QuorumPercent,
             ConsensusThreshold = options.ConsensusThreshold,
             UseWeightedVotes = true,
-            MaxVotingRounds = options.MaxVotingRounds,
             AllowAbstention = options.AllowAbstention
         };
 

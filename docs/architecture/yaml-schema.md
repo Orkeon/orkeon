@@ -25,7 +25,7 @@ verbose: bool             # default: false
 memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning
 planning: bool            # default: false
-managerAgent: string      # Hierarchical only; omitted → the first agent manages (warning)
+managerAgent: string      # Hierarchical: the manager (omitted → the first agent manages, warning). Consensual: the arbiter of the ManagerDecision fallback
 circuitBreaker: {…}       # Crew-level circuit breaker (see the dedicated section)
 graphConfig: {…}          # Graph mode settings (see the dedicated section)
 

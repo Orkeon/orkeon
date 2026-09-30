@@ -8,12 +8,14 @@ namespace Orkeon.Infrastructure.Consensus;
 public class ConsensualProcessOptions
 {
     /// <summary>
-    /// Gets or sets the voting options used for consensus.
+    /// Gets or sets the voting options used for consensus: the consensus type, its threshold,
+    /// the quorum and whether abstention is allowed.
     /// </summary>
     public VotingOptions VotingOptions { get; set; } = new();
 
     /// <summary>
-    /// Gets or sets the maximum number of voting rounds before applying fallback.
+    /// Gets or sets the maximum number of voting rounds before applying fallback. A round runs
+    /// every agent on the task, then collects one ballot per agent.
     /// </summary>
     public int MaxVotingRounds { get; set; } = 3;
 
@@ -41,7 +43,8 @@ public class ConsensualProcessOptions
 public enum ConsensusFallback
 {
     /// <summary>
-    /// Accept the choice with the highest score.
+    /// Keep the answer the last round's count put first, without running anything again. The
+    /// task fails when no ballot of that round named an answer.
     /// </summary>
     AcceptBestScore,
 
@@ -51,7 +54,8 @@ public enum ConsensusFallback
     Fail,
 
     /// <summary>
-    /// Let the manager agent make the final decision.
+    /// The crew's manager agent ranks the last round's anonymised answers and its first choice
+    /// is kept. A consensual crew without a manager agent is refused before any agent runs.
     /// </summary>
     ManagerDecision
 }

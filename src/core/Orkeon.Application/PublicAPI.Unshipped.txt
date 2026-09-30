@@ -40,3 +40,60 @@ static Orkeon.Application.Interfaces.Ports.LlmUsageScope.Current.get -> Orkeon.A
 *REMOVED*Orkeon.Application.Crew.ExecutionOrchestrator.ExecutionOrchestrator(Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Crew.ExecutionOrchestrator!>! logger, Orkeon.Application.Interfaces.Ports.IBasicLlmProvider! llmProvider, Orkeon.Domain.Crew.Planning.IAgentPlanner! planner, Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! registeredTools, Orkeon.Application.Interfaces.Ports.IOutputValidationPipeline! validationPipeline, Orkeon.Application.Interfaces.Ports.IOutputParserFactory! parserFactory, Orkeon.Application.Interfaces.Security.ILlmRateLimiter! rateLimiter, Orkeon.Domain.SharedKernel.ILlmProvider? fullProvider, Orkeon.Application.Interfaces.LLM.IToolCallingStrategy? toolCallingStrategy, Orkeon.Application.Crew.DeliverableResolvers.IDeliverableResolverFactory? deliverableResolverFactory, Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Ports.ILlmUsageSink? usageSink) -> void
 *REMOVED*Orkeon.Application.Interfaces.Ports.IToolDecorator.Decorate(Orkeon.Domain.Common.ITool! tool) -> Orkeon.Domain.Common.ITool!
 Orkeon.Application.Interfaces.Ports.IToolDecorator.Decorate(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Tools.IBaseTool!
+*REMOVED*Orkeon.Application.Interfaces.IConsensualProcessStrategy.ExecuteConsensualAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+*REMOVED*Orkeon.Application.Interfaces.VotingOptions.MaxVotingRounds.get -> int
+*REMOVED*Orkeon.Application.Interfaces.VotingOptions.MaxVotingRounds.set -> void
+Orkeon.Application.Interfaces.Ballot
+Orkeon.Application.Interfaces.Ballot.<Clone>$() -> Orkeon.Application.Interfaces.Ballot!
+Orkeon.Application.Interfaces.Ballot.Abstained.get -> bool
+Orkeon.Application.Interfaces.Ballot.Ballot() -> void
+Orkeon.Application.Interfaces.Ballot.Confidence.get -> float
+Orkeon.Application.Interfaces.Ballot.Confidence.init -> void
+Orkeon.Application.Interfaces.Ballot.Equals(Orkeon.Application.Interfaces.Ballot? other) -> bool
+Orkeon.Application.Interfaces.Ballot.Execution.get -> Orkeon.Application.Interfaces.Services.TaskResult?
+Orkeon.Application.Interfaces.Ballot.Execution.init -> void
+Orkeon.Application.Interfaces.Ballot.Justification.get -> string?
+Orkeon.Application.Interfaces.Ballot.Justification.init -> void
+Orkeon.Application.Interfaces.Ballot.Ranking.get -> System.Collections.Immutable.ImmutableList<string!>!
+Orkeon.Application.Interfaces.Ballot.Ranking.init -> void
+Orkeon.Application.Interfaces.BallotCandidate
+Orkeon.Application.Interfaces.BallotCandidate.<Clone>$() -> Orkeon.Application.Interfaces.BallotCandidate!
+Orkeon.Application.Interfaces.BallotCandidate.BallotCandidate() -> void
+Orkeon.Application.Interfaces.BallotCandidate.Equals(Orkeon.Application.Interfaces.BallotCandidate? other) -> bool
+Orkeon.Application.Interfaces.BallotCandidate.Label.get -> string!
+Orkeon.Application.Interfaces.BallotCandidate.Label.init -> void
+Orkeon.Application.Interfaces.BallotCandidate.Output.get -> string!
+Orkeon.Application.Interfaces.BallotCandidate.Output.init -> void
+Orkeon.Application.Interfaces.BallotRequest
+Orkeon.Application.Interfaces.BallotRequest.<Clone>$() -> Orkeon.Application.Interfaces.BallotRequest!
+Orkeon.Application.Interfaces.BallotRequest.BallotRequest() -> void
+Orkeon.Application.Interfaces.BallotRequest.Candidates.get -> System.Collections.Immutable.ImmutableList<Orkeon.Application.Interfaces.BallotCandidate!>!
+Orkeon.Application.Interfaces.BallotRequest.Candidates.init -> void
+Orkeon.Application.Interfaces.BallotRequest.Context.get -> Orkeon.Application.Context.SimpleExecutionContext!
+Orkeon.Application.Interfaces.BallotRequest.Context.init -> void
+Orkeon.Application.Interfaces.BallotRequest.Equals(Orkeon.Application.Interfaces.BallotRequest? other) -> bool
+Orkeon.Application.Interfaces.BallotRequest.Task.get -> Orkeon.Domain.Task.CrewTask!
+Orkeon.Application.Interfaces.BallotRequest.Task.init -> void
+Orkeon.Application.Interfaces.BallotRequest.Voter.get -> Orkeon.Domain.Agent.Agent!
+Orkeon.Application.Interfaces.BallotRequest.Voter.init -> void
+Orkeon.Application.Interfaces.IBallotCollector
+Orkeon.Application.Interfaces.IBallotCollector.CollectAsync(Orkeon.Application.Interfaces.BallotRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ballot!>!
+Orkeon.Application.Interfaces.IConsensualProcessStrategy.ExecuteConsensualAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
+Orkeon.Application.Interfaces.Vote.OwnChoice.get -> string?
+Orkeon.Application.Interfaces.Vote.OwnChoice.init -> void
+override Orkeon.Application.Interfaces.Ballot.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Ballot.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Ballot.ToString() -> string!
+override Orkeon.Application.Interfaces.BallotCandidate.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.BallotCandidate.GetHashCode() -> int
+override Orkeon.Application.Interfaces.BallotCandidate.ToString() -> string!
+override Orkeon.Application.Interfaces.BallotRequest.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.BallotRequest.GetHashCode() -> int
+override Orkeon.Application.Interfaces.BallotRequest.ToString() -> string!
+static Orkeon.Application.Interfaces.Ballot.Abstention(string! reason, Orkeon.Application.Interfaces.Services.TaskResult? execution = null) -> Orkeon.Application.Interfaces.Ballot!
+static Orkeon.Application.Interfaces.Ballot.operator !=(Orkeon.Application.Interfaces.Ballot? left, Orkeon.Application.Interfaces.Ballot? right) -> bool
+static Orkeon.Application.Interfaces.Ballot.operator ==(Orkeon.Application.Interfaces.Ballot? left, Orkeon.Application.Interfaces.Ballot? right) -> bool
+static Orkeon.Application.Interfaces.BallotCandidate.operator !=(Orkeon.Application.Interfaces.BallotCandidate? left, Orkeon.Application.Interfaces.BallotCandidate? right) -> bool
+static Orkeon.Application.Interfaces.BallotCandidate.operator ==(Orkeon.Application.Interfaces.BallotCandidate? left, Orkeon.Application.Interfaces.BallotCandidate? right) -> bool
+static Orkeon.Application.Interfaces.BallotRequest.operator !=(Orkeon.Application.Interfaces.BallotRequest? left, Orkeon.Application.Interfaces.BallotRequest? right) -> bool
+static Orkeon.Application.Interfaces.BallotRequest.operator ==(Orkeon.Application.Interfaces.BallotRequest? left, Orkeon.Application.Interfaces.BallotRequest? right) -> bool

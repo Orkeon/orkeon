@@ -30,7 +30,6 @@ public sealed class UnanimityVotingStrategy : IVotingStrategy
             QuorumPercent = options.QuorumPercent,
             ConsensusThreshold = options.ConsensusThreshold,
             UseWeightedVotes = options.UseWeightedVotes,
-            MaxVotingRounds = options.MaxVotingRounds,
             AllowAbstention = options.AllowAbstention
         };
 

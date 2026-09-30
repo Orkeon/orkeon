@@ -1,3 +1,4 @@
+using System.Collections.Immutable;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Application.Interfaces;
@@ -23,9 +24,10 @@ using DomainTaskOutput = Orkeon.Domain.Task.ValueObjects.TaskOutput;
 namespace Orkeon.Infrastructure.Consensus;
 
 /// <summary>
-/// Consensual process strategy where agents independently execute each task,
-/// then reach consensus through voting. If consensus is not reached, optional
-/// discussion rounds allow agents to reconsider with context from others' results.
+/// Consensual process strategy where agents independently execute each task, then vote on
+/// the answers: each agent ranks the other agents' successful answers, anonymised under
+/// labels (GAP-04). If consensus is not reached, optional discussion rounds allow agents to
+/// reconsider with context from others' results.
 /// </summary>
 /// <remarks>
 /// Also implements <see cref="IProcessStrategy"/> so that
@@ -36,6 +38,7 @@ namespace Orkeon.Infrastructure.Consensus;
 public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrategy, IProcessStrategy
 {
     private readonly IVotingStrategy _votingStrategy;
+    private readonly IBallotCollector _ballots;
     private readonly IAgentExecutionService _executionService;
     private readonly ITaskRepository _taskRepository;
     private readonly IAgentRepository _agentRepository;
@@ -51,12 +54,14 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
     /// <summary>Initializes a new instance of <see cref="ConsensualProcessStrategy"/>.</summary>
     /// <param name="votingStrategy">The voting strategy.</param>
+    /// <param name="ballotCollector">Collects each voter's ballot on the anonymised answers (GAP-04).</param>
     /// <param name="dependencies">The collaborators shared by every crew strategy.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="options">The consensual process options.</param>
     /// <param name="hook">Optional crew execution hook. May be null (BUS-03).</param>
     public ConsensualProcessStrategy(
         IVotingStrategy votingStrategy,
+        IBallotCollector ballotCollector,
         CrewStrategyDependencies dependencies,
         ILogger<ConsensualProcessStrategy> logger,
         IOptions<ConsensualProcessOptions> options,
@@ -64,6 +69,8 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     {
         ArgumentNullException.ThrowIfNull(votingStrategy);
         _votingStrategy = votingStrategy;
+        ArgumentNullException.ThrowIfNull(ballotCollector);
+        _ballots = ballotCollector;
         ArgumentNullException.ThrowIfNull(dependencies);
         _executionService = dependencies.ExecutionService;
         _taskRepository = dependencies.TaskRepository;
@@ -80,25 +87,25 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     public Task<DomainCrewOutput> ExecuteConsensualAsync(
         DomainCrew crew,
         DomainExecutionPlan plan,
+        IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(crew);
         ArgumentNullException.ThrowIfNull(plan);
-        return ExecuteConsensualCoreAsync(crew, plan, ct);
+        return ExecuteConsensualCoreAsync(crew, plan, inputVariables ?? new Dictionary<string, string>(), ct);
     }
 
     /// <inheritdoc />
     /// <remarks>
-    /// Runs the consensual voting pipeline over the planned tasks. Input variables are
-    /// accepted for signature compatibility but are not interpolated by the consensual
-    /// pipeline (iso with the historical routing).
+    /// Runs the consensual voting pipeline over the planned tasks. The input variables reach
+    /// every agent execution and every ballot (GAP-04).
     /// </remarks>
     public Task<DomainCrewOutput> ExecuteSequentialAsync(
         DomainCrew crew,
         DomainExecutionPlan plan,
         IReadOnlyDictionary<string, string>? inputVariables = null,
         CancellationToken cancellationToken = default)
-        => ExecuteConsensualAsync(crew, plan, cancellationToken);
+        => ExecuteConsensualAsync(crew, plan, inputVariables, cancellationToken);
 
     /// <inheritdoc />
     public Task<DomainCrewOutput> ExecuteHierarchicalAsync(
@@ -127,6 +134,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     private async Task<DomainCrewOutput> ExecuteConsensualCoreAsync(
         DomainCrew crew,
         DomainExecutionPlan plan,
+        IReadOnlyDictionary<string, string> inputVariables,
         CancellationToken ct)
     {
         LogStartingConsensualExecutionForCrew(crew.Id);
@@ -148,10 +156,16 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         // or an agent-less crew escaped silently.
         try
         {
-        // Load all agents
+        // ManagerDecision needs an arbiter: without one the crew is refused before any agent
+        // runs, not after it paid for every round (GAP-04).
+        var arbiter = await ResolveArbiterAsync(crew, ct).ConfigureAwait(false);
+
+        // Load all agents. A declared manager arbitrates; it neither answers nor votes.
         var agents = new List<DomainAgent>();
         foreach (var agentId in crew.Agents)
         {
+            if (agentId == crew.ManagerAgentId)
+                continue;
             var agent = await _agentRepository.GetByIdAsync(agentId, ct).ConfigureAwait(false);
             if (agent != null) agents.Add(agent);
         }
@@ -208,7 +222,7 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             // failed task like any other — its dependants are skipped and the crew fails — not
             // an end of the crew on the spot (GAP-03).
             var taskResult = await ExecuteTaskWithConsensusAsync(
-                crew, task, agents, applicationOutputs, tokenTally, ct).ConfigureAwait(false)
+                new VoteContext(crew, task, agents, arbiter, applicationOutputs, inputVariables, tokenTally), ct).ConfigureAwait(false)
                 ?? new TaskResult(
                     false, $"[NO CONSENSUS] {ConsensusNotReached(task.Id)}", null, [], TimeSpan.Zero,
                     Error: ConsensusNotReached(task.Id));
@@ -293,43 +307,95 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
     private string ConsensusNotReached(TaskId taskId) =>
         $"Consensus could not be reached for task {taskId} after {_options.MaxVotingRounds} voting round(s)";
 
-    private async Task<TaskResult?> ExecuteTaskWithConsensusAsync(
-        DomainCrew crew,
-        CrewTask task,
-        List<DomainAgent> agents,
-        List<ApplicationTaskOutput> previousOutputs,
-        TokenUsageTally tokenTally,
-        CancellationToken ct)
+    /// <summary>What one task's vote works with, from the first round to the fallback.</summary>
+    private sealed record VoteContext(
+        DomainCrew Crew,
+        CrewTask Task,
+        List<DomainAgent> Agents,
+        DomainAgent? Arbiter,
+        List<ApplicationTaskOutput> PreviousOutputs,
+        IReadOnlyDictionary<string, string> InputVariables,
+        TokenUsageTally TokenTally)
     {
+        /// <summary>A fresh context under the crew's id: its input variables, the outputs so far.</summary>
+        public SimpleExecutionContext ExecutionContext(IMemoryScope memory, CancellationToken ct) =>
+            new(Crew.Id, new Dictionary<string, string>(InputVariables), memory, PreviousOutputs, ct);
+    }
+
+    /// <summary>
+    /// One counted round: the executions, the anonymised candidates in the order the voters saw
+    /// them, and the tally of the ballots.
+    /// </summary>
+    private sealed record CountedRound(
+        Dictionary<string, TaskResult> Results,
+        List<string> CandidateOrder,
+        Dictionary<string, string> LabelByKey,
+        Dictionary<string, string> KeyByLabel,
+        VoteResult Tally);
+
+    /// <summary>
+    /// The arbiter of <see cref="ConsensusFallback.ManagerDecision"/>: the crew's manager agent.
+    /// Null for the other fallbacks. A crew without a manager is refused before any agent runs.
+    /// </summary>
+    private async Task<DomainAgent?> ResolveArbiterAsync(DomainCrew crew, CancellationToken ct)
+    {
+        if (_options.FallbackStrategy != ConsensusFallback.ManagerDecision)
+            return null;
+
+        if (crew.ManagerAgentId is null)
+            throw new InvalidOperationException(
+                $"Orkeon:Consensus:FallbackStrategy is ManagerDecision, but crew {crew.Id} declares no manager agent " +
+                "to decide: declare one (managerAgent in YAML, CrewBuilder.WithManager in C#) or choose the " +
+                "AcceptBestScore or Fail fallback.");
+
+        return await _agentRepository.GetByIdAsync(crew.ManagerAgentId, ct).ConfigureAwait(false)
+            ?? throw new InvalidOperationException(
+                $"The manager agent {crew.ManagerAgentId} of crew {crew.Id} was not found; ManagerDecision has no arbiter.");
+    }
+
+    private async Task<TaskResult?> ExecuteTaskWithConsensusAsync(VoteContext vote, CancellationToken ct)
+    {
+        var task = vote.Task;
         var maxRounds = _options.MaxVotingRounds;
         Dictionary<string, TaskResult>? previousResults = null;
+        CountedRound? lastRound = null;
 
         for (int round = 1; round <= maxRounds; round++)
         {
             LogTaskStartingVotingRound(task.Id, round, maxRounds);
 
             // Execute task with all agents in parallel
-            var agentResults = await ExecuteWithAllAgentsAsync(
-                crew, task, agents, previousOutputs, previousResults, ct).ConfigureAwait(false);
+            var agentResults = await ExecuteWithAllAgentsAsync(vote, previousResults, ct).ConfigureAwait(false);
 
             // Record the cost of the whole round: every agent execution consumed tokens,
             // whichever result ends up winning the vote.
             foreach (var agentResult in agentResults.Values)
-                tokenTally.Record(agentResult);
+                vote.TokenTally.Record(agentResult);
 
-            // Create votes from results
-            var votes = CreateVotesFromResults(agents, agentResults);
+            // Only an execution that succeeded is a candidate (GAP-04): a failed one can never win.
+            var candidates = vote.Agents
+                .Select(a => a.Id.ToString())
+                .Where(key => agentResults.TryGetValue(key, out var r) && r.Success)
+                .ToList();
 
-            // Tally votes
-            var voteResult = await _votingStrategy.TallyVotesAsync(
-                votes, _options.VotingOptions, ct).ConfigureAwait(false);
+            // Every execution failed: there is nothing to vote on, and the task fails with the
+            // agents' own error — another round would only pay for the same failure again.
+            if (candidates.Count == 0)
+                return agentResults.Values.First(r => !r.Success);
+
+            // A lone successful answer has no rival to be weighed against: it is retained
+            // without a ballot.
+            if (candidates.Count == 1)
+                return agentResults[candidates[0]];
+
+            lastRound = await HoldBallotAsync(vote, round, agentResults, candidates, ct).ConfigureAwait(false);
+            var voteResult = lastRound.Tally;
 
             LogTaskRoundResultConsensusreachedWinningchoice(task.Id, round, voteResult.ConsensusReached, voteResult.WinningChoice ?? "(none)", voteResult.AgreementScore);
 
             if (voteResult.ConsensusReached && voteResult.WinningChoice != null
                 && agentResults.TryGetValue(voteResult.WinningChoice, out var winningResult))
             {
-                // Return the winning result
                 return winningResult;
             }
 
@@ -341,54 +407,177 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
             }
         }
 
+        // No round was held (MaxVotingRounds below 1): no consensus.
+        if (lastRound is null)
+            return null;
+
         // Max rounds exhausted, apply fallback
-        return await ApplyFallbackAsync(task, agents, previousOutputs, tokenTally, ct).ConfigureAwait(false);
+        return await ApplyFallbackAsync(vote, lastRound, ct).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// One round of peer ballots (GAP-04): the successful answers get labels in an order
+    /// shuffled per task and round, every agent ranks the answers of the others, and the
+    /// ballots become votes for the configured <see cref="IVotingStrategy"/>.
+    /// </summary>
+    private async Task<CountedRound> HoldBallotAsync(
+        VoteContext vote,
+        int round,
+        Dictionary<string, TaskResult> results,
+        List<string> candidates,
+        CancellationToken ct)
+    {
+        var order = ShuffledOrder(candidates, vote.Task.Id, round);
+        var labelByKey = order.Select((key, i) => (key, label: Label(i))).ToDictionary(p => p.key, p => p.label);
+        var keyByLabel = labelByKey.ToDictionary(p => p.Value, p => p.Key);
+
+        // Voters are read in the shuffled order too, so nothing in the count follows the
+        // order the agents were declared in.
+        var voters = vote.Agents
+            .OrderBy(a => order.IndexOf(a.Id.ToString()) is var i and >= 0 ? i : int.MaxValue)
+            .ToList();
+
+        var ballots = await System.Threading.Tasks.Task.WhenAll(voters.Select(async voter =>
+        {
+            var voterKey = voter.Id.ToString();
+            // An agent never ranks its own answer.
+            var offered = order.Where(key => key != voterKey)
+                .Select(key => new BallotCandidate { Label = labelByKey[key], Output = results[key].Output })
+                .ToImmutableList();
+            var ballot = await CollectBallotAsync(vote, voter, offered, ct).ConfigureAwait(false);
+            return (voter, ballot);
+        })).ConfigureAwait(false);
+
+        var ranked = _options.VotingOptions.ConsensusType == ConsensusType.BordaCount;
+        var votes = new List<Vote>();
+        foreach (var (voter, ballot) in ballots)
+        {
+            vote.TokenTally.Record(ballot.Execution);
+            var voterKey = voter.Id.ToString();
+            // Only the labels offered to this voter count: whatever a collector returns, a
+            // voter's own answer never receives its vote.
+            var ranking = ballot.Ranking
+                .Select(label => keyByLabel.GetValueOrDefault(label))
+                .OfType<string>()
+                .Where(key => key != voterKey)
+                .Distinct(StringComparer.Ordinal)
+                .ToList();
+            votes.Add(new Vote
+            {
+                VoterId = voterKey,
+                VoterRole = voter.Role.ToString(),
+                // Majority, SuperMajority, Unanimity and WeightedConsensus count the first
+                // choice; Borda counts the whole ranking. An abstention is an empty choice.
+                Choice = ranking.Count == 0 ? string.Empty : ranked ? string.Join(",", ranking) : ranking[0],
+                OwnChoice = labelByKey.ContainsKey(voterKey) ? voterKey : null,
+                Confidence = ballot.Confidence,
+                Weight = 1.0f,
+                Justification = ballot.Justification,
+                Timestamp = DateTime.UtcNow
+            });
+        }
+
+        var abstentions = votes.Count(v => v.Choice.Length == 0);
+        LogTaskBallotsCounted(vote.Task.Id, round, votes.Count - abstentions, abstentions, order.Count);
+
+        var tally = await _votingStrategy.TallyVotesAsync(votes, _options.VotingOptions, ct).ConfigureAwait(false);
+        return new CountedRound(results, order, labelByKey, keyByLabel, tally);
+    }
+
+    [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-ballot fault barrier: a ballot that cannot be collected counts as an abstention instead of failing the task (GAP-04).")]
+    private async Task<Ballot> CollectBallotAsync(
+        VoteContext vote, DomainAgent voter, ImmutableList<BallotCandidate> offered, CancellationToken ct)
+    {
+        // An agent whose own answer is the only candidate has nobody else to rank.
+        if (offered.IsEmpty)
+            return Ballot.Abstention("no other candidate to rank");
+
+        try
+        {
+            return await _ballots.CollectAsync(new BallotRequest
+            {
+                Voter = voter,
+                Task = vote.Task,
+                Candidates = offered,
+                Context = vote.ExecutionContext(_memoryScope, ct),
+            }, ct).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            throw;
+        }
+        catch (Exception ex)
+        {
+            LogBallotCollectionFailed(ex, voter.Role.ToString());
+            return Ballot.Abstention($"the ballot could not be collected: {ex.Message}");
+        }
+    }
+
+    /// <summary>
+    /// A deterministic shuffle of the candidates, seeded by the task and the round: the same
+    /// run gives the same labels, and no agent is <c>A</c> because it was declared first.
+    /// </summary>
+    private static List<string> ShuffledOrder(List<string> keys, TaskId taskId, int round)
+    {
+        var bytes = taskId.ToGuid().ToByteArray();
+        var state = BitConverter.ToUInt64(bytes, 0) ^ BitConverter.ToUInt64(bytes, 8) ^ ((ulong)round * 0x9E3779B97F4A7C15UL);
+        var order = keys.ToList();
+        for (var i = order.Count - 1; i > 0; i--)
+        {
+            // SplitMix64 step: enough spread for a fair order, no Random instance to seed.
+            state += 0x9E3779B97F4A7C15UL;
+            var z = state;
+            z = (z ^ (z >> 30)) * 0xBF58476D1CE4E5B9UL;
+            z = (z ^ (z >> 27)) * 0x94D049BB133111EBUL;
+            z ^= z >> 31;
+            var j = (int)(z % (ulong)(i + 1));
+            (order[i], order[j]) = (order[j], order[i]);
+        }
+
+        return order;
+    }
+
+    /// <summary>Candidate labels: <c>A</c> to <c>Z</c>, then <c>C27</c>, <c>C28</c>, ….</summary>
+    private static string Label(int index) =>
+        index < 26
+            ? ((char)('A' + index)).ToString()
+            : string.Create(System.Globalization.CultureInfo.InvariantCulture, $"C{index + 1}");
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Per-agent fault barrier: a single agent's task failure is converted into a failed TaskResult so the remaining agents' votes are still tallied.")]
     private async Task<Dictionary<string, TaskResult>> ExecuteWithAllAgentsAsync(
-        DomainCrew crew,
-        CrewTask task,
-        List<DomainAgent> agents,
-        List<ApplicationTaskOutput> previousOutputs,
+        VoteContext vote,
         Dictionary<string, TaskResult>? discussionContext,
         CancellationToken ct)
     {
         var results = new Dictionary<string, TaskResult>();
         var executionTasks = new List<(string agentKey, System.Threading.Tasks.Task<TaskResult> task)>();
 
-        foreach (var agent in agents)
+        foreach (var agent in vote.Agents)
         {
             var agentKey = agent.Id.ToString();
 
-            // Build context with optional discussion context from previous round
-            var variables = new Dictionary<string, string>();
+            // The crew's input variables reach every execution; the discussion context of the
+            // previous round is added over them (GAP-04).
+            var context = vote.ExecutionContext(_memoryScope, ct);
             if (discussionContext != null)
             {
                 // Add other agents' previous results as discussion context
                 var otherResults = discussionContext
-                    .Where(kvp => kvp.Key != agentKey)
+                    .Where(kvp => kvp.Key != agentKey && kvp.Value.Success)
                     .Select(kvp => $"Agent {kvp.Key}: {kvp.Value.Output}")
                     .ToList();
 
                 if (otherResults.Count > 0)
                 {
-                    variables["discussion_context"] = string.Join("\n---\n", otherResults);
+                    context.Variables["discussion_context"] = string.Join("\n---\n", otherResults);
                 }
             }
-
-            var context = new SimpleExecutionContext(
-                crew.Id,
-                variables,
-                _memoryScope,
-                previousOutputs,
-                ct);
 
             var capturedAgent = agent;
             executionTasks.Add((agentKey, System.Threading.Tasks.Task.Run(async () =>
             {
                 return await _executionService.ExecuteTaskAsync(
-                    capturedAgent, task, context, ct).ConfigureAwait(false);
+                    capturedAgent, vote.Task, context, ct).ConfigureAwait(false);
             }, ct)));
         }
 
@@ -415,73 +604,66 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         return results;
     }
 
-    private static List<Vote> CreateVotesFromResults(
-        List<DomainAgent> agents,
-        Dictionary<string, TaskResult> agentResults)
+    private async Task<TaskResult?> ApplyFallbackAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
     {
-        var votes = new List<Vote>();
-
-        foreach (var agent in agents)
-        {
-            var agentKey = agent.Id.ToString();
-            if (!agentResults.TryGetValue(agentKey, out var result))
-                continue;
-
-            // Each agent's output is their "vote" (choice)
-            // The choice is the agent key so we can retrieve the full result later
-            votes.Add(new Vote
-            {
-                VoterId = agentKey,
-                VoterRole = agent.Role.ToString(),
-                Choice = agentKey,
-                Confidence = result.Success ? 1.0f : 0.1f,
-                Weight = 1.0f,
-                Justification = result.Output,
-                Timestamp = DateTime.UtcNow
-            });
-        }
-
-        return votes;
-    }
-
-    private async Task<TaskResult?> ApplyFallbackAsync(
-        CrewTask task,
-        List<DomainAgent> agents,
-        List<ApplicationTaskOutput> previousOutputs,
-        TokenUsageTally tokenTally,
-        CancellationToken ct)
-    {
-        LogTaskMaxVotingRoundsExhausted(task.Id, _options.FallbackStrategy);
+        LogTaskMaxVotingRoundsExhausted(vote.Task.Id, _options.FallbackStrategy);
 
         return _options.FallbackStrategy switch
         {
-            ConsensusFallback.AcceptBestScore => await AcceptBestScoreAsync(task, agents, previousOutputs, tokenTally, ct).ConfigureAwait(false),
-            ConsensusFallback.Fail => null,
-            ConsensusFallback.ManagerDecision => await AcceptBestScoreAsync(task, agents, previousOutputs, tokenTally, ct).ConfigureAwait(false),
+            ConsensusFallback.AcceptBestScore => AcceptBestScore(vote.Task, lastRound),
+            ConsensusFallback.ManagerDecision => await AskTheManagerAsync(vote, lastRound, ct).ConfigureAwait(false),
             _ => null
         };
     }
 
-    private async Task<TaskResult> AcceptBestScoreAsync(
-        CrewTask task,
-        List<DomainAgent> agents,
-        List<ApplicationTaskOutput> previousOutputs,
-        TokenUsageTally tokenTally,
-        CancellationToken ct)
+    /// <summary>
+    /// The candidate the last count put first, without running anything again (GAP-04). The
+    /// task fails when no ballot of that round named a candidate.
+    /// </summary>
+    private TaskResult AcceptBestScore(CrewTask task, CountedRound lastRound)
     {
-        // Re-execute with the first agent and accept the result
-        var agent = agents.First();
-        var context = new SimpleExecutionContext(
-            CrewId.Create(),
-            [],
-            _memoryScope,
-            previousOutputs,
-            ct);
+        if (lastRound.Tally.WinningChoice is { } best && lastRound.Results.TryGetValue(best, out var result) && result.Success)
+            return result;
 
-        var result = await _executionService.ExecuteTaskAsync(agent, task, context, ct).ConfigureAwait(false);
-        tokenTally.Record(result);
-        return result;
+        var reason = $"{ConsensusNotReached(task.Id)}, and no ballot of the last round named a candidate to accept";
+        return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason);
     }
+
+    /// <summary>
+    /// <see cref="ConsensusFallback.ManagerDecision"/>: the crew's manager ranks every candidate
+    /// of the last round, anonymised like the peers saw them, and its first choice is retained.
+    /// A manager that abstains decides nothing, and the task fails.
+    /// </summary>
+    private async Task<TaskResult> AskTheManagerAsync(VoteContext vote, CountedRound lastRound, CancellationToken ct)
+    {
+        var arbiter = vote.Arbiter
+            ?? throw new InvalidOperationException("ManagerDecision reached the fallback without an arbiter.");
+
+        var offered = lastRound.CandidateOrder
+            .Select(key => new BallotCandidate
+            {
+                Label = lastRound.LabelByKey[key],
+                Output = lastRound.Results[key].Output,
+            })
+            .ToImmutableList();
+
+        var ballot = await CollectBallotAsync(vote, arbiter, offered, ct).ConfigureAwait(false);
+        vote.TokenTally.Record(ballot.Execution);
+
+        if (ballot.Ranking.FirstOrDefault(lastRound.KeyByLabel.ContainsKey) is { } choice
+            && lastRound.Results.TryGetValue(lastRound.KeyByLabel[choice], out var chosen))
+        {
+            LogTaskDecidedByManager(vote.Task.Id, arbiter.Role.Value, choice);
+            return chosen;
+        }
+
+        var reason = $"{ConsensusNotReached(vote.Task.Id)}, and the manager agent {arbiter.Role} chose none of the "
+            + $"{offered.Count} answers: {ballot.Justification ?? "it abstained"}";
+        return new TaskResult(false, string.Empty, null, [], TimeSpan.Zero, Error: reason);
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Task {TaskId}: no consensus, the manager agent {Manager} chose candidate {Label}")]
+    private partial void LogTaskDecidedByManager(TaskId taskId, string manager, string label);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Starting consensual execution for crew {CrewId}")]
     private partial void LogStartingConsensualExecutionForCrew(CrewId crewId);
@@ -518,5 +700,11 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Task {TaskId}: Max voting rounds exhausted, applying fallback: {Fallback}")]
     private partial void LogTaskMaxVotingRoundsExhausted(TaskId taskId, ConsensusFallback fallback);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Ballot of agent {Voter} could not be collected and counts as an abstention")]
+    private partial void LogBallotCollectionFailed(Exception ex, string voter);
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Task {TaskId}: round {Round} ballots - {Expressed} expressed, {Abstentions} abstention(s) over {Candidates} candidate(s)")]
+    private partial void LogTaskBallotsCounted(TaskId taskId, int round, int expressed, int abstentions, int candidates);
 
 }

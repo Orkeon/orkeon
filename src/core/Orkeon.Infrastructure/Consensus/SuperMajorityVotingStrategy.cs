@@ -22,11 +22,9 @@ public sealed class SuperMajorityVotingStrategy : IVotingStrategy
     /// an exact vote share (e.g. 66.666…% for 2 votes out of 3) and the one-decimal
     /// representation of the two-thirds threshold (66.7%).
     /// </summary>
-    public const float RoundingTolerancePercent = 0.05f;
+    public const float RoundingTolerancePercent = MajorityVotingStrategy.RoundingTolerancePercent;
 
     private readonly float? _thresholdPercent;
-    private readonly MajorityVotingStrategy _tally = new();
-
     /// <summary>
     /// Creates a strategy whose threshold comes from
     /// <see cref="VotingOptions.ConsensusThreshold"/> at tally time
@@ -69,29 +67,22 @@ public sealed class SuperMajorityVotingStrategy : IVotingStrategy
     {
         ArgumentNullException.ThrowIfNull(votes);
         ArgumentNullException.ThrowIfNull(options);
-        return TallyVotesCoreAsync();
 
-        async Task<VoteResult> TallyVotesCoreAsync()
-        {
-            // Reuse the proven majority tally for score/winner computation, then apply
-            // the super-majority threshold on the winning share.
-            var tallyOptions = new VotingOptions
-            {
-                ConsensusType = ConsensusType.Majority,
-                QuorumPercent = options.QuorumPercent,
-                ConsensusThreshold = options.ConsensusThreshold,
-                UseWeightedVotes = options.UseWeightedVotes,
-                MaxVotingRounds = options.MaxVotingRounds,
-                AllowAbstention = options.AllowAbstention
-            };
-
-            var result = await _tally.TallyVotesAsync(votes, tallyOptions, ct).ConfigureAwait(false);
-
-            var effectiveThreshold = _thresholdPercent ?? options.ConsensusThreshold;
-            var consensusReached = result.WinningChoice is not null
-                && result.AgreementScore + RoundingTolerancePercent >= effectiveThreshold;
-
-            return result with { ConsensusReached = consensusReached };
-        }
+        // The shared majority tally computes scores, shares, quorum and abstention; the
+        // super-majority threshold decides whether the leading share carries.
+        var effectiveThreshold = _thresholdPercent ?? options.ConsensusThreshold;
+        return Task.FromResult(MajorityVotingStrategy.Tally(
+            votes,
+            options.ConsensusType == ConsensusType.SuperMajority
+                ? options
+                : new VotingOptions
+                {
+                    ConsensusType = ConsensusType.SuperMajority,
+                    QuorumPercent = options.QuorumPercent,
+                    ConsensusThreshold = options.ConsensusThreshold,
+                    UseWeightedVotes = options.UseWeightedVotes,
+                    AllowAbstention = options.AllowAbstention
+                },
+            share => share + RoundingTolerancePercent >= effectiveThreshold));
     }
 }

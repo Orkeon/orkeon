@@ -179,5 +179,21 @@ public class VotingStrategyFactoryTests
         Assert.IsType<VotingStrategyFactory>(factory);
     }
 
+    [Fact]
+    public void ShouldResolveAgentBallotCollector_WhenAddOrkeonConsensus()
+    {
+        // GAP-04: the consensual vote casts its ballots through the voting agents' own execution.
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddSingleton<IConfiguration>(new ConfigurationBuilder().Build());
+        services.AddScoped<Orkeon.Application.Interfaces.Services.IAgentExecutionService, Orkeon.Infrastructure.Tests.Doubles.MockAgentExecutionService>();
+
+        services.AddOrkeonConsensus();
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+
+        Assert.IsType<AgentBallotCollector>(scope.ServiceProvider.GetRequiredService<IBallotCollector>());
+    }
+
     #endregion
 }

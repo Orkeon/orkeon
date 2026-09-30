@@ -6,8 +6,13 @@ namespace Orkeon.Infrastructure.Consensus;
 /// Voting strategy using the Borda count method.
 /// Rankings are encoded in the Choice field as comma-separated values: "choice1,choice2,choice3"
 /// where the first item is ranked highest. Points are assigned as N-1 for 1st, N-2 for 2nd, etc.
-/// Borda count always produces a winner.
 /// </summary>
+/// <remarks>
+/// Borda count names the best-ranked choice. It reaches no consensus when two choices tie at
+/// the top (the winner would depend on the order the ballots were read), when the share of
+/// expressed ballots is below <see cref="VotingOptions.QuorumPercent"/>, or when
+/// <see cref="VotingOptions.AllowAbstention"/> is false and a ballot abstained (GAP-04).
+/// </remarks>
 public sealed class BordaCountStrategy : IVotingStrategy
 {
     /// <inheritdoc />
@@ -33,7 +38,14 @@ public sealed class BordaCountStrategy : IVotingStrategy
         if (scores.Count == 0)
             return Task.FromResult(CreateNoConsensusResult(votes, scores));
 
-        return Task.FromResult(BuildWinnerResult(votes, allRankings, scores));
+        var result = BuildWinnerResult(votes, allRankings, scores);
+        var expressed = allRankings.Count(r => r.Length > 0);
+        var quorumMet = (float)expressed / votes.Count * 100f
+            + MajorityVotingStrategy.RoundingTolerancePercent >= options.QuorumPercent;
+        var abstentionAccepted = options.AllowAbstention || expressed == votes.Count;
+        var singleLeader = scores.Count(kvp => Math.Abs(kvp.Value - scores[result.WinningChoice!]) < 1e-4f) == 1;
+
+        return Task.FromResult(result with { ConsensusReached = quorumMet && abstentionAccepted && singleLeader });
     }
 
     private static VoteResult CreateNoConsensusResult(IReadOnlyList<Vote> votes, Dictionary<string, float> scores)

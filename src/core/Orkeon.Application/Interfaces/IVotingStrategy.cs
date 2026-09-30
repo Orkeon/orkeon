@@ -20,8 +20,17 @@ public record Vote
     /// <summary>
     /// Gets the choice made by the voter.
     /// For Borda count, this is a comma-separated ranking of choices.
+    /// An empty choice is an abstention: the ballot was not expressed.
     /// </summary>
     public string Choice { get; init; } = string.Empty;
+
+    /// <summary>
+    /// Gets the choice this voter authored and therefore may not vote for (GAP-04), or null
+    /// when the voter authored none. A choice's share is counted among the ballots that could
+    /// name it: the author's ballot is left out of its own candidate's count, so three agents
+    /// that give the same answer can still reach unanimity without voting for themselves.
+    /// </summary>
+    public string? OwnChoice { get; init; }
 
     /// <summary>
     /// Gets the confidence level of the vote (0.0 to 1.0).
@@ -96,7 +105,8 @@ public class VotingOptions
     public ConsensusType ConsensusType { get; set; } = ConsensusType.Majority;
 
     /// <summary>
-    /// Gets or sets the quorum percentage (minimum voter participation required).
+    /// Gets or sets the quorum, in percent: the minimum share of expressed ballots among all
+    /// ballots. Below it, no consensus is reached, whatever the expressed ballots say.
     /// </summary>
     public float QuorumPercent { get; set; } = 50f;
 
@@ -112,12 +122,10 @@ public class VotingOptions
     public bool UseWeightedVotes { get; set; }
 
     /// <summary>
-    /// Gets or sets the maximum number of voting rounds.
-    /// </summary>
-    public int MaxVotingRounds { get; set; } = 3;
-
-    /// <summary>
-    /// Gets or sets whether abstention is allowed.
+    /// Gets or sets whether abstention is allowed. When true (the default), an abstention only
+    /// counts toward the quorum. When false, an abstention counts as a vote against every
+    /// choice: it stays in the denominator of each share, and it breaks unanimity. A Borda
+    /// count, which has no share threshold, then reaches no consensus while anyone abstains.
     /// </summary>
     public bool AllowAbstention { get; set; } = true;
 }

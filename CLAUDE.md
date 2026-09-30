@@ -246,7 +246,7 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 - `Sequential` — Fixed linear pipeline
 - `Hierarchical` — Manager LLM assigns and reviews tasks (up to 2 re-executions)
 - `Parallel` — Dependency waves; tasks of one wave run concurrently
-- `Consensual` — Voting strategies (Majority, SuperMajority, Unanimity, Weighted, Borda) — caveat: today each agent votes for its own output, so the vote is not semantic (backstage GAP-04)
+- `Consensual` — Every agent answers, then ranks the other agents' anonymised answers by LLM ballot (`IBallotCollector`, no self-vote); tallied by Majority, SuperMajority, Unanimity, Weighted or Borda with quorum and abstention enforced; `ManagerDecision` is decided by the crew's manager agent
 - `Graph` — LangGraph-style state graph with conditional edges, cycles, circuit breaker (`StateGraph<TState>`, `GraphProcessStrategy`)
 - `Autonomous` — Manager-assigned tasks, delegation to a peer on failure, host-provided spawn, multi-dimensional budget (`AgentExecutionBudget`, `AutonomousProcessStrategy`)
 

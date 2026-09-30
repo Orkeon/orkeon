@@ -4,6 +4,7 @@ using Orkeon.Application.Interfaces;
 using Orkeon.Domain.Crew;
 using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Consensus;
+using Orkeon.Infrastructure.Tests.Doubles;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using CrewExecutionPlan = Orkeon.Domain.Crew.ExecutionPlan;
 
@@ -91,12 +92,13 @@ public sealed class ConsensualFailedTaskTests : IDisposable
         var crew = FailedTaskFixture.Build(new CrewBuilder().Goal("Vote").Consensual(), agents, tasks);
         var strategy = new ConsensualProcessStrategy(
             new MajorityVotingStrategy(),
+            new FakeBallotCollector(),
             _fixture.Dependencies,
             NullLogger<ConsensualProcessStrategy>.Instance,
             Options.Create(options),
             _fixture.Hook);
 
         return await strategy.ExecuteConsensualAsync(
-            crew, CrewExecutionPlan.Create(), TestContext.Current.CancellationToken);
+            crew, CrewExecutionPlan.Create(), ct: TestContext.Current.CancellationToken);
     }
 }

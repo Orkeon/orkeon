@@ -66,7 +66,8 @@ public class CovConsensus_ConsensusCoverageTests
         DomainAgent[] agents,
         DomainTask[] tasks,
         IVotingStrategy? voting = null,
-        MockAgentExecutionService? exec = null)
+        MockAgentExecutionService? exec = null,
+        IBallotCollector? ballots = null)
     {
         var mockExec = exec ?? new MockAgentExecutionService();
         var taskRepo = new MockTaskRepository();
@@ -76,6 +77,7 @@ public class CovConsensus_ConsensusCoverageTests
 
         var strategy = new ConsensualProcessStrategy(
             voting ?? new MajorityVotingStrategy(),
+            ballots ?? new FakeBallotCollector(),
             new CrewStrategyDependencies(taskRepo, agentRepo, mockExec, new MockMemoryScope()),
             NullLogger<ConsensualProcessStrategy>.Instance,
             Options.Create(options));
@@ -95,6 +97,7 @@ public class CovConsensus_ConsensusCoverageTests
     [InlineData(4)]
     [InlineData(5)]
     [InlineData(6)]
+    [InlineData(7)]
     public void ShouldThrowArgumentNull_WhenAnyDependencyIsNull(int nullIndex)
     {
         IVotingStrategy voting = new MajorityVotingStrategy();
@@ -107,6 +110,7 @@ public class CovConsensus_ConsensusCoverageTests
 
         Assert.Throws<ArgumentNullException>(() => new ConsensualProcessStrategy(
             nullIndex == 0 ? null! : voting,
+            nullIndex == 7 ? null! : new FakeBallotCollector(),
             new CrewStrategyDependencies(
                 nullIndex == 2 ? null! : taskRepo,
                 nullIndex == 3 ? null! : agentRepo,
@@ -121,11 +125,12 @@ public class CovConsensus_ConsensusCoverageTests
     #region ConsensualProcessStrategy — execution paths
 
     [Fact]
-    public async Task ShouldEngageDiscussionRounds_ThenFallBack_WhenMultiAgentCannotReachUnanimity()
+    public async Task ShouldEngageDiscussionRounds_ThenAcceptBestScoreWithoutRerunning_WhenTwoAgentsCannotAgree()
     {
-        // Each agent votes for its own key, so with >1 agent Unanimity can never be reached.
-        // This exercises the discussion-round branch (round < maxRounds && EnableDiscussion)
-        // across multiple rounds, then the AcceptBestScore fallback.
+        // Two agents may only rank each other's answer (never their own), so every round is a
+        // tie and no consensus is reached (GAP-04). This exercises the discussion-round branch
+        // (round < maxRounds && EnableDiscussion) across multiple rounds, then the
+        // AcceptBestScore fallback, which keeps the last count's leader without re-running.
         var opts = new ConsensualProcessOptions
         {
             MaxVotingRounds = 3,
@@ -151,15 +156,16 @@ public class CovConsensus_ConsensusCoverageTests
         var crew = CreateCrew(new[] { agent1, agent2 }, new[] { task1 });
         var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
 
-        // AcceptBestScore fallback re-runs the first agent, so a result is produced.
+        // AcceptBestScore keeps one of the last round's answers.
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
+        Assert.StartsWith("out-", result.Output, StringComparison.Ordinal);
         // Discussion context must have been injected on rounds 2 and 3.
         Assert.True(sawDiscussionContext);
-        // 2 agents x 3 rounds = 6, plus 1 fallback re-execution = 7 calls.
-        Assert.Equal(7, exec.ExecuteTaskCallCount);
+        // 2 agents x 3 rounds = 6 calls, and no fallback re-execution.
+        Assert.Equal(6, exec.ExecuteTaskCallCount);
     }
 
     [Fact]
@@ -187,14 +193,15 @@ public class CovConsensus_ConsensusCoverageTests
         var plan = ExecutionPlan.Create(crew.Tasks);
 
         var ex = await Assert.ThrowsAsync<InvalidOperationException>(
-            () => strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken));
+            () => strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken));
         Assert.Equal("boom", ex.Message);
     }
 
     [Fact]
     public async Task ShouldApplyManagerDecisionFallback_WhenNoConsensus()
     {
-        // ManagerDecision behaves like AcceptBestScore (re-executes first agent).
+        // ManagerDecision asks the crew's manager to rank the last round's answers (GAP-04):
+        // nothing is re-executed, and the manager's first choice is kept.
         var opts = new ConsensualProcessOptions
         {
             MaxVotingRounds = 1,
@@ -205,22 +212,33 @@ public class CovConsensus_ConsensusCoverageTests
 
         var agent1 = CreateAgent("a");
         var agent2 = CreateAgent("b");
+        var manager = CreateAgent("chair");
         var task1 = CreateTask("decide");
 
         var exec = new MockAgentExecutionService();
         exec.SetExecuteFunc((agent, task, ctx, ct) =>
             new AppTaskResult(true, $"out-{agent.Id}", null, Array.Empty<ToolUsage>(), TimeSpan.FromMilliseconds(3)));
+        var ballots = new FakeBallotCollector
+        {
+            Vote = request => request.Voter.Id == manager.Id
+                ? FakeBallotCollector.Prefer(request, $"out-{agent2.Id}")
+                : FakeBallotCollector.InShownOrder(request)
+        };
 
-        var (strategy, _) = BuildStrategy(opts, new[] { agent1, agent2 }, new[] { task1 }, exec: exec);
-        var crew = CreateCrew(new[] { agent1, agent2 }, new[] { task1 });
+        var (strategy, _) = BuildStrategy(
+            opts, new[] { agent1, agent2, manager }, new[] { task1 }, exec: exec, ballots: ballots);
+        var crew = new CrewBuilder().Goal("Consensual crew").Consensual()
+            .WithAgent(agent1).WithAgent(agent2).WithAgent(manager).WithManager(manager)
+            .WithTask(task1).Build();
         var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
-        // 2 agents (round 1) + 1 fallback re-execution = 3 calls.
-        Assert.Equal(3, exec.ExecuteTaskCallCount);
+        Assert.Equal($"out-{agent2.Id}", result.Output);
+        // 2 agents (round 1), no re-execution: the manager only ranks.
+        Assert.Equal(2, exec.ExecuteTaskCallCount);
     }
 
     [Fact]
@@ -242,7 +260,7 @@ public class CovConsensus_ConsensusCoverageTests
 
         // Empty plan -> GetTasksInOrder() empty -> falls back to crew.Tasks.
         var emptyPlan = ExecutionPlan.Create();
-        var result = await strategy.ExecuteConsensualAsync(crew, emptyPlan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, emptyPlan, ct: TestContext.Current.CancellationToken);
 
         Assert.True(result.Success);
         Assert.Single(result.TaskOutputs);
@@ -268,7 +286,7 @@ public class CovConsensus_ConsensusCoverageTests
         crew.AddAgent(AgentId.Create()); // unknown id -> repo returns null -> skipped
 
         var plan = ExecutionPlan.Create(crew.Tasks);
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
 
         // Still succeeds because at least one agent resolved.
         Assert.True(result.Success);
@@ -294,14 +312,15 @@ public class CovConsensus_ConsensusCoverageTests
         await cts.CancelAsync();
 
         await Assert.ThrowsAnyAsync<OperationCanceledException>(
-            () => strategy.ExecuteConsensualAsync(crew, plan, cts.Token));
+            () => strategy.ExecuteConsensualAsync(crew, plan, ct: cts.Token));
     }
 
     [Fact]
     public async Task ShouldExhaustMultipleRoundsWithoutDiscussion_ThenFail()
     {
         // EnableDiscussion = false means no discussion context is carried; multiple rounds
-        // still execute but consensus is never reached -> Fail fallback returns failure.
+        // still execute but two agents can only rank each other (a tie every round), so
+        // consensus is never reached -> Fail fallback returns failure.
         var opts = new ConsensualProcessOptions
         {
             MaxVotingRounds = 2,
@@ -322,7 +341,7 @@ public class CovConsensus_ConsensusCoverageTests
         var crew = CreateCrew(new[] { agent1, agent2 }, new[] { task1 });
         var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
 
         Assert.False(result.Success);
         Assert.Contains("Consensus could not be reached", result.Error);
@@ -348,7 +367,7 @@ public class CovConsensus_ConsensusCoverageTests
         var crew = CreateCrew(new[] { agent1 }, new[] { task1 });
         var plan = ExecutionPlan.Create(crew.Tasks);
 
-        var result = await strategy.ExecuteConsensualAsync(crew, plan, TestContext.Current.CancellationToken);
+        var result = await strategy.ExecuteConsensualAsync(crew, plan, ct: TestContext.Current.CancellationToken);
         Assert.True(result.Success);
     }
 

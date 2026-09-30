@@ -105,7 +105,6 @@ public class InterfaceRecordsTests
         Assert.Equal(50f, options.QuorumPercent);
         Assert.Equal(66.7f, options.ConsensusThreshold);
         Assert.False(options.UseWeightedVotes);
-        Assert.Equal(3, options.MaxVotingRounds);
         Assert.True(options.AllowAbstention);
     }
 

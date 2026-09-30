@@ -65,7 +65,7 @@ A selection that fails, or names an agent the crew does not carry, falls back to
 
 | Criterion | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + vote | Linear + retry cycle | Manager-assigned, delegation on failure |
+| **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + peer ballots | Linear + retry cycle | Manager-assigned, delegation on failure |
 | **Agent choice** | Declared, else selector | Manager LLM | Declared, else selector | All agents | Declared, else selector | Manager LLM |
 | **Task dependencies** | Order + skip on failure | Order + skip on failure | Waves + skip on failure | Order + skip on failure | Order + skip on failure | Order + skip on failure |
 | **A failed task fails the crew** | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ (dependents skipped) | ✅ after its retries (dependents skipped) | ✅ (dependents skipped; an exhausted budget too) |
@@ -315,46 +315,62 @@ tasks:
 
 ### Principle
 
-For each task, **every agent of the crew executes it** (concurrently). The executions are turned into ballots and tallied by the configured `IVotingStrategy`. If no consensus is reached and `EnableDiscussion` is on, another round runs where each agent sees the others' previous outputs (a `discussion_context` context variable). After `MaxVotingRounds` rounds without consensus, the `FallbackStrategy` decides.
+For each task, **every agent of the crew executes it** (concurrently). Then **every agent casts a ballot**: it ranks the other agents' successful answers, anonymised under labels (`A`, `B`, …). The configured `IVotingStrategy` tallies the ballots. If no consensus is reached and `EnableDiscussion` is on, another round runs where each agent sees the others' previous answers (a `discussion_context` context variable). After `MaxVotingRounds` rounds without consensus, the `FallbackStrategy` decides.
 
 ### Internal mechanism
 
 ```
-Task N ──┬── Agent A → result A ────┐
-         ├── Agent B → result B ────┼── Tally ── Consensus? ── yes → winning result
-         └── Agent C → result C ────┘                │
-                                                     no
-                                                      ↓
-                                     Next round (with discussion_context)
-                                                      ↓
-                                   Rounds exhausted → FallbackStrategy
+Task N ──┬── Agent A → answer A ──┐                ┌── A ranks the answers of B, C ──┐
+         ├── Agent B → answer B ──┼── labels A,B,C ┼── B ranks the answers of A, C ──┼── Tally ── Consensus? ── yes → winning answer
+         └── Agent C → answer C ──┘                └── C ranks the answers of A, B ──┘                │
+                                                                                                    no
+                                                                                                     ↓
+                                                                     Next round (with discussion_context)
+                                                                                                     ↓
+                                                                   Rounds exhausted → FallbackStrategy
 ```
 
-**Registration**: `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) binds `ConsensualProcessOptions` to the `Orkeon:Consensus` section, registers `IVotingStrategyFactory` → `VotingStrategyFactory` and the `IVotingStrategy` built from the configured `ConsensusType` (singletons, `TryAdd`), and `ConsensualProcessStrategy` (scoped) with `IConsensualProcessStrategy` mapped to the same instance. `AddOrkeonInfrastructure()` already calls it — call it yourself only in a host that does not use `AddOrkeonInfrastructure()`; registering your own `IVotingStrategy` before it replaces the configured one.
+**Registration**: `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) binds `ConsensualProcessOptions` to the `Orkeon:Consensus` section, registers `IVotingStrategyFactory` → `VotingStrategyFactory` and the `IVotingStrategy` built from the configured `ConsensusType` (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), and `ConsensualProcessStrategy` (scoped) with `IConsensualProcessStrategy` mapped to the same instance. `AddOrkeonInfrastructure()` already calls it — call it yourself only in a host that does not use `AddOrkeonInfrastructure()`; registering your own `IVotingStrategy` or `IBallotCollector` before it replaces the default one.
 
-**Key classes**: `ConsensualProcessStrategy` (also `IConsensualProcessStrategy`), `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+**Key classes**: `ConsensualProcessStrategy` (also `IConsensualProcessStrategy`), `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
 
-### How a ballot is formed — read before relying on the vote
+### How a ballot is formed
 
-The pipeline does **not** compare the contents of the outputs. Each agent's execution becomes **one ballot for itself**: `Choice` = its own agent id, `Confidence` = 1.0 when its execution succeeded and 0.1 when it failed, `Weight` = 1.0. Consequences with two agents or more:
+- **Candidates**: only the executions that succeeded. A failed execution is never a candidate — its agent still votes, on every answer. A lone successful answer is kept without a ballot; when every execution of a round failed, the task fails with the agents' error, without another round.
+- **Anonymised**: the answers carry labels `A`, `B`, … in an order shuffled per task and per round (deterministic: the same run gives the same labels). A voter sees neither the authors' roles nor their ids, so it votes on the answer, not on the agent.
+- **No vote for oneself**: an agent ranks the other agents' answers, never its own. A choice's share is therefore counted among the ballots that could name it (`Vote.OwnChoice`): three agents that give the same answer reach `Majority`, `SuperMajority` and `Unanimity` in round one.
+- **Who casts it**: the voting agent itself, through `IAgentExecutionService` — its own LLM configuration, and its tokens counted in the task's telemetry. It is asked for a JSON object (response format `json_object`): `{"ranking": ["B", "A"], "abstain": false, "confidence": 0.8, "justification": "…"}`. A reply that is not that object, a ranking that names no offered label, a ballot execution that failed, or `"abstain": true` is an **abstention**: it is logged and never fails the task.
+- **What is counted**: `Majority`, `SuperMajority`, `Unanimity` and `WeightedConsensus` count the first choice; `BordaCount` counts the whole ranking. The ballot's `confidence` is read with `UseWeightedVotes`.
+- **Ties**: a tie at the top is no consensus. Two agents can only name each other, so their vote always ties — a consensual crew needs three agents or more to decide by vote.
+- **The manager**: a crew's `managerAgent` (`CrewBuilder.WithManager` in C#) neither answers nor votes; it only arbitrates under `ManagerDecision`.
 
-- `Majority`, `SuperMajority` and `Unanimity` without weighting **never reach consensus** (each choice holds 1/N of the votes); with `UseWeightedVotes: true` (or `WeightedConsensus`), a choice wins when the other agents' executions failed.
-- `BordaCount` expects comma-separated rankings; a single-choice ballot scores 0 for everyone, so it declares the **first agent** the winner in round 1.
-- The fallback `AcceptBestScore` **re-executes the task with the first agent** and keeps that output; `ManagerDecision` does the same today; `Fail` fails the task ("Consensus could not be reached for task …"). The retained result is the task's result: when it failed — `Fail`, or a winning execution that failed — the crew fails and the task's dependents are skipped; the tasks that do not depend on it still run.
+**Fallbacks**, after `MaxVotingRounds` rounds without consensus:
 
-In practice, for a crew whose agents all succeed, every task costs `MaxVotingRounds` × N executions plus one fallback execution (N executions with `BordaCount`). The crew's input variables are not interpolated in this mode; earlier tasks' winning outputs are passed as context.
+- `AcceptBestScore` keeps the answer the last count put first, **without running anything again**. When no ballot of that round named an answer (every voter abstained), the task fails.
+- `ManagerDecision`: the crew's manager agent ranks the last round's answers, anonymised like the peers saw them, and its first choice is kept; if it abstains, the task fails. A crew without a manager agent is **refused at kickoff, before any agent runs**, with a message that names the fix (the fallback is a host setting, so the YAML validator cannot see it).
+- `Fail` fails the task ("Consensus could not be reached for task …").
+
+The retained result is the task's result: when it failed, the crew fails and the task's dependents are skipped; the tasks that do not depend on it still run.
+
+**Cost**: a round costs N executions plus N ballots — one short LLM call per voter, whose prompt holds the answers under review, so its input grows with N × the answers' length (a long answer is truncated to fit a task description). Three agents that agree cost 3 executions + 3 ballots per task. A task that never reaches consensus costs `MaxVotingRounds` × (N + N) calls, plus one manager ballot under `ManagerDecision`; `AcceptBestScore` re-runs nothing. The crew's input variables reach every execution and every ballot; earlier tasks' winning outputs are passed as context.
+
+```yaml
+name: review-board
+process: consensual
+managerAgent: chair             # the arbiter of FallbackStrategy: ManagerDecision
+```
 
 ### Available consensus types
 
-The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:VotingOptions:ConsensusType` (.NET `appsettings.json`) picks the strategy through `IVotingStrategyFactory`. Default: `Majority`.
+The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:VotingOptions:ConsensusType` (.NET `appsettings.json`) picks the strategy through `IVotingStrategyFactory`. Default: `Majority`. Every type also requires the quorum (`QuorumPercent`) and a single leading answer; a share is counted among the ballots that could name the answer.
 
 | Type | Resolved strategy | Consensus rule | Default threshold |
 |------|-------------------|----------------|------------------|
-| `Majority` | `MajorityVotingStrategy` | Winning share strictly above 50% | 50% |
-| `SuperMajority` | `SuperMajorityVotingStrategy` | Winning share ≥ `ConsensusThreshold` | 66.7% |
-| `Unanimity` | `UnanimityVotingStrategy` | A single distinct choice | 100% |
+| `Majority` | `MajorityVotingStrategy` | Leading share strictly above 50% | 50% |
+| `SuperMajority` | `SuperMajorityVotingStrategy` | Leading share ≥ `ConsensusThreshold` | 66.7% |
+| `Unanimity` | `UnanimityVotingStrategy` | Every ballot that could name the winner named it | 100% |
 | `WeightedConsensus` | `WeightedConsensusStrategy` | Role weight (`RoleWeights`) × confidence, share above `ConsensusThreshold` | 66.7% |
-| `BordaCount` | `BordaCountStrategy` | Borda score ranking, always a winner | N/A |
+| `BordaCount` | `BordaCountStrategy` | Best Borda score over the full rankings; no consensus on a tie at the top | N/A |
 
 ### Configuration (.NET, `Orkeon:Consensus` section)
 
@@ -366,7 +382,9 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
       "VotingOptions": {
         "ConsensusType": "SuperMajority",
         "ConsensusThreshold": 75,
-        "UseWeightedVotes": true
+        "UseWeightedVotes": true,
+        "QuorumPercent": 50,
+        "AllowAbstention": true
       },
       "EnableDiscussion": true,
       "FallbackStrategy": "AcceptBestScore",
@@ -381,36 +399,39 @@ The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:Voti
 
 | Key | Default | Effect |
 |-----|---------|--------|
-| `MaxVotingRounds` | 3 | Rounds before the fallback (the `VotingOptions:MaxVotingRounds` copy is not read) |
+| `MaxVotingRounds` | 3 | Rounds before the fallback; a round is N executions + N ballots |
 | `VotingOptions:ConsensusType` | `Majority` | Voting strategy |
 | `VotingOptions:ConsensusThreshold` | 66.7 | Threshold of `SuperMajority` / `WeightedConsensus`, as a **percentage (0–100)** — 75% is written `75` |
-| `VotingOptions:UseWeightedVotes` | `false` | Weight × confidence instead of one vote per ballot |
-| `VotingOptions:QuorumPercent`, `VotingOptions:AllowAbstention` | 50, `true` | Carried to the strategies but not enforced by any of them |
-| `EnableDiscussion` | `true` | Rounds after the first see the other agents' outputs |
-| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore`, `Fail`, `ManagerDecision` (same as `AcceptBestScore` today) |
+| `VotingOptions:UseWeightedVotes` | `false` | Weight × the ballot's confidence instead of one vote per ballot |
+| `VotingOptions:QuorumPercent` | 50 | Minimum share, in percent, of expressed ballots (not abstentions) among the voters; below it, no consensus |
+| `VotingOptions:AllowAbstention` | `true` | `false`: an abstention counts as a vote against every answer — it stays in every share's denominator and breaks unanimity; with `BordaCount`, any abstention prevents consensus |
+| `EnableDiscussion` | `true` | Rounds after the first see the other agents' answers |
+| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore` (the last count's leader, nothing re-run), `Fail`, `ManagerDecision` (the crew's manager agent chooses; required) |
 | `RoleWeights` | empty | Role → weight, read by `WeightedConsensus` |
 
 ### Advantages
 
 - **Several independent attempts** per task, run concurrently
-- **Configurable voting**: 5 strategies, role weighting
-- **Discussion**: agents see each other's outputs between rounds
+- **A vote on the answers**: every agent ranks the others' answers, anonymised; a failed attempt is never retained
+- **Configurable voting**: 5 strategies, quorum, abstention, role weighting
+- **Discussion**: agents see each other's answers between rounds
 
 ### Drawbacks
 
-- **High LLM cost**: N agents × rounds (+ fallback) executions per task
-- **The vote is not semantic** (see above): it measures which executions succeeded, not which answer is best
-- **Configuration complexity**: many parameters, some carried but not enforced
+- **High LLM cost**: N executions + N ballots per task and round (+ one manager ballot under `ManagerDecision`)
+- **The judges are LLMs**: a ballot is a model's opinion; a blind spot every agent's model shares is not corrected by the vote
+- **Two agents always tie**: the vote decides from three agents up
+- **Configuration complexity**: many parameters
 
 ### When to use it
 
 - Tasks where independent attempts by several agents are worth their cost
-- Crews where one agent's failure should be absorbed by the others (weighted votes)
+- Crews where one agent's failure should be absorbed by the others (a failed answer is never a candidate)
 
 ### When not to use it
 
 - Factual tasks with a single correct answer
-- LLM budget constraints (multiplied by N agents × R rounds)
+- LLM budget constraints (multiplied by 2 × N agents × R rounds: answers and ballots)
 - High-frequency workflows (too slow)
 
 ---
@@ -647,7 +668,7 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 | Sequential | N | — | Σ(durations) | ⭐⭐⭐⭐⭐ |
 | Hierarchical | N × (1 to 3) | N assignments + N × (1 to 3) reviews | Σ(durations) × 1.5–3 | ⭐⭐⭐⭐ |
 | Parallel | N | — | Σ(longest task of each wave) | ⭐⭐⭐⭐ |
-| Consensual | N × M × rounds (+ N fallback) | — | Σ(max(durations) × rounds) | ⭐⭐⭐ |
+| Consensual | N × M × rounds | N × M × rounds ballots (+ N manager ballots under `ManagerDecision`) | Σ((max(durations) + max(ballot durations)) × rounds) | ⭐⭐⭐ |
 | Graph | N × (1 + retries) | — | Σ(durations of the attempts) | ⭐⭐⭐⭐ |
 | Autonomous | N (+ delegations) | N assignments | Bounded by the wall time | ⭐⭐ |
 
