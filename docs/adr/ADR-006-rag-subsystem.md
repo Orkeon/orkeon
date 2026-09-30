@@ -93,6 +93,13 @@ invoked by `AddOrkeonInfrastructure`. It is accepted as part of the composition-
 any use of `Orkeon.Rag` from Infrastructure **runtime** code (non-composition) still requires
 reopening this ADR.
 
+Since then: the single DI wiring file the Context announced
+(`DependencyInjection/RagInfrastructureExtensions.cs`) was never created. The subsystem's
+registration lives in `Orkeon.Rag` itself (`AddOrkeonRag(configuration)`,
+`Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions`), and
+`DefaultEmbeddingProviderResolver` is the only file of `Orkeon.Infrastructure` that uses the
+concrete `Orkeon.Rag`.
+
 ## Amendment — 2026-07-26 (RAG-06)
 
 The corrective phase layers four decisions on top of this ADR without touching its

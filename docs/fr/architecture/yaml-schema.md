@@ -6,75 +6,86 @@ Ce document est la **source unique de vérité** pour le schéma YAML d'Orkeon. 
 
 ## Schéma de configuration complet
 
-La structure YAML suit ce schéma :
+La structure YAML suit ce schéma. **Nommage des clés** : le loader (`YamlDotNetSerializer`)
+reconnaît les clés en camelCase (la forme canonique, celle qu'écrit `YamlCrewExporter`) et se
+rabat sur le snake_case pour la même propriété — `expectedOutput` et `expected_output`,
+`llm_override` et `llmOverride` sont équivalents partout. Une clé qui ne correspond à aucune
+propriété est **ignorée en silence** (une clé mal orthographiée se lit comme absente), sauf dans
+les entrées `knowledge:`, qui émettent un warning. Les mêmes modèles servent le format mono-fichier
+et les formats multi-fichiers (`crew.yaml` + `agents.yaml` + `tasks.yaml`, ou `config.yaml` +
+`agents/` + `tasks/`) décrits dans [YAML et Builders](../getting-started/yaml-and-builders.md) ;
+un mapping `anchors:` de premier niveau (chaînes multi-lignes nommées) est développé avant le
+parsing (`YamlAnchorPreprocessor`).
 
 ```yaml
 # Schéma complet CrewYamlConfig
-name: string              # Identifiant de la crew
+name: string              # Identifiant de la crew (requis)
 goal: string              # Objectif (requis)
-process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
+process: string           # "sequential" (défaut) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — insensible à la casse ; une valeur inconnue fait échouer le chargement
 verbose: bool             # default: false
 memory: bool              # default: false
-memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
+memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning
 planning: bool            # default: false
-managerAgent: string      # Requis si process = "hierarchical"
+managerAgent: string      # Hiérarchique uniquement ; omis → le premier agent manage (warning)
+circuitBreaker: {…}       # Circuit breaker au niveau crew (voir la section dédiée)
+graphConfig: {…}          # Réglages du mode Graph (voir la section dédiée)
 
-llm:                      # LLM par défaut de la crew, appliqué aux agents sans le leur (même forme que agents.<id>.llm)
+llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   model: string
   temperature: float
 
-links:                    # ACL EventHub (optionnel) — qui peut parler à qui sur le hub
-  - to: string            # "agent:<id>" | "crew:<id>" | "topic:<nom>" | "client:<nom>"
-    direction: string     # "send" | "receive" | "both"
-    allowed_topics: [string]
+links:                    # ACL EventHub (optionnel) — à qui cette crew peut parler sur le hub
+  - to: string            # Le name: de la crew cible, tel quel — ou "client:<nom>" pour un pair externe (p. ex. Studio)
+    direction: string     # "outbound" (défaut) | "inbound" | "bidirectional" (alias "both") — une valeur illisible écarte l'entrée avec un warning
+    allowed_topics: [string] # Omis ou vide = tous les topics
 
 mounts:                   # Les racines virtuelles que la crew utilise (optionnel, VFS-90) — sélectionne et valide, ne restreint jamais
   - /output               # une racine qu'une entrée des settings (ou un --mount) doit fournir ; refusée en une ligne si rien ne le fait
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # une racine épinglée à UNE entrée des settings par son identifiant, quand plusieurs la déclarent
 
 rag:                      # Configuration RAG au niveau crew (optionnel)
-  provider: string        # Store mémoire/vectoriel des collections ("InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb")
+  provider: string        # Enregistré sur RagCrewConfig, pas encore consommé — le store est Orkeon:Rag:Provider (ou le provider mémoire ambiant)
   collections:
     <nom_collection>:
-      sources: [string]   # Sources d'ingestion (globs de fichiers ou répertoires), résolues au kickoff
-      chunking:
+      sources: [string]   # Sources d'ingestion (globs de fichiers ou répertoires), ingérées à la création de la crew
+      chunking:           # Omis → les défauts du pipeline d'ingestion
         strategy: string  # default: "recursive"
-        max_tokens: int   # default: 512 — tokens par chunk
+        max_tokens: int   # default: 512 — tokens par chunk (×4 caractères)
         overlap: int      # default: 64 — recouvrement de tokens entre chunks
   defaults:
-    profile: string       # Profil de requête par défaut des attachements sans profil propre
+    profile: string       # Enregistré sur RagCrewConfig, pas encore consommé
 
 agents:
   <agent_id>:             # Clé = identifiant unique de l'agent
-    role: string          # Rôle de l'agent (requis)
+    role: string          # Rôle de l'agent (par défaut : la clé de l'agent)
     goal: string          # Objectif personnel de l'agent (requis)
     backstory: string     # Contexte et expertise (multi-ligne recommandé)
-    tools: [string]       # Noms d'outils enregistrés dans IToolRegistry
+    tools: [string]       # Noms d'outils enregistrés dans IToolRegistry (un nom inconnu fait échouer le chargement sous Orkeon:CrewFactory:StrictTools, le défaut des runners)
     allowDelegation: bool # default: true — permet la délégation à d'autres agents
     maxIter: int          # default: 20 — itérations maximales avant timeout
     maxRpm: int           # default: 10 — requêtes par minute (rate limiting)
     verbose: bool         # default: false — logs détaillés pour cet agent
-    llm:
-      model: string       # Modèle LLM ("gpt-4", "claude-3-opus", etc.)
-      temperature: float  # Créativité (0.0-1.0)
-      maxTokens: int      # Limite de tokens en sortie
-      topP: float         # Nucleus sampling
+    llm:                  # Omis (et pas de llm: de crew) → la section Llm des settings du runner
+      model: string       # Identifiant du modèle LLM
+      temperature: float  # default: 0.7 quand le bloc est présent
+      maxTokens: int      # Plafond de tokens en sortie — omis = le maximum documenté du modèle (LLM-10)
+      topP: float         # Nucleus sampling, default: 1.0
       thinking:           # Contrôle du raisonnement (gaté par capacité selon le provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high"
-        budget_tokens: int
-      responseFormat: string # "json_object" | "json_schema" (gaté par capacité)
-      responseSchema:     # Avec responseFormat: json_schema
-        name: string
-        schema: {…}       # JSON Schema inline
-        strict: bool
-      cache:              # Prompt caching explicite (Anthropic)
-        system: bool
-        tools: bool
-        ttl: string
+        effort: string    # "low" | "medium" | "high" | "max" (selon le provider)
+        budget_tokens: int # Honoré par Qwen seul ; les autres providers émettent un warning
+      responseFormat: string # "text" (= défaut du provider) | "json_object" | "json_schema" — toute autre valeur est transmise telle quelle avec un warning
+      responseSchema:     # Avec responseFormat: json_schema (un schéma seul implique json_schema)
+        name: string      # default: "response"
+        schema: string    # Le JSON Schema sous forme de chaîne JSON, p. ex. '{"type":"object"}'
+        strict: bool      # default: true
+      cache:              # Prompt caching explicite (Anthropic) ; désactivé tant qu'aucun breakpoint n'est demandé
+        system: bool      # default: false
+        tools: bool       # default: false
+        ttl: string       # p. ex. "1h" ; omis = défaut du fournisseur
     guardrails:           # Règles opérationnelles injectées dans le system prompt de l'agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative"
-      header: string      # En-tête de section (remplace l'en-tête du preset)
+      header: string      # En-tête de section — utilisé seulement sans preset (chaque preset apporte le sien)
       rules: [string]     # Règles globales numérotées
       toolRules:          # Règles rendues seulement quand l'agent possède l'outil
         <tool_name>: [string]
@@ -83,34 +94,34 @@ agents:
       - collection: string       # Forme longue (clé requise)
         top_k: int               # default: 5 — chunks retenus par requête
         min_score: float         # Score de pertinence minimal dans [0, 1]
-        profile: string          # Profil de requête ("fast" | "balanced" | "quality", libre)
-        max_context_tokens: int  # Plafond de tokens de contexte injectés
+        profile: string          # Enregistré sur KnowledgeAttachment, pas encore consommé par l'augmenter
+        max_context_tokens: int  # default: 2000 — plafond de tokens de contexte injectés
 
 tasks:
   <task_id>:              # Clé = identifiant unique de la tâche
     description: string   # Description détaillée de la tâche (requis)
     expectedOutput: string # Format/contenu attendu en résultat (requis)
-    agent: string         # ID de l'agent assigné à la tâche
-    dependencies: [string] # IDs des tâches prérequises (garantit l'ordre)
+    agent: string         # Clé de l'agent assigné à la tâche (une clé qui ne désigne aucun agent laisse la tâche non assignée)
+    dependencies: [string] # Clés des tâches prérequises (garantit l'ordre ; une clé inconnue est ignorée ; un cycle fait échouer le chargement)
     asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
-    tools: [string]       # Noms d'outils propres à la tâche (ajoutés à ceux de l'agent pour celle-ci)
-    deliverable:          # Le framework écrit le fichier de sortie (l'agent ne touche jamais le disque)
+    tools: [string]       # Noms d'outils propres à la tâche — PARSÉS (TaskConfiguration.RequiredTools) mais pas encore attachés par CrewFactory : donner l'outil à l'agent
+    deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
-      source: string      # "final" (défaut) | "raw"
-      format: string      # "text" | "json" | "markdown"
-      sanitize: bool
-      schema_path: string # Fichier JSON Schema validant un livrable JSON
-      schema_inline: {…}  # Alternative schéma inline
+      source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON contraint par schéma, écrit par le framework) | "none" — toute autre valeur fait échouer le chargement
+      format: string      # "markdown" (défaut) | "json" | "text"
+      sanitize: bool      # default: true — retire les tokens de template en fin de texte (final_message)
+      schema_path: string # Chemin virtuel d'un fichier JSON Schema (structured_output exige lui ou schema_inline)
+      schema_inline: string # Le JSON Schema sous forme de chaîne JSON — alternative à schema_path
     llm_override:         # Surcharge LLM au niveau tâche (cascade crew → agent → tâche)
-      response_format: string
-      response_schema: {name, schema, strict}
+      response_format: string  # Mêmes valeurs que llm.responseFormat
+      response_schema: {name, schema, strict} # schema est une chaîne JSON
       temperature: float
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
-    circuitBreaker:       # Configuration FSM / circuit breaker (optionnel)
+    circuitBreaker:       # Surcharge au niveau tâche — PARSÉE mais pas encore appliquée à l'exécution (voir Configuration Circuit Breaker)
       preset: string      # "strict" | "permissive" | "default"
       maxTransitions: int # Transitions max avant trip
       stateTimeoutSeconds: int  # Timeout par état (secondes)
@@ -128,7 +139,11 @@ tasks:
         <tool_name>: [string]
 ```
 
-Le bloc `circuitBreaker` est également utilisable au niveau racine du YAML (défaut pour toutes les tâches).
+Le bloc `circuitBreaker` est également utilisable au niveau racine du YAML. La validation a lieu
+au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`, au moins un agent
+(chacun avec un goal) et au moins une tâche (chacune avec une `description` et un
+`expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
+identifiants qui sélectionnent la même racine font échouer le chargement.
 
 ## Configuration Guardrails
 
@@ -147,9 +162,16 @@ Deux blocs complémentaires (RAG-03/C4). Le bloc crew `rag:` déclare les **coll
 (provider, sources d'ingestion, chunking, défauts globaux). Le bloc agent `knowledge:`
 **attache** des collections à un agent avec ses options de récupération. À l'assemblage du
 contexte d'exécution, les collections attachées sont interrogées avec l'entrée de la tâche et
-les résultats injectés dans les prompts de l'agent (le câblage prompt arrive dans un lot
-ultérieur ; le parsing est pleinement fonctionnel dès aujourd'hui — aucune ingestion n'est
-déclenchée au chargement).
+les résultats injectés dans le prompt utilisateur de l'agent sous forme d'extraits numérotés et
+cités (`IKnowledgeContextAugmenter`, qui honore `top_k`, `min_score` et `max_context_tokens`).
+Les deux moitiés exigent le sous-système RAG opt-in (`AddOrkeonRag(configuration)`) : à la
+**création** de la crew (`CrewFactory`), les collections déclarées sont ingérées de façon
+incrémentale (`IRagCollectionsBootstrapper` — une source inchangée n'est pas ré-embeddée ;
+`CrewFactoryOptions.PrepareRagCollections = false` désactive l'étape) ; sans le sous-système, un
+bloc `rag:` déclaré journalise un warning et les attachements n'injectent rien. Le parsing du YAML
+lui-même ne déclenche jamais d'ingestion. `rag.provider`, `rag.defaults.profile` et le `profile`
+d'un attachement sont parsés et enregistrés mais pas encore consommés — la récupération passe par
+l'`IDocumentStore` configuré sous `Orkeon:Rag` (voir [Pipeline RAG](./rag-pipeline.md)).
 
 Forme courte — attacher des collections avec les options par défaut :
 
@@ -190,7 +212,7 @@ agents:
         max_context_tokens: 1500
 ```
 
-Les clés acceptent snake_case (canonique) et camelCase. Une entrée `knowledge` malformée
+Les clés acceptent snake_case (la forme utilisée ci-dessus) et camelCase. Une entrée `knowledge` malformée
 (`collection` manquante, `top_k` non numérique, …) est ignorée ou dégradée avec un warning —
 elle ne fait jamais planter le loader. L'équivalent fluent est
 `AgentBuilder.WithKnowledge("produits")` /
@@ -203,27 +225,37 @@ Quand `process: "graph"` est utilisé, un bloc `graphConfig` supplémentaire con
 ```yaml
 graphConfig:
   maxRetryCycles: int           # default: 2 — cycles de retry pour tâches échouées
-  circuitBreakerPreset: string  # "strict" | "permissive" | "default"
+  circuitBreakerPreset: string  # "strict" (défaut) | "permissive" | "default"
   maxTransitions: int           # Surcharge le preset
   maxStateVisits: int           # Détection de cycles (surcharge le preset)
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
+`graphConfig` l'emporte sur un `circuitBreaker` de crew ; le timeout par état et le mode dégradé
+restent aux valeurs du preset (`CircuitBreakerPolicyFactory.ResolveGraph`).
+
 ## Configuration Circuit Breaker
 
-Le bloc `circuitBreaker` avec tous les paramètres disponibles :
+Le bloc `circuitBreaker` avec tous les paramètres disponibles. **Ce qui atteint l'exécution
+aujourd'hui** : le bloc **de crew**, lu par le seul mode Graph (`GraphProcessStrategy`, quand aucun
+`graphConfig` n'est déclaré) — son preset et les cinq premières limites construisent la politique
+de circuit breaker du graphe. Le bloc de tâche et les trois limites de garde (`maxRetries`,
+`maxToolCallsPerRound`, `maxValidationRetries`) sont parsés dans `CircuitBreakerConfig` et résolus
+par `CircuitBreakerPolicyFactory` (preset, puis surcharges de crew, puis surcharges de tâche ;
+preset inconnu → `strict`), mais aucun chemin d'exécution n'appelle encore cette résolution pour
+les tâches.
 
 ```yaml
 circuitBreaker:
-  preset: string                # "strict" | "permissive" | "default"
+  preset: string                # "strict" (aussi la valeur de repli) | "permissive" | "default"
   maxTransitions: int           # Transitions max avant trip
   stateTimeoutSeconds: int      # Timeout par état (secondes)
   maxStateVisits: int           # Visites max d'un même état (cycles)
   maxTotalDurationSeconds: int  # Durée totale max (secondes)
   useDegradedMode: bool         # true = Degraded, false = exception
-  maxRetries: int               # Retries après échec
-  maxToolCallsPerRound: int     # Tool calls max par round
-  maxValidationRetries: int     # Boucles validation max
+  maxRetries: int               # Retries après échec (garde, défaut 3)
+  maxToolCallsPerRound: int     # Tool calls max par round (garde, défaut 10)
+  maxValidationRetries: int     # Boucles validation max (garde, défaut 3)
 ```
 
 ## Configuration Autonomous Budget
@@ -245,7 +277,9 @@ circuitBreaker:
 ## Modèles YAML
 
 Les modèles YAML incluent :
-- `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (la variante multi-fichiers `crew.yaml`)
+Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`) ; `YamlCrewMapper` les transforme en `CrewConfiguration` du Domain et `CrewDefinitionValidator` la vérifie.
+
+- `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (le fichier de réglages de crew des formats multi-fichiers — `crew.yaml` ou `config.yaml`)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
 - `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, circuit breaker)
 - `LlmYamlConfig` (modèle, température, max tokens, topP, thinking, responseFormat/responseSchema, cache) avec `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`

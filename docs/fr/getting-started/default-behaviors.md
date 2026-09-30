@@ -21,13 +21,13 @@ enregistrant le vôtre **après** l'appel Orkeon.
 
 | Service | Défaut | Ce qu'il fait réellement | Le remplacer par |
 |---|---|---|---|
-| `IAgentPlanner` | `AgentPlannerService` | Émet le **même plan fixe en 4 étapes** pour chaque tâche (confiance 0,8). Le raffinement et la validation sont réels ; la *création* de plan ignore le contenu de la tâche. | `services.AddSingleton<IAgentPlanner, VotrePlanner>();` — un planner adossé au LLM est à l'étude pour V1.x. |
-| `ITaskDelegator` | `NullTaskDelegator` | **Refuse toute demande de délégation** ; `FindBestAgentForTaskAsync` retourne le premier agent disponible. La délégation Hierarchical/Autonomous reste inerte tant qu'il n'est pas remplacé. | `services.AddSingleton<ITaskDelegator, VotreDelegator>();` |
+| `IAgentPlanner` | `AgentPlannerService` | Émet le **même plan fixe en 4 étapes** pour chaque tâche (confiance 0,8). Le raffinement et la validation sont réels ; la *création* de plan ignore le contenu de la tâche. | `services.AddSingleton<IAgentPlanner, VotrePlanner>();` **après** `AddOrkeonApplication()`, qui enregistre le stub inconditionnellement (`AddScoped`) — un planner adossé au LLM est à l'étude pour V1.x. |
+| `ITaskDelegator` | `NullTaskDelegator` | **Refuse toute demande de délégation** ; `FindBestAgentForTaskAsync` retourne le premier agent disponible. Enregistré, mais **consulté par aucune stratégie d'orchestration aujourd'hui** : le remplacer ne change rien à une exécution. La délégation qui a réellement lieu passe ailleurs — le mode Autonomous confie une tâche échouée à un pair via `IAgentChannel`, et les agents délèguent via les outils `delegate_work_to_coworker` / `ask_question_to_coworker` ; voir [Orchestration agentique autonome](../orchestration/autonomous.md). | Rien à remplacer pour une exécution ; `services.AddSingleton<ITaskDelegator, VotreDelegator>();` ne sert que votre propre code qui le résout. |
 | `IKnowledgeStore` | `InMemoryKnowledgeStore` | Store in-memory fonctionnel (store/retrieve/delete réels, rien ne persiste) — mais `SearchAsync` **ignore la requête** et retourne les premières entrées stockées. | Activer le sous-système RAG (`AddOrkeonRag(configuration)`) et utiliser son ingestion/récupération, ou enregistrer votre propre store. |
 | `ILlmCache` | `NullLlmCache` | Un cache qui rate toujours — change le coût, pas la justesse. | `services.AddSingleton<ILlmCache, VotreCache>();` |
 | `IYamlDiffService` | `NullYamlDiffService` | Le diff est un confort d'observabilité optionnel. | Enregistrer votre propre implémentation. |
 | `ITemplateInstantiator` | `NullTemplateInstantiator` | **Lève** aussi `NotSupportedException` s'il est réellement utilisé — plus bruyant que n'importe quel log. | Enregistrer votre propre implémentation. |
-| `IToolRegistry` | `InMemoryToolRegistry` | Registre vide ; le runner host le remplace par le `ServiceProviderToolRegistry` adossé à la DI. Les crews qui référencent des outils échouent bruyamment sous `StrictTools`. | `services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();` |
+| `IToolRegistry` | `InMemoryToolRegistry` | Démarre **vide** : les outils que les suites enregistrent dans la DI n'y sont pas, donc les noms listés sous `tools:` par une crew YAML ne se résolvent pas. Avec le défaut de la bibliothèque (`StrictTools` désactivé), chaque outil manquant est journalisé (`Tool '…' not found in registry; skipping.`) et l'agent se charge sans lui ; avec `Orkeon:CrewFactory:StrictTools` activé, le chargement de la crew lève une exception. Le runner host le remplace par son `ServiceProviderToolRegistry` adossé à la DI (`Orkeon.Hosting`, pas un paquet NuGet). | L'alimenter au démarrage — `foreach (var t in host.Services.GetServices<IBaseTool>()) await registry.RegisterToolAsync(t);` (voir [Bootstrap](./bootstrap.md)) — ou enregistrer votre propre `IToolRegistry` sur `IEnumerable<IBaseTool>`. |
 | `IMemorySystem` | `InMemoryMemorySystem` | Vraie implémentation en mémoire — correcte, juste pas persistante. | Configurer un provider persistant (`Memory:Provider`). |
 | `IAgentSelectionService` (FirstFit) | `SimpleAgentSelectionService` | Prend le **premier agent disponible** — le repli sûr explicite. | Passer `OrkeonApplicationOptions.AgentSelectionStrategy` à `Skill` (lexical) ou `Embedding` (sémantique — exige un vrai fournisseur d'embeddings), via `AddOrkeonApplication(o => …)` ou `services.Configure<OrkeonApplicationOptions>(…)`. |
 | `IEmbeddingProvider` | chaîne de résolution | BGE local (quand `AddOrkeonLocalEmbeddings()` est enregistré) → fournisseur distant via `Orkeon:Embeddings` → **fail-fast au premier usage** avec une exception actionnable. Jamais de repli hash silencieux. | Enregistrer `AddOrkeonLocalEmbeddings()` ou configurer `Orkeon:Embeddings`. |
@@ -38,6 +38,16 @@ enregistrant le vôtre **après** l'appel Orkeon.
 > que dans un conteneur câblé avec `AddOrkeonInfrastructure()` **seul** (son
 > enregistrement est `TryAddScoped`). Pour substituer le vôtre dans un bootstrap
 > standard, enregistrez-le **après** `AddOrkeonApplication()`.
+
+> **Deux services n'ont aucun défaut qui fonctionne.** Aucun `IFileSystemService` n'est
+> enregistré par l'un ou l'autre appel : `AddOrkeonFileSystem(configuration)`, avec au moins
+> un montage sous `Orkeon:FileSystem:Mounts`, est requis avant de charger une crew — le
+> chargeur YAML, les outils fichier et les livrables lisent et écrivent tous à travers lui.
+> Et le modèle retombe sur `LlmConfig.Default()` — le modèle OpenAI par défaut, sans clé :
+> le premier appel échoue au lieu de répondre ; enregistrez le vôtre avant
+> `AddOrkeonInfrastructure()` (`AddOrkeonLlmProvider(...)`, voir [Bootstrap](./bootstrap.md)).
+> La CLI `orkeon` se comporte autrement : sans section `Llm`, elle tourne sur le fournisseur
+> écho et le signale sur stderr.
 
 ## Les défauts véritablement silencieux
 

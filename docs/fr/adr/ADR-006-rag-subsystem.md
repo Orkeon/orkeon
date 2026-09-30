@@ -98,6 +98,13 @@ invoquée par `AddOrkeonInfrastructure`. C'est accepté au titre du rôle de rac
 composition ; tout usage d'`Orkeon.Rag` depuis du code **runtime** (hors composition) de
 l'Infrastructure exige toujours de rouvrir cet ADR.
 
+Depuis : le fichier unique de câblage DI qu'annonçait le Contexte
+(`DependencyInjection/RagInfrastructureExtensions.cs`) n'a jamais été créé. L'enregistrement
+du sous-système vit dans `Orkeon.Rag` lui-même (`AddOrkeonRag(configuration)`,
+`Orkeon.Rag.DependencyInjection.RagServiceCollectionExtensions`), et
+`DefaultEmbeddingProviderResolver` est le seul fichier d'`Orkeon.Infrastructure` qui utilise
+le concret `Orkeon.Rag`.
+
 ## Amendement — 2026-07-26 (RAG-06)
 
 La phase corrective superpose quatre décisions à cet ADR sans toucher à ses règles

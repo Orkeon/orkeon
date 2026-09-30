@@ -29,7 +29,7 @@ the `TryAdd*` calls then leave priority to the services already wired by the cor
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure();
 
-// Activations explicites (exemples)
+// Explicit activations (examples)
 services.AddOrkeonMonitoring(configuration);
 services.AddOrkeonDlp();
 services.AddOrkeonA2A(options => options.EnableServer = true);
@@ -55,20 +55,56 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Permission gate (per tool call) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consumed by the scripted `ctx.llm.act` loop | Beta |
 | Shell interpreters & mutating git | config only: `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (re-registers `ShellCommandTool` with `allowInterpreters: true` — RCE-equivalent, security warning emitted) | Beta |
 | Shell allowlist customization | config only: `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (full replacement — cancels `AllowInterpreters`) | Tools.Code | (shapes the `ShellCommandTool` executable allowlist; absent/empty section = defaults) | Beta |
-| Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
+| Native LLM console streaming | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — streamed `ctx.llm.act` deltas rendered on the REPL console | Beta |
 | Plugin system | `AddOrkeonPlugins(...)` (never registered implicitly) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — directory discovery, isolated collectible `AssemblyLoadContext`s; ⚠️ loaded assemblies run with full trust — see [Plugins](../architecture/plugins.md) | Beta |
 | Local on-device embeddings | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, no API key) — first link of the embedding resolution chain | Beta |
-| External memory providers (LanceDB, Redis) | `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (or type keys via `MemoryProviderFactory`). ⚠️ ChromaDB and Pinecone are **not** opt-in: `AddOrkeonInfrastructure(configuration)` auto-registers them when their `Orkeon:ChromaDb`/`Orkeon:Pinecone` section exists | Infrastructure | `IMemoryProvider` implementations — see [Memory system](../architecture/memory-system.md) | Beta |
-| Cognitive memory | `AddOrkeonCognitiveMemory(...)` | Infrastructure | cognitive memory layering over `IMemoryProvider` | Experimental |
+| External memory providers (LanceDB, Redis) + migration | `AddOrkeonLanceDb(configuration)` / `AddOrkeonRedisMemory(configuration)` (or type keys via `Memory:Provider` → `MemoryProviderFactory`) · `AddOrkeonMemoryMigration()`. ⚠️ ChromaDB and Pinecone are **not** opt-in: `AddOrkeonInfrastructure(configuration)` auto-registers them when their `Orkeon:ChromaDb`/`Orkeon:Pinecone` section exists. Only `AddOrkeonRedisMemory` rebinds `IMemoryProvider` (and the Redis provider still needs `InitializeAsync`); the LanceDB/ChromaDB/Pinecone extensions register the **concrete** provider class | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — see [Memory system](../architecture/memory-system.md#selection-by-configuration) | Beta |
+| Cognitive memory | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory`) | Infrastructure | `ICognitiveMemoryService` — LLM analysis, contradiction detection, consolidation, composite recall scoring; needs an `ILlmProvider` and an `IEmbeddingProvider` — see [Memory system](../architecture/memory-system.md#cognitive-memory) | Experimental |
+| LLM exchange logging | `AddLlmExchangeLogging(logDirectory, options?)` (full JSONL capture + structured summary, handler injected into every `IHttpClientFactory` client) · `AddLlmExchangeFileLogging(logDirectory)` (JSONL only) — wired by `RunnerHost` only when a run passes `--llm-log` (`LlmLogging` section) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — see [LLM providers](../architecture/llm-providers.md) | Beta |
+| Human input tool | `AddOrkeonHumanInput()` (auto-approve fallback provider) / `AddOrkeonHumanInput<TProvider>()` — wired by the runner execution path | Infrastructure | `human_input` (`IBaseTool`), `IHumanInputProvider` | Beta |
+| Session tools | `AddOrkeonSessionTools(configuration?)` (`Llm:AvailableModels`) — wired by `RunnerHost` and the REPL | Infrastructure | `session_store`, `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats`; `ISessionBufferService`, `ICategoryMemoryStore` — see [Coding agent (TS)](../architecture/coding-agent-ts.md) | Beta |
+| Semantic search tool | `AddSemanticSearchTool()` (`Orkeon.Hosting`) — wired by `orkeon run` | Hosting | `semantic_search` (`SearchTool`) + `IEmbeddingService` adapter over `IEmbeddingProvider` + in-memory `IVectorMemoryStore` | Beta |
+| EventHub core + agent tools | `AddOrkeonInMemoryEventHub()` · `AddOrkeonEventHubTools()` — both wired by `RunnerHost` (hence `orkeon run` and `orkeon-host`) | Infrastructure / Tools.EventHub | `IEventHub` (in-process), the seven EventHub tools — see [EventHub](../architecture/event-hub-and-crew-lifecycle.md) | Beta |
+| E-mail tools | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inert until an account is declared) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (OAuth token store) — both wired by `RunnerHost`; the REPL wires the tools only | Tools.Email | the 13 `email_*` tools — see [E-mail tools](../guides/email.md) | Beta (live campaign pending) |
+| Microsoft Agent Framework bridge | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (a registered crew as an `AIAgent`) — see [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Beta |
 
 > **Not in this catalog — registered by `AddOrkeonInfrastructure()` and gated by
 > configuration, not by a registration gesture**: MCP (`MCP` section, via the
 > `IConfiguration` overload, or the runner host once `MCP:Servers` declares a server),
-> the parameterless checkpointing store
-> (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), the
-> Guardian pipeline, the Flows engine, Training, Consensus, CostTracking,
-> Encryption, Auth and CodeSandbox. Their configuration sections are mapped in
-> the [Configuration reference](./configuration.md).
+> telemetry and vector search (same overload), the parameterless checkpointing store
+> (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), Evaluation,
+> the Flows engine and its visualization ([Flows](../orchestration/flows.md)), Training, Consensus, CostTracking, YAML,
+> Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers
+> and the Auth options are registered too, but **no execution path invokes them** — a
+> host that wants them calls them itself (see [Security](../architecture/security.md)).
+> Their configuration sections are mapped in the [Configuration reference](./configuration.md).
+>
+> **Tool families** are registered by their own extensions, which the runner host and the
+> REPL call: `AddOrkeonFileSystemTools`, `AddOrkeonWebTools` (plus the single-tool
+> `AddOrkeonWebSearchTool`, `AddOrkeonBraveSearchTool`, `AddOrkeonCacheSearchTool`,
+> `AddOrkeonSlackTool`, `AddOrkeonSlackReadTool`), `AddOrkeonDataTools` (plus
+> `AddRelationalDatabaseTools`, `AddMongoDbTools`, `AddGraphDatabaseTools`),
+> `AddOrkeonCodeTools`, `AddOrkeonAbstractionTools`, `AddRaggableTreeTools` — see the
+> [tool inventory](../tools/inventory.md).
+
+## Building blocks registered by `AddOrkeonInfrastructure()`
+
+Not opt-ins, but public extensions a host meets when it composes its own container: each is
+called by `AddOrkeonInfrastructure()` (every one uses `TryAdd*`, so calling it again is
+harmless), and each is also callable alone when a host builds a minimal container without
+the full infrastructure.
+
+| Extension | Registers | Consumed by | Call it yourself when |
+|---|---|---|---|
+| `AddOrkeonYaml()` | `CrewFactoryOptions` (plain options, lenient tool resolution), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | the runners' crew loading; `orkeon forge` | you load or export YAML crews without `AddOrkeonInfrastructure()`. Strict tool resolution is `Orkeon:CrewFactory:StrictTools`, which `RunnerHost` reads (default `true` there) |
+| `AddOrkeonFlows()` | `IFlowStepExecutor`, `IFlowEngine` → `FlowEngine`, `YamlFlowDefinitionLoader` | nothing shipped — the Flows system is a C# API only | you run flows from your own code — see [Flows](../orchestration/flows.md) |
+| `AddOrkeonFlowVisualization()` | `FlowExecutionTracker` (`FlowGraphSerializer` is static) | nothing shipped — the engine does not feed the tracker | you display flow progress — see [Flows](../orchestration/flows.md) |
+| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`OutputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` with the four guards wired to their phases | nothing in the execution path | you want the guards: resolve `GuardianPipeline` and run it around your own calls — see [Security](../architecture/security.md) |
+| `AddOrkeonAuth()` | `AuthenticationGuard`, `AzureAdOptions` (`Orkeon:Auth:AzureAD`), `OidcOptions` (`Orkeon:Auth:OIDC`) | nothing — no `IAuthenticationProvider` is registered and the guard is not in the Guardian pipeline | you authenticate callers: register an `IAuthenticationProvider` and invoke the guard yourself |
+| `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | nothing shipped | you run a training/feedback loop from your own code (resolve `ITrainingOrchestrator`) |
+
+The memory migration service is the one data-moving extension that is *not* registered by
+default: `AddOrkeonMemoryMigration()` — see [Memory system](../architecture/memory-system.md#selection-by-configuration).
 
 **Maturity** — *Beta*: complete and tested implementation, API likely to evolve
 before v1. *Experimental*: functional implementation but not wired into the
@@ -120,6 +156,11 @@ partial (flagged case by case below).
     `AddOrkeonInfrastructure()` and after any custom repository (recommended order,
     see [Principle](#principle)); a custom repository registered *after* `AddOrkeonA2A(...)`
     wins (last registration).
+- **What the shipped pieces do not do**: the default `IA2ATaskRouter` matches a task to an
+  agent but does **not** execute it — it answers `Completed` with a routing acknowledgement —
+  and no shipped host (`orkeon run`, `orkeon-host`, the REPL) calls `AddOrkeonA2A` or starts
+  `IA2AServer`. See [A2A conformance — Task execution](./a2a-conformance.md#task-execution)
+  and [Activation](./a2a-conformance.md#activation).
 - **Known limits**: the in-memory store is local to the process — for a multi-instance
   agent directory, provide a custom `IAgentRepository` backed by external shared
   storage (it will be respected as-is by the extension).
@@ -131,7 +172,7 @@ partial (flagged case by case below).
   exposure through a host endpoint (dashboard, diagnostic API).
 - **Activation**:
   ```csharp
-  services.AddOrkeonMonitoring(configuration); // lie Orkeon:Monitoring
+  services.AddOrkeonMonitoring(configuration); // binds Orkeon:Monitoring
   services.AddOrkeonMonitoring();              // default options
   ```
 - **Dependencies**: logging only (default options are registered when no
@@ -173,7 +214,10 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   `AddOrkeonInfrastructure()`, the core's audit chain (structured +
   in-memory sinks, `Security:Audit` options) is used.
 - **Known limits**: the depth of the report depends on the events actually
-  audited by the host; no automated control is executed.
+  audited by the host — and the only framework component that writes to `IAuditLogger`
+  is the Guardian pipeline, which nothing in the execution path runs, so a host that
+  wants a meaningful report runs the Guardian pipeline (or writes audit events) itself;
+  no automated control is executed.
 
 ## DLP — `AddOrkeonDlp()`
 
@@ -276,7 +320,7 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   configured constraints).
 - **Activation**:
   ```csharp
-  services.AddOrkeonMultiModal(configuration); // lie Orkeon:MultiModal
+  services.AddOrkeonMultiModal(configuration); // binds Orkeon:MultiModal
   services.AddOrkeonMultiModal();              // default options
   ```
 - **Dependencies**: `IContentValidationService` only needs the options;
@@ -298,13 +342,13 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   semantics (exceptions from tolerant hooks are logged then ignored).
 - **Activation**:
   ```csharp
-  services.AddOrkeonKickoffHooks(); // runner seul
+  services.AddOrkeonKickoffHooks(); // the runner alone
   services.AddBeforeKickoffHook(new BeforeKickoffHook
   {
       Name = "audit",
       Priority = 1,
       Execute = crew => /* ... */ System.Threading.Tasks.Task.CompletedTask,
-  }); // enregistre le hook ET le runner
+  }); // registers the hook AND the runner
   ```
 - **Dependencies**: none (hook collections empty by default, optional logging).
 - **Known limits**: the orchestrator does not (yet) invoke the runner — wiring it
@@ -380,15 +424,18 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   exists for the resume identifier (crash recovery).
 - **Activation** (two conditions — a store **and** the option):
   ```csharp
-  // 1. Un state store de checkpointing (in-memory, SQLite ou PostgreSQL)
-  services.AddOrkeonSqliteCheckpointing("Data Source=orkeon-state.db");
-  // ou : services.AddOrkeonCheckpointing();              // in-memory
-  // ou : services.AddOrkeonPostgresCheckpointing(configuration);
+  // 1. A checkpointing state store (in-memory, SQLite or PostgreSQL)
+  services.AddOrkeonSqliteCheckpointing("Data Source=/output/orkeon-state.db"); // virtual path, writable mount
+  // or: services.AddOrkeonCheckpointing();              // in-memory
+  // or: services.AddOrkeonPostgresCheckpointing(configuration); // Orkeon:Checkpointing:*
 
-  // 2. L'opt-in de persistance
+  // 2. The persistence opt-in
   services.AddCrewExecutionStatePersistence();             // code-first
-  services.AddCrewExecutionStatePersistence(configuration); // lie Orkeon:ExecutionState:Persistence
+  services.AddCrewExecutionStatePersistence(configuration); // binds Orkeon:ExecutionState:Persistence
   ```
+  The SQLite store resolves its `Data Source` through the VFS like the SQLite memory
+  provider: it needs a registered `IFileSystemService` (`AddOrkeonFileSystem(...)`) and a
+  path on a writable mount, otherwise it throws `FileAccessDeniedException`.
   With the `AddOrkeonInfrastructure(IConfiguration)` overload, the presence of the
   `Orkeon:ExecutionState:Persistence` section (`Enabled`, `DeleteFromStoreOnArchive`)
   is enough to bind the options.
@@ -481,8 +528,9 @@ verify:
 
 1. that **no dormant port of the original opt-in set** is registered by
    `AddOrkeonApplication()` / `AddOrkeonInfrastructure()` (both overloads) —
-   the rows added later (plugins, local embeddings, LanceDB/Redis, cognitive
-   memory) are guarded by their own suites, not by this test;
+   the rows added later (plugins, local embeddings, memory providers, cognitive
+   memory, the tool and logging registrations…) are guarded by their own suites, not by
+   this test;
 2. that each `AddOrkeonXxx()` produces a graph that is **resolvable** on its own (with
    logging and, where applicable, an `IConfiguration`);
 3. that the opt-ins **compose** with the core (`TryAdd` semantics, no duplicates).

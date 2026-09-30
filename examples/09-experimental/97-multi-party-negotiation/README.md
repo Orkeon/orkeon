@@ -25,10 +25,10 @@
 
 **No mounted input data.** This crew uses only `json_tool` (inline JSON) and
 `file_write`, so per the [example data policy](../../../docs/reference/example-data-policy.md)
-it ships no `data/` folder to mount. The negotiation scenario is supplied as text
-via `--initial-context`. A fuller, human-readable brief lives at
-[`data/procurement-brief.md`](data/procurement-brief.md) for reference only — it
-is not read by any tool.
+it needs no `data/` mount. The negotiation scenario is supplied as text via
+`--initial-context`. The one file under `data/`,
+[`data/procurement-brief.md`](data/procurement-brief.md), is a fuller,
+human-readable brief for reference only — no tool reads it.
 
 ## Run it
 

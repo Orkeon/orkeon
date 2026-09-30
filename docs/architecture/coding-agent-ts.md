@@ -45,23 +45,45 @@ is in [TypeScript CLI commands](cli-ts-commands.md).
 
 | Method | Semantics |
 |---|---|
-| `runCrew(name, input?)` | Loads `crews/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput`. Short crews. |
+| `runCrew(name, input?)` | Loads `<crews-dir>/<name>/crew.ork.ts`, runs it via `ScriptHost.RunFromFileAsync` (honours `.body()` + `ctx.llm`), **waits**, returns `CrewRunOutput` (`{ ok, summary?, artifacts?, error? }`). Short crews: the wait is bounded by `RunCrewTimeout` (below), past which the script receives a `TimeoutException`. |
 | `runCrewAsync(name, input?)` | Posts the run on a pool thread, returns a **ticket** immediately. Completion drains to a `defineAsyncCommand`'s `completed(result)` via the same ticket cycle as `commands.post`. Long workflows. |
 | `listCrews()` | Discovered crew names. |
 
+An unknown crew is not an exception: `runCrew` returns `ok: false` with
+`crew '<name>' not found under: …`. `runCrewAsync` needs the dispatch substrate `AddScriptCommands` registers,
+and throws without it.
+
+`ScriptHost` runs the file **procedurally**: a crew that ends with `globalThis.crew = crew`
+is not handed to an orchestrator here, it is run the way `await crew.run()` would run it —
+bodies run, tasks ignored ([the two shapes](../reference/scripting-dsl.md#the-two-shapes)).
+Write the crews this bridge launches in the procedural shape.
+
 A crew is resolved by name against the directories the host was given: `--crews-dir` is
-repeatable, and the crew called `review` is the file `<dir>/review/crew.ork.ts`
-(`CliCrewMountBootstrapper`). `input` reaches the crew as `globalThis.inputs`, a JS object
-parsed from JSON before evaluation by the `ScriptHost` pre-execution hook.
+repeatable, each directory is mounted read-only as `/crews`, `/crews-1`, …
+(`CliCrewMountBootstrapper`), and the crew called `review` is the file
+`<dir>/review/crew.ork.ts`; the first directory that has it wins. `input` reaches the crew as
+`globalThis.inputs`, a JS object parsed from JSON before evaluation by the `ScriptHost`
+pre-execution hook, and the crew's `globalThis.result` comes back as the `summary` (a string as is, anything
+else serialised to JSON).
+
+The same resolution can be configured under `Orkeon:Cli:ScriptHost` (`ScriptHostFacadeOptions`):
+
+| Key | Default | Meaning |
+|---|---|---|
+| `CrewDirectories` | empty | Virtual directories searched in order; `--crews-dir` appends to it. |
+| `CrewFileName` | `crew.ork.ts` | The entry file looked up under `<dir>/<name>/`. |
+| `RunCrewTimeout` | `00:10:00` | Bound on one synchronous `runCrew`; zero or negative disables it. |
 
 ## An agent loop in a crew — `ctx.llm.act`
 
 An interactive agent is an agent whose **`.body()` is the loop**: it calls
 `ctx.llm.act(prompt, opts)`, which runs the LLM ⇄ tool-calling cycle over the agent's own
 tool catalogue until the model stops asking for tools or `maxIterations` is reached
-(`Typings/context.d.ts`, `act<T>` and `ActOptions`). It is launched as a crew —
-`runCrewAsync("main", { prompt, permissionMode })` — and *not* via `onCommand`, which has no
-`ctx` and so cannot reach the LLM. Conversation continuity across runs comes from the
+(`src/scripting/Orkeon.Scripting/Typings/context.d.ts`, `act<T>` and `ActOptions`). The tools
+the model is offered are the built-ins the agent selected with `.tools([...])`. It is launched
+as a crew — `runCrewAsync(name, { prompt, permissionMode })`, the crew passing
+`inputs.permissionMode` on to `act` — and *not* via `onCommand`, which has no `ctx` and so
+cannot reach the LLM. Conversation continuity across runs comes from the
 singleton `ISessionBufferService`.
 
 `ActOptions.system` seeds a **real `role:"system"` message** ahead of the user prompt,
@@ -73,14 +95,18 @@ message wins over `LlmConfig.SystemMessage` on every provider.
 
 ## Permissions and budget
 
-The permission gate is a first-class DI service, `IPermissionGate` / `ModePermissionGate`
+The permission gate is a first-class DI service, `IPermissionGate`
+(`Orkeon.Application.Interfaces.Security`) implemented by `ModePermissionGate`
 (`Orkeon.Infrastructure.Security`), consulted per tool call inside `ctx.llm.act`. Four modes
 (`bypassPermissions`, `plan`, `acceptEdits`, `default`), read/write classification from the
 tool's own `IBaseTool.Access` declaration (with a curated read-tool table and
-`codebase_`/`symbol_`/`index_` prefixes as fallback), fail-closed on unknown tools, and an
-interactive approval channel — all behind `Orkeon:Security:PermissionGate:Enabled` /
-`:Interactive`, wired by the REPL and `RunnerHost`, no-op when disabled. See
-[opt-in subsystems](../reference/opt-in-subsystems.md).
+`codebase_`/`symbol_`/`index_` prefixes as fallback), fail-closed on unknown tools and unknown
+modes. There is no interactive approval yet: a call the mode does not allow is denied, and the
+model reads `DENIED: …` as the tool's answer; `Interactive` (default `false`) only changes that
+message, the approval flow itself being a follow-up. All of it sits behind
+`Orkeon:Security:PermissionGate:Enabled` (default `false`) / `:Interactive`, wired by the REPL
+and `RunnerHost` (`AddOrkeonPermissionGate`), no-op when disabled. In the TUI, Shift+Tab cycles
+the session's default mode. See [opt-in subsystems](../reference/opt-in-subsystems.md).
 
 Budget is the other bound: `process("autonomous")` plus `.budget({...})`
 (`AgentExecutionBudget`, five dimensions).
@@ -133,7 +159,8 @@ scripted> /review src/Program.cs
 src/Program.cs: source file — worth a read
 
 scripted> /review-bg examples/README.md
-launched (ticket t1)
+  ✓ [t1] review-bg → crew:review: done
+✓ review: examples/README.md: not a source file — skipped
 ```
 
 The demo crew calls no model, which is why this runs keyless; point an agent's `.body()` at

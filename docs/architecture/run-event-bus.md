@@ -43,15 +43,17 @@ Payload fields sit **flat** beside the envelope, not nested under a `payload` ke
 
 ## 3. Outbound — what a run says
 
+The vocabulary is declared once, in the dependency-free `Orkeon.Constants.Protocol` satellite ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)): `RunEventKinds` names the fourteen kinds — the thirteen below and the inbound `input.given` (§4) — and `RunEventKinds.All` is the set a client asserts it handles. The CLI writes them and Studio reads them without either referencing the other.
+
 | `kind` | Payload | When |
 |---|---|---|
 | `run.started` | `target`, `stream` | The run begins. |
 | `task.started` | `taskId`, `agentRole` | A task begins, in every orchestration mode — the moment its agent is chosen and before it is asked anything. Between this and the matching `task.completed` a watcher shows the task as in progress; the payload is deliberately thin because nothing has been measured yet. An older CLI says nothing here, and a client must not refuse a `task.completed` it never saw started. |
-| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Each task finishes, in every orchestration mode — failure and cancellation included (see `error`). `tokens` and `toolCalls` are `0` when the mode does not track them, never absent. |
+| `task.completed` | `taskId`, `agentRole`, `success`, `skipped`, `durationMs`, `tokens`, `toolCalls` | Each task finishes, in every orchestration mode — failure and cancellation included (see `error`). `skipped: true` marks a task that never ran because a task it depends on did not succeed (`success` is then `false` and `durationMs` `0`). `tokens` and `toolCalls` are `0` when the mode does not track them, never absent. |
 | `tool.called` | `toolName`, `argsSummary?` | A tool is invoked. `argsSummary` is a digest of the argument names, never the arguments: a call can carry a whole file. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | The tool finished — **including when it threw**, so a watcher never shows a step running forever. Correlated with its `tool.called`. |
 | `delegation.started` | `toRole?` | One agent handed work to another (the `delegate_work_to_coworker` tool). The task description stays off the stream, like every other argument value. |
-| `agent.spawned` | `role?`, `reason?` | The team grew at runtime — emitted when a `spawn_agent` tool call is observed. rc.2 wires that tool into no agent by default, so this kind only appears in deployments that attach it themselves. |
+| `agent.spawned` | `role?`, `reason?` | The team grew at runtime — emitted when a `spawn_agent` tool call is observed. The framework wires that tool into no agent by default, so this kind only appears in deployments that attach it themselves. |
 | `cost.updated` | `tokens`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?`, `estimatedTokens?`, `model?`, `provider?`, `operation?`, `cost?`, `currency?`, `costSource?` | The meter moves — after **every generation call** of the run, while it goes: agent turns and their retries, the hierarchical manager, the planner, the RAG pipelines, the memory services, flow steps, LLM judges, `ctx.llm.*` calls (see *What the meter counts* below). Every figure is the run's cumulative total, like `run.finished`'s: `promptTokens` is what went up, `completionTokens` what came back, and the cache pair (a partition of the prompt side) appears once a provider measured it — unmeasured is absent, never `0`. `estimatedTokens` appears once a provider counted nothing for a call and the runtime estimated it: the part of `tokens` that is approximate, which a client marks rather than passes off as a count. `model` and `provider` say who answered, and `operation` what the call was for — `agent`, `manager`, `planning`, `rag`, `memory`, `flow`, `judge`, or the `ctx.llm.*` method of a script (`complete`, `chat`, `stream`, `extract`, `decide`, `act`) — absent for a call nothing claimed: a client that names the model a team works on reads its agents' readings, not a judge's or a RAG pipeline's, as Studio's status bar does; the envelope carries `crewId` and, as `agentId`, the role of the agent the call was made for — absent for a call no agent made, such as the plan. **The price is the vendor's own or nothing**: `cost` appears once a vendor billed in its answer (OpenRouter's `usage.cost`), with `costSource: "vendor"` and `currency` (ISO 4217) when the provider states it; a free call bills `0`, relayed as `0`. No estimate ever travels here — the framework's price registry serves budgets, and a figure computed from it would read as a bill. |
 | `llm.delta` | `text` | A fragment of generated text. **Only under `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | A task declared `humanInput: true` is asking. |
@@ -79,12 +81,14 @@ One JSON document per line on stdin. Each verb maps onto a member of `IEventHub`
 |---|---|---|
 | `input.given` | `correlationId?`, `value` | Answers a pending `input.needed`. |
 | `post` | `to`, `payload` | `IEventHub.PostAsync` — writes to one mailbox. |
-| `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync`; the answer comes back as a correlated `hub.message`. |
+| `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync` (`timeoutMs` defaults to 30 s); the answer comes back as a correlated `hub.message`. |
 | `publish` | `topic`, `payload`, `retainAs?` | `PublishAsync`. |
 | `reply` | `correlationId`, `payload` | Answers a question **an agent asked this process**. |
 | `subscribe` / `unsubscribe` | `topic` | Opens or closes a relay of that topic into `hub.message`. |
 
-An `input.given` **without** a correlation id answers whatever question is waiting: a human typing into a terminal has no identifier to quote.
+An `input.given` **without** a correlation id answers the oldest question waiting: a human typing into a terminal has no identifier to quote.
+
+A hub command that arrives before the run's hub exists is held — up to 64 of them — and replayed once it does; beyond that it is dropped, like any other line the run cannot use.
 
 ### Silence is not consent
 
@@ -96,7 +100,7 @@ If no answer comes — channel closed, run cancelled — the confirmation is **r
 
 ## 5. The seat at the hub
 
-A watching process is addressable at `client://{name}` (`--client`, default `studio`). Agents post and send to it exactly as they would to another agent, and it can post, publish and subscribe back.
+A watching process is addressable at `client://{name}` (`--client`, default `studio`; the name must be non-empty and hold no `/`, or the run refuses to start). Agents post and send to it exactly as they would to another agent, and it can post, publish and subscribe back.
 
 **Who may reach it is the crew's decision**, not the protocol's. A crew authorizes the exchange by naming the peer in its `links:` block:
 
@@ -145,4 +149,4 @@ Two rules worth building against. **Ignore a `kind` you do not know** — a newe
 - **Orkeon Studio**, whose Launch screen shows progress — the task in progress and the tool at work, from `task.started` and `tool.called`, as well as the tasks done — cost and the run's questions instead of scrollback — see [Studio](studio.md). The Launch screen also staffs the hub seat: an agent's `send` to `client://studio` (marked `expectsReply`) appears as a request panel the user answers, and the reply travels back down stdin; hub posts are listed rather than dropped. Silence past the agent's own timeout is still a refusal — the same rule silence follows everywhere on this bus — the screen just gives a human the chance to speak before it.
 - `Orkeon.Studio.Core.Run` — `RunClient` and `RunProgressModel`, a reference client with no dependency on Infrastructure or any LLM. `RunClient` is the shape to copy for a peer that takes the seat headlessly: subscribe, post, and reply.
 
-The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream, so a client that reads one reads both.
+The same envelope carries [the Atelier](../reference/cli.md#orkeon-forge)'s own stream and the [`orkeon usecases`](../reference/cli.md#orkeon-usecases) session (`usecases search --events jsonl`, whose kinds `UseCaseEventKinds` declares beside `RunEventKinds`), so a client that reads one reads all three.

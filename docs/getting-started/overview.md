@@ -77,7 +77,7 @@ graph TB
 
 ### Agent (`Orkeon.Domain.Agent.Agent`)
 
-An Agent is the intelligent unit of work of the framework. It is a DDD *Aggregate Root* identified by an `AgentId`. An agent is defined by three mandatory elements: a **role** (`AgentRole`), a **goal** (`AgentGoal`), and optionally a **backstory** (`AgentBackstory`) which contextualizes its personality for the LLM.
+An Agent is the intelligent unit of work of the framework. It is a DDD *Aggregate Root* identified by an `AgentId`. An agent is defined by two mandatory elements, a **role** (`AgentRole`) and a **goal** (`AgentGoal`), plus an optional **backstory** (`AgentBackstory`) which contextualizes its personality for the LLM.
 
 Each agent has a list of tools (`IReadOnlyList<ITool> Tools`), a status (`AgentStatus`: Created, Idle, Busy, Unavailable, Deactivated or Error), execution constraints (`MaxIterations`, `MaxRpm`, `MaxExecutionTime`), and can be configured to delegate tasks (`AllowDelegation`).
 
@@ -112,7 +112,7 @@ var task = new CrewTaskBuilder()
 
 A Tool is a concrete capability made available to an agent. The `IBaseTool` interface exposes a `Name`, a `Description`, a `Schema` (JSON schema of the parameters), and two execution methods: `CallAsync` (structured protocol via `ToolCallRequest`/`ToolCallResponse`) and `ExecuteAsync` (legacy string mode).
 
-Tools are organized into specialized NuGet packages: `Orkeon.Tools.FileSystem`, `Orkeon.Tools.Data`, `Orkeon.Tools.Web`, `Orkeon.Tools.Code`.
+Tools are organized into families — `Orkeon.Tools.FileSystem`, `.Data`, `.Web`, `.Code`, `.Email`, `.EventHub`, `.Rag`, `.Analysis` — shipped together in the `Orkeon.Tools` NuGet package; each family has its own registration extension — `AddOrkeonFileSystemTools()`, …, `AddRaggableTreeTools()` (see [Bootstrap](./bootstrap.md)) and the full list is the [tool inventory](../tools/inventory.md). To give agents a mailbox (the `.Email` family: Gmail, Outlook.com, your own IMAP/POP3/SMTP server), start with [Give your agents a mailbox](./give-your-agents-a-mailbox.md).
 
 ### Crew (`Orkeon.Domain.Crew.Crew`)
 
@@ -133,7 +133,7 @@ var crew = new CrewBuilder()
 
 ## Two definition approaches: YAML or Fluent Builder
 
-Crews and their agents can be defined in two ways: either via a **YAML** file, or via the **Fluent Builder** API in C#. Both approaches produce identical results.
+Crews and their agents can be defined in two ways: either via a **YAML** file, or via the **Fluent Builder** API in C#. Both approaches produce identical results. A third surface, TypeScript (`.ork.ts`), describes the same crew with the scripting DSL and runs through the same `orkeon run` — see [Write a crew in TypeScript](../guides/write-a-crew-in-typescript.md).
 
 ### Approach 1: Definition via YAML
 
@@ -189,7 +189,8 @@ tasks:
     dependencies:
       - "analyze_sales"
     deliverable:
-      path: "/output/weekly-report.md"   # the framework writes the file (outputFile is builder-only)
+      path: "/output/weekly-report.md"   # default source: tool_call — the agent writes it with file_write
+      # source: final_message           # or structured_output: the framework writes the file itself
 ```
 
 ### Approach 2: Definition via Fluent Builder

@@ -4,7 +4,7 @@
 
 # ADR-008 — Virtual paths are the only currency agents are paid in
 
-**Status**: Accepted · **Date**: 2026-08-25
+**Status**: Accepted — since [ADR-009](./ADR-009-shared-constants-satellites.md), the roots this ADR calls `RunnerMounts` are `RunnerVirtualRoots` in `Orkeon.Constants.FileSystem`, which Studio references directly; the decision stands, the type moved · **Date**: 2026-08-25
 · **Scope**: `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`, `Orkeon.Studio.*`
 
 ## Context

@@ -105,11 +105,17 @@ layouts are recognized, at the first level only:
 ```
 
 Candidates must carry the `.dll` extension and satisfy `SearchPattern`
-(`*.dll` by default). The physical path resolution required by the
+(`*.dll` by default, a simple case-insensitive glob). The physical path resolution required by the
 `AssemblyLoadContext` APIs uses the VFS mechanism
-(`IFileSystemService.ResolveAndValidate`, mount checks + `FileAccessRights`);
+(`IFileSystemService.ResolveAndValidate` with `FileAccessRights.Read`, mount checks included);
 a file rejected by the mount policy is simply excluded. Error messages from
 the plugin system only reference virtual paths.
+
+- `Directory` must start with `/` — anything else throws an `ArgumentException` at the call.
+- A directory that does not exist loads **nothing, silently**: no plugin, no failure.
+- Candidates are loaded in ordinal order of their virtual path, so the registration order
+  (and therefore "last registration wins" between two plugins) is deterministic.
+- The enumeration does not follow symbolic links.
 
 ## Loading and isolation
 
@@ -117,7 +123,8 @@ Each plugin assembly is loaded into its own `PluginLoadContext`:
 
 - **collectible** (`isCollectible: true`) → unloadable;
 - dependencies resolved by `AssemblyDependencyResolver` (the plugin's `.deps.json`) →
-  each plugin can ship **its own versions** of dependencies;
+  each plugin can ship **its own versions** of dependencies, native libraries included
+  (`LoadUnmanagedDll` goes through the same resolver);
 - assemblies whose simple name starts with a prefix from
   `SharedAssemblyPrefixes` (`Orkeon.`, `Orkeon.Rag.Abstractions`, `Microsoft.Extensions.` by default — the middle entry is explicit so RAG contract types keep inter-ALC identity even for hosts that narrow the defaults) are
   **never** resolved in the plugin context: they unify with the host
@@ -153,6 +160,24 @@ services.AddOrkeonPlugins(fileSystem, options =>
 services.AddOrkeonPlugins(fileSystem, configuration);
 ```
 
+```json
+{
+  "Plugins": {
+    "Directory": "/plugins",
+    "SearchPattern": "Acme.*.dll",
+    "ContinueOnError": false,
+    "SharedAssemblyPrefixes": [ "Acme.Contracts." ]
+  }
+}
+```
+
+The keys are the `OrkeonPluginsOptions` properties; every one is optional (defaults:
+`/plugins`, `*.dll`, `false`). Entries under `SharedAssemblyPrefixes` are **added** to the
+three defaults (the configuration binder appends to the existing list) — narrowing the
+defaults takes the delegate overload. The options are consumed at the call and are not
+registered as `IOptions<OrkeonPluginsOptions>`. The `/plugins` mount itself is the host's
+business: declare it like any other (`Orkeon:FileSystem:Mounts`, read-only is enough).
+
 Specifics:
 
 - discovery and loading are **immediate** (at the time of the call): plugins
@@ -172,7 +197,7 @@ Specifics:
 |---|---|
 | Sandbox / permission model | `PluginSecurityManager`, `PluginSandbox` |
 | `plugin.json` manifest (out-of-code metadata) | `PluginManifest` |
-| Hot-reload | `PluginLoader.Reload` |
+| Hot-reload | `ReloadPluginAsync` |
 | Persisted per-plugin configuration | `IPluginConfigurationStore` |
 | Symlinks in the plugin directory | not followed |
 

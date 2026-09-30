@@ -77,6 +77,6 @@ jobs:
           mkdir -p published && cd published
           gh release download "$TAG" --repo "$REPO"
           # Two checksum files by design (see publication-matrix): SHA256SUMS
-          # covers everything but the MSI; SHA256SUMS.msi covers the MSI alone.
+          # covers everything but the MSIs; SHA256SUMS.msi covers the two MSIs (CLI and service host).
           sha256sum --check --ignore-missing SHA256SUMS
           sha256sum --check --ignore-missing SHA256SUMS.msi

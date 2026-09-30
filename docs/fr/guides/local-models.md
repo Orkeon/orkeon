@@ -2,7 +2,7 @@
 
 # Exécuter Orkeon sur des modèles locaux
 
-> **Voir aussi** : [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md) · les profils `examples/appsettings/` · [Retour à l'index](../INDEX.md)
+> **Voir aussi** : [Trois façons d'exécuter Orkeon](../getting-started/three-ways-to-run-orkeon.md) · les modèles de settings [`examples/appsettings/`](https://github.com/Orkeon/orkeon/tree/main/examples/appsettings) · [Fournisseurs LLM](../architecture/llm-providers.md) · [Retour à l'index](../INDEX.md)
 
 Chaque exemple et chaque crew Orkeon peut tourner sur un modèle installé sur
 votre machine — sans clé API, sans cloud. Trois approches, du zéro-install au
@@ -16,7 +16,28 @@ tout-embarqué :
 
 L'image conteneur `orkeon-runners` utilise l'option 1 par défaut : ses settings
 embarqués ciblent `host.docker.internal:12434` avec le modèle
-`ai/granite-4.0-h-tiny`.
+`ai/granite-4.0-h-tiny`. Des alternatives prêtes à l'emploi vivent dans
+`/etc/orkeon/profiles` et se sélectionnent avec `-e ORKEON_LLM_PROFILE=<nom>` :
+
+| Profil | Cible |
+|---|---|
+| `host-dmr` | Docker Model Runner sur l'hôte — le défaut embarqué |
+| `host-ollama` | Ollama sur l'hôte (`http://host.docker.internal:11434`) |
+| `openai` | OpenAI cloud — à coupler avec `-e ORKEON_Llm__ApiKey=sk-...` |
+| `local` | le modèle embarqué (images de l'option 3 uniquement) |
+
+`orkeon-example settings`, dans le conteneur, montre quels settings s'appliquent et pourquoi.
+
+Aucun nom de provider n'apparaît dans ces fichiers : Orkeon choisit le provider d'après l'URL
+de base. Une URL contenant `/engines/` désigne Docker Model Runner, piloté par le dialecte
+OpenAI (`OpenAIProvider`) ; `11434` ou `localhost` va au provider Ollama natif
+(`OllamaLlmProvider`) — voir [la résolution du provider](../architecture/llm-providers.md#résolution-du-provider).
+
+Hors conteneur, `orkeon init --provider docker-model-runner` (ou `--provider ollama`) écrit
+les mêmes settings avec `localhost` à la place de `host.docker.internal`
+(`http://localhost:12434/engines/llama.cpp/v1`, `http://localhost:11434`), et
+`examples/appsettings/appsettings.docker-model-runner.local.json.example` est le modèle pour
+les runners d'exemples.
 
 ## Option 1 — Docker Model Runner (recommandé avec Docker Desktop)
 
@@ -151,8 +172,12 @@ Deux notions à ne pas confondre :
 
 - La **taille de contexte** est une propriété côté serveur (ce que le modèle
   peut lire) ; un cache KV à 128K coûte plusieurs Go de RAM en plus sur l'hôte.
-- `Llm.MaxTokens` dans les settings Orkeon plafonne uniquement la **réponse** —
-  indépendant de la taille de contexte.
+- `Llm:MaxTokens` dans les settings Orkeon plafonne uniquement la **réponse** —
+  indépendant de la taille de contexte. Chaque profil local livré par Orkeon le fixe à 4096,
+  ce qui est aussi la valeur de repli d'une valeur non fixée sur Docker Model Runner (aucun
+  plafond documenté pour un modèle local) ; sur Ollama, une valeur non fixée n'envoie aucun
+  `num_predict`, et le modèle écrit jusqu'à son contexte (voir
+  [les plafonds de sortie](../reference/llm-providers-comparison.md#plafonds-de-sortie--le-maximum-documenté-par-modèle-llm-10)).
 
 ### Concurrence : gardez `MaxConcurrentRequests` à 1
 
@@ -210,8 +235,19 @@ docker build -f Dockerfile.runners --target local-llm \
 docker run -it --rm -m 8g -e ORKEON_RUNNER=shell orkeon-runners:granite
 ```
 
-- `LOCAL_MODEL_CTX` bake la taille de contexte par défaut (8192 sinon) ;
-  surchargeable au run avec `-e ORKEON_LOCAL_LLM_CTX=…`.
+Le serveur écoute sur `127.0.0.1:12434` avec le préfixe `/engines/llama.cpp` ; le profil
+`local`, matérialisé au build, devient les settings embarqués par défaut. Au démarrage,
+l'entrypoint le lance et attend le chargement du modèle (30 à 90 s).
+
+| Argument de build | Défaut | Rôle |
+|---|---|---|
+| `LOCAL_MODEL_URL` | — (**obligatoire**) | le GGUF à télécharger au build |
+| `LOCAL_MODEL_NAME` | `ai/granite-4.0-h-tiny` | l'identifiant de modèle qu'annoncent les settings et le serveur |
+| `LOCAL_MODEL_SHA256` | vide | somme de contrôle facultative du GGUF, vérifiée au build (recommandée pour des builds reproductibles) |
+| `LOCAL_MODEL_CTX` | `8192` | la taille de contexte par défaut, bakée dans l'image |
+| `LLAMA_CPP_BUILD` | `b9972` | la release llama.cpp dont le `llama-server` est embarqué |
+
+- Surchargez la taille de contexte au run avec `-e ORKEON_LOCAL_LLM_CTX=…`.
 - `-e ORKEON_LOCAL_LLM=0` démarre le conteneur sans le serveur embarqué.
 - Inférence CPU : comptez ~5-15 tokens/s ; donnez de la mémoire au conteneur
   (`-m 8g`, plus à grand contexte — sur WSL2, augmentez `.wslconfig`).

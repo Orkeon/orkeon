@@ -78,17 +78,20 @@ scripted> /exit
 
 Ce dossier contient aussi `dispatch.cmd.ts` (commandes `ask` / `ask-bg`) et
 `echo-agent.ork.ts` (un agent qui répond via `onCommand`). Une commande adresse
-un agent **par son nom** au travers de `ctx.services.get("commands")` :
+un agent **par son nom** au travers de `ctx.services.get("commands")`. Le `orkeon-repl`
+livré n'active aucun agent : `ask` y répond « unknown agent 'echo' ». Ces commandes
+demandent un hôte qui enregistre l'agent lui-même (voir
+`docs/architecture/cli-ts-commands.md`) :
 
 - `ask <text>` — dispatch **synchrone** : bloque et affiche la réponse de l'agent.
 - `ask-bg <text>` — dispatch **asynchrone** : rend la main avec un ticket ;
-  `completed(...)` est rejoué à la réponse de l'agent.
+  `completed(...)` s'exécute dès que la réponse de l'agent arrive.
 - `ps` / `inspect --ticket=…` / `result --ticket=…` / `cancel --ticket=…` —
   introspection et contrôle des commandes en vol.
 
 ```
 scripted> /ask hello            # → HELLO
-scripted> /ask-bg hello         # launched (ticket t1)
+scripted> /ask-bg hello         # ticket t1 (écrit dans le volet des logs)
 scripted> /ps                   # t1 ask-bg echo running …
 scripted> /result --ticket=t1   # [t1] HELLO
 ```
@@ -126,12 +129,12 @@ scripted> /review src/Program.cs
 src/Program.cs: source file — worth a read
 
 scripted> /review-bg examples/README.md
-launched (ticket t1)
+✓ review: examples/README.md: …        # le ticket t1 est écrit dans le volet des logs
 ```
 
 - `/review` — **synchrone** : `runCrew(nom, input)` bloque et rend `{ ok, summary, error }`.
 - `/review-bg` — **asynchrone** : `runCrewAsync` rend un ticket tout de suite, et `completed(...)`
-  est rejoué à la fin. Même cycle de tickets que `commands.post`, donc `/ps`, `/inspect`,
+  s'exécute dès que la crew se termine. Même cycle de tickets que `commands.post`, donc `/ps`, `/inspect`,
   `/result` et `/cancel` de `dispatch.cmd.ts` fonctionnent aussi dessus.
 
 La crew de démonstration n'appelle aucun LLM : tout ceci tourne sans clé d'API.

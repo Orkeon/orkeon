@@ -94,6 +94,28 @@ désormais 27. Les comptes ci-dessus sont conservés tels quels — cet ADR est 
 enregistrement de décision gelé ; [le guide RaggableTree](./raggable-tree.md)
 est l'inventaire de référence, maintenu.
 
+## Amendement — 2026-09-30 (état de l'implémentation)
+
+La décision tient ; trois des mécanismes qu'elle nomme ont été livrés autrement, et
+le texte ci-dessus est conservé tel quel :
+
+- **Synchronisation temps réel** — `ICodebaseWatcher` + `IRaggableTreeEventBus` ont
+  été remplacés comme mécanisme de synchronisation par la passe de fraîcheur
+  paresseuse (`IndexFreshnessService` : marquage « sale » à l'écriture + sonde du
+  working tree git + réindexation incrémentale avant la réponse de chaque tool de
+  lecture). Le bus d'événements transporte les notifications de rafraîchissement
+  (`RaggableTreeUpdated`) ; l'implémentation du watcher
+  (`FileSystemWatcherCodebaseWatcher`) existe mais aucun hôte livré ne l'enregistre.
+- **Vector store externe comme atténuation mémoire** — non réalisé : le graphe et
+  toutes les requêtes vivent dans `InMemoryRaggableStore` ; un `IVectorStoreProvider`
+  enregistré (p. ex. `MemoryProviderVectorStoreAdapter` sur Redis/LanceDB) ne reçoit
+  qu'un miroir en écriture seule des embeddings.
+- **Recherche sans embeddings** — n'est plus désactivée : `codebase_search` est
+  hybride (embedding + BM25 fusionnés par RRF) et dégrade vers le BM25 lexical quand
+  aucun embedder n'est câblé. Le runner host livré prend par défaut des embeddings
+  on-device (`LocalSmartComponents`, sans clé d'API). Le cache JSON cité dans les
+  risques acceptés (`RaggableTreeCache`) n'est câblé par aucun hôte livré.
+
 ---
 
 > **Voir aussi** : [Guide RaggableTree](./raggable-tree.md) · [Retour à l'index](../INDEX.md)

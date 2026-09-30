@@ -23,7 +23,7 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
 
 ```json
 {
-  "Llm": { "Provider": "deepseek", "Model": "deepseek-chat" },
+  "Llm": { "BaseUrl": "https://api.deepseek.com", "Model": "deepseek-chat" },
 
   "Orkeon": {
     "Host": {
@@ -58,6 +58,24 @@ Le même binaire tourne de trois façons : en terminal, en unité systemd, en se
 }
 ```
 
+La clé du modèle n'est pas dans le fichier non plus : elle vient de `ORKEON_Llm__ApiKey`, posée dans l'environnement du service (voir *L'installer*). Toute clé se surcharge de la même façon — le préfixe `ORKEON_`, `__` pour `:` — si bien que `ORKEON_Orkeon__Host__RunTimeout=00:10:00` raccourcit l'échéance sans toucher au fichier.
+
+### La ligne de commande
+
+```
+orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
+```
+
+| Option | Effet |
+|---|---|
+| `-s`, `--settings <fichier>` | Le fichier de configuration. Par défaut `./appsettings.json`, résolu contre le dossier de travail ; un fichier nommé ici qui n'existe pas refuse le démarrage. |
+| `--working-dir <dossier>` | S'y déplace avant toute lecture, pour que les chemins relatifs des settings et des crews s'y résolvent. |
+| `-m`, `--mount <spec>` | Un montage VFS supplémentaire, répétable. Les dossiers des crews sont montés sans lui (plus bas). |
+| `--allow-external-mounts` | Autorise les montages hors du dossier de travail. Implicite dès qu'une crew est configurée, puisque chaque dossier de crew est lui-même monté depuis l'endroit où il se trouve. |
+| `-h`, `--help` / `--version` | Affichent puis sortent avec `0`. |
+
+Il n'y a pas de sous-commande. Les codes de sortie sont le contrat avec le superviseur : `0` pour un arrêt propre, `78` (EX_CONFIG) pour une configuration refusée au démarrage, `1` quand le canal de chat est mort.
+
 ### `Mounts` — un espace de noms de mounts par crew hébergé
 
 Les deux crews ci-dessus adressent tous deux `/output`, sur deux dossiers différents. C'est
@@ -80,7 +98,9 @@ résout dans l'espace de noms puis se fait refuser là, sauf à élargir
 
 `Path` accepte ce qu'accepte `orkeon run` : un fichier YAML, un dossier de crew multi-fichiers, ou un script `.ork.ts`. Le host le charge par le même chemin de code, donc **une crew hébergée est exactement la crew qu'un terminal lance**. Le dossier de chaque crew est **monté automatiquement dans le VFS, en lecture seule, sous un nom** — `/crews`, puis `/crews-1`, `/crews-2`, … pour chaque dossier supplémentaire — et la crew est chargée par cette orthographe virtuelle (`/crews/support.yaml` pour un fichier, `/crews-1` pour un dossier). Le loader lit par le système de fichiers virtuel comme tout le reste du framework, et un chemin qui n'existerait que sur le disque physique passerait la sonde de démarrage puis échouerait à chaque message. Le montage n'est délibérément **pas** identité : un agent qui appelle `list_mounts`, ou qui lit un message de refus d'accès, ne doit jamais recevoir l'organisation disque de l'opérateur ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). Un `--mount` à vous qui revendique `/crews*` est refusé au démarrage avec le code de sortie 78. Une réserve accompagne la forme script : transpiler du `.ork.ts` demande esbuild sur la machine, et ni l'image de conteneur ni une installation service nue ne l'embarquent — une crew hébergée en daemon est une crew YAML, sauf à installer esbuild soi-même.
 
-La configuration est **validée au démarrage** : un chemin de crew manquant, un timeout à zéro, un canal activé avec une liste d'autorisation vide ou une variable de jeton absente refusent le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+La configuration est **validée au démarrage** : aucune crew sous `Orkeon:Host:Crews`, une crew sans `Name` ou sans `Path`, un chemin de crew qui n'existe pas, un `MaxConcurrentRuns` inférieur à 1, un `RunTimeout` nul ou négatif, un `ShutdownGracePeriod` négatif, et — pour un canal activé — une liste d'autorisation vide, une variable de jeton absente, un `ProgressInterval` nul ou négatif ou une entrée de `GuildIds` qui n'est pas un nombre refusent tous le démarrage avec le code de sortie 78 — avant que le service ne se déclare prêt — plutôt que d'être découverts un run raté à la fois.
+
+Les crews sont lues **une seule fois**, au démarrage : ni balayage de dossier, ni rechargement. Ajouter une crew, c'est modifier le fichier et redémarrer.
 
 ### Aucun secret n'est jamais écrit ici
 
@@ -95,7 +115,7 @@ La configuration est **validée au démarrage** : un chemin de crew manquant, un
 Le profil ne porte délibérément rien d'autre. Des brouillons antérieurs esquissaient des
 drapeaux `Interactive`, `Persistent` et `Chat` ; la révision les a trouvés liés à la
 configuration et lus par personne — un exploitant pouvait les basculer sans rien changer du
-tout. Une surface de configuration qui ne fait rien est pire qu'absente : rc.2 livre le seul
+tout. Une surface de configuration qui ne fait rien est pire qu'absente : le host livre le seul
 bouton qui fonctionne.
 
 Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en file : « on est occupé, réessayez » est quelque chose qu'un canal relaie à une personne ; une file d'attente invisible ne l'est pas.
@@ -106,7 +126,7 @@ Une requête au-delà du plafond est **refusée avec une réponse**, pas mise en
 
 Chaque run obtient son propre scope d'injection de dépendances, et l'état par crew d'un run est libéré quand il se termine. À eux deux, ils portent la défense contre le risque que la conception de la passerelle désigne comme le plus sérieux : de l'état qui fuit entre conversations.
 
-Deux mécanismes, énoncés précisément parce qu'une version antérieure de cette section surestimait ce qui les portait. Le **scope** isole les services scoped — le repository de crews avant tout : la crew d'une conversation n'est jamais résoluble depuis le run d'une autre. La **libération** tient les services process-wide honnêtes : chaque message charge une crew fraîche avec un id frais, et le service de mémoire comme le registre de fournisseurs abandonnent leur entrée à la fin du run — sans quoi un daemon en accumule une par conversation, pour toujours. Une mémoire qui survivrait à un run hébergé est impossible par construction en rc.2 — il n'y a pas de drapeau à se tromper.
+Deux mécanismes, énoncés précisément parce qu'une version antérieure de cette section surestimait ce qui les portait. Le **scope** isole les services scoped — le repository de crews avant tout : la crew d'une conversation n'est jamais résoluble depuis le run d'une autre. La **libération** tient les services process-wide honnêtes : chaque message charge une crew fraîche avec un id frais, et le service de mémoire comme le registre de fournisseurs abandonnent leur entrée à la fin du run — sans quoi un daemon en accumule une par conversation, pour toujours. Une mémoire qui survivrait à un run hébergé est impossible par construction — il n'y a pas de drapeau à se tromper.
 
 Chaque run porte aussi son échéance (`RunTimeout`). Un daemon n'a personne pour appuyer sur Ctrl-C : un run sans délai est un daemon bloqué à attendre un modèle qui ne répondra pas.
 
@@ -120,11 +140,15 @@ Un message devient un run dans un ordre fixe : **autoriser, router, accuser réc
 
 > **Une liste d'autorisation vide refuse tout le monde**, et le canal refuse de démarrer plutôt que de ne répondre à personne en silence. Le défaut inverse est la façon dont un bot invité sur un serveur public finit par dépenser le budget d'API de quelqu'un pour des inconnus.
 
-**Router.** rc.2 livre une seule stratégie : **un thread est un run**. C'est la seule correspondance qu'une personne peut prédire sans qu'on la lui explique — ce qui se passe dans ce fil est un travail — et elle donne le parallélisme sans inventer une notion de session que quiconque doive apprendre. Un second message dans un fil qui tourne est refusé avec une explication, plutôt que de lancer un second run dont personne ne saurait distinguer les réponses.
+**Router.** Le host livre une seule stratégie : **un thread est un run**, sur la **première crew** de `Orkeon:Host:Crews` — le canal n'atteint que celle-là ; les autres sont hébergées et bornées, mais aucun message de chat ne les atteint encore. C'est la seule correspondance qu'une personne peut prédire sans qu'on la lui explique — ce qui se passe dans ce fil est un travail — et elle donne le parallélisme sans inventer une notion de session que quiconque doive apprendre. Un second message dans un fil qui tourne est refusé avec une explication, plutôt que de lancer un second run dont personne ne saurait distinguer les réponses.
 
 **Accuser réception.** La fenêtre de réponse de toute plateforme de chat se mesure en secondes ; une crew se mesure en minutes. L'accusé de réception part avec l'**admission** : à l'instant où la place du run est réservée — toujours avant tout travail de crew, et porteur du bouton d'arrêt, pour qu'un run soit interruptible dès sa première seconde. Un refus (crew inconnue, saturée) est répondu sans accusé : « je m'y mets » plus un bouton Stop, suivi de « on est occupé », serait une promesse rétractée par sa propre ligne suivante — avec un bouton accroché à rien.
 
-**Travailler**, en rapportant au fil de l'eau. La progression est **throttlée** (`ProgressInterval`, 2 secondes par défaut) : un run émet un événement par pensée d'agent et par appel d'outil, et relayer chacun épuiserait la limite de débit par canal de Discord à l'intérieur d'une seule crew. La dernière mise à jour supprimée est vidée juste avant la réponse finale, pour qu'un run ne se termine pas sur une vue vieille de trois étapes.
+**Travailler**, en rapportant au fil de l'eau. La réponse finale est postée dans le fil, coupée aux 2 000 caractères de Discord (avec la marque `…(truncated)`) ; une réponse vide s'affiche `(no output)`. La progression est **throttlée** (`ProgressInterval`, 2 secondes par défaut) : un run émet un événement par pensée d'agent et par appel d'outil, et relayer chacun épuiserait la limite de débit par canal de Discord à l'intérieur d'une seule crew. La dernière mise à jour supprimée est vidée juste avant la réponse finale, pour qu'un run ne se termine pas sur une vue vieille de plusieurs étapes.
+
+### Ce que le canal Discord écoute
+
+Les messages **à l'intérieur d'un fil**, écrits par des personnes : un message posté dans un canal ordinaire est ignoré, tout comme chaque message d'un bot. Le client se connecte avec les intents `Guilds`, `GuildMessages` et `MessageContent` — `MessageContent` est un intent privilégié, à activer pour le bot dans le portail développeur de Discord, faute de quoi chaque message arrive vide. `AllowedUserIds` est le seul contrôle d'accès : `GuildIds` choisit où les slash-commands sont enregistrées, il ne restreint pas qui peut parler au bot.
 
 ### Commandes
 
@@ -158,7 +182,9 @@ journalctl -u orkeon-host -f
 
 Il n'y a délibérément **pas de `WatchdogSec`** : l'intégration systemd de .NET envoie `READY=1` et `STOPPING=1` et aucun battement de watchdog — en armer un ferait tuer par systemd un host sain à son premier battement manqué, jamais envoyé.
 
-`TimeoutStopSec` est délibérément plus long que `ShutdownGracePeriod`, pour que les runs en vol aient leur grâce avant que systemd ne perde patience. **Augmenter l'un sans l'autre rend celui qui reste en arrière dépourvu de sens.**
+`TimeoutStopSec` est délibérément plus long que `ShutdownGracePeriod`, pour que les runs en vol aient leur grâce avant que systemd ne perde patience. **Augmenter l'un sans l'autre rend celui qui reste en arrière dépourvu de sens.** À l'arrêt, le host attend jusqu'à `ShutdownGracePeriod` les runs en vol, puis les arrête tous et leur laisse cinq secondes de plus pour se terminer ; le budget d'arrêt du host générique est fixé à la période de grâce plus dix secondes pour couvrir les deux.
+
+Le journal est discret par défaut : l'hôte des runners journalise au niveau **Warning**, si bien que les lignes Information — chaque crew hébergée au démarrage, chaque run lancé et terminé, la connexion Discord — n'apparaissent qu'une fois le niveau relevé dans les settings, par exemple `"Logging": { "LogLevel": { "Orkeon": "Information" } }`.
 
 Les secrets vont dans `/etc/orkeon/orkeon-host.env`, lisible du seul utilisateur du service. L'unité, elle, en reste vierge.
 
@@ -168,7 +194,7 @@ L'archive **complète** (`orkeon-<version>-win-x64.zip` — pas le zip CLI) port
 le daemon et ses artefacts de déploiement. L'exécutable réel est
 `libexec\orkeon-host\orkeon-host.exe` ; `bin\orkeon-host.cmd` est un wrapper
 de terminal — ne jamais enregistrer le wrapper auprès du SCM. Le script
-d'enregistrement est livré dans le dossier `deploy\windows\` de l'archive :
+d'enregistrement est livré dans le dossier `deploy\windows\` de l'archive.
 
 Deux canaux installent le même service. Le plus rapide est le **MSI
 per-machine** dédié — `orkeon-host-<version>-win-x64.msi`, produit distinct du
@@ -222,7 +248,7 @@ vous laisse `ProgramData\Orkeon`.
 
 ### Conteneur
 
-[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche.
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). Le jeton est passé par nom à l'exécution, jamais gravé dans une couche. L'image n'expose aucun port et ne déclare aucun `HEALTHCHECK` : le daemon ne sert pas de HTTP.
 
 ---
 
@@ -230,7 +256,7 @@ vous laisse `ProgramData\Orkeon`.
 
 **Livré** : le host et son cycle de vie, le registre de crews avec isolation par run et plafond de concurrence, les ports de la passerelle, l'autorisation par liste, le routage thread-est-run, le répondeur throttlé, et le canal Discord avec les slash-commands enregistrées `/status` et `/stop` et le bouton d'arrêt — un seul chemin autorisé pour les trois.
 
-**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'hébergement multi-crew dynamique, et tout canal autre que Discord. Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
+**Non livré**, et sous-entendu nulle part : un ordonnanceur, le rechargement à chaud de la configuration, l'hébergement multi-crew dynamique (le chat n'atteint que la première crew), tout canal autre que Discord, et toute surface HTTP — ni API, ni endpoint de santé (les contrôles de santé qu'enregistre la télémétrie ne sont exposés par rien). Deux fonctions des runners restent aussi hors du daemon : les serveurs MCP de la section `MCP` ne sont jamais connectés, et l'outil `semantic_search` n'est pas enregistré. Les ports sont écrits de sorte que le protocole JSONL du bus d'événements en soit une implémentation légitime — le modèle ne se referme pas sur le chat — mais ce canal-là n'est pas écrit.
 
 **Une chose ne peut pas être vérifiée en CI** : le critère de succès de la spec elle-même — lancer une crew depuis un vrai fil Discord, voir la progression, l'interrompre par bouton, avec le service en daemon systemd. Cela exige un compte Discord et un serveur, donc une action propriétaire. Ce que la CI tient, c'est tout ce qui borde la socket : la traduction des messages, les deux limites de la plateforme, l'autorisation, le routage, le throttling et l'isolation.
 

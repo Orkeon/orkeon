@@ -23,7 +23,7 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
 
 ```json
 {
-  "Llm": { "Provider": "deepseek", "Model": "deepseek-chat" },
+  "Llm": { "BaseUrl": "https://api.deepseek.com", "Model": "deepseek-chat" },
 
   "Orkeon": {
     "Host": {
@@ -58,6 +58,24 @@ The same binary runs three ways: in a terminal, as a systemd unit, as a Windows 
 }
 ```
 
+The model's key is not in the file either: it comes from `ORKEON_Llm__ApiKey`, set in the service's environment (see *Installing it*). Every key can be overridden the same way — the `ORKEON_` prefix, `__` for `:` — so `ORKEON_Orkeon__Host__RunTimeout=00:10:00` shortens the deadline without touching the file.
+
+### The command line
+
+```
+orkeon-host [--settings <file>] [--working-dir <dir>] [--mount <physical>:<virtual>:<ro|rw|rwnd>]... [--allow-external-mounts]
+```
+
+| Flag | Effect |
+|---|---|
+| `-s`, `--settings <file>` | The configuration file. Defaults to `./appsettings.json`, resolved against the working directory; a file named here that does not exist refuses the start. |
+| `--working-dir <dir>` | Moves there before anything is read, so relative settings and crew paths resolve against it. |
+| `-m`, `--mount <spec>` | An extra VFS mount, repeatable. The crew directories are mounted without it (below). |
+| `--allow-external-mounts` | Allows mounts outside the working directory. Implied as soon as one crew is configured, since each crew directory is itself mounted from wherever it lives. |
+| `-h`, `--help` / `--version` | Print and exit `0`. |
+
+There are no subcommands. The exit codes are the contract with the supervisor: `0` for a clean stop, `78` (EX_CONFIG) for a configuration refused at start, `1` when the chat channel died.
+
 ### `Mounts` — a mount namespace per hosted crew
 
 The two crews above both address `/output`, over two different folders. That is the point of the
@@ -78,7 +96,9 @@ there, unless you widen `PathSecurity:AdditionalAllowedDirectories`.
 
 `Path` accepts what `orkeon run` accepts: a YAML file, a multi-file crew directory, or an `.ork.ts` script. The host loads it through the same code path, so a hosted crew is exactly the crew a terminal launches. Each crew's directory is **mounted read-only into the VFS automatically**, under a name — `/crews`, then `/crews-1`, `/crews-2`, … for each further directory — and the crew is loaded by that virtual spelling (`/crews/support.yaml` for a file, `/crews-1` for a directory). The loader reads through the virtual file system like everything else in the framework, and a path that only existed on the physical disk would pass the startup probe and then fail on every message. The mount is deliberately *not* identity-mapped: an agent that calls `list_mounts`, or reads any access-denied message, must never be handed the operator's disk layout ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)). A `--mount` of your own claiming `/crews*` is refused at start with exit code 78. One caveat travels with the script form: transpiling `.ork.ts` needs esbuild on the machine, and neither the container image nor a bare service install carries it — a daemon-hosted crew is a YAML crew unless you install esbuild yourself.
 
-The configuration is **validated at start**: a missing crew path, a zero timeout, an enabled channel with an empty allow list or an unset token variable all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
+The configuration is **validated at start**: no crew under `Orkeon:Host:Crews`, a crew without a `Name` or a `Path`, a crew path that does not exist, a `MaxConcurrentRuns` below 1, a `RunTimeout` that is zero or negative, a negative `ShutdownGracePeriod`, and — for an enabled channel — an empty allow list, an unset token variable, a `ProgressInterval` that is zero or negative or a `GuildIds` entry that is not a number all refuse the start with exit code 78 — before the service ever reports ready — rather than being discovered one failed run at a time.
+
+Crews are read **once**, at start: there is no directory scan and no reload. Adding a crew is an edit of the file and a restart.
 
 ### No secret is ever written here
 
@@ -93,7 +113,7 @@ The configuration is **validated at start**: a missing crew path, a zero timeout
 The profile deliberately carries nothing else. Earlier drafts sketched `Interactive`,
 `Persistent` and `Chat` flags; the review found them bound from configuration and read by
 nothing — an operator could flip them and change nothing at all. Configuration surface that
-does nothing is worse than absent, so rc.2 ships the one knob that works.
+does nothing is worse than absent, so the host ships the one knob that works.
 
 A request beyond the ceiling is **refused with an answer**, not queued: "we are busy, try again shortly" is something a channel relays to a person; an invisible queue is not.
 
@@ -103,7 +123,7 @@ A request beyond the ceiling is **refused with an answer**, not queued: "we are 
 
 Each run gets its own dependency-injection scope, and each run's per-crew state is released when it ends. Between them they carry the defence against the risk the gateway design calls its most serious: state leaking between conversations.
 
-Two mechanisms, stated precisely because an earlier version of this section overstated what stood behind them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. Memory outliving a hosted run is impossible by construction in rc.2 — there is no flag to get wrong.
+Two mechanisms, stated precisely because an earlier version of this section overstated what stood behind them. The **scope** is what isolates the scoped services — the crew repository above all, so one conversation's crew is never resolvable from another's run. The **release** is what keeps the process-wide services honest: every message loads a fresh crew with a fresh id, and the memory service and provider registry drop their entry for it when the run ends — otherwise a daemon accumulates one per conversation, forever. Memory outliving a hosted run is impossible by construction — there is no flag to get wrong.
 
 Each run also carries its own deadline (`RunTimeout`). A daemon has nobody watching to press Ctrl-C, so a run with no timeout is a stuck daemon waiting on a model that will never answer.
 
@@ -117,11 +137,15 @@ A message becomes a run in a fixed order: **authorize, route, acknowledge, work.
 
 > **An empty allow list denies everyone**, and the channel refuses to start rather than answering nobody in silence. The opposite default is how a bot invited to a public server ends up spending someone's API budget on strangers.
 
-**Route.** rc.2 ships one strategy: **a thread is a run**. It is the only mapping a person can predict without being told — what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
+**Route.** The host ships one strategy: **a thread is a run**, on the **first crew** of `Orkeon:Host:Crews` — the channel reaches that crew only; the others are hosted and bounded, but no chat message routes to them yet. It is the only mapping a person can predict without being told — what happens in this thread is one job — and it gives parallelism without inventing a notion of session anyone has to learn. A second message in a running thread is refused with an explanation rather than starting a second run whose answers nobody could tell apart.
 
 **Acknowledge.** Every chat platform's response window is measured in seconds; a crew is measured in minutes. The acknowledgement rides on **admission**: it goes out the moment the run's slot is reserved — still before any crew work, and carrying the stop button, so a run can be interrupted from its first second. A refusal (unknown crew, busy) is answered without an acknowledgement: "working on it" plus a Stop button, followed by "we are busy", would be a promise retracted by its own next line — with a button attached to nothing.
 
-**Work**, reporting as it goes. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
+**Work**, reporting as it goes. The final answer is posted in the thread, cut to Discord's 2,000 characters (with a `…(truncated)` marker); an empty answer reads `(no output)`. Progress is **throttled** (`ProgressInterval`, 2 seconds by default): a run emits an event per agent thought and per tool call, and relaying each one would exhaust Discord's per-channel rate limit inside a single crew. The last suppressed update is flushed just before the final answer, so a run does not end on a view several steps stale.
+
+### What the Discord channel listens to
+
+Messages **inside a thread**, from people: a message posted in a plain channel is ignored, and so is every message from a bot. The client connects with the `Guilds`, `GuildMessages` and `MessageContent` intents — `MessageContent` is a privileged intent, to be switched on for the bot in the Discord developer portal, or every message arrives empty. `AllowedUserIds` is the only access control: `GuildIds` chooses where the slash commands are registered, it does not restrict who may talk to the bot.
 
 ### Commands
 
@@ -155,7 +179,9 @@ journalctl -u orkeon-host -f
 
 There is deliberately **no `WatchdogSec`**: the .NET systemd integration sends `READY=1` and `STOPPING=1` and no watchdog keepalive, so arming one would make systemd kill a healthy host on its first missed — never-sent — ping.
 
-`TimeoutStopSec` is deliberately longer than `ShutdownGracePeriod`, so runs in flight get their grace before systemd loses patience. **Raise one without the other and the one left behind stops meaning anything.**
+`TimeoutStopSec` is deliberately longer than `ShutdownGracePeriod`, so runs in flight get their grace before systemd loses patience. **Raise one without the other and the one left behind stops meaning anything.** On a stop the host waits up to `ShutdownGracePeriod` for the runs in flight, then stops every one of them and gives them five more seconds to wind down; the generic host's own shutdown budget is set to the grace period plus ten seconds to cover both.
+
+The log is quiet by default: the runner host logs at **Warning**, so the Information lines — each hosted crew at start, each run started and finished, the Discord connection — only appear once the settings raise the level, for instance `"Logging": { "LogLevel": { "Orkeon": "Information" } }`.
 
 Secrets go in `/etc/orkeon/orkeon-host.env`, readable only by the service user. The unit file stays free of them.
 
@@ -165,7 +191,7 @@ The **full** archive (`orkeon-<version>-win-x64.zip` — not the CLI zip) carrie
 the daemon and its deployment assets. The real executable is
 `libexec\orkeon-host\orkeon-host.exe`; `bin\orkeon-host.cmd` is a terminal
 wrapper — never register the wrapper with the SCM. The registration script
-ships in the archive's `deploy\windows\` folder:
+ships in the archive's `deploy\windows\` folder.
 
 Two channels install the same service. The quickest is the dedicated
 **per-machine MSI** — `orkeon-host-<version>-win-x64.msi`, a separate product
@@ -218,7 +244,7 @@ service and leaves `ProgramData\Orkeon` to you.
 
 ### Container
 
-[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). The token is passed by name at run time, never baked into a layer.
+[`deploy/Dockerfile.host`](https://github.com/orkeon/orkeon/blob/main/deploy/Dockerfile.host). The token is passed by name at run time, never baked into a layer. The image exposes no port and declares no `HEALTHCHECK`: the daemon serves no HTTP.
 
 ---
 
@@ -226,7 +252,7 @@ service and leaves `ProgramData\Orkeon` to you.
 
 **Ships**: the host and its lifetime, the crew registry with per-run isolation and a concurrency ceiling, the gateway ports, the allow-list authorizer, thread-is-run routing, the throttled responder, and the Discord channel with registered `/status` and `/stop` slash commands and the stop button — one authorized path for all three.
 
-**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, multi-crew dynamic hosting, and every channel other than Discord. The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
+**Does not ship**, and is not implied anywhere: a scheduler, hot configuration reload, multi-crew dynamic hosting (chat reaches the first crew only), every channel other than Discord, and any HTTP surface — no API, no health endpoint (the health checks the telemetry registers are exposed by nothing). Two runner features stay out of the daemon too: the MCP servers of the `MCP` section are never connected, and the `semantic_search` tool is not registered. The gateway ports are shaped so the run event bus's JSONL protocol is a legitimate implementation of the same contract — the model is not closed around chat — but that channel is not written.
 
 **One thing cannot be verified in CI**: the specification's own acceptance criterion — launching a crew from a real Discord thread, watching it progress, stopping it by button, with the service running as a systemd daemon. It needs a Discord account and a server, which is an owner action. What CI does hold is everything either side of the socket: the message translation, the two platform limits, authorization, routing, throttling and isolation.
 

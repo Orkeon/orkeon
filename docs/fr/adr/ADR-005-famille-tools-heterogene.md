@@ -56,3 +56,9 @@ encore au profil « abstractions seulement » parmi les quatre listés à l'orig
 `Application` transitivement ; `Tools.Analysis` référence le concret
 `Orkeon.Analysis`. La décision elle-même est inchangée : monter est légitime quand
 c'est documenté, et l'ADR-006 documente les couplages RAG.
+
+Depuis (2026-09-26) : `Tools.Web` référence le concret `Orkeon.Rag` en plus
+d'`Application` ; `Tools.Email` ([ADR-012](./ADR-012-email-tool-family.md)) atteint
+`Application` par la même voie transitive, via `Orkeon.Rag` et son détecteur
+d'injection de prompt ; `Tools.Embeddings.Local` colle au profil « abstractions
+seulement » (`Domain`, `Tools.Abstractions`, `Analysis.Abstractions`).

@@ -65,7 +65,7 @@ l'ordre : motifs d'hôte du `BaseUrl` (p. ex. `deepseek.com` → DeepSeek, `api.
 forme de la clé API ; défaut `openai`. Clés : `Model`, `BaseUrl`, `ApiKey` (préférer
 `ORKEON_Llm__ApiKey` — la variable où vit conventionnellement la clé de chaque fournisseur, et
 les trois noms qu'on confond avec elle, sont dans le
-[comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries`, et
+[comparatif des fournisseurs](llm-providers-comparison.md#clés-dapi--la-variable-par-fournisseur)), `Temperature`, `MaxTokens`, `TimeoutSeconds`, `MaxRetries` (défaut 10), et
 `Thinking:{Enabled,Effort}` pour les providers à raisonnement. `TimeoutSeconds` vaut 30 s par
 défaut, trop court pour un modèle qui réfléchit avant de répondre (Kimi K2.6, DeepSeek V4 et GLM
 le font par défaut) : mettez 600 s, ou coupez la réflexion avec `Thinking:Enabled = false`. Un
@@ -93,22 +93,27 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 | Section | Configure | Consommateur / opt-in |
 |---|---|---|
 | `Llm` | Provider LLM actif (voir ci-dessus) | `RunnerHost` |
-| `RateLimiting` | Limitation des requêtes LLM (concurrence, quotas/minute, file) | pipeline LLM Infrastructure |
-| `LlmLogging` | Réglage de la capture des échanges LLM (p. ex. `FullEmbeddingLog`) | `RunnerHost` + `AddLlmExchangeFileLogging` (CLI `--llm-log`) |
-| `PathSecurity` | Répertoires physiques autorisés (`AdditionalAllowedDirectories`) | `AddOrkeonInfrastructure()` |
-| `Telemetry` | Export OpenTelemetry | `AddOrkeonInfrastructure(configuration)` |
-| `A2A`, `A2A:Security` | Serveur/client A2A, mTLS, schémas d'auth | opt-in `AddOrkeonA2A(configuration)` |
-| `MCP`, `MCP:Server` | Connexions client MCP + serveur MCP optionnel | `RunnerHost` (`orkeon run`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est pas `false` — les serveurs sont connectés avant le chargement de la crew (STUDIO-21) ; les hôtes bibliothèque appellent `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir [Intégration MCP](../architecture/mcp.md) |
+| `Llm:AvailableModels` | La liste de modèles qu'une commande REPL scriptée `/model` peut proposer (tableau de chaînes, ou une chaîne séparée par des virgules) | `AddOrkeonSessionTools(configuration)` |
+| `Memory:Provider`, `Memory:ConnectionString` | Provider mémoire de l'application, sélectionné via `MemoryProviderFactory` (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb` ; absent → in-memory) — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | `AddOrkeonInfrastructure()` |
+| `RateLimiting` | Limitation des requêtes LLM : `GlobalRequestsPerMinute`, `ProviderRequestsPerMinute`, `AgentRequestsPerMinute`, `MaxConcurrentRequests`, `QueueLimit` | `AddOrkeonInfrastructure()` (`ILlmRateLimiter`) |
+| `LlmLogging` | Réglage de la capture des échanges LLM : `FullEmbeddingLog` (défaut `true`), `LogStreamingExchanges` (`true`), `MaxBodyLengthChars` (`0` = pas de troncature) | `RunnerHost` → `AddLlmExchangeLogging(logDirectory, options)`, uniquement quand le run passe `--llm-log` |
+| `PathSecurity` | Validation des chemins physiques : `DefaultWorkspaceRoot`, `AdditionalAllowedDirectories`, `AdditionalBlockedExtensions`, `ResolveSymlinks`, `MaxFileSizeBytes` | `AddOrkeonInfrastructure()` (`IPathValidator`) |
+| `Telemetry` | Export OpenTelemetry : `Enabled`, `OtlpEndpoint`, `ExportToConsole`, `PrometheusEndpoint`, `MaxMemoryMB` (la variable standard `OTEL_EXPORTER_OTLP_ENDPOINT` marche aussi dans les runners) | `AddOrkeonTelemetry(configuration)` — appelé par `AddOrkeonInfrastructure(configuration)` et `RunnerHost` |
+| `A2A` | Serveur/client A2A : `EnableServer`, `Port`, `Host`, `AgentName`, `AgentDescription`, `AgentVersion`, `Organization`, `ContactUrl`, `TimeoutSeconds` (`Enabled` et `RemoteAgents` sont liés mais lus par personne) | opt-in `AddOrkeonA2A(configuration)` — aucun hôte livré ne l'appelle ; voir [Conformité A2A](./a2a-conformance.md#activation) |
+| `A2A:Security` | `ClientCertificatePath`, `ClientCertificatePassword`, `TrustedCertificateAuthorities`, `TrustedClientCertificateThumbprints`, `RequireMutualTls`, `AllowedAuthSchemes` | idem |
+| `MCP` | Connexions client MCP (`MCP:Servers:<id>`), l'interrupteur `MCP:Enabled` (défaut `true`), et le serveur MCP optionnel — `MCP:EnableServer` (défaut `false`) + `MCP:Server` (`Name`, `Version`, `ExposeResources`, `ExposePrompts`) | `RunnerHost` (`orkeon run`) dès que `MCP:Servers` déclare au moins un serveur et que `MCP:Enabled` n'est pas `false` — les serveurs sont connectés avant le chargement de la crew (STUDIO-21) ; les hôtes bibliothèque appellent `AddOrkeonMcp(configuration)` ou la surcharge `AddOrkeonInfrastructure(configuration)` — voir [Intégration MCP](../architecture/mcp.md) |
 | `Secrets:<NOM>` | Second maillon de la chaîne de secrets après `ORKEON_<NOM>` (`ConfigurationSecretProvider`), p. ex. `Secrets:TAVILY_API_KEY` pour `web_search` | `AddOrkeonInfrastructure()` |
-| `Evaluation` | Services d'évaluation | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `RaggableTree` | Indexation de codebase (embedding, exclusions) | **opt-out dans les hôtes runner** : `RunnerHost` l'enregistre par défaut, `RaggableTree:Enabled = false` le désactive ; les consommateurs bibliothèque appellent `AddRaggableTree(options)` explicitement |
-| `Resilience` | Réglages retry/circuit-breaker/timeout (`ResilienceOptions`) | lié par `AddOrkeonInfrastructure()` |
-| `Memory:Provider`, `Memory:ConnectionString` | Sélection du provider mémoire via `MemoryProviderFactory` (absent → in-memory) | `AddOrkeonInfrastructure()` |
-| `ToolRateLimiting`, `TokenBudget` | Rate limits et budgets de tokens par outil | opt-in `AddOrkeonToolRateLimiting(configuration)` (voir [sous-systèmes opt-in](./opt-in-subsystems.md)) |
-| `Security:Audit`, `Security:Prompt`, `Security:ToolResults`, `Security:Url`, `Security:Vault` | Sinks d'audit, durcissement de prompt, filtrage des résultats d'outils, validation d'URL, coffre à secrets | Infrastructure (les sections gouvernent le comportement) |
-| `Llm:AvailableModels` | La liste de modèles qu'une commande REPL scriptée `/model` peut proposer | `AddOrkeonSessionTools(configuration)` |
+| `Evaluation` | Services d'évaluation : `EnableLlmJudge`, `DefaultRunsPerCase`, `RegressionThreshold` | `AddOrkeonEvaluation(configuration)` — `AddOrkeonInfrastructure()` l'appelle **sans** configuration, la section n'est donc lue que si l'hôte l'appelle lui-même |
+| `RaggableTree` | Indexation de codebase : `Enabled`, `Exclude`, `RootAlias`, `IndexMode`, `EnrichWithLlm`, `IncludeStatements`, `Embedding` (`Provider`, `Model`, `ApiKey`, `BaseUrl`, `Dimensions`, `MaxTextChars`) | **opt-out dans les hôtes runner** : `RunnerHost` l'enregistre par défaut, `RaggableTree:Enabled = false` le désactive ; les consommateurs bibliothèque appellent `AddRaggableTree(options)` explicitement |
+| `Resilience` | `LlmMaxRetries`, `LlmTimeoutSeconds`, `CircuitBreakerThreshold`, `CircuitBreakerDurationSeconds`, `DatabaseMaxRetries`, `RedisMaxRetries` — **lié à `ResilienceOptions` mais lu par personne** : le budget de retry et le timeout LLM sont `Llm:MaxRetries` / `Llm:TimeoutSeconds` | `AddOrkeonInfrastructure()` |
+| `ToolRateLimiting` | Rate limits par outil : `GlobalToolRequestsPerMinute`, `DefaultToolRequestsPerMinute`, `ToolSpecificLimits` | opt-in `AddOrkeonToolRateLimiting()` (lie depuis l'`IConfiguration` enregistrée ; voir [sous-systèmes opt-in](./opt-in-subsystems.md)) |
+| `TokenBudget` | Budgets de tokens : `MaxTokensPerAgent`, `MaxTokensPerCrew`, `MaxCostPerCrew` | idem |
+| `Security:Audit` | Sinks d'audit : `Enabled`, `MinSeverity`, `EnabledCategories`, `AuditDirectory`, `RetentionDays` | `AddOrkeonInfrastructure()` |
+| `Security:Url` | Validation SSRF : `AllowedSchemes`, `BlockedPorts`, `AllowedDomains`, `BlockedDomains`, `BlockPrivateIPs`, `ResolveDNS` | `AddOrkeonInfrastructure()` (`IUrlValidator`) |
+| `Security:Vault` | Chaîne de coffres à secrets : `AzureKeyVaultUri`, `UseAwsSecretsManager`, `DpapiSecretsDirectory`, `CacheTtl` | `AddOrkeonInfrastructure()` |
+| `Security:Prompt`, `Security:ToolResults` | Durcissement de prompt (`Policy`, `CustomPatterns`, `EnableExfiltrationDetection`) et filtrage des résultats d'outils (`MaxToolResultLength`, `Policy`, `TrustedTools`) | enregistrés par `AddOrkeonInfrastructure()`, mais **aucun chemin d'exécution n'appelle** `PromptSanitizer`/`ToolResultSanitizer` — un hôte qui les veut les invoque — voir [Sécurité](../architecture/security.md) |
 | `BRAVE_API_KEY` | Aussi lu comme **clé de configuration** (pas seulement une variable d'env) pour gater l'outil Brave | `RunnerHost` |
-| `Plugins` | Découverte du répertoire de plugins | opt-in `AddOrkeonPlugins(fileSystem, configuration)` |
+| `Plugins` | Découverte du répertoire de plugins : `Directory` (défaut `/plugins`), `SearchPattern` (`*.dll`), `ContinueOnError`, `SharedAssemblyPrefixes` | opt-in `AddOrkeonPlugins(fileSystem, configuration)` — voir [Plugins](../architecture/plugins.md) |
 
 ## Sections `Orkeon:*`
 
@@ -118,10 +123,11 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 |---|---|---|---|
 | `Orkeon:CrewFactory:StrictTools` | Échec du chargement de crew sur outil inconnu (défaut runners `true`) | `RunnerHost` → `CrewFactoryOptions` | — |
 | `Orkeon:ExecutionState:Persistence` | Persistance durable des états d'exécution (`Enabled`, `DeleteFromStoreOnArchive`) | `ScopedCrewExecutionStateManager` | `AddCrewExecutionStatePersistence(configuration)` — appelé automatiquement par `AddOrkeonInfrastructure(configuration)` quand la section existe ; requiert un `IStateStore` |
-| `Orkeon:Checkpointing:*` | State store Postgres (`ConnectionString`, `SchemaName`, `AutoMigrate`, `MaxHistoryPerSession`) | `CheckpointingExtensions` | `AddOrkeonPostgresCheckpointing(configuration)` |
-| `Orkeon:Consensus` | Options de vote du mode consensuel | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `Orkeon:CostTracking`, `Orkeon:TokenCounter` | Suivi des coûts LLM et comptage de tokens | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `Orkeon:Monitoring` | Backend de monitoring | Infrastructure | `AddOrkeonMonitoring(configuration)` |
+| `Orkeon:Checkpointing:*` | State store Postgres (`ConnectionString`, `SchemaName` défaut `orkeon`, `AutoMigrate`, `MaxHistoryPerSession`) | `CheckpointingExtensions` | `AddOrkeonPostgresCheckpointing(configuration)` |
+| `Orkeon:Consensus` | Vote du mode consensuel : `VotingOptions`, `MaxVotingRounds`, `EnableDiscussion`, `FallbackStrategy`, `RoleWeights` | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:CostTracking` | Suivi des coûts LLM : `Enabled`, `DefaultCrewBudget`, `CustomPricings` | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:TokenCounter` | Estimation des tokens : `CharsPerToken`, `TokensPerMessage`, `TokensPerReply`, `SpecialTokenOverhead` | Infrastructure | idem |
+| `Orkeon:Monitoring` | Backend de monitoring : `MaxTraceHistory`, `MetricsRetentionMinutes`, `TraceSourcePrefix` | Infrastructure | `AddOrkeonMonitoring(configuration)` |
 
 ### Embeddings, recherche vectorielle, mémoire
 
@@ -129,11 +135,12 @@ runtime dégrade vers le provider écho et avertit une fois. Voir
 |---|---|---|---|
 | `Orkeon:Embeddings` | Sélection du provider d'embeddings (`Provider`, `Model`, `Dimension`, `BatchSize`, `EnableCache`) | `DefaultEmbeddingProviderResolver` | lié par `AddOrkeonVectorSearch(configuration)` (appelé par `AddOrkeonInfrastructure(configuration)`) |
 | `Orkeon:EmbeddingCache` | Cache d'embeddings (`SlidingExpirationMinutes`, `MaxCacheSizeBytes`) | idem | idem |
-| `Orkeon:VectorSearch` | Options de recherche vectorielle | idem | idem |
-| `Orkeon:ChromaDb`, `Orkeon:Pinecone` | Stores vectoriels externes | `VectorStoreExtensions` | auto-enregistrés par `AddOrkeonInfrastructure(configuration)` **quand la section existe**, ou `AddOrkeonChromaDb`/`AddOrkeonPinecone` |
-| `Orkeon:LanceDb` | Serveur LanceDB distant | `VectorStoreExtensions` | `AddOrkeonLanceDb(...)` uniquement (jamais auto) |
-| `Orkeon:CognitiveMemory` | Couche de mémoire cognitive | Infrastructure | `AddOrkeonCognitiveMemory(configuration)` |
-| `Orkeon:Encryption` | Chiffrement de la mémoire au repos | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement). La rotation de clés reste opt-in : `AddOrkeonKeyRotation()` |
+| `Orkeon:VectorSearch` | Options de recherche vectorielle (`DefaultMetric`, `DefaultTopK`, `DefaultMinScore`, `PreferVectorSearch`) | idem | idem |
+| `Orkeon:ChromaDb` | Serveur ChromaDB : `BaseUrl`, `Tenant`, `Database`, `CollectionName`, `DefaultTopK` | `AddOrkeonChromaDb` (`ChromaDbMemoryProvider` concret) | auto-enregistré par `AddOrkeonInfrastructure(configuration)` **quand la section existe**, ou `AddOrkeonChromaDb(configuration)` |
+| `Orkeon:Pinecone` | Index Pinecone : `ApiKey`, `Environment`, `IndexName`, `Namespace` | `AddOrkeonPinecone` (`PineconeMemoryProvider` concret) | idem, `AddOrkeonPinecone(configuration)` |
+| `Orkeon:LanceDb` | Serveur LanceDB distant : `Endpoint`, `ApiKey`, `Database`, `TableName`, `EmbeddingDimension`, `DistanceType`, `DefaultTopK`, `MinSimilarityScore`, `VectorWeight`, `FullTextWeight`, `CreateFullTextIndexOnInit` | `VectorStoreExtensions` | `AddOrkeonLanceDb(configuration)` uniquement (jamais auto) |
+| `Orkeon:CognitiveMemory` | Couche de mémoire cognitive (`EnableLlmAnalysis`, `EnableContradictionDetection`, `ContradictionCandidateCount`, `AnalysisModel`, `AnalysisTemperature`, `PruningThreshold`, `PruningMinAgeDays`, `RecencyHalfLifeHours`, `DefaultRecallOptions`) | Infrastructure | `AddOrkeonCognitiveMemory(configuration)` |
+| `Orkeon:Encryption` | Chiffrement de la mémoire au repos (`Enabled`, `SecretName`, `KeySizeInBits`) | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement ; le décorateur est posé par l'hôte). La rotation de clés reste opt-in : `AddOrkeonKeyRotation()` |
 
 ### RAG (`Orkeon:Rag`)
 
@@ -143,28 +150,29 @@ requiert l'opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection
 | Section | Configure |
 |---|---|
 | `Orkeon:Rag:Profile` | Preset de profil `fast` (défaut) / `balanced` / `quality` / `adaptive` / `corrective` ; toute clé `Orkeon:Rag` surcharge le preset clé par clé |
-| `Orkeon:Rag:Provider`, `Orkeon:Rag:ConnectionString` | Provider dédié du document store RAG (`RagStoreOptions`) ; défaut : l'`IMemoryProvider` ambiant |
+| `Orkeon:Rag:Provider`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions` | Provider dédié du document store RAG (`RagStoreOptions` — un alias de type de `MemoryProviderFactory` plus ses options) ; défaut : l'`IMemoryProvider` ambiant |
 | `Orkeon:Rag:Collection` | Nom de collection par défaut |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Bornes de l'étape de retrieval |
-| `Orkeon:Rag:Rerank` (`Kind`, `TopN`) | Choix et profondeur du reranker |
+| `Orkeon:Rag:Retrieval:Hybrid` (`Enabled`, `RrfK`), `Orkeon:Rag:Retrieval:Mmr` (`Enabled`, `Lambda`) | Récupération hybride BM25+RRF, MMR opt-in |
+| `Orkeon:Rag:Rerank` (`Enabled`, `Kind`, `TopN`) | Choix et profondeur du reranker |
 | `Orkeon:Rag:Context` (`MaxTokens`, `Ordering`) | Assemblage du contexte (ordre `edges` anti-Lost-in-the-Middle) |
-| `Orkeon:Rag:Groundedness`, `Orkeon:Rag:Generation` (`Enabled`, `SystemPrompt`) | Hook de groundedness et étape de génération citée |
-| `Orkeon:Rag:Ingestion` | Pipeline d'ingestion (`RagIngestionOptions`) |
-| `Orkeon:Rag:Retrieval:Hybrid`, `Orkeon:Rag:Retrieval:Mmr` | Récupération hybride BM25+RRF, MMR opt-in |
-| `Orkeon:Rag:QueryTransform`, `Orkeon:Rag:QueryRouting` | Transformateurs de requête (`multi-query`/`rag-fusion`/`hyde`), routage Adaptive-RAG |
-| `Orkeon:Rag:Corrective` (dont `MaxIterations`) | Bornes du graphe correctif CRAG |
-| `Orkeon:Rag:Corrective:WebFallback` + `Orkeon:Rag:WebFallback` | Repli web — double opt-in, les deux `Enabled` désactivés par défaut (politique + transport SearxNG) |
+| `Orkeon:Rag:Groundedness` (`Enabled`) | Hook de groundedness |
+| `Orkeon:Rag:Generation` (`SystemPrompt`, `Temperature`, `MaxOutputTokens`) | Étape de génération citée |
+| `Orkeon:Rag:Ingestion` (`DefaultChunkingStrategy` défaut `recursive`, `ManifestDirectory` défaut `/output/rag/manifests`) | Pipeline d'ingestion (`RagIngestionOptions`) |
+| `Orkeon:Rag:QueryTransform` (`Mode`, `VariantCount`), `Orkeon:Rag:QueryRouting` (`Classifier`) | Transformateurs de requête (`multi-query`/`rag-fusion`/`hyde`), routage Adaptive-RAG (`heuristic` ou `llm`) |
+| `Orkeon:Rag:Corrective` (`MaxIterations`) | Bornes du graphe correctif CRAG |
+| `Orkeon:Rag:Corrective:WebFallback` (`Enabled`, `MaxResults`) + `Orkeon:Rag:WebFallback` (`Enabled`, `Endpoint`, `ApiKeyEnvVar`, `MaxResults`, `Timeout`, `SuspiciousAction`) | Repli web — double opt-in, les deux `Enabled` désactivés par défaut (politique + transport SearxNG) |
 
 ### Sécurité, sandbox, outils
 
 | Section | Configure | Consommateur | Opt-in |
 |---|---|---|---|
 | `Orkeon:Security:PermissionGate` | Barrière par appel d'outil (`Enabled` défaut `false`, `Interactive`) | `ModePermissionGate` | `AddOrkeonPermissionGate(configuration)` — appelé par `RunnerHost` ; sans effet tant que `Enabled = true` n'est pas posé |
-| `Orkeon:Dlp` | Politiques DLP / détection PII | Infrastructure | `AddOrkeonDlp()` |
-| `Orkeon:Guardian` | Pipeline de sûreté de contenu | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
-| `Orkeon:Sandbox` | Montage sandbox du système de fichiers (`/sandbox`, Internal) | `AddOrkeonFileSystem(...)` | — |
+| `Orkeon:Dlp` | Politiques DLP / détection PII (`Enabled`, `DefaultAction`, `ChannelPolicies`) | Infrastructure | `AddOrkeonDlp()` |
+| `Orkeon:Guardian` | Pipeline de gardes (`Enabled`, `DefaultPolicy`, `AuditEnabled`, `LogViolations`) | `AddOrkeonGuardian()` | — (enregistré par `AddOrkeonInfrastructure()`, mais **aucun chemin d'exécution ne lance le pipeline** : l'hôte invoque lui-même `GuardianPipeline`) |
+| `Orkeon:Auth:AzureAD`, `Orkeon:Auth:OIDC` | Providers d'authentification (`TenantId`, `ClientId`, `Authority`, `ValidIssuers`, `ValidAudiences` ; OIDC : `Authority`, `ClientId`, `ValidAudiences`, `RequireHttpsMetadata`) | `AddOrkeonAuth()` | — (options enregistrées par `AddOrkeonInfrastructure()` ; rien dans le chemin d'exécution ne s'authentifie avec) |
+| `Orkeon:CodeSandbox` (+ `:Docker`) | Sandbox de l'interpréteur de code sécurisé (`TimeoutSeconds`, `MaxMemoryBytes`, `MaxOutputBytes`, `AllowHostExecution`, `DefaultPermissions`, `SecurityOptions` ; Docker : `ImageName`, `PullImageOnStartup`) | Infrastructure | — (enregistré par `AddOrkeonInfrastructure()` ; la section gouverne le comportement) |
+| `Orkeon:Sandbox` | Montage sandbox du système de fichiers (`/sandbox`, Internal) : `EphemeralRoot`, `CleanupOrphansOlderThan` (24 h), `VirtualPath` | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`Mounts`) | Montages VFS (voir [Conformité VFS](../architecture/vfs-compliance.md)). Une entrée peut porter un **identifiant** — `<ulid>|<physique>:<virtuel>:<droits>` (VFS-90) : ce par quoi le bloc `mounts:` d'une crew, le sidecar d'équipe de Studio et `--mount-id` la désignent ; Studio en écrit un à chaque enregistrement. Un `--mount` CLI sur la même racine virtuelle **remplace toutes les entrées de cette racine** pour ce run ; sur une racine neuve il est ajouté (jamais fusionné, jamais perdu). Une racine déclarée deux fois n'est légitime que si chacune de ses entrées porte un identifiant — `--mount-id`, ou le `mounts:` de la crew, en sélectionne alors une et les autres sont retirées pour le run ; si rien n'en sélectionne une, le run est refusé avant tout host (`'/output' is declared twice in <settings> (<idA>: <dossierA>, <idB>: <dossierB>) and nothing selects one. Pass --mount-id <id>, list '<id>|/output' under mounts: in the crew, or pass --mount <folder>:/output:rw to replace them all.`), de même qu'une racine déclarée deux fois avec une entrée sans identifiant (`… and '<entrée>' has no id. Give every entry an id …`) ou un identifiant porté par deux entrées. Le chemin de base de chaque entrée déclarée est **mis en liste blanche pour `PathValidator`** sans `--allow-external-mounts` — un dossier déclaré est l'intention du propriétaire de la machine, il reste donc accessible même hors du répertoire de travail du processus ; une entrée retirée ne l'est pas | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:FileSystem` (`InternalMounts`) | Même grammaire que `Mounts`, enregistrés en `MountVisibility.Internal` : résolubles par le VFS, **absents de `list_mounts`, de la table de montages du prompt agent et des messages de refus d'accès**. C'est là qu'un hôte met ce que le VFS doit atteindre et qu'aucun agent n'a à adresser — le répertoire `--llm-log` y vit, et `/credentials`, les jetons OAuth des comptes e-mail, quand un tel compte est déclaré ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) | `AddOrkeonFileSystem(...)` | — |
 | `Orkeon:Tools:Shell:AllowInterpreters` | Autorise interpréteurs/git mutant dans `ShellCommandTool` (**équivalent RCE**, avertissement émis) | `AddOrkeonCodeTools()` | config seule |
@@ -194,22 +202,30 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 |---|---|---|
 | `Orkeon:DefaultLlmProvider` | Nom du provider par défaut de l'espace `ctx.llm` du scripting | `Orkeon.Scripting` |
 | `Orkeon:Scripting:Limits` | Sandbox Jint : `MemoryLimitBytes` (défaut 100 Mo), `RecursionLimit` (64), `ExecutionTimeout` (30 s) | `Orkeon.Scripting` |
-| `Orkeon:Scripting:Toolchain` | Résolution de la toolchain esbuild | `Orkeon.Scripting` |
-| `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | Découverte des commandes CLI TypeScript (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`) + profil sandbox CLI plus strict | `Orkeon.Cli.Commands.Scripting` |
-| `Orkeon:Cli:ScriptHost` | Répertoires de crews pour la résolution `<nom>/crew.ork.ts` | `ScriptHostFacade` |
+| `Orkeon:Scripting:Toolchain` | Résolution de la toolchain esbuild (`EsbuildPath`, `EsbuildTimeout` 30 s) | `Orkeon.Scripting` |
+| `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | Découverte des commandes CLI TypeScript (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`, `MaxScripts` 50, `ContinueOnConflict`, `FallbackCommandName` `assistant`) + profil sandbox CLI plus strict | `Orkeon.Cli.Commands.Scripting` |
+| `Orkeon:Cli:ScriptHost` | Résolution des crews `<nom>/crew.ork.ts` : `CrewDirectories`, `CrewFileName` (`crew.ork.ts`), `RunCrewTimeout` (10 min) | `ScriptHostFacade` |
 | `Orkeon:Cli:ConsoleStreaming` | Deltas `ctx.llm.act` streamés sur la console REPL (`Enabled` défaut `false`) | `AddLlmConsoleStreaming(configuration)` |
 | `Orkeon:Cli:Session:ContextWindowTokens` | Fenêtre de contexte utilisée par `token_budget` et le TUI | `TokenBudgetTool`, ConsoleApp |
 | `Orkeon:Cli:Tui:SpinnerVerbs` | Verbes du spinner TUI | ConsoleApp |
+
+### Hôte de service (`orkeon-host`)
+
+| Section | Configure | Consommateur |
+|---|---|---|
+| `Orkeon:Host` | Le démon : `Crews` (chacune `Name`, `Path`, `Profile:MaxConcurrentRuns` défaut 4, `Mounts` — l'espace de montages propre à la crew), `RunTimeout` (30 min), `ShutdownGracePeriod` (20 s) | `Orkeon.Host` — voir [Hôte de service](../architecture/service-host.md) |
+| `Orkeon:Host:Discord` | Canal Discord : `Enabled`, `TokenEnvironmentVariable` (`ORKEON_DISCORD_TOKEN`), `AllowedUserIds`, `GuildIds`, `ProgressInterval` (2 s) | idem |
 
 ### Multi-modal
 
 | Section | Configure | Opt-in |
 |---|---|---|
-| `Orkeon:MultiModal` | Validation vision/contenu (`Enabled`) | `AddOrkeonMultiModal(configuration)` |
+| `Orkeon:MultiModal` | Validation vision/contenu (`Enabled`, `MaxImageSizeBytes` 20 Mo, `MaxImageDimension` 2048, `AutoResizeImages`, `SupportedImageFormats`, `SupportedAudioFormats`, `MaxAudioDurationSeconds`) | `AddOrkeonMultiModal(configuration)` |
 
 ---
 
 > **Voir aussi** : [Sous-systèmes opt-in](./opt-in-subsystems.md) ·
 > [Hébergement](./hosting.md) ·
+> [Système de mémoire](../architecture/memory-system.md) ·
 > [Pipeline RAG](../architecture/rag-pipeline.md) ·
 > [Retour à l'index](../INDEX.md)

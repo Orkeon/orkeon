@@ -54,3 +54,9 @@ RAG-backed search tools), which itself references `Orkeon.Application` (ADR-006
 amendment of 2026-07-25) — so they reach `Application` transitively; `Tools.Analysis`
 references the concrete `Orkeon.Analysis`. The decision itself is unchanged: reaching
 up is legitimate when documented, and ADR-006 documents the RAG couplings.
+
+Since then (2026-09-26): `Tools.Web` references the concrete `Orkeon.Rag` as well as
+`Application`; `Tools.Email` ([ADR-012](./ADR-012-email-tool-family.md)) reaches
+`Application` the same transitive way, through `Orkeon.Rag` and its prompt-injection
+detector; `Tools.Embeddings.Local` matches the "abstractions-only" profile
+(`Domain`, `Tools.Abstractions`, `Analysis.Abstractions`).

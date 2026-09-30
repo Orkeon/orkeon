@@ -46,23 +46,46 @@ elle-même. Elle *parle* à un moteur côté hôte au travers de la whitelist de
 
 | Méthode | Sémantique |
 |---|---|
-| `runCrew(name, input?)` | Charge `crews/<nom>/crew.ork.ts`, l'exécute via `ScriptHost.RunFromFileAsync` (honore `.body()` + `ctx.llm`), **attend**, rend un `CrewRunOutput`. Crews courtes. |
+| `runCrew(name, input?)` | Charge `<crews-dir>/<nom>/crew.ork.ts`, l'exécute via `ScriptHost.RunFromFileAsync` (honore `.body()` + `ctx.llm`), **attend**, rend un `CrewRunOutput` (`{ ok, summary?, artifacts?, error? }`). Crews courtes : l'attente est bornée par `RunCrewTimeout` (ci-dessous), au-delà de quoi le script reçoit une `TimeoutException`. |
 | `runCrewAsync(name, input?)` | Poste l'exécution sur un thread du pool et rend un **ticket** immédiatement. La complétion est drainée vers le `completed(result)` d'un `defineAsyncCommand`, par le même cycle de tickets que `commands.post`. Workflows longs. |
 | `listCrews()` | Les noms de crews découverts. |
 
+Une crew inconnue n'est pas une exception : `runCrew` rend `ok: false` avec
+`crew '<nom>' not found under: …`. `runCrewAsync` a besoin du substrat de dispatch
+qu'enregistre `AddScriptCommands`, et lève une erreur sans lui.
+
+`ScriptHost` exécute le fichier en **procédural** : une crew qui se termine par
+`globalThis.crew = crew` n'est pas confiée ici à un orchestrateur, elle est exécutée comme
+`await crew.run()` l'exécuterait — `.body()` exécutés, tâches ignorées
+([les deux formes](../reference/scripting-dsl.md#les-deux-formes)). Écrivez en forme
+procédurale les crews que ce pont lance.
+
 Une crew se résout par son nom dans les répertoires donnés à l'hôte : `--crews-dir` est
-répétable, et la crew nommée `review` est le fichier `<dir>/review/crew.ork.ts`
-(`CliCrewMountBootstrapper`). `input` arrive dans la crew comme `globalThis.inputs`, un objet
-JS analysé depuis du JSON avant l'évaluation, par le hook de pré-exécution de `ScriptHost`.
+répétable, chaque répertoire est monté en lecture seule comme `/crews`, `/crews-1`, …
+(`CliCrewMountBootstrapper`), et la crew nommée `review` est le fichier
+`<dir>/review/crew.ork.ts` ; le premier répertoire qui l'a l'emporte. `input` arrive dans la
+crew comme `globalThis.inputs`, un objet JS analysé depuis du JSON avant l'évaluation, par le
+hook de pré-exécution de `ScriptHost`, et le `globalThis.result` de la crew revient comme
+`summary` (une chaîne telle quelle, tout le reste sérialisé en JSON).
+
+La même résolution se configure sous `Orkeon:Cli:ScriptHost` (`ScriptHostFacadeOptions`) :
+
+| Clé | Défaut | Rôle |
+|---|---|---|
+| `CrewDirectories` | vide | Répertoires virtuels parcourus dans l'ordre ; `--crews-dir` s'y ajoute. |
+| `CrewFileName` | `crew.ork.ts` | Le fichier d'entrée cherché sous `<dir>/<nom>/`. |
+| `RunCrewTimeout` | `00:10:00` | Borne d'un `runCrew` synchrone ; zéro ou négatif la désactive. |
 
 ## Une boucle d'agent dans une crew — `ctx.llm.act`
 
 Un agent interactif est un agent dont le **`.body()` est la boucle** : il appelle
 `ctx.llm.act(prompt, opts)`, qui déroule le cycle LLM ⇄ appels d'outils sur le catalogue
 d'outils de l'agent, jusqu'à ce que le modèle cesse de demander des outils ou que
-`maxIterations` soit atteint (`Typings/context.d.ts`, `act<T>` et `ActOptions`). Il se lance
-comme une crew — `runCrewAsync("main", { prompt, permissionMode })` — et *non* par
-`onCommand`, qui n'a pas de `ctx` et ne peut donc pas atteindre le LLM. La continuité de la
+`maxIterations` soit atteint (`src/scripting/Orkeon.Scripting/Typings/context.d.ts`, `act<T>`
+et `ActOptions`). Les outils proposés au modèle sont les outils intégrés que l'agent a choisis
+avec `.tools([...])`. Il se lance comme une crew — `runCrewAsync(name, { prompt, permissionMode })`,
+la crew transmettant `inputs.permissionMode` à `act` — et *non* par `onCommand`, qui n'a pas
+de `ctx` et ne peut donc pas atteindre le LLM. La continuité de la
 conversation entre exécutions vient du singleton `ISessionBufferService`.
 
 `ActOptions.system` sème un **vrai message `role:"system"`** devant le prompt utilisateur, et
@@ -75,14 +98,19 @@ l'emporte sur `LlmConfig.SystemMessage` chez tous les fournisseurs.
 
 ## Permissions et budget
 
-Le garde de permissions est un service DI de premier rang, `IPermissionGate` /
-`ModePermissionGate` (`Orkeon.Infrastructure.Security`), consulté à chaque appel d'outil dans
-`ctx.llm.act`. Quatre modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`),
-classification lecture/écriture depuis la déclaration `IBaseTool.Access` de l'outil lui-même
-(avec une table d'outils de lecture curée et les préfixes `codebase_`/`symbol_`/`index_` en
-repli), fermeture par défaut sur un outil inconnu, et un canal d'approbation interactif — le
-tout derrière `Orkeon:Security:PermissionGate:Enabled` / `:Interactive`, câblé par le REPL et
-`RunnerHost`, sans effet quand c'est désactivé. Voir
+Le garde de permissions est un service DI de premier rang, `IPermissionGate`
+(`Orkeon.Application.Interfaces.Security`) implémenté par `ModePermissionGate`
+(`Orkeon.Infrastructure.Security`), consulté à chaque appel d'outil dans `ctx.llm.act`. Quatre
+modes (`bypassPermissions`, `plan`, `acceptEdits`, `default`), classification
+lecture/écriture depuis la déclaration `IBaseTool.Access` de l'outil lui-même (avec une table
+d'outils de lecture curée et les préfixes `codebase_`/`symbol_`/`index_` en repli), fermeture
+par défaut sur un outil inconnu et sur un mode inconnu. Il n'y a pas encore d'approbation
+interactive : un appel que le mode n'autorise pas est refusé, et le modèle lit `DENIED: …`
+comme réponse de l'outil ; `Interactive` (défaut `false`) ne change que ce message, le flux
+d'approbation lui-même étant pour plus tard. Le tout est derrière
+`Orkeon:Security:PermissionGate:Enabled` (défaut `false`) / `:Interactive`, câblé par le REPL
+et `RunnerHost` (`AddOrkeonPermissionGate`), sans effet quand c'est désactivé. Dans la TUI,
+Maj+Tab fait tourner le mode par défaut de la session. Voir
 [les sous-systèmes opt-in](../reference/opt-in-subsystems.md).
 
 Le budget est l'autre borne : `process("autonomous")` plus `.budget({...})`
@@ -137,7 +165,8 @@ scripted> /review src/Program.cs
 src/Program.cs: source file — worth a read
 
 scripted> /review-bg examples/README.md
-launched (ticket t1)
+  ✓ [t1] review-bg → crew:review: done
+✓ review: examples/README.md: not a source file — skipped
 ```
 
 La crew de démonstration n'appelle aucun modèle, d'où l'absence de clé ; pointez le `.body()`

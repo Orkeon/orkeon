@@ -112,7 +112,7 @@ surface).
 1. Modify the `QUALITY_GATE_CONDITIONS` table in `scripts/sonar-analyze.sh`
    **and** `$QualityGateConditions` in `scripts/sonar-analyze.ps1` (both
    must remain identical).
-2. Update this document (tables §3 and §5, history §8).
+2. Update this document (tables §3 and §5, history §9).
 3. Re-run an analysis: the idempotent provisioning pushes the new
    thresholds to the server (`update_condition`).
 
@@ -128,7 +128,12 @@ overwritten on the next script run.
   thresholds).
 - `new_coverage` is **not evaluated** by SonarQube if no coverage is
   imported: a broken coverage import can wrongly let the gate pass.
-  This is why the script installs ReportGenerator automatically.
+  The scripts therefore install both coverage tools when they are missing —
+  `dotnet-coverage`, which measures (the test projects run on
+  Microsoft.Testing.Platform, which rejects the VSTest `--collect` collector), and
+  ReportGenerator, which converts its Cobertura output to the SonarQube generic
+  format — and **abort the analysis** when the Cobertura report holds no class,
+  rather than let the gate evaluate against nothing.
 - On a headless machine, the scripts' Docker fallback can be disabled
   (`SONAR_NO_DOCKER=1`): an unreachable server then fails the run instead of
   booting an ephemeral instance without history (which would render the
@@ -156,3 +161,6 @@ claim.
 | 2026-06-11 | Creation of the "Orkeon Transitional" gate (T0), activation of local blocking (R5.4), alignment of the scripts' project key on the historical key |
 | 2026-08-17 | Project key renamed to `Orkeon` (PUB-01 audit follow-up — historical pre-rename key retired; supersedes the 2026-06-11 QCM decision, analysis history restarts under the new key) |
 | 2026-08-18 | Document realigned with reality (DOC-02): no CI Sonar workflow exists — enforcement is local to the analysis scripts; the former workflow references removed |
+| 2026-08-30 | Coverage collected by `dotnet-coverage` instead of the VSTest collector the Microsoft.Testing.Platform runner rejects; an analysis whose Cobertura report holds no class now aborts instead of importing 0 % |
+| 2026-09-05 | Measurement recorded in §1: the gate is OK on every condition (0 bugs, 17/17 hotspots reviewed, new code at 78.1 %); thresholds unchanged |
+| 2026-09-11 | Public coverage figure moved to the `coverage.yml` workflow (§8); the SonarQube report stays local |

@@ -14,32 +14,49 @@ Orkeon offers **6 orchestration strategies** via the `ProcessType` value object 
 // Orkeon.Domain.SharedKernel.ValueObjects.ProcessType (sealed record)
 ProcessType.Sequential    // Linear pipeline
 ProcessType.Hierarchical  // Manager + workers
-ProcessType.Parallel      // Concurrent execution
-ProcessType.Consensual    // Voting and consensus
-ProcessType.Graph         // State graph with controlled cycles
-ProcessType.Autonomous    // Self-organization with budget
+ProcessType.Parallel      // Dependency waves, concurrent inside a wave
+ProcessType.Consensual    // Every agent runs every task, then a vote
+ProcessType.Graph         // State graph with controlled retry cycles
+ProcessType.Autonomous    // Self-organization under a budget
 ```
+
+In YAML the mode is `process:` (case-insensitive, `sequential` when absent); an unknown value fails the load and names the six valid ones (`YamlCrewMapper.ParseProcessType`). With the Fluent Builder, `CrewBuilder` has `.Sequential()`, `.Hierarchical(manager)`, `.Parallel()` and `.Consensual()`; Graph and Autonomous go through `.Process(ProcessType.Graph)` / `.Process(ProcessType.Autonomous)`.
 
 ### Implementation architecture
 
 ```
-ProcessType (Domain — Value Object)
-     │
+ICrewOrchestrationService.KickoffAsync (SequentialCrewOrchestrator)
+     │  planning (when enabled), then a switch on crew.ProcessType
      ▼
-IProcessStrategy (Domain — Interface)
+IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, Infrastructure)
      │
-     ▼
-ProcessStrategyFactory (Infrastructure)
-     │
-     ├── SequentialProcessStrategy
-     ├── HierarchicalProcessStrategy
-     ├── ParallelProcessStrategy
-     ├── ConsensualProcessStrategy      ← IConsensualProcessStrategy
-     ├── GraphProcessStrategy
-     └── AutonomousProcessStrategy
+     ├── SequentialProcessStrategy      ← ExecuteSequentialAsync
+     ├── HierarchicalProcessStrategy    ← ExecuteHierarchicalAsync(manager id)
+     ├── ParallelProcessStrategy        ← ExecuteParallelAsync
+     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync (also IConsensualProcessStrategy)
+     ├── GraphProcessStrategy           ← ExecuteSequentialAsync
+     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
 ```
 
-The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `ProcessType.Value`, injected through DI.
+`IProcessStrategy` (Domain) has four entry points — `ExecuteSequentialAsync`, `ExecuteHierarchicalAsync`, `ExecuteParallelAsync`, `ExecuteAutonomousAsync`. `SequentialCrewOrchestrator` picks the entry point from `ProcessType.Value`; Graph and Consensual reuse the sequential one, and a strategy throws `NotSupportedException` on the entry points it does not serve. The strategies are registered as scoped services by `AddOrkeonInfrastructure()` (Consensual through `AddOrkeonConsensus()`, which it calls).
+
+What every strategy shares:
+
+- **Task order** — the modes that hand tasks out one after another (all but Parallel) run them in the order resolved by `CrewTaskSequencer`: the planner's order when `planning: true` produced one, otherwise a stable topological sort on the declared `dependencies` (detailed under Sequential).
+- **Lifecycle hooks** — every mode reports through `ICrewExecutionHook` (`OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`), on every exit including cancellation; this is what feeds `AUTO_SUMMARY.md`, the `orkeon run --events` stream and the host's progress.
+- **Token telemetry** — the real token usage (prompt, completion, cache hits/misses when the provider reports them) travels in the `CrewOutput` metadata; `CrewOutput.TokensUsed` stays `null` when nothing was measured.
+
+### Who runs a task that names no agent
+
+A task-level `agent:` is a decision, not a hint: Sequential, Parallel and Graph always honour it. For a task without one, those three modes ask `TaskAgentSelector`, driven by `OrkeonApplicationOptions.AgentSelectionStrategy`:
+
+| Value | Behavior |
+|-------|----------|
+| `FirstFit` (default) | Round-robin over the crew's agents |
+| `Embedding` | Semantic match between the task and each agent profile (needs a real embedding provider — see [limitations](../reference/limitations.md)) |
+| `Skill` | Lexical (Jaccard) match on role/goal/backstory keywords, no embedding provider |
+
+A selection that fails, or names an agent the crew does not carry, falls back to round-robin with a warning. Hierarchical and Autonomous let the manager LLM choose (a task's `agent:` is not consulted there); Consensual runs every task with every agent.
 
 ---
 
@@ -47,16 +64,16 @@ The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `
 
 | Criterion | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Execution model** | Linear | Linear + review | Concurrent | Parallel + vote | State machine | Self-organized |
-| **Coordination** | Round-robin | Manager LLM | Round-robin | LLM consensus | Round-robin + routing | LLM + A2A channel |
-| **Task dependencies** | Yes (chained) | Yes (via manager) | Yes (waves) | No | Yes (edges) | Yes (delegation) |
-| **Circuit breaker** | — | — | — | — | ✅ 4 mechanisms | — |
-| **Execution budget** | — | — | — | — | — | ✅ 5 dimensions |
-| **Automatic retry** | — | Revisions (max 3) | — | Voting rounds | ✅ configurable | Via delegation |
-| **Dynamic spawn** | — | — | — | — | — | ✅ SpawnAgentTool |
-| **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Relative LLM cost** | Low | Medium | Low | High | Medium | Variable |
-| **Main use case** | ETL pipelines | QA, code review | Independent tasks | Critical decisions | Complex workflows | Exploration, R&D |
+| **Execution model** | Linear | Linear + manager review | Dependency waves, concurrent inside a wave | Every agent per task + vote | Linear + retry cycle | Manager-assigned, delegation on failure |
+| **Agent choice** | Declared, else selector | Manager LLM | Declared, else selector | All agents | Declared, else selector | Manager LLM |
+| **Task dependencies** | Order + skip on failure | Order | Waves | Order | Order | Order |
+| **A failed task fails the crew** | ✅ (dependents skipped) | — | — | Only with `FallbackStrategy: Fail` | — (circuit breaker only) | — |
+| **Circuit breaker** | — | — | — | — | ✅ 3 mechanisms | — |
+| **Execution budget** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
+| **Automatic retry** | — | Up to 2 re-executions after review | — | Voting rounds | ✅ `maxRetryCycles` | One delegation to a peer |
+| **Complexity** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
+| **Relative LLM cost** | Low | Medium | Low | High | Low to medium | Medium |
+| **Main use case** | ETL pipelines | QA, review loops | Fan-out + synthesis | Multiple independent attempts | Flaky tasks worth retrying | Exploration, R&D |
 
 ---
 
@@ -64,9 +81,11 @@ The `ProcessStrategyFactory` resolves the appropriate strategy via a switch on `
 
 ### Principle
 
-Tasks execute **one by one, in the order** defined by the `ExecutionPlan`. Each task receives the results of the previous tasks as context. Agent assignment is round-robin (unless explicitly assigned via `task.AssignedAgent`).
+Tasks execute **one by one**. Each task receives the outputs of the tasks that ran before it as context. Agent assignment follows the rule above: the task's `agent:` when declared, otherwise the configured selector (round-robin by default).
 
-**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is. A task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11).
+**Execution order without a plan** (`planning: false`, the default): the tasks run in a **stable topological order on their declared `dependencies`** — a task runs after every task it depends on, and wherever the dependencies allow it the declared order is kept, so a crew that declares no dependency runs exactly as written. This holds in every layout: the multi-file layout (`tasks/*.yaml`) lists the tasks in the ordinal order of their file names, so without the sort `consolidate.yaml` ran before the `extract.yaml` it depends on. A dependency naming an unknown task id is ignored; a cycle never fails the crew — the declared order is kept for the tasks caught in it and a warning names them. The same rule orders the hierarchical, consensual, graph and autonomous modes, which also hand their tasks out one after another; the parallel mode keeps its own semantics (dependency **waves**, and a cycle is refused). With `planning: true`, the planner's order is taken as is.
+
+**Failure handling (Sequential only)**: a task whose declared dependency did not succeed — failed, or skipped in its turn — is **skipped**, never run on a context that says `Task failed: …` where its input should have been: it shows as `⊘ skipped` in `AUTO_SUMMARY.md` and as a `task.completed` event with `skipped: true`, the tasks that do not depend on it still run, and the crew fails naming every failed and skipped task (LLM-11). The other modes do not skip dependents and report the crew as completed even when a task failed (see the matrix).
 
 ### Internal mechanism
 
@@ -78,7 +97,7 @@ Task 2 → Agent B → output₂
 Task 3 → Agent C → output₃ → final result
 ```
 
-**Key classes**: `SequentialProcessStrategy`, `ExecutionPlan`, `AgentDelegationToolsProvider`
+**Key classes**: `SequentialProcessStrategy`, `CrewTaskSequencer`, `TaskAgentSelector`, `ExecutionPlan`, `AgentDelegationToolsProvider` (agents with `allowDelegation: true` receive `delegate_work_to_coworker` and `ask_question_to_coworker`)
 
 ### YAML configuration
 
@@ -119,7 +138,7 @@ var crew = new CrewBuilder()
 - **Maximum simplicity**: no complex configuration, predictable behavior
 - **Traceability**: each step is clearly identifiable in the logs
 - **Cumulative context**: each task benefits from the previous results
-- **Determinism**: same input → same execution path
+- **Honest outcome**: the only mode where a failed step fails the crew and stops its dependents
 
 ### Drawbacks
 
@@ -138,8 +157,7 @@ var crew = new CrewBuilder()
 ### When not to use it
 
 - Independent tasks that could run in parallel
-- Workflows requiring conditional branches
-- Scenarios demanding resilience (retry, fallback)
+- Workflows that should retry a flaky step (Graph)
 
 ---
 
@@ -147,31 +165,36 @@ var crew = new CrewBuilder()
 
 ### Principle
 
-A **manager agent** (LLM-driven) coordinates a team of workers. For each task, the manager selects the most appropriate agent via `AssignTaskAsync()`, then **reviews the output** and can request up to 3 revisions.
+A **manager** (`IManagerAgent`, implemented by `LlmBasedManager`) coordinates the workers. For each task it picks a worker via `AssignTaskAsync()`, the worker executes, then the manager **reviews the output** with `ReviewOutputAsync()`.
+
+- The crew must name its manager: `managerAgent:` in YAML (or `.Hierarchical(manager)` / `.WithManagerId(...)`); without one the run fails with "Hierarchical process requires a manager agent". That agent is removed from the worker pool.
+- The manager's decisions go through the **host's registered LLM** (`IChatClient` when present, else `IBasicLlmProvider` — the `Llm` section in a runner host), not through the manager agent's own `llm:` block; they are metered under the manager's role.
+- Assignment: the manager LLM answers with JSON; an unparseable answer falls back to a role/keyword heuristic, an LLM error to the first worker. A task's `agent:` is not consulted.
+- Review: up to **3 reviews per task**, so at most **2 re-executions** (each with a `revision_feedback` context variable). A third rejection keeps the last output, prefixed `[NEEDS REVISION]` and marked failed. A review that errors counts as an approval.
 
 ### Internal mechanism
 
 ```
-                  ┌─── Manager Agent ───┐
-                  │   AssignTask()      │
-                  │   ReviewOutput()    │
-                  └────────┬────────────┘
+                  ┌─── Manager (host LLM) ───┐
+                  │   AssignTaskAsync()       │
+                  │   ReviewOutputAsync()     │
+                  └────────┬──────────────────┘
                            │
             ┌──────────────┼──────────────┐
             ▼              ▼              ▼
-        Agent A        Agent B        Agent C
-        (chosen)       (waiting)      (waiting)
+        Worker A       Worker B       Worker C
+        (chosen)
             │
             ▼
-        Output → Review → OK? → yes → next task
-                           → no → revision (max 3)
+        Output → Review → approved? → yes → next task
+                           → no → re-execute (max 2), then [NEEDS REVISION]
 ```
 
-**Key classes**: `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment`
+**Key classes**: `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment` (`TaskId`, `AssignedAgent`, `Reason`, `AssignedAt`)
 
-**`IManagerAgent` interface**:
-- `AssignTaskAsync(task, agents, context)` → `TaskAssignment` (selected agent + justification)
-- `ReviewOutputAsync(output, task)` → `bool` (approved or not)
+**`IManagerAgent` interface** (`Orkeon.Application.Interfaces`):
+- `AssignTaskAsync(task, availableAgents, context)` → `TaskAssignment`
+- `ReviewOutputAsync(output, originalTask)` → `bool` (approved or not)
 
 ### YAML configuration
 
@@ -196,23 +219,21 @@ agents:
 
 ### Advantages
 
-- **Smart allocation**: the manager picks the agent best suited to each task
+- **Smart allocation**: the manager picks the worker best suited to each task
 - **Built-in quality control**: automatic review loop
-- **Flexibility**: the manager can adapt the strategy during execution
-- **Traceability**: every assignment is justified
+- **Traceability**: every assignment carries a justification (`TaskAssignment.Reason`)
 
 ### Drawbacks
 
-- **Extra LLM cost**: the manager consumes tokens for every decision + review
+- **Extra LLM cost**: one assignment call + one to three review calls per task, on top of the workers
 - **Bottleneck**: everything goes through the manager (no parallelism)
-- **Limited revisions**: max 3 revisions (hardcoded), no structural retry
-- **Dependence on manager quality**: a bad manager prompt degrades the whole workflow
+- **Fixed revisions**: 3 reviews per task, hardcoded
+- **Soft failure**: a rejected or failed task does not fail the crew — read the task outputs
 
 ### When to use it
 
 - Code review (the manager assigns the most competent reviewer)
 - Projects with heterogeneous specialists (dev, QA, design, writing)
-- Workflows requiring simulated human validation
 - Situations where quality matters more than speed
 
 ### When not to use it
@@ -223,23 +244,27 @@ agents:
 
 ---
 
-## 3. Parallel — Concurrent execution
+## 3. Parallel — Dependency waves
 
 ### Principle
 
-All tasks execute **simultaneously** via `Task.WhenAll()`. Each task has an independent execution context (no results shared between tasks). The results are aggregated at the end.
+Tasks are grouped into **dependency waves**. A wave holds every task whose declared `dependencies` are already satisfied; its tasks run **concurrently** (`Task.WhenAll`), and the next wave starts when they are all done, **reading their outputs** as context. A crew declaring no dependency is a single wave — one flat fan-out.
+
+- A dependency naming a task the crew does not carry counts as satisfied.
+- A dependency **cycle is refused**: the run fails naming the tasks caught in it.
+- A failed task does not stop its wave siblings, nor its dependents in the next wave, and the crew is reported as completed.
+- There is no concurrency cap: every task of a wave calls its LLM at the same time.
 
 ### Internal mechanism
 
 ```
-        ┌── Task 1 → Agent A → output₁ ──┐
-        │                                  │
-Start ──┼── Task 2 → Agent B → output₂ ──┼── Aggregation → Result
-        │                                  │
-        └── Task 3 → Agent C → output₃ ──┘
+Wave 1 ──┬── Task A → Agent 1 ──┐
+         └── Task B → Agent 2 ──┤  (concurrent)
+                                ▼
+Wave 2 ────── Task C (depends on A, B) → reads A + B → final result
 ```
 
-**Key classes**: `ParallelProcessStrategy`
+**Key classes**: `ParallelProcessStrategy`, `TaskAgentSelector`
 
 ### YAML configuration
 
@@ -254,37 +279,35 @@ tasks:
   germany:
     description: "Analyze the German market"
     expectedOutput: "Germany report"
-  spain:
-    description: "Analyze the Spanish market"
-    expectedOutput: "Spain report"
+  synthesis:
+    description: "Compare the two markets"
+    expectedOutput: "Comparative summary"
+    dependencies: [france, germany]   # second wave, reads both reports
 ```
 
 ### Advantages
 
-- **Maximum speed**: total time = duration of the longest task
-- **Simplicity**: no complex coordination
-- **Scalability**: adding tasks has no impact on the total time
+- **Speed**: total time = sum of the longest task of each wave
+- **Simplicity**: no coordination beyond the declared dependencies
 - **Isolation**: one task's failure does not impact its wave siblings
 
 ### Drawbacks
 
-- **Coarse ordering**: dependencies are honoured as waves, not per-task — a task waits for its whole wave, not only for what it declared
-- **API consumption spikes**: all LLM requests fire at the same time (rate limiting)
-- **Basic aggregation**: results are simply concatenated
-- **No retry**: no automatic recovery
+- **Coarse ordering**: a task waits for its whole wave, not only for what it declared
+- **API consumption spikes**: all the LLM requests of a wave fire at once (rate limiting)
+- **No retry**, and a failed task still feeds (as a failure message) the next wave
 
 ### When to use it
 
 - Independent multi-market or multi-source analyses
 - Batch content generation (one article per market, per language)
-- Parallel classification tasks
 - A fan-out followed by a synthesis: the collectors run together, the synthesis reads them
 
 ### When not to use it
 
-- Conditional routing or cycles between tasks (use Graph)
-- APIs with strict rate limiting (simultaneous calls may be throttled)
-- Scenarios requiring progressive synthesis
+- Retry of flaky tasks (use Graph)
+- APIs with strict rate limiting
+- Pipelines where a failed step must stop what depends on it (use Sequential)
 
 ---
 
@@ -292,40 +315,46 @@ tasks:
 
 ### Principle
 
-For each task, **all agents execute it independently**, then a vote determines the best result. If no consensus is reached, **discussion rounds** let agents reconsider their position after seeing the others' results. A fallback mechanism settles the matter as a last resort.
+For each task, **every agent of the crew executes it** (concurrently). The executions are turned into ballots and tallied by the configured `IVotingStrategy`. If no consensus is reached and `EnableDiscussion` is on, another round runs where each agent sees the others' previous outputs (a `discussion_context` context variable). After `MaxVotingRounds` rounds without consensus, the `FallbackStrategy` decides.
 
 ### Internal mechanism
 
 ```
 Task N ──┬── Agent A → result A ────┐
-         ├── Agent B → result B ────┼── Vote ── Consensus? ── yes → Accepted
-         └── Agent C → result C ────┘              │
-                                                   no
-                                                    ↓
-                                          Discussion (round 2)
-                                          Agents see the others' results
-                                                    ↓
-                                                  Re-vote
-                                                    ↓
-                                          Failure → Fallback
+         ├── Agent B → result B ────┼── Tally ── Consensus? ── yes → winning result
+         └── Agent C → result C ────┘                │
+                                                     no
+                                                      ↓
+                                     Next round (with discussion_context)
+                                                      ↓
+                                   Rounds exhausted → FallbackStrategy
 ```
 
-**Key classes**: `ConsensualProcessStrategy`, `IVotingStrategy`, `IVotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`
+**Registration**: `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) binds `ConsensualProcessOptions` to the `Orkeon:Consensus` section, registers `IVotingStrategyFactory` → `VotingStrategyFactory` and the `IVotingStrategy` built from the configured `ConsensusType` (singletons, `TryAdd`), and `ConsensualProcessStrategy` (scoped) with `IConsensualProcessStrategy` mapped to the same instance. `AddOrkeonInfrastructure()` already calls it — call it yourself only in a host that does not use `AddOrkeonInfrastructure()`; registering your own `IVotingStrategy` before it replaces the configured one.
+
+**Key classes**: `ConsensualProcessStrategy` (also `IConsensualProcessStrategy`), `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+
+### How a ballot is formed — read before relying on the vote
+
+The pipeline does **not** compare the contents of the outputs. Each agent's execution becomes **one ballot for itself**: `Choice` = its own agent id, `Confidence` = 1.0 when its execution succeeded and 0.1 when it failed, `Weight` = 1.0. Consequences with two agents or more:
+
+- `Majority`, `SuperMajority` and `Unanimity` without weighting **never reach consensus** (each choice holds 1/N of the votes); with `UseWeightedVotes: true` (or `WeightedConsensus`), a choice wins when the other agents' executions failed.
+- `BordaCount` expects comma-separated rankings; a single-choice ballot scores 0 for everyone, so it declares the **first agent** the winner in round 1.
+- The fallback `AcceptBestScore` **re-executes the task with the first agent** and keeps that output; `ManagerDecision` does the same today; `Fail` stops the crew ("Consensus could not be reached for task …").
+
+In practice, for a crew whose agents all succeed, every task costs `MaxVotingRounds` × N executions plus one fallback execution (N executions with `BordaCount`). The crew's input variables are not interpolated in this mode; earlier tasks' winning outputs are passed as context.
 
 ### Available consensus types
 
-The voting mechanism is **selectable via configuration**: the value of
-`Orkeon:Consensus:VotingOptions:ConsensusType` (.NET `appsettings.json` section)
-picks the dedicated strategy via `IVotingStrategyFactory`. Without configuration,
-the default remains `Majority` (backward compatible).
+The voting mechanism is **selectable via configuration**: `Orkeon:Consensus:VotingOptions:ConsensusType` (.NET `appsettings.json`) picks the strategy through `IVotingStrategyFactory`. Default: `Majority`.
 
-| Type | Resolved strategy | Description | Default threshold |
-|------|-------------------|-------------|------------------|
-| `Majority` | `MajorityVotingStrategy` | More than 50% of the votes | 50% |
-| `SuperMajority` | `SuperMajorityVotingStrategy` | Configurable threshold (default 2/3) | 66.7% |
-| `Unanimity` | `UnanimityVotingStrategy` | All agents must agree | 100% |
-| `WeightedConsensus` | `WeightedConsensusStrategy` | Votes weighted by role (`RoleWeights`) | Configurable |
-| `BordaCount` | `BordaCountStrategy` | Borda score ranking | N/A |
+| Type | Resolved strategy | Consensus rule | Default threshold |
+|------|-------------------|----------------|------------------|
+| `Majority` | `MajorityVotingStrategy` | Winning share strictly above 50% | 50% |
+| `SuperMajority` | `SuperMajorityVotingStrategy` | Winning share ≥ `ConsensusThreshold` | 66.7% |
+| `Unanimity` | `UnanimityVotingStrategy` | A single distinct choice | 100% |
+| `WeightedConsensus` | `WeightedConsensusStrategy` | Role weight (`RoleWeights`) × confidence, share above `ConsensusThreshold` | 66.7% |
+| `BordaCount` | `BordaCountStrategy` | Borda score ranking, always a winner | N/A |
 
 ### Configuration (.NET, `Orkeon:Consensus` section)
 
@@ -337,9 +366,7 @@ the default remains `Majority` (backward compatible).
       "VotingOptions": {
         "ConsensusType": "SuperMajority",
         "ConsensusThreshold": 75,
-        "QuorumPercent": 60,
-        "UseWeightedVotes": true,
-        "AllowAbstention": false
+        "UseWeightedVotes": true
       },
       "EnableDiscussion": true,
       "FallbackStrategy": "AcceptBestScore",
@@ -352,30 +379,33 @@ the default remains `Majority` (backward compatible).
 }
 ```
 
-> **Note**: `ConsensusThreshold` and `QuorumPercent` are expressed as a **percentage
-> (0–100)**, not as a fraction. A super-majority threshold of 75% is written `75`.
+| Key | Default | Effect |
+|-----|---------|--------|
+| `MaxVotingRounds` | 3 | Rounds before the fallback (the `VotingOptions:MaxVotingRounds` copy is not read) |
+| `VotingOptions:ConsensusType` | `Majority` | Voting strategy |
+| `VotingOptions:ConsensusThreshold` | 66.7 | Threshold of `SuperMajority` / `WeightedConsensus`, as a **percentage (0–100)** — 75% is written `75` |
+| `VotingOptions:UseWeightedVotes` | `false` | Weight × confidence instead of one vote per ballot |
+| `VotingOptions:QuorumPercent`, `VotingOptions:AllowAbstention` | 50, `true` | Carried to the strategies but not enforced by any of them |
+| `EnableDiscussion` | `true` | Rounds after the first see the other agents' outputs |
+| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore`, `Fail`, `ManagerDecision` (same as `AcceptBestScore` today) |
+| `RoleWeights` | empty | Role → weight, read by `WeightedConsensus` |
 
 ### Advantages
 
-- **Robustness**: reduces hallucinations and individual biases
-- **Quality**: "collective wisdom" often produces better results
-- **Voting flexibility**: 5 consensus strategies, role-based weighting
-- **Discussion**: agents can improve each other between rounds
-- **Fallback**: 3 fallback strategies (best score, failure, manager decision)
+- **Several independent attempts** per task, run concurrently
+- **Configurable voting**: 5 strategies, role weighting
+- **Discussion**: agents see each other's outputs between rounds
 
 ### Drawbacks
 
-- **High LLM cost**: each task is executed N times (N = number of agents) × rounds
-- **Slowness**: multiplied LLM calls, especially with discussion enabled
-- **Configuration complexity**: many parameters (threshold, quorum, weighting, rounds)
-- **Uncertain outcome**: the fallback may produce an unsatisfactory result
+- **High LLM cost**: N agents × rounds (+ fallback) executions per task
+- **The vote is not semantic** (see above): it measures which executions succeeded, not which answer is best
+- **Configuration complexity**: many parameters, some carried but not enforced
 
 ### When to use it
 
-- Critical decisions (medical diagnosis, risk assessment, audit)
-- Situations where reliability matters more than cost
-- Subjective evaluations requiring multiple perspectives
-- "Red team" scenarios (several agents try to find flaws)
+- Tasks where independent attempts by several agents are worth their cost
+- Crews where one agent's failure should be absorbed by the others (weighted votes)
 
 ### When not to use it
 
@@ -385,29 +415,25 @@ the default remains `Majority` (backward compatible).
 
 ---
 
-## 5. Graph — State graph with controlled cycles
+## 5. Graph — State graph with controlled retry
 
 ### Principle
 
-Tasks are organized in a **typed state graph** inspired by LangGraph. The graph supports **conditional edges** (dynamic routing) and **controlled cycles** (automatic retry). A 4-mechanism **circuit breaker** prevents infinite loops.
+The crew runs through a **typed state graph** (`StateGraph<CrewGraphState>`) with a fixed topology: `execute_task` runs the next pending task, `route` re-enqueues the failed tasks that still have retries left and loops back while work remains. A **3-mechanism circuit breaker** bounds the loop. Conditional edges and arbitrary topologies are available through the Domain `StateGraph<TState>` API in C#; the YAML mode does not declare its own graph.
 
 ### Internal mechanism
 
 ```
-START ──→ execute_task ──→ route ──┬── success ──→ execute_task (next)
-                                   │                      ↓
-                                   │               ... (loop) ...
-                                   │                      ↓
-                                   ├── failure ──→ execute_task (retry)
+START ──→ execute_task ──→ route ──┬── tasks pending (or failed with retries left) ──→ execute_task
                                    │
-                                   └── done ──→ END
+                                   └── nothing left ──→ END
 ```
 
 **Key classes**:
-- `StateGraph<TState>` — Graph definition (nodes + edges)
-- `GraphRunner<TState>` — Execution engine
+- `StateGraph<TState>` — Graph definition (nodes + fixed and conditional edges)
+- `GraphRunner<TState>` — Execution engine with circuit breaker
 - `GraphProcessStrategy` — `IProcessStrategy` implementation
-- `CircuitBreakerPolicy` — Anti-loop protection
+- `CircuitBreakerPolicy` — Limits (the record shared with the FSM)
 - `CrewGraphState` — Typed state flowing through the graph
 
 ### `CrewGraphState` — State properties
@@ -415,22 +441,24 @@ START ──→ execute_task ──→ route ──┬── success ──→ e
 | Property | Type | Description |
 |-----------|------|-------------|
 | `PendingTaskIds` | `Queue<TaskId>` | Remaining tasks to execute |
-| `FailedTaskIds` | `Queue<TaskId>` | Tasks eligible for retry |
-| `RetryCounts` | `Dict<string, int>` | Per-task retry counter |
-| `MaxRetryCycles` | `int` | Maximum number of retries (default: 2) |
-| `ApplicationOutputs` | `IReadOnlyList<ApplicationTaskOutput>` | Accumulated outputs |
-| `TotalTokensUsed` | `int` | Consumed token counter (propagated to `CrewOutput` metadata under `totalTokens`) |
-| `PromptTokensUsed` | `int` | Prompt-side token counter (0 when the provider does not report the split) |
-| `CompletionTokensUsed` | `int` | Completion-side token counter (0 when the provider does not report the split) |
+| `FailedTaskIds` | `Queue<TaskId>` | Tasks waiting for a retry cycle |
+| `RetryCounts` | `Dictionary<string, int>` | Per-task retry counter |
+| `MaxRetryCycles` | `int` | Retries per failed task (default: 2) |
+| `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Accumulated outputs, one per attempt |
+| `TotalTokensUsed` | `int` | Consumed tokens (propagated to the `CrewOutput` metadata under `totalTokens`) |
+| `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Prompt/completion split (0 when the provider does not report it) |
+| `CacheHitTokensUsed` / `CacheMissTokensUsed` | `long` | Prompt-cache split (0 when unreported) |
+| `AgentIndex` | `int` | Round-robin cursor for tasks without an agent |
 
-### Circuit breaker — 4 protection mechanisms
+### Circuit breaker — 3 protection mechanisms
 
-| Mechanism | Strict | Default | Permissive |
+| Mechanism | Strict (default) | Default | Permissive |
 |-----------|--------|---------|------------|
-| `MaxTransitions` | 50 | 100 | 1000 |
-| `StateTimeout` | 2 min | 5 min | 30 min |
-| `MaxStateVisits` | 5 | 10 | 50 |
+| `MaxTransitions` (node executions) | 50 | 100 | 1000 |
+| `MaxStateVisits` (visits of one node) | 5 | 10 | 50 |
 | `MaxTotalDuration` | 10 min | 30 min | 2 h |
+
+Every task attempt is one visit of `execute_task`, so `MaxStateVisits` caps the number of task attempts in the whole run: **5 under Strict** — raise `maxStateVisits` for a crew with more tasks (retries included). The FSM's fourth mechanism, the per-state timeout, is not checked by the graph runner. A tripped breaker returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") with the outputs produced so far.
 
 ### YAML configuration
 
@@ -443,40 +471,34 @@ graphConfig:
   maxRetryCycles: 3
   # Individual overrides possible:
   maxTransitions: 75
-  maxStateVisits: 10
-  maxTotalDurationSeconds: 180
+  maxStateVisits: 20
+  maxTotalDurationSeconds: 1800
 ```
 
 ### Advantages
 
-- **Conditional branching**: dynamic routing based on each node's result
-- **Built-in retry**: failed tasks are automatically retried
-- **Safety**: a 4-level circuit breaker prevents infinite executions
-- **Observability**: `OnNodeCompleted`, `OnCircuitBroken` events
-- **Useful cycles**: feedback → correction → validation loop
-- **Presets**: Strict (production) vs Permissive (development)
+- **Built-in retry**: failed tasks are retried after the pending ones, up to `maxRetryCycles`
+- **Safety**: a circuit breaker bounds executions, visits and duration
+- **Observability**: `OnNodeCompleted` / `OnCircuitBroken` events, logged by the strategy
+- **Presets**: Strict (default) vs Permissive
 
 ### Drawbacks
 
-- **Design complexity**: defining a correct graph takes some thought
-- **Debugging**: tracing a path through a cyclic graph is harder
-- **Overhead**: the graph engine adds a layer of complexity
-- **Circuit breaker**: can cut execution prematurely if misconfigured
+- **Strict is tight**: the default caps the run at 5 task attempts
+- **Soft failure**: a task still failing after its retries does not fail the crew (only the breaker does)
+- **Fixed topology in YAML**: conditional routing needs the C# `StateGraph<TState>` API
 
 ### When to use it
 
-- Workflows with conditional branches (validation → OK/KO → different paths)
-- Pipelines needing retry with backoff
-- Iterative correction scenarios (drafting → review → correction → re-review)
-- Regulatory workflows with exception paths
+- Pipelines with flaky steps worth retrying (web scraping, unstable APIs)
+- Runs that must be bounded in executions and duration
 
 ### When not to use it
 
-- Simple linear pipelines (Sequential is enough)
-- Independent tasks (Parallel is enough)
-- Teams not comfortable with graph modeling
+- Simple linear pipelines where a failure should stop the run (Sequential)
+- Independent tasks (Parallel)
 
-> **See also**: [FSM orchestration](./fsm.md) for the full details.
+> **See also**: [Graph orchestration](./graph.md) for the full details.
 
 ---
 
@@ -484,63 +506,59 @@ graphConfig:
 
 ### Principle
 
-Agents **self-organize**: they claim tasks, delegate recursively to their peers, and can **dynamically spawn** new agents. A **multi-dimensional budget** (5 axes) guarantees termination. Inter-agent communication happens over a bidirectional channel (`IAgentChannel`).
+For each task, the manager LLM (`LlmBasedManager`, as in Hierarchical) picks the agent that **claims** it. When that agent's execution fails and the agent allows delegation, the task is **delegated to a peer** over the A2A channel (`IAgentChannel`), under a derived child budget. A **multi-dimensional budget** (5 axes) bounds the run. The API is experimental (`ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md)).
 
 ### Internal mechanism
 
 ```
-                    ┌─── Budget (5 dimensions) ───┐
-                    │  tool calls · depth · time   │
-                    │  tokens · spawned agents      │
-                    └──────────────┬────────────────┘
-                                   │
-Manager (LLM) ── assigns ──→ Agent A
-                                   │
-                    ┌──────────────┼──────────────┐
-                    ▼              ▼              ▼
-              DelegateWork   SpawnAgent      Direct
-              (child budget)  (via factory)   execution
-                    │              │
-                    ▼              ▼
-                Agent B       Agent D (new)
-                    │              │
-                    ▼              ▼
-              Result ←──── A2A channel ────→ Result
+                    ┌─── AgentExecutionBudget (5 dimensions) ───┐
+                    │  tool calls · depth · wall time            │
+                    │  tokens · spawned agents                   │
+                    └──────────────────┬─────────────────────────┘
+                                       │
+for each task:  Manager (LLM) ── assigns ──→ Agent A ── executes
+                                       │
+                          failed + allowDelegation?
+                                       │ yes
+                                       ▼
+                  channel.RequestAsync("delegate") ──→ first other agent
+                                                        (child budget)
 ```
 
 **Key classes**:
 - `AutonomousProcessStrategy` — Orchestration strategy
 - `AgentExecutionBudget` — Multi-dimensional budget (Domain)
-- `IAgentChannel` / `InMemoryAgentChannel` — A2A communication (lock-free)
-- `SpawnAgentTool` — Dynamic agent creation
-- `DelegateWorkTool` — Delegation with inherited budget
-- `BudgetExhaustedException` — Exception thrown when an axis is exhausted
+- `IAgentChannel` / `InMemoryAgentChannel` — A2A request/response channel
+- `SpawnAgentTool` — Dynamic agent creation (host-constructed, not injected by the strategy)
+- `BudgetExhaustedException` — Thrown when an axis is exhausted
 
 ### Multi-dimensional budget — 5 axes
 
 | Dimension | Strict | Default | Permissive | Description |
 |-----------|--------|---------|------------|-------------|
-| `MaxToolCalls` | 8 | 15 | 50 | Maximum number of tool calls |
-| `MaxDelegationDepth` | 1 | 2 | 4 | Delegation depth (A→B→C = 2) |
-| `MaxTokensConsumed` | 8,000 | 16,000 | 64,000 | LLM tokens consumed |
-| `MaxSpawnedAgents` | 1 | 3 | 10 | Dynamically created agents |
+| `MaxToolCalls` | 8 | 15 | 50 | Tool calls; the strategy counts one per task handed out |
+| `MaxDelegationDepth` | 1 | 2 | 4 | Delegation hops; the crew-wide counter is never decremented |
+| `MaxTokensConsumed` | 8,000 | 16,000 | 64,000 | Tokens recorded against the budget (delegated executions) |
+| `MaxSpawnedAgents` | 1 | 3 | 10 | Agents created through `SpawnAgentTool` |
 | `MaxWallTime` | 2 min | 5 min | 15 min | Maximum execution duration |
 
-**Child budgets**: when an agent delegates, it creates a child budget derived from its own remaining resources (via `CreateChildBudget()`). The child budget is always less than or equal to the remaining parent budget.
+`ICrewOrchestrationService` always runs this mode with **`AgentExecutionBudget.Permissive`**; another budget requires calling `AutonomousProcessStrategy.ExecuteAutonomousAsync(crew, budget, …)` directly.
+
+**Child budgets**: `CreateChildBudget()` gives the delegate the parent's **remaining** allowance on each axis (one less delegation level, at least 1 tool call and 100 tokens). Each child budget is an independent copy: two delegates each receive the full remainder.
 
 ### A2A communication
 
 ```csharp
-// Request/Response
+// Request/Response (default timeout: 30 s)
 var request = AgentChannelRequest.Create(
     from: analyst.Id,
     to: researcher.Id,
     intent: "find_data",
     payload: "2025 market statistics");
 
-var response = await channel.RequestAsync(request, timeout);
+var response = await channel.RequestAsync(request, timeout: TimeSpan.FromSeconds(30));
 
-// Broadcast (fire-and-forget)
+// Broadcast (no response expected) to the members registered for that crew
 await channel.BroadcastAsync(analyst.Id, crew.Id, "Results available", ct);
 ```
 
@@ -552,38 +570,31 @@ goal: "Autonomous demo"
 process: autonomous
 # There is NO autonomous budget key in YAML: a YAML autonomous crew always runs
 # under AgentExecutionBudget.Permissive (50 tool calls, depth 4, 15 min,
-# 64 000 tokens, 10 spawns). The budget is configurable through the C# API only —
-# see the Autonomous guide and yaml-schema.md.
+# 64 000 tokens, 10 spawns) — see the Autonomous guide and yaml-schema.md.
 ```
 
 ### Advantages
 
-- **Maximum adaptability**: agents react to the context in real time
-- **Dynamic spawn**: ability to create specialists on demand
-- **Guaranteed termination**: the multi-dimensional budget prevents infinite executions
-- **Rich communication**: A2A request/response with correlation
-- **Presets**: quick configuration (Strict/Default/Permissive)
-- **Scalability**: agents distribute the work organically
+- **LLM-driven assignment**: the manager matches each task to an agent
+- **Second chance**: a failed task is handed to a peer
+- **Guaranteed termination**: the budget and its wall time bound the run
+- **Budget telemetry**: the crew metadata carries the consumption of each axis
 
 ### Drawbacks
 
-- **High complexity**: the hardest mode to configure and debug
-- **Unpredictable cost**: token consumption depends on the agents' decisions
-- **Non-deterministic**: two identical runs may follow different paths
-- **Overly strict budget**: can cut execution before a complete result is obtained
-- **Observability**: requires good logging (BudgetSnapshot) to understand the behavior
+- **Experimental**: `ORKEXP002`, semantics may still move
+- **Non-deterministic**: the manager's choices vary between runs
+- **Budget exhausted = run cut short**: the remaining tasks are not executed, and the crew is still reported as completed
+- **Fixed budget** through the orchestrator (Permissive)
 
 ### When to use it
 
 - Exploration (research, R&D, exploratory analysis)
-- Ill-defined problems where the optimal strategy is not known in advance
-- Systems needing self-repair (an agent detects a problem → delegates the fix)
-- Multi-step scenarios where each step may reveal new sub-tasks
+- Heterogeneous teams where the task-to-agent match is not known in advance
 
 ### When not to use it
 
 - Deterministic, well-defined workflows (Sequential or Graph)
-- LLM-budget-constrained environments with no headroom
 - Regulatory scenarios requiring full traceability of the execution path
 
 > **See also**: [Autonomous orchestration](./autonomous.md) for the full details.
@@ -596,48 +607,50 @@ process: autonomous
 Do your tasks have dependencies between them?
 │
 ├── NO
-│   └── Do you need maximum reliability (multiple perspectives)?
+│   └── Do you want several agents to attempt each task?
 │       ├── YES → Consensual
 │       └── NO → Parallel
 │
 └── YES
-    └── Does the workflow have conditional branches or loops?
+    └── Should a flaky task be retried automatically?
         │
         ├── NO
-        │   └── Do you need quality control (manager review)?
+        │   └── Do you need a manager to assign and review?
         │       ├── YES → Hierarchical
         │       └── NO → Sequential
         │
         └── YES
-            └── Is the optimal strategy known in advance?
-                ├── YES → Graph (modelable workflow)
-                └── NO → Autonomous (exploration)
+            └── Retry the same task, or hand it to a peer?
+                ├── Same task, bounded → Graph
+                └── A peer, LLM-assigned → Autonomous
 ```
 
 ---
 
 ## Combinations and complementarity
 
-ProcessTypes are not mutually exclusive at the scale of a system. It is common to combine several strategies:
+ProcessTypes are exclusive at the scale of one crew, but they combine with the other building blocks:
 
-**Graph + FSM**: The Graph orchestrates the Crew (inter-task level), while the FSM manages the internal execution of each task (intra-task level). Both use `CircuitBreakerPolicy` with the same presets.
+**Sequential/Graph + delegation tools**: in these two modes, an agent with `allowDelegation: true` receives `delegate_work_to_coworker` and `ask_question_to_coworker`, giving a local hierarchical behavior without a manager.
 
-**Sequential + Hierarchical**: A sequential Crew can contain tasks whose agents use `DelegateWorkTool` to simulate a local hierarchical behavior.
+**Graph + FSM**: `GraphProcessStrategy` and the [FSM](./fsm.md) share `CircuitBreakerPolicy` and its presets. The FSM (`TaskExecutionStateMachine`) is a Domain building block for your own code: no strategy drives its tasks through it today.
 
-**Autonomous + Graph**: An autonomous agent can decide to create a Graph sub-workflow to structure a complex sub-task it discovered dynamically.
+**Flows**: to chain a crew with LLM calls, tool calls, conditions or human input, a [flow](./flows.md) (`IFlowEngine`) runs a crew as one of its steps — a C# API today, not reachable from `orkeon run`.
+
+**Scripting DSL**: a `.ork.ts` crew declares its mode with `crewBuilder().process("…")` (the same six values). The declarative shape (`globalThis.crew = crew`) runs through the strategies above; the procedural shape (`await crew.run()`) runs agent bodies in declaration order and only tags the mode — see [Scripting](../architecture/scripting.md).
 
 ---
 
 ## Cost and performance summary
 
-| ProcessType | LLM calls (N tasks, M agents) | Latency | Predictability |
-|-------------|----------------------------------|---------|---------------|
-| Sequential | N | Σ(durations) | ⭐⭐⭐⭐⭐ |
-| Hierarchical | N × (1 assign + 1-3 reviews) | Σ(durations) × 1.5-3 | ⭐⭐⭐⭐ |
-| Parallel | N | max(durations) | ⭐⭐⭐⭐ |
-| Consensual | N × M × rounds | Σ(max(durations) × rounds) | ⭐⭐⭐ |
-| Graph | N × (1 + retries) | Variable | ⭐⭐⭐ |
-| Autonomous | Unpredictable (budget-bounded) | Variable (wall-time bounded) | ⭐⭐ |
+| ProcessType | Executions (N tasks, M agents) | Extra LLM calls | Latency | Predictability |
+|-------------|------------------|-----------------|---------|---------------|
+| Sequential | N | — | Σ(durations) | ⭐⭐⭐⭐⭐ |
+| Hierarchical | N × (1 to 3) | N assignments + N × (1 to 3) reviews | Σ(durations) × 1.5–3 | ⭐⭐⭐⭐ |
+| Parallel | N | — | Σ(longest task of each wave) | ⭐⭐⭐⭐ |
+| Consensual | N × M × rounds (+ N fallback) | — | Σ(max(durations) × rounds) | ⭐⭐⭐ |
+| Graph | N × (1 + retries) | — | Σ(durations of the attempts) | ⭐⭐⭐⭐ |
+| Autonomous | N (+ delegations) | N assignments | Bounded by the wall time | ⭐⭐ |
 
 ---
 
@@ -647,7 +660,9 @@ ProcessTypes are not mutually exclusive at the scale of a system. It is common t
 |-------|----------|
 | Architecture and core concepts | [Overview](../getting-started/overview.md) |
 | Detailed features | [YAML and Builders](../getting-started/yaml-and-builders.md) |
-| FSM orchestration (intra-task) | [./fsm.md](./fsm.md) |
-| Graph orchestration (inter-task) | [./graph.md](./graph.md) |
+| YAML schema (`process`, `graphConfig`, `circuitBreaker`) | [YAML schema](../architecture/yaml-schema.md) |
+| FSM (Domain building block) | [./fsm.md](./fsm.md) |
+| Graph orchestration | [./graph.md](./graph.md) |
 | Autonomous orchestration | [./autonomous.md](./autonomous.md) |
+| Flows (steps chaining crews, LLM and tools) | [./flows.md](./flows.md) |
 | Blueprint for a new ProcessType | [../guides/blueprint.md](../guides/blueprint.md) |

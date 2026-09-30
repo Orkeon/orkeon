@@ -50,27 +50,64 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 | Hooks de kickoff | `AddOrkeonKickoffHooks()` | Application | `ICrewKickoffHookRunner` | Expérimental |
 | Contexte de codebase (RaggableTree) | `AddRaggableTree(options)` — ⚠️ **les hôtes runner font l'inverse (opt-out)** : `RunnerHost` l'enregistre par défaut et `RaggableTree:Enabled = false` le désactive | Analysis | `ICodebaseContextProvider` | Bêta |
 | Sous-système RAG (RAG-02…06) | `AddOrkeonRag(config)` (namespace `Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) ; profils `fast`/`balanced`/`quality`/`adaptive`/`corrective` via `Orkeon:Rag:Profile` (défaut `fast`) ; `balanced`/`quality`/`adaptive` exigent le cross-encoder ONNX — `AddOrkeonOnnxReranker()` (`Orkeon.Rag.Onnx` + `Orkeon.Rag.Onnx.Model`, poids embarqués, hors-ligne) ; `corrective` non (le graphe boucle au lieu de reranker) ; le repli web correctif est purement config — `AddOrkeonRag` câble déjà le transport, les deux interrupteurs `Enabled` gouvernent (`Orkeon:Rag:Corrective:WebFallback` politique, `Orkeon:Rag:WebFallback` transport) — voir la section détaillée plus bas | Orkeon.Rag.Abstractions / Orkeon.Rag / Orkeon.Tools.Rag / Orkeon.Rag.Onnx / Orkeon.Rag.Onnx.Model | `IRagPipeline` (à étages / graphe correctif), `IRagProfileResolver`, `IIngestionPipeline`, `IDocumentStore`, `IRagEvalHarness`, `rag_search`/`rag_ingest`/`rag_eval` (`IBaseTool`) | Bêta |
-| Étages de middleware EventHub | `AddOrkeonEventHubObservability()` (journalisation + télémétrie) · `AddOrkeonEventHubAcl(policy?)` (applique les blocs `links:` des crews — **déjà câblé par le host du runner et `orkeon-host`, avec le défaut permissif** : une crew sans liens se comporte comme avant, une crew qui déclare y est tenue ; seule la politique fermée reste un opt-in) · `AddOrkeonEventHubIdempotency(capacity?)` (point à point seulement, en mémoire, ne survit pas au processus) · `AddOrkeonEventHubValidation()` (un `SchemaId` déclaré doit être enregistré — l'existence du contrat, pas la conformité de la charge utile). Chacun est indépendant ; l'ordre d'enregistrement est l'ordre du pipeline — voir [EventHub §12](../architecture/event-hub-and-crew-lifecycle.md) | Infrastructure | `IEventHubMiddleware`, `ICrewLinkProvider`/`ICrewLinkRegistry`, `IEventSchemaRegistry` | Beta |
+| Étages de middleware EventHub | `AddOrkeonEventHubObservability()` (journalisation + télémétrie) · `AddOrkeonEventHubAcl(policy?)` (applique les blocs `links:` des crews — **déjà câblé par le host du runner et `orkeon-host`, avec le défaut permissif** : une crew sans liens se comporte comme avant, une crew qui déclare y est tenue ; seule la politique fermée reste un opt-in) · `AddOrkeonEventHubIdempotency(capacity?)` (point à point seulement, en mémoire, ne survit pas au processus) · `AddOrkeonEventHubValidation()` (un `SchemaId` déclaré doit être enregistré — l'existence du contrat, pas la conformité de la charge utile). Chacun est indépendant ; l'ordre d'enregistrement est l'ordre du pipeline — voir [EventHub §12](../architecture/event-hub-and-crew-lifecycle.md) | Infrastructure | `IEventHubMiddleware`, `ICrewLinkProvider`/`ICrewLinkRegistry`, `IEventSchemaRegistry` | Bêta |
 | Persistance d'état d'exécution (R3.8) | `AddCrewExecutionStatePersistence(...)` | Infrastructure | `ICrewExecutionStateManager` (durable via `IStateStore`) | Bêta |
 | Barrière de permissions (par appel d'outil) | `AddOrkeonPermissionGate(config)` + `Orkeon:Security:PermissionGate:Enabled = true` | Infrastructure | `IPermissionGate` (`ModePermissionGate`) — consommé par la boucle scriptée `ctx.llm.act` | Bêta |
 | Shell : interpréteurs & git mutant | config seule : `Orkeon:Tools:Shell:AllowInterpreters = true` | Tools.Code | (ré-enregistre `ShellCommandTool` avec `allowInterpreters: true` — équivalent RCE, avertissement de sécurité émis) | Bêta |
 | Shell : allowlist personnalisée | config seule : `Orkeon:Tools:Shell:ExtraAllowedCommands` (additive) / `Orkeon:Tools:Shell:AllowedCommands` (remplacement intégral — annule `AllowInterpreters`) | Tools.Code | (façonne l'allowlist d'exécutables de `ShellCommandTool` ; section absente/vide = défauts) | Bêta |
-| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
+| Streaming console LLM natif | `AddLlmConsoleStreaming(config)` + `Orkeon:Cli:ConsoleStreaming:Enabled = true` | Cli.Commands.Scripting | `ILlmDeltaSink` (`ConsoleLlmDeltaSink`) — deltas `ctx.llm.act` streamés rendus sur la console REPL | Bêta |
 | Système de plugins | `AddOrkeonPlugins(...)` (jamais enregistré implicitement) | Orkeon.Plugins | `IOrkeonPlugin`, `IPluginRegistry` — découverte par répertoire, `AssemblyLoadContext` collectables isolés ; ⚠️ les assemblies chargées s'exécutent en pleine confiance — voir [Plugins](../architecture/plugins.md) | Bêta |
 | Embeddings locaux sur machine | `AddOrkeonLocalEmbeddings()` | Tools.Embeddings.Local | `IEmbeddingProvider` (BGE-micro-v2 ONNX, 384 dims, CPU, sans clé API) — premier maillon de la chaîne de résolution des embeddings | Bêta |
-| Fournisseurs de mémoire externes (LanceDB, Redis) | `AddOrkeonLanceDb(...)` / `AddOrkeonRedisMemory(...)` (ou clés de type via `MemoryProviderFactory`). ⚠️ ChromaDB et Pinecone ne sont **pas** opt-in : `AddOrkeonInfrastructure(configuration)` les enregistre automatiquement quand leur section `Orkeon:ChromaDb`/`Orkeon:Pinecone` existe | Infrastructure | Implémentations `IMemoryProvider` — voir [Système de mémoire](../architecture/memory-system.md) | Bêta |
-| Mémoire cognitive | `AddOrkeonCognitiveMemory(...)` | Infrastructure | Couche de mémoire cognitive au-dessus d'`IMemoryProvider` | Expérimental |
+| Fournisseurs de mémoire externes (LanceDB, Redis) + migration | `AddOrkeonLanceDb(configuration)` / `AddOrkeonRedisMemory(configuration)` (ou clés de type via `Memory:Provider` → `MemoryProviderFactory`) · `AddOrkeonMemoryMigration()`. ⚠️ ChromaDB et Pinecone ne sont **pas** opt-in : `AddOrkeonInfrastructure(configuration)` les enregistre automatiquement quand leur section `Orkeon:ChromaDb`/`Orkeon:Pinecone` existe. Seule `AddOrkeonRedisMemory` réassocie `IMemoryProvider` (et le provider Redis exige encore `InitializeAsync`) ; les extensions LanceDB/ChromaDB/Pinecone enregistrent la classe **concrète** du provider | Infrastructure | `RedisMemoryProvider`, `LanceDbMemoryProvider` (+ `LanceDbMigrationService`), `MemoryMigrationService` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration) | Bêta |
+| Mémoire cognitive | `AddOrkeonCognitiveMemory(configuration)` (`Orkeon:CognitiveMemory`) | Infrastructure | `ICognitiveMemoryService` — analyse LLM, détection de contradictions, consolidation, score de rappel composite ; requiert un `ILlmProvider` et un `IEmbeddingProvider` — voir [Système de mémoire](../architecture/memory-system.md#mémoire-cognitive) | Expérimental |
+| Journalisation des échanges LLM | `AddLlmExchangeLogging(logDirectory, options?)` (capture JSONL complète + résumé structuré, handler injecté dans tous les clients `IHttpClientFactory`) · `AddLlmExchangeFileLogging(logDirectory)` (JSONL seul) — câblé par `RunnerHost` uniquement quand un run passe `--llm-log` (section `LlmLogging`) | Infrastructure | `ILlmExchangeLogger`, `LlmLoggingDelegatingHandler` — voir [Fournisseurs LLM](../architecture/llm-providers.md) | Bêta |
+| Outil d'entrée humaine | `AddOrkeonHumanInput()` (provider de repli qui approuve tout) / `AddOrkeonHumanInput<TProvider>()` — câblé par le chemin d'exécution des runners | Infrastructure | `human_input` (`IBaseTool`), `IHumanInputProvider` | Bêta |
+| Outils de session | `AddOrkeonSessionTools(configuration?)` (`Llm:AvailableModels`) — câblé par `RunnerHost` et le REPL | Infrastructure | `session_store`, `session_snip`, `token_budget`, `memory_store`, `session_cost`, `session_stats` ; `ISessionBufferService`, `ICategoryMemoryStore` — voir [Agent de code (TS)](../architecture/coding-agent-ts.md) | Bêta |
+| Outil de recherche sémantique | `AddSemanticSearchTool()` (`Orkeon.Hosting`) — câblé par `orkeon run` | Hosting | `semantic_search` (`SearchTool`) + adaptateur `IEmbeddingService` sur `IEmbeddingProvider` + `IVectorMemoryStore` en mémoire | Bêta |
+| Cœur EventHub + outils agents | `AddOrkeonInMemoryEventHub()` · `AddOrkeonEventHubTools()` — tous deux câblés par `RunnerHost` (donc `orkeon run` et `orkeon-host`) | Infrastructure / Tools.EventHub | `IEventHub` (in-process), les sept outils EventHub — voir [EventHub](../architecture/event-hub-and-crew-lifecycle.md) | Bêta |
+| Outils e-mail | `AddOrkeonEmailTools(configuration)` (`Orkeon:Tools:Email`, inerte tant qu'aucun compte n'est déclaré) · `AddOrkeonEmailTokenStore(fileSystem, virtualDirectory)` (store des jetons OAuth) — tous deux câblés par `RunnerHost` ; le REPL ne câble que les outils | Tools.Email | les 13 outils `email_*` — voir [Outils e-mail](../guides/email.md) | Bêta (campagne réelle en attente) |
+| Pont Microsoft Agent Framework | `AddOrkeonAgentFramework()` | Interop.AgentFramework | `ICrewAgentFactory` (une crew enregistrée vue comme `AIAgent`) — voir [ADR-010](../adr/ADR-010-agent-framework-interop.md) | Bêta |
 
 
 > **Hors de ce catalogue — enregistrés par `AddOrkeonInfrastructure()` et
 > gouvernés par la configuration, pas par un geste d'enregistrement** : MCP
 > (section `MCP`, via la surcharge `IConfiguration`, ou l'hôte des runners dès que
-> `MCP:Servers` déclare un serveur), le store de checkpointing
-> sans paramètre (`AddOrkeonCheckpointing()` ; les variantes SQLite/Postgres
-> restent explicites), le pipeline Guardian, le moteur de Flows, Training,
-> Consensus, CostTracking, Encryption, Auth et CodeSandbox. Leurs sections de
-> configuration sont cartographiées dans la
+> `MCP:Servers` déclare un serveur), la télémétrie et la recherche vectorielle (même
+> surcharge), le store de checkpointing sans paramètre (`AddOrkeonCheckpointing()` ;
+> les variantes SQLite/Postgres restent explicites), Evaluation, le moteur de Flows et sa
+> visualisation ([Flows](../orchestration/flows.md)), Training, Consensus, CostTracking, YAML, Encryption et CodeSandbox. Le
+> pipeline Guardian, les sanitizers de prompt et de résultats d'outils et les options
+> Auth sont eux aussi enregistrés, mais **aucun chemin d'exécution ne les invoque** — un
+> hôte qui les veut les appelle lui-même (voir [Sécurité](../architecture/security.md)).
+> Leurs sections de configuration sont cartographiées dans la
 > [Référence de configuration](./configuration.md).
+>
+> **Les familles d'outils** s'enregistrent par leurs propres extensions, que l'hôte des
+> runners et le REPL appellent : `AddOrkeonFileSystemTools`, `AddOrkeonWebTools` (plus les
+> extensions à outil unique `AddOrkeonWebSearchTool`, `AddOrkeonBraveSearchTool`,
+> `AddOrkeonCacheSearchTool`, `AddOrkeonSlackTool`, `AddOrkeonSlackReadTool`),
+> `AddOrkeonDataTools` (plus `AddRelationalDatabaseTools`, `AddMongoDbTools`,
+> `AddGraphDatabaseTools`), `AddOrkeonCodeTools`, `AddOrkeonAbstractionTools`,
+> `AddRaggableTreeTools` — voir l'[inventaire des outils](../tools/inventory.md).
+
+## Briques enregistrées par `AddOrkeonInfrastructure()`
+
+Ce ne sont pas des opt-ins, mais des extensions publiques qu'un hôte croise quand il compose
+son propre conteneur : chacune est appelée par `AddOrkeonInfrastructure()` (toutes utilisent
+`TryAdd*`, les rappeler est donc sans effet), et chacune peut aussi s'appeler seule quand un
+hôte construit un conteneur minimal sans l'infrastructure complète.
+
+| Extension | Enregistre | Consommée par | L'appeler soi-même quand |
+|---|---|---|---|
+| `AddOrkeonYaml()` | `CrewFactoryOptions` (options simples, résolution d'outils tolérante), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | le chargement de crews des runners ; `orkeon forge` | vous chargez ou exportez des crews YAML sans `AddOrkeonInfrastructure()`. La résolution stricte des outils est `Orkeon:CrewFactory:StrictTools`, que lit `RunnerHost` (défaut `true` chez lui) |
+| `AddOrkeonFlows()` | `IFlowStepExecutor`, `IFlowEngine` → `FlowEngine`, `YamlFlowDefinitionLoader` | rien de livré — le système de Flows est une API C# uniquement | vous exécutez des flows depuis votre propre code — voir [Flows](../orchestration/flows.md) |
+| `AddOrkeonFlowVisualization()` | `FlowExecutionTracker` (`FlowGraphSerializer` est statique) | rien de livré — le moteur n'alimente pas le tracker | vous affichez la progression d'un flow — voir [Flows](../orchestration/flows.md) |
+| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`OutputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` avec les quatre gardes branchés sur leurs phases | rien dans le chemin d'exécution | vous voulez les gardes : résolvez `GuardianPipeline` et exécutez-le autour de vos propres appels — voir [Sécurité](../architecture/security.md) |
+| `AddOrkeonAuth()` | `AuthenticationGuard`, `AzureAdOptions` (`Orkeon:Auth:AzureAD`), `OidcOptions` (`Orkeon:Auth:OIDC`) | rien — aucun `IAuthenticationProvider` n'est enregistré et le garde n'est pas dans le pipeline Guardian | vous authentifiez des appelants : enregistrez un `IAuthenticationProvider` et invoquez le garde vous-même |
+| `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | rien de livré | vous faites tourner une boucle d'entraînement/feedback depuis votre code (résolvez `ITrainingOrchestrator`) |
+
+Le service de migration de mémoire est la seule extension de déplacement de données qui n'est
+*pas* enregistrée par défaut : `AddOrkeonMemoryMigration()` — voir [Système de mémoire](../architecture/memory-system.md#sélection-par-configuration).
 
 **Maturité** — *Bêta* : implémentation complète et testée, API susceptible d'évoluer
 avant la v1. *Expérimental* : implémentation fonctionnelle mais non câblée dans le
@@ -123,6 +160,11 @@ partiel (signalé au cas par cas ci-dessous).
     `AddOrkeonInfrastructure()` et après un éventuel dépôt custom (ordre recommandé,
     cf. [Principe](#principe)) ; un dépôt custom enregistré *après* `AddOrkeonA2A(...)`
     gagne (dernier enregistrement).
+- **Ce que les pièces livrées ne font pas** : l'`IA2ATaskRouter` par défaut associe une tâche à
+  un agent mais ne l'**exécute pas** — il répond `Completed` avec un accusé de routage — et
+  aucun hôte livré (`orkeon run`, `orkeon-host`, le REPL) n'appelle `AddOrkeonA2A` ni ne démarre
+  `IA2AServer`. Voir [Conformité A2A — Exécution des tâches](./a2a-conformance.md#exécution-des-tâches)
+  et [Activation](./a2a-conformance.md#activation).
 - **Limites connues** : le store in-memory est local au processus — pour un annuaire
   d'agents multi-instances, fournir un `IAgentRepository` custom adossé à un stockage
   partagé externe (il sera respecté tel quel par l'extension).
@@ -177,7 +219,10 @@ tâche, le coût estimé.
   `AddOrkeonInfrastructure()`, la chaîne d'audit du socle (sinks structuré +
   in-memory, options `Security:Audit`) est utilisée.
 - **Limites connues** : la profondeur du rapport dépend des événements réellement
-  audités par l'hôte ; aucun contrôle automatisé n'est exécuté.
+  audités par l'hôte — et le seul composant du framework qui écrit dans `IAuditLogger`
+  est le pipeline Guardian, qu'aucun chemin d'exécution ne lance : un hôte qui veut un
+  rapport significatif exécute lui-même le pipeline Guardian (ou écrit des événements
+  d'audit) ; aucun contrôle automatisé n'est exécuté.
 
 ## DLP — `AddOrkeonDlp()`
 
@@ -389,14 +434,17 @@ tâche, le coût estimé.
 - **Activation** (deux conditions — un store **et** l'option) :
   ```csharp
   // 1. Un state store de checkpointing (in-memory, SQLite ou PostgreSQL)
-  services.AddOrkeonSqliteCheckpointing("Data Source=orkeon-state.db");
+  services.AddOrkeonSqliteCheckpointing("Data Source=/output/orkeon-state.db"); // chemin virtuel, montage en écriture
   // ou : services.AddOrkeonCheckpointing();              // in-memory
-  // ou : services.AddOrkeonPostgresCheckpointing(configuration);
+  // ou : services.AddOrkeonPostgresCheckpointing(configuration); // Orkeon:Checkpointing:*
 
   // 2. L'opt-in de persistance
   services.AddCrewExecutionStatePersistence();             // code-first
   services.AddCrewExecutionStatePersistence(configuration); // lie Orkeon:ExecutionState:Persistence
   ```
+  Le store SQLite résout sa `Data Source` via le VFS comme le provider mémoire SQLite :
+  il lui faut un `IFileSystemService` enregistré (`AddOrkeonFileSystem(...)`) et un chemin
+  sur un montage accessible en écriture, sinon il lève `FileAccessDeniedException`.
   Avec la surcharge `AddOrkeonInfrastructure(IConfiguration)`, la présence de la
   section `Orkeon:ExecutionState:Persistence` (`Enabled`, `DeleteFromStoreOnArchive`)
   suffit à lier les options.
@@ -437,32 +485,35 @@ tâche, le coût estimé.
   comporte exactement comme avant. Les scripts optent pour un mode à l'appel via
   l'option d'act `permissionMode`.
 
-## Shell : interpréteurs, allowlist & réécriture VFS — `Orkeon:Tools:Shell:*`
+## Shell : interpréteurs & git mutant — `Orkeon:Tools:Shell:AllowInterpreters`
 
-- **`AllowInterpreters = true`** (config seule, lue par `AddOrkeonCodeTools()`) :
-  réactive `node`/`dotnet`/`npm`/`find` ET lève la restriction git lecture-seule
-  (`git add`/`commit`/`branch` fonctionnent). Équivalent RCE sur l'hôte — à réserver
-  aux hôtes coding-agent de confiance (le REPL scripted-commands est le consommateur
-  de référence — voir `examples/cli-ts-commands/` ; une commande de commit ne marche
-  pas sans). Avertissement de sécurité loggé.
-- **Allowlist personnalisée** (deux clés tableau de chaînes) :
-  - `ExtraAllowedCommands` — **additive** sur l'allowlist par défaut (ou de
-    remplacement) ; la voie recommandée pour autoriser `make`/`cargo`/etc. Compose
-    avec `AllowInterpreters`.
-  - `AllowedCommands` — **remplacement** intégral verbatim ; par contrat du ctor de
-    `ShellCommandTool`, il annule `AllowInterpreters` et réactive la restriction git
-    lecture-seule.
-  - Une section absente ou vide se lie à `null` (défauts) — jamais à un tableau
-    vide, qui bloquerait toute commande.
-- **Réécriture de chemins VFS** (toujours active, sans flag) : les arguments qui
-  nomment un chemin virtuel préfixé par un mount (y compris la forme
-  `--out=/workspace/dist`) sont résolus virtuel→physique avant le démarrage du
-  processus — un chemin refusé fait échouer l'appel avec la raison expurgée — et
-  stdout/stderr sont réécrits physique→virtuel : le modèle ne voit jamais que des
-  chemins virtuels. Mounts `AgentFacing`, matching ordinal ; sans mount, les deux
-  passes sont des no-ops.
-- **Défaut rétro-compatible** : aucune clé → allowlist stricte lecture-seule,
+- **Activation** : config seule — `AddOrkeonCodeTools()` lit le flag et, quand il vaut
+  `true`, construit `ShellCommandTool` avec `allowInterpreters: true` (réactive
+  `node`/`dotnet`/`npm`/`find` ET lève la restriction git lecture-seule, si bien que
+  `git add`/`commit`/`branch` fonctionnent). L'outil journalise son avertissement de
+  sécurité quand il est actif.
+- **Sécurité** : équivalent RCE sur l'hôte — à réserver aux hôtes coding-agent de
+  confiance qui tournent dans un espace de travail confiné (le REPL scripted-commands est
+  le consommateur de référence — voir `examples/cli-ts-commands/` ; une commande de commit
+  ne peut pas marcher sans).
+- **Défaut rétro-compatible** : flag absent → allowlist stricte lecture-seule,
   comportement historique inchangé.
+- **Allowlist personnalisée** (deux clés tableau de chaînes, toutes deux lues par
+  `AddOrkeonCodeTools()`) :
+  - `Orkeon:Tools:Shell:ExtraAllowedCommands` — **additive** sur l'allowlist par défaut
+    (ou sur une liste de remplacement) ; la voie recommandée pour autoriser
+    `make`/`cargo`/etc. sur un hôte de confiance. Compose avec `AllowInterpreters`.
+  - `Orkeon:Tools:Shell:AllowedCommands` — **remplacement** intégral verbatim ; par
+    contrat du ctor de `ShellCommandTool`, il annule `AllowInterpreters` et réactive la
+    restriction git lecture-seule.
+  - Une section absente ou vide se lie à `null` (défauts) — jamais à un tableau vide,
+    qui bloquerait toute commande.
+- **Réécriture de chemins VFS** (toujours active, sans flag) : les arguments qui nomment
+  un chemin virtuel préfixé par un montage (y compris `--out=/workspace/dist`) sont
+  résolus virtuel→physique avant le démarrage du processus — un chemin refusé fait
+  échouer l'appel avec la raison expurgée — et stdout/stderr sont réécrits
+  physique→virtuel : le modèle ne voit jamais que des chemins virtuels. Montages
+  `AgentFacing`, correspondance ordinale ; sans montage, les deux passes sont sans effet.
 
 ## Streaming console LLM natif — `AddLlmConsoleStreaming(configuration)`
 
@@ -490,9 +541,9 @@ vérifient :
 
 1. qu'**aucun port dormant du jeu opt-in d'origine** n'est enregistré par
    `AddOrkeonApplication()` / `AddOrkeonInfrastructure()` (les deux
-   surcharges) — les lignes ajoutées ensuite (plugins, embeddings locaux,
-   LanceDB/Redis, mémoire cognitive) sont gardées par leurs propres suites,
-   pas par ce test ;
+   surcharges) — les lignes ajoutées ensuite (plugins, embeddings locaux, providers
+   de mémoire, mémoire cognitive, les enregistrements d'outils et de journalisation…)
+   sont gardées par leurs propres suites, pas par ce test ;
 2. que chaque `AddOrkeonXxx()` produit un graphe **résolvable** seul (avec logging et,
    le cas échéant, une `IConfiguration`) ;
 3. que les opt-ins **composent** avec le socle (sémantique `TryAdd`, pas de doublons).

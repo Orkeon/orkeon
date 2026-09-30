@@ -63,3 +63,8 @@ the family has since grown to **nine** `Tools.*` projects, eight of which consum
 `Tools.Abstractions` (only `Orkeon.Tools.Rag` implements `IBaseTool` directly). The
 invariant this ADR protects — `Tools.Abstractions` keeps `Domain` as its only
 dependency — still holds and remains the thing to watch in reviews.
+
+Since then (2026-09-26), `Orkeon.Tools.Email` ([ADR-012](./ADR-012-email-tool-family.md))
+brought the family to **ten** projects: all nine families reference `Tools.Abstractions`
+(`Orkeon.Tools.Rag` included, although its three tools still implement `IBaseTool`
+directly), and `Tools.Abstractions` still references `Orkeon.Domain` alone.

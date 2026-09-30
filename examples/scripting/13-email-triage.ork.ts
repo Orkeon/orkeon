@@ -19,6 +19,9 @@
 //   "Llm"                 the model that sorts. A run resolves ONE settings file, so it is
 //                         declared here too: the catalogue's local Docker Model Runner, which any
 //                         profile of examples/appsettings/ can replace.
+//   "Scripting:Limits"    ExecutionTimeout raised to 10 minutes. A script's default is 30 s of
+//                         wall-clock time for the whole run, awaited IMAP reads and model calls
+//                         included; one triage takes longer than that.
 //
 //   export TRIAGE_GMAIL_APP_PASSWORD='abcdefghijklmnop'
 //   dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/scripting/13-email-triage.ork.ts \

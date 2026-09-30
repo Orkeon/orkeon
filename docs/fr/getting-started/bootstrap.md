@@ -21,22 +21,31 @@ disparaît une fois la 1.0.0 finale. Les deux commandes écrivent les entrées
 `<PackageReference>` correspondantes dans votre `.csproj` — une édition à la main donne
 exactement le même résultat.
 
-`Orkeon` embarque toute la fermeture du cœur (Domain, Application, Infrastructure,
-Hosting, Plugins, RAG, Analysis, Scripting) : il n'existe pas de paquet séparé
-`Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure`. Les deux opt-ins
-`Orkeon.Rag.Onnx` et `Orkeon.Tools.Embeddings.Local` s'ajoutent de la même façon quand
-vous en avez besoin. La liste complète est la
+`Orkeon` embarque la fermeture du cœur en un seul paquet — Domain, Application,
+Infrastructure, les moteurs RAG et RaggableTree (`Orkeon.Analysis`),
+`Orkeon.Tools.Abstractions` et trois satellites `Orkeon.Constants.*` ; il n'existe pas de
+paquet séparé `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure`. L'hôte des
+runners (`Orkeon.Hosting`, `RunnerHost`), le chargeur de plugins (`Orkeon.Plugins`) et le
+DSL de scripting (`Orkeon.Scripting`) n'en font **pas** partie : ils sont livrés dans la
+CLI `orkeon`, pas sur NuGet — c'est pourquoi l'hôte ci-dessous est câblé à la main. Les
+opt-ins `Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local`,
+`Orkeon.Interop.AgentFramework` et `Orkeon.Hosting.Aspire` s'ajoutent de la même façon
+quand vous en avez besoin. La liste complète est la
 [matrice de publication](../reference/publication-matrix.md).
 
 ## Bootstrap et injection de dépendances
 
-L'intégration d'Orkeon dans une application .NET s'effectue par injection de dépendances au démarrage. Voici un exemple complet dans `Program.cs` :
+L'intégration d'Orkeon dans une application .NET s'effectue par injection de dépendances au démarrage. Voici un exemple complet dans `Program.cs`, sur l'hôte générique .NET (le paquet `Microsoft.Extensions.Hosting` — un projet `dotnet new worker` le référence déjà) :
 
 ```csharp
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.DependencyInjection;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Infrastructure.LLMs;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
@@ -46,13 +55,24 @@ using Orkeon.Tools.Email.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
+        // 0. Le modèle, enregistré AVANT AddOrkeonInfrastructure() : les services LLM que
+        //    cet appel enregistre sont des replis TryAdd sur LlmConfig.Default() — le modèle
+        //    OpenAI par défaut, sans clé. Ici : un modèle Ollama local.
+        var llm = LlmConfig.Create("qwen2.5:1.5b") with { BaseUrl = new Uri("http://localhost:11434") };
+        services.AddOrkeonLlmProvider(
+            sp => new OllamaLlmProvider(llm, sp.GetRequiredService<IHttpClientFactory>()), llm);
+
         // 1. Couche Application (CQRS, orchestration, services)
         services.AddOrkeonApplication();
 
-        // 2. Couche Infrastructure (LLM, mémoire, sécurité, YAML)
+        // 2. Couche Infrastructure (plomberie LLM, mémoire, sécurité, YAML)
         services.AddOrkeonInfrastructure();
 
-        // 3. Suites d'outils
+        // 3. Le système de fichiers virtuel — montages lus dans Orkeon:FileSystem:Mounts.
+        //    Obligatoire : le chargeur YAML, les outils fichier et les livrables passent tous par lui.
+        services.AddOrkeonFileSystem(context.Configuration);
+
+        // 4. Suites d'outils
         // FileSystem : FileRead, FileWrite, DirectoryRead, DirectorySearch, CountPattern
         services.AddOrkeonFileSystemTools();
 
@@ -72,9 +92,41 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-// Démarrer l'application
-await host.RunAsync();
+// 5. Le registre d'outils démarre vide : donnez-lui les outils enregistrés, pour que les
+//    noms qu'une crew YAML liste sous `tools:` se résolvent.
+var registry = host.Services.GetRequiredService<IToolRegistry>();
+foreach (var tool in host.Services.GetServices<IBaseTool>())
+    await registry.RegisterToolAsync(tool);
+
+// Un hôte de longue durée : await host.RunAsync(). Un programme ponctuel exécute une
+// crew tout de suite — voir « Exécuter une Crew » ci-dessous.
 ```
+
+Les montages viennent d'`appsettings.json` (format Docker `<physique>:<virtuel>:<droits>`,
+droits `ro`, `rw` ou `rwnd` ; le répertoire physique doit exister) :
+
+```json
+{
+  "Orkeon": {
+    "FileSystem": {
+      "Mounts": [ "./config:/config:ro", "./out:/output:rw" ]
+    }
+  }
+}
+```
+
+Chacun des 16 fournisseurs s'enregistre de la même façon : construisez-le à partir d'un
+`LlmConfig`, ou laissez `ILlmProviderFactory.Create(config)` le choisir d'après l'URL de
+base, le nom du modèle ou la clé. `AddOrkeonLlmProvider` place une seule instance derrière
+`ILlmProvider`, `IBasicLlmProvider` et `IChatClient`, mesurée comme tout fournisseur que la
+factory construit.
+
+La CLI `orkeon` fait tout cela dans `RunnerHost` (section `Llm`, montages, registre
+alimenté depuis la DI) et enregistre quelques suites de plus, qu'un hôte ajoute de la même
+façon quand ses crews s'en servent : `AddOrkeonAbstractionTools()` (`list_mounts`),
+`AddOrkeonSessionTools()`, `AddOrkeonInMemoryEventHub()` + `AddOrkeonEventHubTools()`,
+`AddRaggableTree()` + `AddRaggableTreeTools()`, et la paire RAG opt-in
+`AddOrkeonRag(configuration)` + `AddOrkeonRagTools()`.
 
 Chaque appel `AddOrkeon*()` enregistre automatiquement :
 - Les interfaces de service (ports)
@@ -121,6 +173,7 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 | MCP                                       | ❌                          | ✅                                        |
 | VectorSearch                              | ❌                          | ✅                                        |
 | Store de connaissances (stub in-memory, avertit au premier usage) | ✅  | ✅                                        |
+| Système de fichiers virtuel (`IFileSystemService`) | ❌ (explicite : `AddOrkeonFileSystem(configuration)`) | ❌ (idem) |
 | Sous-système RAG                          | ❌ (opt-in : `AddOrkeonRag` + `AddOrkeonRagTools`) | ❌ (même opt-in)    |
 | Persistance durable de l'état d'exécution | ❌                          | ✅ **uniquement si** `Orkeon:ExecutionState:Persistence` existe (`Enabled=true` + un `IStateStore`) |
 | ChromaDB (vector store)                   | ❌                          | ✅ **uniquement si** la section `Orkeon:ChromaDb` existe |
@@ -156,14 +209,20 @@ Deux surcharges existent et produisent des conteneurs aux capacités **différen
 var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
-// Créer la Crew depuis le fichier YAML
-var crew = await crewFactory.CreateFromFileAsync("config/sales-report-crew.yaml");
+// Créer la Crew depuis le fichier YAML — un chemin VIRTUEL, lu via le montage /config
+// (CreateFromDirectoryAsync prend de la même façon un répertoire de crew multi-fichiers)
+var crew = await crewFactory.CreateFromFileAsync("/config/sales-report-crew.yaml");
 
 // Préparer l'entrée
 var input = CrewInput.Empty("Process last week's sales data");
 
-// Exécuter la Crew de manière synchrone
+// Exécuter la Crew de manière synchrone (la factory a déjà rangé la crew, ses agents et
+// ses tâches dans les repositories que lit l'orchestrateur)
 var output = await orchestrator.KickoffAsync(crew.Id, input);
+
+// KickoffAsync signale un échec dans la sortie au lieu de lever une exception
+if (!output.Succeeded)
+    Console.Error.WriteLine($"Échec de l'exécution : {output.Error}");
 
 // Afficher les résultats
 Console.WriteLine("=== Résultat Final ===");
@@ -234,7 +293,11 @@ public record CrewOutput(
     string FinalOutput,                       // Résultat final textuel
     IReadOnlyList<TaskOutput> TaskOutputs,    // Résultats par tâche
     TimeSpan Duration,                        // Durée d'exécution
-    TokenUsage? TokensUsed);                  // Consommation de tokens (si disponible)
+    TokenUsage? TokensUsed)                   // Consommation de tokens (si disponible)
+{
+    public bool Succeeded { get; init; } = true;  // false quand l'exécution a échoué
+    public string? Error { get; init; }           // l'échec, quand Succeeded vaut false
+}
 ```
 
 **TaskOutput** (`Orkeon.Application.Execution`) :

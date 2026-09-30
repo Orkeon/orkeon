@@ -29,7 +29,7 @@ We aim to acknowledge reports within **72 hours** and to provide a remediation p
 
 Orkeon is an AI-agent orchestration framework: **LLM output can trigger tool execution**. This makes certain components security-sensitive by design, and you should treat any crew configuration as part of your attack surface:
 
-- **Code/shell execution tools** (`ShellCommandTool`, `SecureCodeInterpreterTool`): commands are allowlist-restricted by default (read-only set) and interpreters (`node`, `dotnet`, `npm`) require an explicit opt-in. There is **no OS-level confinement** unless you route execution through the Docker sandbox (`DockerSandbox`).
+- **Code/shell execution tools** (`ShellCommandTool`, `SecureCodeInterpreterTool`): shell commands are allowlist-restricted by default (read-only set) and interpreters (`node`, `dotnet`, `npm`, `find`) plus mutating `git` subcommands require an explicit opt-in. `shell_command` runs on the host with **no OS-level confinement**. `code_interpreter` runs in the Docker sandbox (`DockerSandbox`) and fails closed: when Docker is unavailable it refuses to fall back to plain host execution unless `Orkeon:CodeSandbox:AllowHostExecution` is set.
 - **Network tools** (`WebScrapeTool`, `HttpApiTool`, web search, `rag_ingest` and the opt-in RAG web fallback): URL validation is **fail-closed** — private, loopback, link-local, IPv6-unspecified, multicast, NAT64 and cloud-metadata addresses are denied by default (SSRF protection), and URL ingestion refuses to fetch at all when no `IUrlValidator` is registered (`AddOrkeonInfrastructure` registers one). Redirects are not followed: `AddOrkeonWebTools` gives the web tools their own named `HttpClient` and the RAG page loader its own typed client, both with `AllowAutoRedirect = false`, so a redirect cannot carry a request past the validator that cleared the first hop.
 - **File system tools**: all file access goes through the Virtual File System (`IFileSystemService`), validated against configured mounts and access rights.
 - **Database tools**: queries pass through `IDatabaseSecurityPolicy` (statement-type allowlist).
@@ -47,9 +47,12 @@ Vulnerabilities in these layers (allowlist bypass, SSRF filter bypass, VFS escap
   unconditionally, so the tool is in the catalogue out of the box. Its default allowlist is
   **read-only** (`ls`, `cat`, `pwd`, `grep`… plus read-only `git` subcommands); interpreters
   and mutating `git` stay off unless you set `Orkeon:Tools:Shell:AllowInterpreters`, which is
-  **RCE-equivalent** and makes the tool emit a security warning. To keep `shell_command` out
-  of an agent's reach entirely, compose your host without `AddOrkeonCodeTools()`.
-- Use `DockerSandbox` for any code-execution scenario with untrusted input.
+  **RCE-equivalent** and makes the tool emit a security warning. Prefer adding the one command
+  you need to `Orkeon:Tools:Shell:ExtraAllowedCommands`; `Orkeon:Tools:Shell:AllowedCommands`
+  replaces the allowlist outright. To keep `shell_command` out of an agent's reach entirely,
+  compose your host without `AddOrkeonCodeTools()`.
+- Use `DockerSandbox` for any code-execution scenario with untrusted input, and leave
+  `Orkeon:CodeSandbox:AllowHostExecution` off.
 - Configure API keys via environment variables or a secret manager — never in YAML crew definitions.
 - Enable memory encryption at rest (`EncryptedMemoryProviderDecorator`) for sensitive workloads.
 
@@ -59,8 +62,11 @@ Every artefact — NuGet packages, installers, CLI archives, `.deb`, MSIs — is
 public GitHub Actions workflow and carries a GitHub-signed **build provenance attestation**
 (SLSA v1) naming the workflow, the tag and the commit that produced those exact bytes.
 NuGet.org publishing goes through Trusted Publishing (OIDC): no long-lived API key exists.
-Every release also ships `SHA256SUMS` and, from the next release on, a CycloneDX SBOM
-covered by the same attestation.
+Every release also ships `SHA256SUMS` (and `SHA256SUMS.msi` for the MSIs) and — for releases
+cut since the SBOM step landed in September 2026 — a CycloneDX SBOM covered by the same
+attestation. Two things carry **no** attestation: the dev builds of `main`
+(`<version>.dev.<run number>`, GitHub Packages only) and the `orkeon-runners` container
+image on GHCR.
 
 ```bash
 gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon

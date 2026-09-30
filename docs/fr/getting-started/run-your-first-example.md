@@ -56,7 +56,11 @@ Les runners lisent leur configuration LLM (endpoint, modèle, clé API) dans un
 | `appsettings.openai.local.json.example` | OpenAI cloud |
 | `appsettings.glm.local.json.example` / `appsettings.glm-medium.local.json.example` | Z.AI (GLM) |
 | `appsettings.gemini.local.json.example` | Google Gemini |
-| `appsettings.local.json.example` | Gabarit vierge à remplir |
+| `appsettings.grok.local.json.example` | Grok (x.AI) |
+| `appsettings.minimax.local.json.example` | MiniMax (endpoint international ; les comptes de Chine continentale utilisent `api.minimaxi.com`) |
+| `appsettings.openrouter.local.json.example` | OpenRouter (agrégateur — identifiants `vendor/model`) |
+| `appsettings.mammouth.local.json.example` | Mammouth AI (agrégateur — identifiants nus des éditeurs, reconnu par son hôte) |
+| `appsettings.local.json.example` | Gabarit générique — pointe sur DeepSeek ; changez `BaseUrl` / `Model` / `ApiKey` pour tout autre fournisseur |
 
 Copiez le gabarit de votre fournisseur, déposez-le en vrai `*.local.json`
 (git-ignoré) et collez votre clé :
@@ -78,8 +82,8 @@ cp examples/appsettings/appsettings.deepseek.local.json.example \
 > passez directement à l'étape 4 sans `--settings`.
 
 Il n'y a pas de champ `Provider` à renseigner : le fournisseur est auto-détecté
-depuis l'hôte de `Llm.BaseUrl` du profil ; changer de fournisseur revient à pointer
-le bon profil.
+depuis l'hôte de `Llm.BaseUrl` du profil (à défaut, depuis le nom du modèle, puis le
+préfixe de la clé) ; changer de fournisseur revient à pointer le bon profil.
 
 ## 4. L'exécuter
 
@@ -106,15 +110,15 @@ c'est-à-dire votre répertoire local `./out`.
 
 ## Chaque flag, expliqué
 
-La CLI `orkeon` et les runners spécialisés partagent les mêmes options de base.
-Celles que vous utiliserez vraiment :
+Les options de la CLI `orkeon` que vous utiliserez vraiment :
 
 | Flag | Court | Ce qu'il fait |
 |---|---|---|
-| `<config>` (positionnel) | — | **Requis.** La définition de crew passée à `orkeon run <config>` — un fichier `.yaml` ou un fichier `.ork.ts` de [scripting](../architecture/scripting.md). |
+| `<config>` (positionnel) | — | **Requis** (sauf avec `--list-tools`). La définition de crew passée à `orkeon run <config>` — un fichier `.yaml`, un fichier `.ork.ts` de [scripting](../architecture/scripting.md), ou un répertoire contenant une crew YAML multi-fichiers. Le verbe `run` lui-même est facultatif : `orkeon <config>` fait la même chose. |
 | `--settings <chemin>` | `-s` | Chemin de l'`appsettings.json` portant la config LLM. Optionnel — voir la [résolution des settings](#comment-les-settings-sont-résolus). |
 | `--verbose <0-2>` | `-v` | Verbosité. `0` (défaut) = silencieux, `1` = échanges LLM & outils, `2` = debug complet. |
-| `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro` ou `rw`. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
+| `--mount <phys>:<virt>:<droits>` | `-m` | Expose un répertoire hôte au système de fichiers virtuel du crew. `droits` vaut `ro`, `rw` ou `rwnd` (lecture-écriture sans suppression) ; des segments `;<sous-chemin>:<droits>` surchargent les droits sous le montage. Plusieurs montages se passent **séparés par des espaces derrière un seul flag** (`--mount a:/x:ro b:/y:rw`) — le parseur rejette un `--mount` répété. Un crew qui écrit des résultats a besoin d'un montage `:rw` (`/output` est la convention qui déclenche l'écriture automatique du résumé). |
+| `--mount-id <id>` | | Quand plusieurs entrées `Orkeon:FileSystem:Mounts` des settings déclarent la même racine virtuelle, garde celle dont l'identifiant (le préfixe de 26 caractères avant son `\|`) est donné. Plusieurs identifiants se passent séparés par des espaces derrière un seul flag. |
 | `--allow-external-mounts` | | Autorise des montages (et un chemin `<config>` ou `--llm-log-path`) situés **hors** du répertoire de travail. Sans lui, les chemins externes sont refusés par garde-fou. La variable d'env `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` l'active pour chaque invocation (l'image conteneur `orkeon-runners` l'embarque). |
 | `--var CLE=VALEUR` | `-V` | Injecte une variable dans l'entrée du crew. Les descriptions de tâches contenant `{CLE}` sont développées en `VALEUR`. Plusieurs variables se passent séparées par des espaces derrière un seul `-V` (un flag répété est rejeté). **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`, qui prennent `--inputs`. |
 | `--initial-context <texte>` | | Une chaîne de contexte libre passée à l'entrée du crew. **Crews YAML seulement** — ignoré pour les scripts `.ork.ts`. |
@@ -162,7 +166,8 @@ ordre (premier trouvé gagne) :
    (l'ancien `_shared/appsettings.json` reste un fallback pour une release).
 4. Le config global per-user écrit par `orkeon init`
    (`%APPDATA%\Orkeon\appsettings.json` sous Windows,
-   `~/.config/Orkeon/appsettings.json` ailleurs).
+   `$XDG_CONFIG_HOME/Orkeon/appsettings.json` — par défaut
+   `~/.config/Orkeon/appsettings.json` — sous Linux et macOS).
 
 Si rien n'est trouvé, le runner se rabat sur les seules variables d'environnement
 et imprime un avertissement. Être explicite avec `--settings` reste l'option la
@@ -188,5 +193,6 @@ correctif :
 
 - [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md) — binaires et conteneurs, sans checkout des sources.
 - [YAML, Builders et CrewFactory](./yaml-and-builders.md) — le schéma derrière chaque `config.yaml`.
-- [Catalogue des exemples](../reference/examples-catalog.md) — 100+ crews sur 9 domaines.
+- [Catalogue des exemples](../reference/examples-catalog.md) — les 105 exemples fournis, en 9 catégories thématiques.
 - [Inventaire des outils](../tools/inventory.md) — ce que les agents savent réellement faire.
+- [Donner une boîte aux lettres à vos agents](./give-your-agents-a-mailbox.md) — un agent qui lit, range et rédige des brouillons de réponse dans une vraie boîte aux lettres.

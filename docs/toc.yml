@@ -18,6 +18,14 @@
       href: getting-started/yaml-and-builders.md
     - name: Default behaviors
       href: getting-started/default-behaviors.md
+- name: E-mail
+  items:
+    - name: Give your agents a mailbox
+      href: getting-started/give-your-agents-a-mailbox.md
+    - name: E-mail tools — the full guide
+      href: guides/email.md
+    - name: orkeon email commands
+      href: reference/cli.md#orkeon-email
 - name: Architecture
   items:
     - name: LLM providers
@@ -64,6 +72,8 @@
       href: orchestration/graph.md
     - name: Autonomous — Self-organization
       href: orchestration/autonomous.md
+    - name: Flows (FlowEngine)
+      href: orchestration/flows.md
 - name: Tools
   items:
     - name: Tool inventory
@@ -90,8 +100,6 @@
       href: guides/local-models.md
     - name: Verify what you install
       href: guides/verify-what-you-install.md
-    - name: E-mail tools
-      href: guides/email.md
 - name: Reference
   items:
     - name: Scripting DSL reference
@@ -116,6 +124,8 @@
       href: reference/opt-in-subsystems.md
     - name: Hosting & runner bootstrap
       href: reference/hosting.md
+    - name: Microsoft Agent Framework interop
+      href: reference/agent-framework-interop.md
     - name: NuGet publication matrix
       href: reference/publication-matrix.md
 - name: Architecture Decision Records

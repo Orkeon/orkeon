@@ -49,6 +49,7 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 ├── session.json          identifiant, état, statut, budget — le point de reprise
 ├── brief.json            ce que vous avez demandé, critères compris
 ├── blueprint.json        le plan d'équipe (source unique des deux rendus)
+├── repair.json           les erreurs de validation qu'une réparation doit corriger, tant qu'elle est en attente
 ├── crew/                 la crew rendue — ce qui tourne vraiment
 ├── runs/<n>/             chaque essai : sortie, métriques, verdict, livrables
 ├── transcript.jsonl      la conversation
@@ -59,8 +60,8 @@ Chaque cycle vit sous `.orkeon/forge/<slug>/` dans votre répertoire de travail 
 orkeon forge list                        # ce qui est en cours, ce qui est prêt
 orkeon forge resume veille-fournisseur   # reprendre exactement là où c'était
 orkeon forge "..." --dry                 # générer et valider seulement — jamais exécuter
-orkeon forge resume supplier-watch --edit --dry   # amender le plan à la pause, re-rendre, re-pauser
-orkeon forge resume supplier-watch --adopt        # garder l'équipe telle quelle, sans essai
+orkeon forge resume veille-fournisseur --edit --dry   # amender le plan à la pause, re-rendre, re-pauser
+orkeon forge resume veille-fournisseur --adopt        # garder l'équipe telle quelle, sans essai
 ```
 
 À la pause `--dry`, vous pouvez amender le plan avant même de l'essayer : `resume --edit` lit le blueprint amendé sur le canal, le valide intégralement, re-rend de façon déterministe — zéro jeton LLM, même itération — et avec `--dry` se remet en pause à la même frontière. C'est ce que fait le « Modifier » de Studio sur les cartes d'agent de l'étape Composer.
@@ -92,6 +93,19 @@ Le dossier promu est ordinaire — rien n'y est propriétaire à la forge :
 - `schedule/` (avec `--schedule`) — un XML de tâche Windows, un timer systemd, une ligne cron, tous au nom du dossier d'équipe (`orkeon-veille-fournisseur.timer`). La promotion n'en installe aucun : `orkeon forge schedule ~/solutions/veille-fournisseur` enregistre celui qu'utilise votre système (`--check` dit où il en est, `orkeon forge unschedule` le retire ; Orkeon Studio demande avant de faire de même). Orkeon n'a pas d'ordonnanceur à lui — c'est le système qui lance l'équipe —, il ne promet donc aucune supervision qu'il ne peut pas donner.
 
 Lancez-la par son propre script — `~/solutions/veille-fournisseur/run.sh` — ou pointez Orkeon Studio sur le dossier, qu'il détecte. Un `orkeon run ~/solutions/veille-fournisseur/crew` nu la lance aussi : le `config.yaml` promu nomme les racines que l'équipe utilise (`mounts: [/workspace, /output]`), si bien qu'une entrée des settings déclarant `/output` est utilisée telle quelle, et qu'à défaut le run est refusé en une ligne (`the crew requires '/output' … pass --mount <folder>:/output:rw`) au lieu d'écrire nulle part.
+
+## Autres options
+
+| Option | S'applique à | Effet |
+|---|---|---|
+| `--read <dir>` | une nouvelle session, `forge resume` | Le dossier que l'essai lit comme `/workspace`, à la place du répertoire de travail — pour pointer un essai sur les documents que l'équipe doit lire ; les sessions restent sous le répertoire de travail. |
+| `--reference <id>` | une nouvelle session | Compose l'équipe à partir d'un cas d'usage du catalogue (`orkeon usecases list`) : la structure de sa crew sert de modèle à l'assistant, et la session, `forge.json` et `FORGE.md` l'enregistrent. |
+| `--settings <path>` | une nouvelle session, `forge resume` | Le fichier de settings, avec la même sémantique qu'`orkeon run --settings`. |
+| `--with-settings` | `forge promote` | Copie le fichier de settings résolu dans le dossier promu. Désactivé par défaut : un fichier de settings contient souvent des clés API et le dossier est fait pour être partagé — sans la copie, les scripts de lancement référencent le fichier sur place. |
+| `--events jsonl` | chaque verbe | Le protocole d'événements versionné sur stdout, les réponses sur stdin — c'est ainsi qu'Orkeon Studio pilote la forge. |
+| `--pack <dir>` | une nouvelle session, `forge resume` | Un dossier dont les fichiers remplacent le pack embarqué de l'assistant. |
+
+`orkeon forge rename <dossier-equipe> --name "<nouveau nom>"` renomme une équipe promue — chaque titre, le dossier lui-même, le dossier de la session liée et une planification installée — tout ou rien.
 
 ## Dans Orkeon Studio
 

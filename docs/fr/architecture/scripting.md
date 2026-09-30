@@ -10,17 +10,21 @@ C'est la manière recommandée d'écrire des crews quand on ne veut pas écrire 
 
 Les auteurs familiers de l'outillage frontend bénéficient d'une expérience d'écriture
 en fichier unique (`.ork.ts`) sans étape de compilation de leur côté : le runtime
-supprime les types TypeScript via esbuild et exécute le JavaScript résultant dans Jint
-avec des limites de sandbox. Le DSL expose toute la surface d'Orkeon — agents, crews,
+confie le fichier à esbuild — qui supprime les types et, quand le fichier est sur disque,
+assemble ses imports relatifs — et exécute le JavaScript résultant dans Jint avec des
+limites de sandbox. Le DSL expose toute la surface d'Orkeon — agents, crews,
 tâches, outils personnalisés, machines à états, graphes, événements, locks, hooks de
 cycle de vie — via des builders fluents et des déclarations littérales.
 
 ## Sa place dans la Clean Architecture
 
-`Orkeon.Scripting` est un nouveau projet qui dépend de `Orkeon.Domain`,
-`Orkeon.Application` et `Orkeon.Infrastructure`. Il ne modifie pas ces
-couches : c'est un adaptateur opt-in qui traduit les appels côté JS en
-invocations de domaine existantes.
+`Orkeon.Scripting` dépend de `Orkeon.Domain`, `Orkeon.Application`,
+`Orkeon.Infrastructure` et `Orkeon.Rag.Abstractions` (l'espace de noms `rag.*`).
+Il ne modifie pas ces couches : c'est un adaptateur opt-in qui traduit les appels
+côté JS en invocations de domaine existantes. Il n'enregistre rien lui-même en DI —
+il n'y a pas d'extension `AddOrkeon*` : la CLI, le runner partagé et le REPL
+(`AddScriptCommands`, voir [Commandes CLI en TypeScript](./cli-ts-commands.md))
+construisent eux-mêmes le `ScriptHost`.
 
 ```
 src/
@@ -28,14 +32,22 @@ src/
     ├── Orkeon.Scripting/         ← cette couche (runtime Jint + bindings)
     │   ├── ScriptHost.cs
     │   ├── JsEngineFactory.cs
+    │   ├── ScriptingHostPorts.cs ← porte de permissions + puits de deltas fournis par l'hôte
+    │   ├── Adapters/             ← JsCrewConfigurationAdapter (le passage déclaratif → CrewConfiguration)
     │   ├── Builders/             ← JsAgentBuilder, JsCrewBuilder, JsTaskBuilder, JsToolBuilder
-    │   ├── Bindings/             ← enregistrements globaux (agentBuilder, crewBuilder, …)
+    │   ├── Bindings/             ← enregistrements globaux (agentBuilder, crewBuilder, llm, tools, rag, …)
     │   ├── Runtime/              ← JsCrew, JsExecutionContext, JsAgentContext, JsLlmFacade, …
     │   ├── Orchestration/        ← JsStateMachine, JsStateGraph
     │   ├── ErrorPolicy/          ← JsErrorAction, ErrorCodeMapper
+    │   ├── Exceptions/           ← les exceptions typées du runtime (StateMutationOutsideWithException, …)
+    │   ├── Internal/             ← JsHostError, fabriques de trampolines JS
+    │   ├── Configuration/        ← ScriptingLimitsOptions, ScriptingToolchainOptions
+    │   ├── Versioning/           ← la directive `/// <reference orkeon-script="1.0" />`
     │   ├── Telemetry/            ← ScriptingActivitySource
-    │   └── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
-    └── Orkeon.Scripting.Cli/     ← `orkeon run <crew.ork.ts | crew.yaml>`
+    │   ├── Testing/              ← doublures LLM / outil (non exposées aux scripts)
+    │   ├── Toolchain/            ← EsbuildTranspiler, PassThroughTranspiler
+    │   └── Typings/              ← les déclarations *.d.ts
+    └── Orkeon.Scripting.Cli/     ← l'outil `orkeon` : `run`, `forge`, `init`, `doctor`, `llm`, `rag`, `usecases`, `email`
 ```
 
 ## Démarrage rapide
@@ -52,20 +64,26 @@ La CLI émet le résultat du script en JSON sur stdout ; les codes de sortie sui
 convention habituelle (`0` ok, `1` erreur de script, `2` erreur runtime, `130` annulé).
 
 Le même verbe `run` accepte aussi un **crew YAML** — la cible sélectionne
-la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → runner de crew YAML, `.ork.ts`/`.js` → DSL de scripting) :
+la voie (`.yaml`/`.yml` **ou un dossier portant une crew multi-fichiers** → le runner de
+crew partagé ; tout autre fichier → DSL de scripting). Un script qui affecte
+`globalThis.crew` est une définition de crew *déclarative* et part lui aussi vers le runner
+partagé, comme le YAML ; les autres tournent sur l'hôte de scripting
+([les deux formes](../reference/scripting-dsl.md#les-deux-formes)) :
 
 ```bash
 dotnet run --project src/scripting/Orkeon.Scripting.Cli -- run examples/09-experimental/llm-response-format/crew.yaml
 ```
 
-Pour les crews YAML, l'outil délègue au runner one-shot partagé (le `RunnerExecution`
-d'`Orkeon.Hosting` — le chemin de code exact d'`orkeon run`), donc les drapeaux propres
-au YAML s'appliquent : `-V/--var KEY=VALUE`, `--initial-context`, plus les drapeaux
-partagés `--settings/--mount/--allow-external-mounts/--verbose/--llm-log[-path]` et les
+Pour les crews YAML et les scripts déclaratifs, l'outil délègue au runner one-shot
+partagé (le `RunnerExecution` d'`Orkeon.Hosting`), donc les drapeaux propres au YAML
+s'appliquent : `-V/--var KEY=VALUE`, `--initial-context`, plus les drapeaux partagés
+`--settings/--mount/--mount-id/--allow-external-mounts/--verbose/--llm-log[-path]` et les
 drapeaux diagnostics/protocole (`--validate`, `--list-tools`, `--events jsonl`,
-`--stream`, `--client`). Les drapeaux propres aux scripts (`--inputs`, `--inputs-file`,
-`--memory-limit-mb`) sont ignorés sur la voie YAML. Le runner YAML affiche la sortie du crew sous une bannière
-`=== Crew Output ===` au lieu d'un `result` JSON.
+`--stream`, `--client`). Les drapeaux des scripts procéduraux (`--inputs`, `--inputs-file`,
+`--memory-limit-mb`) sont ignorés sur cette voie — un script déclaratif le signale sur
+stderr. Le runner partagé affiche la sortie du crew sous une bannière
+`=== Crew Output ===` au lieu d'un `result` JSON. Toutes les options :
+[la référence du CLI](../reference/cli.md#orkeon-run).
 
 ## Récapitulatif de l'API
 
@@ -86,11 +104,13 @@ concaténées au build dans le `orkeon.d.ts` que la CLI émet.
 | Événements (`ctx.events.queue` / `ctx.events.topic`) | `events.d.ts` |
 | Formes littérales `stateMachine` / `stateGraph` | `fsm.d.ts`, `graph.d.ts` |
 | `onError`, `ErrorAction`, codes d'erreur | `agent.d.ts`, `errors.d.ts` |
+| Les globales échangées entre le runner et le script (`crew`, `inputs`, `result`) | `globals.d.ts` |
+| La directive de version `/// <reference orkeon-script="1.0" />` | `orkeon-script.d.ts` |
 | Hooks de cycle de vie (`onAgentStart`, `onCrewComplete`, …) | `agent.d.ts`, `crew.d.ts` |
 | `onCommand` — répondre par nom aux commandes CLI dispatchées | [cli-ts-commands.md](../architecture/cli-ts-commands.md#côté-agent--oncommand) |
 | Namespace intégré `tools.X(...)` | `tools.d.ts` |
 | Providers LLM (`llm.openai`, `llm.default`, etc.) | `llm.d.ts` |
-| RAG (`rag.ingest`, `rag.query`) | `rag.d.ts` |
+| RAG (`rag.ingest`, `rag.query`, `rag.retrieve`) | `rag.d.ts` |
 
 ## Coexistence avec YAML
 
@@ -179,6 +199,32 @@ désormais une règle, que les reproducteurs de
   moteur, exact en imbrication séquentielle et au mieux sous des runs entrelacés sur une même
   boucle d'événements ; `{ signal: ctx.signal }` est la forme explicite.
 
+## Configuration et chaîne d'outils
+
+Les limites de la sandbox sont lues dans `Orkeon:Scripting:Limits` (`ScriptingLimitsOptions`)
+par la voie script d'`orkeon run`, le runner partagé et la forge :
+
+| Clé | Défaut | Rôle |
+|---|---|---|
+| `MemoryLimitBytes` | `104857600` (100 Mo) | Plafond mémoire de Jint. `orkeon run --memory-limit-mb` le surcharge pour un script procédural ; `0` ou moins le désactive. |
+| `RecursionLimit` | `64` | Profondeur d'appel JavaScript maximale. |
+| `ExecutionTimeout` | `00:00:30` | Borne d'horloge d'une évaluation — un script entier, ou tout un run de crew piloté par le CLR. |
+
+Les commandes `*.cmd.ts` du REPL ont leur propre profil, `Orkeon:Cli:ScriptCommands:Limits`
+([Commandes CLI en TypeScript](./cli-ts-commands.md#appsettingsjson)).
+
+esbuild est cherché, dans l'ordre : la variable d'environnement `ORKEON_ESBUILD_PATH`, un
+`esbuild-bin/esbuild[.exe]` à côté du binaire en cours (ce que livrent les archives de
+release), le `tools/scripting-esbuild/node_modules/` du dépôt (installé par le build
+d'`Orkeon.Scripting` avec `npm ci`, sauté avec `-p:SkipScriptingNpmInstall=true` ; cherché
+jusqu'à huit dossiers parents depuis le répertoire de travail et depuis le binaire), puis le
+`PATH`. Quand rien n'est trouvé, l'erreur liste chaque endroit essayé ; `orkeon doctor` le
+signale dans la vérification `esbuild`.
+
+Un script peut commencer par `/// <reference orkeon-script="1.0" />`. La directive est
+facultative ; présente, une version que le runtime ne prend pas en charge (seule `1.0`
+aujourd'hui) fait échouer le run avec `ScriptVersionMismatchError` avant toute exécution.
+
 ## Limites V1
 
 - `concurrency(N)` plafonné à 1 (mutex). Le sémaphore à N détenteurs est prévu en V1.5.
@@ -194,7 +240,10 @@ désormais une règle, que les reproducteurs de
 ## Référence
 
 Cette page dit ce qu'est le DSL et où il se situe ; les typings disent ce qu'il expose. La
-surface des crews est `orkeon.d.ts` — construit depuis les `Typings/*.d.ts` ci-dessus, et
-émis à côté de la sortie de build de la CLI. `orkeon-cli.d.ts` est un autre fichier pour une
-autre surface : les commandes `*.cmd.ts` documentées dans
+surface des crews est `orkeon.d.ts` — les `Typings/*.d.ts` ci-dessus concaténés
+(`errors.d.ts` d'abord, les autres par ordre alphabétique) par le build
+d'`Orkeon.Scripting` dans
+`src/scripting/Orkeon.Scripting/bin/<configuration>/net10.0/dist/orkeon.d.ts` ; aucun paquet
+ni aucune archive de release ne le porte aujourd'hui. `orkeon-cli.d.ts` est un autre fichier
+pour une autre surface : les commandes `*.cmd.ts` documentées dans
 [cli-ts-commands.md](../architecture/cli-ts-commands.md).

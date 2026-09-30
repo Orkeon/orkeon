@@ -68,13 +68,17 @@ bash examples/run-example.sh rag/crew-yaml
 dotnet run --project examples/rag/crew-yaml
 ```
 
-The same `crew.yaml` also runs as-is in the stock CLI (this host exists only to
-prove the YAML `rag:`/`knowledge:` path offline, without an LLM):
+The same `crew.yaml` also validates in the stock CLI:
 
 ```bash
 orkeon run examples/rag/crew-yaml/crew.yaml --mount examples/rag/crew-yaml/data:/kb:ro --validate
-# Drop --validate to run the crew for real (needs a configured LLM)
 ```
+
+Only validation, though: `orkeon run` does not register the RAG subsystem for a YAML
+crew, so a real run there ingests nothing from `rag:` and injects no `knowledge:` (it
+logs a warning). The `rag:`/`knowledge:` path needs a host that calls
+`AddOrkeonRag(configuration)` — this example's `Program.cs` is that host. See the
+[RAG pipeline](../../../docs/architecture/rag-pipeline.md) page.
 
 ## Expected output (truncated)
 

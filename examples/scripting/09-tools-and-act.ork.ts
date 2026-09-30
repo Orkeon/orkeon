@@ -29,8 +29,9 @@ const analyst = agentBuilder()
     .goal("Summarise a release note and say how long it is")
     // Surface 1 — a built-in, by name, resolved from the host catalogue.
     .tools(["file_read"])
-    // Surface 2 — the instance authored above. Both end up in the same catalogue,
-    // which is exactly what `act` iterates over.
+    // Surface 2 — the instance authored above: callable from a body (`wordCount.execute`),
+    // resolved by name in the declarative shape. Known gap: `act` below offers only the
+    // `.tools([...])` built-ins, not this instance (docs/reference/scripting-dsl.md).
     .withAutonomousTool(wordCount)
     .body(async (input, ctx) => {
         // Surface 3 — calling a tool imperatively, outside any LLM loop. `/script` is the

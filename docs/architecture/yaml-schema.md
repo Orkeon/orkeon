@@ -6,75 +6,85 @@ This document is the **single source of truth** for the Orkeon YAML schema. The 
 
 ## Complete configuration schema
 
-The YAML structure follows this schema:
+The YAML structure follows this schema. **Key naming**: the loader (`YamlDotNetSerializer`)
+matches keys in camelCase (the canonical form, the one `YamlCrewExporter` writes) and falls back
+to snake_case for the same property — `expectedOutput` and `expected_output`, `llm_override` and
+`llmOverride` are equivalent everywhere. Keys that match no property are **ignored silently**
+(a misspelt key reads as absent), except inside `knowledge:` entries, which warn. The same models
+serve the single-file layout and the multi-file layouts (`crew.yaml` + `agents.yaml` +
+`tasks.yaml`, or `config.yaml` + `agents/` + `tasks/`) described in
+[YAML and Builders](../getting-started/yaml-and-builders.md); a top-level `anchors:` mapping of
+named multi-line strings is expanded before parsing (`YamlAnchorPreprocessor`).
 
 ```yaml
 # Complete CrewYamlConfig schema
-name: string              # Crew identifier
+name: string              # Crew identifier (required)
 goal: string              # Goal (required)
-process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
+process: string           # "sequential" (default) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — case-insensitive; an unknown value fails the load
 verbose: bool             # default: false
 memory: bool              # default: false
-memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
+memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning
 planning: bool            # default: false
-managerAgent: string      # Required if process = "hierarchical"
+managerAgent: string      # Hierarchical only; omitted → the first agent manages (warning)
+circuitBreaker: {…}       # Crew-level circuit breaker (see the dedicated section)
+graphConfig: {…}          # Graph mode settings (see the dedicated section)
 
-llm:                      # Crew-default LLM, applied to agents without their own (same shape as agents.<id>.llm)
+llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   model: string
   temperature: float
 
-links:                    # EventHub ACL (optional) — who may talk to whom on the hub
-  - to: string            # "agent:<id>" | "crew:<id>" | "topic:<name>" | "client:<name>"
-    direction: string     # "send" | "receive" | "both"
-    allowed_topics: [string]
+links:                    # EventHub ACL (optional) — who this crew may talk to on the hub
+  - to: string            # The target crew's name:, verbatim — or "client:<name>" for an external peer (e.g. Studio)
+    direction: string     # "outbound" (default) | "inbound" | "bidirectional" (alias "both") — an unreadable value drops the entry with a warning
+    allowed_topics: [string] # Omitted or empty = every topic
 
 mounts:                   # The virtual roots the crew uses (optional, VFS-90) — selects and validates, never restricts
   - /output               # a root a settings entry (or a --mount) must provide; refused in one line when nothing does
   - 01J9Z3K4M5N6P7Q8R9S0T1V2W3|/data   # a root pinned to ONE settings entry by its id, when several entries declare it
 
 rag:                      # Crew-level RAG configuration (optional)
-  provider: string        # Memory/vector store for the collections ("InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb")
+  provider: string        # Recorded on RagCrewConfig, not consumed yet — the store is Orkeon:Rag:Provider (or the ambient memory provider)
   collections:
     <collection_name>:
-      sources: [string]   # Ingestion sources (file globs or directories), resolved at kickoff
-      chunking:
+      sources: [string]   # Ingestion sources (file globs or directories), ingested when the crew is created
+      chunking:           # Omitted → the ingestion pipeline's defaults
         strategy: string  # default: "recursive"
-        max_tokens: int   # default: 512 — tokens per chunk
+        max_tokens: int   # default: 512 — tokens per chunk (×4 characters)
         overlap: int      # default: 64 — token overlap between chunks
   defaults:
-    profile: string       # Default query profile for knowledge attachments without one
+    profile: string       # Recorded on RagCrewConfig, not consumed yet
 
 agents:
   <agent_id>:             # Key = unique agent identifier
-    role: string          # Agent role (required)
+    role: string          # Agent role (defaults to the agent key)
     goal: string          # Agent's personal goal (required)
     backstory: string     # Context and expertise (multi-line recommended)
-    tools: [string]       # Tool names registered in IToolRegistry
+    tools: [string]       # Tool names registered in IToolRegistry (an unknown name fails the load under Orkeon:CrewFactory:StrictTools, the runners' default)
     allowDelegation: bool # default: true — allows delegation to other agents
     maxIter: int          # default: 20 — maximum iterations before timeout
     maxRpm: int           # default: 10 — requests per minute (rate limiting)
     verbose: bool         # default: false — detailed logs for this agent
-    llm:
-      model: string       # LLM model ("gpt-4", "claude-3-opus", etc.)
-      temperature: float  # Creativity (0.0-1.0)
-      maxTokens: int      # Output token limit
-      topP: float         # Nucleus sampling
+    llm:                  # Omitted (and no crew llm:) → the runner's Llm settings section
+      model: string       # LLM model id
+      temperature: float  # default: 0.7 when the block is present
+      maxTokens: int      # Output token pin — omitted = the model's documented maximum (LLM-10)
+      topP: float         # Nucleus sampling, default: 1.0
       thinking:           # Reasoning control (capability-gated per provider)
         enabled: bool
-        effort: string    # "low" | "medium" | "high"
-        budget_tokens: int
-      responseFormat: string # "json_object" | "json_schema" (capability-gated)
-      responseSchema:     # With responseFormat: json_schema
-        name: string
-        schema: {…}       # Inline JSON Schema
-        strict: bool
-      cache:              # Explicit prompt caching (Anthropic)
-        system: bool
-        tools: bool
-        ttl: string
+        effort: string    # "low" | "medium" | "high" | "max" (provider-dependent)
+        budget_tokens: int # Honoured by Qwen only; other providers warn
+      responseFormat: string # "text" (= provider default) | "json_object" | "json_schema" — any other value is forwarded as-is with a warning
+      responseSchema:     # With responseFormat: json_schema (a schema alone implies json_schema)
+        name: string      # default: "response"
+        schema: string    # The JSON Schema as a JSON string, e.g. '{"type":"object"}'
+        strict: bool      # default: true
+      cache:              # Explicit prompt caching (Anthropic); off unless a breakpoint is asked
+        system: bool      # default: false
+        tools: bool       # default: false
+        ttl: string       # e.g. "1h"; omitted = vendor default
     guardrails:           # Operational rules injected into the agent's system prompt (optional)
       preset: string      # "analysis" | "strict" | "creative"
-      header: string      # Section header (overrides the preset header)
+      header: string      # Section header — used only without a preset (every preset brings its own)
       rules: [string]     # Global numbered rules
       toolRules:          # Rules rendered only when the agent has the tool
         <tool_name>: [string]
@@ -83,34 +93,34 @@ agents:
       - collection: string       # Long form (required key)
         top_k: int               # default: 5 — chunks retained per query
         min_score: float         # Minimum relevance score in [0, 1]
-        profile: string          # Query profile ("fast" | "balanced" | "quality", free-form)
-        max_context_tokens: int  # Cap on injected context tokens
+        profile: string          # Recorded on KnowledgeAttachment, not consumed by the augmenter yet
+        max_context_tokens: int  # default: 2000 — cap on injected context tokens
 
 tasks:
   <task_id>:              # Key = unique task identifier
     description: string   # Detailed task description (required)
     expectedOutput: string # Expected result format/content (required)
-    agent: string         # ID of the agent assigned to the task
-    dependencies: [string] # IDs of prerequisite tasks (guarantees ordering)
+    agent: string         # Key of the agent assigned to the task (a key matching no agent leaves the task unassigned)
+    dependencies: [string] # Keys of prerequisite tasks (guarantees ordering; an unknown key is ignored; a cycle fails the load)
     asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
-    tools: [string]       # Task-scoped tool names (added to the agent's for this task)
-    deliverable:          # The framework writes the output file (agent never touches the disk)
+    tools: [string]       # Task-scoped tool names — PARSED (TaskConfiguration.RequiredTools) but not attached by CrewFactory yet: give the tool to the agent
+    deliverable:          # Output-file contract (ignored without a path)
       path: string        # Virtual path, e.g. "/output/report.md"
-      source: string      # "final" (default) | "raw"
-      format: string      # "text" | "json" | "markdown"
-      sanitize: bool
-      schema_path: string # JSON Schema file validating a JSON deliverable
-      schema_inline: {…}  # Inline schema alternative
+      source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (schema-constrained JSON, written by the framework) | "none" — any other value fails the load
+      format: string      # "markdown" (default) | "json" | "text"
+      sanitize: bool      # default: true — strips trailing template tokens (final_message)
+      schema_path: string # Virtual path of a JSON Schema file (structured_output needs it or schema_inline)
+      schema_inline: string # The JSON Schema as a JSON string — alternative to schema_path
     llm_override:         # Task-level LLM override (cascade crew → agent → task)
-      response_format: string
-      response_schema: {name, schema, strict}
+      response_format: string  # Same values as llm.responseFormat
+      response_schema: {name, schema, strict} # schema is a JSON string
       temperature: float
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
-    circuitBreaker:       # FSM / circuit breaker configuration (optional)
+    circuitBreaker:       # Task-level override — PARSED but not applied at execution yet (see Circuit Breaker configuration)
       preset: string      # "strict" | "permissive" | "default"
       maxTransitions: int # Max transitions before trip
       stateTimeoutSeconds: int  # Per-state timeout (seconds)
@@ -128,7 +138,10 @@ tasks:
         <tool_name>: [string]
 ```
 
-The `circuitBreaker` block can also be used at the root level of the YAML (default for all tasks).
+The `circuitBreaker` block can also be used at the root level of the YAML. Validation happens at
+load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
+with a goal) and at least one task (each with a `description` and an `expectedOutput`); circular
+`dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load.
 
 ## Guardrails configuration
 
@@ -145,8 +158,15 @@ Two complementary blocks (RAG-03/C4). The crew-level `rag:` block declares the *
 (provider, ingestion sources, chunking, crew-wide defaults). The agent-level `knowledge:` block
 **attaches** collections to an agent with its retrieval options. At execution-context assembly
 time the attached collections are queried with the task input and the results are injected into
-the agent's prompts (prompt wiring ships in a later lot; parsing is fully functional today —
-no ingestion is triggered at load time).
+the agent's user prompt as numbered, cited excerpts (`IKnowledgeContextAugmenter`, honouring
+`top_k`, `min_score` and `max_context_tokens`). Both halves need the opt-in RAG subsystem
+(`AddOrkeonRag(configuration)`): when the crew is **created** (`CrewFactory`), the declared
+collections are ingested incrementally (`IRagCollectionsBootstrapper` — an unchanged source is not
+re-embedded; `CrewFactoryOptions.PrepareRagCollections = false` skips it); without the subsystem a
+declared `rag:` block logs a warning and the attachments inject nothing. Parsing the YAML itself
+never triggers ingestion. `rag.provider`, `rag.defaults.profile` and an attachment's `profile` are
+parsed and recorded but not consumed yet — retrieval goes through the `IDocumentStore` configured
+under `Orkeon:Rag` (see [RAG pipeline](./rag-pipeline.md)).
 
 Short form — attach collections with default options:
 
@@ -186,7 +206,7 @@ agents:
         max_context_tokens: 1500
 ```
 
-Keys accept snake_case (canonical) and camelCase. A malformed `knowledge` entry (missing
+Keys accept snake_case (the form used above) and camelCase. A malformed `knowledge` entry (missing
 `collection`, non-numeric `top_k`, …) is skipped or downgraded with a warning — it never
 crashes the loader. The fluent equivalent is `AgentBuilder.WithKnowledge("produits")` /
 `WithKnowledge("produits", opts => { opts.TopK = 8; opts.Profile = "quality"; })` (cumulative).
@@ -198,27 +218,36 @@ When `process: "graph"` is used, an additional `graphConfig` block configures th
 ```yaml
 graphConfig:
   maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
-  circuitBreakerPreset: string  # "strict" | "permissive" | "default"
+  circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
   maxTransitions: int           # Overrides the preset
   maxStateVisits: int           # Cycle detection (overrides the preset)
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
+`graphConfig` wins over a crew-level `circuitBreaker`; the state timeout and degraded mode stay
+at the preset's values (`CircuitBreakerPolicyFactory.ResolveGraph`).
+
 ## Circuit Breaker configuration
 
-The `circuitBreaker` block with all available parameters:
+The `circuitBreaker` block with all available parameters. **What reaches execution today**: the
+**crew-level** block, read by the Graph mode only (`GraphProcessStrategy`, when no `graphConfig`
+is declared) — its preset and the first five limits build the graph's circuit-breaker policy. The
+task-level block and the three guard limits (`maxRetries`, `maxToolCallsPerRound`,
+`maxValidationRetries`) are parsed into `CircuitBreakerConfig` and resolved by
+`CircuitBreakerPolicyFactory` (preset, then crew overrides, then task overrides; unknown preset →
+`strict`), but no execution path calls that resolution for tasks yet.
 
 ```yaml
 circuitBreaker:
-  preset: string                # "strict" | "permissive" | "default"
+  preset: string                # "strict" (also the fallback) | "permissive" | "default"
   maxTransitions: int           # Max transitions before trip
   stateTimeoutSeconds: int      # Per-state timeout (seconds)
   maxStateVisits: int           # Max visits of the same state (cycles)
   maxTotalDurationSeconds: int  # Max total duration (seconds)
   useDegradedMode: bool         # true = Degraded, false = exception
-  maxRetries: int               # Retries after failure
-  maxToolCallsPerRound: int     # Max tool calls per round
-  maxValidationRetries: int     # Max validation loops
+  maxRetries: int               # Retries after failure (guard, default 3)
+  maxToolCallsPerRound: int     # Max tool calls per round (guard, default 10)
+  maxValidationRetries: int     # Max validation loops (guard, default 3)
 ```
 
 ## Autonomous Budget configuration
@@ -238,7 +267,9 @@ circuitBreaker:
 ## YAML models
 
 The YAML models include:
-- `CrewYamlConfig` (complete crew definition) and `CrewSettingsYamlConfig` (the multi-file `crew.yaml` variant)
+All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`); `YamlCrewMapper` turns them into the Domain `CrewConfiguration` and `CrewDefinitionValidator` checks it.
+
+- `CrewYamlConfig` (complete crew definition) and `CrewSettingsYamlConfig` (the crew settings file of the multi-file layouts — `crew.yaml` or `config.yaml`)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
 - `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, circuit breaker)
 - `LlmYamlConfig` (model, temperature, max tokens, topP, thinking, responseFormat/responseSchema, cache) with `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`

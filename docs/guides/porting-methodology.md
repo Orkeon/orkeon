@@ -33,18 +33,20 @@ Orkeon supports two approaches for defining a crew. The choice impacts the porti
 ### YAML-first workflow
 
 ```
-1. Write config.yaml (agents, tasks, process type)
+1. Write config.yaml (agents, tasks, process type — see the YAML schema)
 2. Identify the missing tools
 3. Code the custom tools (ToolBase<TReq, TRes>)
-4. Register via DI (AddSingleton<IBaseTool, MonTool>()) — **and** a DI-backed
+4. Register via DI (AddSingleton<IBaseTool, MyTool>()) — **and** a DI-backed
    registry, without which YAML names resolve against the empty stub:
    services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()
    (Orkeon.Hosting; orkeon run does this for you)
-5. Load and run:
-   var crew = await crewFactory.CreateFromFileAsync("config.yaml");
+5. Load and run — the YAML path is a virtual path, read through the VFS:
+   var crew = await crewFactory.CreateFromFileAsync("/crews/config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);
 6. Iterate on the prompts in the YAML
 ```
+
+While the crew only uses built-in tools, no host code is needed at all: `orkeon run config.yaml --validate` loads it with strict tool resolution (no LLM call), and `orkeon run config.yaml` runs it — the runner reads the `Llm` section, mounts the folders and registers the DI-backed tool registry itself (see the [CLI reference](../reference/cli.md#orkeon-run)). The host of section 5.5 becomes necessary once custom C# tools enter the port. The YAML keys are listed in the [YAML schema](../architecture/yaml-schema.md).
 
 ## Step 1 — Analyze the source application's responsibilities
 
@@ -70,7 +72,7 @@ Categorize each responsibility according to this grid:
 
 ### 1.4 Identify human interactions
 
-Spot the points where the application requires human intervention (validation, input, approval). These points will become tasks with `HumanInput = true` in Orkeon.
+Spot the points where the application requires human intervention (validation, input, approval). These points will become tasks with `HumanInput = true` in Orkeon (`humanInput: true` in YAML). The flag hands the agent the `human_input` tool for that task, so the host must register one: `orkeon run` surfaces the question on its run event bus, and a hand-built host calls `AddOrkeonHumanInput<TProvider>()` with its own `IHumanInputProvider` (the parameterless `AddOrkeonHumanInput()` auto-approves). Without a registered `human_input` tool the flag is a no-op.
 
 ## Step 2 — Map the responsibilities to agent roles
 
@@ -106,7 +108,9 @@ Source responsibility  : [description]
 | Controller that orchestrates a workflow | Crew with `ProcessType.Sequential` |
 | Validation / review service | "Quality Reviewer" agent with JSON output validation |
 | Scheduler / batch processor | Crew with `KickoffForEachAsync` (batch) |
-| Service with complex branching logic | `Hierarchical` crew with `LlmBasedManager` |
+| Service that routes work to specialists at runtime | `Hierarchical` crew with `LlmBasedManager` |
+| Service with explicit branching or retry loops | `Graph` crew (`StateGraph<TState>`, conditional edges, controlled cycles) |
+| Open-ended job whose steps are not known in advance | `Autonomous` crew (a manager LLM assigns each task; a failed task goes to a peer agent within a crew-wide delegation depth; extra agents only through a host-registered `SpawnAgentTool`; all bounded by `AgentExecutionBudget`) |
 
 ### 2.4 When to create an agent vs. a tool
 
@@ -135,27 +139,31 @@ For each agent defined in Step 2, list the concrete operations it must perform. 
 
 ### 3.3 Existing tools by common need
 
-| Need | Existing tool | Package |
-|--------|---------------|---------|
-| Read a text/JSON/XML file | `FileReadTool` | `Orkeon.Tools.FileSystem` |
-| Write a file | `FileWriteTool` | `Orkeon.Tools.FileSystem` |
-| List a directory | `DirectoryReadTool` | `Orkeon.Tools.FileSystem` |
-| Search within files | `DirectorySearchTool` | `Orkeon.Tools.FileSystem` |
-| Read a CSV | `CsvReaderTool` | `Orkeon.Tools.Data` |
-| Read a PDF | `PdfReaderTool` | `Orkeon.Tools.Data` |
-| Read a DOCX | `DocxReadTool` | `Orkeon.Tools.Data` |
-| Read / write an Excel (.xlsx) | `XlsxReadTool` / `XlsxWriteTool` | `Orkeon.Tools.Data` |
-| Manipulate JSON | `JsonTool` | `Orkeon.Tools.Data` |
-| SQL query | `RelationalDatabaseTool` | `Orkeon.Tools.Data` |
-| MongoDB query | `MongoDbTool` | `Orkeon.Tools.Data` |
-| Web search | `WebSearchTool` / `BraveSearchTool` | `Orkeon.Tools.Web` |
-| Web scraping | `WebScrapeTool` | `Orkeon.Tools.Web` |
-| REST API call | `HttpApiTool` | `Orkeon.Tools.Web` |
-| Execute C# code | `SecureCodeInterpreterTool` | `Orkeon.Infrastructure` |
-| Ask a colleague | `AskQuestionTool` | `Orkeon.Infrastructure` |
-| Delegate a task | `DelegateWorkTool` | `Orkeon.Infrastructure` |
-| Semantic search | `SearchTool` | `Orkeon.Infrastructure` |
-| RAG over documents | `RagSearchTool` | `Orkeon.Tools.Rag` (opt-in: `AddOrkeonRag` + `AddOrkeonRagTools`) |
+The YAML name is what a crew lists under an agent's `tools:`.
+
+| Need | Existing tool | YAML name | Package / registration |
+|--------|---------------|-----------|---------|
+| Read a text/JSON/XML file | `FileReadTool` | `file_read` | `Orkeon.Tools.FileSystem` — `AddOrkeonFileSystemTools()` |
+| Write a file | `FileWriteTool` | `file_write` | `Orkeon.Tools.FileSystem` — `AddOrkeonFileSystemTools()` |
+| List a directory | `DirectoryReadTool` | `directory_read` | `Orkeon.Tools.FileSystem` — `AddOrkeonFileSystemTools()` |
+| Search within files | `DirectorySearchTool` | `directory_search` | `Orkeon.Tools.FileSystem` — `AddOrkeonFileSystemTools()` |
+| Read a CSV | `CsvReaderTool` | `csv_reader` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| Read a PDF | `PdfReaderTool` | `pdf_reader` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| Read a DOCX | `DocxReadTool` | `docx_reader` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| Read / write an Excel (.xlsx) | `XlsxReadTool` / `XlsxWriteTool` | `xlsx_reader` / `xlsx_writer` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| Manipulate JSON | `JsonTool` | `json_tool` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| SQL query | `RelationalDatabaseTool` | `relational_database_query` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| MongoDB query | `MongoDbTool` | `mongodb_query` | `Orkeon.Tools.Data` — `AddOrkeonDataTools()` |
+| Web search | `WebSearchTool` / `BraveSearchTool` | `web_search` / `brave_search` | `Orkeon.Tools.Web` — opt-in `AddOrkeonWebSearchTool()` / `AddOrkeonBraveSearchTool(apiKey)` |
+| Web scraping | `WebScrapeTool` | `web_scrape` | `Orkeon.Tools.Web` — `AddOrkeonWebTools()` |
+| REST API call | `HttpApiTool` | `http_api` | `Orkeon.Tools.Web` — `AddOrkeonWebTools()` |
+| Run a shell command | `ShellCommandTool` | `shell_command` | `Orkeon.Tools.Code` — `AddOrkeonCodeTools()` |
+| Execute C# code | `SecureCodeInterpreterTool` | `code_interpreter` | `Orkeon.Infrastructure` — registered as a concrete type only: add `services.AddSingleton<IBaseTool>(sp => sp.GetRequiredService<SecureCodeInterpreterTool>())` for a YAML crew to resolve it by name |
+| Read, draft or send e-mail | the 13 `email_*` tools | `email_read`, `email_draft`, `email_send`, … | `Orkeon.Tools.Email` — `AddOrkeonEmailTools(configuration)` (see [E-mail tools](./email.md)) |
+| Ask a colleague | `AskQuestionTool` | `ask_question_to_coworker` | `Orkeon.Infrastructure` — given per agent when `AllowDelegation` is on |
+| Delegate a task | `DelegateWorkTool` | `delegate_work_to_coworker` | `Orkeon.Infrastructure` — given per agent when `AllowDelegation` is on |
+| Semantic search | `SearchTool` | `semantic_search` | `Orkeon.Infrastructure` — opt-in `AddSemanticSearchTool()` (`Orkeon.Hosting`; `orkeon run` calls it) |
+| RAG over documents | `RagSearchTool` | `rag_search` | `Orkeon.Tools.Rag` (opt-in: `AddOrkeonRag` + `AddOrkeonRagTools`) |
 
 ## Step 4 — Define the tasks and the orchestration flow
 
@@ -171,14 +179,18 @@ Each expected output of the crew becomes a `CrewTask`. A task is defined by its 
 | A manager must dynamically route tasks to the most competent agents | `Hierarchical` |
 | Several independent tasks can run simultaneously | `Parallel` |
 | The agents must vote and reach a consensus | `Consensual` |
+| The flow branches on conditions or loops until a check passes | `Graph` |
+| A manager LLM routes each task, a failed task gets a second chance with a peer, all within a budget | `Autonomous` |
+
+In YAML the mode is the crew's `process:` key (`sequential`, `hierarchical`, `parallel`, `consensual`, `graph`, `autonomous`); with the builder, `.Sequential()`, `.Hierarchical()`, `.Parallel()`, `.Consensual()` or `.Process(ProcessType.Graph)` / `.Process(ProcessType.Autonomous)`. See the [Graph](../orchestration/graph.md) and [Autonomous](../orchestration/autonomous.md) orchestration guides for the last two.
 
 ### 4.3 Define the dependencies
 
-Use `CrewTaskBuilder.DependsOn()` to express prerequisites between tasks. In `Sequential` mode, the declaration order is sufficient. In `Parallel` mode, explicit dependencies control the sequencing.
+Use `CrewTaskBuilder.DependsOn()` (YAML: `dependencies:`) to express prerequisites between tasks. In `Sequential` mode the declaration order is enough, and declared dependencies reorder it when they disagree. In `Parallel` mode the dependencies split the tasks into waves: the tasks whose prerequisites are met run together, and the next wave starts when they are done, with their outputs in context.
 
 ### 4.4 Configure the execution options
 
-For each task, decide on: the priority (`TaskPriority`), asynchronous execution (`AsyncExecution`), human intervention (`HumanInput`), the output validation schema (`OutputJson`), the output file (`OutputFile`).
+For each task, decide on: the priority (`TaskPriority`), human intervention (`HumanInput`, see 1.4), the output validation schema (`OutputJson`), and the file the framework writes from the result (the YAML `deliverable:` block — `path`, `format`, optional schema). `AsyncExecution` (`asyncExecution:`) is recorded but honoured by no mode yet: use `process: parallel` for concurrency.
 
 ## Step 5 — Produce the porting plan
 
@@ -224,65 +236,104 @@ Before starting the implementation, verify that:
 
 ### 5.5 Minimal DI setup for the port
 
-Every port requires this dependency-injection setup:
+A port that brings its own C# tools runs in its own host. Every such host needs this dependency-injection setup:
 
 ```csharp
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Orkeon.Application.DependencyInjection;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools;
+using Orkeon.Hosting;
+using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Tools.Code.DependencyInjection;
+using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.FileSystem.DependencyInjection;
+using Orkeon.Tools.Web.DependencyInjection;
+
 var host = Host.CreateDefaultBuilder(args)
+    // Same environment overlay as the runners: ORKEON_Llm__ApiKey → Llm:ApiKey
+    .ConfigureAppConfiguration(config => config.AddEnvironmentVariables("ORKEON_"))
     .ConfigureServices((context, services) =>
     {
         // Required — Application and Infrastructure layers
         services.AddOrkeonApplication();
-        services.AddOrkeonInfrastructure();
+        services.AddOrkeonInfrastructure(context.Configuration);
+
+        // Required — the virtual file system every tool and the YAML loader go through
+        // (mounts declared under Orkeon:FileSystem:Mounts, e.g. "/srv/app/crews:/crews:ro")
+        services.AddOrkeonFileSystem(context.Configuration);
 
         // Tool suites — add only the ones you need
         services.AddOrkeonFileSystemTools();   // If agents read/write files
         services.AddOrkeonDataTools();         // If agents handle CSV, PDF, JSON, SQL, MongoDB
-        services.AddOrkeonWebTools();          // If agents do web search, scraping, HTTP API
+        services.AddOrkeonWebTools();          // If agents scrape pages or call HTTP APIs
         services.AddOrkeonCodeTools();         // If agents execute shell commands
 
         // Custom tools identified in Step 3
-        services.AddSingleton<IBaseTool, MonOutilCustom1>();
-        services.AddSingleton<IBaseTool, MonOutilCustom2>();
+        services.AddSingleton<IBaseTool, MyCustomTool1>();
+        services.AddSingleton<IBaseTool, MyCustomTool2>();
 
-        // LLM configuration (if no default)
-        services.Configure<LlmConfig>(context.Configuration.GetSection("Llm"));
+        // Required for YAML crews — tool names resolve against the IBaseTool registrations
+        // (without it they resolve against an empty in-memory stub)
+        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+
+        // LLM — a hand-built host reads no Llm section by itself: build the provider here.
+        // Use the provider class of your vendor (OpenAIProvider, AnthropicLlmProvider, ...).
+        var llm = LlmConfig.Create(
+            context.Configuration["Llm:Model"] ?? "gpt-5.6-sol",
+            context.Configuration["Llm:ApiKey"]);
+        services.AddOrkeonLlmProvider(
+            sp => new OpenAIProvider(llm,
+                sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<ILogger<OpenAIProvider>>()),
+            llm);
     })
     .Build();
 ```
 
+`AddOrkeonLlmProvider` comes **after** `AddOrkeonInfrastructure`: it registers the provider on the three surfaces the runtime consumes (`ILlmProvider`, `IBasicLlmProvider`, `IChatClient`), metered, and the last registration wins. A mount whose folder lies outside the working directory must also be listed under `PathSecurity:AdditionalAllowedDirectories`. `orkeon run` does all of the above from the settings file (see [Configuration](../reference/configuration.md)).
+
 ### 5.6 Execution pattern
 
 ```csharp
-// Load the crew from the YAML
-var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
-var crew = await crewFactory.CreateFromFileAsync("config.yaml");
+// ICrewFactory is scoped: resolve it from a scope
+using var scope = host.Services.CreateScope();
+var services = scope.ServiceProvider;
 
-// Prepare the input with execution variables
-var variables = new Dictionary<string, object>
-{
-    ["date"] = DateTime.Today.ToString("yyyy-MM-dd"),
-    ["environment"] = "production"
-};
+// Load the crew from the YAML (a virtual path, under a declared mount)
+var crewFactory = services.GetRequiredService<ICrewFactory>();
+var crew = await crewFactory.CreateFromFileAsync("/crews/config.yaml");
 
-var input = new CrewInput(
+// Prepare the input with execution variables (task templates {date}, {environment})
+var input = CrewInput.WithStringVariables(
     "Initial context for the execution",
-    variables);
+    new Dictionary<string, string>
+    {
+        ["date"] = DateTime.Today.ToString("yyyy-MM-dd"),
+        ["environment"] = "production"
+    });
 
-// Run and retrieve the results
-var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
+// Run and retrieve the results — KickoffAsync never throws: a failure comes back
+// as Succeeded = false with its reason in Error
+var orchestrator = services.GetRequiredService<ICrewOrchestrationService>();
 var output = await orchestrator.KickoffAsync(crew.Id, input);
 
 // Use the results
-var failedTasks = output.TaskOutputs.Where(t => !t.Success).ToList();
-if (failedTasks.Count == 0)
+if (output.Succeeded)
 {
     // Success — process the final result
     Console.WriteLine(output.FinalOutput);
 }
 else
 {
-    // Failure — identify the failed tasks
-    foreach (var failed in failedTasks)
+    // Failure — the reason, then the failed tasks
+    Console.Error.WriteLine($"Crew failed: {output.Error}");
+    foreach (var failed in output.TaskOutputs.Where(t => !t.Success))
         Console.Error.WriteLine($"Task {failed.TaskId} failed: {failed.RawOutput}");
 }
 ```

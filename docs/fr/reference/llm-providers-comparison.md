@@ -2,7 +2,7 @@
 
 # Comparatif des fournisseurs LLM — Orkeon
 
-> État au 2026-09-19, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
+> État au 2026-09-30, dérivé du code source (`src/core/Orkeon.Infrastructure/LLMs/`)
 > et des `LlmProviderCapabilities` déclarées par chaque fournisseur.
 > Légende : ✓ supporté · ✗ absent · ◐ partiel/générique · † non campagné (déclaré depuis la
 > documentation du vendeur, en attente de la première campagne en exécution réelle — les
@@ -14,7 +14,7 @@
 | **Azure OpenAI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Anthropic** | HttpLlmProviderBase | ✓ natif | ✓ | ✓ | ✓ (natif, séparé) | ✓ | ✗ | ✓ schema | ✓ toggle | ✓ | ✗ | ✓ explicite | ✗ | ✓ | ✓ |
 | **DeepSeek** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✓ | ✓ métriques | ✗ | ✓ | ✓ |
-| **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ✓ métriques | ✗ | ✓ | ✓ |
+| **Z.AI (GLM)** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ toggle | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Together AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Mistral AI** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema | ✓ effort | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **Qwen** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✓ budget | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
@@ -25,14 +25,17 @@
 | **HuggingFace** | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ object | ✗ | ✓ | ✗ | ◐ auto | ✗ | ✓ | ✓ |
 | **OpenRouter** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ schema (par endpoint) | ✓ budget (objet `reasoning`) | ✓ (par modèle) | ✗ | ◐ auto (+ `cache_write_tokens`) | ✗ (`usage.cost` exposé) | ✓ | ✓ |
 | **Mammouth AI** † | OpenAI-compat | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✗ (non documenté) | ✗ (non documenté) | ✓ (par modèle) | ✗ | ◐ auto | ✗ | ✓ | ✓ |
-| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ✗ | ✓ | ✓ |
+| **Ollama** | HttpLlmProviderBase | ✓ | ✓ (`/api/chat`) | ✓ (`/api/chat`) | ✓ (prepend) | ✗ | ✓ | ✓ schema | ✓ toggle | ✓ (`images`) | ✗ | ✗ | ◐ (`total_duration`, `eval_duration` sur `/api/generate`) | ✓ | ✓ |
 
 ## Comment lire les colonnes de capacités
 
 `response_format`, `thinking` et `Vision` ne sont pas maintenus à la main ici : chaque fournisseur
 déclare un value object `LlmProviderCapabilities`, et `OpenAICompatibleProviderBase` le traduit une
-seule fois dans le dialecte OpenAI. Anthropic, Ollama et Qwen surchargent le hook parce que leurs
-API parlent leur propre dialecte.
+seule fois dans le dialecte OpenAI. Anthropic et Ollama écrivent leur propre dialecte (ils
+n'étendent pas la base compatible OpenAI) ; Qwen et OpenRouter surchargent la traduction du
+thinking pour les champs de DashScope et l'objet `reasoning` d'OpenRouter. Le
+[guide du format de réponse](../guides/llm-response-format.md) détaille les surfaces de
+`response_format`.
 
 - **`response_format`** — `object` signifie que l'API garantit un JSON bien formé ; `schema`
   signifie qu'elle valide contre un JSON Schema côté serveur. Un schéma envoyé à un fournisseur
@@ -56,7 +59,8 @@ API parlent leur propre dialecte.
   `prompt_cache_hit/miss_tokens` et le champ standard OpenAI
   `prompt_tokens_details.cached_tokens`. **✓ explicite** (Anthropic) signifie que le cache ne fait
   rien tant qu'un point d'arrêt `cache_control` n'est pas posé — opt-in via `LlmCacheConfig` / le
-  bloc YAML `cache:`.
+  bloc YAML `cache:`. **✓ métriques** (DeepSeek) ajoute les `prompt_cache_hit_tokens` /
+  `prompt_cache_miss_tokens` du vendeur aux métadonnées de la réponse.
 - **SSE Anthropic** : `ChatStreamingAsync` parse nativement le flux d'événements de la Messages
   API depuis LLM-05 ; auparavant il retombait sur une émulation bufferisée, donc aucun token
   n'arrivait tôt.
@@ -71,6 +75,10 @@ API parlent leur propre dialecte.
   `:cheapest` / `:preferred` / `:<partner>`) — le seul levier de coût et de latence sur Inference
   Providers.
 - **top_p / stop** : Ollama n'expose que `temperature` + `num_predict` (= max_tokens).
+- **Grammaire GBNF** : la base compatible OpenAI écrit un champ `grammar` de premier niveau dès
+  que `LlmConfig.GrammarGbnf` est renseigné, et Ollama envoie son propre `grammar`. Seuls les
+  serveurs de la famille llama.cpp (Docker Model Runner, `llama-server`) l'honorent ; une API
+  cloud qui l'ignore rend une sortie libre, que `StructuredOutputResolver` rattrape en aval.
 - **OpenAI `max_completion_tokens`** : OpenAI a retiré `max_tokens` de ses modèles actuels (la
   campagne du 2026-08-30 a perdu dix modes sur ce seul champ), le dialecte OpenAI écrit donc
   `max_completion_tokens` — accepté aussi par les générations antérieures (vérifié sur
@@ -95,8 +103,8 @@ API parlent leur propre dialecte.
   clôture markdown) : la déclaration None est une mesure (appels bruts, 2026-08-30,
   consignée dans la note MiniMax du catalogue de campagne — le M8 archivé montre ➖ parce
   que la déclaration None empêche l'option d'être envoyée). Vision par modèle (D-03) :
-  `MiniMax-M2` répond « I'm unable to view the image », et la famille VL n'apparaît pas au
-  `/models` de la plateforme — pas de compagnon déclarable en l'état.
+  `MiniMax-M2` répond « I'm unable to view the image » ; `MiniMax-M3` lit l'image (campagne
+  du 2026-09-21) et sert de compagnon vision au kit.
 - **Grok (x.AI)** : chaque capacité déclarée est une mesure en réel — une campagne complète de
   12 modes est passée contre `api.x.ai` via le dialecte OpenAI générique avant même que la
   classe du provider existe (2026-08-30, archivée sous `llmproviders-test/custom-endpoints/`).
@@ -122,8 +130,10 @@ API parlent leur propre dialecte.
   indices concordants (2026-09-18) l'API est un proxy LiteLLM ; rien dans le provider n'en
   dépend. Les identifiants sont les chaînes nues des vendeurs (`gpt-5.6-sol`,
   `claude-sonnet-5`, `gemini-3.7-flash`) : le provider se cible par hôte (`api.mammouth.ai`)
-  ou par `"Provider": "mammouth"` et n'est jamais inféré d'un nom de modèle — la même chaîne
-  sans base URL continue d'aller chez le vendeur. Seuls `messages`, `model`, `temperature`,
+  ou par la clé de provider explicite `mammouth` (`LlmProviderFactory.Create("mammouth", …)`,
+  `orkeon llm probe -p mammouth`) et n'est jamais inféré d'un nom de modèle — la même chaîne
+  sans base URL continue d'aller chez le vendeur. Les settings d'un run ne portent aucune clé
+  de provider : un run atteint Mammouth par son `BaseUrl`. Seuls `messages`, `model`, `temperature`,
   `max_tokens`, `top_p` et `stream` sont documentés : `response_format` et le thinking
   restent non déclarés (avertissement structuré, jamais un drop silencieux) tant que la
   première campagne ne les a pas mesurés — la règle MiniMax ; la vision est déclarée depuis la
@@ -346,6 +356,8 @@ tools-avec-raisonnement).
 
 Chaque ligne est adossée à des tests unitaires qui vérifient le payload émis — contre un **handler
 HTTP mocké**. Un mock prouve qu'Orkeon envoie ce que nous croyons envoyer ; il ne prouve pas que
-le fournisseur l'accepte. Les preuves d'exécution réelle sont suivies séparément dans le journal
-de la matrice de tests ; lancez une
-campagne avec `orkeon llm probe --provider <name> --archive <dir>`.
+le fournisseur l'accepte. Les preuves d'exécution réelle sont archivées séparément par le kit
+de campagne ([`llmproviders-test/`](https://github.com/Orkeon/orkeon/tree/main/llmproviders-test),
+dont le README porte le journal des campagnes) ; lancez une campagne avec
+`orkeon llm probe --provider <nom> --archive <dossier>`, ou le `run-campaign.sh` du kit
+([valider un fournisseur](../architecture/llm-providers.md#valider-un-fournisseur-contre-son-api-réelle)).

@@ -24,7 +24,7 @@ La structure YAML suit ce schéma :
 
 ```yaml
 # Schéma CrewYamlConfig — clés les plus utilisées (surface complète dans docs/architecture/yaml-schema.md :
-# llm:/rag:/links: au niveau crew, knowledge: agent, tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
+# llm:/rag:/links:/mounts: au niveau crew, knowledge: agent, tools:/deliverable:/llm_override: tâche, llm thinking/responseFormat/cache)
 name: string              # Identifiant de la crew
 goal: string              # Objectif (requis)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
@@ -33,6 +33,7 @@ memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
 planning: bool            # default: false
 managerAgent: string      # Requis si process = "hierarchical"
+mounts: [string]          # Racines virtuelles utilisées par la crew ("/output", ou "<id>|/output" pour épingler une entrée des settings)
 
 agents:
   <agent_id>:             # Clé = identifiant unique de l'agent
@@ -58,7 +59,7 @@ tasks:
     asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
-    circuitBreaker:       # Configuration FSM / circuit breaker (optionnel)
+    circuitBreaker:       # Analysé, PAS appliqué à l'exécution aujourd'hui (voir ci-dessous)
       preset: string      # "strict" | "permissive" | "default"
       maxTransitions: int # Transitions max avant trip
       stateTimeoutSeconds: int  # Timeout par état (secondes)
@@ -76,7 +77,7 @@ tasks:
         <tool_name>: [string]
 ```
 
-Le bloc `circuitBreaker` est également utilisable au niveau racine du YAML (défaut pour toutes les tâches). Voir [Orchestration FSM](../orchestration/fsm.md) pour le détail complet.
+Le bloc `circuitBreaker` est accepté au niveau tâche et à la racine du YAML, mais **aucun des deux n'est un défaut appliqué à toutes les tâches** : le bloc de niveau tâche est analysé puis inutilisé par tous les chemins d'exécution, et le bloc de niveau crew n'est lu que par le [mode Graph](../orchestration/graph.md), quand aucun `graphConfig` n'est déclaré. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, et un arrêt après 3 erreurs d'outil identiques consécutives) — voir « Ce qui s'exécute aujourd'hui » dans [Orchestration FSM](../orchestration/fsm.md#vue-densemble).
 
 Les guardrails peuvent être déclarés sur un agent (toutes ses tâches) et/ou sur une tâche
 (cette tâche seulement). Quand les deux existent, les deux s'appliquent — les règles de
@@ -110,20 +111,24 @@ Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework 
 
 ### Modes de chargement
 
-Le loader `YamlCrewDefinitionLoader` supporte deux modes :
+Le loader `YamlCrewDefinitionLoader` supporte les modes ci-dessous. Il lit à travers le
+système de fichiers virtuel (`IFileSystemService`) : chaque chemin qu'il reçoit est donc un
+chemin **virtuel** sous un montage déclaré — `/crews/...` ci-dessous suppose un montage tel
+que `./crews:/crews:ro` ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)) ;
+un chemin disque ne trouve aucun montage.
 
 **Mode fichier unique** : contient agents et tasks dans un seul fichier
 
 ```csharp
 // loader : ICrewDefinitionLoader (implémentation YamlCrewDefinitionLoader) résolu via DI
-var config = await loader.LoadFromFileAsync("crews/research_crew.yaml", ct);
+var config = await loader.LoadFromFileAsync("/crews/research_crew.yaml", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
 
 **Mode multi-fichier** : séparation agents.yaml, tasks.yaml, et crew.yaml dans un répertoire
 
 ```csharp
-var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var config = await loader.LoadFromDirectoryAsync("/crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 // Charge automatiquement : crew.yaml, agents.yaml, tasks.yaml
 ```
@@ -148,7 +153,7 @@ crews/research/
 
 ```csharp
 // Même appel : la disposition est détectée automatiquement.
-var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var config = await loader.LoadFromDirectoryAsync("/crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
 
@@ -176,13 +181,15 @@ La pipeline de création transforme la configuration YAML en objets domaine opé
 ### Pipeline de création
 
 1. **YAML → CrewYamlConfig** : Désérialisation YAML en modèles de configuration
-2. **CrewYamlConfig → CrewConfiguration** : Mapping des modèles YAML vers les DTOs application avec validation basique
-3. **Résolution des outils** : Noms d'outils (strings) résolus via `IToolRegistry.GetToolByNameAsync(name)` en instances `IBaseTool`
-4. **Création des agents** : Instances `Agent` construites avec `AgentBuilder` et outils résolus
-5. **Création des tasks** : Instances `CrewTask` construites avec `CrewTaskBuilder` et dépendances validées
-6. **Validation des dépendances** : Détection des cycles (circular dependency detection) et validation de l'ordre
-7. **Création de la Crew** : Instance `Crew` construite avec `CrewBuilder`, process strategy appliquée
-8. **Persistance** : Agents, Tasks, Crew persists dans les repositories (facultatif)
+2. **CrewYamlConfig → CrewConfiguration** : Mapping des modèles YAML vers les DTOs application avec validation basique (les erreurs lèvent `InvalidOperationException`, les avertissements sont journalisés)
+3. **Collections RAG** : les collections déclarées par un bloc `rag:` sont ingérées (de façon incrémentale) — quand le sous-système RAG est enregistré ; sans lui, un Warning et aucune ingestion
+4. **Résolution des outils** : Noms d'outils (strings) résolus via `IToolRegistry.GetToolByNameAsync(name)` en instances `IBaseTool`
+5. **Création des agents** : Instances `Agent` construites avec `AgentBuilder` et outils résolus
+6. **Création des tasks** : Instances `CrewTask` construites avec `CrewTaskBuilder` et dépendances validées
+7. **Validation des dépendances** : Détection des cycles (circular dependency detection) et validation de l'ordre
+8. **Création de la Crew** : Instance `Crew` construite avec `CrewBuilder`, process strategy appliquée
+9. **Persistance** : Agents, Tasks, Crew rangés dans les repositories — toujours, pour que `ICrewOrchestrationService.KickoffAsync(crew.Id, …)` les trouve
+10. **Liens** : l'identité de la crew et son bloc `links:` sont remis à l'ACL de l'EventHub (un bloc `links:` déclaré sans `AddOrkeonEventHubAcl()` journalise un Warning : rien ne l'applique)
 
 ### Points d'entrée
 
@@ -213,13 +220,13 @@ public async Task<Crew> CreateFromFileAsync(
 
 /// <summary>
 /// Crée une Crew à partir d'un répertoire YAML.
-/// Mode multi-fichier : crew.yaml + agents.yaml + tasks.yaml
+/// Disposition par entité (config.yaml + agents/ + tasks/) ou plate crew.yaml + agents.yaml + tasks.yaml
 /// </summary>
 public async Task<Crew> CreateFromDirectoryAsync(
     string directoryPath,
     CancellationToken ct = default)
 {
-    // Charge agents.yaml, tasks.yaml, crew.yaml → appelle CreateFromConfigAsync
+    // Charge la disposition du répertoire → appelle CreateFromConfigAsync
 }
 ```
 

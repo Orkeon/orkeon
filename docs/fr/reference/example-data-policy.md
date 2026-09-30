@@ -4,20 +4,20 @@
 
 > **Voir aussi** : [Exécuter votre premier exemple](../getting-started/run-your-first-example.md) · [Gabarit de README d'exemple](../templates/example-readme.md) · [Conformité VFS](../architecture/vfs-compliance.md) · [Retour à l'index](../INDEX.md)
 
-La plupart des exemples embarqués livrent leur **définition de crew** (`config.yaml`)
-et leur code, mais **pas** les données d'entrée sur lesquelles ils travaillent. Cette
+La plupart des exemples embarqués livrent leur **définition de crew** (`config.yaml`,
+ou `main.ork.ts` pour un crew TypeScript) et leur code, mais **pas** les données d'entrée sur lesquelles ils travaillent. Cette
 page explique pourquoi, et comment nourrir un exemple avec vos propres données.
 
 ## La politique
 
 - **Les exemples livrent de la configuration, pas des jeux de données.** Un exemple
   est un crew que vous pouvez lire et exécuter — pas une distribution de données.
-  Quand la section d'exécution d'un README dit *« cet exemple ne livre pas encore de
-  données d'exemple »*, c'est exactement cela : aucun fichier d'entrée n'est commité
+  Quand la section d'exécution d'un README dit *« this example does not ship sample
+  data yet »*, c'est exactement cela : aucun fichier d'entrée n'est commité
   à côté du `config.yaml`.
 - **Les exemples vitrines qui ont besoin d'une fixture en portent une minuscule.**
   Une poignée d'exemples livrent un petit échantillon synthétique pour tourner sans
-  préparation. Ceux-là ont un tableau **Données requises** dans leur README et un
+  préparation. Ceux-là ont un tableau **Required data** (données requises) dans leur README et un
   `--mount` dans leur commande d'exécution ; les deux catégories se distinguent à ce
   tableau.
 - **Aucune donnée propriétaire, protégée par le droit d'auteur ou personnelle**
@@ -40,7 +40,7 @@ page explique pourquoi, et comment nourrir un exemple avec vos propres données.
 Selon le crew, l'une de ces trois choses est vraie :
 
 1. **Les outils récupèrent leurs propres données.** Les crews bâtis autour de
-   `web_scrape`, `http_api`, `search` ou d'outils similaires tirent des données
+   `web_scrape`, `http_api`, `web_search` ou d'outils similaires tirent des données
    vivantes à l'exécution. Vous ne fournissez rien — juste un profil LLM et,
    généralement, un sujet via `--var` ou `--initial-context`. Voir la référence des
    flags dans
@@ -78,20 +78,25 @@ Si votre exemple a réellement besoin d'une fixture embarquée :
   ressembler à des données réelles, générez-la.
 - **Placez-la dans le dossier de l'exemple** et montez-la en lecture seule depuis la
   commande d'exécution (`--mount ./data:/data:ro`).
-- **Documentez-la** dans un tableau **Données requises** du README de l'exemple, en
+- **Documentez-la** dans un tableau **Required data** (données requises) du README de l'exemple, en
   suivant le [gabarit de README d'exemple](../templates/example-readme.md). Ce
   tableau (plus un `--mount` dans la commande) est ce qui sort l'exemple de la
-  catégorie « ne livre pas encore de données d'exemple ».
+  catégorie « does not ship sample data yet ».
 
 ## Jeux de données des vitrines
 
-Un ensemble d'exemples vitrines (un par catégorie) livre une fixture embarquée pour
-tourner sur de vrais fichiers sans préparation. Leurs données sortent d'un
+Dix exemples vitrines — un par catégorie, deux dans `03-finance-trading/`
+(`34-portfolio-consensus`, `40-invoice-processing`) — livrent un dossier `data/` embarqué
+pour tourner sur de vrais fichiers sans préparation. Leurs données sortent d'un
 générateur unique :
 
 ```bash
-python3 scripts/generate-vitrine-data.py      # (re)génère chaque dossier data/ de vitrine
+python3 scripts/generate-vitrine-data.py           # (re)génère chaque dossier data/ de vitrine
+python3 scripts/generate-vitrine-data.py --check   # vérifie seulement que chaque fichier existe
 ```
+
+Les vitrines RAG (`rag/*/data/`) et les exemples de scripting (`scripting/data/`)
+portent leurs propres petits corpus écrits à la main ; le générateur ne les gère pas.
 
 Règles suivies par ces fixtures, en plus du « petite et synthétique » ci-dessus :
 
@@ -104,8 +109,8 @@ Règles suivies par ces fixtures, en plus du « petite et synthétique » ci-des
 - **Aucune dépendance externe.** CSV/JSON viennent de la stdlib Python ; les PDF
   sont écrits par un mini-writer intégré (police Helvetica standard, texte
   extractible par `pdf_reader`). Le script tourne sur un Python 3.9+ nu.
-- **Les tâches nomment les chemins virtuels.** Les descriptions de tâches du
-  `config.yaml` référencent les chemins VFS concrets (p. ex.
+- **Les tâches nomment les chemins virtuels.** Les descriptions de tâches
+  (`config.yaml` ou `main.ork.ts`) référencent les chemins VFS concrets (p. ex.
   `/data/experiment-measurements.csv`) pour que l'agent lise le fichier livré au
   lieu d'inventer un chemin que le VFS rejetterait.
 
@@ -117,9 +122,10 @@ fourni par l'appelant à travers le VFS — `csv_reader`, `pdf_reader`, `file_re
 eux-mêmes de fichier embarqué : `json_tool` (opère sur des chaînes JSON inline),
 `file_write` (écrit seulement), `http_api` / `web_scrape` (ressources distantes) et
 `relational_database_query` (chaîne de connexion fournie par l'appelant). Un exemple
-bâti uniquement sur ceux-là n'a pas besoin de dossier `data/` ; voir
-`examples/09-experimental/97-multi-party-negotiation`, qui n'en livre aucun et passe
-son scénario via `--initial-context`.
+bâti uniquement sur ceux-là n'a besoin d'aucune donnée montée ; voir
+`examples/09-experimental/97-multi-party-negotiation`, qui ne monte rien et reçoit
+son scénario via `--initial-context` — son `data/procurement-brief.md` est un brief
+lisible à condenser dans ce flag, qu'aucun outil ne lit.
 
 ### Vérifier une fixture
 

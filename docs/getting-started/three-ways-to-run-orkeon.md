@@ -9,7 +9,7 @@ want to install:
 
 | Way | Prerequisites | Time to first run | Best for |
 |---|---|---|---|
-| **1. From source** | .NET SDK ≥ 10.0.300, git clone | ~5 min (+ build) | Contributors, reading/modifying code, running any of the 100+ bundled examples |
+| **1. From source** | .NET SDK ≥ 10.0.300, git clone | ~5 min (+ build) | Contributors, reading/modifying code, running any of the 105 bundled examples |
 | **2. Release binary** | Nothing for the CLI packages (Windows zip/MSI, Debian `.deb`) — they bundle the runtime; .NET 10 **runtime** for the extra launchers in the multi-app archive | ~2 min | Running examples and showcases without a source checkout |
 | **3. Container** | Docker | ~1 min (after image pull) | CI, reproducible runs, no local .NET at all |
 
@@ -196,8 +196,8 @@ orkeon run path/to/crew.yaml
 `orkeon init` is a 5-choice wizard — `ollama`, `docker-model-runner`, `openai`,
 `custom`, or `none` — and writes `%APPDATA%\Orkeon\appsettings.json` on Windows,
 `~/.config/Orkeon/appsettings.json` on Linux and macOS. It is scriptable end to
-end (`--provider`, `--base-url`, `--model`, `--api-key-env`, `--path`, `--force`,
-`--no-probe`), which is what CI uses. `orkeon doctor` prints ✅ / ⚠️ / ❌ per
+end (`--provider`, `--base-url`, `--model`, `--api-key-env` — or the discouraged inline
+`--api-key` —, `--path`, `--force`, `--no-probe`), which is what CI uses. `orkeon doctor` prints ✅ / ⚠️ / ❌ per
 check, exits `1` as soon as one check fails, and takes `--json` for scripts.
 
 > **No LLM configured?** Orkeon does not fail and does not go quiet: it warns on
@@ -288,8 +288,10 @@ installing: `./libexec/orkeon/orkeon run …`.
 ## 3. Container
 
 The `ghcr.io/orkeon/orkeon-runners` image (built from `Dockerfile.runners`,
-published to GHCR) has the **`orkeon` CLI as its default entry point** and ships
-all the other runners **plus the bundled examples** — zero local .NET required.
+published to GHCR) has the **`orkeon` CLI as its default entry point**, ships the
+**REPL** (`orkeon-repl`) next to it **plus the 105 bundled examples** — zero local
+.NET required. The service host is not in it: it has its own image, built from
+`deploy/Dockerfile.host` (see [the service host](../architecture/service-host.md)).
 
 ### The `/workspace` convention
 
@@ -313,7 +315,8 @@ Three image conveniences make this Just Work:
    `/workspace` before running, so the crew can write to your bind mount and the
    files it creates belong to you on the host. No `--user`, no `chmod`. (It
    still runs unprivileged: when nothing is mounted it falls back to the
-   image's non-root `app` user.)
+   image's non-root `app` user. An explicit `docker run --user` bypasses the
+   adoption, and `-e ORKEON_STAY_ROOT=1` keeps root.)
 3. **`/workspace` always exists** — even with nothing mounted, so the same
    commands work in CI.
 
@@ -337,12 +340,14 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
 orkeon-example list            # browse the 105 bundled examples
 orkeon-example run 1           # run #1 (research assistant)
 orkeon-example show 42         # read an example's README first
+orkeon-example settings        # which LLM settings apply, and why
 ```
 
 `orkeon-example run` resolves the number to its config, mounts
 `/output` for file results, and picks LLM settings for you (next section). When
 a number exists in two categories (`16`, `102`), it lists the candidates —
-qualify with the category: `orkeon-example run 02/16`.
+qualify with the category: `orkeon-example run 02/16` (a name substring such as
+`research-assistant` works too; extra arguments after the id go to `orkeon run`).
 
 **LLM settings inside the container** — the baked default targets **Docker
 Model Runner on your host** (`host.docker.internal:12434`): the

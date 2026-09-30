@@ -13,9 +13,9 @@
 //       --commands-dir examples/cli-ts-commands \
 //       --crews-dir    examples/cli-ts-commands/crews
 //
-//   scripted> crews                       # → review
-//   scripted> review src/Program.cs       # → src/Program.cs: source file — worth a read
-//   scripted> review-bg src/Program.cs    # → launched (ticket t1), result replayed later
+//   scripted> /crews                      # → review
+//   scripted> /review src/Program.cs      # → src/Program.cs: source file — worth a read
+//   scripted> /review-bg src/Program.cs   # → ticket t1 (logged to the logs pane), ✓ review: … when done
 
 // ── What crews the host found. `--crews-dir` is repeatable; this lists them all. ──
 defineCommand({
@@ -40,7 +40,7 @@ defineCommand({
   },
 });
 
-// ── Async: same crew, ticket returned immediately, `completed` replays at the next pump.
+// ── Async: same crew, ticket returned immediately, `completed` runs as soon as the crew settles.
 //    The ticket cycle is the one `commands.post` uses — `ps`, `inspect`, `result`, `cancel`
 //    in dispatch.cmd.ts work on these tickets too. ──
 defineAsyncCommand({

@@ -34,7 +34,7 @@ The sequential flow is: Ingestion → Stock check → Fraud detection → Price 
 
 ### Identified human interactions
 
-The `FraudDetectionService` flags orders with a score > 80 for manual review. This point will become a task with `HumanInput = true`.
+The `FraudDetectionService` flags orders with a score > 80 for manual review. This point will become a task with `HumanInput = true` — which gives the agent the `human_input` tool, answered by the `IHumanInputProvider` the host registers (Step 4c).
 
 ## Step 2 — Mapping to agents
 
@@ -86,7 +86,7 @@ Source responsibility  : PricingService
 → Constraints         : MaxIterations=5, MaxRpm=10
 ```
 
-**Key decision**: Use `SecureCodeInterpreterTool` for the VAT (TVA) calculations rather than a custom tool. The LLM generates the C# calculation code which is executed in the sandbox — this gives the flexibility to handle complex promotion rules without hardcoding the logic.
+**Key decision**: Use `SecureCodeInterpreterTool` for the VAT (TVA) calculations rather than a custom tool. The LLM generates the C# calculation code which is executed in the sandbox — this gives the flexibility to handle complex promotion rules without hardcoding the logic. Two conditions: the tool is registered as a concrete type only, so the host exposes it under `IBaseTool` for the YAML name `code_interpreter` to resolve (Step 4c); and the sandbox runs the code in Docker — without Docker, execution is refused unless `SandboxOptions.AllowHostExecution` is explicitly turned on.
 
 ### Agent 5: Notification Writer
 
@@ -110,16 +110,41 @@ Source responsibility  : NotificationService
 | Fraud Analyst | `RelationalDatabaseTool` | Yes — `Orkeon.Tools.Data` | Reuse |
 | Fraud Analyst | `JsonTool` | Yes — `Orkeon.Tools.Data` | Reuse |
 | Pricing Specialist | `CsvReaderTool` | Yes — `Orkeon.Tools.Data` | Reuse |
-| Pricing Specialist | `SecureCodeInterpreterTool` | Yes — `Orkeon.Infrastructure` | Reuse |
+| Pricing Specialist | `SecureCodeInterpreterTool` | Yes — `Orkeon.Infrastructure` | Reuse (register under `IBaseTool`) |
 | Notification Writer | `FileWriteTool` | Yes — `Orkeon.Tools.FileSystem` | Reuse |
 
-All the required tools already exist. No custom tool is needed for this port.
+All the required tools already exist. No custom tool is needed for this port — only one line of registration for `code_interpreter`.
 
 ## Step 4 — Tasks and orchestration
 
 ### Chosen ProcessType: `Sequential`
 
 **Justification**: The order processing flow is intrinsically sequential — each step depends on the result of the previous one (you cannot compute the price without checking the stock, nor notify without knowing the price).
+
+### Agent definition (Fluent Builder approach)
+
+The builder takes tool instances; the tool suites registered in Step 4c provide them.
+
+```csharp
+// Tools by their YAML name, from the DI-backed registry of Step 4c
+var registry = host.Services.GetRequiredService<IToolRegistry>();
+async Task<ITool> Tool(string name) =>
+    await registry.GetToolByNameAsync(name) as ITool
+    ?? throw new InvalidOperationException($"Tool '{name}' is not registered.");
+
+var orderCollector = new AgentBuilder()
+    .Role("Order Data Collector")
+    .Goal("Retrieve and structure new order data from the database")
+    .Backstory("Experienced data engineer specialized in order management systems")
+    .WithTool(await Tool("relational_database_query"))
+    .MaxIterations(5)
+    .MaxRpm(10)
+    .AllowDelegation(false)
+    .Build();
+
+// inventoryChecker, fraudAnalyst, pricingSpecialist and notificationWriter
+// follow the same pattern with the tools and constraints of Step 2.
+```
 
 ### Task definition (Fluent Builder approach)
 
@@ -178,7 +203,8 @@ var notifTask = new CrewTaskBuilder()
     .ExpectedOutput("One confirmation file per order in /output/confirmations/{order_id}.html")
     .Priority(TaskPriority.Normal)
     .DependsOn(pricingTask)
-    .OutputFile("/output/confirmations/")
+    // One file per order: the agent writes each one with file_write
+    // (a single-file result would use a YAML deliverable: block instead)
     .AssignTo(notificationWriter)
     .Build();
 ```
@@ -206,6 +232,8 @@ var orderProcessingCrew = new CrewBuilder()
     .Language("fr")
     .Build();
 ```
+
+A builder-built crew runs once it, its agents and its tasks are added to the repositories (`IAgentRepository`, `ITaskRepository`, `ICrewRepository`) — see [Bootstrap and execution](../getting-started/bootstrap.md). The YAML version below skips that step: `ICrewFactory` stores what it builds.
 
 ## Step 4b — Full execution: from config to result
 
@@ -358,29 +386,68 @@ tasks:
 **File: `Program.cs`**
 
 ```csharp
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 using Orkeon.Application.DependencyInjection;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools;
+using Orkeon.Hosting;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Infrastructure.LLMs;
+using Orkeon.Infrastructure.Sandbox;
+using Orkeon.Tools.Code.DependencyInjection;
+using Orkeon.Tools.Data.DependencyInjection;
+using Orkeon.Tools.FileSystem.DependencyInjection;
+using Orkeon.Tools.Web.DependencyInjection;
 
 var host = Host.CreateDefaultBuilder(args)
+    // ORKEON_Llm__ApiKey in the environment → Llm:ApiKey, as with the runners
+    .ConfigureAppConfiguration(config => config.AddEnvironmentVariables("ORKEON_"))
     .ConfigureServices((context, services) =>
     {
-        // Register the Orkeon services.
-        // For a configured LLM provider (API key, model), register an ILlmProvider
-        // BEFORE AddOrkeonInfrastructure() — its TryAdd* calls honor the existing registration.
         services.AddOrkeonApplication();
-        // The IConfiguration overload also activates the modules tied to the
-        // "Orkeon:*" sections (ChromaDb, Pinecone, Telemetry, MCP, RAG, ...)
+        // The IConfiguration overload also wires telemetry, MCP and vector search, and the
+        // stores whose section exists (Orkeon:ChromaDb, Orkeon:Pinecone). RAG stays opt-in.
         services.AddOrkeonInfrastructure(context.Configuration);
-        services.AddOrkeonFileSystemTools();
-        services.AddOrkeonDataTools();
-        services.AddOrkeonWebTools();
+
+        // The virtual file system: /crews, /data and /output (Orkeon:FileSystem:Mounts)
+        services.AddOrkeonFileSystem(context.Configuration);
+
+        services.AddOrkeonFileSystemTools();   // file_write
+        services.AddOrkeonDataTools();         // relational_database_query, json_tool, csv_reader
+        services.AddOrkeonWebTools();          // http_api
         services.AddOrkeonCodeTools();
+
+        // code_interpreter is registered as a concrete type only: expose it by name
+        services.AddSingleton<IBaseTool>(sp => sp.GetRequiredService<SecureCodeInterpreterTool>());
+
+        // YAML tool names resolve against the IBaseTool registrations above
+        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+
+        // humanInput: true on analyze_fraud — the fraud team's review queue answers
+        // (FraudReviewQueueProvider is yours: it implements IHumanInputProvider)
+        services.AddOrkeonHumanInput<FraudReviewQueueProvider>();
+
+        // The LLM: a hand-built host reads no Llm section by itself
+        var llm = LlmConfig.Create(
+            context.Configuration["Llm:Model"] ?? "gpt-5.6-sol",
+            context.Configuration["Llm:ApiKey"]) with
+        {
+            Temperature = context.Configuration.GetValue("Llm:Temperature", 0.7)
+        };
+        services.AddOrkeonLlmProvider(
+            sp => new OpenAIProvider(llm,
+                sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<ILogger<OpenAIProvider>>()),
+            llm);
+
+        services.AddScoped<OrderProcessingService>();
     })
     .Build();
 
-// Wait for the host to be built
 await host.StartAsync();
 ```
 
@@ -392,20 +459,24 @@ await host.StartAsync();
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces;
 using Orkeon.Application.Interfaces.Services;
+using Orkeon.Domain.FileSystem;
 
 public class OrderProcessingService
 {
     private readonly ICrewFactory _crewFactory;
     private readonly ICrewOrchestrationService _orchestrator;
+    private readonly IFileSystemService _fileSystem;
     private readonly ILogger<OrderProcessingService> _logger;
 
     public OrderProcessingService(
         ICrewFactory crewFactory,
         ICrewOrchestrationService orchestrator,
+        IFileSystemService fileSystem,
         ILogger<OrderProcessingService> logger)
     {
         _crewFactory = crewFactory;
         _orchestrator = orchestrator;
+        _fileSystem = fileSystem;
         _logger = logger;
     }
 
@@ -413,10 +484,10 @@ public class OrderProcessingService
     {
         try
         {
-            // 1. Load the crew from the YAML file
+            // 1. Load the crew from the YAML file (a virtual path, under the /crews mount)
             _logger.LogInformation("Loading order processing crew from config.yaml");
             var crew = await _crewFactory.CreateFromFileAsync(
-                "config/order-processing/config.yaml",
+                "/crews/order-processing/config.yaml",
                 cancellationToken);
 
             // 2. Prepare the input
@@ -427,9 +498,15 @@ public class OrderProcessingService
             _logger.LogInformation("Starting crew execution: {CrewId}", crew.Id);
             var output = await _orchestrator.KickoffAsync(crew.Id, input, cancellationToken);
 
-            // 4. Use the results
+            // 4. Use the results — KickoffAsync never throws: a failed run comes back
+            //    with Succeeded = false and its reason in Error
             _logger.LogInformation("Crew execution completed in {Duration}ms",
-                output.ExecutionTime.TotalMilliseconds);
+                output.Duration.TotalMilliseconds);
+            if (!output.Succeeded)
+            {
+                _logger.LogError("Crew failed: {Error}", output.Error);
+                return;
+            }
             _logger.LogInformation("Final output:\n{Output}", output.FinalOutput);
 
             // 5. Process each task's outputs
@@ -459,23 +536,31 @@ public class OrderProcessingService
 
     private async Task SendConfirmationEmailsAsync(CrewOutput output, CancellationToken cancellationToken)
     {
-        // Read the confirmation files generated by notification_writer
-        var confirmationDir = new DirectoryInfo("/output/confirmations/");
-        if (!confirmationDir.Exists)
+        // Read the confirmation files notification_writer wrote. /output/confirmations is a
+        // virtual path: read it through the VFS, like the agent wrote it — on disk it lives
+        // under the folder the /output mount points to.
+        const string confirmationDir = "/output/confirmations";
+        if (!await _fileSystem.ExistsAsync(confirmationDir, cancellationToken))
         {
             _logger.LogWarning("No confirmation directory found");
             return;
         }
 
-        var htmlFiles = confirmationDir.GetFiles("*.html");
-        _logger.LogInformation("Sending {Count} confirmation emails", htmlFiles.Length);
+        var htmlFiles = new List<string>();
+        await foreach (var entry in _fileSystem.EnumerateFilesAsync(confirmationDir, null, cancellationToken))
+        {
+            if (entry.Kind == VirtualEntryKind.File
+                && entry.VirtualPath.EndsWith(".html", StringComparison.OrdinalIgnoreCase))
+                htmlFiles.Add(entry.VirtualPath);
+        }
+        _logger.LogInformation("Sending {Count} confirmation emails", htmlFiles.Count);
 
         foreach (var file in htmlFiles)
         {
             try
             {
-                var orderId = Path.GetFileNameWithoutExtension(file.Name);
-                var htmlContent = await File.ReadAllTextAsync(file.FullName, cancellationToken);
+                var orderId = Path.GetFileNameWithoutExtension(file);
+                var htmlContent = await _fileSystem.TryReadAllTextAsync(file, cancellationToken);
 
                 // Call your SMTP service (outside Orkeon)
                 // await _emailService.SendAsync(
@@ -488,7 +573,7 @@ public class OrderProcessingService
             }
             catch (Exception ex)
             {
-                _logger.LogError(ex, "Failed to send confirmation email for {File}", file.Name);
+                _logger.LogError(ex, "Failed to send confirmation email for {File}", file);
             }
         }
     }
@@ -525,28 +610,45 @@ public class OrderProcessingMessageConsumer : IMessageHandler
     }
   },
   "Llm": {
-    "Provider": "openai",
-    "Model": "gpt-4o-mini",
+    "Model": "gpt-5.6-sol",
     "Temperature": 0.3
-    // The API key is NEVER stored here — it is read from the environment
-    // (OPENAI_API_KEY / ORKEON_Llm__ApiKey).
+    // The API key is NEVER stored here — it comes from the environment as
+    // ORKEON_Llm__ApiKey (OPENAI_API_KEY is not read)
+  },
+  "Orkeon": {
+    "FileSystem": {
+      "Mounts": [
+        "/opt/orderflow/crews:/crews:ro",
+        "/var/lib/orderflow/data:/data:ro",
+        "/var/lib/orderflow/output:/output:rw"
+      ]
+    }
+  },
+  "PathSecurity": {
+    // Mount folders outside the working directory must be allowed explicitly
+    "AdditionalAllowedDirectories": [
+      "/opt/orderflow/crews",
+      "/var/lib/orderflow/data",
+      "/var/lib/orderflow/output"
+    ]
   },
   "Memory": {
+    // Read by the memory provider factory (unset → in-memory)
     "Provider": "Redis",
     "ConnectionString": "localhost:6379"
-    // Redis memory also needs the opt-in AddOrkeonRedisMemory(...) call;
-    // without it the config-driven factory falls back to in-memory.
   }
 }
 ```
 
+The `/data` mount holds `promotions.csv`, read by `csv_reader`; `/output` receives the confirmations `file_write` produces. See [Configuration](../reference/configuration.md) for every key.
+
 ### Expected execution result
 
-During execution, you will see in the logs:
+During execution, the logs read along these lines (illustrative — the exact lines depend on your logging configuration and on what the agents answer):
 
 ```
 [INFO] Loading order processing crew from config.yaml
-[INFO] Starting crew execution: crew-order-processing-2025-04-05-143025
+[INFO] Starting crew execution: 01JQ7ZK3M5N6P7Q8R9S0T1V2W3
 [INFO] Agent order_collector executing task collect_orders
 [INFO] Agent inventory_checker executing task check_inventory
 [INFO] Agent fraud_analyst executing task analyze_fraud

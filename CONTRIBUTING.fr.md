@@ -56,23 +56,27 @@ cd orkeon
 # Add upstream remote
 git remote add upstream https://github.com/Orkeon/orkeon.git
 
-# Install dependencies
+# Install dependencies (once, and again only when a package reference changes)
 dotnet restore Orkeon.sln
 
-# Build
-dotnet build Orkeon.sln
+# Build (CI builds -c Release -warnaserror: the solution is kept at zero warnings)
+dotnet build Orkeon.sln --no-restore
 
 # Run tests (the set CI runs)
-dotnet test Orkeon.sln --filter "Category!=Integration&Category!=Slow"
+dotnet test Orkeon.sln --no-build --filter "Category!=Integration&Category!=Slow"
 ```
 
 > **Pourquoi ce filtre, et pas un `dotnet test Orkeon.sln` nu** : `Category=Integration`
 > couvre les tests Testcontainers, qui exigent Docker et téléchargent des gigaoctets
-> d'images de bases de données, et `Category=Slow` porte la suite ONNX de
-> `Orkeon.Tools.Embeddings.Local`, dont le runtime natif fait tomber le processus au
-> teardown (code 139) **après** que tous les tests sont passés. `ci.yml` exécute
-> exactement la commande filtrée ci-dessus, puis lance cette suite ONNX dans une étape
-> dédiée qui tolère cette seule forme de crash.
+> d'images de bases de données, et `Category=Slow` les tests longs (les vrais modèles
+> ONNX, les exécutions de bout en bout). `ci.yml` exécute exactement la commande filtrée
+> ci-dessus, puis les tests ONNX du projet d'embeddings locaux dans une étape dédiée, pour
+> qu'une défaillance du runtime natif se signale sous son nom — tout code de sortie non
+> nul fait échouer cette étape. Les deux catégories tournent sur toute la solution dans
+> le `integration.yml` nocturne ; pour les lancer en local (Docker requis) :
+> `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`
+> — `--ignore-exit-code 8` parce que la plupart des modules ne contiennent aucun test de
+> ces deux catégories.
 
 > **Note** — ce dépôt déclare des **sous-modules privés des mainteneurs** :
 > clonez **sans** `--recursive` (comme ci-dessus). Le build, les tests et tout le flux de
@@ -161,6 +165,18 @@ public class AgentService : IAgentService
 }
 ```
 
+### Les règles que le build fait respecter
+
+* **Pas de `System.IO` direct dans le code du framework.** Fichiers et répertoires passent
+  par `IFileSystemService` et des chemins virtuels (`/workspace/...`, `/output/...`) ;
+  l'analyseur `Orkeon.Compliance.Vfs` fait échouer le build sinon. Les exceptions admises
+  (l'implémentation du VFS elle-même, le code d'amorçage marqué `// EXCEPTION-BOOTSTRAP`,
+  la détection système marquée `// OUT-OF-SCOPE`, les tests) sont listées dans
+  [Conformité VFS](docs/fr/architecture/vfs-compliance.md).
+* **`Orkeon.Domain.Task` masque `System.Threading.Tasks.Task`.** Dans un fichier qui
+  importe les deux espaces de noms, écrivez `System.Threading.Tasks.Task` en entier.
+* **Une nouvelle API publique se déclare**, voir [Versionnement et stabilité API](#versionnement-et-stabilité-api).
+
 ### Les commentaires sont en anglais, et jamais accentués
 
 Un invariant, tenu par `scripts/check-comment-accents.py` en CI : tout commentaire est en
@@ -205,23 +221,44 @@ s'applique à tout l'arbre documentaire sans exception.
 * Maintenez ou améliorez la couverture de code
 * Utilisez des noms de tests descriptifs
 * Suivez le pattern AAA (Arrange, Act, Assert)
+* Utilisez xUnit et ses assertions natives uniquement — pas de framework de mock (Moq,
+  NSubstitute, FakeItEasy) ni de bibliothèque d'assertions fluentes (FluentAssertions,
+  Shouldly)
 
 ```csharp
 [Fact]
-public async Task Agent_Should_Execute_Task_Successfully()
+public void ShouldTransitionFromIdleToBusy_WhenStartingTask()
 {
     // Arrange
-    var agent = Agent.Create("Researcher", "Find information");
-    var task = CrewTask.Create("Research AI", "Report");
-    
+    var agent = new AgentBuilder().Role("Researcher").Goal("Find information").Build();
+    var taskId = TaskId.Create();
+    agent.AssignTask(taskId);
+
     // Act
-    var result = await agent.ExecuteTaskAsync(task);
-    
+    agent.StartTask(taskId);
+
     // Assert
-    Assert.True(result.Success);
-    Assert.NotNull(result.Output);
+    Assert.Equal(AgentStatus.Busy, agent.Status);
+    Assert.Equal(taskId, agent.CurrentTask);
 }
 ```
+
+Les doublures de test sont **écrites à la main**, par choix : une classe simple nommée
+d'après l'interface qu'elle remplace, préfixée `Mock`, `Fake` ou `Stub` (`MockTaskRepository`
+implémente `ITaskRepository`), placée dans un dossier `Doubles/` (ou `Fakes/`) du projet de
+tests qui la consomme, et exposant de simples champs ou propriétés pour configurer les
+réponses et inspecter les appels. La référence est
+`tests/core/Orkeon.Infrastructure.Tests/Doubles/MockTaskRepository.cs`.
+
+### Scripts et commits
+
+* Un script `.sh`, ou tout script à ligne shebang destiné à être exécuté directement, est
+  commité **exécutable** (mode `100755`) : `git update-index --chmod=+x path/to/script.sh`.
+  La gate `file-modes.yml` lit le mode dans l'index git — le seul qu'un clone macOS/Linux
+  restaure —, si bien qu'un arbre de travail sur un montage NTFS où tout fichier paraît
+  exécutable ne prouve rien.
+* Les messages de commit sont en anglais et suivent la forme `type(scope): summary` de
+  l'historique (`feat`, `fix`, `docs`, `test`, `chore`…).
 
 ## Domaines de contribution
 
@@ -314,30 +351,44 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `Majeur.Mineur.Correctif` et refuse un suffixe de pré-release (RS2007) : le titre de la
    ligne 1.0.0 est donc `## Release 1.0.0` — il est déjà là, et les tags `rc.*` n'y ajoutent
    rien.
-5. Vérifier que la CI est verte. Au-delà du build `-warnaserror` et des suites de tests,
-   les gates qui doivent passer sont `scripts/check-docs-parity.sh`,
-   `scripts/check-doc-claims.py`, `scripts/check-comment-accents.py`,
-   `scripts/check-release-readiness.py` (il refuse une release dont les fichiers
-   `PublicAPI.Unshipped.txt` ne sont pas réduits à leur en-tête),
-   `scripts/check-package-closure.py`, les linters d'exemples
-   (`scripts/generate-examples-index.sh --check`, `scripts/lint-example-configs.py`,
-   `scripts/lint-example-readmes.py`, `scripts/test-examples-catalog.py`), le test de la
-   purge du canal dev (`scripts/test-prune-dev-packages.sh`), la gate des
-   bits exécutables (`file-modes.yml`), le scan de secrets (`secret-scan.yml`) et le
-   build docfx strict.
-6. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
+5. Vérifier que la CI est verte sur le commit que vous taguez. Au-delà du build
+   `-warnaserror` et des suites de tests, les gates qui doivent passer sont
+   `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
+   copies manuscrites du lineup NuGet et exécute la moitié « sources » de
+   `scripts/check-package-closure.py`), `scripts/check-comment-accents.py`, la
+   vérification des typings de scripting (`scripts/check-scripting-typings.sh`), le test
+   de la purge du canal dev (`scripts/test-prune-dev-packages.sh`), les gates des
+   exemples (`scripts/generate-examples-index.sh --check`,
+   `scripts/lint-example-configs.py`, `scripts/lint-example-readmes.py`,
+   `scripts/test-examples-catalog.py`, la solution d'exemples compilée en `-warnaserror`,
+   `scripts/validate-all-examples.sh`), la gate des bits exécutables (`file-modes.yml`),
+   le scan de secrets (`secret-scan.yml`), CodeQL, la revue de dépendances et le build
+   docfx strict — plus `rag-eval.yml` et `quickstart.yml` quand leurs chemins ont changé.
+6. Lancer `python3 scripts/check-release-readiness.py`. `publish.yml` l'exécute sur le
+   tag et refuse une release dont la section `[Unreleased]` de `CHANGELOG.md` n'est pas
+   vide ou dont les fichiers `PublicAPI.Unshipped.txt` ne sont pas réduits à leur
+   en-tête ; après le pack, il exécute aussi `scripts/check-package-closure.py` sur les
+   nupkgs eux-mêmes.
+7. Taguer `v<version>` et pousser le tag. Cela déclenche : `publish.yml` (packe tout ;
    pousse **les neuf paquets de la gamme v1 sur NuGet.org** — `Orkeon`, `Orkeon.Tools`,
    `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model`, `Orkeon.Tools.Embeddings.Local`,
    `Orkeon.Scripting.Cli`, `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework`,
-   `Orkeon.Hosting.Aspire`, l'ombrelle en premier puisque les autres en dépendent — et
-   chaque projet packable sur GitHub Packages ; voir
+   `Orkeon.Hosting.Aspire`, l'ombrelle en premier puisque les autres en dépendent, via
+   Trusted Publishing — et chaque projet packable sur GitHub Packages, les paquets et un
+   SBOM CycloneDX couverts par une attestation de provenance de build ; voir
    [la matrice de publication](docs/fr/reference/publication-matrix.md)),
    `release.yml` (les paquets CLI par plateforme et les archives multi-apps pour chaque
    RID, le MSI Windows per-user et le MSI de service `orkeon-host`, les tarballs macOS, le
-   paquet Debian et leurs fichiers de sommes — chacun smoke-testé sur un vrai runner avant
-   publication de la Release — plus l'image conteneur `orkeon-runners` poussée sur GHCR)
-   et `docs.yml`
+   paquet Debian, le SBOM et les fichiers de sommes `SHA256SUMS` / `SHA256SUMS.msi` —
+   chacun smoke-testé sur un vrai runner, puis attesté, avant publication de la Release —
+   plus l'image conteneur `orkeon-runners` poussée sur GHCR) et `docs.yml`
    (déploie le site de documentation sur GitHub Pages, à l'adresse <https://orkeon.github.io/orkeon/>).
+   Une fois la Release publiée, `release-verify.yml` rejoue les smokes d'installation sur
+   les assets tels que téléchargés depuis la page de la Release.
+
+Entre deux tags, chaque push sur `main` dont la CI est verte est aussi packé en
+`<version>.dev.<numéro de run>` et poussé sur GitHub Packages uniquement — jamais sur
+NuGet.org —, sans attestation ni SBOM ; les builds dev plus anciens sont purgés.
 
 ## Des questions ?
 

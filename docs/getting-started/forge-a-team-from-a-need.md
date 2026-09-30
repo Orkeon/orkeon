@@ -49,6 +49,7 @@ Each cycle lives under `.orkeon/forge/<slug>/` in your working directory:
 ├── session.json          id, state, status, budget — the resume point
 ├── brief.json            what you asked, criteria included
 ├── blueprint.json        the team plan (single source of both renders)
+├── repair.json           the validation errors a repair must address, while one is pending
 ├── crew/                 the rendered crew — what actually runs
 ├── runs/<n>/             each try: output, metrics, verdict, deliverables
 ├── transcript.jsonl      the conversation
@@ -92,6 +93,19 @@ The promoted folder is ordinary — nothing about it is proprietary to the forge
 - `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line, all named after the team folder (`orkeon-supplier-watch.timer`). The promotion installs none of them: `orkeon forge schedule ~/solutions/supplier-watch` registers the one your system uses (`--check` says where it stands, `orkeon forge unschedule` removes it; Orkeon Studio asks before doing the same). Orkeon has no scheduler of its own — the operating system runs the team — so it promises no supervision it cannot give.
 
 Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it: the promoted `config.yaml` names the roots the team uses (`mounts: [/workspace, /output]`), so a settings entry declaring `/output` is used as it stands, and with none the run is refused in one line (`the crew requires '/output' … pass --mount <folder>:/output:rw`) instead of writing nowhere.
+
+## Other options
+
+| Option | Applies to | What it does |
+|---|---|---|
+| `--read <dir>` | a new session, `forge resume` | The folder the trial reads as `/workspace`, in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
+| `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
+| `--settings <path>` | a new session, `forge resume` | The settings file, with the same semantics as `orkeon run --settings`. |
+| `--with-settings` | `forge promote` | Copies the resolved settings file into the promoted folder. Off by default: a settings file usually holds API keys and the folder is made to be shared — without the copy, the launch scripts reference the file in place. |
+| `--events jsonl` | every verb | The versioned event protocol on stdout, the answers on stdin — how Orkeon Studio drives the forge. |
+| `--pack <dir>` | a new session, `forge resume` | A folder whose files override the embedded assistant pack. |
+
+`orkeon forge rename <team-folder> --name "<new name>"` renames a promoted team — every title, the folder itself, the linked session's folder and an installed schedule — all of it or nothing.
 
 ## In Orkeon Studio
 

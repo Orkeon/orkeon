@@ -6,21 +6,24 @@
 
 ## Overview
 
-Orkeon provides a typed state graph engine (`StateGraph<TState>`) in the Domain layer, inspired by LangGraph. Unlike the generic FSM (see [FSM orchestration](./fsm.md)) which drives transitions within a task, the StateGraph orchestrates the flow between tasks at the Crew level, with conditional edges and controlled cycles.
+Orkeon provides a typed state graph engine (`StateGraph<TState>`) in the Domain layer, inspired by LangGraph: nodes transform a typed state, fixed and conditional edges route between them, and cycles are allowed under a circuit breaker.
 
-The StateGraph is configurable via YAML (`graphConfig` field) and integrates as an alternative `IProcessStrategy` (`GraphProcessStrategy`) selectable via `process: "graph"` in the config.yaml.
+The engine serves two audiences:
+
+- **The Graph process mode** — `process: graph` in YAML (or `ProcessType.Graph`) runs the crew through `GraphProcessStrategy`, which builds a fixed two-node graph: execute the next task, then route (retry the failed tasks, loop, or end). It is configured by the `graphConfig` block.
+- **Your own C# workflows** — build any `StateGraph<TState>` with your own nodes and conditional edges, compile it and run it.
 
 ### Positioning relative to the other strategies
 
 | Strategy | Granularity | Cycles | Conditional routing | Circuit breaker |
 |-----------|-------------|--------|----------------------|-----------------|
-| Sequential | Crew | No | No | No (via per-task FSM) |
-| Hierarchical | Crew | No | Manager LLM | No (via per-task FSM) |
-| Parallel | Crew | No | No | No (via per-task FSM) |
-| **Graph** | **Crew** | **Yes (controlled)** | **Yes (conditional edges)** | **Yes (built-in)** |
-| FSM | Task | Yes (guards) | Yes (events/guards) | Yes (built-in) |
+| Sequential | Crew | No | No | No |
+| Hierarchical | Crew | Review loop (3 reviews) | Manager LLM | No |
+| Parallel | Crew | No | No | No |
+| **Graph** | **Crew** | **Yes (retry cycles)** | **Fixed in YAML; free with the C# API** | **Yes (built-in)** |
+| FSM | Task (Domain building block) | Yes (guards) | Yes (events/guards) | Yes (built-in) |
 
-The Graph and the FSM are complementary: the Graph orchestrates the task sequence, the FSM orchestrates the internal execution of each task.
+The FSM models a task's internal cycle but is not wired into any strategy today (see [FSM orchestration](./fsm.md)); the Graph mode is the runtime consumer of `CircuitBreakerPolicy`.
 
 ## Architecture
 
@@ -30,56 +33,64 @@ The engine components live in `Orkeon.Domain.Graph`:
 
 | Class | Role |
 |--------|------|
-| `StateGraph<TState>` | Graph definition: nodes, fixed and conditional edges, compilation |
+| `StateGraph<TState>` | Graph definition: `AddNode`, `AddEdge`, `AddConditionalEdge`, `Compile`; sentinels `StartNode` (`"__start__"`) and `EndNode` (`"__end__"`) |
 | `GraphNode<TState>` | Processing node: `Func<TState, CancellationToken, Task<TState>>` |
 | `IGraphEdge<TState>` | Interface for routing (fixed or conditional) |
 | `FixedEdge<TState>` (internal) | Unconditional edge to a target node — built via `AddEdge` |
-| `ConditionalEdge<TState>` (internal) | Edge with a routing function `Func<TState, string>` |
-| `GraphRunner<TState>` | Execution engine with circuit breaker and observability |
-| `GraphExecutionResult<TState>` | Result: final state, trace, transitions, duration |
-| `GraphCircuitBrokenException` | Exception thrown when the circuit breaker trips |
+| `ConditionalEdge<TState>` (internal) | Edge with a routing function `Func<TState, string>` — built via `AddConditionalEdge` |
+| `GraphRunner<TState>` | Execution engine with circuit breaker and observability (`RunAsync`) |
+| `GraphExecutionResult<TState>` | Result: `FinalState`, `Trace`, `TotalTransitions`, `Duration` |
+| `NodeCompletedEventArgs<TState>`, `GraphCircuitBrokenEventArgs` | Payloads of `OnNodeCompleted` / `OnCircuitBroken` |
+| `GraphCircuitBrokenException` | Exception thrown when the circuit breaker trips (`NodeName`, `TransitionCount`, `Trace`) |
+
+`TState` must be a reference type (`where TState : class`); nodes usually mutate and return the same instance. `new StateGraph<TState>()` without a policy uses `CircuitBreakerPolicy.Strict`.
+
+`Compile()` validates the structure: an edge must leave `StartNode`, every node needs exactly one outgoing edge, and fixed edges must target a registered node (or `EndNode`). A conditional edge declaring its `possibleTargets` throws at run time if the router returns a name outside that list.
 
 ### Domain layer — Configuration
 
 | Class | Role |
 |--------|------|
-| `GraphConfig` | Immutable DTO for the graph configuration from YAML |
+| `GraphConfig` | Immutable DTO for the `graphConfig` block (`MaxRetryCycles` = 2, `CircuitBreakerPreset` = `"strict"`, nullable overrides) |
 
-The `GraphConfig?` field is added to `CrewConfiguration` (`Orkeon.Domain.Configuration`).
+`GraphConfig?` is carried by `CrewConfiguration.GraphConfig` and by the `Crew` aggregate (`Crew.GraphConfig`, settable with `CrewBuilder.WithGraphConfig(...)`).
 
 ### Infrastructure layer — Integration
 
 | Class | Role |
 |--------|------|
-| `GraphProcessStrategy` | Implements `IProcessStrategy`, builds and runs the StateGraph |
-| `CrewGraphState` | Typed state traversing the graph (tasks, agents, results, retries) |
+| `GraphProcessStrategy` | Implements `IProcessStrategy` (`ExecuteSequentialAsync`), builds and runs the crew graph |
+| `CrewGraphState` | Typed state traversing the graph (tasks, agents, outputs, retries, token counters) |
 | `GraphYamlConfig` | YAML model for the `graphConfig` section |
+| `CircuitBreakerPolicyFactory.ResolveGraph` | Resolves the effective policy from `graphConfig`, the crew `circuitBreaker` and the fallback |
 
-### Infrastructure layer — Registration
+### Where the mode is wired
 
-| Class | Change |
+| Place | Role |
 |--------|-------------|
-| `ProcessStrategyFactory` | Added the `"Graph"` case → `GraphProcessStrategy` |
-| YAML pipeline (`YamlConfigModels` / `YamlCrewMapper`) | Added `GraphYamlConfig`, `MapGraphConfig()`, `"graph"` in `ParseProcessType` |
-| `ProcessType` | Added `ProcessType.Graph` |
+| `ProcessType.Graph` | The value object member (`"Graph"`) |
+| `YamlCrewMapper.ParseProcessType` | `process: graph` (case-insensitive) |
+| `ProcessStrategyFactory` | `"Graph"` → `GraphProcessStrategy` |
+| `SequentialCrewOrchestrator` | Dispatches `"Graph"` to `ExecuteSequentialAsync` |
+| `AddOrkeonInfrastructure()` | Registers `GraphProcessStrategy` (scoped) |
 
 ## Graph topology
 
 ```
-START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (remaining tasks or retry)
+START ──► [execute_task] ──► [route] ──┬──► [execute_task]   (tasks pending, or failed ones re-enqueued)
                                        │
-                                       └──► END              (everything is done)
+                                       └──► END              (nothing left)
 ```
 
-The `execute_task` node dequeues a task, has an agent execute it (round-robin or explicit assignment), and accumulates the result into the typed state `CrewGraphState`.
+The `execute_task` node dequeues the next task (in the order resolved from the plan or the declared `dependencies`), picks its agent — the task's `agent:` when declared, otherwise the configured selector (round-robin by default, see [agent selection](./process-types.md#who-runs-a-task-that-names-no-agent)) — executes it and accumulates the result into `CrewGraphState`. Agents with `allowDelegation: true` receive the delegation tools.
 
 The `route` node inspects the state:
 
 - If tasks remain in the queue → loops back to `execute_task`
-- If some tasks failed and the retry counter is not exhausted → re-enqueues the failures and loops back
+- If the queue is empty and some tasks failed with retries left → re-enqueues them and loops back
 - Otherwise → routes to END
 
-The circuit breaker trips automatically if the graph exceeds the configured thresholds.
+The crew's output is the last result produced. A task still failing after its retries stays in the outputs as failed, but the crew is reported as **completed**: only the circuit breaker fails a graph run. Unlike the Sequential mode, a failed task does not skip the tasks that depend on it.
 
 ## Circuit breaker
 
@@ -89,32 +100,35 @@ The circuit breaker is built into `GraphRunner<TState>` and checks three conditi
 
 | Mechanism | Parameter | Description |
 |-----------|-----------|-------------|
-| Max transitions | `MaxTransitions` | Total number of allowed node executions |
-| Cycle detection | `MaxStateVisits` | Maximum number of visits to the same node |
-| Total duration | `MaxTotalDuration` | Maximum lifetime of the graph |
+| Max transitions | `MaxTransitions` | Total number of node executions |
+| Cycle detection | `MaxStateVisits` | Maximum number of visits to the same node (0 disables it) |
+| Total duration | `MaxTotalDuration` | Maximum lifetime of the run (`TimeSpan.Zero` disables it) |
 
-The StateGraph reuses `CircuitBreakerPolicy` from `Orkeon.Domain.Common.StateMachine` (the same record as the FSM).
+The StateGraph reuses `CircuitBreakerPolicy` from `Orkeon.Domain.Common.StateMachine` (the same record as the FSM); its `StateTimeout` and `UseDegradedMode` are not used by the graph runner.
 
-When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete graph trace. The `GraphProcessStrategy` catches this exception and returns a `CrewOutput.CreateFailure()` instead of propagating it.
+In the Graph mode, each task attempt is one visit of `execute_task` (and one of `route`), so:
+
+- `MaxStateVisits` caps the number of **task attempts** in the whole run — 5 under the Strict default;
+- `MaxTransitions` caps them at half its value (two node executions per attempt).
+
+Size `maxStateVisits` for the number of tasks plus their retries. When a condition is violated, a `GraphCircuitBrokenException` is thrown with the complete trace; `GraphProcessStrategy` catches it and returns a failed `CrewOutput` ("Graph execution stopped by circuit breaker: …") that keeps the outputs and the token usage produced so far.
 
 ### Presets
 
-The presets are the same as for the FSM:
-
-| Preset | MaxTransitions | StateTimeout | MaxStateVisits | MaxTotalDuration |
-|--------|---------------|-------------|----------------|------------------|
-| `Strict` | 50 | 2 min | 5 | 10 min |
-| `Default` | 100 | 5 min | 10 | 30 min |
-| `Permissive` | 1000 | 30 min | 50 | 2 h |
+| Preset | MaxTransitions | MaxStateVisits | MaxTotalDuration |
+|--------|---------------|----------------|------------------|
+| `Strict` (default) | 50 | 5 | 10 min |
+| `Default` | 100 | 10 | 30 min |
+| `Permissive` | 1000 | 50 | 2 h |
 
 ### Observability
 
 The `GraphRunner<TState>` exposes two events:
 
-- `OnNodeCompleted`: raised after each node, with `NodeCompletedEventArgs<TState>` (node name, current state, ordinal, trace snapshot)
-- `OnCircuitBroken`: raised when the circuit trips, with `GraphCircuitBrokenEventArgs` (reason, node, counter, trace)
+- `OnNodeCompleted`: raised after each node, with `NodeCompletedEventArgs<TState>` (`NodeName`, `State`, `TransitionOrdinal`, `TraceSnapshot`)
+- `OnCircuitBroken`: raised when the circuit trips, with `GraphCircuitBrokenEventArgs` (`Reason`, `NodeName`, `TransitionCount`, `Trace`)
 
-The `GraphProcessStrategy` subscribes to these events for structured logging via `ILogger` (source-generated `LoggerMessage`).
+`GraphProcessStrategy` subscribes to both for structured logging (source-generated `LoggerMessage`). A graph's nodes are not tasks: the strategy announces each task start live through `ICrewExecutionHook`, and reports the task completions when the graph settles.
 
 ## Controlled retry
 
@@ -122,30 +136,31 @@ The `GraphProcessStrategy` adds a retry mechanism on top of the circuit breaker:
 
 | Parameter | Field | Description |
 |-----------|-------|-------------|
-| Retry cycles | `MaxRetryCycles` | Number of retry cycles for failed tasks |
+| Retry cycles | `MaxRetryCycles` | Retries per failed task (default 2) |
 
 How it works:
 
-1. When a task fails, it is added to `FailedTaskIds` with a counter
-2. When `PendingTaskIds` is empty, the `route` node promotes the eligible failed tasks
-3. Tasks that exceeded `MaxRetryCycles` are abandoned
-4. The circuit breaker trips if the total number of transitions exceeds the thresholds
+1. When a task fails, its counter in `RetryCounts` increases; while it stays ≤ `MaxRetryCycles`, the task goes to `FailedTaskIds`
+2. When `PendingTaskIds` is empty, the `route` node moves every task of `FailedTaskIds` back to the pending queue
+3. A task whose counter exceeds `MaxRetryCycles` is abandoned (its failed output stays)
+4. Every attempt is recorded (one output and one usage entry per attempt), and counts against the circuit breaker
 
 ## YAML configuration
 
 ### `graphConfig` schema
 
-The `graphConfig` block can be used at the root level of the YAML:
+The `graphConfig` block sits at the root of the crew file:
 
 ```yaml
 name: "my-crew"
+goal: "…"
 process: "graph"
 
 graphConfig:
-  maxRetryCycles: int           # default: 2 — retry cycles for failed tasks
-  circuitBreakerPreset: string  # "strict" | "permissive" | "default"
+  maxRetryCycles: int           # default: 2 — retries per failed task
+  circuitBreakerPreset: string  # "strict" (default) | "permissive" | "default"
   maxTransitions: int           # Overrides the preset
-  maxStateVisits: int           # Cycle detection (overrides the preset)
+  maxStateVisits: int           # Cycle detection / task-attempt cap (overrides the preset)
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 
 agents:
@@ -159,17 +174,23 @@ tasks:
 ### Resolution hierarchy
 
 ```
+With a graphConfig block:
 1. graphConfig explicit fields       (highest priority)
-2. graphConfig.circuitBreakerPreset  (base values)
-3. crew-level circuitBreaker config  (when no graphConfig is present)
+2. graphConfig.circuitBreakerPreset  (base values; "strict" when absent or unknown)
+   — a crew-level circuitBreaker is then ignored
+
+Without graphConfig:
+3. crew-level circuitBreaker config  (its preset + its overrides, see FSM)
 4. CircuitBreakerPolicy.Strict       (fallback when nothing is configured)
 ```
+
+`maxRetryCycles` comes from `graphConfig` only (2 otherwise).
 
 ### Configuration flow to execution
 
 The `graphConfig` block travels all the way to the running graph:
 
-1. `YamlCrewMapper` maps the YAML into `CrewConfiguration.GraphConfig` (the loader deserializes and delegates).
+1. `YamlCrewMapper` maps the YAML into `CrewConfiguration.GraphConfig` (the loader deserializes and delegates; single-file `CrewYamlConfig` and multi-file `CrewSettingsYamlConfig` both carry the block).
 2. `CrewFactory` carries it (and any crew-level `circuitBreaker`) onto the domain `Crew`
    aggregate (`Crew.GraphConfig` / `Crew.CircuitBreaker`), so it survives to execution time.
 3. At execution, `GraphProcessStrategy` reads the config **off the crew argument** and resolves the
@@ -177,8 +198,7 @@ The `graphConfig` block travels all the way to the running graph:
    Reading from the crew (not from the shared, scoped strategy instance) keeps per-crew settings from
    leaking between concurrent executions.
 
-When the crew carries no `graphConfig`, the strategy falls back to its built-in defaults
-(`CircuitBreakerPolicy.Strict`, `MaxRetryCycles = 2`) — the behavior is unchanged from before.
+When the crew carries neither block, the strategy uses its own `CircuitPolicy` (`Strict`) and `MaxRetryCycles` (2) properties.
 
 ### YAML models
 
@@ -243,20 +263,21 @@ Console.WriteLine($"Total transitions: {result.TotalTransitions}");
 ### Usage via YAML (ProcessType.Graph)
 
 ```csharp
-using Orkeon.Infrastructure.Configuration;
-using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Application.Interfaces;           // ICrewFactory
+using Orkeon.Application.Interfaces.Services;  // ICrewOrchestrationService, CrewInput
 
-// Load the YAML config
-var loader = serviceProvider.GetRequiredService<ICrewDefinitionLoader>();
-var config = await loader.LoadFromFileAsync("config.yaml");
+// Load the crew (process: graph + graphConfig) — the path is a VFS path
+var crewFactory = serviceProvider.GetRequiredService<ICrewFactory>();
+var crew = await crewFactory.CreateFromFileAsync("/workspace/config.yaml");
 
-// The factory automatically creates the GraphProcessStrategy
-var factory = serviceProvider.GetRequiredService<IProcessStrategyFactory>();
-var strategy = factory.CreateStrategy(ProcessType.Graph);
+// The orchestrator resolves GraphProcessStrategy through the ProcessStrategyFactory
+var orchestrator = serviceProvider.GetRequiredService<ICrewOrchestrationService>();
+var output = await orchestrator.KickoffAsync(crew.Id, CrewInput.Empty());
 
-// Run
-var result = await strategy.ExecuteSequentialAsync(crew, plan, inputVariables);
+Console.WriteLine(output.Succeeded ? output.FinalOutput : output.Error);
 ```
+
+The Fluent Builder equivalent is `new CrewBuilder().Process(ProcessType.Graph).WithGraphConfig(new GraphConfig { MaxRetryCycles = 3 })…`.
 
 ### Building a custom graph with more nodes
 
@@ -285,9 +306,11 @@ var runner = graph.Compile();
 var result = await runner.RunAsync(initialState);
 ```
 
+The same engine drives the corrective RAG pipeline (`CorrectiveRagPipeline` on `StateGraph<RagGraphState>`, see [RAG pipeline](../architecture/rag-pipeline.md)). The scripting DSL has its own `stateGraph()` literal (`graph.d.ts`), a separate JavaScript implementation configured by a `graphConfig` of transition limits — see [Scripting](../architecture/scripting.md).
+
 ## Example 102
 
-The `examples/09-experimental/102-graph-orchestration/` example demonstrates the full integration with:
+The [102-graph-orchestration](https://github.com/orkeon/orkeon/blob/main/examples/09-experimental/102-graph-orchestration/) example demonstrates the full integration with:
 
 - `process: "graph"` to enable the `GraphProcessStrategy`
 - `graphConfig` with `maxRetryCycles: 2` and the "strict" preset
@@ -301,20 +324,16 @@ See the example's `config.yaml` and `README.md` files for the complete syntax.
 
 ### FSM TaskExecutionStateMachine
 
-The StateGraph and the FSM operate at different levels:
+The StateGraph and the FSM model different levels:
 
-- **FSM**: manages the internal execution of a task (Assigned → Executing → ToolCalling → Validating → Completed)
-- **StateGraph**: manages the flow between tasks (which task to execute, when to retry, when to finish)
+- **FSM**: the internal execution of a task (Assigned → Executing → ToolCalling → Validating → Completed) — a Domain building block, not driven by any strategy today
+- **StateGraph**: the flow between tasks (which task to execute, when to retry, when to finish)
 
-The two are complementary and coexist. When the `GraphProcessStrategy` executes a task via `IAgentExecutionService.ExecuteTaskAsync()`, the FSM manages that task's internal cycle.
+When the `GraphProcessStrategy` executes a task, it calls `IAgentExecutionService.ExecuteTaskAsync()`, whose agent loop bounds the task (`maxIter`, identical-error stop).
 
 ### SequentialCrewOrchestrator
 
-The existing orchestrator is not replaced. The `GraphProcessStrategy` is an alternative to the `SequentialProcessStrategy` within the same `IProcessStrategy` framework. The orchestrator uses the `ProcessStrategyFactory` to pick the right strategy based on `ProcessType`.
-
-### Existing process strategies
-
-The `GraphProcessStrategy` coexists with the existing strategies:
+The `GraphProcessStrategy` is one of the six `IProcessStrategy` implementations. The orchestrator uses the `ProcessStrategyFactory` to pick the strategy from the `ProcessType`, then calls its `ExecuteSequentialAsync` entry point:
 
 ```
 ProcessStrategyFactory.CreateStrategy(processType) switch
@@ -328,18 +347,17 @@ ProcessStrategyFactory.CreateStrategy(processType) switch
 }
 ```
 
-The addition does not impact the existing strategies. Client code chooses via `ProcessType.Graph` or `process: "graph"` in the YAML.
+Client code chooses via `ProcessType.Graph` or `process: "graph"` in the YAML.
 
 ## Tests
 
-30+ unit tests cover the engine and the strategy:
-
 | Test file | Coverage |
 |-----------------|-----------|
-| `StateGraphTests.cs` | Linear flow, conditional routing, controlled loops, circuit breaker (max transitions, cycle detection), observability (OnNodeCompleted, OnCircuitBroken), cancellation, graph validation, state mutation |
-| `GraphProcessStrategyTests.cs` | Happy path (0 tasks, 1 task, N tasks), controlled retry (success after retry, abandon after max), circuit breaker integration, unsupported process types, missing tasks, missing agents |
+| `Orkeon.Domain.Tests/Graph/StateGraphTests.cs` (18) | Linear flow, conditional routing, controlled loops, circuit breaker (max transitions, cycle detection), observability (OnNodeCompleted, OnCircuitBroken), cancellation, graph validation, state mutation |
+| `Orkeon.Infrastructure.Tests/Strategies/GraphProcessStrategy/GraphProcessStrategyTests.cs` (17) | Happy path (0, 1, N tasks), controlled retry (success after retry, abandon after max), circuit breaker integration, unsupported entry points, missing tasks, missing agents |
+| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` (5) | `ResolveGraph` precedence (graphConfig, crew circuitBreaker, fallback) |
 
 ```bash
-dotnet test tests/core/Orkeon.Domain.Tests/ --filter "FullyQualifiedName~StateGraph"
-dotnet test tests/core/Orkeon.Infrastructure.Tests/ --filter "FullyQualifiedName~GraphProcessStrategy"
+dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj --filter "FullyQualifiedName~StateGraph"
+dotnet test tests/core/Orkeon.Infrastructure.Tests/Orkeon.Infrastructure.Tests.csproj --filter "FullyQualifiedName~GraphProcessStrategy"
 ```

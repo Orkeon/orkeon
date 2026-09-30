@@ -2,11 +2,18 @@
 
 # Format de réponse LLM
 
-> Forcer la sortie JSON à la frontière du provider plutôt que de rafistoler les prompts. Premier provider câblé : **DeepSeek**.
+> Forcer la sortie JSON à la frontière du provider plutôt que de rafistoler les prompts. Un
+> seul value object, `LlmResponseFormat`, est traduit par chaque provider selon ce que son API
+> déclare pouvoir honorer.
 
 ## Pourquoi
 
-Les API compatibles OpenAI exposent un champ `response_format` que le modèle honore au niveau de la couche API. Positionnez `response_format: {"type": "json_object"}` et DeepSeek **garantit** que la réponse est du JSON valide — pas d'accolades `{`/`}` cassées, pas de prose en préambule. C'est une seconde barrière qui complète la grammaire GBNF existante (llama.cpp / Ollama) et le `StructuredOutputResolver` en aval.
+La plupart des API LLM savent contraindre la forme d'une réponse au niveau de la couche API.
+Demandez `response_format: {"type": "json_object"}` à DeepSeek et l'API **garantit** du JSON
+valide — pas d'accolades `{`/`}` cassées, pas de prose en préambule ; demandez un JSON Schema à
+OpenAI, Gemini ou Anthropic et le vendeur valide la réponse contre ce schéma côté serveur.
+C'est une seconde barrière qui complète la grammaire GBNF (llama.cpp / Ollama) et le
+`StructuredOutputResolver` en aval.
 
 Pour Orkeon, cela compte surtout pour :
 
@@ -14,17 +21,32 @@ Pour Orkeon, cela compte surtout pour :
 - les agents managers hiérarchiques qui retournent des décisions JSON
 - les workflows scriptés en TypeScript qui attendent des objets typés
 
-## Cascade — 5 niveaux d'override
+## Les trois formats
 
-```
-1. LlmConfig.ResponseFormat       (global default / crew YAML)
-2. agent.LlmConfig.ResponseFormat (agent YAML)
-3. task.LlmOverride.ResponseFormat (task YAML — NEW)
-4. script-time override            (TS via Jint — NEW)
-5. call-time override              (method parameter — NEW)
-```
+| `Type` | Construit avec | Sens |
+|---|---|---|
+| `text` | `LlmResponseFormat.Text()` | Le défaut du provider. Ne produit *rien sur le fil* — écrire `text` ou ne rien écrire est équivalent. |
+| `json_object` | `LlmResponseFormat.JsonObject()` | Du JSON bien formé, sans schéma. |
+| `json_schema` | `LlmResponseFormat.JsonSchema(name, schema, strict = true)` | Du JSON validé contre un JSON Schema (`LlmJsonSchema` : le schéma voyage en chaîne JSON ; `strict` demande au vendeur de rejeter tout écart, ignoré là où aucun mode strict n'existe). |
 
-La fusion est faite **une seule fois** dans `LlmConfigResolver.Resolve(baseConfig, taskOverride, callOverride)`. Priorité du plus fort au plus faible : callOverride → taskOverride → baseConfig. Un champ `null` sur un override n'efface jamais une valeur héritée.
+`Type` est une chaîne ouverte : toute autre valeur est transmise telle quelle (le mapper YAML
+logue un avertissement, event id `101`), si bien qu'une nouvelle valeur vendeur fonctionne sans
+nouvelle version du framework.
+
+## Cascade — trois couches, cinq surfaces
+
+La fusion est faite **une seule fois** dans `LlmConfigResolver.Resolve(baseConfig, taskOverride, callOverride)`.
+Priorité du plus fort au plus faible : override d'appel → override de task → config de base.
+Chaque champ est résolu indépendamment (`ResponseFormat`, `Temperature`, `MaxTokens`, `TopP`,
+`Thinking`, `Cache`), et un champ `null` sur un override n'efface jamais une valeur héritée.
+
+| Surface | Atterrit dans | Où elle s'écrit |
+|---|---|---|
+| 1. Défaut crew | config de base | `llm:` du YAML de crew — fusionné champ par champ dans le `llm:` de chaque agent |
+| 2. Agent | config de base | `llm:` du YAML d'agent, `agentBuilder().withResponseFormat(...)` / `.withResponseSchema(...)`, la `LlmConfig` de l'agent en C# |
+| 3. Task | override de task (`LlmConfigOverride`) | `llm_override:` du YAML de task, `taskBuilder().withResponseFormat(...)` / `.withResponseSchema(...)`, `CrewTaskBuilder.WithResponseFormat(...)` / `.WithLlmOverride(...)` |
+| 4. Au niveau script | config de base | `llmConfig.with({ responseFormat })` sur la config passée à `agentBuilder().llm(...)` |
+| 5. À l'appel | override d'appel | `ctx.llm.complete/chat/stream(..., { responseFormat })` dans un script, `LlmProviderExtensions.GenerateAsync/ChatAsync(..., LlmConfigOverride, baseConfig)` en C# |
 
 ## Surfaces YAML
 
@@ -59,16 +81,40 @@ tasks:
       temperature: 0.0
 ```
 
-Le bloc `llm_override:` accepte les mêmes champs que le `llm:` au niveau agent, moins le modèle (qu'il n'a pas de sens d'échanger par task dans l'orchestrateur actuel).
+Le bloc `llm_override:` accepte `response_format`, `response_schema`, `temperature`,
+`max_tokens`, `top_p` et `thinking` — les champs du `llm:` de niveau agent, moins `model` et
+`cache:`.
+
+### JSON Schema
+
+`response_schema:` accompagne `response_format: json_schema`, au niveau agent, crew ou task.
+`schema` est le JSON Schema **sous forme de chaîne JSON** (un bloc scalaire le garde lisible) ;
+`name` vaut `response` par défaut, `strict` vaut `true` :
+
+```yaml
+llm:
+  model: gpt-5.6-sol
+  response_format: json_schema
+  response_schema:
+    name: invoice
+    strict: true
+    schema: |
+      {"type": "object",
+       "properties": {"number": {"type": "string"}, "total": {"type": "number"}},
+       "required": ["number", "total"], "additionalProperties": false}
+```
+
+Un `response_schema:` seul implique `json_schema`. `json_schema` **sans** schéma se replie sur
+`json_object` avec un avertissement (event id `102`).
 
 ## Surfaces TypeScript / `.ork.ts`
 
 ```typescript
-// Builder — agent
+// Builder — agent (the host's configured provider, here DeepSeek)
 const extractor = agentBuilder()
     .name("extractor")
     .role("Invoice extractor")
-    .llm({ provider: "deepseek", model: "deepseek-flash" })
+    .llm(llm.default_.with({ model: "deepseek-flash" }))
     .withResponseFormat("json_object")
     .build();
 
@@ -77,15 +123,24 @@ const task = taskBuilder()
     .description("Return invoice fields as JSON")
     .expectedOutput("JSON")
     .agent(extractor)
-    .withResponseFormat("json_object")
+    .withResponseSchema("invoice", {
+        type: "object",
+        properties: { number: { type: "string" }, total: { type: "number" } },
+        required: ["number", "total"],
+    })
     .build();
 
 // Call-time override (most surgical — wins over everything else)
-const res = await llm.complete(
+const res = await ctx.llm.complete(
     "Return the answer as a json object",
     { responseFormat: "json_object" }
 );
 ```
+
+`.llm(...)` prend ce que renvoient les fabriques `llm` (`llm.openai(...)`, `llm.default_`, …) —
+un objet littéral est ignoré. `withResponseSchema(name, schema, strict?)` prend un objet
+littéral ou une chaîne JSON et implique `json_schema`. `ctx.llm.extract(prompt, schema)` demande
+`json_object` par défaut, sauf si l'appel passe `{ responseFormat: "text" }`.
 
 ## Surface fluent C#
 
@@ -93,7 +148,7 @@ const res = await llm.complete(
 var task = new CrewTaskBuilder()
     .Description("Extract as JSON")
     .ExpectedOutput("JSON")
-    .WithResponseFormat(LlmResponseFormat.JsonObject())
+    .WithResponseFormat(LlmResponseFormat.JsonSchema("invoice", invoiceSchemaJson))
     .Build();
 
 // Call-time override via extension method
@@ -104,53 +159,81 @@ await provider.GenerateAsync(
     ct);
 ```
 
+`WithResponseFormat` accepte aussi une chaîne (`"json_object"`) ; `WithLlmOverride(LlmConfigOverride)`
+pose le patch de task complet.
+
+## Sur le fil
+
+- **Famille compatible OpenAI** (tous les providers sauf Anthropic et Ollama) —
+  `OpenAICompatibleProviderBase` écrit `response_format` une seule fois, pour chaque provider
+  qui déclare la capacité : `{"type": "json_object"}`, ou
+  `{"type": "json_schema", "json_schema": {"name", "strict", "schema"}}`.
+- **Anthropic** — `output_config.format`, schéma uniquement : Anthropic n'a pas d'équivalent
+  de `json_object`, une demande de JSON sans schéma est donc signalée (avertissement structuré)
+  plutôt qu'envoyée.
+- **Ollama** — `format` : l'objet schéma lui-même, ou `"json"` pour `json_object`.
+
+Ce qu'un provider ne peut pas honorer n'est jamais abandonné en silence :
+
+- un provider qui déclare `None` n'envoie rien et logue `Option 'response_format' was declared
+  but … does not support it` (event id `110`) ;
+- un schéma envoyé à un provider `JsonObject` est **rétrogradé** en `json_object` avec le même
+  avertissement (`response_format.schema`) — décrivez la forme dans le prompt.
+
 ## Le garde-fou du mot-clé "json"
 
-Le `response_format: json_object` de DeepSeek exige que le prompt (message system **ou** user) contienne le mot `"json"` quelque part — faute de quoi l'API peut émettre un **flux infini d'espaces blancs** jusqu'à épuisement de `max_tokens`. La base partagée (`OpenAICompatibleProviderBase`, donc chaque provider compatible OpenAI qui déclare `RequiresJsonKeywordInPrompt`) logue un `Warning` structuré (event id `100`, `LogMissingJsonKeyword`) si elle détecte la situation — en substance :
+Le mode JSON de DeepSeek exige que le prompt (message system **ou** user) contienne le mot
+`"json"` quelque part — faute de quoi l'API peut émettre un **flux d'espaces blancs sans fin**
+jusqu'à épuisement de `max_tokens`. Chaque provider qui déclare `RequiresJsonKeywordInPrompt`
+(DeepSeek aujourd'hui) logue un `Warning` structuré (event id `100`, `LogMissingJsonKeyword`)
+quand il détecte la situation :
 
 ```
-DeepSeek response_format=json_object is set but no system/user message
-contains the word 'json'. The API may emit an infinite whitespace stream
-until max_tokens. Add 'json' to the prompt to be safe.
+DeepSeek was asked for a JSON response format but no system/user message contains the
+word 'json'. This API may then emit an unbounded whitespace stream until max_tokens.
+Add 'json' to the prompt to be safe.
 ```
 
 Nous ne mutons **pas** le prompt à votre place — l'appelant garde le contrôle. Ajoutez `"Reply as a json object."` au message system et l'avertissement disparaît.
 
 ## Matrice de support des providers
 
-Le support est **piloté par capacité** (`LlmProviderCapabilities.ResponseFormat`,
-traduit une fois par `OpenAICompatibleProviderBase` — voir le
-[comparatif des providers](../reference/llm-providers-comparison.md)) :
+Le support est **piloté par capacité** (`LlmProviderCapabilities.ResponseFormat` — voir le
+[comparatif des providers](../reference/llm-providers-comparison.md)). La déclaration est par
+provider alors que la réalité est par modèle : un modèle qui refuse le champ répond avec
+l'erreur du vendeur, qui remonte en `LlmResponse.Error` et fait échouer la tâche avec cette
+raison.
 
 | Provider | Capacité déclarée | Notes |
 |---|---|---|
-| OpenAI, Azure OpenAI, Grok, Gemini, Mistral, TogetherAI | `JsonSchema` | Validation de schéma côté serveur. |
-| **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schema-only, pas de `json_object` nu. |
+| OpenAI, Azure OpenAI, Grok, Gemini, Mistral, Together AI | `JsonSchema` | Validation de schéma côté serveur. |
+| **Anthropic** | `JsonSchema` | Dialecte propre (`output_config`) — schéma uniquement, pas de `json_object` nu. |
 | **Ollama** | `JsonSchema` | Dialecte propre (`format`). |
-| **DeepSeek** (`deepseek-flash`, `deepseek-v4-pro`), Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. |
-| `deepseek-reasoner` (R1) | ⚠️ | Peut refuser `response_format` avec un HTTP 400. Tester avant production. L'erreur remonte comme une `APIError` typée via le pipeline existant — pas de crash. |
+| **DeepSeek**, Kimi, Qwen, HuggingFace, Z.AI | `JsonObject` | JSON bien formé garanti ; un schéma est rétrogradé avec un avertissement. DeepSeek exige en plus le mot-clé `json` (ci-dessus). |
 | **MiniMax** | `None` | Accepté mais non contraignant — mesuré le 2026-08-30 (schéma ignoré, `json_object` clôturé en markdown) ; un format déclaré produit l'avertissement structuré de capacité. |
 | **OpenRouter** † | `JsonSchema` | Documenté par endpoint (2026-09-18, non campagné) ; le provider n'envoie pas `provider.require_parameters`, un schéma peut donc être ignoré par un endpoint qui ne le supporte pas — la question de la première campagne. |
 | **Mammouth AI** † | `None` | Non documenté sur le proxy (2026-09-18, non campagné) ; un format déclaré produit l'avertissement structuré de capacité tant qu'une campagne ne l'a pas mesuré. |
+
+† pas encore campagné.
 
 ## Comment ça circule dans l'orchestrateur
 
 La cascade est fusionnée exactement une fois par tour (`LlmConfigResolver.Resolve`), sur 3 sites d'appel — dans les boucles d'agent et le coordinateur de validation (`LegacyTextAgentLoop`, `NativeToolCallingAgentLoop`, `OutputValidationCoordinator`), que pilote `ExecutionOrchestrator` :
 
 1. Boucle legacy `[TOOL_CALL]` basée texte — `_llmProvider.ChatAsync(prompt, effectiveConfig, …)`
-2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. Effet de bord de ce chantier : `BuildNativeLlmConfig` s'amorce désormais depuis `agent.LlmConfig` au lieu de `LlmConfig.Default()` — le nom du modèle et la config Thinking ne sont plus perdus à l'entrée du chemin natif.
+2. Boucle de tool-calling natif — `_fullProvider.ChatAsync(messages, effectiveConfig, …)`. `BuildNativeLlmConfig` s'amorce depuis `agent.LlmConfig` (et non `LlmConfig.Default()`), si bien que le nom du modèle et la config Thinking survivent à l'entrée du chemin natif.
 3. Retry de correction de validation — `_llmProvider.ChatAsync(correctionPrompt, effectiveConfig, …)`
 
-Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Parallel, Consensual) délèguent à `ExecutionOrchestrator.ExecuteTask` — elles bénéficient de la cascade gratuitement.
+Les 6 stratégies de process (Sequential, Hierarchical, Autonomous, Graph, Parallel, Consensual) exécutent les tâches via `IAgentExecutionService.ExecuteTaskAsync`, qui délègue à `ExecutionOrchestrator.ExecuteTaskCoreAsync` — elles bénéficient de la cascade gratuitement.
 
-`LlmBasedManager` (le manager LLM en mode Hierarchical) n'est **pas** patché car il n'a pas de `task` dans son scope (selon le plan §2.9 : les sites sans task passent `taskOverride: null`).
+`LlmBasedManager` (le manager LLM en mode Hierarchical) n'applique pas d'override de task : il n'a pas de `task` dans son scope, ses appels tournent donc sur la configuration propre du provider.
 
 ## Référence
 
-- Value object : `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`
+- Value objects : `Orkeon.Domain.SharedKernel.ValueObjects.LlmResponseFormat`, `LlmJsonSchema`
 - Record de patch : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigOverride`
 - Fusion : `Orkeon.Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve`
-- Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Qwen porte la seule surcharge ; DeepSeek opte déclarativement via `ResponseFormat = JsonObject`)
+- Traduction wire : `Orkeon.Infrastructure.LLMs.Base.OpenAICompatibleProviderBase.ApplyProviderSpecificOptions` (virtuelle — Qwen, OpenRouter et Together AI la surchargent et appellent la base pour `response_format`) ; `AnthropicLlmProvider` et `OllamaLlmProvider` pour leurs dialectes propres
 - Mapping YAML : `Orkeon.Infrastructure.Configuration.Yaml.YamlCrewMapper.MapResponseFormat`
 - Extensions call-time : `Orkeon.Infrastructure.LLMs.Extensions.LlmProviderExtensions`
 - Plan / spec : l'archive des mainteneurs (plan LLM-RESPONSE-FORMAT)

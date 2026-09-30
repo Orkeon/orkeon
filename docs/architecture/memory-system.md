@@ -4,19 +4,32 @@
 
 ## Interface and types
 
-`IMemoryProvider` (`Orkeon.Domain.Memory`) defines the contract with seven methods: `StoreAsync`, `GetAsync`, `SearchAsync`, `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` and `SearchSimilarAsync` (vector search by cosine similarity).
+`IMemoryProvider` (`Orkeon.Domain.Memory`) defines the contract with seven methods: `StoreAsync`, `GetAsync`, `SearchAsync`, `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` and `SearchSimilarAsync` (vector search by cosine similarity). The last two carry default interface bodies (`SearchSimilarAsync`'s returns nothing), so every in-repo provider derives from `MemoryProviderBase` (`Orkeon.Infrastructure.Memory.Base`), which re-declares `SearchSimilarAsync` as **abstract** — a provider that forgot to implement vector search would otherwise silently return zero results through the interface. The base class also adds `UpdateAsync`, `CountAsync`, `ListKeysAsync` and `InitializeAsync(MemoryProviderConfig)`.
 
-Five memory types are defined by `MemoryType`: `ShortTerm` (immediate context), `LongTerm` (persistent information), `Episodic` (event sequences), `Entity` (information about specific entities), `Procedural` (learned skills).
+Five memory types are defined by `MemoryType` (`Orkeon.Domain.Memory`): `ShortTerm` (immediate context), `LongTerm` (persistent information), `Episodic` (event sequences), `Entity` (information about specific entities), `Procedural` (learned skills).
+
+### Optional capabilities
+
+Beyond the base contract, a provider opts into capability interfaces (`Orkeon.Domain.Memory`) when its backend honours them natively:
+
+| Capability | Members | Implemented by |
+|---|---|---|
+| `IScoredVectorSearch` | `SearchSimilarWithScoresAsync` (key + score per hit) | In-Memory, SQLite, ChromaDB, Pinecone, LanceDB |
+| `IBatchUpsert` | `UpsertBatchAsync` | In-Memory, SQLite |
+| `IHybridSearchCapable` | `HybridSearchAsync` (vector + full-text in the store) | LanceDB |
+| `ICollectionAwareMemory` | collection-scoped store / upsert / search / `DeleteByFilterAsync` / `DropCollectionAsync` | ChromaDB (collections), Pinecone (namespaces), LanceDB (tables) |
+
+Discover them with `provider.TryGetCapability<TCapability>(out var capability)` (`MemoryCapabilityExtensions`), not with a bare `is` test: a decorator such as `EncryptedMemoryProviderDecorator` statically implements every capability and reports, through `IMemoryCapabilityProbe`, the ones its wrapped provider really has. Consumers fall back when a capability is missing — the RAG subsystem, for instance, uses prefixed keys (`rag:{collection}:…`) on a provider without `ICollectionAwareMemory` and its in-process BM25 + RRF fusion on one without `IHybridSearchCapable`.
 
 ## Implementations
 
 | Provider | Class | Characteristics |
 |----------|-------|-----------------|
 | In-Memory | `InMemoryProvider` | `ConcurrentDictionary`, cosine vector search, development/tests |
-| Redis | `RedisMemoryProvider` | Prefixed keys, Polly policies, camelCase JSON serialization |
-| SQLite | `SqliteMemoryProvider` | `Microsoft.Data.Sqlite`, local persistence (file or `:memory:`), embeddings stored as BLOB, `LIKE` full-text search + cosine vector search (in-memory scan), identifiers and metadata preserved on read-back |
+| Redis | `RedisMemoryProvider` | Keys prefixed `orkeon:memory:` by default, Polly retry policy (`ResiliencePolicies.GetRedisRetryPolicy`), camelCase JSON serialization. **Must be initialized**: the connection opens in `InitializeAsync` (connection string from `MemoryProviderConfig.ConnectionString`, default `localhost:6379`); any other call before it throws `InvalidOperationException` |
+| SQLite | `SqliteMemoryProvider` | `Microsoft.Data.Sqlite`, local persistence (file or `:memory:`, default `Data Source=:memory:`), embeddings stored as BLOB, `LIKE` full-text search + cosine vector search (in-memory scan), identifiers and metadata preserved on read-back. A file `Data Source` is a **virtual path** resolved through the VFS and must lie on a writable mount (e.g. `Data Source=/output/orkeon-memory.db`), otherwise the constructor throws `FileAccessDeniedException` |
 | ChromaDB | `ChromaDbMemoryProvider` | REST API v2 (tenant/database routes), vector database |
-| Pinecone | `PineconeMemoryProvider` | Cloud vector database |
+| Pinecone | `PineconeMemoryProvider` | Cloud vector database — `Api-Key` header; the index host is derived as `https://{IndexName}-{Environment}.svc.{Environment}.pinecone.io` unless the injected `HttpClient` already has a `BaseAddress` |
 | LanceDB | `LanceDbMemoryProvider` | Remote LanceDB Cloud/Enterprise server — REST + Arrow IPC, **server-side** vector and full-text search |
 
 ## LanceDB (real remote integration)
@@ -42,7 +55,7 @@ replaced (decision R4.11 — implement LanceDB for real).
 Authentication uses the `x-api-key` header (+ optional `x-lancedb-database`).
 Data payloads are encoded/decoded as **Arrow IPC** via the `Apache.Arrow`
 package (Apache-2.0, cf. `THIRD-PARTY-NOTICES.md`). The table schema is
-fixed: `id`, `content`, `vector` (FixedSizeList<float32>[dim]), `importance`,
+fixed: `id`, `content`, `vector` (`FixedSizeList<float32>[dim]`), `importance`,
 `source`, `tags` (JSON), `created_at`, `metadata_json`.
 
 ### Configuration
@@ -53,7 +66,7 @@ fixed: `id`, `content`, `vector` (FixedSizeList<float32>[dim]), `importance`,
     "LanceDb": {
       "Endpoint": "https://my-deployment.us-east-1.api.lancedb.com",
       "ApiKey": "…",
-      "Database": "optionnel",
+      "Database": "optional",
       "TableName": "orkeon_memories",
       "EmbeddingDimension": 1536,
       "DistanceType": "cosine",
@@ -63,8 +76,15 @@ fixed: `id`, `content`, `vector` (FixedSizeList<float32>[dim]), `importance`,
 }
 ```
 
-Registration: `services.AddOrkeonLanceDb(configuration)` (section `Orkeon:LanceDb`).
-Without `Endpoint`, provider resolution fails explicitly (no local fallback).
+Other keys: `DefaultTopK` (10), `MinSimilarityScore` (0), `VectorWeight` / `FullTextWeight`
+(hybrid fusion weights, 0.7 / 0.3). Defaults of the keys shown: `TableName` `orkeon_memories`,
+`EmbeddingDimension` 1536, `DistanceType` `cosine`, `CreateFullTextIndexOnInit` `true`.
+
+Registration: `services.AddOrkeonLanceDb(configuration)` (section `Orkeon:LanceDb`) registers
+`LanceDbMemoryProvider` (and `LanceDbMigrationService`) as concrete singletons — inject them by
+class; it does not rebind `IMemoryProvider`. Without `Endpoint`, resolving the provider throws
+`InvalidOperationException` (no local fallback); through `MemoryProviderFactory`, a missing
+endpoint logs a warning and falls back to In-Memory (see below).
 
 ### Known limitations
 
@@ -123,14 +143,43 @@ or responds with an error.
 
 ## Selection by configuration
 
+### The application-wide provider
+
+`AddOrkeonInfrastructure()` registers `IMemoryProvider` as a singleton built by
+`MemoryProviderFactory` from two root configuration keys: `Memory:Provider` (type, see below;
+unset → In-Memory) and `Memory:ConnectionString`. The factory's `Create` only **constructs** the
+provider; `CreateAndInitializeAsync` also maps the DTO to the Domain `MemoryProviderConfig`
+(options `RetentionPeriod`, `MaxItems`, `KeyPrefix`) and calls `InitializeAsync`. The DI
+registration uses `Create` — which is why Redis, the one provider that refuses to work
+uninitialized, is wired differently (`AddOrkeonRedisMemory`, then initialize it yourself).
+
 `MemoryProviderFactory` (port `IMemoryProviderFactory`) resolves the provider from
-`MemoryProviderConfigDto.Type`: `inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`.
-For SQLite, `ConnectionString` is the SQLite connection string
-(e.g. `Data Source=orkeon-memory.db`) and `Options["TableName"]` allows changing the table
-(identifier validated against SQL injection). For LanceDB, `ConnectionString` is the
-LanceDB Cloud/Enterprise REST endpoint and `Options` may carry `ApiKey`, `TableName`, `Database`
-(without an endpoint: explicit warning and In-Memory fallback; DI wiring via
-`AddOrkeonLanceDb`). An unknown type falls back to In-Memory with an explicit warning.
+`MemoryProviderConfigDto.Type` (case-insensitive):
+
+| Type | Aliases | `ConnectionString` | `Options` keys |
+|---|---|---|---|
+| `inmemory` | `in-memory`, empty | — | — |
+| `redis` | | Redis connection string (read by `InitializeAsync`) | `KeyPrefix` (via `CreateAndInitializeAsync`) |
+| `sqlite` | | SQLite connection string, virtual `Data Source` (e.g. `Data Source=/output/orkeon-memory.db`) | `TableName` (identifier validated against SQL injection) |
+| `chromadb` | `chroma` | Server base URL (default `http://localhost:8000`) | — (tenant/database/collection keep their defaults) |
+| `pinecone` | | — | `ApiKey`, `Environment`, `IndexName` (default `orkeon-memories`), `Namespace` (default `default`) |
+| `lancedb` | `lance` | LanceDB Cloud/Enterprise REST endpoint (**required**: without it, explicit warning and In-Memory fallback) | `ApiKey`, `TableName`, `Database` |
+
+An unknown type falls back to In-Memory with an explicit warning.
+
+### Dependency-injection extensions
+
+| Extension | Registers |
+|---|---|
+| `AddOrkeonInfrastructure()` | `IMemoryProviderFactory` + the `IMemoryProvider` singleton above |
+| `AddOrkeonRedisMemory(configuration)` | `RedisMemoryProvider`, and **rebinds** `IMemoryProvider` to it (call `InitializeAsync` before use) |
+| `AddOrkeonChromaDb(configuration)` | `ChromaDbOptions` bound on `Orkeon:ChromaDb` + `ChromaDbMemoryProvider` as a concrete singleton (its constructor takes an `HttpClient` the host registers). Called automatically by `AddOrkeonInfrastructure(configuration)` when the section exists |
+| `AddOrkeonPinecone(configuration)` | Same shape on `Orkeon:Pinecone` (`ApiKey`, `Environment`, `IndexName`, `Namespace`) |
+| `AddOrkeonLanceDb(configuration)` | `LanceDbOptions` on `Orkeon:LanceDb`, `LanceDbMemoryProvider` (own `HttpClient` from `IHttpClientFactory`) and `LanceDbMigrationService` (`MigrateToLanceDbAsync`, copies an existing provider into the LanceDB table) |
+| `AddOrkeonMemoryMigration()` | `MemoryMigrationService` — `MigrateAsync` copies every entry from one provider to another. Not registered by `AddOrkeonInfrastructure()`: call it when you move a store (e.g. In-Memory or SQLite to a vector database), resolve the service and pass it the source and target providers (two `MemoryProviderBase` instances — the source is enumerated key by key) |
+
+Only `AddOrkeonRedisMemory` replaces the application-wide `IMemoryProvider`; the three vector-store
+extensions make the provider injectable by its class, next to whatever `Memory:Provider` selected.
 
 ### Per-crew provider selection
 
@@ -146,6 +195,12 @@ The selection travels to the run rather than being fixed globally by `Memory:Pro
    with it (short-term memory stays an in-process sliding window). Unknown/unavailable types keep the
    factory's In-Memory-with-warning fallback.
 
+Only the **type** travels: the factory is called with an empty connection string and no options,
+so each provider runs on its defaults — `sqlite` is an in-process `:memory:` database, `chromadb`
+targets `http://localhost:8000`, `lancedb` (no endpoint) falls back to In-Memory with a warning,
+and `redis` is never initialized, so its first read or write throws. A crew that needs a real
+connection uses the application-wide provider instead.
+
 A crew that declares no `memoryProvider` uses the in-process default store — behavior is unchanged.
 
 ## Encryption at rest
@@ -158,10 +213,32 @@ and result content is decrypted on the way back. Full-text search
 (`SearchAsync`) on an encrypted store only matches the encrypted text — use vector
 search in that case.
 
+The decorator is never applied automatically: the host wraps the provider it wants protected
+(`new EncryptedMemoryProviderDecorator(inner, encryptionProvider, logger)`), with the
+AES-256-GCM `IEncryptionProvider` registered by `AddOrkeonInfrastructure()`
+(`Orkeon:Encryption`). Re-encrypting an existing store under a new key is the opt-in
+`AddOrkeonKeyRotation()` — see [Opt-in subsystems](../reference/opt-in-subsystems.md).
+
 ## Cognitive memory
 
-The cognitive subsystem in `Orkeon.Infrastructure.Memory.Cognitive` adds advanced capabilities: `MemoryAnalysis` (importance scoring 0.0-1.0, categorization, entity extraction), `ContradictionCheck` (conflict detection between memories), `ScoredMemory` (composite scoring: semantic similarity 0.5 + recency 0.3 + importance 0.2), and `MemoryConsolidator` (consolidation and conflict resolution).
+The cognitive subsystem (`Orkeon.Infrastructure.Memory.Cognitive`, opt-in
+`AddOrkeonCognitiveMemory(configuration)`) layers `ICognitiveMemoryService` — an `IMemoryService`
+extended with `RememberAsync`, `RecallAsync`, `ConsolidateAsync`, `AnalyzeAsync` and
+`CheckContradictionsAsync` — over the memory provider. It needs an `ILlmProvider` (analysis) and
+an `IEmbeddingProvider` (recall). Its result types live in the Domain (`CognitiveMemoryTypes.cs`):
+
+- `MemoryAnalysis` — LLM-scored importance (0.0-1.0), categorization, entity extraction (`MemoryAnalyzer`);
+- `ContradictionCheck` + `ConflictResolution` — conflict detection between memories (`ContradictionDetector`);
+- `ScoredMemory` — composite recall score computed by `CompositeScorer`: semantic similarity 0.5 +
+  recency 0.3 + importance 0.2 by default (`RecallOptions.SemanticWeight`/`RecencyWeight`/`ImportanceWeight`,
+  plus `TopK` 10 and `MinScore` 0.1); recency decays with a half-life of `RecencyHalfLifeHours`;
+- `ConsolidationResult` — consolidation, pruning and conflict resolution (`MemoryConsolidator`).
+
+Options (`Orkeon:CognitiveMemory`, `CognitiveMemoryOptions`): `EnableLlmAnalysis` (`true`),
+`EnableContradictionDetection` (`true`), `ContradictionCandidateCount` (10), `AnalysisModel`
+(null = the provider's model), `AnalysisTemperature` (0.1), `PruningThreshold` (0.1),
+`PruningMinAgeDays` (30), `RecencyHalfLifeHours` (69), `DefaultRecallOptions`.
 
 ---
 
-> **See also**: [LLM Providers](./llm-providers.md) · [Security](./security.md) · [Back to index](../INDEX.md)
+> **See also**: [LLM Providers](./llm-providers.md) · [Security](./security.md) · [Configuration reference](../reference/configuration.md) · [Back to index](../INDEX.md)

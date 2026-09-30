@@ -4,8 +4,8 @@
 
 > **Voir aussi** : [Politique de sécurité](../../../SECURITY.fr.md) · [Matrice de publication](../reference/publication-matrix.md) · [Retour à l'index](../INDEX.md)
 
-Chaque artefact Orkeon — les paquets NuGet, les installeurs, les archives CLI, le `.deb`,
-les MSI — est construit par un workflow GitHub Actions public et **attesté** : GitHub signe
+Chaque artefact Orkeon publié en release — les paquets NuGet, les installeurs, les archives
+CLI, le `.deb`, les MSI, le SBOM — est construit par un workflow GitHub Actions public et **attesté** : GitHub signe
 une déclaration disant *ce fichier exact a été produit par ce workflow, à ce commit, dans ce
 dépôt*. Vous pouvez vérifier cette déclaration vous-même, avec des outils que vous avez
 déjà, sans faire confiance au mainteneur, à la page de téléchargement, ni à ce document.
@@ -18,12 +18,16 @@ chacune a été exécutée sur les artefacts `v1.0.0-rc.3` avant d'être écrite
 | Mécanisme | Où il vit | Ce qu'il prouve |
 |---|---|---|
 | **Trusted Publishing (OIDC)** vers NuGet.org | `publish.yml`, étape *NuGet.org login* (`NuGet/login`) | Le push a utilisé une clé éphémère émise pour ce seul run de workflow. Il n'existe aucune clé API NuGet longue durée — aucune ne peut fuiter, aucune n'est à faire tourner. |
-| **Attestation de provenance de build** (SLSA v1, Sigstore) | `publish.yml`, étape *Attest the packages and the SBOM* — sur chaque `*.nupkg` ; `release.yml`, étape *Attest the release assets* — sur chaque archive, `.deb` et MSI | Le SHA-256 du fichier est consigné dans une déclaration signée par l'instance Sigstore de GitHub, qui nomme le fichier de workflow, le tag, le commit et le run. Un fichier au digest différent n'a pas de déclaration. |
+| **Attestation de provenance de build** (SLSA v1, Sigstore) | `publish.yml`, étape *Attest the packages and the SBOM* — sur chaque `*.nupkg` ; `release.yml`, étape *Attest the release assets* — sur chaque archive, `.deb`, MSI et le SBOM | Le SHA-256 du fichier est consigné dans une déclaration signée par l'instance Sigstore de GitHub, qui nomme le fichier de workflow, le tag, le commit et le run. Un fichier au digest différent n'a pas de déclaration. |
 | **`ContinuousIntegrationBuild=true`** au pack | `publish.yml`, étape `dotnet pack` | Les chemins dans les PDB et les assemblies sont normalisés : les octets packés ne dépendent pas de l'arborescence du runner. C'est un réglage de *build déterministe*, pas une garantie que vous puissiez reconstruire les octets identiques vous-même — il faudrait le même SDK, la même image de runner et le même graphe NuGet. |
-| Manifestes **`SHA256SUMS`** | Assets de release (`SHA256SUMS`, et `SHA256SUMS.msi` pour les MSI) | Intégrité de ce que vous avez téléchargé par rapport à ce que le workflow a envoyé. Bon marché, hors ligne, mais le manifeste n'est lui-même qu'un asset : c'est l'attestation qui le relie au workflow. |
-| **Actions et images de base épinglées** | Chaque `uses:` est un SHA de commit ; chaque `FROM` est un digest | Ce qui a tourné sur le runner est ce que le dépôt dit avoir tourné. |
+| Manifestes **`SHA256SUMS`** | Assets de release (`SHA256SUMS` pour les archives, le `.deb` et le SBOM ; `SHA256SUMS.msi` pour les deux MSI) | Intégrité de ce que vous avez téléchargé par rapport à ce que le workflow a envoyé. Bon marché, hors ligne, mais les manifestes ne sont que des assets et ne sont pas attestés eux-mêmes : c'est l'attestation de chaque fichier listé qui relie ce fichier au workflow. |
+| **Vérification après publication** | `release-verify.yml`, à chaque Release publiée | Une fois la Release créée, un runner neuf télécharge les assets *publiés*, contrôle les deux manifestes et rejoue le smoke d'onboarding sur le `.deb` et l'archive `osx-arm64` — un asset différent de ce que les smokes de release ont installé est ainsi détecté. |
+| **Actions et images de base épinglées** | Chaque `uses:` est un SHA de commit ; chaque image `FROM` externe est épinglée par digest | Ce qui a tourné sur le runner est ce que le dépôt dit avoir tourné. |
 
-Ce qu'elle n'établit **pas** : quoi que ce soit sur la *qualité* du code. Une attestation
+Deux choses ne portent **aucune** attestation : les builds dev de `main` sur GitHub Packages
+(`<version>.dev.<n>`, voir plus bas) et l'image conteneur `orkeon-runners` sur GHCR.
+
+Ce que la chaîne n'établit **pas** : quoi que ce soit sur la *qualité* du code. Une attestation
 dit que les octets sont sortis de `.github/workflows/publish.yml` au commit X — pas que le
 commit X est sans bug, sûr à exécuter avec vos identifiants, ni relu par qui que ce soit.
 Lisez le [modèle de menace](../../../SECURITY.fr.md#modèle-de-menace--exécution-doutils-pilotée-par-llm) pour cela.
@@ -110,12 +114,17 @@ de l'archive, il s'arrête plutôt que d'émettre un fichier qui échouerait de 
 
 ## Vérifier la nomenclature logicielle (SBOM)
 
-Chaque release après `v1.0.0-rc.3` livre un SBOM CycloneDX à côté de ses assets
+Chaque release produite depuis l'arrivée de l'étape SBOM (2026-09-11 — donc pas
+`1.0.0-rc.3`, qui la précède) livre un SBOM CycloneDX à côté de ses assets
 (`orkeon-<version>.sbom.cdx.json`) — le graphe complet des dépendances NuGet de
-`Orkeon.sln`, généré sur le même runner, juste après le pack, et couvert par la **même**
-attestation que les archives. Vérifiez-le comme n'importe quel asset :
+`Orkeon.sln`, paquets transitifs compris, généré par un outil dotnet `CycloneDX` épinglé
+sur le même runner juste après l'empaquetage des installeurs, listé dans `SHA256SUMS` et
+couvert par la **même** attestation que les archives. Vérifiez-le comme n'importe quel
+asset :
 
 ```bash
+VER=<version>   # une release qui livre un SBOM
+curl -fsSL -O "https://github.com/Orkeon/orkeon/releases/download/v$VER/orkeon-$VER.sbom.cdx.json"
 gh attestation verify "orkeon-$VER.sbom.cdx.json" --repo Orkeon/orkeon
 ```
 

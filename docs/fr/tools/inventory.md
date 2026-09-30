@@ -19,30 +19,43 @@ la racine de composition — voir [Disponibilité par racine de composition](#di
 
 | Tool | Classe | Enregistrement | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
-| `ask_question_to_coworker` | `AskQuestionTool` | Construit par agent par `AgentDelegationToolsProvider` quand `AllowDelegation` est actif — jamais en DI | Poser une question à un agent coéquipier spécialisé | `{ "question": "What is the Q4 revenue?", "coworker": "Financial Analyst" }` |
-| `delegate_work_to_coworker` | `DelegateWorkTool` | Même construction par agent (avec `AgentExecutionBudget` optionnel pour borner la profondeur récursive) | Déléguer une tâche complète à un agent spécialisé | `{ "task": "Analyze competitor pricing", "coworker": "Market Researcher", "context": "Focus on SaaS B2B" }` |
+| `ask_question_to_coworker` | `AskQuestionTool` | Construit par agent par `AgentDelegationToolsProvider` quand `AllowDelegation` est actif — jamais en DI | Poser une question à un agent coéquipier spécialisé | `{ "question": "What is the Q4 revenue?", "coworker_role": "Financial Analyst", "context": "Fiscal year 2025" }` |
+| `delegate_work_to_coworker` | `DelegateWorkTool` | Même construction par agent (avec `AgentExecutionBudget` optionnel pour borner la profondeur récursive) | Déléguer une tâche complète à un agent spécialisé | `{ "task": "Analyze competitor pricing", "coworker_role": "Market Researcher", "context": "Focus on SaaS B2B" }` |
 | `spawn_agent` | `SpawnAgentTool` | **Câblé par aucune racine de composition livrée** — l'hôte l'enregistre explicitement (`IAgentFactory` requis) | Créer et exécuter un sous-agent spécialisé à l'exécution (mode autonome) | `{ "role": "Fact checker", "goal": "Verify the claims", "task": "..." }` |
-| `human_input` | `HumanInputTool` | `AddOrkeonHumanInput()` — câblé par `orkeon run` (`RunnerExecution`), où la question remonte sur le bus d'événements du run | Poser une question à l'humain (texte, approbation, choix) ; le runtime se suspend jusqu'à la réponse | `{ "prompt": "Deploy to production?", "kind": "approval" }` |
+| `human_input` | `HumanInputTool` | `AddOrkeonHumanInput()` — câblé par `orkeon run` pour un crew YAML (`RunnerExecution`) ; sous `--events` la question remonte sur le flux d'événements du run, sinon c'est le `AutoApproveHumanInputProvider` par défaut qui répond | Poser une question à l'humain (`input_type` : `text`, `approval`, ou `choice` avec `choices`) ; le runtime se suspend jusqu'à la réponse | `{ "prompt": "Deploy to production?", "input_type": "approval" }` |
 
 Les noms d'affichage des trois premiers contrats sont en prose (« Ask question to
 coworker », « Delegate work to coworker », « Spawn sub-agent ») ; le nom du registre —
 celui ci-dessus — est ce que le YAML référence.
 
-## Tools de recherche et de connaissance (`Orkeon.Hosting` / `Orkeon.Tools.Rag`)
+## Tools de recherche et de connaissance (`Orkeon.Infrastructure` / `Orkeon.Tools.Rag`)
 
 | Tool | Classe | Enregistrement | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
-| `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` l'appelle) | Recherche sémantique par embeddings dans les mémoires | `{ "query": "customer churn patterns", "limit": 5 }` |
+| `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` l'appelle pour un crew YAML) | Recherche sémantique par embeddings dans les mémoires | `{ "query": "customer churn patterns", "top_k": 5 }` |
 | `rag_search` | `RagSearchTool` | Opt-in : `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) | Recherche RAG dans les bases de connaissances de l'agent via `IRagPipeline` | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Même opt-in que `rag_search` | Ingestion incrémentale dans une collection RAG (pilotée par manifeste — les sources inchangées coûtent 0 embedding) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Même opt-in que `rag_search` | Évaluer une collection contre un dataset doré YAML : recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
+
+> **Non assignables depuis un crew YAML aujourd'hui.** Les tools `rag_*` — comme les tools
+> des serveurs MCP — n'implémentent que `IBaseTool`, et `CrewFactory` n'attache à un agent
+> qu'un `ITool` (voir [le pipeline de résolution](#pipeline-de-résolution)) ; de plus, le
+> chemin YAML d'`orkeon run` ne les enregistre pas du tout. Ils fonctionnent depuis la façade
+> de scripting (`tools.ragSearch`, l'espace de noms `rag.*`) sous `orkeon run script.ork.ts` et
+> dans `orkeon-repl`, depuis `orkeon rag`, et depuis du C# qui appelle le tool ou
+> `IRagPipeline` directement. Les blocs `rag:` et `knowledge:` d'un crew ne contournent pas
+> non plus le problème sous `orkeon run crew.yaml` : le runner YAML n'appelle jamais
+> `AddOrkeonRag`, ils y sont donc inertes (un avertissement est journalisé). Ils ne prennent
+> effet que dans un hôte C# qui appelle `AddOrkeonRag(configuration)` — comme le fait
+> [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/Program.cs).
+> Voir la limitation connue dans [Pipeline RAG](../architecture/rag-pipeline.md#surfaces-scripting-et-cli).
 
 ## Tools d'exécution de code (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)
 
 | Tool | Classe | Enregistrement | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
 | `code_interpreter` | `SecureCodeInterpreterTool` | `AddOrkeonCodeSandbox()` — **type concret seulement**, pas sous `IBaseTool` : le registre ne peut pas le résoudre par nom ; l'hôte l'injecte ou l'enregistre explicitement | Exécuter du code C# dans un sandbox isolé avec analyse de sécurité statique | `{ "code": "return 2 + 2;", "timeout_seconds": 10 }` |
-| `shell_command` | `ShellCommandTool` | `AddOrkeonCodeTools()` | Exécuter des commandes shell avec allowlist/blocklist et timeout ; les arguments en chemins virtuels montés sont résolus pour le processus et les chemins physiques de la sortie reviennent virtualisés | `{ "command": "cat /workspace/README.md", "timeout_seconds": 30 }` |
+| `shell_command` | `ShellCommandTool` | `AddOrkeonCodeTools()` — allowlist en lecture seule par défaut (git limité aux sous-commandes en lecture seule) ; `Orkeon:Tools:Shell:ExtraAllowedCommands` ajoute des commandes, `Orkeon:Tools:Shell:AllowedCommands` remplace la liste, `Orkeon:Tools:Shell:AllowInterpreters` = `true` ouvre les interpréteurs et git en écriture | Exécuter des commandes shell avec allowlist/blocklist et timeout ; les arguments en chemins virtuels montés sont résolus pour le processus et les chemins physiques de la sortie reviennent virtualisés | `{ "command": "cat /workspace/README.md", "timeout_seconds": 30 }` |
 
 ## Tools de session et de mémoire (`Orkeon.Infrastructure`) — `AddOrkeonSessionTools()`
 
@@ -59,11 +72,16 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Base | Cas d'usage | Exemple d'appel |
 |-------|--------|------|-------------|-----------------|
-| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML et assimilés — un message `.eml` passe par `email_parser`) | `{ "file_path": "/data/report.txt" }` |
-| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire du contenu dans un fichier, en créant les dossiers si nécessaire | `{ "file_path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
-| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "directory": "/data", "pattern": "*.csv", "recursive": true }` |
-| `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire | `{ "directory": "/docs", "query": "deployment instructions", "file_pattern": "*.md" }` |
-| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "file_path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
+| `file_read` | `FileReadTool` | `FileToolBase<FileReadRequest, FileReadResponse>` | Lire le contenu d'un fichier (texte, JSON, XML et assimilés — un message `.eml` passe par `email_parser`) | `{ "path": "/data/report.txt" }` |
+| `file_write` | `FileWriteTool` | `FileToolBase<FileWriteRequest, FileWriteResponse>` | Écrire du contenu dans un fichier, en créant les dossiers si nécessaire | `{ "path": "/output/result.txt", "content": "Analysis complete.", "append": false }` |
+| `directory_read` | `DirectoryReadTool` | `FileToolBase<DirectoryReadRequest, DirectoryReadResponse>` | Lister le contenu d'un répertoire avec filtrage glob et récursion | `{ "path": "/data", "pattern": "*.csv", "recursive": true }` |
+| `directory_search` | `DirectorySearchTool` | `ToolBase<DirectorySearchRequest, DirectorySearchResponse>` | Recherche sémantique RAG dans les fichiers d'un répertoire (collection éphémère — exige le sous-système RAG à l'appel, voir ci-dessous) | `{ "path": "/docs", "query": "deployment instructions", "file_patterns": "*.md;*.txt" }` |
+| `count_pattern` | `CountPatternTool` | `FileToolBase<CountPatternRequest, CountPatternResponse>` | Compte déterministe des occurrences d'un motif regex dans un fichier (aucune estimation LLM) | `{ "path": "/data/log.txt", "patterns": ["ERROR", "WARN"] }` |
+
+`directory_search` — comme `txt_search`, `mdx_search` et `pdf_search` plus bas — cherche au travers
+des collections éphémères du sous-système RAG : l'extension l'enregistre et le construit sans lui,
+mais une recherche échoue à l'appel avec un message explicite tant que l'hôte n'a pas appelé
+`AddOrkeonRag(configuration)` et fourni un provider d'embeddings.
 
 ## Tools de données (`Orkeon.Tools.Data`) — `AddOrkeonDataTools()`
 
@@ -72,15 +90,15 @@ celui ci-dessus — est ce que le YAML référence.
 
 | Tool | Classe | Cas d'usage | Exemple d'appel |
 |-------|--------|-------------|-----------------|
-| `csv_reader` | `CsvReaderTool` | Lire et structurer des fichiers CSV avec détection du délimiteur | `{ "file_path": "/data/sales.csv", "delimiter": "," }` |
-| `pdf_reader` | `PdfReaderTool` | Extraire le texte de fichiers PDF avec sélection de pages | `{ "file_path": "/docs/contract.pdf", "start_page": 1, "end_page": 5 }` |
-| `json_tool` | `JsonTool` | Manipuler du JSON : parse (analyse de structure), query (navigation dot-notation), format (pretty-print) | `{ "operation": "query", "json_content": "{...}", "path": "data.users[0].name" }` |
-| `xml_parser` | `XmlParserTool` | Parser du XML depuis des fichiers ou des chaînes, avec support XPath | `{ "file_path": "/data/feed.xml", "xpath": "//item/title" }` |
+| `csv_reader` | `CsvReaderTool` | Lire et structurer des fichiers CSV avec détection du délimiteur | `{ "path": "/data/sales.csv", "delimiter": "," }` |
+| `pdf_reader` | `PdfReaderTool` | Extraire le texte de fichiers PDF avec sélection de pages | `{ "path": "/docs/contract.pdf", "page_range": "1-5" }` |
+| `json_tool` | `JsonTool` | Manipuler du JSON : parse (analyse de structure), query (navigation dot-notation), format (pretty-print) | `{ "operation": "query", "input": "{...}", "query": "data.users[0].name" }` |
+| `xml_parser` | `XmlParserTool` | Parser du XML depuis un chemin de fichier ou une chaîne, avec requêtes XPath | `{ "input": "/data/feed.xml", "operation": "query", "xpath": "//item/title" }` |
 | `docx_reader` | `DocxReadTool` | Lire des fichiers Word avec extraction du texte, des tableaux et des métadonnées | `{ "file_path": "/docs/report.docx" }` |
 | `docx_writer` | `DocxWriteTool` | Créer des fichiers Word (.docx) avec titre, paragraphes et listes à puces | `{ "file_path": "/output/report.docx", "title": "Monthly Report", "paragraphs": ["Introduction text..."] }` |
 | `xlsx_reader` | `XlsxReadTool` | Lire des fichiers Excel (.xlsx) : feuilles, lignes, colonnes, métadonnées (ClosedXML) | `{ "file_path": "/data/budget.xlsx", "sheet_name": "Q3" }` |
-| `xlsx_writer` | `XlsxWriteTool` | Créer ou mettre à jour des fichiers Excel (.xlsx) avec plusieurs feuilles, en-têtes et lignes | `{ "file_path": "/output/summary.xlsx", "sheet_name": "Totals", "headers": ["Region", "Revenue"], "rows": [["EMEA", "1.2M"]] }` |
-| `relational_database_query` | `RelationalDatabaseTool` | Exécuter des requêtes SQL (SQL Server, PostgreSQL, MySQL, MariaDB, SQLite) | `{ "connection_string": "...", "query": "SELECT * FROM orders WHERE status = 'pending'", "query_type": "select", "provider": "postgresql" }` |
+| `xlsx_writer` | `XlsxWriteTool` | Créer ou mettre à jour des fichiers Excel (.xlsx) avec plusieurs feuilles, en-têtes et lignes | `{ "file_path": "/output/summary.xlsx", "sheets": [{ "name": "Totals", "headers": ["Region", "Revenue"], "rows": [["EMEA", "1.2M"]] }] }` |
+| `relational_database_query` | `RelationalDatabaseTool` | Exécuter des requêtes SQL (SQL Server, PostgreSQL, MySQL, MariaDB, SQLite) ; `provider_name` est le provider ADO.NET (`Microsoft.Data.SqlClient`, `Npgsql`, `MySqlConnector`, `Microsoft.Data.Sqlite`) | `{ "connection_string": "...", "provider_name": "Npgsql", "query": "SELECT * FROM orders WHERE status = @status", "parameters": { "status": "pending" }, "query_type": "select" }` |
 | `sqlserver_query` | `SqlServerDatabaseTool` | Requêtes SQL Server spécialisées | — |
 | `postgres_query` | `PostgresDatabaseTool` | Requêtes PostgreSQL spécialisées | — |
 | `mysql_query` | `MySqlDatabaseTool` | Requêtes MySQL spécialisées | — |
@@ -91,29 +109,32 @@ celui ci-dessus — est ce que le YAML référence.
 | `arcadedb_query` | `ArcadeDbTool` | Requêtes contre la base graphe ArcadeDB | — |
 | `janusgraph_query` | `JanusGraphTool` | Traversées Gremlin contre JanusGraph | — |
 | `graph_schema` | `GraphSchemaTool` | Inspection du schéma d'une base graphe (labels de sommets/arêtes, propriétés, index) | — |
-| `pdf_search` | `PdfSearchTool` | Recherche sémantique dans des fichiers PDF via embeddings | — |
-| `txt_search` | `TxtSearchTool` | Recherche sémantique dans des fichiers texte | — |
-| `mdx_search` | `MdxSearchTool` | Recherche sémantique dans des fichiers MDX/Markdown (frontmatter et JSX retirés) | — |
+| `pdf_search` | `PdfSearchTool` | Recherche sémantique dans des fichiers PDF via embeddings (sous-système RAG requis à l'appel) | — |
+| `txt_search` | `TxtSearchTool` | Recherche sémantique dans des fichiers texte (sous-système RAG requis à l'appel) | — |
+| `mdx_search` | `MdxSearchTool` | Recherche sémantique dans des fichiers MDX/Markdown (frontmatter et JSX retirés ; sous-système RAG requis à l'appel) | — |
 
 ## Tools web (`Orkeon.Tools.Web`)
 
 `AddOrkeonWebTools()` enregistre les cinq premiers ; chacun des autres a sa propre
-extension opt-in parce qu'il exige une clé ou un service support supplémentaire. Les
-secrets sont toujours référencés par nom de variable d'environnement — jamais stockés en
-configuration.
+extension opt-in parce qu'il exige une clé ou un service support supplémentaire. Les clés
+ne voyagent pas toutes de la même façon : la clé Tavily est un secret résolu à l'appel, les
+jetons Brave et Slack sont remis à leur extension par l'hôte, et `image_generation` prend la
+clé OpenAI en argument d'appel. Tout tool qui récupère une URL passe par la garde SSRF
+(fail-closed même sans `IUrlValidator` enregistré) et par un client nommé qui refuse les
+redirections.
 
 | Tool | Classe | Enregistrement | Cas d'usage |
 |-------|--------|------|-------------|
 | `http_api` | `HttpApiTool` | `AddOrkeonWebTools()` | Appels HTTP REST (GET, POST, PUT, DELETE, PATCH, HEAD, OPTIONS) avec protection SSRF |
 | `web_scrape` | `WebScrapeTool` | `AddOrkeonWebTools()` | Scraper une page web avec filtrage CSS optionnel ; `cached=true` découpe et embarque la page dans le cache RAG |
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Scraping ciblé d'éléments DOM via sélecteurs CSS (texte, HTML, attributs) |
-| `github` | `GitHubTool` | `AddOrkeonWebTools()` | API GitHub v3 : lister/créer des issues, lire des PRs, chercher des dépôts |
-| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (clé OpenAI nécessaire à l'appel) | Génération d'images via l'API OpenAI DALL-E |
-| `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — clé Tavily résolue à l'exécution via `ISecretProvider` | Recherche web via l'API Tavily Search |
+| `github` | `GitHubTool` | `AddOrkeonWebTools()` — enregistré **sans jeton**, ses appels sont donc anonymes ; un hôte qui a besoin de `create_issue` enregistre lui-même `new GitHubTool(personalAccessToken)` | API GitHub v3 (`action` : `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`) |
+| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService` ; la clé OpenAI est l'argument d'appel `api_key`, il faut donc la donner à l'agent) | Génération d'images via l'API OpenAI DALL-E, enregistrables sous un chemin virtuel (`save_to_path`) |
+| `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — le secret `TAVILY_API_KEY` est résolu à l'appel via `ISecretProvider` (par défaut la variable d'environnement `ORKEON_TAVILY_API_KEY`, puis `Secrets:TAVILY_API_KEY` en configuration) | Recherche web via l'API Tavily Search |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` ne le câble que si `BRAVE_API_KEY` est posée | Recherche web via l'API Brave Search |
 | `slack_send_message` | `SlackTool` | `AddOrkeonSlackTool(botToken)` — aucune racine livrée ne l'appelle (opt-in hôte pur) | Envoyer des messages vers des canaux/utilisateurs Slack via la Web API |
 | `slack_read_messages` | `SlackReadTool` | `AddOrkeonSlackReadTool(botToken)` — même opt-in hôte | Lire des messages Slack (lecture seule) |
-| `cache_search` | `CacheSearchTool` | `AddOrkeonCacheSearchTool()` | Recherche sémantique dans le cache RAG que d'autres tools alimentent (ex. `web_scrape` avec `cached=true`) |
+| `cache_search` | `CacheSearchTool` | `AddOrkeonCacheSearchTool()` (exige `IEmbeddingService` et `IMemoryProvider`) | Recherche sémantique dans le cache RAG que d'autres tools alimentent (ex. `web_scrape` avec `cached=true`) |
 
 ## Tools du hub d'événements (`Orkeon.Tools.EventHub`) — `AddOrkeonEventHubTools()`
 
@@ -140,6 +161,7 @@ un serveur ni un identifiant — et les `Rights` du compte décident de ce qu'il
 `email_send` n'atteint que les destinataires qu'autorise la liste `Send:AllowedRecipients` du
 compte. Les ids de message sont opaques : repassez-les tels que `email_search` les a rendus. La
 colonne **Accès** est la classe que voit la [permission gate](../reference/opt-in-subsystems.md).
+Nouveau venu dans la famille ? Le [tutoriel boîte aux lettres](../getting-started/give-your-agents-a-mailbox.md) met un compte en service de bout en bout.
 Chaque paramètre est listé dans le [guide e-mail](../guides/email.md#paramètres) ; les résultats
 sont dimensionnés à ce que garde la boucle d'agent, et `cursor` / `offset` reprennent exactement
 là où une page ou une tranche s'arrête. Mise en place pour Gmail, Hotmail/Outlook.com et votre propre serveur, modèle de sécurité et
@@ -224,7 +246,7 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 | `Orkeon.Tools.Data` | 22 |
 | `Orkeon.Tools.Analysis` (RaggableTree — voir [son guide](../architecture/raggable-tree.md)) | 15 |
 | `Orkeon.Tools.Email` (voir [son guide](../guides/email.md)) | 13 |
-| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine) | 12 |
+| `Orkeon.Infrastructure` (collaboration, session, sandbox, entrée humaine, `semantic_search`) | 12 |
 | `Orkeon.Tools.Web` | 10 |
 | `Orkeon.Tools.EventHub` | 7 |
 | `Orkeon.Tools.FileSystem` | 5 |
@@ -236,7 +258,11 @@ le nombre qu'affichent le README et l'index de la documentation, vérifié par
 
 Les deux racines de composition livrées n'enregistrent pas les mêmes suites. Sources :
 `RunnerHost.cs` + `RunnerExecution.cs`/`RunCommand.cs` pour le CLI, `Program.cs` pour
-le REPL.
+le REPL. `orkeon run` construit un hôte différent pour un crew YAML (via `RunnerExecution`)
+et pour un script `.ork.ts` (directement sur `RunnerHost`) ; là où les deux diffèrent, la
+table le dit. L'hôte de service `orkeon-host` s'appuie sur le même `RunnerHost` : il a donc
+la suite de `RunnerHost` — tout ce que liste la première colonne sauf `semantic_search`,
+`human_input` et les tools RAG réservés aux scripts.
 
 | Suite / tool | `orkeon run` (CLI) | `orkeon-repl` (ConsoleApp) |
 |---|---|---|
@@ -244,14 +270,14 @@ le REPL.
 | E-mail (13) — les tools de boîte aux lettres refusent tout appel tant qu'aucun compte n'est déclaré sous `Orkeon:Tools:Email` | ✅ (jetons OAuth sous la racine interne `/credentials`) | ✅ comptes à mot de passe seulement — le REPL ne tient aucun magasin de jetons, un compte OAuth y est refusé |
 | EventHub (7) | ✅ | ❌ |
 | Analysis (15) | ✅ (sauf `RaggableTree:Enabled` = `false`) | ✅ |
-| `local_embed_text` | ✅ (provider d'embeddings local par défaut) | ✅ |
-| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ❌ | ✅ |
+| `local_embed_text` | ✅ tant que RaggableTree est actif avec son provider d'embeddings local par défaut | ✅ |
+| RAG (`rag_search`, `rag_ingest`, `rag_eval`) | ❌ pour un crew YAML (ni enregistrés ni attachables) ; ✅ pour un script `.ork.ts` (`tools.ragSearch`, `rag.*`, avec le reranker ONNX) | ✅ pour les scripts (un agent YAML ne peut toujours pas les recevoir) |
 | `web_search`, `cache_search` | ✅ | ❌ |
 | `brave_search` | ✅ seulement si `BRAVE_API_KEY` est posée | ❌ |
 | `slack_send_message`, `slack_read_messages` | ❌ (opt-in hôte) | ❌ |
-| Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom (STUDIO-21) | ❌ |
-| `semantic_search` | ✅ (câblé par la commande run) | ❌ |
-| `human_input` | ✅ (la question remonte sur le bus d'événements du run) | ❌ |
+| Les outils des serveurs MCP déclarés par `MCP:Servers` | ✅ connectés avant le chargement de la crew, sous leur propre nom (STUDIO-21) — joignables par nom dans le registre, mais pas encore attachables depuis une liste YAML `tools:` (voir le pipeline de résolution plus bas) | ❌ |
+| `semantic_search` | ✅ pour un crew YAML (câblé par la commande run) | ❌ |
+| `human_input` | ✅ pour un crew YAML (sur le flux d'événements sous `--events`, approuvé automatiquement sinon) | ❌ |
 | `ask_question_to_coworker`, `delegate_work_to_coworker` | par agent, quand `AllowDelegation` est actif | par agent |
 | `spawn_agent` | ❌ (l'hôte doit l'enregistrer) | ❌ |
 | `code_interpreter` | enregistrement en type concret seulement — non résoluble par nom | idem |
@@ -264,7 +290,7 @@ l'opérateur (`email_parser`, qui lit un fichier, reste).
 
 ## Résolution des tools par nom (YAML → instance)
 
-Quand un crew est défini en YAML, les tools sont référencés par leur nom (la propriété `Name` de la classe du tool). La résolution passe par `IToolRegistry` (`Orkeon.Domain.Tools`).
+Quand un crew est défini en YAML, les tools sont référencés par leur nom (la propriété `Name` de la classe du tool). La résolution passe par `IToolRegistry` (`Orkeon.Domain.Tools`) ; les runners utilisent `ServiceProviderToolRegistry` (`Orkeon.Hosting`), qui indexe par nom, sans tenir compte de la casse, chaque `IBaseTool` enregistré en DI.
 
 ### Pipeline de résolution
 
@@ -275,9 +301,17 @@ CrewFactory appelle IToolRegistry.GetToolByNameAsync("relational_database_query"
        ↓
 IToolRegistry cherche le tool enregistré avec Name == "relational_database_query"
        ↓
-Trouvé → ITool injecté dans l'Agent via AgentBuilder.WithTool()
-Absent → CrewFactory lève une erreur de validation
+Trouvé et ITool → attaché à l'Agent (AgentBuilder.WithTools())
+Absent, ou IBaseTool qui n'est pas un ITool →
+    StrictTools (défaut des runners)       → le crew ne se charge pas, avec la liste des tools disponibles
+    mode tolérant (défaut de la bibliothèque) → un avertissement, et l'agent tourne sans ce tool
 ```
+
+La sévérité est `Orkeon:CrewFactory:StrictTools` (`true` dans les runners, `CrewFactoryOptions.StrictTools`
+à `false` pour un hôte à vous). Seul un `ITool` atteint un agent : tout tool dérivé de
+`ToolBase` en est un, mais les trois tools RAG et les adaptateurs MCP n'implémentent
+aujourd'hui que `IBaseTool` ; un agent YAML qui les liste ne les reçoit donc pas — les
+scripts les atteignent par `tools.*`.
 
 ### Enregistrement des tools
 
@@ -296,7 +330,7 @@ services.AddOrkeonEventHubTools();     // les 7 tools du hub d'événements
 services.AddOrkeonEmailTools(configuration); // les 13 tools email_* ; ceux de boîte aux lettres demandent un compte déclaré
 services.AddRaggableTreeTools();       // les 15 tools d'analyse
 services.AddOrkeonLocalEmbeddings();   // local_embed_text
-services.AddSemanticSearchTool();      // semantic_search (Orkeon.Hosting)
+services.AddSemanticSearchTool();      // semantic_search (l'extension vit dans Orkeon.Hosting)
 services.AddOrkeonWebSearchTool();     // web_search
 services.AddOrkeonCacheSearchTool();   // cache_search
 services.AddOrkeonRag(configuration); services.AddOrkeonRagTools(); // rag_search, rag_ingest, rag_eval (opt-in)
@@ -380,7 +414,7 @@ correspondance alphabétique complète :
 | `relational_database_query` | `RelationalDatabaseTool` | `Orkeon.Tools.Data` |
 | `reply_to` | `ReplyToTool` | `Orkeon.Tools.EventHub` |
 | `scrape_element` | `ScrapeElementTool` | `Orkeon.Tools.Web` |
-| `semantic_search` | `SearchTool` | `Orkeon.Hosting` (opt-in) |
+| `semantic_search` | `SearchTool` | `Orkeon.Infrastructure` (opt-in, enregistré par `Orkeon.Hosting`) |
 | `send_request` | `SendRequestTool` | `Orkeon.Tools.EventHub` |
 | `session_cost` | `SessionCostTool` | `Orkeon.Infrastructure` |
 | `session_snip` | `SessionSnipTool` | `Orkeon.Infrastructure` |
@@ -409,21 +443,23 @@ correspondance alphabétique complète :
 Pour qu'un tool custom soit utilisable en YAML, il doit être enregistré dans `IToolRegistry` :
 
 ```csharp
-// Option 1 — via DI
-services.AddSingleton<IBaseTool, MonCustomTool>();
+// Option 1 — via DI (lu par ServiceProviderToolRegistry)
+services.AddSingleton<IBaseTool, MyCustomTool>();
 
 // Option 2 — enregistrement explicite au runtime
 var registry = host.Services.GetRequiredService<IToolRegistry>();
-await registry.RegisterToolAsync(new MonCustomTool());
+await registry.RegisterToolAsync(new MyCustomTool());
 ```
 
-Le tool sera alors accessible en YAML via son `Name` :
+Dérivez le tool de `ToolBase` (ou implémentez `ITool`, pas seulement `IBaseTool`) — voir
+[Créer un nouveau tool](./new-tool-pattern.md). Le tool sera alors accessible en YAML via
+son `Name` :
 
 ```yaml
 agents:
   my_agent:
     tools:
-      - "mon_custom_tool"  # Correspond à la propriété Name du tool
+      - "my_custom_tool"  # Correspond à la propriété Name du tool
 ```
 
 ## Manques fonctionnels identifiés
@@ -437,4 +473,4 @@ Les catégories suivantes ne sont pas couvertes par les tools existants :
 - **Calendrier / Planification** : pas de tool pour interagir avec des calendriers (Google Calendar, Outlook, etc.).
 - **Stockage cloud** : pas de tool pour interagir avec S3, Azure Blob, GCS.
 - **Authentification OAuth** : pas de tool générique pour les flux OAuth exigés par des APIs tierces — OAuth n'existe que pour les comptes e-mail, connectés une fois avec `orkeon email login`.
-- **Traitement d'images** : `MultiModalProcessor` existe dans l'infrastructure mais n'est pas exposé comme tool.
+- **Traitement d'images** : les images atteignent un modèle par le pipeline multimodal opt-in (`AddOrkeonMultiModal`, `IMultiModalContentLoader`), mais aucun tool ne transforme ni n'analyse une image ; `image_generation` ne fait qu'en créer une.

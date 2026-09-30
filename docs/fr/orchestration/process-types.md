@@ -14,32 +14,49 @@ Orkeon propose **6 stratégies d'orchestration** via le value object `ProcessTyp
 // Orkeon.Domain.SharedKernel.ValueObjects.ProcessType (sealed record)
 ProcessType.Sequential    // Pipeline linéaire
 ProcessType.Hierarchical  // Manager + workers
-ProcessType.Parallel      // Exécution concurrente
-ProcessType.Consensual    // Vote et consensus
-ProcessType.Graph         // Graphe d'états avec cycles contrôlés
-ProcessType.Autonomous    // Auto-organisation avec budget
+ProcessType.Parallel      // Vagues de dépendances, concurrence dans une vague
+ProcessType.Consensual    // Chaque agent exécute chaque tâche, puis un vote
+ProcessType.Graph         // Graphe d'états avec cycles de retry contrôlés
+ProcessType.Autonomous    // Auto-organisation sous budget
 ```
+
+En YAML, le mode est `process:` (insensible à la casse, `sequential` en son absence) ; une valeur inconnue fait échouer le chargement en nommant les six valeurs valides (`YamlCrewMapper.ParseProcessType`). Avec le Fluent Builder, `CrewBuilder` offre `.Sequential()`, `.Hierarchical(manager)`, `.Parallel()` et `.Consensual()` ; Graph et Autonomous passent par `.Process(ProcessType.Graph)` / `.Process(ProcessType.Autonomous)`.
 
 ### Architecture d'implémentation
 
 ```
-ProcessType (Domain — Value Object)
-     │
+ICrewOrchestrationService.KickoffAsync (SequentialCrewOrchestrator)
+     │  planification (si activée), puis un switch sur crew.ProcessType
      ▼
-IProcessStrategy (Domain — Interface)
+IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, Infrastructure)
      │
-     ▼
-ProcessStrategyFactory (Infrastructure)
-     │
-     ├── SequentialProcessStrategy
-     ├── HierarchicalProcessStrategy
-     ├── ParallelProcessStrategy
-     ├── ConsensualProcessStrategy      ← IConsensualProcessStrategy
-     ├── GraphProcessStrategy
-     └── AutonomousProcessStrategy
+     ├── SequentialProcessStrategy      ← ExecuteSequentialAsync
+     ├── HierarchicalProcessStrategy    ← ExecuteHierarchicalAsync(id du manager)
+     ├── ParallelProcessStrategy        ← ExecuteParallelAsync
+     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync (aussi IConsensualProcessStrategy)
+     ├── GraphProcessStrategy           ← ExecuteSequentialAsync
+     └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
 ```
 
-Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur `ProcessType.Value`, injecté par DI.
+`IProcessStrategy` (Domain) a quatre points d'entrée — `ExecuteSequentialAsync`, `ExecuteHierarchicalAsync`, `ExecuteParallelAsync`, `ExecuteAutonomousAsync`. `SequentialCrewOrchestrator` choisit le point d'entrée d'après `ProcessType.Value` ; Graph et Consensual réutilisent le point d'entrée séquentiel, et une stratégie lève `NotSupportedException` sur ceux qu'elle ne sert pas. Les stratégies sont enregistrées en scoped par `AddOrkeonInfrastructure()` (Consensual via `AddOrkeonConsensus()`, qu'il appelle).
+
+Ce que toutes les stratégies partagent :
+
+- **Ordre des tâches** — les modes qui distribuent les tâches l'une après l'autre (tous sauf Parallel) les exécutent dans l'ordre résolu par `CrewTaskSequencer` : celui du planificateur quand `planning: true` en a produit un, sinon un tri topologique stable sur les `dependencies` déclarées (détaillé sous Sequential).
+- **Hooks de cycle de vie** — chaque mode rend compte via `ICrewExecutionHook` (`OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`), sur toutes les sorties, annulation comprise ; c'est ce qui alimente `AUTO_SUMMARY.md`, le flux `orkeon run --events` et la progression affichée par l'hôte.
+- **Télémétrie des tokens** — l'usage réel (prompt, complétion, hits/misses de cache quand le fournisseur les rapporte) voyage dans les métadonnées de `CrewOutput` ; `CrewOutput.TokensUsed` reste `null` quand rien n'a été mesuré.
+
+### Qui exécute une tâche qui ne nomme aucun agent
+
+Un `agent:` au niveau de la tâche est une décision, pas une suggestion : Sequential, Parallel et Graph le respectent toujours. Pour une tâche sans agent, ces trois modes interrogent `TaskAgentSelector`, piloté par `OrkeonApplicationOptions.AgentSelectionStrategy` :
+
+| Valeur | Comportement |
+|--------|--------------|
+| `FirstFit` (défaut) | Round-robin sur les agents de la crew |
+| `Embedding` | Correspondance sémantique entre la tâche et le profil de chaque agent (exige un vrai fournisseur d'embeddings — voir les [limitations](../reference/limitations.md)) |
+| `Skill` | Correspondance lexicale (Jaccard) sur les mots-clés rôle/objectif/backstory, sans fournisseur d'embeddings |
+
+Une sélection qui échoue, ou qui désigne un agent absent de la crew, retombe sur le round-robin avec un avertissement. Hierarchical et Autonomous laissent choisir le LLM manager (l'`agent:` d'une tâche n'y est pas consulté) ; Consensual fait exécuter chaque tâche par tous les agents.
 
 ---
 
@@ -47,16 +64,16 @@ Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur 
 
 | Critère | Sequential | Hierarchical | Parallel | Consensual | Graph | Autonomous |
 |---------|-----------|-------------|---------|-----------|-------|-----------|
-| **Modèle d'exécution** | Linéaire | Linéaire + revue | Concurrent | Parallèle + vote | Machine à états | Auto-organisé |
-| **Coordination** | Round-robin | Manager LLM | Round-robin | Consensus LLM | Round-robin + routing | LLM + canal A2A |
-| **Dépendances entre tâches** | Oui (chaînées) | Oui (via manager) | Oui (vagues) | Non | Oui (edges) | Oui (délégation) |
-| **Circuit breaker** | — | — | — | — | ✅ 4 mécanismes | — |
-| **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions |
-| **Retry automatique** | — | Révisions (max 3) | — | Rounds de vote | ✅ configurable | Via délégation |
-| **Spawn dynamique** | — | — | — | — | — | ✅ SpawnAgentTool |
-| **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐⭐ | ⭐⭐⭐⭐ |
-| **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Moyen | Variable |
-| **Cas d'usage principal** | Pipelines ETL | QA, revue de code | Tâches indépendantes | Décisions critiques | Workflows complexes | Exploration, R&D |
+| **Modèle d'exécution** | Linéaire | Linéaire + revue du manager | Vagues de dépendances, concurrence dans une vague | Tous les agents par tâche + vote | Linéaire + cycle de retry | Assignation par le manager, délégation sur échec |
+| **Choix de l'agent** | Déclaré, sinon sélecteur | LLM manager | Déclaré, sinon sélecteur | Tous les agents | Déclaré, sinon sélecteur | LLM manager |
+| **Dépendances entre tâches** | Ordre + saut sur échec | Ordre | Vagues | Ordre | Ordre | Ordre |
+| **Une tâche échouée fait échouer la crew** | ✅ (dépendantes sautées) | — | — | Seulement avec `FallbackStrategy: Fail` | — (circuit breaker uniquement) | — |
+| **Circuit breaker** | — | — | — | — | ✅ 3 mécanismes | — |
+| **Budget d'exécution** | — | — | — | — | — | ✅ 5 dimensions (Permissive) |
+| **Retry automatique** | — | Jusqu'à 2 ré-exécutions après revue | — | Rounds de vote | ✅ `maxRetryCycles` | Une délégation à un pair |
+| **Complexité** | ⭐ | ⭐⭐ | ⭐ | ⭐⭐⭐ | ⭐⭐ | ⭐⭐⭐⭐ |
+| **Coût LLM relatif** | Bas | Moyen | Bas | Élevé | Bas à moyen | Moyen |
+| **Cas d'usage principal** | Pipelines ETL | QA, boucles de revue | Fan-out + synthèse | Plusieurs tentatives indépendantes | Tâches instables à relancer | Exploration, R&D |
 
 ---
 
@@ -64,43 +81,45 @@ Le `ProcessStrategyFactory` résout la stratégie appropriée via un switch sur 
 
 ### Principe
 
-Les tâches s'exécutent **une par une, dans l'ordre** défini par l'`ExecutionPlan`. Chaque tâche reçoit en contexte les résultats des tâches précédentes. L'assignation agent se fait en round-robin (sauf assignation explicite via `task.AssignedAgent`).
+Les tâches s'exécutent **une par une**. Chaque tâche reçoit en contexte les sorties des tâches exécutées avant elle. L'assignation des agents suit la règle ci-dessus : l'`agent:` de la tâche s'il est déclaré, sinon le sélecteur configuré (round-robin par défaut).
 
-**Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche s'exécute après chaque tâche dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew sans aucune dépendance s'exécute exactement comme elle est écrite. Cela vaut dans tous les layouts : le layout multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichiers, donc sans ce tri `consolider.yaml` s'exécutait avant l'`extraire.yaml` dont il dépend. Une dépendance qui nomme un id de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dans le cycle et un avertissement les nomme. La même règle ordonne les modes hiérarchique, consensuel, graphe et autonome, qui distribuent eux aussi leurs tâches une par une ; le mode parallèle garde sa propre sémantique (des **vagues** de dépendances, et un cycle est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel. Une tâche dont une dépendance déclarée n'a pas abouti — échouée, ou ignorée à son tour — est **ignorée**, jamais exécutée sur un contexte qui dit `Task failed: …` à la place de l'entrée qu'elle attendait : elle apparaît en `⊘ skipped` dans `AUTO_SUMMARY.md` et comme événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée et ignorée (LLM-11).
+**Ordre d'exécution sans plan** (`planning: false`, le défaut) : les tâches s'exécutent dans un **ordre topologique stable sur leurs `dependencies` déclarées** — une tâche passe après toutes celles dont elle dépend, et partout où les dépendances le permettent l'ordre déclaré est conservé, si bien qu'une crew qui ne déclare aucune dépendance s'exécute exactement comme écrite. Cela vaut dans toutes les dispositions : la disposition multi-fichiers (`tasks/*.yaml`) liste les tâches dans l'ordre ordinal de leurs noms de fichier, si bien que sans ce tri `consolidate.yaml` passait avant l'`extract.yaml` dont elle dépend. Une dépendance qui nomme un identifiant de tâche inconnu est ignorée ; un cycle ne fait jamais échouer la crew — l'ordre déclaré est conservé pour les tâches prises dedans et un avertissement les nomme. La même règle ordonne les modes hierarchical, consensual, graph et autonomous, qui distribuent eux aussi leurs tâches l'une après l'autre ; le mode parallel garde sa propre sémantique (des **vagues** de dépendances, et un cycle y est refusé). Avec `planning: true`, l'ordre du planificateur est pris tel quel.
+
+**Gestion des échecs (Sequential uniquement)** : une tâche dont une dépendance déclarée n'a pas réussi — échouée, ou elle-même sautée — est **sautée**, jamais exécutée sur un contexte qui dit `Task failed: …` là où son entrée aurait dû se trouver : elle apparaît comme `⊘ skipped` dans `AUTO_SUMMARY.md` et comme un événement `task.completed` avec `skipped: true`, les tâches qui n'en dépendent pas s'exécutent quand même, et la crew échoue en nommant chaque tâche échouée ou sautée (LLM-11). Les autres modes ne sautent pas les dépendantes et déclarent la crew terminée même quand une tâche a échoué (voir la matrice).
 
 ### Mécanisme interne
 
 ```
-Task 1 → Agent A → output₁
-                      ↓ (contexte enrichi)
-Task 2 → Agent B → output₂
-                      ↓
-Task 3 → Agent C → output₃ → résultat final
+Tâche 1 → Agent A → sortie₁
+                       ↓ (contexte enrichi)
+Tâche 2 → Agent B → sortie₂
+                       ↓
+Tâche 3 → Agent C → sortie₃ → résultat final
 ```
 
-**Classes clés** : `SequentialProcessStrategy`, `ExecutionPlan`, `AgentDelegationToolsProvider`
+**Classes clés** : `SequentialProcessStrategy`, `CrewTaskSequencer`, `TaskAgentSelector`, `ExecutionPlan`, `AgentDelegationToolsProvider` (les agents avec `allowDelegation: true` reçoivent `delegate_work_to_coworker` et `ask_question_to_coworker`)
 
 ### Configuration YAML
 
 ```yaml
-# Racine plate — il n'existe pas de clé enveloppe crew:, et agents:/tasks: sont
-# des mappings indexés par id (un fichier enveloppé de crew: se charge
-# SILENCIEUSEMENT comme une crew vide).
+# Racine plate — il n'y a pas de clé enveloppe crew:, et agents:/tasks: sont des
+# mappings indexés par id (un fichier enveloppé dans crew: se charge SILENCIEUSEMENT
+# comme une crew vide).
 name: "pipeline"
 goal: "Démo séquentielle"
 process: sequential
 tasks:
-  collecte:
+  collect:
     description: "Collecter les données"
     expectedOutput: "Données brutes"
-  analyse:
+  analyze:
     description: "Analyser les données"
     expectedOutput: "Rapport d'analyse"
-    dependencies: [collecte]
-  recommandations:
+    dependencies: [collect]
+  recommend:
     description: "Générer les recommandations"
     expectedOutput: "Plan d'action"
-    dependencies: [analyse]
+    dependencies: [analyze]
 ```
 
 ### Configuration Fluent Builder
@@ -120,12 +139,12 @@ var crew = new CrewBuilder()
 - **Simplicité maximale** : aucune configuration complexe, comportement prévisible
 - **Traçabilité** : chaque étape est clairement identifiable dans les logs
 - **Contexte cumulatif** : chaque tâche bénéficie des résultats précédents
-- **Déterminisme** : même entrée → même parcours d'exécution
+- **Résultat honnête** : le seul mode où une étape échouée fait échouer la crew et arrête ses dépendantes
 
 ### Inconvénients
 
 - **Pas de parallélisme** : le temps total est la somme de toutes les tâches
-- **Point de défaillance unique** : un échec bloque la suite de la chaîne — ses dépendantes sont ignorées, seules les tâches indépendantes s'exécutent encore
+- **Point de défaillance unique** : un échec bloque la suite de la chaîne — ses dépendantes sont sautées, seules les tâches indépendantes s'exécutent encore
 - **Pas de retry** : aucune reprise automatique en cas d'erreur
 - **Rigide** : l'ordre est fixe, pas de branchement conditionnel
 
@@ -138,9 +157,8 @@ var crew = new CrewBuilder()
 
 ### Quand ne pas l'utiliser
 
-- Tâches indépendantes pouvant s'exécuter en parallèle
-- Workflows nécessitant des branches conditionnelles
-- Scénarios exigeant de la résilience (retry, fallback)
+- Tâches indépendantes qui pourraient tourner en parallèle
+- Workflows qui devraient relancer une étape instable (Graph)
 
 ---
 
@@ -148,31 +166,36 @@ var crew = new CrewBuilder()
 
 ### Principe
 
-Un **agent manager** (piloté par LLM) coordonne une équipe de workers. Pour chaque tâche, le manager sélectionne l'agent le plus approprié via `AssignTaskAsync()`, puis **revoit la sortie** et peut demander jusqu'à 3 révisions.
+Un **manager** (`IManagerAgent`, implémenté par `LlmBasedManager`) coordonne les workers. Pour chaque tâche, il choisit un worker via `AssignTaskAsync()`, le worker exécute, puis le manager **revoit la sortie** avec `ReviewOutputAsync()`.
+
+- La crew doit nommer son manager : `managerAgent:` en YAML (ou `.Hierarchical(manager)` / `.WithManagerId(...)`) ; sans lui, l'exécution échoue avec « Hierarchical process requires a manager agent ». Cet agent est retiré du pool de workers.
+- Les décisions du manager passent par le **LLM enregistré par l'hôte** (`IChatClient` s'il est présent, sinon `IBasicLlmProvider` — la section `Llm` d'un hôte runner), pas par le bloc `llm:` de l'agent manager ; elles sont comptabilisées sous le rôle du manager.
+- Assignation : le LLM manager répond en JSON ; une réponse illisible retombe sur une heuristique rôle/mots-clés, une erreur du LLM sur le premier worker. L'`agent:` d'une tâche n'est pas consulté.
+- Revue : jusqu'à **3 revues par tâche**, donc au plus **2 ré-exécutions** (chacune avec une variable de contexte `revision_feedback`). Un troisième rejet conserve la dernière sortie, préfixée `[NEEDS REVISION]` et marquée en échec. Une revue qui échoue vaut approbation.
 
 ### Mécanisme interne
 
 ```
-                  ┌─── Manager Agent ───┐
-                  │   AssignTask()      │
-                  │   ReviewOutput()    │
-                  └────────┬────────────┘
+                  ┌─── Manager (LLM de l'hôte) ───┐
+                  │   AssignTaskAsync()            │
+                  │   ReviewOutputAsync()          │
+                  └────────┬───────────────────────┘
                            │
             ┌──────────────┼──────────────┐
             ▼              ▼              ▼
-        Agent A        Agent B        Agent C
-        (choisi)       (en attente)   (en attente)
+        Worker A       Worker B       Worker C
+        (choisi)
             │
             ▼
-        Output → Review → OK? → oui → tâche suivante
-                           → non → révision (max 3)
+        Sortie → Revue → approuvée ? → oui → tâche suivante
+                           → non → ré-exécution (max 2), puis [NEEDS REVISION]
 ```
 
-**Classes clés** : `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment`
+**Classes clés** : `HierarchicalProcessStrategy`, `IManagerAgent`, `LlmBasedManager`, `TaskAssignment` (`TaskId`, `AssignedAgent`, `Reason`, `AssignedAt`)
 
-**Interface `IManagerAgent`** :
-- `AssignTaskAsync(task, agents, context)` → `TaskAssignment` (agent sélectionné + justification)
-- `ReviewOutputAsync(output, task)` → `bool` (approuvé ou non)
+**Interface `IManagerAgent`** (`Orkeon.Application.Interfaces`) :
+- `AssignTaskAsync(task, availableAgents, context)` → `TaskAssignment`
+- `ReviewOutputAsync(output, originalTask)` → `bool` (approuvée ou non)
 
 ### Configuration YAML
 
@@ -181,66 +204,68 @@ name: "delivery-team"
 goal: "Démo hiérarchique"
 process: hierarchical
 managerAgent: lead          # l'id de l'agent manager (il n'existe pas de clé manager_llm)
-llm:                        # LLM par défaut de la crew, appliqué aux agents sans le leur
+llm:                        # LLM par défaut de la crew, appliqué aux agents qui n'en ont pas
   model: gpt-4o
 agents:
   lead:
     role: "Tech Lead"
     goal: "Coordonner la livraison"
   dev:
-    role: "Senior Developer"
+    role: "Développeur senior"
     goal: "Écrire le code de production"
   qa:
-    role: "QA Engineer"
+    role: "Ingénieur QA"
     goal: "Tester et valider"
 ```
 
 ### Avantages
 
-- **Allocation intelligente** : le manager choisit l'agent le plus adapté à chaque tâche
-- **Contrôle qualité intégré** : boucle de révision automatique
-- **Flexibilité** : le manager peut adapter la stratégie en cours d'exécution
-- **Traçabilité** : chaque assignation est justifiée
+- **Allocation intelligente** : le manager choisit le worker le plus adapté à chaque tâche
+- **Contrôle qualité intégré** : boucle de revue automatique
+- **Traçabilité** : chaque assignation porte une justification (`TaskAssignment.Reason`)
 
 ### Inconvénients
 
-- **Coût LLM supplémentaire** : le manager consomme des tokens pour chaque décision + revue
+- **Surcoût LLM** : un appel d'assignation + un à trois appels de revue par tâche, en plus des workers
 - **Goulot d'étranglement** : tout passe par le manager (pas de parallélisme)
-- **Révisions limitées** : max 3 révisions (hardcodé), pas de retry structurel
-- **Dépendance à la qualité du manager** : un mauvais prompt manager dégrade tout le workflow
+- **Révisions fixes** : 3 revues par tâche, en dur
+- **Échec silencieux** : une tâche rejetée ou échouée ne fait pas échouer la crew — lisez les sorties des tâches
 
 ### Quand l'utiliser
 
-- Revue de code (le manager assigne le reviewer le plus compétent)
-- Projets avec des spécialistes hétérogènes (dev, QA, design, rédaction)
-- Workflows nécessitant une validation humaine simulée
+- Revue de code (le manager assigne le relecteur le plus compétent)
+- Projets aux spécialistes hétérogènes (dev, QA, design, rédaction)
 - Situations où la qualité prime sur la vitesse
 
 ### Quand ne pas l'utiliser
 
-- Tâches homogènes (round-robin suffit)
-- Contraintes de coût LLM strictes
+- Tâches homogènes (le round-robin suffit)
+- Contraintes strictes de coût LLM
 - Workflows à haute fréquence (le manager est un goulot)
 
 ---
 
-## 3. Parallel — Exécution concurrente
+## 3. Parallel — Vagues de dépendances
 
 ### Principe
 
-Toutes les tâches s'exécutent **simultanément** via `Task.WhenAll()`. Chaque tâche dispose d'un contexte d'exécution indépendant (pas de résultats partagés entre tâches). Les résultats sont agrégés à la fin.
+Les tâches sont groupées en **vagues de dépendances**. Une vague contient toutes les tâches dont les `dependencies` déclarées sont déjà satisfaites ; ses tâches s'exécutent **en concurrence** (`Task.WhenAll`), et la vague suivante démarre quand elles sont toutes terminées, en **lisant leurs sorties** comme contexte. Une crew qui ne déclare aucune dépendance forme une seule vague — un fan-out à plat.
+
+- Une dépendance qui nomme une tâche absente de la crew compte comme satisfaite.
+- Un **cycle de dépendances est refusé** : l'exécution échoue en nommant les tâches prises dedans.
+- Une tâche échouée n'arrête ni ses voisines de vague, ni ses dépendantes de la vague suivante, et la crew est déclarée terminée.
+- Il n'y a pas de plafond de concurrence : toutes les tâches d'une vague appellent leur LLM en même temps.
 
 ### Mécanisme interne
 
 ```
-        ┌── Task 1 → Agent A → output₁ ──┐
-        │                                  │
-Start ──┼── Task 2 → Agent B → output₂ ──┼── Agrégation → Résultat
-        │                                  │
-        └── Task 3 → Agent C → output₃ ──┘
+Vague 1 ──┬── Tâche A → Agent 1 ──┐
+          └── Tâche B → Agent 2 ──┤  (concurrentes)
+                                  ▼
+Vague 2 ────── Tâche C (dépend de A, B) → lit A + B → résultat final
 ```
 
-**Classes clés** : `ParallelProcessStrategy`
+**Classes clés** : `ParallelProcessStrategy`, `TaskAgentSelector`
 
 ### Configuration YAML
 
@@ -252,40 +277,38 @@ tasks:
   france:
     description: "Analyser le marché français"
     expectedOutput: "Rapport France"
-  allemagne:
+  germany:
     description: "Analyser le marché allemand"
     expectedOutput: "Rapport Allemagne"
-  espagne:
-    description: "Analyser le marché espagnol"
-    expectedOutput: "Rapport Espagne"
+  synthesis:
+    description: "Comparer les deux marchés"
+    expectedOutput: "Synthèse comparative"
+    dependencies: [france, germany]   # deuxième vague, lit les deux rapports
 ```
 
 ### Avantages
 
-- **Vitesse maximale** : temps total = durée de la tâche la plus longue
-- **Simplicité** : pas de coordination complexe
-- **Scalabilité** : ajout de tâches sans impact sur le temps total
-- **Isolation** : un échec d'une tâche n'impacte pas ses sœurs de vague
+- **Vitesse** : temps total = somme de la tâche la plus longue de chaque vague
+- **Simplicité** : aucune coordination au-delà des dépendances déclarées
+- **Isolation** : l'échec d'une tâche n'affecte pas ses voisines de vague
 
 ### Inconvénients
 
-- **Ordonnancement grossier** : les dépendances sont honorées par vagues, pas tâche par tâche — une tâche attend toute sa vague, pas seulement ce qu'elle a déclaré
-- **Consommation API en pic** : toutes les requêtes LLM partent en même temps (rate limiting)
-- **Agrégation basique** : les résultats sont simplement concaténés
-- **Pas de retry** : aucune reprise automatique
+- **Ordonnancement grossier** : une tâche attend toute sa vague, pas seulement ce qu'elle a déclaré
+- **Pics de consommation d'API** : toutes les requêtes LLM d'une vague partent en même temps (rate limiting)
+- **Pas de retry**, et une tâche échouée alimente quand même (sous forme de message d'échec) la vague suivante
 
 ### Quand l'utiliser
 
 - Analyses multi-marchés ou multi-sources indépendantes
-- Génération de contenu en batch (un article par marché, par langue)
-- Tâches de classification parallèles
+- Génération de contenu en lot (un article par marché, par langue)
 - Un fan-out suivi d'une synthèse : les collecteurs tournent ensemble, la synthèse les lit
 
 ### Quand ne pas l'utiliser
 
-- Routage conditionnel ou cycles entre tâches (utiliser Graph)
-- APIs avec rate limiting strict (les appels simultanés peuvent être throttled)
-- Scénarios nécessitant une synthèse progressive
+- Relance de tâches instables (utilisez Graph)
+- API au rate limiting strict
+- Pipelines où une étape échouée doit arrêter ce qui en dépend (utilisez Sequential)
 
 ---
 
@@ -293,40 +316,46 @@ tasks:
 
 ### Principe
 
-Pour chaque tâche, **tous les agents l'exécutent indépendamment**, puis un vote détermine le meilleur résultat. Si aucun consensus n'est atteint, des **rounds de discussion** permettent aux agents de reconsidérer leur position en voyant les résultats des autres. Un mécanisme de fallback tranche en dernier recours.
+Pour chaque tâche, **chaque agent de la crew l'exécute** (en concurrence). Les exécutions sont transformées en bulletins et dépouillées par l'`IVotingStrategy` configurée. Si aucun consensus n'est atteint et que `EnableDiscussion` est actif, un nouveau round a lieu où chaque agent voit les sorties précédentes des autres (une variable de contexte `discussion_context`). Après `MaxVotingRounds` rounds sans consensus, la `FallbackStrategy` tranche.
 
 ### Mécanisme interne
 
 ```
-Task N ──┬── Agent A → résultat A ──┐
-         ├── Agent B → résultat B ──┼── Vote ── Consensus? ── oui → Accepté
-         └── Agent C → résultat C ──┘              │
-                                                   non
-                                                    ↓
-                                          Discussion (round 2)
-                                          Agents voient les autres résultats
-                                                    ↓
-                                                  Re-vote
-                                                    ↓
-                                          Échec → Fallback
+Tâche N ──┬── Agent A → résultat A ────┐
+          ├── Agent B → résultat B ────┼── Dépouillement ── Consensus ? ── oui → résultat gagnant
+          └── Agent C → résultat C ────┘                        │
+                                                                non
+                                                                 ↓
+                                          Round suivant (avec discussion_context)
+                                                                 ↓
+                                        Rounds épuisés → FallbackStrategy
 ```
 
-**Classes clés** : `ConsensualProcessStrategy`, `IVotingStrategy`, `IVotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`
+**Enregistrement** : `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) lie `ConsensualProcessOptions` à la section `Orkeon:Consensus`, enregistre `IVotingStrategyFactory` → `VotingStrategyFactory` et l'`IVotingStrategy` construite à partir du `ConsensusType` configuré (singletons, `TryAdd`), ainsi que `ConsensualProcessStrategy` (scoped) avec `IConsensualProcessStrategy` associée à la même instance. `AddOrkeonInfrastructure()` l'appelle déjà — ne l'appelez vous-même que dans un hôte qui n'utilise pas `AddOrkeonInfrastructure()` ; enregistrer votre propre `IVotingStrategy` avant lui remplace celle configurée.
+
+**Classes clés** : `ConsensualProcessStrategy` (aussi `IConsensualProcessStrategy`), `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+
+### Comment un bulletin est formé — à lire avant de se fier au vote
+
+Le pipeline **ne compare pas** le contenu des sorties. Chaque exécution d'un agent devient **un bulletin pour lui-même** : `Choice` = son propre id d'agent, `Confidence` = 1,0 si son exécution a réussi et 0,1 si elle a échoué, `Weight` = 1,0. Conséquences à partir de deux agents :
+
+- `Majority`, `SuperMajority` et `Unanimity` sans pondération **n'atteignent jamais le consensus** (chaque choix détient 1/N des voix) ; avec `UseWeightedVotes: true` (ou `WeightedConsensus`), un choix l'emporte quand les exécutions des autres agents ont échoué.
+- `BordaCount` attend des classements séparés par des virgules ; un bulletin à choix unique donne 0 point à tous, il désigne donc le **premier agent** vainqueur dès le round 1.
+- Le repli `AcceptBestScore` **ré-exécute la tâche avec le premier agent** et garde cette sortie ; `ManagerDecision` fait de même aujourd'hui ; `Fail` arrête la crew (« Consensus could not be reached for task … »).
+
+En pratique, pour une crew dont tous les agents réussissent, chaque tâche coûte `MaxVotingRounds` × N exécutions plus une exécution de repli (N exécutions avec `BordaCount`). Les variables d'entrée de la crew ne sont pas interpolées dans ce mode ; les sorties gagnantes des tâches précédentes sont transmises en contexte.
 
 ### Types de consensus disponibles
 
-Le mécanisme de vote est **sélectionnable par configuration** : la valeur de
-`Orkeon:Consensus:VotingOptions:ConsensusType` (section .NET `appsettings.json`)
-choisit la stratégie dédiée via `IVotingStrategyFactory`. Sans configuration,
-le défaut reste `Majority` (rétro-compatible).
+Le mécanisme de vote est **sélectionnable par configuration** : `Orkeon:Consensus:VotingOptions:ConsensusType` (`appsettings.json` .NET) choisit la stratégie via `IVotingStrategyFactory`. Défaut : `Majority`.
 
-| Type | Stratégie résolue | Description | Seuil par défaut |
-|------|-------------------|-------------|------------------|
-| `Majority` | `MajorityVotingStrategy` | Plus de 50% des votes | 50% |
-| `SuperMajority` | `SuperMajorityVotingStrategy` | Seuil configurable (défaut 2/3) | 66.7% |
-| `Unanimity` | `UnanimityVotingStrategy` | Tous les agents doivent s'accorder | 100% |
-| `WeightedConsensus` | `WeightedConsensusStrategy` | Votes pondérés par rôle (`RoleWeights`) | Configurable |
-| `BordaCount` | `BordaCountStrategy` | Classement par score Borda | N/A |
+| Type | Stratégie résolue | Règle de consensus | Seuil par défaut |
+|------|-------------------|--------------------|------------------|
+| `Majority` | `MajorityVotingStrategy` | Part gagnante strictement supérieure à 50 % | 50 % |
+| `SuperMajority` | `SuperMajorityVotingStrategy` | Part gagnante ≥ `ConsensusThreshold` | 66,7 % |
+| `Unanimity` | `UnanimityVotingStrategy` | Un seul choix distinct | 100 % |
+| `WeightedConsensus` | `WeightedConsensusStrategy` | Poids du rôle (`RoleWeights`) × confiance, part au-dessus de `ConsensusThreshold` | 66,7 % |
+| `BordaCount` | `BordaCountStrategy` | Classement par score de Borda, toujours un vainqueur | N/A |
 
 ### Configuration (.NET, section `Orkeon:Consensus`)
 
@@ -338,9 +367,7 @@ le défaut reste `Majority` (rétro-compatible).
       "VotingOptions": {
         "ConsensusType": "SuperMajority",
         "ConsensusThreshold": 75,
-        "QuorumPercent": 60,
-        "UseWeightedVotes": true,
-        "AllowAbstention": false
+        "UseWeightedVotes": true
       },
       "EnableDiscussion": true,
       "FallbackStrategy": "AcceptBestScore",
@@ -353,85 +380,86 @@ le défaut reste `Majority` (rétro-compatible).
 }
 ```
 
-> **Note** : `ConsensusThreshold` et `QuorumPercent` s'expriment en **pourcentage
-> (0–100)**, pas en fraction. Un seuil de super-majorité de 75 % s'écrit `75`.
+| Clé | Défaut | Effet |
+|-----|--------|-------|
+| `MaxVotingRounds` | 3 | Rounds avant le repli (la copie `VotingOptions:MaxVotingRounds` n'est pas lue) |
+| `VotingOptions:ConsensusType` | `Majority` | Stratégie de vote |
+| `VotingOptions:ConsensusThreshold` | 66,7 | Seuil de `SuperMajority` / `WeightedConsensus`, en **pourcentage (0–100)** — 75 % s'écrit `75` |
+| `VotingOptions:UseWeightedVotes` | `false` | Poids × confiance au lieu d'une voix par bulletin |
+| `VotingOptions:QuorumPercent`, `VotingOptions:AllowAbstention` | 50, `true` | Transmis aux stratégies mais appliqués par aucune |
+| `EnableDiscussion` | `true` | Les rounds après le premier voient les sorties des autres agents |
+| `FallbackStrategy` | `AcceptBestScore` | `AcceptBestScore`, `Fail`, `ManagerDecision` (identique à `AcceptBestScore` aujourd'hui) |
+| `RoleWeights` | vide | Rôle → poids, lu par `WeightedConsensus` |
 
 ### Avantages
 
-- **Robustesse** : réduit les hallucinations et biais individuels
-- **Qualité** : la "sagesse collective" produit souvent de meilleurs résultats
-- **Flexibilité du vote** : 5 stratégies de consensus, pondération par rôle
-- **Discussion** : les agents peuvent s'améliorer mutuellement entre les rounds
-- **Fallback** : 3 stratégies de repli (meilleur score, échec, décision manager)
+- **Plusieurs tentatives indépendantes** par tâche, exécutées en concurrence
+- **Vote configurable** : 5 stratégies, pondération par rôle
+- **Discussion** : les agents voient les sorties des autres entre les rounds
 
 ### Inconvénients
 
-- **Coût LLM élevé** : chaque tâche est exécutée N fois (N = nombre d'agents) × rounds
-- **Lenteur** : multiplication des appels LLM, surtout avec discussion activée
-- **Complexité de configuration** : nombreux paramètres (seuil, quorum, pondération, rounds)
-- **Résultat incertain** : le fallback peut produire un résultat insatisfaisant
+- **Coût LLM élevé** : N agents × rounds (+ repli) exécutions par tâche
+- **Le vote n'est pas sémantique** (voir ci-dessus) : il mesure quelles exécutions ont réussi, pas quelle réponse est la meilleure
+- **Complexité de configuration** : beaucoup de paramètres, dont certains transmis sans être appliqués
 
 ### Quand l'utiliser
 
-- Décisions critiques (diagnostic médical, évaluation de risque, audit)
-- Situations où la fiabilité prime sur le coût
-- Évaluations subjectives nécessitant plusieurs perspectives
-- Scénarios de "red team" (plusieurs agents tentent de trouver des failles)
+- Tâches où des tentatives indépendantes de plusieurs agents valent leur coût
+- Crews où l'échec d'un agent doit être absorbé par les autres (votes pondérés)
 
 ### Quand ne pas l'utiliser
 
-- Tâches factuelles avec une seule réponse correcte
-- Contraintes de budget LLM (multiplication par N agents × R rounds)
+- Tâches factuelles à réponse unique
+- Contraintes de budget LLM (multiplié par N agents × R rounds)
 - Workflows à haute fréquence (trop lent)
 
 ---
 
-## 5. Graph — Graphe d'états avec cycles contrôlés
+## 5. Graph — Graphe d'états avec retry contrôlé
 
 ### Principe
 
-Les tâches sont organisées dans un **graphe d'états typé** inspiré de LangGraph. Le graphe supporte des **edges conditionnels** (routing dynamique) et des **cycles contrôlés** (retry automatique). Un **circuit breaker** à 4 mécanismes empêche les boucles infinies.
+La crew s'exécute à travers un **graphe d'états typé** (`StateGraph<CrewGraphState>`) à topologie fixe : `execute_task` exécute la prochaine tâche en attente, `route` remet en file les tâches échouées qui ont encore des retries et reboucle tant qu'il reste du travail. Un **circuit breaker à 3 mécanismes** borne la boucle. Les arêtes conditionnelles et les topologies arbitraires sont disponibles via l'API Domain `StateGraph<TState>` en C# ; le mode YAML ne déclare pas son propre graphe.
 
 ### Mécanisme interne
 
 ```
-START ──→ execute_task ──→ route ──┬── succès ──→ execute_task (suivante)
-                                   │                      ↓
-                                   │               ... (loop) ...
-                                   │                      ↓
-                                   ├── échec ──→ execute_task (retry)
+START ──→ execute_task ──→ route ──┬── tâches en attente (ou échouées avec retries restants) ──→ execute_task
                                    │
-                                   └── terminé ──→ END
+                                   └── plus rien ──→ END
 ```
 
 **Classes clés** :
-- `StateGraph<TState>` — Définition du graphe (nodes + edges)
-- `GraphRunner<TState>` — Moteur d'exécution
-- `GraphProcessStrategy` — Implémentation `IProcessStrategy`
-- `CircuitBreakerPolicy` — Protection anti-boucle
-- `CrewGraphState` — État typé circulant dans le graphe
+- `StateGraph<TState>` — Définition du graphe (nœuds + arêtes fixes et conditionnelles)
+- `GraphRunner<TState>` — Moteur d'exécution avec circuit breaker
+- `GraphProcessStrategy` — Implémentation de `IProcessStrategy`
+- `CircuitBreakerPolicy` — Limites (le record partagé avec la FSM)
+- `CrewGraphState` — État typé qui traverse le graphe
 
 ### `CrewGraphState` — Propriétés de l'état
 
 | Propriété | Type | Description |
 |-----------|------|-------------|
-| `PendingTaskIds` | `Queue<TaskId>` | Tâches restantes à exécuter |
-| `FailedTaskIds` | `Queue<TaskId>` | Tâches éligibles au retry |
-| `RetryCounts` | `Dict<string, int>` | Compteur de retries par tâche |
-| `MaxRetryCycles` | `int` | Nombre max de retries (défaut: 2) |
-| `ApplicationOutputs` | `IReadOnlyList<ApplicationTaskOutput>` | Sorties accumulées |
-| `TotalTokensUsed` | `int` | Compteur de tokens consommés (propagé aux métadonnées du `CrewOutput` sous `totalTokens`) |
-| `PromptTokensUsed` | `int` | Compteur de tokens côté prompt (0 si le provider ne fournit pas le split) |
-| `CompletionTokensUsed` | `int` | Compteur de tokens côté completion (0 si le provider ne fournit pas le split) |
+| `PendingTaskIds` | `Queue<TaskId>` | Tâches restant à exécuter |
+| `FailedTaskIds` | `Queue<TaskId>` | Tâches en attente d'un cycle de retry |
+| `RetryCounts` | `Dictionary<string, int>` | Compteur de retries par tâche |
+| `MaxRetryCycles` | `int` | Retries par tâche échouée (défaut : 2) |
+| `ApplicationOutputs` / `DomainResults` | `IReadOnlyList<…>` | Sorties accumulées, une par tentative |
+| `TotalTokensUsed` | `int` | Tokens consommés (propagés dans les métadonnées de `CrewOutput` sous `totalTokens`) |
+| `PromptTokensUsed` / `CompletionTokensUsed` | `int` | Ventilation prompt/complétion (0 quand le fournisseur ne la rapporte pas) |
+| `CacheHitTokensUsed` / `CacheMissTokensUsed` | `long` | Ventilation du cache de prompt (0 si non rapportée) |
+| `AgentIndex` | `int` | Curseur round-robin des tâches sans agent |
 
-### Circuit Breaker — 4 mécanismes de protection
+### Circuit breaker — 3 mécanismes de protection
 
-| Mécanisme | Strict | Default | Permissive |
+| Mécanisme | Strict (défaut) | Default | Permissive |
 |-----------|--------|---------|------------|
-| `MaxTransitions` | 50 | 100 | 1000 |
-| `StateTimeout` | 2 min | 5 min | 30 min |
-| `MaxStateVisits` | 5 | 10 | 50 |
+| `MaxTransitions` (exécutions de nœuds) | 50 | 100 | 1000 |
+| `MaxStateVisits` (visites d'un nœud) | 5 | 10 | 50 |
 | `MaxTotalDuration` | 10 min | 30 min | 2 h |
+
+Chaque tentative de tâche est une visite de `execute_task`, donc `MaxStateVisits` plafonne le nombre de tentatives de tâches sur tout le run : **5 en Strict** — relevez `maxStateVisits` pour une crew qui a plus de tâches (retries compris). Le quatrième mécanisme de la FSM, le timeout par état, n'est pas vérifié par le runner du graphe. Un disjoncteur déclenché renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») avec les sorties produites jusque-là.
 
 ### Configuration YAML
 
@@ -444,40 +472,34 @@ graphConfig:
   maxRetryCycles: 3
   # Surcharges individuelles possibles :
   maxTransitions: 75
-  maxStateVisits: 10
-  maxTotalDurationSeconds: 180
+  maxStateVisits: 20
+  maxTotalDurationSeconds: 1800
 ```
 
 ### Avantages
 
-- **Branchement conditionnel** : routing dynamique selon le résultat de chaque nœud
-- **Retry intégré** : les tâches échouées sont automatiquement re-tentées
-- **Sécurité** : circuit breaker à 4 niveaux empêche les exécutions infinies
-- **Observabilité** : événements `OnNodeCompleted`, `OnCircuitBroken`
-- **Cycles utiles** : boucle feedback → correction → validation
-- **Presets** : Strict (production) vs Permissive (développement)
+- **Retry intégré** : les tâches échouées sont relancées après celles en attente, jusqu'à `maxRetryCycles`
+- **Sûreté** : un circuit breaker borne les exécutions, les visites et la durée
+- **Observabilité** : événements `OnNodeCompleted` / `OnCircuitBroken`, journalisés par la stratégie
+- **Presets** : Strict (défaut) vs Permissive
 
 ### Inconvénients
 
-- **Complexité de conception** : définir un graphe correct demande de la réflexion
-- **Debugging** : tracer un parcours dans un graphe cyclique est plus difficile
-- **Overhead** : le moteur de graphe ajoute une couche de complexité
-- **Circuit breaker** : peut couper l'exécution prématurément si mal configuré
+- **Strict est serré** : le défaut plafonne le run à 5 tentatives de tâches
+- **Échec silencieux** : une tâche qui échoue encore après ses retries ne fait pas échouer la crew (seul le disjoncteur le fait)
+- **Topologie fixe en YAML** : le routage conditionnel exige l'API C# `StateGraph<TState>`
 
 ### Quand l'utiliser
 
-- Workflows avec branchements conditionnels (validation → OK/KO → chemins différents)
-- Pipelines nécessitant du retry avec backoff
-- Scénarios de correction itérative (rédaction → revue → correction → re-revue)
-- Workflows réglementaires avec des chemins d'exception
+- Pipelines aux étapes instables qui méritent d'être relancées (web scraping, API instables)
+- Exécutions qui doivent être bornées en nombre d'exécutions et en durée
 
 ### Quand ne pas l'utiliser
 
-- Pipelines linéaires simples (Sequential suffit)
-- Tâches indépendantes (Parallel suffit)
-- Équipes qui ne sont pas à l'aise avec la modélisation par graphe
+- Pipelines linéaires simples où un échec doit arrêter l'exécution (Sequential)
+- Tâches indépendantes (Parallel)
 
-> **Voir aussi** : [Orchestration FSM](./fsm.md) pour le détail complet.
+> **Voir aussi** : [Orchestration Graph](./graph.md) pour tous les détails.
 
 ---
 
@@ -485,63 +507,59 @@ graphConfig:
 
 ### Principe
 
-Les agents **s'auto-organisent** : ils revendiquent des tâches, délèguent récursivement à leurs pairs, et peuvent **spawner dynamiquement** de nouveaux agents. Un **budget multi-dimensionnel** (5 axes) garantit la terminaison. La communication inter-agents se fait via un canal bidirectionnel (`IAgentChannel`).
+Pour chaque tâche, le LLM manager (`LlmBasedManager`, comme en Hierarchical) choisit l'agent qui la **réclame**. Quand l'exécution de cet agent échoue et que l'agent autorise la délégation, la tâche est **déléguée à un pair** via le canal A2A (`IAgentChannel`), sous un budget enfant dérivé. Un **budget multi-dimensionnel** (5 axes) borne le run. L'API est expérimentale (`ORKEXP002`, voir les [API expérimentales](../reference/experimental-apis.md)).
 
 ### Mécanisme interne
 
 ```
-                    ┌─── Budget (5 dimensions) ───┐
-                    │  tool calls · depth · time   │
-                    │  tokens · spawned agents      │
-                    └──────────────┬────────────────┘
-                                   │
-Manager (LLM) ── assigne ──→ Agent A
-                                   │
-                    ┌──────────────┼──────────────┐
-                    ▼              ▼              ▼
-              DelegateWork   SpawnAgent      Exécution
-              (child budget)  (via factory)   directe
-                    │              │
-                    ▼              ▼
-                Agent B       Agent D (nouveau)
-                    │              │
-                    ▼              ▼
-              Résultat ←── canal A2A ──→ Résultat
+                    ┌─── AgentExecutionBudget (5 dimensions) ───┐
+                    │  appels d'outils · profondeur · durée      │
+                    │  tokens · agents créés                     │
+                    └──────────────────┬─────────────────────────┘
+                                       │
+pour chaque tâche : Manager (LLM) ── assigne ──→ Agent A ── exécute
+                                       │
+                          échec + allowDelegation ?
+                                       │ oui
+                                       ▼
+                  channel.RequestAsync("delegate") ──→ premier autre agent
+                                                        (budget enfant)
 ```
 
 **Classes clés** :
 - `AutonomousProcessStrategy` — Stratégie d'orchestration
 - `AgentExecutionBudget` — Budget multi-dimensionnel (Domain)
-- `IAgentChannel` / `InMemoryAgentChannel` — Communication A2A (lock-free)
-- `SpawnAgentTool` — Création dynamique d'agents
-- `DelegateWorkTool` — Délégation avec budget hérité
-- `BudgetExhaustedException` — Exception levée quand un axe est épuisé
+- `IAgentChannel` / `InMemoryAgentChannel` — Canal A2A requête/réponse
+- `SpawnAgentTool` — Création dynamique d'agents (construit par l'hôte, pas injecté par la stratégie)
+- `BudgetExhaustedException` — Levée quand un axe est épuisé
 
 ### Budget multi-dimensionnel — 5 axes
 
 | Dimension | Strict | Default | Permissive | Description |
 |-----------|--------|---------|------------|-------------|
-| `MaxToolCalls` | 8 | 15 | 50 | Nombre max d'appels d'outils |
-| `MaxDelegationDepth` | 1 | 2 | 4 | Profondeur de délégation (A→B→C = 2) |
-| `MaxTokensConsumed` | 8 000 | 16 000 | 64 000 | Tokens LLM consommés |
-| `MaxSpawnedAgents` | 1 | 3 | 10 | Agents créés dynamiquement |
-| `MaxWallTime` | 2 min | 5 min | 15 min | Durée maximale d'exécution |
+| `MaxToolCalls` | 8 | 15 | 50 | Appels d'outils ; la stratégie en compte un par tâche distribuée |
+| `MaxDelegationDepth` | 1 | 2 | 4 | Sauts de délégation ; le compteur, commun à la crew, n'est jamais décrémenté |
+| `MaxTokensConsumed` | 8 000 | 16 000 | 64 000 | Tokens imputés au budget (exécutions déléguées) |
+| `MaxSpawnedAgents` | 1 | 3 | 10 | Agents créés via `SpawnAgentTool` |
+| `MaxWallTime` | 2 min | 5 min | 15 min | Durée d'exécution maximale |
 
-**Child budgets** : quand un agent délègue, il crée un budget enfant dérivé de ses propres ressources restantes (via `CreateChildBudget()`). Le budget enfant est toujours inférieur ou égal au budget parent restant.
+`ICrewOrchestrationService` exécute toujours ce mode avec **`AgentExecutionBudget.Permissive`** ; un autre budget exige d'appeler directement `AutonomousProcessStrategy.ExecuteAutonomousAsync(crew, budget, …)`.
+
+**Budgets enfants** : `CreateChildBudget()` donne au délégué l'allocation **restante** du parent sur chaque axe (un niveau de délégation en moins, au moins 1 appel d'outil et 100 tokens). Chaque budget enfant est une copie indépendante : deux délégués reçoivent chacun la totalité du reste.
 
 ### Communication A2A
 
 ```csharp
-// Request/Response
+// Requête/Réponse (timeout par défaut : 30 s)
 var request = AgentChannelRequest.Create(
     from: analyst.Id,
     to: researcher.Id,
     intent: "find_data",
-    payload: "Statistiques marché 2025");
+    payload: "Statistiques du marché 2025");
 
-var response = await channel.RequestAsync(request, timeout);
+var response = await channel.RequestAsync(request, timeout: TimeSpan.FromSeconds(30));
 
-// Broadcast (fire-and-forget)
+// Broadcast (aucune réponse attendue) vers les membres enregistrés pour cette crew
 await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 ```
 
@@ -551,94 +569,90 @@ await channel.BroadcastAsync(analyst.Id, crew.Id, "Résultats disponibles", ct);
 name: "research-team"
 goal: "Démo autonome"
 process: autonomous
-# Il n'existe AUCUNE clé de budget autonome en YAML : une crew autonome YAML
+# Il n'existe PAS de clé de budget autonome en YAML : une crew autonome YAML
 # tourne toujours sous AgentExecutionBudget.Permissive (50 appels d'outils,
-# profondeur 4, 15 min, 64 000 tokens, 10 spawns). Le budget ne se configure
-# que par l'API C# — voir le guide Autonomous et yaml-schema.md.
+# profondeur 4, 15 min, 64 000 tokens, 10 spawns) — voir le guide Autonomous
+# et yaml-schema.md.
 ```
 
 ### Avantages
 
-- **Adaptabilité maximale** : les agents réagissent au contexte en temps réel
-- **Spawn dynamique** : capacité à créer des spécialistes à la demande
-- **Terminaison garantie** : budget multi-dimensionnel empêche les exécutions infinies
-- **Communication riche** : A2A request/response avec corrélation
-- **Presets** : configuration rapide (Strict/Default/Permissive)
-- **Scalabilité** : les agents se répartissent le travail organiquement
+- **Assignation pilotée par LLM** : le manager associe chaque tâche à un agent
+- **Deuxième chance** : une tâche échouée est confiée à un pair
+- **Terminaison garantie** : le budget et sa durée bornent le run
+- **Télémétrie du budget** : les métadonnées de la crew portent la consommation de chaque axe
 
 ### Inconvénients
 
-- **Complexité élevée** : mode le plus difficile à configurer et débugger
-- **Coût imprévisible** : la consommation de tokens dépend des décisions des agents
-- **Non-déterministe** : deux exécutions identiques peuvent suivre des chemins différents
-- **Budget trop strict** : peut couper l'exécution avant d'obtenir un résultat complet
-- **Observabilité** : nécessite un bon logging (BudgetSnapshot) pour comprendre le comportement
+- **Expérimental** : `ORKEXP002`, la sémantique peut encore bouger
+- **Non déterministe** : les choix du manager varient d'une exécution à l'autre
+- **Budget épuisé = run écourté** : les tâches restantes ne sont pas exécutées, et la crew est quand même déclarée terminée
+- **Budget fixe** via l'orchestrateur (Permissive)
 
 ### Quand l'utiliser
 
 - Exploration (recherche, R&D, analyse exploratoire)
-- Problèmes mal définis où la stratégie optimale n'est pas connue à l'avance
-- Systèmes nécessitant de l'auto-réparation (un agent détecte un problème → délègue la correction)
-- Scénarios multi-étapes où chaque étape peut révéler de nouvelles sous-tâches
+- Équipes hétérogènes où l'association tâche-agent n'est pas connue à l'avance
 
 ### Quand ne pas l'utiliser
 
 - Workflows déterministes et bien définis (Sequential ou Graph)
-- Environnements à budget LLM contraint sans marge
-- Scénarios réglementaires nécessitant une traçabilité complète du parcours
+- Scénarios réglementaires exigeant une traçabilité complète du chemin d'exécution
 
-> **Voir aussi** : [Orchestration Autonome](./autonomous.md) pour le détail complet.
+> **Voir aussi** : [Orchestration Autonomous](./autonomous.md) pour tous les détails.
 
 ---
 
 ## Arbre de décision
 
 ```
-Tes tâches ont-elles des dépendances entre elles ?
+Vos tâches ont-elles des dépendances entre elles ?
 │
 ├── NON
-│   └── As-tu besoin de fiabilité maximale (multi-perspectives) ?
+│   └── Voulez-vous que plusieurs agents tentent chaque tâche ?
 │       ├── OUI → Consensual
 │       └── NON → Parallel
 │
 └── OUI
-    └── Le workflow a-t-il des branches conditionnelles ou des boucles ?
+    └── Une tâche instable doit-elle être relancée automatiquement ?
         │
         ├── NON
-        │   └── As-tu besoin de contrôle qualité (revue manager) ?
+        │   └── Avez-vous besoin d'un manager qui assigne et revoit ?
         │       ├── OUI → Hierarchical
         │       └── NON → Sequential
         │
         └── OUI
-            └── La stratégie optimale est-elle connue à l'avance ?
-                ├── OUI → Graph (workflow modélisable)
-                └── NON → Autonomous (exploration)
+            └── Relancer la même tâche, ou la confier à un pair ?
+                ├── Même tâche, bornée → Graph
+                └── Un pair, assigné par LLM → Autonomous
 ```
 
 ---
 
 ## Combinaisons et complémentarité
 
-Les ProcessTypes ne sont pas mutuellement exclusifs à l'échelle d'un système. Il est courant de combiner plusieurs stratégies :
+Les ProcessTypes sont exclusifs à l'échelle d'une crew, mais se combinent avec les autres briques :
 
-**Graph + FSM** : Le Graph orchestre la Crew (niveau inter-tâches), tandis que la FSM gère l'exécution interne de chaque tâche (niveau intra-tâche). Les deux utilisent `CircuitBreakerPolicy` avec les mêmes presets.
+**Sequential/Graph + outils de délégation** : dans ces deux modes, un agent avec `allowDelegation: true` reçoit `delegate_work_to_coworker` et `ask_question_to_coworker`, ce qui donne un comportement hiérarchique local sans manager.
 
-**Sequential + Hierarchical** : Une Crew séquentielle peut contenir des tâches dont les agents utilisent `DelegateWorkTool` pour simuler un comportement hiérarchique local.
+**Graph + FSM** : `GraphProcessStrategy` et la [FSM](./fsm.md) partagent `CircuitBreakerPolicy` et ses presets. La FSM (`TaskExecutionStateMachine`) est une brique Domain pour votre propre code : aucune stratégie n'y fait passer ses tâches aujourd'hui.
 
-**Autonomous + Graph** : Un agent autonome peut décider de créer un sous-workflow Graph pour structurer une sous-tâche complexe qu'il a découverte dynamiquement.
+**Flows** : pour enchaîner une crew avec des appels LLM, des appels d'outils, des conditions ou une saisie humaine, un [flow](./flows.md) (`IFlowEngine`) exécute une crew comme l'une de ses étapes — une API C# aujourd'hui, inaccessible depuis `orkeon run`.
+
+**DSL de scripting** : une crew `.ork.ts` déclare son mode avec `crewBuilder().process("…")` (les mêmes six valeurs). La forme déclarative (`globalThis.crew = crew`) passe par les stratégies ci-dessus ; la forme procédurale (`await crew.run()`) exécute les corps des agents dans l'ordre de déclaration et se contente d'étiqueter le mode — voir [Scripting](../architecture/scripting.md).
 
 ---
 
-## Résumé des coûts et performances
+## Synthèse coûts et performances
 
-| ProcessType | Appels LLM (N tâches, M agents) | Latence | Prévisibilité |
-|-------------|----------------------------------|---------|---------------|
-| Sequential | N | Σ(durées) | ⭐⭐⭐⭐⭐ |
-| Hierarchical | N × (1 assign + 1-3 reviews) | Σ(durées) × 1.5-3 | ⭐⭐⭐⭐ |
-| Parallel | N | max(durées) | ⭐⭐⭐⭐ |
-| Consensual | N × M × rounds | Σ(max(durées) × rounds) | ⭐⭐⭐ |
-| Graph | N × (1 + retries) | Variable | ⭐⭐⭐ |
-| Autonomous | Imprévisible (budget-bounded) | Variable (wall-time bounded) | ⭐⭐ |
+| ProcessType | Exécutions (N tâches, M agents) | Appels LLM supplémentaires | Latence | Prévisibilité |
+|-------------|------------------|-----------------|---------|---------------|
+| Sequential | N | — | Σ(durées) | ⭐⭐⭐⭐⭐ |
+| Hierarchical | N × (1 à 3) | N assignations + N × (1 à 3) revues | Σ(durées) × 1,5–3 | ⭐⭐⭐⭐ |
+| Parallel | N | — | Σ(tâche la plus longue de chaque vague) | ⭐⭐⭐⭐ |
+| Consensual | N × M × rounds (+ N repli) | — | Σ(max(durées) × rounds) | ⭐⭐⭐ |
+| Graph | N × (1 + retries) | — | Σ(durées des tentatives) | ⭐⭐⭐⭐ |
+| Autonomous | N (+ délégations) | N assignations | Bornée par la durée maximale | ⭐⭐ |
 
 ---
 
@@ -646,9 +660,11 @@ Les ProcessTypes ne sont pas mutuellement exclusifs à l'échelle d'un système.
 
 | Sujet | Document |
 |-------|----------|
-| Architecture et concepts de base | [Vue d'ensemble](../getting-started/overview.md) |
+| Architecture et concepts fondamentaux | [Vue d'ensemble](../getting-started/overview.md) |
 | Fonctionnalités détaillées | [YAML et Builders](../getting-started/yaml-and-builders.md) |
-| Orchestration FSM (intra-tâche) | [./fsm.md](./fsm.md) |
-| Orchestration Graph (inter-tâches) | [./graph.md](./graph.md) |
+| Schéma YAML (`process`, `graphConfig`, `circuitBreaker`) | [Schéma YAML](../architecture/yaml-schema.md) |
+| FSM (brique Domain) | [./fsm.md](./fsm.md) |
+| Orchestration Graph | [./graph.md](./graph.md) |
 | Orchestration Autonomous | [./autonomous.md](./autonomous.md) |
-| Blueprint pour nouveau ProcessType | [../../guides/blueprint.md](../guides/blueprint.md) |
+| Flows (étapes enchaînant crews, LLM et outils) | [./flows.md](./flows.md) |
+| Blueprint d'un nouveau ProcessType | [../guides/blueprint.md](../guides/blueprint.md) |

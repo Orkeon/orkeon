@@ -9,7 +9,7 @@ ce que vous acceptez d'installer :
 
 | Voie | Prérequis | Temps avant la première exécution | Idéal pour |
 |---|---|---|---|
-| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ build) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 100+ exemples embarqués |
+| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ build) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 105 exemples embarqués |
 | **2. Binaire de release** | Rien pour les paquets CLI (zip/MSI Windows, `.deb` Debian) — ils embarquent le runtime ; **runtime** .NET 10 pour les launchers supplémentaires de l'archive multi-apps | ~2 min | Exécuter des exemples et des vitrines sans clone des sources |
 | **3. Conteneur** | Docker | ~1 min (après le pull de l'image) | CI, exécutions reproductibles, aucun .NET local |
 
@@ -208,8 +208,8 @@ orkeon run chemin/vers/crew.yaml
 `openai`, `custom`, ou `none` — et écrit `%APPDATA%\Orkeon\appsettings.json` sur
 Windows, `~/.config/Orkeon/appsettings.json` sur Linux et macOS. Il est
 scriptable de bout en bout (`--provider`, `--base-url`, `--model`,
-`--api-key-env`, `--path`, `--force`, `--no-probe`), et c'est ce qu'utilise la
-CI. `orkeon doctor` affiche ✅ / ⚠️ / ❌ par vérification, sort en `1` dès qu'une
+`--api-key-env` — ou le déconseillé `--api-key` en clair —, `--path`, `--force`,
+`--no-probe`), et c'est ce qu'utilise la CI. `orkeon doctor` affiche ✅ / ⚠️ / ❌ par vérification, sort en `1` dès qu'une
 vérification échoue, et accepte `--json` pour les scripts.
 
 > **Aucun LLM configuré ?** Orkeon n'échoue pas et ne reste pas muet : il
@@ -306,8 +306,10 @@ sans installer : `./libexec/orkeon/orkeon run …`.
 ## 3. Conteneur
 
 L'image `ghcr.io/orkeon/orkeon-runners` (construite depuis `Dockerfile.runners`,
-publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut** et
-embarque tous les autres runners **plus les exemples** — zéro .NET local requis.
+publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut**, embarque le
+**REPL** (`orkeon-repl`) à côté **plus les 105 exemples fournis** — zéro .NET local
+requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
+`deploy/Dockerfile.host` (voir [l'hôte de service](../architecture/service-host.md)).
 
 ### La convention `/workspace`
 
@@ -331,7 +333,8 @@ Trois commodités de l'image rendent cela immédiat :
    de `/workspace` avant de s'exécuter, donc la crew peut écrire dans votre bind
    mount et les fichiers créés vous appartiennent sur l'hôte. Pas de `--user`,
    pas de `chmod`. (Il reste non privilégié : sans montage, il retombe sur
-   l'utilisateur non-root `app` de l'image.)
+   l'utilisateur non-root `app` de l'image. Un `docker run --user` explicite
+   contourne cette adoption, et `-e ORKEON_STAY_ROOT=1` garde root.)
 3. **`/workspace` existe toujours** — même sans rien monter, pour que les mêmes
    commandes fonctionnent en CI.
 
@@ -355,13 +358,15 @@ docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
 orkeon-example list            # parcourir les 105 exemples embarqués
 orkeon-example run 1           # exécuter le n°1 (assistant de recherche)
 orkeon-example show 42         # lire d'abord le README d'un exemple
+orkeon-example settings        # quels settings LLM s'appliquent, et pourquoi
 ```
 
-`orkeon-example run` résout le numéro vers sa config, dispatche automatiquement
-monte `/output` pour
-les résultats fichiers, et choisit les settings LLM pour vous (section
-suivante). Quand un numéro existe dans deux catégories (`16`, `102`), il liste
-les candidats — qualifiez avec la catégorie : `orkeon-example run 02/16`.
+`orkeon-example run` résout le numéro vers sa config, monte `/output` pour les
+résultats fichiers, et choisit les settings LLM pour vous (section suivante). Quand
+un numéro existe dans deux catégories (`16`, `102`), il liste les candidats —
+qualifiez avec la catégorie : `orkeon-example run 02/16` (une sous-chaîne du nom,
+comme `research-assistant`, marche aussi ; les arguments qui suivent l'identifiant
+vont à `orkeon run`).
 
 **Settings LLM dans le conteneur** — le défaut intégré vise **Docker Model
 Runner sur votre hôte** (`host.docker.internal:12434`) : le `docker model pull`

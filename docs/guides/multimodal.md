@@ -3,18 +3,19 @@
 # Multi-modal content (vision)
 
 > Since the R3.9 work item, vision is **real**: image content flows end to end, from the
-> `MultiModalContent` abstractions (Domain) down to the Anthropic and OpenAI provider
-> payloads. This guide describes the flow, the formats emitted on the wire, the opt-in
-> activation and the limits.
+> `MultiModalContent` abstractions (Domain) down to the provider payloads — Anthropic content
+> blocks, OpenAI content parts (written once for the fourteen OpenAI-compatible providers) and
+> Ollama's `images` array. This guide describes the flow, the formats emitted on the wire,
+> the opt-in activation and the limits.
 
 ## Flow overview
 
 ```
-MultiModalContent (Domain)            LlmMessage (Domain)              Payload provider (Infrastructure)
+MultiModalContent (Domain)            LlmMessage (Domain)              Provider payload (Infrastructure)
 ┌──────────────────────────┐   ┌───────────────────────────────┐   ┌─────────────────────────────────────┐
-│ TextContentPart          │   │ Role = "user"                 │   │ Anthropic : blocs "text"/"image"    │
-│ ImageContentPart         │ → │ Content = repli texte         │ → │ OpenAI    : parts "text"/"image_url"│
-│ (bytes ou URI)           │   │ MultiModalContent = parts     │   │ (via ContentConverter)              │
+│ TextContentPart          │   │ Role = "user"                 │   │ Anthropic: "text"/"image" blocks    │
+│ ImageContentPart         │ → │ Content = text fallback       │ → │ OpenAI   : "text"/"image_url" parts │
+│ (bytes or URI)           │   │ MultiModalContent = parts     │   │ Ollama   : content + "images"       │
 └──────────────────────────┘   └───────────────────────────────┘   └─────────────────────────────────────┘
 ```
 
@@ -23,7 +24,8 @@ MultiModalContent (Domain)            LlmMessage (Domain)              Payload p
 - `LlmMessage.User(MultiModalContent)` creates a user message that transports the
   parts **and** a text fallback (`Content = ToTextOnly()`) for providers without vision.
 - `ContentConverter` (`Orkeon.Infrastructure.LLMs.Converters`) composes the payload
-  fragments specific to each API.
+  fragments specific to each API (`ToAnthropicContentBlocks`, `ToOpenAIContentParts`,
+  `ToOllamaMessage`).
 
 ## Composing and sending an image
 
@@ -36,12 +38,12 @@ var content = MultiModalContent.Empty()
     .AddText("Describe this chart")
     .AddImage(ImageContentPart.FromBytes(pngBytes, "image/png"));
 
-// 2. Or from an http(s) URL (the provider downloads the image)
+// 2. Or from an http(s) URL (the vendor downloads the image — not on Ollama, see below)
 var contentFromUrl = MultiModalContent.Empty()
     .AddText("What does this photo show?")
     .AddImage(ImageContentPart.FromUri(new Uri("https://example.com/photo.jpg"), "image/jpeg"));
 
-// 3. Send via any vision ILlmProvider (Anthropic, OpenAI)
+// 3. Send via any ILlmProvider declaring Vision
 var response = await provider.ChatAsync([LlmMessage.User(content)]);
 ```
 
@@ -100,7 +102,21 @@ Base64 data URLs (`data:image/png;base64,...`) are unwrapped into a `base64` sou
 ```
 
 Images by http(s) URL or data URL pass through as-is in `image_url.url`;
-raw bytes are encoded as a base64 data URL.
+raw bytes are encoded as a base64 data URL. The same parts are written by every
+OpenAI-compatible provider (Azure OpenAI, DeepSeek, Gemini, Grok, HuggingFace, Kimi, Mammouth,
+MiniMax, Mistral, OpenRouter, Qwen, Together AI, Z.AI).
+
+**Ollama (`/api/chat`)** — no content parts: the message keeps a plain `content` string and
+the images travel as bare base64 strings (no `data:` prefix, no media type):
+
+```json
+{ "role": "user", "content": "Describe this chart", "images": ["iVBOR..."] }
+```
+
+A message carrying an image switches Ollama from `/api/generate` to `/api/chat`. Ollama never
+fetches remote URLs: an image referenced only by URL is skipped with a structured warning
+(`… image(s) referenced by URL`) — load the bytes instead. Only the text and the inline images
+are forwarded.
 
 ## Activation (opt-in)
 
@@ -113,9 +129,11 @@ services.AddOrkeonMultiModal(configuration);   // binds Orkeon:MultiModal
 // or: services.AddOrkeonMultiModal();         // default options
 ```
 
-Options (`Orkeon:MultiModal`): `Enabled`, `MaxImageSizeBytes` (20 MB by default),
-`SupportedImageFormats` (png, jpeg, gif, webp by default), `MaxAudioDurationSeconds`,
-`SupportedAudioFormats`.
+Options (`Orkeon:MultiModal`, `MultiModalOptions`): `Enabled` (true), `MaxImageSizeBytes`
+(20 MB by default), `SupportedImageFormats` (png, jpeg, gif, webp by default),
+`MaxAudioDurationSeconds` (300), `SupportedAudioFormats` (wav, mp3, ogg). `AutoResizeImages`
+and `MaxImageDimension` also exist on the options class, but nothing reads them yet: no image
+is resized.
 
 > Sending vision payloads from the providers does **not** depend on the DI activation:
 > an `LlmMessage` carrying a `MultiModalContent` with images is composed into a
@@ -128,15 +146,16 @@ Options (`Orkeon:MultiModal`): `Enabled`, `MaxImageSizeBytes` (20 MB by default)
 
 | Capability | Supported |
 |---|---|
-| Vision providers (capability `Vision = true`) | All 16: Anthropic, OpenAI, Azure OpenAI, DeepSeek (native on `deepseek-flash` since V4.1; `deepseek-v4-pro` is text-only), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model, VL family), Mistral, Ollama (native `images`), Qwen, TogetherAI, Z.AI, OpenRouter (per model, not campaigned) and Mammouth AI (per model, from the vendor's `text, image` list — not campaigned) |
-| Provider without the capability | Degradation to the `LlmMessage.Content` text fallback, with a structured warning naming the dropped parts |
+| Vision providers (capability `Vision = true`) | All 16: Anthropic, OpenAI, Azure OpenAI, DeepSeek (native on `deepseek-flash` since V4.1; `deepseek-v4-pro` is text-only), Gemini, Grok, HuggingFace, Kimi, MiniMax (per model: `MiniMax-M3` sees, the default `MiniMax-M2` does not), Mistral, Ollama (native `images`, per model), Qwen, Together AI (per model: `zai-org/GLM-5.3-Flash` sees, the default Llama does not), Z.AI (per model: `glm-5.3-flash` sees, the default `glm-5.2` does not), OpenRouter (per model, not campaigned) and Mammouth AI (per model, from the vendor's `text, image` list — not campaigned) |
+| Model without vision behind a vision provider | The vendor's own refusal, attributed by `CapabilityMismatchHint` on the OpenAI-compatible providers and Ollama (the capability is declared per provider, the reality is per model) |
+| Provider without the capability (a third-party `ILlmProvider` declaring nothing) | Degradation to the `LlmMessage.Content` text fallback, with a structured warning naming the dropped parts |
 | Image MIME types | `image/png`, `image/jpeg`, `image/gif`, `image/webp` |
 | Image sources | Raw bytes (base64), http(s) URL, base64 data URL |
-| Audio / files to the providers | Not supported — explicit `NotSupportedException` |
+| Audio / files to the providers | Not supported — explicit `NotSupportedException` on Anthropic and the OpenAI-compatible providers; Ollama forwards only the text and the inline images |
 
-An unsupported MIME type (e.g. `image/bmp`), an unsupported URI scheme (e.g. `ftp://`)
-or an audio/file part in a vision payload raise an explicit exception —
-no silent degradation to text.
+On Anthropic and the OpenAI-compatible providers, an unsupported MIME type (e.g.
+`image/bmp`), an unsupported URI scheme (e.g. `ftp://`) or an audio/file part in a vision
+payload raise an explicit exception — no silent degradation to text.
 
 ## Microsoft.Extensions.AI interop
 
@@ -149,7 +168,8 @@ descriptions.
 
 - `ContentConverterPayloadTests` — composition of Anthropic blocks / OpenAI parts,
   VFS loading, errors on unsupported formats.
-- `AnthropicVisionPayloadTests` / `OpenAIVisionPayloadTests` — verification of the JSON
+- `AnthropicVisionPayloadTests` / `OpenAIVisionPayloadTests` / `ProviderVisionPayloadTests`
+  (every OpenAI-compatible provider) / `OllamaChatEndpointTests` — verification of the JSON
   actually emitted on the wire (fake HTTP handler).
 - `MultiModalContentLoaderTests` — option constraints (size, formats, Enabled).
 - `OptInSubsystemsRegistrationTests` — opt-in DI registration.

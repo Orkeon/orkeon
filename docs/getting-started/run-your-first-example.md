@@ -55,7 +55,11 @@ Runners read their LLM configuration (endpoint, model, API key) from an
 | `appsettings.openai.local.json.example` | OpenAI cloud |
 | `appsettings.glm.local.json.example` / `appsettings.glm-medium.local.json.example` | Z.AI (GLM) |
 | `appsettings.gemini.local.json.example` | Google Gemini |
-| `appsettings.local.json.example` | Blank template to fill in |
+| `appsettings.grok.local.json.example` | Grok (x.AI) |
+| `appsettings.minimax.local.json.example` | MiniMax (international endpoint; mainland accounts use `api.minimaxi.com`) |
+| `appsettings.openrouter.local.json.example` | OpenRouter (aggregator — `vendor/model` ids) |
+| `appsettings.mammouth.local.json.example` | Mammouth AI (aggregator — bare vendor ids, reached by its host) |
+| `appsettings.local.json.example` | Generic template — points at DeepSeek; switch `BaseUrl` / `Model` / `ApiKey` to any provider |
 
 Copy the template that matches your provider, drop it to a real `*.local.json`
 (git-ignored), and paste your key:
@@ -77,8 +81,8 @@ cp examples/appsettings/appsettings.deepseek.local.json.example \
 > no copy — skip straight to step 4 without `--settings`.
 
 There is no `Provider` field to set: the provider is auto-detected from the
-`Llm.BaseUrl` host in the profile, so switching providers is just a matter of
-pointing at the right profile.
+`Llm.BaseUrl` host in the profile (failing that, from the model name, then from the
+key prefix), so switching providers is just a matter of pointing at the right profile.
 
 ## 4. Run it
 
@@ -109,10 +113,11 @@ The `orkeon` CLI options you will actually reach for:
 
 | Flag | Short | What it does |
 |---|---|---|
-| `<config>` (positional) | — | **Required.** The crew definition passed to `orkeon run <config>` — a `.yaml` file or an `.ork.ts` [scripting](../architecture/scripting.md) file. |
+| `<config>` (positional) | — | **Required** (except with `--list-tools`). The crew definition passed to `orkeon run <config>` — a `.yaml` file, an `.ork.ts` [scripting](../architecture/scripting.md) file, or a directory holding a multi-file YAML crew. The `run` verb itself is optional: `orkeon <config>` does the same. |
 | `--settings <path>` | `-s` | Path to the `appsettings.json` holding LLM config. Optional — see [settings resolution](#how-settings-are-resolved). |
 | `--verbose <0-2>` | `-v` | Verbosity. `0` (default) = quiet, `1` = LLM & tool exchanges, `2` = full debug. |
-| `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro` or `rw`. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
+| `--mount <phys>:<virt>:<rights>` | `-m` | Expose a host directory to the crew's virtual file system. `rights` is `ro`, `rw` or `rwnd` (read-write, no delete); `;<subpath>:<rights>` segments override the rights below the mount. Several mounts go **space-separated after a single flag** (`--mount a:/x:ro b:/y:rw`) — the parser rejects a repeated `--mount`. A crew that writes results needs a `:rw` mount (`/output` is the convention that triggers the auto-summary writer). |
+| `--mount-id <id>` | | When several `Orkeon:FileSystem:Mounts` entries of the settings declare the same virtual root, keep the one whose id (the 26-character prefix before its `\|`) is given. Several ids go space-separated after a single flag. |
 | `--allow-external-mounts` | | Permit mounts (and a `<config>` path or `--llm-log-path`) located **outside** the current working directory. Without it, external paths are refused as a safety guard. The env var `ORKEON_ALLOW_EXTERNAL_MOUNTS=1` enables it for every invocation (the `orkeon-runners` container image bakes this in). |
 | `--var KEY=VALUE` | `-V` | Inject a variable into the crew input. Task descriptions that contain `{KEY}` are expanded to `VALUE`. Several variables go space-separated after a single `-V` (a repeated flag is rejected). **YAML crews only** — ignored for `.ork.ts` scripts, which take `--inputs`. |
 | `--initial-context <text>` | | A free-form context string passed to the crew input. **YAML crews only** — ignored for `.ork.ts` scripts. |
@@ -158,7 +163,8 @@ order (first hit wins):
    (the legacy `_shared/appsettings.json` remains a fallback for one release).
 4. The global per-user config written by `orkeon init`
    (`%APPDATA%\Orkeon\appsettings.json` on Windows,
-   `~/.config/Orkeon/appsettings.json` elsewhere).
+   `$XDG_CONFIG_HOME/Orkeon/appsettings.json` — by default
+   `~/.config/Orkeon/appsettings.json` — on Linux and macOS).
 
 If none is found, the runner falls back to environment variables only and prints
 a warning. Being explicit with `--settings` is the most predictable option.
@@ -182,5 +188,6 @@ Symptoms you may hit on a fresh machine, with the exact message and fix:
 
 - [Three ways to run Orkeon](./three-ways-to-run-orkeon.md) — binaries and containers, no source checkout.
 - [YAML, Builders and CrewFactory](./yaml-and-builders.md) — the schema behind every `config.yaml`.
-- [Catalog of examples](../reference/examples-catalog.md) — 100+ crews across 9 domains.
+- [Catalog of examples](../reference/examples-catalog.md) — the 105 bundled examples across 9 themed categories.
 - [Tool inventory](../tools/inventory.md) — what the agents can actually do.
+- [Give your agents a mailbox](./give-your-agents-a-mailbox.md) — an agent that reads, sorts and drafts replies in a real mailbox.

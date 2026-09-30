@@ -6,9 +6,9 @@
 
 ## Vue d'ensemble
 
-Orkeon fournit un framework de machine à états finis générique (`StateMachine<TState, TEvent>`) dans la couche Domain, avec un circuit breaker intégré pour prévenir les boucles récursives incontrôlées lors de l'orchestration multi-agents.
+Orkeon fournit un framework de machine à états finis générique (`StateMachine<TState, TEvent>`) dans la couche Domain, avec un circuit breaker intégré pour prévenir les boucles récursives incontrôlées lors de l'orchestration multi-agents. Il est livré avec une spécialisation prête à l'emploi pour le cycle de vie d'exécution des tâches (`TaskExecutionStateMachine`) et s'étend à d'autres domaines.
 
-La FSM est configurable via YAML (champ `circuitBreaker`) et spécialisée en premier lieu pour le cycle de vie d'exécution des tâches (`TaskExecutionStateMachine`). Le framework est générique et extensible à d'autres domaines (Crew, Agent, Flow).
+> **Ce qui s'exécute aujourd'hui.** La FSM est une brique Domain : **aucune stratégie de process ne fait encore passer ses tâches par `TaskExecutionStateMachine`.** Le bloc YAML `circuitBreaker` est parsé aux deux niveaux, mais à l'exécution seul le bloc **de niveau crew** est lu, par le [mode Graph](./graph.md) (quand aucun `graphConfig` n'est déclaré) ; le bloc de niveau tâche et les trois limites de guards sont résolus par `CircuitBreakerPolicyFactory` mais aucun chemin d'exécution n'appelle cette résolution pour les tâches (voir [Schéma YAML](../architecture/yaml-schema.md#configuration-circuit-breaker)). Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent : `maxIter` itérations, et un arrêt après 3 erreurs d'outil identiques consécutives.
 
 ## Architecture
 
@@ -16,14 +16,16 @@ La FSM est configurable via YAML (champ `circuitBreaker`) et spécialisée en pr
 
 Les composants du framework se trouvent dans `Orkeon.Domain.Common.StateMachine` :
 
-| Classe | Role |
+| Classe | Rôle |
 |--------|------|
-| `StateMachine<TState, TEvent>` | Moteur FSM thread-safe avec circuit breaker intégré |
+| `StateMachine<TState, TEvent>` | Moteur FSM thread-safe (`lock`) avec circuit breaker intégré |
 | `StateMachineBuilder<TState, TEvent>` | API fluent pour déclarer le graphe d'états |
-| `CircuitBreakerPolicy` | Configuration des seuils de protection |
-| `TransitionResult<TState, TEvent>` | Résultat d'une transition (états, ordinal, timestamp) |
-| `IStateMachine<TState, TEvent>` | Interface lecture seule pour observation |
-| `IMutableStateMachine<TState, TEvent>` | Interface avec `Fire()`, `TryFire()`, événements |
+| `CircuitBreakerPolicy` | Configuration des seuils de protection, presets `Strict` / `Default` / `Permissive` |
+| `CircuitBreakerStatus` | Instantané du disjoncteur (même fichier que la policy) |
+| `TransitionResult<TState, TEvent>` | Résultat d'une transition (états, déclencheur, ordinal, horodatage) |
+| `IStateMachine<TState, TEvent>` | Interface lecture seule pour l'observation |
+| `IMutableStateMachine<TState, TEvent>` | Interface avec `Fire()`, `TryFire()`, `ResetCircuitBreaker()`, événements |
+| `CircuitBrokenException`, `InvalidTransitionException<TState, TEvent>` | Disjoncteur déclenché ; aucune transition pour cet état + événement |
 
 ### Couche Domain — Spécialisation Task
 
@@ -31,52 +33,52 @@ Les composants spécifiques au cycle de vie des tâches se trouvent dans `Orkeon
 
 | Classe | Rôle |
 |--------|------|
-| `TaskExecutionState` | Enum des états d'exécution (Assigned, Planning, Executing, etc.) |
-| `TaskExecutionEvent` | Enum des événements (StartPlanning, RequestToolCall, etc.) |
-| `TaskExecutionStateMachine` | Factory pré-configurée avec guards et graphe complet |
-| `TaskExecutionGuardContext` | Contexte typé pour les guards (retries, tool calls, validation) |
+| `TaskExecutionState` | Enum des états d'exécution (Assigned, Planning, Executing, etc.) — `TaskExecutionState.cs` |
+| `TaskExecutionEvent` | Enum des événements (StartPlanning, RequestToolCall, etc.) — même fichier |
+| `TaskExecutionStateMachine` | Factory statique (`Create`, `CreateBuilder`) avec guards et graphe complet |
+| `TaskExecutionGuardContext` | Contexte typé pour les guards (retries, appels d'outils, validation) — même fichier que la factory |
 
-### Couche Infrastructure — Integration YAML
+### Couche Infrastructure — Intégration YAML
 
-| Classe | Role |
+| Classe | Rôle |
 |--------|------|
-| `CircuitBreakerYamlConfig` | Modele YAML pour la section `circuitBreaker` |
-| `CircuitBreakerPolicyFactory` | Convertit la config YAML en `CircuitBreakerPolicy` + FSM |
+| `CircuitBreakerYamlConfig` | Modèle YAML de la section `circuitBreaker` |
+| `CircuitBreakerPolicyFactory` | Convertit la config en `CircuitBreakerPolicy`, en FSM de tâche ou en contexte de guards ; `ResolveGraph` sert le mode Graph |
 
 ### Couche Domain — Configuration
 
 | Classe | Rôle |
 |--------|------|
-| `CircuitBreakerConfig` | DTO immutable pour la configuration circuit breaker |
+| `CircuitBreakerConfig` | DTO immuable de la configuration du circuit breaker (`CrewConfiguration.CircuitBreaker`, `TaskConfiguration.CircuitBreaker`, `Crew.CircuitBreaker`) |
 
 ## Graphe d'états de la TaskExecutionStateMachine
 
 ```
-                     StartPlanning         BeginExecution
-   [Assigned] ──────────────────► [Planning] ─────────────► [Executing]
-        │                                                      │    ▲
-        │ BeginExecution                       ToolCallCompleted│    │ RequestToolCall
-        └──────────────────────────────► [Executing] ◄─────────┘    │ (guard: budget)
-                                            │    │                  ▼
-                              SubmitFor     │    │            [ToolCalling]
-                              Validation    │    │ Fail            │
-                                            ▼    ▼                 │ ToolCallFailed
-                                      [Validating]  [Failed] ◄────┘
-                                         │    │       │
-                           ValidationPassed│    │       │ Retry (guard: maxRetries)
-                                         ▼    │       └──────────► [Executing]
-                                   [Completed] │ ValidationFailed
-                                               │ (guard: maxValidationRetries)
-                                               └──────────► [Executing]
+[Assigned] ─► [Planning] ─► [Executing] ⇄ [ToolCalling]
+                                │  ▲
+                                ▼  │ ValidationFailed / Retry / HumanInputReceived
+                          [Validating] ─► [Completed]
+                          [Failed] · [WaitingForHumanInput]
 
-   RequestHumanInput                    HumanInputReceived
-   [Executing] ──────────► [WaitingForHumanInput] ──────────► [Executing]
-
-   Cancel (depuis tout état non-terminal) ────────────────► [Cancelled]
-   Circuit breaker trip ──────────────────────────────────► [Degraded]
+Cancel (tout état non terminal) ─► [Cancelled]      déclenchement du disjoncteur (mode dégradé) ─► [Degraded]
 ```
 
-États terminaux : `Completed`, `Cancelled`, `Degraded`.
+| Depuis | Événement | Vers | Guard |
+|--------|-----------|------|-------|
+| `Assigned` | `StartPlanning` | `Planning` | — |
+| `Assigned`, `Planning` | `BeginExecution` | `Executing` | — |
+| `Executing` | `RequestToolCall` | `ToolCalling` | `CanCallTool` |
+| `ToolCalling` | `ToolCallCompleted`, `ToolCallFailed` | `Executing` | — |
+| `Executing` | `SubmitForValidation` | `Validating` | — |
+| `Validating` | `ValidationPassed` | `Completed` | — |
+| `Validating` | `ValidationFailed` | `Executing` | `CanRetryValidation` |
+| `Executing` | `RequestHumanInput` | `WaitingForHumanInput` | — |
+| `WaitingForHumanInput` | `HumanInputReceived` | `Executing` | — |
+| `Executing`, `Validating` | `Fail` | `Failed` | — |
+| `Failed` | `Retry` | `Executing` | `CanRetry` |
+| tout état non terminal | `Cancel` | `Cancelled` | — |
+
+`ToolCallFailed` revient à `Executing` (l'agent décide quoi faire de l'erreur). États terminaux : `Completed`, `Cancelled`, `Degraded`.
 
 ## Circuit breaker
 
@@ -86,15 +88,17 @@ Le circuit breaker est intégré directement dans `StateMachine<TState, TEvent>`
 
 | Mécanisme | Paramètre | Description |
 |-----------|-----------|-------------|
-| Max transitions | `MaxTransitions` | Nombre total de transitions autorisées |
-| Timeout par état | `StateTimeout` | Durée maximale dans un seul état |
-| Détection de cycles | `MaxStateVisits` | Nombre max de visites d'un même état |
-| Durée totale | `MaxTotalDuration` | Durée de vie maximale de la machine |
+| Transitions max | `MaxTransitions` | Nombre total de transitions autorisées |
+| Timeout par état | `StateTimeout` | Temps maximal depuis la dernière transition (`TimeSpan.Zero` le désactive) |
+| Détection de cycles | `MaxStateVisits` | Nombre maximal de visites d'un même état (0 le désactive) |
+| Durée totale | `MaxTotalDuration` | Durée de vie maximale depuis la première transition (`TimeSpan.Zero` la désactive) |
 
 Quand une condition est violée, deux comportements sont possibles selon `UseDegradedMode` :
 
-- `false` (défaut) : une `CircuitBrokenException` est levée avec un `CircuitBreakerStatus` détaillé
-- `true` : la machine transite automatiquement vers l'état dégradé configuré (ex: `TaskExecutionState.Degraded`)
+- `false` : une `CircuitBrokenException` est levée avec un `CircuitBreakerStatus` détaillé
+- `true` : la machine passe dans l'état dégradé déclaré avec `WithDegradedState(...)` (par ex. `TaskExecutionState.Degraded`) ; sans état dégradé déclaré, elle lève l'exception comme ci-dessus
+
+`TryFire()` renvoie `false` au lieu de lever, pour un disjoncteur déclenché comme pour une transition absente. Un guard qui rejette toutes les transitions candidates se traduit par une `InvalidTransitionException`. `ResetCircuitBreaker()` efface le déclenchement et les compteurs.
 
 ### Presets
 
@@ -106,86 +110,92 @@ Trois presets sont fournis via `CircuitBreakerPolicy` :
 | `Default` | 100 | 5 min | 10 | 30 min | false |
 | `Permissive` | 1000 | 30 min | 50 | 2 h | false |
 
-Le preset `Strict` est le défaut pour les workloads LLM en production.
+`new CircuitBreakerPolicy()` équivaut à `Default`. `Strict` est le repli de `TaskExecutionStateMachine.Create()` et de `CircuitBreakerPolicyFactory` quand rien (ou un preset inconnu) n'est configuré.
 
 ### Observabilité
 
 La machine expose deux événements :
 
-- `OnTransition` : émis après chaque transition réussie, avec `TransitionResult` (from, to, trigger, ordinal, timestamp)
-- `OnCircuitBroken` : émis quand le circuit trip, avec `CircuitBreakerStatus` incluant un histogramme des visites par état
+- `OnTransition` : levé après chaque transition réussie, avec un `TransitionResult` (`FromState`, `ToState`, `Trigger`, `TransitionOrdinal`, `Timestamp`, `StateChanged`)
+- `OnCircuitBroken` : levé quand le circuit se déclenche, avec un `CircuitBreakerStatus` incluant un histogramme des visites par état
 
-`CircuitBreakerStatus` fournit un snapshot complet : `IsBroken`, `BrokenReason`, `TotalTransitions`, `TimeInCurrentState`, `CurrentStateVisitCount`, `TotalElapsed`, `StateVisitHistogram`.
+`CircuitBreakerStatus` fournit un instantané complet : `IsBroken`, `BrokenReason`, `TotalTransitions`, `TimeInCurrentState`, `CurrentStateVisitCount`, `TotalElapsed`, `StateVisitHistogram`. L'interface en lecture seule offre aussi `CurrentState`, `IsTerminal`, `TransitionCount`, `GetPermittedEvents()` et `CanFire(event)`.
 
 ## Guards typés
 
-La `TaskExecutionStateMachine` utilise trois guards typés via `TaskExecutionGuardContext` pour prévenir les boucles dangereuses :
+La `TaskExecutionStateMachine` utilise trois guards typés via `TaskExecutionGuardContext` pour empêcher les boucles dangereuses :
 
 | Guard | Transition protégée | Condition |
 |-------|---------------------|-----------|
-| Budget tool calls | `Executing → ToolCalling` | `ToolCallCount < MaxToolCallsPerRound && IsToolRegistered` |
-| Limite de retries | `Failed → Executing` | `RetryCount < MaxRetries` |
-| Limite de validation | `Validating → Executing` | `ValidationAttempts < MaxValidationRetries` |
+| Budget d'appels d'outils | `Executing → ToolCalling` | `ToolCallCount < MaxToolCallsPerRound && IsToolRegistered` (`CanCallTool`) |
+| Limite de retries | `Failed → Executing` | `RetryCount < MaxRetries` (`CanRetry`) |
+| Limite de validation | `Validating → Executing` | `ValidationAttempts < MaxValidationRetries` (`CanRetryValidation`) |
 
-Le guard `IsToolRegistered` bloque les appels à des outils non enregistrés dans l'agent, ce qui prévient les hallucinations d'outils par le LLM.
+Défauts : `MaxRetries = 3`, `MaxToolCallsPerRound = 10`, `MaxValidationRetries = 3`, `IsToolRegistered = true`. Le guard `IsToolRegistered` bloque les appels à des outils non enregistrés sur l'agent, ce qui empêche les hallucinations d'outils par le LLM.
 
 ## Configuration YAML
 
 ### Schéma `circuitBreaker`
 
-Le bloc `circuitBreaker` est utilisable à deux niveaux dans le `config.yaml` :
+Le bloc `circuitBreaker` peut être déclaré à deux niveaux d'un fichier de crew (voir l'état à l'exécution dans la [Vue d'ensemble](#vue-densemble)) :
 
 ```yaml
-# Niveau crew — défauts pour toutes les tâches
+# Niveau crew — défauts pour toutes les tâches (lu par le mode Graph)
 circuitBreaker:
-  preset: string              # "strict" | "permissive" | "default"
+  preset: string              # "strict" (aussi le repli) | "permissive" | "default"
   maxTransitions: int         # Surcharge le preset
   stateTimeoutSeconds: int    # Timeout par état en secondes
   maxStateVisits: int         # Détection de cycles
   maxTotalDurationSeconds: int # Durée totale en secondes
   useDegradedMode: bool       # true = Degraded, false = exception
-  maxRetries: int             # Retries après échec (guard)
-  maxToolCallsPerRound: int   # Tool calls max par round (guard)
-  maxValidationRetries: int   # Boucles validation max (guard)
+  maxRetries: int             # Retries après échec (guard, défaut 3)
+  maxToolCallsPerRound: int   # Appels d'outils max par round (guard, défaut 10)
+  maxValidationRetries: int   # Boucles de validation max (guard, défaut 3)
 
 tasks:
   <task_id>:
     description: string
-    # Niveau task — override pour cette tâche spécifique
+    # Niveau tâche — surcharge pour cette tâche (parsée, pas encore appliquée)
     circuitBreaker:
-      maxTransitions: int     # Surcharge le défaut crew
+      maxTransitions: int     # Surcharge le défaut de la crew
       stateTimeoutSeconds: int
       # ... mêmes champs que ci-dessus
 ```
 
-### Hiérarchie de résolution
+Les clés s'écrivent en camelCase ou en snake_case (`max_transitions`), comme le reste du schéma.
+
+### Hiérarchie de résolution (`CircuitBreakerPolicyFactory.Resolve`)
 
 ```
-1. Task-level circuitBreaker     (priorité haute)
-2. Crew-level circuitBreaker     (défaut)
-3. Preset nommé                  (si spécifié)
-4. CircuitBreakerPolicy.Strict   (fallback si rien n'est configuré)
+Limites de la policy (champ par champ) :
+1. circuitBreaker de niveau tâche   (priorité la plus haute)
+2. circuitBreaker de niveau crew
+3. Preset nommé                     (celui de la tâche, sinon celui de la crew)
+4. CircuitBreakerPolicy.Strict      (pas de preset, preset inconnu ou rien de configuré)
+
+Limites des guards (CreateGuardContext — bloc entier) :
+   le bloc de la tâche s'il existe, sinon celui de la crew, sinon 3 / 10 / 3
 ```
 
-Chaque champ individuel surcharge la valeur du preset. Par exemple, un preset "strict" avec `maxTransitions: 200` garde toutes les valeurs du preset sauf les transitions.
+Chaque champ individuel de la policy surcharge la valeur du preset : un preset « strict » avec `maxTransitions: 200` garde toutes les valeurs du preset sauf les transitions. Les limites des guards ne fusionnent pas champ par champ — un bloc de tâche sans `maxRetries` retombe sur 3, pas sur la valeur de la crew.
 
 ### Modèles YAML
 
 | Modèle C# | Classe YAML | Fichier |
 |-----------|-------------|---------|
-| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` | `Configuration/Yaml/YamlConfigModels.cs` |
+| `CircuitBreakerConfig` | `CircuitBreakerYamlConfig` (sur `CrewYamlConfig`, `CrewSettingsYamlConfig` et `TaskYamlConfig`) | `Configuration/Yaml/YamlConfigModels.cs` |
 
-Le mapping est effectué par `YamlCrewMapper.MapCircuitBreaker()` (privé, `Configuration/Yaml/`). La conversion en `CircuitBreakerPolicy` exécutable est effectuée par `CircuitBreakerPolicyFactory.Resolve()`.
+Le mapping est effectué par `YamlCrewMapper.MapCircuitBreaker()` (privée, `Configuration/Yaml/`) ; `CrewFactory` reporte le bloc de niveau crew sur l'agrégat `Crew` (`Crew.CircuitBreaker`, également réglable avec `CrewBuilder.WithCircuitBreaker(...)`). La conversion en `CircuitBreakerPolicy` exécutable est faite par `CircuitBreakerPolicyFactory.Resolve()`.
 
 ## Utilisation en code C#
 
-### Création manuelle (Fluent Builder)
+### Création manuelle
 
 ```csharp
 using Orkeon.Domain.Common.StateMachine;
 using Orkeon.Domain.Task;
 
-// Créer une FSM avec le preset Strict
+// Créer une FSM avec le preset Strict (aussi le défaut de Create())
 var fsm = TaskExecutionStateMachine.Create(CircuitBreakerPolicy.Strict);
 
 // Observer les transitions
@@ -195,7 +205,7 @@ fsm.OnTransition += (_, result) =>
 fsm.OnCircuitBroken += (_, status) =>
     Console.WriteLine($"CIRCUIT BROKEN: {status.BrokenReason}");
 
-// Contexte de garde
+// Contexte des guards
 var ctx = new TaskExecutionGuardContext
 {
     RetryCount = 0,
@@ -205,7 +215,7 @@ var ctx = new TaskExecutionGuardContext
     IsToolRegistered = true,
 };
 
-// Exécuter le workflow
+// Dérouler le workflow
 fsm.Fire(TaskExecutionEvent.BeginExecution);
 fsm.Fire(TaskExecutionEvent.RequestToolCall, ctx);
 fsm.Fire(TaskExecutionEvent.ToolCallCompleted);
@@ -218,10 +228,12 @@ Console.WriteLine(fsm.IsTerminal);   // true
 
 ### Création depuis la configuration YAML
 
+Aucun chemin d'exécution ne fait cet appel : pour faire passer une tâche par une FSM configurée par les blocs YAML, votre propre code la construit avec `CircuitBreakerPolicyFactory` et déclenche ses événements.
+
 ```csharp
 using Orkeon.Infrastructure.Configuration;
 
-// La CircuitBreakerPolicyFactory résout la hiérarchie crew + task
+// crewConfig / taskConfig : la CrewConfiguration / TaskConfiguration produite par le loader
 var fsm = CircuitBreakerPolicyFactory.CreateTaskFsm(
     crewDefault: crewConfig.CircuitBreaker,
     taskOverride: taskConfig.CircuitBreaker
@@ -260,40 +272,44 @@ var fsm = new StateMachineBuilder<MyState, MyEvent>()
     .Build();
 ```
 
+`AddTransition(from, trigger, to)` est le raccourci pour une transition sans guard ni action ; `WithStateKey` / `WithEventKey` fournissent les fonctions de clé quand `TState` / `TEvent` ne sont pas des enums.
+
+> Le DSL de scripting a son propre littéral `stateMachine()` (`fsm.d.ts`), une implémentation JavaScript distincte sans circuit breaker — voir [Scripting](../architecture/scripting.md).
+
 ## Exemple 103
 
-L'exemple `examples/06-engineering-devops/103-ts-codebase-with-fsm/` démontre l'intégration complète. Il reprend le scénario de l'exemple 102 (analyse de codebase TypeScript) en ajoutant :
+L'exemple [103-ts-codebase-with-fsm](https://github.com/orkeon/orkeon/blob/main/examples/06-engineering-devops/103-ts-codebase-with-fsm/) montre la syntaxe complète de `circuitBreaker` sur le scénario de l'exemple 102 (analyse d'une codebase TypeScript) :
 
-- `circuitBreaker` au niveau crew avec preset "strict" et mode dégradé
-- `circuitBreaker` au niveau task pour le superviseur (limites relevées car orchestration longue)
+- `circuitBreaker` au niveau crew avec le preset « strict » et le mode dégradé
+- `circuitBreaker` au niveau tâche pour le superviseur (limites relevées à cause de la longue orchestration)
 - Guards anti-hallucination d'outils (`maxToolCallsPerRound: 30`)
 - Limite de retries réduite pour le superviseur (`maxRetries: 2`)
 
-Voir le fichier `config.yaml` de l'exemple pour la syntaxe complète.
+La crew est en `process: sequential` : aujourd'hui ces blocs sont parsés et validés mais pas appliqués (voir la [Vue d'ensemble](#vue-densemble)).
 
 ## Relation avec l'existant
 
 ### StateTransitionManager
 
-Le `StateTransitionManager` existant (`Orkeon.Application.Services.StateManagement`) reste en place. Il valide les transitions d'états persistés (AgentStatus, CrewStatus, TaskStatus). La FSM `TaskExecutionStateMachine` opère à un niveau de granularité différent : elle gère le cycle d'exécution runtime (Assigned → Executing → ToolCalling → Validating → Completed) tandis que le StateTransitionManager gère les états de lifecycle (Pending → InProgress → Completed).
+Le `StateTransitionManager` (`Orkeon.Application.Services.StateManagement`) valide les transitions d'états persistés (AgentStatus, CrewStatus, TaskStatus). La `TaskExecutionStateMachine` modélise un autre niveau de granularité : le cycle d'exécution runtime (Assigned → Executing → ToolCalling → Validating → Completed), là où le StateTransitionManager gouverne les états de cycle de vie (Pending → InProgress → Completed).
 
-Les deux sont complémentaires : le StateTransitionManager gouverne le statut persisté, la FSM gouverne l'exécution en cours.
+### Stratégies de process
 
-### SequentialCrewOrchestrator
-
-L'orchestrateur existant n'est pas remplacé. La FSM s'intègre à l'intérieur des `IProcessStrategy` (Sequential, Hierarchical, Parallel) pour piloter l'exécution de chaque tâche individuelle, là où les boucles LLM sont les plus dangereuses.
+Les implémentations de `IProcessStrategy` exécutent une tâche via `IAgentExecutionService` et sa boucle d'agent ; aucune n'instancie la FSM de tâche. Le seul consommateur du circuit breaker à l'exécution est le [mode Graph](./graph.md), qui applique `CircuitBreakerPolicy` au runner de son `StateGraph`.
 
 ## Tests
 
-32+ tests unitaires couvrent le framework et la spécialisation :
+32 méthodes de test couvrent le framework et la spécialisation :
 
 | Fichier de test | Couverture |
 |-----------------|-----------|
-| `StateMachineTests.cs` | Transitions valides/invalides, états terminaux, cycle complet |
-| `StateMachineGuardTests.cs` | Guards typés, priorité des guards, actions on-transition |
-| `CircuitBreakerTests.cs` | Max transitions, détection de cycles, mode dégradé, reset, histogramme |
-| `TaskExecutionStateMachineTests.cs` | Happy path, tool calls, retries, validation, cancel, circuit breaker |
+| `Common/StateMachine/StateMachineTests.cs` | Transitions valides/invalides, états terminaux, cycle complet |
+| `Common/StateMachine/StateMachineGuardTests.cs` | Guards typés, priorité des guards, actions sur transition |
+| `Common/StateMachine/CircuitBreakerTests.cs` | Transitions max, détection de cycles, mode dégradé, reset, histogramme |
+| `Task/TaskExecutionStateMachineTests.cs` | Chemin nominal, appels d'outils, retries, validation, annulation, circuit breaker |
+
+`CircuitBreakerPolicyFactory` est couverte dans `Orkeon.Infrastructure.Tests` (`Configuration/CovSecurity_CircuitBreakerPolicyFactoryTests.cs`, `Configuration/CircuitBreakerPolicyFactoryGraphTests.cs`).
 
 ```bash
-dotnet test tests/core/Orkeon.Domain.Tests/ --filter "FullyQualifiedName~StateMachine"
+dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj --filter "FullyQualifiedName~StateMachine"
 ```

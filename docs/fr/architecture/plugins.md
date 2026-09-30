@@ -106,11 +106,17 @@ dispositions sont reconnues, au premier niveau uniquement :
 ```
 
 Les candidats doivent porter l'extension `.dll` et satisfaire `SearchPattern`
-(`*.dll` par défaut). La résolution du chemin physique exigée par les API
-`AssemblyLoadContext` utilise le mécanisme du VFS
-(`IFileSystemService.ResolveAndValidate`, contrôle des mounts + `FileAccessRights`) ;
-un fichier refusé par la politique de mount est simplement exclu. Les messages
+(`*.dll` par défaut, un glob simple insensible à la casse). La résolution du chemin physique
+exigée par les API `AssemblyLoadContext` utilise le mécanisme du VFS
+(`IFileSystemService.ResolveAndValidate` avec `FileAccessRights.Read`, contrôle des mounts
+compris) ; un fichier refusé par la politique de mount est simplement exclu. Les messages
 d'erreur du système de plugins ne référencent que des chemins virtuels.
+
+- `Directory` doit commencer par `/` — toute autre valeur lève une `ArgumentException` à l'appel.
+- Un répertoire inexistant ne charge **rien, en silence** : aucun plugin, aucun échec.
+- Les candidats sont chargés dans l'ordre ordinal de leur chemin virtuel : l'ordre des
+  enregistrements (et donc « le dernier enregistré gagne » entre deux plugins) est déterministe.
+- L'énumération ne suit pas les liens symboliques.
 
 ## Chargement et isolation
 
@@ -118,7 +124,8 @@ Chaque assembly plugin est chargé dans son propre `PluginLoadContext` :
 
 - **collectible** (`isCollectible: true`) → déchargeable ;
 - dépendances résolues par `AssemblyDependencyResolver` (`.deps.json` du plugin) →
-  chaque plugin peut embarquer **ses propres versions** de dépendances ;
+  chaque plugin peut embarquer **ses propres versions** de dépendances, bibliothèques natives
+  comprises (`LoadUnmanagedDll` passe par le même résolveur) ;
 - les assemblies dont le nom simple commence par un préfixe de
   `SharedAssemblyPrefixes` (`Orkeon.`, `Orkeon.Rag.Abstractions`, `Microsoft.Extensions.` par défaut — l'entrée du milieu est explicite pour que les types de contrat RAG gardent leur identité inter-ALC même chez les hôtes qui resserrent les défauts) ne sont
   **jamais** résolues dans le contexte du plugin : elles s'unifient avec le contexte
@@ -154,6 +161,24 @@ services.AddOrkeonPlugins(fileSystem, options =>
 services.AddOrkeonPlugins(fileSystem, configuration);
 ```
 
+```json
+{
+  "Plugins": {
+    "Directory": "/plugins",
+    "SearchPattern": "Acme.*.dll",
+    "ContinueOnError": false,
+    "SharedAssemblyPrefixes": [ "Acme.Contracts." ]
+  }
+}
+```
+
+Les clés sont les propriétés d'`OrkeonPluginsOptions` ; toutes sont facultatives (défauts :
+`/plugins`, `*.dll`, `false`). Les entrées de `SharedAssemblyPrefixes` s'**ajoutent** aux trois
+défauts (le binder de configuration complète la liste existante) — resserrer les défauts passe
+par la surcharge à délégué. Les options sont consommées à l'appel et ne sont pas enregistrées
+comme `IOptions<OrkeonPluginsOptions>`. Le mount `/plugins` lui-même relève de l'hôte : il se
+déclare comme n'importe quel autre (`Orkeon:FileSystem:Mounts`, la lecture seule suffit).
+
 Particularités :
 
 - la découverte et le chargement sont **immédiats** (au moment de l'appel) : les
@@ -173,7 +198,7 @@ Particularités :
 |---|---|
 | Sandbox / modèle de permissions | `PluginSecurityManager`, `PluginSandbox` |
 | Manifeste `plugin.json` (métadonnées hors code) | `PluginManifest` |
-| Hot-reload / rechargement à chaud | `PluginLoader.Reload` |
+| Hot-reload / rechargement à chaud | `ReloadPluginAsync` |
 | Configuration persistée par plugin | `IPluginConfigurationStore` |
 | Symlinks dans le répertoire de plugins | non suivis |
 

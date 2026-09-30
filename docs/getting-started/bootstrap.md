@@ -20,22 +20,30 @@ dotnet add package Orkeon.Tools --prerelease
 1.0.0 is final. Both commands write the matching `<PackageReference>` entries into your
 `.csproj`, so an equivalent hand-edit works just as well.
 
-`Orkeon` carries the whole core closure (Domain, Application, Infrastructure, Hosting,
-Plugins, RAG, Analysis, Scripting) — there is no separate `Orkeon.Domain` /
-`Orkeon.Application` / `Orkeon.Infrastructure` package. The two opt-ins
-`Orkeon.Rag.Onnx` and `Orkeon.Tools.Embeddings.Local` are added the same way when you
-need them. The full lineup is the
+`Orkeon` carries the core closure in one package — Domain, Application, Infrastructure,
+the RAG and RaggableTree (`Orkeon.Analysis`) engines, `Orkeon.Tools.Abstractions` and three
+`Orkeon.Constants.*` satellites; there is no separate `Orkeon.Domain` /
+`Orkeon.Application` / `Orkeon.Infrastructure` package. The runner host
+(`Orkeon.Hosting`, `RunnerHost`), the plugin loader (`Orkeon.Plugins`) and the scripting
+DSL (`Orkeon.Scripting`) are **not** in it: they ship inside the `orkeon` CLI, not on
+NuGet — which is why the host below is wired by hand. The opt-ins `Orkeon.Rag.Onnx`,
+`Orkeon.Tools.Embeddings.Local`, `Orkeon.Interop.AgentFramework` and
+`Orkeon.Hosting.Aspire` are added the same way when you need them. The full lineup is the
 [publication matrix](../reference/publication-matrix.md).
 
 ## Bootstrap and dependency injection
 
-Integrating Orkeon into a .NET application is done through dependency injection at startup. Here is a complete example in `Program.cs`:
+Integrating Orkeon into a .NET application is done through dependency injection at startup. Here is a complete example in `Program.cs`, on the .NET generic host (the `Microsoft.Extensions.Hosting` package — a `dotnet new worker` project already references it):
 
 ```csharp
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.DependencyInjection;
 using Orkeon.Application.DependencyInjection;
+using Orkeon.Domain.SharedKernel.ValueObjects;
+using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
+using Orkeon.Infrastructure.FileSystem;
+using Orkeon.Infrastructure.LLMs;
 using Orkeon.Tools.FileSystem.DependencyInjection;
 using Orkeon.Tools.Data.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
@@ -45,13 +53,24 @@ using Orkeon.Tools.Email.DependencyInjection;
 var host = Host.CreateDefaultBuilder(args)
     .ConfigureServices((context, services) =>
     {
+        // 0. The model, registered BEFORE AddOrkeonInfrastructure(): the LLM services that
+        //    call registers are TryAdd fallbacks on LlmConfig.Default() — OpenAI's default
+        //    model, with no key. Here: a local Ollama model.
+        var llm = LlmConfig.Create("qwen2.5:1.5b") with { BaseUrl = new Uri("http://localhost:11434") };
+        services.AddOrkeonLlmProvider(
+            sp => new OllamaLlmProvider(llm, sp.GetRequiredService<IHttpClientFactory>()), llm);
+
         // 1. Application layer (CQRS, orchestration, services)
         services.AddOrkeonApplication();
 
-        // 2. Infrastructure layer (LLM, memory, security, YAML)
+        // 2. Infrastructure layer (LLM plumbing, memory, security, YAML)
         services.AddOrkeonInfrastructure();
 
-        // 3. Tool suites
+        // 3. The virtual file system — mounts read from Orkeon:FileSystem:Mounts. Required:
+        //    the YAML loader, the file tools and the deliverables all go through it.
+        services.AddOrkeonFileSystem(context.Configuration);
+
+        // 4. Tool suites
         // FileSystem: FileRead, FileWrite, DirectoryRead, DirectorySearch, CountPattern
         services.AddOrkeonFileSystemTools();
 
@@ -71,9 +90,40 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-// Start the application
-await host.RunAsync();
+// 5. The tool registry starts empty: hand it the registered tools, so the names a YAML
+//    crew lists under `tools:` resolve.
+var registry = host.Services.GetRequiredService<IToolRegistry>();
+foreach (var tool in host.Services.GetServices<IBaseTool>())
+    await registry.RegisterToolAsync(tool);
+
+// A long-lived host: await host.RunAsync(). A one-shot program runs a crew right
+// away — see "Running a Crew" below.
 ```
+
+The mounts come from `appsettings.json` (Docker-style `<physical>:<virtual>:<rights>`,
+rights `ro`, `rw` or `rwnd`; the physical directory must exist):
+
+```json
+{
+  "Orkeon": {
+    "FileSystem": {
+      "Mounts": [ "./config:/config:ro", "./out:/output:rw" ]
+    }
+  }
+}
+```
+
+Any of the 16 providers is registered the same way: construct it from an `LlmConfig`, or
+let `ILlmProviderFactory.Create(config)` pick it from the base URL, the model name or the
+key. `AddOrkeonLlmProvider` puts one instance behind `ILlmProvider`, `IBasicLlmProvider`
+and `IChatClient`, metered like every provider the factory builds.
+
+The `orkeon` CLI does all of this in `RunnerHost` (`Llm` section, mounts, a registry fed
+from DI) and registers a few more suites a host adds the same way when its crews use them:
+`AddOrkeonAbstractionTools()` (`list_mounts`), `AddOrkeonSessionTools()`,
+`AddOrkeonInMemoryEventHub()` + `AddOrkeonEventHubTools()`, `AddRaggableTree()` +
+`AddRaggableTreeTools()`, and the opt-in RAG pair `AddOrkeonRag(configuration)` +
+`AddOrkeonRagTools()`.
 
 Each `AddOrkeon*()` call automatically registers:
 - The service interfaces (ports)
@@ -120,6 +170,7 @@ Two overloads exist and produce containers with **different** capabilities:
 | MCP                                       | ❌                          | ✅                                        |
 | VectorSearch                              | ❌                          | ✅                                        |
 | Knowledge store (in-memory stub, warns on first use) | ✅            | ✅                                        |
+| Virtual file system (`IFileSystemService`) | ❌ (explicit: `AddOrkeonFileSystem(configuration)`) | ❌ (same)          |
 | RAG subsystem                             | ❌ (opt-in: `AddOrkeonRag` + `AddOrkeonRagTools`) | ❌ (same opt-in)     |
 | Durable execution-state persistence       | ❌                          | ✅ **only if** `Orkeon:ExecutionState:Persistence` exists (`Enabled=true` + an `IStateStore`) |
 | ChromaDB (vector store)                   | ❌                          | ✅ **only if** the `Orkeon:ChromaDb` section exists |
@@ -153,14 +204,20 @@ Two overloads exist and produce containers with **different** capabilities:
 var crewFactory = host.Services.GetRequiredService<ICrewFactory>();
 var orchestrator = host.Services.GetRequiredService<ICrewOrchestrationService>();
 
-// Create the Crew from the YAML file
-var crew = await crewFactory.CreateFromFileAsync("config/sales-report-crew.yaml");
+// Create the Crew from the YAML file — a VIRTUAL path, read through the /config mount
+// (CreateFromDirectoryAsync takes a multi-file crew directory the same way)
+var crew = await crewFactory.CreateFromFileAsync("/config/sales-report-crew.yaml");
 
 // Prepare the input
 var input = CrewInput.Empty("Process last week's sales data");
 
-// Run the Crew synchronously
+// Run the Crew synchronously (the factory already stored the crew, its agents and tasks
+// in the repositories the orchestrator reads)
 var output = await orchestrator.KickoffAsync(crew.Id, input);
+
+// KickoffAsync reports a failed run in the output rather than throwing
+if (!output.Succeeded)
+    Console.Error.WriteLine($"Run failed: {output.Error}");
 
 // Print the results
 Console.WriteLine("=== Final Result ===");
@@ -231,7 +288,11 @@ public record CrewOutput(
     string FinalOutput,                       // Final textual result
     IReadOnlyList<TaskOutput> TaskOutputs,    // Results per task
     TimeSpan Duration,                        // Execution duration
-    TokenUsage? TokensUsed);                  // Token consumption (when available)
+    TokenUsage? TokensUsed)                   // Token consumption (when available)
+{
+    public bool Succeeded { get; init; } = true;  // false when the run failed
+    public string? Error { get; init; }           // the failure, when Succeeded is false
+}
 ```
 
 **TaskOutput** (`Orkeon.Application.Execution`):

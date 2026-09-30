@@ -43,15 +43,17 @@ Les champs de charge utile sont **à plat** à côté de l'enveloppe, pas imbriq
 
 ## 3. Sortant — ce qu'un run dit
 
+Le vocabulaire est déclaré une seule fois, dans le satellite sans dépendance `Orkeon.Constants.Protocol` ([ADR-009](../adr/ADR-009-shared-constants-satellites.md)) : `RunEventKinds` nomme les quatorze kinds — les treize ci-dessous et l'entrant `input.given` (§4) — et `RunEventKinds.All` est l'ensemble qu'un client vérifie savoir traiter. Le CLI les écrit et Studio les lit sans que l'un référence l'autre.
+
 | `kind` | Charge utile | Quand |
 |---|---|---|
 | `run.started` | `target`, `stream` | Le run commence. |
 | `task.started` | `taskId`, `agentRole` | Une tâche commence, dans les six modes d'orchestration — au moment où son agent est choisi, avant qu'on ne lui demande quoi que ce soit. Entre ce kind et son `task.completed`, un observateur montre la tâche en cours ; la charge utile est volontairement mince, rien n'a encore été mesuré. Un CLI plus ancien ne dit rien ici, et un client ne doit pas refuser un `task.completed` dont il n'a jamais vu le départ. |
-| `task.completed` | `taskId`, `agentRole`, `success`, `durationMs`, `tokens`, `toolCalls` | Chaque tâche se termine, **dans les six modes d'orchestration** — échec et annulation compris (voir `error`). `tokens` et `toolCalls` valent `0` quand le mode ne les mesure pas, jamais absents. |
+| `task.completed` | `taskId`, `agentRole`, `success`, `skipped`, `durationMs`, `tokens`, `toolCalls` | Chaque tâche se termine, **dans les six modes d'orchestration** — échec et annulation compris (voir `error`). `skipped: true` marque une tâche qui n'a jamais tourné parce qu'une tâche dont elle dépend n'a pas réussi (`success` vaut alors `false` et `durationMs` `0`). `tokens` et `toolCalls` valent `0` quand le mode ne les mesure pas, jamais absents. |
 | `tool.called` | `toolName`, `argsSummary?` | Un outil est invoqué. `argsSummary` résume les **noms** d'arguments, jamais leur contenu : un appel peut porter un fichier entier. |
 | `tool.returned` | `toolName`, `success`, `durationMs` | L'outil a fini — **y compris s'il a levé**, pour qu'un observateur n'affiche jamais une étape éternellement en cours. Corrélé à son `tool.called`. |
 | `delegation.started` | `toRole?` | Un agent a confié du travail à un autre (l'outil `delegate_work_to_coworker`). La description de la tâche reste hors du flux, comme toute valeur d'argument. |
-| `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution — émis quand un appel à l'outil `spawn_agent` est observé. rc.2 ne câble cet outil sur aucun agent par défaut : ce kind n'apparaît que dans les déploiements qui l'attachent eux-mêmes. |
+| `agent.spawned` | `role?`, `reason?` | L'équipe a grandi en cours d'exécution — émis quand un appel à l'outil `spawn_agent` est observé. Le framework ne câble cet outil sur aucun agent par défaut : ce kind n'apparaît que dans les déploiements qui l'attachent eux-mêmes. |
 | `cost.updated` | `tokens`, `promptTokens`, `completionTokens`, `cacheHitTokens?`, `cacheMissTokens?`, `estimatedTokens?`, `model?`, `provider?`, `operation?`, `cost?`, `currency?`, `costSource?` | Le compteur bouge — après **chaque appel de génération** du run, pendant qu'il se déroule : les tours d'agent et leurs relances, le manager hiérarchique, le planificateur, les pipelines RAG, les services mémoire, les étapes de flow, les juges LLM, les appels `ctx.llm.*` (voir *Ce que le compteur compte* plus bas). Chaque chiffre est le cumul du run, comme ceux de `run.finished` : `promptTokens` est ce qui est monté, `completionTokens` ce qui est revenu, et la paire de cache (une partition du côté prompt) apparaît dès qu'un fournisseur l'a mesurée — non mesurée, elle est absente, jamais `0`. `estimatedTokens` apparaît dès qu'un fournisseur n'a rien compté pour un appel et que le runtime l'a estimé : la part de `tokens` qui est approximative, qu'un client signale au lieu de la faire passer pour un décompte. `model` et `provider` disent qui a répondu, et `operation` à quoi servait l'appel — `agent`, `manager`, `planning`, `rag`, `memory`, `flow`, `judge`, ou la méthode `ctx.llm.*` d'un script (`complete`, `chat`, `stream`, `extract`, `decide`, `act`) — absent pour un appel que rien n'a revendiqué : un client qui nomme le modèle sur lequel travaille une équipe lit les lectures de ses agents, pas celles d'un juge ou d'un pipeline RAG, comme le fait la barre d'état de Studio ; l'enveloppe porte `crewId` et, sous `agentId`, le rôle de l'agent pour qui l'appel a été fait — absent pour un appel qu'aucun agent n'a fait, comme le plan. **Le prix est celui du fournisseur ou rien** : `cost` apparaît dès qu'un fournisseur a facturé dans sa réponse (le `usage.cost` d'OpenRouter), avec `costSource: "vendor"` et `currency` (ISO 4217) quand le provider l'énonce ; un appel gratuit est facturé `0`, relayé comme `0`. Aucune estimation ne passe ici — le registre de prix du framework sert les budgets, et un chiffre calculé depuis lui se lirait comme une facture. |
 | `llm.delta` | `text` | Un fragment de texte généré. **Seulement sous `--stream`.** |
 | `input.needed` | `inputKind` (`text`\|`confirm`\|`choice`), `prompt`, `choices?`, `defaultValue?`, `taskDescription?` | Une tâche déclarée `humanInput: true` pose une question. |
@@ -79,12 +81,14 @@ Un document JSON par ligne sur stdin. Chaque verbe se projette sur un membre d'`
 |---|---|---|
 | `input.given` | `correlationId?`, `value` | Répond à un `input.needed` en attente. |
 | `post` | `to`, `payload` | `IEventHub.PostAsync` — écrit dans une boîte aux lettres. |
-| `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync` ; la réponse revient en `hub.message` corrélé. |
+| `send` | `to`, `payload`, `timeoutMs?`, `correlationId?` | `SendAsync` (`timeoutMs` vaut 30 s par défaut) ; la réponse revient en `hub.message` corrélé. |
 | `publish` | `topic`, `payload`, `retainAs?` | `PublishAsync`. |
 | `reply` | `correlationId`, `payload` | Répond à une question **qu'un agent a posée à ce processus**. |
 | `subscribe` / `unsubscribe` | `topic` | Ouvre ou ferme un relais de ce topic vers `hub.message`. |
 
-Un `input.given` **sans** identifiant de corrélation répond à la question en attente : un humain qui tape dans un terminal n'a pas d'identifiant à citer.
+Un `input.given` **sans** identifiant de corrélation répond à la plus ancienne question en attente : un humain qui tape dans un terminal n'a pas d'identifiant à citer.
+
+Une commande du hub qui arrive avant que le hub du run existe est retenue — jusqu'à 64 — puis rejouée dès qu'il existe ; au-delà, elle est ignorée, comme toute autre ligne dont le run ne peut rien faire.
 
 ### Le silence ne vaut pas consentement
 
@@ -96,7 +100,7 @@ Si aucune réponse ne vient — canal fermé, run annulé — la confirmation es
 
 ## 5. Le siège au hub
 
-Un processus observateur est adressable en `client://{nom}` (`--client`, défaut `studio`). Les agents lui écrivent exactement comme à un autre agent, et il peut écrire, publier et s'abonner en retour.
+Un processus observateur est adressable en `client://{nom}` (`--client`, défaut `studio` ; le nom doit être non vide et ne contenir aucun `/`, sinon le run refuse de démarrer). Les agents lui écrivent exactement comme à un autre agent, et il peut écrire, publier et s'abonner en retour.
 
 **Qui a le droit de l'atteindre est la décision de la crew**, pas celle du protocole. Une crew autorise l'échange en nommant le pair dans son bloc `links:` :
 
@@ -145,4 +149,4 @@ Deux règles à respecter en construisant votre client. **Ignorez un `kind` que 
 - **Orkeon Studio**, dont l'écran « Lancer » montre la progression — la tâche en cours et l'outil au travail, depuis `task.started` et `tool.called`, autant que les tâches terminées — le coût et les questions du run au lieu d'un défilement — voir [Studio](studio.md). L'écran « Lancer » occupe aussi le siège du hub : le `send` d'un agent vers `client://studio` (marqué `expectsReply`) apparaît comme un panneau de demande auquel l'utilisateur répond, et la réponse repart par stdin ; les posts du hub sont listés au lieu d'être perdus. Le silence au-delà du timeout propre à l'agent reste un refus — la règle que le silence suit partout sur ce bus — l'écran donne simplement à un humain la chance de parler avant.
 - `Orkeon.Studio.Core.Run` — `RunClient` et `RunProgressModel`, un client de référence, sans aucune dépendance à Infrastructure ni à un LLM. `RunClient` est la forme à copier pour un pair qui prend le siège sans écran : subscribe, post, reply.
 
-La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge), donc un client qui lit l'un lit l'autre.
+La même enveloppe porte le flux de [l'Atelier](../reference/cli.md#orkeon-forge) et la session [`orkeon usecases`](../reference/cli.md#orkeon-usecases) (`usecases search --events jsonl`, dont `UseCaseEventKinds` déclare les kinds à côté de `RunEventKinds`), donc un client qui lit l'un lit les trois.

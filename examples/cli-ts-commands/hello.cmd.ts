@@ -8,11 +8,11 @@
 //
 // Then at the prompt:
 //
-//   scripted> help            # 'hello' shows up
-//   scripted> hello           # → Hello, world!
-//   scripted> hello --who=Ada
-//   scripted> help-cmd hello  # signature with typed args
-//   scripted> exit
+//   scripted> /help            # 'hello' shows up
+//   scripted> /hello           # → Hello, world!
+//   scripted> /hello --who=Ada
+//   scripted> /help-cmd hello  # signature with typed args
+//   scripted> /exit
 
 defineCommand({
   name: "hello",

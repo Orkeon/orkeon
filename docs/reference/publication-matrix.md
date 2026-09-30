@@ -9,11 +9,14 @@ never drift again (OSS-011 / R8.3).
 
 > **Status — consolidated lineup implemented (PUB-25, 2026-09-01).** Distribution is one
 > `Orkeon` package plus a handful of opt-ins, wired in `publish.yml` and guarded by the
-> `scripts/check-package-closure.py` gate; the first push of this lineup lands at the
-> `v1.0.0-rc.3` tag. Trusted Publishing to NuGet.org is **operational** — the discontinued
-> per-layer packages `Orkeon.Domain` / `Orkeon.Application` / `Orkeon.Infrastructure` shipped
-> `1.0.0-rc.1` (2026-08-18) and `1.0.0-rc.2` (2026-08-25) through it, and are to be unlisted
-> once the new lineup is published (see the owner actions below). Decision **D3** (the
+> `scripts/check-package-closure.py` gate. Its first six packages went out with
+> `1.0.0-rc.3` (2026-09-09); `Orkeon.Compliance.Vfs`, `Orkeon.Interop.AgentFramework` and
+> `Orkeon.Hosting.Aspire` joined the lineup on 2026-09-11, so their first NuGet.org push is
+> the first tag cut after that date — nine packages in all. Trusted Publishing to NuGet.org
+> is **operational** — the discontinued per-layer packages `Orkeon.Domain` /
+> `Orkeon.Application` / `Orkeon.Infrastructure` shipped `1.0.0-rc.1` (2026-08-18) and
+> `1.0.0-rc.2` (2026-08-25) through it, and were unlisted on 2026-09-07 (see the owner
+> actions below). Decision **D3** (the
 > scripting naming twins) is **resolved** — PUB-02, 2026-08-17,
 > [ADR-007](../adr/ADR-007-d3-renommage-cli-commands-scripting.md): the command library was
 > renamed `Orkeon.Cli.Scripting` → `Orkeon.Cli.Commands.Scripting` before any NuGet publish
@@ -32,7 +35,7 @@ runtimes, a pre-release upstream).
 | `Orkeon.Rag.Onnx`, `Orkeon.Rag.Onnx.Model` | Opt-in ONNX cross-encoder reranker pair (runtime + embedded int8 weights) — pushed together; native onnxruntime payload. `Orkeon.Rag.Onnx` depends on `Orkeon`; `Orkeon.Rag.Onnx.Model` is dependency-free (embedded resources only) and is referenced alongside it. |
 | `Orkeon.Tools.Embeddings.Local` | Local on-device embeddings (BGE-micro-v2 ONNX). Stays **outside the umbrella** because it carries a pre-release SmartComponents dependency from an archived upstream — putting it in `Orkeon` would force that pre-release on every consumer. Depends on `Orkeon`. |
 | `Orkeon.Scripting.Cli` | The `orkeon` dotnet tool (`PackAsTool`; the PackageId is the install command — ADR-007). Publishable on NuGet.org since the iOS/Android onnxruntime natives a CLI tool can never load were excluded: 262.5 MB → 137.6 MB, under the nuget.org size limit. |
-| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11, so its first push there is the next tag: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
+| `Orkeon.Compliance.Vfs` | The Roslyn analyzer that refuses direct `System.IO` in your own code (rules `ORKVFS001`–`ORKVFS007`, `analyzers/dotnet/cs`, `DevelopmentDependency`). Standalone by design: it depends on nothing from Orkeon and works in any C# project — add the `PackageReference`, build, and every `File.*`/`Directory.*` call is a diagnostic. In the NuGet.org lineup since 2026-09-11, so its first push there is the first tag cut after that date: `1.0.0-rc.3` reached GitHub Packages only (the NuGet.org push loop was a fixed list of six ids) and was inert anyway, compiled against a Roslyn newer than the SDK's compiler. |
 | `Orkeon.Interop.AgentFramework` | The bridge to Microsoft Agent Framework, both ways: an Orkeon crew as a MAF `AIAgent` (`CrewAgent`), a MAF `AIAgent` as the brain (`WithAgentFrameworkAgent`) or as a tool (`WithAgentFrameworkTool`) of an Orkeon agent. Separate from `Orkeon` because the `Microsoft.Agents.AI.Abstractions` dependency is a consumer's choice. Depends on `Orkeon`. |
 | `Orkeon.Hosting.Aspire` | The .NET Aspire hosting integration: `AddOrkeonHost` (the `orkeon-host` daemon) and `AddOrkeonCrewRun` (one `orkeon run`) as AppHost resources, `WithOrkeonModel` / `WithOrkeonSetting` for the `ORKEON_` environment, OTLP export wired so the dashboard reads the run. Separate from `Orkeon` because `Aspire.Hosting` is an AppHost's choice. Depends on `Orkeon`. |
 
@@ -42,7 +45,10 @@ runtimes, a pre-release upstream).
   of them: the `Orkeon` and `Orkeon.Tools` umbrellas, plus the `Orkeon.Rag.Onnx.Package`,
   `Orkeon.Tools.Embeddings.Local.Package`, `Orkeon.Interop.AgentFramework.Package` and
   `Orkeon.Hosting.Aspire.Package` **wrappers**, which pack the four opt-in assemblies with a
-  nuspec dependency on the `Orkeon` umbrella. The embedded library projects themselves
+  nuspec dependency on the `Orkeon` umbrella. The remaining lineup packages are packed
+  straight from their own project: `Orkeon.Rag.Onnx.Model` (`src/rag/`), the `orkeon` tool
+  (`src/scripting/Orkeon.Scripting.Cli`) and the analyzer (`src/analyzers/Orkeon.Compliance.Vfs`).
+  The embedded library projects themselves
   are `IsPackable=false` and their source layout, namespaces and per-assembly PublicAPI
   freeze are untouched; the real opt-in projects keep normal `ProjectReference`s, so in-repo
   consumers are unaffected — only the wrappers carry the embed pattern below.
@@ -51,10 +57,14 @@ runtimes, a pre-release upstream).
   Because `PrivateAssets="all"` also stops the embedded projects' external
   `PackageReference`s from flowing into the nuspec, the **union of those references is
   re-declared by hand** in the packaging csproj.
-- `scripts/check-package-closure.py` (run by `publish.yml` right after the pack) fails the
-  workflow if (1) a lineup package declares an `Orkeon.*` dependency outside the lineup — the
-  NU1101 class of incident — or (2) an umbrella's hand-declared externals drift from what its
-  embedded projects actually require.
+- `scripts/check-package-closure.py` (run by `publish.yml` right after the pack, on the tag
+  and on the dev channel) fails the workflow if (1) a lineup package declares an `Orkeon.*`
+  dependency outside the lineup — the NU1101 class of incident — (2) an umbrella's
+  hand-declared externals drift from what its embedded projects actually require, or (3) an
+  assembly an embedded one reaches transitively ships nowhere in the lineup. Its source half
+  (no nupkg needed) also runs on every pull request through `scripts/check-doc-claims.py`,
+  which additionally fails when a packable project is neither in the lineup nor
+  GitHub-Packages-only, or when one of the hand-written copies of the lineup drifts.
 - `publish.yml` pushes **`Orkeon` first**: the other lineup packages depend on it and NuGet
   does not order pushes, so pushing a dependent first would expose a package whose restore
   fails.
@@ -62,10 +72,12 @@ runtimes, a pre-release upstream).
 ## Discontinued packages
 
 The following PackageIds are **no longer packed** (`IsPackable=false`): `Orkeon.Domain`,
-`Orkeon.Application`, `Orkeon.Infrastructure`, the five `Orkeon.Constants.*` satellites, the
-seven `Orkeon.Tools.<family>` packages, `Orkeon.Cli`, `Orkeon.Cli.Abstractions`,
-`Orkeon.Cli.Commands.Scripting`, `Orkeon.Cli.TerminalGui`, `Orkeon.Scripting`,
-`Orkeon.Hosting`, `Orkeon.Plugins`.
+`Orkeon.Application`, `Orkeon.Infrastructure`, the five `Orkeon.Constants.*` satellites,
+`Orkeon.Analysis`, `Orkeon.Analysis.Abstractions`, `Orkeon.Rag`, `Orkeon.Rag.Abstractions`,
+`Orkeon.Tools.Abstractions` and the eight `Orkeon.Tools.<family>` projects, `Orkeon.Cli`,
+`Orkeon.Cli.Abstractions`, `Orkeon.Cli.Commands.Scripting`, `Orkeon.Cli.TerminalGui`,
+`Orkeon.Scripting`, `Orkeon.Hosting`, `Orkeon.Plugins`. Those that the `Orkeon` and
+`Orkeon.Tools` umbrellas embed still ship — inside the umbrella's nupkg, not under their own id.
 
 **Migration**: the source code and namespaces are unchanged, so consumer code compiles as-is —
 only the install changes. Uninstall the per-layer packages and
@@ -173,19 +185,21 @@ tarball), and only then attaches everything to the GitHub Release. The pipeline 
 release`; behind those same five jobs, `runners-image` pushes the `orkeon-runners`
 container image to GHCR in parallel with `release`, so a red smoke moves neither the
 Release nor the `:latest` tag. `workflow_dispatch` runs
-the same thing minus the publication (no tag, no Release to attach to). The retired
+the same thing minus the publication (no tag, no Release to attach to). A tag carrying a
+pre-release segment (`v1.0.0-rc.4`) is published **as a prerelease**, so it never becomes the
+repository's *latest* release; a bare `v1.0.0` does. The retired
 `orkeon-examples` runner is **no longer packaged** — the `orkeon` CLI replaces it
 (`orkeon run crew.yaml` runs the `examples/` YAML crews; `orkeon run script.ork.ts` runs the
 scripting DSL).
 
 | Artifact | Built by | Contents | Runtime |
 |---|---|---|---|
-| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every CLI launcher + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
+| `orkeon-<version>-<rid>.tar.gz` / `.zip` | `package-installers.sh` (default `--app-set full`) | every launcher — `orkeon`, `orkeon-slim`, `orkeon-repl`, `orkeon-host` — + the Orkeon Studio apps admitted by their RID filter (the WPF `orkeon-studio` is `win-x64`-only; the two TUIs ship for every RID) + one shared esbuild + the `deploy/` tree (systemd unit, SCM registration script, Dockerfile.host) | mixed: `orkeon`, `orkeon-host` and the Studio apps self-contained, the rest framework-dependent |
 | `orkeon-cli-<version>-win-x64.zip` | `package-installers.sh --app-set cli --rids win-x64` | the `orkeon` CLI + `orkeon-studio` (WPF Orkeon Studio) + `install.ps1` | self-contained |
 | `orkeon_<version>_amd64.deb` | `package-deb.sh` (reuses the `linux-x64` staging tree — one publish, two packages) | the `orkeon` CLI at `/usr/bin/orkeon` + the Studio TUIs at `/usr/bin/orkeon-studio-config` and `/usr/bin/orkeon-studio-run` | self-contained; `Depends` on system libraries only (libicu / libssl alternations), never on `dotnet-runtime-*` |
 | `orkeon-<version>-win-x64.msi` | `build-msi.ps1` (WiX, per-user scope), harvesting the extracted CLI zip | the `orkeon` CLI + `orkeon-studio` (WPF, with an "Orkeon Studio" Start-menu shortcut), same pruned publish as the zip | self-contained |
 | `orkeon-cli-<version>-osx-arm64.tar.gz` / `-osx-x64.tar.gz` | `package-installers.sh --app-set cli --rids osx-arm64 osx-x64` (cross-published from the ubuntu runner) | the `orkeon` CLI alone + `install.sh` (no Studio in V1 — the macOS channel stays CLI-only) | self-contained |
-| `SHA256SUMS` | the `installers` job's packaging scripts (`package-deb.sh` refreshes its own line) | one line per artifact above **except the MSI** | — |
+| `SHA256SUMS` | the `installers` job's packaging scripts (`package-deb.sh` refreshes its own line) | one line per artifact above **except the MSI**, plus the SBOM (`orkeon-<version>.sbom.cdx.json`) | — |
 | `orkeon-host-<version>-win-x64.msi` | `build-msi-service.ps1` (WiX, per-machine scope), harvesting the extracted full zip | the self-contained `orkeon-host` publish alone, registered as the `Orkeon` service under `NT SERVICE\Orkeon` (no CLI, no wrapper, no `deploy/` — the package registers declaratively) | self-contained |
 | `SHA256SUMS.msi` | `build-msi.ps1` then `build-msi-service.ps1`, in order, in the `msi` job | the two MSIs | — |
 
@@ -212,6 +226,12 @@ looping and lands in the event log — and the `msi` job smokes the service MSI 
 plus a silent reinstall of itself. All of them install from the **job** artifacts, never from
 the Release, so a broken payload is caught before anything is published — the `release` job
 `needs` them all.
+
+**After publication.** `release-verify.yml` runs on every published Release (and on demand
+for a given tag): it downloads the assets *from the Release page*, checks `SHA256SUMS` and
+`SHA256SUMS.msi`, and replays the `.deb` and `osx-arm64` onboarding smokes on them — catching
+an asset that an upload, a replace or a tamper made different from what the smokes above
+installed.
 
 `smoke-macos` is also the only place the Gatekeeper and code-signing story is exercised: an
 unsigned, quarantined or malformed native library (`libtree-sitter*.dylib`, onnxruntime, the
@@ -279,7 +299,9 @@ print the runtime install commands rather than failing at first launch.
 
 ## How publication is wired
 
-- All NuGet packing and pushing lives in **`publish.yml`** (tag `v*`): `dotnet pack Orkeon.sln`
+- All NuGet packing and pushing lives in **`publish.yml`** (tag `v*`): the tag/version guard
+  and `scripts/check-release-readiness.py` (CHANGELOG section cut, PublicAPI shipped), a
+  Release build and the unit + fast tests, `dotnet pack Orkeon.sln`
   driven by `IsPackable`, the `scripts/check-package-closure.py` gate on
   the packed artifacts, a push of everything to **GitHub Packages** with `--skip-duplicate`
   (idempotent re-runs), then the **NuGet.org lineup** (the table above, `Orkeon` first) to
@@ -293,8 +315,9 @@ print the runtime install commands rather than failing at first launch.
   proven** — the rc.1/rc.2 pushes went through this path; if the variable ever disappears
   the steps emit a warning and no-op instead of failing the tag.
   Expanding the NuGet.org lineup is a maintainer decision recorded in this matrix first
-  (and mirrored in the workflow's lineup list + the closure-gate arguments), never a
-  workflow edit made in passing.
+  (and mirrored in `check-package-closure.py`'s `LINEUP`, the workflow's push loop, the
+  closure-gate arguments and CONTRIBUTING's release process — `check-doc-claims.py` fails
+  when any copy disagrees), never a workflow edit made in passing.
 - `publish.yml` **refuses a tag that does not match the `src/Directory.Build.props` version**.
   Lesson from the 0.9.1-beta incident (see CHANGELOG 0.9.2-beta): the `v0.9.1-beta.rc*` tags
   re-packed the unchanged props version and `--skip-duplicate` silently skipped every push —
@@ -302,7 +325,8 @@ print the runtime install commands rather than failing at first launch.
 - **Provenance and SBOM.** Both workflows attest what they publish with
   `actions/attest-build-provenance` (SLSA v1, signed by GitHub's Sigstore instance):
   `publish.yml` every `*.nupkg` of a tag (dev-channel builds are not attested), `release.yml`
-  every archive, `.deb` and MSI. Both generate a
+  every archive, `.deb` and MSI. The `orkeon-runners` image `release.yml` pushes to GHCR is
+  not attested. Both generate a
   **CycloneDX SBOM** of `Orkeon.sln` right after the build (`CycloneDX` dotnet tool, pinned
   version, no third-party action) — `orkeon-<version>.sbom.cdx.json` — and cover it with the
   **same** attestation: a release asset next to the archives and a line in `SHA256SUMS` in

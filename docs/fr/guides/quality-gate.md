@@ -114,7 +114,7 @@ custom).
 1. Modifier la table `QUALITY_GATE_CONDITIONS` dans `scripts/sonar-analyze.sh`
    **et** `$QualityGateConditions` dans `scripts/sonar-analyze.ps1` (les deux
    doivent rester identiques).
-2. Mettre à jour le présent document (tables §3 et §5, historique §8).
+2. Mettre à jour le présent document (tables §3 et §5, historique §9).
 3. Relancer une analyse : le provisionnement idempotent pousse les nouveaux
    seuils sur le serveur (`update_condition`).
 
@@ -130,7 +130,12 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
   du serveur).
 - `new_coverage` n'est **pas évaluée** par SonarQube si aucune couverture n'est
   importée : un import de couverture cassé peut faire passer le gate à tort.
-  C'est pourquoi le script installe ReportGenerator automatiquement.
+  Les scripts installent donc les deux outils de couverture quand ils manquent —
+  `dotnet-coverage`, qui mesure (les projets de tests tournent sur
+  Microsoft.Testing.Platform, qui refuse le collecteur VSTest `--collect`), et
+  ReportGenerator, qui convertit sa sortie Cobertura au format générique SonarQube —
+  et **interrompent l'analyse** quand le rapport Cobertura ne contient aucune classe,
+  plutôt que de laisser le gate s'évaluer sur du vide.
 - Sur une machine headless, le fallback Docker des scripts peut être désactivé
   (`SONAR_NO_DOCKER=1`) : un serveur injoignable fait alors échouer la passe au
   lieu de booter une instance éphémère sans historique (qui rendrait le verdict
@@ -158,3 +163,6 @@ mesure, un nombre tapé est une affirmation.
 | 2026-06-11 | Création du gate « Orkeon Transitional » (T0), activation du blocage local (R5.4), alignement de la clé de projet des scripts sur la clé historique |
 | 2026-08-17 | Clé de projet renommée en `Orkeon` (suite de l'audit PUB-01 — clé historique d'avant renommage retirée ; remplace la décision QCM du 2026-06-11, l'historique d'analyse repart sous la nouvelle clé) |
 | 2026-08-18 | Document réaligné sur la réalité (DOC-02) : aucun workflow CI Sonar n'existe — l'application du verdict est locale aux scripts d'analyse ; références aux anciens workflows retirées |
+| 2026-08-30 | Couverture collectée par `dotnet-coverage` au lieu du collecteur VSTest que le runner Microsoft.Testing.Platform refuse ; une analyse dont le rapport Cobertura ne contient aucune classe s'interrompt désormais au lieu d'importer 0 % |
+| 2026-09-05 | Mesure consignée au §1 : le gate est OK sur chaque condition (0 bug, 17/17 hotspots statués, nouveau code à 78,1 %) ; seuils inchangés |
+| 2026-09-11 | Le chiffre public de couverture passe au workflow `coverage.yml` (§8) ; le rapport SonarQube reste local |

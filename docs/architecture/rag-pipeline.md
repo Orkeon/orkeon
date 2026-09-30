@@ -86,9 +86,48 @@ The host must provide an `IEmbeddingProvider` and an `IChatClient`;
 order for embeddings: container-registered local/Analysis provider →
 `Orkeon:Embeddings` configuration → fail-fast at first use, never silently).
 
-Runnable, fully offline demos: `examples/rag/basic-ingestion`,
-`examples/rag/hybrid-retrieval`, `examples/rag/custom-reranker`,
-`examples/rag/crew-yaml`, and the scripting variant `examples/scripting/08-rag.ork.ts`.
+Runnable, fully offline demos: [`rag/basic-ingestion`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/basic-ingestion/README.md),
+[`rag/hybrid-retrieval`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/hybrid-retrieval/README.md),
+[`rag/custom-reranker`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/custom-reranker/README.md),
+[`rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md), and the scripting variant
+[`scripting/08-rag.ork.ts`](https://github.com/Orkeon/orkeon/blob/main/examples/scripting/08-rag.ork.ts).
+
+### Registration extensions
+
+`AddOrkeonRag(configuration)` is the one call a host needs; it composes the
+narrower extensions below, all `TryAdd*` (a host registration always wins) and
+safe to call on their own:
+
+| Extension | Registers |
+|---|---|
+| `AddOrkeonRag(configuration)` | The whole subsystem: options, loaders, validation, document store + hybrid decorator, manifests, both pipelines, profile resolver, and every extension below except the ONNX reranker and `AddOrkeonEphemeralSearch` |
+| `AddOrkeonQueryTransforms()` | `QueryTransformerFactory` with `none` / `multi-query` / `rag-fusion` / `hyde` |
+| `AddOrkeonRagReranking()` | `RerankerFactory` with `none` / `llm` plus every `IRerankerRegistrar` |
+| `AddOrkeonQueryRouting(configuration)` | The `IQueryComplexityClassifier` named by `Orkeon:Rag:QueryRouting:Classifier` |
+| `AddOrkeonHybridRetrieval(configuration, …)` | The `HybridSearchDocumentStore` decorator (BM25 + RRF) around the `IDocumentStore` |
+| `AddOrkeonCorrectiveRag(configuration)` | `IRetrievalEvaluator`, `IGroundednessChecker`, `CorrectiveRagPipeline` (experimental, `ORKEXP003`) |
+| `AddOrkeonRagWebFallback(configuration)` | The `IWebDocumentRetriever`, only when `Orkeon:Rag:WebFallback` is enabled **and** has an `Endpoint` |
+| `AddOrkeonKnowledgeAugmentation()` | `IKnowledgeContextAugmenter` (agent `knowledge:` attachments) |
+| `AddOrkeonRagEvaluation()` | Dataset loader, `IRagEvaluator`, report writer, `IRagEvalHarness` |
+| `AddOrkeonEphemeralSearch()` | `IEphemeralCollectionSearch` behind the `txt_search` / `mdx_search` / `pdf_search` / `directory_search` tools — fails at call time, not at registration, when `AddOrkeonRag` is absent |
+| `AddOrkeonOnnxReranker(configure?)` | `Orkeon.Rag.Onnx`: the `onnx` / `cross-encoder` reranker |
+| `AddOrkeonRagTools()` | `Orkeon.Tools.Rag`: `rag_search`, `rag_ingest`, `rag_eval` |
+
+So a host that calls `AddOrkeonRag` never calls the six narrower ones
+(`AddOrkeonQueryTransforms`, `AddOrkeonRagReranking`, `AddOrkeonQueryRouting`,
+`AddOrkeonHybridRetrieval`, `AddOrkeonKnowledgeAugmentation`,
+`AddOrkeonRagEvaluation`) itself — they are idempotent, so a second call is
+harmless. Call them alone only to compose a partial stack by hand, e.g. the
+evaluation harness over a host-built `IRagProfileResolver`, or a factory without
+the rest of the subsystem. Two ordering rules: `AddOrkeonHybridRetrieval`
+decorates the **last registered** `IDocumentStore` and throws when none is
+registered yet (it also binds `Orkeon:Rag:Retrieval:Hybrid`, flat `= true`
+shorthand included); `AddOrkeonKnowledgeAugmentation` needs an `IDocumentStore`
+and an `IEmbeddingProvider` at resolution — without it, agent `knowledge:`
+attachments are simply not injected (the orchestrator resolves the augmenter
+optionally). The genuinely opt-in extensions, which `AddOrkeonRag` does **not**
+call, are `AddOrkeonOnnxReranker`, `AddOrkeonEphemeralSearch` and
+`AddOrkeonRagTools`.
 
 ## Contracts
 
@@ -108,10 +147,10 @@ All in `Orkeon.Rag.Abstractions` (`Interfaces/`, `Models/`, `Options/`):
 | `IRagProfileResolver` | Profile name → memoized pipeline instance |
 | `IKnowledgeContextAugmenter` | Agent knowledge attachments → cited prompt block |
 | `IRagCollectionsBootstrapper` | Crew `rag:` block → kickoff ingestion |
-| `IRetrievalEvaluator`, `IGroundednessChecker` | Corrective hooks (verdicts, hallucination check — see [Corrective RAG](#corrective-rag-crag)) |
+| `IRetrievalEvaluator`, `IGroundednessChecker` | Corrective hooks (verdicts, hallucination check — see [Corrective RAG](#corrective-rag-crag)); experimental, `ORKEXP003` |
 | `IRagEvaluator`, `IRagEvalHarness`* | Offline evaluation (metrics, golden datasets) |
 | `IEphemeralCollectionSearch` | Throwaway in-memory collections (`AddOrkeonEphemeralSearch`) |
-| `IDocumentStoreCollectionProbe` | Capability probe the hybrid decorator and `MemoryProviderDocumentStore` key off |
+| `IDocumentStoreCollectionProbe` | Optional store capability (`HasContentAsync`): lets ingestion notice a manifest that outlived its data — implemented by `MemoryProviderDocumentStore` and forwarded by the hybrid decorator |
 
 \* the harness contract and its runner live in `Orkeon.Rag.Evaluation`; the
 evaluator port is in the abstractions.
@@ -140,7 +179,7 @@ flowchart LR
 
 | # | Stage | What it does | Trace data (excerpt) |
 |---|---|---|---|
-| 1 | `transform` | Named transformer produces retrieval texts (`none` skips) | `mode`, `kind`, `variants`, `variant_n` |
+| 1 | `transform` | Named transformer produces retrieval texts (`none` skips) | `mode`, `transformer`, `kind`, `variants`, `variant_1`…`variant_n` |
 | 2 | `retrieve` | `CandidateK` candidates **per retrieval text**; hybrid honoured per query by capable stores | `candidates`, `top_k`, `mode`, `hybrid`, `variants` |
 | 3 | `fuse` | Per-kind combination of the per-text rankings + dedup by chunk id, then opt-in MMR | `method` (`rrf`/`union`/`dedup`), `in`, `out`, `mmr*` |
 | 4 | `rerank` | Named reranker, cascade CandidateK → TopN (disabled: truncation in retrieval order) | `reranker`, `candidates`, `kept` |
@@ -216,7 +255,7 @@ The `rerank` stage narrows `CandidateK` candidates (default 50) to `TopN`
 | Name (aliases) | Implementation | Notes |
 |---|---|---|
 | `none` (`noop`) | `NoopReranker` | Truncation in retrieval order |
-| `llm` (`listwise`) | `LlmListwiseReranker` | One listwise chat call; tolerant parsing; fallback when no ONNX package |
+| `llm` (`listwise`) | `LlmListwiseReranker` | One listwise chat call; tolerant parsing (a malformed answer keeps the retrieval order); the built-in alternative when the ONNX package is absent — select it explicitly |
 | `onnx` (`cross-encoder`) | `Orkeon.Rag.Onnx` | ms-marco-MiniLM-L-6-v2 cross-encoder, int8 weights embedded, fully offline; `AddOrkeonOnnxReranker()` |
 
 Hosts contribute rerankers through `IRerankerRegistrar` — registered in DI,
@@ -224,6 +263,19 @@ applied when the singleton `RerankerFactory` is built, registration order
 irrelevant (this is how the ONNX package plugs in; see
 `examples/rag/custom-reranker` for a host-provided one). The factory itself is
 `TryAdd`-registered: a host-registered `RerankerFactory` wins outright.
+
+Reranked chunks carry their scorer in `ScoredChunk.ScoreOrigin`: `cross-encoder`
+(sigmoid-mapped logits in (0, 1)) or `llm-rerank` (normalized descending rank,
+best = 1.0).
+
+The ONNX reranker resolves its model lazily at first use: the companion package
+`Orkeon.Rag.Onnx.Model` when referenced (embedded weights, guaranteed offline),
+otherwise `OnnxRerankerOptions.ModelPath` + `VocabPath` (VFS virtual paths, both
+required), otherwise a loud error — the runtime never downloads weights
+(`tools/download-reranker-model.sh` in the package provisions them, SHA-256
+verified). `AddOrkeonOnnxReranker(o => …)` also sets `BatchSize` (default 16) and
+`MaxSequenceLength` (default 512); these options are C#-only, bound on no
+configuration section.
 
 ## Profiles
 
@@ -277,8 +329,8 @@ Bound over the selected preset — every key is an individual override.
 | Key | Default | Meaning |
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` / `corrective` (unknown fails loudly) |
-| `Orkeon:Rag:Collection` | — | Default collection when the call site names none |
-| `Orkeon:Rag:Provider` | ambient | Document-store provider alias (`inmemory`, `redis`, `sqlite`, `chromadb`, `pinecone`, `lancedb`…); unset = ambient `IMemoryProvider` |
+| `Orkeon:Rag:Collection` | — | Bound on `RagOptions.Collection`, but read by no shipped surface yet: every surface names its collection (`rag_search` falls back to `default`) |
+| `Orkeon:Rag:Provider` | ambient | Document-store provider alias (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider` |
 | `Orkeon:Rag:ConnectionString` / `ProviderOptions:*` | — | Passed to the memory-provider factory when `Provider` is set |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 50 | Wide stage of the cascade (always ≥ final TopN) |
@@ -311,6 +363,30 @@ Bound over the selected preset — every key is an individual override.
 kind/extension — text, CSV, HTML, PDF, `WebPageLoader` for URLs) → **security
 validation** → chunk (named strategy) → embed → upsert.
 
+| Loader | Claims | `SourceDescriptor.Kind` hint |
+|---|---|---|
+| `TextFileLoader` | `.txt`, `.md`, `.markdown`, `.text`, `.log` | `file` (or none) |
+| `CsvDocumentLoader` | `.csv` | `file` (or none) |
+| `HtmlDocumentLoader` | `.html`, `.htm` | `file` (or none) |
+| `PdfDocumentLoader` | `.pdf` | `file` (or none) |
+| `WebPageLoader` | `http://` / `https://` URLs | `url` / `web` (or none) |
+| `InlineTextLoader` | inline content (registered by `AddOrkeonEphemeralSearch`) | `text` |
+
+File loaders read through the VFS (virtual paths only). `WebPageLoader` fails
+closed without an `IUrlValidator` (`AddOrkeonInfrastructure()` registers one):
+every URL is SSRF-validated before the fetch, and its HTTP client follows no
+redirect, so an approved URL cannot be bounced to an internal address.
+
+| Chunking strategy (aliases) | Behaviour |
+|---|---|
+| `recursive` (`recursive_text`, `default`) | Recursive separator split — the default |
+| `sentence` (`sentences`) | Sentence-bounded chunks |
+| `structural` (`markdown`, `headings`) | Heading-aware split |
+| `semantic` | Closes a chunk when the next sentence drifts from the chunk's centroid (threshold 0.75, `similarity_threshold` extension); **without an embedding function it degrades to `structural`** — and `AddOrkeonRag` wires none |
+
+`ChunkingOptions` (per `IngestionRequest`) sizes chunks in **characters**:
+`MaxChunkSize` 1000, `Overlap` 200 by default.
+
 - **Validation** (ingestion-path security): `PromptInjectionDocumentValidator`
   and `ContentIntegrityValidator` run on every document; rejected content goes to
   the `IQuarantineStore` and provenance is recorded (`IProvenanceTracker`).
@@ -322,17 +398,23 @@ validation** → chunk (named strategy) → embed → upsert.
   and re-ingested. Failure posture: a missing/corrupt manifest degrades to full
   ingestion, an unwritable manifest directory degrades to a warning (ingestion
   works, just never incrementally) — never a crash.
+- **Stale manifest detection**: the manifest (VFS) and the default in-memory
+  store have different lifetimes — a second process would find every source
+  "unchanged" against an empty store. When the store implements
+  `IDocumentStoreCollectionProbe` and reports the collection empty while the
+  manifest lists sources, the manifest is discarded and the run ingests in full.
 - **`Reindex = true`** purges every recorded source and rebuilds the collection.
   It is also the only way to re-ingest after an embedding-profile change:
   a drift between the manifest's recorded profile and the active provider fails
   the run loudly rather than silently mixing incompatible vectors.
 - Glob sources (`*`, `**`, `?`) are expanded through the VFS by
   `SourceGlobExpander` at the consuming surfaces (scripting `rag.ingest`,
-  `rag_ingest` tool, eval harness corpus).
+  `rag_ingest` tool, CLI `orkeon rag ingest`, eval harness corpus). The crew
+  `rag:` block passes its `sources` verbatim: list concrete files or URLs there.
 
 ## Crew YAML integration
 
-Two YAML blocks, consumed at different moments (see `examples/rag/crew-yaml`):
+Two YAML blocks, consumed at different moments (see [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md)):
 
 ```yaml
 rag:                        # crew-level: collections ingested at crew creation
@@ -359,6 +441,26 @@ agents:
   and injects a bounded, numbered block with `[n]` citations into the agent's
   prompt.
 
+**Host requirement.** Both blocks need a host that calls `AddOrkeonRag` — the
+C# host of [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md) does. The stock
+`orkeon run crew.yaml` path (the shared runner host, `--events` included) does
+**not** register the RAG subsystem: a `rag:` block only logs *"declares a rag:
+block but the RAG subsystem is not registered"* and ingests nothing, and
+`knowledge:` attachments are silently not injected (the orchestrator resolves
+the augmenter optionally). `orkeon run` wires RAG only for `.ork.ts` scripts
+(the `rag.*` namespace), and `orkeon rag` for its own verbs.
+
+Keys actually consumed today:
+
+| Key | Consumed |
+|---|---|
+| `rag.collections.<name>.sources` | Yes — ingested at crew creation (verbatim, no glob expansion) |
+| `rag.collections.<name>.chunking` (`strategy`, `max_tokens`, `overlap`) | Yes — tokens converted to characters at ×4 |
+| `rag.provider`, `rag.defaults.profile` | Parsed into `RagCrewConfig`, read by nothing yet — the store is `Orkeon:Rag:Provider` |
+| `knowledge:` short form (`[product-kb]`) | Yes |
+| `knowledge:` long form (`collection`, `top_k` default 5, `min_score`, `max_context_tokens` default 2000) | Yes — the augmenter searches the store directly with these |
+| `knowledge:` long form `profile` | Parsed, not applied: attachments never run a profile pipeline |
+
 ## Scripting and CLI surfaces
 
 - **Scripting DSL** (`.ork.ts`): first-class `rag.ingest({ collection, sources,
@@ -369,7 +471,28 @@ agents:
   `query` and `retrieve` return the same payload shape and only `query` runs the
   generation stage, so a script that reads only `citations` should call
   `retrieve` — see below.
-- **CLI** (`orkeon`): `orkeon rag ingest|search|eval` over the same pipelines.
+- **CLI** (`orkeon`): `orkeon rag ingest|search|eval` over the same pipelines —
+  flags in the [CLI reference](../reference/cli.md#orkeon-rag).
+- **Agent tools** (`Orkeon.Tools.Rag`, `AddOrkeonRagTools()`, requires `AddOrkeonRag`):
+
+| Tool | Parameters | Behaviour |
+|---|---|---|
+| `rag_search` | `question` (required), `top_k` (default 3), `collection` (default `default`) | `IRagPipeline.QueryAsync` → answer + `Sources:` block with scores; `collection = "raggable-tree"` routes to the RaggableTree code index when one is registered |
+| `rag_ingest` | `collection`, `sources` (paths / globs) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
+| `rag_eval` | `dataset` (required), `collection`, `profile` (default `default`), `compare`, `k` (default 5), `use_llm_judge`, `reindex` | The offline harness below |
+
+> **Known limitation — not assignable from a YAML crew.** The three tools implement
+> `IBaseTool` only, while crew construction keeps only `ITool` instances
+> (`CrewFactory` and `AgentMapper` filter on `ITool`). A crew listing
+> `tools: [rag_search]` therefore loses the tool: dropped with a *"not found in
+> registry"* warning under lenient resolution (the `CrewFactory` default), rejected
+> as an unknown tool under `StrictTools` (the runners' default) — even in a host
+> that called `AddOrkeonRagTools()`. The only wrapper that turns them into `ITool`
+> is the `--events` observer of `orkeon run`, and the YAML path of `orkeon run`
+> does not register the RAG tools in the first place. What works today: the
+> scripting facade (`tools.ragSearch` / `tools.ragIngest` and `rag.*` in `.ork.ts`
+> scripts), direct calls from C#, and, for grounding an agent in a YAML crew, the
+> `knowledge:` attachment above.
 
 ## Retrieval without generation
 
@@ -412,9 +535,10 @@ published number instead of a claim:
   `question`, `relevant` source refs (suffix-matched against ingested ids),
   `expected_substrings`, `reference_answer`, `tags`. The corpus is ingested
   (incrementally) before every run.
-- **Metrics**: recall@k and MRR per case and aggregated; generation is judged by
-  an LLM judge when available, with a deterministic heuristic fallback — the
-  report always labels which judge ran.
+- **Metrics**: recall@k, precision@k and MRR per case and aggregated (deterministic);
+  generation (groundedness, answer-relevance) is judged by an LLM judge when
+  available, with a deterministic heuristic fallback — the report always labels
+  which judge ran.
 - **Profiles compared** in one run: `orkeon rag eval --dataset … --compare
   fast,balanced,quality,corrective,adaptive --offline` (`--offline` swaps
   generation for a deterministic extractive stub — zero network; the measured
@@ -422,7 +546,7 @@ published number instead of a claim:
 - **CI gate** (`.github/workflows/rag-eval.yml`): the comparison table is
   published to the step summary, and an anti-regression gate fails the build
   when the `balanced` profile's aggregate recall@5 or MRR drops below the
-  floors. Cases tagged `correctif` are excluded from the gates: they are seeded
+  floors (`--min-recall 0.80 --min-mrr 0.70`, the workflow's `env:` block). Cases tagged `correctif` are excluded from the gates: they are seeded
   to fail single-shot retrieval on purpose (see below).
 
 ## Corrective RAG (CRAG)
@@ -435,6 +559,10 @@ edges, controlled cycles and the graph's native circuit breaker. The corrective
 engine is not a bespoke loop bolted onto RAG; RAG demonstrates the `Graph`
 orchestration mode and vice versa. Same `IRagPipeline` façade as every other
 profile: the profile selects the executor, callers only ever see a `RagAnswer`.
+The corrective types (`CorrectiveRagPipeline`, `IRetrievalEvaluator`,
+`IGroundednessChecker`, `IWebDocumentRetriever`, `AddOrkeonCorrectiveRag`…) are
+marked experimental — diagnostic `ORKEXP003`, see
+[experimental APIs](../reference/experimental-apis.md).
 
 ### Graph topology
 
@@ -555,9 +683,12 @@ misses it — is proven by
 embeddings, real hybrid store; the LLM is scripted for the two roles CI cannot
 provide, and labelled as such). In the fully offline eval table `corrective`
 scores **0.78 recall@5 / 0.64 MRR — below `quality`**: the extractive stub
-degrades the graph's LLM nodes (pseudo-random verdicts, degenerate rewrite
-probe). That artifact is analysed line by line in
-`examples/rag/eval/README.md` — published as measured, not smoothed over.
+degrades the graph's LLM nodes — the grader fishes grade words out of echoed
+passages, and every rewrite collapses to one degenerate probe shared by all
+cases. Proof: with `Corrective:MaxIterations = 0` (no rewrite possible) the row
+returns to the linear profiles' 0.89 / 0.89. That artifact is analysed line by
+line in [`examples/rag/eval/README.md`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/eval/README.md) — published as
+measured, not smoothed over.
 
 ## Architecture decisions
 

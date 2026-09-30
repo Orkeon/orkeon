@@ -26,7 +26,11 @@ Ce document décrit :
 Projet : `src/analyzers/Orkeon.Compliance.Vfs/`
 Cible : analyseur Roslyn `netstandard2.0`, câblé dans `src/Directory.Build.props` avec `OutputItemType=Analyzer`.
 
-L'analyseur s'applique à chaque projet sous `src/` sauf lui-même, donc les violations cassent le build immédiatement. Les tests exécutent le même analyseur via le projet `Orkeon.Compliance.Vfs.Tests`.
+L'analyseur s'applique à chaque projet sous `src/` sauf lui-même (une `ProjectReference` avec `ReferenceOutputAssembly=false`), donc les violations cassent le build immédiatement. `tests/analyzers/Orkeon.Compliance.Vfs.Tests` exerce chaque règle sur des extraits compilés.
+
+Les appels sont jugés sur leur **symbole résolu**, pas sur leur graphie : `using static System.IO.File; ReadAllText(p)` déclenche `ORKVFS001` comme `File.ReadAllText(p)`, et un `FileStream fs = new(path, …)` typé par la cible déclenche `ORKVFS003` comme `new FileStream(path, …)`.
+
+Le même analyseur est publié sur NuGet sous le nom `Orkeon.Compliance.Vfs` (dépendance de développement, sans aucune dépendance d'exécution vers Orkeon — voir la [matrice de publication](../reference/publication-matrix.md)), pour les projets qui veulent le même garde-fou. Hors de ce dépôt, ses sévérités se règlent de la manière Roslyn standard, dans `.editorconfig` (`dotnet_diagnostic.ORKVFS007.severity = none` pour un projet qui n'utilise pas `IFileSystemService`).
 
 ## Codes de diagnostic
 
@@ -36,7 +40,7 @@ L'analyseur s'applique à chaque projet sous `src/` sauf lui-même, donc les vio
 | <a id="ork-vfs-002"></a>`ORKVFS002` | Error | Appel direct à `System.IO.Directory.*` | Utiliser `CreateDirectoryAsync`, `DeleteAsync`, `EnumerateFilesAsync` |
 | <a id="ork-vfs-003"></a>`ORKVFS003` | Error | `new FileStream(string …)`, `new FileInfo(string)`, `new DirectoryInfo(string)` | Utiliser `OpenReadStreamAsync`, `OpenWriteStreamAsync`, `TryGetEntryAsync` |
 | <a id="ork-vfs-004"></a>`ORKVFS004` | Error | `Path.GetFullPath(…)` (peut contourner la validation des mounts) | Pour une entrée fournie par l'utilisateur, appeler `ResolveAndValidate` |
-| <a id="ork-vfs-005"></a>`ORKVFS005` | Error | `new FileSystemWatcher(…)` | Utiliser l'abstraction watcher du VFS |
+| <a id="ork-vfs-005"></a>`ORKVFS005` | Error | `new FileSystemWatcher(…)` | Injecter `IVirtualFileSystemWatcher` et consommer `WatchAsync` (événements de changement en chemins virtuels) |
 | <a id="ork-vfs-006"></a>`ORKVFS006` | Error | `new StreamReader(string)` / `new StreamWriter(string)` (surcharges par chemin) | Ouvrir via `OpenReadStreamAsync` / `OpenWriteStreamAsync` et envelopper le `Stream` retourné |
 | <a id="ork-vfs-007"></a>`ORKVFS007` | Error | Champ ou paramètre `IFileSystemService?` nullable | Injecter `IFileSystemService` en dépendance requise (non-nullable) |
 
@@ -61,20 +65,19 @@ Tout autre fichier légitimement « brut » s'appuie sur un `[SuppressVfsComplia
 
 ## Opt-out : `[SuppressVfsCompliance]`
 
-Pour les exceptions documentées qui ne correspondent à aucune exemption par chemin, appliquer l'attribut défini dans `Orkeon.Domain.Attributes/SuppressVfsComplianceAttribute.cs` :
+Pour les exceptions documentées qui ne correspondent à aucune exemption par chemin, appliquer l'attribut déclaré dans `src/core/Orkeon.Domain/Attributes/SuppressVfsComplianceAttribute.cs` (espace de noms `Orkeon.Compliance.Vfs`). L'analyseur le reconnaît à son nom complet, pas à son assembly : un projet qui ne référence pas `Orkeon.Domain` en déclare sa propre copie `internal` — c'est ce que fait `Orkeon.Hosting.Aspire` :
 
 ```csharp
-[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: mount registration runs before DI")]
-public sealed class SandboxSession { … }
+[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-BOOTSTRAP: provisions the physical directory the /sandbox mount points at")]
+internal sealed partial class SandboxSession { … }
 
-[Obsolete("Use ReadAsync(…) instead")]
-[Orkeon.Compliance.Vfs.SuppressVfsCompliance("EXCEPTION-OBSOLETE: transitional API; callers should migrate")]
-public static string LoadLegacy(string path) => File.ReadAllText(path);
+[SuppressVfsCompliance("OUT-OF-SCOPE: probes external toolchain (esbuild) binary location, not a VFS mount.")]
+internal string ResolveBinary() { … }
 ```
 
 Placement :
 - **Assembly** — opt-out large pour un projet entier (à utiliser avec parcimonie, préférer un périmètre plus étroit).
-- **Classe / struct** — exempte tous les membres d'un type (classes d'outils avec fallbacks `if (_fs is null)`).
+- **Classe / struct** — exempte tous les membres d'un type (p. ex. une classe de bootstrap comme `RunnerHost`).
 - **Méthode / constructeur / propriété / champ** — périmètre le plus étroit.
 
 L'argument `reason` est obligatoire et doit nommer la catégorie d'audit dont il relève :
@@ -99,6 +102,9 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 | Bootstrap (pré-DI) | `SandboxSession`, ConsoleApp `Cli*MountBootstrapper`, `Hosting/Runner*`, `Hosting/CrewMountDeclarations` (pré-lit le bloc `mounts:` d'une crew, VFS-90) | `EXCEPTION-BOOTSTRAP` | Lisent appsettings + montent avant que le VFS existe. Couvre le *provisionnement* d'un montage, jamais l'exposition d'un chemin physique comme chemin virtuel — voir [ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md) |
 | Sondage hôte | `DockerSandbox`, `ProcessIsolationSandbox`, `ProcessGitDiffProvider` | `OUT-OF-SCOPE` | Découvrent `docker`/`dotnet`/`git` sur le PATH, jamais un mount |
 | Toolchain | `Scripting/Toolchain/EsbuildTranspiler.cs` | `OUT-OF-SCOPE` | Localise le binaire `esbuild` + fichiers temp de transpilation ; chaîne d'outils hôte |
+| Applications hôtes (pré-DI) | `orkeon-host` (`CrewHostService`, `HostCrewMounts`, `HostStartup`), `Hosting/CrewDirectoryLayout`, le point d'entrée `orkeon` (`Orkeon.Scripting.Cli`, à l'échelle de l'assembly), le `Program` du REPL | `EXCEPTION-BOOTSTRAP` | Valident ou classent les chemins de crew, de script et de settings fournis par l'opérateur avant qu'aucun mount n'existe |
+| Orkeon Studio | `Orkeon.Studio.Core` / `.Run` / `.Wpf` (fichier de settings, équipes, profils de modèles, historique des lancements, sélecteurs de dossiers, sessions de forge) | `EXCEPTION-BOOTSTRAP` | Studio est une application hôte : il édite les fichiers et dossiers de l'utilisateur, jamais les chemins virtuels d'une crew |
+| Planification des lancements | `LaunchMountPlan`, `MountOverrideSemantics`, `ITargetProbe`, `OrkeonBinaryLocator`, `IExecutableProbe` ; le `AddOrkeonCrewRun` d'Aspire | `OUT-OF-SCOPE` | Composent la ligne de commande et les chaînes de mount d'un processus qu'ils lancent, ou trouvent le binaire `orkeon` |
 | Primitive sécurité | `Security/PathValidator.cs` | (allowlist) | résolution symlink/realpath = son rôle |
 | Watcher bridge | `Analysis/.../FileSystemWatcherCodebaseWatcher.cs` | `EXCEPTION-WATCHER-BRIDGE` | Adapte `System.IO.FileSystemWatcher` vers `ICodebaseWatcher` |
 | Sonde RaggableTree | `Analysis/Core/FileSystemDiscoverer.cs` (sonde diagnostique uniquement) | `OUT-OF-SCOPE` | La *découverte batch elle-même* utilise `EnumerateFilesAsync` ; la sonde compte délibérément les entrées physiques pour distinguer « le VFS n'a rien renvoyé » de « le disque est vide » |
@@ -110,6 +116,32 @@ Ces accès ne peuvent pas passer par le VFS par nature et sont **définitivement
 2. Travailler en chemins virtuels (`/workspace/...`, `/output/...`, `/tmp/...`).
 3. Ne jamais ajouter de fallback `System.IO` par chemin `string`. Il n'existe pas de constructeur de rétro-compatibilité — la DI est la seule voie de construction.
 4. Pour énumérer, streamer, copier ou observer, utiliser les méthodes dédiées de `IFileSystemService` plutôt que les primitives `System.IO` équivalentes (y compris `StreamReader`/`StreamWriter` — envelopper un `Stream` issu de `OpenReadStreamAsync`/`OpenWriteStreamAsync`, jamais un chemin).
+
+## Mounts, droits et visibilité
+
+`IFileSystemService` (`Orkeon.Domain.FileSystem`) est toute la surface dont un composant a
+besoin : `ResolveAndValidate` (virtuel → physique, contrôlé contre un `FileAccessRights`
+requis), `ToVirtualPath`, `GetAvailableMounts`, `EnumerateFilesAsync`, `ExistsAsync`,
+`GetEntryKindAsync`, `TryGetEntryAsync`, `TryReadAllTextAsync` / `TryReadAllBytesAsync`,
+`OpenReadStreamAsync`, `WriteAllTextAsync` / `WriteAllBytesAsync` / `AppendAllTextAsync`,
+`OpenWriteStreamAsync` / `OpenAppendStreamAsync`, `CreateDirectoryAsync`, `DeleteAsync`,
+`CopyAsync`. Les notifications de changement viennent de l'interface distincte
+`IVirtualFileSystemWatcher`. `AddOrkeonFileSystem(configuration)` enregistre les deux.
+
+Un mount se déclare par une chaîne — `[<ulid>|]<physique>:<virtuel>:<droits>[;<sous-chemin>:<droits>…]` :
+
+- `<virtuel>` doit commencer par `/` ; un chemin physique qui contient `:` ou `;`, ou qui finit
+  par une barre oblique inverse, se met entre guillemets (`"C:\src\":/workspace:ro`).
+- `<droits>` vaut `ro` (`FileAccessRights.ReadOnly`), `rw` (`ReadWrite` = Read, Write, Create,
+  Delete) ou `rwnd` (`ReadWriteNoDelete`) ; chaque `;<sous-chemin>:<droits>` redéfinit les
+  droits d'un sous-arbre.
+- L'ULID facultatif de 26 caractères avant `|` identifie l'entrée (VFS-90) — voir la
+  [référence de configuration](../reference/configuration.md).
+
+`FileAccessRights` est une énumération de drapeaux (`Read`, `Write`, `Create`, `Delete`) ;
+chaque opération déclare le droit qu'elle exige et le registre refuse l'appel quand le mount
+(ou la redéfinition du sous-arbre) ne l'accorde pas. `MountVisibility` vaut `AgentFacing` (le
+défaut, listé par `GetAvailableMounts` et dans le prompt des agents) ou `Internal` (ci-dessous).
 
 ## Racines internes et accès privilégié
 
@@ -201,7 +233,7 @@ Les sept diagnostics (`ORKVFS001`–`ORKVFS007`) sont tous des **erreurs**, donc
 
 - [x] `VIOLATION-HISTORIC == 0` — les 23 violations historiques ont été éliminées dans P5-VFS-50.
 - [x] `VIOLATION-NEW` réduit aux exceptions documentées derrière des gardes `[Obsolete]` / `if (_fs is null)`, toutes couvertes par `[SuppressVfsCompliance]`.
-- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — actuellement 7, toutes légitimes (`SandboxSession`).
+- [x] `EXCEPTION-BOOTSTRAP` ≤ 15 — 7 à la clôture du programme, toutes légitimes (`SandboxSession`). Le seuil portait sur les bibliothèques du framework ; les applications hôtes ajoutées depuis (runners, `orkeon-host`, le REPL, Studio) portent leurs propres portées de bootstrap, listées dans le tableau des exceptions ratifiées ci-dessus.
 - [x] Analyseur Roslyn `Orkeon.Compliance.Vfs` en place et câblé dans `src/Directory.Build.props`.
 - [x] Le build passe proprement ; un test négatif confirme qu'un `File.ReadAllText` délibéré dans le code du framework déclenche `ORKVFS001`.
 - [x] Éliminer les suppressions `EXCEPTION-BACKCOMPAT` résiduelles en migrant tous les appelants d'outils vers la DI — **fait dans VFS-70** : 0 `EXCEPTION-BACKCOMPAT` et 0 `EXCEPTION-OBSOLETE` lié au FS ne subsistent dans `src/` ; tous les outils fichier + le chemin d'ingestion de connaissances (désormais les loaders `Orkeon.Rag`, RAG-02) exigent un `IFileSystemService` non-nullable ; SQLite gouverné via `ResolveAndValidate` ; `ORKVFS004` promu en erreur et `ORKVFS006`/`ORKVFS007` ajoutés pour fermer les angles morts `StreamReader/Writer(string)` et `IFileSystemService` nullable.

@@ -2,7 +2,7 @@
 
 # E-mail tools
 
-> **See also**: [Tool inventory](../tools/inventory.md) · [Security](../architecture/security.md) · [Configuration reference](../reference/configuration.md) · [CLI reference](../reference/cli.md#orkeon-email) · [ADR-012](../adr/ADR-012-email-tool-family.md) · [Back to the index](../INDEX.md)
+> **See also**: [Tutorial — give your agents a mailbox](../getting-started/give-your-agents-a-mailbox.md) · [Tool inventory](../tools/inventory.md) · [Security](../architecture/security.md) · [Configuration reference](../reference/configuration.md) · [CLI reference](../reference/cli.md#orkeon-email) · [ADR-012](../adr/ADR-012-email-tool-family.md) · [Back to the index](../INDEX.md)
 
 The e-mail family (`Orkeon.Tools.Email`) gives agents a mailbox. They can search a folder,
 read a message, save its attachments, sort mail into folders, mark it, delete it, write
@@ -38,7 +38,7 @@ decision and the alternatives it rejected are in [ADR-012](../adr/ADR-012-email-
 | Tool | Right needed | What it does |
 |---|---|---|
 | `email_accounts` | none | Lists the configured accounts: the name to pass as `account`, their rights, whether each is ready |
-| `email_folders` | Read | Lists the folders, with their role (inbox, sent, drafts, trash, junk, archive) and counts |
+| `email_folders` | Read | Lists the folders, with their role (inbox, sent, drafts, trash, junk, archive, all) and counts |
 | `email_search` | Read | Searches one folder, newest first; returns the ids the other tools take |
 | `email_read` | Read (+ Organize for `mark_read`) | Reads one message: headers, attachments, and the body in slices; it stays unread unless `mark_read` |
 | `email_save_attachment` | Read, plus a writable mount | Saves one attachment, or all of them, into a virtual directory |
@@ -246,7 +246,7 @@ with the Gmail and Outlook presets only). Under `Orkeon:Tools:Email:Accounts`:
 
 `Security` is `SslOnConnect` (the default: TLS from the first byte), `StartTls` (a plain
 connection upgraded, and the upgrade is then mandatory) or `None` — accepted only towards a
-local test server (`localhost`, `127.0.0.1`, `::1`). No option accepts an invalid
+local test server (`localhost` or a loopback address such as `127.0.0.1` or `::1`). No option accepts an invalid
 certificate. A port left out follows the security:
 
 | Protocol | `SslOnConnect` | `StartTls` or `None` |
@@ -273,8 +273,9 @@ runner only reads whether an OAuth account needs the token store. An account is 
 first time a tool or a command uses it, and every problem of its declaration is reported at
 once, so a broken e-mail section never breaks a crew that sends no mail. A value that cannot
 even be read — a misspelt right, a port written in words — sets that one account aside the
-same way, and is reported first. `orkeon email accounts` shows those problems without
-connecting.
+same way, and is reported first — except an unreadable `Screening:WithholdRejected`, which
+turns withholding on and sets every account aside until it is fixed. `orkeon email accounts`
+shows those problems without connecting.
 
 | Key | Meaning | Default |
 |---|---|---|
@@ -292,7 +293,7 @@ connecting.
 | `…:Auth:Username` | The login name | the address |
 | `…:Auth:PasswordEnvVar` | The **name** of the environment variable holding the password | required with `Password` |
 | `…:Auth:ClientId` | The OAuth client id (Google Cloud or Microsoft Entra application) | required with `OAuth2` |
-| `…:Auth:ClientSecretEnvVar` | The **name** of the environment variable holding the client secret | required for Gmail OAuth2 |
+| `…:Auth:ClientSecretEnvVar` | The **name** of the environment variable holding the client secret | required for Gmail OAuth2; optional for Outlook (a confidential Entra client) |
 | `…:Auth:Tenant` | Microsoft tenant: `consumers`, `organizations`, `common` or a tenant id | `consumers` |
 | `…:Send:AllowedRecipients` | Who may receive mail: addresses, `*@domain`, `*` | empty — nobody |
 | `…:Send:MaxRecipients` | Most recipients one message may have | no cap |
@@ -431,7 +432,8 @@ account of the settings file it resolves.
   the slice ends; address lists that would crowd the body out keep five addresses and a last
   entry such as `(+37 more)`. The notice and the verdict come first, the body last.
 - **Search criteria are ANDed.** `from`, `to` (the To header), `subject` and `text` (subject
-  or body) match a substring, case ignored; `since` and `before` take a date or an ISO 8601
+  or body) match a substring, case ignored — on an Outlook account read through Graph they go
+  through KQL instead, where each word must match a whole word or a word prefix; `since` and `before` take a date or an ISO 8601
   date-time — IMAP compares whole days. `limit`, `max_chars` and `offset` outside their range
   are clamped, not refused.
 - **Folders take a path or a role.** A path is `/`-separated whatever the server's separator
@@ -460,10 +462,11 @@ account of the settings file it resolves.
 - `email_send` answers with the Message-Id and the recipients. A `warning` means the message
   left but a follow-up step failed — filing the Sent copy: do not send it again.
 - `email_save_attachment` never overwrites a file, and writes under a sanitized name: the
-  last segment of the sender's name only, `_` for control characters and `<>:"/\|?*`, no
-  leading dot and no trailing dot or space, a leading `_` before a Windows device name
+  last segment of the sender's name only, trimmed, `_` for control and invisible formatting
+  characters (a right-to-left override, for instance) and `<>:"/\|?*`, no leading dot and no
+  trailing dot or space, a leading `_` before a Windows device name
   (`CON`, `NUL`, `COM1`…), 120 characters at most, `attachment-1.pdf` for a nameless first
-  attachment, `name (1).ext` for a second one of the same name.
+  attachment (`.bin` when its type is unknown), `name (1).ext` for a second one of the same name.
 
 ## The `orkeon email` commands
 
@@ -471,7 +474,7 @@ The operator's side of the family — never an agent's:
 
 | Command | What it does |
 |---|---|
-| `orkeon email accounts [--settings <file>] [--json]` | Lists the declared accounts, their preset, protocols, rights and readiness, with what to fix — ready means the password variable is set, or the client secret the account names is set and a token is stored. No network, no secret printed. `--json` uses the names of `email_accounts` (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `auth`, `default`, `ready`, `problem`) |
+| `orkeon email accounts [--settings <file>] [--json]` | Lists the declared accounts, their preset, protocols, rights and readiness, with what to fix — ready means the password variable is set, or the client secret the account names is set and a usable (valid or refreshable) token is stored. No network, no secret printed. `--json` writes a JSON array of the entries `email_accounts` lists (`name`, `address`, `provider`, `reads`, `sends`, `rights`, `default`, `ready`, `problem`), plus `auth` (`Password` or `OAuth2`) |
 | `orkeon email login <account> [--settings <file>]` | Signs an OAuth2 account in and stores its tokens (device code for Microsoft, browser and loopback for Google) |
 | `orkeon email logout <account> [--settings <file>]` | Forgets the stored tokens of an OAuth account |
 | `orkeon email check <account> [--settings <file>]` | Connects, authenticates, lists the folders and prints the inbox counts |
@@ -481,8 +484,9 @@ Settings resolve like `orkeon run`, anchored at the current directory: `--settin
 walking up, else the per-user settings file. Run the commands from the folder that holds the
 crew's settings file, or pass that file with `--settings`. Exit codes: `0` success; `1` what
 the operator fixes — usage, configuration, an unknown account, a variable not set, a sign-in
-needed (a provider that issued no refresh token included); `2` what the server or the network
-did — a connection failure, credentials or an authorization the provider refused; `130`
+needed (a provider that issued no refresh token included), a sign-in declined in the browser or
+a device code denied or expired; `2` what the server or the network did — a connection failure,
+credentials or an authorization the provider refused (a state mismatch included); `130`
 cancelled. The tools never start a sign-in themselves: an OAuth account without a usable token
 answers "run `orkeon email login <account>`". The full reference is in the
 [CLI reference](../reference/cli.md#orkeon-email).
@@ -525,21 +529,32 @@ scopes: change one of them and the account asks for a new login instead of sendi
 somewhere it was not issued for. Run `orkeon email logout` before such a change, or delete
 the old file. `orkeon-repl` registers the tools but keeps no token store: there, password
 accounts work and OAuth accounts are refused with a message that says so. A user mount that
-claims `/credentials` is refused whatever the accounts — by every command before it starts,
-and by Orkeon Studio in its mount editor.
+claims `/credentials` is refused whatever the accounts — by every `orkeon` command and by
+`orkeon-host` before they start (not by `orkeon-repl`, which mounts no `/credentials`), and by
+Orkeon Studio in its mount editor.
 
 ## In a host of your own
 
-`services.AddOrkeonEmailTools(configuration)` registers the family in any service collection.
+`services.AddOrkeonEmailTools(configuration)` (namespace `Orkeon.Tools.Email.DependencyInjection`;
+the family ships in the `Orkeon.Tools` package) registers the family in any service collection.
+The call is idempotent — a second one adds nothing, the first configuration wins — and brings
+its own named HTTP client (`orkeon.email`).
 The tools that read or write files (`email_save_attachment`, `email_draft`, `email_send`,
 `email_parser`) resolve an `IFileSystemService`: register the virtual file system first.
 Password accounts then work as they do under the runner. OAuth accounts need a token store:
 `services.AddOrkeonEmailTokenStore(sp => fileSystem, "/credentials/email")` keeps the tokens
 under a virtual directory of the file system it returns — a privileged view over an internal
 mount, as the runner does — or register an `IEmailTokenStore` of your own, backed by a vault
-for instance. Without one, OAuth accounts answer "This host keeps no OAuth tokens". The
-public `EmailAccountAdministration` service does what `orkeon email` does — list the
-accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out, check it.
+for instance (it stores `EmailTokenSet` records — access token, refresh token, expiry, scopes —
+under keys of the form `<account>-<digest>`). The store may be registered before or after the
+family. Without one, OAuth accounts answer "This host keeps no OAuth tokens". The runner's
+decision is reusable: `EmailCredentialsLocation.NeedsTokenStore(section)` says whether the
+`Orkeon:Tools:Email` section declares an OAuth account, `ConfiguredDirectory(section)` returns
+its `CredentialsDirectory`, and `TokenSubdirectory` is `email`. The public
+`EmailAccountAdministration` service (resolved from DI after `AddOrkeonEmailTools`) does what
+`orkeon email` does — list the accounts, sign one in through an `IEmailLoginInteraction` of
+yours, sign it out, check it; its failures are `EmailToolException`s carrying an
+`EmailErrorCode` a host can branch on, the codes the CLI maps to its exit codes.
 
 ## Troubleshooting
 
@@ -554,8 +569,8 @@ accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out,
 - **The device code expired** — Microsoft's codes last about fifteen minutes; run the login
   again and enter the new code.
 - **The browser cannot reach `127.0.0.1`** during a Google login — paste the final address
-  into the terminal (see [Gmail with OAuth2](#gmail-with-oauth2)). "State mismatch" means the
-  pasted address belongs to an earlier attempt.
+  into the terminal (see [Gmail with OAuth2](#gmail-with-oauth2)). "The redirect did not come
+  from this sign-in (state mismatch)" means the pasted address belongs to an earlier attempt.
 - **"The provider issued no refresh token"** — Microsoft: add `offline_access` to the
   application's permissions. Google: revoke the application's access in your Google
   Account's third-party access page, then log in again.
@@ -576,6 +591,10 @@ accounts, sign one in through an `IEmailLoginInteraction` of yours, sign it out,
   `CredentialsDirectory`).
 - **`orkeon email` does not run the crew folder named `email`** — the verb is matched first;
   run the folder with `orkeon run email`.
+- **An `.ork.ts` script stops after about thirty seconds** — the scripting sandbox bounds a
+  whole run to 30 s of wall-clock time by default, awaited mail and model calls included.
+  Raise `Orkeon:Scripting:Limits:ExecutionTimeout` in the settings file (`"00:10:00"`), as
+  the [triage example](https://github.com/orkeon/orkeon/blob/main/examples/scripting/13-email-triage.appsettings.json) does. A YAML crew is not bound by it.
 
 ## Limits
 

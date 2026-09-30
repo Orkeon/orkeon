@@ -4,8 +4,8 @@
 
 > **See also**: [Security policy](../../SECURITY.md) · [Publication matrix](../reference/publication-matrix.md) · [Back to the index](../INDEX.md)
 
-Every Orkeon artefact — the NuGet packages, the installers, the CLI archives, the
-`.deb`, the MSIs — is built by a public GitHub Actions workflow and **attested**: GitHub
+Every released Orkeon artefact — the NuGet packages, the installers, the CLI archives, the
+`.deb`, the MSIs, the SBOM — is built by a public GitHub Actions workflow and **attested**: GitHub
 signs a statement saying *this exact file was produced by this workflow, at this commit,
 in this repository*. You can check that statement yourself, with tools you already
 have, without trusting the maintainer, the download page, or this document.
@@ -18,12 +18,16 @@ was run on the `v1.0.0-rc.3` artefacts before being written down here.
 | Mechanism | Where it lives | What it proves |
 |---|---|---|
 | **Trusted Publishing (OIDC)** to NuGet.org | `publish.yml`, step *NuGet.org login* (`NuGet/login`) | The push used a short-lived key minted for that one workflow run. There is no long-lived NuGet API key anywhere — none can leak, none needs rotating. |
-| **Build provenance attestation** (SLSA v1, Sigstore) | `publish.yml`, step *Attest the packages and the SBOM* — on every `*.nupkg`; `release.yml`, step *Attest the release assets* — on every archive, `.deb` and MSI | The SHA-256 of the file is recorded in a statement signed by GitHub's Sigstore instance, naming the workflow file, the tag, the commit and the run. A file with a different digest has no statement. |
+| **Build provenance attestation** (SLSA v1, Sigstore) | `publish.yml`, step *Attest the packages and the SBOM* — on every `*.nupkg`; `release.yml`, step *Attest the release assets* — on every archive, `.deb`, MSI and the SBOM | The SHA-256 of the file is recorded in a statement signed by GitHub's Sigstore instance, naming the workflow file, the tag, the commit and the run. A file with a different digest has no statement. |
 | **`ContinuousIntegrationBuild=true`** at pack time | `publish.yml`, step `dotnet pack` | Paths inside the PDBs and assemblies are normalised, so the packed bytes do not depend on the runner's directory layout. It is a *deterministic-build* setting, not a guarantee that you can rebuild the identical bytes yourself — the SDK, the runner image and the NuGet graph would have to match. |
-| **`SHA256SUMS`** manifests | Release assets (`SHA256SUMS`, and `SHA256SUMS.msi` for the MSIs) | Integrity of what you downloaded against what the workflow uploaded. Cheap, offline, but the manifest is itself just a release asset: it is the attestation that ties it to the workflow. |
-| **Pinned actions and base images** | Every `uses:` is a commit SHA; every `FROM` is a digest | What ran on the runner is what the repository says ran. |
+| **`SHA256SUMS`** manifests | Release assets (`SHA256SUMS` for the archives, the `.deb` and the SBOM; `SHA256SUMS.msi` for the two MSIs) | Integrity of what you downloaded against what the workflow uploaded. Cheap, offline, but the manifests are just release assets and are not attested themselves: the attestation of each file they list is what ties that file to the workflow. |
+| **Post-publish verification** | `release-verify.yml`, on every published Release | Once the Release exists, a fresh runner downloads the *published* assets, checks both manifests, and walks the onboarding smoke again on the `.deb` and the `osx-arm64` tarball — so an asset that differs from what the release smokes installed is caught. |
+| **Pinned actions and base images** | Every `uses:` is a commit SHA; every external `FROM` image is pinned by digest | What ran on the runner is what the repository says ran. |
 
-What it does **not** establish: anything about the *quality* of the code. An attestation
+Two things carry **no** attestation: the dev builds of `main` on GitHub Packages
+(`<version>.dev.<n>`, see below) and the `orkeon-runners` container image on GHCR.
+
+What the chain does **not** establish: anything about the *quality* of the code. An attestation
 says that the bytes came out of `.github/workflows/publish.yml` at commit X — not that
 commit X is bug-free, safe to run with your credentials, or reviewed by anyone. Read the
 [threat model](../../SECURITY.md#threat-model--llm-driven-tool-execution) for that.
@@ -109,12 +113,16 @@ the archive it stops rather than emit something that would fail verification any
 
 ## Verify the software bill of materials
 
-Every release after `v1.0.0-rc.3` ships a CycloneDX SBOM next to its assets
-(`orkeon-<version>.sbom.cdx.json`) — the full NuGet dependency graph of `Orkeon.sln`,
-generated on the same runner, right after the pack, and covered by the **same**
-attestation as the archives. Verify it like any other asset:
+Every release cut since the SBOM step landed (2026-09-11 — so not `1.0.0-rc.3`, which
+predates it) ships a CycloneDX SBOM next to its assets (`orkeon-<version>.sbom.cdx.json`) —
+the full NuGet dependency graph of `Orkeon.sln`, transitive packages included, generated by
+a pinned `CycloneDX` dotnet tool on the same runner right after the installers are
+packaged, listed in `SHA256SUMS` and covered by the **same** attestation as the archives.
+Verify it like any other asset:
 
 ```bash
+VER=<version>   # a release that ships an SBOM
+curl -fsSL -O "https://github.com/Orkeon/orkeon/releases/download/v$VER/orkeon-$VER.sbom.cdx.json"
 gh attestation verify "orkeon-$VER.sbom.cdx.json" --repo Orkeon/orkeon
 ```
 

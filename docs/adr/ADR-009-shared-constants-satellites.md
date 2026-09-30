@@ -4,7 +4,7 @@
 
 # ADR-009 — A constant two projects must agree on lives in a satellite, not in a copy
 
-**Status**: Accepted · **Date**: 2026-08-29
+**Status**: Accepted — implemented: the five satellites listed under *As built* exist under `src/constants/` · **Date**: 2026-08-29
 · **Scope**: `src/constants/*`, `Orkeon.Domain`, `Orkeon.Infrastructure`, `Orkeon.Hosting`, `Orkeon.Studio.Core`
 
 ## Context

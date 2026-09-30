@@ -94,6 +94,27 @@ now 27. The counts above are kept as written — this ADR is a frozen decision
 record; [the RaggableTree guide](./raggable-tree.md) is the authoritative,
 maintained inventory.
 
+## Amendment — 2026-09-30 (implementation status)
+
+The decision stands; three of the mechanisms it names shipped differently, and
+the text above is kept as written:
+
+- **Real-time synchronization** — `ICodebaseWatcher` + `IRaggableTreeEventBus`
+  were superseded as the sync mechanism by the lazy freshness pass
+  (`IndexFreshnessService`: mark-dirty on write + git working-tree probe +
+  incremental reindex before each read tool answers). The event bus carries the
+  refresh notifications (`RaggableTreeUpdated`); the watcher implementation
+  (`FileSystemWatcherCodebaseWatcher`) exists but no shipped host registers it.
+- **External vector store as a memory mitigation** — not realized: the graph and
+  every query live in `InMemoryRaggableStore`; a registered `IVectorStoreProvider`
+  (e.g. `MemoryProviderVectorStoreAdapter` over Redis/LanceDB) only receives a
+  write-only mirror of the embeddings.
+- **Search without embeddings** — no longer disabled: `codebase_search` is hybrid
+  (embedding + BM25 fused by RRF) and degrades to lexical BM25 when no embedder is
+  wired. The shipped runner host defaults to on-device embeddings
+  (`LocalSmartComponents`, no API key). The JSON cache named in the accepted
+  risks (`RaggableTreeCache`) is wired by no shipped host.
+
 ---
 
 > **See also**: [RaggableTree guide](./raggable-tree.md) · [Back to index](../INDEX.md)

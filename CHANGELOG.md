@@ -7,6 +7,85 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — e-mail is a chapter of its own, with a tutorial
+
+- **A new getting-started tutorial, *Give your agents a mailbox*, EN and FR**
+  (`docs/getting-started/give-your-agents-a-mailbox.md`). It walks through the
+  `examples/scripting/13-email-triage` example: a Gmail app password, the `Orkeon:Tools:Email`
+  block, `orkeon email accounts` and `check`, the run, then how to adapt it (folders, the Send
+  right behind `Send:AllowedRecipients`, a YAML crew instead of a script), with links into the
+  guide for Outlook.com through Microsoft Graph, Gmail OAuth2 and a server of your own.
+- **The e-mail guide is no longer one line among the Guides.**
+  - An *E-mail* section in the documentation index, EN and FR, holds the tutorial, the guide,
+    the `orkeon email` commands and ADR-012, with a reading path of its own.
+  - A top-level *E-mail* node sits in the site navigation.
+  - The site home page, the README's documentation table, the overview, *Run your first
+    example*, the tool inventory and the examples catalog point to the tutorial.
+- **`13-email-triage.appsettings.json` raises `Orkeon:Scripting:Limits:ExecutionTimeout` to ten
+  minutes.** A script's default is 30 s of wall-clock time for the whole run, awaited IMAP
+  reads and model calls included, and one triage takes longer. The guide's troubleshooting
+  section says so too.
+
+### Fixed — the documentation matches the code again
+
+Every page under `docs/` and the root community pages were reviewed against the code, topic by
+topic, EN and FR together.
+
+- **New pages:**
+  - *Flows (FlowEngine)* (`docs/orchestration/flows.md`). It documents the C# flow engine and
+    says plainly that no CLI, host or script runs a flow yet.
+  - *Microsoft Agent Framework interop* (`docs/reference/agent-framework-interop.md`). It gives
+    usage for both directions of the bridge, which only ADR-010 described.
+  - `docs/reference/hosting.md` gains the .NET Aspire integration (`AddOrkeonHost`,
+    `AddOrkeonCrewRun`) and a telemetry section.
+- **Seventeen `AddOrkeon*` extensions that no page named are documented**, each where a reader
+  looks for it:
+  - Auth, Guardian, YAML, flows, flow visualization, training, memory migration, consensus;
+  - the six RAG building blocks that `AddOrkeonRag` already calls;
+  - the CLI and Terminal.Gui REPL hosts;
+  - the Agent Framework bridge.
+- **What ships but is not wired is said, not implied.** Known limitations are now on the pages
+  and in `docs/reference/limitations.md`:
+  - `rag_*` and MCP tools cannot be attached to a crew agent: they implement only `IBaseTool`.
+  - `orkeon run crew.yaml` registers no RAG, so `rag:` and `knowledge:` are inert there.
+  - The task FSM and a task-level `circuitBreaker:` are not applied at run time.
+  - The shipped A2A router does not run the agent.
+  - `orkeon-host` connects no MCP server.
+  - 10 of the 44 domain events are never raised, and those raised during a kickoff are never
+    dispatched.
+- **Orchestration pages rewritten to what the strategies do:**
+  - Graph has three breaker mechanisms, not four, and its YAML mode has a fixed topology.
+  - Autonomous: the manager assigns tasks, a failed task goes to a peer, and spawning is
+    provided by the host.
+  - Parallel runs in dependency waves.
+  - Hierarchical and Consensual behave as documented, with their caveats.
+  - The ProcessType blueprint lists the steps a seventh mode really takes; it was a copy of the
+    FSM guide.
+- **Reference pages completed:**
+  - The CLI reference covers every command, option and exit code, and the `orkeon-repl`
+    options.
+  - The configuration reference gives the real keys of about 45 sections.
+  - The `.ork.ts` reference has a corrected per-shape table and twelve more known gaps.
+  - The run-event protocol table matches `RunEventKinds`.
+  - The LLM pages cover provider resolution, dialect seams, decorators and exchange logging,
+    `json_schema`, and vision on every provider.
+- **Samples that did not work are fixed:**
+  - The README TypeScript crew ended with `crew.run()`, which ignores the tasks.
+  - The bootstrap host could not load a YAML crew (no model, no VFS, an empty tool registry).
+  - The tool inventory's call examples used parameter names the tools do not take.
+  - Loader and porting samples used disk paths instead of virtual paths.
+  - A test sample in CONTRIBUTING did not compile.
+- **Smaller fixes:**
+  - `index.md` said 14 providers, not 16.
+  - `studio.md` EN and FR are reconciled.
+  - The publication matrix's discontinued list, the SBOM verification command, and dated notes
+    on ADR-002/005/006/008/009 are corrected.
+- **Examples whose comments promised what the code does not do are corrected:**
+  - `rag/crew-yaml`: the stock CLI only validates it.
+  - `scripting/09-tools-and-act`: `act` does not see `withAutonomousTool` instances.
+  - The `cli-ts-commands` transcripts gain their leading `/`.
+  - `97-multi-party-negotiation` does ship one reference file under `data/`.
+
 ### Added — a dev channel: the latest `main` is installable between two tags
 
 - **`publish.yml` gains a `publish-dev` job.** Once CI is green on a push to `main`, every

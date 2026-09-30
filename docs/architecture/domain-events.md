@@ -4,41 +4,73 @@
 
 ## Domain Events
 
-The framework implements a complete domain event system. `DomainEvent` (`Orkeon.Domain.SharedKernel.Events`) is the abstract base class (record) with `Id`, `OccurredAt` and `Version`.
+`DomainEvent` (`Orkeon.Domain.SharedKernel.Events`) is the abstract base record of every domain event: `Id` (`DomainEventId`), `OccurredAt` (UTC), `EventName` (the type name) and `Version` (virtual, 1 by default, for serialization compatibility).
 
-Aggregates emit events via `RaiseDomainEvent()` (inherited from `AggregateRoot<T>`). Dispatch is handled by `DomainEventDispatcher` (`Orkeon.Infrastructure.DomainEvents`), which resolves the `IDomainEventHandler<TEvent>` instances registered through DI.
+Aggregates (`AggregateRoot<TEntityId>`, which implements `IHasDomainEvents`) queue events with the protected `RaiseDomainEvent()`; `DomainEvents` exposes the pending ones and `ClearDomainEvents()` empties the list.
 
-Agent events (10 types): `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent`, `AgentCollaborationStartedEvent`, `AgentMemoryUpdatedEvent`, `AgentKilledEvent`, `AgentSpawnedEvent`.
+### Dispatch
 
-Crew events (11 types): `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewCompletedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent`.
+Dispatch goes through `IDomainEventDispatcher` (Domain), implemented by `DomainEventDispatcher` (`Orkeon.Infrastructure.DomainEvents`, singleton registered by `AddOrkeonInfrastructure()`): for each event it resolves every `IDomainEventHandler<TEvent>` registered in DI and awaits its `HandleAsync`, in order (`DispatchAsync`, `DispatchManyAsync`); an event without a handler is logged at Debug level.
 
-Task events (11 types): `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent`, `TaskContextUpdatedEvent`, `TaskBlockedEvent`, `TaskUnblockedEvent`.
+Events are dispatched **when a unit of work is saved**:
 
-Memory events (6 types): `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent`.
+1. The in-memory repositories call `IUnitOfWork.Track(aggregate)` on every add/update. `InMemoryUnitOfWork` keeps **one aggregate per scope** (the last tracked one — one command, one aggregate).
+2. `IUnitOfWork.SaveChangesAsync()` runs the persist step (empty for the in-memory adapter), dispatches the tracked aggregate's pending events, then clears them — even when a handler throws.
+3. `SaveChangesAsync()` is called by `UnitOfWorkCommandHandler`, the decorator wrapped around **every CQRS command handler** (see below).
 
-Delegation events (5 types): `TaskDelegatedEvent`, `DelegationCompletedEvent`, `DelegationQueuedEvent`, `AgentRegisteredForDelegationEvent`, `AgentUnregisteredFromDelegationEvent`.
+A crew run through `ICrewOrchestrationService` does not save a unit of work: the events the aggregates raise during a kickoff (`CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, …) stay queued on the aggregate and are not dispatched. To observe a run, use `ICrewExecutionHook` ([Callbacks and observability](#callbacks-and-observability)).
 
-Human-input events (1 type): `HumanInputRequestedEvent`.
+### Handlers
 
-Total: 44 domain events covering the entire lifecycle of agents, crews, tasks, memory, delegation and human input.
+`AddOrkeonApplication()` scans the `Orkeon.Application` assembly and registers every `IDomainEventHandler<T>` it finds (scoped). Four ship, all of them structured-logging handlers: `AgentCompletedTaskHandler`, `AgentFailedTaskHandler`, `CrewExecutionCompletedHandler`, `CrewExecutionFailedHandler`. A handler in another assembly is registered explicitly: `services.AddScoped<IDomainEventHandler<TaskCompletedEvent>, MyHandler>()`.
+
+### The 44 domain events
+
+| Family | Events | Raised by |
+|--------|--------|-----------|
+| Agent (10) | `AgentCreatedEvent`, `AgentAssignedToTaskEvent`, `AgentStartedTaskEvent`, `AgentCompletedTaskEvent`, `AgentFailedTaskEvent`, `AgentCapabilitiesUpdatedEvent`, `AgentCollaborationStartedEvent`, `AgentMemoryUpdatedEvent`, `AgentKilledEvent` | `Agent` aggregate |
+| | `AgentSpawnedEvent` | declared, not raised yet |
+| Crew (11) | `CrewCreatedEvent`, `AgentJoinedCrewEvent`, `AgentLeftCrewEvent`, `TaskAddedToCrewEvent`, `TaskRemovedFromCrewEvent`, `CrewExecutionStartedEvent`, `CrewExecutionCompletedEvent`, `CrewExecutionFailedEvent`, `CrewProcessTypeChangedEvent`, `CrewGoalUpdatedEvent` | `Crew` aggregate |
+| | `CrewCompletedEvent` | declared (with a `FromOutput` factory), not raised yet |
+| Task (11) | `TaskCreatedEvent`, `TaskAssignedEvent`, `TaskStatusChangedEvent`, `TaskStartedEvent`, `TaskCompletedEvent`, `TaskFailedEvent`, `TaskCancelledEvent`, `TaskDependenciesUpdatedEvent` | `CrewTaskBase<TContext>` aggregate (`CrewTask`) |
+| | `TaskContextUpdatedEvent` | collected by `TypedTaskContext<T>` in its own list (`GetEvents()` / `ClearEvents()`), outside the dispatch path |
+| | `TaskBlockedEvent`, `TaskUnblockedEvent` | declared, not raised yet |
+| Memory (6) | `MemoryStoreCreatedEvent`, `MemoryAddedEvent`, `MemoryPromotedEvent`, `EntityMemoryUpdatedEvent`, `EpisodicMemoryAddedEvent`, `MemoryClearedEvent` | `AgentMemoryStore` aggregate |
+| Delegation (5) | `TaskDelegatedEvent`, `DelegationCompletedEvent`, `DelegationQueuedEvent`, `AgentRegisteredForDelegationEvent`, `AgentUnregisteredFromDelegationEvent` | declared, not raised yet |
+| Human input (1) | `HumanInputRequestedEvent` | declared, not raised yet |
+
+Total: 44 domain events — 34 raised by the domain model, 10 declared for the lifecycle they describe but raised by no code path yet. The event records live next to their aggregate (`Agent/Events/`, `Crew/Events/`, `Task/Events/`, `Memory/Events/`, `Delegation/Events/`, `HumanInput/Events/`).
 
 ## CQRS and pipeline
 
-The Application layer implements the CQRS pattern with the `ICommand`/`ICommandHandler<TCommand, TResult>` and `IQuery<TResult>`/`IQueryHandler<TQuery, TResult>` interfaces (`Orkeon.Application.Common`). Handlers are auto-scanned and registered at startup via `AddCqrsHandlers()`.
+The Application layer implements CQRS with `ICommand<TResponse>` / `ICommandHandler<TCommand, TResponse>` and `IQuery<TResponse>` / `IQueryHandler<TQuery, TResponse>` (`Orkeon.Application.Common.CQRS`), plus `ICommandValidator<TCommand>` (`Orkeon.Application.Validation`). `AddOrkeonApplication()` scans the Application assembly and registers them; there is no mediator — resolve the handler interface from DI and call `HandleAsync`.
 
-Existing commands: `CreateAgentCommand`, `CreateCrewCommand`, `CreateTaskCommand`, `AddMemoryCommand`, `CreateMemoryStoreCommand`. Queries: `GetAgentQuery`, `GetCrewQuery`, `GetTaskQuery`, `SearchMemoryQuery`.
+Each command handler is registered behind two decorators:
+
+```
+ValidatingCommandHandler   (only when a validator exists — throws CommandValidationException)
+  └── UnitOfWorkCommandHandler   (IUnitOfWork.SaveChangesAsync → domain events dispatched)
+        └── the concrete handler
+```
+
+Query handlers are registered as is (no unit of work).
+
+| Kind | Types | Validator |
+|------|-------|-----------|
+| Commands | `CreateAgentCommand`, `CreateCrewCommand`, `CreateTaskCommand` | ✅ (`CreateAgentCommandValidator`, `CreateCrewCommandValidator`, `CreateTaskCommandValidator`) |
+| | `AddMemoryCommand`, `CreateMemoryStoreCommand` | — |
+| Queries | `GetAgentQuery`, `GetCrewQuery`, `GetTaskQuery`, `SearchMemoryQuery` | — |
 
 ## Callbacks and observability
 
-Two levels of callbacks are available:
+Three observation surfaces exist, at different levels:
 
-- `IStepCallback` (`Orkeon.Domain.Agent`): `OnStepStartAsync`, `OnStepCompletedAsync`, `OnStepFailedAsync` — agent-iteration granularity
-- `ITaskCallback` (`Orkeon.Domain.Task`): `OnTaskStartAsync`, `OnTaskCompletedAsync`, `OnTaskFailedAsync` — task granularity
+**`ICrewExecutionHook`** (`Orkeon.Application.Crew`) — the run-level hook every process strategy calls, on every exit (success, failure, cancellation): `OnTaskStartedAsync`, `OnTaskCompletedAsync`, `OnCrewCompletedAsync`, `OnCrewFailedAsync`, with task and crew snapshots (status, duration, tokens, cache split, skipped tasks). It is a single DI service; an exception it throws is logged and swallowed. Shipped implementations: `AutoSummaryWriter` (`AUTO_SUMMARY.md`), the `orkeon run --events` observer (see [the run event bus](./run-event-bus.md)) and the `orkeon-host` progress hook.
 
-`CallbackOrchestrator` (`Orkeon.Application.Execution`) centralizes notification dispatch with dedicated methods: `NotifyTaskStartedAsync`, `NotifyTaskCompletedAsync`, `NotifyStepProgressAsync`, `NotifyToolUsedAsync`, `NotifyDelegationAsync`.
+**`ICallbackHandler`** (`Orkeon.Application.Callback`) — task- and step-level notifications: `OnStepStartedAsync`, `OnStepCompletedAsync`, `OnTaskStartedAsync`, `OnTaskProgressAsync`, `OnTaskCompletedAsync`, `OnFlowStepStartedAsync`, `OnFlowStepCompletedAsync`. `CallbackOrchestrator` (`Orkeon.Application.Execution`, the scoped `ICallbackOrchestrator`) fans each notification out to every `ICallbackHandler` registered in DI plus the per-call `CallbackHandlers`; `AgentExecutionService` calls `NotifyTaskStartedAsync` and `NotifyTaskCompletedAsync` around every task. The interface also has `NotifyStepProgressAsync`, and the class `NotifyToolUsedAsync` / `NotifyDelegationAsync`. `BaseCallbackHandler` is the base to derive from; `LoggingCallbackHandler` logs every notification but is not registered by default.
 
-`LoggingCallbackHandler` (`Orkeon.Application.Callback`) provides a default implementation that logs all events.
+**`IStepCallback`** (`Orkeon.Domain.Agent`: `OnStepStartAsync`, `OnStepCompletedAsync`, `OnStepFailedAsync`) and **`ITaskCallback`** (`Orkeon.Domain.Task`: `OnTaskStartAsync`, `OnTaskCompletedAsync`, `OnTaskFailedAsync`) — domain-level callbacks carried by the aggregates (`AgentBuilder.WithStepCallback`, `Crew.StepCallback` / `Crew.TaskCallback`; DI defaults `NullStepCallback` / `NullTaskCallback`). The execution engine does not invoke them today: prefer `ICrewExecutionHook` or `ICallbackHandler`.
 
 ---
 
-> **See also**: [Security](./security.md) · [Back to index](../INDEX.md)
+> **See also**: [ProcessTypes](../orchestration/process-types.md) · [Security](./security.md) · [Back to index](../INDEX.md)

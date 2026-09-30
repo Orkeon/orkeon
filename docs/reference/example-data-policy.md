@@ -4,7 +4,8 @@
 
 > **See also**: [Run your first example](../getting-started/run-your-first-example.md) · [Example README template](../templates/example-readme.md) · [VFS compliance](../architecture/vfs-compliance.md) · [Back to the index](../INDEX.md)
 
-Most bundled examples ship their **crew definition** (`config.yaml`) and code, but
+Most bundled examples ship their **crew definition** (`config.yaml`, or `main.ork.ts`
+for a TypeScript crew) and code, but
 **not** the input data they operate on. This page explains why, and how to feed an
 example your own data.
 
@@ -38,7 +39,7 @@ example your own data.
 Depending on the crew, one of three things is true:
 
 1. **The tools fetch their own data.** Crews built around `web_scrape`,
-   `http_api`, `search`, or similar tools pull live data at run time. You supply
+   `http_api`, `web_search`, or similar tools pull live data at run time. You supply
    nothing — just an LLM profile and, usually, a topic via `--var` or
    `--initial-context`. See the flag reference in
    [Run your first example](../getting-started/run-your-first-example.md#every-flag-explained).
@@ -82,12 +83,17 @@ If your example genuinely needs a bundled fixture:
 
 ## Curated showcase datasets
 
-A set of showcase examples (one per category) ship a bundled fixture so they run
-against real files out of the box. Their data is produced by a single generator:
+Ten showcase examples — one per category, two in `03-finance-trading/` (`34-portfolio-consensus`,
+`40-invoice-processing`) — ship a bundled `data/` folder so they run against real files
+out of the box. Their data is produced by a single generator:
 
 ```bash
-python3 scripts/generate-vitrine-data.py      # (re)generate every showcase data/ folder
+python3 scripts/generate-vitrine-data.py           # (re)generate every showcase data/ folder
+python3 scripts/generate-vitrine-data.py --check   # only check that every file exists
 ```
+
+The RAG showcases (`rag/*/data/`) and the scripting samples (`scripting/data/`) carry
+their own small hand-written corpora; the generator does not own them.
 
 Rules these fixtures follow, on top of the "keep it tiny and synthetic" guidance
 above:
@@ -101,7 +107,7 @@ above:
 - **No external dependency.** CSV/JSON come from the Python stdlib; PDFs are
   written by a tiny built-in writer (standard Helvetica font, text-extractable by
   `pdf_reader`). The script runs on a bare Python 3.9+ install.
-- **Tasks name the virtual paths.** The `config.yaml` task descriptions reference
+- **Tasks name the virtual paths.** The task descriptions (`config.yaml` or `main.ork.ts`) reference
   the concrete VFS paths (e.g. `/data/experiment-measurements.csv`) so the agent
   reads the shipped file instead of inventing a path the VFS would reject.
 
@@ -113,9 +119,10 @@ caller-supplied path through the VFS — `csv_reader`, `pdf_reader`, `file_read`
 require a bundled file include `json_tool` (operates on inline JSON strings),
 `file_write` (writes only), `http_api` / `web_scrape` (fetch remote resources),
 and `relational_database_query` (uses a caller-supplied connection string). An
-example built purely from those needs no `data/` folder; see
-`examples/09-experimental/97-multi-party-negotiation`, which ships none and passes
-its scenario via `--initial-context`.
+example built purely from those needs no mounted data; see
+`examples/09-experimental/97-multi-party-negotiation`, which mounts nothing and takes
+its scenario via `--initial-context` — its `data/procurement-brief.md` is a
+human-readable brief to condense into that flag, read by no tool.
 
 ### Verifying a fixture
 

@@ -10,12 +10,15 @@ The MCP integration works in both directions:
 
 - **Client** — `McpClient` speaks JSON-RPC to an external MCP server;
   `McpToolProvider` connects to any number of servers, lists their tools and registers
-  each one in the Orkeon `IToolRegistry` as an `McpToolAdapter` (`IBaseTool`), so agents
-  use external MCP tools like native ones. `DisconnectServerAsync` unregisters them.
+  each one in the Orkeon `IToolRegistry` as an `McpToolAdapter` (`IBaseTool`).
+  `DisconnectServerAsync` unregisters them. **A crew agent cannot use them yet** — see
+  [MCP tools and crews](#mcp-tools-and-crews).
 - **Server** — `McpServer` exposes the tools of the Orkeon `IToolRegistry` to external
   MCP clients (`tools/list` / `tools/call`, with `ToolSchema` → JSON Schema conversion),
   over stdio (`RunStdioAsync`) or by processing individual requests
-  (`ProcessRequestAsync`).
+  (`ProcessRequestAsync`). Only the tools capability is advertised — no resources, no
+  prompts, no crews — and no shipped command serves it: there is no `orkeon mcp serve`,
+  an embedding host starts it itself.
 
 ## Version negotiation: two protocol lineages
 
@@ -72,11 +75,37 @@ revision (`McpClient.SendAsync`).
 services.AddOrkeonMcp(configuration);   // reads the "MCP" section
 ```
 
-`AddOrkeonMcp` binds `McpOptions` (`Enabled`, `EnableServer`, `Servers` — a dictionary of
-`McpServerConfig`: `Transport` stdio/sse, `Command`/`Args` or `Url`) and registers
+`AddOrkeonMcp` binds `McpOptions` (`Enabled`, default `true`; `EnableServer`, default
+`false`; `Servers` — a dictionary of `McpServerConfig` keyed by server id: `Transport`
+`Stdio` (default) or `Sse`, `Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers
 `McpToolProvider` as a singleton; `McpServer` (+ `McpServerOptions` from `MCP:Server`:
-`Name`, `Version`) is registered only when `MCP:EnableServer = true`. The
-`AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself.
+`Name`, default `Orkeon`, and `Version`, default `1.0.0`) is registered only when
+`MCP:EnableServer = true`. `McpServerOptions` also carries `ExposeResources` and
+`ExposePrompts`, which nothing reads yet. The `AddOrkeonInfrastructure(IConfiguration)`
+overload calls `AddOrkeonMcp` itself.
+
+```json
+{
+  "MCP": {
+    "Enabled": true,
+    "Servers": {
+      "filesystem": {
+        "Transport": "Stdio",
+        "Command": "npx",
+        "Args": [ "-y", "@modelcontextprotocol/server-filesystem", "/srv/data" ],
+        "Env": { "NODE_ENV": "production" }
+      },
+      "search": { "Transport": "Sse", "Url": "https://mcp.example.com/mcp" }
+    },
+    "EnableServer": false,
+    "Server": { "Name": "Orkeon", "Version": "1.0.0" }
+  }
+}
+```
+
+The client introduces itself as `Orkeon` `1.0.0`. The HTTP transport sends no
+`Authorization` header, so a server behind authentication is out of reach (see the
+limitations below).
 
 **The shared runner host honours the section on its own (STUDIO-21).** `orkeon run`
 — and every runner built on `RunnerHost` — calls `AddOrkeonMcp` when `MCP:Servers`
@@ -85,18 +114,38 @@ server in an explicit startup step (`McpStartup`) before the crew loads — and 
 `--validate` judges the crew and `--list-tools` prints the manifest, so the three see the
 same tool surface. A server that cannot be connected (a command that does not exist, an
 endpoint that does not answer, a handshake still pending after 30 s) costs one error line
-naming it, on the log and on stderr, and the run goes on: a crew naming one of that
-server's tools then fails at load under `StrictTools` with the ordinary «unknown tool»
-line. The tools are registered under their own names, without a server prefix; a name
-the registry already holds is skipped. Orkeon Studio writes the section from its
-«Settings › MCP» tab. The other shipped roots (`orkeon-host`, the REPL) still call the
-parameterless overload: there, and in any embedding host, MCP stays a library surface
-— the host calls `AddOrkeonMcp(configuration)` (or the config overload) itself.
+naming it, on the log and on stderr, and the run goes on. The tools are registered under
+their own names, without a server prefix, and a name the registry already holds is
+**replaced** — the MCP tool takes the built-in tool's place, silently, and since an MCP
+tool cannot be given to a crew (below), a crew naming that built-in then loses it too; check
+a server's names against the built-in ones (`--list-tools` shows the merged surface). Orkeon Studio writes the section from its
+«Settings › MCP» tab. The other shipped roots do not connect anything: `orkeon-host` is
+built on `RunnerHost`, so it registers `McpToolProvider` from the same section, but it
+loads its crews without the startup step and never connects a server; the REPL calls the
+parameterless `AddOrkeonInfrastructure()` and registers no MCP at all. There, and in any
+embedding host, MCP stays a library surface — the host calls `AddOrkeonMcp(configuration)`
+(or the config overload) and connects the servers itself.
 
 There is **no hosted service**: an embedding host resolves `McpToolProvider` and calls
 `ConnectServerAsync(serverId, config)` for each configured server (and
 `McpServer.RunStdioAsync()` to serve), explicitly — which is exactly what the runner
 host's startup step does.
+
+### MCP tools and crews
+
+Connected MCP tools are in the registry, but **no crew agent can be given one**, in YAML or
+in a `.ork.ts` script. `McpToolAdapter` implements `IBaseTool` only, while `CrewFactory`
+keeps a resolved tool only when it is an `ITool` (the agent-facing contract), and so does
+the agent mapper. An agent that lists an MCP tool therefore fails to load under
+`StrictTools` — the runners' default — with the ordinary `unknown tool(s)` line, whose
+*available tools* list names the MCP tool all the same; with `StrictTools` off, the tool is
+dropped (logged as not found) and the agent runs without it. The observed-run decorator of
+`--events jsonl` does not change this: it wraps the tools registered in DI, and MCP tools
+reach the registry at run time.
+
+What does work today: `--list-tools` and `--validate` see the MCP tools, `McpServer`
+re-exposes whatever the registry holds, and C# code can resolve one with
+`IToolRegistry.GetToolByNameAsync(name)` and call `ExecuteAsync` on it directly.
 
 ## Honest limitations
 
@@ -110,6 +159,8 @@ entry:
 - **HTTP = JSON-response mode only** — modern headers sent, SSE bodies unwrapped, but no
   server-initiated streaming.
 - **`2025-03-26` excluded** (mandatory JSON-RPC batching).
+- **MCP tools cannot be assigned to crew agents** (YAML or `.ork.ts`) — see
+  [MCP tools and crews](#mcp-tools-and-crews).
 - **Interop against reference servers (MCP Inspector) has not run yet** — tracked in
   PUB-07's closure note.
 

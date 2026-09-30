@@ -21,7 +21,7 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- \
     run examples/scripting/01-hello-world.ork.ts
 ```
 
-Ce fichier fait quatorze lignes :
+Sans sa ligne de version ni son commentaire, ce fichier donne :
 
 ```ts
 const greeter = agentBuilder()
@@ -35,22 +35,22 @@ await crew.run();
 ```
 
 Trois choses y sont déjà vraies et méritent d'être nommées. `agentBuilder()`, `crewBuilder()`
-et consorts sont des **globales** — il n'y a rien à importer. `role` et `goal` ne sont pas des
-étiquettes, ce sont le prompt que reçoit un agent adossé à un LLM. Et la dernière ligne,
-`await crew.run()`, n'est pas un détail de style : elle sélectionne le moteur.
+et consorts sont des **globales** — il n'y a rien à importer. Le `.body()` est l'agent : ici
+il rend une chaîne et aucun modèle n'est appelé. Et la dernière ligne, `await crew.run()`,
+n'est pas un détail de style : elle sélectionne le moteur.
 
 ## La chose à comprendre d'abord : il y a deux formes
 
 Un fichier `.ork.ts` est confié à l'un de **deux moteurs différents**, et le fichier choisit
-lequel par sa façon de finir. Le runner lit votre source à la recherche d'une affectation à
-`globalThis.crew`.
+lequel par sa façon de finir. `orkeon run` lit votre source à la recherche d'une affectation
+à `globalThis.crew`.
 
 | | **Procédurale** | **Déclarative** |
 |---|---|---|
 | le fichier finit par | `await crew.run()` | `globalThis.crew = crew` |
 | exécute les `.body()` | oui, un par agent | **non** |
 | honore `withTask`, `process`, `manager` | **non** | oui |
-| `--validate` sans exécuter | échoue | fonctionne |
+| `--validate` sans exécuter | échoue — après avoir exécuté le script | fonctionne |
 
 Ce sont des opposés, pas deux orthographes de la même chose. Le moteur procédural itère les
 agents et ne regarde jamais les tâches. L'adaptateur déclaratif n'invoque jamais un `.body()`.
@@ -87,17 +87,22 @@ intent. Everything downstream depends on this being boring and correct.`)
     .build();
 ```
 
-`role`, `goal` et `backstory` **sont le prompt**. Vagues, ils produisent des agents vagues.
+Dans cette forme, `role`, `goal` et `backstory` **sont le prompt** (`role` est obligatoire).
+Vagues, ils produisent des agents vagues. Le moteur procédural ne les envoie pas : là, les
+propres appels `ctx.llm` de votre `body` sont tout le prompt.
 
 ### Les outils, trois surfaces
 
 Un agent atteint les outils de trois façons, et elles ne sont pas interchangeables :
 
 1. **Intégrés par nom** — `.tools(["file_read", "directory_read"])`. Résolus depuis le
-   catalogue de l'hôte, et la résolution est *stricte* : un nom non enregistré fait échouer le
-   run plutôt que de laisser discrètement l'agent avec un outil de moins.
+   catalogue de l'hôte, et dans cette forme la résolution est *stricte* : un nom non
+   enregistré fait échouer le run plutôt que de laisser discrètement l'agent avec un outil de
+   moins. (Le moteur procédural, qu'on ne peut pas valider, saute un nom inconnu sans bruit.)
 2. **Outils TypeScript en instances** — `.withAutonomousTools([...])`, construits avec
-   `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte.
+   `toolBuilder()`. Ils voyagent avec le script : aucun enregistrement côté hôte. En forme
+   procédurale, ils s'appellent directement depuis un `body` (`diffStats.execute({ diff })`) —
+   `ctx.llm.act` ne les propose pas au modèle.
 3. **Impérativement, depuis un corps** — `tools.fileRead({ path })`, en camelCase, forme
    procédurale uniquement.
 
@@ -177,7 +182,8 @@ VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolv
 
 Ce contrôle n'existe que sur cette forme, et c'est une bonne raison de la préférer : il
 attrape un nom d'outil non enregistré ou une tâche pointant vers un agent non déclaré avant
-d'avoir dépensé un token.
+d'avoir dépensé un token. Sur un fichier procédural, `--validate` échoue — et seulement après
+l'avoir évalué, `await crew.run()` compris.
 
 ## Forme B — le script procédural
 
@@ -199,8 +205,9 @@ await crewBuilder().withAgent(calculator).build().run();
 
 ### `ctx.llm.act` — une boucle d'agent en neuf lignes
 
-`act` déroule le cycle LLM ⇄ appels d'outils sur le catalogue propre à l'agent, jusqu'à ce que
-le modèle cesse de demander des outils ou que `maxIterations` soit atteint :
+`act` déroule le cycle LLM ⇄ appels d'outils sur les outils intégrés que l'agent a choisis
+avec `.tools([...])`, jusqu'à ce que le modèle cesse de demander des outils ou que
+`maxIterations` (défaut 10) soit atteint :
 
 ```ts
 .body(async (input, ctx) => {
@@ -215,7 +222,8 @@ le modèle cesse de demander des outils ou que `maxIterations` soit atteint :
 `system` sème un vrai message `role:"system"` qui persiste à chaque itération. Sans lui,
 `act()` envoie un seul message utilisateur — identité et politique d'outils voyageant avec
 l'autorité d'un utilisateur, et la gestion native du system des fournisseurs ne se déclenchant
-jamais.
+jamais. Le `role` et le `goal` de l'agent ne sont pas ajoutés pour vous : dans cette forme,
+c'est dans `system` qu'ils vont.
 
 ### L'état
 
@@ -237,27 +245,35 @@ perdu.
 ### Entrées, mémoire, erreurs
 
 ```ts
-const topic = (globalThis.inputs?.topic as string) ?? "espresso";
+const topic = (globalThis.inputs?.topic as string) ?? "coffee";
 ```
 
 ```bash
 … run examples/scripting/10-inputs-and-memory.ork.ts --inputs '{"topic":"orkeon"}'
 ```
 
-`ctx.memory.crew` et `ctx.memory.agent` sont des stocks clé/valeur cloisonnés. `onError` rend
-une action construite par une fabrique — **pas** une chaîne :
+`ctx.memory.crew` et `ctx.memory.agent` sont des stocks clé/valeur cloisonnés. Ce que le run
+rapporte, c'est `globalThis.result` — affectez-le explicitement : un fichier qui a un `await`
+de premier niveau s'exécute enveloppé dans une fonction async, si bien que sa dernière
+expression n'est jamais le résultat, et qu'un `const result` de premier niveau reste local à
+l'enveloppe.
+
+`onError` rend une action construite par une fabrique — **pas** une chaîne :
 
 ```ts
 .onError((err) => ErrorAction.retry({ delay: 10, max: 3 }))
 ```
 
 `ErrorAction.fail()`, `.skip()`, `.fallback(value)`, `.retry({...})`. Retourner quoi que ce
-soit que le runtime ne reconnaît pas devient `fail()`.
+soit que le runtime ne reconnaît pas devient `fail()`. Le gestionnaire reçoit `{ code, message,
+exception, attempt, agent }` ; aiguillez sur `err.code` (`rate_limit`, `network`, `timeout`,
+`validation`…).
 
 ## Réglage de l'éditeur
 
-Les typings sont livrés sous `orkeon.d.ts` — à côté de la sortie de build de la CLI, et dans
-le paquet `Orkeon` à `content/typings/orkeon.d.ts`. Pointez-y votre éditeur, et copiez
+Les typings vivent dans `src/scripting/Orkeon.Scripting/Typings/*.d.ts` ; le build
+d'`Orkeon.Scripting` les concatène dans `orkeon.d.ts`, sous le `bin/<configuration>/net10.0/dist/`
+de ce projet. Pointez-y votre éditeur, et copiez
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).
 
 Trois de ses options portent tout le poids, et les omettre produit des erreurs qui n'ont rien
@@ -285,7 +301,8 @@ vaut mieux connaître avant d'en être surpris :
   `setTimeout`. Un appel hôte *synchrone* qui attend (les ponts `runCrew` / `request` de la
   CLI) bloque tout le script ; un appel attendu avec `await` (`ctx.llm.*`, `tools.*`,
   `ctx.delegate`, `ctx.receive`) ne suspend que sa propre chaîne, et les autres continuent.
-- **`import` fonctionne entre vos propres fichiers**, résolu relativement au script.
+- **`import` fonctionne entre vos propres fichiers**, résolu relativement au script : esbuild
+  les assemble quand le fichier est exécuté depuis le disque, comme le fait `orkeon run`.
 
 ## Dix erreurs et ce qu'elles veulent dire
 

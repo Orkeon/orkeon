@@ -29,7 +29,7 @@ Nous visons un accusé de réception sous **72 heures** et un plan de remédiati
 
 Orkeon est un framework d'orchestration d'agents IA : **la sortie d'un LLM peut déclencher l'exécution d'outils**. Cela rend certains composants sensibles en matière de sécurité par conception, et vous devez considérer toute configuration de crew comme faisant partie de votre surface d'attaque :
 
-- **Outils d'exécution de code/shell** (`ShellCommandTool`, `SecureCodeInterpreterTool`) : les commandes sont restreintes par allowlist par défaut (ensemble en lecture seule) et les interpréteurs (`node`, `dotnet`, `npm`) nécessitent un opt-in explicite. Il n'y a **aucun confinement au niveau de l'OS** sauf si vous routez l'exécution à travers le sandbox Docker (`DockerSandbox`).
+- **Outils d'exécution de code/shell** (`ShellCommandTool`, `SecureCodeInterpreterTool`) : les commandes shell sont restreintes par allowlist par défaut (ensemble en lecture seule) et les interpréteurs (`node`, `dotnet`, `npm`, `find`) ainsi que les sous-commandes `git` mutantes nécessitent un opt-in explicite. `shell_command` s'exécute sur l'hôte **sans aucun confinement au niveau de l'OS**. `code_interpreter` s'exécute dans le sandbox Docker (`DockerSandbox`) et échoue fermé : quand Docker est indisponible, il refuse de se rabattre sur une exécution directe sur l'hôte tant que `Orkeon:CodeSandbox:AllowHostExecution` n'est pas posé.
 - **Outils réseau** (`WebScrapeTool`, `HttpApiTool`, recherche web, `rag_ingest` et le repli web RAG opt-in) : la validation d'URL est **fail-closed** — les adresses privées, de loopback, link-local, IPv6 non spécifiée, multicast, NAT64 et de métadonnées cloud sont refusées par défaut (protection SSRF), et l'ingestion d'URL refuse de fetcher tant qu'aucun `IUrlValidator` n'est enregistré (`AddOrkeonInfrastructure` en enregistre un). Les redirections ne sont pas suivies : `AddOrkeonWebTools` donne aux outils web leur propre `HttpClient` nommé et au loader de pages RAG son propre client typé, tous deux avec `AllowAutoRedirect = false`, de sorte qu'une redirection ne peut pas emmener une requête au-delà du validateur qui a autorisé le premier saut.
 - **Outils de système de fichiers** : tout accès aux fichiers passe par le Virtual File System (`IFileSystemService`), validé contre les montages configurés et les droits d'accès.
 - **Outils de base de données** : les requêtes passent par `IDatabaseSecurityPolicy` (allowlist par type d'instruction).
@@ -49,9 +49,12 @@ Les vulnérabilités dans ces couches (contournement d'allowlist, contournement 
   **lecture seule** (`ls`, `cat`, `pwd`, `grep`… plus les sous-commandes `git` non mutantes) ;
   les interpréteurs et le `git` mutant restent fermés tant que vous ne posez pas
   `Orkeon:Tools:Shell:AllowInterpreters`, qui est **équivalent à une RCE** et fait émettre à
-  l'outil un avertissement de sécurité. Pour tenir `shell_command` hors de portée d'un agent,
-  composez votre hôte sans `AddOrkeonCodeTools()`.
-- Utilisez `DockerSandbox` pour tout scénario d'exécution de code avec des entrées non fiables.
+  l'outil un avertissement de sécurité. Préférez ajouter la seule commande dont vous avez
+  besoin à `Orkeon:Tools:Shell:ExtraAllowedCommands` ; `Orkeon:Tools:Shell:AllowedCommands`
+  remplace purement et simplement l'allowlist. Pour tenir `shell_command` hors de portée d'un
+  agent, composez votre hôte sans `AddOrkeonCodeTools()`.
+- Utilisez `DockerSandbox` pour tout scénario d'exécution de code avec des entrées non
+  fiables, et laissez `Orkeon:CodeSandbox:AllowHostExecution` désactivé.
 - Configurez les clés d'API via des variables d'environnement ou un gestionnaire de secrets — jamais dans les définitions YAML de crew.
 - Activez le chiffrement de la mémoire au repos (`EncryptedMemoryProviderDecorator`) pour les charges de travail sensibles.
 
@@ -61,8 +64,11 @@ Chaque artefact — paquets NuGet, installeurs, archives CLI, `.deb`, MSI — es
 un workflow GitHub Actions public et porte une **attestation de provenance de build** signée
 par GitHub (SLSA v1) qui nomme le workflow, le tag et le commit ayant produit ces octets
 exacts. La publication sur NuGet.org passe par Trusted Publishing (OIDC) : aucune clé API
-longue durée n'existe. Chaque release livre aussi `SHA256SUMS` et, à partir de la
-prochaine, un SBOM CycloneDX couvert par la même attestation.
+longue durée n'existe. Chaque release livre aussi `SHA256SUMS` (et `SHA256SUMS.msi` pour
+les MSI) et — pour les releases coupées depuis l'arrivée de l'étape SBOM en septembre 2026 —
+un SBOM CycloneDX couvert par la même attestation. Deux choses ne portent **aucune**
+attestation : les builds dev de `main` (`<version>.dev.<numéro de run>`, sur GitHub Packages
+uniquement) et l'image conteneur `orkeon-runners` sur GHCR.
 
 ```bash
 gh attestation verify orkeon-cli-<version>-osx-arm64.tar.gz --repo Orkeon/orkeon

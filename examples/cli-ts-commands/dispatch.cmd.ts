@@ -2,14 +2,16 @@
 //
 // Command dispatch to live agents (design §8). These commands address an agent by name
 // through `ctx.services.get("commands")`; the agent must have declared `onCommand` (see the
-// companion .ork.ts crew) and been activated on the dispatch bus.
+// companion .ork.ts crew) and been activated on the dispatch bus. The stock `orkeon-repl`
+// activates no agent: there, `ask` answers "unknown agent 'echo'". These commands need a
+// host that registers the agent itself (docs/architecture/cli-ts-commands.md).
 //
-//   scripted> ask hello          # sync: blocks, prints the agent reply
-//   scripted> ask-bg hello       # async: returns a ticket immediately
-//   scripted> ps                 # list in-flight commands
-//   scripted> inspect --ticket=t1
-//   scripted> result --ticket=t1
-//   scripted> cancel --ticket=t1
+//   scripted> /ask hello          # sync: blocks, prints the agent reply
+//   scripted> /ask-bg hello       # async: returns a ticket immediately
+//   scripted> /ps                 # list in-flight commands
+//   scripted> /inspect --ticket=t1
+//   scripted> /result --ticket=t1
+//   scripted> /cancel --ticket=t1
 
 // ── Sync (design §4.1): await the agent's response, then return. ──
 defineCommand({
@@ -24,7 +26,7 @@ defineCommand({
   },
 });
 
-// ── Async (design §4.2): post and detach; completed() replays at the next pump. ──
+// ── Async (design §4.2): post and detach; completed() runs as soon as the reply lands. ──
 defineAsyncCommand({
   name: "ask-bg",
   description: "Ask the 'echo' agent in the background.",

@@ -20,7 +20,7 @@ dotnet run --project src/scripting/Orkeon.Scripting.Cli -- \
     run examples/scripting/01-hello-world.ork.ts
 ```
 
-That file is fourteen lines:
+Without its version line and its comment, that file is:
 
 ```ts
 const greeter = agentBuilder()
@@ -34,21 +34,21 @@ await crew.run();
 ```
 
 Three things are already true here and worth naming. `agentBuilder()`, `crewBuilder()` and
-friends are **globals** — there is nothing to import. `role` and `goal` are not labels, they
-are the prompt an LLM-backed agent receives. And the last line, `await crew.run()`, is not a
+friends are **globals** — there is nothing to import. The `.body()` is the agent: here it
+returns a string and no model is called. And the last line, `await crew.run()`, is not a
 detail of style: it selects the engine.
 
 ## The thing to understand first: there are two shapes
 
 A `.ork.ts` file is handed to one of **two different engines**, and the file chooses which by
-how it ends. The runner reads your source looking for an assignment to `globalThis.crew`.
+how it ends. `orkeon run` reads your source looking for an assignment to `globalThis.crew`.
 
 | | **Procedural** | **Declarative** |
 |---|---|---|
 | the file ends with | `await crew.run()` | `globalThis.crew = crew` |
 | runs agent `.body()` | yes, one per agent | **no** |
 | honours `withTask`, `process`, `manager` | **no** | yes |
-| `--validate` without running | fails | works |
+| `--validate` without running | fails — after running the script | works |
 
 These are opposites, not two spellings of the same thing. The procedural engine iterates the
 agents and never looks at tasks. The declarative adapter never invokes a `.body()`.
@@ -85,17 +85,22 @@ intent. Everything downstream depends on this being boring and correct.`)
     .build();
 ```
 
-`role`, `goal` and `backstory` **are the prompt**. Vague ones produce vague agents.
+In this shape `role`, `goal` and `backstory` **are the prompt** (`role` is required). Vague ones
+produce vague agents. The procedural engine does not send them: there, your body's own
+`ctx.llm` calls are the whole prompt.
 
 ### Tools, three surfaces
 
 An agent reaches tools three ways, and they are not interchangeable:
 
 1. **Built-ins by name** — `.tools(["file_read", "directory_read"])`. Resolved from the host
-   catalogue, and the resolution is *strict*: a name that is not registered fails the run
-   rather than quietly leaving the agent one tool short.
+   catalogue, and in this shape the resolution is *strict*: a name that is not registered
+   fails the run rather than quietly leaving the agent one tool short. (The procedural
+   engine, which cannot be validated, skips an unknown name silently.)
 2. **TypeScript tools as instances** — `.withAutonomousTools([...])`, built with
-   `toolBuilder()`. They travel with the script, so they need no host registration.
+   `toolBuilder()`. They travel with the script, so they need no host registration. In the
+   procedural shape they are called directly from a body (`diffStats.execute({ diff })`) —
+   `ctx.llm.act` does not offer them to the model.
 3. **Imperatively, from a body** — `tools.fileRead({ path })`, camelCased, procedural shape
    only.
 
@@ -175,6 +180,8 @@ VALIDATION OK: …/crew-review-desk/main.ork.ts (agents=3, tasks=3, tools resolv
 
 That check is only available on this shape, and it is a good reason to prefer it: it catches
 an unregistered tool name or a task pointing at an undeclared agent before you spend a token.
+On a procedural file `--validate` fails — and only after evaluating it, `await crew.run()`
+included.
 
 ## Shape B — the procedural script
 
@@ -196,8 +203,9 @@ await crewBuilder().withAgent(calculator).build().run();
 
 ### `ctx.llm.act` — an agent loop in nine lines
 
-`act` runs the LLM ⇄ tool-call cycle over the agent's own catalogue until the model stops
-asking for tools or `maxIterations` is reached:
+`act` runs the LLM ⇄ tool-call cycle over the built-ins the agent selected with
+`.tools([...])` until the model stops asking for tools or `maxIterations` (default 10) is
+reached:
 
 ```ts
 .body(async (input, ctx) => {
@@ -211,7 +219,8 @@ asking for tools or `maxIterations` is reached:
 
 `system` seeds a real `role:"system"` message that persists across every iteration. Without
 it, `act()` sends a single user message — identity and tool policy travelling with user-level
-authority, and the providers' native system handling never firing.
+authority, and the providers' native system handling never firing. The agent's `role` and
+`goal` are not added for you: in this shape, `system` is where they go.
 
 ### State
 
@@ -232,27 +241,33 @@ proxy whose `set` trap exists to make that loud rather than lost.
 ### Inputs, memory, errors
 
 ```ts
-const topic = (globalThis.inputs?.topic as string) ?? "espresso";
+const topic = (globalThis.inputs?.topic as string) ?? "coffee";
 ```
 
 ```bash
 … run examples/scripting/10-inputs-and-memory.ork.ts --inputs '{"topic":"orkeon"}'
 ```
 
-`ctx.memory.crew` and `ctx.memory.agent` are scoped key/value stores. `onError` returns an
-action built from a factory — **not** a string:
+`ctx.memory.crew` and `ctx.memory.agent` are scoped key/value stores. What the run reports is
+`globalThis.result` — assign it explicitly: a file with a top-level `await` runs wrapped in an
+async function, so its last expression is never the result, and a top-level `const result`
+stays local to the wrapper.
+
+`onError` returns an action built from a factory — **not** a string:
 
 ```ts
 .onError((err) => ErrorAction.retry({ delay: 10, max: 3 }))
 ```
 
 `ErrorAction.fail()`, `.skip()`, `.fallback(value)`, `.retry({...})`. Returning anything the
-runtime does not recognise becomes `fail()`.
+runtime does not recognise becomes `fail()`. The handler receives `{ code, message, exception,
+attempt, agent }`; branch on `err.code` (`rate_limit`, `network`, `timeout`, `validation`…).
 
 ## Editor setup
 
-The typings ship as `orkeon.d.ts` — next to the CLI build output, and inside the `Orkeon`
-package at `content/typings/orkeon.d.ts`. Point your editor at it, and copy
+The typings live in `src/scripting/Orkeon.Scripting/Typings/*.d.ts`; building
+`Orkeon.Scripting` concatenates them into `orkeon.d.ts`, under that project's
+`bin/<configuration>/net10.0/dist/`. Point your editor at it, and copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).
 
 Three of its options are load-bearing, and skipping them produces errors that have nothing to
@@ -277,7 +292,8 @@ knowing before you are surprised by them:
   that waits (the CLI's `runCrew` / `request` bridges) blocks the whole script; an awaited
   one (`ctx.llm.*`, `tools.*`, `ctx.delegate`, `ctx.receive`) only suspends its own chain,
   and the others keep running.
-- **`import` works between your own files**, resolved relative to the script.
+- **`import` works between your own files**, resolved relative to the script: esbuild bundles
+  them when the file is run from disk, as `orkeon run` does.
 
 ## Ten errors and what they mean
 

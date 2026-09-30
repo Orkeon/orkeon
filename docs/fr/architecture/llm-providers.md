@@ -27,9 +27,47 @@ Fournisseurs implémentés :
 | OpenRouter (agrégateur) | `OpenRouterLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 | Mammouth AI (agrégateur) | `MammouthLlmProvider` | `Orkeon.Infrastructure.LLMs` |
 
-Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`.
+Quatorze d'entre eux étendent `OpenAICompatibleProviderBase` (elle-même un
+`HttpLlmProviderBase`) ; Anthropic et Ollama étendent directement `HttpLlmProviderBase`, car
+leurs API ne suivent pas la forme OpenAI. Docker Model Runner et tout autre serveur compatible
+OpenAI n'ont pas de classe propre : `OpenAIProvider` les pilote via leur URL de base. Endpoints,
+modèles par défaut et clés de provider sont des constantes partagées dans
+`Orkeon.Constants.Llm` (`LlmProviderEndpoints`, `LlmProviderDefaultModels`, `LlmProviderKeys`,
+`LlmModelOutputLimits`).
 
-`LlmProviderFactory` (`Orkeon.Infrastructure.LLMs`) résout automatiquement le fournisseur à partir de la `LlmConfig` (détection par URL, nom de modèle, ou clé API).
+Des adaptateurs génériques (`ChatClientToLlmProviderAdapter`, `LlmProviderToChatClientAdapter`, `ChatClientToBasicLlmProviderAdapter`) sont disponibles dans `Orkeon.Infrastructure.LLMs.Adapters` pour intégrer d'autres fournisseurs compatibles avec l'interface `IChatClient`. Un agent Microsoft Agent Framework peut aussi servir de modèle (`AIAgentLlmProvider`, [ADR-010](../adr/ADR-010-agent-framework-interop.md)).
+
+### Résolution du provider
+
+`LlmProviderFactory` (`Orkeon.Infrastructure.LLMs`) a deux points d'entrée :
+
+- `Create(providerType, config)` prend une clé de provider explicite (`LlmProviderKeys`) :
+  `openai`, `anthropic`, `ollama`, `azure-openai` / `azure`, `together` / `togetherai`,
+  `qwen`, `deepseek`, `kimi` / `moonshot`, `mistral`, `huggingface` / `hf`, `gemini` /
+  `google`, `grok` / `xai`, `minimax`, `zai` / `glm` / `zhipu`, `openrouter`, `mammouth`.
+  Une clé inconnue lève `NotSupportedException`. C'est le chemin de
+  `orkeon llm probe --provider`.
+- `Create(config)` déduit le provider — c'est ce que fait un run, puisque la section `Llm` du
+  fichier de settings ne porte aucune clé de provider. La première règle qui correspond
+  l'emporte :
+  1. **URL de base, hôtes connus** — `/engines/` ou `model-runner.docker.internal` (Docker
+     Model Runner, dialecte OpenAI — testé en premier, avant la règle localhost), `azure` /
+     `.cognitiveservices.`, `together.xyz`, les hôtes DashScope, `deepseek.com` (refusé quand
+     le chemin est `/anthropic`), `moonshot.cn` / `moonshot.ai`, `mistral.ai`,
+     `generativelanguage.googleapis.com`, `api.x.ai`, `api.minimax.io` / `api.minimaxi.com`,
+     `huggingface.co` / `hf.co`, `api.z.ai` / `bigmodel.cn`, `openrouter.ai`, `mammouth.ai`.
+  2. **URL de base, générique** — contient `openai` → OpenAI, `anthropic` → Anthropic,
+     `localhost` ou `11434` → Ollama.
+  3. **Préfixe du modèle** — `gpt`, `claude`, `llama` / `codellama` (Ollama), `mistral` /
+     `ministral` (le `mistral` nu et `mistral:<tag>` vont à Ollama), `qwen`, `deepseek`,
+     `moonshot`, `glm`, `gemini`, `grok`, `minimax`, `openrouter/`. Mammouth n'est jamais
+     déduit d'un nom de modèle : ses identifiants sont ceux des vendeurs.
+  4. **Préfixe de la clé API** — `hf_` → HuggingFace, `xai-` → Grok.
+  5. Sinon **OpenAI**.
+
+Chaque provider construit par la fabrique est enveloppé dans `MeteredLlmProvider` (voir
+[Décorateurs et enregistrement](#décorateurs-et-enregistrement)) et rendu derrière un
+`LlmProviderAdapter`.
 
 ## Capacités déclarées
 
@@ -39,9 +77,13 @@ Chaque provider déclare un value object `LlmProviderCapabilities` (Domain, expo
 `Vision`, `ExplicitPromptCaching`, `RequiresJsonKeywordInPrompt`, `ReplaysReasoningContent`.
 `OpenAICompatibleProviderBase` traduit la déclaration en dialecte OpenAI une seule fois
 (payloads vision, `response_format`, thinking, les diagnostics `CapabilityMismatchHint`) ;
-Anthropic, Ollama et Qwen surchargent le hook pour leur propre dialecte. Une option qu'un
-provider ne peut pas honorer produit un avertissement structuré — jamais un abandon
-silencieux. Le cas miroir — une contrainte que seul le **serveur** peut énoncer — a son
+Anthropic et Ollama écrivent leur propre dialecte, et Qwen surcharge le hook pour les champs
+de réflexion de DashScope. Une option qu'un provider ne peut pas honorer produit un
+avertissement structuré (event id `110`, `Option '…' was declared but … does not support it —
+it was not sent`) — jamais un abandon silencieux. `CapabilityMismatchHint` (providers compatibles OpenAI et
+Ollama) couvre le versant par modèle : quand un vendeur refuse une capacité que le provider déclare (un modèle texte
+seul qui reçoit une image, un modèle sans réflexion ou sans outils), l'erreur dit quelle
+hypothèse était fausse. Le cas miroir — une contrainte que seul le **serveur** peut énoncer — a son
 propre point d'extension : `OpenAICompatibleProviderBase.TryAdaptRejectedPayload` donne au
 provider une chance d'adapter une charge utile refusée en 4xx et de la ré-émettre une seule
 fois (chemins generate et chat ; le streaming ne réessaie jamais). Kimi s'en sert pour le
@@ -64,9 +106,52 @@ le relaie avec `costSource: "vendor"` ([le bus d'événements du run](run-event-
 chiffré, pour ses propres budgets ; cette estimation n'atteint jamais le fil. Un
 chunk portant un `error` racine après le HTTP 200 termine un flux comme un refus pré-flux —
 métadonnée `error` sur le flux chat, `HttpRequestException` sur le flux texte — jamais
-comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`, et
-`RateLimitedLlmProvider` décore n'importe lequel d'entre eux. La matrice par provider vit dans
-[le comparatif des providers](../reference/llm-providers-comparison.md).
+comme une complétion propre. Les 16 providers sont des `IStreamingLlmProvider`. La matrice
+par provider vit dans [le comparatif des providers](../reference/llm-providers-comparison.md).
+
+### Points d'extension du dialecte de la base compatible OpenAI
+
+Ce qui diffère entre les vendeurs compatibles s'exprime par une poignée de membres protégés,
+pas par des copies du constructeur de payload :
+
+| Point d'extension | Par défaut | Surchargé par |
+|---|---|---|
+| `ApplyProviderSpecificOptions` | écrit `thinking` / `reasoning_effort` et `response_format` d'après les capacités déclarées | Qwen (`enable_thinking`, `thinking_budget`), OpenRouter (l'objet de requête `reasoning`), Together AI (ajoute `context_length_exceeded_behavior: truncate`) |
+| `MaxTokensFieldName` | `max_tokens` | OpenAI (`max_completion_tokens`) |
+| `AlwaysEmitTopP` | `top_p` omis quand il vaut 1 | Mistral (toujours écrit) |
+| `SplitReasoningFromContent` / `EnrichAssistantMessage` | rien n'est extrait ; `reasoning_content` rejoué quand `ReplaysReasoningContent` est déclaré | MiniMax (bloc `<think>` en ligne extrait, réinséré au rejeu) |
+| `ReasoningFieldName` | `reasoning_content` | OpenRouter (`reasoning`) |
+| `CostCurrency` | aucune | OpenRouter (`USD`) |
+| `TryAdaptRejectedPayload` | ré-émet une fois sans le plafond de sortie quand celui du catalogue a été refusé | Kimi (la température imposée, puis la règle de la base) |
+| `BuildEndpoint` | `{baseUrl}/chat/completions` | Azure OpenAI (URL datée par déploiement, ou la surface v1 avec `api_version: v1`) |
+
+## Décorateurs et enregistrement
+
+- **`MeteredLlmProvider`** — l'unique endroit où l'usage LLM est mesuré : il rapporte chaque
+  appel du provider qu'il enveloppe à l'`ILlmUsageSink` de l'hôte, avec le coût du vendeur
+  quand la réponse en porte un, et sinon une estimation signalée comme telle.
+  `LlmProviderFactory` enveloppe chaque provider qu'elle construit ; un provider que la
+  fabrique ne construit pas (le provider écho d'un hôte sans section `Llm`, un agent Microsoft
+  Agent Framework, un double de test) s'enregistre avec
+  `services.AddOrkeonLlmProvider(sp => …, baseConfig)`, qui l'expose en `ILlmProvider`,
+  `IBasicLlmProvider` et `IChatClient` sur une seule instance mesurée.
+- **`RateLimitedLlmProvider`** — fait passer chaque appel par l'`ILlmRateLimiter` (le bloc de
+  settings `RateLimiting`). Il enveloppe le provider remis au moteur de scripting, dont les
+  appels `ctx.llm.*` contournent le throttling propre de l'orchestrateur ; il n'est pas prévu
+  comme décorateur global, sans quoi le chemin YAML serait limité deux fois.
+- **Journalisation des échanges LLM** — `LlmLoggingDelegatingHandler`
+  (`Orkeon.Infrastructure.Logging`) capture chaque échange HTTP (en-têtes et payload, assainis
+  par `LogSanitizer` : en-têtes d'authentification masqués par nom, secrets des corps par
+  motif) en JSON Lines, plus un résumé en log structuré.
+  `services.AddLlmExchangeLogging(logDirectory, options)` l'injecte dans tous les clients
+  `IHttpClientFactory` ; la surcharge `IHttpClientBuilder` cible un seul client nommé, et
+  `AddLlmExchangeFileLogging(logDirectory)` garde la capture JSONL sans le résumé console.
+  `LlmLoggingOptions` : `MaxBodyLengthChars` (0 = pas de troncature), `LogStreamingExchanges`
+  (true ; un flux est capturé par sa seule requête), `FullEmbeddingLog` (true ; false réduit
+  les tableaux d'embeddings à un aperçu). Les runners l'activent avec `--llm-log` /
+  `--llm-log-path` et lisent les options dans la section de settings `LlmLogging` ; les
+  fichiers vont dans le montage interne `/llm-logs`, jamais visible des agents. C'est un
+  outil de débogage : la capture contient les prompts complets.
 
 ## Valider un fournisseur contre son API réelle
 
@@ -81,10 +166,10 @@ llmproviders-test/run-campaign.sh --all --config providers.local.json --dry-run
 
 Il pilote `orkeon llm probe` sur les modes M1–M10, M12 et M13 du
 protocole de test des fournisseurs (matrice interne des mainteneurs) et
-archive un rapport Markdown par campagne. `orkeon llm models -p <fournisseur> --filter
-'gpt-5.6-*'` liste ce qu'un fournisseur sert réellement : aucune campagne ne dépend d'une
-liste de modèles maintenue à la main.
+archive un rapport Markdown par campagne.
+`orkeon llm models -p <fournisseur> --filter 'gpt-5.6-*'` liste ce qu'un fournisseur sert
+réellement : aucune campagne ne dépend d'une liste de modèles maintenue à la main.
 
 ---
 
-> **Voir aussi** : [Système de mémoire](./memory-system.md) · [Sécurité](../architecture/security.md) · [Retour à l'index](../INDEX.md)
+> **Voir aussi** : [Comparatif des providers](../reference/llm-providers-comparison.md) · [Format de réponse LLM](../guides/llm-response-format.md) · [Contenu multi-modal](../guides/multimodal.md) · [Modèles locaux](../guides/local-models.md) · [Système de mémoire](./memory-system.md) · [Sécurité](./security.md) · [Retour à l'index](../INDEX.md)

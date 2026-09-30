@@ -6,23 +6,20 @@
 
 ## Overview
 
-Orkeon provides an autonomous orchestration mode (`ProcessType.Autonomous`) in which agents self-organize to claim tasks, delegate recursively to their peers, and spawn specialized sub-agents on the fly. All execution is constrained by a multi-dimensional `AgentExecutionBudget` that guarantees termination.
+Orkeon provides an autonomous orchestration mode (`ProcessType.Autonomous`): for each task, a manager LLM picks the agent that claims it; when that agent fails and allows delegation, the task is handed to a peer over an agent-to-agent channel. All execution is constrained by a multi-dimensional `AgentExecutionBudget` that guarantees termination.
 
-> **DI default worth knowing**: out of the box, `ITaskDelegator` is a stub that denies
-> every delegation request (it warns once, with the fix) — see
-> [Default behaviors](../getting-started/default-behaviors.md) before wiring a
-> delegation-heavy crew.
+> **Experimental API.** The budget types, `IAgentChannel` and its records, `AutonomousProcessStrategy` and `SpawnAgentTool` carry `[Experimental("ORKEXP002")]`: code that uses them must acknowledge the diagnostic (see [experimental APIs](../reference/experimental-apis.md)). Running a YAML crew with `process: autonomous` needs nothing.
 
-Unlike the Sequential/Hierarchical modes where the orchestrator controls the flow, and the Graph mode where the state graph defines the topology, the Autonomous mode lets the agents make the delegation and spawn decisions. The orchestrator only steps in to enforce the budget and collect the results.
+Unlike the Sequential mode, where the declared order and the task's `agent:` decide, the Autonomous mode lets the manager LLM decide who does what, and gives a failed task a second chance with a peer. The orchestrator enforces the budget and collects the results.
 
 ### Positioning relative to the other strategies
 
-| Strategy | Routing decision | Recursive delegation | Dynamic spawn | Multi-dimensional budget | A2A communication |
+| Strategy | Routing decision | Delegation | Dynamic spawn | Multi-dimensional budget | A2A communication |
 |-----------|--------------------|-----------------------|-----------------|------------------------|--------------------|
-| Sequential | Fixed (list order) | No | No | No | No |
-| Hierarchical | Manager LLM | 1 level | No | No | Unidirectional |
-| Graph | Conditional edges | No | No | No (circuit breaker) | No |
-| **Autonomous** | **Agent self-selection** | **Yes (controlled depth)** | **Yes (quota)** | **Yes (5 dimensions)** | **Request/Response** |
+| Sequential | Declared agent, else selector | Via `delegate_work_to_coworker` (agents with `allowDelegation`) | No | No | No |
+| Hierarchical | Manager LLM | No (manager review instead) | No | No | No |
+| Graph | Declared agent, else selector | Via `delegate_work_to_coworker` | No | No (circuit breaker) | No |
+| **Autonomous** | **Manager LLM** | **On failure, to a peer (bounded depth)** | **Via `SpawnAgentTool` (host-registered)** | **Yes (5 dimensions)** | **Request/Response** |
 
 ## Architecture
 
@@ -35,11 +32,11 @@ Unlike the Sequential/Hierarchical modes where the orchestrator controls the flo
 | `BudgetExhaustedException` | `Autonomous/AgentExecutionBudget.cs` | Typed exception with `BudgetDimension` (ToolCalls, DelegationDepth, WallTime, Tokens, SpawnedAgents) |
 | `BudgetDimension` | `Autonomous/AgentExecutionBudget.cs` | Enum of the 5 budget dimensions |
 
-The budget is thread-safe (`Interlocked` counters) and immutable after construction (limits as `init`). Each action (`RecordToolCall`, `RecordDelegation`, `RecordSpawn`, `RecordTokens`) decrements the budget and throws `BudgetExhaustedException` when the limit is reached.
+The limits are `init`-only; the counters are thread-safe (`Interlocked`). Each `Record*` call (`RecordToolCall`, `RecordDelegation`, `RecordSpawn`, `RecordTokens(n)`) checks the wall time, increments its counter and throws `BudgetExhaustedException` when the counter goes past its limit. `ThrowIfExhausted()` is the pre-flight check that consumes nothing, `AssertWallTime()` checks the clock alone, and `IsExhausted` reports whether any dimension is spent. The clock is injectable (`TimeProvider`) for tests.
 
 ### Domain layer — ProcessType
 
-`ProcessType.Autonomous` is added to the existing value object. `IProcessStrategy` exposes a new method:
+`ProcessType.Autonomous` is a member of the value object, and `IProcessStrategy` has a dedicated entry point:
 
 ```csharp
 Task<CrewOutput> ExecuteAutonomousAsync(
@@ -54,55 +51,63 @@ Task<CrewOutput> ExecuteAutonomousAsync(
 | Class | File | Role |
 |--------|---------|------|
 | `IAgentChannel` | `Interfaces/Services/IAgentChannel.cs` | Bidirectional request/response channel between agents |
-| `AgentChannelRequest` | `Interfaces/Services/IAgentChannel.cs` | Request with correlation ID, intent, payload |
-| `AgentChannelResponse` | `Interfaces/Services/IAgentChannel.cs` | Correlated response with success/error |
+| `AgentChannelRequest` | `Interfaces/Services/IAgentChannel.cs` | Request with correlation ID, intent, payload, optional metadata (`Create(from, to, intent, payload)`) |
+| `AgentChannelResponse` | `Interfaces/Services/IAgentChannel.cs` | Correlated response (`Ok(...)` / `Fail(...)`) with success/error |
 | `NullMemoryScope` | `Context/NullMemoryScope.cs` | No-op singleton for contexts without memory |
 
-`IAgentChannel` supports three modes:
+`IAgentChannel` supports three operations:
 
-- **RequestAsync**: synchronous request/response with a configurable timeout
-- **RegisterHandler**: per-agent handler registration (returns `IDisposable`)
-- **BroadcastAsync**: notification to all agents of a crew (fire-and-forget)
+- **RequestAsync**: request/response with a timeout (30 s by default); a target that does not answer in time raises `TimeoutException`, a target with no registered handler gets a failed response
+- **RegisterHandler**: per-agent handler registration (returns an `IDisposable` that unregisters it)
+- **BroadcastAsync**: notification to the other agents of a crew, no response expected; `InMemoryAgentChannel` reaches the agents registered with `RegisterCrewMember(crewId, agentId)`
 
 ### Infrastructure layer — Autonomous strategy
 
 | Class | File | Role |
 |--------|---------|------|
 | `AutonomousProcessStrategy` | `Crew/Strategies/AutonomousProcessStrategy.cs` | Implements `IProcessStrategy.ExecuteAutonomousAsync` |
-| `InMemoryAgentChannel` | `Communication/InMemoryAgentChannel.cs` | In-process implementation of the A2A channel (lock-free, `ConcurrentDictionary`) |
-| `SpawnAgentTool` | `Tools/SpawnAgentTool.cs` | Tool that lets agents spawn sub-agents |
+| `InMemoryAgentChannel` | `Communication/InMemoryAgentChannel.cs` | In-process implementation of the A2A channel (lock-free, `ConcurrentDictionary`), registered as the scoped `IAgentChannel` |
+| `SpawnAgentTool` | `Tools/SpawnAgentTool.cs` | Tool that lets an agent spawn a sub-agent |
+| `DelegateWorkTool` | `Tools/DelegateWorkTool.cs` | Takes an optional `AgentExecutionBudget` and calls `RecordDelegation()` before each delegation |
 
-### Infrastructure layer — Changes to existing code
+### Wiring
 
-| Class | Change |
+| Place | Role |
 |--------|-------------|
-| `ProcessStrategyFactory` | Added the `"Autonomous"` case → `AutonomousProcessStrategy` |
-| `SequentialCrewOrchestrator` | Added the `"Autonomous"` dispatch with `AgentExecutionBudget.Permissive` |
-| `DelegateWorkTool` | Added the optional `AgentExecutionBudget?` parameter, `RecordDelegation()` call before each delegation |
+| `ProcessStrategyFactory` | `"Autonomous"` → `AutonomousProcessStrategy` |
+| `SequentialCrewOrchestrator` | Dispatches `"Autonomous"` to `ExecuteAutonomousAsync` with `AgentExecutionBudget.Permissive` |
+| `AddOrkeonInfrastructure()` | Registers `AutonomousProcessStrategy` and `IAgentChannel` → `InMemoryAgentChannel` (scoped) |
 
 ## Execution flow
 
 ```
-                    ┌────────────────────────────────────────────┐
-                    │         AutonomousProcessStrategy          │
-                    │                                            │
-  Crew.Tasks ──►    │  for each task:                            │
-                    │    1. AssignTaskAsync (LLM-based)           │
-                    │    2. budget.RecordToolCall()               │
-                    │    3. ExecuteTaskAsync(agent, task)         │
-                    │    4. On failure + AllowDelegation:         │
-                    │       ├─ budget.RecordDelegation()          │
-                    │       ├─ channel.RequestAsync(peer, task)   │
-                    │       └─ peer executes with childBudget     │
-                    │    5. BudgetExhausted? → partial output     │
-                    │                                            │
-                    └────────────────────────────────────────────┘
-
-  SpawnAgentTool (optional, injected into the agent):
-    1. budget.RecordSpawn()
-    2. IAgentFactory.CreateAgentAsync(spawnRequest)
-    3. ExecuteTaskAsync(spawnedAgent, task) with childBudget
+                    ┌──────────────────────────────────────────────────┐
+                    │         AutonomousProcessStrategy                │
+                    │                                                  │
+  crew tasks ──►    │  register every agent on the IAgentChannel       │
+  (dependency       │  for each task:                                  │
+   order)           │    0. budget.AssertWallTime()                    │
+                    │    1. manager.AssignTaskAsync (LLM) → agent      │
+                    │    2. budget.RecordToolCall()                    │
+                    │    3. ExecuteTaskAsync(agent, task)              │
+                    │    4. failed + AllowDelegation + depth left:     │
+                    │       ├─ budget.RecordDelegation()               │
+                    │       ├─ channel.RequestAsync("delegate",        │
+                    │       │    first other agent, timeout 2 min)     │
+                    │       └─ peer executes under a child budget      │
+                    │    5. BudgetExhausted in the task → partial      │
+                    │       output "[BUDGET EXHAUSTED] …"              │
+                    │  BudgetExhausted between tasks → stop the loop   │
+                    └──────────────────────────────────────────────────┘
 ```
+
+Details that matter when sizing a run:
+
+- **Assignment** goes through `IManagerAgent` (`LlmBasedManager`), which calls the host's registered LLM, as in the Hierarchical mode; a task's `agent:` is not consulted. An LLM error falls back to the first agent.
+- **Tool calls**: the strategy records **one** `RecordToolCall()` per task handed out (the assignment); the agent's own tool calls inside its loop are not counted against the budget. `MaxToolCalls` therefore bounds the number of tasks attempted.
+- **Delegation depth**: `RecordDelegation()` increments a crew-wide counter that is never decremented, so `MaxDelegationDepth` behaves as the number of delegations allowed in the run. The delegate is the **first other agent** in the crew's order; it executes a new task built from the description (context variables `delegation_context` and `autonomous_child_budget_snapshot`) and does not delegate further.
+- **Tokens**: the tokens of a delegated execution are recorded on both the child and the parent budget; the direct executions feed the crew's token telemetry but not `MaxTokensConsumed`.
+- **Outcome**: the crew output concatenates the task outputs and is reported as **completed** even when tasks failed or the budget ran out; `ICrewExecutionHook` receives the status `Canceled` ("Execution budget exhausted") when a dimension is spent.
 
 ## Multi-dimensional budget
 
@@ -111,7 +116,7 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 | Dimension | Default | Strict | Permissive | Description |
 |-----------|--------|--------|------------|-------------|
 | MaxToolCalls | 15 | 8 | 50 | Maximum number of tool calls |
-| MaxDelegationDepth | 2 | 1 | 4 | Maximum recursive delegation depth (A→B→C = 2) |
+| MaxDelegationDepth | 2 | 1 | 4 | Maximum delegation depth (A→B→C = 2) |
 | MaxWallTime | 5 min | 2 min | 15 min | Maximum wall-clock time |
 | MaxTokensConsumed | 16,000 | 8,000 | 64,000 | Total tokens (prompt + completion) |
 | MaxSpawnedAgents | 3 | 1 | 10 | Maximum number of spawned sub-agents |
@@ -119,14 +124,15 @@ The budget controls 5 independent dimensions. Each dimension has a thread-safe c
 ### Presets
 
 ```csharp
+#pragma warning disable ORKEXP002
 // Production: conservative limits
-var budget = AgentExecutionBudget.Strict;
+var strict = AgentExecutionBudget.Strict;
 
-// Development: loose limits
-var budget = AgentExecutionBudget.Permissive;
+// Development: loose limits — what ICrewOrchestrationService always uses
+var permissive = AgentExecutionBudget.Permissive;
 
 // Custom
-var budget = new AgentExecutionBudget
+var custom = new AgentExecutionBudget
 {
     MaxToolCalls = 20,
     MaxDelegationDepth = 3,
@@ -134,21 +140,29 @@ var budget = new AgentExecutionBudget
     MaxTokensConsumed = 32_000,
     MaxSpawnedAgents = 5
 };
+
+// A budget other than Permissive: call the strategy directly
+var strategy = serviceProvider.GetRequiredService<AutonomousProcessStrategy>();
+var output = await strategy.ExecuteAutonomousAsync(crew, custom, inputVariables: null, ct);
+#pragma warning restore ORKEXP002
 ```
+
+`KickoffAsync` does not take a budget: a crew run through `ICrewOrchestrationService` (the runner, the host, Studio) always gets `Permissive`. Calling `ExecuteAutonomousAsync` directly skips what the orchestrator adds around a run (planning, checkpointing, the crew's state transitions).
 
 ### Child budgets
 
-When an agent delegates or spawns, the sub-agent receives a derived child budget with the remaining quotas:
+When the strategy delegates, or `SpawnAgentTool` spawns, the sub-agent receives a derived child budget:
 
 ```csharp
 var childBudget = parentBudget.CreateChildBudget();
-// MaxToolCalls = parent.Max - parent.Current
-// MaxDelegationDepth = parent.Max - parent.Current - 1
-// MaxWallTime = parent.Max - parent.Elapsed
-// etc.
+// MaxToolCalls       = max(1, parent.Max - parent.Current)
+// MaxDelegationDepth = max(0, parent.Max - parent.Current - 1)
+// MaxWallTime        = parent.MaxWallTime - parent.Elapsed
+// MaxTokensConsumed  = max(100, parent.Max - parent.Current)
+// MaxSpawnedAgents   = max(0, parent.Max - parent.Current)
 ```
 
-This guarantees that the sum of the children's consumption never exceeds the parent budget.
+A child budget is an independent copy of the parent's **remaining** allowance, with its own counters: two children derived one after the other each receive the full remainder. The parent's cap is held where the consumption is recorded on it too — the tokens of a delegated execution, and each spawn.
 
 ## A2A communication (IAgentChannel)
 
@@ -168,22 +182,27 @@ if (response.Success)
     Console.WriteLine($"Response: {response.Payload}");
 ```
 
-### Standard intents
+### Intents
 
-| Intent | Description |
+The intent is a free string. Inside an autonomous run, the handler each agent registers understands:
+
+| Intent | Handling |
 |--------|-------------|
-| `delegate` | Work delegation (processed by the target's handler) |
-| `clarify` | Request for information or clarification |
-| `broadcast` | Notification to all agents of the crew |
+| `delegate` | Executes the payload as a task under a child budget and returns its output (or `Budget exhausted: …`) |
+| anything else (`clarify`, …) | Acknowledged: `Agent <role> acknowledges: <intent>` |
+| `broadcast` | The intent `BroadcastAsync` stamps on its notifications |
 
 The `InMemoryAgentChannel` implementation is in-process and lock-free. For a multi-host deployment, implement `IAgentChannel` with Redis Streams or a message broker.
 
 ## SpawnAgentTool — Agent self-spawn
 
-Tool injected into autonomous agents to create specialized sub-agents on the fly.
-The class ships in `Orkeon.Infrastructure` but **no shipped composition root registers
-it**: a host that wants self-spawn registers `SpawnAgentTool` explicitly (it needs an
-`IAgentFactory`) — see the [tool inventory](../tools/inventory.md).
+A tool (`spawn_agent`) that lets an agent create a specialized sub-agent on the fly.
+The class ships in `Orkeon.Infrastructure` but **neither the strategy nor any shipped
+composition root provides it**: its constructor takes the parent agent's id, the crew id,
+the `AgentExecutionBudget` it enforces and an `IAgentFactory` (plus, for a synchronous
+spawn, an `IAgentExecutionService`), so a host that wants self-spawn builds one per agent
+and adds it to that agent — see the [tool inventory](../tools/inventory.md). The budget it
+enforces is the one the host hands it, not the run's budget.
 
 ```csharp
 // The agent's LLM generates this tool call:
@@ -199,29 +218,29 @@ it**: a host that wants self-spawn registers `SpawnAgentTool` explicitly (it nee
 }
 ```
 
-Each spawn is controlled by the budget (`RecordSpawn`). The spawned agent receives a child budget with reduced limits (5 iterations max, remaining quotas).
+`role` and `goal` are required; `backstory` is optional. Each spawn calls `RecordSpawn()` on the budget (a spent budget refuses the call). The spawned agent is created with `MaxIterations = 5` and a child budget (passed in the spawn request metadata and in the execution context). With `wait_for_result: true` (the default) the tool executes the task and returns its output; `false` only creates the agent.
 
 ## Observability
 
 ### Output metadata
 
-The `CrewOutput` in Autonomous mode includes budget metadata:
+The `CrewOutput` in Autonomous mode includes budget metadata, next to the token telemetry:
 
 ```json
 {
     "process_type": "autonomous",
     "agent_count": 3,
-    "budget_tool_calls": "12/15",
-    "budget_delegation_depth": "1/2",
-    "budget_tokens": "9200/16000",
-    "budget_spawned": "1/3",
+    "budget_tool_calls": "12/50",
+    "budget_delegation_depth": "1/4",
+    "budget_tokens": "9200/64000",
+    "budget_spawned": "0/10",
     "budget_exhausted": false
 }
 ```
 
 ### BudgetSnapshot
 
-`budget.ToSnapshot()` returns an immutable `BudgetSnapshot` at any time, loggable and serializable.
+`budget.ToSnapshot()` returns an immutable `BudgetSnapshot` at any time (`ToolCalls`/`MaxToolCalls`, `DelegationDepth`/`MaxDelegationDepth`, `TokensConsumed`/`MaxTokensConsumed`, `SpawnedAgents`/`MaxSpawnedAgents`, `Elapsed`/`MaxWallTime`, `IsExhausted`), loggable and serializable.
 
 ### Structured logging
 
@@ -229,9 +248,13 @@ All key events are logged via `LoggerMessage`:
 
 - `Starting autonomous execution for crew {CrewId} (budget: {MaxToolCalls} tool calls, depth {MaxDepth})`
 - `Agent {AgentId} claimed task {TaskId}: {Reason}`
-- `Delegation: {From} -> {To} for task {TaskId} (depth: {Depth})`
+- `Delegation: {From} → {To} for task {TaskId} (depth: {Depth})`
+- `Task {TaskId} completed (success: {Success}, budget: {Snapshot})`
 - `Budget exhausted for crew {CrewId}: dimension={Dimension}, {Message}`
-- `Agent {ParentId} spawned sub-agent {ChildId} (role: {Role})`
+- `Autonomous execution completed for crew {CrewId} in {Duration} (tool calls: {ToolCalls}, delegation depth: {Depth})`
+- `SpawnAgentTool` logs each spawn (parent, child id, role) and the completion of a synchronous spawn
+
+Like every mode, the strategy also reports through `ICrewExecutionHook`: the task start when an agent claims it, the task completions and the crew outcome when the run settles.
 
 ## YAML configuration
 
@@ -245,8 +268,8 @@ agents:
   researcher:
     role: Researcher
     goal: "Find reliable sources"
-    allowDelegation: true
-    tools: [web_search, spawn_agent]  # ← spawn_agent for self-spawn (host-registered)
+    allowDelegation: true   # a failed task of this agent is handed to a peer
+    tools: [web_search]
 
   analyst:
     role: Analyst
@@ -260,7 +283,11 @@ agents:
     allowDelegation: false
 ```
 
-> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Permissive` (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns); a custom budget (presets `Strict`/`Default`/`Permissive` or custom values) is available through the C# API only.
+`spawn_agent` is not listed: the YAML loader resolves tool names against the tool registry, where no `SpawnAgentTool` is registered by default (an unknown name is skipped with a warning, or fails the load in strict-tools mode).
+
+> **Note**: there is no `autonomousBudget` YAML key — the loader does not parse one. In YAML crews the Autonomous mode always runs with `AgentExecutionBudget.Permissive` (50 tool calls, depth 4, 15 min, 64 000 tokens, 10 spawns). In the scripting DSL, `crewBuilder().budget({...})` bounds only the procedural shape (`await crew.run()`); the declarative shape ignores it with a warning.
+
+> **Delegation defaults**: the autonomous strategy delegates through the `IAgentChannel`, not through `ITaskDelegator` — the stub that denies every request (see [Default behaviors](../getting-started/default-behaviors.md)) is not consulted by this mode.
 
 ## Complementarity with the other modes
 
@@ -269,10 +296,20 @@ agents:
 | Linear pipeline, maximum determinism | Sequential |
 | Centralized manager, quality review | Hierarchical |
 | Independent tasks, parallelism | Parallel |
-| Refinement loops, conditional retry | Graph |
-| **Self-organizing agents, recursive delegation, dynamic spawn** | **Autonomous** |
+| Retry of flaky tasks, bounded run | Graph |
+| **LLM-driven assignment, second chance with a peer, budget-bounded run** | **Autonomous** |
 
-The Autonomous mode is the most expressive but also the least deterministic. For sensitive production workloads, prefer Sequential or Hierarchical and reserve Autonomous for cases where agent autonomy brings more value than the cost of non-determinism (exploratory research, creative writing, complex multi-domain problem solving).
+The Autonomous mode is the least deterministic. For sensitive production workloads, prefer Sequential or Hierarchical and reserve Autonomous for cases where letting the manager distribute the work brings more value than the cost of non-determinism (exploratory research, creative writing, complex multi-domain problem solving).
+
+## Tests
+
+| Test file | Coverage |
+|-----------------|-----------|
+| `Orkeon.Infrastructure.Tests/Strategies/CovAutonomous_AutonomousProcessStrategyTests.cs` | Entry points, assignment fallback, delegation over the channel, tool-call and wall-time exhaustion, token telemetry, channel handlers |
+| `Orkeon.Domain.Tests/Autonomous/AgentExecutionBudgetTimeProviderTests.cs` | Wall-time budget with a controllable clock |
+| `Orkeon.Infrastructure.Tests/Communication/CovStubs_InMemoryAgentChannelTests.cs` | Request/response, timeout, missing handler, broadcast |
+| `Orkeon.Infrastructure.Tests/Tools/SpawnAgentTool/SpawnAgentToolTests.cs` | Spawn recorded on the parent budget, child budget propagation (metadata, context variables), token accounting |
+| `Orkeon.Infrastructure.Tests/Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | Dispatch of the six modes (Autonomous with the Permissive budget) |
 
 ---
 

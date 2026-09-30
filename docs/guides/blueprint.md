@@ -4,540 +4,254 @@
 
 # Blueprint — Adding an orchestration type to Orkeon
 
-This document serves as a reproducible guide for implementing and documenting a new orchestration type. It builds on the FSM precedent (see [FSM Orchestration](../orchestration/fsm.md)) and covers the 8 required steps, from the Domain layer through to the final documentation.
+This document is a reproducible checklist for adding a seventh `ProcessType` to the framework and documenting it. It follows the path the six existing modes took — the Graph mode (a Domain engine + a YAML block) and the Autonomous mode (a dedicated `IProcessStrategy` entry point) are the two reference precedents — and covers the 8 steps from the Domain value object to the documentation.
+
+A missed registration fails loudly rather than silently: `ProcessType.From`, the YAML parser and the scripting adapter refuse an unknown name, and both `ProcessStrategyFactory` and `SequentialCrewOrchestrator` throw `NotSupportedException` for a mode they do not route.
 
 ---
 
 ## Prerequisites
 
-Before starting, identify:
+Before starting, decide:
 
-- **Type name**: e.g. `StateGraph`, `AgenticSwarm`, `PipelineDAG`
-- **Doc number**: create a file in `docs/orchestration/` (e.g. `docs/orchestration/new-type.md`)
-- **Example number**: next free index in `examples/` (e.g. `104`)
-- **Initial scope**: where the new type applies first (Task, Crew, Flow)
-
----
-
-## Step 1 — Domain: Generic framework
-
-**Folder**: `src/core/Orkeon.Domain/Common/<NomType>/`
-
-Create the following files (adapt the class names):
-
-| File | Role | Reference model |
-|---------|------|---------------------|
-| `I<NomType>.cs` | Read-only + mutation interfaces in a single file | `IStateMachine.cs` (contains `IStateMachine` + `IMutableStateMachine`) |
-| `<NomType>.cs` | Thread-safe main engine | `StateMachine.cs` |
-| `<NomType>Builder.cs` | Fluent API to declare the graph/config | `StateMachineBuilder.cs` |
-| `<NomType>Policy.cs` | Immutable configuration record with presets + `CircuitBreakerStatus` | `CircuitBreakerPolicy.cs` |
-| `<NomType>Result.cs` | Immutable record of the operation result | `TransitionResult.cs` |
-| `<NomType>Exceptions.cs` | Type-specific exceptions | `StateMachineExceptions.cs` |
-| `TransitionDefinition.cs` | `internal sealed` class for a unit transition (from, trigger, to, guard, action) | `TransitionDefinition.cs` |
-
-> **Note**: The two interfaces (read-only and mutation) live in a single file by convention.
-> The `TransitionDefinition` class is `internal` and exposed to tests via `[assembly: InternalsVisibleTo]`.
-
-### Technical checklist
-
-- [ ] Thread-safety: `lock` or `SemaphoreSlim` depending on the async need
-- [ ] Static presets: `Strict`, `Default`, `Permissive` (immutable)
-- [ ] Events: at minimum `OnTransition` and `OnCircuitBroken` (or equivalent)
-- [ ] `CircuitBreakerStatus` or equivalent with a full snapshot for observability
-- [ ] No external dependency (pure Domain)
-- [ ] `[assembly: InternalsVisibleTo("Orkeon.Domain.Tests")]` if there are internal classes
-
-### Code pattern — Engine
-
-```csharp
-namespace Orkeon.Domain.Common.<NomType>;
-
-public sealed class <NomType><TState, TEvent>
-    : I<NomType><TState, TEvent>, IMutable<NomType><TState, TEvent>
-    where TState : notnull
-    where TEvent : notnull
-{
-    private readonly object _lock = new();
-    // ... internal state, counters, histogram
-
-    // Mandatory extension points:
-    // 1. Check limits BEFORE each operation
-    // 2. Action hook AFTER each successful operation
-    // 3. Events for external observability
-    // 4. Degraded mode (fallback state) when UseDegradedMode = true
-}
-```
-
-### Code pattern — Fluent builder
-
-```csharp
-public sealed class <NomType>Builder<TState, TEvent>
-    where TState : notnull
-    where TEvent : notnull
-{
-    public <NomType>Builder<TState, TEvent> WithInitialState(TState state) { ... }
-    public <NomType>Builder<TState, TEvent> WithTerminalStates(params TState[] states) { ... }
-    public <NomType>Builder<TState, TEvent> WithDegradedState(TState state) { ... }
-    public <NomType>Builder<TState, TEvent> WithCircuitBreaker(<NomType>Policy policy) { ... }
-
-    // Key functions for internal dictionaries (useful when TState is not an enum):
-    public <NomType>Builder<TState, TEvent> WithStateKey(Func<TState, string> keyFunc) { ... }
-    public <NomType>Builder<TState, TEvent> WithEventKey(Func<TEvent, string> keyFunc) { ... }
-
-    // Nested builder pattern for transitions/nodes:
-    public TransitionBuilder When(TState from, TEvent trigger) { ... }
-
-    // Shortcut for a simple transition without guard or action:
-    public <NomType>Builder<TState, TEvent> AddTransition(TState from, TEvent trigger, TState to) { ... }
-
-    public <NomType><TState, TEvent> Build() { ... }
-
-    public sealed class TransitionBuilder
-    {
-        public TransitionBuilder TransitionTo(TState to) { ... }
-        public TransitionBuilder WithGuard(Func<bool> guard, string? desc = null) { ... }
-        public TransitionBuilder WithGuard<TContext>(Func<TContext, bool> guard, string? desc = null) { ... }
-        public TransitionBuilder WithAction(Action action) { ... }
-        public TransitionBuilder WithAction(Action<TState, TState> action) { ... }
-        public <NomType>Builder<TState, TEvent> Done() { ... }
-    }
-}
-```
+- **Mode name**: the `ProcessType` value (PascalCase, e.g. `Swarm`) and its YAML/scripting spelling (`swarm`, matched case-insensitively)
+- **Entry point**: reuse `IProcessStrategy.ExecuteSequentialAsync(crew, plan, …)` (Graph, Consensual) or add a dedicated method (Autonomous, which needs an `AgentExecutionBudget`)
+- **Configuration**: none, a .NET options section (Consensual: `Orkeon:Consensus`), or a crew-level YAML block (Graph: `graphConfig`)
+- **Engine**: whether the mode needs a reusable Domain engine (`StateGraph<TState>`, `StateMachine<TState, TEvent>`) or lives entirely in its strategy
+- **Stability**: whether the public surface ships under an `[Experimental]` diagnostic (Autonomous: `ORKEXP002`, see [experimental APIs](../reference/experimental-apis.md))
 
 ---
 
-## Step 2 — Domain: Specialization
+## Step 1 — Domain: declare the mode
 
-**Folder**: `src/core/Orkeon.Domain/<Scope>/` (e.g. `Task/`, `Crew/`, `Flow/`)
-
-| File | Role |
-|---------|------|
-| `<Scope><NomType>State.cs` | BOTH enums (states + events) in a single file | 
-| `<Scope><NomType>Machine.cs` | Static factory `Create()` + `CreateBuilder()` + `GuardContext` record |
-
-> **FSM convention**: In the existing implementation, `TaskExecutionState.cs` contains both
-> the `TaskExecutionState` enum and the `TaskExecutionEvent` enum. Group both in a single
-> file when they are always used together.
-
-### Guard context type
+**File**: `src/core/Orkeon.Domain/SharedKernel/ValueObjects/ProcessType.cs`
 
 ```csharp
-public sealed record <Scope>GuardContext
-{
-    // Loop counters (adapt to the orchestration type)
-    public int RetryCount { get; init; }
-    public int MaxRetries { get; init; } = 3;
+/// <summary>Agents swarm over the task pool under a shared budget.</summary>
+public static readonly ProcessType Swarm = new("Swarm");
 
-    // Type-specific counters
-    // FSM example: ToolCallCount, ValidationAttempts
-    // LangGraph example: NodeVisitCount, EdgeTraversalCount
-    // Agentic example: SubAgentSpawnCount, DelegationDepth
-
-    // Derived predicates
-    public bool CanRetry => RetryCount < MaxRetries;
-    // ...
-}
+private static readonly Dictionary<string, ProcessType> s_all = new(StringComparer.OrdinalIgnoreCase)
+{ /* … the six existing entries …, */ [nameof(Swarm)] = Swarm };
 ```
 
-### Anti-hallucination guards (mandatory)
+`ProcessType.All`, `From` and `TryFrom` read `s_all`: once the entry is there, YAML (`YamlCrewMapper.ParseProcessType`) and the scripting adapter (`JsCrewConfigurationAdapter`) accept the new value without further change, and their error messages list it.
 
-Every orchestration type MUST implement at minimum:
+**Entry point.** When the mode needs its own entry point, add it to `IProcessStrategy` (`src/core/Orkeon.Domain/Crew/IProcessStrategy.cs`), as `ExecuteAutonomousAsync` was added; every existing strategy then implements it by throwing `NotSupportedException("Use <Mode>ProcessStrategy …")`.
 
-| Guard | Purpose | FSM example |
-|-------|-----|-------------|
-| Operation budget | Limit expensive calls | `ToolCallCount < MaxToolCallsPerRound` |
-| Registered tool | Block hallucinated tools | `IsToolRegistered == true` |
-| Retry limit | Avoid infinite loops | `RetryCount < MaxRetries` |
+**Public API.** The core projects track their public surface: add each new public member to the project's `PublicAPI.Unshipped.txt` (`src/core/Orkeon.Domain/`, `src/core/Orkeon.Infrastructure/`, `src/core/Orkeon.Application/`), or the build fails (RS0016/RS0017 are errors).
+
+**Application DTO.** The Application layer carries its own enum, `Orkeon.Application.Crew.DTOs.ProcessType` (`Crew/DTOs/CrewEnums.cs`), mapped by `CrewMapper.ToProcessTypeDomain` (`Common/Mapping/CrewMapper.cs`), which throws on a value it does not know: add the member and its mapping arm.
+
+**Fluent Builder (optional).** `CrewBuilder.Process(ProcessType.Swarm)` works as is; a shortcut such as `.Swarm()` exists only for the historical modes (`Sequential()`, `Hierarchical(...)`, `Parallel()`, `Consensual()`).
 
 ---
 
-## Step 3 — Domain: Configuration DTO
+## Step 2 — Domain: configuration and engine (when needed)
 
-**File**: `src/core/Orkeon.Domain/Configuration/<NomType>Config.cs`
+### Configuration DTO
 
-```csharp
-namespace Orkeon.Domain.Configuration;
+**File**: `src/core/Orkeon.Domain/Configuration/<Mode>Config.cs` — an immutable `sealed record` with defaults, nullable where a value overrides a preset (`GraphConfig` is the model: `MaxRetryCycles = 2`, `CircuitBreakerPreset = "strict"`, nullable limits).
 
-/// <summary>
-/// Immutable DTO for the <NomType> configuration coming from YAML.
-/// All fields are nullable to allow crew → task inheritance.
-/// </summary>
-public sealed record <NomType>Config
-{
-    public string? Preset { get; init; }
+Carry it to execution time:
 
-    // Circuit breaker fields (common to all types)
-    public int? MaxTransitions { get; init; }
-    public int? StateTimeoutSeconds { get; init; }
-    public int? MaxStateVisits { get; init; }
-    public int? MaxTotalDurationSeconds { get; init; }
-    public bool? UseDegradedMode { get; init; }
+| Where | What to add | Graph precedent |
+|-------|-------------|-----------------|
+| `Configuration/CrewConfiguration.cs` | `public <Mode>Config? <Mode>Config { get; init; }` on `CrewConfiguration` (and on `TaskConfiguration`, same file, for a task-level block) | `CrewConfiguration.GraphConfig` |
+| `Crew/CrewCreateOptions.cs` | The same property | `CrewCreateOptions.GraphConfig` |
+| `Crew/Crew.cs` | A read-only property set from the options in `Crew.Create` | `Crew.GraphConfig` |
+| `Crew/CrewBuilder.cs` | `With<Mode>Config(...)` feeding the options | `WithGraphConfig(...)` |
 
-    // Type-specific fields (guards)
-    public int? MaxRetries { get; init; }
-    // ... adapt to the type
-}
-```
+The strategy must read the config **off the crew argument** at execution time, never store it on the (scoped, shared) strategy instance — concurrent crews would overwrite each other's settings.
 
-**Modify** `CrewConfiguration.cs` (which also contains `TaskConfiguration`):
+### Engine
 
-```csharp
-// In the CrewConfiguration record (same file):
-public <NomType>Config? <NomType> { get; init; }
+A reusable engine goes in the Domain layer, without any external dependency (`Orkeon.Domain.Graph` for `StateGraph<TState>`, `Orkeon.Domain.Common.StateMachine` for the FSM). What the existing engines provide, and a new one should too:
 
-// In the TaskConfiguration record (same CrewConfiguration.cs file):
-public <NomType>Config? <NomType> { get; init; }
-```
-
-> **Note**: `TaskConfiguration` is defined in the same file as `CrewConfiguration`
-> (`src/core/Orkeon.Domain/Configuration/CrewConfiguration.cs`). There is no separate
-> `TaskConfiguration.cs` file.
+- a termination guarantee — circuit breaker (`CircuitBreakerPolicy`, presets `Strict` / `Default` / `Permissive`) or budget (`AgentExecutionBudget`, same three presets);
+- observability events (`OnNodeCompleted` / `OnTransition`, `OnCircuitBroken`) and a status snapshot;
+- cooperative cancellation (`CancellationToken` on every async member);
+- thread safety where the engine is shared (`lock`, `Interlocked`);
+- `[assembly: InternalsVisibleTo]` only for types the tests must reach.
 
 ---
 
-## Step 4 — Infrastructure: YAML → Domain bridge
+## Step 3 — Infrastructure: the strategy
 
-**File**: `src/core/Orkeon.Infrastructure/Configuration/<NomType>PolicyFactory.cs`
+**File**: `src/core/Orkeon.Infrastructure/Crew/Strategies/<Mode>ProcessStrategy.cs`
 
 ```csharp
-namespace Orkeon.Infrastructure.Configuration;
-
-public static class <NomType>PolicyFactory
+public sealed partial class SwarmProcessStrategy : IProcessStrategy
 {
-    /// <summary>
-    /// Hierarchical resolution: task override → crew default → preset → Strict fallback.
-    /// </summary>
-    public static <NomType>Policy Resolve(
-        <NomType>Config? crewDefault,
-        <NomType>Config? taskOverride)
-    {
-        // 1. Determine the base preset
-        // 2. Apply the crew-level overrides
-        // 3. Apply the task-level overrides (they override crew)
-        // 4. Convert int seconds → TimeSpan
-    }
+    public SwarmProcessStrategy(
+        CrewStrategyDependencies dependencies,   // tasks, agents, execution service, memory scope
+        ILogger<SwarmProcessStrategy> logger,
+        ICrewExecutionHook? hook = null,          // optional: the run's observer
+        TaskAgentSelector? agentSelector = null)  // optional: who runs a task without agent:
+    { /* … */ }
 
-    /// <summary>
-    /// Creates a specialized FSM (concrete return type, not generic).
-    /// The method name must reflect the scope: CreateTaskFsm, CreateCrewFsm, etc.
-    /// </summary>
-    public static StateMachine<TaskExecutionState, TaskExecutionEvent> Create<Scope>Fsm(
-        <NomType>Config? crewDefault,
-        <NomType>Config? taskOverride)
-    {
-        var policy = Resolve(crewDefault, taskOverride);
-        return <Scope><NomType>Machine.Create(policy);
-    }
+    public Task<CrewOutput> ExecuteSequentialAsync(Crew crew, ExecutionPlan plan,
+        IReadOnlyDictionary<string, string>? inputVariables = null, CancellationToken ct = default)
+    { /* the mode */ }
 
-    /// <summary>
-    /// Builds the guard context with hierarchical merging of the limits.
-    /// The task override wins for non-null fields, then crew default, then the record's default value.
-    /// </summary>
-    public static <Scope>GuardContext CreateGuardContext(
-        <NomType>Config? crewDefault,
-        <NomType>Config? taskOverride)
-    {
-        var effective = taskOverride ?? crewDefault;
-        return new <Scope>GuardContext
-        {
-            MaxRetries = effective?.MaxRetries ?? 3,
-            // ... other fields with default fallback
-            IsToolRegistered = true, // Runtime concern, not config
-        };
-    }
+    // The entry points the mode does not serve:
+    public Task<CrewOutput> ExecuteHierarchicalAsync(/* … */)
+        => throw new NotSupportedException("Use HierarchicalProcessStrategy for hierarchical orchestration.");
+    // … ExecuteParallelAsync, ExecuteAutonomousAsync likewise
 }
-
-// --- Real example (CircuitBreakerPolicyFactory) ---
-// The `CreateTaskFsm` method returns a concrete type, not a generic one.
-// The `ApplyOverrides` method is private and handles the int seconds → TimeSpan conversion.
 ```
 
-### Resolution hierarchy (invariant across all types)
+Reuse the shared building blocks of `Crew/Strategies/` and `Crew/` — several are `internal`, which is why strategies live in `Orkeon.Infrastructure`:
 
-```
-1. Task-level config       (high priority — non-null fields override)
-2. Crew-level config       (default — non-null fields override the preset)
-3. Named preset            (if specified in Preset — base values)
-4. <NomType>Policy.Strict  (fallback when nothing is configured)
-```
+| Building block | Use |
+|----------------|-----|
+| `CrewStrategyDependencies` | The four collaborators every strategy takes (task/agent repositories, `IAgentExecutionService`, `IMemoryScope`) |
+| `CrewTaskSequencer.ResolveAsync` | Task order: the plan's, else the stable topological sort on `dependencies` |
+| `TaskAgentSelector` | Agent choice: declared `agent:`, else `OrkeonApplicationOptions.AgentSelectionStrategy` |
+| `CrewHookDispatcher` | `ICrewExecutionHook` calls — send the terminal event (`CrewCompletedAsync` / `CrewFailedAsync`) on **every** exit, setup and cancellation included |
+| `TokenUsageTally` | Token telemetry into the `CrewOutput` metadata (never a fabricated zero) |
+| `AgentDelegationToolsProvider` | Delegation tools for agents with `allowDelegation: true` (Sequential, Graph) |
+| `LlmUsageScope.Begin(...)` | Meter extra LLM calls the mode makes itself (a manager, a judge) under the right operation |
+
+Report the outcome honestly: `CrewOutput.CreateFailure(...)` when the mode's own contract failed (the runner exits non-zero on it), with the outputs and the token usage produced so far.
 
 ---
 
-## Step 5 — Infrastructure: YAML parsing
+## Step 4 — Infrastructure: registration and routing
 
-**Modified files**: `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`
-(the models) and `Configuration/Yaml/YamlCrewMapper.cs` (the mapping) — the loader
-(`YamlCrewDefinitionLoader.cs`) only deserializes and delegates.
+Three places, all in `Orkeon.Infrastructure`:
 
-### 5.1 Add the YAML class
+| File | Change |
+|------|--------|
+| `DependencyInjection/InfrastructureExtensions.cs` | `services.AddScoped<SwarmProcessStrategy>();` in `AddOrkeonRepositoriesAndStrategies` — or a public `AddOrkeon<Mode>()` extension (options binding, voting strategies…) called from `AddOrkeonFeatureModules`, like `AddOrkeonConsensus()` |
+| `Crew/Strategies/ProcessStrategyFactory.cs` | `"Swarm" => _serviceProvider.GetRequiredService<SwarmProcessStrategy>(),` |
+| `Orchestration/SequentialCrewOrchestrator.cs` | A case in `ExecuteDomainStrategyAsync` calling the chosen entry point (`"Swarm" => await processStrategy.ExecuteSequentialAsync(crew, defaultPlan, stringVariables, cancellationToken)…`) |
 
-No `[YamlMember]` attributes — the existing models carry **none**: key resolution is
-by convention (`CamelCaseNamingConvention` plus the `CamelOrSnakeCaseTypeInspector`
-snake_case fallback in `YamlDotNetSerializer`). Follow the shape of the shipped
-models — public, non-sealed, in the shared `YamlConfigModels.cs`:
-
-```csharp
-public class <NomType>YamlConfig
-{
-    public string? Preset { get; set; }         // reachable as preset:
-    public int? MaxTransitions { get; set; }    // reachable as maxTransitions: or max_transitions:
-    // ... plain properties, camelCase/snake_case both accepted by convention
-}
-```
-
-### 5.2 Add the property on the THREE YAML models
-
-The `YamlCrewDefinitionLoader` uses different models for single-file and multi-file loading:
-
-```csharp
-// In CrewYamlConfig (single-file config.yaml loading):
-public <NomType>YamlConfig? <NomType> { get; set; }   // key: <nomType> by convention
-
-// In CrewSettingsYamlConfig (multi-file loading: crew.yaml):
-public <NomType>YamlConfig? <NomType> { get; set; }
-
-// In TaskYamlConfig (used in both modes):
-public <NomType>YamlConfig? <NomType> { get; set; }
-```
-
-> **Warning**: There are THREE YAML models to modify, not two. `CrewSettingsYamlConfig` is
-> used only in multi-file mode (folder with `crew.yaml` + `agents.yaml` + `tasks.yaml`).
-
-### 5.3 Add the mapping
-
-```csharp
-private static <NomType>Config? Map<NomType>(<NomType>YamlConfig? yaml)
-{
-    if (yaml is null) return null;
-    return new <NomType>Config
-    {
-        Preset = yaml.Preset,
-        MaxTransitions = yaml.MaxTransitions,
-        // ...
-    };
-}
-```
-
-### 5.4 Wire into the loading methods
-
-Add `<NomType> = Map<NomType>(...)`:
-
-- in `YamlCrewMapper.MapTasks()` — for the task level;
-- crew-level values flow through `CrewMappingSettings`, which the loader populates in
-  `LoadFromStringAsync()` (single-file) and `LoadFromDirectoryCoreAsync()` (multi-file)
-  before delegating to the mapper.
+An options section follows the `Orkeon:*` convention (`services.AddOptions<SwarmOptions>().BindConfiguration("Orkeon:Swarm")`) and is listed in [configuration](../reference/configuration.md).
 
 ---
 
-## Step 6 — Tests
+## Step 5 — YAML: the configuration block
 
-**Folder**: `tests/core/Orkeon.Domain.Tests/Common/<NomType>/`
+`process: swarm` needs nothing more (step 1). A crew-level block follows the `graphConfig` path; a task-level block follows the task `circuitBreaker` path.
 
-### 6.1 Generic framework tests
+**Models** — `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`. The models carry **no** `[YamlMember]` attributes: keys resolve by convention (camelCase, with a snake_case fallback). Add a public class and the property on the models that need it:
 
-| File | Minimum tests |
-|---------|--------------|
-| `<NomType>Tests.cs` | Correct initial state, valid operation, full cycle, invalid operation throws, TryFire false, terminal blocked, CanFire, OnTransition event |
-| `<NomType>GuardTests.cs` | Guard true allowed, guard false blocked, multiple guards priority, action executed |
-| `<NomType>CircuitBreakerTests.cs` | Max transitions trip, cycle detection, degraded mode, OnCircuitBroken, reset, histogram |
+```csharp
+public class SwarmYamlConfig
+{
+    public int? MaxAgents { get; set; }   // maxAgents: or max_agents:
+}
 
-### 6.2 Specialization tests
+// On CrewYamlConfig (single-file crew) AND CrewSettingsYamlConfig (multi-file crew.yaml):
+public SwarmYamlConfig? SwarmConfig { get; set; }   // key: swarmConfig
+// On TaskYamlConfig for a task-level block.
+```
 
-| File | Minimum tests |
-|---------|--------------|
-| `<Scope><NomType>MachineTests.cs` | Full happy path, each guard individually (budget, tool, retries, validation), cancel from any state, circuit breaker in a loop |
+**Mapping** — `Configuration/Yaml/YamlCrewMapper.cs`: a private `Map<Mode>Config(...)` returning the Domain DTO (or `null`), a property on `CrewMappingSettings`, and the assignment in `BuildConfiguration` (crew level) or `MapTasks` (task level).
 
-### 6.3 Infrastructure tests (optional but recommended)
+**Loader** — `Configuration/YamlCrewDefinitionLoader.cs` fills `CrewMappingSettings` in both paths: from `CrewSettingsYamlConfig` (multi-file) and from `CrewYamlConfig` (single-file). Forgetting one path makes the block work in one layout only.
 
-| File | Minimum tests |
-|---------|--------------|
-| `<NomType>PolicyFactoryTests.cs` | Preset-only resolution, crew override, task override overrides crew, Strict fallback |
+**Factory** — `Configuration/CrewFactory.cs`: `if (config.SwarmConfig is not null) builder.WithSwarmConfig(config.SwarmConfig);`, next to `WithGraphConfig`.
 
-### Test command
+**Validation** — load-time rules (a value out of range, a combination the mode refuses) go in `Configuration/Yaml/CrewDefinitionValidator.cs`, so a wrong file fails at load, not mid-run.
+
+---
+
+## Step 6 — Scripting DSL and Studio
+
+| File | Change |
+|------|--------|
+| `src/scripting/Orkeon.Scripting/Builders/JsCrewBuilder.cs` | Add the name to `AllowedProcesses` (the builder refuses any other) |
+| `src/scripting/Orkeon.Scripting/Typings/crew.d.ts` | Add it to the `Process` union |
+| `src/scripting/Orkeon.Scripting/Adapters/JsCrewConfigurationAdapter.cs` | Nothing for the name (`ProcessType.TryFrom`); map the mode's config when the DSL exposes it, or list it in `CollectIgnoredFeatures` |
+| `src/scripting/Orkeon.Scripting.Cli/Commands/UseCases/UseCasesCommand.cs` | The `--process` help text of `orkeon usecases list` |
+| `src/apps/Orkeon.Studio.Wpf/ViewModels/Teams/UseCaseGalleryViewModel.cs` | The gallery's process filter entry |
+| `src/apps/Orkeon.Studio.Core/Localization/StudioStrings.cs` + `src/apps/Orkeon.Studio.Wpf/Resources/Strings*.resx` | `WizardGalleryProcess<Mode>` key, English default and the translations (fr, de, es, zh-Hans) |
+
+The procedural script shape (`await crew.run()`) ignores the process; only the declarative shape (`globalThis.crew = crew`) runs the strategy — see [Scripting](../architecture/scripting.md).
+
+---
+
+## Step 7 — Tests
+
+xUnit with native assertions and **hand-written doubles** (`Mock*` / `Fake*` / `Stub*` in a `Doubles/` folder — no mocking library).
+
+| Test | Where | Precedent |
+|------|-------|-----------|
+| The value object (count of `All` — pinned at 6 today —, `From`, `TryFrom`, case-insensitivity) | `tests/core/Orkeon.Domain.Tests/ValueObjects/ProcessTypeTests.cs` | — |
+| The engine, if any | `tests/core/Orkeon.Domain.Tests/<Area>/` | `Graph/StateGraphTests.cs`, `Common/StateMachine/*` |
+| The strategy: happy path, empty crew, failures, cancellation, hook terminal event on every exit, token metadata, unsupported entry points | `tests/core/Orkeon.Infrastructure.Tests/Strategies/<Mode>ProcessStrategy/` | `GraphProcessStrategy/GraphProcessStrategyTests.cs` |
+| Factory routing | `Strategies/ProcessStrategyFactory/ProcessStrategyFactoryTests.cs` | — |
+| Orchestrator dispatch to the right entry point | `Orchestration/CovAutonomous_SequentialCrewOrchestratorTests.cs` | `KickoffAsync_Graph_DispatchesViaSequential` |
+| YAML: `process:` parsing and the config block in both layouts | `Configuration/YamlCrewDefinition/YamlCrewDefinitionTests.cs` (iterates `ProcessType.All`), `Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` | — |
+| Application mapping | `tests/core/Orkeon.Application.Tests/DTOs/Mapping/CrewMapperTests.cs` (iterates `ProcessType.All`) | — |
+| Scripting | `tests/scripting/Orkeon.Scripting.Tests/` (builder accepts the name, adapter maps it) | — |
 
 ```bash
-dotnet test tests/core/Orkeon.Domain.Tests/ --filter "FullyQualifiedName~<NomType>"
+dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj --filter "FullyQualifiedName~ProcessType"
+dotnet test tests/core/Orkeon.Infrastructure.Tests/Orkeon.Infrastructure.Tests.csproj --filter "FullyQualifiedName~Swarm"
 ```
+
+The test runner is Microsoft.Testing.Platform: a `--filter` that matches no test in a project is an error, so filter each project on names it contains.
 
 ---
 
-## Step 7 — Example
+## Step 8 — Example and documentation
 
-**Folder**: `examples/06-engineering-devops/<NumExemple>-<nom-court>/`
+### Example
 
-### 7.1 Copy an existing example
-
-Start from example 102 or 103 as the base, then:
-
-1. Duplicate the `config.yaml`
-2. Add/replace the configuration block for the new type
-3. Adapt tasks and agents if necessary
-
-### 7.2 config.yaml structure
+**Folder**: `examples/<NN-category>/<NNN-name>/` with a `config.yaml` (or a `main.ork.ts`) and a `README.md` (goal, diagram, annotated YAML, how to run). Start from [102-graph-orchestration](https://github.com/orkeon/orkeon/blob/main/examples/09-experimental/102-graph-orchestration/). The YAML root is flat — no `crew:` wrapper — and `agents:` / `tasks:` are mappings keyed by id:
 
 ```yaml
-# === Configuration block of the new type at crew level ===
-<nomType>:                          # e.g. stateGraph, agenticSwarm
-  preset: "strict"
-  useDegradedMode: true
-  maxRetries: 3
-  # ... type-specific fields
+name: "swarm-demo"
+goal: "…"
+process: swarm
+swarmConfig:
+  maxAgents: 5
 
 agents:
-  my_agent:               # mapping keyed by agent id — never a sequence
-    role: "..."
-    # ...
+  scout:                  # mapping keyed by agent id — never a sequence
+    role: "…"
+    goal: "…"
 
 tasks:
-  task_1:                 # the id IS the key (TaskYamlConfig has no id: field)
-    description: "..."
-    # === Task-level override ===
-    <nomType>:
-      maxTransitions: 200
-      stateTimeoutSeconds: 600
-      # ...
+  explore:                # the id IS the key (TaskYamlConfig has no id: field)
+    description: "…"
+    expectedOutput: "…"
 ```
 
-### 7.3 Example README
+A new numbered example changes the example count that the docs state and `scripts/check-doc-claims.py` verifies; list it in `examples/INDEX.md`.
 
-README structure:
+### Documentation
 
-```markdown
-# Example <Num> — <Title>
+| Page | Change |
+|------|--------|
+| `docs/orchestration/<mode>.md` (new) | Overview, architecture (classes per layer), execution flow, configuration and resolution, termination guarantees, observability, YAML and C# usage, example, tests — the [Graph](../orchestration/graph.md) and [Autonomous](../orchestration/autonomous.md) pages are the models |
+| [`docs/orchestration/process-types.md`](../orchestration/process-types.md) | The value list, the architecture diagram, the matrix column, a dedicated section, the decision tree, the cost table |
+| [`docs/architecture/yaml-schema.md`](../architecture/yaml-schema.md) | The `process:` values and the new block |
+| [`docs/reference/configuration.md`](../reference/configuration.md) | A new options section, if any |
+| `docs/INDEX.md`, `docs/toc.yml` | The new page |
+| `CHANGELOG.md`, `CLAUDE.md` | The feature, and every "6 modes" statement |
 
-## Goal
-What and why.
+Every page has its French mirror under `docs/fr/` (same path), updated in the same change — a CI gate checks the parity. Placeholders in prose go inside code spans (`<Mode>`), never bare. Then run:
 
-## Diagram
-ASCII or Mermaid of the graph/workflow.
-
-## YAML configuration
-Annotated block with the key values.
-
-## Diff with example <Num-1>
-What changes compared to the previous example.
-
-## Run
-Command to run the example.
+```bash
+python3 scripts/check-doc-claims.py
 ```
 
 ---
 
-## Step 8 — Documentation
+## Final checklist
 
-**File**: `docs/orchestration/<nom-type>.md`
-
-### 8.1 Mandatory document structure
-
-```markdown
-# <NomType> orchestration
-
-## Overview
-Introductory paragraph: what, why, where in the architecture.
-
-## Architecture
-
-### Domain layer — Generic framework
-Table: Class | Role (point to the files)
-
-### Domain layer — <Scope> specialization
-Table: Class | Role
-
-### Infrastructure layer — YAML integration
-Table: Class | Role
-
-### Domain layer — Configuration
-Table: Class | Role
-
-## Graph / Diagram
-ASCII art of the state graph or workflow.
-List the terminal states.
-
-## Circuit breaker / Protection mechanisms
-Table: Mechanism | Parameter | Description
-Explain the two modes (exception vs degraded).
-
-## Presets
-Table: Preset | Values (reuse Strict, Default, Permissive)
-
-## Observability
-Exposed events, status/snapshot contents.
-
-## Typical guards
-Table: Guard | Protected transition/node | Condition
-Explain the anti-hallucination guard.
-
-## Configuration YAML
-
-### Schema
-Annotated YAML block with types and descriptions.
-
-### Resolution hierarchy
-ASCII diagram: task → crew → preset → fallback.
-
-### YAML models
-Table: C# model | YAML class | File
-
-## Usage in C# code
-
-### Manual creation (Fluent Builder)
-Complete example with observability and guard context.
-
-### Creation from the YAML configuration
-Example with the PolicyFactory.
-
-### Custom construction
-Example with the generic builder.
-
-## Example <Num>
-Reference to the example, summary of the additions.
-
-## Relation to the existing code
-
-### StateTransitionManager
-Explanation of the complementarity (lifecycle vs runtime).
-
-### SequentialCrewOrchestrator
-Explanation of the integration point (IProcessStrategy).
-
-### <Other existing orchestration types>
-How this type coexists with the previous ones.
-
-## Tests
-Table: File | Coverage
-Test command.
-```
-
-### 8.2 Update the existing files
-
-1. **`docs/INDEX.md`**:
-   - Add a line in the Orchestration section
-   - Add the file to the "I want to understand the framework" reading path
-
-2. **`docs/architecture/yaml-schema.md`**:
-   - Add the YAML schema of the new configuration block
-   - Document the presets and default values
-
-3. **`docs/orchestration/process-types.md`**:
-   - Add the new type to the comparison matrix
-   - Add a dedicated section with pros/cons/use cases
-   - Update the decision tree
-
----
-
-## Stability criteria (final checklist)
-
-Before considering the implementation complete, verify:
-
-| Criterion | Expected mechanism | Verified |
+| Criterion | Expected | Verified |
 |---------|-------------------|---------|
-| Recursive loops | Circuit breaker (4 mechanisms minimum) + typed guards | [ ] |
-| Tool hallucinations | `IsToolRegistered` guard or equivalent | [ ] |
-| Observability | Events + snapshot/status with histogram | [ ] |
-| Interruptibility | Cancel from any non-terminal state | [ ] |
-| Multi-model determinism | Per-task configurable limits (Flash ≠ Opus) | [ ] |
-| 2-level YAML config | Crew default + task override | [ ] |
-| Degraded mode | Auto transition to a safe state instead of an exception | [ ] |
-| Tests | 30+ tests covering framework + specialization | [ ] |
-| Documentation | Complete doc + index + features updated | [ ] |
-| Example | Working config.yaml with README | [ ] |
+| Declared | `ProcessType` entry, `All` count, Application DTO + `CrewMapper` arm | [ ] |
+| Routed | Strategy registered, `ProcessStrategyFactory` case, `SequentialCrewOrchestrator` case | [ ] |
+| Terminates | Circuit breaker, budget, or a bounded loop — and cancellation honoured | [ ] |
+| Observable | Hook terminal event on every exit, token metadata, structured logs | [ ] |
+| Honest outcome | `CreateFailure` when the mode's contract fails | [ ] |
+| Configurable | Per-crew config read off the crew, both YAML layouts, load-time validation | [ ] |
+| Scriptable | `AllowedProcesses`, `crew.d.ts`, `orkeon usecases`, Studio gallery | [ ] |
+| Tested | Domain, strategy, factory, orchestrator, YAML, mapping, scripting | [ ] |
+| Documented | Mode page + FR mirror, process-types, yaml-schema, INDEX/toc, CHANGELOG, `check-doc-claims.py` green | [ ] |
+| Example | Working `config.yaml` with README, listed in `examples/INDEX.md` | [ ] |

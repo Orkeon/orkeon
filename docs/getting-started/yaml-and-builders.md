@@ -24,7 +24,7 @@ The YAML structure follows this schema:
 
 ```yaml
 # CrewYamlConfig schema — most-used keys (see docs/architecture/yaml-schema.md for the full surface:
-# crew-level llm:/rag:/links:, agent knowledge:, task tools:/deliverable:/llm_override:, llm thinking/responseFormat/cache)
+# crew-level llm:/rag:/links:/mounts:, agent knowledge:, task tools:/deliverable:/llm_override:, llm thinking/responseFormat/cache)
 name: string              # Crew identifier
 goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
@@ -33,6 +33,7 @@ memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
 planning: bool            # default: false
 managerAgent: string      # Required when process = "hierarchical"
+mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)
 
 agents:
   <agent_id>:             # Key = unique agent identifier
@@ -58,7 +59,7 @@ tasks:
     asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
-    circuitBreaker:       # FSM / circuit breaker configuration (optional)
+    circuitBreaker:       # Parsed, NOT applied at run time today (see below)
       preset: string      # "strict" | "permissive" | "default"
       maxTransitions: int # Max transitions before trip
       stateTimeoutSeconds: int  # Per-state timeout (seconds)
@@ -76,7 +77,7 @@ tasks:
         <tool_name>: [string]
 ```
 
-The `circuitBreaker` block can also be used at the root level of the YAML (default for all tasks). See [FSM Orchestration](../orchestration/fsm.md) for the full details.
+The `circuitBreaker` block is accepted at the task level and at the root of the YAML, but **neither is a default applied to every task**: the task-level block is parsed and then unused by every execution path, and the crew-level block is read only by the [Graph mode](../orchestration/graph.md), when no `graphConfig` is declared. What bounds a task at run time is the agent loop (`maxIter`, and a stop after 3 consecutive identical tool errors) — see "What runs today" in [FSM Orchestration](../orchestration/fsm.md#overview).
 
 Guardrails may be declared on an agent (all its tasks) and/or on a task (that task only). When both
 exist, both apply — agent rules first, then the task's — injected into the executing agent's system
@@ -109,20 +110,24 @@ There is no framework-level "predefined configuration" object: a host composes i
 
 ### Loading modes
 
-The `YamlCrewDefinitionLoader` loader supports two modes:
+The `YamlCrewDefinitionLoader` loader supports the modes below. It reads through the
+virtual file system (`IFileSystemService`), so every path it takes is a **virtual** path
+under a declared mount — `/crews/...` below assumes a mount such as
+`./crews:/crews:ro` ([ADR-008](../adr/ADR-008-virtual-paths-are-the-only-currency.md)); a
+disk path finds no mount.
 
 **Single-file mode**: contains agents and tasks in a single file
 
 ```csharp
 // loader: ICrewDefinitionLoader (YamlCrewDefinitionLoader implementation) resolved via DI
-var config = await loader.LoadFromFileAsync("crews/research_crew.yaml", ct);
+var config = await loader.LoadFromFileAsync("/crews/research_crew.yaml", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
 
 **Multi-file mode**: separate agents.yaml, tasks.yaml, and crew.yaml in a directory
 
 ```csharp
-var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var config = await loader.LoadFromDirectoryAsync("/crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 // Automatically loads: crew.yaml, agents.yaml, tasks.yaml
 ```
@@ -146,7 +151,7 @@ crews/research/
 
 ```csharp
 // Same call: the layout is detected automatically.
-var config = await loader.LoadFromDirectoryAsync("crews/research/", ct);
+var config = await loader.LoadFromDirectoryAsync("/crews/research/", ct);
 var crew = await crewFactory.CreateFromConfigAsync(config, ct);
 ```
 
@@ -172,13 +177,15 @@ The creation pipeline transforms the YAML configuration into operational domain 
 ### Creation pipeline
 
 1. **YAML → CrewYamlConfig**: YAML deserialization into configuration models
-2. **CrewYamlConfig → CrewConfiguration**: Mapping of the YAML models to the application DTOs with basic validation
-3. **Tool resolution**: Tool names (strings) resolved via `IToolRegistry.GetToolByNameAsync(name)` into `IBaseTool` instances
-4. **Agent creation**: `Agent` instances built with `AgentBuilder` and resolved tools
-5. **Task creation**: `CrewTask` instances built with `CrewTaskBuilder` and validated dependencies
-6. **Dependency validation**: Circular dependency detection and order validation
-7. **Crew creation**: `Crew` instance built with `CrewBuilder`, process strategy applied
-8. **Persistence**: Agents, Tasks, Crew persisted in the repositories (optional)
+2. **CrewYamlConfig → CrewConfiguration**: Mapping of the YAML models to the application DTOs with basic validation (errors throw `InvalidOperationException`, warnings are logged)
+3. **RAG collections**: the collections a `rag:` block declares are ingested (incrementally) — when the RAG subsystem is registered; without it, a Warning and no ingestion
+4. **Tool resolution**: Tool names (strings) resolved via `IToolRegistry.GetToolByNameAsync(name)` into `IBaseTool` instances
+5. **Agent creation**: `Agent` instances built with `AgentBuilder` and resolved tools
+6. **Task creation**: `CrewTask` instances built with `CrewTaskBuilder` and validated dependencies
+7. **Dependency validation**: Circular dependency detection and order validation
+8. **Crew creation**: `Crew` instance built with `CrewBuilder`, process strategy applied
+9. **Persistence**: Agents, Tasks, Crew stored in the repositories — always, so `ICrewOrchestrationService.KickoffAsync(crew.Id, …)` finds them
+10. **Links**: the crew's identity and `links:` block are handed to the EventHub ACL (a declared `links:` block without `AddOrkeonEventHubAcl()` logs a Warning: nothing enforces it)
 
 ### Entry points
 
@@ -209,13 +216,13 @@ public async Task<Crew> CreateFromFileAsync(
 
 /// <summary>
 /// Creates a Crew from a YAML directory.
-/// Multi-file mode: crew.yaml + agents.yaml + tasks.yaml
+/// Per-entity layout (config.yaml + agents/ + tasks/) or flat crew.yaml + agents.yaml + tasks.yaml
 /// </summary>
 public async Task<Crew> CreateFromDirectoryAsync(
     string directoryPath,
     CancellationToken ct = default)
 {
-    // Loads agents.yaml, tasks.yaml, crew.yaml → calls CreateFromConfigAsync
+    // Loads the directory's layout → calls CreateFromConfigAsync
 }
 ```
 

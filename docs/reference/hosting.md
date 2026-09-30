@@ -9,7 +9,9 @@ suites, the virtual file system, and the DI-backed tool registry — plus the en
 
 Inside this repository it is consumed by `Orkeon.Scripting.Cli` (the `orkeon` tool) and by
 `Orkeon.Host` (the `orkeon-host` daemon). It is **not** distributed as a NuGet package — see
-[Distribution](#distribution) below. This page documents its public bootstrap surface.
+[Distribution](#distribution) below. This page documents its public bootstrap surface, the
+[telemetry](#telemetry) a host built on it exports, and the .NET Aspire
+integration that launches its executables.
 
 ## Distribution
 
@@ -28,7 +30,7 @@ of them.
 |---|---|
 | Assembly | `Orkeon.Hosting.dll` (`src/hosting/Orkeon.Hosting`) |
 | Packable | no — `IsPackable=false`, on no feed |
-| Depends on | the core `Orkeon.*` libraries (Domain, Application, Infrastructure, Analysis, Scripting), the `Orkeon.Constants.*` satellites, and eight of the nine `Orkeon.Tools.*` suites (`Orkeon.Tools.Rag` is deliberately absent — RAG stays opt-in), plus `CommandLineParser` and `Microsoft.Extensions.Hosting` |
+| Depends on | the core `Orkeon.*` libraries (Domain, Application, Infrastructure, Analysis, Scripting), the `Orkeon.Constants.{Cli,Configuration,FileSystem}` satellites, and every `Orkeon.Tools.*` project but one — Abstractions, Analysis, Code, Data, Email, Embeddings.Local, EventHub, FileSystem, Web; `Orkeon.Tools.Rag` is deliberately absent, RAG stays opt-in — plus `CommandLineParser` and `Microsoft.Extensions.Hosting` |
 | Ships through | the **CLI and installer channels** only: the `orkeon` dotnet tool (`Orkeon.Scripting.Cli`) and the `release.yml` installer archives / `.deb` / MSIs, where `Orkeon.Hosting.dll` sits next to `orkeon` and `orkeon-host` as a private implementation assembly — never as a reference a consumer adds |
 
 **Building an external host against it** therefore means building from source: clone the
@@ -78,8 +80,22 @@ target is a directory rather than probing the disk, so a physical path handed to
 
 It composes `Host.CreateDefaultBuilder()` with:
 
-- **App configuration** — appsettings resolution plus the CLI mount arguments folded into configuration.
+- **App configuration** — on top of the default builder's sources (`appsettings.json` and
+  `appsettings.{Environment}.json` from the content root, unprefixed environment variables),
+  the `settingsPath` file when it exists, then the `ORKEON_`-prefixed environment
+  (`ORKEON_Llm__Model` overrides `Llm:Model`), then an in-memory layer carrying the mount
+  decisions: the `--mount` values placed by virtual root, the internal mounts, the
+  `/credentials` mount of the e-mail OAuth tokens, and the `PathSecurity:AdditionalAllowedDirectories`
+  entries that let the path validator reach those mounts' folders (a `--mount` outside the working
+  directory only with `AllowExternalMounts`).
 - **Services** — `ConfigureRunnerServices` (below).
+- **`configureBuilder`** — invoked last, on the `IHostBuilder` itself.
+
+Once built, the host logs the mount decisions it took, warns (on the log and on stderr) when
+an OAuth e-mail account has no token store or when there is no `Llm` section — the runtime
+then falls back to the echo provider — and resolves the OpenTelemetry tracer and meter
+providers, because the runners never *start* the host and the providers would otherwise never
+exist (see [Telemetry](#telemetry)).
 
 `RunnerHost` carries an `[SuppressVfsCompliance]` bootstrap exception because it resolves user-supplied
 settings paths and provisions VFS mounts *before* the DI container (and thus `IFileSystemService`) exists.
@@ -94,7 +110,9 @@ The registration order is deliberate:
    provider (and its `IChatClient`) **before** `AddOrkeonApplication` / `AddOrkeonInfrastructure`. This
    ordering matters: Orkeon infrastructure registers its LLM/`IChatClient` fallbacks with `TryAdd`, so a
    host-supplied provider must be registered first to win.
-3. **Core services** — `AddOrkeonApplication()` then `AddOrkeonInfrastructure()`.
+3. **Core services** — `AddOrkeonApplication()` then `AddOrkeonInfrastructure()` (the
+   parameterless overload), then `AddOrkeonTelemetry(configuration)` for the `Telemetry`
+   section.
 4. **Strict tools** — `CrewFactoryOptions.StrictTools` defaults to `true` here (a crew referencing an
    unknown tool fails loudly with `unknown tool(s): …; available: …`); opt out with
    `"Orkeon:CrewFactory:StrictTools": false`. (The library default stays lenient.)
@@ -117,17 +135,27 @@ The registration order is deliberate:
 8. **Late tool suites** — RaggableTree (semantic-graph tools, opt out with
    `"RaggableTree:Enabled": false`; pre-registers local embeddings when they are the selected
    provider), the WebSearch and `cache_search` tools, and the Brave search tool when
-   `BRAVE_API_KEY` is present.
-9. **Tool registry** — `ServiceProviderToolRegistry` is registered as the singleton `IToolRegistry`.
-10. **Runner services** — the caller's `configureServices` hook runs last.
+   `BRAVE_API_KEY` is present (configuration key or environment variable).
+9. **MCP** — `AddOrkeonMcp(configuration)` when the `MCP` section declares at least one
+   server under `MCP:Servers` and `MCP:Enabled` is not `false`. Registering is not
+   connecting: the servers are connected by the flows below, before the crew loads
+   (see [MCP](../architecture/mcp.md#activation)).
+10. **Tool registry** — `ServiceProviderToolRegistry` is registered as the singleton `IToolRegistry`.
+11. **Runner services** — the caller's `configureServices` hook runs last.
+
+`semantic_search` is not in this list: it is registered by `AddSemanticSearchTool()`, which
+`orkeon run` calls through its `configureServices` hook and `orkeon-host` does not.
 
 ## `ServiceProviderToolRegistry`
 
 The `IToolRegistry` implementation that resolves YAML/TS tool names to `IBaseTool` instances **from DI**.
 Its constructor takes `IEnumerable<IBaseTool>` — every tool the tool suites registered — and indexes them
-by name (case-insensitive). `CrewFactory` consumes it to build agents with their declared tools, which is
-why every tool suite registers under `IBaseTool`: a tool that is not registered cannot be resolved (and,
-with `StrictTools`, fails crew loading rather than silently dropping).
+by name (case-insensitive) — two tools registered under one name make the constructor throw. `CrewFactory`
+consumes it to build agents with their declared tools, which is why every tool suite registers under
+`IBaseTool`: a tool that is not registered cannot be resolved (and, with `StrictTools`, fails crew loading
+rather than silently dropping). `RegisterToolAsync` adds a tool at run time — the MCP client does — and
+**replaces** any tool already registered under that name. `GetToolsByTagsAsync` and
+`GetToolsByCapabilityAsync` always answer an empty list: the registry indexes names only.
 
 ## `RunnerExecution` — execution flows
 
@@ -141,8 +169,15 @@ code.
 | `RunOneShotAsync(opts, loggerCategory, configureServices?, externalCt?)` | Runs a single crew kickoff end-to-end. Exit codes: **0** success, **1** config error, **2** crew failure, **130** canceled. |
 | `RunInteractiveLoopAsync(opts, loggerCategory, stopWords, kickoffPerInputAsync, onSessionStart, …)` | REPL loop; each input drives a kickoff via the caller-supplied delegate; a stop word ends the loop (exit 0). |
 | `RunListToolsAsync(opts, loggerCategory, configureServices?)` | Builds the host with no crew and prints the sorted, de-duplicated runtime tool names to stdout (logs to stderr) — the runtime tool contract consumed by packaging/lint tooling. |
-| `RunValidateAsync(opts, loggerCategory, configureServices?)` | Dry-run behind `--validate`: builds the host and loads the crew (strict tool resolution) without probing the LLM or running a kickoff. |
-| `LoadCrewAsync(host, opts)` | Loads and maps the crew definition from the resolved target — the building block the flows above share. |
+| `RunValidateAsync(opts, loggerCategory, configureServices?, externalCt?)` | Dry-run behind `--validate`: builds the host and loads the crew (strict tool resolution) without probing the LLM or running a kickoff. |
+| `LoadCrewAsync(host, factory, configPath, logger, ct, targetIsDirectory?)` | Loads and maps the crew definition from its **virtual** path (YAML file, crew directory, `.ork.ts`/`.ork.js` script) — the building block the flows above share, and what `orkeon-host` calls per run. It does not connect MCP servers. |
+
+`RunOneShotAsync`, `RunValidateAsync` and `RunListToolsAsync` connect the configured MCP servers
+before they load or list anything, so the three see the same tool surface. The guards the CLI runs
+before building a host are public too — `EnsureReservedRootsAreFree` (always adds `/credentials`),
+`EnsureVirtualRootsAreUnique`, `EnsureMountSelectionIsResolvable`, `EnsureMountSourcesExist` — as are
+`RegisterGracefulShutdown`, `DetectOutputMountPath`, `ConfigureVerboseLogging` (`1`: Information for the
+Orkeon modules; `2`: Debug) and `IsScriptedCrewDefinition` (`.ork.ts` / `.ork.js`).
 
 ## Consuming from a long-running host
 
@@ -176,3 +211,86 @@ services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
 Because a web host typically runs each crew in its own DI scope (Orkeon's crew repositories are scoped),
 `ServiceProviderToolRegistry` — a singleton over the registered `IBaseTool` set — is shared across runs,
 while `CrewFactory` and the orchestrator resolve per scope.
+
+## Telemetry
+
+`AddOrkeonTelemetry(configuration)` reads the `Telemetry` section:
+
+| Key | Default | Effect |
+|---|---|---|
+| `Enabled` | `true` | `false` registers only the `OrkeonMetrics` singleton — no provider, no exporter. |
+| `OtlpEndpoint` | — | An explicit OTLP endpoint; it wins over the environment. |
+| `ExportToConsole` | `false` | Adds the console exporters, for traces and metrics. |
+| `MaxMemoryMB` | `2048` | Threshold of the `system_resources` health check. |
+| `PrometheusEndpoint` | `false` | Bound, read by nothing yet. |
+
+**Where the data goes.** An explicit `Telemetry:OtlpEndpoint` is used as the exporters' endpoint.
+Without one, a non-empty `OTEL_EXPORTER_OTLP_ENDPOINT` attaches the OTLP exporters with no
+Orkeon-specific setting — the exporter then reads the endpoint, the protocol and the headers from the
+standard `OTEL_EXPORTER_OTLP_*` environment itself, which is how a process launched by .NET Aspire
+reports with nothing configured. Without either, nothing is exported.
+
+**What is exported.** Traces from the `Orkeon.Crew`, `Orkeon.Agent`, `Orkeon.Task`, `Orkeon.Llm`,
+`Orkeon.Tool`, `Orkeon.Memory` and `Orkeon.EventHub` activity sources plus the HttpClient
+instrumentation; metrics from the `Orkeon` meter plus the runtime and HttpClient instrumentation; and,
+whenever OTLP export is on, the structured logs (formatted message and scopes included) to the same
+endpoint. The resource names the service `Orkeon`. The span and metric names follow the OpenTelemetry
+GenAI conventions — see [Opt-in subsystems](opt-in-subsystems.md#traces-and-metrics-follow-the-opentelemetry-genai-conventions).
+
+The section also registers three health checks — `llm_provider`, `memory_provider`,
+`system_resources` — which no shipped runner exposes: neither `orkeon` nor `orkeon-host` serves HTTP.
+
+## .NET Aspire — `Orkeon.Hosting.Aspire`
+
+`Orkeon.Hosting.Aspire` (package `Orkeon.Hosting.Aspire`, see the
+[publication matrix](publication-matrix.md)) describes Orkeon processes as resources of an Aspire
+AppHost, so the Aspire dashboard shows their spans, metrics and logs
+([ADR-011](../adr/ADR-011-aspire-dashboard-observability.md)). It runs no crew itself: it launches the
+shipped executables, found on the `PATH` or named by `command`.
+
+**Install.** In an Aspire AppHost project (`Aspire.AppHost.Sdk`):
+
+```bash
+dotnet add package Orkeon.Hosting.Aspire --prerelease
+dotnet tool install -g Orkeon.Scripting.Cli --prerelease   # the `orkeon` executable AddOrkeonCrewRun launches
+```
+
+`orkeon-host` comes from the full installer archives or the per-machine service MSI
+([service host](../architecture/service-host.md)); pass its path as `command` when it is not on the
+`PATH`. Then `dotnet run` the AppHost and open the dashboard.
+
+**What flows.** Into each process: its arguments and the `ORKEON_` variables set with
+`WithOrkeonSetting`/`WithOrkeonModel`, plus the `OTEL_EXPORTER_OTLP_*` and `OTEL_SERVICE_NAME`
+variables Aspire injects. Out of it: the traces, metrics and structured logs described under
+[Telemetry](#telemetry), and the console output. Nothing else — no endpoint, no health probe, no
+state: the dashboard observes, it does not drive a run.
+
+```csharp
+var builder = DistributedApplication.CreateBuilder(args);
+
+// the orkeon-host daemon, its crews registered in its settings file
+builder.AddOrkeonHost("orkeon-host", settingsPath: "host.appsettings.json")
+       .WithOrkeonSetting("Orkeon:Host:RunTimeout", "00:10:00");
+
+// one `orkeon run`, files under ./out, on a local model
+builder.AddOrkeonCrewRun("quickstart", crewPath: "../../quickstart/crew.yaml")
+       .WithOrkeonModel(new Uri("http://localhost:11434"), "qwen2.5:1.5b");
+
+builder.Build().Run();
+```
+
+| Member | What it does |
+|---|---|
+| `AddOrkeonHost(name, settingsPath?, workingDirectory?, command = "orkeon-host")` | An `OrkeonHostResource` (executable) started as `orkeon-host [--settings <settingsPath>] --allow-external-mounts`, in `workingDirectory` (default: the AppHost directory), with the OTLP exporter wired. No endpoint: the daemon serves no HTTP. |
+| `AddOrkeonCrewRun(name, crewPath, outputDirectory?, settingsPath?, command = "orkeon")` | An `OrkeonCrewRunResource` started as `orkeon run <crewPath> --mount <output>:/output:rw --allow-external-mounts [--settings <settingsPath>]` in the AppHost directory, with the OTLP exporter wired. The output directory (default `<AppHost>/out`) is created when the resource is declared. |
+| `WithOrkeonSetting(key, value)` | Sets any configuration key through the `ORKEON_` environment the runners read: `Llm:Model` becomes `ORKEON_Llm__Model`. The key is the full configuration path — the daemon's own keys live under `Orkeon:Host`, so `Orkeon:Host:RunTimeout`, not `Host:RunTimeout`. |
+| `WithOrkeonModel(baseUrl, model, apiKey?)` | Shorthand for `Llm:BaseUrl` (trailing `/` trimmed), `Llm:Model` and, when given, `Llm:ApiKey`. |
+
+A runnable AppHost lives in
+[`examples/aspire/AppHost`](https://github.com/orkeon/orkeon/blob/main/examples/aspire/AppHost/Program.cs).
+
+## Microsoft Agent Framework
+
+To run a crew from a Microsoft Agent Framework application — or a MAF agent inside a crew — see
+[Agent Framework interop](agent-framework-interop.md): its example builds its host with
+`RunnerHost.Build` and adds the bridge through `configureServices`.

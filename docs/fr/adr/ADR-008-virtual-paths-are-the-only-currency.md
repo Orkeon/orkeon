@@ -4,7 +4,7 @@
 
 # ADR-008 — Les chemins virtuels sont la seule monnaie versée aux agents
 
-**Statut** : Accepté · **Date** : 2026-08-25
+**Statut** : Accepté — depuis l'[ADR-009](./ADR-009-shared-constants-satellites.md), les racines que cet ADR appelle `RunnerMounts` sont `RunnerVirtualRoots` dans `Orkeon.Constants.FileSystem`, que Studio référence directement ; la décision tient, le type a bougé · **Date** : 2026-08-25
 · **Portée** : `Orkeon.Domain/FileSystem`, `Orkeon.Hosting`, `Orkeon.Host`, `Orkeon.Scripting.Cli`, `Orkeon.Studio.*`
 
 ## Contexte

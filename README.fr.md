@@ -89,26 +89,33 @@ orkeon run crew.yaml
 /// <reference orkeon-script="1.0" />
 
 const researcher = agentBuilder()
-    .name("Researcher").role("Researcher")
+    .name("researcher").role("Researcher")
     .goal("Find and summarize information about AI trends")
+    .build();
+
+const research = taskBuilder()
+    .name("research")
+    .agent(researcher)
+    .description("Search for the latest AI developments and trends")
+    .expectedOutput("A comprehensive summary report")
     .build();
 
 const crew = crewBuilder()
     .name("research-crew")
     .goal("Research AI trends for 2026")
+    .process("sequential")
     .withAgent(researcher)
-    .withTask({
-        description: "Search for the latest AI developments and trends",
-        expectedOutput: "A comprehensive summary report",
-    })
+    .withTask(research)
     .build();
 
-await crew.run();
+globalThis.crew = crew;   // remet la crew au runner, qui pilote ses tâches
 ```
 
 ```bash
 orkeon run crew.ork.ts
 ```
+
+La fin du script choisit son moteur : `globalThis.crew = crew` exécute les tâches, `await crew.run()` exécute le code `.body()` propre aux agents et ignore toutes les tâches — voir [Écrire une crew en TypeScript](docs/fr/guides/write-a-crew-in-typescript.md).
 
 **3. C# pur** — l'API builder embarquée dans votre propre application, fortement typée de bout en bout :
 
@@ -148,7 +155,7 @@ complets : [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways
 |---|---|---|
 | **Exécuter des crews sans rien installer** | `docker run -it --rm -e ORKEON_RUNNER=shell ghcr.io/orkeon/orkeon-runners` — shell interactif, 105 exemples embarqués (`orkeon-example run 1`), prêt pour les modèles locaux | [Guide conteneur](docs/fr/getting-started/three-ways-to-run-orkeon.md#3-conteneur) |
 | **Installer la CLI `orkeon`** | Windows et Debian/Ubuntu : les démarrages rapides ci-dessous. macOS : l'archive CLI ci-dessous (`osx-arm64`, `osx-x64`). Pour `linux-arm64` — et pour qui veut aussi le REPL ou le host de service — c'est l'archive multi-applications `orkeon-<version>-<rid>.tar.gz` des [releases](https://github.com/Orkeon/orkeon/releases), puis `./install.sh` | [Binaires de release](docs/fr/getting-started/three-ways-to-run-orkeon.md#2-binaire-de-release) |
-| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet, depuis [nuget.org](https://www.nuget.org/packages/Orkeon) (le flux public : aucune source à ajouter, aucun token). Ajoutez au besoin [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — ce dernier épingle un amont en préversion, `SmartComponents.LocalEmbeddings`, et continuera après la 1.0 : voir les [limitations](docs/fr/reference/limitations.md)) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
+| **Embarquer Orkeon dans votre app** | `dotnet add package Orkeon --prerelease` — le framework complet en un seul paquet, depuis [nuget.org](https://www.nuget.org/packages/Orkeon) (le flux public : aucune source à ajouter, aucun token). Ajoutez au besoin [`Orkeon.Tools`](https://www.nuget.org/packages/Orkeon.Tools) (les familles d'outils intégrés) et les opt-ins (`Orkeon.Rag.Onnx`, `Orkeon.Tools.Embeddings.Local` — ce dernier épingle un amont en préversion, `SmartComponents.LocalEmbeddings`, et continuera après la 1.0 : voir les [limitations](docs/fr/reference/limitations.md) —, `Orkeon.Interop.AgentFramework`, `Orkeon.Hosting.Aspire`) — voir la [matrice de publication](docs/fr/reference/publication-matrix.md). Le tool CLI `orkeon` et l'image conteneur ci-dessus sont inchangés | [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
 | **Vérifier ce que vous téléchargez** | Chaque paquet et installeur porte une attestation de provenance de build signée par GitHub et une ligne `SHA256SUMS` : `gh attestation verify <fichier> --repo Orkeon/orkeon` — aucune confiance en cette page n'est requise | [Vérifier ce que vous installez](docs/fr/guides/verify-what-you-install.md) |
 | **Contribuer au framework** | `git clone` (**sans** `--recursive`) + `dotnet build Orkeon.sln` | [Depuis les sources](docs/fr/getting-started/three-ways-to-run-orkeon.md#1-depuis-les-sources) · [Contribuer](#contribuer) |
 
@@ -218,22 +225,22 @@ Chaque nombre ci-dessous est recompté depuis l'arborescence à chaque run CI �
 | Capacité | Détails |
 |---|---|
 | **91 outils intégrés** | Système de fichiers, web scraping (AngleSharp), APIs HTTP, JSON/CSV/XML/PDF/Office (DOCX & XLSX lecture/écriture), bases de données, e-mail, exécution de code sécurisée, RAG et recherche sémantique, messagerie EventHub, analyse de code RaggableTree, délégation/collaboration — voir l'[inventaire des outils](docs/fr/tools/inventory.md) |
-| **E-mail** | Treize outils `email_*` donnent une boîte aux lettres aux agents : IMAP, POP3 et SMTP via MailKit, Outlook.com / Hotmail / Microsoft 365 via Microsoft Graph, préréglages Gmail et Outlook, connexion OAuth2 faite une fois avec `orkeon email login`. Droits par compte, une liste d'autorisation d'envoi fermée tant qu'un opérateur ne l'ouvre pas, et chaque message lu passé au filtre anti-injection de prompt. Campagne réelle sur de vrais comptes en attente — voir le [guide e-mail](docs/fr/guides/email.md) |
+| **E-mail** | Treize outils `email_*` donnent une boîte aux lettres aux agents : IMAP, POP3 et SMTP via MailKit, Outlook.com / Hotmail / Microsoft 365 via Microsoft Graph, préréglages Gmail et Outlook, connexion OAuth2 faite une fois avec `orkeon email login`. Droits par compte, une liste d'autorisation d'envoi fermée tant qu'un opérateur ne l'ouvre pas, et chaque message lu passé au filtre anti-injection de prompt. Campagne réelle sur de vrais comptes en attente — commencez par [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md), puis le [guide e-mail](docs/fr/guides/email.md) |
 | **16 fournisseurs LLM** | OpenAI, Ollama, Anthropic, Azure OpenAI, Mistral AI, DeepSeek, Kimi (Moonshot), Qwen, Together AI, HuggingFace, Z.AI (GLM), Google Gemini, Grok (x.AI) et MiniMax, plus deux agrégateurs — OpenRouter (une clé, une place de marché de 445 modèles) et Mammouth AI (les crédits inclus d'un abonnement) — tous basés sur HTTP, étendant `HttpLlmProviderBase` ; modèles locaux via Docker Model Runner, Ollama ou llama.cpp embarqué — voir le [guide des modèles locaux](docs/fr/guides/local-models.md) |
-| **Vision / multimodal** | Le contenu image circule de bout en bout (`MultiModalContent` → blocs image Anthropic / `image_url` OpenAI) avec un chargeur adossé au VFS ; opt-in via `AddOrkeonMultiModal(...)` — voir le [guide multimodal](docs/fr/guides/multimodal.md) |
+| **Vision / multimodal** | Le contenu image circule de bout en bout (`MultiModalContent` → blocs image Anthropic / parts `image_url` OpenAI sur les 14 providers compatibles OpenAI / `images` Ollama, pour les modèles qui voient) avec un chargeur adossé au VFS ; opt-in via `AddOrkeonMultiModal(...)` — voir le [guide multimodal](docs/fr/guides/multimodal.md) |
 | **6 fournisseurs de mémoire** | Redis (recherche vectorielle), SQLite, InMemory, ChromaDB (REST API v2), Pinecone, LanceDB (serveur REST distant) — un seul port `IMemoryProvider`, décorateurs composables |
 | **6 stratégies d'orchestration** | Sequential, Hierarchical, Parallel, Consensual (stratégies de vote Majority / SuperMajority / Unanimity / WeightedConsensus / BordaCount), Graph (style LangGraph), Autonomous (budget d'exécution multi-dimensionnel) — voir le [guide des process types](docs/fr/orchestration/process-types.md) |
 | **Interop Microsoft Agent Framework** | `Orkeon.Interop.AgentFramework` : un crew Orkeon tourne comme `AIAgent` MAF ; un `AIAgent` MAF devient le cerveau (`WithAgentFrameworkAgent`) ou un outil (`WithAgentFrameworkTool`) d'un agent Orkeon — voir [ADR-010](docs/fr/adr/ADR-010-agent-framework-interop.md) et `examples/interop/agent-framework/` |
 | **.NET Aspire** | `Orkeon.Hosting.Aspire` : `AddOrkeonHost` / `AddOrkeonCrewRun` placent le démon ou un run de crew dans un AppHost ; les runners honorent `OTEL_EXPORTER_OTLP_ENDPOINT`, si bien que le dashboard Aspire montre chaque span `invoke_agent` / `chat` / `execute_tool`, les métriques de tokens et les logs — voir [ADR-011](docs/fr/adr/ADR-011-aspire-dashboard-observability.md) et `examples/aspire/AppHost/` |
-| **Système de plugins** | Assemblies drop-in implémentant `IOrkeonPlugin`, découvertes dans un répertoire de plugins, chargées dans des `AssemblyLoadContext` collectables et isolés, activées explicitement via `AddOrkeonPlugins(...)` — voir [plugins](docs/fr/architecture/plugins.md) |
-| **Bootstrap d'hôte & scripting** | `Orkeon.Hosting` (`RunnerHost`) câble la pile complète pour les runners/CLI (appsettings, montages VFS, providers, outils) ; le dotnet tool `orkeon` exécute des scripts de crew `.ork.ts` à syntaxe TypeScript |
+| **Système de plugins** | Assemblies drop-in implémentant `IOrkeonPlugin`, découvertes dans un répertoire de plugins, chargées dans des `AssemblyLoadContext` collectables et isolés, activées explicitement via `AddOrkeonPlugins(...)` — voir [plugins](docs/fr/architecture/plugins.md) (projet du dépôt, pas un paquet NuGet) |
+| **Bootstrap d'hôte & scripting** | `Orkeon.Hosting` (`RunnerHost`) câble la pile complète pour les runners et CLI du dépôt (appsettings, montages VFS, providers, outils) — il est livré dans la CLI, pas comme paquet NuGet ; le dotnet tool `orkeon` exécute les crews YAML et les scripts de crew `.ork.ts` à syntaxe TypeScript |
 | **Générateurs de source** | `Orkeon.Generators` émet la plomberie wrapper/builder `[TypedDictionary]`, libérant de tout boilerplate les APIs fortement typées écrites à la main |
 | **Architecture en pipeline typé** | `ComponentBase<TRequest, TResponse>` élimine `Dictionary<string, object>` dans toute la pile |
 | **Configuration YAML** | Export/import aller-retour complet pour les agents, tâches, crews et schémas d'outils |
 | **API Fluent Builder** | `AgentBuilder`, `CrewBuilder`, `CrewTaskBuilder` pour une construction ergonomique et découvrable |
 | **Clean Architecture** | Séparation stricte Domain / Application / Infrastructure sans fuite entre couches |
 | **Pipeline CQRS** | Commandes et requêtes pour tous les agrégats ; décorateur `ValidatingCommandHandler` ; intégration `UnitOfWork` |
-| **Sélection sémantique d'agents** | Appariement par similarité d'embeddings pour router les tâches vers l'agent le plus adapté |
+| **Sélection d'agents configurable** | Une tâche qui ne nomme aucun agent va au premier disponible (`FirstFit`, le défaut), à la meilleure correspondance lexicale de compétences (`Skill`) ou à l'agent le plus proche par similarité d'embeddings (`Embedding`, qui exige un vrai fournisseur d'embeddings) — `OrkeonApplicationOptions.AgentSelectionStrategy` |
 | **Checkpointing & reprise** | État d'exécution persisté dans des state stores enfichables (InMemory, fichier JSON, SQLite, PostgreSQL) ; time-travel via `CheckpointManager` (fork, replay, diff) et `ResumeEngine` pour reprendre les exécutions interrompues |
 | **Communication A2A** | Protocole Agent-to-Agent avec découverte, `A2AClient`/`A2AServer`, un repository d'agents scopé au-dessus d'un store d'enregistrement partagé, et application optionnelle de mTLS / schémas d'authentification (certificat client + `RequireMutualTls` / `AllowedAuthSchemes` côté serveur) |
 | **Sous-systèmes opt-in** | A2A, monitoring, rate-limiting des outils, benchmarking, multimodal, hooks de kickoff et d'autres — aucun n'est enregistré par défaut, chacun s'active via son extension dédiée `AddOrkeonXxx()` — voir la [référence des opt-in](docs/fr/reference/opt-in-subsystems.md) |
@@ -276,6 +283,7 @@ Autour du cœur, des projets dédiés couvrent l'hébergement (`Orkeon.Hosting`,
 |---|---|
 | **Le premier run, pas à pas** | [Vue d'ensemble getting-started](docs/fr/getting-started/overview.md) · [Lancez votre premier exemple](docs/fr/getting-started/run-your-first-example.md) |
 | **Les trois façons d'exécuter Orkeon** (source / binaire / conteneur) | [Trois façons d'exécuter Orkeon](docs/fr/getting-started/three-ways-to-run-orkeon.md) |
+| **L'e-mail** : donner une boîte aux lettres aux agents (Gmail, Outlook.com / Hotmail, votre propre serveur IMAP/POP3/SMTP) | [Donner une boîte aux lettres à vos agents](docs/fr/getting-started/give-your-agents-a-mailbox.md) · [Guide e-mail](docs/fr/guides/email.md) · [`orkeon email`](docs/fr/reference/cli.md#orkeon-email) |
 | **Les modèles locaux** (Docker Model Runner, Ollama, embarqué, contextes 128K) | [Guide des modèles locaux](docs/fr/guides/local-models.md) |
 | **Les 105 exemples exécutables** (9 catégories thématiques + `orkeon-example`) | [Exemples](https://github.com/Orkeon/orkeon/tree/main/examples) · [Catalogue](docs/fr/reference/examples-catalog.md) |
 | **Écrire des crews** : YAML, builders, TypeScript, câblage de l'hôte, exécution | [YAML & builders](docs/fr/getting-started/yaml-and-builders.md) · [Écrire une crew en TypeScript](docs/fr/guides/write-a-crew-in-typescript.md) · [Bootstrap et exécution](docs/fr/getting-started/bootstrap.md) |
@@ -293,7 +301,7 @@ paraît donc avec la première release taguée et documente toujours une version
 ## Pourquoi Orkeon ?
 
 - **Trois surfaces d'écriture, un moteur** — le même crew peut être un fichier YAML qu'édite un analyste, un script TypeScript qu'itère un développeur (tous deux exécutés sans aucun rebuild), ou du C# embarqué dans votre produit. Aucune réécriture en changeant de niveau.
-- **Une orchestration au-delà des pipelines** — six stratégies, dont les graphes d'états style LangGraph à arêtes conditionnelles et un mode entièrement autonome où les agents délèguent, se dupliquent et communiquent sous un budget d'exécution multi-dimensionnel (appels d'outils, profondeur, temps, tokens, spawns).
+- **Une orchestration au-delà des pipelines** — six stratégies, dont un mode graphe adossé à un moteur `StateGraph` style LangGraph (arêtes conditionnelles et cycles contrôlés dans son API C#) et un mode autonome où un manager répartit le travail, une tâche en échec est confiée à un pair et les agents échangent sur un canal A2A, le tout sous un budget d'exécution multi-dimensionnel (appels d'outils, profondeur, temps, tokens, spawns).
 - **Batteries incluses** — 91 outils, 16 fournisseurs LLM, 6 stores de mémoire, vision, RAG, analyse de code : utilisables immédiatement, remplaçables via les ports de la Clean Architecture.
 - **Local d'abord** — chaque exemple tourne sur un modèle installé sur votre machine (Docker Model Runner, Ollama, ou llama.cpp embarqué dans l'image conteneur). Aucune clé API nécessaire pour évaluer.
 - **La frontière est le produit** — un système de fichiers virtuel audité par droits devant chaque accès fichier, un analyseur Roslyn qui refuse le `System.IO` brut dans votre propre code, des budgets d'exécution et des circuit breakers pour l'autonomie, checkpoint et reprise pour les longs runs. Rate limiting, monitoring et le reste sont à un `AddOrkeonXxx()` près.

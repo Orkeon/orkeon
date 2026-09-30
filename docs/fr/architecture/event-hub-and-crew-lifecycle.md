@@ -7,7 +7,7 @@
 
 Ce document consolide les décisions architecturales prises pour la couche de messaging inter-agents et inter-crews d'Orkeon, ainsi que pour la mise en sommeil / réveil des crews.
 
-> **C'est une spécification, et elle décrit plus que ce que le dépôt contient aujourd'hui.** Ce qui est livré : le port `IEventHub` et son adaptateur en mémoire, les sept outils d'agent, le pipeline de middlewares et ses cinq étages (§12), la grammaire `links:` et l'ACL (§10). Ce qui ne l'est pas : la persistance SQLite (§11), la mise en sommeil et le réveil des crews (§7, §8), et la chaîne de parité pilotée par JSON Schema (§13.1). Chaque section décrivant quelque chose de non construit le dit sur place — ces notes font partie du contrat.
+> **C'est une spécification, et elle décrit plus que ce que le dépôt contient aujourd'hui.** Ce qui est livré : le port `IEventHub` et son adaptateur en mémoire, les sept outils d'agent, le pipeline de middlewares et ses cinq étages (§12), la grammaire `links:` et l'ACL (§10). Ce qui ne l'est pas : la persistance SQLite (§11), la mise en sommeil et le réveil des crews (§7, §8), et la chaîne de parité pilotée par JSON Schema (§13.1). Les hôtes livrés (`orkeon run`, `orkeon-host`) enregistrent le hub, ses outils et l'étage ACL — rien d'autre (§12.4). Chaque section décrivant quelque chose de non construit le dit sur place — ces notes font partie du contrat.
 
 ---
 
@@ -67,6 +67,8 @@ Ce document consolide les décisions architecturales prises pour la couche de me
                            ▼
                   ICrewStateStore (SQLite)
 ```
+
+Construit aujourd'hui : les agents, les outils, `IEventHub`, `InMemoryEventHub` et la chaîne de middlewares. `SqliteEventHub`, le gestionnaire de cycle de vie, l'activateur et le magasin d'état sont le design des §7, §8 et §11.
 
 ---
 
@@ -233,11 +235,13 @@ Sept tools, enregistrés par l'appel explicite `AddOrkeonEventHubTools()` aux c�
 |---|---|---|---|
 | `publish_event` | Publish | `topic`, `payload`, `target_crew_id?`, `metadata?`, `retain_as_last_value?`, `last_value_key?` | `event_id`, `published_at` |
 | `post_message` | Post | `target_mailbox`, `payload`, `metadata?` | `message_id`, `posted_at` |
-| `send_request` | Send | `target_mailbox`, `payload`, `timeout_ms` (requis), `metadata?` | `correlation_id`, `response_payload` ou `TimeoutError` |
+| `send_request` | Send | `target_mailbox`, `payload`, `timeout_ms` (requis), `metadata?` | `correlation_id`, `response_payload` ; sans réponse à temps, l'appel échoue (`SendTimeoutException`) |
 | `reply_to` | Reply | `correlation_id`, `payload` | `replied_at` |
 | `receive_message` | (pull mailbox) | `timeout_ms` ou `wait_forever:true`, `mailbox?` (défaut : agent courant) | `message?` |
 | `wait_for_event` | Wait | `topic`, `timeout_ms` ou `wait_forever:true`, `metadata_match?` | `message` ou `timed_out:true` |
-| `get_last_value` | LastValueCache | `key`, `crew_scope?` (défaut : crew courante) | `found`, `value`, `set_at` (`found` distingue un null caché d'une clé absente) |
+| `get_last_value` | LastValueCache | `key`, `crew_scope?` (défaut : crew courante ; global pour un appelant système) | `found`, `value`, `set_at` (`found` distingue un null caché d'une clé absente) |
+
+`receive_message` et `wait_for_event` répondent par `message` (l'enveloppe : `message_id`, `topic`, `source_crew_id`, `source_agent_id`, `correlation_id`, `published_at`, `metadata`, `payload`) et `timed_out`. `receive_message` sans `mailbox` lit celle de l'agent appelant, `agent://{crewId}/{agentId}`.
 
 ### 5.1 Règles de validation
 
@@ -246,6 +250,9 @@ Sept tools, enregistrés par l'appel explicite `AddOrkeonEventHubTools()` aux c�
 - `Forever` reste un opt-in explicite, jamais un défaut implicite.
 - `reply_to` exige un `correlation_id` actif : l'agent l'obtient depuis un `Message` reçu via `receive_message` ou `wait_for_event` (champ `correlation_id` de l'enveloppe). Un `reply_to` avec `correlation_id` inconnu ou déjà répondu est rejeté.
 - Les agents ne peuvent pas publier sur un topic commençant par `_system.` (réservé aux messages produits par le hub, ex. `_system.wait_timed_out`).
+- `publish_event` n'a pas de champ `schema_id` : la publication d'un agent ne déclare aucun contrat, l'étage de validation (§12.3) ne la refuse donc jamais.
+- Les identifiants que renvoient `publish_event`, `post_message` et `send_request` (`event_id`, `message_id`, `correlation_id`) sont frappés par l'outil pour la traçabilité, pas repris du hub — c'est pourquoi `reply_to` prend son `correlation_id` dans l'enveloppe **reçue**, jamais dans une réponse de `send_request`.
+- `metadata` est accepté par `post_message` et `send_request` mais pas transmis : `IEventHub.PostAsync` et `SendAsync` ne portent pas de métadonnées. Seul `publish_event` les livre.
 
 ### 5.2 Subscribe long-lived côté agent
 
@@ -258,7 +265,7 @@ loop:
   else: process(msg); continue
 ```
 
-Chaque appel `wait_for_event` produit un `PendingWait` ; si la crew dort entre deux itérations, elle est réveillée par le message suivant. Sémantique identique à une souscription long-lived, exposée comme une primitive familière au LLM.
+Une fois le sommeil construit (§7, non construit), chaque appel `wait_for_event` produit un `PendingWait` ; si la crew dort entre deux itérations, elle est réveillée par le message suivant. Sémantique identique à une souscription long-lived, exposée comme une primitive familière au LLM.
 
 ---
 
@@ -295,7 +302,9 @@ topic://{topicName}              alias d'un topic broadcast
 client://{name}                  un processus client observateur (voir §10.2.1 et le bus d'événements de run)
 ```
 
-Validé par regex dans `MailboxAddress.Parse`, l'unique point d'entrée du port (il n'existe pas de voie crew-builder pour les adresses, et le SDK TS du §13.4 est un design non construit). `TargetCrewId` est extrait automatiquement du `TargetMailbox` ; toute incohérence entre les deux est rejetée par le middleware.
+Validé dans `MailboxAddress.Parse` (et `TryParse`), l'unique point d'entrée du port (il n'existe pas de voie crew-builder pour les adresses, et le SDK TS du §13.4 est un design non construit). Un nom de topic contient des lettres, des chiffres, `.`, `_` et `-` ; un nom de client est non vide et ne contient aucun `/`. Pour `Post`/`Send`, le hub dérive lui-même `TargetCrewId` du `TargetMailbox` : les deux ne peuvent pas diverger.
+
+**Une boîte aux lettres existe tant que quelqu'un la tient.** `InMemoryEventHub.RegisterMailbox(address)` en ouvre une (avec comptage de références ; disposer le handle renvoyé la libère), et une attente sur une boîte — `receive_message` — l'ouvre pour la durée de l'attente. Un `Post` ou un `Send` vers une boîte que personne ne tient échoue avec `MailboxNotFoundException` au lieu d'attendre en file un lecteur qui ne viendra peut-être jamais ; le siège `client://` d'un run observé est tenu par le run lui-même ([le bus d'événements du run](run-event-bus.md), §5).
 
 ---
 
@@ -449,7 +458,7 @@ public abstract record PendingWaitKind
 
 ### 9.2 `WaitTimedOutMessage`
 
-Type de message de premier ordre, livré par le système (pas par un agent) lorsqu'un `WaitTimeout.Finite` expire pendant le sommeil d'une crew. Caractéristiques :
+Type de message de premier ordre, livré par le système (pas par un agent) lorsqu'un `WaitTimeout.Finite` expire pendant le sommeil d'une crew. **Livré aujourd'hui**, sans sommeil : `InMemoryEventHub` le renvoie depuis `WaitForAsync` chaque fois qu'une attente finie expire, construit par `WaitTimedOutMessageFactory` (identifiant de schéma `_system/wait_timed_out/v1`) — les outils le rapportent en `timed_out: true`. Caractéristiques :
 
 - `SourceCrewId = CrewId.System` (constante réservée, distincte de tout `CrewId` utilisateur)
 - `SourceAgentId = null`
@@ -457,7 +466,7 @@ Type de message de premier ordre, livré par le système (pas par un agent) lors
 - `Metadata` contient `original_topic`, `original_wait_id`, `original_started_at`
 - `Payload` vide (`ReadOnlyMemory<byte>.Empty`)
 
-Apparait dans `processed_messages` pour l'idempotence (sinon redémarrage = re-livraison du même timeout).
+Une fois le hub durable construit (§11), il apparaît dans `processed_messages` pour l'idempotence (sinon redémarrage = re-livraison du même timeout).
 
 Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic commençant par `_system.` — c'est **l'outil `publish_event`** qui lève `ReservedTopicException` avant même d'atteindre le hub (le hub lui-même, donc les appelants in-process, n'est pas gardé ; le middleware de validation ne vérifie que `SchemaId`).
 
@@ -467,7 +476,9 @@ Le préfixe `_system.` est réservé : un agent ne peut pas publier sur un topic
 
 ### 9.4 Liaison au budget
 
-Le `CancellationToken` passé aux waits est dérivé du `AgentExecutionBudget.LinkedToken` de la crew. Quand le budget expire, le wait s'arrête avec `BudgetExhaustedException` — distinct d'un `TimeoutException`. Permet au superviseur de distinguer « pas de message en temps voulu » de « budget épuisé ».
+Un wait lié à l'`AgentExecutionBudget` de la crew s'arrête avec `BudgetExhaustedException` quand le budget est épuisé — distinct d'un timeout. Permet au superviseur de distinguer « pas de message en temps voulu » de « budget épuisé ».
+
+Le design dérivait le `CancellationToken` du wait d'un `AgentExecutionBudget.LinkedToken`, membre que le budget n'a pas. Ce qui est livré, c'est `EventHubBudgetExtensions.WaitForAsync(hub, descriptor, timeout, budget, ct)` (une surcharge prend l'intervalle de sondage) : elle sonde `budget.IsExhausted` toutes les 25 ms, annule le wait quand il bascule, et lève `BudgetExhaustedException` sur la dimension `WallTime`. Les outils d'agent ne l'appellent pas — leurs waits sont bornés par `timeout_ms` et par l'annulation propre du run.
 
 ---
 
@@ -504,6 +515,8 @@ L'étage ACL refuse les `Post` / `Send` / `Publish` scopé qu'aucune `CrewLink` 
 | Crew n'ayant **jamais déclaré** de bloc `links:` | passe par défaut | le hub a été livré sans aucune ACL : refuser le trafic non déclaré le jour où l'étage s'allume casserait toutes les crews existantes. Un déploiement qui veut une porte fermée enregistre `RestrictiveCrewLinkPolicy` — et sous elle, un émetteur non déclaré passe encore quand la *cible* lui a accordé un lien `inbound` (§10.3) |
 | Crew ayant **déclaré** des liens | tenue à ses liens — bloc déclaré-mais-vide compris, qui refuse tout | déclarer est le geste qui ferme la porte ; un bloc dont toutes les entrées ont échoué au parsing doit la fermer, jamais l'ouvrir |
 | Crew dont un lien déclaré correspond | passe | pour un publish scopé, le lien doit nommer la cible **et** autoriser le topic ; pour `Post`/`Send`, le lien suffit — voir ci-dessous |
+
+Les clés se lisent en camelCase ou en snake_case (`allowed_topics` et `allowedTopics` sont la même clé). `direction` accepte `outbound` (le défaut en son absence), `inbound` et `bidirectional` (alias `both`), sans égard à la casse.
 
 Un **`allowed_topics` vide** autorise tous les topics : un lien qui n'autoriserait rien serait sans objet, donc le cas vide est une confiance, pas un accident. La liste ne contraint que les **topics** : le courrier point à point (`Post`/`Send`) porte un topic synthétique du hub qu'aucun auteur ne pourrait nommer, il est donc autorisé par le lien lui-même — direction et destinataire. Une entrée sans `to:`, ou avec une `direction:` illisible, est **écartée avec un avertissement** plutôt que devinée — une direction devinée est une autorisation que l'auteur n'a jamais écrite — et la présence du bloc ferme quand même la porte : une autorisation malformée ne doit jamais devenir permissive.
 
@@ -659,7 +672,7 @@ L'ordre ci-dessous n'est pas cosmétique : sur le **chemin de publication**, la 
 | 4 | `IdempotencyEventHubMiddleware` | `AddOrkeonEventHubIdempotency(capacity?)` | refuse un message qu'une boîte aux lettres a déjà consommé, en réception |
 | 5 | `ValidationEventHubMiddleware` | `AddOrkeonEventHubValidation()` | vérifie qu'un `SchemaId` déclaré nomme un contrat enregistré, à la publication |
 
-Chaque étage est opt-in — un hub que personne ne regarde ne paie rien — et les étages custom sont injectables par `AddEventHubMiddleware<T>()`.
+Chaque étage est opt-in — un hub que personne ne regarde ne paie rien — et les étages custom sont injectables par `AddEventHubMiddleware<T>()`. La chaîne suit l'ordre d'**enregistrement** : l'ordre du tableau ne tient que si les étages sont enregistrés dans cet ordre — appelez les extensions `AddOrkeonEventHub*` de haut en bas. L'étage de journalisation écrit l'EventId 9410 en Debug pour un message passé et 9411 en Warning pour un message qu'un étage suivant a refusé ; `AddOrkeonEventHubIdempotency` garde par défaut les 10 000 derniers identifiants (`DefaultIdempotencyCapacity`) ; `AddOrkeonEventHubAcl` refuse d'enregistrer une seconde politique explicite différente.
 
 ### 12.1 Où tournent les étages
 
@@ -680,6 +693,24 @@ Le contrat de middleware ne sait que laisser passer ou lever ; « écarte ce dou
 Que le contrat déclaré **existe** dans `IEventSchemaRegistry` — pas que la charge utile s'y conforme. Aucun moteur JSON Schema n'est embarqué ici, et la moitié d'un moteur ressemblerait à une garantie sans en être une. Ce que l'étage attrape est réel : une faute de frappe dans un `schema_id`, ou un type d'événement que le déploiement n'a jamais déclaré.
 
 Un message portant `Message.NoDeclaredSchemaId` (`"_none"` — délibérément pas un id plausible : un déploiement pourrait légitimement enregistrer `application/json`, et une sentinelle en collision passerait sans contrôle, en silence) ne déclare aucun contrat — c'est le cas de tout `Post`, `Send` et `Reply` — et passe. Déclarer un schéma est le geste qui engage le contrôle, comme déclarer un lien ferme la porte de l'ACL. Le refus est levé à la **publication**, car un abonné ne peut rien à un schéma déclaré par quelqu'un d'autre.
+
+### 12.4 Câblage
+
+| Extension (`Orkeon.Infrastructure.EventHub.DependencyInjection`) | Enregistre |
+|---|---|
+| `AddOrkeonInMemoryEventHub()` | `IEventHub` → `InMemoryEventHub`, `IEventHubCallerContext` → `DefaultEventHubCallerContext`, `IEventSchemaRegistry` → `InMemoryEventSchemaRegistry` (singletons, `TryAdd`) |
+| `AddOrkeonEventHubObservability()` | l'étage de journalisation, puis celui de télémétrie |
+| `AddOrkeonEventHubAcl(policy?)` | l'étage ACL, `InMemoryCrewLinkRegistry` (à la fois `ICrewLinkRegistry` et `ICrewLinkProvider`) et la politique — `PermissiveCrewLinkPolicy` sauf si une autre est donnée |
+| `AddOrkeonEventHubIdempotency(capacity = 10_000)` | l'étage d'idempotence |
+| `AddOrkeonEventHubValidation()` | l'étage de validation (et un registre de schémas si aucun n'est enregistré) |
+| `AddEventHubMiddleware<T>()` | un étage custom |
+| `AddOrkeonEventHubTools()` (`Orkeon.Tools.EventHub.DependencyInjection`) | les sept outils d'agent du §5 |
+
+**Ce que les hôtes livrés enregistrent.** L'hôte des runners derrière `orkeon run` et `orkeon-host` appelle `AddOrkeonInMemoryEventHub()`, `AddOrkeonEventHubTools()` et `AddOrkeonEventHubAcl()` — l'ACL avec son défaut permissif — et rien d'autre : aucun étage de journalisation, de télémétrie, d'idempotence ou de validation n'y tourne sans qu'un hôte l'ajoute. Un run observé (`orkeon run --events jsonl`) enveloppe en plus le hub dans le pont JSON-lines qui donne au processus observateur son siège `client://` ([le bus d'événements du run](run-event-bus.md)).
+
+**Qui appelle.** Le hub estampille `SourceCrewId`/`SourceAgentId` depuis `IEventHubCallerContext`, un `AsyncLocal` que l'orchestrateur pousse pour la crew et que le service d'exécution d'agent pousse pour chaque agent ; hors de toute poussée, l'appelant est `CrewId.System`, que l'ACL laisse passer. `CrewFactory` enregistre le nom et les `links:` de chaque crew dans le registre de liens ; une crew créée par la commande applicative n'enregistre que son nom.
+
+**Ce qui peut échouer**, dans `Orkeon.Application.EventHub.Exceptions` : `EventAclException` (refus de l'ACL), `EventValidationException` (identifiant de schéma inconnu), `DuplicateMessageException` (avalée au point de livraison, §12.2), `MailboxNotFoundException`, `SendTimeoutException`, `UnknownCorrelationException` (une réponse que personne n'attend), `ReservedTopicException` (un topic `_system.` depuis `publish_event`) et `InvalidMailboxAddressException`.
 
 ---
 
@@ -702,7 +733,7 @@ Sans cette source unique, les trois paradigmes dérivent en quelques semaines.
 // liaisons enregistrées par .OnEvent ne sont distribuées par rien. Déclarez les
 // liens en YAML (§10.2) ; consommez le hub directement, comme ci-dessous.
 var crew = new CrewBuilder()
-    .Name("order-processor")
+    .Goal("Process orders")
     .Build();
 
 // Consommation directe pour code utilisateur
@@ -806,7 +837,8 @@ Conçus mais **non construits** : `event.correlation_id`, `event.message_id`,
 ### 14.2 Métriques — **non construites**
 
 Aucun instrument EventHub n'existe encore (`OrkeonMetrics` ne couvre que
-`orkeon.llm.*`, `orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*`). Le jeu
+`orkeon.llm.*`, `orkeon.tool.*`, `orkeon.task.*`, `orkeon.crew.*`, `orkeon.security.*` et
+`orkeon.cost.*`). Le jeu
 conçu, gardé ici comme cible :
 
 - `orkeon_event_published_total{topic, source_crew, target_crew}` — counter
@@ -819,7 +851,7 @@ conçu, gardé ici comme cible :
 
 ## 15. Roadmap d'implémentation
 
-**Construit.** Le port `IEventHub`, `PublishOptions`/`WaitDescriptor`, `IEventSchemaRegistry`, `InMemoryEventHub`, les sept outils d'agent, la grammaire `links:` et l'ACL (§10), et tout le pipeline de middlewares avec ses cinq étages (§12) — journalisation, télémétrie, ACL, idempotence, validation. (Les interfaces de cycle de vie du §3.3 — `ICrewLifecycleManager`, `ICrewStateStore`, `ICrewActivator`, `IIdleDetector`, `IWaitScheduler` — sont du design, listées comme manquantes plus bas.)
+**Construit.** Le port `IEventHub`, `PublishOptions`/`WaitDescriptor`, `IEventSchemaRegistry`, `InMemoryEventHub`, les sept outils d'agent, la grammaire `links:` et l'ACL (§10), et tout le pipeline de middlewares avec ses cinq étages (§12) — journalisation, télémétrie, ACL, idempotence, validation ; les hôtes livrés n'enregistrent que l'étage ACL (§12.4). (Les interfaces de cycle de vie du §3.3 — `ICrewLifecycleManager`, `ICrewStateStore`, `ICrewActivator`, `IIdleDetector`, `IWaitScheduler` — sont du design, listées comme manquantes plus bas.)
 
 **Non construit**, chacun derrière le même port pour que le construire ne change aucun appelant :
 
@@ -840,10 +872,10 @@ Deux inerties plus petites, à nommer plutôt qu'à laisser découvrir : `CrewBu
 
 - `Publish` global → tous abonnés voient.
 - `Publish` scopé crew X → seuls abonnés de X voient.
-- `Post` vers boîte inexistante → erreur typée.
+- `Post` vers boîte inexistante → `MailboxNotFoundException`.
 - `Send` répondu dans le timeout → réponse retournée.
-- `Send` non répondu avant timeout → `TimeoutException` typée.
-- `Reply` sans `Send` pendant → erreur.
+- `Send` non répondu avant timeout → `SendTimeoutException`.
+- `Reply` sans `Send` pendant → `UnknownCorrelationException`.
 - `WaitFor` Finite expiré → `WaitTimedOutMessage` livré.
 - `WaitFor` Forever sans message → bloque indéfiniment (test annulé via CT).
 - `WaitFor` budget épuisé → `BudgetExhaustedException` (distinct du timeout).
@@ -914,9 +946,9 @@ Deux inerties plus petites, à nommer plutôt qu'à laisser découvrir : `CrewBu
 - **Outbox** : table SQLite tampon des messages sortants pour garantir l'atomicité publish+ack.
 - **Forever** : timeout infini, autorisé sur `wait_for_event`, `receive_message` et `subscribe`. Réveil exclusif sur message matchant.
 - **MailboxAddress** : URI structuré identifiant une boîte (`agent://`, `crew://`, `topic://`, `client://`).
-- **`WaitTimedOutMessage`** : message système livré à une crew lorsque son `WaitTimeout.Finite` expire pendant son sommeil. Topic réservé : `_system.wait_timed_out`.
+- **`WaitTimedOutMessage`** : message système livré à une crew lorsque son `WaitTimeout.Finite` expire pendant son sommeil — et, aujourd'hui, renvoyé par le hub en mémoire chaque fois qu'une attente finie expire. Topic réservé : `_system.wait_timed_out`.
 - **`CrewId.System`** : constante réservée représentant le hub lui-même comme émetteur. Utilisée comme `SourceCrewId` pour tous les messages système (timeouts, notifications de cycle de vie). Aucune crew utilisateur ne peut prendre cet ID.
-- **Topic réservé `_system.*`** : préfixe interdit aux agents. Seul le hub peut publier sur ces topics. Toute tentative est rejetée par le middleware de validation.
+- **Topic réservé `_system.*`** : préfixe interdit aux agents. Seul le hub peut publier sur ces topics. La tentative d'un agent est rejetée par l'outil `publish_event` (`ReservedTopicException`) ; le hub lui-même ne la garde pas (§9.2).
 
 ---
 
