@@ -224,14 +224,17 @@ graphConfig:
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
-`graphConfig` wins over a crew-level `circuitBreaker`; the state timeout and degraded mode stay
-at the preset's values (`CircuitBreakerPolicyFactory.ResolveGraph`).
+`graphConfig` wins over a crew-level `circuitBreaker` (`CircuitBreakerPolicyFactory.ResolveGraph`).
+The graph engine enforces three limits only — transitions, visits of one state, total duration
+(`GraphRunner`); a state timeout or a degraded mode has no effect on a graph run.
 
 ## Circuit Breaker configuration
 
 The `circuitBreaker` block with all available parameters. **What reaches execution today**: the
 **crew-level** block, read by the Graph mode only (`GraphProcessStrategy`, when no `graphConfig`
-is declared) — its preset and the first five limits build the graph's circuit-breaker policy. The
+is declared) — its preset and `maxTransitions`, `maxStateVisits` and `maxTotalDurationSeconds`
+bound the graph run. `stateTimeoutSeconds` and `useDegradedMode` reach the policy too, but the
+graph engine reads neither: they only mean something to the domain FSM, which no strategy runs. The
 task-level block and the three guard limits (`maxRetries`, `maxToolCallsPerRound`,
 `maxValidationRetries`) are parsed into `CircuitBreakerConfig` and resolved by
 `CircuitBreakerPolicyFactory` (preset, then crew overrides, then task overrides; unknown preset →
@@ -241,10 +244,10 @@ task-level block and the three guard limits (`maxRetries`, `maxToolCallsPerRound
 circuitBreaker:
   preset: string                # "strict" (also the fallback) | "permissive" | "default"
   maxTransitions: int           # Max transitions before trip
-  stateTimeoutSeconds: int      # Per-state timeout (seconds)
+  stateTimeoutSeconds: int      # Per-state timeout (seconds) — not enforced by the Graph mode
   maxStateVisits: int           # Max visits of the same state (cycles)
   maxTotalDurationSeconds: int  # Max total duration (seconds)
-  useDegradedMode: bool         # true = Degraded, false = exception
+  useDegradedMode: bool         # true = Degraded, false = exception — not enforced by the Graph mode
   maxRetries: int               # Retries after failure (guard, default 3)
   maxToolCallsPerRound: int     # Max tool calls per round (guard, default 10)
   maxValidationRetries: int     # Max validation loops (guard, default 3)

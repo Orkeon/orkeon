@@ -231,15 +231,18 @@ graphConfig:
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
-`graphConfig` l'emporte sur un `circuitBreaker` de crew ; le timeout par état et le mode dégradé
-restent aux valeurs du preset (`CircuitBreakerPolicyFactory.ResolveGraph`).
+`graphConfig` l'emporte sur un `circuitBreaker` de crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
+Le moteur de graphe n'applique que trois limites — transitions, visites d'un même état, durée
+totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
 
 ## Configuration Circuit Breaker
 
 Le bloc `circuitBreaker` avec tous les paramètres disponibles. **Ce qui atteint l'exécution
 aujourd'hui** : le bloc **de crew**, lu par le seul mode Graph (`GraphProcessStrategy`, quand aucun
-`graphConfig` n'est déclaré) — son preset et les cinq premières limites construisent la politique
-de circuit breaker du graphe. Le bloc de tâche et les trois limites de garde (`maxRetries`,
+`graphConfig` n'est déclaré) — son preset et `maxTransitions`, `maxStateVisits` et
+`maxTotalDurationSeconds` bornent le run du graphe. `stateTimeoutSeconds` et `useDegradedMode`
+atteignent aussi la politique, mais le moteur de graphe ne lit ni l'un ni l'autre : ils ne servent
+qu'à la FSM du domaine, qu'aucune stratégie n'exécute. Le bloc de tâche et les trois limites de garde (`maxRetries`,
 `maxToolCallsPerRound`, `maxValidationRetries`) sont parsés dans `CircuitBreakerConfig` et résolus
 par `CircuitBreakerPolicyFactory` (preset, puis surcharges de crew, puis surcharges de tâche ;
 preset inconnu → `strict`), mais aucun chemin d'exécution n'appelle encore cette résolution pour
@@ -249,10 +252,10 @@ les tâches.
 circuitBreaker:
   preset: string                # "strict" (aussi la valeur de repli) | "permissive" | "default"
   maxTransitions: int           # Transitions max avant trip
-  stateTimeoutSeconds: int      # Timeout par état (secondes)
+  stateTimeoutSeconds: int      # Timeout par état (secondes) — non appliqué par le mode Graph
   maxStateVisits: int           # Visites max d'un même état (cycles)
   maxTotalDurationSeconds: int  # Durée totale max (secondes)
-  useDegradedMode: bool         # true = Degraded, false = exception
+  useDegradedMode: bool         # true = Degraded, false = exception — non appliqué par le mode Graph
   maxRetries: int               # Retries après échec (garde, défaut 3)
   maxToolCallsPerRound: int     # Tool calls max par round (garde, défaut 10)
   maxValidationRetries: int     # Boucles validation max (garde, défaut 3)
