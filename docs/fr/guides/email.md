@@ -407,7 +407,7 @@ for (const message of page.messages) {
 Un champ que l'outil laisse à `null` est absent du résultat. Appeler un outil
 impérativement exige la forme procédurale — voir
 [Écrire un crew en TypeScript](./write-a-crew-in-typescript.md) ;
-[`13-email-triage.ork.ts`](../../../examples/scripting/13-email-triage.ork.ts) classe le courrier
+[`13-email-triage.ork.ts`](https://github.com/Orkeon/orkeon/blob/main/examples/scripting/13-email-triage.ork.ts) classe le courrier
 non lu par nature et rédige les réponses qu'un humain enverra. Un script lancé par `orkeon run`
 voit tous les comptes du fichier de réglages qu'il résout.
 

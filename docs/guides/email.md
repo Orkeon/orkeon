@@ -392,7 +392,7 @@ for (const message of page.messages) {
 
 A field the tool leaves `null` is absent from the result. The procedural shape is
 required to call tools imperatively — see [Write a crew in TypeScript](./write-a-crew-in-typescript.md);
-[`13-email-triage.ork.ts`](../../examples/scripting/13-email-triage.ork.ts) files unread mail by
+[`13-email-triage.ork.ts`](https://github.com/Orkeon/orkeon/blob/main/examples/scripting/13-email-triage.ork.ts) files unread mail by
 kind and drafts the replies for a human to send. A script run with `orkeon run` sees every
 account of the settings file it resolves.
 

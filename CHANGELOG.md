@@ -290,7 +290,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
     3,000).
 - The session records the reference (`session.json` `reference`, announced on
   `session.started`), and a resume or a `forge reopen` composes with it again.
-- The promotion traces it: « Inspiré de : <title> (<id>) » in `FORGE.md`, and `reference` in
+- The promotion traces it: « Inspiré de : `<title>` (`<id>`) » in `FORGE.md`, and `reference` in
   `forge.json`.
 - An unknown id is refused with `USECASES-UNKNOWN-ID`, before any session or model call.
 - Orkeon Studio passes the use case chosen in the gallery, and reads it back on resume and on
