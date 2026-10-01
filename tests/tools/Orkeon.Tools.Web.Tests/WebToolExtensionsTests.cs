@@ -19,6 +19,8 @@ public class WebToolExtensionsTests
         var services = new ServiceCollection();
         // ImageGenerationTool now requires an IFileSystemService (VFS-70); register a double.
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        // image_generation reads its OpenAI key from the secret provider (GAP-09).
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
         services.AddOrkeonWebTools();
         using var sp = services.BuildServiceProvider();
 
@@ -39,6 +41,8 @@ public class WebToolExtensionsTests
         services.AddSingleton<IMemoryProvider>(new FakeMemoryProvider());
         // ImageGenerationTool now requires an IFileSystemService (VFS-70); register a double.
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        // image_generation reads its OpenAI key from the secret provider (GAP-09).
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
         services.AddOrkeonWebTools();
         using var sp = services.BuildServiceProvider();
 

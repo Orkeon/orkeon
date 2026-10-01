@@ -15,9 +15,6 @@ public enum ToolRequirement
     /// <summary>The tool is registered only once that key is in place; without it, it does not exist.</summary>
     OnlyWithStoredKey,
 
-    /// <summary>The key travels in the call itself, supplied by the agent.</summary>
-    KeyAtCall,
-
     /// <summary>Connection parameters (strings, credentials) travel in the call itself.</summary>
     ParametersAtCall,
 
@@ -97,6 +94,9 @@ public static class ToolCatalog
     /// <summary>The Tavily key of <c>web_search</c>, resolved through the secret chain (<c>ORKEON_</c> + name).</summary>
     public const string TavilyKeyEnv = "ORKEON_TAVILY_API_KEY";
 
+    /// <summary>The OpenAI key of <c>image_generation</c>, resolved through the secret chain (<c>ORKEON_</c> + <c>OPENAI_API_KEY</c>).</summary>
+    public const string OpenAiImageKeyEnv = "ORKEON_OPENAI_API_KEY";
+
     /// <summary>The Brave key of <c>brave_search</c>, read as-is by the runner host, without a prefix.</summary>
     public const string BraveKeyEnv = "BRAVE_API_KEY";
 
@@ -106,6 +106,7 @@ public static class ToolCatalog
     [
         new(TavilyKeyEnv, "web_search", new Uri("https://app.tavily.com")),
         new(BraveKeyEnv, "brave_search", new Uri("https://api-dashboard.search.brave.com")),
+        new(OpenAiImageKeyEnv, "image_generation", new Uri("https://platform.openai.com/api-keys")),
     ];
 #pragma warning restore S1075
 
@@ -118,7 +119,7 @@ public static class ToolCatalog
             new("web_scrape"),
             new("scrape_element"),
             new("github"),
-            new("image_generation", ToolRequirement.KeyAtCall),
+            new("image_generation", ToolRequirement.StoredKey, OpenAiImageKeyEnv),
         ]),
         new(SearchFamily,
         [

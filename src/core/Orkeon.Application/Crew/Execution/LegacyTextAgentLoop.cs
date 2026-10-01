@@ -3,9 +3,9 @@ using Microsoft.Extensions.Logging;
 using Orkeon.Application.Constants.Orchestration;
 using Orkeon.Application.Context;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
-using Orkeon.Domain.Constants.Resilience;
 using Orkeon.Domain.Tools;
 using System.Text;
 
@@ -23,12 +23,14 @@ internal sealed class LegacyTextAgentLoop
     private readonly ILogger _logger;
     private readonly IBasicLlmProvider _llmProvider;
     private readonly LlmCallGate _llmGate;
+    private readonly IToolInvocationPipeline _toolInvocation;
 
-    internal LegacyTextAgentLoop(ILogger logger, IBasicLlmProvider llmProvider, LlmCallGate llmGate)
+    internal LegacyTextAgentLoop(ILogger logger, IBasicLlmProvider llmProvider, LlmCallGate llmGate, IToolInvocationPipeline toolInvocation)
     {
         _logger = logger;
         _llmProvider = llmProvider;
         _llmGate = llmGate;
+        _toolInvocation = toolInvocation;
     }
 
     /// <summary>
@@ -80,7 +82,7 @@ internal sealed class LegacyTextAgentLoop
             if (parsedCalls.Count == 0)
             {
                 // No structured tool calls — use single-turn fallback with simple tool name matching
-                var (fallbackOutput, fallbackToolUsage) = await ProcessResponseLegacy(response, agent, invocation.Context, cancellationToken).ConfigureAwait(false);
+                var (fallbackOutput, fallbackToolUsage) = await ProcessResponseLegacy(response, agent, task, cancellationToken).ConfigureAwait(false);
                 toolsUsed.AddRange(fallbackToolUsage);
 
                 // An empty text is not a final answer: it used to exit Completed here and the
@@ -100,7 +102,7 @@ internal sealed class LegacyTextAgentLoop
 
             // Execute structured tool calls and build tool results section
             ExecutionLog.LogLegacyToolCallsDetected(_logger, agent.Role, iteration + 1, parsedCalls.Count);
-            var (toolResultText, extractedToolUsage) = await ProcessResponseLegacy(response, agent, invocation.Context, cancellationToken).ConfigureAwait(false);
+            var (toolResultText, extractedToolUsage) = await ProcessResponseLegacy(response, agent, task, cancellationToken).ConfigureAwait(false);
             toolsUsed.AddRange(extractedToolUsage);
 
             AppendToolResultsTurn(conversationBuilder, response, toolResultText);
@@ -194,10 +196,9 @@ internal sealed class LegacyTextAgentLoop
     private async System.Threading.Tasks.Task<(string output, List<Domain.Tools.ToolUsage> toolUsage)> ProcessResponseLegacy(
         string response,
         DomainAgent agent,
-        SimpleExecutionContext? context,
+        Domain.Task.CrewTask task,
         CancellationToken cancellationToken)
     {
-        _ = context; // reserved for future context-aware processing
         var toolUsage = new List<Domain.Tools.ToolUsage>();
 
         // 1. Try structured [TOOL_CALL] parsing first
@@ -205,12 +206,12 @@ internal sealed class LegacyTextAgentLoop
         if (parsedCalls.Count > 0)
         {
             return await ExecuteStructuredLegacyCallsAsync(
-                response, parsedCalls, agent, toolUsage, cancellationToken).ConfigureAwait(false);
+                response, parsedCalls, agent, task, toolUsage, cancellationToken).ConfigureAwait(false);
         }
 
         // 2. Fallback: old-style simple pattern matching (no structured blocks)
         return await ExecuteNameBasedFallbackAsync(
-            response, agent, toolUsage, cancellationToken).ConfigureAwait(false);
+            response, agent, task, toolUsage, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>
@@ -221,6 +222,7 @@ internal sealed class LegacyTextAgentLoop
         string response,
         List<ParsedToolCall> parsedCalls,
         DomainAgent agent,
+        Domain.Task.CrewTask task,
         List<Domain.Tools.ToolUsage> toolUsage,
         CancellationToken cancellationToken)
     {
@@ -239,7 +241,7 @@ internal sealed class LegacyTextAgentLoop
             }
 
             await ExecuteLegacyStructuredCallAsync(
-                tool, call, resultBuilder, toolUsage, agent, cancellationToken).ConfigureAwait(false);
+                tool, call, resultBuilder, toolUsage, agent, task, cancellationToken).ConfigureAwait(false);
         }
 
         return (resultBuilder.ToString(), toolUsage);
@@ -273,6 +275,7 @@ internal sealed class LegacyTextAgentLoop
         StringBuilder resultBuilder,
         List<Domain.Tools.ToolUsage> toolUsage,
         DomainAgent agent,
+        Domain.Task.CrewTask task,
         CancellationToken cancellationToken)
     {
         if (_logger.IsEnabled(LogLevel.Information))
@@ -281,17 +284,24 @@ internal sealed class LegacyTextAgentLoop
             ExecutionLog.LogExecutingLegacyTool(_logger, call.ToolName, toolArgs);
         }
 
-        var request = new Domain.Tools.Protocol.ToolCallRequest(call.ToolName, call.Parameters);
         var toolStartTime = DateTime.UtcNow;
 
         try
         {
-            var result = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
+            var outcome = await _toolInvocation.InvokeAsync(
+                new ToolInvocation(tool, call.Parameters, ChatToolDispatcher.CallerOf(agent, task)), cancellationToken).ConfigureAwait(false);
             var toolDuration = DateTime.UtcNow - toolStartTime;
+            if (outcome.Blocked)
+            {
+                resultBuilder.AppendLine(FormattableString.Invariant($"\n[Tool {call.ToolName} result]: {outcome.ConversationText}"));
+                toolUsage.Add(Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, outcome.ConversationText));
+                return;
+            }
 
-            var resultText = result.Success
-                ? ToolCallFormatting.FormatResult(result.Result)
-                : $"Error: {result.Error}";
+            var result = outcome.Response!;
+            var resultText = outcome.RawText;
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -299,10 +309,10 @@ internal sealed class LegacyTextAgentLoop
                 ExecutionLog.LogLegacyToolResult(_logger, call.ToolName, toolDuration.TotalMilliseconds, result.Success ? "OK" : "FAIL", truncatedResult);
             }
 
-            resultBuilder.AppendLine(FormattableString.Invariant($"\n[Tool {call.ToolName} result]: {resultText}"));
+            resultBuilder.AppendLine(FormattableString.Invariant($"\n[Tool {call.ToolName} result]: {outcome.ConversationText}"));
 
             toolUsage.Add(Domain.Tools.ToolUsage.CreateSuccess(
-                new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), "current-task"),
+                new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), task.Id.ToString()),
                 toolDuration,
                 Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
                     .AddInput(System.Text.Json.JsonSerializer.Serialize(call.Parameters))
@@ -316,39 +326,45 @@ internal sealed class LegacyTextAgentLoop
             resultBuilder.AppendLine(FormattableString.Invariant($"\n[Tool {call.ToolName} error]: {ex.Message}"));
 
             toolUsage.Add(Domain.Tools.ToolUsage.CreateFailure(
-                new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), "current-task"),
+                new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), task.Id.ToString()),
                 toolDuration, ex.Message));
         }
     }
 
     /// <summary>
-    /// Legacy fallback path: matches tool names by substring in the LLM response and executes them one by one.
-    /// Used when the LLM emits neither [TOOL_CALL] nor native function calls.
+    /// Legacy fallback path: matches tool names by substring in the LLM response and executes them one by one,
+    /// the whole response as the tool's <c>input</c>. Used when the LLM emits neither [TOOL_CALL] nor native
+    /// function calls. Goes through the <see cref="IToolInvocationPipeline"/> like every other call (GAP-09).
     /// </summary>
-    private static async System.Threading.Tasks.Task<(string output, List<Domain.Tools.ToolUsage> toolUsage)> ExecuteNameBasedFallbackAsync(
+    private async System.Threading.Tasks.Task<(string output, List<Domain.Tools.ToolUsage> toolUsage)> ExecuteNameBasedFallbackAsync(
         string response,
         DomainAgent agent,
+        Domain.Task.CrewTask task,
         List<Domain.Tools.ToolUsage> toolUsage,
         CancellationToken cancellationToken)
     {
         var outputBuilder = new StringBuilder(response);
         var matchingTools = agent.Tools
-            .Where(tool => response.Contains(tool.Name, StringComparison.OrdinalIgnoreCase));
+            .Where(tool => response.Contains(tool.Name, StringComparison.OrdinalIgnoreCase))
+            .ToList();
 
         foreach (var tool in matchingTools)
         {
-            var toolResult = await tool.ExecuteAsync(response, cancellationToken).ConfigureAwait(false);
+            var toolStartTime = DateTime.UtcNow;
+            var outcome = await _toolInvocation.InvokeAsync(
+                new ToolInvocation(tool, new Dictionary<string, object?> { ["input"] = response }, ChatToolDispatcher.CallerOf(agent, task)),
+                cancellationToken).ConfigureAwait(false);
 
-            if (toolResult.Success)
+            if (outcome.Success)
             {
                 toolUsage.Add(Domain.Tools.ToolUsage.CreateSuccess(new ToolCallIdentity(Guid.NewGuid().ToString(),
-                    tool.Name, agent.Id.ToString(), "current-task"),
-                    ResilienceDefaults.DefaultRetryInitialDelay, Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
+                    tool.Name, agent.Id.ToString(), task.Id.ToString()),
+                    DateTime.UtcNow - toolStartTime, Domain.Memory.ValueObjects.ToolUsageMetadata.CreateBuilder()
                         .AddInput(response)
-                        .AddOutput(toolResult.Output?.ToString() ?? string.Empty)
+                        .AddOutput(outcome.RawText)
                         .Build()));
 
-                outputBuilder.Append(FormattableString.Invariant($"\n\nTool {tool.Name} result: {toolResult.Output}"));
+                outputBuilder.Append(FormattableString.Invariant($"\n\nTool {tool.Name} result: {outcome.ConversationText}"));
             }
         }
 

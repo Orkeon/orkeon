@@ -16,6 +16,14 @@ public interface IPromptSanitizer
     SanitizationResult Sanitize(string input, SanitizationContext context);
 
     /// <summary>
+    /// Detects the injection patterns in <paramref name="input"/>, whatever the configured
+    /// policy — for callers that apply a policy of their own (the tool-result sanitizer).
+    /// </summary>
+    /// <param name="input">The text to scan.</param>
+    /// <returns>The threats found, in no particular order; empty when none.</returns>
+    IReadOnlyList<ThreatDetection> Detect(string input);
+
+    /// <summary>
     /// Wraps user data with context delimiters to prevent injection via data boundaries.
     /// </summary>
     /// <param name="data">The user data to wrap.</param>

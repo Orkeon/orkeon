@@ -1,6 +1,7 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
@@ -39,7 +40,7 @@ public class LegacyTextAgentLoopTests
     {
         var logger = new SpyExecutionLogger();
         var provider = new ScriptedBasicLlmProvider();
-        var loop = new LegacyTextAgentLoop(logger, provider, new LlmCallGate(logger, provider, rateLimiter: null));
+        var loop = new LegacyTextAgentLoop(logger, provider, new LlmCallGate(logger, provider, rateLimiter: null), ToolInvocationPipeline.Unguarded);
         return (loop, provider);
     }
 
@@ -167,14 +168,15 @@ public class LegacyTextAgentLoopTests
     [Fact]
     public async System.Threading.Tasks.Task TrimsTheConversation_WhenItOutgrowsTheContextBudget()
     {
-        // A tool result large enough to blow past MaxContextMessages * 200 characters in
-        // one round forces the trim before the second LLM call.
+        // Tool results large enough to blow past MaxContextMessages * 200 characters in one
+        // round force the trim before the second LLM call. Each one is capped by the single
+        // truncation rule of the invocation pipeline (GAP-09), so the round makes three calls.
         var hugeResult = new string('x', 60_000);
         var tool = new SpyTool("echo_tool", result: hugeResult);
         var agent = BuildAgent(5, tool);
         var (loop, provider) = BuildLoop();
 
-        provider.Enqueue(ToolCallResponse);
+        provider.Enqueue(ToolCallResponse + ToolCallResponse + ToolCallResponse);
         provider.Enqueue("done after trim");
 
         var result = await loop.ExecuteAsync(BuildInvocation(agent, BuildTask()), 5, TestContext.Current.CancellationToken);

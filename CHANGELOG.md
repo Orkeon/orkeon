@@ -7,6 +7,80 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Security — every agent turn runs through the Guardian, A2A tokens are validated, and no tool takes a key as an argument **[breaking]**
+
+Six security surfaces were registered, configured — and called by nothing. Setting
+`Orkeon:Guardian:DefaultPolicy:BlockedTools` did not stop a call; a web page saying *"ignore
+previous instructions"* reached the model as it was; `Security:ToolResults` changed nothing;
+`Orkeon:Auth:AzureAD` authenticated nothing; the audit trail stayed empty, and the NIST report
+read it empty. `image_generation` took the OpenAI key as a call argument, so it travelled
+through the conversation, the tool-call log and the usage record. And
+`A2A:Security:AllowedAuthSchemes = ["Bearer"]` let `Authorization: Bearer anything` submit a
+task (GAP-09):
+
+- **One invocation point for every tool call.** `IToolInvocationPipeline`
+  (`ToolInvocationPipeline`, registered by `AddOrkeonApplication()`) is called by the
+  chat-client, native, text and streaming loops, the automatic-function-invocation path and
+  `ctx.llm.act`. It chains the Guardian's tool phase (`ToolGuard`: path traversal, SSRF
+  targets, SQL injection outside the `*_query` tools) — or, for `delegate_work_to_coworker` /
+  `ask_question_to_coworker`, the delegation phase (`DelegationGuard`: depth, self-delegation,
+  a target already in the chain of synchronous delegations) — then the call, the one
+  truncation rule (`AgentDefaults.ResolveMaxToolResultLength`), the result sanitizer, and a
+  `ToolExecution` audit event. A blocked call never runs; the model reads
+  `Error: Blocked by Guardian (…): <reason>`.
+- **The input phase screens the composed prompt** — task, previous outputs, retrieved
+  knowledge — before the first provider call. Under the default `Security:Prompt:Policy`,
+  now `Block`, a High or Critical pattern fails the task with
+  `AgentExitReason.GuardianBlocked` and the pattern named; a lower one is a logged, audited
+  warning.
+- **Tool results are tagged, never rewritten.** `Security:ToolResults:Policy` (default `Warn`)
+  is now read: the result reaches the model between `DATA CONTEXT - NOT INSTRUCTIONS` markers
+  and each injection pattern leaves a `SecurityEvent`; `Block` withholds a High/Critical
+  result and says so. The `email_*` tools are trusted by default — they screen what they read
+  themselves (ADR-012).
+- **The Guardian is on by default and never rewrites silently.** `Orkeon:Guardian:Enabled` is
+  the real switch. The `Strip` policy, which cut matched phrases out of what the model read,
+  is gone: content passes unchanged, tagged, or is refused as a whole. The detection is
+  tightened where it blocked honest prompts: *"forget"* followed by anything no longer
+  matches (only forgetting the instructions does), *"you are now going to…"* no longer reads
+  as an identity override, and the exfiltration phrases are Medium (reported, not blocked).
+- **The audit trail is fed**: a `ToolExecution` event per call (never the arguments) and a
+  `SecurityEvent` per Guardian block or warning and per injection pattern in a result.
+- **A2A credentials are validated.** `Bearer` tokens go to the registered
+  `IAuthenticationProvider`s — `AzureAdAuthProvider` (`A2A:Security:AzureAD`, signing keys now
+  read from the tenant's OpenID configuration) and `OidcAuthProvider` (`A2A:Security:Oidc`),
+  registered by `AddOrkeonA2A(configuration)` for each filled section; `ApiKey` keys are read
+  through `ISecretProvider` from `A2A:Security:ApiKeySecretNames` and compared in constant
+  time. A rejected credential is a 401; a server that declares a scheme without a validator
+  refuses to start. The validation is `A2ACredentialValidator`, public for other inbound
+  surfaces.
+- **`image_generation` reads `OPENAI_API_KEY` through `ISecretProvider`** (`ORKEON_OPENAI_API_KEY`
+  by default); a missing key fails naming the secret. `web_search` sends its Tavily key as an
+  `Authorization` header instead of in the request body. No tool takes a secret as an argument
+  any more — the rule is in [New tool pattern](docs/tools/new-tool-pattern.md).
+- Removed: `OutputGuard` (a second run of the output validation pipeline), `PromptShieldBuilder`
+  (a second prompt composer), `GuardianPipeline.AutoKillOnCritical`, `AuthenticationGuard`,
+  `AddOrkeonAuth()` and its call in `AddOrkeonInfrastructure()`, `IAuthorizationPolicy` with
+  `ClaimsAuthorizationPolicy` and `RoleBasedAuthorizationPolicy`, `ToolAccessGuard` and its
+  `ToolAccessPolicyExtensions`, `GuardianPolicy.AllowedTools`/`BlockedTools`/`OutputGuardEnabled`
+  (tool access is `ToolAccessPolicy`), `GuardianOptions.AuditEnabled`/`LogViolations`,
+  `GuardPhase.Output`, `GuardAction.Modify`, `SanitizationPolicy.Strip`,
+  `ToolResultSecurityOptions.MaxToolResultLength`, `A2AServer.IsAuthSchemeAllowed`, the audit
+  builders nothing called (`LlmCall`, `FileAccess`, `HttpRequest`, `CrewLifecycle`,
+  `LlmCallAuditInfo`), `ImageGenerationRequest.ApiKey`, and Studio's "key given at the call"
+  requirement (`image_generation` now lists `ORKEON_OPENAI_API_KEY` among the tool keys).
+
+Migration: move `Orkeon:Auth:AzureAD`/`Orkeon:Auth:OIDC` to `A2A:Security:AzureAD`/`A2A:Security:Oidc`.
+Put the OpenAI key of `image_generation` in `ORKEON_OPENAI_API_KEY` (or `Secrets:OPENAI_API_KEY`)
+and stop passing `api_key`. Replace `Security:Prompt:Policy`/`Security:ToolResults:Policy = Strip`
+with `Warn` or `Block`, and `Security:ToolResults:MaxToolResultLength` with nothing (one rule
+bounds results). A server declaring `AllowedAuthSchemes` needs a validator: a bearer section or
+an `IAuthenticationProvider`, or `ApiKeySecretNames`. To block a tool, use `ToolAccessPolicy`
+rather than `GuardianPolicy.BlockedTools`. `new ImageGenerationTool(fileSystem, …)` takes an
+`ISecretProvider` second. `GuardContext.TargetAgentId` is `TargetAgentRole`, `DelegationDepth` is
+derived from `DelegationChain`. Where the default `Block` input policy refuses a legitimate task,
+set `Security:Prompt:Policy` to `Warn`.
+
 ### Changed — memory providers connect from one host section each, and Redis works on first use **[breaking]**
 
 No path to a remote memory provider produced one that worked. A crew with

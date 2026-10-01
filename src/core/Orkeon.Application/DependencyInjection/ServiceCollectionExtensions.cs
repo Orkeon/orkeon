@@ -45,6 +45,7 @@ public static class ServiceCollectionExtensions
         // Agent execution service and dependencies
         services.AddScoped<IAgentExecutionService, AgentExecutionService>();
         services.RegisterDeliverableResolvers();
+        services.RegisterToolInvocationPipeline();
         services.RegisterExecutionOrchestrator();
         services.AddScoped<ICallbackOrchestrator, CallbackOrchestrator>();
         services.AddScoped<IMemoryCoordinator, MemoryCoordinator>();
@@ -136,6 +137,23 @@ public static class ServiceCollectionExtensions
     }
 
     /// <summary>
+    /// Registers the single tool-invocation point every agent loop calls tools through
+    /// (GAP-09). Its guardian, result sanitizer and audit logger are optional: they come from
+    /// <c>AddOrkeonInfrastructure()</c>, in either registration order — the factory resolves
+    /// them on first use.
+    /// </summary>
+    private static IServiceCollection RegisterToolInvocationPipeline(this IServiceCollection services)
+    {
+        services.TryAddSingleton<Interfaces.Security.IToolInvocationPipeline>(sp =>
+            new Services.Security.ToolInvocationPipeline(
+                sp.GetService<Interfaces.Security.IGuardianPipeline>(),
+                sp.GetService<Interfaces.Security.IToolResultSanitizer>(),
+                sp.GetService<Interfaces.Security.IAuditLogger>(),
+                sp.GetService<Microsoft.Extensions.Logging.ILogger<Services.Security.ToolInvocationPipeline>>()));
+        return services;
+    }
+
+    /// <summary>
     /// Registers the <see cref="IExecutionOrchestrator"/> with a factory that prefers
     /// <see cref="IChatClient"/> when available and falls back to the
     /// <see cref="IBasicLlmProvider"/>-only constructor. Optionally injects
@@ -185,6 +203,11 @@ public static class ServiceCollectionExtensions
             // attachment (GAP-02): every runner registers the subsystem, and a crew
             // without knowledge: must neither pay for it nor fail on its configuration.
             orchestrator.KnowledgeAugmenter = DeferredKnowledgeContextAugmenter.For(sp);
+
+            // GAP-09 — the input phase and the single tool-invocation point. Both are on by
+            // default once the infrastructure registers the guardian (Orkeon:Guardian:Enabled).
+            orchestrator.Guardian = sp.GetService<Interfaces.Security.IGuardianPipeline>();
+            orchestrator.ToolInvocation = sp.GetService<Interfaces.Security.IToolInvocationPipeline>();
             return orchestrator;
         });
         return services;

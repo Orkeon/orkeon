@@ -735,6 +735,8 @@ internal static partial class RunCommand
             {
                 PermissionGate = permissionGate,
                 DeltaSink = deltaSink,
+                // GAP-09: allowed ctx.llm.act calls go through the same guarded point as a crew's.
+                ToolInvocation = host.Services.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
             },
             ragBackend: ragBackend);
 

@@ -77,6 +77,16 @@ Propriétés disponibles :
 )]
 ```
 
+### Jamais de secret dans la requête
+
+Une propriété de requête est écrite par le **modèle** : elle traverse la conversation avec le
+fournisseur, le journal des appels d'outils (niveau `Information`) et la trace d'usage de
+l'appel. Une clé d'API, un jeton ou un mot de passe n'est donc jamais un champ de requête.
+Injectez un `ISecretProvider` et lisez le secret par son nom à l'exécution, sans le garder
+dans un champ — le modèle de `web_search` (`TAVILY_API_KEY`) et d'`image_generation`
+(`OPENAI_API_KEY`) : un secret absent échoue avec un message qui nomme le secret et sa
+variable `ORKEON_<NOM>`, jamais une valeur.
+
 ### Exemple concret — Request et Response
 
 ```csharp

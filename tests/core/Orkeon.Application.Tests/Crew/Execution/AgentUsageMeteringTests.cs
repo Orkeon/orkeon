@@ -1,3 +1,4 @@
+using Orkeon.Application.Services.Security;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -144,7 +145,7 @@ public sealed class AgentUsageMeteringTests
         var logger = new SpyExecutionLogger();
         var loop = new NativeToolCallingAgentLoop(
             logger, MeteredLlmProvider.Wrap(provider, sink), new FakeToolCallingStrategy(new OpenAiShapedToolCallParser()),
-            [tool], new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null));
+            [tool], new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null), ToolInvocationPipeline.Unguarded);
 
         var result = await loop.ExecuteAsync(
             new ExecutionInvocationContext(agent, BuildTask(), "system", "user", Context: null, ToolsUsed: [], Stopwatch: System.Diagnostics.Stopwatch.StartNew()),

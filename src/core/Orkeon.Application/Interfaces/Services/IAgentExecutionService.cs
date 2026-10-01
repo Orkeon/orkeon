@@ -133,7 +133,14 @@ public enum AgentExitReason
     /// that followed cost a second full timeout (LLM-11). The task fails at once, with the
     /// provider's own reason as its error.
     /// </summary>
-    LlmCallFailed
+    LlmCallFailed,
+
+    /// <summary>
+    /// The guardian's input phase blocked the composed prompt before any provider call — a
+    /// High or Critical injection pattern in the task, a previous output or retrieved
+    /// knowledge (GAP-09). The task fails with the guardian's reason as its error.
+    /// </summary>
+    GuardianBlocked
 }
 
 /// <summary>

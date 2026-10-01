@@ -1,29 +1,22 @@
 
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Application.Interfaces.Services;
-using Orkeon.Domain.Common;
 using Orkeon.Domain.Security;
 
 namespace Orkeon.Application.Services.Security;
 
 /// <summary>
 /// Pipeline that orchestrates multiple guardians by phase, evaluating each context
-/// against registered guards and aggregating results.
+/// against registered guards and aggregating results. A block and a warning are both
+/// logged and written to the audit trail as a <see cref="AuditCategory.SecurityEvent"/>;
+/// neither ever rewrites the content checked.
 /// </summary>
-public partial class GuardianPipeline
+public partial class GuardianPipeline : IGuardianPipeline
 {
     private readonly Dictionary<GuardPhase, List<IGuardian>> _guards = [];
     private readonly GuardianPolicyEngine _policyEngine;
     private readonly ILogger<GuardianPipeline> _logger;
     private readonly IAuditLogger? _auditLogger;
-    private readonly IAgentLifecycleManager? _lifecycleManager;
-
-    /// <summary>
-    /// When true, automatically kills an agent if a Block result contains High or Critical severity violations.
-    /// Requires IAgentLifecycleManager and a non-empty AgentId in GuardContext.
-    /// </summary>
-    public bool AutoKillOnCritical { get; set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="GuardianPipeline"/>.
@@ -31,15 +24,13 @@ public partial class GuardianPipeline
     public GuardianPipeline(
         GuardianPolicyEngine policyEngine,
         ILogger<GuardianPipeline> logger,
-        IAuditLogger? auditLogger = null,
-        IAgentLifecycleManager? lifecycleManager = null)
+        IAuditLogger? auditLogger = null)
     {
         ArgumentNullException.ThrowIfNull(policyEngine);
         _policyEngine = policyEngine;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _auditLogger = auditLogger;
-        _lifecycleManager = lifecycleManager;
     }
 
     /// <summary>
@@ -98,6 +89,7 @@ public partial class GuardianPipeline
             var warnResult = GuardResult.Warn(
                 $"{allViolations.Count} warning(s) detected during {context.Phase} phase",
                 allViolations);
+            LogGuardianWarned(context.Phase, context.AgentRole, allViolations.Count);
             await LogAuditEventAsync(context, warnResult, ct).ConfigureAwait(false);
             return warnResult;
         }
@@ -119,7 +111,6 @@ public partial class GuardianPipeline
             {
                 LogGuardianBlocked(context.Phase, result.Reason, result.Violations.Count);
                 await LogAuditEventAsync(context, result, ct).ConfigureAwait(false);
-                TryAutoKill(context, result);
                 return (true, result);
             }
             return (false, result);
@@ -140,37 +131,8 @@ public partial class GuardianPipeline
                 DateTime.UtcNow);
             var blockResult = GuardResult.Block($"Guard error: {ex.Message}", [violation]);
             await LogAuditEventAsync(context, blockResult, ct).ConfigureAwait(false);
-            TryAutoKill(context, blockResult);
             return (true, blockResult);
         }
-    }
-
-    private void TryAutoKill(GuardContext context, GuardResult result)
-    {
-        if (!AutoKillOnCritical
-            || _lifecycleManager is null
-            || string.IsNullOrEmpty(context.AgentId))
-            return;
-
-        bool hasCriticalViolation = result.Violations.Any(v =>
-            v.Severity is GuardThreatSeverity.High or GuardThreatSeverity.Critical);
-
-        if (!hasCriticalViolation)
-            return;
-
-        if (!Guid.TryParse(context.AgentId, out var guid))
-            return;
-
-        var agentId = AgentId.From(guid);
-        if (!_lifecycleManager.IsRegistered(agentId))
-        {
-            LogAutoKillAgentNotRegistered(context.AgentId);
-            return;
-        }
-
-        var reason = $"Guardian auto-kill: {result.Reason}";
-        LogAutoKillTriggered(context.AgentId, reason);
-        _lifecycleManager.Kill(agentId, reason);
     }
 
     [System.Diagnostics.CodeAnalysis.SuppressMessage("Design", "CA1031", Justification = "Best-effort audit logging: an audit-sink failure is logged and swallowed so it cannot mask or block the guardian decision being audited.")]
@@ -188,12 +150,19 @@ public partial class GuardianPipeline
                 _ => AuditSeverity.Debug
             };
 
+            var description = result.Violations.Count == 0
+                ? result.Reason ?? "Guardian check completed"
+                : $"{result.Reason}: {string.Join("; ", result.Violations.Select(v => $"{v.GuardName} ({v.Severity}) {v.Description}"))}";
             var auditEvent = AuditEventBuilders.SecurityEvent(
                 correlationId: Guid.NewGuid().ToString("N"),
                 threatType: $"Guardian:{context.Phase}",
-                description: result.Reason ?? "Guardian check completed",
+                description: description,
                 severity: severity,
-                agentRole: context.AgentId);
+                agentRole: string.IsNullOrEmpty(context.AgentRole) ? context.AgentId : context.AgentRole) with
+            {
+                Outcome = result.Action == GuardAction.Block ? AuditOutcome.Blocked : AuditOutcome.Warning,
+                CrewId = string.IsNullOrEmpty(context.CrewId) ? null : context.CrewId,
+            };
 
             await _auditLogger.LogAsync(auditEvent, ct).ConfigureAwait(false);
         }
@@ -212,11 +181,8 @@ public partial class GuardianPipeline
     [LoggerMessage(Level = LogLevel.Error, Message = "Guardian {GuardType} threw an exception during phase {Phase}")]
     private partial void LogGuardianException(Exception ex, string guardType, GuardPhase phase);
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "AutoKill: agent {AgentId} not registered in lifecycle manager; skipping kill")]
-    private partial void LogAutoKillAgentNotRegistered(string agentId);
-
-    [LoggerMessage(Level = LogLevel.Warning, Message = "AutoKill triggered for agent {AgentId}. Reason: {Reason}")]
-    private partial void LogAutoKillTriggered(string agentId, string reason);
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Guardian warning: phase={Phase}, agent={AgentRole}, violations={Count} (content left unchanged)")]
+    private partial void LogGuardianWarned(GuardPhase phase, string agentRole, int count);
 
     [LoggerMessage(Level = LogLevel.Error, Message = "Failed to log guardian audit event")]
     private partial void LogAuditEventFailed(Exception ex);

@@ -1,6 +1,7 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
@@ -46,7 +47,7 @@ public class NativeToolCallingAgentLoopTests
         var provider = new ScriptedFullLlmProvider();
         var strategy = new FakeToolCallingStrategy(new OpenAiShapedToolCallParser());
         var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
-        var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, registeredTools, gate);
+        var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, registeredTools, gate, ToolInvocationPipeline.Unguarded);
         _ = agent;
         return (loop, provider, logger);
     }
@@ -260,7 +261,7 @@ public class NativeToolCallingAgentLoopTests
         // A parser that reads the Anthropic body shape.
         var strategy = new FakeToolCallingStrategy(new AnthropicShapedParser());
         var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
-        var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, [tool], gate);
+        var loop = new NativeToolCallingAgentLoop(logger, provider, strategy, [tool], gate, ToolInvocationPipeline.Unguarded);
 
         provider.Enqueue(new LlmResponse
         {

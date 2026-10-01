@@ -1332,6 +1332,7 @@ public static partial class RunnerExecution
             {
                 PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                 DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
             });
 
         // Always bundle through esbuild so relative imports + TS-only syntax in the

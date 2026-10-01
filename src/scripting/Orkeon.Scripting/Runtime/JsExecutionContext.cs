@@ -49,6 +49,7 @@ public class JsExecutionContext
             new JsLlmObservability
             {
                 DeltaSink = environment.DeltaSink,
+                ToolInvocation = environment.ToolInvocation,
                 Logger = environment.Logger,
                 CrewName = environment.Crew.name,
                 AgentName = environment.Self.name,

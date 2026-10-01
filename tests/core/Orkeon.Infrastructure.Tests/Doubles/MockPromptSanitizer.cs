@@ -41,6 +41,14 @@ public class MockPromptSanitizer : IPromptSanitizer
         return _sanitizeResult ?? SanitizationResult.Clean(input);
     }
 
+    public IReadOnlyList<ThreatDetection> Detect(string input)
+    {
+        DetectCallCount++;
+        return _sanitizeResult?.Threats ?? [];
+    }
+
+    public int DetectCallCount { get; private set; }
+
     public string WrapUserData(string data, string sectionName)
     {
         WrapUserDataCallCount++;

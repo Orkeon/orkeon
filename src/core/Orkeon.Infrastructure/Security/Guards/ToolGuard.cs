@@ -1,31 +1,31 @@
-using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using System.Net;
 using System.Text.RegularExpressions;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Application.Services.Security;
+using Orkeon.Infrastructure.Configuration;
 
 namespace Orkeon.Infrastructure.Security.Guards;
 
 /// <summary>
-/// Guardian that checks tool execution requests for security violations.
-/// Validates tool allowlists/blocklists, path traversal, SSRF, and SQL injection.
+/// Guardian of the <see cref="GuardPhase.ToolExecution"/> phase: screens the arguments of a
+/// tool call for path traversal, SSRF targets and SQL injection, before the tool runs. Which
+/// tools an agent may call is not its business — <c>ToolAccessPolicy</c> decides that when the
+/// agent's tools are resolved. Every finding is Critical and blocks the call.
 /// </summary>
 public partial class ToolGuard : IGuardian
 {
-    private readonly GuardianPolicyEngine _policyEngine;
+    private readonly bool _blockPrivateIPs;
 
     [GeneratedRegex(@"(?:'\s*;\s*DROP|1\s*=\s*1|UNION\s+SELECT|OR\s+1\s*=\s*1|'\s*OR\s*'|--\s*$|/\*.*\*/|;\s*DELETE|;\s*UPDATE|;\s*INSERT|'\s*;\s*EXEC|xp_cmdshell)", RegexOptions.IgnoreCase)]
     private static partial Regex SqlInjectionPattern();
 
     /// <summary>Initializes a new instance of <see cref="ToolGuard"/>.</summary>
-    /// <param name="policyEngine">The policy engine used to retrieve per-crew/agent security policies.</param>
-    /// <param name="logger">The logger.</param>
-    public ToolGuard(GuardianPolicyEngine policyEngine, ILogger<ToolGuard> logger)
+    /// <param name="urlOptions">The SSRF options: with <c>Security:Url:BlockPrivateIPs = false</c>
+    /// a private address is not a finding here either — the guard never contradicts the
+    /// URL policy the web tools apply.</param>
+    public ToolGuard(IOptions<UrlSecurityOptions>? urlOptions = null)
     {
-        ArgumentNullException.ThrowIfNull(policyEngine);
-        _policyEngine = policyEngine;
-        ArgumentNullException.ThrowIfNull(logger);
-        _ = logger;
+        _blockPrivateIPs = urlOptions?.Value.BlockPrivateIPs ?? true;
     }
 
     /// <inheritdoc />
@@ -35,46 +35,18 @@ public partial class ToolGuard : IGuardian
         if (context.Phase != GuardPhase.ToolExecution || string.IsNullOrEmpty(context.ToolName))
             return Task.FromResult(GuardResult.Allow());
 
-        var policy = _policyEngine.GetPolicy(context.CrewId, context.AgentId);
-
-        var policyResult = CheckToolPolicy(policy, context.ToolName);
-        if (policyResult is not null)
-            return Task.FromResult(policyResult);
-
-        var argsResult = CheckToolArguments(context.ToolArgs);
-        if (argsResult is not null)
-            return Task.FromResult(argsResult);
-
-        return Task.FromResult(GuardResult.Allow());
+        var argsResult = CheckToolArguments(context.ToolName, context.ToolArgs);
+        return Task.FromResult(argsResult ?? GuardResult.Allow());
     }
 
-    private static GuardResult? CheckToolPolicy(GuardianPolicy policy, string toolName)
-    {
-        if (policy.BlockedTools.Count > 0 &&
-            policy.BlockedTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
-        {
-            return BlockWithViolation(
-                $"Tool '{toolName}' is in the blocked tools list",
-                $"Tool '{toolName}' is blocked by policy",
-                GuardThreatSeverity.High);
-        }
-
-        if (policy.AllowedTools.Count > 0 &&
-            !policy.AllowedTools.Contains(toolName, StringComparer.OrdinalIgnoreCase))
-        {
-            return BlockWithViolation(
-                $"Tool '{toolName}' is not in the allowed tools list",
-                $"Tool '{toolName}' is not allowed by policy",
-                GuardThreatSeverity.High);
-        }
-
-        return null;
-    }
-
-    private static GuardResult? CheckToolArguments(Dictionary<string, object>? toolArgs)
+    private GuardResult? CheckToolArguments(string toolName, IReadOnlyDictionary<string, object?>? toolArgs)
     {
         if (toolArgs is null)
             return null;
+
+        // A *_query tool (postgres_query, mongodb_query, …) runs a query language by design: its
+        // statement argument is what the model writes, not a value a query is built from.
+        var runsQueries = toolName.EndsWith("_query", StringComparison.OrdinalIgnoreCase);
 
         foreach (var (key, value) in toolArgs)
         {
@@ -82,7 +54,7 @@ public partial class ToolGuard : IGuardian
             if (string.IsNullOrEmpty(strValue))
                 continue;
 
-            var result = CheckArgumentForThreats(key, strValue);
+            var result = CheckArgumentForThreats(key, strValue, runsQueries);
             if (result is not null)
                 return result;
         }
@@ -90,23 +62,23 @@ public partial class ToolGuard : IGuardian
         return null;
     }
 
-    private static GuardResult? CheckArgumentForThreats(string key, string strValue)
+    private GuardResult? CheckArgumentForThreats(string key, string strValue, bool runsQueries)
     {
         if (IsPathArgument(key) && ContainsPathTraversal(strValue))
             return BlockWithViolation(
-                $"Path traversal detected in argument '{key}': {strValue}",
+                $"Path traversal detected in argument '{key}'",
                 $"Path traversal detected in tool argument '{key}'",
                 GuardThreatSeverity.Critical);
 
-        if (IsUrlArgument(key) && ContainsSsrfTarget(strValue))
+        if (_blockPrivateIPs && IsUrlArgument(key) && ContainsSsrfTarget(strValue))
             return BlockWithViolation(
-                $"SSRF target detected in argument '{key}': {strValue}",
+                $"SSRF target detected in argument '{key}'",
                 $"SSRF target detected in tool argument '{key}'",
                 GuardThreatSeverity.Critical);
 
-        if (IsQueryArgument(key) && ContainsSqlInjection(strValue))
+        if (!runsQueries && IsQueryArgument(key) && ContainsSqlInjection(strValue))
             return BlockWithViolation(
-                $"SQL injection pattern detected in argument '{key}': {strValue}",
+                $"SQL injection pattern detected in argument '{key}'",
                 $"SQL injection detected in tool argument '{key}'",
                 GuardThreatSeverity.Critical);
 

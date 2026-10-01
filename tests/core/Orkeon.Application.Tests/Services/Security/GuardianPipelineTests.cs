@@ -1,8 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.Security;
-using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Services.Security;
-using Orkeon.Domain.Common;
 using Orkeon.Domain.Security;
 
 namespace Orkeon.Application.Tests.Services.Security;
@@ -10,7 +8,8 @@ namespace Orkeon.Application.Tests.Services.Security;
 /// <summary>
 /// SONAR-14 T2: pins the guardian pipeline — phase gating by policy, first-block wins,
 /// warning aggregation, the fail-safe block on a throwing guardian, audit logging
-/// (including a failing audit sink) and the AutoKill escalation rules.
+/// (including a failing audit sink). The AutoKill escalation is gone (GAP-09): it had no
+/// option and no caller.
 /// </summary>
 public class GuardianPipelineTests
 {
@@ -53,39 +52,15 @@ public class GuardianPipelineTests
             System.Threading.Tasks.Task.FromResult<IReadOnlyList<AuditEvent>>([]);
     }
 
-    private sealed class RecordingLifecycleManager : IAgentLifecycleManager
-    {
-        public HashSet<AgentId> Registered { get; } = [];
-
-        public List<(AgentId AgentId, string Reason)> Kills { get; } = [];
-
-        public void Register(AgentId agentId, CancellationTokenSource cts) => Registered.Add(agentId);
-
-        public System.Threading.Tasks.Task StopGracefulAsync(AgentId agentId, TimeSpan? timeout = null) =>
-            System.Threading.Tasks.Task.CompletedTask;
-
-        public void Kill(AgentId agentId, string reason) => Kills.Add((agentId, reason));
-
-        public void KillAll(string reason)
-        {
-        }
-
-        public AgentLifecycleState GetState(AgentId agentId) => AgentLifecycleState.Running;
-
-        public bool IsRegistered(AgentId agentId) => Registered.Contains(agentId);
-    }
-
     private static GuardViolation Violation(GuardThreatSeverity severity) =>
         new("TestGuard", GuardPhase.Input, "violation", severity, DateTime.UtcNow);
 
     private static GuardianPipeline BuildPipeline(
         GuardianPolicy? policy = null,
-        IAuditLogger? audit = null,
-        IAgentLifecycleManager? lifecycle = null) =>
+        IAuditLogger? audit = null) =>
         new(new GuardianPolicyEngine(policy ?? new GuardianPolicy()),
             new TestLogger<GuardianPipeline>(),
-            audit,
-            lifecycle);
+            audit);
 
     private sealed class TestLogger<T> : ILogger<T>
     {
@@ -208,79 +183,41 @@ public class GuardianPipelineTests
         Assert.Equal("still blocked", result.Reason);
     }
 
-    // ── AutoKill escalation ───────────────────────────────────────────────
+    // ── GAP-09: what the audit trail records ─────────────────────────────
 
     [Fact]
-    public async System.Threading.Tasks.Task AutoKill_KillsARegisteredAgent_OnACriticalBlock()
+    public async System.Threading.Tasks.Task ABlock_IsAuditedAsABlockedSecurityEvent_NamingTheViolations()
     {
-        var lifecycle = new RecordingLifecycleManager();
-        var agentGuid = Guid.NewGuid();
-        using var cts = new CancellationTokenSource();
-        lifecycle.Register(AgentId.From(agentGuid), cts);
+        var audit = new RecordingAuditLogger();
+        var pipeline = BuildPipeline(audit: audit);
+        pipeline.AddGuard(GuardPhase.ToolExecution, new ScriptedGuardian(_ =>
+            GuardResult.Block("Path traversal detected", [new GuardViolation("ToolGuard", GuardPhase.ToolExecution, "'path' climbs out", GuardThreatSeverity.Critical, DateTime.UtcNow)])));
 
-        var pipeline = BuildPipeline(lifecycle: lifecycle);
-        pipeline.AutoKillOnCritical = true;
-        pipeline.AddGuard(GuardPhase.Input, new ScriptedGuardian(_ =>
-            GuardResult.Block("critical breach", [Violation(GuardThreatSeverity.Critical)])));
+        await pipeline.ExecuteAsync(
+            new GuardContext { Phase = GuardPhase.ToolExecution, AgentRole = "writer", CrewId = "crew-7", ToolName = "file_read" },
+            TestContext.Current.CancellationToken);
 
-        await pipeline.ExecuteAsync(InputContext(agentGuid.ToString()), TestContext.Current.CancellationToken);
-
-        var kill = Assert.Single(lifecycle.Kills);
-        Assert.Equal(AgentId.From(agentGuid), kill.AgentId);
-        Assert.Contains("critical breach", kill.Reason, StringComparison.Ordinal);
+        var recorded = Assert.Single(audit.Events);
+        Assert.Equal(AuditCategory.SecurityEvent, recorded.Category);
+        Assert.Equal(AuditOutcome.Blocked, recorded.Outcome);
+        Assert.Equal("writer", recorded.AgentRole);
+        Assert.Equal("crew-7", recorded.CrewId);
+        Assert.Contains("ToolGuard (Critical) 'path' climbs out", recorded.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task AutoKill_IsSkipped_WhenTheFlagIsOff()
+    public async System.Threading.Tasks.Task AWarning_IsAuditedAsAWarningSecurityEvent()
     {
-        var lifecycle = new RecordingLifecycleManager();
-        var agentGuid = Guid.NewGuid();
-        using var cts = new CancellationTokenSource();
-        lifecycle.Register(AgentId.From(agentGuid), cts);
-
-        var pipeline = BuildPipeline(lifecycle: lifecycle);
+        var audit = new RecordingAuditLogger();
+        var pipeline = BuildPipeline(audit: audit);
         pipeline.AddGuard(GuardPhase.Input, new ScriptedGuardian(_ =>
-            GuardResult.Block("critical breach", [Violation(GuardThreatSeverity.Critical)])));
+            GuardResult.Warn("noted", [Violation(GuardThreatSeverity.Medium)])));
 
-        await pipeline.ExecuteAsync(InputContext(agentGuid.ToString()), TestContext.Current.CancellationToken);
+        var result = await pipeline.ExecuteAsync(InputContext(), TestContext.Current.CancellationToken);
 
-        Assert.Empty(lifecycle.Kills);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task AutoKill_IsSkipped_ForLowSeverityBlocks()
-    {
-        var lifecycle = new RecordingLifecycleManager();
-        var agentGuid = Guid.NewGuid();
-        using var cts = new CancellationTokenSource();
-        lifecycle.Register(AgentId.From(agentGuid), cts);
-
-        var pipeline = BuildPipeline(lifecycle: lifecycle);
-        pipeline.AutoKillOnCritical = true;
-        pipeline.AddGuard(GuardPhase.Input, new ScriptedGuardian(_ =>
-            GuardResult.Block("mild", [Violation(GuardThreatSeverity.Low)])));
-
-        await pipeline.ExecuteAsync(InputContext(agentGuid.ToString()), TestContext.Current.CancellationToken);
-
-        Assert.Empty(lifecycle.Kills);
-    }
-
-    [Fact]
-    public async System.Threading.Tasks.Task AutoKill_IsSkipped_ForAnUnregisteredOrUnparsableAgent()
-    {
-        var lifecycle = new RecordingLifecycleManager();
-        var pipeline = BuildPipeline(lifecycle: lifecycle);
-        pipeline.AutoKillOnCritical = true;
-        pipeline.AddGuard(GuardPhase.Input, new ScriptedGuardian(_ =>
-            GuardResult.Block("critical", [Violation(GuardThreatSeverity.Critical)])));
-
-        // Unregistered but parsable agent id.
-        await pipeline.ExecuteAsync(InputContext(Guid.NewGuid().ToString()), TestContext.Current.CancellationToken);
-        // Unparsable agent id.
-        await pipeline.ExecuteAsync(InputContext("not-a-guid"), TestContext.Current.CancellationToken);
-        // Empty agent id.
-        await pipeline.ExecuteAsync(InputContext(), TestContext.Current.CancellationToken);
-
-        Assert.Empty(lifecycle.Kills);
+        Assert.True(result.IsAllowed);
+        var recorded = Assert.Single(audit.Events);
+        Assert.Equal(AuditOutcome.Warning, recorded.Outcome);
+        Assert.Equal("Guardian:Input", recorded.Details["threatType"]);
     }
 }

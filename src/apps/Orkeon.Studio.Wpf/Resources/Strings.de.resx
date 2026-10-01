@@ -1821,9 +1821,6 @@
   <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
     <value>erst vorhanden, wenn der Schlüssel {0} oben gespeichert ist</value>
   </data>
-  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
-    <value>der Schlüssel wird beim Aufruf vom Agenten übergeben</value>
-  </data>
   <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
     <value>die Verbindungsparameter werden beim Aufruf vom Agenten übergeben</value>
   </data>

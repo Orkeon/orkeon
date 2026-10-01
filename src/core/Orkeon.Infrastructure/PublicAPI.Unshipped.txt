@@ -78,3 +78,136 @@ const Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.SectionName = "Orkeo
 const Orkeon.Infrastructure.Memory.RedisMemoryOptions.SectionName = "Orkeon:Redis" -> string!
 const Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.SectionName = "Orkeon:Sqlite" -> string!
 static Orkeon.Infrastructure.DependencyInjection.VectorStoreExtensions.AddOrkeonMemoryProviderFactory(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*Orkeon.Infrastructure.Configuration.GuardianOptions.AuditEnabled.get -> bool
+*REMOVED*Orkeon.Infrastructure.Configuration.GuardianOptions.AuditEnabled.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.GuardianOptions.LogViolations.get -> bool
+*REMOVED*Orkeon.Infrastructure.Configuration.GuardianOptions.LogViolations.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.ToolResultSecurityOptions.MaxToolResultLength.get -> int
+*REMOVED*Orkeon.Infrastructure.Configuration.ToolResultSecurityOptions.MaxToolResultLength.set -> void
+*REMOVED*Orkeon.Infrastructure.DependencyInjection.AuthExtensions
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimMatchMode
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimMatchMode.All = 1 -> Orkeon.Infrastructure.Security.Auth.ClaimMatchMode
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimMatchMode.Any = 0 -> Orkeon.Infrastructure.Security.Auth.ClaimMatchMode
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsAuthorizationPolicy
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsAuthorizationPolicy.ClaimsAuthorizationPolicy(System.Collections.Generic.IEnumerable<Orkeon.Infrastructure.Security.Auth.ClaimsRequirement!>! requirements) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsAuthorizationPolicy.EvaluateAsync(Orkeon.Application.Interfaces.Security.AuthorizationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.AuthorizationResult!>!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsAuthorizationPolicy.PolicyName.get -> string!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.AllowedValues.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.AllowedValues.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.ClaimType.get -> string!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.ClaimType.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.ClaimsRequirement(Orkeon.Infrastructure.Security.Auth.ClaimsRequirement! original) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.ClaimsRequirement(string! ClaimType, System.Collections.Generic.IReadOnlyList<string!>! AllowedValues, Orkeon.Infrastructure.Security.Auth.ClaimMatchMode MatchMode = Orkeon.Infrastructure.Security.Auth.ClaimMatchMode.Any) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.Deconstruct(out string! ClaimType, out System.Collections.Generic.IReadOnlyList<string!>! AllowedValues, out Orkeon.Infrastructure.Security.Auth.ClaimMatchMode MatchMode) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.MatchMode.get -> Orkeon.Infrastructure.Security.Auth.ClaimMatchMode
+*REMOVED*Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.MatchMode.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleBasedAuthorizationPolicy
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleBasedAuthorizationPolicy.EvaluateAsync(Orkeon.Application.Interfaces.Security.AuthorizationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.AuthorizationResult!>!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleBasedAuthorizationPolicy.PolicyName.get -> string!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleBasedAuthorizationPolicy.RoleBasedAuthorizationPolicy(System.Collections.Generic.IEnumerable<Orkeon.Infrastructure.Security.Auth.RoleMapping!>! roleMappings) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.AllowedAgentIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.AllowedAgentIds.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.AllowedCrewIds.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.AllowedCrewIds.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.Deconstruct(out string! Role, out System.Collections.Generic.IReadOnlyList<string!>! AllowedAgentIds, out System.Collections.Generic.IReadOnlyList<string!>! AllowedCrewIds) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.Role.get -> string!
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.Role.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.RoleMapping(Orkeon.Infrastructure.Security.Auth.RoleMapping! original) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Auth.RoleMapping.RoleMapping(string! Role, System.Collections.Generic.IReadOnlyList<string!>! AllowedAgentIds, System.Collections.Generic.IReadOnlyList<string!>! AllowedCrewIds) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Guards.AuthenticationGuard
+*REMOVED*Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.AuthenticationGuard(System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>! providers, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Guards.AuthenticationGuard!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+*REMOVED*Orkeon.Infrastructure.Security.Guards.DelegationGuard.ClearChain(string! chainKey) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Guards.DelegationGuard.DelegationGuard(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Guards.DelegationGuard!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Guards.DelegationGuard.HasDelegation(string! chainKey, string! targetAgentId) -> bool
+*REMOVED*Orkeon.Infrastructure.Security.Guards.OutputGuard
+*REMOVED*Orkeon.Infrastructure.Security.Guards.OutputGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+*REMOVED*Orkeon.Infrastructure.Security.Guards.OutputGuard.OutputGuard(Orkeon.Application.Interfaces.Ports.IOutputValidationPipeline! validationPipeline, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Guards.OutputGuard!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Security.Guards.ToolGuard.ToolGuard(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.Guards.ToolGuard!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Security.PromptShieldBuilder
+*REMOVED*Orkeon.Infrastructure.Security.PromptShieldBuilder.BuildSecureUserPrompt(Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Context.SimpleExecutionContext! context) -> string!
+*REMOVED*Orkeon.Infrastructure.Security.PromptShieldBuilder.PromptShieldBuilder(Orkeon.Application.Interfaces.Security.IPromptSanitizer! sanitizer) -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.OriginalLength.get -> int
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.OriginalLength.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.SanitizedResult.get -> string!
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.SanitizedResult.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.Threats.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>!
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.Threats.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.ToolResultSanitization() -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.ToolResultSanitization(Orkeon.Infrastructure.Security.ToolResultSanitization! original) -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.WasTruncated.get -> bool
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitization.WasTruncated.init -> void
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitizer.SanitizeToolResult(string! toolName, string! result, string! agentRole) -> Orkeon.Infrastructure.Security.ToolResultSanitization!
+*REMOVED*Orkeon.Infrastructure.Security.ToolResultSanitizer.ToolResultSanitizer(Orkeon.Application.Interfaces.Security.IPromptSanitizer! sanitizer, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.ToolResultSecurityOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.ToolResultSanitizer!>! logger) -> void
+*REMOVED*[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
+*REMOVED*[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Orkeon.Infrastructure.AgentCommunication.A2AOptions! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null) -> void
+*REMOVED*const Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.PrincipalKey = "auth_principal" -> string!
+*REMOVED*const Orkeon.Infrastructure.Security.Guards.AuthenticationGuard.TokenKey = "auth_token" -> string!
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.ToString() -> string!
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.RoleMapping.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.RoleMapping.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Security.Auth.RoleMapping.ToString() -> string!
+*REMOVED*override Orkeon.Infrastructure.Security.ToolResultSanitization.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Security.ToolResultSanitization.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Security.ToolResultSanitization.ToString() -> string!
+*REMOVED*static Orkeon.Infrastructure.DependencyInjection.AuthExtensions.AddOrkeonAuth(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*static Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.operator !=(Orkeon.Infrastructure.Security.Auth.ClaimsRequirement? left, Orkeon.Infrastructure.Security.Auth.ClaimsRequirement? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.operator ==(Orkeon.Infrastructure.Security.Auth.ClaimsRequirement? left, Orkeon.Infrastructure.Security.Auth.ClaimsRequirement? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Security.Auth.RoleMapping.operator !=(Orkeon.Infrastructure.Security.Auth.RoleMapping? left, Orkeon.Infrastructure.Security.Auth.RoleMapping? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Security.Auth.RoleMapping.operator ==(Orkeon.Infrastructure.Security.Auth.RoleMapping? left, Orkeon.Infrastructure.Security.Auth.RoleMapping? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Security.PromptShieldBuilder.BuildSecureSystemPrompt(Orkeon.Domain.Agent.Agent! agent) -> string!
+*REMOVED*static Orkeon.Infrastructure.Security.ToolResultSanitization.operator !=(Orkeon.Infrastructure.Security.ToolResultSanitization? left, Orkeon.Infrastructure.Security.ToolResultSanitization? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Security.ToolResultSanitization.operator ==(Orkeon.Infrastructure.Security.ToolResultSanitization? left, Orkeon.Infrastructure.Security.ToolResultSanitization? right) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.<Clone>$() -> Orkeon.Infrastructure.Security.Auth.ClaimsRequirement!
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.Equals(Orkeon.Infrastructure.Security.Auth.ClaimsRequirement? other) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.ClaimsRequirement.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.RoleMapping.<Clone>$() -> Orkeon.Infrastructure.Security.Auth.RoleMapping!
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.RoleMapping.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.RoleMapping.Equals(Orkeon.Infrastructure.Security.Auth.RoleMapping? other) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.Auth.RoleMapping.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.ToolResultSanitization.<Clone>$() -> Orkeon.Infrastructure.Security.ToolResultSanitization!
+*REMOVED*virtual Orkeon.Infrastructure.Security.ToolResultSanitization.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Infrastructure.Security.ToolResultSanitization.Equals(Orkeon.Infrastructure.Security.ToolResultSanitization? other) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Security.ToolResultSanitization.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Infrastructure.Security.Guards.DelegationGuard.DelegationGuard(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine) -> void
+Orkeon.Infrastructure.Security.Guards.ToolGuard.ToolGuard(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.UrlSecurityOptions!>? urlOptions = null) -> void
+Orkeon.Infrastructure.Security.PromptSanitizer.Detect(string! input) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>!
+Orkeon.Infrastructure.Security.ToolResultSanitizer.Sanitize(string! toolName, string! result, string! agentRole) -> Orkeon.Application.Interfaces.Security.ToolResultSanitization!
+Orkeon.Infrastructure.Security.ToolResultSanitizer.ToolResultSanitizer(Orkeon.Application.Interfaces.Security.IPromptSanitizer! detector, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Configuration.ToolResultSecurityOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Security.ToolResultSanitizer!>! logger) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.<Clone>$() -> Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.A2ACredentialValidation(bool IsValid, string? Scheme, System.Security.Claims.ClaimsPrincipal? Principal, string? Error) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Deconstruct(out bool IsValid, out string? Scheme, out System.Security.Claims.ClaimsPrincipal? Principal, out string? Error) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Equals(Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation? other) -> bool
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Error.get -> string?
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Error.init -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.IsValid.get -> bool
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.IsValid.init -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Principal.get -> System.Security.Claims.ClaimsPrincipal?
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Principal.init -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Scheme.get -> string?
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Scheme.init -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.A2ACredentialValidator(Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions! security, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>! bearerProviders, Orkeon.Application.Interfaces.Security.ISecretProvider? secretProvider) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.EnsureReadyAsync(System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.IsRequired.get -> bool
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.ValidateAsync(string? authorizationHeader, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation!>!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions.ApiKeySecretNames.get -> System.Collections.ObjectModel.Collection<string!>!
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2AOptions!>! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions!>? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>? authenticationProviders = null, Orkeon.Application.Interfaces.Security.ISecretProvider? secretProvider = null) -> void
+[ORKEXP001]Orkeon.Infrastructure.AgentCommunication.A2AServer.A2AServer(Orkeon.Infrastructure.AgentCommunication.A2AOptions! options, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskRouter! taskRouter, Microsoft.Extensions.DependencyInjection.IServiceScopeFactory! scopeFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.AgentCommunication.A2AServer!>? logger = null, Orkeon.Infrastructure.AgentCommunication.A2ASecurityOptions? security = null, Orkeon.Application.Interfaces.AgentCommunication.IA2ATaskStore? taskStore = null, System.Collections.Generic.IEnumerable<Orkeon.Application.Interfaces.Security.IAuthenticationProvider!>? authenticationProviders = null, Orkeon.Application.Interfaces.Security.ISecretProvider? secretProvider = null) -> void
+[ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.ApiKeyScheme = "ApiKey" -> string!
+[ORKEXP001]const Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidator.BearerScheme = "Bearer" -> string!
+[ORKEXP001]override Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Equals(object? obj) -> bool
+[ORKEXP001]override Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.GetHashCode() -> int
+[ORKEXP001]override Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.ToString() -> string!
+[ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.Open.get -> Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation!
+[ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.operator !=(Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation? left, Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation? right) -> bool
+[ORKEXP001]static Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation.operator ==(Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation? left, Orkeon.Infrastructure.AgentCommunication.A2ACredentialValidation? right) -> bool
+*REMOVED*Orkeon.Infrastructure.Agent.StreamingAgentExecutionService.StreamingAgentExecutionService(Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Agent.StreamingAgentExecutionService!>! logger, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService) -> void
+Orkeon.Infrastructure.Agent.StreamingAgentExecutionService.StreamingAgentExecutionService(Microsoft.Extensions.AI.IChatClient! chatClient, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Agent.StreamingAgentExecutionService!>! logger, Orkeon.Domain.FileSystem.IFileSystemService! fileSystemService, Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? toolInvocation = null, Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null) -> void

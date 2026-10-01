@@ -2,8 +2,8 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Constants.Orchestration;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Constants.Llm;
-using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Tools;
 using System.Text;
@@ -14,15 +14,19 @@ namespace Orkeon.Application.Crew.Execution;
 /// Executes tool calls on the IChatClient path — native <see cref="FunctionCallContent"/>
 /// dispatch and text-fallback <c>[TOOL_CALL]</c> dispatch — recording
 /// <see cref="Domain.Tools.ToolUsage"/> telemetry and feeding results back into the
-/// conversation. Extracted verbatim from <see cref="ExecutionOrchestrator"/> (R4.1).
+/// conversation. Extracted verbatim from <see cref="ExecutionOrchestrator"/> (R4.1). Every
+/// call goes through the <see cref="IToolInvocationPipeline"/> (GAP-09): guarded, truncated,
+/// sanitized and audited.
 /// </summary>
 internal sealed class ChatToolDispatcher
 {
     private readonly ILogger _logger;
+    private readonly IToolInvocationPipeline _toolInvocation;
 
-    internal ChatToolDispatcher(ILogger logger)
+    internal ChatToolDispatcher(ILogger logger, IToolInvocationPipeline toolInvocation)
     {
         _logger = logger;
+        _toolInvocation = toolInvocation;
     }
 
     /// <summary>
@@ -100,19 +104,25 @@ internal sealed class ChatToolDispatcher
             var toolArgs = ToolCallFormatting.FormatToolArgs(call.Parameters);
             ExecutionLog.LogExecutingLegacyTool(_logger, call.ToolName, toolArgs);
         }
-        var request = new Domain.Tools.Protocol.ToolCallRequest(call.ToolName, call.Parameters);
         var toolStartTime = DateTime.UtcNow;
 
         try
         {
-            var result = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
+            var outcome = await _toolInvocation.InvokeAsync(
+                new ToolInvocation(tool, call.Parameters, CallerOf(agent, task)), cancellationToken).ConfigureAwait(false);
             var toolDuration = DateTime.UtcNow - toolStartTime;
-            var resultText = result.Success
-                ? ToolCallFormatting.FormatResult(result.Result)
-                : $"Error: {result.Error}";
+            if (outcome.Blocked)
+            {
+                toolResultsBuilder.AppendLine(FormattableString.Invariant($"[Tool {call.ToolName} result]: {outcome.ConversationText}"));
+                toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(Guid.NewGuid().ToString(), call.ToolName, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, outcome.ConversationText));
+                return;
+            }
 
-            // Truncate verbose tool results to bound context window growth
-            var contextResultText = ConversationPolicy.TruncateToolResult(resultText, AgentDefaults.ResolveMaxToolResultLength(call.ToolName));
+            var resultText = outcome.RawText;
+            var contextResultText = outcome.ConversationText;
+            var result = outcome.Response!;
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -276,24 +286,33 @@ internal sealed class ChatToolDispatcher
         toolActivity?.SetTag(GenAiAttributes.AgentName, agent.Role.ToString());
 
         var toolStartTime = DateTime.UtcNow;
-        var request = new Domain.Tools.Protocol.ToolCallRequest(tool.Name, parameters);
 
         try
         {
-            var result = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
+            var outcome = await _toolInvocation.InvokeAsync(
+                new ToolInvocation(tool, parameters, CallerOf(agent, task)), cancellationToken).ConfigureAwait(false);
             var toolDuration = DateTime.UtcNow - toolStartTime;
+            if (outcome.Blocked)
+            {
+                toolActivity?.SetTag(GenAiAttributes.ErrorType, "guardian_blocked");
+                toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, outcome.ConversationText);
+                messages.Add(new ChatMessage(ChatRole.Tool,
+                    [new FunctionResultContent(fc.CallId, outcome.ConversationText)]));
+                toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(Guid.NewGuid().ToString(), tool.Name, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, outcome.ConversationText));
+                return;
+            }
+
+            var result = outcome.Response!;
             if (!result.Success)
             {
                 toolActivity?.SetTag(GenAiAttributes.ErrorType, "tool_error");
                 toolActivity?.SetStatus(System.Diagnostics.ActivityStatusCode.Error, result.Error);
             }
 
-            var resultText = result.Success
-                ? ToolCallFormatting.FormatResult(result.Result)
-                : $"Error: {result.Error}";
-
-            // Truncate verbose tool results to bound context window growth
-            var contextResultText = ConversationPolicy.TruncateToolResult(resultText, AgentDefaults.ResolveMaxToolResultLength(tool.Name));
+            var resultText = outcome.RawText;
+            var contextResultText = outcome.ConversationText;
 
             if (_logger.IsEnabled(LogLevel.Information))
             {
@@ -329,4 +348,7 @@ internal sealed class ChatToolDispatcher
                 toolDuration, ex.Message));
         }
     }
+
+    internal static ToolInvocationCaller CallerOf(DomainAgent agent, CrewTask task) =>
+        new(agent.Id.ToString(), agent.Role.Value, task.Id.ToString());
 }

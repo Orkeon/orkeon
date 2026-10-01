@@ -7,7 +7,10 @@ namespace Orkeon.Infrastructure.Tests.Doubles;
 /// </summary>
 public class MockSecretProvider : ISecretProvider
 {
-    private readonly Dictionary<string, SecretValue> _secrets = new(StringComparer.OrdinalIgnoreCase);
+    // A factory per name: a caller disposes the SecretValue it gets (the ISecretProvider
+    // contract), so a value added as a string is handed out fresh on every read.
+    private readonly Dictionary<string, Func<SecretValue>> _secrets = new(StringComparer.OrdinalIgnoreCase);
+    private readonly Dictionary<string, SecretValue> _sharedValues = new(StringComparer.OrdinalIgnoreCase);
     private Exception? _getSecretException;
 
     // --- Tracking ---
@@ -22,15 +25,20 @@ public class MockSecretProvider : ISecretProvider
     // --- Configuration ---
     public void AddSecret(string name, string value, string source = "Test")
     {
-        _secrets[name] = new SecretValue(value, source);
+        _secrets[name] = () => new SecretValue(value, source);
     }
 
     public void AddSecret(string name, SecretValue secretValue)
     {
-        _secrets[name] = secretValue;
+        _sharedValues[name] = secretValue;
+        _secrets[name] = () => _sharedValues[name];
     }
 
-    public void ClearSecrets() => _secrets.Clear();
+    public void ClearSecrets()
+    {
+        _secrets.Clear();
+        _sharedValues.Clear();
+    }
 
     /// <summary>
     /// Configures the provider to throw the specified exception on GetSecretAsync.
@@ -47,7 +55,7 @@ public class MockSecretProvider : ISecretProvider
             throw _getSecretException;
 
         if (_secrets.TryGetValue(secretName, out var secret))
-            return Task.FromResult(secret);
+            return Task.FromResult(secret());
 
         throw new KeyNotFoundException($"Secret '{secretName}' not found.");
     }

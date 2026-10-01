@@ -1,6 +1,8 @@
 using System.Security.Claims;
 using Orkeon.Application.Interfaces.Security;
 using Microsoft.IdentityModel.JsonWebTokens;
+using Microsoft.IdentityModel.Protocols;
+using Microsoft.IdentityModel.Protocols.OpenIdConnect;
 using Microsoft.IdentityModel.Tokens;
 using Orkeon.Infrastructure.Constants.Network;
 using Orkeon.Infrastructure.Constants.Orchestration;
@@ -35,6 +37,7 @@ public record AzureAdOptions
 public class AzureAdAuthProvider : IAuthenticationProvider
 {
     private readonly TokenValidationParameters _validationParameters;
+    private readonly ConfigurationManager<OpenIdConnectConfiguration>? _configurationManager;
     private readonly JsonWebTokenHandler _tokenHandler = new();
 
     /// <inheritdoc />
@@ -44,7 +47,10 @@ public class AzureAdAuthProvider : IAuthenticationProvider
     /// Initializes a new instance of <see cref="AzureAdAuthProvider"/>.
     /// </summary>
     /// <param name="options">Azure AD configuration.</param>
-    /// <param name="signingKeys">Signing keys for token validation (from JWKS endpoint or injected).</param>
+    /// <param name="signingKeys">Signing keys for token validation. When omitted, the keys are read
+    /// from the tenant's OpenID configuration (<c>{Authority}/.well-known/openid-configuration</c>) on
+    /// first use and refreshed by the configuration manager — a provider built from configuration
+    /// alone would otherwise have no key and reject every token.</param>
     public AzureAdAuthProvider(AzureAdOptions options, IEnumerable<SecurityKey>? signingKeys = null)
     {
         ArgumentNullException.ThrowIfNull(options);
@@ -75,7 +81,16 @@ public class AzureAdAuthProvider : IAuthenticationProvider
         if (signingKeys != null)
         {
             _validationParameters.IssuerSigningKeys = signingKeys;
+            return;
         }
+
+        var authority = string.IsNullOrWhiteSpace(options.Authority)
+            ? NetworkDefaults.AzureAuthorityUrlTemplate.Replace("{tenantId}", options.TenantId, StringComparison.Ordinal)
+            : options.Authority;
+        _configurationManager = new ConfigurationManager<OpenIdConnectConfiguration>(
+            authority.TrimEnd('/') + "/.well-known/openid-configuration",
+            new OpenIdConnectConfigurationRetriever(),
+            new HttpDocumentRetriever { RequireHttps = true });
     }
 
     /// <summary>
@@ -93,7 +108,8 @@ public class AzureAdAuthProvider : IAuthenticationProvider
     {
         try
         {
-            var result = await _tokenHandler.ValidateTokenAsync(token, _validationParameters).ConfigureAwait(false);
+            var parameters = await GetValidationParametersAsync(ct).ConfigureAwait(false);
+            var result = await _tokenHandler.ValidateTokenAsync(token, parameters).ConfigureAwait(false);
             if (!result.IsValid)
             {
                 return new AuthenticationResult(false, null, result.Exception?.Message ?? "Token validation failed");
@@ -114,7 +130,8 @@ public class AzureAdAuthProvider : IAuthenticationProvider
     {
         try
         {
-            var result = await _tokenHandler.ValidateTokenAsync(token, _validationParameters).ConfigureAwait(false);
+            var parameters = await GetValidationParametersAsync(ct).ConfigureAwait(false);
+            var result = await _tokenHandler.ValidateTokenAsync(token, parameters).ConfigureAwait(false);
             if (!result.IsValid)
             {
                 return new AppTokenValidationResult(false, result.Exception?.Message ?? "Token validation failed", null);
@@ -137,5 +154,16 @@ public class AzureAdAuthProvider : IAuthenticationProvider
     {
         var result = await AuthenticateAsync(token, ct).ConfigureAwait(false);
         return result.Principal;
+    }
+
+    private async Task<TokenValidationParameters> GetValidationParametersAsync(CancellationToken ct)
+    {
+        if (_configurationManager is null)
+            return _validationParameters;
+
+        var configuration = await _configurationManager.GetConfigurationAsync(ct).ConfigureAwait(false);
+        var parameters = _validationParameters.Clone();
+        parameters.IssuerSigningKeys = configuration.SigningKeys;
+        return parameters;
     }
 }

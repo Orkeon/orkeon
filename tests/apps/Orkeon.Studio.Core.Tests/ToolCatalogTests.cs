@@ -75,7 +75,7 @@ public sealed partial class ToolCatalogTests
             .Where(t => t.Requirement is ToolRequirement.StoredKey or ToolRequirement.OnlyWithStoredKey)
             .ToList();
 
-        Assert.Equal(2, keyed.Count);
+        Assert.Equal(3, keyed.Count);
         Assert.All(keyed, t => Assert.Contains(t.Argument!, offered));
         Assert.Equal(offered.Count, ToolCatalog.Secrets.Count);
         Assert.All(ToolCatalog.Secrets, s => Assert.Contains(ToolCatalog.All, t => t.Name == s.UsedBy));

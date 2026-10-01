@@ -23,4 +23,10 @@ internal sealed record JsLlmObservability
 
     /// <summary>The agent the facade's calls are attributed to; null names none.</summary>
     public string? AgentName { get; init; }
+
+    /// <summary>
+    /// The single tool-invocation point (GAP-09) an allowed <c>ctx.llm.act</c> tool call goes
+    /// through: guardian, truncation, result sanitizer, audit. Null = the tool is called directly.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 }

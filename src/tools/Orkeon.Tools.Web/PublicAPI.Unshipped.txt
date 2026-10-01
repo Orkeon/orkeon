@@ -1,1 +1,8 @@
 #nullable enable
+*REMOVED*Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.get -> string!
+*REMOVED*Orkeon.Tools.Web.ImageGenerationRequest.ApiKey.set -> void
+*REMOVED*Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+*REMOVED*Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, Orkeon.Domain.Tools.Security.IUrlValidator! urlValidator, Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer! headerSanitizer, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+Orkeon.Tools.Web.ImageGenerationTool.ImageGenerationTool(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, Orkeon.Application.Interfaces.Security.ISecretProvider! secretProvider, System.Net.Http.HttpClient? httpClient = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Tools.Web.ImageGenerationTool!>? logger = null) -> void
+const Orkeon.Tools.Web.ImageGenerationTool.OpenAiApiKeySecretName = "OPENAI_API_KEY" -> string!

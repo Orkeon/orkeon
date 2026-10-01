@@ -147,14 +147,20 @@ public static class WebToolExtensions
         var urlValidator = sp.GetService<IUrlValidator>();
         var headerSanitizer = sp.GetService<HttpHeaderSanitizer>();
 
-        if (fileSystem is not null && urlValidator is not null && headerSanitizer is not null)
-            return new ImageGenerationTool(fileSystem, urlValidator, headerSanitizer, httpClient, logger);
-
         if (fileSystem is null)
             throw new InvalidOperationException(
                 $"{nameof(ImageGenerationTool)} requires an {nameof(Orkeon.Domain.FileSystem.IFileSystemService)} to be registered.");
 
-        return new ImageGenerationTool(fileSystem, httpClient, logger);
+        // The OpenAI key is read from here at execution time (OPENAI_API_KEY ->
+        // ORKEON_OPENAI_API_KEY), never passed by the model as an argument.
+        var secretProvider = sp.GetService<ISecretProvider>()
+            ?? throw new InvalidOperationException(
+                $"{nameof(ImageGenerationTool)} requires an {nameof(ISecretProvider)} to be registered (it reads the secret '{ImageGenerationTool.OpenAiApiKeySecretName}').");
+
+        if (urlValidator is not null && headerSanitizer is not null)
+            return new ImageGenerationTool(fileSystem, secretProvider, urlValidator, headerSanitizer, httpClient, logger);
+
+        return new ImageGenerationTool(fileSystem, secretProvider, httpClient, logger);
     }
 
     /// <summary>

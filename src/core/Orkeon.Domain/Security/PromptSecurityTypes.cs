@@ -5,7 +5,7 @@ namespace Orkeon.Domain.Security;
 /// </summary>
 public record SanitizationResult
 {
-    /// <summary>Gets the sanitized text.</summary>
+    /// <summary>Gets the text: the input unchanged, or empty when blocked.</summary>
     public string SanitizedText { get; init; } = string.Empty;
     /// <summary>Gets whether the input was blocked entirely.</summary>
     public bool IsBlocked { get; init; }
@@ -23,13 +23,6 @@ public record SanitizationResult
     /// <param name="threats">The detected threats.</param>
     /// <returns>A <see cref="SanitizationResult"/> with warnings.</returns>
     public static SanitizationResult WithWarnings(string text, IReadOnlyList<ThreatDetection> threats) =>
-        new() { SanitizedText = text, IsBlocked = false, Threats = threats };
-
-    /// <summary>Creates a sanitization result with threats stripped from the text.</summary>
-    /// <param name="text">The stripped text.</param>
-    /// <param name="threats">The detected threats that were stripped.</param>
-    /// <returns>A <see cref="SanitizationResult"/> with stripped content.</returns>
-    public static SanitizationResult Stripped(string text, IReadOnlyList<ThreatDetection> threats) =>
         new() { SanitizedText = text, IsBlocked = false, Threats = threats };
 
     /// <summary>Creates a blocked sanitization result.</summary>
@@ -96,16 +89,15 @@ public enum ThreatSeverity
 }
 
 /// <summary>
-/// Policy for handling detected threats.
+/// Policy for handling detected threats. No policy rewrites the content: it is passed as it
+/// is (and reported), or refused as a whole.
 /// </summary>
 public enum SanitizationPolicy
 {
-    /// <summary>No action taken.</summary>
+    /// <summary>No detection.</summary>
     None,
-    /// <summary>Warn but allow.</summary>
+    /// <summary>Detect and report; the content passes unchanged.</summary>
     Warn,
-    /// <summary>Strip the threat from input.</summary>
-    Strip,
-    /// <summary>Block the input entirely.</summary>
+    /// <summary>Refuse the content when a High or Critical threat is detected; report lower ones.</summary>
     Block
 }

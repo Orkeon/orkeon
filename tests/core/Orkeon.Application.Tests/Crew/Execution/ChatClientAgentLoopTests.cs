@@ -3,6 +3,7 @@ using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Common.DTOs;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
@@ -94,8 +95,8 @@ public class ChatClientAgentLoopTests
         var logger = new SpyExecutionLogger();
         var client = new ScriptedChatClient();
         var gate = new LlmCallGate(logger, new ScriptedBasicLlmProvider(), rateLimiter: null);
-        var composer = new ChatOptionsComposer(logger, registeredTools, new FakeFileSystemService());
-        var loop = new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger));
+        var composer = new ChatOptionsComposer(logger, registeredTools, new FakeFileSystemService(), ToolInvocationPipeline.Unguarded);
+        var loop = new ChatClientAgentLoop(logger, client, gate, composer, new ChatToolDispatcher(logger, ToolInvocationPipeline.Unguarded));
         return (loop, client);
     }
 

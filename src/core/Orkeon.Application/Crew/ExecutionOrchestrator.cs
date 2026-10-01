@@ -9,6 +9,7 @@ using Orkeon.Application.Crew.Execution;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Services.Security;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 using Orkeon.Domain.Constants.Agent;
@@ -61,20 +62,22 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     private LlmCallGate LlmGate =>
         _llmGate ??= new LlmCallGate(_logger, _llmProvider, _rateLimiter);
 
+    private IToolInvocationPipeline Tools => ToolInvocation ?? ToolInvocationPipeline.Unguarded;
+
     private ChatToolDispatcher ToolDispatcher =>
-        _toolDispatcher ??= new ChatToolDispatcher(_logger);
+        _toolDispatcher ??= new ChatToolDispatcher(_logger, Tools);
 
     private ChatOptionsComposer OptionsComposer =>
-        _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem);
+        _optionsComposer ??= new ChatOptionsComposer(_logger, _registeredTools, _fileSystem, Tools);
 
     private ChatClientAgentLoop ChatLoop =>
         _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher);
 
     private LegacyTextAgentLoop LegacyLoop =>
-        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate);
+        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools);
 
     private NativeToolCallingAgentLoop NativeLoop =>
-        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate);
+        _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools);
 
     private OutputValidationCoordinator OutputValidation =>
         _outputValidation ??= new OutputValidationCoordinator(
@@ -99,6 +102,22 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
     /// Maximum number of iterations for the agent execution loop.
     /// </summary>
     public int MaxIterations { get; set; } = AgentDefaults.MaxIterations;
+
+    /// <summary>
+    /// The guardian whose <see cref="GuardPhase.Input"/> phase screens the composed user prompt
+    /// (task, previous outputs, retrieved knowledge) before the first provider call (GAP-09).
+    /// Set by <c>AddOrkeonApplication</c> from the registered <see cref="IGuardianPipeline"/>;
+    /// null — an orchestrator built by hand — runs no input check.
+    /// </summary>
+    public IGuardianPipeline? Guardian { get; set; }
+
+    /// <summary>
+    /// The single point every tool call of the agent loops goes through: guardian, call,
+    /// truncation, result sanitizer, audit (GAP-09). Set by <c>AddOrkeonApplication</c>; null
+    /// falls back to <see cref="ToolInvocationPipeline.Unguarded"/>. Read when the loops are
+    /// first built, so set it before the first execution.
+    /// </summary>
+    public IToolInvocationPipeline? ToolInvocation { get; set; }
 
     /// <summary>
     /// Initializes a new instance of <see cref="ExecutionOrchestrator"/>.
@@ -246,6 +265,29 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, cancellationToken).ConfigureAwait(false);
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context, knowledgeContext);
+
+                // Input phase: the prompt the provider is about to read — previous outputs and
+                // retrieved knowledge included — is screened first. A block is a readable task
+                // failure; a warning is logged and audited, and the prompt is never rewritten.
+                var inputVerdict = await CheckInputAsync(agent, task, context, userPrompt, cancellationToken).ConfigureAwait(false);
+                if (inputVerdict is { IsAllowed: false })
+                {
+                    var reason = $"Blocked by Guardian (input): {inputVerdict.Reason}";
+                    ExecutionLog.LogInputBlocked(_logger, agent.Role, task.Id, inputVerdict.Reason ?? "");
+                    return new TaskResult(
+                        Success: false,
+                        Output: string.Empty,
+                        StructuredOutput: null,
+                        ToolsUsed: toolsUsed,
+                        ExecutionTime: DateTime.UtcNow - startTime,
+                        Error: reason)
+                    {
+                        ExitReason = AgentExitReason.GuardianBlocked,
+                        IterationsUsed = 0,
+                        LastError = reason,
+                    };
+                }
+
                 var validationContext = OutputValidationCoordinator.BuildOutputValidationContext(task);
 
                 var loopResult = await ExecuteWithProviderAsync(
@@ -322,6 +364,29 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
                     Error: ex.Message);
             }
         }
+    }
+
+    /// <summary>
+    /// Runs the guardian's input phase on the composed user prompt; null when no guardian is set.
+    /// </summary>
+    private async System.Threading.Tasks.Task<GuardResult?> CheckInputAsync(
+        DomainAgent agent,
+        CrewTask task,
+        SimpleExecutionContext context,
+        string userPrompt,
+        CancellationToken cancellationToken)
+    {
+        if (Guardian is null)
+            return null;
+
+        return await Guardian.ExecuteAsync(new GuardContext
+        {
+            Phase = GuardPhase.Input,
+            AgentId = agent.Id.ToString(),
+            AgentRole = agent.Role.Value,
+            CrewId = context.CrewId.ToString(),
+            Content = userPrompt,
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     /// <summary>

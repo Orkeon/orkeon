@@ -76,9 +76,9 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > surcharge), le store de checkpointing sans paramètre (`AddOrkeonCheckpointing()` ;
 > les variantes SQLite/Postgres restent explicites), Evaluation, le moteur de Flows et sa
 > visualisation ([Flows](../orchestration/flows.md)), Training, Consensus, CostTracking, YAML, Encryption et CodeSandbox. Le
-> pipeline Guardian, les sanitizers de prompt et de résultats d'outils et les options
-> Auth sont eux aussi enregistrés, mais **aucun chemin d'exécution ne les invoque** — un
-> hôte qui les veut les appelle lui-même (voir [Sécurité](../architecture/security.md)).
+> pipeline Guardian, les sanitizers de prompt et de résultats d'outils et le point
+> d'invocation des outils sont eux aussi enregistrés, et **chaque tour d'agent les traverse**
+> (`Orkeon:Guardian:Enabled` en est l'interrupteur — voir [Sécurité](../architecture/security.md)).
 > Leurs sections de configuration sont cartographiées dans la
 > [Référence de configuration](./configuration.md).
 >
@@ -102,8 +102,7 @@ hôte construit un conteneur minimal sans l'infrastructure complète.
 | `AddOrkeonYaml()` | `CrewFactoryOptions` (options simples, résolution d'outils tolérante), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | le chargement de crews des runners ; `orkeon forge` | vous chargez ou exportez des crews YAML sans `AddOrkeonInfrastructure()`. La résolution stricte des outils est `Orkeon:CrewFactory:StrictTools`, que lit `RunnerHost` (défaut `true` chez lui) |
 | `AddOrkeonFlows()` | `IFlowStepExecutor`, `IFlowEngine` → `FlowEngine`, `YamlFlowDefinitionLoader` | rien de livré — le système de Flows est une API C# uniquement | vous exécutez des flows depuis votre propre code — voir [Flows](../orchestration/flows.md) |
 | `AddOrkeonFlowVisualization()` | `FlowExecutionTracker` (`FlowGraphSerializer` est statique) | rien de livré — le moteur n'alimente pas le tracker | vous affichez la progression d'un flow — voir [Flows](../orchestration/flows.md) |
-| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`OutputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` avec les quatre gardes branchés sur leurs phases | rien dans le chemin d'exécution | vous voulez les gardes : résolvez `GuardianPipeline` et exécutez-le autour de vos propres appels — voir [Sécurité](../architecture/security.md) |
-| `AddOrkeonAuth()` | `AuthenticationGuard`, `AzureAdOptions` (`Orkeon:Auth:AzureAD`), `OidcOptions` (`Orkeon:Auth:OIDC`) | rien — aucun `IAuthenticationProvider` n'est enregistré et le garde n'est pas dans le pipeline Guardian | vous authentifiez des appelants : enregistrez un `IAuthenticationProvider` et invoquez le garde vous-même |
+| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` (aussi comme `IGuardianPipeline`) avec les trois gardes branchés sur leurs phases — aucun quand `Enabled = false` | l'orchestrateur d'exécution (phase d'entrée), le service de streaming, et `IToolInvocationPipeline` (phases outil et délégation) — enregistré par `AddOrkeonApplication()` | vous composez un conteneur sans `AddOrkeonInfrastructure()` et voulez quand même les gardes — voir [Sécurité](../architecture/security.md) |
 | `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | rien de livré | vous faites tourner une boucle d'entraînement/feedback depuis votre code (résolvez `ITrainingOrchestrator`) |
 
 Le service de migration de mémoire est la seule extension de déplacement de données qui n'est
@@ -218,11 +217,11 @@ tâche, le coût estimé.
   (`StructuredLogAuditSink` + `AuditLogger`) ; quand l'hôte a appelé
   `AddOrkeonInfrastructure()`, la chaîne d'audit du socle (sinks structuré +
   in-memory, options `Security:Audit`) est utilisée.
-- **Limites connues** : la profondeur du rapport dépend des événements réellement
-  audités par l'hôte — et le seul composant du framework qui écrit dans `IAuditLogger`
-  est le pipeline Guardian, qu'aucun chemin d'exécution ne lance : un hôte qui veut un
-  rapport significatif exécute lui-même le pipeline Guardian (ou écrit des événements
-  d'audit) ; aucun contrôle automatisé n'est exécuté.
+- **Limites connues** : le rapport lit la piste qu'écrivent les tours d'agent — un
+  événement `ToolExecution` par appel d'outil et un `SecurityEvent` par blocage ou
+  avertissement du Guardian et par motif d'injection trouvé dans un résultat d'outil ; les
+  appels LLM, les accès fichiers et les requêtes HTTP ne sont pas des événements audités ;
+  aucun contrôle automatisé n'est exécuté.
 
 ## DLP — `AddOrkeonDlp()`
 

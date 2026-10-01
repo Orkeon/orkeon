@@ -1821,9 +1821,6 @@
   <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
     <value>presente solo cuando la clave {0} está guardada, arriba</value>
   </data>
-  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
-    <value>la clave se da en la llamada, por el agente</value>
-  </data>
   <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
     <value>los parámetros de conexión se dan en la llamada, por el agente</value>
   </data>

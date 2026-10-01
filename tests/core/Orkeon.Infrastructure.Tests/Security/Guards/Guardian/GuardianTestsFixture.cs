@@ -1,4 +1,3 @@
-using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Services.Security;
 using Microsoft.Extensions.Configuration;
@@ -27,28 +26,20 @@ public class GuardianTestsFixture
 
     // --- Guard creation ---
 
-    public static ToolGuard CreateToolGuard(GuardianPolicy? policy = null)
-    {
-        var globalPolicy = policy ?? new GuardianPolicy();
-        var engine = new GuardianPolicyEngine(globalPolicy);
-        return new ToolGuard(engine, NullLogger<ToolGuard>.Instance);
-    }
+    public static ToolGuard CreateToolGuard(bool blockPrivateIPs = true)
+        => new(Microsoft.Extensions.Options.Options.Create(
+            new Orkeon.Infrastructure.Configuration.UrlSecurityOptions { BlockPrivateIPs = blockPrivateIPs }));
 
     public static DelegationGuard CreateDelegationGuard(int maxDepth = 5)
     {
         var policy = new GuardianPolicy { MaxDelegationDepth = maxDepth };
         var engine = new GuardianPolicyEngine(policy);
-        return new DelegationGuard(engine, NullLogger<DelegationGuard>.Instance);
+        return new DelegationGuard(engine);
     }
 
     public static InputGuard CreateInputGuard(MockPromptSanitizer? sanitizer = null)
     {
         return new InputGuard(sanitizer ?? new MockPromptSanitizer(), NullLogger<InputGuard>.Instance);
-    }
-
-    public static OutputGuard CreateOutputGuard(MockOutputValidationPipeline? pipeline = null)
-    {
-        return new OutputGuard(pipeline ?? new MockOutputValidationPipeline(), NullLogger<OutputGuard>.Instance);
     }
 
     // --- Mock factories ---
@@ -82,20 +73,26 @@ public class GuardianTestsFixture
         string crewId = CrewIdAlt1,
         string? toolName = null,
         string? content = null,
-        int delegationDepth = 0,
-        string? targetAgentId = null,
-        Dictionary<string, object>? toolArgs = null)
+        string[]? delegationChain = null,
+        string? targetAgentRole = null,
+        Dictionary<string, object?>? toolArgs = null,
+        string agentRole = "agent1")
         => new()
         {
             Phase = phase,
             AgentId = agentId,
+            AgentRole = agentRole,
             CrewId = crewId,
             ToolName = toolName,
             Content = content,
-            DelegationDepth = delegationDepth,
-            TargetAgentId = targetAgentId,
+            DelegationChain = delegationChain ?? [],
+            TargetAgentRole = targetAgentRole,
             ToolArgs = toolArgs
         };
+
+    /// <summary>A chain of <paramref name="depth"/> delegating agents, none of them named like the test's agents.</summary>
+    public static string[] ChainOfDepth(int depth)
+        => Enumerable.Range(0, depth).Select(i => $"upstream-{i}").ToArray();
 
     // --- Violation factory ---
 
@@ -108,18 +105,17 @@ public class GuardianTestsFixture
 
     // --- DI Resolution helper ---
 
-    public static ServiceProvider BuildDIProvider()
+    public static ServiceProvider BuildDIProvider(Dictionary<string, string?>? settings = null)
     {
         var services = new ServiceCollection();
         services.AddLogging();
 
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection([])
+            .AddInMemoryCollection(settings ?? [])
             .Build();
         services.AddSingleton<IConfiguration>(configuration);
 
         services.AddSingleton<IPromptSanitizer>(new MockPromptSanitizer());
-        services.AddSingleton<IOutputValidationPipeline>(new MockOutputValidationPipeline());
 
         services.AddOrkeonGuardian();
 

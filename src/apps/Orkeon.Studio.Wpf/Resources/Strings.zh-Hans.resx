@@ -1821,9 +1821,6 @@
   <data name="Studio.Settings.ToolOnlyWithStoredKey" xml:space="preserve">
     <value>仅在上方记住密钥 {0} 后才会出现</value>
   </data>
-  <data name="Studio.Settings.ToolKeyAtCall" xml:space="preserve">
-    <value>密钥由智能体在调用时提供</value>
-  </data>
   <data name="Studio.Settings.ToolParametersAtCall" xml:space="preserve">
     <value>连接参数由智能体在调用时提供</value>
   </data>

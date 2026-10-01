@@ -144,7 +144,6 @@ public sealed class ToolRequirementViewModel : ObservableObject
     {
         ToolRequirement.StoredKey => Format(StudioStringKeys.ToolNeedsStoredKey),
         ToolRequirement.OnlyWithStoredKey => Format(StudioStringKeys.ToolOnlyWithStoredKey),
-        ToolRequirement.KeyAtCall => _strings[StudioStringKeys.ToolKeyAtCall],
         ToolRequirement.ParametersAtCall => _strings[StudioStringKeys.ToolParametersAtCall],
         ToolRequirement.ExpertSetting => Format(StudioStringKeys.ToolExpertSetting),
         ToolRequirement.EmailAccount => Format(StudioStringKeys.ToolNeedsEmailAccount),

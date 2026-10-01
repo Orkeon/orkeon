@@ -113,9 +113,10 @@ mais une recherche échoue à l'appel avec un message explicite tant que l'hôte
 
 `AddOrkeonWebTools()` enregistre les cinq premiers ; chacun des autres a sa propre
 extension opt-in parce qu'il exige une clé ou un service support supplémentaire. Les clés
-ne voyagent pas toutes de la même façon : la clé Tavily est un secret résolu à l'appel, les
-jetons Brave et Slack sont remis à leur extension par l'hôte, et `image_generation` prend la
-clé OpenAI en argument d'appel. Tout tool qui récupère une URL passe par la garde SSRF
+ne voyagent pas toutes de la même façon : les clés Tavily et OpenAI sont des secrets résolus à
+l'appel, les jetons Brave et Slack sont remis à leur extension par l'hôte. Aucun tool ne prend
+de secret en argument d'appel — ce qu'un argument porte traverse la conversation, le journal
+des appels d'outils et la trace d'usage. Tout tool qui récupère une URL passe par la garde SSRF
 (fail-closed même sans `IUrlValidator` enregistré) et par un client nommé qui refuse les
 redirections.
 
@@ -125,7 +126,7 @@ redirections.
 | `web_scrape` | `WebScrapeTool` | `AddOrkeonWebTools()` | Scraper une page web avec filtrage CSS optionnel ; `cached=true` découpe et embarque la page dans le cache RAG |
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Scraping ciblé d'éléments DOM via sélecteurs CSS (texte, HTML, attributs) |
 | `github` | `GitHubTool` | `AddOrkeonWebTools()` — enregistré **sans jeton**, ses appels sont donc anonymes ; un hôte qui a besoin de `create_issue` enregistre lui-même `new GitHubTool(personalAccessToken)` | API GitHub v3 (`action` : `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`) |
-| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService` ; la clé OpenAI est l'argument d'appel `api_key`, il faut donc la donner à l'agent) | Génération d'images via l'API OpenAI DALL-E, enregistrables sous un chemin virtuel (`save_to_path`) |
+| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (exige un `IFileSystemService` et un `ISecretProvider`) — le secret `OPENAI_API_KEY` est résolu à l'appel (par défaut la variable d'environnement `ORKEON_OPENAI_API_KEY`, puis `Secrets:OPENAI_API_KEY`) ; sans lui un appel échoue en nommant le secret | Génération d'images via l'API OpenAI DALL-E, enregistrables sous un chemin virtuel (`save_to_path`) |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — le secret `TAVILY_API_KEY` est résolu à l'appel via `ISecretProvider` (par défaut la variable d'environnement `ORKEON_TAVILY_API_KEY`, puis `Secrets:TAVILY_API_KEY` en configuration) | Recherche web via l'API Tavily Search |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` ne le câble que si `BRAVE_API_KEY` est posée | Recherche web via l'API Brave Search |
 | `slack_send_message` | `SlackTool` | `AddOrkeonSlackTool(botToken)` — aucune racine livrée ne l'appelle (opt-in hôte pur) | Envoyer des messages vers des canaux/utilisateurs Slack via la Web API |

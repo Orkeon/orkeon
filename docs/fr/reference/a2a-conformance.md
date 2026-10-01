@@ -47,7 +47,7 @@ est la première marche naturelle quand cette surface sera promue.
 
 | Exigence | Orkeon | Statut |
 |---|---|---|
-| Vérification de l'identité du client | mTLS (fail-closed : `RequireMutualTls` refuse de démarrer sans ancre de confiance ; chaîne CA ou empreintes épinglées ; 403 en cas d'échec) + `AllowedAuthSchemes` (401) | 🟢 Pour le modèle de déploiement mTLS. 🟡 `AllowedAuthSchemes` vérifie seulement que l'en-tête `Authorization` utilise un schéma autorisé avec un identifiant non vide — il ne valide jamais le jeton : c'est un filtre, pas une authentification. |
+| Vérification de l'identité du client | mTLS (fail-closed : `RequireMutualTls` refuse de démarrer sans ancre de confiance ; chaîne CA ou empreintes épinglées ; 403 en cas d'échec) + `AllowedAuthSchemes` (401) : un jeton `Bearer` validé par un `IAuthenticationProvider` (Azure AD, OIDC, ou celui de l'hôte), une `ApiKey` comparée en temps constant aux secrets nommés par `ApiKeySecretNames` ; un schéma déclaré sans validateur refuse de démarrer | 🟢 Les deux identifiants sont validés, pas seulement reconnus. Le côté client n'envoie encore aucun en-tête `Authorization`. |
 | Accès à la carte d'agent | `GET /.well-known/agent.json` | 🟢 Publique par conception : les contrôles de sécurité ne s'appliquent qu'aux endpoints de tâche. |
 | Déclaration `securitySchemes` dans l'AgentCard | — | 🔴 Les schémas sont imposés mais pas annoncés. |
 | Révocation de certificats | Non vérifiée | 🟡 **Décision (PUB-08 T3) : préférer les certificats à courte durée de vie à CRL/OCSP.** Le modèle de confiance mTLS d'A2A vise des CA privées, où les endpoints CRL/OCSP existent rarement et où OCSP ajoute une dépendance de disponibilité ; une durée de vie de 24–72 h borne la fenêtre d'exposition sans nouvelle dépendance runtime, et la rotation s'inscrit dans les options existantes (une nouvelle instance de client recharge le PFX). Le support CRL reste hors périmètre tant qu'un déploiement n'en prouve pas le besoin. |
@@ -83,7 +83,9 @@ lui-même `StartAsync` — voir [Sous-systèmes opt-in](./opt-in-subsystems.md).
 
 `A2A:Security` porte `ClientCertificatePath`/`ClientCertificatePassword` (le
 certificat propre du client), `TrustedCertificateAuthorities`,
-`TrustedClientCertificateThumbprints`, `RequireMutualTls` et `AllowedAuthSchemes`.
+`TrustedClientCertificateThumbprints`, `RequireMutualTls`, `AllowedAuthSchemes` et
+`ApiKeySecretNames`, ainsi que les validateurs bearer `A2A:Security:AzureAD` et
+`A2A:Security:Oidc` (enregistrés par `AddOrkeonA2A(configuration)` quand ils sont renseignés).
 
 ## Ce que cela signifie pour les consommateurs
 

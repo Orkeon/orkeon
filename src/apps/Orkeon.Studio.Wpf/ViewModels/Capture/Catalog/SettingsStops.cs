@@ -88,7 +88,7 @@ internal static class SettingsStops
             Name = "reglages-outils",
             Category = CaptureCategory.Settings,
             Screen = CaptureScreen.SettingsTools,
-            Because = "The Tools tab (STUDIO-21): the two tool keys, neither remembered on the seeded "
+            Because = "The Tools tab (STUDIO-21): the three tool keys, none remembered on the seeded "
                     + "machine, and the catalogue by family with what web_search, brave_search, "
                     + "image_generation and the database tools need said next to their names.",
             Covers = ["Settings.Tools.HasSecrets"],

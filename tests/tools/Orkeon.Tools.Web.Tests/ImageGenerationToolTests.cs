@@ -11,6 +11,7 @@ public sealed class ImageGenerationToolTests : IDisposable
     private readonly MockHttpMessageHandler _mockHandler;
     private readonly HttpClient _httpClient;
     private readonly ImageGenerationTool _tool;
+    private readonly MockSecretProvider _secrets = MockSecretProvider.WithOpenAiKey(ValidApiKey);
 
     private const string ValidApiKey = "sk-test-key-1234567890";
 
@@ -64,7 +65,7 @@ public sealed class ImageGenerationToolTests : IDisposable
         _httpClient = new HttpClient(_mockHandler, disposeHandler: false);
         // No test here exercises save_to_path, so a permissive (no-mount) in-memory
         // fake satisfies the now-mandatory IFileSystemService dependency.
-        _tool = new ImageGenerationTool(new FakeFileSystemService(), _httpClient);
+        _tool = new ImageGenerationTool(new FakeFileSystemService(), _secrets, _httpClient);
     }
 
     [Fact]
@@ -77,7 +78,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -108,7 +108,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["response_format"] = "b64_json"
             }
         );
@@ -139,7 +138,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute otter",
-                ["api_key"] = ValidApiKey,
                 ["model"] = "dall-e-3"
             }
         );
@@ -166,7 +164,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -177,38 +174,67 @@ public sealed class ImageGenerationToolTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldReturnError_WhenApiKeyIsMissing()
+    public async Task ReadsTheOpenAiKeyFromTheSecretProvider_AtExecutionTime()
     {
-        var request = new ToolCallRequest(
+        _mockHandler.SetResponse(HttpStatusCode.OK, SuccessResponseUrl);
+
+        var result = await _tool.CallAsync(new ToolCallRequest(
             ToolName: "image_generation",
-            Parameters: new Dictionary<string, object?>
-            {
-                ["prompt"] = "A cute baby sea otter"
-            }
-        );
+            Parameters: new Dictionary<string, object?> { ["prompt"] = "A cute baby sea otter" }),
+            TestContext.Current.CancellationToken);
 
-        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
-
-        Assert.False(result.Success);
-        Assert.Contains("api_key", result.Error, StringComparison.OrdinalIgnoreCase);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal([ImageGenerationTool.OpenAiApiKeySecretName], _secrets.Requested);
+        Assert.Equal("OPENAI_API_KEY", ImageGenerationTool.OpenAiApiKeySecretName);
     }
 
     [Fact]
-    public async Task ShouldReturnError_WhenApiKeyHasInvalidFormat()
+    public async Task FailsNamingTheSecret_WhenTheKeyIsNotConfigured()
     {
-        var request = new ToolCallRequest(
+        using var tool = new ImageGenerationTool(new FakeFileSystemService(), new MockSecretProvider(), _httpClient);
+
+        var result = await tool.CallAsync(new ToolCallRequest(
+            ToolName: "image_generation",
+            Parameters: new Dictionary<string, object?> { ["prompt"] = "A cute baby sea otter" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.Contains("ORKEON_OPENAI_API_KEY", result.Error, StringComparison.Ordinal);
+        Assert.Equal(0, _mockHandler.SendCallCount);
+    }
+
+    [Fact]
+    public async Task NeverEchoesTheKey_WhenTheProviderRejectsIt()
+    {
+        const string err = """{"error":{"code":"invalid_api_key","message":"Incorrect API key provided: sk-test-key-1234567890"}}""";
+        _mockHandler.SetResponse(HttpStatusCode.Unauthorized, err);
+
+        var result = await _tool.CallAsync(new ToolCallRequest(
+            ToolName: "image_generation",
+            Parameters: new Dictionary<string, object?> { ["prompt"] = "A cute baby sea otter" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.False(result.Success);
+        Assert.DoesNotContain(ValidApiKey, result.Error, StringComparison.Ordinal);
+        Assert.Contains(ImageGenerationTool.OpenAiApiKeySecretName, result.Error, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task IgnoresAnApiKeyArgument_TheModelCanNoLongerSupplyOne()
+    {
+        _mockHandler.SetResponse(HttpStatusCode.OK, SuccessResponseUrl);
+
+        var result = await _tool.CallAsync(new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = "invalid-key-format"
-            }
-        );
+                ["api_key"] = "sk-from-the-prompt",
+            }),
+            TestContext.Current.CancellationToken);
 
-        var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
-
-        Assert.False(result.Success);
-        Assert.Contains("sk-", result.Error);
+        Assert.True(result.Success, result.Error);
+        Assert.Equal($"Bearer {ValidApiKey}", _mockHandler.LastRequest!.Headers.GetValues("Authorization").Single());
     }
 
     [Fact]
@@ -219,7 +245,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["size"] = "800x600"
             }
         );
@@ -240,7 +265,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "Some prompt that violates policy",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -260,7 +284,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -278,7 +301,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["model"] = "dall-e-3",
                 ["number_of_images"] = 3
             }
@@ -301,7 +323,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -323,7 +344,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["quality"] = "ultra"
             }
         );
@@ -342,7 +362,6 @@ public sealed class ImageGenerationToolTests : IDisposable
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["response_format"] = "png"
             }
         );
@@ -359,7 +378,8 @@ public sealed class ImageGenerationToolTests : IDisposable
         Assert.Equal("image_generation", _tool.Name);
         Assert.Equal("Web Operations", _tool.Category);
         Assert.True(_tool.Schema.Parameters["prompt"].Required);
-        Assert.True(_tool.Schema.Parameters["api_key"].Required);
+        Assert.False(_tool.Schema.Parameters.ContainsKey("api_key"));
+        Assert.DoesNotContain(_tool.Schema.Parameters.Values, p => p.Description.Contains("sk-", StringComparison.Ordinal));
     }
 
     public void Dispose()

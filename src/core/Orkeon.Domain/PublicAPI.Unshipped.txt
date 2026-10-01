@@ -81,3 +81,34 @@ static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRo
 *REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.EqualityContract.get -> System.Type!
 *REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.Equals(Orkeon.Domain.Memory.MemoryProviderConfig? other) -> bool
 *REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.AgentRole.get -> string?
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.AgentRole.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CompletionTokens.get -> int
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CompletionTokens.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CorrelationId.get -> string!
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CorrelationId.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CrewId.get -> string?
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.CrewId.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.DurationMs.get -> long
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.DurationMs.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.EstimatedCost.get -> decimal
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.EstimatedCost.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.LlmCallAuditInfo() -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Model.get -> string!
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Model.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Outcome.get -> Orkeon.Domain.Security.AuditOutcome
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Outcome.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.PromptTokens.get -> int
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.PromptTokens.init -> void
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Provider.get -> string!
+*REMOVED*Orkeon.Domain.Security.LlmCallAuditInfo.Provider.init -> void
+*REMOVED*Orkeon.Domain.Security.SanitizationPolicy.Block = 3 -> Orkeon.Domain.Security.SanitizationPolicy
+*REMOVED*Orkeon.Domain.Security.SanitizationPolicy.Strip = 2 -> Orkeon.Domain.Security.SanitizationPolicy
+*REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.CrewLifecycle(string! correlationId, string! crewId, string! action, Orkeon.Domain.Security.AuditOutcome outcome, string? message = null) -> Orkeon.Domain.Security.AuditEvent!
+*REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.FileAccess(string! correlationId, string! operation, string! path, Orkeon.Domain.Security.AuditOutcome outcome, string! agentRole, string? denialReason = null) -> Orkeon.Domain.Security.AuditEvent!
+*REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.HttpRequest(string! correlationId, System.Uri! url, string! method, int statusCode, Orkeon.Domain.Security.AuditOutcome outcome, long durationMs, string? agentRole = null) -> Orkeon.Domain.Security.AuditEvent!
+*REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.LlmCall(Orkeon.Domain.Security.LlmCallAuditInfo! info) -> Orkeon.Domain.Security.AuditEvent!
+*REMOVED*static Orkeon.Domain.Security.AuditEventBuilders.LlmCall(string! correlationId, string! provider, string! model, int promptTokens, int completionTokens, decimal estimatedCost, long durationMs, Orkeon.Domain.Security.AuditOutcome outcome, string? agentRole = null, string? crewId = null) -> Orkeon.Domain.Security.AuditEvent!
+*REMOVED*static Orkeon.Domain.Security.SanitizationResult.Stripped(string! text, System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>! threats) -> Orkeon.Domain.Security.SanitizationResult!
+Orkeon.Domain.Security.SanitizationPolicy.Block = 2 -> Orkeon.Domain.Security.SanitizationPolicy

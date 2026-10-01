@@ -32,6 +32,9 @@ internal sealed record JsCrewDefinition
     /// <summary>Optional host-native renderer for streamed <c>ctx.llm.act</c> deltas (F5 L3).</summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
 
+    /// <summary>Optional single tool-invocation point applied inside <c>ctx.llm.act</c> (GAP-09).</summary>
+    public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
+
     public string? Goal { get; init; }
 
     /// <summary>YAML parity <c>memory: true</c> — the crew keeps a shared memory scope.</summary>

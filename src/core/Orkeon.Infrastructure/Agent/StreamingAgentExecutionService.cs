@@ -8,9 +8,9 @@ using Orkeon.Application.Interfaces.Services;
 using Orkeon.Application.Context;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools;
-using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
-using Orkeon.Tools.Abstractions.Adapters;
 using Orkeon.Domain.Task;
+using Orkeon.Application.Interfaces.Security;
+using Orkeon.Application.Services.Security;
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Application.Interfaces.Ports;
@@ -27,17 +27,24 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
     private readonly IEnumerable<IBaseTool> _tools;
     private readonly ILogger<StreamingAgentExecutionService> _logger;
     private readonly IFileSystemService _fileSystemService;
+    private readonly IToolInvocationPipeline _toolInvocation;
+    private readonly IGuardianPipeline? _guardian;
 
     /// <summary>Initializes a new instance of <see cref="StreamingAgentExecutionService"/>.</summary>
     /// <param name="chatClient">The Microsoft.Extensions.AI chat client used for streaming.</param>
     /// <param name="tools">The tools available to agents.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="fileSystemService">VFS service for injecting mount info into agent prompts.</param>
+    /// <param name="toolInvocation">The single tool-invocation point (guardian, sanitizer, audit — GAP-09);
+    /// null falls back to <see cref="ToolInvocationPipeline.Unguarded"/>.</param>
+    /// <param name="guardian">The guardian whose input phase screens the user prompt; null runs no input check.</param>
     public StreamingAgentExecutionService(
         IChatClient chatClient,
         IEnumerable<IBaseTool> tools,
         ILogger<StreamingAgentExecutionService> logger,
-        IFileSystemService fileSystemService)
+        IFileSystemService fileSystemService,
+        IToolInvocationPipeline? toolInvocation = null,
+        IGuardianPipeline? guardian = null)
     {
         ArgumentNullException.ThrowIfNull(chatClient);
         _chatClient = chatClient;
@@ -46,6 +53,8 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         _logger = logger;
         ArgumentNullException.ThrowIfNull(fileSystemService);
         _fileSystemService = fileSystemService;
+        _toolInvocation = toolInvocation ?? ToolInvocationPipeline.Unguarded;
+        _guardian = guardian;
     }
 
     /// <inheritdoc />
@@ -67,13 +76,24 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         {
             yield return CreateThought($"Starting task: {task.Description}", AgentThought.ThoughtType.Reasoning);
 
+            var userPrompt = BuildUserPrompt(task, context);
+            var caller = new ToolInvocationCaller(agent.Id.ToString(), agent.Role.Value, task.Id.ToString(), context.CrewId.ToString());
+
+            // Input phase, as on the non-streaming path: a blocked prompt never reaches the model.
+            var inputVerdict = await CheckInputAsync(caller, userPrompt, cancellationToken).ConfigureAwait(false);
+            if (inputVerdict is { IsAllowed: false })
+            {
+                yield return CreateThought($"Blocked by Guardian (input): {inputVerdict.Reason}", AgentThought.ThoughtType.Error);
+                yield break;
+            }
+
             var messages = new List<ChatMessage>
             {
                 new(ChatRole.System, BuildSystemPrompt(agent, task)),
-                new(ChatRole.User, BuildUserPrompt(task, context))
+                new(ChatRole.User, userPrompt)
             };
 
-            var (options, availableTools) = BuildStreamingChatOptions(agent);
+            var (options, availableTools) = BuildStreamingChatOptions(agent, caller);
             var maxIterations = agent.MaxIterations > 0 ? agent.MaxIterations : AgentDefaults.MaxIterations;
 
             for (int i = 0; i < maxIterations; i++)
@@ -90,7 +110,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
                     taskId: task.Id.ToString()))
                 {
                     turn = await ProcessStreamingIterationAsync(
-                        messages, options, availableTools, cancellationToken).ConfigureAwait(false);
+                        messages, options, availableTools, caller, cancellationToken).ConfigureAwait(false);
                 }
 
                 var (fullResponse, toolCallThoughts) = turn;
@@ -112,12 +132,37 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         }
     }
 
-    private (ChatOptions options, List<IBaseTool> availableTools) BuildStreamingChatOptions(DomainAgent agent)
+    private async Task<GuardResult?> CheckInputAsync(ToolInvocationCaller caller, string userPrompt, CancellationToken cancellationToken)
+    {
+        if (_guardian is null)
+            return null;
+
+        return await _guardian.ExecuteAsync(new GuardContext
+        {
+            Phase = GuardPhase.Input,
+            AgentId = caller.AgentId,
+            AgentRole = caller.AgentRole,
+            CrewId = caller.CrewId ?? string.Empty,
+            Content = userPrompt,
+        }, cancellationToken).ConfigureAwait(false);
+    }
+
+    private (ChatOptions options, List<IBaseTool> availableTools) BuildStreamingChatOptions(DomainAgent agent, ToolInvocationCaller caller)
     {
         var agentToolNames = agent.Tools.Select(t => t.ToString()).ToHashSet();
         var availableTools = _tools.Where(t => agentToolNames.Contains(t.Name)).ToList();
-        var aiTools = availableTools.Count > 0
-            ? BaseToolToAIFunctionAdapter.ToAITools(availableTools)
+        // Invoked only by a client that runs functions itself; this loop dispatches below.
+        // Either way, through the invocation pipeline.
+        List<AITool>? aiTools = availableTools.Count > 0
+            ? availableTools.Select(t => (AITool)AIFunctionFactory.Create(
+                method: async (AIFunctionArguments args, CancellationToken ct) =>
+                {
+                    var outcome = await _toolInvocation.InvokeAsync(
+                        new ToolInvocation(t, args.ToDictionary(kvp => kvp.Key, kvp => kvp.Value), caller), ct).ConfigureAwait(false);
+                    return outcome.ConversationText;
+                },
+                name: t.Name,
+                description: t.Schema.Description)).ToList()
             : null;
 
         var options = new ChatOptions
@@ -133,6 +178,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         List<ChatMessage> messages,
         ChatOptions options,
         List<IBaseTool> availableTools,
+        ToolInvocationCaller caller,
         CancellationToken cancellationToken)
     {
         var fullResponse = new StringBuilder();
@@ -151,7 +197,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
                 continue;
 
             var toolThoughts = await ProcessStreamingFunctionCallsAsync(
-                functionCalls, availableTools, messages, cancellationToken).ConfigureAwait(false);
+                functionCalls, availableTools, messages, caller, cancellationToken).ConfigureAwait(false);
             thoughts.AddRange(toolThoughts);
         }
 
@@ -162,6 +208,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         List<FunctionCallContent> functionCalls,
         List<IBaseTool> availableTools,
         List<ChatMessage> messages,
+        ToolInvocationCaller caller,
         CancellationToken cancellationToken)
     {
         var thoughts = new List<AgentThought>();
@@ -177,7 +224,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
                 continue;
             }
 
-            var resultText = await ExecuteToolAsync(tool, fc, cancellationToken).ConfigureAwait(false);
+            var resultText = await ExecuteToolAsync(tool, fc, caller, cancellationToken).ConfigureAwait(false);
             thoughts.Add(CreateThought(resultText, AgentThought.ThoughtType.ToolExecution));
             messages.Add(new ChatMessage(ChatRole.Tool, resultText));
         }
@@ -185,19 +232,16 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         return thoughts;
     }
 
-    private static async Task<string> ExecuteToolAsync(
-        IBaseTool tool, FunctionCallContent fc, CancellationToken cancellationToken)
+    private async Task<string> ExecuteToolAsync(
+        IBaseTool tool, FunctionCallContent fc, ToolInvocationCaller caller, CancellationToken cancellationToken)
     {
         var parameters = fc.Arguments?
             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value)
             ?? new Dictionary<string, object?>();
 
-        var request = new ToolCallRequest(tool.Name, parameters);
-        var result = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
-
-        return result.Success
-            ? result.Result?.ToString() ?? string.Empty
-            : $"Error: {result.Error}";
+        var outcome = await _toolInvocation.InvokeAsync(new ToolInvocation(tool, parameters, caller), cancellationToken)
+            .ConfigureAwait(false);
+        return outcome.ConversationText;
     }
 
     private static AgentThought CreateThought(string content, AgentThought.ThoughtType type)

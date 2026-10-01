@@ -15,13 +15,12 @@ public sealed class ImageGenerationToolExtraTests : IDisposable
     private readonly HttpClient _httpClient;
     private readonly FakeFileSystemService _fileSystem = new();
     private readonly ImageGenerationTool _tool;
-    private const string ValidApiKey = "sk-test-key-1234567890";
 
     public ImageGenerationToolExtraTests()
     {
         _httpClient = new HttpClient(_mockHandler, disposeHandler: false);
         // In-memory VFS double; writes land in the fake and are inspected per-test.
-        _tool = new ImageGenerationTool(_fileSystem, _httpClient);
+        _tool = new ImageGenerationTool(_fileSystem, MockSecretProvider.WithOpenAiKey(), _httpClient);
     }
 
     private static ToolCallRequest Req(Dictionary<string, object?> extra)
@@ -29,7 +28,6 @@ public sealed class ImageGenerationToolExtraTests : IDisposable
         var p = new Dictionary<string, object?>
         {
             ["prompt"] = "A cute baby sea otter",
-            ["api_key"] = ValidApiKey
         };
         foreach (var (k, v) in extra) p[k] = v;
         return new ToolCallRequest("image_generation", p);
@@ -41,7 +39,6 @@ public sealed class ImageGenerationToolExtraTests : IDisposable
         var request = new ToolCallRequest("image_generation", new Dictionary<string, object?>
         {
             ["prompt"] = new string('a', 4001),
-            ["api_key"] = ValidApiKey
         });
 
         var result = await _tool.CallAsync(request, TestContext.Current.CancellationToken);
@@ -164,7 +161,7 @@ public sealed class ImageGenerationToolExtraTests : IDisposable
         // A fake VFS with a single writable mount: any save path outside it is denied
         // by the VFS policy before any image is generated.
         var mountedFs = new FakeFileSystemService().AddMount("/output", FileAccessRights.ReadWrite);
-        using var tool = new ImageGenerationTool(mountedFs, _httpClient);
+        using var tool = new ImageGenerationTool(mountedFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var result = await tool.CallAsync(
             Req(new() { ["save_to_path"] = "/forbidden/out.png" }),

@@ -1,5 +1,6 @@
 using Orkeon.Application.Interfaces.AgentCommunication;
 using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Agent;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -7,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Orkeon.Infrastructure.DomainEvents;
 using Orkeon.Infrastructure.Persistence;
 using Orkeon.Infrastructure.Persistence.Agent;
+using Orkeon.Infrastructure.Security.Auth;
 using System.Diagnostics.CodeAnalysis;
 
 namespace Orkeon.Infrastructure.AgentCommunication;
@@ -37,6 +39,11 @@ public static class A2AExtensions
         // validation, and the server enforces mTLS / auth schemes when the server is enabled.
         services.Configure<A2ASecurityOptions>(configuration.GetSection("A2A:Security"));
 
+        // Bearer-token validators for A2A:Security:AllowedAuthSchemes = ["Bearer"] (GAP-09):
+        // registered only for the sections that are filled in. Without one, a server that
+        // declares Bearer refuses to start.
+        AddBearerValidators(services, configuration.GetSection("A2A:Security"));
+
         var options = configuration.GetSection("A2A").Get<A2AOptions>() ?? new A2AOptions();
         return services.AddOrkeonA2ACore(options.EnableServer);
     }
@@ -64,6 +71,23 @@ public static class A2AExtensions
         configure?.Invoke(probe);
 
         return services.AddOrkeonA2ACore(probe.EnableServer);
+    }
+
+    /// <summary>
+    /// Registers an <see cref="IAuthenticationProvider"/> for each filled bearer section:
+    /// <c>AzureAD</c> (needs <c>TenantId</c> and <c>ClientId</c>) and <c>Oidc</c> (needs
+    /// <c>Authority</c> and <c>ClientId</c>). Signing keys are discovered from the issuer's
+    /// OpenID configuration on first use, never at registration.
+    /// </summary>
+    private static void AddBearerValidators(IServiceCollection services, IConfigurationSection security)
+    {
+        var azureAd = security.GetSection("AzureAD").Get<AzureAdOptions>();
+        if (azureAd is { TenantId.Length: > 0, ClientId.Length: > 0 })
+            services.AddSingleton<IAuthenticationProvider>(new AzureAdAuthProvider(azureAd));
+
+        var oidc = security.GetSection("Oidc").Get<OidcOptions>();
+        if (oidc is { Authority.Length: > 0, ClientId.Length: > 0 })
+            services.AddSingleton<IAuthenticationProvider>(new OidcAuthProvider(oidc));
     }
 
     /// <summary>

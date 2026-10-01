@@ -2,6 +2,7 @@ using Orkeon.Constants.Llm;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Attributes;
 using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Tools.Security;
@@ -23,11 +24,6 @@ public sealed class ImageGenerationRequest
     [JsonPropertyName("prompt")]
     [FieldSchema(Description = "Text description of the image to generate (max 4000 chars)", Example = "A cute baby sea otter floating on its back")]
     public string Prompt { get; set; } = "";
-
-    /// <summary>Gets or sets the OpenAI API key.</summary>
-    [JsonPropertyName("api_key")]
-    [FieldSchema(Description = "OpenAI API key (starts with sk-)", Example = "sk-...")]
-    public string ApiKey { get; set; } = "";
 
     /// <summary>Gets or sets the DALL-E model to use.</summary>
     [JsonPropertyName("model")]
@@ -108,6 +104,9 @@ public sealed class GeneratedImage
 /// <summary>
 /// Tool for generating images using the OpenAI DALL-E API.
 /// Supports DALL-E 2 and DALL-E 3 models with url and b64_json response formats.
+/// The OpenAI key is read from the <see cref="ISecretProvider"/> at execution time
+/// (<see cref="OpenAiApiKeySecretName"/>), never taken as an argument: a key the model
+/// supplies travels through the conversation, the tool-call log and the usage record.
 /// </summary>
 [ToolContract("image_generation",
     Name = "image_generation",
@@ -116,7 +115,17 @@ public sealed class GeneratedImage
 public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, ImageGenerationResponse>
 {
     private const string OpenAiImagesEndpoint = LlmProviderEndpoints.OpenAI + "/images/generations";
+
+    /// <summary>
+    /// The secret name the OpenAI API key is read from. Maps to the environment variable
+    /// <c>ORKEON_OPENAI_API_KEY</c> with the default chained secret provider.
+    /// </summary>
+    public const string OpenAiApiKeySecretName = "OPENAI_API_KEY";
+
+    private const string OpenAiApiKeyEnvironmentVariable = "ORKEON_" + OpenAiApiKeySecretName;
+
     private readonly IFileSystemService _fileSystem;
+    private readonly ISecretProvider _secretProvider;
 
     private static readonly HashSet<string> ValidSizes = new(StringComparer.OrdinalIgnoreCase)
     {
@@ -137,15 +146,18 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
     /// Initializes a new instance of <see cref="ImageGenerationTool"/> with virtual file system support.
     /// </summary>
     /// <param name="fileSystem">Virtual file system service for sandboxed write operations.</param>
+    /// <param name="secretProvider">Secret provider the OpenAI key is read from at execution time.</param>
     /// <param name="httpClient">Optional pre-configured <see cref="HttpClient"/>.</param>
     /// <param name="logger">Optional logger instance.</param>
     public ImageGenerationTool(
         IFileSystemService fileSystem,
+        ISecretProvider secretProvider,
         HttpClient? httpClient = null,
         ILogger<ImageGenerationTool>? logger = null)
         : base(httpClient, logger)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        _secretProvider = secretProvider ?? throw new ArgumentNullException(nameof(secretProvider));
     }
 
     /// <summary>
@@ -154,12 +166,14 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
     /// downloaded (defense against a poisoned/redirected image URL pointing at an internal address).
     /// </summary>
     /// <param name="fileSystem">Virtual file system service for sandboxed write operations.</param>
+    /// <param name="secretProvider">Secret provider the OpenAI key is read from at execution time.</param>
     /// <param name="urlValidator">URL validator for SSRF protection of the downloaded image URL.</param>
     /// <param name="headerSanitizer">Header sanitizer to prevent header injection.</param>
     /// <param name="httpClient">Optional pre-configured <see cref="HttpClient"/>.</param>
     /// <param name="logger">Optional logger instance.</param>
     public ImageGenerationTool(
         IFileSystemService fileSystem,
+        ISecretProvider secretProvider,
         IUrlValidator urlValidator,
         HttpHeaderSanitizer headerSanitizer,
         HttpClient? httpClient = null,
@@ -167,6 +181,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
         : base(urlValidator, headerSanitizer, httpClient, logger)
     {
         _fileSystem = fileSystem ?? throw new ArgumentNullException(nameof(fileSystem));
+        _secretProvider = secretProvider ?? throw new ArgumentNullException(nameof(secretProvider));
     }
 
     /// <inheritdoc />
@@ -178,12 +193,6 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
 
         if (request.Prompt.Length > 4000)
             return "Prompt cannot exceed 4000 characters.";
-
-        if (string.IsNullOrWhiteSpace(request.ApiKey))
-            return "API key is required.";
-
-        if (!request.ApiKey.StartsWith("sk-", StringComparison.Ordinal))
-            return "Invalid API key format. OpenAI API keys start with 'sk-'.";
 
         if (!ValidSizes.Contains(request.Size))
             return $"Invalid size '{request.Size}'. Allowed sizes: {string.Join(", ", ValidSizes)}.";
@@ -253,7 +262,11 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
             {
                 Content = new StringContent(jsonPayload, Encoding.UTF8, "application/json")
             };
-            httpRequest.Headers.Add("Authorization", $"Bearer {request.ApiKey}");
+            // Read at execution time only, never kept in a field (same rule as web_search).
+            using (var secret = await ReadApiKeyAsync(cancellationToken).ConfigureAwait(false))
+            {
+                httpRequest.Headers.Add("Authorization", $"Bearer {secret.Value}");
+            }
 
             using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
             var responseBody = await response.Content.ReadAsStringAsync(cancellationToken).ConfigureAwait(false);
@@ -291,6 +304,35 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
         }
     }
 
+    /// <summary>
+    /// Reads the OpenAI key from the secret provider. A missing or empty secret fails with a
+    /// message that names the secret and its environment variable, never a value.
+    /// </summary>
+    private async Task<SecretValue> ReadApiKeyAsync(CancellationToken cancellationToken)
+    {
+        SecretValue secret;
+        try
+        {
+            secret = await _secretProvider.GetSecretAsync(OpenAiApiKeySecretName, cancellationToken).ConfigureAwait(false);
+        }
+        catch (KeyNotFoundException)
+        {
+            throw new InvalidOperationException(MissingKeyMessage);
+        }
+
+        if (string.IsNullOrWhiteSpace(secret.Value))
+        {
+            secret.Dispose();
+            throw new InvalidOperationException(MissingKeyMessage);
+        }
+
+        return secret;
+    }
+
+    private static string MissingKeyMessage =>
+        $"The OpenAI API key is not configured: set the secret '{OpenAiApiKeySecretName}' " +
+        $"(environment variable {OpenAiApiKeyEnvironmentVariable}).";
+
     private static string ParseOpenAiError(string responseBody, int statusCode)
     {
         try
@@ -311,7 +353,7 @@ public partial class ImageGenerationTool : HttpToolBase<ImageGenerationRequest, 
                 "rate_limit_exceeded" =>
                     $"Rate limit exceeded. Please wait a moment and try again. {message}",
                 "invalid_api_key" =>
-                    $"Invalid API key. Please check your OpenAI API key and try again.",
+                    $"Invalid API key: OpenAI rejected the key read from the secret '{OpenAiApiKeySecretName}' ({OpenAiApiKeyEnvironmentVariable}).",
                 "billing_hard_limit_reached" =>
                     $"Billing quota exceeded. Please check your OpenAI account billing settings. {message}",
                 _ => $"OpenAI API error ({statusCode}): {message}"

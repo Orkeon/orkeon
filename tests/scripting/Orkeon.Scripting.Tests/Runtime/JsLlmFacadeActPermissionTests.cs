@@ -157,6 +157,78 @@ public sealed class JsLlmFacadeActPermissionTests
         Assert.Equal(1, tool.CallCount);
     }
 
+    // ── GAP-09: an allowed call goes through the host's invocation point ─────
+
+    [Fact]
+    public async Task An_allowed_call_goes_through_the_invocation_point_and_its_result_is_tagged()
+    {
+        using var engine = new Engine();
+        var tool = new RecordingTool("web_scrape");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("web_scrape", "{\"url\":\"https://example.test\"}") },
+            new LlmResponse { Content = "done", RawResponseBody = null },
+        });
+        var guardian = new ScriptedGuardian(_ => GuardResult.Allow());
+        var pipeline = new Orkeon.Application.Services.Security.ToolInvocationPipeline(guardian, new TaggingSanitizer());
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: null,
+            new JsLlmObservability { ToolInvocation = pipeline, AgentName = "scraper" });
+
+        await facade.ActAsync(engine, "read the page", null);
+
+        Assert.Equal(1, tool.CallCount);
+        var checkedCall = Assert.Single(guardian.Contexts);
+        Assert.Equal(GuardPhase.ToolExecution, checkedCall.Phase);
+        Assert.Equal("scraper", checkedCall.AgentRole);
+        var turn2 = provider.MessagesPerCall[1];
+        Assert.Contains(turn2, m => m.Content.Contains("[DATA]", StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task A_guardian_block_feeds_a_DENIED_result_back_and_the_tool_never_runs()
+    {
+        using var engine = new Engine();
+        var tool = new RecordingTool("file_read");
+        var provider = new MessageCapturingProvider(new[]
+        {
+            new LlmResponse { Content = "", RawResponseBody = ToolCallBody("file_read", "{\"path\":\"../../etc/passwd\"}") },
+            new LlmResponse { Content = "stopping", RawResponseBody = null },
+        });
+        var guardian = new ScriptedGuardian(_ => GuardResult.Block("Path traversal detected in tool argument 'path'", []));
+        var pipeline = new Orkeon.Application.Services.Security.ToolInvocationPipeline(guardian);
+
+        var facade = new JsLlmFacade(
+            engine, provider, CancellationToken.None, new IBaseTool[] { tool }, budget: null, permissionGate: null,
+            new JsLlmObservability { ToolInvocation = pipeline });
+
+        await facade.ActAsync(engine, "read", null);
+
+        Assert.Equal(0, tool.CallCount);
+        var turn2 = provider.MessagesPerCall[1];
+        Assert.Contains(turn2, m => m.Content.Contains("DENIED: Blocked by Guardian (ToolExecution): Path traversal", StringComparison.Ordinal));
+    }
+
+    private sealed class ScriptedGuardian : IGuardianPipeline
+    {
+        private readonly Func<GuardContext, GuardResult> _verdict;
+        public ScriptedGuardian(Func<GuardContext, GuardResult> verdict) => _verdict = verdict;
+        public List<GuardContext> Contexts { get; } = new();
+
+        public Task<GuardResult> ExecuteAsync(GuardContext context, CancellationToken ct = default)
+        {
+            Contexts.Add(context);
+            return Task.FromResult(_verdict(context));
+        }
+    }
+
+    private sealed class TaggingSanitizer : IToolResultSanitizer
+    {
+        public ToolResultSanitization Sanitize(string toolName, string result, string agentRole)
+            => new() { Text = $"[DATA]{result}[/DATA]" };
+    }
+
     // ── fakes ────────────────────────────────────────────────────────────────
 
     private sealed class ScriptedGate : IPermissionGate

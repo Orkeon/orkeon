@@ -47,7 +47,7 @@ step when this surface is promoted.
 
 | Requirement | Orkeon | Status |
 |---|---|---|
-| Client identity verification | mTLS (fail-closed: `RequireMutualTls` refuses to start without a trust anchor; CA chain or pinned thumbprints; 403 on failure) + `AllowedAuthSchemes` (401) | 🟢 For the mTLS deployment model. 🟡 `AllowedAuthSchemes` only checks that the `Authorization` header uses an allowed scheme with a non-empty credential — it never validates the token, so it is a filter, not an authentication. |
+| Client identity verification | mTLS (fail-closed: `RequireMutualTls` refuses to start without a trust anchor; CA chain or pinned thumbprints; 403 on failure) + `AllowedAuthSchemes` (401): a `Bearer` token validated by an `IAuthenticationProvider` (Azure AD, OIDC, or the host's), an `ApiKey` compared in constant time with the secrets named by `ApiKeySecretNames`; a scheme declared without a validator refuses to start | 🟢 Both credentials are validated, not just matched. The client side sends no `Authorization` header yet. |
 | Agent card access | `GET /.well-known/agent.json` | 🟢 Public by design: the security checks apply to the task endpoints only. |
 | `securitySchemes` declaration in the AgentCard | — | 🔴 Schemes are enforced but not advertised. |
 | Certificate revocation | Not checked | 🟡 **Decision (PUB-08 T3): prefer short-lived certificates over CRL/OCSP.** The A2A mTLS trust model targets private CAs, where CRL/OCSP endpoints rarely exist and OCSP adds an availability dependency; a 24–72 h certificate lifetime bounds the exposure window with no new runtime dependency, and rotation already fits the existing options (a new client instance picks up the new PFX). CRL support stays out of scope until a deployment proves the need. |
@@ -83,7 +83,9 @@ plus `AddOrkeonA2ATaskPersistence()` for durable task records, then resolves
 
 `A2A:Security` carries `ClientCertificatePath`/`ClientCertificatePassword` (the
 client's own certificate), `TrustedCertificateAuthorities`,
-`TrustedClientCertificateThumbprints`, `RequireMutualTls` and `AllowedAuthSchemes`.
+`TrustedClientCertificateThumbprints`, `RequireMutualTls`, `AllowedAuthSchemes` and
+`ApiKeySecretNames`, plus the bearer validators `A2A:Security:AzureAD` and
+`A2A:Security:Oidc` (registered by `AddOrkeonA2A(configuration)` when filled in).
 
 ## Where this leaves consumers
 

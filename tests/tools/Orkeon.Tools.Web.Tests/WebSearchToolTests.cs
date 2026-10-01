@@ -203,7 +203,7 @@ public sealed class WebSearchToolTests : IDisposable
     }
 
     [Fact]
-    public async Task ShouldIncludeApiKeyInRequestBody()
+    public async Task SendsTheApiKeyAsABearerHeader_NeverInTheBody()
     {
         _mockHandler.SetResponse(HttpStatusCode.OK, TavilySuccessResponse);
 
@@ -219,7 +219,8 @@ public sealed class WebSearchToolTests : IDisposable
 
         Assert.NotNull(_mockHandler.LastRequest);
         var body = await _mockHandler.LastRequest!.Content!.ReadAsStringAsync(TestContext.Current.CancellationToken);
-        Assert.Contains(ValidApiKey, body);
+        Assert.DoesNotContain(ValidApiKey, body, StringComparison.Ordinal);
+        Assert.Equal($"Bearer {ValidApiKey}", _mockHandler.LastRequest.Headers.GetValues("Authorization").Single());
     }
 
     [Fact]

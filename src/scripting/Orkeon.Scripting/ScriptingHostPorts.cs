@@ -21,4 +21,11 @@ public sealed record ScriptingHostPorts
     /// behaviour unless the script passes <c>onDelta</c>.
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
+    /// <summary>
+    /// The single tool-invocation point (GAP-09) every <c>ctx.llm.act</c> tool call goes
+    /// through once the permission gate allowed it: guardian, truncation, result sanitizer,
+    /// audit. Null = the tool is called directly.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 }

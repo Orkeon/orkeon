@@ -121,6 +121,7 @@ public static class ScriptingCliServiceCollectionExtensions
                 {
                     PermissionGate = sp.GetService<Orkeon.Application.Interfaces.Security.IPermissionGate>(),
                     DeltaSink = sp.GetService<Orkeon.Application.Interfaces.Ports.ILlmDeltaSink>(),
+                    ToolInvocation = sp.GetService<Orkeon.Application.Interfaces.Security.IToolInvocationPipeline>(),
                 });
         });
 

@@ -1124,8 +1124,6 @@ public static class StudioStringKeys
     /// <summary>"present only once the key {0} is remembered, above"</summary>
     public const string ToolOnlyWithStoredKey = "Studio.Settings.ToolOnlyWithStoredKey";
 
-    /// <summary>"the key is given at the call, by the agent"</summary>
-    public const string ToolKeyAtCall = "Studio.Settings.ToolKeyAtCall";
 
     /// <summary>"the connection parameters are given at the call, by the agent"</summary>
     public const string ToolParametersAtCall = "Studio.Settings.ToolParametersAtCall";
@@ -2297,7 +2295,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ToolFamilyMounts] = "Folders",
         [StudioStringKeys.ToolNeedsStoredKey] = "needs the key {0}, above",
         [StudioStringKeys.ToolOnlyWithStoredKey] = "present only once the key {0} is remembered, above",
-        [StudioStringKeys.ToolKeyAtCall] = "the key is given at the call, by the agent",
         [StudioStringKeys.ToolParametersAtCall] = "the connection parameters are given at the call, by the agent",
         [StudioStringKeys.ToolExpertSetting] = "expert setting below: {0}",
         [StudioStringKeys.ToolNeedsEmailAccount] =

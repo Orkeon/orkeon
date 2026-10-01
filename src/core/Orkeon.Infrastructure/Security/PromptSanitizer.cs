@@ -9,8 +9,9 @@ using Orkeon.Infrastructure.Constants.Security;
 namespace Orkeon.Infrastructure.Security;
 
 /// <summary>
-/// Sanitizes prompts and user inputs against prompt injection attacks.
-/// Supports multiple threat detection patterns and configurable policies.
+/// Detects prompt-injection patterns in prompts and tool results. Heuristic by nature (a
+/// determined attacker rephrases; an honest text can match): it never rewrites what it scans
+/// — the policy either lets the text through with its findings, or refuses it as a whole.
 /// </summary>
 public partial class PromptSanitizer : IPromptSanitizer
 {
@@ -18,31 +19,28 @@ public partial class PromptSanitizer : IPromptSanitizer
     private readonly ILogger<PromptSanitizer> _logger;
     private readonly List<(Regex Pattern, ThreatType Type, ThreatSeverity Severity, string Description)> _patterns;
 
-    // Special token patterns that should be neutralized
-    private static readonly (string Token, string Replacement)[] SpecialTokens =
+    // Chat-template tokens a text has no business carrying.
+    private static readonly string[] SpecialTokens =
     [
-        ("[INST]", "[_INST_]"),
-        ("[/INST]", "[/_INST_]"),
-        ("<<SYS>>", "<<_SYS_>>"),
-        ("<</SYS>>", "<</_SYS_>>"),
-        ("<|im_start|>", "<|_im_start_|>"),
-        ("<|im_end|>", "<|_im_end_|>"),
-        ("<|system|>", "<|_system_|>"),
-        ("<|user|>", "<|_user_|>"),
-        ("<|assistant|>", "<|_assistant_|>"),
+        "[INST]", "[/INST]", "<<SYS>>", "<</SYS>>", "<|im_start|>", "<|im_end|>",
+        "<|system|>", "<|user|>", "<|assistant|>",
     ];
 
     // Generated regex methods for prompt injection patterns
     [GeneratedRegex(@"ignore\s+(all\s+)?previous\s+instructions", RegexOptions.IgnoreCase)]
     private static partial Regex IgnorePreviousInstructionsPattern();
 
-    [GeneratedRegex(@"you\s+are\s+now\s+", RegexOptions.IgnoreCase)]
+    // "You are now going to / ready to / in charge of…" is how task descriptions talk; only an
+    // identity being handed over counts.
+    [GeneratedRegex(@"you\s+are\s+now\s+(?!(?:going|ready|able|done|finished|tasked|responsible|working|in\s+charge|expected|asked|required|allowed)\b)\w", RegexOptions.IgnoreCase)]
     private static partial Regex YouAreNowPattern();
 
     [GeneratedRegex(@"new\s+instructions\s*:", RegexOptions.IgnoreCase)]
     private static partial Regex NewInstructionsPattern();
 
-    [GeneratedRegex(@"forget\s+(all\s+|everything\s+)?(you(r|\s+(were|have)))?", RegexOptions.IgnoreCase)]
+    // The former pattern matched "forget" followed by anything, so "don't forget to cite your
+    // sources" read as an attack. Only forgetting the instructions themselves counts.
+    [GeneratedRegex(@"forget\s+(?:(?:all\s+)?(?:your|the|all|any)\s+(?:previous\s+|prior\s+|earlier\s+|above\s+|original\s+)?(?:instructions|rules|guidelines|directives|prompt)|(?:everything|all)\s+(?:above|before|(?:that\s+)?you\s+(?:were|have\s+been)\s+told))", RegexOptions.IgnoreCase)]
     private static partial Regex ForgetPattern();
 
     [GeneratedRegex(@"override\s+(your\s+)?(system|instructions|rules|guidelines)", RegexOptions.IgnoreCase)]
@@ -129,17 +127,13 @@ public partial class PromptSanitizer : IPromptSanitizer
             return SanitizationResult.Blocked(threats);
         }
 
-        if (_options.Policy is SanitizationPolicy.Block or SanitizationPolicy.Strip)
-        {
-            var stripped = NeutralizeSpecialTokens(StripThreats(input, threats));
-            return SanitizationResult.Stripped(stripped, threats);
-        }
-
-        if (_options.Policy == SanitizationPolicy.Warn)
-            return SanitizationResult.WithWarnings(input, threats);
-
-        return SanitizationResult.Clean(input);
+        // Warn, and Block below High: the text passes unchanged, with its findings.
+        return SanitizationResult.WithWarnings(input, threats);
     }
+
+    /// <inheritdoc />
+    public IReadOnlyList<ThreatDetection> Detect(string input)
+        => string.IsNullOrEmpty(input) ? [] : DetectThreats(input);
 
     /// <inheritdoc />
     public string WrapUserData(string data, string sectionName)
@@ -166,7 +160,7 @@ public partial class PromptSanitizer : IPromptSanitizer
         }
 
         // Check for special tokens
-        foreach (var (token, _) in SpecialTokens)
+        foreach (var token in SpecialTokens)
         {
             var idx = input.IndexOf(token, StringComparison.OrdinalIgnoreCase);
             while (idx >= 0)
@@ -208,44 +202,18 @@ public partial class PromptSanitizer : IPromptSanitizer
             var matches = pattern.Matches(input);
             foreach (Match match in matches)
             {
+                // Medium: asking for the system prompt is reported, not blocked — the phrases
+                // ("output the above", "repeat everything") are also how honest tasks talk.
                 threats.Add(new ThreatDetection(
                     ThreatType.DataExfiltration,
                     description,
                     match.Value,
                     match.Index,
-                    ThreatSeverity.High));
+                    ThreatSeverity.Medium));
             }
         }
 
         return threats;
-    }
-
-    private static string StripThreats(string input, List<ThreatDetection> threats)
-    {
-        var result = input;
-
-        // Sort by position descending so removal doesn't shift indices
-        foreach (var threat in threats.OrderByDescending(t => t.Position))
-        {
-            if (threat.Position >= 0 && threat.Position + threat.MatchedText.Length <= result.Length)
-            {
-                var before = result[..threat.Position];
-                var after = result[(threat.Position + threat.MatchedText.Length)..];
-                result = before + "[REMOVED]" + after;
-            }
-        }
-
-        return result;
-    }
-
-    private static string NeutralizeSpecialTokens(string input)
-    {
-        var result = input;
-        foreach (var (token, replacement) in SpecialTokens)
-        {
-            result = result.Replace(token, replacement, StringComparison.OrdinalIgnoreCase);
-        }
-        return result;
     }
 
     private List<(Regex Pattern, ThreatType Type, ThreatSeverity Severity, string Description)> BuildPatterns()

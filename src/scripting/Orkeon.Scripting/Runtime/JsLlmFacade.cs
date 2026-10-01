@@ -33,6 +33,7 @@ public sealed partial class JsLlmFacade
     private readonly IReadOnlyList<IBaseTool> _tools;
     private readonly Orkeon.Domain.Autonomous.AgentExecutionBudget? _budget;
     private readonly Orkeon.Application.Interfaces.Security.IPermissionGate? _permissionGate;
+    private readonly Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? _toolInvocation;
     private readonly Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? _deltaSink;
     private readonly Microsoft.Extensions.Logging.ILogger? _logger;
     private readonly string _crewName;
@@ -62,6 +63,7 @@ public sealed partial class JsLlmFacade
         _logger = observability?.Logger;
         _crewName = observability?.CrewName ?? string.Empty;
         _agentName = observability?.AgentName ?? string.Empty;
+        _toolInvocation = observability?.ToolInvocation;
         embed = EmbedAsync;
     }
 
@@ -837,6 +839,9 @@ public sealed partial class JsLlmFacade
             return $"ERROR: tool '{name}' is not available to this agent.";
         try
         {
+            if (_toolInvocation is not null)
+                return await InvokeThroughPipelineAsync(_toolInvocation, tool, arguments).ConfigureAwait(false);
+
             var resp = await tool.CallAsync(new ProtocolToolCallRequest(name, arguments), _ct).ConfigureAwait(false);
             if (!resp.Success)
                 return $"ERROR: {resp.Error ?? "tool failed"}";
@@ -846,6 +851,25 @@ public sealed partial class JsLlmFacade
         {
             return $"ERROR: {ex.Message}";
         }
+    }
+
+    /// <summary>
+    /// The guarded path (GAP-09): the call goes through the host's invocation point, so the
+    /// guardian screens its arguments and the result reaches the model tagged as data. A
+    /// guardian block reads <c>DENIED: …</c>, like a permission-gate refusal; a tool failure
+    /// keeps the <c>ERROR: …</c> shape.
+    /// </summary>
+    private async Task<string> InvokeThroughPipelineAsync(
+        Orkeon.Application.Interfaces.Security.IToolInvocationPipeline pipeline, IBaseTool tool, Dictionary<string, object?> arguments)
+    {
+        var caller = new Orkeon.Application.Interfaces.Security.ToolInvocationCaller(_agentName, _agentName);
+        var outcome = await pipeline.InvokeAsync(
+            new Orkeon.Application.Interfaces.Security.ToolInvocation(tool, arguments, caller), _ct).ConfigureAwait(false);
+        if (outcome.Blocked)
+            return $"DENIED: {outcome.ConversationText["Error: ".Length..]}";
+        if (!outcome.Success)
+            return $"ERROR: {outcome.Response?.Error ?? "tool failed"}";
+        return outcome.ConversationText;
     }
 
     /// <summary>

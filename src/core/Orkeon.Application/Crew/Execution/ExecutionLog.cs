@@ -97,6 +97,10 @@ internal static partial class ExecutionLog
     [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the LLM call failed on iteration {Iteration} of task {TaskId}; the task fails with the provider's reason — {Reason}")]
     internal static partial void LogLlmCallFailed(ILogger logger, object agentRole, int iteration, object taskId, string reason);
 
+    // GAP-09 — the guardian's input phase refused the composed prompt; no provider was called.
+    [LoggerMessage(Level = LogLevel.Error, Message = "Agent [{AgentRole}]: the Guardian blocked the input of task {TaskId} before any LLM call; the task fails — {Reason}")]
+    internal static partial void LogInputBlocked(ILogger logger, object agentRole, object taskId, string reason);
+
     [LoggerMessage(Level = LogLevel.Warning, Message = "ChatClient iteration {Iteration} for [{AgentRole}]: the answer is shaped like a tool call but none could be executed from it; asking the model to call the tool instead of describing the call")]
     internal static partial void LogToolCallShapedAnswerRetrying(ILogger logger, object agentRole, int iteration);
 

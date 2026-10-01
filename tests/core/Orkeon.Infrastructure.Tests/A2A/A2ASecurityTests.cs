@@ -2,8 +2,10 @@ using System.Net;
 using System.Net.Security;
 using System.Security.Cryptography;
 using System.Security.Cryptography.X509Certificates;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.AgentCommunication;
 using Orkeon.Infrastructure.Persistence.Agent;
@@ -14,9 +16,6 @@ namespace Orkeon.Infrastructure.Tests.A2A;
 
 public class A2ASecurityTests
 {
-    private static readonly string[] s_bearerScheme = ["Bearer"];
-    private static readonly string[] s_apiKeyScheme = ["ApiKey"];
-
     /// <summary>Asks the OS for a free ephemeral loopback port.</summary>
     private static int GetFreePort()
     {
@@ -217,41 +216,199 @@ public class A2ASecurityTests
 
     // --- R3.4: server auth scheme enforcement ---------------------------------------------
 
+    // --- GAP-09: a declared scheme is a validated credential, never just a header shape ------
+
+    private static A2ACredentialValidator Validator(
+        A2ASecurityOptions security,
+        IAuthenticationProvider[]? bearer = null,
+        ISecretProvider? secrets = null)
+        => new(security, bearer ?? [], secrets);
+
     [Fact]
-    public void IsAuthSchemeAllowed_ShouldReturnTrue_WhenNoSchemesConfigured()
+    public async Task Validator_AcceptsAnyRequest_WhenNoSchemeIsDeclared()
     {
-        Assert.True(A2AServer.IsAuthSchemeAllowed(null, []));
+        var validator = Validator(new A2ASecurityOptions());
+
+        var result = await validator.ValidateAsync(null, TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsValid);
+    }
+
+    [Theory]
+    [InlineData(null)]
+    [InlineData("")]
+    [InlineData("Bearer")]
+    [InlineData("Bearer   ")]
+    [InlineData("Basic dXNlcjpwYXNz")]
+    public async Task Validator_RejectsAMissingMalformedOrUndeclaredCredential(string? header)
+    {
+        var validator = Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } },
+            bearer: [new StubAuthenticationProvider("good-token")]);
+
+        var result = await validator.ValidateAsync(header, TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsValid);
     }
 
     [Fact]
-    public void IsAuthSchemeAllowed_ShouldReject_WhenHeaderMissing()
+    public async Task Validator_RejectsABearerTokenNoProviderValidates()
     {
-        Assert.False(A2AServer.IsAuthSchemeAllowed(null, s_bearerScheme));
-        Assert.False(A2AServer.IsAuthSchemeAllowed("", s_bearerScheme));
+        var provider = new StubAuthenticationProvider("good-token");
+        var validator = Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } }, bearer: [provider]);
+
+        var result = await validator.ValidateAsync("Bearer abc.def.ghi", TestContext.Current.CancellationToken);
+
+        Assert.False(result.IsValid);
+        Assert.Equal(["abc.def.ghi"], provider.SeenTokens);
     }
 
     [Fact]
-    public void IsAuthSchemeAllowed_ShouldAccept_MatchingBearerScheme()
+    public async Task Validator_AcceptsABearerToken_WhenOneProviderValidatesIt()
     {
-        Assert.True(A2AServer.IsAuthSchemeAllowed("Bearer abc.def.ghi", s_bearerScheme));
-        // Case-insensitive scheme match
-        Assert.True(A2AServer.IsAuthSchemeAllowed("bearer abc.def.ghi", s_bearerScheme));
+        var validator = Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } },
+            bearer: [new StubAuthenticationProvider("other"), new StubAuthenticationProvider("good-token")]);
+
+        var result = await validator.ValidateAsync("bearer good-token", TestContext.Current.CancellationToken);
+
+        Assert.True(result.IsValid);
+        Assert.Equal("Bearer", result.Scheme);
+        Assert.Equal("peer", result.Principal?.FindFirst("sub")?.Value);
     }
 
     [Fact]
-    public void IsAuthSchemeAllowed_ShouldReject_DisallowedScheme()
+    public async Task Validator_AcceptsOnlyAnApiKeyReadFromTheSecretProvider()
     {
-        Assert.False(A2AServer.IsAuthSchemeAllowed("Bearer abc", s_apiKeyScheme));
+        var secrets = new MockSecretProvider();
+        secrets.AddSecret("A2A_PEER_KEY", "k-123456");
+        var validator = Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" }, ApiKeySecretNames = { "A2A_PEER_KEY" } },
+            secrets: secrets);
+
+        Assert.True((await validator.ValidateAsync("ApiKey k-123456", TestContext.Current.CancellationToken)).IsValid);
+        Assert.False((await validator.ValidateAsync("ApiKey k-1234567", TestContext.Current.CancellationToken)).IsValid);
+        Assert.False((await validator.ValidateAsync("ApiKey k-12345", TestContext.Current.CancellationToken)).IsValid);
+        Assert.False((await validator.ValidateAsync("Bearer k-123456", TestContext.Current.CancellationToken)).IsValid);
     }
 
     [Fact]
-    public void IsAuthSchemeAllowed_ShouldReject_WhenCredentialMissing()
+    public async Task Validator_IsReady_OnlyWhenEveryDeclaredSchemeHasAValidator()
     {
-        Assert.False(A2AServer.IsAuthSchemeAllowed("Bearer", s_bearerScheme));
-        Assert.False(A2AServer.IsAuthSchemeAllowed("Bearer   ", s_bearerScheme));
+        var ct = TestContext.Current.CancellationToken;
+        var secrets = new MockSecretProvider();
+        secrets.AddSecret("A2A_PEER_KEY", "k-123456");
+
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } }).EnsureReadyAsync(ct));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" } }, secrets: secrets).EnsureReadyAsync(ct));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" }, ApiKeySecretNames = { "MISSING" } }, secrets: secrets).EnsureReadyAsync(ct));
+        await Assert.ThrowsAsync<InvalidOperationException>(() => Validator(
+            new A2ASecurityOptions { AllowedAuthSchemes = { "Basic" } }).EnsureReadyAsync(ct));
+
+        await Validator(new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } },
+            bearer: [new StubAuthenticationProvider("t")]).EnsureReadyAsync(ct);
+        await Validator(new A2ASecurityOptions { AllowedAuthSchemes = { "ApiKey" }, ApiKeySecretNames = { "A2A_PEER_KEY" } },
+            secrets: secrets).EnsureReadyAsync(ct);
     }
 
-    // --- R3.4: mTLS server rejection ------------------------------------------------------
+    [Fact]
+    public void AddOrkeonA2A_RegistersABearerValidator_PerFilledSection()
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["A2A:Security:AllowedAuthSchemes:0"] = "Bearer",
+                ["A2A:Security:Oidc:Authority"] = "https://id.example.test/realms/orkeon",
+                ["A2A:Security:Oidc:ClientId"] = "orkeon",
+                ["A2A:Security:AzureAD:TenantId"] = "contoso",
+                ["A2A:Security:AzureAD:ClientId"] = "a2a-api",
+                ["A2A:Security:AzureAD:ValidAudiences:0"] = "api://a2a",
+            })
+            .Build();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        services.AddOrkeonA2A(configuration);
+
+        var validators = services.Where(d => d.ServiceType == typeof(IAuthenticationProvider))
+            .Select(d => d.ImplementationInstance).ToList();
+        Assert.Contains(validators, v => v is Orkeon.Infrastructure.Security.Auth.OidcAuthProvider);
+        Assert.Contains(validators, v => v is Orkeon.Infrastructure.Security.Auth.AzureAdAuthProvider);
+    }
+
+    [Fact]
+    public void AddOrkeonA2A_RegistersNoBearerValidator_WithoutAFilledSection()
+    {
+        var configuration = new Microsoft.Extensions.Configuration.ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?> { ["A2A:Security:Oidc:Authority"] = "https://id.example.test" })
+            .Build();
+        var services = new Microsoft.Extensions.DependencyInjection.ServiceCollection();
+
+        services.AddOrkeonA2A(configuration);
+
+        Assert.DoesNotContain(services, d => d.ServiceType == typeof(IAuthenticationProvider));
+    }
+
+    [Fact]
+    public async Task Server_StartAsync_ShouldThrow_WhenASchemeIsDeclaredWithoutAValidator()
+    {
+        var options = new A2AOptions { Port = GetFreePort() };
+        var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
+        await using var server = new A2AServer(options, new StubA2ATaskRouter(), AgentScopes(), logger: null, security: security);
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(
+            () => server.StartAsync(TestContext.Current.CancellationToken));
+
+        Assert.Contains("Bearer", ex.Message, StringComparison.Ordinal);
+        Assert.False(server.IsRunning);
+    }
+
+    [Theory]
+    [InlineData("Bearer abc.def.ghi", HttpStatusCode.Unauthorized)]
+    [InlineData("Bearer good-token", HttpStatusCode.OK)]
+    [InlineData("ApiKey not-the-key", HttpStatusCode.Unauthorized)]
+    [InlineData("ApiKey k-123456", HttpStatusCode.OK)]
+    public async Task Server_SubmitsATask_OnlyWithAValidatedCredential(string authorization, HttpStatusCode expected)
+    {
+        var ct = TestContext.Current.CancellationToken;
+        var port = GetFreePort();
+        var router = new StubA2ATaskRouter();
+        var secrets = new MockSecretProvider();
+        secrets.AddSecret("A2A_PEER_KEY", "k-123456");
+        var security = new A2ASecurityOptions
+        {
+            AllowedAuthSchemes = { "Bearer", "ApiKey" },
+            ApiKeySecretNames = { "A2A_PEER_KEY" },
+        };
+        await using var server = new A2AServer(
+            new A2AOptions { Port = port }, router, AgentScopes(), logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")], secretProvider: secrets);
+
+        try
+        {
+            await server.StartAsync(ct);
+            using var client = new HttpClient { Timeout = TimeSpan.FromSeconds(5) };
+            using var request = new HttpRequestMessage(HttpMethod.Post, $"http://localhost:{port}/a2a/tasks/send")
+            {
+                Content = new StringContent(
+                    System.Text.Json.JsonSerializer.Serialize(new A2ATaskRequest { Id = "t-1", SkillId = "researcher", Input = "hi" }),
+                    System.Text.Encoding.UTF8, "application/json"),
+            };
+            request.Headers.TryAddWithoutValidation("Authorization", authorization);
+
+            using var response = await client.SendAsync(request, ct);
+
+            Assert.Equal(expected, response.StatusCode);
+            Assert.Equal(expected == HttpStatusCode.OK, router.LastRequest is not null);
+        }
+        finally
+        {
+            await server.StopAsync(ct);
+        }
+    }
 
     [Fact]
     public async Task Server_ShouldReject_WhenMutualTlsRequiredButNoClientCertificate()
@@ -295,7 +452,8 @@ public class A2ASecurityTests
         var router = new StubA2ATaskRouter();
         var scopes = AgentScopes();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, scopes, logger: null, security: security);
+        await using var server = new A2AServer(options, router, scopes, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")]);
 
         try
         {
@@ -323,7 +481,8 @@ public class A2ASecurityTests
         var router = new StubA2ATaskRouter();
         var scopes = AgentScopes();
         var security = new A2ASecurityOptions { AllowedAuthSchemes = { "Bearer" } };
-        await using var server = new A2AServer(options, router, scopes, logger: null, security: security);
+        await using var server = new A2AServer(options, router, scopes, logger: null, security: security,
+            authenticationProviders: [new StubAuthenticationProvider("good-token")]);
 
         try
         {

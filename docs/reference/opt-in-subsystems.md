@@ -74,9 +74,9 @@ services.AddOrkeonA2A(options => options.EnableServer = true);
 > telemetry and vector search (same overload), the parameterless checkpointing store
 > (`AddOrkeonCheckpointing()`; the SQLite/Postgres variants stay explicit), Evaluation,
 > the Flows engine and its visualization ([Flows](../orchestration/flows.md)), Training, Consensus, CostTracking, YAML,
-> Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers
-> and the Auth options are registered too, but **no execution path invokes them** — a
-> host that wants them calls them itself (see [Security](../architecture/security.md)).
+> Encryption and CodeSandbox. The Guardian pipeline, the prompt/tool-result sanitizers and
+> the tool-invocation point are registered too, and **every agent turn runs through them**
+> (`Orkeon:Guardian:Enabled` is the switch — see [Security](../architecture/security.md)).
 > Their configuration sections are mapped in the [Configuration reference](./configuration.md).
 >
 > **Tool families** are registered by their own extensions, which the runner host and the
@@ -99,8 +99,7 @@ the full infrastructure.
 | `AddOrkeonYaml()` | `CrewFactoryOptions` (plain options, lenient tool resolution), `ICrewDefinitionLoader` → `YamlCrewDefinitionLoader`, `ICrewFactory` → `CrewFactory` (scoped), `YamlCrewExporter` | the runners' crew loading; `orkeon forge` | you load or export YAML crews without `AddOrkeonInfrastructure()`. Strict tool resolution is `Orkeon:CrewFactory:StrictTools`, which `RunnerHost` reads (default `true` there) |
 | `AddOrkeonFlows()` | `IFlowStepExecutor`, `IFlowEngine` → `FlowEngine`, `YamlFlowDefinitionLoader` | nothing shipped — the Flows system is a C# API only | you run flows from your own code — see [Flows](../orchestration/flows.md) |
 | `AddOrkeonFlowVisualization()` | `FlowExecutionTracker` (`FlowGraphSerializer` is static) | nothing shipped — the engine does not feed the tracker | you display flow progress — see [Flows](../orchestration/flows.md) |
-| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`OutputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` with the four guards wired to their phases | nothing in the execution path | you want the guards: resolve `GuardianPipeline` and run it around your own calls — see [Security](../architecture/security.md) |
-| `AddOrkeonAuth()` | `AuthenticationGuard`, `AzureAdOptions` (`Orkeon:Auth:AzureAD`), `OidcOptions` (`Orkeon:Auth:OIDC`) | nothing — no `IAuthenticationProvider` is registered and the guard is not in the Guardian pipeline | you authenticate callers: register an `IAuthenticationProvider` and invoke the guard yourself |
+| `AddOrkeonGuardian()` | `GuardianOptions` (`Orkeon:Guardian`), `GuardianPolicyEngine`, `InputGuard`/`ToolGuard`/`DelegationGuard`, `GuardianPipeline` (also as `IGuardianPipeline`) with the three guards wired to their phases — none when `Enabled = false` | the execution orchestrator (input phase), the streaming service, and `IToolInvocationPipeline` (tool and delegation phases) — registered by `AddOrkeonApplication()` | you compose a container without `AddOrkeonInfrastructure()` and still want the guards — see [Security](../architecture/security.md) |
 | `AddOrkeonTraining()` | `IFeedbackCollector` → `AutomaticFeedbackCollector`, `IAgentPerformanceTracker`, `ITrainingOrchestrator` | nothing shipped | you run a training/feedback loop from your own code (resolve `ITrainingOrchestrator`) |
 
 The memory migration service is the one data-moving extension that is *not* registered by
@@ -213,11 +212,10 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   (`StructuredLogAuditSink` + `AuditLogger`); when the host has called
   `AddOrkeonInfrastructure()`, the core's audit chain (structured +
   in-memory sinks, `Security:Audit` options) is used.
-- **Known limits**: the depth of the report depends on the events actually
-  audited by the host — and the only framework component that writes to `IAuditLogger`
-  is the Guardian pipeline, which nothing in the execution path runs, so a host that
-  wants a meaningful report runs the Guardian pipeline (or writes audit events) itself;
-  no automated control is executed.
+- **Known limits**: the report reads the trail the agent turns write — a `ToolExecution`
+  event per tool call and a `SecurityEvent` per Guardian block or warning and per
+  injection pattern found in a tool result; LLM calls, file accesses and HTTP requests are
+  not audited events; no automated control is executed.
 
 ## DLP — `AddOrkeonDlp()`
 

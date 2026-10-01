@@ -51,7 +51,7 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
 
     /// <inheritdoc />
     [SuppressMessage("Reliability", "CA2000:Dispose objects before losing scope",
-        Justification = "Request content ownership is transferred to HttpClient.PostAsync.")]
+        Justification = "The request message and its StringContent hold no unmanaged resource; they are left to the GC, as the PostAsync call this replaced did, so a recording handler can still read them.")]
     protected override Task<WebSearchResponse> ExecuteTypedAsync(
         WebSearchRequest request, CancellationToken cancellationToken)
     {
@@ -69,18 +69,23 @@ public partial class WebSearchTool : HttpToolBase<WebSearchRequest, WebSearchRes
 
             var requestBody = new Dictionary<string, object>
             {
-                ["api_key"] = apiKey,
                 ["query"] = request.Query,
                 ["max_results"] = request.MaxResults,
                 ["search_depth"] = request.SearchDepth
             };
 
-            var jsonContent = new StringContent(
-                JsonSerializer.Serialize(requestBody),
-                Encoding.UTF8,
-                "application/json");
+            // The key travels in the Authorization header Tavily accepts, not in the body:
+            // a request body is what HTTP exchange logs and proxies keep.
+            var httpRequest = new HttpRequestMessage(HttpMethod.Post, new Uri(TavilyApiEndpoint))
+            {
+                Content = new StringContent(
+                    JsonSerializer.Serialize(requestBody),
+                    Encoding.UTF8,
+                    "application/json")
+            };
+            httpRequest.Headers.Add("Authorization", $"Bearer {apiKey}");
 
-            var response = await _httpClient.PostAsync(new Uri(TavilyApiEndpoint), jsonContent, cancellationToken).ConfigureAwait(false);
+            using var response = await _httpClient.SendAsync(httpRequest, cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
             {

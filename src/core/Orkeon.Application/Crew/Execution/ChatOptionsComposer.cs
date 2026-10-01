@@ -2,6 +2,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Crew.Grammar;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Task;
 using Orkeon.Domain.Task.ValueObjects;
 
@@ -19,16 +20,19 @@ internal sealed class ChatOptionsComposer
     private readonly ILogger _logger;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly Domain.FileSystem.IFileSystemService _fileSystem;
+    private readonly IToolInvocationPipeline _toolInvocation;
 
     internal ChatOptionsComposer(
         ILogger logger,
         IEnumerable<Domain.Tools.IBaseTool>? registeredTools,
-        Domain.FileSystem.IFileSystemService fileSystem)
+        Domain.FileSystem.IFileSystemService fileSystem,
+        IToolInvocationPipeline toolInvocation)
     {
         _logger = logger;
         _registeredTools = registeredTools;
         ArgumentNullException.ThrowIfNull(fileSystem);
         _fileSystem = fileSystem;
+        _toolInvocation = toolInvocation;
     }
 
     /// <summary>
@@ -74,13 +78,16 @@ internal sealed class ChatOptionsComposer
         {
             options.Tools = availableTools
                 .Select(t => (AITool)AIFunctionFactory.Create(
+                    // Only invoked when the host wraps the chat client with automatic function
+                    // invocation; the agent loop itself dispatches through ChatToolDispatcher.
+                    // Either way the call goes through the invocation pipeline (GAP-09).
                     method: async (AIFunctionArguments args, CancellationToken ct) =>
                     {
                         var parameters = args
                             .ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-                        var request = new Domain.Tools.Protocol.ToolCallRequest(t.Name, parameters);
-                        var response = await t.CallAsync(request, ct).ConfigureAwait(false);
-                        return response.Success ? response.Result?.ToString() ?? string.Empty : $"Error: {response.Error}";
+                        var outcome = await _toolInvocation.InvokeAsync(
+                            new ToolInvocation(t, parameters, ChatToolDispatcher.CallerOf(agent, task)), ct).ConfigureAwait(false);
+                        return outcome.ConversationText;
                     },
                     name: t.Name,
                     description: t.Schema.Description))

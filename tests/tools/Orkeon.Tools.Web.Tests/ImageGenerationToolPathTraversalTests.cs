@@ -19,7 +19,6 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
 {
     private readonly MockHttpMessageHandler _mockHandler;
     private readonly HttpClient _httpClient;
-    private const string ValidApiKey = "sk-test-key-1234567890";
 
     private const string SuccessResponseUrl = """
         {
@@ -114,14 +113,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
     {
         // Arrange — kept verbatim to preserve the original assertion intent.
         var mockFs = BuildDenyingFs("Path is outside the allowed workspace directory");
-        using var tool = new ImageGenerationTool(mockFs, _httpClient);
+        using var tool = new ImageGenerationTool(mockFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["save_to_path"] = maliciousPath
             }
         );
@@ -142,14 +140,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
     {
         // Arrange — kept verbatim to preserve the original assertion intent.
         var mockFs = BuildDenyingFs("Path is outside the allowed workspace directory");
-        using var tool = new ImageGenerationTool(mockFs, _httpClient);
+        using var tool = new ImageGenerationTool(mockFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["save_to_path"] = forbiddenPath
             }
         );
@@ -189,14 +186,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
             };
         });
 
-        using var tool = new ImageGenerationTool(mockFs, _httpClient);
+        using var tool = new ImageGenerationTool(mockFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["save_to_path"] = validPath
             }
         );
@@ -215,14 +211,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
     {
         // Arrange — kept to document the original expectation.
         var mockFs = BuildDenyingFs("Path rejected by policy");
-        using var tool = new ImageGenerationTool(mockFs, _httpClient);
+        using var tool = new ImageGenerationTool(mockFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["save_to_path"] = "/tmp/images/test.png"
             }
         );
@@ -261,14 +256,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
             };
         });
 
-        using var tool = new ImageGenerationTool(mockFs, _httpClient);
+        using var tool = new ImageGenerationTool(mockFs, MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey,
                 ["model"] = "dall-e-2",
                 ["number_of_images"] = 2,
                 ["save_to_path"] = savePath
@@ -291,14 +285,13 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
         // Arrange: no save path is given, so the VFS is never touched; a permissive
         // (allow-all) fs double is sufficient to satisfy the now-mandatory ctor.
         _mockHandler.SetResponse(HttpStatusCode.OK, SuccessResponseUrl);
-        using var tool = new ImageGenerationTool(BuildAllowAllFs(), _httpClient);
+        using var tool = new ImageGenerationTool(BuildAllowAllFs(), MockSecretProvider.WithOpenAiKey(), _httpClient);
 
         var request = new ToolCallRequest(
             ToolName: "image_generation",
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "A cute baby sea otter",
-                ["api_key"] = ValidApiKey
             }
         );
 
@@ -314,7 +307,7 @@ public sealed class ImageGenerationToolPathTraversalTests : IDisposable
     {
         // Act & Assert: passing null IFileSystemService to the VFS-aware constructor must throw.
         Assert.Throws<ArgumentNullException>(() =>
-            new ImageGenerationTool(fileSystem: null!, _httpClient));
+            new ImageGenerationTool(fileSystem: null!, MockSecretProvider.WithOpenAiKey(), _httpClient));
     }
 
     public void Dispose()

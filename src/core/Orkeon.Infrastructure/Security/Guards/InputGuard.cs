@@ -5,8 +5,10 @@ using Orkeon.Domain.Security;
 namespace Orkeon.Infrastructure.Security.Guards;
 
 /// <summary>
-/// Guardian that checks input content for prompt injection and other threats
-/// by delegating to the IPromptSanitizer.
+/// Guardian of the <see cref="GuardPhase.Input"/> phase: screens the composed user prompt of an
+/// agent turn (task, previous outputs, retrieved knowledge) with the <see cref="IPromptSanitizer"/>
+/// under <c>Security:Prompt:Policy</c>. Default <c>Block</c>: a High or Critical pattern blocks
+/// the turn, a lower one is a warning. The prompt is never rewritten.
 /// </summary>
 public partial class InputGuard : IGuardian
 {
@@ -32,8 +34,8 @@ public partial class InputGuard : IGuardian
             return Task.FromResult(GuardResult.Allow());
 
         var sanitizationContext = new SanitizationContext(
-            Source: "GuardianPipeline",
-            AgentRole: context.AgentId,
+            Source: "agent-input",
+            AgentRole: string.IsNullOrEmpty(context.AgentRole) ? context.AgentId : context.AgentRole,
             IsTrusted: false);
 
         var result = _sanitizer.Sanitize(context.Content, sanitizationContext);
@@ -43,13 +45,14 @@ public partial class InputGuard : IGuardian
             var violations = result.Threats.Select(t => new GuardViolation(
                 nameof(InputGuard),
                 GuardPhase.Input,
-                $"Threat detected: {t.Type} - pattern '{t.Pattern}' at position {t.Position}",
+                $"Threat detected: {t.Type} - {t.Pattern} at position {t.Position}",
                 MapSeverity(t.Severity),
                 DateTime.UtcNow)).ToList();
 
             LogInputBlockedBySanitizerThreats(result.Threats.Count);
             return Task.FromResult(GuardResult.Block(
-                $"Input blocked: {result.Threats.Count} threat(s) detected", violations));
+                $"prompt injection suspected — {result.Threats.Count} pattern(s) detected ({Describe(result.Threats)}); " +
+                "set Security:Prompt:Policy to Warn to let such input through with a warning", violations));
         }
 
         if (result.Threats.Count > 0)
@@ -57,17 +60,20 @@ public partial class InputGuard : IGuardian
             var violations = result.Threats.Select(t => new GuardViolation(
                 nameof(InputGuard),
                 GuardPhase.Input,
-                $"Threat detected: {t.Type} - pattern '{t.Pattern}' at position {t.Position}",
+                $"Threat detected: {t.Type} - {t.Pattern} at position {t.Position}",
                 MapSeverity(t.Severity),
                 DateTime.UtcNow)).ToList();
 
             LogInputWarningsThreatsDetectedBut(result.Threats.Count);
             return Task.FromResult(GuardResult.Warn(
-                $"{result.Threats.Count} threat(s) detected in input", violations));
+                $"{result.Threats.Count} pattern(s) detected in input ({Describe(result.Threats)})", violations));
         }
 
         return Task.FromResult(GuardResult.Allow());
     }
+
+    private static string Describe(IReadOnlyList<ThreatDetection> threats)
+        => string.Join(", ", threats.Select(t => t.Pattern).Distinct(StringComparer.Ordinal));
 
     private static GuardThreatSeverity MapSeverity(ThreatSeverity severity) => severity switch
     {

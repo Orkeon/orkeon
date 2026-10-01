@@ -113,9 +113,9 @@ but a search fails at call time with an actionable message until the host calls
 
 `AddOrkeonWebTools()` registers the first five; each of the others has its own opt-in
 extension because it needs a key or an extra backing service. The keys do not travel the
-same way: the Tavily key is a secret resolved at call time, the Brave and Slack tokens are
-handed to their extension by the host, and `image_generation` takes the OpenAI key as a call
-argument. Every tool that fetches a URL goes through the SSRF guard (fail-closed even
+same way: the Tavily and OpenAI keys are secrets resolved at call time, the Brave and Slack
+tokens are handed to their extension by the host. No tool takes a secret as a call argument —
+what an argument carries passes through the conversation, the tool-call log and the usage record. Every tool that fetches a URL goes through the SSRF guard (fail-closed even
 without a registered `IUrlValidator`) and a named client that refuses redirects.
 
 | Tool | Class | Registration | Use case |
@@ -124,7 +124,7 @@ without a registered `IUrlValidator`) and a named client that refuses redirects.
 | `web_scrape` | `WebScrapeTool` | `AddOrkeonWebTools()` | Scrape a web page with optional CSS filtering; `cached=true` chunks and embeds the page into the RAG cache |
 | `scrape_element` | `ScrapeElementTool` | `AddOrkeonWebTools()` | Targeted scraping of DOM elements via CSS selectors (text, HTML, attributes) |
 | `github` | `GitHubTool` | `AddOrkeonWebTools()` — registered **without a token**, so its calls are anonymous; a host that needs `create_issue` registers `new GitHubTool(personalAccessToken)` itself | GitHub API v3 (`action`: `list_issues`, `create_issue`, `get_pr`, `search_repos`, `get_repo`) |
-| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (needs an `IFileSystemService`; the OpenAI key is the `api_key` call argument, so the agent must be given it) | Image generation via the OpenAI DALL-E API, optionally saved under a virtual path (`save_to_path`) |
+| `image_generation` | `ImageGenerationTool` | `AddOrkeonWebTools()` (needs an `IFileSystemService` and an `ISecretProvider`) — the secret `OPENAI_API_KEY` is resolved at call time (by default the `ORKEON_OPENAI_API_KEY` environment variable, then `Secrets:OPENAI_API_KEY`); without it a call fails naming the secret | Image generation via the OpenAI DALL-E API, optionally saved under a virtual path (`save_to_path`) |
 | `web_search` | `WebSearchTool` | `AddOrkeonWebSearchTool()` — the secret `TAVILY_API_KEY` is resolved at call time through `ISecretProvider` (by default the `ORKEON_TAVILY_API_KEY` environment variable, then `Secrets:TAVILY_API_KEY` in configuration) | Web search via the Tavily Search API |
 | `brave_search` | `BraveSearchTool` | `AddOrkeonBraveSearchTool(apiKey)` — `orkeon run` wires it only when `BRAVE_API_KEY` is set | Web search via the Brave Search API |
 | `slack_send_message` | `SlackTool` | `AddOrkeonSlackTool(botToken)` — no shipped root calls it (pure host opt-in) | Send messages to Slack channels/users via the Web API |

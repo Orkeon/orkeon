@@ -31,6 +31,8 @@ public sealed class WebToolsRedirectTests
         var services = new ServiceCollection();
         services.AddHttpClient();
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        // image_generation reads its OpenAI key from the secret provider (GAP-09).
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
         services.AddOrkeonWebTools();
         using var provider = services.BuildServiceProvider();
 
@@ -58,6 +60,8 @@ public sealed class WebToolsRedirectTests
         services.AddSingleton<IUrlValidator>(new AllowAllUrlValidator());
         services.AddSingleton(new HttpHeaderSanitizer());
         services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
+        // image_generation reads its OpenAI key from the secret provider (GAP-09).
+        services.AddSingleton<Orkeon.Application.Interfaces.Security.ISecretProvider>(new MockSecretProvider());
         services.AddOrkeonWebTools();
         using var provider = services.BuildServiceProvider();
 

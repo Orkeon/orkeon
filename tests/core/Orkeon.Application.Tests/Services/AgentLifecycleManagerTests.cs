@@ -1,7 +1,6 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Interfaces.Services;
-using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Agent.Events;
@@ -179,31 +178,14 @@ public class AgentLifecycleManagerTests
     // --- Test 9 ---
 
     [Fact]
-    public void GuardianPipeline_AutoKill_OnCriticalViolation()
+    public void Kill_CancelsARegisteredAgent_AndMarksItKilled()
     {
         var manager = CreateManager();
         var agentId = NewAgentId();
         using var cts = new CancellationTokenSource();
         manager.Register(agentId, cts);
 
-        var violation = new GuardViolation(
-            "TestGuard",
-            GuardPhase.Input,
-            "Prompt injection detected",
-            GuardThreatSeverity.High,
-            DateTime.UtcNow);
-
-        // Simulate GuardianPipeline calling TryAutoKill via Kill directly
-        // (The pipeline method is private — test the manager behavior directly)
-        bool hasCritical = new[] { violation }.Any(v =>
-            v.Severity is GuardThreatSeverity.High or GuardThreatSeverity.Critical);
-
-        Assert.True(hasCritical);
-
-        if (hasCritical && manager.IsRegistered(agentId))
-        {
-            manager.Kill(agentId, $"Guardian auto-kill: {violation.Description}");
-        }
+        manager.Kill(agentId, "operator stop");
 
         Assert.True(cts.IsCancellationRequested);
         Assert.Equal(AgentLifecycleState.Killed, manager.GetState(agentId));

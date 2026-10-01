@@ -18,7 +18,7 @@ public sealed class ToolsSettingsViewModelTests
         var tools = new ToolsSettingsViewModel(store);
 
         Assert.True(tools.HasSecrets);
-        Assert.Equal([ToolCatalog.TavilyKeyEnv, ToolCatalog.BraveKeyEnv], tools.Secrets.Select(s => s.EnvName));
+        Assert.Equal([ToolCatalog.TavilyKeyEnv, ToolCatalog.BraveKeyEnv, ToolCatalog.OpenAiImageKeyEnv], tools.Secrets.Select(s => s.EnvName));
         var tavily = tools.Secrets[0];
         Assert.Equal("web_search", tavily.UsedBy);
         Assert.True(tavily.HasConsoleUrl);

@@ -76,6 +76,16 @@ Available properties:
 )]
 ```
 
+### Never a secret in the request
+
+A request property is something the **model** writes: it travels through the conversation
+with the provider, the tool-call log (`Information` level) and the usage record of the call.
+An API key, a token or a password is therefore never a request field. Inject an
+`ISecretProvider` and read the secret by name at execution time, never keeping it in a field —
+the pattern of `web_search` (`TAVILY_API_KEY`) and `image_generation` (`OPENAI_API_KEY`): a
+missing secret fails with a message that names the secret and its `ORKEON_<NAME>` variable,
+never a value.
+
 ### Concrete example — Request and Response
 
 ```csharp

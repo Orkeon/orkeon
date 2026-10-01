@@ -126,3 +126,164 @@ static Orkeon.Application.Interfaces.BallotRequest.operator ==(Orkeon.Applicatio
 Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.GetProvider(string! providerType) -> Orkeon.Domain.Memory.IMemoryProvider!
 Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.SupportedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
 Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Action.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Action.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.AgentId.get -> string!
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.AgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.AuthorizationContext(Orkeon.Application.Interfaces.Security.AuthorizationContext! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.AuthorizationContext(System.Security.Claims.ClaimsPrincipal! Principal, string! AgentId, string? CrewId = null, string? Action = null) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.CrewId.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.CrewId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Deconstruct(out System.Security.Claims.ClaimsPrincipal! Principal, out string! AgentId, out string? CrewId, out string? Action) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Principal.get -> System.Security.Claims.ClaimsPrincipal!
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationContext.Principal.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.AuthorizationResult(Orkeon.Application.Interfaces.Security.AuthorizationResult! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.AuthorizationResult(bool IsAuthorized, string? Reason = null) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.Deconstruct(out bool IsAuthorized, out string? Reason) -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.IsAuthorized.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.IsAuthorized.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.Reason.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Security.AuthorizationResult.Reason.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardAction.Modify = 3 -> Orkeon.Application.Interfaces.Security.GuardAction
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardContext.DelegationDepth.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardContext.TargetAgentId.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardContext.TargetAgentId.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardContext.ToolArgs.get -> System.Collections.Generic.Dictionary<string!, object!>?
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardPhase.Delegation = 3 -> Orkeon.Application.Interfaces.Security.GuardPhase
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardPhase.Output = 1 -> Orkeon.Application.Interfaces.Security.GuardPhase
+*REMOVED*Orkeon.Application.Interfaces.Security.GuardPhase.ToolExecution = 2 -> Orkeon.Application.Interfaces.Security.GuardPhase
+*REMOVED*Orkeon.Application.Interfaces.Security.IAuthorizationPolicy
+*REMOVED*Orkeon.Application.Interfaces.Security.IAuthorizationPolicy.EvaluateAsync(Orkeon.Application.Interfaces.Security.AuthorizationContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.AuthorizationResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Security.IAuthorizationPolicy.PolicyName.get -> string!
+*REMOVED*Orkeon.Application.Services.Security.GuardianPipeline.AutoKillOnCritical.get -> bool
+*REMOVED*Orkeon.Application.Services.Security.GuardianPipeline.AutoKillOnCritical.set -> void
+*REMOVED*Orkeon.Application.Services.Security.GuardianPipeline.GuardianPipeline(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.GuardianPipeline!>! logger, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Orkeon.Application.Interfaces.Services.IAgentLifecycleManager? lifecycleManager = null) -> void
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.AllowedTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.AllowedTools.init -> void
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.BlockedTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.BlockedTools.init -> void
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.get -> bool
+*REMOVED*Orkeon.Application.Services.Security.GuardianPolicy.OutputGuardEnabled.set -> void
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationContext.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Security.AuthorizationResult.ToString() -> string!
+*REMOVED*static Orkeon.Application.Interfaces.Security.AuthorizationContext.operator !=(Orkeon.Application.Interfaces.Security.AuthorizationContext? left, Orkeon.Application.Interfaces.Security.AuthorizationContext? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Security.AuthorizationContext.operator ==(Orkeon.Application.Interfaces.Security.AuthorizationContext? left, Orkeon.Application.Interfaces.Security.AuthorizationContext? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Security.AuthorizationResult.operator !=(Orkeon.Application.Interfaces.Security.AuthorizationResult? left, Orkeon.Application.Interfaces.Security.AuthorizationResult? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Security.AuthorizationResult.operator ==(Orkeon.Application.Interfaces.Security.AuthorizationResult? left, Orkeon.Application.Interfaces.Security.AuthorizationResult? right) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationContext.<Clone>$() -> Orkeon.Application.Interfaces.Security.AuthorizationContext!
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationContext.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationContext.Equals(Orkeon.Application.Interfaces.Security.AuthorizationContext? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationContext.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationResult.<Clone>$() -> Orkeon.Application.Interfaces.Security.AuthorizationResult!
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationResult.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationResult.Equals(Orkeon.Application.Interfaces.Security.AuthorizationResult? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Security.AuthorizationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Crew.ExecutionOrchestrator.Guardian.get -> Orkeon.Application.Interfaces.Security.IGuardianPipeline?
+Orkeon.Application.Crew.ExecutionOrchestrator.Guardian.set -> void
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolInvocation.get -> Orkeon.Application.Interfaces.Security.IToolInvocationPipeline?
+Orkeon.Application.Crew.ExecutionOrchestrator.ToolInvocation.set -> void
+Orkeon.Application.Interfaces.Security.GuardContext.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Security.GuardContext.AgentRole.init -> void
+Orkeon.Application.Interfaces.Security.GuardContext.DelegationChain.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Interfaces.Security.GuardContext.DelegationChain.init -> void
+Orkeon.Application.Interfaces.Security.GuardContext.TargetAgentRole.get -> string?
+Orkeon.Application.Interfaces.Security.GuardContext.TargetAgentRole.init -> void
+Orkeon.Application.Interfaces.Security.GuardContext.ToolArgs.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>?
+Orkeon.Application.Interfaces.Security.GuardPhase.Delegation = 2 -> Orkeon.Application.Interfaces.Security.GuardPhase
+Orkeon.Application.Interfaces.Security.GuardPhase.ToolExecution = 1 -> Orkeon.Application.Interfaces.Security.GuardPhase
+Orkeon.Application.Interfaces.Security.IGuardianPipeline
+Orkeon.Application.Interfaces.Security.IGuardianPipeline.ExecuteAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+Orkeon.Application.Interfaces.Security.IPromptSanitizer.Detect(string! input) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>!
+Orkeon.Application.Interfaces.Security.IToolInvocationPipeline
+Orkeon.Application.Interfaces.Security.IToolInvocationPipeline.InvokeAsync(Orkeon.Application.Interfaces.Security.ToolInvocation! invocation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolInvocationResult!>!
+Orkeon.Application.Interfaces.Security.IToolResultSanitizer
+Orkeon.Application.Interfaces.Security.IToolResultSanitizer.Sanitize(string! toolName, string! result, string! agentRole) -> Orkeon.Application.Interfaces.Security.ToolResultSanitization!
+Orkeon.Application.Interfaces.Security.ToolInvocation
+Orkeon.Application.Interfaces.Security.ToolInvocation.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolInvocation!
+Orkeon.Application.Interfaces.Security.ToolInvocation.Arguments.get -> System.Collections.Generic.Dictionary<string!, object?>!
+Orkeon.Application.Interfaces.Security.ToolInvocation.Arguments.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocation.Caller.get -> Orkeon.Application.Interfaces.Security.ToolInvocationCaller!
+Orkeon.Application.Interfaces.Security.ToolInvocation.Caller.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocation.Deconstruct(out Orkeon.Domain.Tools.IBaseTool! Tool, out System.Collections.Generic.Dictionary<string!, object?>! Arguments, out Orkeon.Application.Interfaces.Security.ToolInvocationCaller! Caller) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocation.Equals(Orkeon.Application.Interfaces.Security.ToolInvocation? other) -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocation.Tool.get -> Orkeon.Domain.Tools.IBaseTool!
+Orkeon.Application.Interfaces.Security.ToolInvocation.Tool.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocation.ToolInvocation(Orkeon.Domain.Tools.IBaseTool! Tool, System.Collections.Generic.Dictionary<string!, object?>! Arguments, Orkeon.Application.Interfaces.Security.ToolInvocationCaller! Caller) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolInvocationCaller!
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.AgentId.get -> string!
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.AgentId.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.AgentRole.get -> string!
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.AgentRole.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.CrewId.get -> string?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.CrewId.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Deconstruct(out string! AgentId, out string! AgentRole, out string? TaskId, out string? CrewId) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Equals(Orkeon.Application.Interfaces.Security.ToolInvocationCaller? other) -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.TaskId.get -> string?
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.TaskId.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationCaller.ToolInvocationCaller(string! AgentId, string! AgentRole, string? TaskId = null, string? CrewId = null) -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolInvocationResult!
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Blocked.get -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Blocked.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.ConversationText.get -> string!
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.ConversationText.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Equals(Orkeon.Application.Interfaces.Security.ToolInvocationResult? other) -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.RawText.get -> string!
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.RawText.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Response.get -> Orkeon.Domain.Tools.Protocol.ToolCallResponse?
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Response.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Success.get -> bool
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.Success.init -> void
+Orkeon.Application.Interfaces.Security.ToolInvocationResult.ToolInvocationResult() -> void
+Orkeon.Application.Interfaces.Security.ToolResultSanitization
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.<Clone>$() -> Orkeon.Application.Interfaces.Security.ToolResultSanitization!
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Blocked.get -> bool
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Blocked.init -> void
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Equals(Orkeon.Application.Interfaces.Security.ToolResultSanitization? other) -> bool
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Text.get -> string!
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Text.init -> void
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Threats.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Security.ThreatDetection!>!
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.Threats.init -> void
+Orkeon.Application.Interfaces.Security.ToolResultSanitization.ToolResultSanitization() -> void
+Orkeon.Application.Interfaces.Services.AgentExitReason.GuardianBlocked = 7 -> Orkeon.Application.Interfaces.Services.AgentExitReason
+Orkeon.Application.Services.Security.GuardianPipeline.GuardianPipeline(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.GuardianPipeline!>! logger, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null) -> void
+Orkeon.Application.Services.Security.ToolInvocationPipeline
+Orkeon.Application.Services.Security.ToolInvocationPipeline.InvokeAsync(Orkeon.Application.Interfaces.Security.ToolInvocation! invocation, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.ToolInvocationResult!>!
+Orkeon.Application.Services.Security.ToolInvocationPipeline.ToolInvocationPipeline(Orkeon.Application.Interfaces.Security.IGuardianPipeline? guardian = null, Orkeon.Application.Interfaces.Security.IToolResultSanitizer? sanitizer = null, Orkeon.Application.Interfaces.Security.IAuditLogger? auditLogger = null, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Services.Security.ToolInvocationPipeline!>? logger = null) -> void
+const Orkeon.Application.Services.Security.ToolInvocationPipeline.AskQuestionToolName = "ask_question_to_coworker" -> string!
+const Orkeon.Application.Services.Security.ToolInvocationPipeline.DelegateWorkToolName = "delegate_work_to_coworker" -> string!
+override Orkeon.Application.Interfaces.Security.ToolInvocation.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolInvocation.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolInvocation.ToString() -> string!
+override Orkeon.Application.Interfaces.Security.ToolInvocationCaller.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolInvocationCaller.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolInvocationCaller.ToString() -> string!
+override Orkeon.Application.Interfaces.Security.ToolInvocationResult.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolInvocationResult.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolInvocationResult.ToString() -> string!
+override Orkeon.Application.Interfaces.Security.ToolResultSanitization.Equals(object? obj) -> bool
+override Orkeon.Application.Interfaces.Security.ToolResultSanitization.GetHashCode() -> int
+override Orkeon.Application.Interfaces.Security.ToolResultSanitization.ToString() -> string!
+static Orkeon.Application.Interfaces.Security.ToolInvocation.operator !=(Orkeon.Application.Interfaces.Security.ToolInvocation? left, Orkeon.Application.Interfaces.Security.ToolInvocation? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolInvocation.operator ==(Orkeon.Application.Interfaces.Security.ToolInvocation? left, Orkeon.Application.Interfaces.Security.ToolInvocation? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolInvocationCaller.operator !=(Orkeon.Application.Interfaces.Security.ToolInvocationCaller? left, Orkeon.Application.Interfaces.Security.ToolInvocationCaller? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolInvocationCaller.operator ==(Orkeon.Application.Interfaces.Security.ToolInvocationCaller? left, Orkeon.Application.Interfaces.Security.ToolInvocationCaller? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolInvocationResult.operator !=(Orkeon.Application.Interfaces.Security.ToolInvocationResult? left, Orkeon.Application.Interfaces.Security.ToolInvocationResult? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolInvocationResult.operator ==(Orkeon.Application.Interfaces.Security.ToolInvocationResult? left, Orkeon.Application.Interfaces.Security.ToolInvocationResult? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolResultSanitization.operator !=(Orkeon.Application.Interfaces.Security.ToolResultSanitization? left, Orkeon.Application.Interfaces.Security.ToolResultSanitization? right) -> bool
+static Orkeon.Application.Interfaces.Security.ToolResultSanitization.operator ==(Orkeon.Application.Interfaces.Security.ToolResultSanitization? left, Orkeon.Application.Interfaces.Security.ToolResultSanitization? right) -> bool
+static Orkeon.Application.Services.Security.ToolInvocationPipeline.IsDelegationTool(string! toolName) -> bool
+static Orkeon.Application.Services.Security.ToolInvocationPipeline.Unguarded.get -> Orkeon.Application.Services.Security.ToolInvocationPipeline!
+*REMOVED*Orkeon.Application.Services.Security.ToolAccessGuard
+*REMOVED*Orkeon.Application.Services.Security.ToolAccessGuard.CheckAsync(Orkeon.Application.Interfaces.Security.GuardContext! context, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Security.GuardResult!>!
+*REMOVED*Orkeon.Application.Services.Security.ToolAccessGuard.ToolAccessGuard(Orkeon.Application.Services.Security.GuardianPolicyEngine! policyEngine) -> void
+*REMOVED*Orkeon.Application.Services.Security.ToolAccessPolicyExtensions
+*REMOVED*static Orkeon.Application.Services.Security.ToolAccessPolicyExtensions.CheckToolAccess(this Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy? policy, string! toolName) -> Orkeon.Application.Interfaces.Security.GuardResult!
+*REMOVED*static Orkeon.Application.Services.Security.ToolAccessPolicyExtensions.GetEffectivePolicy(this Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy! agentPolicy, Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy? crewOverride) -> Orkeon.Domain.Agent.ValueObjects.ToolAccessPolicy!

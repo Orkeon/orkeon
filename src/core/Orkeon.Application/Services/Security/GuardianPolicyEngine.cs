@@ -3,32 +3,29 @@ using Orkeon.Application.Interfaces.Security;
 namespace Orkeon.Application.Services.Security;
 
 /// <summary>
-/// Policy controlling which guardian phases are enabled and what tools are allowed/blocked.
+/// Policy controlling which guardian phases are enabled. Which tools an agent may call is
+/// not the guardian's business: that is <c>ToolAccessPolicy</c>, applied when the agent's
+/// tools are resolved.
 /// </summary>
 public class GuardianPolicy
 {
     /// <summary>
-    /// Gets or sets a value indicating whether input guard enabled.
+    /// Gets or sets a value indicating whether the input phase (prompt-injection screening of
+    /// the composed user prompt) runs.
     /// </summary>
     public bool InputGuardEnabled { get; set; } = true;
     /// <summary>
-    /// Gets or sets a value indicating whether output guard enabled.
-    /// </summary>
-    public bool OutputGuardEnabled { get; set; } = true;
-    /// <summary>
-    /// Gets or sets a value indicating whether tool guard enabled.
+    /// Gets or sets a value indicating whether the tool phase (path traversal, SSRF and SQL
+    /// injection in tool arguments) runs.
     /// </summary>
     public bool ToolGuardEnabled { get; set; } = true;
     /// <summary>
-    /// Gets or sets a value indicating whether delegation guard enabled.
+    /// Gets or sets a value indicating whether the delegation phase (depth, self-delegation,
+    /// cycles) runs.
     /// </summary>
     public bool DelegationGuardEnabled { get; set; } = true;
-    /// <summary>Gets or sets the max delegation depth.</summary>
+    /// <summary>Gets or sets how many synchronous delegations may nest before the next one is blocked.</summary>
     public int MaxDelegationDepth { get; set; } = 5;
-    /// <summary>Gets or sets the allowed tools.</summary>
-    public IReadOnlyList<string> AllowedTools { get; init; } = [];
-    /// <summary>Gets or sets the blocked tools.</summary>
-    public IReadOnlyList<string> BlockedTools { get; init; } = [];
 
     /// <summary>
     /// Checks whether a given guard phase is enabled in this policy.
@@ -36,7 +33,6 @@ public class GuardianPolicy
     public bool IsGuardPhaseEnabled(GuardPhase phase) => phase switch
     {
         GuardPhase.Input => InputGuardEnabled,
-        GuardPhase.Output => OutputGuardEnabled,
         GuardPhase.ToolExecution => ToolGuardEnabled,
         GuardPhase.Delegation => DelegationGuardEnabled,
         _ => true

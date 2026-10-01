@@ -4,6 +4,7 @@ using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.Json;
 using Orkeon.Application.Interfaces.AgentCommunication;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Domain.AgentCommunication;
 using Orkeon.Domain.Agent;
 using Orkeon.Infrastructure.Constants.Llm;
@@ -42,6 +43,7 @@ public partial class A2AServer : IA2AServer, IDisposable
     private readonly IA2ATaskRouter _taskRouter;
     private readonly IServiceScopeFactory _scopeFactory;
     private readonly IA2ATaskStore? _taskStore;
+    private readonly A2ACredentialValidator _credentials;
     private readonly ILogger _logger;
 
     private HttpListener? _listener;
@@ -71,22 +73,20 @@ public partial class A2AServer : IA2AServer, IDisposable
     /// <param name="logger">Optional logger.</param>
     /// <param name="security">Optional A2A security options.</param>
     /// <param name="taskStore">Optional task persistence (lifts the 501 on GET /a2a/tasks/{id} — see AddOrkeonA2ATaskPersistence).</param>
+    /// <param name="authenticationProviders">Validators a <c>Bearer</c> token is offered to.</param>
+    /// <param name="secretProvider">Secret provider the <c>ApiKey</c> keys are read from.</param>
     public A2AServer(
         IOptions<A2AOptions> options,
         IA2ATaskRouter taskRouter,
         IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
         IOptions<A2ASecurityOptions>? security = null,
-        IA2ATaskStore? taskStore = null)
+        IA2ATaskStore? taskStore = null,
+        IEnumerable<IAuthenticationProvider>? authenticationProviders = null,
+        ISecretProvider? secretProvider = null)
+        : this(options?.Value ?? new A2AOptions(), taskRouter, scopeFactory, logger,
+               security?.Value, taskStore, authenticationProviders, secretProvider)
     {
-        _options = options?.Value ?? new A2AOptions();
-        _security = security?.Value ?? new A2ASecurityOptions();
-        ArgumentNullException.ThrowIfNull(taskRouter);
-        _taskRouter = taskRouter;
-        ArgumentNullException.ThrowIfNull(scopeFactory);
-        _scopeFactory = scopeFactory;
-        _taskStore = taskStore;
-        _logger = logger ?? NullLogger<A2AServer>.Instance;
     }
 
     /// <summary>Initializes a new instance of <see cref="A2AServer"/> with direct options (useful for testing).</summary>
@@ -96,7 +96,9 @@ public partial class A2AServer : IA2AServer, IDisposable
         IServiceScopeFactory scopeFactory,
         ILogger<A2AServer>? logger = null,
         A2ASecurityOptions? security = null,
-        IA2ATaskStore? taskStore = null)
+        IA2ATaskStore? taskStore = null,
+        IEnumerable<IAuthenticationProvider>? authenticationProviders = null,
+        ISecretProvider? secretProvider = null)
     {
         _options = options ?? new A2AOptions();
         _security = security ?? new A2ASecurityOptions();
@@ -105,14 +107,19 @@ public partial class A2AServer : IA2AServer, IDisposable
         ArgumentNullException.ThrowIfNull(scopeFactory);
         _scopeFactory = scopeFactory;
         _taskStore = taskStore;
+        _credentials = new A2ACredentialValidator(_security, authenticationProviders ?? [], secretProvider);
         _logger = logger ?? NullLogger<A2AServer>.Instance;
     }
 
     /// <inheritdoc />
-    public Task StartAsync(CancellationToken ct = default)
+    public async Task StartAsync(CancellationToken ct = default)
     {
         if (IsRunning)
             throw new InvalidOperationException("A2A server is already running.");
+
+        // Fail-closed: a declared scheme without a validator would accept any credential
+        // of the right shape (GAP-09) — refuse to start instead.
+        await _credentials.EnsureReadyAsync(ct).ConfigureAwait(false);
 
         if (_security.RequireMutualTls)
             InitializeMutualTlsTrust();
@@ -128,8 +135,6 @@ public partial class A2AServer : IA2AServer, IDisposable
 
         IsRunning = true;
         LogA2AServerStarted(prefix);
-
-        return Task.CompletedTask;
     }
 
     /// <inheritdoc />
@@ -320,13 +325,14 @@ public partial class A2AServer : IA2AServer, IDisposable
             }
         }
 
-        // Bearer/ApiKey: require an Authorization header matching one of the allowed schemes.
-        if (_security.AllowedAuthSchemes.Count > 0)
+        // Bearer/ApiKey: the credential must pass its scheme's validator, not just look right.
+        if (_credentials.IsRequired)
         {
             var authHeader = context.Request.Headers["Authorization"];
-            if (!IsAuthSchemeAllowed(authHeader, _security.AllowedAuthSchemes))
+            var validation = await _credentials.ValidateAsync(authHeader, ct).ConfigureAwait(false);
+            if (!validation.IsValid)
             {
-                LogA2AUnauthorized("missing or disallowed authentication scheme");
+                LogA2AUnauthorized(validation.Error ?? "credential rejected");
                 await WriteJsonResponse(context.Response, 401,
                     new { error = "Authentication required" }, ct).ConfigureAwait(false);
                 return false;
@@ -435,26 +441,6 @@ public partial class A2AServer : IA2AServer, IDisposable
         foreach (var ca in _trustedClientCertificateAuthorities)
             ca.Dispose();
         _trustedClientCertificateAuthorities.Clear();
-    }
-
-    /// <summary>
-    /// Returns <c>true</c> when <paramref name="authorizationHeader"/> presents a non-empty
-    /// credential using one of the <paramref name="allowedSchemes"/> (case-insensitive).
-    /// </summary>
-    internal static bool IsAuthSchemeAllowed(string? authorizationHeader, IReadOnlyList<string> allowedSchemes)
-    {
-        if (allowedSchemes.Count == 0)
-            return true;
-
-        if (string.IsNullOrWhiteSpace(authorizationHeader))
-            return false;
-
-        var parts = authorizationHeader.Split(' ', 2, StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-        if (parts.Length < 2 || string.IsNullOrWhiteSpace(parts[1]))
-            return false;
-
-        var scheme = parts[0];
-        return allowedSchemes.Any(allowed => string.Equals(scheme, allowed, StringComparison.OrdinalIgnoreCase));
     }
 
     [SuppressMessage("Design", "CA1031", Justification = "Best-effort error response: a failure to write the error body (e.g. client already disconnected) must not mask the primary failure being reported.")]

@@ -406,8 +406,8 @@ public static class InfrastructureExtensions
         services.AddOptions<ToolResultSecurityOptions>()
             .BindConfiguration("Security:ToolResults");
         services.AddSingleton<IPromptSanitizer, PromptSanitizer>();
-        services.AddSingleton<PromptShieldBuilder>();
-        services.AddSingleton<ToolResultSanitizer>();
+        // Applied to every tool result by the tool-invocation pipeline (GAP-09).
+        services.AddSingleton<IToolResultSanitizer, ToolResultSanitizer>();
 
         // SSRF protection (P0-7)
         services.AddOptions<UrlSecurityOptions>()
@@ -621,11 +621,8 @@ public static class InfrastructureExtensions
         // === Code Sandbox (P2-14) ===
         services.AddOrkeonCodeSandbox();
 
-        // === Guardian System (P2-4) ===
+        // === Guardian System (P2-4) — on the execution path since GAP-09 ===
         services.AddOrkeonGuardian();
-
-        // === Phase 8: Enterprise Auth (S3) ===
-        services.AddOrkeonAuth();
 
         // === Phase 8: Memory Encryption (S4) ===
         services.AddOrkeonEncryption();
@@ -781,8 +778,11 @@ public static class InfrastructureExtensions
     }
 
     /// <summary>
-    /// Adds the guardian system with default guards for input, output, tool, and delegation phases.
-    /// Reads configuration from the "Orkeon:Guardian" section.
+    /// Adds the guardian system: the input, tool and delegation guards, wired to their phases in
+    /// a <see cref="GuardianPipeline"/> registered as <see cref="IGuardianPipeline"/> — the port the
+    /// execution orchestrator (input phase) and the tool-invocation pipeline (tool and delegation
+    /// phases) call. Reads <c>Orkeon:Guardian</c>; with <c>Enabled = false</c> the pipeline holds
+    /// no guard and every check allows.
     /// </summary>
     public static IServiceCollection AddOrkeonGuardian(this IServiceCollection services)
     {
@@ -798,26 +798,28 @@ public static class InfrastructureExtensions
 
         // Guard implementations (singletons)
         services.TryAddSingleton<InputGuard>();
-        services.TryAddSingleton<OutputGuard>();
         services.TryAddSingleton<ToolGuard>();
         services.TryAddSingleton<DelegationGuard>();
 
         // Guardian pipeline (singleton) - wires guards to their phases
         services.TryAddSingleton<GuardianPipeline>(sp =>
         {
+            var options = sp.GetService<IOptions<GuardianOptions>>()?.Value ?? new GuardianOptions();
             var policyEngine = sp.GetRequiredService<GuardianPolicyEngine>();
             var logger = sp.GetRequiredService<ILogger<GuardianPipeline>>();
             var auditLogger = sp.GetService<IAuditLogger>();
 
             var pipeline = new GuardianPipeline(policyEngine, logger, auditLogger);
+            if (!options.Enabled)
+                return pipeline;
 
             pipeline.AddGuard(GuardPhase.Input, sp.GetRequiredService<InputGuard>());
-            pipeline.AddGuard(GuardPhase.Output, sp.GetRequiredService<OutputGuard>());
             pipeline.AddGuard(GuardPhase.ToolExecution, sp.GetRequiredService<ToolGuard>());
             pipeline.AddGuard(GuardPhase.Delegation, sp.GetRequiredService<DelegationGuard>());
 
             return pipeline;
         });
+        services.TryAddSingleton<IGuardianPipeline>(sp => sp.GetRequiredService<GuardianPipeline>());
 
         return services;
     }

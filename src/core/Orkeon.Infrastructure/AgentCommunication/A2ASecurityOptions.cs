@@ -47,8 +47,20 @@ public class A2ASecurityOptions
     public bool RequireMutualTls { get; set; }
 
     /// <summary>
-    /// Allowed authentication schemes for incoming requests (e.g., "Bearer", "ApiKey").
-    /// Empty means no authentication is required.
+    /// Authentication schemes the server accepts on its task endpoints: <c>Bearer</c> and/or
+    /// <c>ApiKey</c>. Empty means no authentication is required. Each declared scheme is
+    /// validated, not merely matched (<see cref="A2ACredentialValidator"/>): a bearer token by a
+    /// registered <c>IAuthenticationProvider</c> (<c>A2A:Security:AzureAD</c> /
+    /// <c>A2A:Security:Oidc</c>), an API key against <see cref="ApiKeySecretNames"/>. The server
+    /// refuses to start when a declared scheme has no validator.
     /// </summary>
     public Collection<string> AllowedAuthSchemes { get; } = [];
+
+    /// <summary>
+    /// Names of the secrets holding the API keys the <c>ApiKey</c> scheme accepts
+    /// (<c>Authorization: ApiKey &lt;key&gt;</c>). Each name is read through the
+    /// <c>ISecretProvider</c> on every request — <c>ORKEON_&lt;NAME&gt;</c> with the default
+    /// chain — so keys never sit in the configuration file and rotate without a restart.
+    /// </summary>
+    public Collection<string> ApiKeySecretNames { get; } = [];
 }

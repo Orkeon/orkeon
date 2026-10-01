@@ -80,6 +80,7 @@ public class WebToolsSsrfTests
         var fs = new FakeFileSystemService().AddMount("/output", FileAccessRights.ReadOnly | FileAccessRights.Write);
         using var tool = new ImageGenerationTool(
             fs,
+            MockSecretProvider.WithOpenAiKey(),
             validator,
             new Orkeon.Tools.Abstractions.Security.HttpHeaderSanitizer(),
             http);
@@ -89,7 +90,6 @@ public class WebToolsSsrfTests
             Parameters: new Dictionary<string, object?>
             {
                 ["prompt"] = "an otter",
-                ["api_key"] = "sk-test",
                 ["save_to_path"] = "/output/img.png",
             }), TestContext.Current.CancellationToken);
 

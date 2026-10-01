@@ -1,6 +1,7 @@
 using DomainAgent = Orkeon.Domain.Agent.Agent;
 using Microsoft.Extensions.Logging;
 using Orkeon.Application.Constants.Orchestration;
+using Orkeon.Application.Interfaces.Security;
 using Orkeon.Application.Interfaces.Services;
 using Orkeon.Domain.Constants.Agent;
 using Orkeon.Domain.Tools;
@@ -20,19 +21,22 @@ internal sealed class NativeToolCallingAgentLoop
     private readonly Interfaces.LLM.IToolCallingStrategy _toolCallingStrategy;
     private readonly IEnumerable<Domain.Tools.IBaseTool>? _registeredTools;
     private readonly LlmCallGate _llmGate;
+    private readonly IToolInvocationPipeline _toolInvocation;
 
     internal NativeToolCallingAgentLoop(
         ILogger logger,
         Domain.SharedKernel.ILlmProvider fullProvider,
         Interfaces.LLM.IToolCallingStrategy toolCallingStrategy,
         IEnumerable<Domain.Tools.IBaseTool>? registeredTools,
-        LlmCallGate llmGate)
+        LlmCallGate llmGate,
+        IToolInvocationPipeline toolInvocation)
     {
         _logger = logger;
         _fullProvider = fullProvider;
         _toolCallingStrategy = toolCallingStrategy;
         _registeredTools = registeredTools;
         _llmGate = llmGate;
+        _toolInvocation = toolInvocation;
     }
 
     /// <summary>
@@ -291,15 +295,26 @@ internal sealed class NativeToolCallingAgentLoop
         var toolStartTime = DateTime.UtcNow;
         try
         {
-            var request = new Domain.Tools.Protocol.ToolCallRequest(call.ToolName, call.Arguments);
-            var toolResponse = await tool.CallAsync(request, cancellationToken).ConfigureAwait(false);
+            var outcome = await _toolInvocation.InvokeAsync(
+                new ToolInvocation(tool, call.Arguments, ChatToolDispatcher.CallerOf(agent, task)), cancellationToken).ConfigureAwait(false);
             var toolDuration = DateTime.UtcNow - toolStartTime;
-            var resultText = toolResponse.Success
-                ? toolResponse.Result?.ToString() ?? ""
-                : $"Error: {toolResponse.Error}";
+            if (outcome.Blocked)
+            {
+                toolsUsed.Add(Domain.Tools.ToolUsage.CreateFailure(
+                    new ToolCallIdentity(call.Id, call.ToolName, agent.Id.ToString(), task.Id.ToString()),
+                    toolDuration, outcome.ConversationText));
+                messages.Add(new Domain.SharedKernel.ValueObjects.LlmMessage
+                {
+                    Role = "tool",
+                    Content = outcome.ConversationText,
+                    ToolCallId = call.Id
+                });
+                return;
+            }
 
-            // Truncate verbose tool results to bound context window growth
-            var contextResultText = ConversationPolicy.TruncateToolResult(resultText, AgentDefaults.ResolveMaxToolResultLength(call.ToolName));
+            var toolResponse = outcome.Response!;
+            var resultText = outcome.RawText;
+            var contextResultText = outcome.ConversationText;
 
             if (_logger.IsEnabled(LogLevel.Information))
             {

@@ -43,4 +43,10 @@ internal sealed record JsExecutionEnvironment
     /// Null = buffered behaviour unless the script passes <c>onDelta</c>.
     /// </summary>
     public Orkeon.Application.Interfaces.Ports.ILlmDeltaSink? DeltaSink { get; init; }
+
+    /// <summary>
+    /// Optional single tool-invocation point (GAP-09) a <c>ctx.llm.act</c> tool call goes
+    /// through after the permission gate. Null = the tool is called directly.
+    /// </summary>
+    public Orkeon.Application.Interfaces.Security.IToolInvocationPipeline? ToolInvocation { get; init; }
 }

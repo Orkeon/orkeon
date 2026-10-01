@@ -11,7 +11,7 @@ public class PromptSanitizerTestsFixture
 {
     private PromptSecurityOptions _options = new()
     {
-        Policy = SanitizationPolicy.Strip,
+        Policy = SanitizationPolicy.Block,
         EnableExfiltrationDetection = true
     };
     private IPromptSanitizer? _sanitizer;

@@ -44,7 +44,7 @@ public class ChatOptionsComposerTests
     private static ChatOptionsComposer BuildComposer(
         IEnumerable<Orkeon.Domain.Tools.IBaseTool>? registeredTools = null,
         FakeFileSystemService? fileSystem = null) =>
-        new(new SpyExecutionLogger(), registeredTools, fileSystem ?? new FakeFileSystemService());
+        new(new SpyExecutionLogger(), registeredTools, fileSystem ?? new FakeFileSystemService(), Orkeon.Application.Services.Security.ToolInvocationPipeline.Unguarded);
 
     // ── Toolbelt resolution ───────────────────────────────────────────────
 

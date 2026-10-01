@@ -2,6 +2,7 @@ using DomainAgent = Orkeon.Domain.Agent.Agent;
 using DomainTask = Orkeon.Domain.Task.CrewTask;
 using Microsoft.Extensions.AI;
 using Orkeon.Application.Crew.Execution;
+using Orkeon.Application.Services.Security;
 using Orkeon.Application.Tests.Doubles;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Task.ValueObjects;
@@ -41,7 +42,7 @@ public class ChatToolDispatcherTests
     {
         // llama3.2:1b on the README quickstart: the arguments carry the whole envelope.
         var tool = new SpyTool("file_write", result: "written");
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out _, out var toolsUsed);
         using var payload = System.Text.Json.JsonDocument.Parse(
             """{"path":"/output/hello.md","content":"# Hello","append":"False"}""");
@@ -83,7 +84,7 @@ public class ChatToolDispatcherTests
     public async System.Threading.Tasks.Task ExecutesANativeCall_AndPairsTheResultWithItsCallId()
     {
         var tool = new SpyTool("native_tool", result: "native result");
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out var messages, out var toolsUsed);
         var call = new FunctionCallContent("call-42", "native_tool",
             new Dictionary<string, object?> { ["input"] = "x" });
@@ -105,7 +106,7 @@ public class ChatToolDispatcherTests
     [Fact]
     public async System.Threading.Tasks.Task AnswersAMissingTool_WithAPairedErrorResult()
     {
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([], out var messages, out var toolsUsed);
         var call = new FunctionCallContent("call-x", "ghost_tool", arguments: null);
 
@@ -121,7 +122,7 @@ public class ChatToolDispatcherTests
     public async System.Threading.Tasks.Task RecordsAFailure_WhenTheNativeToolThrows()
     {
         var tool = new SpyTool("bomb", exceptionToThrow: new InvalidOperationException("native boom"));
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out var messages, out var toolsUsed);
         var call = new FunctionCallContent("call-b", "bomb", arguments: null);
 
@@ -154,7 +155,7 @@ public class ChatToolDispatcherTests
     public async System.Threading.Tasks.Task ExecutesATextFallbackCall_AndFeedsTheResultBack()
     {
         var tool = new SpyTool("text_tool", result: "text result");
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out var messages, out var toolsUsed);
 
         await dispatcher.HandleTextFallbackToolCallsAsync(
@@ -173,7 +174,7 @@ public class ChatToolDispatcherTests
     [Fact]
     public async System.Threading.Tasks.Task ReportsAMissingTool_InTheTextFallbackResults()
     {
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([], out var messages, out var toolsUsed);
 
         await dispatcher.HandleTextFallbackToolCallsAsync(
@@ -187,7 +188,7 @@ public class ChatToolDispatcherTests
     public async System.Threading.Tasks.Task RecordsAFailure_WhenTheTextFallbackToolThrows()
     {
         var tool = new SpyTool("text_bomb", exceptionToThrow: new InvalidOperationException("text boom"));
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out var messages, out var toolsUsed);
 
         await dispatcher.HandleTextFallbackToolCallsAsync(
@@ -202,7 +203,7 @@ public class ChatToolDispatcherTests
     public async System.Threading.Tasks.Task FormatsAFailedToolResponse_AsAnErrorLine()
     {
         var tool = new SpyTool("failing_tool", result: "denied", succeed: false);
-        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger());
+        var dispatcher = new ChatToolDispatcher(new SpyExecutionLogger(), ToolInvocationPipeline.Unguarded);
         var ctx = BuildContext([tool], out var messages, out var toolsUsed);
 
         await dispatcher.HandleTextFallbackToolCallsAsync(

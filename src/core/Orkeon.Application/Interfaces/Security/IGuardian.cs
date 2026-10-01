@@ -5,13 +5,11 @@ namespace Orkeon.Application.Interfaces.Security;
 /// </summary>
 public enum GuardPhase
 {
-    /// <summary>Input.</summary>
+    /// <summary>The composed user prompt of an agent turn, before the first provider call.</summary>
     Input,
-    /// <summary>Output.</summary>
-    Output,
-    /// <summary>Tool Execution.</summary>
+    /// <summary>A tool call, before the tool runs.</summary>
     ToolExecution,
-    /// <summary>Delegation.</summary>
+    /// <summary>A delegation (<c>delegate_work_to_coworker</c>, <c>ask_question_to_coworker</c>), before it runs.</summary>
     Delegation
 }
 
@@ -24,10 +22,8 @@ public enum GuardAction
     Allow,
     /// <summary>Allow with a warning.</summary>
     Warn,
-    /// <summary>Block the operation.</summary>
-    Block,
-    /// <summary>Modify the content before proceeding.</summary>
-    Modify
+    /// <summary>Block the operation. Guardians never rewrite content: they allow, warn or block.</summary>
+    Block
 }
 
 /// <summary>
@@ -64,20 +60,27 @@ public record GuardContext
 {
     /// <summary>Gets or sets the phase.</summary>
     public GuardPhase Phase { get; init; }
-    /// <summary>Gets or sets the agent id.</summary>
+    /// <summary>Gets or sets the id of the agent whose turn is checked.</summary>
     public string AgentId { get; init; } = string.Empty;
+    /// <summary>Gets or sets the role of the agent whose turn is checked.</summary>
+    public string AgentRole { get; init; } = string.Empty;
     /// <summary>Gets or sets the crew id.</summary>
     public string CrewId { get; init; } = string.Empty;
-    /// <summary>Gets or sets the content.</summary>
+    /// <summary>Gets or sets the content checked by the <see cref="GuardPhase.Input"/> phase.</summary>
     public string? Content { get; init; }
     /// <summary>Gets or sets the tool name.</summary>
     public string? ToolName { get; init; }
-    /// <summary>Tool Args.</summary>
-    public Dictionary<string, object>? ToolArgs { get; init; }
-    /// <summary>Gets or sets the delegation depth.</summary>
-    public int DelegationDepth { get; init; }
-    /// <summary>Gets or sets the target agent id.</summary>
-    public string? TargetAgentId { get; init; }
+    /// <summary>Gets or sets the tool call arguments.</summary>
+    public IReadOnlyDictionary<string, object?>? ToolArgs { get; init; }
+    /// <summary>
+    /// Gets or sets the roles of the agents that delegated, outermost first, down to the one
+    /// whose call is checked (excluded): empty outside a synchronous delegation.
+    /// </summary>
+    public IReadOnlyList<string> DelegationChain { get; init; } = [];
+    /// <summary>Gets the delegation depth: how many delegations the checked call is nested in.</summary>
+    public int DelegationDepth => DelegationChain.Count;
+    /// <summary>Gets or sets the role a delegation targets.</summary>
+    public string? TargetAgentRole { get; init; }
 }
 
 /// <summary>
@@ -123,4 +126,18 @@ public interface IGuardian
     /// Checks the given context and returns whether the operation should be allowed, warned, or blocked.
     /// </summary>
     System.Threading.Tasks.Task<GuardResult> CheckAsync(GuardContext context, CancellationToken ct = default);
+}
+
+/// <summary>
+/// Runs the guardians registered for a phase. The port the agent turn calls: the input phase
+/// from the execution orchestrator, the tool and delegation phases from
+/// <see cref="IToolInvocationPipeline"/>.
+/// </summary>
+public interface IGuardianPipeline
+{
+    /// <summary>
+    /// Executes the guardians of <see cref="GuardContext.Phase"/>. Returns a block as soon as
+    /// one guardian blocks; otherwise the aggregated warnings, or an allow.
+    /// </summary>
+    System.Threading.Tasks.Task<GuardResult> ExecuteAsync(GuardContext context, CancellationToken ct = default);
 }
