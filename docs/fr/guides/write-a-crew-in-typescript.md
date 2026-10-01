@@ -274,9 +274,11 @@ exception, attempt, agent }` ; aiguillez sur `err.code` (`rate_limit`, `network`
 
 ## Réglage de l'éditeur
 
-Les typings vivent dans `src/scripting/Orkeon.Scripting/Typings/*.d.ts` ; le build
-d'`Orkeon.Scripting` les concatène dans `orkeon.d.ts`, sous le `bin/<configuration>/net10.0/dist/`
-de ce projet. Pointez-y votre éditeur, et copiez
+Lancez `orkeon typings` dans votre projet : il écrit `orkeon.d.ts` dans `./.orkeon/`, et votre
+script commence par `/// <reference path="./.orkeon/orkeon.d.ts" />`. Le fichier vient de
+l'outil, il correspond donc au runtime — relancez la commande après une mise à jour. Dans un
+clone, le build d'`Orkeon.Scripting` l'écrit aussi sous le `bin/<configuration>/net10.0/dist/`
+de ce projet, depuis `src/scripting/Orkeon.Scripting/Typings/*.d.ts`. Copiez ensuite
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).
 
 Trois de ses options portent tout le poids, et les omettre produit des erreurs qui n'ont rien

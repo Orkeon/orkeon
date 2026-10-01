@@ -92,6 +92,41 @@ public sealed class CommandDispatchIntegrationTests : IDisposable
         Assert.Contains("done:HELLO", console.Output);
     }
 
+    /// <summary>
+    /// GAP-13: <c>ctx.command.rawInput</c> is the line the user typed. It used to be the
+    /// command's name, so a handler reading <c>/deploy prod --force</c> saw <c>"deploy"</c>.
+    /// </summary>
+    [Fact]
+    public async Task Handler_reads_the_typed_line_in_ctx_command_rawInput()
+    {
+        var registry = LoadFixture("raw-input.cmd.ts", NewDispatchService());
+        var deploy = registry.ScriptCommands.Single(c => c.Name == "deploy");
+        var console = new ScriptedTestConsole();
+
+        var result = await deploy.ExecuteAsync(Ctx("/deploy prod", "prod", console), CancellationToken.None);
+
+        Assert.Equal("raw:/deploy prod|name:deploy", result.Message);
+    }
+
+    /// <summary>
+    /// GAP-13: the <c>completed</c> replay sees the line that launched its ticket, kept on the
+    /// instance — never the line of a later invocation that pumps the drain queue.
+    /// </summary>
+    [Fact]
+    public async Task Completed_replay_reads_the_line_that_launched_its_ticket()
+    {
+        var service = NewDispatchService();
+        RegisterEchoAgent(service);
+
+        var registry = LoadFixture("askbg-raw.cmd.ts", service);
+        var cmd = registry.ScriptCommands.Single(c => c.Name == "askbg-raw");
+        var console = new ScriptedTestConsole();
+
+        await cmd.ExecuteAsync(Ctx("/askbg-raw hello", "hello", console), CancellationToken.None);
+
+        await WaitUntil(() => console.Output.Contains("done:HELLO@/askbg-raw hello", StringComparison.Ordinal));
+    }
+
     [Fact]
     public async Task Async_dispatch_with_a_pending_promise_still_launches_before_the_prompt_returns()
     {

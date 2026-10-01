@@ -283,9 +283,13 @@ if (shouldAudit) b.withAgent(auditor);
 
 ## Editor setup
 
-The typings are `src/scripting/Orkeon.Scripting/Typings/*.d.ts`; building `Orkeon.Scripting`
-concatenates them into `bin/<configuration>/net10.0/dist/orkeon.d.ts` under that project — no
-package or release archive carries the file yet. Point your editor at either and copy
+Run `orkeon typings` in your project: it writes `orkeon.d.ts` (this DSL) and `orkeon-cli.d.ts`
+(the REPL's `*.cmd.ts` commands) into `./.orkeon/` — `--out <dir>` picks another folder — and
+overwrites them, so run it again after updating the tool. Each script then opens with
+`/// <reference path="./.orkeon/orkeon.d.ts" />` (the path relative to the script). The files
+come from the tool itself, so they describe the runtime that will execute your scripts. In a
+clone, the sources are `src/scripting/Orkeon.Scripting/Typings/*.d.ts`, concatenated by the
+build into `bin/<configuration>/net10.0/dist/orkeon.d.ts` under that project. Then copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 which is the configuration the repository's own gate uses.
 

@@ -18,17 +18,12 @@
     <None Include="README.md" Pack="true" PackagePath="\" />
   </ItemGroup>
 
-  <!-- SCR-21: bundle the rolled-up `orkeon.d.ts` produced by `GenerateRollupDts` into the package. -->
-  <ItemGroup>
-    <None Include="$(OutputPath)dist\orkeon.d.ts"
-          Pack="true"
-          PackagePath="content\typings\orkeon.d.ts"
-          Condition="Exists('$(OutputPath)dist\orkeon.d.ts')" />
-  </ItemGroup>
-
-  <!-- SCR-21: concatenate Typings/*.d.ts into bin/<config>/<tfm>/dist/orkeon.d.ts after each build.
-       Load order: errors.d.ts first (types referenced elsewhere), then the rest alphabetically. -->
-  <Target Name="GenerateRollupDts" AfterTargets="Build">
+  <!-- SCR-21 / GAP-13: concatenate Typings/*.d.ts into one `orkeon.d.ts` BEFORE compiling, and
+       embed it (logical name `Orkeon.Scripting.Typings.orkeon.d.ts`): the `orkeon` tool writes it
+       next to a project (`orkeon typings`), so a dotnet-tool user gets the typings without a clone.
+       Load order: errors.d.ts first (types referenced elsewhere), then the rest alphabetically.
+       WriteOnlyWhenDifferent keeps incremental builds incremental. -->
+  <Target Name="GenerateRollupDts" BeforeTargets="BeforeBuild">
     <ItemGroup>
       <DtsFirst Include="Typings/errors.d.ts" />
       <DtsRest Include="Typings/*.d.ts" Exclude="Typings/errors.d.ts" />
@@ -39,19 +34,30 @@
     <ReadLinesFromFile File="%(DtsRest.Identity)">
       <Output TaskParameter="Lines" ItemName="DtsLinesRest" />
     </ReadLinesFromFile>
-    <MakeDir Directories="$(OutputPath)dist" />
+    <ItemGroup>
+      <DtsBanner Include="// Orkeon Scripting DSL v1.0 - TypeScript declarations" />
+      <DtsBanner Include="// Generated from src/scripting/Orkeon.Scripting/Typings/%2A.d.ts" />
+      <DtsBanner Include="// DO NOT EDIT - regenerate with `orkeon typings` (or `dotnet build src/scripting/Orkeon.Scripting` in a clone)" />
+    </ItemGroup>
     <PropertyGroup>
-      <RollupBanner>// Orkeon Scripting DSL v1.0 - TypeScript declarations
-// Generated from src/scripting/Orkeon.Scripting/Typings/*.d.ts
-// DO NOT EDIT - regenerate via `dotnet build src/scripting/Orkeon.Scripting`
-</RollupBanner>
+      <_OrkeonRollupDts>$(IntermediateOutputPath)orkeon.d.ts</_OrkeonRollupDts>
     </PropertyGroup>
-    <WriteLinesToFile File="$(OutputPath)dist/orkeon.d.ts"
-                      Lines="$(RollupBanner)"
-                      Overwrite="true" />
-    <WriteLinesToFile File="$(OutputPath)dist/orkeon.d.ts"
-                      Lines="@(DtsLinesFirst);@(DtsLinesRest)"
-                      Overwrite="false" />
+    <MakeDir Directories="$(IntermediateOutputPath)" />
+    <WriteLinesToFile File="$(_OrkeonRollupDts)"
+                      Lines="@(DtsBanner);@(DtsLinesFirst);@(DtsLinesRest)"
+                      Overwrite="true"
+                      WriteOnlyWhenDifferent="true" />
+    <ItemGroup>
+      <EmbeddedResource Include="$(_OrkeonRollupDts)" LogicalName="Orkeon.Scripting.Typings.orkeon.d.ts" />
+      <FileWrites Include="$(_OrkeonRollupDts)" />
+    </ItemGroup>
+  </Target>
+
+  <!-- The same file at bin/<config>/<tfm>/dist/orkeon.d.ts, for the repository's own tooling. -->
+  <Target Name="CopyRollupDtsToDist" AfterTargets="Build">
+    <Copy SourceFiles="$(IntermediateOutputPath)orkeon.d.ts"
+          DestinationFiles="$(OutputPath)dist/orkeon.d.ts"
+          SkipUnchangedFiles="true" />
   </Target>
 
   <!-- Bootstrap the esbuild toolchain so EsbuildTranspiler.FindRepoLocalEsbuild can locate

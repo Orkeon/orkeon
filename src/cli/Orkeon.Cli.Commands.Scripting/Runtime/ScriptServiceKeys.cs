@@ -10,16 +10,6 @@ public static class ScriptServiceKeys
     /// <summary>The <see cref="Orkeon.Domain.FileSystem.IFileSystemService"/> instance — virtual FS.</summary>
     public const string FileSystem = "fs";
 
-    /// <summary>
-    /// Reserved key for a host-supplied configuration view. NOT populated by
-    /// <see cref="DefaultScriptServiceWhitelist"/> (R2.6 / SEC-009): the raw
-    /// <see cref="Microsoft.Extensions.Configuration.IConfiguration"/> carries
-    /// secrets (API keys, connection strings) and must never reach untrusted
-    /// scripts. A host may bind this key to a <strong>filtered</strong> view of
-    /// non-sensitive keys by calling <c>ScriptServiceWhitelist.Add</c> itself.
-    /// </summary>
-    public const string Configuration = "configuration";
-
     /// <summary>All registered <see cref="Orkeon.Domain.Tools.IBaseTool"/> instances as an array.</summary>
     public const string Tools = "tools";
 

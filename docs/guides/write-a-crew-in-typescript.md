@@ -267,9 +267,11 @@ attempt, agent }`; branch on `err.code` (`rate_limit`, `network`, `timeout`, `va
 
 ## Editor setup
 
-The typings live in `src/scripting/Orkeon.Scripting/Typings/*.d.ts`; building
-`Orkeon.Scripting` concatenates them into `orkeon.d.ts`, under that project's
-`bin/<configuration>/net10.0/dist/`. Point your editor at it, and copy
+Run `orkeon typings` in your project: it writes `orkeon.d.ts` into `./.orkeon/`, and your
+script opens with `/// <reference path="./.orkeon/orkeon.d.ts" />`. The file comes from the
+tool, so it matches the runtime — run the verb again after updating. In a clone, building
+`Orkeon.Scripting` also writes it under that project's `bin/<configuration>/net10.0/dist/`
+from `src/scripting/Orkeon.Scripting/Typings/*.d.ts`. Then copy
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json).
 
 Three of its options are load-bearing, and skipping them produces errors that have nothing to

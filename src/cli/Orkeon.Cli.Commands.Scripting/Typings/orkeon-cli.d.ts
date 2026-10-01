@@ -1,6 +1,6 @@
 // Orkeon CLI scripted-commands TypeScript declarations.
-// Embedded as a resource in Orkeon.Cli.Commands.Scripting.dll; published to disk by the loader
-// in Phase 5 (until then, copy this file manually next to your *.cmd.ts sources).
+// Shipped inside the `orkeon` tool: `orkeon typings` writes this file (and orkeon.d.ts) into
+// ./.orkeon/ — run it again after updating the tool.
 //
 // Reference at the top of each script:
 //   /// <reference path="./.orkeon/orkeon-cli.d.ts" />
@@ -10,7 +10,7 @@ declare global {
    * Register a scripted command. Called at module top level — calling it from inside a
    * handler throws (the loader freezes the collector after evaluation).
    */
-  function defineCommand<TArgs = Record<string, unknown>>(
+  function defineCommand<TArgs extends ArgsSchema | undefined = undefined>(
     desc: CommandDescriptor<TArgs>,
   ): void;
 
@@ -19,17 +19,18 @@ declare global {
    * the prompt immediately; the optional `completed` is replayed on the engine thread when the
    * agent responds. Called at module top level (same freeze rule as `defineCommand`).
    */
-  function defineAsyncCommand<TArgs = Record<string, unknown>>(
+  function defineAsyncCommand<TArgs extends ArgsSchema | undefined = undefined>(
     desc: AsyncCommandDescriptor<TArgs>,
   ): void;
 }
 
 /** Descriptor passed to `defineAsyncCommand`. */
-export interface AsyncCommandDescriptor<TArgs = Record<string, unknown>> {
+export interface AsyncCommandDescriptor<TArgs extends ArgsSchema | undefined = undefined> {
   name: string;
   aliases?: readonly string[];
   description: string;
-  args?: ArgsSchema<TArgs>;
+  /** Typed args spec. When omitted, `dispatch` receives `{ raw: string[] }`. */
+  args?: TArgs;
   /**
    * Per-command admission quota: the max number of in-flight instances of THIS command.
    * Omitted ⇒ unbounded (∞). Must be an integer ≥ 1 when present.
@@ -96,15 +97,15 @@ export interface CommandInstanceView {
 }
 
 /** Descriptor passed to `defineCommand`. */
-export interface CommandDescriptor<TArgs = Record<string, unknown>> {
+export interface CommandDescriptor<TArgs extends ArgsSchema | undefined = undefined> {
   /** Primary identifier, lowercase kebab-case (`^[a-z][a-z0-9-]*$`). */
   name: string;
   /** Alternate identifiers; must not duplicate `name`. */
   aliases?: readonly string[];
   /** Single-line description (≤ 200 chars, no newline). */
   description: string;
-  /** Optional typed args spec (Phase 3). When omitted, handler receives `{ raw: string[] }`. */
-  args?: ArgsSchema<TArgs>;
+  /** Typed args spec. When omitted, the handler receives `{ raw: string[] }`. */
+  args?: TArgs;
   /** Handler invoked when the user types the command. */
   handler: (
     args: ParsedArgs<TArgs>,
@@ -180,15 +181,20 @@ export interface ProgressHandle {
   done(label?: string): void;
 }
 
-/** Whitelisted service locator (Phase 2 stub; Phase 4 wires the real whitelist). */
+/** Whitelisted service locator: `get` throws for a key that is not whitelisted. */
 export interface ServiceLocator {
   /**
-   * Resolve a whitelisted host service. Known keys:
-   * - `"fs"` → IFileSystemService, `"configuration"` → IConfiguration,
-   *   `"tools"` → IBaseTool[], `"llm"` → ILlmProvider, `"logger"` → ILogger,
-   *   `"commands"` → CommandsFacade (agent dispatch),
+   * Resolve a whitelisted host service. Keys of the default whitelist:
+   * - `"fs"` → IFileSystemService, `"tools"` → IBaseTool[];
+   * - present only when the host wired them (check with `has`): `"llm"` → ILlmProvider,
+   *   `"logger"` → ILogger, `"commands"` → CommandsFacade (agent dispatch),
    *   `"script-host"` → {@link ScriptHostFacade} (run a crew by name).
+   *
+   * The host configuration is deliberately not served: it carries API keys and connection
+   * strings (SEC-009), so `get("configuration")` throws.
    */
+  get(name: "commands"): CommandsFacade;
+  get(name: "script-host"): ScriptHostFacade;
   get<T = unknown>(name: string): T;
   has(name: string): boolean;
 }
@@ -199,8 +205,12 @@ export interface ServiceLocator {
  * as the crew's `globalThis.inputs` object.
  */
 export interface ScriptHostFacade {
-  /** Run the crew and wait for its output (short crews; call from a sync handler). */
-  runCrew(name: string, input?: Record<string, unknown>): Promise<CrewRunOutput>;
+  /**
+   * Run the crew and wait for its output (short crews; call from a sync handler). The call
+   * blocks and returns the output itself, not a promise: `.then(...)` on it throws a
+   * `TypeError`. `await` on it is harmless (it resolves to the same value).
+   */
+  runCrew(name: string, input?: Record<string, unknown>): CrewRunOutput;
   /**
    * Post the crew on a pool thread and return a ticket immediately. The completion is drained
    * to a `defineAsyncCommand`'s `completed(result)` (the same ticket cycle as `commands.post`);
@@ -219,7 +229,7 @@ export interface CrewRunOutput {
   readonly error?: string;
 }
 
-// ── Args schema (declared now so Phase 3 lands without a public-surface change). ──
+// ── Args schema: `args: { who: { type: "string" } }` gives the handler `args.who: string`. ──
 
 export type ArgSpec =
   | { type: "string"; required?: boolean; default?: string; choices?: readonly string[] }
@@ -227,11 +237,11 @@ export type ArgSpec =
   | { type: "boolean"; required?: boolean; default?: boolean }
   | { type: "string[]"; required?: boolean; default?: readonly string[] };
 
-export type ArgsSchema<T> = { [K in keyof T]: ArgSpec };
+export type ArgsSchema = Readonly<Record<string, ArgSpec>>;
 
-export type ParsedArgs<TArgs> = TArgs extends void | undefined
-  ? { readonly raw: readonly string[] }
-  : { readonly [K in keyof TArgs]: ResolveArgType<TArgs[K]> };
+export type ParsedArgs<TArgs> = TArgs extends ArgsSchema
+  ? { readonly [K in keyof TArgs]: ResolveArgType<TArgs[K]> }
+  : { readonly raw: readonly string[] };
 
 export type ResolveArgType<S> =
   S extends { type: "string" } ? string

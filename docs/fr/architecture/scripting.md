@@ -94,7 +94,8 @@ tableau méthode par méthode — dont la colonne que les déclarations ne peuve
 
 Les déclarations sont la référence. Elles sont livrées avec le DSL, ce sont elles que lit
 votre éditeur, et elles vivent sous `src/scripting/Orkeon.Scripting/Typings/` —
-concaténées au build dans le `orkeon.d.ts` que la CLI émet.
+concaténées au build en un seul `orkeon.d.ts`, que l'outil `orkeon` embarque et écrit à côté
+de votre projet avec `orkeon typings` ([Référence](#référence)).
 
 | Concept | Où regarder |
 |---------|---------------|
@@ -213,13 +214,28 @@ par la voie script d'`orkeon run`, le runner partagé et la forge :
 Les commandes `*.cmd.ts` du REPL ont leur propre profil, `Orkeon:Cli:ScriptCommands:Limits`
 ([Commandes CLI en TypeScript](./cli-ts-commands.md#appsettingsjson)).
 
-esbuild est cherché, dans l'ordre : la variable d'environnement `ORKEON_ESBUILD_PATH`, un
-`esbuild-bin/esbuild[.exe]` à côté du binaire en cours (ce que livrent les archives de
-release), le `tools/scripting-esbuild/node_modules/` du dépôt (installé par le build
-d'`Orkeon.Scripting` avec `npm ci`, sauté avec `-p:SkipScriptingNpmInstall=true` ; cherché
-jusqu'à huit dossiers parents depuis le répertoire de travail et depuis le binaire), puis le
-`PATH`. Quand rien n'est trouvé, l'erreur liste chaque endroit essayé ; `orkeon doctor` le
-signale dans la vérification `esbuild`.
+La chaîne esbuild est lue dans `Orkeon:Scripting:Toolchain` (`ScriptingToolchainOptions`), par
+chaque hôte qui transpile : `orkeon run`, le runner partagé, `orkeon doctor`, `orkeon forge` et
+les commandes `*.cmd.ts` du REPL :
+
+| Clé | Défaut | Rôle |
+|---|---|---|
+| `EsbuildPath` | — | Chemin absolu du binaire esbuild ; premier de l'ordre de recherche ci-dessous. |
+| `EsbuildTimeout` | `00:00:30` | Borne d'horloge d'une transpilation ou d'un bundle esbuild. |
+
+esbuild est cherché, dans l'ordre : `Orkeon:Scripting:Toolchain:EsbuildPath`, la variable
+d'environnement `ORKEON_ESBUILD_PATH`, un `esbuild-bin/esbuild[.exe]` à côté du binaire en cours
+(ce que livrent les archives de release), le `tools/scripting-esbuild/node_modules/` du dépôt
+(installé par le build d'`Orkeon.Scripting` avec `npm ci`, sauté avec
+`-p:SkipScriptingNpmInstall=true` ; cherché jusqu'à huit dossiers parents depuis le répertoire de
+travail et depuis le binaire), puis le `PATH`. Quand rien n'est trouvé, l'erreur liste chaque
+endroit essayé ; `orkeon doctor` le signale dans la vérification `esbuild`.
+
+**L'outil dotnet `orkeon` ne livre pas esbuild.** Son paquet ne porte aucun `esbuild-bin/` :
+après `dotnet tool install -g Orkeon.Scripting.Cli`, un script `.ork.ts` ne tourne qu'une fois
+esbuild présent sur la machine — `npm install -g esbuild` (il arrive sur le `PATH`), ou un
+binaire désigné par `ORKEON_ESBUILD_PATH` ou `EsbuildPath`. Rien n'est téléchargé au premier
+lancement. Les crews YAML n'en ont jamais besoin.
 
 Un script peut commencer par `/// <reference orkeon-script="1.0" />`. La directive est
 facultative ; présente, une version que le runtime ne prend pas en charge (seule `1.0`
@@ -242,8 +258,12 @@ aujourd'hui) fait échouer le run avec `ScriptVersionMismatchError` avant toute 
 Cette page dit ce qu'est le DSL et où il se situe ; les typings disent ce qu'il expose. La
 surface des crews est `orkeon.d.ts` — les `Typings/*.d.ts` ci-dessus concaténés
 (`errors.d.ts` d'abord, les autres par ordre alphabétique) par le build
-d'`Orkeon.Scripting` dans
-`src/scripting/Orkeon.Scripting/bin/<configuration>/net10.0/dist/orkeon.d.ts` ; aucun paquet
-ni aucune archive de release ne le porte aujourd'hui. `orkeon-cli.d.ts` est un autre fichier
-pour une autre surface : les commandes `*.cmd.ts` documentées dans
-[cli-ts-commands.md](../architecture/cli-ts-commands.md).
+d'`Orkeon.Scripting`, qui l'embarque dans l'assembly et l'écrit aussi dans
+`src/scripting/Orkeon.Scripting/bin/<configuration>/net10.0/dist/orkeon.d.ts`.
+`orkeon-cli.d.ts` est un autre fichier pour une autre surface : les commandes `*.cmd.ts`
+documentées dans [cli-ts-commands.md](../architecture/cli-ts-commands.md).
+
+Les deux sont livrés dans l'outil `orkeon`. `orkeon typings` les écrit dans `./.orkeon/` (ou
+`--out <dossier>`), en écrasant ce qui s'y trouve — relancez-le après une mise à jour de
+l'outil, pour que l'éditeur lise la surface du runtime qui exécutera les scripts
+([référence du CLI](../reference/cli.md#orkeon-typings)).

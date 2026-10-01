@@ -87,8 +87,9 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
 
     /// <summary>
     /// Builds the bench over the engine host's services. <paramref name="transpilerFactory"/>
-    /// serves the script format only; the default is the real esbuild chain — tests inject
-    /// a pass-through, production never does.
+    /// serves the script format only; the default is the real esbuild chain, configured by the
+    /// engine host's <c>Orkeon:Scripting:Toolchain</c> section — tests inject a pass-through,
+    /// production never does.
     /// </summary>
     public ForgeCrewTestBench(
         IServiceProvider services,
@@ -97,7 +98,8 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _crewVirtualPath = crewVirtualPath;
-        _transpilerFactory = transpilerFactory ?? (static () => new Orkeon.Scripting.Toolchain.EsbuildTranspiler());
+        _transpilerFactory = transpilerFactory ?? (() => Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(
+            services.GetService<Microsoft.Extensions.Configuration.IConfiguration>()));
     }
 
     /// <inheritdoc />

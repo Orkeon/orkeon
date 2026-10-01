@@ -14,6 +14,9 @@ namespace Orkeon.Scripting.Cli.Commands.Forge;
 /// <summary>Parsed surface of <c>orkeon forge</c> (SPEC-ORKEON-FORGE §5.1).</summary>
 internal sealed record ForgeCommandOptions
 {
+    /// <summary>The one stream format of <c>--events</c>, and the only word it takes as its value.</summary>
+    private const string EventsFormat = "jsonl";
+
     /// <summary>The problem, typed on the command line; null opens with the interview.</summary>
     public string? Need { get; init; }
 
@@ -244,9 +247,11 @@ internal sealed record ForgeCommandOptions
 
         if (arg == "--events")
         {
-            // The only stream format is jsonl; the value is accepted for the spec's
-            // spelling (`--events jsonl`) and for forward compatibility.
-            TryTakeValue(args, ref i, verbatim: false, out _);
+            // The only stream format is jsonl, and the value is optional: it is consumed only
+            // when it IS `jsonl` (the spec's spelling, the one Studio sends). Any other word is
+            // the need's — `--events veille des prix` used to send "des prix" (GAP-13).
+            if (i + 1 < args.Length && string.Equals(args[i + 1], EventsFormat, StringComparison.OrdinalIgnoreCase))
+                i++;
             return options with { Events = true };
         }
 
@@ -854,7 +859,7 @@ internal static class ForgeCommand
             return (null, ExitError);
         }
 
-        if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable())
+        if (ForgeSession.IsScriptFormat(session.Document.Format) && !EsbuildAvailable(workspace, options))
         {
             await Console.Error.WriteLineAsync(
                 $"orkeon forge: session '{slug}' renders a script crew and esbuild was not found"
@@ -875,7 +880,7 @@ internal static class ForgeCommand
         string workspace, ForgeCommandOptions options, ForgeReference? reference)
     {
         var format = options.Format ?? ForgeSession.FormatYaml;
-        if (ForgeSession.IsScriptFormat(format) && !EsbuildAvailable())
+        if (ForgeSession.IsScriptFormat(format) && !EsbuildAvailable(workspace, options))
         {
             // The clean degradation of SPEC §8.2: fall back to YAML with the remedy,
             // never a transpilation error a beginner cannot read.
@@ -1346,13 +1351,16 @@ internal static class ForgeCommand
     /// <summary>
     /// Whether the esbuild binary resolves through the transpiler's own chain (config →
     /// env → bundled → repo-local → PATH) — the exact resolution `orkeon run` will use,
-    /// not a parallel probe that could drift.
+    /// not a parallel probe that could drift. The config step reads the same settings file
+    /// the session's host will read.
     /// </summary>
-    private static bool EsbuildAvailable()
+    private static bool EsbuildAvailable(string workspace, ForgeCommandOptions options)
     {
         try
         {
-            using var transpiler = new Orkeon.Scripting.Toolchain.EsbuildTranspiler();
+            var settingsPath = RunnerSettings.ResolveSettingsPath(options.SettingsPath, workspace, quiet: true);
+            using var transpiler = Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(
+                RunnerSettings.ReadConfiguration(settingsPath));
             transpiler.ResolveBinary();
             return true;
         }

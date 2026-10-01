@@ -167,7 +167,7 @@ internal static class DoctorCommand
             CheckAppSettings(llm),
             CheckLlmConfig(llm),
             await CheckLlmReachabilityAsync(llm, ct).ConfigureAwait(false),
-            await CheckEsbuildAsync(ct).ConfigureAwait(false),
+            await CheckEsbuildAsync(llm.Configuration, ct).ConfigureAwait(false),
             CheckLocalEmbeddings(),
             CheckOnnxReranker(),
             CheckTreeSitterGrammars(),
@@ -186,6 +186,8 @@ internal static class DoctorCommand
         public string? ApiKey { get; init; }
         public string? ProviderTypeName { get; init; }
         public string? ProviderDisplayName { get; init; }
+        /// <summary>The settings file plus the <c>ORKEON_</c> variables, as a runner reads them.</summary>
+        public required IConfiguration Configuration { get; init; }
     }
 
     private static LlmContext ReadLlmContext(string cwd)
@@ -194,15 +196,11 @@ internal static class DoctorCommand
         // reports the outcome itself instead of the resolver's stderr warning.
         var settingsPath = RunnerSettings.ResolveSettingsPath(null, cwd, quiet: true);
 
-        var builder = new ConfigurationBuilder();
-        if (settingsPath is not null)
-            builder.AddJsonFile(settingsPath, optional: true);
-        builder.AddEnvironmentVariables("ORKEON_");
-        var configuration = builder.Build();
+        var configuration = RunnerSettings.ReadConfiguration(settingsPath);
 
         var section = configuration.GetSection(ConfigurationKeys.LlmSection);
         if (!section.Exists())
-            return new LlmContext { SettingsPath = settingsPath, HasLlmSection = false };
+            return new LlmContext { SettingsPath = settingsPath, HasLlmSection = false, Configuration = configuration };
 
         var model = section["Model"];
         var baseUrl = section["BaseUrl"];
@@ -210,6 +208,7 @@ internal static class DoctorCommand
         {
             SettingsPath = settingsPath,
             HasLlmSection = true,
+            Configuration = configuration,
             Model = model,
             BaseUrl = baseUrl,
             ApiKey = section["ApiKey"],
@@ -391,14 +390,15 @@ internal static class DoctorCommand
         }
     }
 
-    private static async Task<DoctorCheckResult> CheckEsbuildAsync(CancellationToken ct)
+    private static async Task<DoctorCheckResult> CheckEsbuildAsync(IConfiguration configuration, CancellationToken ct)
     {
         const string Check = "esbuild";
         string binary;
         try
         {
-            // The transpiler's own chain: config → ORKEON_ESBUILD_PATH → bundled → repo → PATH.
-            using var transpiler = new EsbuildTranspiler();
+            // The transpiler's own chain, built the way `orkeon run` builds it:
+            // Orkeon:Scripting:Toolchain:EsbuildPath → ORKEON_ESBUILD_PATH → bundled → repo → PATH.
+            using var transpiler = EsbuildTranspiler.Create(configuration);
             binary = transpiler.ResolveBinary();
         }
         catch (EsbuildNotFoundException)
@@ -407,7 +407,7 @@ internal static class DoctorCommand
             {
                 Check = Check,
                 Status = StatusWarn,
-                Detail = "not found — required only for .ork.ts scripts (YAML crews are unaffected); install with `npm install -g esbuild` or set ORKEON_ESBUILD_PATH",
+                Detail = "not found — required only for .ork.ts scripts (YAML crews are unaffected); the dotnet tool does not ship it: install with `npm install -g esbuild`, or point ORKEON_ESBUILD_PATH or Orkeon:Scripting:Toolchain:EsbuildPath at the binary; editor typings: `orkeon typings`",
             };
         }
 
@@ -417,7 +417,7 @@ internal static class DoctorCommand
             Check = Check,
             Status = version is not null ? StatusOk : StatusWarn,
             Detail = version is not null
-                ? $"v{version} at {binary} (required only for .ork.ts scripts)"
+                ? $"v{version} at {binary} (required only for .ork.ts scripts; editor typings: `orkeon typings`)"
                 : $"resolved at {binary}, but `--version` did not answer",
         };
     }

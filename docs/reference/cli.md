@@ -2,7 +2,7 @@
 
 # `orkeon` CLI reference
 
-The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), turns a need in plain words into a crew (the Atelier), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, signs e-mail accounts in, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
+The `orkeon` command-line tool is the main entry point of the framework: it runs YAML crews and TypeScript scripts (`.ork.ts`), turns a need in plain words into a crew (the Atelier), scaffolds a configuration, probes LLM providers, drives the RAG subsystem, searches the example use cases, signs e-mail accounts in, writes the editor typings of the scripting DSL, and diagnoses an installation. It is built from `src/scripting/Orkeon.Scripting.Cli` and packs as the dotnet tool `orkeon`:
 
 ```bash
 dotnet tool install --global Orkeon.Scripting.Cli --prerelease
@@ -15,7 +15,7 @@ Update the tool with `dotnet tool update --global Orkeon.Scripting.Cli --prerele
 
 **Exit codes** (stable): `0` OK · `1` script/config error (missing file, invalid script, validation failure) · `2` the run failed — an unexpected runtime error, a service the host could not build at kickoff, or a crew that ran and did not succeed (a task without a final answer, a tripped circuit breaker, a consensus not reached) · `130` cancelled with Ctrl+C. On exit `2` the **last stderr line** is `ERROR: <reason>` — the sentence that says why; the exception type and its stack trace are logged only at `--verbose 2` (or `ORKEON_DEBUG=1`).
 
-**The command line.** `orkeon`, `orkeon --help`, `orkeon -h` and `orkeon help` print the command list and exit `0`; `orkeon <command> --help` prints the options of one command. `orkeon --version` (or `orkeon version`) prints `orkeon <version>` — `-v` is not the version, it is `--verbose`. The commands are `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases` and `email`, matched before anything else. The `run` verb is optional: a first token that starts with `-`, or that reads as a crew — it holds a `/` or a `\`, ends with `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` or `.yml`, or names an existing file or folder — is handed to `orkeon run`. Any other word is refused with `orkeon: unknown command '<word>'` and exit `1`.
+**The command line.** `orkeon`, `orkeon --help`, `orkeon -h` and `orkeon help` print the command list and exit `0`; `orkeon <command> --help` prints the options of one command. `orkeon --version` (or `orkeon version`) prints `orkeon <version>` — `-v` is not the version, it is `--verbose`. The commands are `run`, `init`, `doctor`, `llm`, `rag`, `forge`, `usecases`, `email` and `typings`, matched before anything else. The `run` verb is optional: a first token that starts with `-`, or that reads as a crew — it holds a `/` or a `\`, ends with `.ork.ts`, `.ork.js`, `.ts`, `.js`, `.yaml` or `.yml`, or names an existing file or folder — is handed to `orkeon run`. Any other word is refused with `orkeon: unknown command '<word>'` and exit `1`.
 
 ## `orkeon run`
 
@@ -78,7 +78,7 @@ Starting or resuming a cycle requires a configured LLM (`orkeon init`): the forg
 | Option | Description |
 |---|---|
 | `--format yaml\|script` | Rendered format (default `yaml`). `script` renders an editable `crew.ork.ts` and needs esbuild — absent, a new session falls back to YAML with `FORGE-ESBUILD-MISSING`. A session's format never changes on resume. |
-| `--events jsonl` | Emit the versioned event protocol on stdout instead of the terminal rendering; answers go down stdin (this is how Orkeon Studio drives the forge). The value is optional and not checked: the next argument is taken as it when it does not start with `-`, so write the need before the option (`orkeon forge "sort my mails" --events jsonl`). |
+| `--events jsonl` | Emit the versioned event protocol on stdout instead of the terminal rendering; answers go down stdin (this is how Orkeon Studio drives the forge). The value is optional: the next argument is taken as it only when it is `jsonl`, so any other word stays part of the need (`orkeon forge --events sort my mails` forges "sort my mails"). |
 | `--auto` | Arbitrate non-conforming verdicts without a human, within the budget. |
 | `--dry` | Stop after validation — generate and validate, never execute. Resume without `--dry` to try it. |
 | `--edit` | *(resume)* Amend the blueprint of a session paused before its trial: the amended JSON goes down the channel (`blueprint.edited` on stdin in `--events` mode, one pasted line in the terminal), is validated in full, then re-rendered deterministically — zero LLM tokens, same iteration, though a configured LLM is still required (`FORGE-LLM-UNAVAILABLE` otherwise). With `--dry`, the session pauses again at the same boundary. On a session not paused before its trial it exits 1 with a message, and no event. At the arbitration, use the `edit` decision instead. |
@@ -256,9 +256,18 @@ prints its stack trace), `130` Ctrl+C. The verb is
 matched before crew-path detection, like every verb: a crew folder named `email` runs as
 `orkeon run email`.
 
+## `orkeon typings`
+
+```bash
+orkeon typings                   # write orkeon.d.ts and orkeon-cli.d.ts into ./.orkeon/
+orkeon typings --out crews/.orkeon
+```
+
+Writes the TypeScript typings this build of the tool carries, for your editor: `orkeon.d.ts` (the `.ork.ts` [scripting DSL](./scripting-dsl.md#editor-setup)) and `orkeon-cli.d.ts` (the REPL's [`*.cmd.ts` commands](../architecture/cli-ts-commands.md)). Both are embedded in the tool, so a `dotnet tool install` is enough — no clone, no build. `-o`/`--out <dir>` picks the folder (default `./.orkeon`, created when missing); existing files are overwritten, so run the verb again after updating the tool. A script then opens with `/// <reference path="./.orkeon/orkeon.d.ts" />`, the path relative to the script. Offline. Exit codes: `0` written, `1` an unknown argument or `--out` without a folder.
+
 ## `orkeon doctor`
 
-Installation diagnostic: says in under 15 seconds what works and what is missing, as a ✅/⚠️/❌ table or `--json` (stable `{check, status, detail}` schema for CI). Nine checks, in this order: `dotnet-runtime`, `appsettings`, `llm-config`, `llm-reachability`, `esbuild`, `local-embeddings`, `onnx-reranker`, `tree-sitter`, `workspace-write`; each `status` is `ok`, `warn` or `fail`. `--json` is the only option: the settings are found by the chain of `orkeon run`, anchored at the current directory, plus the `ORKEON_*` environment variables. Exit codes: `0` all green or warnings only, `1` at least one failing check (or an invalid option), `2` an unexpected error, `130` Ctrl+C.
+Installation diagnostic: says in under 15 seconds what works and what is missing, as a ✅/⚠️/❌ table or `--json` (stable `{check, status, detail}` schema for CI). Nine checks, in this order: `dotnet-runtime`, `appsettings`, `llm-config`, `llm-reachability`, `esbuild`, `local-embeddings`, `onnx-reranker`, `tree-sitter`, `workspace-write`; each `status` is `ok`, `warn` or `fail`. `--json` is the only option: the settings are found by the chain of `orkeon run`, anchored at the current directory, plus the `ORKEON_*` environment variables — which is also where the `esbuild` check reads `Orkeon:Scripting:Toolchain:EsbuildPath`. The dotnet tool does not ship esbuild: a ⚠️ on that check says how to get it (`npm install -g esbuild`, `ORKEON_ESBUILD_PATH` or `EsbuildPath`), and both of its details name `orkeon typings` for the editor typings. Exit codes: `0` all green or warnings only, `1` at least one failing check (or an invalid option), `2` an unexpected error, `130` Ctrl+C.
 
 ```bash
 orkeon doctor --json

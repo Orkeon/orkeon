@@ -1338,8 +1338,9 @@ public static partial class RunnerExecution
         // script resolve consistently across .ork.ts authors. EsbuildNotFoundException
         // surfaces upstream and is caught by RunOneShotAsync's exception handler with
         // the standard exit code 2 (crew failure); operators can pre-install the
-        // toolchain via the MSBuild bootstrap target on src/scripting/Orkeon.Scripting/.
-        using var transpiler = new EsbuildTranspiler();
+        // toolchain via the MSBuild bootstrap target on src/scripting/Orkeon.Scripting/, or
+        // point Orkeon:Scripting:Toolchain:EsbuildPath at it.
+        using var transpiler = EsbuildTranspiler.Create(configuration);
         var scriptHost = new ScriptHost(
             fileSystem,
             transpiler,

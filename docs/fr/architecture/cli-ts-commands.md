@@ -176,15 +176,16 @@ interface CommandRuntimeContext {
 }
 ```
 
-`ctx.command.rawInput` contient pour l'instant le nom de la commande, pas la ligne tapée.
-`ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
+`ctx.command.rawInput` est la ligne telle que tapée (`/deploy prod --force`) ; dans le
+`completed` d'une commande asynchrone, c'est la ligne qui a lancé ce ticket, quelle que soit la
+commande qui pompe ensuite la complétion. `ctx.progress` rend un handle doté de `advance(label?)`, `set(value, label?)` et
 `done(label?)`. Une globale `console.log/info/debug/warn/error` renvoie vers `ctx.log`.
 
-Le `.d.ts` complet est livré comme ressource embarquée dans
-`Orkeon.Cli.Commands.Scripting.dll` ; rien ne l'écrit encore sur disque. Pour
-l'autocomplétion IDE, copiez `src/cli/Orkeon.Cli.Commands.Scripting/Typings/orkeon-cli.d.ts`
-en `.orkeon/orkeon-cli.d.ts` à côté de vos scripts — le chemin qu'attend la ligne
-`/// <reference path=…>` des exemples. Un fichier de commandes est aussi un moteur complet du
+Le `.d.ts` complet est livré dans l'outil `orkeon` : `orkeon typings` l'écrit en
+`.orkeon/orkeon-cli.d.ts` (à côté d'`orkeon.d.ts`) dans le répertoire courant — le chemin
+qu'attend la ligne `/// <reference path=…>` des exemples ; `--out <dossier>` l'écrit ailleurs
+([référence du CLI](../reference/cli.md#orkeon-typings)). Le garde-fou de typage du dépôt,
+`scripts/check-scripting-typings.sh`, vérifie chaque `*.cmd.ts` livré contre lui. Un fichier de commandes est aussi un moteur complet du
 DSL crew : `agentBuilder`, `crewBuilder`, `llm`, `tools.*` et `rag` y sont tous, et le `await`
 de premier niveau fonctionne.
 
@@ -223,9 +224,10 @@ if (ctx.services.has("llm")) { /* … */ }
 La whitelist de l'hôte détermine ce qui est accessible. Clés par défaut : `fs` et
 `tools`, plus en option `llm`, `logger`, `commands` (la façade de dispatch — voir
 plus bas) et `script-host` (lancement de crews depuis une commande — voir
-[Piloter des crews depuis le REPL](./coding-agent-ts.md)). `configuration` n'est
-délibérément **pas** exposée — la racine de configuration porte des clés d'API — et
-demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
+[Piloter des crews depuis le REPL](./coding-agent-ts.md)) ; pour ces deux-là, les typings
+rendent `CommandsFacade` et `ScriptHostFacade` sans argument de type. `configuration` n'est
+délibérément **pas** exposée — la racine de configuration porte des clés d'API — les typings
+ne la déclarent donc pas, et demander une clé hors de la whitelist lève une erreur. Les hôtes ajoutent les leurs en
 passant une `Action<ScriptServiceWhitelist>` à `AddScriptCommands` (`Add(name, factory)`,
 `AddOptional(name, factory)`).
 
@@ -476,7 +478,7 @@ choisit cette console avec `--ui` ([référence du CLI](../reference/cli.md#orke
 | Symptôme                                 | Cause probable                                                               | Action                                                          |
 |------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------|
 | `hello` n'apparaît pas dans `/help`      | Script hors des `Directories` configurés, ou erreur d'évaluation journalisée en Error | Vérifiez les logs de `Orkeon.Cli.Commands.Scripting.Loading.ScriptCommandLoader`. |
-| `Esbuild binary not found. Tried (in order): …` | Aucun esbuild sur le chemin de recherche                               | Définissez `ORKEON_ESBUILD_PATH`, lancez `npm ci` dans `tools/scripting-esbuild/`, ou mettez `esbuild` dans le `PATH` ([ordre de recherche](./scripting.md#configuration-et-chaîne-doutils)). |
+| `Esbuild binary not found. Tried (in order): …` | Aucun esbuild sur le chemin de recherche                               | Définissez `Orkeon:Scripting:Toolchain:EsbuildPath` ou `ORKEON_ESBUILD_PATH`, lancez `npm ci` dans `tools/scripting-esbuild/`, ou mettez `esbuild` dans le `PATH` — `npm install -g esbuild` le fait ; l'outil dotnet ne le livre pas ([ordre de recherche](./scripting.md#configuration-et-chaîne-doutils)). |
 | `defineCommand is not defined`           | Script évalué avant les bindings (bug)                                        | Ouvrez une issue avec le chemin du script.                       |
 | Le prompt ne s'affiche pas dans le panneau REPL | Adaptateur autre que Terminal.Gui ou heuristique de préfixe manquée    | Assurez-vous que le script écrit les prompts avec un suffixe `> `. |
 | `Error: Argument '--target' value 'staging' is not in choices [dev, prod].` | Faute de frappe ou `choices` obsolètes  | Utilisez `/help-cmd <name>` pour voir la signature à jour.       |

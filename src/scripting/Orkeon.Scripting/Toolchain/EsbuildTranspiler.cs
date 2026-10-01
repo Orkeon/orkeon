@@ -1,5 +1,6 @@
 using System.Diagnostics;
 using System.Runtime.InteropServices;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.Extensions.Options;
@@ -52,6 +53,16 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
         : this(Microsoft.Extensions.Options.Options.Create(options ?? new ScriptingToolchainOptions()), null)
     {
     }
+
+    /// <summary>
+    /// The one way a host builds a transpiler: binds the <c>Orkeon:Scripting:Toolchain</c>
+    /// section of <paramref name="configuration"/> (<c>EsbuildPath</c>, <c>EsbuildTimeout</c>)
+    /// through <see cref="ScriptingToolchainOptions.FromConfiguration"/>. Without a
+    /// configuration, the defaults apply and the binary is found by the rest of the chain
+    /// (<c>ORKEON_ESBUILD_PATH</c>, bundled, repo-local, <c>PATH</c>).
+    /// </summary>
+    public static EsbuildTranspiler Create(IConfiguration? configuration, ILogger<EsbuildTranspiler>? logger = null)
+        => new(Microsoft.Extensions.Options.Options.Create(ScriptingToolchainOptions.FromConfiguration(configuration)), logger);
 
     /// <summary>
     /// Transpiles <paramref name="tsSource"/> to JavaScript by piping it through esbuild's
@@ -233,7 +244,7 @@ public sealed partial class EsbuildTranspiler : IScriptTranspiler, IDisposable
             $"repo-local 'tools/scripting-esbuild/node_modules/' " +
             $"(probed legacy 'esbuild/bin/{binaryName}' and platform-namespaced '@esbuild/{ridHint}/...'), " +
             "PATH lookup. " +
-            "Install esbuild ('npm install -g esbuild') or set the binary path explicitly.");
+            "Install esbuild ('npm install -g esbuild' -- the orkeon dotnet tool does not ship it) or set the binary path explicitly.");
     }
 
     [SuppressVfsCompliance("OUT-OF-SCOPE: walks parent directories looking for a checked-in toolchain binary, not a VFS mount.")]

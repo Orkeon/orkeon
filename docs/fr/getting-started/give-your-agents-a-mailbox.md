@@ -24,7 +24,7 @@ Trois règles tiennent ensemble les outils e-mail, et l'exemple s'appuie sur les
 
 | Il vous faut | Notes |
 |---|---|
-| Orkeon | Un clone du dépôt, ou l'outil `orkeon` installé — voir [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md). Un script `.ork.ts` demande aussi esbuild : les archives de release le livrent, et un clone l'installe à son premier build ([où il est cherché](../architecture/scripting.md#configuration-et-chaîne-doutils) ; `orkeon doctor` le vérifie). |
+| Orkeon | Un clone du dépôt, ou l'outil `orkeon` installé — voir [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md). Un script `.ork.ts` demande aussi esbuild : les archives de release le livrent, un clone l'installe à son premier build, et l'outil dotnet ne le livre pas — `npm install -g esbuild` ([où il est cherché](../architecture/scripting.md#configuration-et-chaîne-doutils) ; `orkeon doctor` le vérifie). |
 | Un modèle | Les réglages de l'exemple pointent vers un [Docker Model Runner](https://docs.docker.com/desktop/features/model-runner/) local (`ai/granite-4.0-h-tiny` sur `localhost:12434`). N'importe quel profil de [`examples/appsettings/`](https://github.com/orkeon/orkeon/blob/main/examples/appsettings/README.md) convient : une exécution résout **un seul** fichier de réglages, copiez donc la section `Llm` du profil dans le fichier de l'exemple. |
 | Un compte Gmail | Avec la **validation en deux étapes** activée — les mots de passe d'application n'existent pas sans elle. |
 

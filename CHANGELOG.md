@@ -7,6 +7,41 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the scripting toolchain: `Orkeon:Scripting:Toolchain` is read, the typings ship with the tool **[breaking]**
+
+Four defects of the DSL tooling (GAP-13), all between what the docs promised and what ran.
+
+- **`Orkeon:Scripting:Toolchain` is read.** No host bound it: `EsbuildPath` was the first place
+  the lookup claimed to search (the error message cited it) and `EsbuildTimeout` could not be
+  changed. Every host now builds its transpiler with `EsbuildTranspiler.Create(configuration)`
+  (`ScriptingToolchainOptions.FromConfiguration`): `orkeon run`, the shared runner, `orkeon
+  doctor`, `orkeon forge` (its esbuild probe and its trial) and the REPL's `*.cmd.ts` loader.
+  `RunnerSettings.ReadConfiguration(settingsPath)` gives a CLI path the settings file plus the
+  `ORKEON_*` variables before a host exists.
+- **`orkeon typings` writes the editor typings.** `orkeon.d.ts` (the DSL) is embedded in
+  `Orkeon.Scripting` by its build and `orkeon-cli.d.ts` in the `orkeon` tool; the new verb writes
+  both into `./.orkeon/` (`--out <dir>`), overwriting what is there. A `dotnet tool install` user
+  had neither. The pack item of the non-packable `Orkeon.Scripting` and the
+  `orkeon-cli.d.ts` resource of `Orkeon.Cli.Commands.Scripting`, which nothing read, are gone.
+  The dotnet tool still does not ship esbuild — the docs and `orkeon doctor` now say so and say
+  how to get it (`npm install -g esbuild`, `ORKEON_ESBUILD_PATH` or `EsbuildPath`).
+- **`orkeon forge --events` no longer swallows the need.** The option takes a value only when it
+  is `jsonl`: `orkeon forge --events veille des prix` forges "veille des prix" (it used to send
+  "des prix"). Studio's `--events jsonl` is unchanged.
+- **`ctx.command.rawInput` is the line the user typed** (`/deploy prod --force`), not the
+  command's name; a `completed` replay reads the line that launched its ticket.
+- **`orkeon-cli.d.ts` declares what the runtime serves.** `runCrew` returns `CrewRunOutput`
+  (not a `Promise` — `.then` on it threw), `"configuration"` is no longer listed as a service
+  key, `services.get("commands")` / `get("script-host")` are typed, and an `args` schema gives
+  the handler typed arguments (they were `unknown`). `scripts/check-scripting-typings.sh` now
+  typechecks every `examples/**/*.cmd.ts` against it.
+- C#: `ScriptServiceKeys.Configuration` (reserved, never served) is removed.
+
+Migration: replace `runCrew(...).then(f)` with `f(runCrew(...))` (an `await` keeps working). A
+host that used `ScriptServiceKeys.Configuration` to add a filtered view writes the key
+`"configuration"` itself. A script that read the command name in `ctx.command.rawInput` reads
+`ctx.command.name`. Run `orkeon typings` instead of copying the `.d.ts` files from a clone.
+
 ### Changed — the `.ork.ts` typings and the runtime describe one DSL **[breaking]**
 
 The declarations in `Typings/*.d.ts` and the Jint runtime had drifted apart in three ways

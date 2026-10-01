@@ -741,7 +741,7 @@ internal static partial class RunCommand
 
         // ScriptHost stores but does not own/dispose the transpiler, so we keep ownership
         // here and dispose it when this method returns (after RunFromFileAsync completes).
-        using var transpiler = ResolveTranspiler();
+        using var transpiler = ResolveTranspiler(configuration);
         var scriptHost = new Orkeon.Scripting.ScriptHost(
             fileSystem,
             transpiler,
@@ -992,14 +992,15 @@ internal static partial class RunCommand
         }
     }
 
-    private static EsbuildTranspiler ResolveTranspiler()
+    private static EsbuildTranspiler ResolveTranspiler(Microsoft.Extensions.Configuration.IConfiguration configuration)
     {
         // Always bundle through esbuild — even when the script has no imports — so that:
         //   1. relative 'import { … } from "./helpers.ts"' actually resolves,
         //   2. TS-only syntax (enums, type-only imports, etc.) is consistently stripped
         //      instead of relying on Jint's tolerance for TS-flavoured JS.
+        // The host's Orkeon:Scripting:Toolchain section (EsbuildPath, EsbuildTimeout) applies.
         // EsbuildNotFoundException is caught upstream with a clear install hint.
-        return new EsbuildTranspiler();
+        return EsbuildTranspiler.Create(configuration);
     }
 
     // --- source-generated logging ---

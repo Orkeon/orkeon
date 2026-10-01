@@ -52,3 +52,5 @@ static Orkeon.Scripting.Bindings.LlmNamespaceBinding.Register(Jint.Engine! engin
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLlmError = "llm_error" -> string!
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeLockTimeout = "lock_timeout" -> string!
 *REMOVED*const Orkeon.Scripting.ErrorPolicy.ErrorCodeMapper.CodeToolError = "tool_error" -> string!
+static Orkeon.Scripting.Configuration.ScriptingToolchainOptions.FromConfiguration(Microsoft.Extensions.Configuration.IConfiguration? configuration) -> Orkeon.Scripting.Configuration.ScriptingToolchainOptions!
+static Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(Microsoft.Extensions.Configuration.IConfiguration? configuration, Microsoft.Extensions.Logging.ILogger<Orkeon.Scripting.Toolchain.EsbuildTranspiler!>? logger = null) -> Orkeon.Scripting.Toolchain.EsbuildTranspiler!

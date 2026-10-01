@@ -261,6 +261,41 @@ public sealed class ForgeCommandTests : IDisposable
     }
 
     /// <summary>
+    /// GAP-13: <c>--events</c> takes a value only when that value is <c>jsonl</c>. Any other
+    /// word after it is the first word of the need — it used to be swallowed, so
+    /// <c>--events veille des prix</c> sent "des prix" and <c>--events "trier mes mails"</c>
+    /// sent no need at all.
+    /// </summary>
+    [Fact]
+    public void Events_does_not_swallow_the_word_of_the_need_that_follows_it()
+    {
+        var options = ForgeCommandOptions.Parse(["--events", "veille", "des", "prix"]);
+
+        Assert.Null(options.Error);
+        Assert.True(options.Events);
+        Assert.Equal("veille des prix", options.Need);
+
+        var quoted = ForgeCommandOptions.Parse(["--events", "trier mes mails"]);
+        Assert.True(quoted.Events);
+        Assert.Equal("trier mes mails", quoted.Need);
+    }
+
+    /// <summary>The spec's spelling, the one Studio always sends, still consumes its value.</summary>
+    [Fact]
+    public void Events_jsonl_still_takes_its_value()
+    {
+        var resumed = ForgeCommandOptions.Parse(["resume", "demo", "--events", "jsonl"]);
+        Assert.Null(resumed.Error);
+        Assert.True(resumed.Events);
+        Assert.Equal("demo", resumed.ResumeSlug);
+        Assert.Null(resumed.Need);
+
+        var need = ForgeCommandOptions.Parse(["--events", "jsonl", "veille", "des", "prix"]);
+        Assert.True(need.Events);
+        Assert.Equal("veille des prix", need.Need);
+    }
+
+    /// <summary>
     /// A mistyped read folder is refused before anything moves: no session is created for
     /// it, and no host boots to discover an absent mount base the hard way.
     /// </summary>

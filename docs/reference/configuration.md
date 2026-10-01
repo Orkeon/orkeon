@@ -199,7 +199,7 @@ key-by-key table: [E-mail tools](../guides/email.md).
 | Section | Configures | Consumer |
 |---|---|---|
 | `Orkeon:Scripting:Limits` | Jint sandbox: `MemoryLimitBytes` (default 100 MB), `RecursionLimit` (64), `ExecutionTimeout` (30 s) | `Orkeon.Scripting` |
-| `Orkeon:Scripting:Toolchain` | esbuild toolchain resolution (`EsbuildPath`, `EsbuildTimeout` 30 s) | `Orkeon.Scripting` |
+| `Orkeon:Scripting:Toolchain` | esbuild toolchain resolution (`EsbuildPath`, first in the lookup order; `EsbuildTimeout` 30 s) | `EsbuildTranspiler.Create` — `orkeon run`, the shared runner, `orkeon doctor`, `orkeon forge`, `*.cmd.ts` commands |
 | `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | TypeScript CLI command discovery (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`, `MaxScripts` 50, `ContinueOnConflict`, `FallbackCommandName` `assistant`) + tighter CLI sandbox profile | `Orkeon.Cli.Commands.Scripting` |
 | `Orkeon:Cli:ScriptHost` | Crew resolution for `<name>/crew.ork.ts`: `CrewDirectories`, `CrewFileName` (`crew.ork.ts`), `RunCrewTimeout` (10 min) | `ScriptHostFacade` |
 | `Orkeon:Cli:ConsoleStreaming` | Streamed `ctx.llm.act` deltas on the REPL console (`Enabled` default `false`) | `AddLlmConsoleStreaming(configuration)` |

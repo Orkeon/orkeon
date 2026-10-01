@@ -20,6 +20,10 @@ Le `--commands-dir` ajoute un mount VFS à la volée et configure
 `Orkeon:Cli:ScriptCommands:Directories` pour pointer dessus. Sans le flag, le
 runner démarre sans commande scriptée (juste `help`, `exit`, `clear`).
 
+Pour l'autocomplétion dans l'éditeur, lancez `orkeon typings` dans ce dossier : il écrit
+`.orkeon/orkeon-cli.d.ts` et `.orkeon/orkeon.d.ts`, les chemins qu'attendent les lignes
+`/// <reference path=…>` des scripts.
+
 ## Transcript REPL
 
 ```

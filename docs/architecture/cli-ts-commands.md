@@ -174,14 +174,17 @@ interface CommandRuntimeContext {
 }
 ```
 
-`ctx.command.rawInput` currently holds the command name, not the line as typed. `ctx.progress`
+`ctx.command.rawInput` is the line as typed (`/deploy prod --force`); in an async command's
+`completed`, it is the line that launched that ticket, whichever command later pumps the
+completion. `ctx.progress`
 returns a handle with `advance(label?)`, `set(value, label?)` and `done(label?)`. A global
 `console.log/info/debug/warn/error` forwards to `ctx.log`.
 
-The full `.d.ts` is shipped as an embedded resource inside
-`Orkeon.Cli.Commands.Scripting.dll`; nothing writes it to disk yet. For IDE autocompletion,
-copy `src/cli/Orkeon.Cli.Commands.Scripting/Typings/orkeon-cli.d.ts` to `.orkeon/orkeon-cli.d.ts`
-next to your scripts — the path the examples' `/// <reference path=…>` line expects. A command
+The full `.d.ts` ships inside the `orkeon` tool: `orkeon typings` writes it to
+`.orkeon/orkeon-cli.d.ts` (next to `orkeon.d.ts`) in the current directory — the path the
+examples' `/// <reference path=…>` line expects; `--out <dir>` writes it elsewhere
+([CLI reference](../reference/cli.md#orkeon-typings)). The repository's typings gate,
+`scripts/check-scripting-typings.sh`, typechecks every shipped `*.cmd.ts` against it. A command
 file is also a full crew-DSL engine: `agentBuilder`, `crewBuilder`, `llm`, `tools.*` and `rag`
 are all there, and top-level `await` works.
 
@@ -220,9 +223,10 @@ if (ctx.services.has("llm")) { /* … */ }
 The host whitelist drives what's reachable. Default keys: `fs` and `tools`, plus the
 optional `llm`, `logger`, `commands` (the dispatch façade — see below) and `script-host`
 (crew launching from a command — see
-[Driving crews from the REPL](./coding-agent-ts.md)). `configuration` is deliberately **not**
-exposed — the configuration root carries API keys — and asking for a key outside the
-whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
+[Driving crews from the REPL](./coding-agent-ts.md)); the typings return `CommandsFacade` and
+`ScriptHostFacade` for those two without a type argument. `configuration` is deliberately
+**not** exposed — the configuration root carries API keys — so the typings do not declare it,
+and asking for a key outside the whitelist throws. Hosts add their own by passing an `Action<ScriptServiceWhitelist>` to
 `AddScriptCommands` (`Add(name, factory)`, `AddOptional(name, factory)`).
 
 ## Dispatching commands to agents
@@ -465,7 +469,7 @@ quit. `orkeon-repl` picks this console with `--ui` ([CLI reference](../reference
 | Symptom                                  | Likely cause                                                                | Action                                                          |
 |------------------------------------------|------------------------------------------------------------------------------|-----------------------------------------------------------------|
 | `hello` doesn't appear in `/help`        | Script outside the configured `Directories`, or evaluation error logged Error| Check logs from `Orkeon.Cli.Commands.Scripting.Loading.ScriptCommandLoader`. |
-| `Esbuild binary not found. Tried (in order): …` | No esbuild on the lookup path                                         | Set `ORKEON_ESBUILD_PATH`, run `npm ci` in `tools/scripting-esbuild/`, or put `esbuild` on `PATH` ([lookup order](./scripting.md#configuration-and-toolchain)). |
+| `Esbuild binary not found. Tried (in order): …` | No esbuild on the lookup path                                         | Set `Orkeon:Scripting:Toolchain:EsbuildPath` or `ORKEON_ESBUILD_PATH`, run `npm ci` in `tools/scripting-esbuild/`, or put `esbuild` on `PATH` — `npm install -g esbuild` does; the dotnet tool does not ship it ([lookup order](./scripting.md#configuration-and-toolchain)). |
 | `defineCommand is not defined`           | Script evaluated before bindings (bug)                                       | File an issue with the script path.                              |
 | Prompt doesn't render in the REPL pane   | Adapter not Terminal.Gui or prefix heuristic missed                          | Ensure the script writes prompts with a `> ` suffix.            |
 | `Error: Argument '--target' value 'staging' is not in choices [dev, prod].` | Typo or stale `choices`         | Use `/help-cmd <name>` to see the live signature.                |

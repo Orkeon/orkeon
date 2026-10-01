@@ -1,1 +1,2 @@
 #nullable enable
+*REMOVED*const Orkeon.Cli.Commands.Scripting.Runtime.ScriptServiceKeys.Configuration = "configuration" -> string!

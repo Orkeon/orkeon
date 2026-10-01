@@ -58,6 +58,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <!-- GAP-13: the scripted-command typings, written next to a project by `orkeon typings`.
+         The DSL typings (orkeon.d.ts) are embedded by Orkeon.Scripting's own build. -->
+    <EmbeddedResource Include="..\..\cli\Orkeon.Cli.Commands.Scripting\Typings\orkeon-cli.d.ts"
+                      LogicalName="typings/orkeon-cli.d.ts" WithCulture="false" Visible="false" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- STUDIO-38: the example catalogue. The examples ship nowhere else, so the tool carries
          what `orkeon usecases` serves: the manifest, and for each catalogued example its crew
          file and its data/ folder, as usecases/<category>/<id>/<path>. The finance examples'

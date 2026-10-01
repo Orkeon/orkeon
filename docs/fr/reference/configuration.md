@@ -209,7 +209,7 @@ variables d'environnement qui les contiennent. Parcours par fournisseur et table
 | Section | Configure | Consommateur |
 |---|---|---|
 | `Orkeon:Scripting:Limits` | Sandbox Jint : `MemoryLimitBytes` (défaut 100 Mo), `RecursionLimit` (64), `ExecutionTimeout` (30 s) | `Orkeon.Scripting` |
-| `Orkeon:Scripting:Toolchain` | Résolution de la toolchain esbuild (`EsbuildPath`, `EsbuildTimeout` 30 s) | `Orkeon.Scripting` |
+| `Orkeon:Scripting:Toolchain` | Résolution de la toolchain esbuild (`EsbuildPath`, premier de l'ordre de recherche ; `EsbuildTimeout` 30 s) | `EsbuildTranspiler.Create` — `orkeon run`, le runner partagé, `orkeon doctor`, `orkeon forge`, les commandes `*.cmd.ts` |
 | `Orkeon:Cli:ScriptCommands` (+ `:Limits`) | Découverte des commandes CLI TypeScript (`Enabled`, `Directories`, `FailFastOnInvalidScript`, `EsbuildTranspile`, `MaxScripts` 50, `ContinueOnConflict`, `FallbackCommandName` `assistant`) + profil sandbox CLI plus strict | `Orkeon.Cli.Commands.Scripting` |
 | `Orkeon:Cli:ScriptHost` | Résolution des crews `<nom>/crew.ork.ts` : `CrewDirectories`, `CrewFileName` (`crew.ork.ts`), `RunCrewTimeout` (10 min) | `ScriptHostFacade` |
 | `Orkeon:Cli:ConsoleStreaming` | Deltas `ctx.llm.act` streamés sur la console REPL (`Enabled` défaut `false`) | `AddLlmConsoleStreaming(configuration)` |

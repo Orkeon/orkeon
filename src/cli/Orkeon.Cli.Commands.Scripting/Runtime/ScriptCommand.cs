@@ -116,7 +116,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     private async Task<CommandResult> ExecuteSyncCommand(CommandContext context, JsValue argsObj, CancellationToken ct)
     {
-        var ctxObj = PushContext(context.Console, ct);
+        var ctxObj = PushContext(context.Console, context.RawInput, ct);
         using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct) : null;
 
         JsValue result;
@@ -165,7 +165,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
         }
 
         var releaseGate = gateAcquired;
-        var ctxObj = PushContext(context.Console, ct);
+        var ctxObj = PushContext(context.Console, context.RawInput, ct);
         try
         {
             using var scope = _dispatch is not null ? CommandDispatchService.BeginCommand(_descriptor.Name, ct) : null;
@@ -199,7 +199,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var captured = scope?.Captured ?? Array.Empty<CommandInstance>();
             if (captured.Count > 0)
             {
-                WireCompletions(context.Console, captured, gateAcquired ? _admissionGate : null);
+                WireCompletions(context.Console, context.RawInput, captured, gateAcquired ? _admissionGate : null);
                 releaseGate = false; // ownership handed to the completion countdown
             }
 
@@ -215,13 +215,16 @@ public sealed partial class ScriptCommand : IInteractiveCommand
     /// <summary>
     /// Attaches the terminal callback to each instance a <c>dispatch</c> created: enqueue the
     /// <c>completed</c> drain, emit terse host feedback, and release the admission slot once
-    /// every instance of this invocation is terminal (design §4.3, §5).
+    /// every instance of this invocation is terminal (design §4.3, §5). Each instance keeps the
+    /// line that launched it, so its <c>completed</c> replay reads that line in
+    /// <c>ctx.command.rawInput</c> — not the line of whichever later invocation pumps the queue.
     /// </summary>
-    private void WireCompletions(IConsoleAdapter console, IReadOnlyList<CommandInstance> instances, SemaphoreSlim? gate)
+    private void WireCompletions(IConsoleAdapter console, string rawInput, IReadOnlyList<CommandInstance> instances, SemaphoreSlim? gate)
     {
         var remaining = new int[] { instances.Count };
         foreach (var instance in instances)
         {
+            instance.LaunchInput = rawInput;
             instance.AttachTerminalCallback(settled =>
             {
                 _drainQueue.Enqueue(_descriptor.Completed, settled);
@@ -280,7 +283,7 @@ public sealed partial class ScriptCommand : IInteractiveCommand
             var view = item.Instance.Snapshot();
             var response = view.result ?? new CommandResponse(view.targetAgent, view.intent, success: false, payload: string.Empty, error: view.error);
             var resultVal = JsValue.FromObject(_engine, response);
-            var ctxObj = PushContext(console, CancellationToken.None);
+            var ctxObj = PushContext(console, item.Instance.LaunchInput ?? _descriptor.Name, CancellationToken.None);
 
             try
             {
@@ -304,12 +307,12 @@ public sealed partial class ScriptCommand : IInteractiveCommand
 
     // ---- shared helpers -------------------------------------------------------------------
 
-    private JsValue PushContext(IConsoleAdapter console, CancellationToken ct)
+    private JsValue PushContext(IConsoleAdapter console, string rawInput, CancellationToken ct)
     {
         var runtimeCtx = new CommandRuntimeContext(
             engine: _engine,
             console: console,
-            command: new CommandMeta(_descriptor.Name, _descriptor.Name),
+            command: new CommandMeta(_descriptor.Name, rawInput),
             ct: ct,
             logger: _logger,
             services: _services,

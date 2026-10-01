@@ -137,8 +137,9 @@ public static class ScriptingCliServiceCollectionExtensions
         services.TryAddSingleton<IScriptTranspiler>(sp =>
         {
             var cfg = sp.GetRequiredService<IOptions<ScriptCommandsConfiguration>>().Value;
+            // Orkeon:Scripting:Toolchain (EsbuildPath, EsbuildTimeout) applies to commands too.
             return cfg.EsbuildTranspile
-                ? new EsbuildTranspiler()
+                ? EsbuildTranspiler.Create(sp.GetService<Microsoft.Extensions.Configuration.IConfiguration>())
                 : PassThroughTranspiler.Instance;
         });
 

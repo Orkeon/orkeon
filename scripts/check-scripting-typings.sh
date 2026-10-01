@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Typecheck every shipped .ork.ts example against the shipped Typings/*.d.ts.
+# Typecheck every shipped .ork.ts example against the shipped Typings/*.d.ts, and every shipped
+# .cmd.ts command against orkeon-cli.d.ts.
 #
 # WHY THIS EXISTS. The typings and the runtime are written in two different languages and
 # nothing tied them together. Between them they had drifted six times, and every drift was
@@ -30,6 +31,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TOOLDIR="$ROOT/tools/scripting-typecheck"
 TSC="$TOOLDIR/node_modules/.bin/tsc"
 TYPINGS="$ROOT/src/scripting/Orkeon.Scripting/Typings"
+CLI_TYPINGS="$ROOT/src/cli/Orkeon.Cli.Commands.Scripting/Typings/orkeon-cli.d.ts"
 WORK="${TMPDIR:-/tmp}/orkeon-typecheck.$$"
 
 if [ ! -x "$TSC" ]; then
@@ -45,6 +47,7 @@ fi
 trap 'rm -rf "$WORK"' EXIT
 mkdir -p "$WORK/typings" "$WORK/tree"
 cp "$TYPINGS"/*.d.ts "$WORK/typings/"
+cp "$CLI_TYPINGS" "$WORK/orkeon-cli.d.ts"
 
 # Both pragma spellings go: the `orkeon-script` version is not a form tsc knows, and the
 # `path=` one points at a per-project .orkeon/ folder that does not exist in this scratch
@@ -56,13 +59,13 @@ strip_pragma() { mkdir -p "$(dirname "$2")"; sed -E 's|^/// <reference (orkeon-s
 # (09-experimental/llm-response-format) drifted -- it handed `.llm()` a plain object the
 # runtime throws away -- and no gate saw it. The tree is mirrored rather than flattened,
 # so a script's relative imports (`../_tools/index.ts`) still resolve. `examples/others/`
-# holds third-party checkouts and is not ours to check. `.cmd.ts` commands are typed by
-# the CLI typings, not these.
+# holds third-party checkouts and is not ours to check. `.cmd.ts` commands are mirrored too:
+# they are typed by the CLI typings (orkeon-cli.d.ts), in the second loop below.
 while IFS= read -r -d '' f; do
     rel="${f#"$ROOT"/}"
     strip_pragma "$f" "$WORK/tree/$rel"
 done < <(find "$ROOT/examples" \( -path "$ROOT/examples/others" -o -name node_modules \) -prune \
-            -o -type f -name '*.ts' ! -name '*.cmd.ts' ! -path '*/sample-files/*' -print0)
+            -o -type f -name '*.ts' ! -path '*/sample-files/*' -print0)
 
 failed=0
 checked=0
@@ -96,6 +99,30 @@ if [ "$checked" -eq 0 ]; then
     exit 2
 fi
 
+# EVERY .cmd.ts under examples/, against orkeon-cli.d.ts alone (GAP-13). Nothing checked the
+# command typings before: they declared `runCrew` as returning a Promise the runtime never
+# returns, and a `"configuration"` service the whitelist refuses. A command is a script that
+# calls the `defineCommand` global; the typings file is a module that declares it.
+commands=0
+while IFS= read -r -d '' f; do
+    commands=$((commands + 1))
+    rel="${f#"$WORK"/tree/}"
+    cfg="$WORK/cmd-$commands.tsconfig.json"
+    printf '{ "extends": "%s", "files": ["%s", "%s"] }' \
+        "$TOOLDIR/tsconfig.base.json" "$WORK/orkeon-cli.d.ts" "$f" > "$cfg"
+    if ! out=$(cd "$WORK/tree" && "$TSC" --project "$cfg" 2>&1); then
+        echo "FAIL $rel"
+        echo "$out" | sed 's|^|  |'
+        failed=$((failed + 1))
+    fi
+done < <(find "$WORK/tree" -type f -name '*.cmd.ts' -print0 | sort -z)
+
+if [ "$commands" -eq 0 ]; then
+    echo "check-scripting-typings: no .cmd.ts examples found -- refusing to report success." >&2
+    exit 2
+fi
+checked=$((checked + commands))
+
 if [ "$failed" -gt 0 ]; then
     echo ""
     echo "check-scripting-typings: $failed of $checked example(s) do not typecheck."
@@ -103,4 +130,4 @@ if [ "$failed" -gt 0 ]; then
     exit 1
 fi
 
-echo "check-scripting-typings: $checked shipped examples typecheck against Typings/*.d.ts."
+echo "check-scripting-typings: $checked shipped examples typecheck ($commands .cmd.ts against orkeon-cli.d.ts, the rest against Typings/*.d.ts)."

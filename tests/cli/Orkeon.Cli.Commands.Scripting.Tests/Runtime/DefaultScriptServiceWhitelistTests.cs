@@ -11,13 +11,17 @@ namespace Orkeon.Cli.Commands.Scripting.Tests.Runtime;
 /// </summary>
 public sealed class DefaultScriptServiceWhitelistTests
 {
+    // GAP-13: the reserved ConfigurationKey constant is gone (no host ever served
+    // it); the key a script would ask for is spelled out here.
+    private const string ConfigurationKey = "configuration";
+
     [Fact]
     public void Default_whitelist_does_not_expose_raw_configuration()
     {
         var built = DefaultScriptServiceWhitelist.Build().Build();
 
         Assert.False(
-            built.Entries.ContainsKey(ScriptServiceKeys.Configuration),
+            built.Entries.ContainsKey(ConfigurationKey),
             "raw IConfiguration must not be in the default whitelist (would leak secrets to scripts)");
     }
 
@@ -47,7 +51,7 @@ public sealed class DefaultScriptServiceWhitelistTests
 
         var locator = new ScriptServiceLocator(DefaultScriptServiceWhitelist.Build().Build(), sp);
 
-        Assert.False(locator.has(ScriptServiceKeys.Configuration));
-        Assert.Throws<InvalidOperationException>(() => locator.get(ScriptServiceKeys.Configuration));
+        Assert.False(locator.has(ConfigurationKey));
+        Assert.Throws<InvalidOperationException>(() => locator.get(ConfigurationKey));
     }
 }

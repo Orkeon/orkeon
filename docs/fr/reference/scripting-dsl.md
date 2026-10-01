@@ -295,10 +295,14 @@ if (shouldAudit) b.withAgent(auditor);
 
 ## Réglage de l'éditeur
 
-Les typings sont `src/scripting/Orkeon.Scripting/Typings/*.d.ts` ; le build
-d'`Orkeon.Scripting` les concatène dans `bin/<configuration>/net10.0/dist/orkeon.d.ts` sous ce
-projet — aucun paquet ni aucune archive de release ne porte encore le fichier. Pointez votre
-éditeur sur l'un ou l'autre et copiez
+Lancez `orkeon typings` dans votre projet : il écrit `orkeon.d.ts` (ce DSL) et
+`orkeon-cli.d.ts` (les commandes `*.cmd.ts` du REPL) dans `./.orkeon/` — `--out <dossier>` en
+choisit un autre — et les écrase, relancez-le donc après une mise à jour de l'outil. Chaque
+script commence alors par `/// <reference path="./.orkeon/orkeon.d.ts" />` (chemin relatif au
+script). Les fichiers viennent de l'outil lui-même : ils décrivent le runtime qui exécutera vos
+scripts. Dans un clone, les sources sont `src/scripting/Orkeon.Scripting/Typings/*.d.ts`,
+concaténées par le build dans `bin/<configuration>/net10.0/dist/orkeon.d.ts` sous ce projet.
+Copiez ensuite
 [`tools/scripting-typecheck/tsconfig.base.json`](https://github.com/Orkeon/orkeon/blob/main/tools/scripting-typecheck/tsconfig.base.json),
 qui est la configuration qu'utilise le garde-fou du dépôt lui-même.
 

@@ -1,8 +1,12 @@
+using Microsoft.Extensions.Configuration;
+
 namespace Orkeon.Scripting.Configuration;
 
 /// <summary>
 /// Toolchain settings for the scripting runtime. Bound to the
-/// <c>Orkeon:Scripting:Toolchain</c> configuration section.
+/// <c>Orkeon:Scripting:Toolchain</c> configuration section by
+/// <see cref="FromConfiguration"/>, which every host that builds an
+/// <see cref="Toolchain.EsbuildTranspiler"/> goes through (<see cref="Toolchain.EsbuildTranspiler.Create"/>).
 /// </summary>
 public sealed record ScriptingToolchainOptions
 {
@@ -22,4 +26,11 @@ public sealed record ScriptingToolchainOptions
     /// Maximum time esbuild has to transpile a single source. Default: 30 s.
     /// </summary>
     public TimeSpan EsbuildTimeout { get; init; } = TimeSpan.FromSeconds(30);
+
+    /// <summary>
+    /// Binds the <c>Orkeon:Scripting:Toolchain</c> section of <paramref name="configuration"/>.
+    /// A missing section, or a <see langword="null"/> configuration, yields the defaults.
+    /// </summary>
+    public static ScriptingToolchainOptions FromConfiguration(IConfiguration? configuration)
+        => configuration?.GetSection(SectionName).Get<ScriptingToolchainOptions>() ?? new ScriptingToolchainOptions();
 }

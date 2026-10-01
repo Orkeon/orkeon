@@ -23,7 +23,7 @@ Three rules hold the e-mail tools together, and the example leans on all three:
 
 | You need | Notes |
 |---|---|
-| Orkeon | A clone of the repository, or the installed `orkeon` tool — see [Three ways to run Orkeon](./three-ways-to-run-orkeon.md). A `.ork.ts` script also needs esbuild: the release archives ship it, and a clone installs it on its first build ([where it is looked up](../architecture/scripting.md#configuration-and-toolchain); `orkeon doctor` checks it). |
+| Orkeon | A clone of the repository, or the installed `orkeon` tool — see [Three ways to run Orkeon](./three-ways-to-run-orkeon.md). A `.ork.ts` script also needs esbuild: the release archives ship it, a clone installs it on its first build, and the dotnet tool does not ship it — `npm install -g esbuild` ([where it is looked up](../architecture/scripting.md#configuration-and-toolchain); `orkeon doctor` checks it). |
 | A model | The example's settings point at a local [Docker Model Runner](https://docs.docker.com/desktop/features/model-runner/) (`ai/granite-4.0-h-tiny` on `localhost:12434`). Any profile of [`examples/appsettings/`](https://github.com/orkeon/orkeon/blob/main/examples/appsettings/README.md) works: a run resolves **one** settings file, so copy that profile's `Llm` section into the example's file. |
 | A Gmail account | With **2-Step Verification** turned on — app passwords do not exist without it. |
 

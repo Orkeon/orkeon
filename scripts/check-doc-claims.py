@@ -401,10 +401,11 @@ def private_leak_files() -> list[Path]:
 
       the site           -- docs/ in both languages, the root pages, the example READMEs;
       what docfx ships   -- `src/**/*.cs` XML comments, republished under `api/**.yml`;
-      what NuGet ships   -- the typings concatenated into `dist/orkeon.d.ts`, and
-                            `src/**/*.js|*.ts`: `forge-assistant.ork.js` is an
-                            EmbeddedResource of the `orkeon` tool, so its header reaches
-                            every consumer who never clones the repo;
+      what the tool ships -- `src/**/*.js|*.ts`, the typings included: the `orkeon`
+                            tool embeds the roll-up of `Typings/*.d.ts` and
+                            `orkeon-cli.d.ts` and writes them on `orkeon typings`, and
+                            `forge-assistant.ork.js` is an EmbeddedResource too, so
+                            their headers reach every consumer who never clones the repo;
       what a clone reads -- `tests/**/*.cs` (22 live pointers when this was widened),
                             the build files, the installer and the Dockerfiles. A test
                             comment is not published, but it is the first thing a

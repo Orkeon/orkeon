@@ -1,4 +1,5 @@
 using System.Globalization;
+using Microsoft.Extensions.Configuration;
 using Orkeon.Constants.FileSystem;
 using Orkeon.Compliance.Vfs;
 
@@ -95,6 +96,23 @@ public static class RunnerSettings
                 "an explicit path (`orkeon init --path <file>` / `--settings <file>`).");
         }
         return path;
+    }
+
+    /// <summary>
+    /// The configuration a runner reads before its host exists: the settings file at
+    /// <paramref name="settingsPath"/> (when it exists), then the <c>ORKEON_</c> environment
+    /// variables — the same two sources, in the same order, as the runner host. For the CLI
+    /// paths that need a setting without building a host, such as the esbuild toolchain
+    /// (<c>Orkeon:Scripting:Toolchain</c>) that <c>orkeon doctor</c> and <c>orkeon forge</c> probe.
+    /// </summary>
+    /// <param name="settingsPath">Resolved settings path (<see cref="ResolveSettingsPath"/>), or <see langword="null"/>.</param>
+    public static IConfiguration ReadConfiguration(string? settingsPath)
+    {
+        var builder = new ConfigurationBuilder();
+        if (settingsPath is not null && File.Exists(settingsPath))
+            builder.AddJsonFile(settingsPath, optional: true);
+        builder.AddEnvironmentVariables("ORKEON_");
+        return builder.Build();
     }
 
     /// <summary>

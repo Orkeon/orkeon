@@ -28,6 +28,13 @@ public sealed class CommandInstance
     /// </summary>
     internal Action<CommandInstance>? TerminalObserver { get; set; }
 
+    /// <summary>
+    /// The line the user typed to launch this instance (<c>CommandContext.RawInput</c>), set by
+    /// the launching <c>ScriptCommand</c>. The <c>completed</c> replay hands it to the script as
+    /// <c>ctx.command.rawInput</c>; <see langword="null"/> for an instance no command launched.
+    /// </summary>
+    internal string? LaunchInput { get; set; }
+
     internal CommandInstance(
         string ticket,
         string name,
