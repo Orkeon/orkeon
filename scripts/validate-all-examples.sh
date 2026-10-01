@@ -117,7 +117,12 @@ fi
 # others/effect/.../fixtures/config.yaml is an unrelated test fixture).
 # main.ork.ts is the TypeScript crew definition of a migrated example (EX-01):
 # same catalog, same validation, through `orkeon run <ts> --validate`.
-mapfile -t ALL_CONFIGS < <(find examples \( -name config.yaml -o -name main.ork.ts \) | grep -E 'examples/0[0-9]-' | sort)
+# Listed through git (tracked, or new and not ignored), never by walking the disk: the
+# ignored third-party checkouts under examples/others/ are ~34,000 files a CI clone does
+# not have. A tracked file deleted from the work tree is skipped.
+mapfile -t ALL_CONFIGS < <(git ls-files --cached --others --exclude-standard -- 'examples/0[0-9]-*' \
+    | grep -E '^examples/0[0-9]-[^/]+/.*(^|/)(config\.yaml|main\.ork\.ts)$' \
+    | sort -u | while IFS= read -r f; do [[ -f "$f" ]] && printf '%s\n' "$f"; done)
 
 # Normalise excludes into a newline list of substrings.
 declare -a EXCL=()

@@ -337,7 +337,8 @@ matter of opinion — it is **recorded in the repository** and enforced at build
 5. Make sure CI is green on the commit you tag. Beyond the `-warnaserror` build and the
    test suites, the gates that must pass are `scripts/check-docs-parity.sh`,
    `scripts/check-doc-claims.py` (it also compares the hand-written copies of the NuGet
-   lineup and runs the source half of `scripts/check-package-closure.py`),
+   lineup and runs the source half of `scripts/check-package-closure.py`; its file
+   enumeration is tested by `scripts/test-check-doc-claims.py`),
    `scripts/check-comment-accents.py`, the scripting typings check
    (`scripts/check-scripting-typings.sh`), the dev-channel prune test
    (`scripts/test-prune-dev-packages.sh`), the examples gates

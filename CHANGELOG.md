@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — `check-doc-claims.py` reads what git publishes, not the ignored trees of a working clone
+
+The documentation-claims gate walked the file system, so on a working clone it also read the
+git-ignored third-party checkouts under `examples/others/` (~34,000 files): more than ten minutes
+and some 361,000 false reports, locally only — a CI clone has no such folder (GAP-28). Its three
+walks (the counted files, the private-pointer scan, the `.md` files a citation resolves against)
+now go through one `git_files()` helper on `git ls-files --cached --others --exclude-standard`:
+tracked files and new ones not yet staged, never an ignored path, never a private submodule's
+content. `scripts/test-check-doc-claims.py` proves it on a scratch repository and runs in CI.
+`validate-all-examples.sh` lists the example crews the same way. The Studio test that still
+expected `image_generation`'s retired "key given at the call" wording (red since the Guardian lot)
+now expects the stored key `ORKEON_OPENAI_API_KEY` the catalogue declares.
+
 ### Added — files and folders can be dropped on the need of the wizard's step 1
 
 Studio's « What work do you want to give this team? » now takes files and folders dragged from the

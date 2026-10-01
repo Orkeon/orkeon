@@ -355,7 +355,8 @@ une affaire d'opinion — elle est **consignée dans le dépôt** et vérifiée 
    `-warnaserror` et des suites de tests, les gates qui doivent passer sont
    `scripts/check-docs-parity.sh`, `scripts/check-doc-claims.py` (qui compare aussi les
    copies manuscrites du lineup NuGet et exécute la moitié « sources » de
-   `scripts/check-package-closure.py`), `scripts/check-comment-accents.py`, la
+   `scripts/check-package-closure.py` ; son énumération des fichiers est testée par
+   `scripts/test-check-doc-claims.py`), `scripts/check-comment-accents.py`, la
    vérification des typings de scripting (`scripts/check-scripting-typings.sh`), le test
    de la purge du canal dev (`scripts/test-prune-dev-packages.sh`), les gates des
    exemples (`scripts/generate-examples-index.sh --check`,

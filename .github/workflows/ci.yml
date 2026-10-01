@@ -52,6 +52,11 @@ jobs:
       # `scripts/count-surface.sh` prints the same ground truth with its rules.
       - name: Check documentation claims against the code
         run: python3 scripts/check-doc-claims.py
+      # The gate reads what git would publish -- tracked and new files, never an ignored
+      # path -- so a working clone's ignored trees (examples/others/) cannot slow it down
+      # or fail it; proved on a scratch repository.
+      - name: Test the documentation-claims file enumeration
+        run: python3 scripts/test-check-doc-claims.py
       # Comment-language invariant: comments are English and never accented. Cheap and
       # build-free like its two neighbours, so it runs before setup-dotnet.
       - name: Check comments carry no accented letter

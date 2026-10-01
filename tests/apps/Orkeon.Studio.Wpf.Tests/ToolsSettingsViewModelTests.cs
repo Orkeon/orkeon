@@ -55,7 +55,10 @@ public sealed class ToolsSettingsViewModelTests
         Assert.Equal("present only once the key BRAVE_API_KEY is remembered, above", brave.Text);
 
         var web = Assert.Single(tools.Families, f => f.Key == ToolCatalog.WebFamily);
-        Assert.Equal("the key is given at the call, by the agent", Assert.Single(web.Requirements).Text);
+        var imageGeneration = Assert.Single(web.Requirements);
+        Assert.Equal("image_generation", imageGeneration.Name);
+        Assert.Equal($"needs the key {ToolCatalog.OpenAiImageKeyEnv}, above", imageGeneration.Text);
+        Assert.True(imageGeneration.IsKey);
 
         var data = Assert.Single(tools.Families, f => f.Key == ToolCatalog.DataFamily);
         Assert.All(data.Requirements, r => Assert.Equal("the connection parameters are given at the call, by the agent", r.Text));

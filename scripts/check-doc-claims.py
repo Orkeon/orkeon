@@ -22,32 +22,70 @@ Run from the repository root: python3 scripts/check-doc-claims.py
 from __future__ import annotations
 
 import importlib.util
-import os
 import re
+import subprocess
 import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS: list[str] = []
 
-# Directory names never walked, anywhere: build output, dependency trees, the vendored
-# packages cache. Pruned at the directory level -- rglob descends into obj-linux/ first
-# and, on the WSL mount this repository often lives on, pays minutes for the privilege.
+# Directory names never listed, anywhere: build output, dependency trees, the vendored
+# packages cache. Most are ignored already; this keeps anything committed under one out.
 PRUNED_DIRS = {"bin", "obj", "obj-linux", "node_modules", "packages", ".git", "artifacts",
                "_site", "TestResults"}
 
 
-def walk(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
-    """Every file under `root` whose name ends with one of `suffixes`, skipping PRUNED_DIRS."""
+def git_files(root: Path, suffixes: tuple[str, ...]) -> list[Path]:
+    """Every file under `root` whose name ends with one of `suffixes` that git would publish:
+    tracked, or new and not ignored (`git ls-files --cached --others --exclude-standard`).
+
+    Never a path .gitignore excludes: a working clone holds ignored trees a CI clone does
+    not -- the third-party checkouts under examples/others/ are ~34,000 files, and walking
+    them cost this gate more than ten minutes and some 361,000 false reports, locally only.
+    Never a submodule's content either (git lists the gitlink, not what it holds): a path
+    cited here must resolve in this repository. Tracked files deleted from the work tree
+    are skipped, and PRUNED_DIRS still apply to anything committed under such a name.
+    A directory path, not a `**` pathspec: `git ls-files -- docs` lists docs/INDEX.md,
+    where `'docs/**/*.md'` would silently skip it.
+    """
+    prefix = "" if root == ROOT else root.relative_to(ROOT).as_posix() + "/"
     out: list[Path] = []
-    if not root.is_dir():
-        return out
-    for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if d not in PRUNED_DIRS]
-        for filename in filenames:
-            if filename.endswith(suffixes):
-                out.append(Path(dirpath) / filename)
+    for rel in _git_listing():
+        if not rel.startswith(prefix) or not rel.endswith(suffixes):
+            continue
+        if PRUNED_DIRS.intersection(rel.split("/")[:-1]) or not _exists(rel):
+            continue
+        out.append(ROOT / rel)
     return sorted(out)
+
+
+_EXISTS: dict[tuple[Path, str], bool] = {}
+
+
+def _exists(rel: str) -> bool:
+    """Whether a listed path is a file on disk, asked once per path: a stat costs ~2 ms on
+    the WSL mount this repository often lives on, and several listings share their files."""
+    key = (ROOT, rel)
+    if key not in _EXISTS:
+        _EXISTS[key] = (ROOT / rel).is_file()
+    return _EXISTS[key]
+
+
+_GIT_LISTING: dict[Path, list[str]] = {}
+
+
+def _git_listing() -> list[str]:
+    """The repository's file list, read once per ROOT (tests point ROOT at a scratch repo)."""
+    if ROOT not in _GIT_LISTING:
+        result = subprocess.run(
+            ["git", "ls-files", "-z", "--cached", "--others", "--exclude-standard"],
+            cwd=ROOT, capture_output=True, check=False)
+        if result.returncode != 0:
+            raise SystemExit("check-doc-claims: `git ls-files` failed -- run it from a git "
+                             f"checkout: {result.stderr.decode(errors='replace').strip()}")
+        _GIT_LISTING[ROOT] = sorted({r for r in result.stdout.decode("utf-8").split("\0") if r})
+    return _GIT_LISTING[ROOT]
 
 
 def fail(msg: str) -> None:
@@ -88,7 +126,7 @@ def tool_files() -> list[Path]:
     catalogue entry; the scope freeze admits a new built-in tool only as a motivated
     exception of the owner, such as the e-mail family)."""
     skip = {"IBaseTool.cs", "MockTool.cs", "JsTool.cs", "ObservedTool.cs", "AIAgentTool.cs"}
-    return [f for f in walk(ROOT / "src", ("Tool.cs",)) if f.name not in skip]
+    return [f for f in git_files(ROOT / "src", ("Tool.cs",)) if f.name not in skip]
 
 
 def gt_tool_classes() -> int:
@@ -129,18 +167,18 @@ def gt_examples() -> int:
 
 
 def gt_src_projects() -> int:
-    return len(walk(ROOT / "src", (".csproj",)))
+    return len(git_files(ROOT / "src", (".csproj",)))
 
 
 def gt_test_projects() -> int:
-    return len(walk(ROOT / "tests", (".csproj",)))
+    return len(git_files(ROOT / "tests", (".csproj",)))
 
 
 def gt_memory_stores() -> int:
     """Concrete memory stores: classes deriving MemoryProviderBase under Infrastructure/Memory.
     Decorators (encryption) wrap a store and are not one."""
     count = 0
-    for f in walk(ROOT / "src/core/Orkeon.Infrastructure/Memory", (".cs",)):
+    for f in git_files(ROOT / "src/core/Orkeon.Infrastructure/Memory", (".cs",)):
         if re.search(r"class \w+\s*:\s*MemoryProviderBase\b", f.read_text(encoding="utf-8")):
             count += 1
     return count
@@ -149,7 +187,7 @@ def gt_memory_stores() -> int:
 def gt_vfs_rules() -> int:
     """Distinct ORKVFS diagnostic ids declared by the analyzer."""
     ids: set[str] = set()
-    for f in walk(ROOT / "src/analyzers", (".cs",)):
+    for f in git_files(ROOT / "src/analyzers", (".cs",)):
         ids.update(re.findall(r'id:\s*"(ORKVFS\d+)"', f.read_text(encoding="utf-8")))
     return len(ids)
 
@@ -157,7 +195,7 @@ def gt_vfs_rules() -> int:
 def gt_test_methods() -> tuple[int, int]:
     """`[Fact]` and `[Theory]` attributes at the start of a line, over tests/**/*.cs."""
     facts = theories = 0
-    for f in walk(ROOT / "tests", (".cs",)):
+    for f in git_files(ROOT / "tests", (".cs",)):
         text = f.read_text(encoding="utf-8")
         facts += len(re.findall(r"^\s*\[Fact\b", text, flags=re.M))
         theories += len(re.findall(r"^\s*\[Theory\b", text, flags=re.M))
@@ -379,9 +417,6 @@ PRIVATE_LEAK_PATTERNS: list[tuple[str, str]] = [
 PRIVATE_LEAK_EXCLUDED = {"examples/others/README.md"}
 
 
-# The same prune list as every other walk in this file (PRUNED_DIRS, top).
-PRIVATE_LEAK_PRUNED_DIRS = PRUNED_DIRS
-
 # What each root contributes to the scan, by suffix.
 PRIVATE_LEAK_ROOTS: list[tuple[str, tuple[str, ...]]] = [
     ("docs", (".md",)),
@@ -415,7 +450,7 @@ def private_leak_files() -> list[Path]:
     seen: set[Path] = set()
 
     def add(path: Path) -> None:
-        if not path.is_file() or path in seen:
+        if path in seen:
             return
         seen.add(path)
         if path.relative_to(ROOT).as_posix() in PRIVATE_LEAK_EXCLUDED:
@@ -426,22 +461,15 @@ def private_leak_files() -> list[Path]:
     # search, so it is documentation by any definition a reader would use. It carried seven
     # private pointers when this was widened. Rewording one to drop an unfollowable path is
     # not rewriting history -- every measurement, date and gap id was kept.
-    for name in ROOT.glob("*.md"):
-        if name.name != "CLAUDE.md":
-            add(name)
-    for name in ROOT.glob("Dockerfile*"):
-        add(name)
-    add(ROOT / "Directory.Build.props")
+    top_level = [rel for rel in _git_listing() if "/" not in rel and _exists(rel)]
+    for rel in top_level:
+        if (rel.endswith(".md") and rel != "CLAUDE.md") or rel.startswith("Dockerfile") \
+                or rel == "Directory.Build.props":
+            add(ROOT / rel)
 
     for root_name, suffixes in PRIVATE_LEAK_ROOTS:
-        root = ROOT / root_name
-        if not root.is_dir():
-            continue
-        for dirpath, dirnames, filenames in os.walk(root):
-            dirnames[:] = [d for d in dirnames if d not in PRIVATE_LEAK_PRUNED_DIRS]
-            for filename in filenames:
-                if filename.endswith(suffixes):
-                    add(Path(dirpath) / filename)
+        for path in git_files(ROOT / root_name, suffixes):
+            add(path)
 
     return sorted(out)
 
@@ -474,16 +502,10 @@ CITED_PATH_SUFFIXES = (".cs", ".ts", ".js")
 def known_md_files() -> list[str]:
     """Every `.md` path in the tree, for suffix resolution.
 
-    Pruning walk, not rglob: private_leak_files() above records what rglob costs when it
-    descends into obj-linux/ before anyone filters the result.
+    What git would publish (git_files): the private submodules' contents and ignored
+    trees are not in it, so a citation resolves only against this repository.
     """
-    out: list[str] = []
-    for dirpath, dirnames, filenames in os.walk(ROOT):
-        dirnames[:] = [d for d in dirnames if d not in PRIVATE_LEAK_PRUNED_DIRS]
-        for filename in filenames:
-            if filename.endswith(".md"):
-                out.append(Path(dirpath).joinpath(filename).relative_to(ROOT).as_posix())
-    return out
+    return [p.relative_to(ROOT).as_posix() for p in git_files(ROOT, (".md",))]
 
 
 def check_private_submodule_leaks() -> None:
@@ -492,9 +514,9 @@ def check_private_submodule_leaks() -> None:
     Deliberately NOT covered, so this gate is not itself a false claim: git history and
     commit messages; the private submodules' own contents; `scripts/` tooling, which has
     to spell the names to match them; the files listed in PRIVATE_LEAK_EXCLUDED; and
-    non-text assets. Walks with rglob rather than a git pathspec because
-    `git grep -- 'docs/**/*.md'` silently skips `docs/INDEX.md` -- the globstar needs a
-    directory level, and a gate must not have that failure mode.
+    non-text assets. Lists through git_files(): directory paths, never a `**` pathspec,
+    because `git grep -- 'docs/**/*.md'` silently skips `docs/INDEX.md` -- the globstar
+    needs a directory level, and a gate must not have that failure mode.
     """
     compiled = [(re.compile(pat), why) for pat, why in PRIVATE_LEAK_PATTERNS]
     md_files = known_md_files()
