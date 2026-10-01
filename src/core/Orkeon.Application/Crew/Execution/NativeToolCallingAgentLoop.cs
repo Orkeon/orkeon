@@ -55,7 +55,7 @@ internal sealed class NativeToolCallingAgentLoop
         var maxIter = agent.MaxIterations > 0 ? agent.MaxIterations : defaultMaxIterations;
         var parser = _toolCallingStrategy.Parser;
 
-        var availableTools = ResolveNativeToolsForAgent(agent);
+        var availableTools = ResolveNativeTools(agent, task);
         var baseConfigForCascade = agent.LlmConfig ?? Domain.SharedKernel.ValueObjects.LlmConfig.Default();
         var nativeConfig = BuildNativeLlmConfig(invocation.SystemPrompt, availableTools, baseConfigForCascade);
         var config = Domain.SharedKernel.ValueObjects.LlmConfigResolver.Resolve(
@@ -166,27 +166,12 @@ internal sealed class NativeToolCallingAgentLoop
     }
 
     /// <summary>
-    /// Returns the dictionary of tools available to an agent for native tool calling (keyed by tool name).
+    /// The task's toolbelt (<see cref="TaskToolbelt"/>: agent + task tools + <c>human_input</c>),
+    /// keyed by tool name for native tool calling.
     /// </summary>
-    private Dictionary<string, Domain.Tools.IBaseTool> ResolveNativeToolsForAgent(DomainAgent agent)
-    {
-        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
-
-        // Start with tools from the global DI registry
-        var result = _registeredTools?
-            .Where(t => agentToolNames.Contains(t.Name))
-            .ToDictionary(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase)
-            ?? new Dictionary<string, Domain.Tools.IBaseTool>(StringComparer.OrdinalIgnoreCase);
-
-        // Include agent-owned tools not in the registry (e.g. delegation tools)
-        foreach (var tool in agent.Tools)
-        {
-            if (!result.ContainsKey(tool.Name))
-                result[tool.Name] = tool;
-        }
-
-        return result;
-    }
+    private Dictionary<string, Domain.Tools.IBaseTool> ResolveNativeTools(DomainAgent agent, Domain.Task.CrewTask task)
+        => TaskToolbelt.Compose(agent, task, _registeredTools)
+            .ToDictionary(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
 
     /// <summary>
     /// Builds an <see cref="Domain.SharedKernel.ValueObjects.LlmConfig"/> seeded from the agent's

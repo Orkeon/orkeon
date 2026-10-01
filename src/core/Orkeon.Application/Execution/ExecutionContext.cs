@@ -4,21 +4,6 @@ using Orkeon.Application.Interfaces.Ports;
 namespace Orkeon.Application.Execution;
 
 /// <summary>
-/// The four classic agent-memory types.
-/// </summary>
-public enum MemoryType
-{
-    /// <summary>Short Term.</summary>
-    ShortTerm,
-    /// <summary>Long Term.</summary>
-    LongTerm,
-    /// <summary>Entity.</summary>
-    Entity,
-    /// <summary>Contextual.</summary>
-    Contextual
-}
-
-/// <summary>
 /// Non-generic interface for execution contexts.
 /// Allows execution infrastructure to operate without requiring knowledge of the specific data type.
 /// </summary>

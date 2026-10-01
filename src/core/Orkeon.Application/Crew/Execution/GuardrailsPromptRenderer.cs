@@ -10,8 +10,8 @@ namespace Orkeon.Application.Crew.Execution;
 /// Shared rendering of <see cref="GuardrailsConfig"/> sections into system prompts. Used by both
 /// the standard path (<see cref="AgentPromptComposer"/>) and the streaming path
 /// (<c>StreamingAgentExecutionService</c>) so guardrails render byte-identically on either:
-/// agent-level section first, then the task's own, tool-specific rules gated by the executing
-/// agent's actual tools.
+/// agent-level section first, then the task's own, tool-specific rules gated by the tools the
+/// agent holds for this task (<see cref="TaskToolbelt"/>).
 /// </summary>
 public static class GuardrailsPromptRenderer
 {
@@ -19,13 +19,19 @@ public static class GuardrailsPromptRenderer
     /// Appends the agent's guardrails section followed by the task's own. Each section is a
     /// no-op when its config is null or empty.
     /// </summary>
-    public static void AppendAgentAndTaskGuardrails(StringBuilder prompt, DomainAgent agent, CrewTask task)
+    /// <param name="prompt">The prompt being built.</param>
+    /// <param name="agent">The executing agent.</param>
+    /// <param name="task">The task being run.</param>
+    /// <param name="toolbelt">The task's toolbelt, from <see cref="TaskToolbelt.Compose"/>: tool rules apply to these tools.</param>
+    public static void AppendAgentAndTaskGuardrails(
+        StringBuilder prompt, DomainAgent agent, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt)
     {
         ArgumentNullException.ThrowIfNull(prompt);
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
+        ArgumentNullException.ThrowIfNull(toolbelt);
 
-        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var agentToolNames = toolbelt.Select(t => t.Name).ToHashSet(StringComparer.OrdinalIgnoreCase);
         AppendSection(prompt, agent.Guardrails, agentToolNames);
         AppendSection(prompt, task.Guardrails, agentToolNames);
     }

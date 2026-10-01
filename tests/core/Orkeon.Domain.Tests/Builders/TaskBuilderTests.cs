@@ -125,4 +125,18 @@ public class CrewTaskBuilderTests
         Assert.Contains(prereq1.Id, task.Dependencies);
         Assert.Contains(prereq2.Id, task.Dependencies);
     }
+
+    [Fact]
+    public void Build_WithTools_CarriesThemOnTheTask_OnceByName()
+    {
+        // GAP-07: the tools a task adds to its agent's belt for that task only.
+        var write = new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write");
+        var task = MinimalTask()
+            .WithTool(write)
+            .WithTools([new Orkeon.Tests.Shared.Doubles.StubBaseTool("FILE_WRITE"), new Orkeon.Tests.Shared.Doubles.StubBaseTool("web_search")])
+            .Build();
+
+        Assert.Equal(["file_write", "web_search"], task.Tools.Select(t => t.Name));
+        Assert.Same(write, task.Tools[0]);
+    }
 }

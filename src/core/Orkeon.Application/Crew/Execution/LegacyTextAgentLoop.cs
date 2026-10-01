@@ -24,10 +24,17 @@ internal sealed class LegacyTextAgentLoop
     private readonly IBasicLlmProvider _llmProvider;
     private readonly LlmCallGate _llmGate;
     private readonly IToolInvocationPipeline _toolInvocation;
+    private readonly IEnumerable<IBaseTool>? _registeredTools;
 
-    internal LegacyTextAgentLoop(ILogger logger, IBasicLlmProvider llmProvider, LlmCallGate llmGate, IToolInvocationPipeline toolInvocation)
+    internal LegacyTextAgentLoop(
+        ILogger logger,
+        IBasicLlmProvider llmProvider,
+        LlmCallGate llmGate,
+        IToolInvocationPipeline toolInvocation,
+        IEnumerable<IBaseTool>? registeredTools = null)
     {
         _logger = logger;
+        _registeredTools = registeredTools;
         _llmProvider = llmProvider;
         _llmGate = llmGate;
         _toolInvocation = toolInvocation;
@@ -226,7 +233,8 @@ internal sealed class LegacyTextAgentLoop
         List<Domain.Tools.ToolUsage> toolUsage,
         CancellationToken cancellationToken)
     {
-        var toolsByName = agent.Tools.ToDictionary(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
+        var toolsByName = TaskToolbelt.Compose(agent, task, _registeredTools)
+            .ToDictionary(t => t.Name, t => t, StringComparer.OrdinalIgnoreCase);
         var resultBuilder = new StringBuilder();
 
         AppendProseWithoutToolBlocks(resultBuilder, response, parsedCalls);
@@ -344,7 +352,7 @@ internal sealed class LegacyTextAgentLoop
         CancellationToken cancellationToken)
     {
         var outputBuilder = new StringBuilder(response);
-        var matchingTools = agent.Tools
+        var matchingTools = TaskToolbelt.Compose(agent, task, _registeredTools)
             .Where(tool => response.Contains(tool.Name, StringComparison.OrdinalIgnoreCase))
             .ToList();
 

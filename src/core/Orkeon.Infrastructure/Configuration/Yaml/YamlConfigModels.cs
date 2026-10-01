@@ -75,7 +75,7 @@ public class TaskYamlConfig
     public string? ExpectedOutput { get; set; }
     /// <summary>Gets or sets the assigned agent identifier.</summary>
     public string? Agent { get; set; }
-    /// <summary>Gets or sets the list of tool names scoped to this task (snake_case YAML parity).</summary>
+    /// <summary>Gets or sets the names of the tools this task adds to its agent's own, for this task only.</summary>
     public Collection<string>? Tools { get; set; }
     /// <summary>Gets or sets the list of dependency task identifiers.</summary>
     public Collection<string>? Dependencies { get; set; }
@@ -85,8 +85,6 @@ public class TaskYamlConfig
     public bool? HumanInput { get; set; }
     /// <summary>Gets or sets additional context key-value pairs.</summary>
     public Dictionary<string, object>? Context { get; set; }
-    /// <summary>Gets or sets the circuit breaker / FSM configuration for this task.</summary>
-    public CircuitBreakerYamlConfig? CircuitBreaker { get; set; }
     /// <summary>Gets or sets the deliverable contract (framework-managed output file).</summary>
     public DeliverableYamlConfig? Deliverable { get; set; }
     /// <summary>Gets or sets the optional per-task LLM override (response_format, temperature, …).</summary>
@@ -138,32 +136,6 @@ public class DeliverableYamlConfig
     public string? SchemaPath { get; set; }
     /// <summary>Inline JSON Schema string. Alternative to <see cref="SchemaPath"/>.</summary>
     public string? SchemaInline { get; set; }
-}
-
-/// <summary>
-/// YAML model for circuit breaker / FSM configuration.
-/// Usable at crew level (default for all tasks) or per-task (override).
-/// </summary>
-public class CircuitBreakerYamlConfig
-{
-    /// <summary>Gets or sets the preset name: "strict", "permissive", or "default".</summary>
-    public string? Preset { get; set; }
-    /// <summary>Gets or sets the maximum transitions before tripping.</summary>
-    public int? MaxTransitions { get; set; }
-    /// <summary>Gets or sets the state timeout in seconds.</summary>
-    public int? StateTimeoutSeconds { get; set; }
-    /// <summary>Gets or sets the max state visits (cycle detection).</summary>
-    public int? MaxStateVisits { get; set; }
-    /// <summary>Gets or sets the max total duration in seconds.</summary>
-    public int? MaxTotalDurationSeconds { get; set; }
-    /// <summary>Gets or sets whether to use degraded mode instead of throwing.</summary>
-    public bool? UseDegradedMode { get; set; }
-    /// <summary>Gets or sets the max retries after failure.</summary>
-    public int? MaxRetries { get; set; }
-    /// <summary>Gets or sets the max tool calls per execution round.</summary>
-    public int? MaxToolCallsPerRound { get; set; }
-    /// <summary>Gets or sets the max validation retries.</summary>
-    public int? MaxValidationRetries { get; set; }
 }
 
 /// <summary>
@@ -337,8 +309,6 @@ public class CrewYamlConfig
     public bool? Planning { get; set; }
     /// <summary>Gets or sets the manager agent identifier for hierarchical process.</summary>
     public string? ManagerAgent { get; set; }
-    /// <summary>Gets or sets the default circuit breaker / FSM configuration for all tasks.</summary>
-    public CircuitBreakerYamlConfig? CircuitBreaker { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>
@@ -400,8 +370,6 @@ public class CrewSettingsYamlConfig
     public bool? Planning { get; set; }
     /// <summary>Gets or sets the manager agent identifier.</summary>
     public string? ManagerAgent { get; set; }
-    /// <summary>Gets or sets the default circuit breaker / FSM configuration for all tasks.</summary>
-    public CircuitBreakerYamlConfig? CircuitBreaker { get; set; }
     /// <summary>Gets or sets the graph-specific configuration (only used when process is "graph").</summary>
     public GraphYamlConfig? GraphConfig { get; set; }
     /// <summary>Gets or sets the crew-default LLM configuration applied to agents without their own (snake_case YAML parity).</summary>

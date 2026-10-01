@@ -49,9 +49,9 @@ public partial class ExecutionOrchestrator
     internal static string TruncateToolResult(string result, int maxLength)
         => ConversationPolicy.TruncateToolResult(result, maxLength);
 
-    /// <inheritdoc cref="AgentPromptComposer.AppendToolsSection(StringBuilder, DomainAgent, bool)"/>
+    /// <inheritdoc cref="AgentPromptComposer.AppendToolsSection(StringBuilder, IReadOnlyList{Domain.Tools.IBaseTool}, bool)"/>
     internal static void AppendToolsSection(StringBuilder prompt, DomainAgent agent, bool supportsNativeToolCalling)
-        => AgentPromptComposer.AppendToolsSection(prompt, agent, supportsNativeToolCalling);
+        => AgentPromptComposer.AppendToolsSection(prompt, agent.Tools, supportsNativeToolCalling);
 
     /// <inheritdoc cref="ToolCallTextParser.UnescapeLlmText(string)"/>
     internal static string UnescapeLlmText(string text)

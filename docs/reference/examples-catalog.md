@@ -56,7 +56,7 @@ not contiguous.
 | `interop/agent-framework/` | `Orkeon.Interop.AgentFramework` both ways: a crew wrapped as a Microsoft Agent Framework `AIAgent`, and a MAF agent handed to an Orkeon agent as a tool |
 | `09-experimental/llm-response-format/`, `09-experimental/streaming-demo/` | Two unnumbered demos inside the experimental category: structured output (`response_format`) and real-time streaming of an agent's execution |
 | `appsettings/` | The shared settings profile matrix: one `appsettings.json` plus a `*.local.json.example` per provider |
-| `others/` | The README of a benchmark corpus of twenty TypeScript codebases for the `102`/`103` codebase crews (the codebases themselves are not committed) |
+| `others/` | The README of a benchmark corpus of twenty TypeScript codebases for the `102` codebase crew (the codebases themselves are not committed) |
 
 **Looking for e-mail?** Two examples, of two different kinds:
 

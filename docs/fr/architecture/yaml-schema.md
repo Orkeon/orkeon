@@ -27,8 +27,7 @@ memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …)
 planning: bool            # default: false
 managerAgent: string      # Hiérarchique : le manager (omis → le premier agent manage, warning). Consensual : l'arbitre du repli ManagerDecision
-circuitBreaker: {…}       # Circuit breaker au niveau crew (voir la section dédiée)
-graphConfig: {…}          # Réglages du mode Graph (voir la section dédiée)
+graphConfig: {…}          # Réglages du mode Graph, seul réglage de circuit breaker d'une crew (voir la section dédiée)
 
 llm:                      # LLM par défaut de la crew, fusionné CHAMP PAR CHAMP sous le llm: propre de chaque agent (même forme que agents.<id>.llm)
   model: string
@@ -106,7 +105,7 @@ tasks:
     asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
-    tools: [string]       # Noms d'outils propres à la tâche — PARSÉS (TaskConfiguration.RequiredTools) mais pas encore attachés par CrewFactory : donner l'outil à l'agent
+    tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement (sans jamais les remplacer) — résolus comme ceux d'un agent : un nom inconnu fait échouer le chargement sous StrictTools
     deliverable:          # Contrat de fichier de sortie (ignoré sans path)
       path: string        # Chemin virtuel, p. ex. "/output/report.md"
       source: string      # "tool_call" (défaut — l'agent reçoit la consigne d'écrire le chemin avec file_write) | "final_message" (le framework écrit la réponse finale) | "structured_output" (JSON écrit par le framework, contraint par le schéma en json_schema là où le fournisseur le déclare, en grammaire GBNF là où Llm:Grammar est allumé, et toujours vérifié au parsing) | "none" — toute autre valeur fait échouer le chargement
@@ -121,16 +120,6 @@ tasks:
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
-    circuitBreaker:       # Surcharge au niveau tâche — PARSÉE mais pas encore appliquée à l'exécution (voir Configuration Circuit Breaker)
-      preset: string      # "strict" | "permissive" | "default"
-      maxTransitions: int # Transitions max avant trip
-      stateTimeoutSeconds: int  # Timeout par état (secondes)
-      maxStateVisits: int       # Visites max d'un même état (cycles)
-      maxTotalDurationSeconds: int # Durée totale max (secondes)
-      useDegradedMode: bool     # true = Degraded, false = exception
-      maxRetries: int           # Retries après échec
-      maxToolCallsPerRound: int # Tool calls max par round
-      maxValidationRetries: int # Boucles validation max
     guardrails:           # Guardrails au niveau tâche, même forme que le bloc agent (optionnel)
       preset: string      # "analysis" | "strict" | "creative"
       header: string
@@ -139,11 +128,13 @@ tasks:
         <tool_name>: [string]
 ```
 
-Le bloc `circuitBreaker` est également utilisable au niveau racine du YAML. La validation a lieu
+La validation a lieu
 au chargement (`CrewDefinitionValidator`) : une crew exige un `name`, un `goal`, au moins un agent
 (chacun avec un goal) et au moins une tâche (chacune avec une `description` et un
 `expectedOutput`) ; des `dependencies` circulaires, un item de `mounts:` listé deux fois ou deux
-identifiants qui sélectionnent la même racine font échouer le chargement.
+identifiants qui sélectionnent la même racine font échouer le chargement. Une clé
+`circuitBreaker:` aussi, à la racine comme sur une tâche : le bloc a été supprimé (voir « Supprimé :
+`circuitBreaker` » plus bas), et le chargement nomme `graphConfig` au lieu de l'ignorer.
 
 ## Configuration Guardrails
 
@@ -153,7 +144,8 @@ sur une **tâche** (s'appliquent uniquement à cette tâche). Quand les deux son
 s'appliquent — les guardrails de l'agent sont rendus d'abord, puis ceux de la tâche** en section
 séparée. `preset` (`analysis` / `strict` / `creative`) fournit un socle de règles de base ; les
 `rules`/`toolRules` explicites sont fusionnées par-dessus, et les `toolRules` d'un outil donné ne sont
-émises que si l'agent exécutant possède effectivement cet outil. Un en-tête de `preset` prime sur un
+émises que si l'agent exécutant possède effectivement cet outil pour la tâche — ses propres outils
+plus le `tools:` de la tâche. Un en-tête de `preset` prime sur un
 `header` personnalisé.
 
 ## Configuration Knowledge & RAG
@@ -235,36 +227,24 @@ graphConfig:
   maxTotalDurationSeconds: int  # Durée totale en secondes (surcharge le preset)
 ```
 
-`graphConfig` l'emporte sur un `circuitBreaker` de crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
+`graphConfig` est le seul réglage de circuit breaker d'une crew (`CircuitBreakerPolicyFactory.ResolveGraph`).
 Le moteur de graphe n'applique que trois limites — transitions, visites d'un même état, durée
 totale (`GraphRunner`) ; un timeout par état ou un mode dégradé n'a aucun effet sur un run de graphe.
 
-## Configuration Circuit Breaker
+## Supprimé : `circuitBreaker`
 
-Le bloc `circuitBreaker` avec tous les paramètres disponibles. **Ce qui atteint l'exécution
-aujourd'hui** : le bloc **de crew**, lu par le seul mode Graph (`GraphProcessStrategy`, quand aucun
-`graphConfig` n'est déclaré) — son preset et `maxTransitions`, `maxStateVisits` et
-`maxTotalDurationSeconds` bornent le run du graphe (les visites et transitions qu'il ne fixe pas sont
-calculées depuis la crew, voir [Graph](../orchestration/graph.md)). `stateTimeoutSeconds` et `useDegradedMode`
-atteignent aussi la politique, mais le moteur de graphe ne lit ni l'un ni l'autre : ils ne servent
-qu'à la FSM du domaine, qu'aucune stratégie n'exécute. Le bloc de tâche et les trois limites de garde (`maxRetries`,
-`maxToolCallsPerRound`, `maxValidationRetries`) sont parsés dans `CircuitBreakerConfig` et résolus
-par `CircuitBreakerPolicyFactory` (preset, puis surcharges de crew, puis surcharges de tâche ;
-preset inconnu → `strict`), mais aucun chemin d'exécution n'appelle encore cette résolution pour
-les tâches.
+Le bloc `circuitBreaker:` — à la racine de la crew comme sur une tâche — n'existe plus, et une crew
+qui en écrit encore un est **refusée au chargement** avec un message qui nomme `graphConfig`. Le
+bloc de tâche configurait une machine d'états de tâche qu'aucun chemin d'exécution ne lançait, et
+trois limites de garde (`maxRetries`, `maxToolCallsPerRound`, `maxValidationRetries`) que rien ne
+lisait. Le bloc de crew n'était lu que par le mode Graph, où `graphConfig` porte le même preset et
+les trois mêmes limites effectives.
 
-```yaml
-circuitBreaker:
-  preset: string                # "strict" (aussi la valeur de repli) | "permissive" | "default"
-  maxTransitions: int           # Transitions max avant trip
-  stateTimeoutSeconds: int      # Timeout par état (secondes) — non appliqué par le mode Graph
-  maxStateVisits: int           # Visites max d'un même état (cycles)
-  maxTotalDurationSeconds: int  # Durée totale max (secondes)
-  useDegradedMode: bool         # true = Degraded, false = exception — non appliqué par le mode Graph
-  maxRetries: int               # Retries après échec (garde, défaut 3)
-  maxToolCallsPerRound: int     # Tool calls max par round (garde, défaut 10)
-  maxValidationRetries: int     # Boucles validation max (garde, défaut 3)
-```
+Ce qui borne une tâche, c'est sa boucle d'agent : le `maxIter` de l'agent, l'arrêt après trois
+erreurs d'outil identiques consécutives, et les reprises de validation de sortie. Ce qui borne un
+run de graphe, c'est `graphConfig` (ci-dessus). Le moteur générique de machine d'états et
+`CircuitBreakerPolicy` restent — le mode Graph, `orkeon forge` et le graphe RAG correctif s'en
+servent (voir [FSM](../orchestration/fsm.md)).
 
 ## Configuration Autonomous Budget
 
@@ -289,14 +269,13 @@ Tous vivent dans `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrast
 
 - `CrewYamlConfig` (définition complète d'une crew) et `CrewSettingsYamlConfig` (le fichier de réglages de crew des formats multi-fichiers — `crew.yaml` ou `config.yaml`)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
-- `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, circuit breaker)
+- `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, surcharge LLM, guardrails)
 - `LlmYamlConfig` (modèle, température, max tokens, topP, thinking, responseFormat/responseSchema, cache) avec `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
 - `LlmOverrideYamlConfig` (le bloc `llm_override:` de tâche)
 - `DeliverableYamlConfig` (le bloc `deliverable:` de tâche)
 - `GuardrailsYamlConfig` (les `guardrails:` d'agent et de tâche)
 - `LinkYamlConfig` (l'ACL `links:` de crew)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (le bloc `mounts:` de crew — items `/racine` ou `<ulid>|/racine`) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `CircuitBreakerYamlConfig` (preset, seuils, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges)
 - `RagYamlConfig` (provider, collections + sources/chunking, défauts — avec `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (entrées forme courte/longue) → `KnowledgeAttachment`

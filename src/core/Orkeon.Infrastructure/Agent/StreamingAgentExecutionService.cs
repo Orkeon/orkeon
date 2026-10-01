@@ -93,7 +93,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
                 new(ChatRole.User, userPrompt)
             };
 
-            var (options, availableTools) = BuildStreamingChatOptions(agent, caller);
+            var (options, availableTools) = BuildStreamingChatOptions(agent, task, caller);
             var maxIterations = agent.MaxIterations > 0 ? agent.MaxIterations : AgentDefaults.MaxIterations;
 
             for (int i = 0; i < maxIterations; i++)
@@ -147,10 +147,11 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
         }, cancellationToken).ConfigureAwait(false);
     }
 
-    private (ChatOptions options, List<IBaseTool> availableTools) BuildStreamingChatOptions(DomainAgent agent, ToolInvocationCaller caller)
+    private (ChatOptions options, List<IBaseTool> availableTools) BuildStreamingChatOptions(
+        DomainAgent agent, CrewTask task, ToolInvocationCaller caller)
     {
-        var agentToolNames = agent.Tools.Select(t => t.ToString()).ToHashSet();
-        var availableTools = _tools.Where(t => agentToolNames.Contains(t.Name)).ToList();
+        // The same belt as the other loops: agent + task tools + human_input (GAP-07).
+        var availableTools = TaskToolbelt.Compose(agent, task, _tools).ToList();
         // Invoked only by a client that runs functions itself; this loop dispatches below.
         // Either way, through the invocation pipeline.
         List<AITool>? aiTools = availableTools.Count > 0
@@ -281,7 +282,7 @@ public sealed partial class StreamingAgentExecutionService : IStreamingAgentExec
 
         // Same renderer as the non-streaming path (AgentPromptComposer): agent-level guardrails
         // first, then the task's own, tool rules gated by the agent's tools.
-        GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(sb, agent, task);
+        GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(sb, agent, task, TaskToolbelt.Compose(agent, task, _tools));
 
         return sb.ToString();
     }

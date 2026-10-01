@@ -34,7 +34,6 @@ public sealed class CrewBuilder
     private bool _allowDynamicAgents;
     private int? _maxConcurrentDynamicAgents;
     private GraphConfig? _graphConfig;
-    private CircuitBreakerConfig? _circuitBreaker;
 
     private readonly List<DomainAgent> _agents = [];
     private readonly List<CrewTask> _tasks = [];
@@ -260,14 +259,6 @@ public sealed class CrewBuilder
         return this;
     }
 
-    /// <summary>Sets the crew-level circuit-breaker configuration.</summary>
-    public CrewBuilder WithCircuitBreaker(CircuitBreakerConfig circuitBreaker)
-    {
-        ArgumentNullException.ThrowIfNull(circuitBreaker);
-        _circuitBreaker = circuitBreaker;
-        return this;
-    }
-
     /// <summary>
     /// Builds and returns a new <see cref="Crew"/> instance.
     /// </summary>
@@ -322,8 +313,7 @@ public sealed class CrewBuilder
             MemoryProvider = _memoryProvider,
             AllowDynamicAgents = _allowDynamicAgents,
             MaxConcurrentDynamicAgents = _maxConcurrentDynamicAgents,
-            GraphConfig = _graphConfig,
-            CircuitBreaker = _circuitBreaker
+            GraphConfig = _graphConfig
         });
 
         // 6. Add agents

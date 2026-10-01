@@ -188,6 +188,6 @@ Symptoms you may hit on a fresh machine, with the exact message and fix:
 
 - [Three ways to run Orkeon](./three-ways-to-run-orkeon.md) — binaries and containers, no source checkout.
 - [YAML, Builders and CrewFactory](./yaml-and-builders.md) — the schema behind every `config.yaml`.
-- [Catalog of examples](../reference/examples-catalog.md) — the 105 bundled examples across 9 themed categories.
+- [Catalog of examples](../reference/examples-catalog.md) — the 104 bundled examples across 9 themed categories.
 - [Tool inventory](../tools/inventory.md) — what the agents can actually do.
 - [Give your agents a mailbox](./give-your-agents-a-mailbox.md) — an agent that reads, sorts and drafts replies in a real mailbox.

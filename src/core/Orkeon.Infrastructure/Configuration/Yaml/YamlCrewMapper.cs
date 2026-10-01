@@ -54,7 +54,6 @@ public sealed partial class YamlCrewMapper
             Agents = mappedAgents,
             Tasks = tasks != null ? MapTasks(tasks, agentNameMap) : [],
             ManagerAgentId = ResolveAgentId(settings.ManagerAgent, agentNameMap),
-            CircuitBreaker = MapCircuitBreaker(settings.CircuitBreaker),
             GraphConfig = MapGraphConfig(settings.GraphConfig),
             Rag = MapRag(settings.Rag),
             Links = MapLinks(settings.Name ?? string.Empty, settings.Links),
@@ -177,11 +176,10 @@ public sealed partial class YamlCrewMapper
                 AssignedAgentId = kvp.Value.Agent != null && agentNameMap.TryGetValue(kvp.Value.Agent, out var agentId)
                     ? agentId : null,
                 Dependencies = dependencies,
-                RequiredTools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
+                Tools = kvp.Value.Tools ?? (IReadOnlyList<string>)Array.Empty<string>(),
                 AsyncExecution = kvp.Value.AsyncExecution ?? false,
                 HumanInput = kvp.Value.HumanInput ?? false,
                 Context = kvp.Value.Context ?? [],
-                CircuitBreaker = MapCircuitBreaker(kvp.Value.CircuitBreaker),
                 Deliverable = MapDeliverable(kvp.Value.Deliverable),
                 LlmOverride = MapTaskLlmOverride(kvp.Value.LlmOverride),
                 Guardrails = MapGuardrails(kvp.Value.Guardrails),
@@ -680,28 +678,6 @@ public sealed partial class YamlCrewMapper
     }
 
     /// <summary>
-    /// Maps a YAML circuit breaker section to a <see cref="CircuitBreakerConfig"/> domain model.
-    /// </summary>
-    private static CircuitBreakerConfig? MapCircuitBreaker(CircuitBreakerYamlConfig? yaml)
-    {
-        if (yaml == null)
-            return null;
-
-        return new CircuitBreakerConfig
-        {
-            Preset = yaml.Preset,
-            MaxTransitions = yaml.MaxTransitions,
-            StateTimeoutSeconds = yaml.StateTimeoutSeconds,
-            MaxStateVisits = yaml.MaxStateVisits,
-            MaxTotalDurationSeconds = yaml.MaxTotalDurationSeconds,
-            UseDegradedMode = yaml.UseDegradedMode,
-            MaxRetries = yaml.MaxRetries,
-            MaxToolCallsPerRound = yaml.MaxToolCallsPerRound,
-            MaxValidationRetries = yaml.MaxValidationRetries,
-        };
-    }
-
-    /// <summary>
     /// Maps a YAML graph config section to a <see cref="GraphConfig"/> domain model.
     /// </summary>
     private static GraphConfig? MapGraphConfig(GraphYamlConfig? yaml)
@@ -754,7 +730,7 @@ public sealed partial class YamlCrewMapper
 /// <summary>
 /// The crew's own settings block (everything sourced from the <c>crew:</c> section), as opposed
 /// to the agent and task children. Bundles the crew-level scalars (name, goal, process, flags,
-/// manager) together with the structured crew-level config blocks (circuit breaker, graph, default LLM).
+/// manager) together with the structured crew-level config blocks (graph, default LLM, RAG, links, mounts).
 /// Consumed by <see cref="YamlCrewMapper.BuildConfiguration"/>.
 /// </summary>
 public sealed record CrewMappingSettings
@@ -782,9 +758,6 @@ public sealed record CrewMappingSettings
 
     /// <summary>Name of the manager agent for hierarchical crews (<c>crew.manager_agent</c>).</summary>
     public string? ManagerAgent { get; init; }
-
-    /// <summary>Crew-level circuit breaker configuration (<c>crew.circuit_breaker</c>).</summary>
-    public CircuitBreakerYamlConfig? CircuitBreaker { get; init; }
 
     /// <summary>Crew-level graph orchestration configuration (<c>crew.graph</c>).</summary>
     public GraphYamlConfig? GraphConfig { get; init; }

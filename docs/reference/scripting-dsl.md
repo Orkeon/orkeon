@@ -99,7 +99,7 @@ now builds on its own.
 
 Declarative only — the procedural engine never reads tasks. Carried to the crew:
 `description`, `agent` (a built agent), `expectedOutput`, `withContext(s)` (this is what builds
-the DAG), `tools`, `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)` and
+the DAG), `tools` (added to the agent's own tools for that task only, never replacing them), `humanInput`, `asyncExecution`, `deliverable`, `withResponseFormat(type)` and
 `withResponseSchema(name, schema, strict?)`. Accepted but not acted on: `name` (a task
 configuration has no name) and `expect` (recorded in the task context when there is no
 `deliverable`, never validated). `withTaskTool` is gone: nothing ever read it, and `tools`

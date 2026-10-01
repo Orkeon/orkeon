@@ -3,7 +3,6 @@
 Ce dossier contient **20 codebases TypeScript réputées difficiles**, clonées (tarball `HEAD`) pour servir de corpus de test aux pipelines Orkeon :
 
 - `examples/06-engineering-devops/102-ts-codebase-documentation` — analyse + spec fonctionnelle + plan de migration
-- `examples/06-engineering-devops/103-ts-codebase-with-fsm` — même pipeline avec FSM (`StateMachine<TState, TEvent>`) + circuit breaker
 
 Toutes les applications retenues ont vocation à être **remplaçables par une équipe d'agents IA** : la valeur réside dans la logique métier/décisionnelle, pas dans l'UX pure. Elles couvrent les cinq familles qui stressent le plus un orchestrateur multi-agent : moteurs de workflow, state machines explicites, éditeurs canvas/CRDT, DSL type-level et plateformes agent-replaceable.
 
@@ -26,10 +25,10 @@ Les 20 repos répartis sur deux axes : **taille** (LOC TS cœur, hors vendored /
 
 **Comment lire la matrice**
 
-- **Diagonale bas-droite** (`backstage`, `effect`, `tldraw`, `blocksuite`) — territoire où **Orkeon 103** doit prouver son circuit breaker : volume élevé *et* complexité de types ou de FSM interne.
+- **Diagonale bas-droite** (`backstage`, `effect`, `tldraw`, `blocksuite`) — territoire où le pipeline **102** doit prouver qu'il tient la charge : volume élevé *et* complexité de types ou de FSM interne.
 - **Diagonale haut-gauche** (`inngest-js`, `restate-sdk`, `trpc`, `yjs`) — coin où **Orkeon 102** doit être impeccable : petit, mais aucune excuse pour rater un corpus dense.
 - **Colonne ★★★★★** (6 repos) — chacun exerce une facette distincte : CRDT brut (`yjs`), statecharts (`xstate`), déterminisme durable (`temporal-sdk`), FSM d'outils interne (`tldraw`), CRDT + block schema (`blocksuite`), effets typés récursifs (`effect`).
-- **Ligne M** (5 repos) — zone d'équilibre idéale pour le warm-up du runner 103 : volume raisonnable, mais toutes les difficultés représentées.
+- **Ligne M** (5 repos) — zone d'équilibre idéale pour le warm-up du runner 102 : volume raisonnable, mais toutes les difficultés représentées.
 
 **Légende difficulté**
 
@@ -39,12 +38,12 @@ Les 20 repos répartis sur deux axes : **taille** (LOC TS cœur, hors vendored /
 
 ---
 
-## Groupe A — Moteurs de workflow / orchestration (cible idéale 103)
+## Groupe A — Moteurs de workflow / orchestration (cible idéale 102)
 
 ### `n8n/`
 - **URL** : https://github.com/n8n-io/n8n
 - **Taille / Difficulté** : XL / ★★★★☆
-- Moteur visuel d'exécution de workflows avec 400+ intégrations. Un workflow n8n **EST** une FSM (pending → running → waiting → success/error). Cible directe de 103.
+- Moteur visuel d'exécution de workflows avec 400+ intégrations. Un workflow n8n **EST** une FSM (pending → running → waiting → success/error). Cible directe de 102.
 
 ### `activepieces/`
 - **URL** : https://github.com/activepieces/activepieces
@@ -155,7 +154,7 @@ Les 20 repos répartis sur deux axes : **taille** (LOC TS cœur, hors vendored /
 ### `backstage/`
 - **URL** : https://github.com/backstage/backstage
 - **Taille / Difficulté** : XXL / ★★★★☆
-- Portail développeur open-source de Spotify. Plugin system strict + scaffolder (qui est un workflow engine avec retry) + catalog model + software templates. Endurance finale du runner 102/103.
+- Portail développeur open-source de Spotify. Plugin system strict + scaffolder (qui est un workflow engine avec retry) + catalog model + software templates. Endurance finale du runner 102.
 
 ---
 
@@ -195,5 +194,5 @@ Les 8 restants (`restate-sdk-typescript`, `lexical`, `excalidraw`, `blocksuite`,
 - **Téléchargement** : chaque repo a été récupéré en tarball `HEAD` (`codeload.github.com/.../tar.gz/HEAD`), sans `.git/` — cela évite les locks virtiofs sur Windows et les fichiers d'index corrompus
 - **Dépendances** : aucun `node_modules/` n'est présent. Lancer `pnpm i` / `npm i` dans un repo *uniquement* si un test dynamique est requis — l'analyse statique Orkeon n'en a pas besoin
 - **Git tracking** : ce dossier est **volontairement ignoré** par git (règle `/examples/others/*` dans le `.gitignore` racine), à **l'exception de ce `README.md`** (règle `!/examples/others/README.md`) qui documente le corpus. Les 20 codebases ne sont donc pas redistribuées avec Orkeon — chacun doit les re-télécharger pour reproduire les benchmarks
-- **Sous-arbres ciblés** : pour un run sur un sous-package spécifique de `n8n`, `cal.com`, `medusa` ou `backstage`, monter uniquement le chemin concerné dans le runner 102/103 (ex. `examples/others/n8n/packages/core:/src:ro`) pour éviter de saturer `code_analyst`
+- **Sous-arbres ciblés** : pour un run sur un sous-package spécifique de `n8n`, `cal.com`, `medusa` ou `backstage`, monter uniquement le chemin concerné dans le runner 102 (ex. `examples/others/n8n/packages/core:/src:ro`) pour éviter de saturer `code_analyst`
 - **Reproductibilité** : pour rejouer un benchmark à l'identique dans 6 mois, relever le SHA HEAD de chaque repo au moment du run (la version présente dans ce dossier est un snapshot non versionné)

@@ -31,8 +31,10 @@ declare global {
         asyncExecution(value?: boolean): this;
         /**
          * YAML parity task-level `tools:` — names, `toolBuilder()` instances, or an
-         * array mixing both. Instances are registered with the runtime registry by
-         * the loader, so their names resolve like built-ins.
+         * array mixing both. They ADD to the assigned agent's own tools, for this task
+         * only; they never replace them. Instances are registered with the runtime
+         * registry by the loader, so their names resolve like built-ins, and an unknown
+         * name fails the load under `Orkeon:CrewFactory:StrictTools` like an agent's.
          */
         tools(value: string | Tool<unknown, unknown> | readonly (string | Tool<unknown, unknown>)[]): this;
         /**

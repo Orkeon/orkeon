@@ -116,9 +116,4 @@ public sealed class CrewCreateOptions
     /// Only consumed when <see cref="ProcessType"/> is <c>Graph</c>.
     /// </summary>
     public GraphConfig? GraphConfig { get; init; }
-
-    /// <summary>
-    /// Optional crew-level circuit-breaker configuration (default FSM limits for tasks).
-    /// </summary>
-    public CircuitBreakerConfig? CircuitBreaker { get; init; }
 }

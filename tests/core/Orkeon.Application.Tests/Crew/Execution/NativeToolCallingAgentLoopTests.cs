@@ -70,6 +70,37 @@ public class NativeToolCallingAgentLoopTests
         Assert.Equal(1, result.IterationsUsed);
     }
 
+    // GAP-07: a task's own tools join its agent's belt for that task only.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async System.Threading.Tasks.Task TaskTools_AreOfferedAndCallable_ForThatTaskOnly(bool taskDeclaresTheTool)
+    {
+        var fileRead = new SpyTool("file_read");
+        var fileWrite = new SpyTool("file_write", result: "written");
+        var agent = BuildAgent(5, fileRead);
+        var task = taskDeclaresTheTool
+            ? new Orkeon.Domain.Task.CrewTaskBuilder().Description("Write").ExpectedOutput("File").WithTool(fileWrite).Build()
+            : BuildTask();
+        var (loop, provider, _) = BuildLoop(agent);
+        provider.EnqueueOpenAiToolCall("call-1", "file_write", """{"input":"x"}""");
+        provider.EnqueueText("done");
+
+        await loop.ExecuteAsync(BuildInvocation(agent, task), 5, TestContext.Current.CancellationToken);
+
+        var offered = provider.ReceivedConfigs[0]!.Tools?.Select(t => t.Name).ToList() ?? [];
+        if (taskDeclaresTheTool)
+        {
+            Assert.Equal(["file_read", "file_write"], offered);
+            Assert.Single(fileWrite.Calls);
+        }
+        else
+        {
+            Assert.Equal(["file_read"], offered);
+            Assert.Empty(fileWrite.Calls);
+        }
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task FailsWithAnEmptyFinalAnswer_WhenTheTextAnswerIsEmpty()
     {

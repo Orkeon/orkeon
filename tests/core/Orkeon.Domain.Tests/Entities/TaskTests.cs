@@ -212,7 +212,7 @@ public class TaskTests
     }
 
     [Fact]
-    public void ShouldBeReadOnly_WhenUsingRequiredToolsCollection()
+    public void ShouldBeReadOnly_WhenUsingToolsCollection()
     {
         // Arrange
         var description = TaskDescription.From("Tools test");
@@ -220,10 +220,10 @@ public class TaskTests
         var task = DomainTask.Create(description, expectedOutput);
 
         // Act
-        var tools = task.RequiredTools;
+        var tools = task.Tools;
 
         // Assert
-        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<ToolId>>(tools);
+        Assert.IsType<System.Collections.ObjectModel.ReadOnlyCollection<Orkeon.Domain.Tools.IBaseTool>>(tools);
     }
 
     [Fact]

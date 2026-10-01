@@ -14,9 +14,9 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 
 /// <summary>
 /// Covers the CrewFactory leg of P2-O-01: a <see cref="CrewConfiguration"/>'s
-/// <see cref="CrewConfiguration.GraphConfig"/> / <see cref="CrewConfiguration.CircuitBreaker"/>
-/// must survive onto the built domain <c>Crew</c> so the GraphProcessStrategy can read them at
-/// execution — previously they were silently dropped during crew assembly.
+/// <see cref="CrewConfiguration.GraphConfig"/> must survive onto the built domain <c>Crew</c> so
+/// the GraphProcessStrategy can read it at execution — previously it was silently dropped during
+/// crew assembly. Since GAP-07 it is the only circuit-breaker setting a crew carries.
 /// </summary>
 public class CrewFactoryGraphConfigTests
 {
@@ -34,7 +34,7 @@ public class CrewFactoryGraphConfigTests
             new InMemoryTaskRepository(unitOfWork));
     }
 
-    private static CrewConfiguration BuildGraphConfig(GraphConfig? graph, CircuitBreakerConfig? circuitBreaker)
+    private static CrewConfiguration BuildGraphConfig(GraphConfig? graph)
     {
         var agentId = AgentId.Create();
         return new CrewConfiguration
@@ -43,7 +43,6 @@ public class CrewFactoryGraphConfigTests
             Goal = "test",
             Process = ProcessType.Graph,
             GraphConfig = graph,
-            CircuitBreaker = circuitBreaker,
             Agents =
             [
                 new AgentConfiguration { Id = agentId, Role = "worker", Goal = "do work", Backstory = "b" }
@@ -66,8 +65,7 @@ public class CrewFactoryGraphConfigTests
     {
         var factory = BuildFactory();
         var config = BuildGraphConfig(
-            new GraphConfig { MaxRetryCycles = 5, CircuitBreakerPreset = "permissive", MaxTransitions = 12 },
-            circuitBreaker: null);
+            new GraphConfig { MaxRetryCycles = 5, CircuitBreakerPreset = "permissive", MaxTransitions = 12 });
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
@@ -78,29 +76,13 @@ public class CrewFactoryGraphConfigTests
     }
 
     [Fact]
-    public async Task CreateFromConfig_ShouldCarryCircuitBreaker_OntoDomainCrew()
-    {
-        var factory = BuildFactory();
-        var config = BuildGraphConfig(
-            graph: null,
-            new CircuitBreakerConfig { Preset = "strict", MaxTransitions = 7 });
-
-        var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
-
-        Assert.NotNull(crew.CircuitBreaker);
-        Assert.Equal("strict", crew.CircuitBreaker!.Preset);
-        Assert.Equal(7, crew.CircuitBreaker.MaxTransitions);
-    }
-
-    [Fact]
     public async Task CreateFromConfig_ShouldLeaveConfigNull_WhenNoneProvided()
     {
         var factory = BuildFactory();
-        var config = BuildGraphConfig(graph: null, circuitBreaker: null);
+        var config = BuildGraphConfig(graph: null);
 
         var crew = await factory.CreateFromConfigAsync(config, TestContext.Current.CancellationToken);
 
         Assert.Null(crew.GraphConfig);
-        Assert.Null(crew.CircuitBreaker);
     }
 }

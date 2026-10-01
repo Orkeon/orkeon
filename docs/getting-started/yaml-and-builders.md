@@ -59,16 +59,7 @@ tasks:
     asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
-    circuitBreaker:       # Parsed, NOT applied at run time today (see below)
-      preset: string      # "strict" | "permissive" | "default"
-      maxTransitions: int # Max transitions before trip
-      stateTimeoutSeconds: int  # Per-state timeout (seconds)
-      maxStateVisits: int       # Max visits of the same state (cycles)
-      maxTotalDurationSeconds: int # Max total duration (seconds)
-      useDegradedMode: bool     # true = Degraded, false = exception
-      maxRetries: int           # Retries after failure
-      maxToolCallsPerRound: int # Max tool calls per round
-      maxValidationRetries: int # Max validation loops
+    tools: [string]       # Tools ADDED to the agent's own for this task only — never replacing them
     guardrails:           # Task-level guardrails (optional) — same shape as at agent level
       preset: string      # "analysis" | "strict" | "creative"
       header: string
@@ -77,7 +68,7 @@ tasks:
         <tool_name>: [string]
 ```
 
-The `circuitBreaker` block is accepted at the task level and at the root of the YAML, but **neither is a default applied to every task**: the task-level block is parsed and then unused by every execution path, and the crew-level block is read only by the [Graph mode](../orchestration/graph.md), when no `graphConfig` is declared. What bounds a task at run time is the agent loop (`maxIter`, and a stop after 3 consecutive identical tool errors) — see "What runs today" in [FSM Orchestration](../orchestration/fsm.md#overview).
+A task's `tools:` add to its agent's own for that task only: a writer that holds `file_read` and runs a task declaring `tools: [file_write]` can read and write during that task, and only read during the others. There is no `circuitBreaker:` block — a crew that writes one is refused at load. What bounds a task at run time is the agent loop (`maxIter`, a stop after 3 consecutive identical tool errors, and the output-validation retries); a Graph run is bounded by `graphConfig` (below).
 
 Guardrails may be declared on an agent (all its tasks) and/or on a task (that task only). When both
 exist, both apply — agent rules first, then the task's — injected into the executing agent's system
@@ -101,9 +92,8 @@ See [Graph Orchestration](../orchestration/graph.md) for the full details.
 The YAML models include:
 - `CrewYamlConfig` (complete definition of a crew)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
-- `TaskYamlConfig` (description, expected output, dependencies, circuit breaker)
+- `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, guardrails)
 - `LlmYamlConfig` (model, temperature, max tokens)
-- `CircuitBreakerYamlConfig` (preset, thresholds, guards — see [FSM Orchestration](../orchestration/fsm.md))
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides — see [Graph Orchestration](../orchestration/graph.md))
 
 There is no framework-level "predefined configuration" object: a host composes its own settings through `AddOrkeonInfrastructure` / `AddOrkeonApplication` and its `appsettings.json`.

@@ -122,7 +122,7 @@ orkeon usecases show 03-email-pipeline --crew                        # one sheet
 orkeon usecases export 01-research-assistant --to ./research --lang fr  # one use case, as a team folder
 ```
 
-The catalogue of the example use cases: the 105 numbered examples of `examples/`, each described by a sheet written in five languages ([usecases.json](https://github.com/Orkeon/orkeon/blob/main/examples/usecases.json)). The tool carries the catalogue itself — the manifest, each example's crew file and its `data/` folder — so every subcommand works offline, reads nothing from disk, and calls no LLM; only `export` writes. The finance examples are **reference only**: searchable and readable, not importable, since their crews depend on a shared `_tools/` folder the tool does not carry.
+The catalogue of the example use cases: the 104 numbered examples of `examples/`, each described by a sheet written in five languages ([usecases.json](https://github.com/Orkeon/orkeon/blob/main/examples/usecases.json)). The tool carries the catalogue itself — the manifest, each example's crew file and its `data/` folder — so every subcommand works offline, reads nothing from disk, and calls no LLM; only `export` writes. The finance examples are **reference only**: searchable and readable, not importable, since their crews depend on a shared `_tools/` folder the tool does not carry.
 
 **`search <text>`** ranks the catalogue against a need written in plain words, in French, English, Spanish, German or Simplified Chinese.
 

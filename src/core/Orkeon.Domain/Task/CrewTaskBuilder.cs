@@ -15,7 +15,7 @@ public sealed class CrewTaskBuilder
     private ExpectedOutput? _expectedOutput;
     private TaskPriority _priority = TaskPriority.Normal;
     private readonly List<TaskId> _dependencies = [];
-    private readonly List<ToolId> _requiredTools = [];
+    private readonly List<Orkeon.Domain.Tools.IBaseTool> _tools = [];
     private readonly Dictionary<string, object> _context = [];
     private AgentId? _assignedAgent;
     private bool _asyncExecution;
@@ -88,10 +88,23 @@ public sealed class CrewTaskBuilder
         return this;
     }
 
-    /// <summary>Adds a required tool by its identifier.</summary>
-    public CrewTaskBuilder RequiresTool(ToolId toolId)
+    /// <summary>
+    /// Adds a tool the agent holds while it runs this task, on top of its own tools (YAML
+    /// <c>tools:</c> on a task).
+    /// </summary>
+    public CrewTaskBuilder WithTool(Orkeon.Domain.Tools.IBaseTool tool)
     {
-        _requiredTools.Add(toolId);
+        ArgumentNullException.ThrowIfNull(tool);
+        _tools.Add(tool);
+        return this;
+    }
+
+    /// <summary>Adds several tools the agent holds while it runs this task, on top of its own.</summary>
+    public CrewTaskBuilder WithTools(IEnumerable<Orkeon.Domain.Tools.IBaseTool> tools)
+    {
+        ArgumentNullException.ThrowIfNull(tools);
+        foreach (var tool in tools)
+            WithTool(tool);
         return this;
     }
 
@@ -226,9 +239,9 @@ public sealed class CrewTaskBuilder
             task.AddDependency(dep);
         }
 
-        foreach (var tool in _requiredTools)
+        foreach (var tool in _tools)
         {
-            task.AddRequiredTool(tool);
+            task.AddTool(tool);
         }
 
         foreach (var kvp in _context)

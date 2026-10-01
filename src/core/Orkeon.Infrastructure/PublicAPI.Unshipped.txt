@@ -260,3 +260,36 @@ Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.Capabilities.get -> Orkeon.D
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.DeclaredCapabilities.get -> Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities!
 virtual Orkeon.Infrastructure.LLMs.Base.HttpLlmProviderBase.CanCarryGrammar.get -> bool
 override Orkeon.Infrastructure.LLMs.AnthropicLlmProvider.CanCarryGrammar.get -> bool
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.CircuitBreakerYamlConfig() -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxRetries.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxRetries.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxStateVisits.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxStateVisits.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxToolCallsPerRound.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxToolCallsPerRound.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxTotalDurationSeconds.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxTotalDurationSeconds.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxTransitions.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxTransitions.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxValidationRetries.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.MaxValidationRetries.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.Preset.get -> string?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.Preset.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.StateTimeoutSeconds.get -> int?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.StateTimeoutSeconds.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.UseDegradedMode.get -> bool?
+*REMOVED*Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig.UseDegradedMode.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewMappingSettings.CircuitBreaker.get -> Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewMappingSettings.CircuitBreaker.init -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.CircuitBreaker.get -> Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewSettingsYamlConfig.CircuitBreaker.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewYamlConfig.CircuitBreaker.get -> Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.CrewYamlConfig.CircuitBreaker.set -> void
+*REMOVED*Orkeon.Infrastructure.Configuration.TaskYamlConfig.CircuitBreaker.get -> Orkeon.Infrastructure.Configuration.CircuitBreakerYamlConfig?
+*REMOVED*Orkeon.Infrastructure.Configuration.TaskYamlConfig.CircuitBreaker.set -> void
+*REMOVED*static Orkeon.Infrastructure.Configuration.CircuitBreakerPolicyFactory.CreateGuardContext(Orkeon.Domain.Configuration.CircuitBreakerConfig? crewDefault, Orkeon.Domain.Configuration.CircuitBreakerConfig? taskOverride) -> Orkeon.Domain.Task.TaskExecutionGuardContext!
+*REMOVED*static Orkeon.Infrastructure.Configuration.CircuitBreakerPolicyFactory.CreateTaskFsm(Orkeon.Domain.Configuration.CircuitBreakerConfig? crewDefault, Orkeon.Domain.Configuration.CircuitBreakerConfig? taskOverride) -> Orkeon.Domain.Common.StateMachine.StateMachine<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
+*REMOVED*static Orkeon.Infrastructure.Configuration.CircuitBreakerPolicyFactory.Resolve(Orkeon.Domain.Configuration.CircuitBreakerConfig? crewDefault, Orkeon.Domain.Configuration.CircuitBreakerConfig? taskOverride) -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
+*REMOVED*static Orkeon.Infrastructure.Configuration.CircuitBreakerPolicyFactory.ResolveGraph(Orkeon.Domain.Configuration.GraphConfig? graphConfig, Orkeon.Domain.Configuration.CircuitBreakerConfig? crewDefault, Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy! fallback) -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!
+static Orkeon.Infrastructure.Configuration.CircuitBreakerPolicyFactory.ResolveGraph(Orkeon.Domain.Configuration.GraphConfig? graphConfig, Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy! fallback) -> Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy!

@@ -9,7 +9,7 @@
 #
 # Output: a per-config OK/FAIL table plus a final tally. Exits non-zero if any FAIL.
 #
-# NOTE: the FULL 105-config sweep is meant for CI (examples-ci.yml), NOT for local dev
+# NOTE: the FULL 104-config sweep is meant for CI (examples-ci.yml), NOT for local dev
 # runs. On a slow/virtiofs filesystem each --validate spends 1-7 min purely loading the
 # host, so the whole set can take hours. Locally, use --sample N (or --configs) to smoke
 # a handful of representative crews.
@@ -113,7 +113,7 @@ if [[ ! -f "$ORK_DLL" ]]; then
     exit 3
 fi
 
-# Collect the 105 bundled example configs (numbered category dirs only; the lone
+# Collect the 104 bundled example configs (numbered category dirs only; the lone
 # others/effect/.../fixtures/config.yaml is an unrelated test fixture).
 # main.ork.ts is the TypeScript crew definition of a migrated example (EX-01):
 # same catalog, same validation, through `orkeon run <ts> --validate`.

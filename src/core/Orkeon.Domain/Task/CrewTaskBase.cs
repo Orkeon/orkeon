@@ -6,6 +6,7 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using TaskStatus = Orkeon.Domain.Task.ValueObjects.TaskStatus;
 
 using Orkeon.Domain.SharedKernel;
+using Orkeon.Domain.Tools;
 
 namespace Orkeon.Domain.Task;
 
@@ -18,7 +19,7 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     where TContext : class, new()
 {
     private readonly List<TaskId> _dependencies;
-    private readonly List<ToolId> _requiredTools;
+    private readonly List<IBaseTool> _tools;
     private readonly TypedTaskContext<TContext> _context;
     private readonly TaskDependencyManager _dependencyManager;
 
@@ -134,9 +135,11 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
     public IReadOnlyList<TaskId> Dependencies => _dependencies.AsReadOnly();
 
     /// <summary>
-    /// Gets the required tools for this task.
+    /// Gets the tools this task adds to its agent's own for this task only (YAML <c>tools:</c> on
+    /// a task). They never replace the agent's tools; a name the agent already holds is ignored
+    /// when the belt is composed.
     /// </summary>
-    public IReadOnlyList<ToolId> RequiredTools => _requiredTools.AsReadOnly();
+    public IReadOnlyList<IBaseTool> Tools => _tools.AsReadOnly();
 
     /// <summary>
     /// Gets the typed task context.
@@ -162,7 +165,7 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         ArgumentNullException.ThrowIfNull(expectedOutput);
 
         _dependencies = [];
-        _requiredTools = [];
+        _tools = [];
         _dependencyManager = new TaskDependencyManager(_dependencies);
 
         var opts = outputOptions ?? TaskOutputOptions.Default;
@@ -212,12 +215,12 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies,
-        IEnumerable<ToolId>? requiredTools,
+        IEnumerable<IBaseTool>? tools,
         TContext? contextData,
         TaskDeliverable? deliverable = null) : base(id)
     {
         _dependencies = [];
-        _requiredTools = [];
+        _tools = [];
         _dependencyManager = new TaskDependencyManager(_dependencies);
 
         ArgumentNullException.ThrowIfNull(description);
@@ -246,8 +249,8 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         if (dependencies != null)
             _dependencies.AddRange(dependencies);
 
-        if (requiredTools != null)
-            _requiredTools.AddRange(requiredTools);
+        if (tools != null)
+            _tools.AddRange(tools);
 
         // No domain events raised — this is a restore from persistence
     }
@@ -403,16 +406,19 @@ public abstract class CrewTaskBase<TContext> : AggregateRoot<TaskId>, ICrewTask
         });
     }
 
-    /// <summary>Adds a required tool to this task.</summary>
-    /// <param name="toolId">The tool identifier to add.</param>
-    public void AddRequiredTool(ToolId toolId)
+    /// <summary>
+    /// Adds a tool the agent holds while it runs this task, on top of its own. A second tool of
+    /// the same name (case-insensitive) is ignored.
+    /// </summary>
+    /// <param name="tool">The tool to add.</param>
+    public void AddTool(IBaseTool tool)
     {
-        ArgumentNullException.ThrowIfNull(toolId);
+        ArgumentNullException.ThrowIfNull(tool);
 
-        if (_requiredTools.Contains(toolId))
+        if (_tools.Exists(t => string.Equals(t.Name, tool.Name, StringComparison.OrdinalIgnoreCase)))
             return;
 
-        _requiredTools.Add(toolId);
+        _tools.Add(tool);
     }
 
     /// <inheritdoc />

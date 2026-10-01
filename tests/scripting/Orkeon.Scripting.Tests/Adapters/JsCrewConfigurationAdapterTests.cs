@@ -434,7 +434,7 @@ public sealed class JsCrewConfigurationAdapterTests
         var task = Assert.Single(config.Tasks);
         Assert.True(task.HumanInput);
         Assert.True(task.AsyncExecution);
-        Assert.Equal(ExpectedTaskTools, task.RequiredTools);
+        Assert.Equal(ExpectedTaskTools, task.Tools);
         var agent = Assert.Single(config.Agents);
         Assert.Contains("script_tool", agent.Tools);
 

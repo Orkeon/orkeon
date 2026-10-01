@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — a task's `tools:` reach its agent; the task state machine and `circuitBreaker:` are gone **[breaking]**
+
+Three task YAML fields were read, validated and dropped, and two families of types had no
+consumer (GAP-07).
+
+- **A task's `tools:` add to its agent's tools, for that task only.** They never replace them.
+  `CrewFactory` resolves them like an agent's — same registry, same `StrictTools` check, so an
+  unknown name now fails the load — and the task carries them (`CrewTask.Tools`,
+  `CrewTaskBuilder.WithTool(s)`). One composition, `TaskToolbelt.Compose` (agent ∪ task, one tool
+  per name, then `human_input` when the task asks for it), feeds the three agent loops, the
+  streaming path, the prompt's tool list and the guardrails' tool rules, so `human_input` now
+  reaches the native and text loops too. The `.ork.ts` `taskBuilder().tools([...])` takes the same
+  path. `CrewConfigurationMapper` exports a task's tools.
+- **`circuitBreaker:` is removed and refused at load**, at the crew root and on a task, with a
+  message naming `graphConfig`. The task block configured `TaskExecutionStateMachine`, which no
+  execution path ran; its three guard limits were read by nothing; the crew block was read by
+  Graph alone, where `graphConfig` carries the same settings. A task is bounded by its agent loop
+  (`maxIter`, the stop on identical tool errors, the output-validation retries). Removed:
+  `TaskExecutionStateMachine`, `TaskExecutionState`/`TaskExecutionEvent`,
+  `TaskExecutionGuardContext`, `CircuitBreakerConfig`, `CircuitBreakerYamlConfig`,
+  `Crew.CircuitBreaker`, `CrewBuilder.WithCircuitBreaker`, the `CircuitBreaker` members of
+  `CrewConfiguration`/`TaskConfiguration`/`CrewCreateOptions`/`CrewMappingSettings`, and
+  `CircuitBreakerPolicyFactory.Resolve`/`CreateTaskFsm`/`CreateGuardContext`;
+  `ResolveGraph(graphConfig, fallback)` lost its `crewDefault`. The generic `StateMachine<,>`
+  engine and `CircuitBreakerPolicy` stay (forge, Graph, the corrective RAG graph). Example 103,
+  which existed for the task FSM, is deleted; 102 covers its scenario.
+- **Dead duplicates removed.** `Orkeon.Application.Configuration`'s second configuration model
+  (`ImmutableConfigurations.cs`: `CrewConfiguration`, `AgentConfiguration`, `TaskConfiguration`,
+  `LlmConfiguration`, `MemoryConfiguration`, `RetryConfiguration`, `ValidationResult`, a
+  four-value `ProcessType`, `VerbosityLevel`, `AgentType`, `TaskPriority`) and its builders
+  (`ConfigurationBuilder.cs`) had no consumer. `Orkeon.Application.Execution.MemoryType` and
+  `Orkeon.Domain.Agent.MemoryType` are gone: `AgentMemory.Type` is
+  `Orkeon.Domain.Memory.MemoryType`, the one enum left. `TaskConfiguration.TimeoutSeconds`, which
+  nothing set or read, is removed, and `TaskConfiguration.RequiredTools` is renamed `Tools`.
+- C#: `CrewTaskBase.RequiredTools`/`AddRequiredTool(ToolId)`, `CrewTaskBuilder.RequiresTool` and
+  `CrewTaskSnapshot.RequiredTools` (opaque ids nothing filled) become `Tools`/`AddTool(IBaseTool)`,
+  `WithTool`/`WithTools` and `CrewTaskSnapshot.Tools`. `GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails`
+  takes the task's toolbelt.
+
+Migration: delete every `circuitBreaker:` block; on a `process: graph` crew, move `preset`,
+`maxTransitions`, `maxStateVisits` and `maxTotalDurationSeconds` into `graphConfig`
+(`circuitBreakerPreset`, same names for the rest). A crew that listed a tool on a task and also
+on its agent to make it work can drop the agent's copy. Code using the removed configuration
+builders builds `Orkeon.Domain.Configuration.CrewConfiguration` (or uses `CrewBuilder`).
+
 ### Changed — the scripting toolchain: `Orkeon:Scripting:Toolchain` is read, the typings ship with the tool **[breaking]**
 
 Four defects of the DSL tooling (GAP-13), all between what the docs promised and what ran.

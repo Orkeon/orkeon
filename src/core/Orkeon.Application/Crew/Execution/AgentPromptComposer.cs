@@ -22,15 +22,20 @@ internal static class AgentPromptComposer
     /// </summary>
     private const int MaxPreviousOutputContextChars = 8000;
 
-    internal static string BuildSystemPrompt(DomainAgent agent, CrewTask task, bool supportsNativeToolCalling)
+    /// <param name="agent">The executing agent.</param>
+    /// <param name="task">The task being run.</param>
+    /// <param name="toolbelt">The task's toolbelt, from <see cref="TaskToolbelt.Compose"/>.</param>
+    /// <param name="supportsNativeToolCalling">Whether the provider calls tools natively.</param>
+    internal static string BuildSystemPrompt(
+        DomainAgent agent, CrewTask task, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt, bool supportsNativeToolCalling)
     {
         var prompt = new StringBuilder();
 
         AppendRoleSection(prompt, agent);
-        AppendToolsSection(prompt, agent, supportsNativeToolCalling);
+        AppendToolsSection(prompt, toolbelt, supportsNativeToolCalling);
         // Agent-level guardrails first, then the task's own — both apply, agent rules before task
         // rules. Shared with the streaming path so both render identically.
-        GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(prompt, agent, task);
+        GuardrailsPromptRenderer.AppendAgentAndTaskGuardrails(prompt, agent, task, toolbelt);
         AppendResponseTemplate(prompt, agent);
 
         return prompt.ToString();
@@ -50,15 +55,16 @@ internal static class AgentPromptComposer
             prompt.AppendLine(FormattableString.Invariant($"Background: {agent.Backstory}"));
     }
 
-    internal static void AppendToolsSection(StringBuilder prompt, DomainAgent agent, bool supportsNativeToolCalling)
+    internal static void AppendToolsSection(
+        StringBuilder prompt, IReadOnlyList<Domain.Tools.IBaseTool> toolbelt, bool supportsNativeToolCalling)
     {
-        if (agent.Tools.Count == 0)
+        if (toolbelt.Count == 0)
             return;
 
         prompt.AppendLine();
         prompt.AppendLine("## Available Tools");
         prompt.AppendLine();
-        foreach (var tool in agent.Tools)
+        foreach (var tool in toolbelt)
         {
             prompt.AppendLine(FormattableString.Invariant($"- **{tool.Name}**: {tool.Description}"));
             AppendToolParameters(prompt, tool);

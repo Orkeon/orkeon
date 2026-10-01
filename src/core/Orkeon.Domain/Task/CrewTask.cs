@@ -52,11 +52,11 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
         ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies,
-        IEnumerable<ToolId>? requiredTools,
+        IEnumerable<Orkeon.Domain.Tools.IBaseTool>? tools,
         DefaultTaskContext? contextData)
         : base(id, description, expectedOutput, status, assignedAgent, output, priority,
                createdAt, startedAt, completedAt, asyncExecution, outputJson, outputPydantic,
-               outputFile, callback, humanInput, dependencies, requiredTools, contextData)
+               outputFile, callback, humanInput, dependencies, tools, contextData)
     {
     }
 #pragma warning restore S107
@@ -98,7 +98,7 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
         ITaskCallback? callback,
         bool humanInput,
         IEnumerable<TaskId>? dependencies = null,
-        IEnumerable<ToolId>? requiredTools = null,
+        IEnumerable<Orkeon.Domain.Tools.IBaseTool>? tools = null,
         Dictionary<string, object>? contextValues = null)
         => Restore(new CrewTaskSnapshot
         {
@@ -119,7 +119,7 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
             Callback = callback,
             HumanInput = humanInput,
             Dependencies = dependencies,
-            RequiredTools = requiredTools,
+            Tools = tools,
             ContextValues = contextValues
         });
 #pragma warning restore S107
@@ -160,7 +160,7 @@ public sealed class CrewTask : CrewTaskBase<DefaultTaskContext>
             snapshot.Callback,
             snapshot.HumanInput,
             snapshot.Dependencies,
-            snapshot.RequiredTools,
+            snapshot.Tools,
             ctx);
     }
 

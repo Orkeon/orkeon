@@ -72,8 +72,9 @@ public sealed class JsTaskBuilder
 
     /// <summary>
     /// YAML parity task-level <c>tools:</c> — a name, a <c>toolBuilder()</c> tool, or an
-    /// array mixing both. Names resolve through the runtime registry; instances are
-    /// registered by the loader before the crew is created.
+    /// array mixing both. They add to the assigned agent's own tools for this task only
+    /// (GAP-07). Names resolve through the runtime registry; instances are registered by
+    /// the loader before the crew is created.
     /// </summary>
     public JsTaskBuilder tools(JsValue value)
     {

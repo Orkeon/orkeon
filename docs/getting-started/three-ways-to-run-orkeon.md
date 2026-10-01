@@ -9,7 +9,7 @@ want to install:
 
 | Way | Prerequisites | Time to first run | Best for |
 |---|---|---|---|
-| **1. From source** | .NET SDK ≥ 10.0.300, git clone | ~5 min (+ build) | Contributors, reading/modifying code, running any of the 105 bundled examples |
+| **1. From source** | .NET SDK ≥ 10.0.300, git clone | ~5 min (+ build) | Contributors, reading/modifying code, running any of the 104 bundled examples |
 | **2. Release binary** | Nothing for the CLI packages (Windows zip/MSI, Debian `.deb`) — they bundle the runtime; .NET 10 **runtime** for the extra launchers in the multi-app archive | ~2 min | Running examples and showcases without a source checkout |
 | **3. Container** | Docker | ~1 min (after image pull) | CI, reproducible runs, no local .NET at all |
 
@@ -289,7 +289,7 @@ installing: `./libexec/orkeon/orkeon run …`.
 
 The `ghcr.io/orkeon/orkeon-runners` image (built from `Dockerfile.runners`,
 published to GHCR) has the **`orkeon` CLI as its default entry point**, ships the
-**REPL** (`orkeon-repl`) next to it **plus the 105 bundled examples** — zero local
+**REPL** (`orkeon-repl`) next to it **plus the 104 bundled examples** — zero local
 .NET required. The service host is not in it: it has its own image, built from
 `deploy/Dockerfile.host` (see [the service host](../architecture/service-host.md)).
 
@@ -337,7 +337,7 @@ docker model pull ai/granite-4.0-h-tiny
 docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
   ghcr.io/orkeon/orkeon-runners
 # then, inside the shell:
-orkeon-example list            # browse the 105 bundled examples
+orkeon-example list            # browse the 104 bundled examples
 orkeon-example run 1           # run #1 (research assistant)
 orkeon-example show 42         # read an example's README first
 orkeon-example settings        # which LLM settings apply, and why

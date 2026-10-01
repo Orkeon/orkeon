@@ -26,8 +26,7 @@ memory: bool              # default: false
 memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …)
 planning: bool            # default: false
 managerAgent: string      # Hierarchical: the manager (omitted → the first agent manages, warning). Consensual: the arbiter of the ManagerDecision fallback
-circuitBreaker: {…}       # Crew-level circuit breaker (see the dedicated section)
-graphConfig: {…}          # Graph mode settings (see the dedicated section)
+graphConfig: {…}          # Graph mode settings, the crew's only circuit-breaker setting (see the dedicated section)
 
 llm:                      # Crew-default LLM, merged FIELD BY FIELD under each agent's own llm: (same shape as agents.<id>.llm)
   model: string
@@ -105,7 +104,7 @@ tasks:
     asyncExecution: bool  # default: false — RECORDED, honoured by no mode yet (use process: parallel)
     humanInput: bool      # default: false — requests human intervention
     context: {key: value} # Additional context data
-    tools: [string]       # Task-scoped tool names — PARSED (TaskConfiguration.RequiredTools) but not attached by CrewFactory yet: give the tool to the agent
+    tools: [string]       # Tools ADDED to the agent's own for this task only (never replacing them) — resolved like an agent's tools: an unknown name fails the load under StrictTools
     deliverable:          # Output-file contract (ignored without a path)
       path: string        # Virtual path, e.g. "/output/report.md"
       source: string      # "tool_call" (default — the agent is told to write the path with file_write) | "final_message" (the framework writes the final answer) | "structured_output" (JSON written by the framework, constrained by the schema as json_schema where the provider declares it, as a GBNF grammar where Llm:Grammar is on, and always parse-checked) | "none" — any other value fails the load
@@ -120,16 +119,6 @@ tasks:
       max_tokens: int
       top_p: float
       thinking: {enabled, effort, budget_tokens}
-    circuitBreaker:       # Task-level override — PARSED but not applied at execution yet (see Circuit Breaker configuration)
-      preset: string      # "strict" | "permissive" | "default"
-      maxTransitions: int # Max transitions before trip
-      stateTimeoutSeconds: int  # Per-state timeout (seconds)
-      maxStateVisits: int       # Max visits of the same state (cycles)
-      maxTotalDurationSeconds: int # Max total duration (seconds)
-      useDegradedMode: bool     # true = Degraded, false = exception
-      maxRetries: int           # Retries after failure
-      maxToolCallsPerRound: int # Max tool calls per round
-      maxValidationRetries: int # Max validation loops
     guardrails:           # Task-level guardrails, same shape as the agent block (optional)
       preset: string      # "analysis" | "strict" | "creative"
       header: string
@@ -138,10 +127,11 @@ tasks:
         <tool_name>: [string]
 ```
 
-The `circuitBreaker` block can also be used at the root level of the YAML. Validation happens at
-load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
+Validation happens at load time (`CrewDefinitionValidator`): a crew needs a `name`, a `goal`, at least one agent (each
 with a goal) and at least one task (each with a `description` and an `expectedOutput`); circular
-`dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load.
+`dependencies`, a `mounts:` item listed twice or two ids selecting the same root fail the load. So
+does a `circuitBreaker:` key, at the root or on a task: the block was removed (see "Removed: `circuitBreaker`" below), and the load names `graphConfig`
+instead of ignoring it.
 
 ## Guardrails configuration
 
@@ -150,7 +140,7 @@ declared on an **agent** (apply to every task the agent runs) and/or on a **task
 task). When both are present, **both apply — the agent's guardrails render first, then the task's** as a
 separate section. `preset` (`analysis` / `strict` / `creative`) seeds a base set of rules; explicit
 `rules`/`toolRules` are merged on top, and `toolRules` for a given tool are only emitted when the
-executing agent actually holds that tool. A `preset` header takes precedence over a custom `header`.
+executing agent actually holds that tool for the task — its own tools plus the task's `tools:`. A `preset` header takes precedence over a custom `header`.
 
 ## Knowledge & RAG configuration
 
@@ -227,35 +217,22 @@ graphConfig:
   maxTotalDurationSeconds: int  # Total duration in seconds (overrides the preset)
 ```
 
-`graphConfig` wins over a crew-level `circuitBreaker` (`CircuitBreakerPolicyFactory.ResolveGraph`).
+`graphConfig` is the only circuit-breaker setting a crew carries (`CircuitBreakerPolicyFactory.ResolveGraph`).
 The graph engine enforces three limits only — transitions, visits of one state, total duration
 (`GraphRunner`); a state timeout or a degraded mode has no effect on a graph run.
 
-## Circuit Breaker configuration
+## Removed: `circuitBreaker`
 
-The `circuitBreaker` block with all available parameters. **What reaches execution today**: the
-**crew-level** block, read by the Graph mode only (`GraphProcessStrategy`, when no `graphConfig`
-is declared) — its preset and `maxTransitions`, `maxStateVisits` and `maxTotalDurationSeconds`
-bound the graph run (visits and transitions it leaves unset are computed from the crew, see
-[Graph](../orchestration/graph.md)). `stateTimeoutSeconds` and `useDegradedMode` reach the policy too, but the
-graph engine reads neither: they only mean something to the domain FSM, which no strategy runs. The
-task-level block and the three guard limits (`maxRetries`, `maxToolCallsPerRound`,
-`maxValidationRetries`) are parsed into `CircuitBreakerConfig` and resolved by
-`CircuitBreakerPolicyFactory` (preset, then crew overrides, then task overrides; unknown preset →
-`strict`), but no execution path calls that resolution for tasks yet.
+The `circuitBreaker:` block — at the crew root and on a task — is gone, and a crew that still
+writes one is **refused at load** with a message naming `graphConfig`. The task block configured a
+task state machine that no execution path ran, along with three guard limits (`maxRetries`,
+`maxToolCallsPerRound`, `maxValidationRetries`) read by nothing. The crew block was read by the
+Graph mode alone, where `graphConfig` carries the same preset and the same three effective limits.
 
-```yaml
-circuitBreaker:
-  preset: string                # "strict" (also the fallback) | "permissive" | "default"
-  maxTransitions: int           # Max transitions before trip
-  stateTimeoutSeconds: int      # Per-state timeout (seconds) — not enforced by the Graph mode
-  maxStateVisits: int           # Max visits of the same state (cycles)
-  maxTotalDurationSeconds: int  # Max total duration (seconds)
-  useDegradedMode: bool         # true = Degraded, false = exception — not enforced by the Graph mode
-  maxRetries: int               # Retries after failure (guard, default 3)
-  maxToolCallsPerRound: int     # Max tool calls per round (guard, default 10)
-  maxValidationRetries: int     # Max validation loops (guard, default 3)
-```
+What bounds a task is its agent loop: the agent's `maxIter`, the stop after three identical
+consecutive tool errors, and the output-validation retries. What bounds a graph run is
+`graphConfig` (above). The generic state-machine engine and `CircuitBreakerPolicy` stay — the
+Graph mode, `orkeon forge` and the corrective RAG graph use them (see [FSM](../orchestration/fsm.md)).
 
 ## Autonomous Budget configuration
 
@@ -278,14 +255,13 @@ All live in `Orkeon.Infrastructure.Configuration` (`src/core/Orkeon.Infrastructu
 
 - `CrewYamlConfig` (complete crew definition) and `CrewSettingsYamlConfig` (the crew settings file of the multi-file layouts — `crew.yaml` or `config.yaml`)
 - `AgentYamlConfig` (role, goal, backstory, tools, limits)
-- `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, circuit breaker)
+- `TaskYamlConfig` (description, expected output, dependencies, tools, deliverable, LLM override, guardrails)
 - `LlmYamlConfig` (model, temperature, max tokens, topP, thinking, responseFormat/responseSchema, cache) with `ThinkingYamlConfig`, `ResponseSchemaYamlConfig`, `CacheYamlConfig`
 - `LlmOverrideYamlConfig` (the task-level `llm_override:` block)
 - `DeliverableYamlConfig` (the task-level `deliverable:` block)
 - `GuardrailsYamlConfig` (agent- and task-level `guardrails:`)
 - `LinkYamlConfig` (the crew-level `links:` ACL)
 - `CrewYamlConfig.Mounts` / `CrewSettingsYamlConfig.Mounts` (the crew-level `mounts:` block — `/root` or `<ulid>|/root` items) → `CrewConfiguration.Mounts` (`MountReference`, VFS-90)
-- `CircuitBreakerYamlConfig` (preset, thresholds, guards)
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, overrides)
 - `RagYamlConfig` (provider, collections + sources/chunking, defaults — with `RagCollectionYamlConfig`, `RagChunkingYamlConfig`, `RagDefaultsYamlConfig`) → `RagCrewConfig`
 - `AgentYamlConfig.Knowledge` (short/long form entries) → `KnowledgeAttachment`

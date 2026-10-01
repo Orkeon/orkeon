@@ -149,7 +149,7 @@ The project follows Clean Architecture with clear separation of concerns:
 - ✅ **NEW**: SequentialCrewOrchestrator (Akka.NET replacement — the ICrewOrchestrationService implementation; per-mode strategies live in Crew/Strategies/ + Consensus/)
 - ✅ **NEW**: Typed Request/Response pipeline (ComponentBase<TReq,TRes>)
 - ✅ **NEW**: Autonomous orchestration mode (`ProcessType.Autonomous`) with multi-dimensional execution budget: the manager LLM assigns each task, a failed task is delegated to a peer over the A2A channel (request/response), and `SpawnAgentTool` is host-provided (no shipped host registers it)
-- ✅ **NEW**: FSM building block (`StateMachine<TState, TEvent>`) with circuit breaker (4 mechanisms) — Domain only: no strategy runs a task through it yet, and the task-level `circuitBreaker:` YAML block is parsed but not applied (see `docs/orchestration/fsm.md`, backstage GAP-07)
+- ✅ **NEW**: Generic FSM engine (`StateMachine<TState, TEvent>`) with circuit breaker (4 mechanisms) — runs `orkeon forge`; its `CircuitBreakerPolicy` bounds the Graph mode and the CRAG graph. No task runs through a state machine (the agent loop bounds it); the YAML `circuitBreaker:` blocks are removed and refused at load — `graphConfig` is the only breaker setting (see `docs/orchestration/fsm.md`)
 - ✅ **NEW**: Graph orchestration — the LangGraph-style C# `StateGraph<TState>` API (conditional edges, controlled cycles, retry); the YAML `Graph` process mode runs a fixed two-node topology with a 3-mechanism circuit breaker
 - ✅ **NEW**: LLM exchange logging — full HTTP request/response capture (headers + payload) via `DelegatingHandler`
 - ✅ **NEW**: `LlmResponseFormat` value object + `LlmConfigOverride` cascade
@@ -280,7 +280,7 @@ There is a single `Agent` aggregate root (no subclasses). Agent behavior is conf
 - `IMemoryProvider` interface
 - `IMemoryService` for memory management
 - `MemoryProviderFactory` for provider selection
-- Memory types (`Orkeon.Domain.Memory.MemoryType`): ShortTerm, LongTerm, Episodic, Entity, Procedural (two narrower `MemoryType` enums also exist in `Orkeon.Domain.Agent` and `Orkeon.Application.Execution` — backstage GAP-07)
+- Memory types (`Orkeon.Domain.Memory.MemoryType`, the only `MemoryType` enum): ShortTerm, LongTerm, Episodic, Entity, Procedural
 
 **Infrastructure Layer** (Implementations):
 - `RedisMemoryProvider`: Distributed memory with vector search (connection from the `Orkeon:Redis` section, opened on first use)

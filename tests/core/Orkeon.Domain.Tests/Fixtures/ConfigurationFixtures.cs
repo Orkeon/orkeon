@@ -1,4 +1,3 @@
-using Orkeon.Application.Configuration;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Common;

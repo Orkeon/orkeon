@@ -7,7 +7,8 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// <summary>
 /// Coverage for <see cref="CircuitBreakerPolicyFactory.ResolveGraph"/> (P2-O-01): mapping a
 /// graph-specific <see cref="GraphConfig"/> (preset + node/visit/duration overrides) to a
-/// <see cref="CircuitBreakerPolicy"/>, with fallback precedence GraphConfig → crew config → default.
+/// <see cref="CircuitBreakerPolicy"/>, falling back to the strategy default without one. Since
+/// GAP-07 <c>graphConfig</c> is the only circuit-breaker setting a crew carries.
 /// </summary>
 public sealed class CircuitBreakerPolicyFactoryGraphTests
 {
@@ -16,7 +17,7 @@ public sealed class CircuitBreakerPolicyFactoryGraphTests
     {
         var fallback = CircuitBreakerPolicy.Strict;
 
-        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(null, null, fallback);
+        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(null, fallback);
 
         // Reference-equal: the default path must be byte-identical to the strategy fallback.
         Assert.Same(fallback, resolved);
@@ -26,7 +27,7 @@ public sealed class CircuitBreakerPolicyFactoryGraphTests
     public void ResolveGraph_ShouldMapPreset_WhenGraphConfigHasOnlyPreset()
     {
         var resolved = CircuitBreakerPolicyFactory.ResolveGraph(
-            new GraphConfig { CircuitBreakerPreset = "permissive" }, null, CircuitBreakerPolicy.Strict);
+            new GraphConfig { CircuitBreakerPreset = "permissive" }, CircuitBreakerPolicy.Strict);
 
         // Permissive preset values flow through untouched.
         Assert.Equal(CircuitBreakerPolicy.Permissive.MaxTransitions, resolved.MaxTransitions);
@@ -45,7 +46,7 @@ public sealed class CircuitBreakerPolicyFactoryGraphTests
             MaxTotalDurationSeconds = 120
         };
 
-        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(graphConfig, null, CircuitBreakerPolicy.Strict);
+        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(graphConfig, CircuitBreakerPolicy.Strict);
 
         Assert.Equal(8, resolved.MaxTransitions);
         Assert.Equal(3, resolved.MaxStateVisits);
@@ -55,25 +56,17 @@ public sealed class CircuitBreakerPolicyFactoryGraphTests
         Assert.Equal(CircuitBreakerPolicy.Permissive.UseDegradedMode, resolved.UseDegradedMode);
     }
 
-    [Fact]
-    public void ResolveGraph_ShouldFallBackToCrewCircuitBreaker_WhenNoGraphConfig()
+    [Theory]
+    [InlineData("strict", 50)]
+    [InlineData("Permissive", 1000)]
+    [InlineData("default", 100)]
+    [InlineData("bogus", 50)]
+    [InlineData(null, 50)]
+    public void ResolveGraph_ShouldMapEveryPreset_AndFallBackToStrict(string? preset, int expectedMaxTransitions)
     {
-        var crewDefault = new CircuitBreakerConfig { Preset = "permissive", MaxTransitions = 42 };
+        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(
+            new GraphConfig { CircuitBreakerPreset = preset! }, CircuitBreakerPolicy.Permissive);
 
-        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(null, crewDefault, CircuitBreakerPolicy.Strict);
-
-        Assert.Equal(42, resolved.MaxTransitions);
-        Assert.Equal(CircuitBreakerPolicy.Permissive.MaxStateVisits, resolved.MaxStateVisits);
-    }
-
-    [Fact]
-    public void ResolveGraph_ShouldPreferGraphConfig_OverCrewCircuitBreaker()
-    {
-        var graphConfig = new GraphConfig { CircuitBreakerPreset = "permissive", MaxTransitions = 8 };
-        var crewDefault = new CircuitBreakerConfig { Preset = "strict", MaxTransitions = 999 };
-
-        var resolved = CircuitBreakerPolicyFactory.ResolveGraph(graphConfig, crewDefault, CircuitBreakerPolicy.Strict);
-
-        Assert.Equal(8, resolved.MaxTransitions);
+        Assert.Equal(expectedMaxTransitions, resolved.MaxTransitions);
     }
 }

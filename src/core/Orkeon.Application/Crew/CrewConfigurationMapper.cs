@@ -48,7 +48,7 @@ public static class CrewConfigurationMapper
         logger ??= NullLogger.Instance;
         var crew = CreateCrew(configuration);
         MapAgents(configuration, crew, toolResolver, llmProviderFactory, agentPostProcessor, logger);
-        MapTasks(configuration, crew, taskPostProcessor);
+        MapTasks(configuration, crew, toolResolver, taskPostProcessor, logger);
 
         return crew;
     }
@@ -168,7 +168,8 @@ public static class CrewConfigurationMapper
     }
 
     private static void MapTasks(
-        CrewConfiguration configuration, DomainCrew crew, Action<CrewTask>? taskPostProcessor)
+        CrewConfiguration configuration, DomainCrew crew,
+        Func<string, IBaseTool> toolResolver, Action<CrewTask>? taskPostProcessor, ILogger logger)
     {
         foreach (var taskConfig in configuration.Tasks)
         {
@@ -176,7 +177,8 @@ public static class CrewConfigurationMapper
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
-                .HumanInput(taskConfig.HumanInput);
+                .HumanInput(taskConfig.HumanInput)
+                .WithTools(ResolveTools(taskConfig.Tools, toolResolver, logger));
 
             if (taskConfig.Guardrails is not null)
                 builder.WithGuardrails(taskConfig.Guardrails);
@@ -199,10 +201,9 @@ public static class CrewConfigurationMapper
     /// Entities not referenced by the crew are ignored.
     /// <para>
     /// The export covers the documented YAML perimeter (what <c>YamlCrewMapper</c> reads).
-    /// Properties without a domain-side representation are not exported: task
-    /// <c>RequiredTools</c> (the entity stores opaque <see cref="ToolId"/> values, not tool
-    /// names), per-task and crew-level circuit breaker blocks, the crew <c>MemoryProvider</c>
-    /// name, and the crew-level graph block.
+    /// Properties without a domain-side representation are not exported: the crew
+    /// <c>MemoryProvider</c> name and the crew-level graph block. A task's own <c>tools:</c> are
+    /// exported by name, like an agent's.
     /// </para>
     /// </remarks>
     /// <param name="crew">The crew aggregate to export.</param>
@@ -311,6 +312,7 @@ public static class CrewConfigurationMapper
             ExpectedOutput = task.ExpectedOutput.Value,
             AssignedAgentId = task.AssignedAgent,
             Dependencies = task.Dependencies.ToList(),
+            Tools = task.Tools.Select(tool => tool.Name).ToList(),
             AsyncExecution = task.AsyncExecution,
             HumanInput = task.HumanInput,
             Context = new Dictionary<string, object>(task.Context),

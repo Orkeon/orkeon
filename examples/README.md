@@ -1,6 +1,6 @@
 # Orkeon Examples
 
-105 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
+104 use cases demonstrating Orkeon's capabilities, from enterprise classics to experimental AI agent orchestrations.
 
 ## Language policy
 
@@ -18,7 +18,7 @@ identifiers, YAML keys, and tool names are always English.
 
 ## Run in Docker (simplest path)
 
-All 105 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an
+All 104 examples ship inside the `ghcr.io/orkeon/orkeon-runners` image with an
 `orkeon-example` helper — no .NET, no checkout:
 
 ```bash
@@ -127,7 +127,7 @@ C# projects rather than YAML crews): when it finds a `.csproj` instead of a
 
 ## Automated Testing
 
-Test all 105 examples at once:
+Test all 104 examples at once:
 
 ```bash
 # Build only:

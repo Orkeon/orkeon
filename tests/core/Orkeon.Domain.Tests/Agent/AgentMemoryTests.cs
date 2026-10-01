@@ -1,4 +1,5 @@
 using Orkeon.Domain.Agent;
+using MemoryType = Orkeon.Domain.Memory.MemoryType;
 using Orkeon.Domain.Tests.Fixtures;
 
 namespace Orkeon.Domain.Tests.Agent;

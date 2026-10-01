@@ -51,6 +51,26 @@ public class LegacyTextAgentLoopTests
     private const string ToolCallResponse =
         """[TOOL_CALL]{tool => "echo_tool", args => {--path "a.txt"}}[/TOOL_CALL]""";
 
+    // GAP-07: a task's own tools join its agent's belt for that task only.
+    [Theory]
+    [InlineData(true)]
+    [InlineData(false)]
+    public async System.Threading.Tasks.Task TaskTools_AreCallable_ForThatTaskOnly(bool taskDeclaresTheTool)
+    {
+        var echo = new SpyTool("echo_tool", result: "tool says hello");
+        var agent = BuildAgent(5);
+        var task = taskDeclaresTheTool
+            ? new Orkeon.Domain.Task.CrewTaskBuilder().Description("Echo").ExpectedOutput("Echo").WithTool(echo).Build()
+            : BuildTask();
+        var (loop, provider) = BuildLoop();
+        provider.Enqueue(ToolCallResponse);
+        provider.Enqueue("The final answer.");
+
+        await loop.ExecuteAsync(BuildInvocation(agent, task), 5, TestContext.Current.CancellationToken);
+
+        Assert.Equal(taskDeclaresTheTool ? 1 : 0, echo.Calls.Count);
+    }
+
     [Fact]
     public async System.Threading.Tasks.Task RunsAMultiTurnToolRound_ThenReturnsTheFinalAnswer()
     {

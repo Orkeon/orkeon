@@ -748,6 +748,8 @@ public class CrewConfigurationMapperTests
         Assert.Equal(developer.Id, writeConfig.AssignedAgentId);
         Assert.Empty(writeConfig.Dependencies);
         Assert.Equal("high", writeConfig.Context["priority"]);
+        // GAP-07: a task's own tools are exported by name, like an agent's.
+        Assert.Equal(["file_reader"], writeConfig.Tools);
 
         var reviewConfig = configuration.Tasks[1];
         Assert.Equal(reviewTask.Id, reviewConfig.Id);
@@ -755,6 +757,7 @@ public class CrewConfigurationMapperTests
         Assert.Equal("Review notes", reviewConfig.ExpectedOutput);
         Assert.False(reviewConfig.AsyncExecution);
         Assert.False(reviewConfig.HumanInput);
+        Assert.Empty(reviewConfig.Tools);
         var dependency = Assert.Single(reviewConfig.Dependencies);
         Assert.Equal(writeTask.Id, dependency);
     }
@@ -814,6 +817,7 @@ public class CrewConfigurationMapperTests
         Assert.Equal("Feature code", roundTrippedWrite.ExpectedOutput.Value);
         Assert.True(roundTrippedWrite.AsyncExecution);
         Assert.True(roundTrippedWrite.HumanInput);
+        Assert.Equal("file_reader", Assert.Single(roundTrippedWrite.Tools).Name);
 
         var roundTrippedReview = reimportedTasks[1];
         Assert.Equal("Review the feature", roundTrippedReview.Description.Value);
@@ -872,6 +876,7 @@ public class CrewConfigurationMapperTests
             .HumanInput(true)
             .AssignTo(developer.Id)
             .WithContext("priority", "high")
+            .WithTool(new TestTool("file_reader"))
             .Build();
 
         var reviewTask = new CrewTaskBuilder()

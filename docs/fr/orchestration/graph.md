@@ -21,9 +21,9 @@ Le moteur sert deux publics :
 | Hierarchical | Crew | Boucle de revue (3 revues) | LLM manager | Non |
 | Parallel | Crew | Non | Non | Non |
 | **Graph** | **Crew** | **Oui (cycles de retry)** | **Fixe en YAML ; libre avec l'API C#** | **Oui (intégré)** |
-| FSM | Tâche (brique Domain) | Oui (guards) | Oui (événements/guards) | Oui (intégré) |
+| FSM | Quelconque (moteur Domain générique) | Oui (guards) | Oui (événements/guards) | Oui (intégré) |
 
-La FSM modélise le cycle interne d'une tâche mais n'est branchée dans aucune stratégie aujourd'hui (voir [Orchestration FSM](./fsm.md)) ; le mode Graph est le consommateur de `CircuitBreakerPolicy` à l'exécution.
+La FSM est un moteur générique (`orkeon forge` tourne dessus) qu'aucune stratégie de crew n'utilise (voir [FSM](./fsm.md)) ; le mode Graph partage sa `CircuitBreakerPolicy`.
 
 ## Architecture
 
@@ -62,7 +62,7 @@ Les composants du moteur se trouvent dans `Orkeon.Domain.Graph` :
 | `GraphProcessStrategy` | Implémente `IProcessStrategy` (`ExecuteSequentialAsync`), construit et exécute le graphe de la crew |
 | `CrewGraphState` | État typé qui traverse le graphe (tâches, agents, sorties, retries, compteurs de tokens) |
 | `GraphYamlConfig` | Modèle YAML de la section `graphConfig` |
-| `CircuitBreakerPolicyFactory.ResolveGraph` | Résout la policy effective à partir de `graphConfig`, du `circuitBreaker` de la crew et du repli |
+| `CircuitBreakerPolicyFactory.ResolveGraph` | Résout la policy effective à partir de `graphConfig`, sinon le repli |
 
 ### Où le mode est branché
 
@@ -111,7 +111,7 @@ En mode Graph, chaque tentative de tâche est une visite de `execute_task` (et u
 - `MaxStateVisits` plafonne le nombre de **tentatives de tâches** sur tout le run ;
 - `MaxTransitions` les plafonne à la moitié de sa valeur (deux exécutions de nœuds par tentative).
 
-Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — le maximum qu'une crew peut faire, chaque tâche épuisant ses retries — et `2 × visites + 1` transitions. Une crew saine n'est jamais coupée, quelle que soit sa taille ; une vraie boucle déclenche encore le disjoncteur. Une valeur explicite (dans `graphConfig`, sinon dans un `circuitBreaker` de crew) l'emporte. `MaxTotalDuration` reste celle du preset — 10 minutes en Strict, le défaut — une borne de coût que `maxTotalDurationSeconds` surcharge. Quand une condition est violée, une `GraphCircuitBrokenException` est levée avec la trace complète ; `GraphProcessStrategy` l'intercepte et renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») qui conserve les sorties et l'usage de tokens produits jusque-là.
+Sans `maxStateVisits` / `maxTransitions` explicites, les deux sont **calculés depuis la crew** : `tâches × (1 + maxRetryCycles)` visites — le maximum qu'une crew peut faire, chaque tâche épuisant ses retries — et `2 × visites + 1` transitions. Une crew saine n'est jamais coupée, quelle que soit sa taille ; une vraie boucle déclenche encore le disjoncteur. Une valeur explicite dans `graphConfig` l'emporte. `MaxTotalDuration` reste celle du preset — 10 minutes en Strict, le défaut — une borne de coût que `maxTotalDurationSeconds` surcharge. Quand une condition est violée, une `GraphCircuitBrokenException` est levée avec la trace complète ; `GraphProcessStrategy` l'intercepte et renvoie un `CrewOutput` en échec (« Graph execution stopped by circuit breaker: … ») qui conserve les sorties et l'usage de tokens produits jusque-là.
 
 ### Presets
 
@@ -179,22 +179,20 @@ tasks:
 Avec un bloc graphConfig :
 1. Champs explicites de graphConfig       (priorité la plus haute)
 2. graphConfig.circuitBreakerPreset       (valeurs de base ; "strict" si absent ou inconnu)
-   — un circuitBreaker de niveau crew est alors ignoré
 
 Sans graphConfig :
-3. circuitBreaker de niveau crew          (son preset + ses surcharges, voir FSM)
-4. CircuitBreakerPolicy.Strict            (repli quand rien n'est configuré)
+3. CircuitBreakerPolicy.Strict            (repli)
 ```
 
-Quel que soit le niveau, `maxStateVisits` et `maxTransitions` non fixés sont **calculés depuis la crew** plutôt que pris dans le preset (voir [Circuit breaker](#circuit-breaker)) ; le preset fournit la durée. `maxRetryCycles` ne vient que de `graphConfig` (2 sinon).
+`graphConfig` est le seul réglage de circuit breaker d'une crew : un bloc `circuitBreaker:`, à la racine de la crew ou sur une tâche, est refusé au chargement. Quel que soit le niveau, `maxStateVisits` et `maxTransitions` non fixés sont **calculés depuis la crew** plutôt que pris dans le preset (voir [Circuit breaker](#circuit-breaker)) ; le preset fournit la durée. `maxRetryCycles` ne vient que de `graphConfig` (2 sinon).
 
 ### Flux de configuration jusqu'à l'exécution
 
 Le bloc `graphConfig` voyage jusqu'au graphe en cours d'exécution :
 
 1. `YamlCrewMapper` mappe le YAML dans `CrewConfiguration.GraphConfig` (le loader désérialise et délègue ; `CrewYamlConfig` en mono-fichier et `CrewSettingsYamlConfig` en multi-fichiers portent tous deux le bloc).
-2. `CrewFactory` le reporte (ainsi que tout `circuitBreaker` de niveau crew) sur l'agrégat domaine `Crew`
-   (`Crew.GraphConfig` / `Crew.CircuitBreaker`), pour qu'il survive jusqu'à l'exécution.
+2. `CrewFactory` le reporte sur l'agrégat domaine `Crew` (`Crew.GraphConfig`), pour qu'il survive
+   jusqu'à l'exécution.
 3. À l'exécution, `GraphProcessStrategy` lit la config **sur l'argument crew** et résout la
    `CircuitBreakerPolicy` effective + `MaxRetryCycles` via `CircuitBreakerPolicyFactory.ResolveGraph`.
    Lire depuis la crew (et non depuis l'instance de stratégie scoped partagée) empêche les réglages
@@ -324,14 +322,9 @@ Voir les fichiers `config.yaml` et `README.md` de l'exemple pour la syntaxe comp
 
 ## Relation avec l'existant
 
-### FSM TaskExecutionStateMachine
+### Les tâches dans le graphe
 
-Le StateGraph et la FSM modélisent des niveaux différents :
-
-- **FSM** : l'exécution interne d'une tâche (Assigned → Executing → ToolCalling → Validating → Completed) — une brique Domain, pilotée par aucune stratégie aujourd'hui
-- **StateGraph** : le flux entre tâches (quelle tâche exécuter, quand relancer, quand terminer)
-
-Quand `GraphProcessStrategy` exécute une tâche, il appelle `IAgentExecutionService.ExecuteTaskAsync()`, dont la boucle d'agent borne la tâche (`maxIter`, arrêt sur erreurs identiques).
+Le StateGraph modélise le flux entre tâches (quelle tâche exécuter, quand relancer, quand terminer) ; il ne modélise pas l'exécution propre d'une tâche. Quand `GraphProcessStrategy` exécute une tâche, il appelle `IAgentExecutionService.ExecuteTaskAsync()`, dont la boucle d'agent borne la tâche (`maxIter`, arrêt sur erreurs identiques, reprises de validation de sortie). Le [moteur FSM](./fsm.md) générique partage la `CircuitBreakerPolicy` du graphe mais n'exécute aucune tâche.
 
 ### SequentialCrewOrchestrator
 
@@ -357,7 +350,7 @@ Le code client choisit via `ProcessType.Graph` ou `process: "graph"` dans le YAM
 |-----------------|-----------|
 | `Orkeon.Domain.Tests/Graph/StateGraphTests.cs` (18) | Flux linéaire, routage conditionnel, boucles contrôlées, circuit breaker (transitions max, détection de cycles), observabilité (OnNodeCompleted, OnCircuitBroken), annulation, validation du graphe, mutation d'état |
 | `Orkeon.Infrastructure.Tests/Strategies/GraphProcessStrategy/GraphProcessStrategyTests.cs` (17) | Chemin nominal (0, 1, N tâches), retry contrôlé (succès après retry, abandon après le max), intégration du circuit breaker, points d'entrée non supportés, tâches manquantes, agents manquants |
-| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` (5) | Priorité de `ResolveGraph` (graphConfig, circuitBreaker de la crew, repli) |
+| `Orkeon.Infrastructure.Tests/Configuration/CircuitBreakerPolicyFactoryGraphTests.cs` (4) | `ResolveGraph` : presets, surcharges, repli |
 
 ```bash
 dotnet test tests/core/Orkeon.Domain.Tests/Orkeon.Domain.Tests.csproj --filter "FullyQualifiedName~StateGraph"

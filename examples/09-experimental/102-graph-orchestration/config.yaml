@@ -19,17 +19,11 @@ planning: false
 # --- Graph-specific configuration ---
 graphConfig:
   maxRetryCycles: 2               # Retry failed tasks up to 2 times
-  circuitBreakerPreset: "strict"  # Use strict limits (50 transitions, 5 visits/node, 10min max)
-  # Override specific circuit breaker values (optional):
+  circuitBreakerPreset: "strict"  # Strict preset: 10 min max; visits/transitions sized from the crew
+  # Override specific circuit breaker values (optional) — graphConfig is the crew's only breaker setting:
   # maxTransitions: 30
   # maxStateVisits: 3
   # maxTotalDurationSeconds: 300
-
-# --- Circuit breaker at task level (optional, overrides crew-level) ---
-# circuitBreaker:
-#   preset: "strict"
-#   maxRetries: 3
-#   maxToolCallsPerRound: 10
 
 agents:
   data_collector:

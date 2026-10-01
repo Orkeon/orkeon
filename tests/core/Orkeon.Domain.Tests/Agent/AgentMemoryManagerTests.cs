@@ -1,4 +1,5 @@
 using Orkeon.Domain.Agent;
+using MemoryType = Orkeon.Domain.Memory.MemoryType;
 using Orkeon.Domain.Constants.Agent;
 using static Orkeon.Tests.Shared.Constants.TestDataConstants;
 

@@ -653,7 +653,7 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 
 **Sequential/Graph + delegation tools**: in these two modes, an agent with `allowDelegation: true` receives `delegate_work_to_coworker` and `ask_question_to_coworker`, giving a local hierarchical behavior without a manager.
 
-**Graph + FSM**: `GraphProcessStrategy` and the [FSM](./fsm.md) share `CircuitBreakerPolicy` and its presets. The FSM (`TaskExecutionStateMachine`) is a Domain building block for your own code: no strategy drives its tasks through it today.
+**Graph + FSM**: `GraphProcessStrategy` and the [FSM](./fsm.md) engine share `CircuitBreakerPolicy` and its presets. The FSM is a generic Domain engine (`orkeon forge` runs on it); no strategy runs a task through a state machine — the agent loop bounds each task.
 
 **Flows**: to chain a crew with LLM calls, tool calls, conditions or human input, a [flow](./flows.md) (`IFlowEngine`) runs a crew as one of its steps — a C# API today, not reachable from `orkeon run`.
 
@@ -680,8 +680,8 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 |-------|----------|
 | Architecture and core concepts | [Overview](../getting-started/overview.md) |
 | Detailed features | [YAML and Builders](../getting-started/yaml-and-builders.md) |
-| YAML schema (`process`, `graphConfig`, `circuitBreaker`) | [YAML schema](../architecture/yaml-schema.md) |
-| FSM (Domain building block) | [./fsm.md](./fsm.md) |
+| YAML schema (`process`, `graphConfig`) | [YAML schema](../architecture/yaml-schema.md) |
+| FSM (generic Domain engine) | [./fsm.md](./fsm.md) |
 | Graph orchestration | [./graph.md](./graph.md) |
 | Autonomous orchestration | [./autonomous.md](./autonomous.md) |
 | Flows (steps chaining crews, LLM and tools) | [./flows.md](./flows.md) |

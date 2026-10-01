@@ -334,7 +334,9 @@ public class YamlRoundTripTests
                 {
                     Id = TaskId.Create(),
                     Description = "Use tools",
-                    ExpectedOutput = "Tool output"
+                    ExpectedOutput = "Tool output",
+                    // GAP-07: a task's own tools are read, applied and exported.
+                    Tools = ["web_search"]
                 }
             ]
         };
@@ -843,6 +845,7 @@ public class YamlRoundTripTests
         Assert.Equal(expected.ExpectedOutput, actual.ExpectedOutput);
         Assert.Equal(expected.AsyncExecution, actual.AsyncExecution);
         Assert.Equal(expected.HumanInput, actual.HumanInput);
+        Assert.Equal(expected.Tools, actual.Tools);
 
         // Assigned agent: verify via role mapping
         if (expected.AssignedAgentId == null)

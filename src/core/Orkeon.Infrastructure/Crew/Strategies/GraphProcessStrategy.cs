@@ -45,8 +45,8 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     private readonly TaskAgentSelector _agentSelector;
 
     /// <summary>
-    /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>
-    /// (nor a crew-level circuit-breaker config). Null — the default — sizes the breaker from the
+    /// Circuit breaker policy used as-is when the crew carries no <see cref="Domain.Configuration.GraphConfig"/>.
+    /// Null — the default — sizes the breaker from the
     /// crew instead: <c>tasks × (1 + maxRetryCycles)</c> visits of <c>execute_task</c> and twice
     /// that plus one transitions, on the Strict preset's duration (GAP-03). A fixed preset used
     /// to cap every crew: Strict's five visits failed any healthy crew of six tasks. Per-crew
@@ -131,7 +131,7 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
             crew, plan, _taskRepository, _logger, cancellationToken).ConfigureAwait(false);
 
         // Resolve the effective graph config off the crew (P2-O-01): per-crew GraphConfig wins,
-        // then a crew-level circuit-breaker config, then this strategy's fallback defaults. The
+        // then this strategy's fallback defaults. The
         // config travels with the crew argument, not on the shared scoped strategy, so concurrent
         // crews can never clobber one another's policy.
         var effectiveMaxRetryCycles = crew.GraphConfig?.MaxRetryCycles ?? MaxRetryCycles;
@@ -505,27 +505,22 @@ public sealed partial class GraphProcessStrategy : IProcessStrategy
     #region Helpers
 
     /// <summary>
-    /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> — in
-    /// <c>graphConfig</c>, else in a crew-level <c>circuitBreaker</c> — wins; otherwise both are
-    /// computed from the crew, since every attempt of a task is one visit of <c>execute_task</c>
-    /// and one of <c>route</c>: <c>tasks × (1 + maxRetryCycles)</c> visits and twice that plus
-    /// one transitions. The breaker keeps its job — stopping a real loop — without capping the
-    /// size of a healthy crew. The duration stays the preset's (10 min under Strict), a cost
-    /// choice <c>graphConfig.maxTotalDurationSeconds</c> overrides.
+    /// The breaker of this run. An explicit <c>maxStateVisits</c> / <c>maxTransitions</c> in
+    /// <c>graphConfig</c> wins; otherwise both are computed from the crew, since every attempt of
+    /// a task is one visit of <c>execute_task</c> and one of <c>route</c>:
+    /// <c>tasks × (1 + maxRetryCycles)</c> visits and twice that plus one transitions. The breaker
+    /// keeps its job — stopping a real loop — without capping the size of a healthy crew. The
+    /// duration stays the preset's (10 min under Strict), a cost choice
+    /// <c>graphConfig.maxTotalDurationSeconds</c> overrides.
     /// </summary>
     private CircuitBreakerPolicy ResolvePolicy(DomainCrew crew, int taskCount, int maxRetryCycles)
     {
-        if (crew.GraphConfig is null && crew.CircuitBreaker is null && CircuitPolicy is not null)
+        if (crew.GraphConfig is null && CircuitPolicy is not null)
             return CircuitPolicy;
 
-        var policy = CircuitBreakerPolicyFactory.ResolveGraph(
-            crew.GraphConfig, crew.CircuitBreaker, CircuitBreakerPolicy.Strict);
-        var explicitVisits = crew.GraphConfig is not null
-            ? crew.GraphConfig.MaxStateVisits
-            : crew.CircuitBreaker?.MaxStateVisits;
-        var explicitTransitions = crew.GraphConfig is not null
-            ? crew.GraphConfig.MaxTransitions
-            : crew.CircuitBreaker?.MaxTransitions;
+        var policy = CircuitBreakerPolicyFactory.ResolveGraph(crew.GraphConfig, CircuitBreakerPolicy.Strict);
+        var explicitVisits = crew.GraphConfig?.MaxStateVisits;
+        var explicitTransitions = crew.GraphConfig?.MaxTransitions;
 
         // An empty crew still visits execute_task once on its way to END. Clamped so the
         // transition bound never overflows.

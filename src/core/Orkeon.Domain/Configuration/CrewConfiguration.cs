@@ -31,8 +31,6 @@ public sealed record CrewConfiguration
     public AgentId? ManagerAgentId { get; init; }
     /// <summary>Gets the execution configuration override, or null to use defaults.</summary>
     public ExecutionConfig? ExecutionConfig { get; init; }
-    /// <summary>Gets the default circuit breaker / FSM configuration for all tasks, or null for built-in defaults.</summary>
-    public CircuitBreakerConfig? CircuitBreaker { get; init; }
     /// <summary>Gets the graph-specific configuration (only used when Process is Graph), or null for defaults.</summary>
     public GraphConfig? GraphConfig { get; init; }
     /// <summary>
@@ -112,18 +110,17 @@ public sealed record TaskConfiguration
     public AgentId? AssignedAgentId { get; init; }
     /// <summary>Gets the identifiers of tasks this task depends on.</summary>
     public IReadOnlyList<TaskId> Dependencies { get; init; } = Array.Empty<TaskId>();
-    /// <summary>Gets the names of tools scoped to this task (snake_case YAML parity).</summary>
-    public IReadOnlyList<string> RequiredTools { get; init; } = Array.Empty<string>();
+    /// <summary>
+    /// Gets the names of the tools this task adds to its agent's own for this task only (YAML
+    /// <c>tools:</c> on a task). Resolved by the crew factory exactly like an agent's tools.
+    /// </summary>
+    public IReadOnlyList<string> Tools { get; init; } = Array.Empty<string>();
     /// <summary>Gets additional context data for this task.</summary>
     public Dictionary<string, object> Context { get; init; } = [];
     /// <summary>Gets a value indicating whether this task should be executed asynchronously.</summary>
     public bool AsyncExecution { get; init; }
     /// <summary>Gets a value indicating whether human input is required.</summary>
     public bool HumanInput { get; init; }
-    /// <summary>Gets the timeout in seconds, or null for no timeout.</summary>
-    public int? TimeoutSeconds { get; init; }
-    /// <summary>Gets the circuit breaker / FSM configuration for this task, or null for defaults.</summary>
-    public CircuitBreakerConfig? CircuitBreaker { get; init; }
     /// <summary>
     /// Gets the framework-managed deliverable contract. When null, the task keeps legacy
     /// tool-call semantics (agent emits <c>file_write</c> itself).

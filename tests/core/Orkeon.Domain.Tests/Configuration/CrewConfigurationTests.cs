@@ -350,7 +350,7 @@ public class CrewConfigurationTests
         Assert.Empty(config.Context);
         Assert.False(config.AsyncExecution);
         Assert.False(config.HumanInput);
-        Assert.Null(config.TimeoutSeconds);
+        Assert.Empty(config.Tools);
     }
 
     [Fact]
@@ -376,7 +376,7 @@ public class CrewConfigurationTests
             Context = context,
             AsyncExecution = true,
             HumanInput = true,
-            TimeoutSeconds = 3600
+            Tools = ["file_write"]
         };
 
         // Assert
@@ -390,21 +390,7 @@ public class CrewConfigurationTests
         Assert.Equal(3, config.Context.Count);
         Assert.True(config.AsyncExecution);
         Assert.True(config.HumanInput);
-        Assert.Equal(3600, config.TimeoutSeconds);
-    }
-
-    [Theory]
-    [InlineData(null)]
-    [InlineData(30)]
-    [InlineData(300)]
-    [InlineData(3600)]
-    public void ShouldAcceptNullableValues_WhenUsingTaskConfigurationUsingTimeoutSeconds(int? timeoutSeconds)
-    {
-        // Act
-        var config = new TaskConfiguration { TimeoutSeconds = timeoutSeconds };
-
-        // Assert
-        Assert.Equal(timeoutSeconds, config.TimeoutSeconds);
+        Assert.Equal(["file_write"], config.Tools);
     }
 
     [Theory]
@@ -657,16 +643,6 @@ public class CrewConfigurationTests
     }
 
     [Fact]
-    public void ShouldAcceptValue_WhenUsingTaskConfigurationWithNegativeTimeout()
-    {
-        // Act
-        var config = new TaskConfiguration { TimeoutSeconds = -100 };
-
-        // Assert
-        Assert.Equal(-100, config.TimeoutSeconds);
-    }
-
-    [Fact]
     public void ShouldHandleCorrectly_WhenUsingCrewConfigurationWithNullCollections()
     {
         // Act
@@ -717,16 +693,6 @@ public class CrewConfigurationTests
         Assert.Null(config.Id);
         Assert.Null(config.Description);
         Assert.Null(config.AssignedAgentId);
-    }
-
-    [Fact]
-    public void ShouldHandleCorrectly_WhenUsingTaskConfigurationWithVeryLargeTimeout()
-    {
-        // Act
-        var config = new TaskConfiguration { TimeoutSeconds = int.MaxValue };
-
-        // Assert
-        Assert.Equal(int.MaxValue, config.TimeoutSeconds);
     }
 
     [Fact]

@@ -51,7 +51,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [MCP client & server](./architecture/mcp.md) | Dual-era Model Context Protocol integration (`2026-07-28` stateless + legacy revisions), transports, activation, MCP tools and crews, honest gaps |
 | [Orkeon Studio](./architecture/studio.md) | The graphical/terminal front-ends over the CLI workflows: the four projects, the shared core, localization, how it ships |
 | [Driving crews from the REPL](./architecture/coding-agent-ts.md) | The `.cmd.ts` → `crew.ork.ts` bridge: `*.cmd.ts` control plane vs `crew.ork.ts` engine over the `script-host` service, `ctx.llm.act` as an agent loop, the permission gate and the session ports — with a keyless REPL session you can run |
-| [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, circuitBreaker, graphConfig) |
+| [YAML reference](./architecture/yaml-schema.md) | **Single source** of the complete YAML schema (crew, agents, tasks, graphConfig) |
 | [RaggableTree — semantic graph](./architecture/raggable-tree.md) | 6-phase pipeline, 15 tools, 5 languages, incremental reindexing, lazy freshness, hybrid search, context injection, what the hosts actually wire |
 | [RAG pipeline](./architecture/rag-pipeline.md) | The `src/rag/` subsystem: ingestion, 7-stage pipeline (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), corrective CRAG graph, web fallback, 5 profiles, measured evaluation |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Decision for a stratified graph via Tree-sitter (5 levels L0–L4 plus the edge layer), rejected alternatives, consequences, 2026-09-30 implementation-status amendment |
@@ -62,7 +62,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | File | Description |
 |------|-------------|
 | [ProcessTypes comparative guide](./orchestration/process-types.md) | The 6 strategies side by side: matrix, decision tree, pros/cons, costs |
-| [FSM — State machine](./orchestration/fsm.md) | Domain FSM building block (not yet wired into the strategies), circuit breaker with 4 mechanisms, presets, guards |
+| [FSM — State machine](./orchestration/fsm.md) | Generic Domain FSM engine (used by `orkeon forge`; its circuit-breaker policy bounds Graph and the corrective RAG graph), 4 mechanisms, presets, guards |
 | [Graph — State graph](./orchestration/graph.md) | The Graph process mode (fixed topology, 3-mechanism circuit breaker) and the LangGraph-style C# `StateGraph` API: conditional edges, controlled cycles, retry |
 | [Autonomous — Self-organization](./orchestration/autonomous.md) | Multi-dimensional budget, manager-assigned tasks, delegation to a peer on failure, host-provided spawn, A2A channel |
 | [Flows (FlowEngine)](./orchestration/flows.md) | C# engine chaining typed steps (crew, llm, tool, conditional, human_input, delay) over a shared state; 4 flow types, flow YAML, visualization — not run by any CLI or host yet |

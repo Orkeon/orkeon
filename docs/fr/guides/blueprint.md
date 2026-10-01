@@ -132,7 +132,7 @@ Une section d'options suit la convention `Orkeon:*` (`services.AddOptions<SwarmO
 
 ## Étape 5 — YAML : le bloc de configuration
 
-`process: swarm` ne demande rien de plus (étape 1). Un bloc de niveau crew suit le chemin de `graphConfig` ; un bloc de niveau tâche suit celui du `circuitBreaker` de tâche.
+`process: swarm` ne demande rien de plus (étape 1). Un bloc de niveau crew suit le chemin de `graphConfig` ; un bloc de niveau tâche suit celui du `deliverable:` de tâche — mappé dans `MapTasks`, puis appliqué à la tâche par `CrewFactory` : un bloc lu et jamais appliqué est un bug, et une crew qui écrit une clé supprimée est refusée au chargement (`RetiredCrewYamlKeys`).
 
 **Modèles** — `src/core/Orkeon.Infrastructure/Configuration/Yaml/YamlConfigModels.cs`. Les modèles ne portent **aucun** attribut `[YamlMember]` : les clés se résolvent par convention (camelCase, avec un repli snake_case). Ajoutez une classe publique et la propriété sur les modèles qui en ont besoin :
 

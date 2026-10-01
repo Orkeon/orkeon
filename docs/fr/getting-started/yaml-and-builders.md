@@ -59,16 +59,7 @@ tasks:
     asyncExecution: bool  # default: false — ENREGISTRÉ, honoré par aucun mode (utiliser process: parallel)
     humanInput: bool      # default: false — demande intervention humaine
     context: {key: value} # Données additionnelles de contexte
-    circuitBreaker:       # Analysé, PAS appliqué à l'exécution aujourd'hui (voir ci-dessous)
-      preset: string      # "strict" | "permissive" | "default"
-      maxTransitions: int # Transitions max avant trip
-      stateTimeoutSeconds: int  # Timeout par état (secondes)
-      maxStateVisits: int       # Visites max d'un même état (cycles)
-      maxTotalDurationSeconds: int # Durée totale max (secondes)
-      useDegradedMode: bool     # true = Degraded, false = exception
-      maxRetries: int           # Retries après échec
-      maxToolCallsPerRound: int # Tool calls max par round
-      maxValidationRetries: int # Boucles validation max
+    tools: [string]       # Outils AJOUTÉS à ceux de l'agent pour cette tâche seulement — sans jamais les remplacer
     guardrails:           # Guardrails au niveau tâche (optionnel) — même forme qu'au niveau agent
       preset: string      # "analysis" | "strict" | "creative"
       header: string
@@ -77,7 +68,7 @@ tasks:
         <tool_name>: [string]
 ```
 
-Le bloc `circuitBreaker` est accepté au niveau tâche et à la racine du YAML, mais **aucun des deux n'est un défaut appliqué à toutes les tâches** : le bloc de niveau tâche est analysé puis inutilisé par tous les chemins d'exécution, et le bloc de niveau crew n'est lu que par le [mode Graph](../orchestration/graph.md), quand aucun `graphConfig` n'est déclaré. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, et un arrêt après 3 erreurs d'outil identiques consécutives) — voir « Ce qui s'exécute aujourd'hui » dans [Orchestration FSM](../orchestration/fsm.md#vue-densemble).
+Le `tools:` d'une tâche s'ajoute aux outils de son agent pour cette tâche seulement : un rédacteur qui détient `file_read` et exécute une tâche déclarant `tools: [file_write]` peut lire et écrire pendant cette tâche, et seulement lire pendant les autres. Il n'y a pas de bloc `circuitBreaker:` — une crew qui en écrit un est refusée au chargement. Ce qui borne une tâche à l'exécution, c'est la boucle de l'agent (`maxIter`, un arrêt après 3 erreurs d'outil identiques consécutives, et les reprises de validation de sortie) ; un run Graph est borné par `graphConfig` (ci-dessous).
 
 Les guardrails peuvent être déclarés sur un agent (toutes ses tâches) et/ou sur une tâche
 (cette tâche seulement). Quand les deux existent, les deux s'appliquent — les règles de
@@ -102,9 +93,8 @@ Voir [Orchestration Graph](../orchestration/graph.md) pour le détail complet.
 Les modèles YAML incluent :
 - `CrewYamlConfig` (définition complète d'une crew)
 - `AgentYamlConfig` (rôle, objectif, backstory, outils, limites)
-- `TaskYamlConfig` (description, résultat attendu, dépendances, circuit breaker)
+- `TaskYamlConfig` (description, résultat attendu, dépendances, outils, livrable, guardrails)
 - `LlmYamlConfig` (modèle, température, max tokens)
-- `CircuitBreakerYamlConfig` (preset, seuils, guards — voir [Orchestration FSM](../orchestration/fsm.md))
 - `GraphYamlConfig` (maxRetryCycles, circuitBreakerPreset, surcharges — voir [Orchestration Graph](../orchestration/graph.md))
 
 Il n'existe pas d'objet « configuration prédéfinie » au niveau du framework : un hôte compose ses réglages via `AddOrkeonInfrastructure` / `AddOrkeonApplication` et son `appsettings.json`.

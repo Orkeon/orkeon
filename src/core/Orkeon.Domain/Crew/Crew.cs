@@ -65,12 +65,6 @@ public sealed class Crew : AggregateRoot<CrewId>
     public GraphConfig? GraphConfig { get; private set; }
 
     /// <summary>
-    /// Gets the crew-level circuit-breaker configuration (default FSM limits for tasks).
-    /// Null falls back to the strategy's built-in defaults.
-    /// </summary>
-    public CircuitBreakerConfig? CircuitBreaker { get; private set; }
-
-    /// <summary>
     /// Gets the crew status.
     /// </summary>
     public CrewStatus Status { get; private set; }
@@ -208,8 +202,7 @@ public sealed class Crew : AggregateRoot<CrewId>
             AllowDynamicAgents = options.AllowDynamicAgents,
             MaxConcurrentDynamicAgents = options.MaxConcurrentDynamicAgents,
             ToolAccessPolicy = options.ToolAccessPolicy,
-            GraphConfig = options.GraphConfig,
-            CircuitBreaker = options.CircuitBreaker
+            GraphConfig = options.GraphConfig
         };
 
         if (options.ProcessType == ProcessType.Hierarchical && options.ManagerAgentId == null && options.ManagerLlm == null)

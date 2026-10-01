@@ -9,7 +9,7 @@ ce que vous acceptez d'installer :
 
 | Voie | Prérequis | Temps avant la première exécution | Idéal pour |
 |---|---|---|---|
-| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ build) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 105 exemples embarqués |
+| **1. Depuis les sources** | SDK .NET ≥ 10.0.300, clone git | ~5 min (+ build) | Contributeurs, lecture/modification du code, exécution de n'importe lequel des 104 exemples embarqués |
 | **2. Binaire de release** | Rien pour les paquets CLI (zip/MSI Windows, `.deb` Debian) — ils embarquent le runtime ; **runtime** .NET 10 pour les launchers supplémentaires de l'archive multi-apps | ~2 min | Exécuter des exemples et des vitrines sans clone des sources |
 | **3. Conteneur** | Docker | ~1 min (après le pull de l'image) | CI, exécutions reproductibles, aucun .NET local |
 
@@ -307,7 +307,7 @@ sans installer : `./libexec/orkeon/orkeon run …`.
 
 L'image `ghcr.io/orkeon/orkeon-runners` (construite depuis `Dockerfile.runners`,
 publiée sur GHCR) a le **CLI `orkeon` comme point d'entrée par défaut**, embarque le
-**REPL** (`orkeon-repl`) à côté **plus les 105 exemples fournis** — zéro .NET local
+**REPL** (`orkeon-repl`) à côté **plus les 104 exemples fournis** — zéro .NET local
 requis. L'hôte de service n'y est pas : il a sa propre image, construite depuis
 `deploy/Dockerfile.host` (voir [l'hôte de service](../architecture/service-host.md)).
 
@@ -355,7 +355,7 @@ docker model pull ai/granite-4.0-h-tiny
 docker run -it --rm -e ORKEON_RUNNER=shell -v "$PWD/out:/output" \
   ghcr.io/orkeon/orkeon-runners
 # puis, dans le shell :
-orkeon-example list            # parcourir les 105 exemples embarqués
+orkeon-example list            # parcourir les 104 exemples embarqués
 orkeon-example run 1           # exécuter le n°1 (assistant de recherche)
 orkeon-example show 42         # lire d'abord le README d'un exemple
 orkeon-example settings        # quels settings LLM s'appliquent, et pourquoi

@@ -193,6 +193,6 @@ correctif :
 
 - [Trois façons d'exécuter Orkeon](./three-ways-to-run-orkeon.md) — binaires et conteneurs, sans checkout des sources.
 - [YAML, Builders et CrewFactory](./yaml-and-builders.md) — le schéma derrière chaque `config.yaml`.
-- [Catalogue des exemples](../reference/examples-catalog.md) — les 105 exemples fournis, en 9 catégories thématiques.
+- [Catalogue des exemples](../reference/examples-catalog.md) — les 104 exemples fournis, en 9 catégories thématiques.
 - [Inventaire des outils](../tools/inventory.md) — ce que les agents savent réellement faire.
 - [Donner une boîte aux lettres à vos agents](./give-your-agents-a-mailbox.md) — un agent qui lit, range et rédige des brouillons de réponse dans une vraie boîte aux lettres.

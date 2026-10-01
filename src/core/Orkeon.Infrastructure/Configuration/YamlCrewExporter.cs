@@ -188,7 +188,7 @@ public partial class YamlCrewExporter
                 Description = task.Description,
                 ExpectedOutput = task.ExpectedOutput,
                 Agent = task.AssignedAgentId?.ToString(),
-                Tools = task.RequiredTools.Count > 0 ? new Collection<string>(task.RequiredTools.ToList()) : null,
+                Tools = task.Tools.Count > 0 ? new Collection<string>(task.Tools.ToList()) : null,
                 Dependencies = task.Dependencies.Count > 0
                     ? new Collection<string>(task.Dependencies.Select(d => d.ToString()).ToList())
                     : null,

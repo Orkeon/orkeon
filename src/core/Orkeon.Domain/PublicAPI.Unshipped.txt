@@ -116,3 +116,117 @@ Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.get 
 Orkeon.Domain.SharedKernel.ValueObjects.LlmProviderCapabilities.GbnfGrammar.init -> void
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.get -> bool
 Orkeon.Domain.SharedKernel.ValueObjects.LlmConfig.GrammarEnabled.init -> void
+*REMOVED*Orkeon.Domain.Agent.AgentMemory.Type.get -> Orkeon.Domain.Agent.MemoryType
+*REMOVED*Orkeon.Domain.Agent.MemoryType
+*REMOVED*Orkeon.Domain.Agent.MemoryType.Episodic = 2 -> Orkeon.Domain.Agent.MemoryType
+*REMOVED*Orkeon.Domain.Agent.MemoryType.LongTerm = 1 -> Orkeon.Domain.Agent.MemoryType
+*REMOVED*Orkeon.Domain.Agent.MemoryType.ShortTerm = 0 -> Orkeon.Domain.Agent.MemoryType
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.<Clone>$() -> Orkeon.Domain.Configuration.CircuitBreakerConfig!
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.CircuitBreakerConfig() -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.Equals(Orkeon.Domain.Configuration.CircuitBreakerConfig? other) -> bool
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxRetries.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxStateVisits.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxStateVisits.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxToolCallsPerRound.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxToolCallsPerRound.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxTotalDurationSeconds.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxTotalDurationSeconds.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxTransitions.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxTransitions.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxValidationRetries.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.MaxValidationRetries.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.Preset.get -> string?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.Preset.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.StateTimeoutSeconds.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.StateTimeoutSeconds.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.UseDegradedMode.get -> bool?
+*REMOVED*Orkeon.Domain.Configuration.CircuitBreakerConfig.UseDegradedMode.init -> void
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.CircuitBreaker.get -> Orkeon.Domain.Configuration.CircuitBreakerConfig?
+*REMOVED*Orkeon.Domain.Configuration.CrewConfiguration.CircuitBreaker.init -> void
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.CircuitBreaker.get -> Orkeon.Domain.Configuration.CircuitBreakerConfig?
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.CircuitBreaker.init -> void
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.RequiredTools.init -> void
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.TimeoutSeconds.get -> int?
+*REMOVED*Orkeon.Domain.Configuration.TaskConfiguration.TimeoutSeconds.init -> void
+*REMOVED*Orkeon.Domain.Crew.Crew.CircuitBreaker.get -> Orkeon.Domain.Configuration.CircuitBreakerConfig?
+*REMOVED*Orkeon.Domain.Crew.CrewBuilder.WithCircuitBreaker(Orkeon.Domain.Configuration.CircuitBreakerConfig! circuitBreaker) -> Orkeon.Domain.Crew.CrewBuilder!
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.CircuitBreaker.get -> Orkeon.Domain.Configuration.CircuitBreakerConfig?
+*REMOVED*Orkeon.Domain.Crew.CrewCreateOptions.CircuitBreaker.init -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskBase<TContext>.AddRequiredTool(Orkeon.Domain.Common.ToolId! toolId) -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, Orkeon.Domain.Task.ITaskCallback? callback, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ToolId!>? requiredTools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
+*REMOVED*Orkeon.Domain.Task.CrewTaskBase<TContext>.RequiredTools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.ToolId!>!
+*REMOVED*Orkeon.Domain.Task.CrewTaskBuilder.RequiresTool(Orkeon.Domain.Common.ToolId! toolId) -> Orkeon.Domain.Task.CrewTaskBuilder!
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.RequiredTools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ToolId!>?
+*REMOVED*Orkeon.Domain.Task.CrewTaskSnapshot.RequiredTools.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.BeginExecution = 1 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.Cancel = 12 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.Fail = 10 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.HumanInputReceived = 9 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.RequestHumanInput = 8 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.RequestToolCall = 2 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.Retry = 11 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.StartPlanning = 0 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.SubmitForValidation = 5 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.ToolCallCompleted = 3 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.ToolCallFailed = 4 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.ValidationFailed = 7 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionEvent.ValidationPassed = 6 -> Orkeon.Domain.Task.TaskExecutionEvent
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.<Clone>$() -> Orkeon.Domain.Task.TaskExecutionGuardContext!
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.CanCallTool.get -> bool
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.CanRetry.get -> bool
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.CanRetryValidation.get -> bool
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.Equals(Orkeon.Domain.Task.TaskExecutionGuardContext? other) -> bool
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.IsToolRegistered.get -> bool
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.IsToolRegistered.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxToolCallsPerRound.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxToolCallsPerRound.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxValidationRetries.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.MaxValidationRetries.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.RetryCount.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.RetryCount.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.TaskExecutionGuardContext() -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.ToolCallCount.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.ToolCallCount.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.ValidationAttempts.get -> int
+*REMOVED*Orkeon.Domain.Task.TaskExecutionGuardContext.ValidationAttempts.init -> void
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Assigned = 0 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Cancelled = 8 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Completed = 6 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Degraded = 9 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Executing = 2 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Failed = 7 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Planning = 1 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.ToolCalling = 3 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.Validating = 4 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionState.WaitingForHumanInput = 5 -> Orkeon.Domain.Task.TaskExecutionState
+*REMOVED*Orkeon.Domain.Task.TaskExecutionStateMachine
+*REMOVED*override Orkeon.Domain.Configuration.CircuitBreakerConfig.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Configuration.CircuitBreakerConfig.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Configuration.CircuitBreakerConfig.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Task.TaskExecutionGuardContext.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Task.TaskExecutionGuardContext.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Task.TaskExecutionGuardContext.ToString() -> string!
+*REMOVED*static Orkeon.Domain.Configuration.CircuitBreakerConfig.operator !=(Orkeon.Domain.Configuration.CircuitBreakerConfig? left, Orkeon.Domain.Configuration.CircuitBreakerConfig? right) -> bool
+*REMOVED*static Orkeon.Domain.Configuration.CircuitBreakerConfig.operator ==(Orkeon.Domain.Configuration.CircuitBreakerConfig? left, Orkeon.Domain.Configuration.CircuitBreakerConfig? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.TaskExecutionGuardContext.operator !=(Orkeon.Domain.Task.TaskExecutionGuardContext? left, Orkeon.Domain.Task.TaskExecutionGuardContext? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.TaskExecutionGuardContext.operator ==(Orkeon.Domain.Task.TaskExecutionGuardContext? left, Orkeon.Domain.Task.TaskExecutionGuardContext? right) -> bool
+*REMOVED*static Orkeon.Domain.Task.TaskExecutionStateMachine.Create(Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> Orkeon.Domain.Common.StateMachine.StateMachine<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
+*REMOVED*static Orkeon.Domain.Task.TaskExecutionStateMachine.CreateBuilder(Orkeon.Domain.Common.StateMachine.CircuitBreakerPolicy? circuitPolicy = null) -> Orkeon.Domain.Common.StateMachine.StateMachineBuilder<Orkeon.Domain.Task.TaskExecutionState, Orkeon.Domain.Task.TaskExecutionEvent>!
+Orkeon.Domain.Agent.AgentMemory.Type.get -> Orkeon.Domain.Memory.MemoryType
+Orkeon.Domain.Configuration.TaskConfiguration.Tools.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Domain.Configuration.TaskConfiguration.Tools.init -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.AddTool(Orkeon.Domain.Tools.IBaseTool! tool) -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.CrewTaskBase(Orkeon.Domain.Common.TaskId! id, Orkeon.Domain.Task.ValueObjects.TaskDescription! description, Orkeon.Domain.Task.ValueObjects.ExpectedOutput! expectedOutput, Orkeon.Domain.Task.ValueObjects.TaskStatus! status, Orkeon.Domain.Common.AgentId? assignedAgent, Orkeon.Domain.Task.ValueObjects.TaskOutput? output, Orkeon.Domain.Task.ValueObjects.TaskPriority! priority, System.DateTime createdAt, System.DateTime? startedAt, System.DateTime? completedAt, bool asyncExecution, Orkeon.Domain.Task.JsonSchema? outputJson, System.Type? outputPydantic, string? outputFile, Orkeon.Domain.Task.ITaskCallback? callback, bool humanInput, System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.TaskId!>? dependencies, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools, TContext? contextData, Orkeon.Domain.Task.ValueObjects.TaskDeliverable? deliverable = null) -> void
+Orkeon.Domain.Task.CrewTaskBase<TContext>.Tools.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!
+Orkeon.Domain.Task.CrewTaskBuilder.WithTool(Orkeon.Domain.Tools.IBaseTool! tool) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.CrewTaskBuilder.WithTools(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> Orkeon.Domain.Task.CrewTaskBuilder!
+Orkeon.Domain.Task.CrewTaskSnapshot.Tools.get -> System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>?
+Orkeon.Domain.Task.CrewTaskSnapshot.Tools.init -> void

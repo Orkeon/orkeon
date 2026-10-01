@@ -102,9 +102,9 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
             throw new FileNotFoundException($"tasks.yaml not found in directory: {directoryPath}", tasksFilePath);
 
         crewYaml = YamlAnchorPreprocessor.Preprocess(crewYaml);
-        WarnOnRetiredKeys(crewYaml);
         agentsYaml = YamlAnchorPreprocessor.Preprocess(agentsYaml);
         tasksYaml = YamlAnchorPreprocessor.Preprocess(tasksYaml);
+        CheckRetiredKeys([(crewYaml, ""), (tasksYaml, "tasks")]);
 
         var crewSettings = _yamlSerializer.Deserialize<CrewSettingsYamlConfig>(crewYaml);
         var agents = _yamlSerializer.Deserialize<Dictionary<string, AgentYamlConfig>>(agentsYaml);
@@ -133,11 +133,12 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 $"config.yaml (or crew.yaml) not found in directory: {root}", root + "/config.yaml");
 
         settingsYaml = YamlAnchorPreprocessor.Preprocess(settingsYaml);
-        WarnOnRetiredKeys(settingsYaml);
+        var documents = new List<(string Yaml, string Path)> { (settingsYaml, "") };
         var crewSettings = _yamlSerializer.Deserialize<CrewSettingsYamlConfig>(settingsYaml);
 
-        var agents = await LoadEntityFolderAsync<AgentYamlConfig>(root + "/agents", ct).ConfigureAwait(false);
-        var tasks = await LoadEntityFolderAsync<TaskYamlConfig>(root + "/tasks", ct).ConfigureAwait(false);
+        var agents = await LoadEntityFolderAsync<AgentYamlConfig>(root + "/agents", documents: null, ct).ConfigureAwait(false);
+        var tasks = await LoadEntityFolderAsync<TaskYamlConfig>(root + "/tasks", documents, ct).ConfigureAwait(false);
+        CheckRetiredKeys(documents);
 
         return BuildFromSettings(crewSettings, agents, tasks);
     }
@@ -146,8 +147,11 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
     /// Enumerates <c>{folder}/*.yaml</c> (non-recursive, ordinally sorted), using each file-name stem as the
     /// entity key — the equivalent of the dictionary key in the flat single-file layout. Anchors are
     /// preprocessed per file (they cannot span files). An absent or empty folder yields an empty dictionary.
+    /// When <paramref name="documents"/> is given, each file is added to it with its path in the crew
+    /// document (<c>{folder name}.{stem}</c>) for the retired-key check.
     /// </summary>
-    private async Task<Dictionary<string, T>> LoadEntityFolderAsync<T>(string folder, CancellationToken ct)
+    private async Task<Dictionary<string, T>> LoadEntityFolderAsync<T>(
+        string folder, List<(string Yaml, string Path)>? documents, CancellationToken ct)
     {
         var result = new Dictionary<string, T>(StringComparer.Ordinal);
 
@@ -171,7 +175,9 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 continue;
 
             yaml = YamlAnchorPreprocessor.Preprocess(yaml);
-            result[StemOf(path)] = _yamlSerializer.Deserialize<T>(yaml);
+            var stem = StemOf(path);
+            documents?.Add((yaml, $"{StemOf(folder)}.{stem}"));
+            result[stem] = _yamlSerializer.Deserialize<T>(yaml);
         }
 
         return result;
@@ -193,7 +199,6 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 MemoryProvider = crewSettings?.MemoryProvider,
                 Planning = crewSettings?.Planning,
                 ManagerAgent = crewSettings?.ManagerAgent,
-                CircuitBreaker = crewSettings?.CircuitBreaker,
                 GraphConfig = crewSettings?.GraphConfig,
                 CrewDefaultLlm = crewSettings?.Llm,
                 Rag = crewSettings?.Rag,
@@ -240,7 +245,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         ArgumentException.ThrowIfNullOrWhiteSpace(yamlContent);
 
         yamlContent = YamlAnchorPreprocessor.Preprocess(yamlContent);
-        WarnOnRetiredKeys(yamlContent);
+        CheckRetiredKeys([(yamlContent, "")]);
         var crewYaml = _yamlSerializer.Deserialize<CrewYamlConfig>(yamlContent);
 
         var config = _mapper.BuildConfiguration(
@@ -254,7 +259,6 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 MemoryProvider = crewYaml?.MemoryProvider,
                 Planning = crewYaml?.Planning,
                 ManagerAgent = crewYaml?.ManagerAgent,
-                CircuitBreaker = crewYaml?.CircuitBreaker,
                 GraphConfig = crewYaml?.GraphConfig,
                 CrewDefaultLlm = crewYaml?.Llm,
                 Rag = crewYaml?.Rag,
@@ -270,13 +274,32 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
     }
 
     /// <summary>
-    /// Warns about every removed key the crew document still writes (GAP-02): the
-    /// deserializer ignores unknown keys, so without this the value would vanish unnoticed.
+    /// Looks for removed keys in the raw crew documents: the deserializer ignores unknown keys,
+    /// so without this their values would vanish unnoticed. A retired key draws a warning
+    /// (GAP-02); a refused one — a key that promised a behaviour the crew would silently lose,
+    /// such as <c>circuitBreaker:</c> (GAP-07) — fails the load, every occurrence named at once.
     /// </summary>
-    private void WarnOnRetiredKeys(string crewYaml)
+    /// <param name="documents">Each document with its path in the crew document (empty for the root).</param>
+    private void CheckRetiredKeys(IEnumerable<(string Yaml, string Path)> documents)
     {
-        foreach (var key in RetiredCrewYamlKeys.Find(crewYaml))
-            LogRetiredKey(key.Path, key.Guidance);
+        List<RetiredCrewYamlKeys.Occurrence>? refused = null;
+        foreach (var (yaml, path) in documents)
+        {
+            foreach (var occurrence in RetiredCrewYamlKeys.Find(yaml, path))
+            {
+                if (occurrence.Key.Refused)
+                    (refused ??= []).Add(occurrence);
+                else
+                    LogRetiredKey(occurrence.Path, occurrence.Key.Guidance);
+            }
+        }
+
+        if (refused is null)
+            return;
+
+        throw new InvalidOperationException(
+            "Crew YAML uses removed key(s): " +
+            string.Join("; ", refused.Select(o => $"'{o.Path}' — {o.Key.Guidance}")) + ".");
     }
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Crew YAML key '{Key}' was removed and is ignored: {Guidance}.")]

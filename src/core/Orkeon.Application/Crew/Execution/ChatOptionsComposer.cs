@@ -9,8 +9,8 @@ using Orkeon.Domain.Task.ValueObjects;
 namespace Orkeon.Application.Crew.Execution;
 
 /// <summary>
-/// Builds the per-call <see cref="ChatOptions"/> for the IChatClient path: resolves the
-/// agent's toolbelt (registry + agent-owned + auto-injected <c>human_input</c>), wires
+/// Builds the per-call <see cref="ChatOptions"/> for the IChatClient path: takes the task's
+/// toolbelt from <see cref="TaskToolbelt"/> (agent + task tools + auto-injected <c>human_input</c>), wires
 /// native function calling, attaches the structured-output grammar and JSON schema, and applies the
 /// agent-level then task-level LLM overrides. Extracted verbatim from
 /// <see cref="ExecutionOrchestrator"/> (R4.1).
@@ -46,36 +46,9 @@ internal sealed class ChatOptionsComposer
         DomainAgent agent, CrewTask task, CancellationToken cancellationToken)
     {
         var options = new ChatOptions();
-        var agentToolNames = agent.Tools.Select(t => t.Name).ToHashSet();
-
-        // Start with tools from the global DI registry that match the agent's tool list
-        var registryTools = _registeredTools?
-            .Where(t => agentToolNames.Contains(t.Name))
-            .ToList() ?? [];
-
-        // Include agent-owned tools not found in the registry (e.g. delegation tools
-        // added dynamically by AgentDelegationToolsProvider at runtime).
-        var registryToolNames = registryTools.Select(t => t.Name).ToHashSet();
-        var agentOnlyTools = agent.Tools
-            .Where(t => !registryToolNames.Contains(t.Name))
-            .ToList();
-
-        var availableTools = registryTools.Concat(agentOnlyTools).ToList();
-
-        // When the task declares humanInput=true, auto-inject the registered
-        // human_input tool into the toolbelt so the agent can solicit user
-        // input without having to declare the tool on the agent. If no
-        // human_input tool is registered (no IHumanInputProvider wired), the
-        // task runs as-is — the YAML flag becomes a no-op for that run.
-        if (task.HumanInput)
-        {
-            var humanInputTool = _registeredTools?
-                .FirstOrDefault(t => string.Equals(t.Name, "human_input", StringComparison.OrdinalIgnoreCase));
-            if (humanInputTool is not null && !availableTools.Any(t => string.Equals(t.Name, "human_input", StringComparison.OrdinalIgnoreCase)))
-            {
-                availableTools.Add(humanInputTool);
-            }
-        }
+        // Agent tools, then the task's own, then human_input when the task asks for it and the
+        // host registered the tool — one composition shared with every loop (GAP-07).
+        var availableTools = TaskToolbelt.Compose(agent, task, _registeredTools).ToList();
 
         if (availableTools.Count > 0)
         {

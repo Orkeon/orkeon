@@ -109,6 +109,41 @@ public class ChatOptionsComposerTests
         Assert.Equal("hello", call.Parameters["input"]);
     }
 
+    // ── Task-level tools (GAP-07) ─────────────────────────────────────────
+
+    [Fact]
+    public async System.Threading.Tasks.Task TaskTools_AreAdded_ForThatTaskOnly()
+    {
+        var fileRead = new SpyTool("file_read");
+        var fileWrite = new SpyTool("file_write");
+        var agent = BuildAgent(null, fileRead);
+        var composer = BuildComposer(registeredTools: [fileRead, fileWrite]);
+        var report = new Orkeon.Domain.Task.CrewTaskBuilder()
+            .Description("Write the report").ExpectedOutput("Report").WithTool(fileWrite).Build();
+        var review = BuildTask();
+
+        var (reportOptions, reportTools) = await composer.BuildChatOptionsAsync(agent, report, TestContext.Current.CancellationToken);
+        var (_, reviewTools) = await composer.BuildChatOptionsAsync(agent, review, TestContext.Current.CancellationToken);
+
+        Assert.Equal(["file_read", "file_write"], reportTools.Select(t => t.Name));
+        Assert.Equal(["file_read", "file_write"], reportOptions.Tools!.Select(t => t.Name));
+        Assert.Equal(["file_read"], reviewTools.Select(t => t.Name));
+    }
+
+    [Fact]
+    public async System.Threading.Tasks.Task TaskTools_NeverDuplicateAnAgentTool()
+    {
+        var fileRead = new SpyTool("file_read");
+        var agent = BuildAgent(null, fileRead);
+        var composer = BuildComposer(registeredTools: [fileRead]);
+        var task = new Orkeon.Domain.Task.CrewTaskBuilder()
+            .Description("Read").ExpectedOutput("Text").WithTool(new SpyTool("FILE_READ")).Build();
+
+        var (_, availableTools) = await composer.BuildChatOptionsAsync(agent, task, TestContext.Current.CancellationToken);
+
+        Assert.Same(fileRead, Assert.Single(availableTools));
+    }
+
     // ── human_input auto-injection ────────────────────────────────────────
 
     [Fact]

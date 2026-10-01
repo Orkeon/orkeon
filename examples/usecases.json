@@ -3273,49 +3273,6 @@
       ]
     },
     {
-      "agents": 7,
-      "category": "06-engineering-devops",
-      "format": "yaml",
-      "hasSampleData": false,
-      "id": "103-ts-codebase-with-fsm",
-      "importable": true,
-      "mounts": [
-        "./src:/src:ro",
-        "./output:/output:rw"
-      ],
-      "number": 103,
-      "problem": {
-        "de": "Mein TypeScript-Projekt beschreiben und seine Migration zu Orkeon planen, ohne dass die Analyse ausufert",
-        "en": "Describe my TypeScript project and plan its migration to Orkeon, without the analysis getting out of hand",
-        "es": "Describir mi proyecto TypeScript y planificar su migración a Orkeon, sin que el análisis se descontrole",
-        "fr": "Décrire mon projet TypeScript et planifier sa migration vers Orkeon, sans que l'analyse s'emballe",
-        "zh-Hans": "梳理我的 TypeScript 项目并规划迁移到 Orkeon，避免分析失控"
-      },
-      "process": "sequential",
-      "requiresKeys": [],
-      "requiresNetwork": false,
-      "tags": [
-        "typescript",
-        "codebase-analysis",
-        "migration-planning",
-        "circuit-breaker"
-      ],
-      "tasks": 1,
-      "title": {
-        "de": "TypeScript-Projekt zu Orkeon, mit Schutzmechanismen",
-        "en": "TypeScript project to Orkeon, with safeguards",
-        "es": "Proyecto TypeScript a Orkeon, con salvaguardas",
-        "fr": "Projet TypeScript vers Orkeon, avec garde-fous",
-        "zh-Hans": "从 TypeScript 项目到 Orkeon（带防护）"
-      },
-      "tools": [
-        "directory_read",
-        "file_read",
-        "file_write",
-        "json_tool"
-      ]
-    },
-    {
       "agents": 4,
       "category": "07-creative-media",
       "format": "yaml",

@@ -74,7 +74,7 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
         _chatLoop ??= new ChatClientAgentLoop(_logger, _chatClient!, LlmGate, OptionsComposer, ToolDispatcher);
 
     private LegacyTextAgentLoop LegacyLoop =>
-        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools);
+        _legacyLoop ??= new LegacyTextAgentLoop(_logger, _llmProvider, LlmGate, Tools, _registeredTools);
 
     private NativeToolCallingAgentLoop NativeLoop =>
         _nativeLoop ??= new NativeToolCallingAgentLoop(_logger, _fullProvider!, _toolCallingStrategy!, _registeredTools, LlmGate, Tools);
@@ -261,7 +261,8 @@ public partial class ExecutionOrchestrator : IExecutionOrchestrator
             try
             {
                 var systemPrompt = AgentPromptComposer.BuildSystemPrompt(
-                    agent, task, _toolCallingStrategy?.SupportsNativeToolCalling == true);
+                    agent, task, TaskToolbelt.Compose(agent, task, _registeredTools),
+                    _toolCallingStrategy?.SupportsNativeToolCalling == true);
                 var knowledgeContext = await ResolveKnowledgeContextAsync(
                     agent, task, context, cancellationToken).ConfigureAwait(false);
                 var userPrompt = AgentPromptComposer.BuildUserPrompt(task, context, knowledgeContext);

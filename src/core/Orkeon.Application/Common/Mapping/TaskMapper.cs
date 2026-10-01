@@ -30,7 +30,7 @@ public static class TaskMapper
             Status = MapTaskStatusToString(task.Status),
             Priority = "Normal",
             Dependencies = task.Dependencies.Select(d => d.ToString()).ToImmutableList(),
-            RequiredTools = ImmutableList<string>.Empty,
+            RequiredTools = task.Tools.Select(t => t.Name).ToImmutableList(),
             Output = task.Output != null ? new Task.DTOs.TaskOutputDto
             {
                 TaskId = task.Id,

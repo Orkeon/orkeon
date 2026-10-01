@@ -51,7 +51,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Client & serveur MCP](./architecture/mcp.md) | Intégration Model Context Protocol bi-ère (`2026-07-28` stateless + révisions legacy), transports, activation, outils MCP et crews, limites honnêtes |
 | [Orkeon Studio](./architecture/studio.md) | Les front-ends graphique/terminal au-dessus des workflows CLI : les quatre projets, le cœur partagé, la localisation, la distribution |
 | [Piloter des crews depuis le REPL](./architecture/coding-agent-ts.md) | Le pont `.cmd.ts` → `crew.ork.ts` : plan de contrôle `*.cmd.ts` vs moteur `crew.ork.ts` via le service `script-host`, `ctx.llm.act` comme boucle d'agent, le garde de permissions et les ports de session — avec une session REPL sans clé, exécutable |
-| [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, circuitBreaker, graphConfig) |
+| [Référence YAML](./architecture/yaml-schema.md) | **Source unique** du schéma YAML complet (crew, agents, tasks, graphConfig) |
 | [RaggableTree — graphe sémantique](./architecture/raggable-tree.md) | Pipeline 6 phases, 15 tools, 5 langages, réindexation incrémentale, fraîcheur paresseuse, recherche hybride, injection de contexte, ce que les hôtes câblent réellement |
 | [Pipeline RAG](./architecture/rag-pipeline.md) | Le sous-système `src/rag/` : ingestion, pipeline à 7 étages (transform → retrieve → fuse/MMR → rerank → assemble → generate → groundedness), graphe correctif CRAG, repli web, 5 profils, évaluation mesurée |
 | [ADR — RaggableTree](./architecture/raggable-tree-adr.md) | Décision graphe stratifié via Tree-sitter (5 niveaux L0–L4 plus la couche d'arêtes), alternatives rejetées, conséquences, amendement d'état d'implémentation du 2026-09-30 |
@@ -62,7 +62,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | Fichier | Description |
 |---------|-------------|
 | [Guide comparatif ProcessTypes](./orchestration/process-types.md) | Les 6 stratégies côte à côte : matrice, arbre de décision, pros/cons, coûts |
-| [FSM — Machine à états](./orchestration/fsm.md) | Brique FSM du domaine (pas encore câblée dans les stratégies), circuit breaker à 4 mécanismes, presets, guards |
+| [FSM — Machine à états](./orchestration/fsm.md) | Moteur FSM générique du domaine (utilisé par `orkeon forge` ; sa policy de circuit breaker borne Graph et le graphe RAG correctif), 4 mécanismes, presets, guards |
 | [Graph — Graphe d'états](./orchestration/graph.md) | Le mode de process Graph (topologie fixe, circuit breaker à 3 mécanismes) et l'API C# `StateGraph` style LangGraph : edges conditionnels, cycles contrôlés, retry |
 | [Autonomous — Auto-organisation](./orchestration/autonomous.md) | Budget multi-dimensions, tâches assignées par le manager, délégation à un pair en cas d'échec, spawn fourni par l'hôte, canal A2A |
 | [Flows (FlowEngine)](./orchestration/flows.md) | Moteur C# qui enchaîne des étapes typées (crew, llm, tool, conditional, human_input, delay) sur un état partagé ; 4 types de flow, YAML de flow, visualisation — exécuté par aucune CLI ni aucun hôte à ce jour |

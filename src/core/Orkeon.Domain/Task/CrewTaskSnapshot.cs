@@ -62,8 +62,8 @@ public sealed record CrewTaskSnapshot
     /// <summary>The task dependencies.</summary>
     public IEnumerable<TaskId>? Dependencies { get; init; }
 
-    /// <summary>The required tools.</summary>
-    public IEnumerable<ToolId>? RequiredTools { get; init; }
+    /// <summary>The tools the task adds to its agent's own for this task only.</summary>
+    public IEnumerable<Orkeon.Domain.Tools.IBaseTool>? Tools { get; init; }
 
     /// <summary>The persisted context key-value pairs.</summary>
     public IReadOnlyDictionary<string, object>? ContextValues { get; init; }

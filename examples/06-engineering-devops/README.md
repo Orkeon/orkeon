@@ -1,4 +1,4 @@
-# 06 - Ingenierie & DevOps (66-75, 102-103)
+# 06 - Ingenierie & DevOps (66-75, 102)
 
 Engineering and DevOps use cases: CI/CD pipelines, incident response, database migration, performance analysis, documentation, cloud audits, and chaos engineering.
 
@@ -17,4 +17,3 @@ Engineering and DevOps use cases: CI/CD pipelines, incident response, database m
 | 74 | Gestion des Dependances -- Priorisation CVE | Sequential | Fiabilite |
 | 75 | Chaos Engineering -- Humain Approuve Chaque Injection | Sequential | Securite |
 | 102 | Analyse de Codebase TypeScript et Plan de Migration Orkeon (crew scriptée) | Sequential (3 phases) | Robustesse |
-| 103 | Analyse de Codebase TypeScript avec FSM et Circuit Breaker | Sequential + FSM | Robustesse |

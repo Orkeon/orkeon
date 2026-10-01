@@ -1,5 +1,6 @@
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Constants.Memory;
+using MemoryType = Orkeon.Domain.Memory.MemoryType;
 
 namespace Orkeon.Domain.Agent;
 
@@ -117,25 +118,4 @@ public sealed class AgentMemory : Entity<MemoryId>
 
         return false;
     }
-}
-
-/// <summary>
-/// Types of agent memory.
-/// </summary>
-public enum MemoryType
-{
-    /// <summary>
-    /// Short-term working memory.
-    /// </summary>
-    ShortTerm,
-
-    /// <summary>
-    /// Long-term persistent memory.
-    /// </summary>
-    LongTerm,
-
-    /// <summary>
-    /// Episodic memory of specific events.
-    /// </summary>
-    Episodic
 }

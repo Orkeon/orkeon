@@ -104,7 +104,8 @@ La méthode a disparu ; `process("graph")` se construit maintenant seul.
 
 Déclaratif uniquement — le moteur procédural ne lit jamais les tâches. Transmis à la crew :
 `description`, `agent` (un agent construit), `expectedOutput`, `withContext(s)` (c'est ce qui
-construit le DAG), `tools`, `humanInput`, `asyncExecution`, `deliverable`,
+construit le DAG), `tools` (ajoutés aux outils de l'agent pour cette tâche seulement, sans jamais
+les remplacer), `humanInput`, `asyncExecution`, `deliverable`,
 `withResponseFormat(type)` et `withResponseSchema(name, schema, strict?)`. Acceptés mais sans
 effet : `name` (une configuration de tâche n'a pas de nom) et `expect` (consigné dans le
 contexte de la tâche en l'absence de `deliverable`, jamais validé). `withTaskTool` a disparu :

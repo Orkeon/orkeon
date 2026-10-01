@@ -62,16 +62,16 @@ public static class TaskFixtures
 
     public static DomainTask CreateTaskWithTools(
         string description,
-        params ToolId[] toolIds)
+        params Orkeon.Domain.Tools.IBaseTool[] tools)
     {
         var task = DomainTask.Create(
             description: TaskDescription.From(description),
             expectedOutput: ExpectedOutput.From("Task completed using tools")
         );
 
-        foreach (var toolId in toolIds)
+        foreach (var tool in tools)
         {
-            task.AddRequiredTool(toolId);
+            task.AddTool(tool);
         }
 
         return task;
@@ -173,8 +173,8 @@ public static class TaskFixtures
         );
 
         // Add tools
-        task.AddRequiredTool(ToolId.From(Guid.NewGuid()));
-        task.AddRequiredTool(ToolId.From(Guid.NewGuid()));
+        task.AddTool(new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_read"));
+        task.AddTool(new Orkeon.Tests.Shared.Doubles.StubBaseTool("file_write"));
 
         return task;
     }

@@ -106,7 +106,7 @@ public partial class CrewFactory : ICrewFactory
         LogCreatingCrewWithAgentsAnd(config.Name, config.Agents.Count, config.Tasks.Count);
 
         var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, ct).ConfigureAwait(false);
-        var taskMap = CreateTasks(config.Tasks, agentMap);
+        var taskMap = await CreateTasksAsync(config.Tasks, agentMap, ct).ConfigureAwait(false);
 
         SetupTaskDependencies(config.Tasks, taskMap);
         AddTaskContextData(config.Tasks, taskMap);
@@ -256,18 +256,27 @@ public partial class CrewFactory : ICrewFactory
         return agentMap;
     }
 
-    private Dictionary<string, CrewTask> CreateTasks(
-        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap)
+    /// <summary>
+    /// Builds the tasks. A task's <c>tools:</c> are resolved exactly like an agent's — same
+    /// registry, same strict check — and travel on the task, which adds them to its agent's
+    /// belt for that task only (GAP-07).
+    /// </summary>
+    private async Task<Dictionary<string, CrewTask>> CreateTasksAsync(
+        IReadOnlyList<TaskConfiguration> taskConfigs, Dictionary<string, DomainAgent> agentMap, CancellationToken ct)
     {
         var taskMap = new Dictionary<string, CrewTask>();
 
         foreach (var taskConfig in taskConfigs)
         {
+            ct.ThrowIfCancellationRequested();
+            var resolvedTools = await ResolveToolsAsync(taskConfig.Tools).ConfigureAwait(false);
+
             var builder = new CrewTaskBuilder()
                 .Description(TaskDescription.From(taskConfig.Description))
                 .ExpectedOutput(taskConfig.ExpectedOutput)
                 .Async(taskConfig.AsyncExecution)
-                .HumanInput(taskConfig.HumanInput);
+                .HumanInput(taskConfig.HumanInput)
+                .WithTools(resolvedTools);
 
             if (taskConfig.AssignedAgentId is not null
                 && agentMap.TryGetValue(taskConfig.AssignedAgentId.ToString(), out var assignedAgent))
@@ -339,12 +348,10 @@ public partial class CrewFactory : ICrewFactory
             .WithAgents(agentMap.Values)
             .WithTasks(taskMap.Values);
 
-        // Graph/circuit-breaker config are crew-definition settings that must survive to
-        // execution time — the GraphProcessStrategy reads them off the domain crew (P2-O-01).
+        // The graph config is a crew-definition setting that must survive to execution time —
+        // the GraphProcessStrategy reads it off the domain crew (P2-O-01).
         if (config.GraphConfig is not null)
             builder.WithGraphConfig(config.GraphConfig);
-        if (config.CircuitBreaker is not null)
-            builder.WithCircuitBreaker(config.CircuitBreaker);
 
         // The declared memory provider must survive to kickoff, where it is resolved to a concrete
         // IMemoryProvider (P2-O-02). Dropped here previously, so the choice never reached the run.

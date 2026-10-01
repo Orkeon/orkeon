@@ -30,7 +30,7 @@ public class AgentPromptComposerGuardrailsTests
             })
             .Build();
 
-        var prompt = AgentPromptComposer.BuildSystemPrompt(agent, task, supportsNativeToolCalling: true);
+        var prompt = Prompt(agent, task);
 
         Assert.Contains("TASK RULES:", prompt, StringComparison.Ordinal);
         Assert.Contains("1. cite every source", prompt, StringComparison.Ordinal);
@@ -45,7 +45,7 @@ public class AgentPromptComposerGuardrailsTests
             .Build();
         var task = new CrewTaskBuilder().Description("Do work").ExpectedOutput("Result").Build();
 
-        var prompt = AgentPromptComposer.BuildSystemPrompt(agent, task, supportsNativeToolCalling: true);
+        var prompt = Prompt(agent, task);
 
         // Agent guardrails still render; no phantom task section appears.
         Assert.Contains("AGENT RULES:", prompt, StringComparison.Ordinal);
@@ -65,7 +65,7 @@ public class AgentPromptComposerGuardrailsTests
             .WithGuardrails(new GuardrailsConfig { Header = "TASK RULES:", Rules = ["task-rule-beta"] })
             .Build();
 
-        var prompt = AgentPromptComposer.BuildSystemPrompt(agent, task, supportsNativeToolCalling: true);
+        var prompt = Prompt(agent, task);
 
         // Both apply; the agent section precedes the task section.
         Assert.Contains("agent-rule-alpha", prompt, StringComparison.Ordinal);
@@ -96,11 +96,40 @@ public class AgentPromptComposerGuardrailsTests
             })
             .Build();
 
-        var prompt = AgentPromptComposer.BuildSystemPrompt(agent, task, supportsNativeToolCalling: true);
+        var prompt = Prompt(agent, task);
 
         Assert.Contains("[file_write] never overwrite", prompt, StringComparison.Ordinal);
         Assert.DoesNotContain("web_search", prompt, StringComparison.Ordinal);
     }
+
+    [Fact]
+    public void BuildSystemPrompt_ShouldListTaskTools_AndApplyTheirToolRules()
+    {
+        // GAP-07: a task's own tools join the agent's for this task — the prompt lists them and
+        // the tool rules keyed on them apply.
+        var agent = new AgentBuilder().Role("Analyst").Goal("Analyze").WithTool(new StubTool("file_read")).Build();
+        var task = new CrewTaskBuilder()
+            .Description("Do work").ExpectedOutput("Result")
+            .WithTool(new StubTool("file_write"))
+            .WithGuardrails(new GuardrailsConfig
+            {
+                Header = "TASK RULES:",
+                ToolRules = new Dictionary<string, IReadOnlyList<string>>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["file_write"] = ["never overwrite"],
+                }
+            })
+            .Build();
+
+        var prompt = Prompt(agent, task);
+
+        Assert.Contains("- **file_read**", prompt, StringComparison.Ordinal);
+        Assert.Contains("- **file_write**", prompt, StringComparison.Ordinal);
+        Assert.Contains("[file_write] never overwrite", prompt, StringComparison.Ordinal);
+    }
+
+    private static string Prompt(DomainAgent agent, CrewTask task)
+        => AgentPromptComposer.BuildSystemPrompt(agent, task, TaskToolbelt.Compose(agent, task), supportsNativeToolCalling: true);
 
     /// <summary>Minimal IBaseTool stub — only Name matters for tool-rule gating.</summary>
     private sealed class StubTool : IBaseTool
