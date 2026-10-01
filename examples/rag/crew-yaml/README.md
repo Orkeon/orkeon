@@ -41,11 +41,14 @@ agents:
   resolving each marker (source + score). The refund question lands on
   `faq.md` as `[1]`.
 
-Retrieval-only augmentation: no LLM is involved in building the block. With
+Retrieval-only augmentation: no LLM is involved in building the block — the
+attachment's profile (`fast` here, the default) runs its retrieval half only. With
 an LLM configured, running the crew grounds the agent's answer on this block
 and keeps the `[n]` markers as citations (see
 `tests/e2e/Orkeon.E2E.Tests/YamlKnowledgeCrewOfflineTests.cs` for the
-end-to-end assertion of this exact YAML motif).
+end-to-end assertion of this exact YAML motif, and
+`tests/hosting/Orkeon.Hosting.Tests/RunnerHostRagTests.cs` for this crew under the
+runner).
 
 ## Prerequisites
 
@@ -68,16 +71,20 @@ bash examples/run-example.sh rag/crew-yaml
 dotnet run --project examples/rag/crew-yaml
 ```
 
-The same `crew.yaml` also validates in the stock CLI:
+The same `crew.yaml` runs in the stock CLI too — `orkeon run` registers the RAG
+subsystem for every crew, so loading it ingests the three files and the agent's prompt
+carries the cited block:
 
 ```bash
-orkeon run examples/rag/crew-yaml/crew.yaml --mount examples/rag/crew-yaml/data:/kb:ro --validate
+orkeon run examples/rag/crew-yaml/crew.yaml --mount examples/rag/crew-yaml/data:/kb:ro
 ```
 
-Only validation, though: `orkeon run` does not register the RAG subsystem for a YAML
-crew, so a real run there ingests nothing from `rag:` and injects no `knowledge:` (it
-logs a warning). The `rag:`/`knowledge:` path needs a host that calls
-`AddOrkeonRag(configuration)` — this example's `Program.cs` is that host. See the
+With an LLM configured the agent answers from the excerpts; without one, the echo
+provider replays the prompt, so the crew output shows the `## Knowledge Context` block
+itself. `--validate` loads the crew without ingesting anything. Embeddings come from the
+runner's on-device model; mount a writable `/output` to keep the ingestion manifests
+between runs. `Program.cs` is the same path for a C# host that builds its own container
+with `AddOrkeonRag(configuration)`. See the
 [RAG pipeline](../../../docs/architecture/rag-pipeline.md) page.
 
 ## Expected output (truncated)

@@ -394,6 +394,8 @@ tâche, le coût estimé.
   services.AddOrkeonRagTools();           // Orkeon.Tools.Rag : rag_search / rag_ingest / rag_eval
   services.AddOrkeonOnnxReranker();       // opt-in — requis par balanced/quality/adaptive
   ```
+  Tout hôte runner bâti sur `RunnerHost` (`orkeon run`, `orkeon-host`) fait lui-même
+  les deux premiers appels ; la CLI `orkeon` ajoute le troisième.
   `AddOrkeonRag` câble déjà les transformers de requête, le routage, l'hybride
   BM25+RRF, le graphe correctif **et l'enregistrement du transport du repli
   web** — appeler soi-même `AddOrkeonRagWebFallback(configuration)` est un

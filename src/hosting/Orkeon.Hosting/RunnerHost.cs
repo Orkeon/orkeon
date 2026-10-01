@@ -34,6 +34,8 @@ using Orkeon.Tools.Email.Configuration;
 using Orkeon.Tools.Email.DependencyInjection;
 using Orkeon.Tools.EventHub.DependencyInjection;
 using Orkeon.Tools.FileSystem.DependencyInjection;
+using Orkeon.Rag.DependencyInjection;
+using Orkeon.Tools.Rag.DependencyInjection;
 using Orkeon.Tools.Web.DependencyInjection;
 
 namespace Orkeon.Hosting;
@@ -710,6 +712,16 @@ public static partial class RunnerHost
                 sp => sp.GetRequiredService<PrivilegedFileSystemAccess>().FileSystem,
                 $"{RunnerVirtualRoots.Credentials}/{EmailCredentialsLocation.TokenSubdirectory}");
         }
+
+        // RAG (GAP-02): the subsystem and its three agent tools, for every runner — YAML
+        // crews, crew directories, declarative and procedural .ork.ts, and orkeon-host. A
+        // crew's rag: collections are ingested when it loads, its agents' knowledge: reaches
+        // their prompts, and rag_search/rag_ingest/rag_eval can be listed in tools:. Nothing
+        // is resolved until a crew uses it: the store, its provider and the embeddings wait
+        // for the first ingestion or retrieval. The ONNX reranker (balanced/quality) is the
+        // CLI's to add — a host without it fails those two profiles at their first use.
+        services.AddOrkeonRag(context.Configuration);
+        services.AddOrkeonRagTools();
 
         // Virtual file system mounts (from appsettings + CLI --mount args, plus the
         // infrastructure mounts a runner declares for itself). Either list alone is enough

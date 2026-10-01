@@ -122,8 +122,8 @@ The `orkeon` CLI does all of this in `RunnerHost` (`Llm` section, mounts, a regi
 from DI) and registers a few more suites a host adds the same way when its crews use them:
 `AddOrkeonAbstractionTools()` (`list_mounts`), `AddOrkeonSessionTools()`,
 `AddOrkeonInMemoryEventHub()` + `AddOrkeonEventHubTools()`, `AddRaggableTree()` +
-`AddRaggableTreeTools()`, and the opt-in RAG pair `AddOrkeonRag(configuration)` +
-`AddOrkeonRagTools()`.
+`AddRaggableTreeTools()`, and the RAG pair `AddOrkeonRag(configuration)` +
+`AddOrkeonRagTools()` (the CLI adds `AddOrkeonOnnxReranker()` on top).
 
 Each `AddOrkeon*()` call automatically registers:
 - The service interfaces (ports)

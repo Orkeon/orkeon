@@ -23,12 +23,21 @@ public sealed class RagEvalHarnessTests
             expected_substrings: ["alpha"]
         """;
 
+    private const string NoCorpusDatasetYaml = """
+        name: existing
+        cases:
+          - id: q-1
+            question: "what is alpha?"
+            relevant: ["kb/a.md"]
+        """;
+
     private static FakeFileSystemService BuildFileSystem(bool withCorpus = true)
     {
         var fs = new FakeFileSystemService()
             .AddMount("/workspace", FileAccessRights.ReadOnly)
             .AddMount("/output", FileAccessRights.ReadWrite)
-            .AddFile("/workspace/eval/ds.yaml", DatasetYaml);
+            .AddFile("/workspace/eval/ds.yaml", DatasetYaml)
+            .AddFile("/workspace/eval/no-corpus.yaml", NoCorpusDatasetYaml);
 
         if (withCorpus)
         {
@@ -134,6 +143,37 @@ public sealed class RagEvalHarnessTests
         Assert.Equal(3, options.K);
         Assert.Equal(5, options.TopN); // max(5, K)
         Assert.True(options.UseLlmJudge);
+    }
+
+    [Fact]
+    public async Task Run_WithoutCorpus_EvaluatesTheHostDefaultCollection()
+    {
+        // GAP-02: a dataset that brings no corpus evaluates an existing collection — the
+        // host's Orkeon:Rag:Collection when neither the request nor the dataset names one.
+        var (harness, ingestion, evaluator, _) = Build();
+
+        var result = await harness.RunAsync(
+            new RagEvalRunRequest { DatasetPath = "/workspace/eval/no-corpus.yaml", DefaultCollection = "produits" },
+            TestContext.Current.CancellationToken);
+
+        Assert.Empty(ingestion.Requests);
+        Assert.Equal("produits", Assert.Single(evaluator.Calls).Collection);
+        Assert.Equal("produits", result.Collection);
+    }
+
+    [Fact]
+    public async Task Run_WithCorpus_NeverIngestsIntoTheHostDefaultCollection()
+    {
+        // A corpus is ingested before the evaluation: it goes to the dataset's private
+        // collection, never into the host's knowledge base.
+        var (harness, ingestion, evaluator, _) = Build();
+
+        await harness.RunAsync(
+            new RagEvalRunRequest { DatasetPath = "/workspace/eval/ds.yaml", DefaultCollection = "produits" },
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("rag-eval-mini", Assert.Single(ingestion.Requests).Collection);
+        Assert.Equal("rag-eval-mini", Assert.Single(evaluator.Calls).Collection);
     }
 
     [Fact]

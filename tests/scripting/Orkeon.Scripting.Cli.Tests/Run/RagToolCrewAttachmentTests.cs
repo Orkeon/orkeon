@@ -8,19 +8,17 @@ using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Hosting;
 using Orkeon.Rag.Abstractions.Interfaces;
-using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
 using Orkeon.Scripting.Cli.Tests.Doubles;
 using Orkeon.Tools.Rag;
-using Orkeon.Tools.Rag.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli.Tests.Run;
 
 /// <summary>
-/// GAP-01: a crew agent that lists <c>rag_search</c> receives it, in a host that registered the
-/// RAG tools (<c>AddOrkeonRagTools()</c>, as the <c>.ork.ts</c> path of <c>orkeon run</c> does)
-/// and under the runner's default <c>StrictTools</c>. The tool implements <c>IBaseTool</c> alone;
-/// it used to be found in the registry and then refused as an unknown tool.
+/// GAP-01: a crew agent that lists <c>rag_search</c> receives it, under the runner's default
+/// <c>StrictTools</c>. The tool implements <c>IBaseTool</c> alone; it used to be found in the
+/// registry and then refused as an unknown tool. Since GAP-02 every runner host registers the
+/// RAG tools itself — this host adds nothing but the doubles.
 /// </summary>
 public sealed class RagToolCrewAttachmentTests : IDisposable
 {
@@ -44,14 +42,12 @@ public sealed class RagToolCrewAttachmentTests : IDisposable
         using var host = RunnerHost.Build(
             settingsPath,
             new RunnerMountPlan { CliMounts = [$"{FileSystemMount.Quote(_root)}:/crew:ro"] },
-            configureServices: (ctx, services) =>
+            configureServices: (_, services) =>
             {
-                // Doubles first: they win the TryAdd race over the real pipelines.
+                // The last registration wins over the real pipelines the host registered.
                 services.AddSingleton<IRagPipeline>(new FakeRagPipeline());
                 services.AddSingleton<IIngestionPipeline>(new FakeIngestionPipeline());
                 services.AddSingleton<IRagEvalHarness>(new FakeRagEvalHarness());
-                services.AddOrkeonRag(ctx.Configuration);
-                services.AddOrkeonRagTools();
             });
 
         using var scope = host.Services.CreateScope();

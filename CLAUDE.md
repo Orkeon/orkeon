@@ -164,12 +164,14 @@ The project follows Clean Architecture with clear separation of concerns:
   implementations in `Orkeon.Rag` (loaders incl. `WebPageLoader`, 4 chunking
   strategies, ingestion-path validation, `StagedRagPipeline`,
   `MemoryProviderDocumentStore`), agent tools `rag_search`/`rag_ingest`/`rag_eval`
-  in `Orkeon.Tools.Rag`. Opt-in: `AddOrkeonRag(configuration)`
-  (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` — called by the `.ork.ts` path of
-  `orkeon run`, `orkeon rag` and the REPL (`orkeon-repl` registers both by default), **not** by
-  the YAML path of `orkeon run`, where crew `rag:`/`knowledge:` blocks are therefore inert and
-  the `rag_*` tools cannot be named by a crew agent (backstage GAP-02); wherever the host
-  registers them, a crew agent that lists one receives it. The legacy
+  in `Orkeon.Tools.Rag`. Opt-in for a hand-built container: `AddOrkeonRag(configuration)`
+  (`Orkeon.Rag.DependencyInjection`) + `AddOrkeonRagTools()` — called by every `RunnerHost` host
+  (`orkeon run` on YAML, crew directories and `.ork.ts`; `orkeon-host`; `orkeon rag`) and by the
+  REPL; the CLI adds `AddOrkeonOnnxReranker()`. Crew `rag:` collections are ingested at load,
+  `knowledge:` attachments retrieve through their profile (`profile` → `rag.defaults.profile` →
+  `Orkeon:Rag:Profile`, retrieval half only), `rag_search`/`rag_eval` fall back to
+  `Orkeon:Rag:Collection`; nothing is resolved until a crew uses it (deferred proxies). A crew
+  agent that lists a `rag_*` tool receives it. The legacy
   `Orkeon.Infrastructure.Knowledge` / `Orkeon.Application.{Interfaces.Rag,Rag}`
   namespaces are **removed** (breaking, no shims — migration table in `CHANGELOG.md`).
 - ✅ **NEW**: RAG quality phase (RAG-04) — offline evaluation harness

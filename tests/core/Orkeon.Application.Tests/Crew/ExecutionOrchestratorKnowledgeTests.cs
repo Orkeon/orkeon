@@ -236,10 +236,10 @@ public class ExecutionOrchestratorKnowledgeTests
     // ── DI wiring (RegisterExecutionOrchestrator) ───────────────────────────
 
     [Fact]
-    public void AddOrkeonApplication_WithAugmenterRegistered_WiresItOnTheOrchestrator()
+    public async System.Threading.Tasks.Task AddOrkeonApplication_WithAugmenterRegistered_WiresItOnTheOrchestrator()
     {
         var services = CreateServiceCollectionWithRequiredDeps();
-        var augmenter = new FakeKnowledgeContextAugmenter();
+        var augmenter = new FakeKnowledgeContextAugmenter { BlockToReturn = SampleBlock() };
         services.AddSingleton<IKnowledgeContextAugmenter>(augmenter);
         services.AddOrkeonApplication();
 
@@ -248,7 +248,31 @@ public class ExecutionOrchestratorKnowledgeTests
         var orchestrator = Assert.IsType<ExecutionOrchestrator>(
             scope.ServiceProvider.GetRequiredService<IExecutionOrchestrator>());
 
-        Assert.Same(augmenter, orchestrator.KnowledgeAugmenter);
+        // The orchestrator holds a deferred view (GAP-02) that reaches the registered one.
+        Assert.NotNull(orchestrator.KnowledgeAugmenter);
+        var block = await orchestrator.KnowledgeAugmenter!.BuildContextAsync(
+            CreateAgent(withKnowledge: true).KnowledgeAttachments, "q", TestContext.Current.CancellationToken);
+        Assert.Equal(SampleBlockText, block?.Text);
+        Assert.Single(augmenter.Calls);
+    }
+
+    [Fact]
+    public void AddOrkeonApplication_ResolvesTheAugmenterOnlyWhenKnowledgeIsNeeded()
+    {
+        // GAP-02: every runner registers the RAG subsystem. A RAG configuration that cannot
+        // be built (unknown store alias, unknown profile) must not fail the construction of
+        // the orchestrator — that is every crew, including those without knowledge:.
+        var services = CreateServiceCollectionWithRequiredDeps();
+        services.AddSingleton<IKnowledgeContextAugmenter>(
+            _ => throw new InvalidOperationException("Unknown RAG document-store provider 'mongodb'."));
+        services.AddOrkeonApplication();
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        var orchestrator = Assert.IsType<ExecutionOrchestrator>(
+            scope.ServiceProvider.GetRequiredService<IExecutionOrchestrator>());
+
+        Assert.NotNull(orchestrator.KnowledgeAugmenter);
     }
 
     [Fact]

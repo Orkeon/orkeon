@@ -159,19 +159,23 @@ séparée. `preset` (`analysis` / `strict` / `creative`) fournit un socle de rè
 ## Configuration Knowledge & RAG
 
 Deux blocs complémentaires (RAG-03/C4). Le bloc crew `rag:` déclare les **collections**
-(provider, sources d'ingestion, chunking, défauts globaux). Le bloc agent `knowledge:`
-**attache** des collections à un agent avec ses options de récupération. À l'assemblage du
-contexte d'exécution, les collections attachées sont interrogées avec l'entrée de la tâche et
-les résultats injectés dans le prompt utilisateur de l'agent sous forme d'extraits numérotés et
-cités (`IKnowledgeContextAugmenter`, qui honore `top_k`, `min_score` et `max_context_tokens`).
-Les deux moitiés exigent le sous-système RAG opt-in (`AddOrkeonRag(configuration)`) : à la
-**création** de la crew (`CrewFactory`), les collections déclarées sont ingérées de façon
-incrémentale (`IRagCollectionsBootstrapper` — une source inchangée n'est pas ré-embeddée ;
-`CrewFactoryOptions.PrepareRagCollections = false` désactive l'étape) ; sans le sous-système, un
-bloc `rag:` déclaré journalise un warning et les attachements n'injectent rien. Le parsing du YAML
-lui-même ne déclenche jamais d'ingestion. `rag.provider`, `rag.defaults.profile` et le `profile`
-d'un attachement sont parsés et enregistrés mais pas encore consommés — la récupération passe par
-l'`IDocumentStore` configuré sous `Orkeon:Rag` (voir [Pipeline RAG](./rag-pipeline.md)).
+(sources d'ingestion, chunking) et les défauts globaux. Le bloc agent `knowledge:` **attache**
+des collections à un agent avec ses options de récupération. À l'assemblage du contexte
+d'exécution, chaque collection attachée est interrogée avec l'entrée de la tâche par la moitié
+retrieval du pipeline de son **profil** — le `profile` de l'attachement, sinon
+`rag.defaults.profile`, sinon `Orkeon:Rag:Profile` — et les résultats sont injectés dans le
+prompt utilisateur de l'agent sous forme d'extraits numérotés et cités
+(`IKnowledgeContextAugmenter`, qui honore `top_k`, `min_score` et `max_context_tokens`). Les deux
+moitiés exigent le sous-système RAG (`AddOrkeonRag(configuration)`), que tout hôte runner
+enregistre (`orkeon run` sous toutes ses formes, `orkeon-host`) : à la **création** de la crew
+(`CrewFactory`), les collections déclarées sont ingérées de façon incrémentale
+(`IRagCollectionsBootstrapper` — une source inchangée n'est pas ré-embeddée ;
+`CrewFactoryOptions.PrepareRagCollections = false` désactive l'étape, comme le fait
+`--validate`). Sur un hôte sans le sous-système, un bloc `rag:` déclaré et les `knowledge:` de
+chaque agent journalisent un warning et n'injectent rien. Le parsing du YAML lui-même ne
+déclenche jamais d'ingestion. Le document store relève de l'hôte (`Orkeon:Rag:Provider`, voir
+[Pipeline RAG](./rag-pipeline.md)) ; l'ancienne clé `rag.provider` a disparu et provoque un
+warning au chargement.
 
 Forme courte — attacher des collections avec les options par défaut :
 

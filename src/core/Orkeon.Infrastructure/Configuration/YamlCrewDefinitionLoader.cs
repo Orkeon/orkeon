@@ -102,6 +102,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
             throw new FileNotFoundException($"tasks.yaml not found in directory: {directoryPath}", tasksFilePath);
 
         crewYaml = YamlAnchorPreprocessor.Preprocess(crewYaml);
+        WarnOnRetiredKeys(crewYaml);
         agentsYaml = YamlAnchorPreprocessor.Preprocess(agentsYaml);
         tasksYaml = YamlAnchorPreprocessor.Preprocess(tasksYaml);
 
@@ -132,6 +133,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
                 $"config.yaml (or crew.yaml) not found in directory: {root}", root + "/config.yaml");
 
         settingsYaml = YamlAnchorPreprocessor.Preprocess(settingsYaml);
+        WarnOnRetiredKeys(settingsYaml);
         var crewSettings = _yamlSerializer.Deserialize<CrewSettingsYamlConfig>(settingsYaml);
 
         var agents = await LoadEntityFolderAsync<AgentYamlConfig>(root + "/agents", ct).ConfigureAwait(false);
@@ -238,6 +240,7 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
         ArgumentException.ThrowIfNullOrWhiteSpace(yamlContent);
 
         yamlContent = YamlAnchorPreprocessor.Preprocess(yamlContent);
+        WarnOnRetiredKeys(yamlContent);
         var crewYaml = _yamlSerializer.Deserialize<CrewYamlConfig>(yamlContent);
 
         var config = _mapper.BuildConfiguration(
@@ -265,6 +268,19 @@ public partial class YamlCrewDefinitionLoader : ICrewDefinitionLoader
 
         return System.Threading.Tasks.Task.FromResult(config);
     }
+
+    /// <summary>
+    /// Warns about every removed key the crew document still writes (GAP-02): the
+    /// deserializer ignores unknown keys, so without this the value would vanish unnoticed.
+    /// </summary>
+    private void WarnOnRetiredKeys(string crewYaml)
+    {
+        foreach (var key in RetiredCrewYamlKeys.Find(crewYaml))
+            LogRetiredKey(key.Path, key.Guidance);
+    }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Warning, Message = "Crew YAML key '{Key}' was removed and is ignored: {Guidance}.")]
+    private partial void LogRetiredKey(string key, string guidance);
 
     /// <inheritdoc />
     public CrewDefinitionValidationResult Validate(CrewConfiguration config)

@@ -65,17 +65,19 @@ public sealed class RunMeterCoverageTests : IDisposable
             {
                 services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
                 services.AddOrkeonLlmProvider(_ => vendor);
+                // The researcher's knowledge base: a real staged pipeline, answering through
+                // the host's chat client. Registered as the host's pipeline: every runner host
+                // carries rag_search (GAP-02), and the host's tool of that name is the one the
+                // agent calls.
+                services.AddSingleton<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline>(sp => new StagedRagPipeline(
+                    new OneChunkDocumentStore("The warranty lasts two years."),
+                    new StubEmbeddingProvider(),
+                    sp.GetRequiredService<IChatClient>()));
                 observed.WireServices(services);
             });
         using var scope = host.Services.CreateScope();
         var services = scope.ServiceProvider;
-
-        // The researcher's knowledge base: a real staged pipeline, answering through the
-        // host's chat client.
-        var pipeline = new StagedRagPipeline(
-            new OneChunkDocumentStore("The warranty lasts two years."),
-            new StubEmbeddingProvider(),
-            services.GetRequiredService<IChatClient>());
+        var pipeline = services.GetRequiredService<Orkeon.Rag.Abstractions.Interfaces.IRagPipeline>();
 
         var manager = new AgentBuilder().Role("Manager").Goal("Hand out the work").Build();
         var researcher = new AgentBuilder().Role("Researcher").Goal("Answer from the knowledge base")

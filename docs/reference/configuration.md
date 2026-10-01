@@ -137,13 +137,14 @@ runtime degrades to the echo provider and warns once. See
 ### RAG (`Orkeon:Rag`)
 
 Details and semantics: [RAG pipeline](../architecture/rag-pipeline.md). Everything below
-requires the opt-in `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection`).
+requires `AddOrkeonRag(configuration)` (`Orkeon.Rag.DependencyInjection`), which every runner host
+(`orkeon run`, `orkeon-host`) calls.
 
 | Section | Configures |
 |---|---|
 | `Orkeon:Rag:Profile` | Profile preset `fast` (default) / `balanced` / `quality` / `adaptive` / `corrective`; any `Orkeon:Rag` key overrides the preset key-by-key |
 | `Orkeon:Rag:Provider`, `Orkeon:Rag:ConnectionString`, `Orkeon:Rag:ProviderOptions` | Dedicated RAG document-store provider (`RagStoreOptions` — a `MemoryProviderFactory` type alias plus its options); default is the ambient `IMemoryProvider` |
-| `Orkeon:Rag:Collection` | Default collection name |
+| `Orkeon:Rag:Collection` | Collection `rag_search` queries when the agent names none (unset: `default`); `rag_eval` uses it for a dataset that names no collection and brings no corpus |
 | `Orkeon:Rag:Retrieval` (`TopK`, `CandidateK`, `MinScore`) | Retrieval stage bounds |
 | `Orkeon:Rag:Retrieval:Hybrid` (`Enabled`, `RrfK`), `Orkeon:Rag:Retrieval:Mmr` (`Enabled`, `Lambda`) | Hybrid BM25+RRF retrieval, opt-in MMR |
 | `Orkeon:Rag:Rerank` (`Enabled`, `Kind`, `TopN`) | Reranker selection and depth |

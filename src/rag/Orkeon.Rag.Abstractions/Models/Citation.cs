@@ -21,6 +21,14 @@ public sealed record Citation
     /// <summary>Short excerpt of the cited content.</summary>
     public string? Snippet { get; init; }
 
+    /// <summary>
+    /// Full text of the cited passage, as the pipeline assembled it into its context;
+    /// <c>null</c> when the producer only supplies the <see cref="Snippet"/>. A caller
+    /// that injects the passage itself (the knowledge-context augmenter, which builds
+    /// its prompt block from a retrieval-only run) reads this rather than the snippet.
+    /// </summary>
+    public string? Content { get; init; }
+
     /// <summary>Relevance score the chunk carried when it was cited.</summary>
     public double Score { get; init; }
 

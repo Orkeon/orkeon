@@ -9,17 +9,19 @@ namespace Orkeon.Infrastructure.Tests.Configuration;
 /// <summary>
 /// Coverage for the RAG-03/C4 YAML surface: agent-level <c>knowledge:</c> blocks
 /// (short form = list of collection names, long form = list of mappings) and the
-/// crew-level <c>rag:</c> block (provider, collections with sources/chunking, defaults),
+/// crew-level <c>rag:</c> block (collections with sources/chunking, defaults; the retired
+/// <c>provider</c> key draws a warning),
 /// through the real <see cref="YamlDotNetSerializer"/> + <see cref="YamlCrewDefinitionLoader"/>
 /// pipeline. Parsing only — no ingestion is triggered.
 /// </summary>
 public class KnowledgeAndRagYamlParsingTests
 {
-    private static YamlCrewDefinitionLoader BuildLoader()
+    private static YamlCrewDefinitionLoader BuildLoader(
+        Microsoft.Extensions.Logging.ILogger<YamlCrewDefinitionLoader>? logger = null)
         => new(
             new YamlDotNetSerializer(),
             new FakeFileSystemService(),
-            NullLogger<YamlCrewDefinitionLoader>.Instance);
+            logger ?? NullLogger<YamlCrewDefinitionLoader>.Instance);
 
     [Fact]
     public async Task LoadFromString_ShortForm_AttachesCollectionsWithDefaults()
@@ -161,14 +163,13 @@ agents:
     }
 
     [Fact]
-    public async Task LoadFromString_RagBlock_MapsProviderCollectionsAndDefaults()
+    public async Task LoadFromString_RagBlock_MapsCollectionsAndDefaults()
     {
         var loader = BuildLoader();
         var yaml = """
 name: rag-crew
 goal: x
 rag:
-  provider: Sqlite
   collections:
     produits:
       sources: ["./data/catalogue/**/*.pdf", "./data/faq.md"]
@@ -186,8 +187,7 @@ agents:
         var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         Assert.NotNull(config.Rag);
-        Assert.Equal("Sqlite", config.Rag!.Provider);
-        Assert.Equal("balanced", config.Rag.DefaultProfile);
+        Assert.Equal("balanced", config.Rag!.DefaultProfile);
         Assert.Equal(2, config.Rag.Collections.Count);
 
         var produits = config.Rag.Collections["produits"];
@@ -261,14 +261,58 @@ tasks:
 name: rag-crew
 goal: x
 rag:
-  provider: "  "
+  defaults: { profile: "  " }
 """;
 
         var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
 
         Assert.NotNull(config.Rag);
-        Assert.Null(config.Rag!.Provider);
-        Assert.Empty(config.Rag.Collections);
+        Assert.Empty(config.Rag!.Collections);
         Assert.Null(config.Rag.DefaultProfile);
+    }
+
+    [Fact]
+    public async Task LoadFromString_RetiredRagProviderKey_DrawsAWarningAndIsIgnored()
+    {
+        // GAP-02: rag.provider was parsed and read by nobody — the store is the host's
+        // choice (Orkeon:Rag:Provider). The key is gone; a crew that still writes it is
+        // told so instead of being ignored in silence.
+        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<YamlCrewDefinitionLoader>();
+        var loader = BuildLoader(logger);
+        var yaml = """
+name: rag-crew
+goal: x
+rag:
+  provider: Sqlite
+  collections:
+    docs: { sources: ["./docs/"] }
+""";
+
+        var config = await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.True(config.Rag!.Collections.ContainsKey("docs"));
+        var warning = Assert.Single(logger.LogEntries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("rag.provider", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("Orkeon:Rag:Provider", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task LoadFromString_WithoutRetiredKeys_DoesNotWarn()
+    {
+        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<YamlCrewDefinitionLoader>();
+        var loader = BuildLoader(logger);
+        var yaml = """
+name: rag-crew
+goal: x
+rag:
+  collections:
+    docs: { sources: ["./docs/"] }
+agents:
+  support: { role: Support, goal: Answer, knowledge: [docs] }
+""";
+
+        await loader.LoadFromStringAsync(yaml, TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(logger.LogEntries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
     }
 }

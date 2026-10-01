@@ -346,6 +346,46 @@ public class RagServiceCollectionExtensionsTests
     }
 
     [Fact]
+    public async Task AddOrkeonRag_UnknownProvider_DoesNotFailTheCrewSideServicesUntilTheyAreUsed()
+    {
+        // GAP-02: every runner now registers the subsystem, and the crew factory and the
+        // execution orchestrator resolve these two services for every crew. A store alias
+        // nobody uses must not fail a crew that declares no rag:/knowledge: — the failure
+        // belongs to the first ingestion or retrieval.
+        var configuration = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["Orkeon:Rag:Provider"] = "mongodb",
+            })
+            .Build();
+
+        using var chat = new FakeChatClient();
+        var services = new ServiceCollection();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService().AddMount("/kb"));
+        services.AddSingleton<Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory>(
+            new FakeMemoryProviderFactory());
+        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IChatClient>(chat);
+
+        services.AddOrkeonRag(configuration);
+
+        using var provider = services.BuildServiceProvider();
+        var bootstrapper = provider.GetRequiredService<IRagCollectionsBootstrapper>();
+        Assert.NotNull(provider.GetRequiredService<IKnowledgeContextAugmenter>());
+
+        var ex = await Assert.ThrowsAsync<InvalidOperationException>(() => bootstrapper.PrepareAsync(
+            new Orkeon.Domain.Configuration.RagCrewConfig
+            {
+                Collections = new Dictionary<string, Orkeon.Domain.Configuration.RagCollectionConfig>
+                {
+                    ["docs"] = new() { Sources = ["/kb/a.md"] },
+                },
+            },
+            TestContext.Current.CancellationToken));
+        Assert.Contains("mongodb", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void AddOrkeonRag_NoProviderOption_UsesTheAmbientMemoryProvider()
     {
         var factory = new FakeMemoryProviderFactory();

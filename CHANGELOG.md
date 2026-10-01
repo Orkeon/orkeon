@@ -7,6 +7,53 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — RAG runs under `orkeon run crew.yaml`, and knowledge attachments use their profile **[breaking]**
+
+A YAML crew's `rag:` and `knowledge:` blocks did nothing under `orkeon run`: loading logged
+*"declares a rag: block but the RAG subsystem is not registered"*, ingested nothing, and the
+agent answered without a single excerpt — nothing said so. The same held for a crew
+directory, `--events`, a declarative `.ork.ts` crew and `orkeon-host`. Even where the
+subsystem was registered, an attachment's `profile`, `rag.defaults.profile`, `rag.provider`
+and `Orkeon:Rag:Collection` were read and then ignored (GAP-02):
+
+- **Every runner host registers the RAG subsystem and its tools.** `RunnerHost` calls
+  `AddOrkeonRag` + `AddOrkeonRagTools`, so `orkeon run` in all its forms and `orkeon-host`
+  ingest a crew's `rag:` collections when it loads, inject its agents' `knowledge:` into their
+  prompts, and let an agent list `rag_search`, `rag_ingest` or `rag_eval` in `tools:`. The CLI
+  adds the ONNX reranker on every path (`balanced`/`quality`), not only for scripts.
+  `--validate` still ingests nothing. The `txt_search`/`mdx_search`/`pdf_search`/
+  `directory_search` tools, which failed at every call in the runners for want of the
+  subsystem, now search.
+- **Nothing is resolved until a crew uses it.** The bootstrapper, the knowledge augmenter, the
+  three tools and the ephemeral search engine resolve the store, its provider and the
+  embeddings at their first use: a crew without `rag:`/`knowledge:` loads no model for them,
+  and an unknown `Orkeon:Rag:Provider` fails the first ingestion or retrieval, no longer every
+  crew.
+- **An attachment retrieves through its profile**: its `profile`, else `rag.defaults.profile`
+  (copied onto it at crew load), else `Orkeon:Rag:Profile`. The augmenter runs that pipeline's
+  retrieval half (`IRagRetrievalCapable`) — hybrid and rerank as the profile says, never a
+  nested generation. `corrective` and `adaptive` cannot retrieve alone and fail the task with a
+  message saying so. `min_score` now filters on the score the profile reports (the
+  cross-encoder's under a reranking profile).
+- **`Orkeon:Rag:Collection`** is the collection `rag_search` queries when the agent names
+  none (else `default`), and the one `rag_eval` evaluates for a dataset that names no
+  collection and brings no corpus (`RagEvalRunRequest.DefaultCollection`) — a corpus is never
+  ingested into it.
+- **An agent with `knowledge:` on a host without the subsystem** gets a load-time warning, as a
+  `rag:` block already did.
+- **`rag.provider` is removed** (`RagCrewConfig.Provider`, `RagYamlConfig.Provider`): the store
+  is the host's (`Orkeon:Rag:Provider`). A crew that still writes it gets a warning at load.
+- `KnowledgeContextAugmenter` is built over an `IRagProfileResolver` and a default profile,
+  and `Citation.Content` carries the full cited passage. `AddOrkeonRagTools` is idempotent.
+
+Migration: delete `rag.provider` from your crews and set `Orkeon:Rag:Provider` in the settings
+instead. A host that called `AddOrkeonRag`/`AddOrkeonRagTools` in a `RunnerHost`
+`configureServices` can drop the calls; a double registered there still wins (last
+registration). `new KnowledgeContextAugmenter(store, embeddings)` becomes
+`new KnowledgeContextAugmenter(profileResolver, defaultProfile)`. A crew whose attachments (or
+`Orkeon:Rag:Profile`) name `corrective` or `adaptive` must pick `fast`, `balanced` or
+`quality` for its knowledge.
+
 ### Changed — the consensual vote weighs the answers **[breaking]**
 
 A consensual crew's vote did not read what its agents wrote: every agent cast one ballot for

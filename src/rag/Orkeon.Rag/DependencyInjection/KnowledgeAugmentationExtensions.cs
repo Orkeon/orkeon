@@ -1,8 +1,9 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
-using Orkeon.Application.Interfaces.Ports;
+using Orkeon.Domain.Constants.Rag;
 using Orkeon.Rag.Abstractions.Interfaces;
+using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Augmentation;
 
 namespace Orkeon.Rag.DependencyInjection;
@@ -18,8 +19,10 @@ namespace Orkeon.Rag.DependencyInjection;
 public static class KnowledgeAugmentationExtensions
 {
     /// <summary>
-    /// Registers the default <see cref="IKnowledgeContextAugmenter"/> over the
-    /// ambient <see cref="IDocumentStore"/> and <see cref="IEmbeddingProvider"/>.
+    /// Registers the default <see cref="IKnowledgeContextAugmenter"/> over the ambient
+    /// <see cref="IRagProfileResolver"/>: each attachment retrieves through the pipeline of
+    /// its profile, and an attachment without one uses the <see cref="RagOptions.Profile"/>
+    /// of the host (<c>Orkeon:Rag:Profile</c>, <c>fast</c> when unset).
     /// <c>TryAdd</c> semantics — a host-registered augmenter wins.
     /// </summary>
     /// <param name="services">The service collection.</param>
@@ -29,8 +32,8 @@ public static class KnowledgeAugmentationExtensions
         ArgumentNullException.ThrowIfNull(services);
 
         services.TryAddSingleton<IKnowledgeContextAugmenter>(sp => new KnowledgeContextAugmenter(
-            sp.GetRequiredService<IDocumentStore>(),
-            sp.GetRequiredService<IEmbeddingProvider>(),
+            sp.GetRequiredService<IRagProfileResolver>(),
+            sp.GetService<RagOptions>()?.Profile ?? RagDefaults.DefaultProfile,
             sp.GetService<ILogger<KnowledgeContextAugmenter>>()));
 
         return services;

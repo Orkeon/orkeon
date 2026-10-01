@@ -710,6 +710,7 @@ public sealed partial class StagedRagPipeline : IRagPipeline, IRagRetrievalCapab
                 Snippet = chunk.Content.Length <= CitationSnippetLength
                     ? chunk.Content
                     : chunk.Content[..CitationSnippetLength],
+                Content = chunk.Content,
                 Score = scored.Score,
                 StartOffset = chunk.StartOffset,
                 EndOffset = chunk.EndOffset,

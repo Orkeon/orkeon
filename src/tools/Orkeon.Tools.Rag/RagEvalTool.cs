@@ -26,6 +26,7 @@ public class RagEvalTool : IBaseTool
     private const int DefaultMetricCutoff = 5;
 
     private readonly IRagEvalHarness _harness;
+    private readonly Func<string?> _defaultCollection;
 
     /// <inheritdoc />
     public string Name => "rag_eval";
@@ -48,7 +49,7 @@ public class RagEvalTool : IBaseTool
                 Required: true),
             ["collection"] = new ParameterSchema(
                 "string",
-                "Collection to evaluate (default: the dataset's collection, else 'rag-eval-{dataset name}')",
+                "Collection to evaluate (default: the dataset's collection; for a dataset without corpus, the configured default collection; else 'rag-eval-{dataset name}')",
                 Required: false),
             ["profile"] = new ParameterSchema(
                 "string",
@@ -76,10 +77,31 @@ public class RagEvalTool : IBaseTool
         });
 
     /// <summary>Initializes a new instance of <see cref="RagEvalTool"/>.</summary>
-    public RagEvalTool(IRagEvalHarness harness)
+    public RagEvalTool(IRagEvalHarness harness) : this(harness, (string?)null)
+    {
+    }
+
+    /// <summary>Initializes a new instance of <see cref="RagEvalTool"/> with the host's default collection.</summary>
+    /// <param name="harness">The evaluation harness.</param>
+    /// <param name="defaultCollection">
+    /// The host's default collection (<c>Orkeon:Rag:Collection</c>), handed to the harness
+    /// as <see cref="RagEvalRunRequest.DefaultCollection"/> when the call names none.
+    /// </param>
+    public RagEvalTool(IRagEvalHarness harness, string? defaultCollection)
+        : this(harness, () => defaultCollection)
+    {
+    }
+
+    /// <summary>
+    /// Deferred form used by <c>AddOrkeonRagTools</c>: the default collection is read at the
+    /// first call, so building the tool resolves nothing of the RAG subsystem.
+    /// </summary>
+    internal RagEvalTool(IRagEvalHarness harness, Func<string?> defaultCollectionSource)
     {
         ArgumentNullException.ThrowIfNull(harness);
+        ArgumentNullException.ThrowIfNull(defaultCollectionSource);
         _harness = harness;
+        _defaultCollection = defaultCollectionSource;
     }
 
     /// <inheritdoc />
@@ -92,7 +114,9 @@ public class RagEvalTool : IBaseTool
         if (string.IsNullOrWhiteSpace(dataset))
             return Task.FromResult(new ToolCallResponse(false, null, "dataset parameter is required"));
 
-        return RunAndFormatAsync(BuildRunRequest(request.Parameters, dataset), cancellationToken);
+        return RunAndFormatAsync(
+            BuildRunRequest(request.Parameters, dataset) with { DefaultCollection = _defaultCollection() },
+            cancellationToken);
     }
 
     private async Task<ToolCallResponse> RunAndFormatAsync(

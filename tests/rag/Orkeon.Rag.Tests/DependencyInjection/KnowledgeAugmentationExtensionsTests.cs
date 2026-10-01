@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Augmentation;
 using Orkeon.Rag.DependencyInjection;
@@ -17,14 +16,31 @@ public class KnowledgeAugmentationExtensionsTests
     public void AddOrkeonKnowledgeAugmentation_RegistersTheDefaultAugmenter()
     {
         var services = new ServiceCollection();
-        services.AddSingleton<IDocumentStore>(new StubDocumentStore());
-        services.AddSingleton<IEmbeddingProvider>(new FakeEmbeddingProvider());
+        services.AddSingleton<IRagProfileResolver>(new RecordingProfileResolver { Pipeline = new FakeRetrievalPipeline() });
 
         services.AddOrkeonKnowledgeAugmentation();
         using var provider = services.BuildServiceProvider();
 
         var augmenter = provider.GetRequiredService<IKnowledgeContextAugmenter>();
         Assert.IsType<KnowledgeContextAugmenter>(augmenter);
+    }
+
+    [Fact]
+    public async Task AddOrkeonKnowledgeAugmentation_AnAttachmentWithoutProfileUsesTheHostProfile()
+    {
+        var resolver = new RecordingProfileResolver { Pipeline = new FakeRetrievalPipeline() };
+        var services = new ServiceCollection();
+        services.AddSingleton<IRagProfileResolver>(resolver);
+        services.AddSingleton(new Orkeon.Rag.Abstractions.Options.RagOptions { Profile = "quality" });
+
+        services.AddOrkeonKnowledgeAugmentation();
+        using var provider = services.BuildServiceProvider();
+
+        await provider.GetRequiredService<IKnowledgeContextAugmenter>().BuildContextAsync(
+            [Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("docs")], "query",
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(["quality"], resolver.ResolvedProfiles);
     }
 
     [Fact]

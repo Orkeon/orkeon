@@ -773,6 +773,7 @@ public sealed partial class CorrectiveRagPipeline : IRagPipeline
                 Snippet = chunk.Content.Length <= CitationSnippetLength
                     ? chunk.Content
                     : chunk.Content[..CitationSnippetLength],
+                Content = chunk.Content,
                 Score = scored.Score,
                 StartOffset = chunk.StartOffset,
                 EndOffset = chunk.EndOffset,

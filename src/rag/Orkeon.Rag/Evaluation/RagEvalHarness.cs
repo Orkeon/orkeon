@@ -21,8 +21,19 @@ public sealed record RagEvalRunRequest
     /// </summary>
     public ImmutableList<string> Profiles { get; init; } = ImmutableList<string>.Empty;
 
-    /// <summary>Collection override; <c>null</c> uses the dataset default (or <c>rag-eval-{name}</c>).</summary>
+    /// <summary>
+    /// Collection override; <c>null</c> uses the dataset default, then — for a dataset that
+    /// brings no corpus — <see cref="DefaultCollection"/>, then <c>rag-eval-{name}</c>.
+    /// </summary>
     public string? Collection { get; init; }
+
+    /// <summary>
+    /// The host's default collection (<c>Orkeon:Rag:Collection</c>). Used only when neither
+    /// <see cref="Collection"/> nor the dataset names one and the dataset brings no corpus:
+    /// such a dataset evaluates an existing knowledge base, while a corpus is always
+    /// ingested into the dataset's own collection, never into the host's.
+    /// </summary>
+    public string? DefaultCollection { get; init; }
 
     /// <summary>Metric cutoff (recall@K / precision@K). Defaults to 5.</summary>
     public int K { get; init; } = 5;
@@ -122,6 +133,7 @@ public sealed partial class RagEvalHarness : IRagEvalHarness
             .ConfigureAwait(false);
         var collection = request.Collection
             ?? dataset.DefaultCollection
+            ?? (dataset.CorpusPath is null ? request.DefaultCollection : null)
             ?? $"rag-eval-{dataset.Name}";
 
         IngestionReport? ingestion = null;

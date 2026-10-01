@@ -269,15 +269,14 @@ public class ResponseSchemaYamlConfig
 }
 
 /// <summary>
-/// YAML model for the crew-level <c>rag:</c> block (RAG-03/C4, plan §8.2): provider,
-/// declared collections with their ingestion sources, and crew-wide retrieval defaults.
-/// Parsed into <see cref="Orkeon.Domain.Configuration.RagCrewConfig"/> without triggering
-/// any ingestion (kickoff wiring is a later lot).
+/// YAML model for the crew-level <c>rag:</c> block (RAG-03/C4, plan §8.2): declared
+/// collections with their ingestion sources, and crew-wide retrieval defaults. Parsed into
+/// <see cref="Orkeon.Domain.Configuration.RagCrewConfig"/>; the collections are ingested
+/// when the crew is created. The former <c>provider</c> key is gone (GAP-02): the loader
+/// warns when a crew still writes it.
 /// </summary>
 public class RagYamlConfig
 {
-    /// <summary>Gets or sets the memory/vector store provider name for the RAG collections.</summary>
-    public string? Provider { get; set; }
     /// <summary>Gets or sets the declared collections keyed by collection name.</summary>
     public Dictionary<string, RagCollectionYamlConfig>? Collections { get; set; }
     /// <summary>Gets or sets the crew-wide retrieval defaults.</summary>

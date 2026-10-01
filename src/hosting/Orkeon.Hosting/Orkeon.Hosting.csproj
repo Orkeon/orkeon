@@ -27,6 +27,9 @@
     <ProjectReference Include="..\..\core\Orkeon.Application\Orkeon.Application.csproj" />
     <ProjectReference Include="..\..\core\Orkeon.Infrastructure\Orkeon.Infrastructure.csproj" />
     <ProjectReference Include="..\..\analysis\Orkeon.Analysis\Orkeon.Analysis.csproj" />
+    <!-- GAP-02: every runner registers the RAG subsystem and its agent tools. The ONNX
+         reranker stays with the CLI, so its weights are not carried by every host. -->
+    <ProjectReference Include="..\..\rag\Orkeon.Rag\Orkeon.Rag.csproj" />
     <ProjectReference Include="..\..\scripting\Orkeon.Scripting\Orkeon.Scripting.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Abstractions\Orkeon.Tools.Abstractions.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Analysis\Orkeon.Tools.Analysis.csproj" />
@@ -36,6 +39,7 @@
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Embeddings.Local\Orkeon.Tools.Embeddings.Local.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.EventHub\Orkeon.Tools.EventHub.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.FileSystem\Orkeon.Tools.FileSystem.csproj" />
+    <ProjectReference Include="..\..\tools\Orkeon.Tools.Rag\Orkeon.Tools.Rag.csproj" />
     <ProjectReference Include="..\..\tools\Orkeon.Tools.Web\Orkeon.Tools.Web.csproj" />
   </ItemGroup>
 

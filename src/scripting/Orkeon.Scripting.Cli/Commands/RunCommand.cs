@@ -12,10 +12,8 @@ using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.SharedKernel;
 using Orkeon.Domain.Tools;
 using Orkeon.Hosting;
-using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Scripting.Configuration;
-using Orkeon.Tools.Rag.DependencyInjection;
 using Orkeon.Scripting.Internal;
 using Orkeon.Scripting.Toolchain;
 
@@ -470,12 +468,27 @@ internal static partial class RunCommand
             return await RunnerExecution.RunOneShotAsync(
                 ToRunnerOptions(options),
                 "orkeon",
-                configureServices: (_, services) => services.AddSemanticSearchTool())
+                configureServices: (_, services) =>
+                {
+                    services.AddSemanticSearchTool();
+                    AddCliRagServices(services);
+                })
                 .ConfigureAwait(false);
         }
 
         return await RunWithEventsAsync(options).ConfigureAwait(false);
     }
+
+    /// <summary>
+    /// What the CLI adds to the RAG subsystem every runner host registers (GAP-02): the ONNX
+    /// cross-encoder the <c>balanced</c> and <c>quality</c> profiles rerank with — the same
+    /// registration as <c>orkeon rag</c>. Without it a crew or a script asking for either
+    /// profile got "Unknown reranker 'onnx'". Weights are embedded (Orkeon.Rag.Onnx.Model) and
+    /// loaded lazily at first use, so a profile that never reranks pays nothing. One method
+    /// for the script path and the shared runner path, so the two cannot drift again.
+    /// </summary>
+    private static void AddCliRagServices(IServiceCollection services) =>
+        services.AddOrkeonOnnxReranker();
 
     /// <summary>
     /// The observed run (BUS-02): the same shared runner, with the event stream wired onto
@@ -502,6 +515,7 @@ internal static partial class RunCommand
             configureServices: (_, services) =>
             {
                 services.AddSemanticSearchTool();
+                AddCliRagServices(services);
                 observed.WireServices(services);
             })
             .ConfigureAwait(false);
@@ -659,19 +673,10 @@ internal static partial class RunCommand
             configureServices: (ctx, services) =>
             {
                 // RAG-03/C3: scripts get the first-class `rag.*` namespace plus the
-                // auto-exposed tools.ragSearch / tools.ragIngest. Registration is
-                // TryAdd-based and lazy — hosts without an embedding/chat setup only
-                // fail if a script actually touches the RAG surface.
-                services.AddOrkeonRag(ctx.Configuration);
-                // Same registration as `orkeon rag` (RagCommand): the ONNX
-                // cross-encoder is what the balanced/quality profiles rerank with.
-                // Without it a script asking for either got "Unknown reranker
-                // 'onnx'" — two of the five profiles were unreachable from
-                // `orkeon run` while being reachable from `orkeon rag`. Weights are
-                // embedded (Orkeon.Rag.Onnx.Model) and loaded lazily at first use,
-                // so a profile that never reranks pays nothing.
-                services.AddOrkeonOnnxReranker();
-                services.AddOrkeonRagTools();
+                // auto-exposed tools.ragSearch / tools.ragIngest — the subsystem and its
+                // tools come with every runner host (RunnerHost, GAP-02); the CLI adds
+                // the ONNX reranker on top, the same way on every path.
+                AddCliRagServices(services);
 
                 // --events: same observed seams as the shared-runner path. The script facade
                 // resolves its tools and sinks from this very host, so the decorated tools,

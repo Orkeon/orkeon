@@ -101,10 +101,11 @@ public partial class CrewFactory : ICrewFactory
         ValidateConfiguration(config);
 
         await PrepareRagCollectionsAsync(config, ct).ConfigureAwait(false);
+        WarnOnKnowledgeWithoutSubsystem(config);
 
         LogCreatingCrewWithAgentsAnd(config.Name, config.Agents.Count, config.Tasks.Count);
 
-        var agentMap = await CreateAgentsAsync(config.Agents, ct).ConfigureAwait(false);
+        var agentMap = await CreateAgentsAsync(config.Agents, config.Rag?.DefaultProfile, ct).ConfigureAwait(false);
         var taskMap = CreateTasks(config.Tasks, agentMap);
 
         SetupTaskDependencies(config.Tasks, taskMap);
@@ -172,6 +173,29 @@ public partial class CrewFactory : ICrewFactory
     [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}' declares a rag: block but the RAG subsystem is not registered — call AddOrkeonRag(configuration); declared collections were not ingested.")]
     private partial void LogRagDeclaredButSubsystemMissing(string crewName);
 
+    /// <summary>
+    /// An agent's <c>knowledge:</c> attachments are read at execution by the knowledge
+    /// augmenter, which only the RAG subsystem registers. Without it they are skipped — the
+    /// agent answers ungrounded — so the load says so, once per agent (GAP-02). The
+    /// bootstrapper stands for the subsystem: <c>AddOrkeonRag</c> registers both.
+    /// </summary>
+    private void WarnOnKnowledgeWithoutSubsystem(CrewConfiguration config)
+    {
+        if (_ragBootstrapper is not null)
+            return;
+
+        foreach (var agent in config.Agents.Where(a => a.KnowledgeAttachments.Count > 0))
+        {
+            LogKnowledgeDeclaredButSubsystemMissing(
+                config.Name,
+                agent.Role,
+                string.Join(", ", agent.KnowledgeAttachments.Select(a => a.Collection)));
+        }
+    }
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Crew '{CrewName}': agent '{AgentRole}' declares knowledge: ({Collections}) but the RAG subsystem is not registered — call AddOrkeonRag(configuration); no knowledge context will be injected into its prompts.")]
+    private partial void LogKnowledgeDeclaredButSubsystemMissing(string crewName, string agentRole, string collections);
+
     private void ValidateConfiguration(CrewConfiguration config)
     {
         var validation = _loader.Validate(config);
@@ -187,7 +211,14 @@ public partial class CrewFactory : ICrewFactory
         }
     }
 
-    private async Task<Dictionary<string, DomainAgent>> CreateAgentsAsync(IReadOnlyList<AgentConfiguration> agentConfigs, CancellationToken ct)
+    /// <param name="agentConfigs">The agents to create.</param>
+    /// <param name="defaultKnowledgeProfile">
+    /// The crew's <c>rag.defaults.profile</c>: copied onto every knowledge attachment that
+    /// names no profile of its own (GAP-02). <c>null</c> leaves those to the host default.
+    /// </param>
+    /// <param name="ct">Cancellation token.</param>
+    private async Task<Dictionary<string, DomainAgent>> CreateAgentsAsync(
+        IReadOnlyList<AgentConfiguration> agentConfigs, string? defaultKnowledgeProfile, CancellationToken ct)
     {
         var agentMap = new Dictionary<string, DomainAgent>();
 
@@ -209,7 +240,11 @@ public partial class CrewFactory : ICrewFactory
             if (resolvedTools.Count > 0)
                 builder.WithTools(resolvedTools);
             foreach (var attachment in agentConfig.KnowledgeAttachments)
-                builder.WithKnowledge(attachment);
+            {
+                builder.WithKnowledge(attachment.Profile is null && defaultKnowledgeProfile is not null
+                    ? attachment with { Profile = defaultKnowledgeProfile }
+                    : attachment);
+            }
 
             var agent = builder.Build();
 

@@ -9,11 +9,9 @@ using Orkeon.Hosting;
 using Orkeon.Rag.Abstractions;
 using Orkeon.Rag.Abstractions.Interfaces;
 using Orkeon.Rag.Abstractions.Models;
-using Orkeon.Rag.DependencyInjection;
 using Orkeon.Rag.Evaluation;
 using Orkeon.Rag.Onnx.DependencyInjection;
 using Orkeon.Tools.Rag;
-using Orkeon.Tools.Rag.DependencyInjection;
 
 namespace Orkeon.Scripting.Cli.Commands;
 
@@ -50,8 +48,9 @@ internal abstract class RagCommandOptionsBase
     internal string? WorkingDirectoryOverride { get; set; }
 
     /// <summary>
-    /// Test seam: services registered BEFORE <c>AddOrkeonRag</c>/<c>AddOrkeonRagTools</c>
-    /// so hand-written doubles win the TryAdd race over the real pipelines.
+    /// Test seam: services registered AFTER the RAG subsystem the runner host carries
+    /// (<c>AddOrkeonRag</c>/<c>AddOrkeonRagTools</c>), so hand-written doubles are the last
+    /// registration and win over the real pipelines.
     /// </summary>
     internal Action<HostBuilderContext, IServiceCollection>? ConfigureTestServices { get; set; }
 }
@@ -168,8 +167,8 @@ internal sealed class RagEvalCommandOptions : RagCommandOptionsBase
 /// <c>orkeon rag ingest | search | eval</c> — ingestion, retrieval and evaluation
 /// surfaces of the RAG subsystem (RAG-03/C3, RAG-04/C1). Builds the same
 /// shared host as the <c>run</c> verb (<see cref="RunnerHost.Build"/>: settings, VFS
-/// mounts, LLM/embedding wiring) and additionally registers the RAG subsystem
-/// (<c>AddOrkeonRag</c>) plus its agent tools (<c>AddOrkeonRagTools</c>). Relative
+/// mounts, LLM/embedding wiring, and — like every runner host since GAP-02 — the RAG
+/// subsystem and its agent tools) plus the ONNX reranker the CLI adds. Relative
 /// source paths resolve against an automatic <c>{cwd} → /workspace:ro</c> mount;
 /// ingestion state (manifests, default <c>/output/rag/manifests</c>) lands in an
 /// automatic <c>{cwd}/.orkeon → /output:rw</c> mount.
@@ -513,15 +512,13 @@ internal static class RagCommand
                 : null,
             configureServices: (ctx, services) =>
             {
-                // Test doubles first: AddOrkeonRag uses TryAdd*, so a pre-registered
-                // IIngestionPipeline/IRagPipeline wins over the real pipelines.
+                // The RAG subsystem and its tools come with every runner host (GAP-02);
+                // test doubles registered here are the last registration, so they win.
                 options.ConfigureTestServices?.Invoke(ctx, services);
-                services.AddOrkeonRag(ctx.Configuration);
                 // ONNX cross-encoder (embedded weights via Orkeon.Rag.Onnx.Model):
                 // required by the balanced/quality profiles, loaded lazily at
                 // first use — profiles that never rerank pay nothing.
                 services.AddOrkeonOnnxReranker();
-                services.AddOrkeonRagTools();
             });
     }
 

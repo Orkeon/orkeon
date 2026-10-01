@@ -1,27 +1,21 @@
 namespace Orkeon.Domain.Configuration;
 
 /// <summary>
-/// Typed model of the crew-level <c>rag:</c> YAML block (RAG-03/C4, plan §8.2).
-/// Declares the memory/vector provider, the knowledge collections with their ingestion
-/// sources, and crew-wide retrieval defaults. Parsing-only at this stage: kickoff-time
-/// ingestion consumes this configuration in a later lot — nothing here triggers I/O.
+/// Typed model of the crew-level <c>rag:</c> YAML block (RAG-03/C4, plan §8.2): the
+/// knowledge collections with their ingestion sources, ingested when the crew is created,
+/// and the crew-wide retrieval defaults. The document store itself is the host's choice
+/// (<c>Orkeon:Rag:Provider</c>), not the crew's. Nothing here triggers I/O.
 /// </summary>
 public sealed record RagCrewConfig
 {
-    /// <summary>
-    /// Gets the memory/vector store provider name used for the RAG collections
-    /// (e.g. "InMemory", "Redis", "Sqlite", "ChromaDb", "Pinecone", "LanceDb"),
-    /// or null to fall back to the crew's memory provider / global default.
-    /// </summary>
-    public string? Provider { get; init; }
-
     /// <summary>Gets the declared collections keyed by collection name (empty when none declared).</summary>
     public IReadOnlyDictionary<string, RagCollectionConfig> Collections { get; init; }
         = new Dictionary<string, RagCollectionConfig>(StringComparer.Ordinal);
 
     /// <summary>
-    /// Gets the default query profile applied to knowledge attachments that do not
-    /// declare their own (<c>rag.defaults.profile</c>), or null for the global default.
+    /// Gets the default retrieval profile applied to knowledge attachments that do not
+    /// declare their own (<c>rag.defaults.profile</c>), or null for the host default
+    /// (<c>Orkeon:Rag:Profile</c>). The crew factory copies it onto those attachments.
     /// </summary>
     public string? DefaultProfile { get; init; }
 }

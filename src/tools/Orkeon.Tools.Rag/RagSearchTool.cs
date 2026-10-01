@@ -20,7 +20,10 @@ namespace Orkeon.Tools.Rag;
 /// </summary>
 public class RagSearchTool : IBaseTool
 {
-    /// <summary>Collection queried when the agent names none.</summary>
+    /// <summary>
+    /// Collection queried when the agent names none and the host configures no
+    /// <c>Orkeon:Rag:Collection</c>.
+    /// </summary>
     public const string DefaultCollection = "default";
 
     /// <summary>Collection identifier that routes queries to the <see cref="IRaggableStore"/> code index.</summary>
@@ -28,6 +31,7 @@ public class RagSearchTool : IBaseTool
 
     private readonly IRagPipeline _ragPipeline;
     private readonly IRaggableStore? _raggableStore;
+    private readonly Func<string?> _defaultCollection;
 
     /// <inheritdoc />
     public string Name => "rag_search";
@@ -54,7 +58,7 @@ public class RagSearchTool : IBaseTool
                 Default: 3),
             ["collection"] = new ParameterSchema(
                 "string",
-                "Optional collection selector (e.g. 'raggable-tree' for the code index)",
+                "Optional collection selector (default: the configured default collection; 'raggable-tree' for the code index)",
                 Required: false)
         });
 
@@ -65,10 +69,36 @@ public class RagSearchTool : IBaseTool
 
     /// <summary>Initializes a new instance of <see cref="RagSearchTool"/> with an optional RaggableTree backend.</summary>
     public RagSearchTool(IRagPipeline ragPipeline, IRaggableStore? raggableStore)
+        : this(ragPipeline, raggableStore, (string?)null)
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of <see cref="RagSearchTool"/> with an optional RaggableTree
+    /// backend and the host's default collection.
+    /// </summary>
+    /// <param name="ragPipeline">The RAG pipeline queried.</param>
+    /// <param name="raggableStore">Optional code index (<c>collection = "raggable-tree"</c>).</param>
+    /// <param name="defaultCollection">
+    /// Collection queried when the agent names none — the host's <c>Orkeon:Rag:Collection</c>;
+    /// <c>null</c> falls back to <see cref="DefaultCollection"/>.
+    /// </param>
+    public RagSearchTool(IRagPipeline ragPipeline, IRaggableStore? raggableStore, string? defaultCollection)
+        : this(ragPipeline, raggableStore, () => defaultCollection)
+    {
+    }
+
+    /// <summary>
+    /// Deferred form used by <c>AddOrkeonRagTools</c>: the default collection is read at the
+    /// first call, so building the tool resolves nothing of the RAG subsystem.
+    /// </summary>
+    internal RagSearchTool(IRagPipeline ragPipeline, IRaggableStore? raggableStore, Func<string?> defaultCollectionSource)
     {
         ArgumentNullException.ThrowIfNull(ragPipeline);
+        ArgumentNullException.ThrowIfNull(defaultCollectionSource);
         _ragPipeline = ragPipeline;
         _raggableStore = raggableStore;
+        _defaultCollection = defaultCollectionSource;
     }
 
     /// <inheritdoc />
@@ -105,7 +135,7 @@ public class RagSearchTool : IBaseTool
                 new RagQuery
                 {
                     Text = question!,
-                    Collection = string.IsNullOrWhiteSpace(collection) ? DefaultCollection : collection!,
+                    Collection = string.IsNullOrWhiteSpace(collection) ? ResolveDefaultCollection() : collection!,
                     TopN = topK,
                 },
                 cancellationToken).ConfigureAwait(false);
@@ -113,6 +143,12 @@ public class RagSearchTool : IBaseTool
             return new ToolCallResponse(true, FormatAnswer(answer), null);
         }
     }
+
+    /// <summary>The configured default collection, else <see cref="DefaultCollection"/>.</summary>
+    private string ResolveDefaultCollection()
+        => _defaultCollection() is { Length: > 0 } configured && !string.IsNullOrWhiteSpace(configured)
+            ? configured
+            : DefaultCollection;
 
     /// <inheritdoc />
     public async Task<ToolResult> ExecuteAsync(

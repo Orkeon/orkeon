@@ -127,7 +127,7 @@ internal static class Program
         services.AddSingleton(offlineChatClient);
         services.AddOrkeonInfrastructure();
         services.AddOrkeonRag(configuration);
-        services.AddOrkeonRagTools(); // for C# callers: a YAML agent's tools: list cannot attach rag_* today (docs/architecture/rag-pipeline.md)
+        services.AddOrkeonRagTools(); // rag_search / rag_ingest / rag_eval — a YAML agent can list them in tools:
 
         return services.BuildServiceProvider();
     }

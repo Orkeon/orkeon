@@ -125,8 +125,8 @@ La CLI `orkeon` fait tout cela dans `RunnerHost` (section `Llm`, montages, regis
 alimenté depuis la DI) et enregistre quelques suites de plus, qu'un hôte ajoute de la même
 façon quand ses crews s'en servent : `AddOrkeonAbstractionTools()` (`list_mounts`),
 `AddOrkeonSessionTools()`, `AddOrkeonInMemoryEventHub()` + `AddOrkeonEventHubTools()`,
-`AddRaggableTree()` + `AddRaggableTreeTools()`, et la paire RAG opt-in
-`AddOrkeonRag(configuration)` + `AddOrkeonRagTools()`.
+`AddRaggableTree()` + `AddRaggableTreeTools()`, et la paire RAG
+`AddOrkeonRag(configuration)` + `AddOrkeonRagTools()` (la CLI y ajoute `AddOrkeonOnnxReranker()`).
 
 Chaque appel `AddOrkeon*()` enregistre automatiquement :
 - Les interfaces de service (ports)

@@ -38,7 +38,9 @@ public class CrewFactoryRagBootstrapTests
 
     private static CrewFactory BuildFactory(
         IRagCollectionsBootstrapper? bootstrapper,
-        bool prepareRagCollections = true)
+        bool prepareRagCollections = true,
+        Microsoft.Extensions.Logging.ILogger<CrewFactory>? logger = null,
+        InMemoryAgentRepository? agentRepository = null)
     {
         var loaderMock = new MockCrewDefinitionLoader();
         loaderMock.SetValidateResult(new CrewDefinitionValidationResult(true, Array.Empty<string>(), Array.Empty<string>()));
@@ -46,15 +48,17 @@ public class CrewFactoryRagBootstrapTests
         return new CrewFactory(
             loaderMock,
             new MockToolRegistry(),
-            NullLogger<CrewFactory>.Instance,
+            logger ?? NullLogger<CrewFactory>.Instance,
             new InMemoryCrewRepository(unitOfWork),
-            new InMemoryAgentRepository(unitOfWork),
+            agentRepository ?? new InMemoryAgentRepository(unitOfWork),
             new InMemoryTaskRepository(unitOfWork),
             Options.Create(new CrewFactoryOptions { PrepareRagCollections = prepareRagCollections }),
             bootstrapper);
     }
 
-    private static CrewConfiguration BuildConfiguration(RagCrewConfig? rag)
+    private static CrewConfiguration BuildConfiguration(
+        RagCrewConfig? rag,
+        IReadOnlyList<Orkeon.Domain.Knowledge.KnowledgeAttachment>? knowledge = null)
     {
         var agentId = AgentId.Create();
         return new CrewConfiguration
@@ -64,7 +68,11 @@ public class CrewFactoryRagBootstrapTests
             Rag = rag,
             Agents =
             [
-                new AgentConfiguration { Id = agentId, Role = "worker", Goal = "do work", Backstory = "b" }
+                new AgentConfiguration
+                {
+                    Id = agentId, Role = "worker", Goal = "do work", Backstory = "b",
+                    KnowledgeAttachments = knowledge ?? [],
+                }
             ],
             Tasks =
             [
@@ -134,5 +142,74 @@ public class CrewFactoryRagBootstrapTests
             TestContext.Current.CancellationToken);
 
         Assert.NotNull(crew); // warning logged, never a failure
+    }
+
+    [Fact]
+    public async Task CreateFromConfig_WithKnowledgeButNoSubsystem_WarnsThatNothingWillBeInjected()
+    {
+        // GAP-02: an agent's knowledge: attachments without the RAG subsystem used to be
+        // dropped in silence at execution. The crew still loads, and says so.
+        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<CrewFactory>();
+        var factory = BuildFactory(bootstrapper: null, logger: logger);
+
+        var crew = await factory.CreateFromConfigAsync(
+            BuildConfiguration(rag: null, knowledge: [Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("produits")]),
+            TestContext.Current.CancellationToken);
+
+        Assert.NotNull(crew);
+        var warning = Assert.Single(logger.LogEntries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+        Assert.Contains("worker", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("knowledge", warning.Message, StringComparison.Ordinal);
+        Assert.Contains("produits", warning.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
+    public async Task CreateFromConfig_WithKnowledgeAndTheSubsystem_DoesNotWarn()
+    {
+        var logger = new Orkeon.Tests.Shared.Doubles.MockLogger<CrewFactory>();
+        var factory = BuildFactory(new SpyRagCollectionsBootstrapper(), logger: logger);
+
+        await factory.CreateFromConfigAsync(
+            BuildConfiguration(rag: null, knowledge: [Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("produits")]),
+            TestContext.Current.CancellationToken);
+
+        Assert.DoesNotContain(logger.LogEntries, e => e.Level == Microsoft.Extensions.Logging.LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task CreateFromConfig_AttachmentsWithoutProfile_TakeTheCrewDefaultProfile()
+    {
+        // GAP-02: rag.defaults.profile was parsed and then read by nobody. It now fills
+        // every attachment that names no profile of its own; an explicit one wins.
+        var agents = new InMemoryAgentRepository(new NullUnitOfWork());
+        var factory = BuildFactory(new SpyRagCollectionsBootstrapper(), agentRepository: agents);
+
+        var crew = await factory.CreateFromConfigAsync(
+            BuildConfiguration(
+                new RagCrewConfig { DefaultProfile = "quality" },
+                knowledge:
+                [
+                    Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("produits"),
+                    Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("procedures", profile: "balanced"),
+                ]),
+            TestContext.Current.CancellationToken);
+
+        var agent = await agents.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
+        Assert.NotNull(agent);
+        Assert.Equal(["quality", "balanced"], agent!.KnowledgeAttachments.Select(a => a.Profile));
+    }
+
+    [Fact]
+    public async Task CreateFromConfig_WithoutCrewDefaultProfile_LeavesTheProfileToTheHost()
+    {
+        var agents = new InMemoryAgentRepository(new NullUnitOfWork());
+        var factory = BuildFactory(new SpyRagCollectionsBootstrapper(), agentRepository: agents);
+
+        var crew = await factory.CreateFromConfigAsync(
+            BuildConfiguration(rag: null, knowledge: [Orkeon.Domain.Knowledge.KnowledgeAttachment.Create("produits")]),
+            TestContext.Current.CancellationToken);
+
+        var agent = await agents.GetByIdAsync(Assert.Single(crew.Agents), TestContext.Current.CancellationToken);
+        Assert.Null(Assert.Single(agent!.KnowledgeAttachments).Profile);
     }
 }

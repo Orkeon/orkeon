@@ -52,7 +52,10 @@ namespaces were removed without shims (migration table in `CHANGELOG.md`).
 
 ## Quick start
 
-The subsystem is opt-in — nothing is wired by `AddOrkeonInfrastructure()` alone:
+The subsystem is opt-in — nothing is wired by `AddOrkeonInfrastructure()` alone. Every
+runner host built on `RunnerHost` (`orkeon run` in all its forms, `orkeon-host`) makes
+the two calls below itself, and the `orkeon` CLI adds the ONNX reranker; a host that
+builds its own container makes them:
 
 ```csharp
 services.AddOrkeonLocalEmbeddings();      // or any IEmbeddingProvider (local BGE: no API key)
@@ -122,10 +125,10 @@ evaluation harness over a host-built `IRagProfileResolver`, or a factory without
 the rest of the subsystem. Two ordering rules: `AddOrkeonHybridRetrieval`
 decorates the **last registered** `IDocumentStore` and throws when none is
 registered yet (it also binds `Orkeon:Rag:Retrieval:Hybrid`, flat `= true`
-shorthand included); `AddOrkeonKnowledgeAugmentation` needs an `IDocumentStore`
-and an `IEmbeddingProvider` at resolution — without it, agent `knowledge:`
-attachments are simply not injected (the orchestrator resolves the augmenter
-optionally). The genuinely opt-in extensions, which `AddOrkeonRag` does **not**
+shorthand included); `AddOrkeonKnowledgeAugmentation` needs an
+`IRagProfileResolver` at resolution (`AddOrkeonRag` registers it) — without the
+augmenter, agent `knowledge:` attachments are not injected, and the crew factory
+warns about each agent that declares some. The genuinely opt-in extensions, which `AddOrkeonRag` does **not**
 call, are `AddOrkeonOnnxReranker`, `AddOrkeonEphemeralSearch` and
 `AddOrkeonRagTools`.
 
@@ -329,7 +332,7 @@ Bound over the selected preset — every key is an individual override.
 | Key | Default | Meaning |
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` / `corrective` (unknown fails loudly) |
-| `Orkeon:Rag:Collection` | — | Bound on `RagOptions.Collection`, but read by no shipped surface yet: every surface names its collection (`rag_search` falls back to `default`) |
+| `Orkeon:Rag:Collection` | — | The collection `rag_search` queries when the agent names none (unset: `default`), and the one `rag_eval` evaluates when neither the call nor the dataset names one and the dataset brings no corpus. `rag.query`/`rag.ingest` and `knowledge:` always name theirs |
 | `Orkeon:Rag:Provider` | ambient | Document-store provider alias (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider` |
 | `Orkeon:Rag:ConnectionString` / `ProviderOptions:*` | — | Passed to the memory-provider factory when `Provider` is set |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
@@ -434,32 +437,44 @@ agents:
   `IRagCollectionsBootstrapper` at `CreateFromConfigAsync` — kickoff-time
   ingestion through the incremental pipeline (a fresh manifest makes it a
   no-op). A crew declaring `rag:` on a host without `AddOrkeonRag` logs a
-  warning instead of failing.
+  warning instead of failing; so does an agent that declares `knowledge:`
+  there.
 - `knowledge:` attachments travel on the `Agent` aggregate; at task-context
-  assembly the execution orchestrator calls `IKnowledgeContextAugmenter`, which
-  retrieves from the attached collections (retrieval only — no nested LLM call)
-  and injects a bounded, numbered block with `[n]` citations into the agent's
-  prompt.
+  assembly the execution orchestrator calls `IKnowledgeContextAugmenter`. For
+  each attachment it resolves the pipeline of the attachment's profile and runs
+  its **retrieval half only** (`IRagRetrievalCapable.RetrieveAsync` — transform,
+  hybrid, rerank and assembly as the profile says, no generation, no nested LLM
+  call), then injects a bounded, numbered block with `[n]` citations into the
+  agent's prompt.
 
-**Host requirement.** Both blocks need a host that calls `AddOrkeonRag` — the
-C# host of [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md) does. The stock
-`orkeon run crew.yaml` path (the shared runner host, `--events` included) does
-**not** register the RAG subsystem: a `rag:` block only logs *"declares a rag:
-block but the RAG subsystem is not registered"* and ingests nothing, and
-`knowledge:` attachments are silently not injected (the orchestrator resolves
-the augmenter optionally). `orkeon run` wires RAG only for `.ork.ts` scripts
-(the `rag.*` namespace), and `orkeon rag` for its own verbs.
+**Where it runs.** Every host built on `RunnerHost` registers the subsystem:
+`orkeon run` on a YAML crew, a crew directory or a `.ork.ts` script (with or
+without `--events`), and `orkeon-host`; so does `orkeon-repl`, and the C# host
+of [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/README.md)
+calls `AddOrkeonRag` itself. `orkeon run --validate` loads the crew without
+ingesting anything. Nothing of the subsystem is resolved until a crew uses it:
+a crew without `rag:`/`knowledge:` neither loads an embedding model for it nor
+fails on an unusable `Orkeon:Rag` configuration (an unknown `Orkeon:Rag:Provider`
+fails the first ingestion or retrieval, with the list of aliases). Ingestion
+needs an embedding provider: the default runner has the on-device one (unless
+`RaggableTree:Enabled` is `false` and nothing else is configured). The
+incremental manifests land under `/output/rag/manifests`; without a writable
+`/output` mount the collections are ingested on every load, with a warning.
 
-Keys actually consumed today:
+YAML keys:
 
-| Key | Consumed |
+| Key | Effect |
 |---|---|
-| `rag.collections.<name>.sources` | Yes — ingested at crew creation (verbatim, no glob expansion) |
-| `rag.collections.<name>.chunking` (`strategy`, `max_tokens`, `overlap`) | Yes — tokens converted to characters at ×4 |
-| `rag.provider`, `rag.defaults.profile` | Parsed into `RagCrewConfig`, read by nothing yet — the store is `Orkeon:Rag:Provider` |
-| `knowledge:` short form (`[product-kb]`) | Yes |
-| `knowledge:` long form (`collection`, `top_k` default 5, `min_score`, `max_context_tokens` default 2000) | Yes — the augmenter searches the store directly with these |
-| `knowledge:` long form `profile` | Parsed, not applied: attachments never run a profile pipeline |
+| `rag.collections.<name>.sources` | Ingested at crew creation (verbatim, no glob expansion) |
+| `rag.collections.<name>.chunking` (`strategy`, `max_tokens`, `overlap`) | Tokens converted to characters at ×4 |
+| `rag.defaults.profile` | The retrieval profile of every attachment that names none (copied onto it at crew creation) |
+| `knowledge:` short form (`[product-kb]`) | Attaches the collection with the defaults below |
+| `knowledge:` long form (`collection`, `top_k` default 5, `min_score`, `max_context_tokens` default 2000) | `top_k` is the query's TopN; `min_score` filters on the score the profile reports (vector similarity under `fast`, the cross-encoder's score under a reranking profile); `max_context_tokens` caps the attachment's excerpts (×4 characters) |
+| `knowledge:` long form `profile` | The retrieval pipeline: the attachment's `profile`, else `rag.defaults.profile`, else `Orkeon:Rag:Profile` (`fast` when unset). `fast`, `balanced` and `quality` retrieve alone; `corrective` and `adaptive` cannot (their graphs generate as they go) and fail the task with a message saying so; an unknown name fails as the resolver does. `balanced`/`quality` also need the ONNX reranker, which the `orkeon` CLI registers and `orkeon-host` does not |
+
+The document store is the host's choice (`Orkeon:Rag:Provider`), not the crew's:
+the former `rag.provider` key is gone, and a crew that still writes it gets a
+warning at load.
 
 ## Scripting and CLI surfaces
 
@@ -477,15 +492,15 @@ Keys actually consumed today:
 
 | Tool | Parameters | Behaviour |
 |---|---|---|
-| `rag_search` | `question` (required), `top_k` (default 3), `collection` (default `default`) | `IRagPipeline.QueryAsync` → answer + `Sources:` block with scores; `collection = "raggable-tree"` routes to the RaggableTree code index when one is registered |
+| `rag_search` | `question` (required), `top_k` (default 3), `collection` (default `Orkeon:Rag:Collection`, else `default`) | `IRagPipeline.QueryAsync` → answer + `Sources:` block with scores; `collection = "raggable-tree"` routes to the RaggableTree code index when one is registered |
 | `rag_ingest` | `collection`, `sources` (paths / globs) — both required; `chunking_strategy`, `reindex` | `IIngestionPipeline` with glob expansion; prints the ingestion report |
 | `rag_eval` | `dataset` (required), `collection`, `profile` (default `default`), `compare`, `k` (default 5), `use_llm_judge`, `reindex` | The offline harness below |
 
 A crew agent that lists one of the three tools (`tools: [rag_search]`) receives it
-wherever the host registered them: a C# host that calls `AddOrkeonRagTools()`, a `.ork.ts`
-crew run by `orkeon run`, and the REPL. The YAML path of `orkeon run` does not register the
-RAG tools, so a YAML crew run there cannot name them; grounding an agent of such a crew
-goes through the `knowledge:` attachment above.
+wherever the host registered them: every `RunnerHost` host (`orkeon run` on a YAML crew, a
+crew directory or a `.ork.ts` script, and `orkeon-host`), the REPL, and a C# host that calls
+`AddOrkeonRagTools()`. Building a tool resolves nothing: the pipelines are resolved at its
+first call.
 
 ## Retrieval without generation
 

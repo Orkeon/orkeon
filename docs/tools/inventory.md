@@ -33,21 +33,17 @@ what YAML references.
 | Tool | Class | Registration | Use case | Call example |
 |-------|--------|------|-------------|-----------------|
 | `semantic_search` | `SearchTool` | `AddSemanticSearchTool()` (`Orkeon.Hosting`, opt-in — `orkeon run` calls it for a YAML crew) | Embedding-based semantic search across memories | `{ "query": "customer churn patterns", "top_k": 5 }` |
-| `rag_search` | `RagSearchTool` | Opt-in: `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) | RAG search in the agent's knowledge bases over `IRagPipeline` | `{ "question": "What is our return policy?", "top_k": 3 }` |
+| `rag_search` | `RagSearchTool` | `AddOrkeonRag(config)` + `AddOrkeonRagTools()` (`Orkeon.Tools.Rag`) — every runner host calls both | RAG search in the agent's knowledge bases over `IRagPipeline` | `{ "question": "What is our return policy?", "top_k": 3 }` |
 | `rag_ingest` | `RagIngestTool` | Same opt-in as `rag_search` | Incremental ingestion into a RAG collection (manifest-driven — unchanged sources cost 0 embeddings) | `{ "collection": "docs", "sources": ["/kb/**/*.md"], "reindex": false }` |
 | `rag_eval` | `RagEvalTool` | Same opt-in as `rag_search` | Evaluate a collection against a golden YAML dataset: recall@k, precision@k, MRR, groundedness | `{ "collection": "docs", "dataset": "/kb/eval/golden.yaml" }` |
 
-> **Registered by the host, not by `orkeon run crew.yaml`.** A crew agent that lists a
-> `rag_*` tool receives it wherever the host registered the RAG tools: a C# host calling
-> `AddOrkeonRagTools()`, a `.ork.ts` crew under `orkeon run`, `orkeon-repl`. The YAML path
-> of `orkeon run` does not register them, so a YAML crew run there cannot name them; the
-> scripting facade (`tools.ragSearch`, the `rag.*` namespace), `orkeon rag` and C# calls
-> reach them too. A crew's `rag:` and `knowledge:` blocks are inert under
-> `orkeon run crew.yaml` for the same reason: the YAML runner never calls `AddOrkeonRag`
-> (a warning is logged). They take effect in a C# host that calls
-> `AddOrkeonRag(configuration)` — as
-> [`examples/rag/crew-yaml`](https://github.com/Orkeon/orkeon/blob/main/examples/rag/crew-yaml/Program.cs)
-> does. See
+> **Registered by every runner host.** `orkeon run` (a YAML crew, a crew directory, a
+> `.ork.ts` script) and `orkeon-host` register the RAG subsystem and its three tools, so a
+> crew agent can list them in `tools:`; so do `orkeon-repl` and a C# host that calls
+> `AddOrkeonRag(configuration)` + `AddOrkeonRagTools()`. The scripting facade
+> (`tools.ragSearch`, the `rag.*` namespace) and `orkeon rag` reach the same pipelines.
+> `rag_search` and `rag_eval` fall back to `Orkeon:Rag:Collection` when the call names no
+> collection. See
 > [RAG pipeline](../architecture/rag-pipeline.md#scripting-and-cli-surfaces).
 
 ## Code execution tools (`Orkeon.Infrastructure.Sandbox` / `Orkeon.Tools.Code`)

@@ -1,1 +1,5 @@
 #nullable enable
+*REMOVED*Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.KnowledgeContextAugmenter(Orkeon.Rag.Abstractions.Interfaces.IDocumentStore! store, Orkeon.Application.Interfaces.Ports.IEmbeddingProvider! embeddingProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Augmentation.KnowledgeContextAugmenter!>? logger = null) -> void
+Orkeon.Rag.Augmentation.KnowledgeContextAugmenter.KnowledgeContextAugmenter(Orkeon.Rag.Abstractions.Interfaces.IRagProfileResolver! profileResolver, string! defaultProfile, Microsoft.Extensions.Logging.ILogger<Orkeon.Rag.Augmentation.KnowledgeContextAugmenter!>? logger = null) -> void
+Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.get -> string?
+Orkeon.Rag.Evaluation.RagEvalRunRequest.DefaultCollection.init -> void

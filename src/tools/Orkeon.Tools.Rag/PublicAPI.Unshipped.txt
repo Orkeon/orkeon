@@ -1,1 +1,3 @@
 #nullable enable
+Orkeon.Tools.Rag.RagEvalTool.RagEvalTool(Orkeon.Rag.Evaluation.IRagEvalHarness! harness, string? defaultCollection) -> void
+Orkeon.Tools.Rag.RagSearchTool.RagSearchTool(Orkeon.Rag.Abstractions.Interfaces.IRagPipeline! ragPipeline, Orkeon.Analysis.Abstractions.Interfaces.IRaggableStore? raggableStore, string? defaultCollection) -> void

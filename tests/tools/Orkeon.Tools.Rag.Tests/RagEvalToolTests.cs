@@ -48,6 +48,24 @@ public sealed class RagEvalToolTests
     }
 
     [Fact]
+    public async Task Call_WithoutCollection_HandsTheConfiguredDefaultCollectionToTheHarness()
+    {
+        // GAP-02: Orkeon:Rag:Collection reaches the harness as the host default; an
+        // explicit argument (and the dataset's own collection) still win there.
+        var harness = new FakeRagEvalHarness();
+        var tool = new RagEvalTool(harness, defaultCollection: "produits");
+
+        await tool.CallAsync(Request(new Dictionary<string, object?>
+        {
+            ["dataset"] = "/workspace/eval/golden.yaml",
+        }), TestContext.Current.CancellationToken);
+
+        var request = Assert.Single(harness.Requests);
+        Assert.Null(request.Collection);
+        Assert.Equal("produits", request.DefaultCollection);
+    }
+
+    [Fact]
     public async Task Call_CompareMode_OverridesProfile_AndIncludesTheComparisonTable()
     {
         var harness = new FakeRagEvalHarness();

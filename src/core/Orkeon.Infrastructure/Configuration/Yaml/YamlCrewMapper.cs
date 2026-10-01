@@ -604,7 +604,6 @@ public sealed partial class YamlCrewMapper
 
         return new RagCrewConfig
         {
-            Provider = string.IsNullOrWhiteSpace(yaml.Provider) ? null : yaml.Provider.Trim(),
             Collections = collections,
             DefaultProfile = string.IsNullOrWhiteSpace(yaml.Defaults?.Profile) ? null : yaml.Defaults.Profile.Trim(),
         };

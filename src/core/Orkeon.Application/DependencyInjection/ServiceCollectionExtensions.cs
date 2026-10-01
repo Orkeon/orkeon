@@ -180,9 +180,11 @@ public static class ServiceCollectionExtensions
             }
 
             // RAG-03/C4 — optional knowledge augmentation: hosts without the RAG
-            // subsystem resolve null here and prompt composition stays unchanged.
-            orchestrator.KnowledgeAugmenter =
-                sp.GetService<Orkeon.Rag.Abstractions.Interfaces.IKnowledgeContextAugmenter>();
+            // subsystem get null here and prompt composition stays unchanged. With it,
+            // the augmenter is resolved at the first agent that carries a knowledge
+            // attachment (GAP-02): every runner registers the subsystem, and a crew
+            // without knowledge: must neither pay for it nor fail on its configuration.
+            orchestrator.KnowledgeAugmenter = DeferredKnowledgeContextAugmenter.For(sp);
             return orchestrator;
         });
         return services;

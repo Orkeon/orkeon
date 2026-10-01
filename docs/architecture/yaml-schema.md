@@ -155,18 +155,21 @@ executing agent actually holds that tool. A `preset` header takes precedence ove
 ## Knowledge & RAG configuration
 
 Two complementary blocks (RAG-03/C4). The crew-level `rag:` block declares the **collections**
-(provider, ingestion sources, chunking, crew-wide defaults). The agent-level `knowledge:` block
+(ingestion sources, chunking) and crew-wide defaults. The agent-level `knowledge:` block
 **attaches** collections to an agent with its retrieval options. At execution-context assembly
-time the attached collections are queried with the task input and the results are injected into
-the agent's user prompt as numbered, cited excerpts (`IKnowledgeContextAugmenter`, honouring
-`top_k`, `min_score` and `max_context_tokens`). Both halves need the opt-in RAG subsystem
-(`AddOrkeonRag(configuration)`): when the crew is **created** (`CrewFactory`), the declared
-collections are ingested incrementally (`IRagCollectionsBootstrapper` — an unchanged source is not
-re-embedded; `CrewFactoryOptions.PrepareRagCollections = false` skips it); without the subsystem a
-declared `rag:` block logs a warning and the attachments inject nothing. Parsing the YAML itself
-never triggers ingestion. `rag.provider`, `rag.defaults.profile` and an attachment's `profile` are
-parsed and recorded but not consumed yet — retrieval goes through the `IDocumentStore` configured
-under `Orkeon:Rag` (see [RAG pipeline](./rag-pipeline.md)).
+time each attached collection is queried with the task input through the retrieval half of its
+**profile** pipeline — the attachment's `profile`, else `rag.defaults.profile`, else
+`Orkeon:Rag:Profile` — and the results are injected into the agent's user prompt as numbered,
+cited excerpts (`IKnowledgeContextAugmenter`, honouring `top_k`, `min_score` and
+`max_context_tokens`). Both halves need the RAG subsystem (`AddOrkeonRag(configuration)`), which
+every runner host registers (`orkeon run` in all its forms, `orkeon-host`): when the crew is
+**created** (`CrewFactory`), the declared collections are ingested incrementally
+(`IRagCollectionsBootstrapper` — an unchanged source is not re-embedded;
+`CrewFactoryOptions.PrepareRagCollections = false` skips it, as `--validate` does). On a host
+without the subsystem, a declared `rag:` block and each agent's `knowledge:` log a warning and
+inject nothing. Parsing the YAML itself never triggers ingestion. The document store is the
+host's (`Orkeon:Rag:Provider`, see [RAG pipeline](./rag-pipeline.md)); the former `rag.provider`
+key is gone and draws a warning at load.
 
 Short form — attach collections with default options:
 

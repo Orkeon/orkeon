@@ -41,24 +41,58 @@ public static class EphemeralSearchExtensions
 
         services.TryAddSingleton<IEphemeralCollectionSearch>(sp =>
         {
-            // Probe the embedding port first: it is the cheapest signal that the
-            // RAG stack is absent, and resolving the pipelines without it would
-            // throw at tool construction time instead of at call time.
-            var embeddings = sp.GetService<IEmbeddingProvider>();
-            var pipeline = embeddings is null ? null : sp.GetService<IIngestionPipeline>();
-            var store = embeddings is null ? null : sp.GetService<IDocumentStore>();
+            // Decide from the registrations, resolve at the first search (GAP-02): every
+            // runner registers the RAG subsystem, and these facades are built with the
+            // tool registry for every crew — resolving the pipeline and the store here
+            // made a crew that never searches pay for them, and fail on an unknown
+            // Orkeon:Rag:Provider.
+            var registrations = sp.GetService<IServiceProviderIsService>();
+            if (registrations is not null)
+            {
+                return registrations.IsService(typeof(IEmbeddingProvider))
+                    && registrations.IsService(typeof(IIngestionPipeline))
+                    && registrations.IsService(typeof(IDocumentStore))
+                        ? new DeferredEphemeralCollectionSearch(() => CreateSearch(sp)!)
+                        : new UnconfiguredEphemeralCollectionSearch();
+            }
 
-            if (embeddings is null || pipeline is null || store is null)
-                return new UnconfiguredEphemeralCollectionSearch();
-
-            return new EphemeralCollectionSearchService(
-                pipeline,
-                store,
-                embeddings,
-                sp.GetService<ILogger<EphemeralCollectionSearchService>>());
+            return (IEphemeralCollectionSearch?)CreateSearch(sp) ?? new UnconfiguredEphemeralCollectionSearch();
         });
 
         return services;
+    }
+
+    /// <summary>
+    /// The engine over the registered pipeline and store, or <c>null</c> when one of its
+    /// collaborators is missing. The embedding port is probed first: it is the cheapest
+    /// signal that the RAG stack is absent.
+    /// </summary>
+    private static EphemeralCollectionSearchService? CreateSearch(IServiceProvider sp)
+    {
+        var embeddings = sp.GetService<IEmbeddingProvider>();
+        var pipeline = embeddings is null ? null : sp.GetService<IIngestionPipeline>();
+        var store = embeddings is null ? null : sp.GetService<IDocumentStore>();
+
+        if (embeddings is null || pipeline is null || store is null)
+            return null;
+
+        return new EphemeralCollectionSearchService(
+            pipeline,
+            store,
+            embeddings,
+            sp.GetService<ILogger<EphemeralCollectionSearchService>>());
+    }
+
+    /// <summary>The engine, built at the first search.</summary>
+    private sealed class DeferredEphemeralCollectionSearch(Func<IEphemeralCollectionSearch> create)
+        : IEphemeralCollectionSearch
+    {
+        private readonly Lazy<IEphemeralCollectionSearch> _inner = new(create);
+
+        public Task<EphemeralSearchResult> SearchAsync(
+            EphemeralSearchRequest request,
+            CancellationToken cancellationToken = default)
+            => _inner.Value.SearchAsync(request, cancellationToken);
     }
 
     /// <summary>

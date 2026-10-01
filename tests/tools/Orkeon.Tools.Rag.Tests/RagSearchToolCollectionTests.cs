@@ -59,6 +59,48 @@ public class RagSearchToolCollectionTests
     }
 
     [Fact]
+    public async Task CallAsync_without_collection_queries_the_configured_default_collection()
+    {
+        // GAP-02: Orkeon:Rag:Collection is the collection an agent means when it names
+        // none. The constant 'default' matched no collection a crew declares.
+        var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "kb answer" } };
+        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
+
+        var resp = await tool.CallAsync(new ToolCallRequest("rag_search",
+            new Dictionary<string, object?> { ["question"] = "refund?" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.True(resp.Success);
+        Assert.Equal("produits", pipeline.LastQuery?.Collection);
+    }
+
+    [Fact]
+    public async Task CallAsync_without_collection_or_configured_default_queries_the_default_constant()
+    {
+        var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "answer" } };
+        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: null);
+
+        await tool.CallAsync(new ToolCallRequest("rag_search",
+            new Dictionary<string, object?> { ["question"] = "q" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal(RagSearchTool.DefaultCollection, pipeline.LastQuery?.Collection);
+    }
+
+    [Fact]
+    public async Task CallAsync_an_explicit_collection_wins_over_the_configured_default()
+    {
+        var pipeline = new FakeRagPipeline { Answer = new RagAnswer { Text = "answer" } };
+        var tool = new RagSearchTool(pipeline, raggableStore: null, defaultCollection: "produits");
+
+        await tool.CallAsync(new ToolCallRequest("rag_search",
+            new Dictionary<string, object?> { ["question"] = "q", ["collection"] = "procedures" }),
+            TestContext.Current.CancellationToken);
+
+        Assert.Equal("procedures", pipeline.LastQuery?.Collection);
+    }
+
+    [Fact]
     public async Task CallAsync_falls_back_to_pipeline_when_no_store_is_wired()
     {
         var pipeline = new FakeRagPipeline

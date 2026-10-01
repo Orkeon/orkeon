@@ -1,6 +1,8 @@
 using Orkeon.Domain.Knowledge;
 using Orkeon.Rag.Abstractions.Models;
+using Orkeon.Rag.Abstractions.Options;
 using Orkeon.Rag.Augmentation;
+using Orkeon.Rag.Pipeline;
 using Orkeon.Rag.Tests.Doubles;
 
 namespace Orkeon.Rag.Tests.Augmentation;
@@ -9,7 +11,11 @@ namespace Orkeon.Rag.Tests.Augmentation;
 /// Unit tests for <see cref="KnowledgeContextAugmenter"/> (RAG-03/C4): block
 /// formatting, global citation numbering, MinScore filtering, per-attachment
 /// token budget (chars ×4 heuristic), multi-collection queries, and the
-/// no-result → null contract.
+/// no-result → null contract. Since GAP-02 the augmenter retrieves through the
+/// attachment's profile pipeline (retrieval only); these tests run it over a real
+/// <c>fast</c> <see cref="StagedRagPipeline"/> on a scripted store, so the block
+/// contract is pinned exactly as before. Profile routing is covered by
+/// <see cref="KnowledgeContextAugmenterProfileTests"/>.
 /// </summary>
 public class KnowledgeContextAugmenterTests
 {
@@ -29,8 +35,21 @@ public class KnowledgeContextAugmenterTests
             Score = score,
         };
 
+    // Retrieval only: the pipeline's chat client is never called.
+    private static readonly FakeChatClient s_unusedChat = new();
+
     private static KnowledgeContextAugmenter CreateAugmenter(StubDocumentStore store) =>
-        new(store, new FakeEmbeddingProvider());
+        CreateAugmenter(store, new FakeEmbeddingProvider());
+
+    private static KnowledgeContextAugmenter CreateAugmenter(
+        StubDocumentStore store, FakeEmbeddingProvider embeddings) =>
+        new(
+            new RecordingProfileResolver
+            {
+                Pipeline = new StagedRagPipeline(
+                    store, embeddings, s_unusedChat, RagProfilePresets.Create(RagProfile.Fast)),
+            },
+            defaultProfile: "fast");
 
     [Fact]
     public async Task BuildContextAsync_WithResults_ProducesHeaderInstructionAndNumberedExcerpts()
@@ -93,7 +112,7 @@ public class KnowledgeContextAugmenterTests
         var store = new StubDocumentStore();
         store.ResultsByCollection["docs"] = [MakeChunk("c1", "a.md", "text", 0.5)];
         var embeddings = new FakeEmbeddingProvider { Dimensions = 3 };
-        var augmenter = new KnowledgeContextAugmenter(store, embeddings);
+        var augmenter = CreateAugmenter(store, embeddings);
 
         await augmenter.BuildContextAsync(
             [KnowledgeAttachment.Create("docs", topK: 7)], "the question", TestContext.Current.CancellationToken);
@@ -130,11 +149,13 @@ public class KnowledgeContextAugmenterTests
     public async Task BuildContextAsync_TopK_KeepsBestChunksOnly()
     {
         var store = new StubDocumentStore();
+        // A store ranks its hits (best first); the pipeline then truncates to the
+        // attachment's TopK, so only the two best reach the block.
         store.ResultsByCollection["docs"] =
         [
-            MakeChunk("worst", "w.md", "Worst.", 0.10),
             MakeChunk("best", "b.md", "Best.", 0.99),
             MakeChunk("middle", "m.md", "Middle.", 0.50),
+            MakeChunk("worst", "w.md", "Worst.", 0.10),
         ];
         var augmenter = CreateAugmenter(store);
 
@@ -222,7 +243,7 @@ public class KnowledgeContextAugmenterTests
     {
         var store = new StubDocumentStore();
         var embeddings = new FakeEmbeddingProvider();
-        var augmenter = new KnowledgeContextAugmenter(store, embeddings);
+        var augmenter = CreateAugmenter(store, embeddings);
 
         var block = await augmenter.BuildContextAsync([], "query", TestContext.Current.CancellationToken);
 

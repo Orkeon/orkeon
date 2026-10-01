@@ -62,6 +62,28 @@ public sealed class RunCommandDiagnosticsTests
     }
 
     [Fact]
+    public async Task ListTools_on_a_yaml_crew_lists_the_rag_tools()
+    {
+        // GAP-02: the YAML path of orkeon run now carries the RAG subsystem and its tools,
+        // so a crew agent can list them in tools: — the manifest says so.
+        using var scratch = new ScriptScratch();
+        var crew = scratch.WriteScript("crew.yaml", "name: c\ngoal: g\n");
+        using var console = new TestConsole();
+
+        var exit = await RunCommand.ExecuteAsync(new RunCommandOptions
+        {
+            ScriptPath = crew,
+            ListTools = true,
+            AllowExternalMounts = true,
+        });
+
+        Assert.Equal(Program.ExitOk, exit);
+        Assert.Contains("rag_search", console.Stdout, StringComparison.Ordinal);
+        Assert.Contains("rag_ingest", console.Stdout, StringComparison.Ordinal);
+        Assert.Contains("rag_eval", console.Stdout, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task ListTools_needs_no_crew_definition_path()
     {
         using var console = new TestConsole();

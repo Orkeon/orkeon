@@ -388,6 +388,8 @@ convention keeps the `orkeon.` prefix — the crew, the task, the estimated cost
   services.AddOrkeonRagTools();           // Orkeon.Tools.Rag: rag_search / rag_ingest / rag_eval
   services.AddOrkeonOnnxReranker();       // opt-in — required by balanced/quality/adaptive
   ```
+  Every runner host built on `RunnerHost` (`orkeon run`, `orkeon-host`) makes
+  the first two calls itself; the `orkeon` CLI adds the third.
   `AddOrkeonRag` already wires the query transformers, routing, hybrid BM25+RRF,
   the corrective graph **and the web-fallback transport registration** —
   calling `AddOrkeonRagWebFallback(configuration)` yourself is a no-op; the
