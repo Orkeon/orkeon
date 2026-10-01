@@ -18,7 +18,8 @@ Design goals
   it can be handled by hand.
 * **Language-aware** — French READMEs get a ``## Lancer`` section, English ones ``## Run it``.
 
-The 10 "vitrine" (showcase) examples are excluded — they are curated by hand in parallel.
+The 10 "vitrine" (showcase) examples plus hand-curated run sections (11 entries in
+``VITRINES``) are excluded — they are curated by hand in parallel.
 """
 
 from __future__ import annotations

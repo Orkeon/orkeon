@@ -138,6 +138,12 @@ overwritten on the next script run.
   (`SONAR_NO_DOCKER=1`): an unreachable server then fails the run instead of
   booting an ephemeral instance without history (which would render the
   "new code" verdict meaningless).
+- The scripts measure coverage on the **unit and fast suites only**, with the filter of
+  `coverage.yml` (`--filter "Category!=Integration&Category!=Slow"`, §8). The Integration
+  (Testcontainers: Docker and gigabytes of images) and Slow categories are not run, so the
+  tests never need Docker and the local figure covers the same scope as the public one.
+  Run those categories on their own:
+  `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`.
 
 ## 8. Where the public coverage number comes from
 
@@ -164,3 +170,4 @@ claim.
 | 2026-08-30 | Coverage collected by `dotnet-coverage` instead of the VSTest collector the Microsoft.Testing.Platform runner rejects; an analysis whose Cobertura report holds no class now aborts instead of importing 0 % |
 | 2026-09-05 | Measurement recorded in §1: the gate is OK on every condition (0 bugs, 17/17 hotspots reviewed, new code at 78.1 %); thresholds unchanged |
 | 2026-09-11 | Public coverage figure moved to the `coverage.yml` workflow (§8); the SonarQube report stays local |
+| 2026-10-01 | The analysis scripts run the unit and fast suites only, with the `coverage.yml` filter (GAP-16): they no longer pull Docker images for the Integration tests nor swallow their failures |

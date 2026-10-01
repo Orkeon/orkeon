@@ -180,7 +180,6 @@ Long form — per-collection retrieval options (mixable with the short form in t
 
 ```yaml
 rag:
-  provider: Sqlite
   collections:
     procedures:
       sources: ["./docs/procedures/"]

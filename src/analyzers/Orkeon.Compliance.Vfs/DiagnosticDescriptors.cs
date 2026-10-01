@@ -50,11 +50,11 @@ internal static class DiagnosticDescriptors
     public static readonly DiagnosticDescriptor DirectFileSystemWatcher = new(
         id: "ORKVFS005",
         title: "Direct FileSystemWatcher instantiation is forbidden",
-        messageFormat: "Direct instantiation of 'FileSystemWatcher' — use IVirtualFileSystemWatcher via IFileSystemService",
+        messageFormat: "Direct instantiation of 'FileSystemWatcher' — inject IVirtualFileSystemWatcher and consume WatchAsync",
         category: Category,
         defaultSeverity: DiagnosticSeverity.Error,
         isEnabledByDefault: true,
-        description: "FileSystemWatcher bypasses mount boundaries. Use IFileSystemService's watcher abstraction.",
+        description: "FileSystemWatcher bypasses mount boundaries. Inject IVirtualFileSystemWatcher (a service of its own) and consume WatchAsync.",
         helpLinkUri: HelpLinkBase + "ork-vfs-005");
 
     public static readonly DiagnosticDescriptor DirectStreamReaderWriterPath = new(

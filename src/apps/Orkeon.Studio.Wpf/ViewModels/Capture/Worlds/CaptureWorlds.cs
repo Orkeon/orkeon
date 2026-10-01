@@ -14,7 +14,7 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// </para>
 /// </summary>
 [SuppressVfsCompliance(
-    "UI-layer capture harness owning its own throwaway tree under the operator's temp directory — " +
+    "EXCEPTION-BOOTSTRAP: UI-layer capture harness owning its own throwaway tree under the operator's temp directory — " +
     "Studio's own state, not framework I/O; same exception class as CaptureWorldWriter.")]
 internal sealed class CaptureWorlds : IDisposable
 {

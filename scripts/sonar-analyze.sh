@@ -30,6 +30,14 @@ export LANG=C.utf8
 #                      fallback when the server is unreachable (implied when
 #                      CI=true, e.g. on GitHub Actions)
 #
+# Test scope:
+#   Coverage is measured on the unit and fast suites only, with the filter of
+#   .github/workflows/coverage.yml: --filter "Category!=Integration&Category!=Slow".
+#   The Integration (Testcontainers: Docker and gigabytes of images) and Slow
+#   categories are left out, so the local figure is comparable with the published
+#   one and the tests never need Docker. Run those categories on their own:
+#   dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8
+#
 # Quality Gate (R5.4 work package — BLOCKING):
 #   The script provisions an idempotent "Orkeon Transitional" Quality Gate
 #   with transitional thresholds (see QUALITY_GATE_CONDITIONS below and
@@ -986,11 +994,15 @@ main() {
     # The `|| log_warn` below swallowed that, and the analysis then imported a coverage
     # report nothing had written — a Quality Gate evaluated against 0% that read as a
     # measurement. dotnet-coverage attaches a profiler to the test processes instead.
-    log_info "Running tests with code coverage (Debug — optimized code does not map to lines)..."
+    #
+    # Scope: the unit and fast suites, with the exclusion filter of coverage.yml (see the
+    # header). An exclusion filter never matches zero tests in a module the way an
+    # inclusion filter would (exit 8), so it is safe on a solution-wide run.
+    log_info "Running the unit and fast suites with code coverage (Debug — optimized code does not map to lines; Integration and Slow categories excluded)..."
     dotnet-coverage collect \
         --output "$COVERAGE_DIR/coverage.cobertura.xml" \
         --output-format cobertura \
-        -- dotnet test "$SOLUTION_PATH" \
+        -- dotnet test "$SOLUTION_PATH" --filter "Category!=Integration&Category!=Slow" \
     || log_warn "Some tests failed — continuing with analysis"
 
     # Step 7a: a coverage report with no data is a FAILURE, not a 0% measurement.

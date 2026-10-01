@@ -35,7 +35,7 @@ namespace Orkeon.Infrastructure.Consensus;
 /// process type (R3.3): <see cref="ExecuteSequentialAsync"/> maps to the consensual
 /// voting pipeline; the other modes have dedicated strategies.
 /// </remarks>
-public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrategy, IProcessStrategy
+public sealed partial class ConsensualProcessStrategy : IProcessStrategy
 {
     private readonly IVotingStrategy _votingStrategy;
     private readonly IBallotCollector _ballots;
@@ -83,7 +83,18 @@ public sealed partial class ConsensualProcessStrategy : IConsensualProcessStrate
         _hooks = new CrewHookDispatcher(hook, logger);
     }
 
-    /// <inheritdoc />
+    /// <summary>
+    /// Executes crew tasks using a consensual process. Each task is executed independently by
+    /// all agents; each agent then ranks the other agents' anonymised answers
+    /// (<see cref="IBallotCollector"/>) and the ballots are tallied to reach consensus on the
+    /// best output. <see cref="ExecuteSequentialAsync"/> is the <see cref="IProcessStrategy"/>
+    /// entry point and delegates here.
+    /// </summary>
+    /// <param name="crew">The crew to execute.</param>
+    /// <param name="plan">The execution plan defining task order.</param>
+    /// <param name="inputVariables">The crew's input variables, passed to every agent execution and ballot.</param>
+    /// <param name="ct">Cancellation token.</param>
+    /// <returns>The crew output after consensus is reached.</returns>
     public Task<DomainCrewOutput> ExecuteConsensualAsync(
         DomainCrew crew,
         DomainExecutionPlan plan,

@@ -8,7 +8,7 @@
 
 ## Checklist
 
-- [ ] `dotnet build Orkeon.sln` is green (RS0016/RS0017: a new public API must be
+- [ ] `dotnet build Orkeon.sln -warnaserror` is green, as CI builds it (RS0016/RS0017: a new public API must be
       declared in the project's `PublicAPI.Unshipped.txt` — `dotnet format analyzers
       --diagnostics RS0016` does it for you; see CONTRIBUTING → Versioning).
 - [ ] Changed a public signature? `dotnet build examples/Orkeon.Examples.sln -warnaserror`

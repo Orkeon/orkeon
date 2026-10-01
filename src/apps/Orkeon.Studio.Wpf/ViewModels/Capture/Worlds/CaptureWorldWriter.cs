@@ -21,9 +21,9 @@ namespace Orkeon.Studio.Wpf.ViewModels.Capture.Worlds;
 /// </para>
 /// </summary>
 [SuppressVfsCompliance(
-    "UI-layer capture harness seeding its own throwaway scenario under the operator's temp " +
+    "EXCEPTION-BOOTSTRAP: UI-layer capture harness seeding its own throwaway scenario under the operator's temp " +
     "directory — Studio's own state, not framework I/O; same exception class as " +
-    "ScreenCaptureRunner and ForgeSessionHydrator.")]
+    "CaptureCampaign and ForgeSessionHydrator.")]
 internal static class CaptureWorldWriter
 {
     private static readonly JsonSerializerOptions Indented = new() { WriteIndented = true };

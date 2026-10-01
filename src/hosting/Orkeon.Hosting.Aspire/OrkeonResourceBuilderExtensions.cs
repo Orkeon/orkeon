@@ -102,6 +102,9 @@ public static class OrkeonResourceBuilderExtensions
     /// <summary>
     /// Sets an Orkeon configuration key for the resource through the environment the
     /// runners read (<c>ORKEON_</c> prefix, <c>__</c> for <c>:</c>): <c>WithOrkeonSetting("Llm:Model", "qwen2.5:1.5b")</c>.
+    /// The key is the full configuration path, exactly as the settings file nests it: the
+    /// <c>ORKEON_</c> prefix adds no section. <c>orkeon-host</c>'s run timeout is
+    /// <c>WithOrkeonSetting("Orkeon:Host:RunTimeout", "00:10:00")</c>, not <c>"Host:RunTimeout"</c>.
     /// </summary>
     public static IResourceBuilder<T> WithOrkeonSetting<T>(this IResourceBuilder<T> builder, string key, string value)
         where T : IResourceWithEnvironment

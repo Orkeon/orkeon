@@ -28,6 +28,13 @@
                          fallback when the server is unreachable (implied when
                          CI=true, e.g. on GitHub Actions)
 
+    Test scope: coverage is measured on the unit and fast suites only, with the
+    filter of .github/workflows/coverage.yml
+    (--filter "Category!=Integration&Category!=Slow"). The Integration
+    (Testcontainers: Docker and gigabytes of images) and Slow categories are left
+    out, so the local figure is comparable with the published one and the tests
+    never need Docker.
+
 .EXAMPLE
     $env:SONAR_TOKEN = "<your-token>"
     .\scripts\sonar-analyze.ps1
@@ -776,12 +783,14 @@ try {
     # Log-Warn below swallowed it — the analysis then imported an OpenCover report
     # nothing had written. dotnet-coverage profiles the test processes instead.
     # Tests run in Debug: optimized code does not map back to source lines cleanly.
-    Log-Info "Running tests with code coverage (Debug - optimized code does not map to lines)..."
+    # Scope: the unit and fast suites, with the exclusion filter of coverage.yml (see
+    # .NOTES). An exclusion filter never matches zero tests in a module (exit 8).
+    Log-Info "Running the unit and fast suites with code coverage (Debug - optimized code does not map to lines; Integration and Slow categories excluded)..."
     $CoverageFile = Join-Path $CoverageDir "coverage.cobertura.xml"
     dotnet-coverage collect `
         --output $CoverageFile `
         --output-format cobertura `
-        -- dotnet test $SolutionPath
+        -- dotnet test $SolutionPath --filter "Category!=Integration&Category!=Slow"
 
     if ($LASTEXITCODE -ne 0) {
         Log-Warn "Some tests failed - continuing with analysis"

@@ -1,11 +1,12 @@
 namespace Orkeon.Compliance.Vfs;
 
 /// <summary>
-/// Opts out of <c>ORKVFS001..005</c> diagnostics on the annotated element.
+/// Opts out of <c>ORKVFS001..007</c> diagnostics on the annotated element.
 /// Used to mark documented exceptions to the VFS-only principle:
-/// VFS implementation internals, sandbox bootstrap code, system binary probing,
-/// and transitional <c>[Obsolete]</c> members pending removal.
-/// The <c>reason</c> argument is mandatory and must describe why the exception is legitimate.
+/// VFS implementation internals, bootstrap code and system binary probing.
+/// The <c>reason</c> argument is mandatory, starts with a ratified category
+/// (<c>EXCEPTION-BOOTSTRAP</c>, <c>EXCEPTION-WATCHER-BRIDGE</c> or <c>OUT-OF-SCOPE</c>) and must describe
+/// why the exception is legitimate.
 /// </summary>
 [System.AttributeUsage(
     System.AttributeTargets.Assembly

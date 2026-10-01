@@ -701,11 +701,8 @@ public static class InfrastructureExtensions
         services.TryAddScoped<IBallotCollector, AgentBallotCollector>();
 
         // Concrete registration lets ProcessStrategyFactory route ProcessType.Consensual
-        // like every other process type (R3.3 — FON-010); the application port maps to
-        // the same scoped instance.
+        // like every other process type (R3.3 — FON-010).
         services.TryAddScoped<ConsensualProcessStrategy>();
-        services.TryAddScoped<IConsensualProcessStrategy>(
-            sp => sp.GetRequiredService<ConsensualProcessStrategy>());
 
         return services;
     }

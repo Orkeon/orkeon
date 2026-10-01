@@ -140,6 +140,12 @@ Ne pas modifier les seuils directement dans l'UI SonarQube : ils seraient
   (`SONAR_NO_DOCKER=1`) : un serveur injoignable fait alors échouer la passe au
   lieu de booter une instance éphémère sans historique (qui rendrait le verdict
   « nouveau code » dénué de sens).
+- Les scripts mesurent la couverture sur les **suites unitaires et rapides seulement**, avec le
+  filtre de `coverage.yml` (`--filter "Category!=Integration&Category!=Slow"`, §8). Les
+  catégories Integration (Testcontainers : Docker et des Go d'images) et Slow ne tournent pas :
+  les tests ne demandent jamais Docker, et le chiffre local couvre le même périmètre que le
+  chiffre public. Ces catégories se lancent à part :
+  `dotnet test Orkeon.sln --no-build --filter "Category=Integration|Category=Slow" -- --ignore-exit-code 8`.
 
 ## 8. D'où vient le chiffre public de couverture
 
@@ -166,3 +172,4 @@ mesure, un nombre tapé est une affirmation.
 | 2026-08-30 | Couverture collectée par `dotnet-coverage` au lieu du collecteur VSTest que le runner Microsoft.Testing.Platform refuse ; une analyse dont le rapport Cobertura ne contient aucune classe s'interrompt désormais au lieu d'importer 0 % |
 | 2026-09-05 | Mesure consignée au §1 : le gate est OK sur chaque condition (0 bug, 17/17 hotspots statués, nouveau code à 78,1 %) ; seuils inchangés |
 | 2026-09-11 | Le chiffre public de couverture passe au workflow `coverage.yml` (§8) ; le rapport SonarQube reste local |
+| 2026-10-01 | Les scripts d'analyse ne lancent plus que les suites unitaires et rapides, avec le filtre de `coverage.yml` (GAP-16) : plus d'images Docker tirées pour les tests Integration, plus d'échecs avalés |

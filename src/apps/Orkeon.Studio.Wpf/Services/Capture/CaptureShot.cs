@@ -10,8 +10,8 @@ namespace Orkeon.Studio.Wpf.Services.Capture;
 
 /// <summary>Taking the picture: the window, every open popup, and the bytes on disk.</summary>
 [SuppressVfsCompliance(
-    "UI-layer capture harness writing PNGs where the operator pointed it — Studio's own state, " +
-    "not framework I/O; same exception class as ScreenCaptureRunner and UiPreferences.")]
+    "EXCEPTION-BOOTSTRAP: UI-layer capture harness writing PNGs where the operator pointed it — Studio's own state, " +
+    "not framework I/O; same exception class as CaptureCampaign and UiPreferences.")]
 internal static class CaptureShot
 {
     /// <summary>WPF's own device-independent unit density; the scale multiplies it.</summary>

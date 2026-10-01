@@ -77,7 +77,6 @@ Orkeon.Application.Interfaces.BallotRequest.Voter.get -> Orkeon.Domain.Agent.Age
 Orkeon.Application.Interfaces.BallotRequest.Voter.init -> void
 Orkeon.Application.Interfaces.IBallotCollector
 Orkeon.Application.Interfaces.IBallotCollector.CollectAsync(Orkeon.Application.Interfaces.BallotRequest! request, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Application.Interfaces.Ballot!>!
-Orkeon.Application.Interfaces.IConsensualProcessStrategy.ExecuteConsensualAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 Orkeon.Application.Interfaces.Vote.OwnChoice.get -> string?
 Orkeon.Application.Interfaces.Vote.OwnChoice.init -> void
 override Orkeon.Application.Interfaces.Ballot.Equals(object? obj) -> bool
@@ -867,3 +866,31 @@ Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payloa
 *REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowValidationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
 *REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableFlowPersistence.get -> bool
 *REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableFlowPersistence.set -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Comment.get -> string?
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Comment.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.ConfigurationVersionMetadata(Orkeon.Application.Configuration.ConfigurationVersionMetadata! original) -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.ConfigurationVersionMetadata(string! Id, string! Version, System.DateTime CreatedAt, string! CreatedBy, string? Comment, System.Collections.Generic.IReadOnlyList<string!>! Tags, bool IsActive) -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.CreatedAt.get -> System.DateTime
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.CreatedAt.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.CreatedBy.get -> string!
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.CreatedBy.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Deconstruct(out string! Id, out string! Version, out System.DateTime CreatedAt, out string! CreatedBy, out string? Comment, out System.Collections.Generic.IReadOnlyList<string!>! Tags, out bool IsActive) -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Id.get -> string!
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Id.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.IsActive.get -> bool
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.IsActive.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Tags.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Tags.init -> void
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Version.get -> string!
+*REMOVED*Orkeon.Application.Configuration.ConfigurationVersionMetadata.Version.init -> void
+*REMOVED*Orkeon.Application.Interfaces.IConsensualProcessStrategy
+*REMOVED*override Orkeon.Application.Configuration.ConfigurationVersionMetadata.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Configuration.ConfigurationVersionMetadata.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Configuration.ConfigurationVersionMetadata.ToString() -> string!
+*REMOVED*static Orkeon.Application.Configuration.ConfigurationVersionMetadata.operator !=(Orkeon.Application.Configuration.ConfigurationVersionMetadata? left, Orkeon.Application.Configuration.ConfigurationVersionMetadata? right) -> bool
+*REMOVED*static Orkeon.Application.Configuration.ConfigurationVersionMetadata.operator ==(Orkeon.Application.Configuration.ConfigurationVersionMetadata? left, Orkeon.Application.Configuration.ConfigurationVersionMetadata? right) -> bool
+*REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.<Clone>$() -> Orkeon.Application.Configuration.ConfigurationVersionMetadata!
+*REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.Equals(Orkeon.Application.Configuration.ConfigurationVersionMetadata? other) -> bool
+*REMOVED*virtual Orkeon.Application.Configuration.ConfigurationVersionMetadata.PrintMembers(System.Text.StringBuilder! builder) -> bool

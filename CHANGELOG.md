@@ -7,6 +7,46 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Fixed — small corrections: the planner warning, `ORKVFS005`, `WithOrkeonSetting`, the Sonar scripts; three dead surfaces removed **[breaking]**
+
+A handful of messages, comments, scripts and tests taught something the code does not do
+(GAP-16).
+
+- **The stub-planner warning advises the order that works.** It said to register your own
+  `IAgentPlanner` *before* `AddOrkeonApplication`; that registration loses, because
+  `AddOrkeonApplication` adds the stub without `TryAdd` and the last registration wins. It now
+  says *after*, as `default-behaviors.md` already did.
+- **`ORKVFS005` names a service that exists.** Its message sent you to "IVirtualFileSystemWatcher
+  via IFileSystemService", which exposes no watcher; it now says to inject
+  `IVirtualFileSystemWatcher` and consume `WatchAsync`. The rule id is unchanged. Both copies of
+  `SuppressVfsComplianceAttribute` document the seven rules (`ORKVFS001..007`) and the ratified
+  reason categories; a test now refuses a `[SuppressVfsCompliance]` reason in `src/` that does not
+  start with `EXCEPTION-BOOTSTRAP`, `EXCEPTION-WATCHER-BRIDGE` or `OUT-OF-SCOPE` (four Studio
+  capture reasons had none).
+- **`WithOrkeonSetting` takes the full configuration path.** Its documentation and the Aspire test
+  now say so: `orkeon-host`'s run timeout is `WithOrkeonSetting("Orkeon:Host:RunTimeout", …)`
+  (`ORKEON_Orkeon__Host__RunTimeout`). The test used `"Host:RunTimeout"`, a key the host never
+  reads. The method itself is unchanged — `Llm:*` stays at the root.
+- **`scripts/sonar-analyze.sh` and `.ps1` run the unit and fast suites only**, with the filter of
+  `coverage.yml` (`Category!=Integration&Category!=Slow`). They used to run the whole solution,
+  Testcontainers included — Docker and gigabytes of images on a local analysis — and swallow the
+  failures; the local coverage figure now has the same scope as the published one
+  (`quality-gate.md` §7).
+- **Contributors:** the pull-request template asks for `dotnet build Orkeon.sln -warnaserror`, the
+  command CI runs; `examples/INDEX.md` lists the six folders it missed (`quickstart/`,
+  `crew-multifile/`, `appsettings/`, `aspire/`, `interop/`, `forge/`).
+- **Removed** (no caller): `Orkeon.Application.Interfaces.IConsensualProcessStrategy` — nothing
+  resolved it; `ConsensualProcessStrategy.ExecuteConsensualAsync` stays on the class, and
+  `ProcessStrategyFactory` keeps routing `ProcessType.Consensual` through `IProcessStrategy`;
+  `Orkeon.Application.Configuration.ConfigurationVersionMetadata`, used by its tests alone; the
+  internal `AggregateEventHelper`.
+- **Docs:** the long-form `rag:` example of the YAML schema page (EN and FR) no longer shows
+  `provider:`, the key GAP-02 removed.
+
+Migration: a host that resolved `IConsensualProcessStrategy` resolves `ConsensualProcessStrategy`
+instead (same scoped instance as before); one that used `ConfigurationVersionMetadata` declares
+its own record.
+
 ### Changed — `Evaluation:EnableLlmJudge` is read; the `Resilience` section and the dead `RaggableTree` keys are gone **[breaking]**
 
 Three configuration sections were bound, sometimes documented, and acted on nothing (GAP-15).

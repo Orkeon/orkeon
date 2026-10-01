@@ -33,7 +33,7 @@ IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, I
      ├── SequentialProcessStrategy      ← ExecuteSequentialAsync
      ├── HierarchicalProcessStrategy    ← ExecuteHierarchicalAsync(id du manager)
      ├── ParallelProcessStrategy        ← ExecuteParallelAsync
-     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync (aussi IConsensualProcessStrategy)
+     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync
      ├── GraphProcessStrategy           ← ExecuteSequentialAsync
      └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
 ```
@@ -331,9 +331,9 @@ Tâche N ──┬── Agent A → réponse A ──┐                   ┌�
                                                                                  Rounds épuisés → FallbackStrategy
 ```
 
-**Enregistrement** : `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) lie `ConsensualProcessOptions` à la section `Orkeon:Consensus`, enregistre `IVotingStrategyFactory` → `VotingStrategyFactory` et l'`IVotingStrategy` construite à partir du `ConsensusType` configuré (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), ainsi que `ConsensualProcessStrategy` (scoped) avec `IConsensualProcessStrategy` associée à la même instance. `AddOrkeonInfrastructure()` l'appelle déjà — ne l'appelez vous-même que dans un hôte qui n'utilise pas `AddOrkeonInfrastructure()` ; enregistrer votre propre `IVotingStrategy` ou `IBallotCollector` avant lui remplace celui par défaut.
+**Enregistrement** : `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) lie `ConsensualProcessOptions` à la section `Orkeon:Consensus`, enregistre `IVotingStrategyFactory` → `VotingStrategyFactory` et l'`IVotingStrategy` construite à partir du `ConsensusType` configuré (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), ainsi que `ConsensualProcessStrategy` (scoped). `AddOrkeonInfrastructure()` l'appelle déjà — ne l'appelez vous-même que dans un hôte qui n'utilise pas `AddOrkeonInfrastructure()` ; enregistrer votre propre `IVotingStrategy` ou `IBallotCollector` avant lui remplace celui par défaut.
 
-**Classes clés** : `ConsensualProcessStrategy` (aussi `IConsensualProcessStrategy`), `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+**Classes clés** : `ConsensualProcessStrategy`, `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
 
 ### Comment un bulletin est formé
 

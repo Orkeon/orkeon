@@ -200,6 +200,12 @@ These live under `examples/` but are code- or script-driven rather than pure `co
 
 | Folder | Kind | Notes |
 |--------|------|-------|
+| [`quickstart/`](quickstart/) | `crew.yaml` + `appsettings.json` | The README's two-minute first crew: one agent, `file_write`, a local Ollama model, nothing else to configure. |
+| [`crew-multifile/`](crew-multifile/) | YAML directory | The same crew split across one file per agent and task; `orkeon run` takes the directory as its target. |
+| [`appsettings/`](appsettings/) | JSON settings profiles | The runner settings the examples pick up, plus one `*.local.json.example` template per LLM provider. |
+| [`aspire/`](aspire/) | C# AppHost | `AppHost`: a .NET Aspire AppHost (`Orkeon.Hosting.Aspire`) running the quickstart crew, its spans, metrics and logs in the Aspire dashboard. |
+| [`interop/`](interop/) | C# program | `agent-framework`: both directions of `Orkeon.Interop.AgentFramework` — a crew as a MAF `AIAgent`, and a MAF agent handed to an Orkeon agent as a tool. |
+| [`forge/`](forge/) | Atelier workspace | `promote-demo`: one finished `orkeon forge` session, to try `list` and `promote` offline. |
 | [`raggable-tree/`](raggable-tree/) | C# programs + YAML crew | RaggableTree indexing: `basic-indexing`, `custom-adapter` (C#); `crew-yaml` (pure YAML, stock `orkeon` CLI). |
 | [`scripting/`](scripting/) | `.ork.ts` scripts | TypeScript-syntax scripting DSL samples (hello-world → FSM/graph, `08-rag.ork.ts` for `rag.ingest`/`rag.query`). |
 | [`cli-ts-commands/`](cli-ts-commands/) | `.cmd.ts` / `.ork.ts` | TypeScript CLI command examples. |

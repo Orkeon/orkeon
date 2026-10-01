@@ -3,10 +3,12 @@ using System;
 namespace Orkeon.Compliance.Vfs;
 
 /// <summary>
-/// Suppresses <c>ORK-VFS-001..005</c> diagnostics on the annotated element.
+/// Suppresses <c>ORKVFS001..007</c> diagnostics on the annotated element.
 /// Used by the Orkeon.Compliance.Vfs analyzer to mark documented exceptions:
 /// VFS implementation internals, sandbox bootstrap code, and system binary probing.
-/// The <paramref name="reason"/> is mandatory and must describe why the exception is legitimate.
+/// The <paramref name="reason"/> is mandatory, starts with a ratified category
+/// (<c>EXCEPTION-BOOTSTRAP</c>, <c>EXCEPTION-WATCHER-BRIDGE</c> or <c>OUT-OF-SCOPE</c>) and must describe
+/// why the exception is legitimate.
 /// </summary>
 [AttributeUsage(
     AttributeTargets.Assembly

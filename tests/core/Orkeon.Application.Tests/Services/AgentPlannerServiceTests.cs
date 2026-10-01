@@ -687,4 +687,19 @@ public class AgentPlannerServiceTests
         Assert.Contains("IAgentPlanner", single);
     }
 
+    [Fact]
+    public async System.Threading.Tasks.Task ShouldAdviseRegisteringThePlannerAfterAddOrkeonApplication()
+    {
+        // GAP-16.1: AddOrkeonApplication registers the stub with AddScoped (no TryAdd), so the
+        // registration made AFTER it wins. The warning must advise the order that works.
+        var logger = new TestLogger();
+        var planner = new AgentPlannerService(logger);
+
+        await planner.CreatePlanAsync(CreateTestTask(), TestContext.Current.CancellationToken);
+
+        var warning = Assert.Single(logger.LoggedMessages, m => m.StartsWith("[Warning]", StringComparison.Ordinal));
+        Assert.Contains("after AddOrkeonApplication", warning, StringComparison.Ordinal);
+        Assert.DoesNotContain("before AddOrkeonApplication", warning, StringComparison.Ordinal);
+    }
+
 }

@@ -1,4 +1,3 @@
-using Orkeon.Domain.Common;
 using Orkeon.Domain.SharedKernel.Events;
 using Orkeon.Infrastructure.DomainEvents;
 using Microsoft.Extensions.DependencyInjection;
@@ -30,23 +29,6 @@ public sealed class SecondRecordingHandler : IDomainEventHandler<TestEvent>
     {
         HandledEvents.Add(domainEvent);
         return Task.CompletedTask;
-    }
-}
-
-public sealed class TestAggregateId : EntityId<TestAggregateId>;
-
-public sealed class TestAggregate : AggregateRoot<TestAggregateId>
-{
-    public TestAggregate() : base(TestAggregateId.Create()) { }
-
-    public void DoSomething(string data)
-    {
-        RaiseDomainEvent(new TestEvent(data));
-    }
-
-    public void DoAnotherThing(int value)
-    {
-        RaiseDomainEvent(new AnotherTestEvent(value));
     }
 }
 
@@ -137,29 +119,5 @@ public class DomainEventDispatcherTests
         // Assert
         Assert.Single(handler1.HandledEvents);
         Assert.Single(handler2.HandledEvents);
-    }
-
-    [Fact]
-    public async Task DispatchAndClearEventsAsync_ShouldDispatchAndClearAggregate()
-    {
-        // Arrange
-        var handler = new RecordingHandler();
-        var services = new ServiceCollection();
-        services.AddSingleton<IDomainEventHandler<TestEvent>>(handler);
-        var sp = services.BuildServiceProvider();
-
-        var dispatcher = new DomainEventDispatcher(sp, _logger);
-        var aggregate = new TestAggregate();
-        aggregate.DoSomething("event1");
-        aggregate.DoSomething("event2");
-
-        Assert.Equal(2, aggregate.DomainEvents.Count);
-
-        // Act
-        await AggregateEventHelper.DispatchAndClearEventsAsync(aggregate, dispatcher, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.Equal(2, handler.HandledEvents.Count);
-        Assert.Empty(aggregate.DomainEvents);
     }
 }

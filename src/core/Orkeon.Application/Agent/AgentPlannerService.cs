@@ -221,7 +221,7 @@ public partial class AgentPlannerService : IAgentPlanner
             LogStubPlannerFirstUse();
     }
 
-    [LoggerMessage(Level = LogLevel.Warning, Message = "AgentPlannerService is a deterministic stub planner: every task gets the same fixed 4-step plan (confidence 0.8). Register your own IAgentPlanner in DI (services.AddSingleton<IAgentPlanner, YourPlanner>() before AddOrkeonApplication) to replace it — see docs/getting-started/default-behaviors.md")]
+    [LoggerMessage(Level = LogLevel.Warning, Message = "AgentPlannerService is a deterministic stub planner: every task gets the same fixed 4-step plan (confidence 0.8). Register your own IAgentPlanner in DI (services.AddSingleton<IAgentPlanner, YourPlanner>() after AddOrkeonApplication — the last registration wins) to replace it — see docs/getting-started/default-behaviors.md")]
     private partial void LogStubPlannerFirstUse();
 
     [LoggerMessage(Level = LogLevel.Debug, Message = "AgentPlannerService stub plan emitted for task {TaskId}")]

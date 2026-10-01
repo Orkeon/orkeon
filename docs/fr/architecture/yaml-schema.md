@@ -189,7 +189,6 @@ même liste) :
 
 ```yaml
 rag:
-  provider: Sqlite
   collections:
     procedures:
       sources: ["./docs/procedures/"]

@@ -33,7 +33,7 @@ IProcessStrategyFactory.CreateStrategy(ProcessType)   (ProcessStrategyFactory, I
      ├── SequentialProcessStrategy      ← ExecuteSequentialAsync
      ├── HierarchicalProcessStrategy    ← ExecuteHierarchicalAsync(manager id)
      ├── ParallelProcessStrategy        ← ExecuteParallelAsync
-     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync (also IConsensualProcessStrategy)
+     ├── ConsensualProcessStrategy      ← ExecuteSequentialAsync
      ├── GraphProcessStrategy           ← ExecuteSequentialAsync
      └── AutonomousProcessStrategy      ← ExecuteAutonomousAsync(AgentExecutionBudget.Permissive)
 ```
@@ -330,9 +330,9 @@ Task N ──┬── Agent A → answer A ──┐                ┌── A
                                                                    Rounds exhausted → FallbackStrategy
 ```
 
-**Registration**: `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) binds `ConsensualProcessOptions` to the `Orkeon:Consensus` section, registers `IVotingStrategyFactory` → `VotingStrategyFactory` and the `IVotingStrategy` built from the configured `ConsensusType` (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), and `ConsensualProcessStrategy` (scoped) with `IConsensualProcessStrategy` mapped to the same instance. `AddOrkeonInfrastructure()` already calls it — call it yourself only in a host that does not use `AddOrkeonInfrastructure()`; registering your own `IVotingStrategy` or `IBallotCollector` before it replaces the default one.
+**Registration**: `AddOrkeonConsensus()` (`Orkeon.Infrastructure.DependencyInjection`) binds `ConsensualProcessOptions` to the `Orkeon:Consensus` section, registers `IVotingStrategyFactory` → `VotingStrategyFactory` and the `IVotingStrategy` built from the configured `ConsensusType` (singletons, `TryAdd`), `IBallotCollector` → `AgentBallotCollector` (scoped), and `ConsensualProcessStrategy` (scoped). `AddOrkeonInfrastructure()` already calls it — call it yourself only in a host that does not use `AddOrkeonInfrastructure()`; registering your own `IVotingStrategy` or `IBallotCollector` before it replaces the default one.
 
-**Key classes**: `ConsensualProcessStrategy` (also `IConsensualProcessStrategy`), `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
+**Key classes**: `ConsensualProcessStrategy`, `IBallotCollector` / `AgentBallotCollector`, `BallotRequest`, `BallotCandidate`, `Ballot`, `IVotingStrategy`, `IVotingStrategyFactory` / `VotingStrategyFactory`, `Vote`, `VoteResult`, `VotingOptions`, `ConsensualProcessOptions`, `ConsensusFallback`
 
 ### How a ballot is formed
 

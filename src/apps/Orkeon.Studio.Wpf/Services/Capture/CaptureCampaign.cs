@@ -55,7 +55,7 @@ internal sealed record CaptureReport(
 /// scenario, in both modes and both themes, and writes one PNG per stop plus a manifest.
 /// </summary>
 [SuppressVfsCompliance(
-    "UI-layer capture harness writing PNGs and a manifest where the operator pointed it — " +
+    "EXCEPTION-BOOTSTRAP: UI-layer capture harness writing PNGs and a manifest where the operator pointed it — " +
     "Studio's own state, not framework I/O; same exception class as UiPreferences.")]
 internal static class CaptureCampaign
 {

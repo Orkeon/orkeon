@@ -145,8 +145,9 @@ public sealed record MountAutoInjection
 
     /// <summary>
     /// The runner's own mount for the target: the crew's directory as <c>/crew</c>, a
-    /// script's directory as <c>/script</c>. Both are names, never the folder's own path —
-    /// mirrors <c>RunnerVirtualRoots</c> on the engine side, pinned by a drift test.
+    /// script's directory as <c>/script</c>. Both are names, never the folder's own path. The
+    /// roots come from <see cref="RunnerVirtualRoots"/>, the constant the runner itself reads
+    /// (shared satellite, ADR-009) — there is no copy to keep in step.
     /// </summary>
     private static string DescribeTargetMount(RunTarget target)
     {

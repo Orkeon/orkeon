@@ -184,6 +184,12 @@ public class SystemIoUsageAnalyzerTests
 
         Assert.Single(diagnostics);
         Assert.Equal("ORKVFS005", diagnostics[0].Id);
+        // GAP-16.2: IFileSystemService exposes no watcher; the watcher is its own service.
+        var message = diagnostics[0].GetMessage(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.Contains("IVirtualFileSystemWatcher", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("IFileSystemService", message, StringComparison.Ordinal);
+        var description = diagnostics[0].Descriptor.Description.ToString(System.Globalization.CultureInfo.InvariantCulture);
+        Assert.DoesNotContain("IFileSystemService", description, StringComparison.Ordinal);
     }
 
     [Fact]

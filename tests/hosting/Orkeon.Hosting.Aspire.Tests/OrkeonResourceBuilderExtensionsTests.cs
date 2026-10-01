@@ -59,13 +59,14 @@ public sealed class OrkeonResourceBuilderExtensionsTests
         var builder = NewBuilder();
 
         var host = builder.AddOrkeonHost("orkeon-host", settingsPath: "host.appsettings.json")
-            .WithOrkeonSetting("Host:RunTimeout", "00:10:00");
+            .WithOrkeonSetting("Orkeon:Host:RunTimeout", "00:10:00");
         using var app = builder.Build();
 
         Assert.Equal("orkeon-host", host.Resource.Command);
         var (args, env) = await EvaluateAsync(app, host.Resource);
         Assert.Equal(["--settings", "host.appsettings.json", "--allow-external-mounts"], args);
-        Assert.Equal("00:10:00", env["ORKEON_Host__RunTimeout"]);
+        // orkeon-host reads Orkeon:Host:RunTimeout: the key is the full configuration path.
+        Assert.Equal("00:10:00", env["ORKEON_Orkeon__Host__RunTimeout"]);
         Assert.True(env.ContainsKey("OTEL_EXPORTER_OTLP_ENDPOINT"));
     }
 
