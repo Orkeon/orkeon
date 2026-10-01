@@ -70,9 +70,9 @@ public sealed class PublishEventTool : ToolBase<PublishEventRequest, PublishEven
     private async Task<PublishEventResponse> ExecuteCoreAsync(
         PublishEventRequest request, PublishOptions options, CancellationToken cancellationToken)
     {
-        var eventId = MessageId.NewId();
         var publishedAt = DateTimeOffset.UtcNow;
-        await _hub.PublishAsync(
+        // The id is the hub's: the message_id its subscribers read (GAP-11).
+        var eventId = await _hub.PublishAsync(
                 request.Topic,
                 EventHubToolHelpers.PayloadAsObject(request.Payload),
                 options,

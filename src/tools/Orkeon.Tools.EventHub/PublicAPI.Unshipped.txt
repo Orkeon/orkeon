@@ -1,1 +1,3 @@
 #nullable enable
+*REMOVED*Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.get -> string!
+*REMOVED*Orkeon.Tools.EventHub.Dtos.SendRequestResponse.CorrelationId.init -> void

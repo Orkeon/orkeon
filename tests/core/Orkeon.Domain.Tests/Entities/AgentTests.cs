@@ -1499,9 +1499,7 @@ public class AgentTests
         public System.Threading.Tasks.Task<IBaseTool?> GetToolAsync(string toolId) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
         public System.Threading.Tasks.Task<IBaseTool?> GetToolByNameAsync(string name) => System.Threading.Tasks.Task.FromResult<IBaseTool?>(null);
         public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync() => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
-        public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
         public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId) => System.Threading.Tasks.Task.FromResult(false);
-        public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability) => System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(Array.Empty<IBaseTool>());
         public System.Threading.Tasks.Task ClearAsync() => System.Threading.Tasks.Task.CompletedTask;
     }
 

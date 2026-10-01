@@ -14,7 +14,8 @@ namespace Orkeon.Hosting;
 /// <para>
 /// The runners never start the host, so no hosted service could do this; it is an explicit
 /// step, like the telemetry activation, called by the kickoff, by <c>--validate</c> and by
-/// <c>--list-tools</c> so the three see the same tool surface. A server that cannot be
+/// <c>--list-tools</c> so the three see the same tool surface — and by <c>orkeon-host</c>'s
+/// connection service, once at startup, before any message can load a crew. A server that cannot be
 /// connected — a command that does not exist, an endpoint that does not answer, a server that
 /// never completes its handshake — costs one error line naming it, on the log and on stderr,
 /// and nothing else: the run goes on, and a crew that names one of that server's tools fails
@@ -52,18 +53,28 @@ internal static partial class McpStartup
     /// Connects every declared server and registers its tools; a no-op on a host built without
     /// the section. Never throws for a server: see the class summary.
     /// </summary>
-    [SuppressMessage("Design", "CA1031",
-        Justification = "A server that cannot start, answer or complete its handshake fails in any exception type the transports and the process API produce; every one of them is the same event for the run - that server is unavailable - and is reported as such rather than ending the run.")]
-    public static async Task ConnectConfiguredServersAsync(IHost host, CancellationToken ct)
+    public static Task ConnectConfiguredServersAsync(IHost host, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(host);
+        return ConnectConfiguredServersAsync(host.Services, ct);
+    }
 
-        var provider = host.Services.GetService<McpToolProvider>();
+    /// <summary>
+    /// The same step over a service provider — the form <c>orkeon-host</c> calls from its
+    /// hosted service, once, before the first message can load a crew (GAP-11).
+    /// </summary>
+    [SuppressMessage("Design", "CA1031",
+        Justification = "A server that cannot start, answer or complete its handshake fails in any exception type the transports and the process API produce; every one of them is the same event for the run - that server is unavailable - and is reported as such rather than ending the run.")]
+    public static async Task ConnectConfiguredServersAsync(IServiceProvider services, CancellationToken ct)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+
+        var provider = services.GetService<McpToolProvider>();
         if (provider is null)
             return;
 
-        var logger = host.Services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.McpStartup");
-        var servers = host.Services.GetRequiredService<IOptions<McpOptions>>().Value.Servers;
+        var logger = services.GetRequiredService<ILoggerFactory>().CreateLogger("Orkeon.Hosting.McpStartup");
+        var servers = services.GetRequiredService<IOptions<McpOptions>>().Value.Servers;
 
         foreach (var (serverId, config) in servers)
         {

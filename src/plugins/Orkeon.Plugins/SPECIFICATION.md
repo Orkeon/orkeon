@@ -1132,8 +1132,6 @@ public interface IToolRegistry
     Task<IBaseTool?> GetToolAsync(string toolId);
     Task<IBaseTool?> GetToolByNameAsync(string name);
     Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync();
-    Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags);
-    Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability);
     Task<bool> IsRegisteredAsync(string toolId);
     Task ClearAsync();
 }

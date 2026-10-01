@@ -39,19 +39,9 @@ public interface IToolRegistry
     System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetAllToolsAsync();
 
     /// <summary>
-    /// Gets tools filtered by tags.
-    /// </summary>
-    System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags);
-
-    /// <summary>
     /// Checks if a tool is registered.
     /// </summary>
     System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId);
-
-    /// <summary>
-    /// Gets tools that match a specific capability.
-    /// </summary>
-    System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability);
 
     /// <summary>
     /// Clears all registered tools.

@@ -55,5 +55,8 @@
          global settings path through the internal RunnerSettings test seam. -->
     <InternalsVisibleTo Include="orkeon" />
     <InternalsVisibleTo Include="Orkeon.Scripting.Cli.Tests" />
+    <!-- orkeon-host connects the configured MCP servers through the same internal step the
+         runners use (McpStartup), at its own startup (GAP-11). -->
+    <InternalsVisibleTo Include="orkeon-host" />
   </ItemGroup>
 </Project>

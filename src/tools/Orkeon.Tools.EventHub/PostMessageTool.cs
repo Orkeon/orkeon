@@ -9,7 +9,7 @@ namespace Orkeon.Tools.EventHub;
 /// <summary>Agent tool that fire-and-forgets a message to an addressed mailbox.</summary>
 [ToolContract("post_message",
     Name = "post_message",
-    Description = "Fire-and-forget a message to a mailbox (agent://, crew://, or topic://).",
+    Description = "Fire-and-forget a message to a mailbox (agent://, crew://, topic://, or client://).",
     Category = "EventHub")]
 public sealed class PostMessageTool : ToolBase<PostMessageRequest, PostMessageResponse>
 {
@@ -43,15 +43,17 @@ public sealed class PostMessageTool : ToolBase<PostMessageRequest, PostMessageRe
             var mailbox = MailboxAddress.Parse(new Uri(request.TargetMailbox));
             var postedAt = DateTimeOffset.UtcNow;
 
-            await _hub.PostAsync(
+            // The id is the hub's: the one the recipient reads on the message (GAP-11).
+            var messageId = await _hub.PostAsync(
                     mailbox,
                     EventHubToolHelpers.PayloadAsObject(request.Payload),
+                    new MailboxOptions { Metadata = request.Metadata },
                     cancellationToken)
                 .ConfigureAwait(false);
 
             return new PostMessageResponse
             {
-                MessageId = MessageId.NewId().AsString(),
+                MessageId = messageId.AsString(),
                 PostedAt = postedAt.ToString("O")
             };
         }

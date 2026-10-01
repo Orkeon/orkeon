@@ -82,8 +82,10 @@ défaut ; `Servers` — un dictionnaire de `McpServerConfig` indexé par identif
 serveur : `Transport` `Stdio` (défaut) ou `Sse`, `Command`/`Args`/`Env` pour stdio, `Url`
 pour HTTP) et enregistre `McpToolProvider` en singleton ; `McpServer` (+ `McpServerOptions`
 depuis `MCP:Server` : `Name`, `Orkeon` par défaut, et `Version`, `1.0.0` par défaut) n'est
-enregistré que si `MCP:EnableServer = true`. `McpServerOptions` porte aussi
-`ExposeResources` et `ExposePrompts`, que rien ne lit encore. La surcharge
+enregistré que si `MCP:EnableServer = true`. Le serveur n'expose que des outils — Orkeon n'a
+aucun modèle de ressource ni de prompt à servir, donc `resources/*` et `prompts/*` répondent
+`Method not found`, et aucune option ne prétend le contraire (les options inertes
+`ExposeResources`/`ExposePrompts` ont été supprimées, GAP-11). La surcharge
 `AddOrkeonInfrastructure(IConfiguration)` appelle elle-même `AddOrkeonMcp`.
 
 ```json
@@ -125,17 +127,21 @@ an already-registered tool and was not registered`), dans le journal et sur stde
 l'outil qui tenait le nom le garde, y compris après la déconnexion de ce serveur. Les
 autres outils du serveur sont enregistrés normalement (`--list-tools` montre la surface
 fusionnée). Orkeon Studio écrit la section depuis son onglet « Réglages › MCP ».
-Les autres racines livrées ne connectent rien : `orkeon-host`, bâti sur `RunnerHost`,
-enregistre `McpToolProvider` depuis la même section, mais charge ses crews sans le pas de
-démarrage et ne connecte jamais de serveur ; le REPL appelle `AddOrkeonInfrastructure()`
-sans paramètre et n'enregistre aucun MCP. Là, et dans tout hôte qui embarque, MCP reste une
+**`orkeon-host` les connecte aussi (GAP-11) :** bâti sur `RunnerHost`, il lit la même
+section et exécute le même pas, une fois, depuis son premier service hébergé, au démarrage
+du démon — avant que le canal de chat puisse livrer un message qui charge une crew — et
+déconnecte les serveurs à l'arrêt, après le drainage. Les mêmes réglages donnent à
+`orkeon run` et à `orkeon-host` les mêmes outils ; un serveur injoignable coûte la même
+ligne d'erreur et le démon démarre sans lui. Le REPL appelle `AddOrkeonInfrastructure()`
+sans paramètre et n'enregistre aucun MCP ; là, et dans tout hôte qui embarque, MCP reste une
 surface bibliothèque — l'hôte appelle lui-même `AddOrkeonMcp(configuration)` (ou la
 surcharge config) et connecte lui-même les serveurs.
 
-Il n'y a **pas de hosted service** : un hôte qui embarque résout `McpToolProvider` et
-appelle explicitement `ConnectServerAsync(serverId, config)` pour chaque serveur
-configuré (et `McpServer.RunStdioAsync()` pour servir) — exactement ce que fait le pas
-de démarrage de l'hôte des runners.
+La bibliothèque ne livre **pas de hosted service** pour cela : un hôte qui embarque résout
+`McpToolProvider` et appelle explicitement `ConnectServerAsync(serverId, config)` pour
+chaque serveur configuré (et `McpServer.RunStdioAsync()` pour servir) — exactement ce que
+fait le pas de démarrage de l'hôte des runners, et ce qu'appelle le service de connexion
+d'`orkeon-host`.
 
 ### Outils MCP et crews
 

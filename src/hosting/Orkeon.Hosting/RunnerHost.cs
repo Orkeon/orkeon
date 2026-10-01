@@ -12,7 +12,6 @@ using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Constants.Llm;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.FileSystem;
-using Orkeon.Domain.Tools;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.EventHub.DependencyInjection;
 using Orkeon.Infrastructure.FileSystem;
@@ -690,7 +689,7 @@ public static partial class RunnerHost
         // post_message, send_request, reply_to, receive_message, wait_for_event,
         // get_last_value). Four+ example crews reference these tools; without the hub
         // singleton the tools can't be constructed, so both must be wired together.
-        // Registered under IBaseTool, which is what ServiceProviderToolRegistry enumerates.
+        // Registered under IBaseTool, which is what the default ToolRegistry enumerates.
         services.AddOrkeonInMemoryEventHub();
         services.AddOrkeonEventHubTools();
 
@@ -765,8 +764,8 @@ public static partial class RunnerHost
         // by McpStartup before the crew loads, since the runners never start the host.
         RegisterMcp(context, services);
 
-        // Tool registry from DI
-        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+        // The tool registry is AddOrkeonInfrastructure's default ToolRegistry, seeded from every
+        // IBaseTool registered above (GAP-11): the runners need nothing of their own.
 
         // Runner-specific services
         configureServices?.Invoke(context, services);

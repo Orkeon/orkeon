@@ -23,20 +23,15 @@ public sealed record SendRequestRequest
     [FieldSchema(Description = "Timeout in milliseconds. Must be strictly positive. Forever not allowed.", Example = 5000)]
     public int? TimeoutMs { get; init; }
 
-    /// <summary>Optional metadata copied verbatim into the envelope.</summary>
+    /// <summary>Optional metadata copied verbatim into the envelope the responder reads.</summary>
     [JsonPropertyName("metadata")]
-    [FieldSchema(Description = "Optional metadata key/value pairs", IsRequired = false)]
+    [FieldSchema(Description = "Optional metadata key/value pairs, copied into the envelope the responder reads", IsRequired = false)]
     public ImmutableDictionary<string, string>? Metadata { get; init; }
 }
 
 /// <summary>Response for the <c>send_request</c> tool.</summary>
 public sealed record SendRequestResponse
 {
-    /// <summary>Correlation identifier used to match a future <c>reply_to</c>.</summary>
-    [JsonPropertyName("correlation_id")]
-    [ReturnSchema(Description = "Correlation id that ties this request to its reply")]
-    public string CorrelationId { get; init; } = "";
-
     /// <summary>JSON payload returned by the responder.</summary>
     [JsonPropertyName("response_payload")]
     [ReturnSchema(Description = "JSON payload returned by the responder")]

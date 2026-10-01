@@ -147,23 +147,27 @@ L'ordre d'enregistrement est délibéré :
    sous `MCP:Servers` et que `MCP:Enabled` n'est pas `false`. Enregistrer n'est pas connecter :
    les serveurs sont connectés par les flux ci-dessous, avant le chargement de la crew
    (voir [MCP](../architecture/mcp.md#activation)).
-10. **Registre d'outils** — `ServiceProviderToolRegistry` est enregistré comme `IToolRegistry` singleton.
+10. **Registre d'outils** — rien de propre : `AddOrkeonInfrastructure()` a déjà enregistré le `ToolRegistry`
+    par défaut, qui lit chaque `IBaseTool` enregistré par les étapes ci-dessus à sa première résolution.
 11. **Services du runner** — le hook `configureServices` de l'appelant s'exécute en dernier.
 
 `semantic_search` n'est pas dans cette liste : il est enregistré par `AddSemanticSearchTool()`,
 qu'`orkeon run` appelle par son hook `configureServices` et qu'`orkeon-host` n'appelle pas.
 
-## `ServiceProviderToolRegistry`
+## Le registre d'outils (`ToolRegistry`)
 
-L'implémentation d'`IToolRegistry` qui résout les noms d'outils YAML/TS en instances `IBaseTool`
-**depuis la DI**. Son constructeur prend `IEnumerable<IBaseTool>` — chaque outil enregistré par les
-suites — et les indexe par nom (insensible à la casse) ; deux outils enregistrés sous un même nom
-font lever le constructeur. `CrewFactory` le consomme pour construire les agents avec leurs outils
-déclarés, raison pour laquelle chaque suite enregistre sous `IBaseTool` : un outil non enregistré ne
-peut pas être résolu (et, avec `StrictTools`, fait échouer le chargement du crew au lieu d'être
+L'`IToolRegistry` par défaut (`Orkeon.Infrastructure.Tools`, enregistré par `AddOrkeonInfrastructure()`,
+livré dans le paquet `Orkeon`) résout les noms d'outils YAML/TS en instances `IBaseTool` **depuis la
+DI**. Son constructeur prend `IEnumerable<IBaseTool>` — chaque outil enregistré par les suites — et les
+indexe par nom (insensible à la casse) ; deux outils enregistrés sous un même nom font lever le
+constructeur, qui nomme les deux types. `CrewFactory` le consomme pour construire les agents avec leurs
+outils déclarés, raison pour laquelle chaque suite enregistre sous `IBaseTool` : un outil non enregistré
+ne peut pas être résolu (et, avec `StrictTools`, fait échouer le chargement du crew au lieu d'être
 silencieusement ignoré). `RegisterToolAsync` ajoute un outil à l'exécution — c'est ce que fait le
-client MCP — et **remplace** tout outil déjà enregistré sous ce nom. `GetToolsByTagsAsync` et
-`GetToolsByCapabilityAsync` répondent toujours une liste vide : le registre n'indexe que des noms.
+client MCP — et **refuse** (rend `false`) un nom qu'un autre outil tient déjà. Lectures et
+enregistrements à l'exécution peuvent s'entrelacer sans risque : `orkeon-host` mène plusieurs crews
+pendant que ses serveurs MCP se connectent. Le registre n'indexe que des noms — aucune recherche par
+étiquette ni par capacité (GAP-11).
 
 ## `RunnerExecution` — flux d'exécution
 
@@ -213,12 +217,12 @@ services.AddOrkeonWebTools();
 // … les autres suites AddOrkeon*Tools() …
 // 4. Montages VFS depuis la configuration (l'hôte web provisionne au moins un montage) :
 services.AddOrkeonFileSystem(configuration);
-// 5. Le registre d'outils EN DERNIER, pour qu'il capture chaque IBaseTool enregistré :
-services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+// 5. Rien pour le registre d'outils : AddOrkeonInfrastructure a enregistré le ToolRegistry
+//    par défaut, qui lit chaque IBaseTool enregistré ci-dessus à sa première résolution.
 ```
 
 Parce qu'un hôte web exécute typiquement chaque crew dans son propre scope DI (les dépôts de crews
-d'Orkeon sont scoped), `ServiceProviderToolRegistry` — un singleton sur l'ensemble des `IBaseTool`
+d'Orkeon sont scoped), le `ToolRegistry` — un singleton sur l'ensemble des `IBaseTool`
 enregistrés — est partagé entre les exécutions, tandis que `CrewFactory` et l'orchestrateur se
 résolvent par scope.
 

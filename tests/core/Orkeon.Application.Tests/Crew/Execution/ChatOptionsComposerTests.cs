@@ -81,6 +81,22 @@ public class ChatOptionsComposerTests
     }
 
     [Fact]
+    public async System.Threading.Tasks.Task TheAgentsOwnInstance_WinsOverARegisteredToolOfTheSameName()
+    {
+        // GAP-11 (GAP-02 finding): an agent built in C# with its own rag_search must call that
+        // instance, not the host's homonym — every runner registers rag_*, so the substitution
+        // quietly redirected the agent to another collection.
+        var own = new SpyTool("rag_search");
+        var hosts = new SpyTool("RAG_SEARCH");
+        var agent = BuildAgent(null, own);
+        var composer = BuildComposer(registeredTools: [hosts]);
+
+        var (_, availableTools) = await composer.BuildChatOptionsAsync(agent, BuildTask(), TestContext.Current.CancellationToken);
+
+        Assert.Same(own, Assert.Single(availableTools));
+    }
+
+    [Fact]
     public async System.Threading.Tasks.Task LeavesToolsNull_ForAToollessAgent()
     {
         var composer = BuildComposer();

@@ -101,7 +101,7 @@ public sealed class WaitForAsyncTests
             CancellationToken.None);
 
         await System.Threading.Tasks.Task.Yield();
-        await hub.PostAsync(addr, new { msg = "hi" }, CancellationToken.None);
+        await hub.PostAsync(addr, new { msg = "hi" }, null, CancellationToken.None);
 
         var msg = await waitTask;
         Assert.NotNull(msg.TargetMailbox);

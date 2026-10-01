@@ -21,7 +21,7 @@ public sealed class PostSendReplyTests
         var address = MailboxAddress.Parse(new Uri($"agent://{CrewId.Create()}/{AgentId.Create()}"));
 
         var ex = await Assert.ThrowsAsync<MailboxNotFoundException>(
-            () => hub.PostAsync(address, new { hello = "world" }, CancellationToken.None));
+            () => hub.PostAsync(address, new { hello = "world" }, null, CancellationToken.None));
 
         Assert.Equal(address.Raw, ex.MailboxAddress);
     }
@@ -48,6 +48,7 @@ public sealed class PostSendReplyTests
             address,
             new { ping = true },
             TimeSpan.FromSeconds(2),
+            null,
             CancellationToken.None);
 
         Assert.Equal("pong", resp!["echo"]!.GetValue<string>());
@@ -66,6 +67,7 @@ public sealed class PostSendReplyTests
                 address,
                 new { ping = true },
                 TimeSpan.FromMilliseconds(100),
+                null,
                 CancellationToken.None));
 
         Assert.Equal(TimeSpan.FromMilliseconds(100), ex.Timeout);
@@ -91,6 +93,6 @@ public sealed class PostSendReplyTests
         using var registration = hub.RegisterMailbox(addr);
 
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(
-            () => hub.SendAsync<object, object>(addr, new { }, TimeSpan.Zero, CancellationToken.None));
+            () => hub.SendAsync<object, object>(addr, new { }, TimeSpan.Zero, null, CancellationToken.None));
     }
 }

@@ -49,7 +49,7 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         await harness.Bridge.PostAsync(
-            Address("client://studio"), new { hello = "world" }, TestContext.Current.CancellationToken);
+            Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
 
         var emitted = Assert.Single(harness.Emitted());
         Assert.Equal("hub.message", emitted.GetProperty("kind").GetString());
@@ -69,7 +69,7 @@ public class EventHubBridgeTests
 
         await Assert.ThrowsAsync<MailboxNotFoundException>(
             () => harness.Bridge.PostAsync(
-                Address("client://someone-else"), new { }, TestContext.Current.CancellationToken));
+                Address("client://someone-else"), new { }, null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -166,6 +166,7 @@ public class EventHubBridgeTests
             Address("client://studio"),
             new { question = "continue?" },
             TimeSpan.FromSeconds(5),
+            null,
             TestContext.Current.CancellationToken);
 
         var asked = await WaitForEmissionAsync(harness);
@@ -191,6 +192,7 @@ public class EventHubBridgeTests
             Address("client://studio"),
             new { question = "continue?" },
             TimeSpan.FromSeconds(5),
+            null,
             TestContext.Current.CancellationToken);
 
         var asked = await WaitForEmissionAsync(harness);
@@ -208,7 +210,7 @@ public class EventHubBridgeTests
         await using var harness = new Harness();
 
         await harness.Bridge.PostAsync(
-            Address("client://studio"), new { hello = "world" }, TestContext.Current.CancellationToken);
+            Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
 
         await harness.Bridge.HandleCommandAsync("""{"kind":"subscribe","topic":"t"}""", TestContext.Current.CancellationToken);
         await harness.Inner.PublishAsync("t", new { n = 1 }, null, TestContext.Current.CancellationToken);
@@ -232,6 +234,7 @@ public class EventHubBridgeTests
                 Address("client://studio"),
                 new { question = "continue?" },
                 TimeSpan.FromMilliseconds(100),
+                null,
                 TestContext.Current.CancellationToken));
     }
 
@@ -278,7 +281,7 @@ public class EventHubBridgeTests
         using (harness.Caller.Push(new EventHubCaller(crew, null)))
         {
             await harness.Bridge.PostAsync(
-                Address("client://studio"), new { hello = "world" }, TestContext.Current.CancellationToken);
+                Address("client://studio"), new { hello = "world" }, null, TestContext.Current.CancellationToken);
         }
 
         var emitted = Assert.Single(harness.Emitted());

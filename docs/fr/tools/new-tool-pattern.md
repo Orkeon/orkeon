@@ -376,19 +376,16 @@ services.AddSingleton<IBaseTool>(sp =>
 });
 ```
 
-L'outil est alors disponible via `IEnumerable<IBaseTool>`. **La résolution par nom
-depuis le YAML exige un registre adossé à la DI** : le `AddOrkeonInfrastructure()`
-par défaut enregistre le stub *vide* `InMemoryToolRegistry`, qui ne voit jamais vos
-enregistrements `IBaseTool` — le runner host substitue `ServiceProviderToolRegistry`
-(`Orkeon.Hosting`), et un hôte qui embarque doit faire de même :
-
-```csharp
-services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
-```
+L'outil est alors disponible via `IEnumerable<IBaseTool>`, et **par nom depuis le YAML** :
+`AddOrkeonInfrastructure()` enregistre le `ToolRegistry` par défaut
+(`Orkeon.Infrastructure.Tools`), alimenté par chaque `IBaseTool` du conteneur — le même
+registre que celui des runners, livré dans le paquet `Orkeon`, donc un hôte qui embarque
+n'enregistre rien de plus. Deux outils DI de même nom (sans tenir compte de la casse) font
+échouer la construction du registre en nommant les deux types.
 
 ### Option C — Via IToolRegistry
 
-`IToolRegistry` (`Orkeon.Domain.Tools` ; `ServiceProviderToolRegistry` dans les runners, le stub `InMemoryToolRegistry` par défaut) permet l'enregistrement dynamique (`RegisterToolAsync`) et la résolution d'outils par nom :
+`IToolRegistry` (`Orkeon.Domain.Tools` ; le `ToolRegistry` par défaut partout) permet l'enregistrement dynamique (`RegisterToolAsync` — refusé, en rendant `false`, pour un nom qu'un autre outil tient) et la résolution d'outils par nom :
 
 ```csharp
 var toolRegistry = serviceProvider.GetRequiredService<IToolRegistry>();
@@ -550,8 +547,8 @@ public static class ServiceCollectionExtensions
             logger: sp.GetService<ILogger<WeatherTool>>()));
         services.TryAddEnumerable(ServiceDescriptor.Singleton<IBaseTool, TranslateTool>());
 
-        // Utilisables par nom en YAML dès qu'un IToolRegistry adossé à la DI est
-        // enregistré (ServiceProviderToolRegistry — voir l'Option B plus haut).
+        // Utilisables par nom en YAML : le ToolRegistry par défaut lit chaque
+        // IBaseTool enregistré en DI (voir l'Option B plus haut).
         return services;
     }
 }
@@ -562,8 +559,7 @@ Usage dans le `Program.cs` :
 ```csharp
 services.AddOrkeonApplication();
 services.AddOrkeonInfrastructure();
-services.AddOrkeonMyPackageTools();  // Vos outils custom
-services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>(); // résolution par nom pour le YAML
+services.AddOrkeonMyPackageTools();  // Vos outils custom — résolubles par nom depuis le YAML
 ```
 
 ## Étape 8 — Tester l'outil
@@ -629,7 +625,7 @@ compte d'outils des pages d'accueil bouge avec lui.
 3. Définir TResponse         →  Record avec [ReturnSchema] sur chaque champ retourné
 4. Implémenter la classe     →  [ToolContract("nom", Description = …)], ExecuteTypedAsync, Access
 5. (Optionnel) Validation    →  override ValidateTypedRequest
-6. Enregistrer               →  Builder / DI (+ ServiceProviderToolRegistry) / IToolRegistry
+6. Enregistrer               →  Builder / DI (lu par le ToolRegistry par défaut) / IToolRegistry
 7. Tester                    →  xUnit, doubles écrits à la main, CallAsync avec paramètres snake_case
 ```
 

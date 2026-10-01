@@ -12,6 +12,13 @@ internal sealed record InboundMessage
     /// </summary>
     public required string ConversationId { get; init; }
 
+    /// <summary>
+    /// The room the conversation was opened in — on Discord, the channel a thread belongs to.
+    /// It is what a chat route names (<c>Orkeon:Host:Discord:Routes</c>); null when the
+    /// channel has no notion of rooms.
+    /// </summary>
+    public string? RoomId { get; init; }
+
     /// <summary>Who sent it, as the channel identifies them.</summary>
     public required string SenderId { get; init; }
 

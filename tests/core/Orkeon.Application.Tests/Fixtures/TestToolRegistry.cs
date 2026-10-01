@@ -48,21 +48,9 @@ public class TestToolRegistry : IToolRegistry
         return System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>(_tools.Values.ToList());
     }
 
-    public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByTagsAsync(params string[] tags)
-    {
-        // For testing, return empty collection
-        return System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>([]);
-    }
-
     public System.Threading.Tasks.Task<bool> IsRegisteredAsync(string toolId)
     {
         return System.Threading.Tasks.Task.FromResult(_tools.ContainsKey(toolId));
-    }
-
-    public System.Threading.Tasks.Task<IReadOnlyList<IBaseTool>> GetToolsByCapabilityAsync(string capability)
-    {
-        // For testing, return empty collection
-        return System.Threading.Tasks.Task.FromResult<IReadOnlyList<IBaseTool>>([]);
     }
 
     public System.Threading.Tasks.Task<bool> UnregisterToolAsync(string toolId)

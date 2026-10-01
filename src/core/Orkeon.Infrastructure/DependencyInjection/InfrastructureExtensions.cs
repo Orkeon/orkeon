@@ -272,8 +272,10 @@ public static class InfrastructureExtensions
         // These registrations prevent NullReferenceException when interfaces are resolved.
         // Stubs log warnings on first use so they're visible in production.
 
-        // IToolRegistry — required by CrewFactory, FlowStepExecutor, McpServer, McpToolProvider
-        services.TryAddSingleton<Domain.Tools.IToolRegistry, Stubs.InMemoryToolRegistry>();
+        // IToolRegistry — required by CrewFactory, FlowStepExecutor, McpServer, McpToolProvider.
+        // Seeded from every IBaseTool in the container, so a host that registers a tool in DI
+        // resolves it by name from a YAML crew without a registry of its own (GAP-11).
+        services.TryAddSingleton<Domain.Tools.IToolRegistry, Tools.ToolRegistry>();
 
         // IKnowledgeStore (Domain) — no-op stub; real implementation requires a vector store
         services.TryAddSingleton<Domain.Knowledge.IKnowledgeStore, Stubs.InMemoryKnowledgeStore>();

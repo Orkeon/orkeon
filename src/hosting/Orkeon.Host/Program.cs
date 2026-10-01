@@ -120,11 +120,9 @@ using var host = RunnerHost.Build(
         services.Configure<Orkeon.Host.Gateway.DiscordChannelOptions>(
             context.Configuration.GetSection(Orkeon.Host.Gateway.DiscordChannelOptions.SectionName));
 
-        // Registration order is stop order reversed (hosted services stop LIFO): the channel
-        // FIRST so it stops LAST — the drain must run while the channel can still deliver,
-        // or the grace period keeps runs alive to produce answers nobody can receive.
-        services.AddHostedService<Orkeon.Host.Gateway.ChatChannelService>();
-        services.AddHostedService<CrewHostService>();
+        // The MCP connection, the chat channel, the crew host — in that order, which is both
+        // start order and stop order reversed (see HostServiceRegistration).
+        services.AddHostLifetimeServices();
     },
     configureBuilder: builder => builder
         .UseSystemd()

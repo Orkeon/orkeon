@@ -36,10 +36,8 @@ Orkeon supporte deux approches pour définir une crew. Le choix impacte le workf
 1. Écrire config.yaml (agents, tasks, process type — voir le schéma YAML)
 2. Identifier les outils manquants
 3. Coder les outils custom (ToolBase<TReq, TRes>)
-4. Enregistrer via DI (AddSingleton<IBaseTool, MonOutil>()) — **et** un registre
-   adossé à la DI, sans lequel les noms YAML se résolvent contre le stub vide :
-   services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()
-   (Orkeon.Hosting ; orkeon run le fait pour vous)
+4. Enregistrer via DI (AddSingleton<IBaseTool, MonOutil>()) — le registre d'outils
+   par défaut d'AddOrkeonInfrastructure() le lit, donc les noms YAML se résolvent
 5. Charger et exécuter — le chemin du YAML est un chemin virtuel, lu via le VFS :
    var crew = await crewFactory.CreateFromFileAsync("/crews/config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);
@@ -278,9 +276,8 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IBaseTool, MonOutilCustom1>();
         services.AddSingleton<IBaseTool, MonOutilCustom2>();
 
-        // Requis pour les crews YAML — les noms d'outils se résolvent contre les
-        // enregistrements IBaseTool (sans cette ligne, contre un stub en mémoire vide)
-        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+        // Les noms d'outils YAML se résolvent contre ces enregistrements IBaseTool : le
+        // ToolRegistry par défaut d'AddOrkeonInfrastructure() les lit — rien de plus à enregistrer.
 
         // LLM — un hôte construit à la main ne lit aucune section Llm de lui-même : construire
         // le provider ici. Utiliser la classe provider du fournisseur (OpenAIProvider, AnthropicLlmProvider, ...).

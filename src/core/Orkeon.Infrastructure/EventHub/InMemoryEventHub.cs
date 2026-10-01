@@ -103,7 +103,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     // ── PublishAsync ────────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    public async System.Threading.Tasks.Task PublishAsync(
+    public async Task<MessageId> PublishAsync(
         string topic,
         object payload,
         PublishOptions? options,
@@ -152,6 +152,8 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             var scope = options?.TargetCrewId?.ToString() ?? "<global>";
             LogPublished(topic, message.Id, scope);
         }
+
+        return message.Id;
     }
 
     /// <summary>
@@ -208,21 +210,23 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
     // ── PostAsync ───────────────────────────────────────────────────────
 
     /// <inheritdoc/>
-    public System.Threading.Tasks.Task PostAsync(
+    public Task<MessageId> PostAsync(
         MailboxAddress recipient,
         object payload,
+        MailboxOptions? options,
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(recipient);
         ct.ThrowIfCancellationRequested();
-        return PostCoreAsync(recipient, payload, correlation: null, topic: PostTopic, ct);
+        return PostCoreAsync(recipient, payload, correlation: null, topic: PostTopic, options?.Metadata, ct);
     }
 
-    private async System.Threading.Tasks.Task PostCoreAsync(
+    private async Task<MessageId> PostCoreAsync(
         MailboxAddress to,
         object payload,
         CorrelationId? correlation,
         string topic,
+        ImmutableDictionary<string, string>? metadata,
         CancellationToken ct)
     {
         if (!_mailboxes.ContainsKey(to.Raw))
@@ -238,7 +242,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
             TargetMailbox = to,
             CorrelationId = correlation,
             Payload = payload,
-            Metadata = null,
+            Metadata = metadata,
             SchemaId = Message.NoDeclaredSchemaId
         });
 
@@ -267,6 +271,8 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
 
         if (_logger.IsEnabled(LogLevel.Debug))
             LogPosted(to.Raw, message.Id);
+
+        return message.Id;
     }
 
     // ── SendAsync ───────────────────────────────────────────────────────
@@ -276,19 +282,21 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
         MailboxAddress recipient,
         TRequest request,
         TimeSpan timeout,
+        MailboxOptions? options,
         CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(recipient);
         if (timeout <= TimeSpan.Zero)
             throw new ArgumentOutOfRangeException(nameof(timeout), "SendAsync requires a positive timeout. ForeverWaitTimeout is not allowed for Send (spec §9.3).");
 
-        return SendCoreAsync<TRequest, TResponse>(recipient, request, timeout, ct);
+        return SendCoreAsync<TRequest, TResponse>(recipient, request, timeout, options?.Metadata, ct);
     }
 
     private async Task<TResponse> SendCoreAsync<TRequest, TResponse>(
         MailboxAddress to,
         TRequest request,
         TimeSpan timeout,
+        ImmutableDictionary<string, string>? metadata,
         CancellationToken ct)
     {
         if (!_mailboxes.TryGetValue(to.Raw, out _))
@@ -305,7 +313,7 @@ public sealed partial class InMemoryEventHub : IEventHub, IDisposable
 
         try
         {
-            await PostCoreAsync(to, request!, correlation, SendTopic, ct).ConfigureAwait(false);
+            await PostCoreAsync(to, request!, correlation, SendTopic, metadata, ct).ConfigureAwait(false);
         }
         catch
         {

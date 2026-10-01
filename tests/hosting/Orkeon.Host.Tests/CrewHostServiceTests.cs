@@ -46,6 +46,21 @@ public sealed class CrewHostServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task Two_crews_with_one_name_are_refused_as_ambiguous()
+    {
+        // GAP-11: a chat route names a crew; two crews answering to one name (names compare
+        // case-insensitively) would leave the route to a coin toss.
+        using var service = Build(new OrkeonHostOptions
+        {
+            Crews = [Crew(), new HostedCrewOptions { Name = "SUPPORT", Path = _crewFile }],
+        });
+
+        var ex = await Assert.ThrowsAsync<HostConfigurationException>(
+            () => service.StartAsync(TestContext.Current.CancellationToken));
+        Assert.Contains("SUPPORT", ex.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task A_zero_run_timeout_is_refused_with_the_words_to_fix_it()
     {
         // Zero cancels every run at its first instant; past the CancelAfter ceiling every

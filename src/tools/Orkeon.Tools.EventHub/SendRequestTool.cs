@@ -56,14 +56,14 @@ public sealed class SendRequestTool : ToolBase<SendRequestRequest, SendRequestRe
                     mailbox,
                     EventHubToolHelpers.PayloadAsObject(request.Payload),
                     timeout,
+                    new MailboxOptions { Metadata = request.Metadata },
                     cancellationToken)
                 .ConfigureAwait(false);
 
-            // No correlation id is exposed through the IEventHub.SendAsync surface; we surface a
-            // generated one purely for downstream tracing. v1.0 has no use for it beyond the DTO.
+            // The reply is the answer; the correlation that paired it is the hub's business, and
+            // the tool no longer returns one it made up (GAP-11).
             return new SendRequestResponse
             {
-                CorrelationId = CorrelationId.NewId().AsString(),
                 ResponsePayload = responseNode
             };
         }

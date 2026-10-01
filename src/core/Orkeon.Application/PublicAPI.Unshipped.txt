@@ -769,3 +769,20 @@ Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyStepStartedAs
 Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskCompletedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, Orkeon.Application.Interfaces.Services.TaskCompletionInfo! completionInfo, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 Orkeon.Application.Interfaces.Services.ICallbackOrchestrator.NotifyTaskStartedAsync(Orkeon.Domain.Agent.Agent! agent, Orkeon.Domain.Task.CrewTask! task, System.DateTime startTime, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
 static Orkeon.Application.Execution.StepNotifyingToolInvocationPipeline.Wrap(Orkeon.Application.Interfaces.Security.IToolInvocationPipeline! inner, Orkeon.Application.Interfaces.Services.ICallbackOrchestrator? callbacks) -> Orkeon.Application.Interfaces.Security.IToolInvocationPipeline!
+*REMOVED*Orkeon.Application.EventHub.IEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Application.EventHub.IEventHub.SendAsync<TRequest, TResponse>(Orkeon.Application.EventHub.MailboxAddress! recipient, TRequest request, System.TimeSpan timeout, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<TResponse>!
+Orkeon.Application.EventHub.IEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, Orkeon.Application.EventHub.MailboxOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!
+Orkeon.Application.EventHub.IEventHub.SendAsync<TRequest, TResponse>(Orkeon.Application.EventHub.MailboxAddress! recipient, TRequest request, System.TimeSpan timeout, Orkeon.Application.EventHub.MailboxOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<TResponse>!
+Orkeon.Application.EventHub.MailboxOptions
+Orkeon.Application.EventHub.MailboxOptions.<Clone>$() -> Orkeon.Application.EventHub.MailboxOptions!
+Orkeon.Application.EventHub.MailboxOptions.Equals(Orkeon.Application.EventHub.MailboxOptions? other) -> bool
+Orkeon.Application.EventHub.MailboxOptions.MailboxOptions() -> void
+Orkeon.Application.EventHub.MailboxOptions.Metadata.get -> System.Collections.Immutable.ImmutableDictionary<string!, string!>?
+Orkeon.Application.EventHub.MailboxOptions.Metadata.init -> void
+override Orkeon.Application.EventHub.MailboxOptions.Equals(object? obj) -> bool
+override Orkeon.Application.EventHub.MailboxOptions.GetHashCode() -> int
+override Orkeon.Application.EventHub.MailboxOptions.ToString() -> string!
+static Orkeon.Application.EventHub.MailboxOptions.operator !=(Orkeon.Application.EventHub.MailboxOptions? left, Orkeon.Application.EventHub.MailboxOptions? right) -> bool
+static Orkeon.Application.EventHub.MailboxOptions.operator ==(Orkeon.Application.EventHub.MailboxOptions? left, Orkeon.Application.EventHub.MailboxOptions? right) -> bool
+*REMOVED*Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!

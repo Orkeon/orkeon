@@ -282,7 +282,7 @@ bench must not reach the operator's real mailbox (`email_parser`, which reads a 
 
 ## Tool resolution by name (YAML → instance)
 
-When a crew is defined in YAML, tools are referenced by their name (the tool class's `Name` property). Resolution happens via `IToolRegistry` (`Orkeon.Domain.Tools`); the runners use `ServiceProviderToolRegistry` (`Orkeon.Hosting`), which indexes every `IBaseTool` registered in DI by name, case-insensitively.
+When a crew is defined in YAML, tools are referenced by their name (the tool class's `Name` property). Resolution happens via `IToolRegistry` (`Orkeon.Domain.Tools`); `AddOrkeonInfrastructure()` registers the default `ToolRegistry` (`Orkeon.Infrastructure.Tools`, in the `Orkeon` package), which indexes every `IBaseTool` registered in DI by name, case-insensitively — the runners and any embedding host use the same one.
 
 ### Resolution pipeline
 
@@ -438,7 +438,7 @@ The exact name to use in the YAML `tools:` section is the value of the tool clas
 For a custom tool to be usable in YAML, it must be registered in `IToolRegistry`:
 
 ```csharp
-// Option 1 — via DI (read by ServiceProviderToolRegistry)
+// Option 1 — via DI (read by the default ToolRegistry)
 services.AddSingleton<IBaseTool, MyCustomTool>();
 
 // Option 2 — explicit registration at runtime

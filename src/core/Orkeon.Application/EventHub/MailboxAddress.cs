@@ -25,7 +25,8 @@ public enum MailboxKind
 
 /// <summary>
 /// Structured URI identifying a routing destination on the EventHub.
-/// Supported schemes: <c>agent://{crewId}/{agentId}</c>, <c>crew://{crewId}</c>, <c>topic://{topicName}</c>.
+/// Supported schemes: <c>agent://{crewId}/{agentId}</c>, <c>crew://{crewId}</c>, <c>topic://{topicName}</c>,
+/// <c>client://{name}</c>.
 /// </summary>
 public sealed record MailboxAddress
 {
@@ -53,7 +54,7 @@ public sealed record MailboxAddress
     private const string ClientScheme = "client://";
 
     /// <summary>
-    /// Parses a URI into a <see cref="MailboxAddress"/>. Accepts the three documented schemes.
+    /// Parses a URI into a <see cref="MailboxAddress"/>. Accepts the four documented schemes.
     /// </summary>
     /// <exception cref="InvalidMailboxAddressException">
     /// Thrown when the input is null/empty, uses an unsupported scheme, or contains malformed identifiers.
@@ -62,7 +63,7 @@ public sealed record MailboxAddress
     {
         ArgumentNullException.ThrowIfNull(uri);
         // OriginalString preserves the exact input (no scheme/host normalization or trailing
-        // slash insertion), so the custom agent://, crew://, topic:// schemes round-trip
+        // slash insertion), so the custom agent://, crew://, topic://, client:// schemes round-trip
         // through the string-based parser unchanged.
         return ParseString(uri.OriginalString);
     }

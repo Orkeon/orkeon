@@ -9,16 +9,19 @@ namespace Orkeon.Application.EventHub;
 public interface IEventHub
 {
     /// <summary>Broadcast 1→N, topic-based, anonymous. Optional crew scope via <see cref="PublishOptions.TargetCrewId"/>.</summary>
-    System.Threading.Tasks.Task PublishAsync(
+    /// <returns>The id of the published message — the <see cref="Message.Id"/> its subscribers read.</returns>
+    Task<MessageId> PublishAsync(
         string topic,
         object payload,
         PublishOptions? options,
         CancellationToken ct);
 
     /// <summary>Fire-and-forget 1→1 to an addressed mailbox.</summary>
-    System.Threading.Tasks.Task PostAsync(
+    /// <returns>The id of the posted message — the <see cref="Message.Id"/> the recipient reads.</returns>
+    Task<MessageId> PostAsync(
         MailboxAddress recipient,
         object payload,
+        MailboxOptions? options,
         CancellationToken ct);
 
     /// <summary>Request-response 1→1. Timeout is mandatory — <c>ForeverWaitTimeout</c> is not allowed here.</summary>
@@ -26,6 +29,7 @@ public interface IEventHub
         MailboxAddress recipient,
         TRequest request,
         TimeSpan timeout,
+        MailboxOptions? options,
         CancellationToken ct);
 
     /// <summary>Replies to a previously issued <c>Send</c>, correlated by <paramref name="correlation"/>.</summary>

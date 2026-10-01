@@ -308,3 +308,33 @@ Orkeon.Infrastructure.Orchestration.SequentialCrewOrchestrator.SequentialCrewOrc
 *REMOVED*Orkeon.Infrastructure.Stubs.NullTaskCallback.OnTaskCompletedAsync(Orkeon.Domain.Task.ICrewTask! task, Orkeon.Domain.Task.ValueObjects.TaskOutput! output) -> System.Threading.Tasks.Task!
 *REMOVED*Orkeon.Infrastructure.Stubs.NullTaskCallback.OnTaskFailedAsync(Orkeon.Domain.Task.ICrewTask! task, string! errorMessage) -> System.Threading.Tasks.Task!
 *REMOVED*Orkeon.Infrastructure.Stubs.NullTaskCallback.OnTaskStartAsync(Orkeon.Domain.Task.ICrewTask! task) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.InMemoryToolRegistry(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Stubs.InMemoryToolRegistry!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Infrastructure.Stubs.InMemoryToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry
+Orkeon.Infrastructure.Tools.ToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Infrastructure.Tools.ToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+Orkeon.Infrastructure.Tools.ToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
+Orkeon.Infrastructure.Tools.ToolRegistry.ToolRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> void
+Orkeon.Infrastructure.Tools.ToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposePrompts.get -> bool
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposePrompts.set -> void
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeResources.get -> bool
+*REMOVED*[ORKEXP004]Orkeon.Infrastructure.MCP.McpServerOptions.ExposeResources.set -> void
+*REMOVED*Orkeon.Infrastructure.EventHub.InMemoryEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Infrastructure.EventHub.InMemoryEventHub.SendAsync<TRequest, TResponse>(Orkeon.Application.EventHub.MailboxAddress! recipient, TRequest request, System.TimeSpan timeout, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<TResponse>!
+Orkeon.Infrastructure.EventHub.InMemoryEventHub.PostAsync(Orkeon.Application.EventHub.MailboxAddress! recipient, object! payload, Orkeon.Application.EventHub.MailboxOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!
+Orkeon.Infrastructure.EventHub.InMemoryEventHub.SendAsync<TRequest, TResponse>(Orkeon.Application.EventHub.MailboxAddress! recipient, TRequest request, System.TimeSpan timeout, Orkeon.Application.EventHub.MailboxOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<TResponse>!
+*REMOVED*Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
+Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!

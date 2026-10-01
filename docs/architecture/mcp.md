@@ -80,9 +80,10 @@ services.AddOrkeonMcp(configuration);   // reads the "MCP" section
 `Stdio` (default) or `Sse`, `Command`/`Args`/`Env` for stdio, `Url` for HTTP) and registers
 `McpToolProvider` as a singleton; `McpServer` (+ `McpServerOptions` from `MCP:Server`:
 `Name`, default `Orkeon`, and `Version`, default `1.0.0`) is registered only when
-`MCP:EnableServer = true`. `McpServerOptions` also carries `ExposeResources` and
-`ExposePrompts`, which nothing reads yet. The `AddOrkeonInfrastructure(IConfiguration)`
-overload calls `AddOrkeonMcp` itself.
+`MCP:EnableServer = true`. The server exposes tools only — Orkeon has no resource or prompt
+model to serve, so `resources/*` and `prompts/*` answer `Method not found`, and there is no
+option claiming otherwise (the inert `ExposeResources`/`ExposePrompts` were removed, GAP-11).
+The `AddOrkeonInfrastructure(IConfiguration)` overload calls `AddOrkeonMcp` itself.
 
 ```json
 {
@@ -122,17 +123,20 @@ MCP tool is not registered, one error line names the server and the tool (`The t
 registered`), on the log and on stderr, and the tool that held the name keeps it, including
 after that server disconnects. The server's other tools are registered normally
 (`--list-tools` shows the merged surface). Orkeon Studio writes the section from its
-«Settings › MCP» tab. The other shipped roots do not connect anything: `orkeon-host` is
-built on `RunnerHost`, so it registers `McpToolProvider` from the same section, but it
-loads its crews without the startup step and never connects a server; the REPL calls the
-parameterless `AddOrkeonInfrastructure()` and registers no MCP at all. There, and in any
-embedding host, MCP stays a library surface — the host calls `AddOrkeonMcp(configuration)`
-(or the config overload) and connects the servers itself.
+«Settings › MCP» tab. **`orkeon-host` connects them too (GAP-11):** built on `RunnerHost`,
+it reads the same section and runs the same step once, from its first hosted service, when
+the daemon starts — before the chat channel can deliver a message that loads a crew — and
+disconnects the servers when it stops, after the drain. The same settings give `orkeon run`
+and `orkeon-host` the same tools; an unreachable server costs the same error line and the
+daemon starts without it. The REPL calls the parameterless `AddOrkeonInfrastructure()` and
+registers no MCP at all; there, and in any embedding host, MCP stays a library surface —
+the host calls `AddOrkeonMcp(configuration)` (or the config overload) and connects the
+servers itself.
 
-There is **no hosted service**: an embedding host resolves `McpToolProvider` and calls
-`ConnectServerAsync(serverId, config)` for each configured server (and
-`McpServer.RunStdioAsync()` to serve), explicitly — which is exactly what the runner
-host's startup step does.
+The library ships **no hosted service** for this: an embedding host resolves
+`McpToolProvider` and calls `ConnectServerAsync(serverId, config)` for each configured
+server (and `McpServer.RunStdioAsync()` to serve), explicitly — which is exactly what the
+runner host's startup step does, and what `orkeon-host`'s connection service calls.
 
 ### MCP tools and crews
 

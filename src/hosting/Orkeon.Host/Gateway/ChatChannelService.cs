@@ -21,6 +21,7 @@ internal sealed partial class ChatChannelService : BackgroundService
     private readonly ILoggerFactory _loggers;
     private readonly ILogger<ChatChannelService> _logger;
     private readonly IHostApplicationLifetime _lifetime;
+    private ChatRoutes? _routes;
 
     /// <summary>Builds the service over the channel configuration and the runner.</summary>
     public ChatChannelService(
@@ -79,6 +80,13 @@ internal sealed partial class ChatChannelService : BackgroundService
                     throw new HostConfigurationException(
                         $"Discord:GuildIds contains '{guildId}', which is not a Discord guild id (a number).");
             }
+
+            // Which crew each room reaches (GAP-11), refused here when a route cannot be
+            // honoured. A crew no room reaches is named, so hosting it is a choice the
+            // operator sees rather than the silent limit it used to be.
+            _routes = ChatRoutes.From(_discord, _registry.Crews);
+            foreach (var crew in _routes.UnreachableCrews(_registry.Crews))
+                LogUnreachableCrew(crew);
         }
 
         return base.StartAsync(cancellationToken);
@@ -91,7 +99,7 @@ internal sealed partial class ChatChannelService : BackgroundService
             return;
 
         var authorizer = new AllowListChatAuthorizer(_discord.AllowedUserIds);
-        var router = new ThreadIsRunRouter(_registry.Crews[0].Name);
+        var router = new ThreadIsRunRouter(_routes ?? ChatRoutes.From(_discord, _registry.Crews));
         var gateway = new ChatGateway(_runner, router, authorizer, _registry, _loggers.CreateLogger<ChatGateway>());
 
         var channel = new DiscordChannel(Options.Create(_discord), _loggers.CreateLogger<DiscordChannel>());
@@ -161,6 +169,9 @@ internal sealed partial class ChatChannelService : BackgroundService
 
     [LoggerMessage(Level = LogLevel.Error, Message = "The Discord channel is enabled but its allow list is empty; it would answer nobody, so it will not start. Add Discord:AllowedUserIds.")]
     private partial void LogEmptyAllowList();
+
+    [LoggerMessage(Level = LogLevel.Warning, Message = "Hosted crew '{CrewName}' is reached by no Discord room: it is neither Discord:DefaultCrew nor the target of a Discord:Routes entry")]
+    private partial void LogUnreachableCrew(string crewName);
 
     [LoggerMessage(Level = LogLevel.Critical, Message = "The Discord channel died; stopping the host so the supervisor restarts it")]
     private partial void LogChannelCrashed(Exception ex);

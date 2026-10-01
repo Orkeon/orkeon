@@ -425,7 +425,7 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IBaseTool>(sp => sp.GetRequiredService<SecureCodeInterpreterTool>());
 
         // Les noms d'outils YAML se résolvent contre les enregistrements IBaseTool ci-dessus
-        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+        // (le ToolRegistry par défaut d'AddOrkeonInfrastructure les lit)
 
         // humanInput: true sur analyze_fraud — la file de revue de l'équipe fraude répond
         // (FraudReviewQueueProvider est à vous : il implémente IHumanInputProvider)

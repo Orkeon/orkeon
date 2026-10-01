@@ -3,7 +3,8 @@ using System.Collections.Concurrent;
 namespace Orkeon.Host.Gateway;
 
 /// <summary>
-/// The routing strategy rc.2 ships: one conversation, one run (spec §3, decision G2).
+/// The routing strategy the host ships: one conversation, one run (spec §3, decision G2), and
+/// the crew chosen by the room the conversation was opened in (GAP-11).
 /// <para>
 /// A Discord thread already means "this topic, from here to the end" to the people using it, so
 /// making it mean one run costs no explanation. Any richer mapping — a session spanning
@@ -17,24 +18,26 @@ internal sealed class ThreadIsRunRouter : IConversationRouter
     private const string PendingRun = "";
 
     private readonly ConcurrentDictionary<string, string> _runs = new(StringComparer.Ordinal);
-    private readonly string _defaultCrew;
+    private readonly ChatRoutes _routes;
 
     /// <summary>Routes every conversation to <paramref name="defaultCrew"/>.</summary>
-    /// <remarks>
-    /// rc.2 hosts one crew, so the router does not need to choose. The seam is here rather than
-    /// inlined so that hosting several later changes this class and nothing else.
-    /// </remarks>
     public ThreadIsRunRouter(string defaultCrew)
+        : this(new ChatRoutes(defaultCrew))
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(defaultCrew);
-        _defaultCrew = defaultCrew;
     }
+
+    /// <summary>
+    /// Routes each conversation by the room it was opened in (<see cref="ChatRoutes"/>); the
+    /// thread is still the run, whichever crew the room picks.
+    /// </summary>
+    public ThreadIsRunRouter(ChatRoutes routes)
+        => _routes = routes ?? throw new ArgumentNullException(nameof(routes));
 
     /// <inheritdoc />
     public string ResolveCrew(InboundMessage message)
     {
         ArgumentNullException.ThrowIfNull(message);
-        return _defaultCrew;
+        return _routes.Resolve(message);
     }
 
     /// <inheritdoc />

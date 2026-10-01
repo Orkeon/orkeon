@@ -424,8 +424,8 @@ var host = Host.CreateDefaultBuilder(args)
         // code_interpreter is registered as a concrete type only: expose it by name
         services.AddSingleton<IBaseTool>(sp => sp.GetRequiredService<SecureCodeInterpreterTool>());
 
-        // YAML tool names resolve against the IBaseTool registrations above
-        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+        // YAML tool names resolve against the IBaseTool registrations above (the default
+        // ToolRegistry of AddOrkeonInfrastructure reads them)
 
         // humanInput: true on analyze_fraud — the fraud team's review queue answers
         // (FraudReviewQueueProvider is yours: it implements IHumanInputProvider)

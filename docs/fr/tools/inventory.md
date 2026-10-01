@@ -287,7 +287,7 @@ l'opérateur (`email_parser`, qui lit un fichier, reste).
 
 ## Résolution des tools par nom (YAML → instance)
 
-Quand un crew est défini en YAML, les tools sont référencés par leur nom (la propriété `Name` de la classe du tool). La résolution passe par `IToolRegistry` (`Orkeon.Domain.Tools`) ; les runners utilisent `ServiceProviderToolRegistry` (`Orkeon.Hosting`), qui indexe par nom, sans tenir compte de la casse, chaque `IBaseTool` enregistré en DI.
+Quand un crew est défini en YAML, les tools sont référencés par leur nom (la propriété `Name` de la classe du tool). La résolution passe par `IToolRegistry` (`Orkeon.Domain.Tools`) ; `AddOrkeonInfrastructure()` enregistre le `ToolRegistry` par défaut (`Orkeon.Infrastructure.Tools`, dans le paquet `Orkeon`), qui indexe par nom, sans tenir compte de la casse, chaque `IBaseTool` enregistré en DI — les runners et tout hôte qui embarque utilisent le même.
 
 ### Pipeline de résolution
 
@@ -444,7 +444,7 @@ correspondance alphabétique complète :
 Pour qu'un tool custom soit utilisable en YAML, il doit être enregistré dans `IToolRegistry` :
 
 ```csharp
-// Option 1 — via DI (lu par ServiceProviderToolRegistry)
+// Option 1 — via DI (lu par le ToolRegistry par défaut)
 services.AddSingleton<IBaseTool, MyCustomTool>();
 
 // Option 2 — enregistrement explicite au runtime

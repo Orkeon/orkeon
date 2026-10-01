@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — `orkeon-host` connects its MCP servers and routes chat by room; the tool registry ships in `Orkeon` **[breaking]**
+
+The same `MCP:Servers` gave `orkeon run` the servers' tools and `orkeon-host` none; every chat
+message reached the first hosted crew; a host built on the `Orkeon` package resolved no YAML tool
+name, because the DI-backed registry lived in the unpublished `Orkeon.Hosting`; and the EventHub
+tools swallowed `metadata` and returned identifiers they made up (GAP-11).
+
+- **`orkeon-host` connects the `MCP:Servers` at startup**, through the runners' own step, from its
+  first hosted service (`McpConnectionService`): the servers' tools are in the registry before the
+  channel can deliver a message, and the servers disconnect after the drain. An unreachable server
+  costs one error line, and the daemon starts without it.
+- **Chat is routed by room.** `Orkeon:Host:Discord:Routes` maps a Discord channel id to a hosted
+  crew: a thread opened in that channel starts that crew, and any other thread starts
+  `Orkeon:Host:Discord:DefaultCrew` — the first declared crew when unset. One thread is still one
+  run. A route to an undeclared crew, a route key that is not a channel id, an unknown
+  `DefaultCrew`, or two hosted crews with one name refuse the start (exit 78); a crew no room
+  reaches is named by a startup warning.
+- **`ToolRegistry` (`Orkeon.Infrastructure.Tools`) is the default `IToolRegistry`** that
+  `AddOrkeonInfrastructure()` registers: seeded from every `IBaseTool` in DI, concurrent, a
+  duplicate DI name fails its construction with both types named, and `RegisterToolAsync` still
+  refuses a name another tool holds. The runners use it as they are; `ServiceProviderToolRegistry`
+  (`Orkeon.Hosting`) and the empty `InMemoryToolRegistry` stub are removed.
+- **An agent's own tool instance wins** over a registered tool of the same name
+  (`TaskToolbelt.Compose`): an agent built in C# with its own `rag_search` calls it, not the
+  host's. The registered tools still supply `human_input`.
+- **EventHub: nothing given is swallowed, no identifier is invented.** `post_message` and
+  `send_request` deliver their `metadata` into the envelope the recipient reads;
+  `IEventHub.PostAsync` and `SendAsync` take a `MailboxOptions` (with `Metadata`) before the
+  `CancellationToken`. `PublishAsync` and `PostAsync` return the message's `MessageId`, which
+  `publish_event`'s `event_id` and `post_message`'s `message_id` now are; `send_request` no longer
+  returns a `correlation_id`. The run event bus's `hub.message` gains `messageId?` and
+  `metadata?`. `post_message` and `MailboxAddress` document the fourth scheme, `client://`.
+- **Removed, never answering:** `IToolRegistry.GetToolsByTagsAsync` and
+  `GetToolsByCapabilityAsync` (always empty — no tool carries tags or capabilities), and
+  `McpServerOptions.ExposeResources`/`ExposePrompts` (read by nothing; the MCP server exposes tools
+  only).
+
+Migration: delete `services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()` — and any
+loop feeding the registry from `GetServices<IBaseTool>()` — `AddOrkeonInfrastructure()` covers it.
+Callers of `IEventHub.PostAsync`/`SendAsync` pass `options: null` (or a `MailboxOptions`) before
+the token; an `IEventHub` implementation returns the `MessageId` from `PublishAsync`/`PostAsync`.
+Drop `MCP:Server:ExposeResources`/`ExposePrompts` from settings, and any call to the two registry
+lookups (filter `GetAllToolsAsync()` yourself). A Discord deployment hosting several crews adds
+`Routes` (and, if the first crew should not be the default, `DefaultCrew`).
+
 ### Changed — a run dispatches the crew's domain events, and `ICallbackHandler` sees every tool call **[breaking]**
 
 An `IDomainEventHandler<CrewExecutionCompletedEvent>` registered in DI was never called by a

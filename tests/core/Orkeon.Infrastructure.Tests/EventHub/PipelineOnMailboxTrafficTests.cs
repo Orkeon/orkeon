@@ -63,11 +63,11 @@ public class PipelineOnMailboxTrafficTests
 
         using (caller.Push(new EventHubCaller(billing, null)))
         {
-            await hub.PostAsync(studio, new { ok = true }, TestContext.Current.CancellationToken);
+            await hub.PostAsync(studio, new { ok = true }, null, TestContext.Current.CancellationToken);
 
             // Same crew, an address no link names: declaring one link closed the door.
             await Assert.ThrowsAsync<EventAclException>(
-                () => hub.PostAsync(stranger, new { ok = true }, TestContext.Current.CancellationToken));
+                () => hub.PostAsync(stranger, new { ok = true }, null, TestContext.Current.CancellationToken));
         }
     }
 
@@ -85,7 +85,7 @@ public class PipelineOnMailboxTrafficTests
         hub.RegisterMailbox(studio);
 
         using (caller.Push(new EventHubCaller(billing, null)))
-            await hub.PostAsync(studio, new { ok = true }, TestContext.Current.CancellationToken);
+            await hub.PostAsync(studio, new { ok = true }, null, TestContext.Current.CancellationToken);
 
         Assert.NotNull(counter.LastPublished);
         Assert.Equal(billing, counter.LastPublished!.SourceCrewId);
@@ -103,7 +103,7 @@ public class PipelineOnMailboxTrafficTests
         using (caller.Push(new EventHubCaller(billing, null)))
         {
             await Assert.ThrowsAsync<EventAclException>(
-                () => hub.PostAsync(stranger, new { ok = true }, TestContext.Current.CancellationToken));
+                () => hub.PostAsync(stranger, new { ok = true }, null, TestContext.Current.CancellationToken));
         }
 
         using var cts = new CancellationTokenSource(TimeSpan.FromMilliseconds(200));
@@ -125,7 +125,7 @@ public class PipelineOnMailboxTrafficTests
         var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
         hub.RegisterMailbox(mailbox);
 
-        await hub.PostAsync(mailbox, new { ok = true }, TestContext.Current.CancellationToken);
+        await hub.PostAsync(mailbox, new { ok = true }, null, TestContext.Current.CancellationToken);
         await hub.WaitForAsync(
             new WaitOnMailbox(mailbox),
             new FiniteWaitTimeout(TimeSpan.FromSeconds(2)),
@@ -149,7 +149,7 @@ public class PipelineOnMailboxTrafficTests
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
         var send = hub.SendAsync<object, object>(
-            mailbox, new { ask = true }, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            mailbox, new { ask = true }, TimeSpan.FromSeconds(5), null, TestContext.Current.CancellationToken);
 
         var request = await hub.WaitForAsync(
             new WaitOnMailbox(mailbox),
@@ -215,7 +215,7 @@ public class PipelineOnMailboxTrafficTests
         registration = hub.RegisterMailbox(mailbox);
 
         await Assert.ThrowsAsync<MailboxNotFoundException>(
-            () => hub.PostAsync(mailbox, new { ok = true }, TestContext.Current.CancellationToken));
+            () => hub.PostAsync(mailbox, new { ok = true }, null, TestContext.Current.CancellationToken));
     }
 
     [Fact]
@@ -231,7 +231,7 @@ public class PipelineOnMailboxTrafficTests
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
         var send = hub.SendAsync<object, object>(
-            mailbox, new { ask = true }, TimeSpan.FromSeconds(5), TestContext.Current.CancellationToken);
+            mailbox, new { ask = true }, TimeSpan.FromSeconds(5), null, TestContext.Current.CancellationToken);
         var request = await hub.WaitForAsync(
             new WaitOnMailbox(mailbox), new FiniteWaitTimeout(TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken);
 
@@ -276,7 +276,7 @@ public class PipelineOnMailboxTrafficTests
         var mailbox = MailboxAddress.Parse(new Uri("client://studio"));
         using var registration = hub.RegisterMailbox(mailbox) as IDisposable;
 
-        await hub.PostAsync(mailbox, new { ok = true }, TestContext.Current.CancellationToken);
+        await hub.PostAsync(mailbox, new { ok = true }, null, TestContext.Current.CancellationToken);
         var delivered = await hub.WaitForAsync(
             new WaitOnMailbox(mailbox), new FiniteWaitTimeout(TimeSpan.FromSeconds(2)), TestContext.Current.CancellationToken);
 

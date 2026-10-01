@@ -40,6 +40,20 @@ internal sealed record DiscordChannelOptions
     public IReadOnlyList<string> GuildIds { get; init; } = [];
 
     /// <summary>
+    /// Which crew each room reaches: a Discord channel id (the channel threads are opened in)
+    /// mapped to a hosted crew's name. A thread opened in a routed channel starts that crew; a
+    /// thread anywhere else starts <see cref="DefaultCrew"/>. A route to a crew the host does
+    /// not declare, or a key that is not a channel id, refuses the start.
+    /// </summary>
+    public Dictionary<string, string> Routes { get; init; } = [];
+
+    /// <summary>
+    /// The crew a room without a route reaches. Unset, it is the first crew declared under
+    /// <c>Orkeon:Host:Crews</c>; set, it must name one of them.
+    /// </summary>
+    public string? DefaultCrew { get; init; }
+
+    /// <summary>
     /// Reads the token from the environment, or null when the variable is unset. Returning
     /// null rather than throwing lets the host say *which* variable is missing, which is the
     /// only actionable form of that error.

@@ -90,11 +90,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-// 5. The tool registry starts empty: hand it the registered tools, so the names a YAML
-//    crew lists under `tools:` resolve.
-var registry = host.Services.GetRequiredService<IToolRegistry>();
-foreach (var tool in host.Services.GetServices<IBaseTool>())
-    await registry.RegisterToolAsync(tool);
+// 5. Nothing to feed: the tool registry AddOrkeonInfrastructure registered reads every
+//    IBaseTool above, so the names a YAML crew lists under `tools:` resolve.
 
 // A long-lived host: await host.RunAsync(). A one-shot program runs a crew right
 // away — see "Running a Crew" below.

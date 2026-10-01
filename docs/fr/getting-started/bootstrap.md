@@ -92,11 +92,8 @@ var host = Host.CreateDefaultBuilder(args)
     })
     .Build();
 
-// 5. Le registre d'outils démarre vide : donnez-lui les outils enregistrés, pour que les
-//    noms qu'une crew YAML liste sous `tools:` se résolvent.
-var registry = host.Services.GetRequiredService<IToolRegistry>();
-foreach (var tool in host.Services.GetServices<IBaseTool>())
-    await registry.RegisterToolAsync(tool);
+// 5. Rien à fournir : le registre d'outils qu'a enregistré AddOrkeonInfrastructure lit
+//    chaque IBaseTool ci-dessus, donc les noms qu'une crew YAML liste sous `tools:` se résolvent.
 
 // Un hôte de longue durée : await host.RunAsync(). Un programme ponctuel exécute une
 // crew tout de suite — voir « Exécuter une Crew » ci-dessous.

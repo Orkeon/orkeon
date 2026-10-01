@@ -42,9 +42,9 @@ public sealed record PublishEventRequest
 /// <summary>Response for the <c>publish_event</c> tool.</summary>
 public sealed record PublishEventResponse
 {
-    /// <summary>The unique id assigned to the published event.</summary>
+    /// <summary>The id the hub gave the published message — the <c>message_id</c> its subscribers read.</summary>
     [JsonPropertyName("event_id")]
-    [ReturnSchema(Description = "Unique id of the published event")]
+    [ReturnSchema(Description = "Id of the published message, as subscribers and wait_for_event read it")]
     public string EventId { get; init; } = "";
 
     /// <summary>UTC timestamp at which the event was accepted by the hub.</summary>

@@ -1,3 +1,14 @@
 #nullable enable
 *REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsAsync(System.Collections.Generic.IEnumerable<Orkeon.Domain.Common.ITool!>! tools) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 static Orkeon.Hosting.RunnerSettings.ReadConfiguration(string? settingsPath) -> Microsoft.Extensions.Configuration.IConfiguration!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.ClearAsync() -> System.Threading.Tasks.Task!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetAllToolsAsync() -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolAsync(string! toolId) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolByNameAsync(string! name) -> System.Threading.Tasks.Task<Orkeon.Domain.Tools.IBaseTool?>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.IsRegisteredAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.RegisterToolAsync(Orkeon.Domain.Tools.IBaseTool! tool) -> System.Threading.Tasks.Task<bool>!
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.ServiceProviderToolRegistry(System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>! tools) -> void
+*REMOVED*Orkeon.Hosting.ServiceProviderToolRegistry.UnregisterToolAsync(string! toolId) -> System.Threading.Tasks.Task<bool>!

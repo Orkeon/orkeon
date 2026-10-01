@@ -170,7 +170,7 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
         if (socketMessage.Channel is not SocketThreadChannel thread)
             return;
 
-        var message = ToInbound(socketMessage, thread, _time.GetUtcNow());
+        var message = ToInbound(socketMessage, thread, thread.ParentChannel?.Id, _time.GetUtcNow());
         await onMessage(message, ct).ConfigureAwait(false);
     }
 
@@ -178,11 +178,16 @@ internal sealed partial class DiscordChannel : IChatChannel, IAsyncDisposable
     /// Translates a Discord message into the gateway's own shape. Static and separate so the
     /// mapping is testable without a socket, a token or a server.
     /// </summary>
-    internal static InboundMessage ToInbound(IMessage message, IChannel thread, DateTimeOffset receivedAt) =>
+    /// <param name="message">The Discord message.</param>
+    /// <param name="thread">The thread it was posted in: the conversation, and the run.</param>
+    /// <param name="roomId">The channel the thread was opened in — what a chat route names.</param>
+    /// <param name="receivedAt">When the channel received it.</param>
+    internal static InboundMessage ToInbound(IMessage message, IChannel thread, ulong? roomId, DateTimeOffset receivedAt) =>
         new()
         {
             Channel = "discord",
             ConversationId = thread.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
+            RoomId = roomId?.ToString(System.Globalization.CultureInfo.InvariantCulture),
             SenderId = message.Author.Id.ToString(System.Globalization.CultureInfo.InvariantCulture),
             Text = message.Content ?? string.Empty,
             ReceivedAt = receivedAt,

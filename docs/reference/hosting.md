@@ -140,22 +140,25 @@ The registration order is deliberate:
    server under `MCP:Servers` and `MCP:Enabled` is not `false`. Registering is not
    connecting: the servers are connected by the flows below, before the crew loads
    (see [MCP](../architecture/mcp.md#activation)).
-10. **Tool registry** — `ServiceProviderToolRegistry` is registered as the singleton `IToolRegistry`.
+10. **Tool registry** — nothing of its own: `AddOrkeonInfrastructure()` already registered the default
+    `ToolRegistry`, which reads every `IBaseTool` the steps above registered when it is first resolved.
 11. **Runner services** — the caller's `configureServices` hook runs last.
 
 `semantic_search` is not in this list: it is registered by `AddSemanticSearchTool()`, which
 `orkeon run` calls through its `configureServices` hook and `orkeon-host` does not.
 
-## `ServiceProviderToolRegistry`
+## The tool registry (`ToolRegistry`)
 
-The `IToolRegistry` implementation that resolves YAML/TS tool names to `IBaseTool` instances **from DI**.
-Its constructor takes `IEnumerable<IBaseTool>` — every tool the tool suites registered — and indexes them
-by name (case-insensitive) — two tools registered under one name make the constructor throw. `CrewFactory`
-consumes it to build agents with their declared tools, which is why every tool suite registers under
-`IBaseTool`: a tool that is not registered cannot be resolved (and, with `StrictTools`, fails crew loading
-rather than silently dropping). `RegisterToolAsync` adds a tool at run time — the MCP client does — and
-**replaces** any tool already registered under that name. `GetToolsByTagsAsync` and
-`GetToolsByCapabilityAsync` always answer an empty list: the registry indexes names only.
+The default `IToolRegistry` (`Orkeon.Infrastructure.Tools`, registered by `AddOrkeonInfrastructure()`,
+shipped in the `Orkeon` package) resolves YAML/TS tool names to `IBaseTool` instances **from DI**. Its
+constructor takes `IEnumerable<IBaseTool>` — every tool the tool suites registered — and indexes them by
+name (case-insensitive); two tools registered under one name make the constructor throw, naming both
+types. `CrewFactory` consumes it to build agents with their declared tools, which is why every tool suite
+registers under `IBaseTool`: a tool that is not registered cannot be resolved (and, with `StrictTools`,
+fails crew loading rather than silently dropping). `RegisterToolAsync` adds a tool at run time — the MCP
+client does — and **refuses** (returns `false`) a name another tool already holds. Reads and run-time
+registrations are safe to interleave: `orkeon-host` runs several crews while its MCP servers connect.
+The registry indexes names only — there is no lookup by tag or capability (GAP-11).
 
 ## `RunnerExecution` — execution flows
 
@@ -204,12 +207,12 @@ services.AddOrkeonWebTools();
 // … the remaining AddOrkeon*Tools() suites …
 // 4. VFS mounts from configuration (the web host provisions at least one mount):
 services.AddOrkeonFileSystem(configuration);
-// 5. Tool registry LAST, so it captures every registered IBaseTool:
-services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+// 5. Nothing for the tool registry: AddOrkeonInfrastructure registered the default
+//    ToolRegistry, which reads every IBaseTool registered above when first resolved.
 ```
 
 Because a web host typically runs each crew in its own DI scope (Orkeon's crew repositories are scoped),
-`ServiceProviderToolRegistry` — a singleton over the registered `IBaseTool` set — is shared across runs,
+the `ToolRegistry` — a singleton over the registered `IBaseTool` set — is shared across runs,
 while `CrewFactory` and the orchestrator resolve per scope.
 
 ## Telemetry

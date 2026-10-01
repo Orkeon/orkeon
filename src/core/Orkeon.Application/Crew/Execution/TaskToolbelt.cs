@@ -14,9 +14,10 @@ namespace Orkeon.Application.Crew.Execution;
 /// The belt is the agent's tools, then the task's own <c>tools:</c> (they <b>add to</b> the
 /// agent's for this task only, never replace them), then <c>human_input</c> when the task asks for
 /// human input and the host registered that tool. A name appears once: the first holder wins,
-/// compared case-insensitively. When the host's registered tools hold a tool of the
-/// same name, that registered instance is used — the agent's own instance otherwise (delegation
-/// tools, script tools added at run time).
+/// compared case-insensitively. The agent's and the task's own instances are used as they are:
+/// a crew loaded from YAML already holds the registry's instances, and an agent built in code
+/// with its own instance of a tool the host also registers keeps its own (GAP-11) — the host's
+/// registered tools only supply <c>human_input</c>.
 /// </remarks>
 public static class TaskToolbelt
 {
@@ -34,21 +35,17 @@ public static class TaskToolbelt
         ArgumentNullException.ThrowIfNull(agent);
         ArgumentNullException.ThrowIfNull(task);
 
-        var registry = new Dictionary<string, IBaseTool>(StringComparer.OrdinalIgnoreCase);
-        foreach (var tool in registeredTools ?? [])
-            registry.TryAdd(tool.Name, tool);
-
         var belt = new List<IBaseTool>();
         var names = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         foreach (var tool in agent.Tools.Concat(task.Tools))
         {
             if (names.Add(tool.Name))
-                belt.Add(registry.TryGetValue(tool.Name, out var registered) ? registered : tool);
+                belt.Add(tool);
         }
 
         if (task.HumanInput
-            && registry.TryGetValue(HumanInputToolName, out var humanInput)
+            && registeredTools?.FirstOrDefault(t => string.Equals(t.Name, HumanInputToolName, StringComparison.OrdinalIgnoreCase)) is { } humanInput
             && names.Add(humanInput.Name))
         {
             belt.Add(humanInput);

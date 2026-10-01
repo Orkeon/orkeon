@@ -36,10 +36,8 @@ Orkeon supports two approaches for defining a crew. The choice impacts the porti
 1. Write config.yaml (agents, tasks, process type — see the YAML schema)
 2. Identify the missing tools
 3. Code the custom tools (ToolBase<TReq, TRes>)
-4. Register via DI (AddSingleton<IBaseTool, MyTool>()) — **and** a DI-backed
-   registry, without which YAML names resolve against the empty stub:
-   services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>()
-   (Orkeon.Hosting; orkeon run does this for you)
+4. Register via DI (AddSingleton<IBaseTool, MyTool>()) — the default tool
+   registry of AddOrkeonInfrastructure() reads it, so YAML names resolve
 5. Load and run — the YAML path is a virtual path, read through the VFS:
    var crew = await crewFactory.CreateFromFileAsync("/crews/config.yaml");
    var output = await orchestrator.KickoffAsync(crew.Id, input);
@@ -278,9 +276,8 @@ var host = Host.CreateDefaultBuilder(args)
         services.AddSingleton<IBaseTool, MyCustomTool1>();
         services.AddSingleton<IBaseTool, MyCustomTool2>();
 
-        // Required for YAML crews — tool names resolve against the IBaseTool registrations
-        // (without it they resolve against an empty in-memory stub)
-        services.AddSingleton<IToolRegistry, ServiceProviderToolRegistry>();
+        // YAML tool names resolve against these IBaseTool registrations: the default
+        // ToolRegistry of AddOrkeonInfrastructure() reads them — nothing more to register.
 
         // LLM — a hand-built host reads no Llm section by itself: build the provider here.
         // Use the provider class of your vendor (OpenAIProvider, AnthropicLlmProvider, ...).

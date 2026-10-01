@@ -105,6 +105,16 @@ internal sealed partial class CrewHostService : BackgroundService
                     $"Hosted crew '{crew.Name}' declares MaxConcurrentRuns {crew.Profile.MaxConcurrentRuns}; at least 1 is required.");
         }
 
+        // A chat route names a crew (GAP-11), and the registry finds crews case-insensitively:
+        // two crews answering to one name would leave every message to the first of them.
+        var duplicate = _registry.Crews
+            .GroupBy(c => c.Name, StringComparer.OrdinalIgnoreCase)
+            .FirstOrDefault(g => g.Count() > 1);
+        if (duplicate is not null)
+            throw new HostConfigurationException(
+                $"Two hosted crews are named {string.Join(" and ", duplicate.Select(c => $"'{c.Name}'"))}; "
+                + "crew names must be unique (they compare case-insensitively).");
+
         // Zero cancels every run at its first instant; past the CancelAfter ceiling the
         // runner would throw on every start. Both are configuration mistakes, refused here
         // with the words to fix them rather than discovered one failed run at a time.

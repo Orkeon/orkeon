@@ -1,4 +1,5 @@
 using System.Collections.Concurrent;
+using System.Collections.Immutable;
 using System.Text.Json;
 using Orkeon.Application.EventHub;
 using Orkeon.Application.EventHub.Exceptions;
@@ -87,29 +88,34 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     // ── Outbound: agents writing to the peer ────────────────────────────
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task PostAsync(MailboxAddress recipient, object payload, CancellationToken ct)
+    public Task<MessageId> PostAsync(MailboxAddress recipient, object payload, MailboxOptions? options, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(recipient);
 
         if (!IsPeer(recipient))
-            return _inner.PostAsync(recipient, payload, ct);
+            return _inner.PostAsync(recipient, payload, options, ct);
 
-        Relay(topic: null, payload: payload, correlationId: null, from: DescribeAmbientCaller());
-        return System.Threading.Tasks.Task.CompletedTask;
+        // The id travels on the relayed line, so the one the poster gets back is the one the
+        // peer reads — not one made up for the poster alone (GAP-11).
+        var messageId = MessageId.NewId();
+        Relay(topic: null, payload: payload, correlationId: null, from: DescribeAmbientCaller(),
+            messageId: messageId.AsString(), metadata: options?.Metadata);
+        return Task.FromResult(messageId);
     }
 
     /// <inheritdoc />
     public Task<TResponse> SendAsync<TRequest, TResponse>(
-        MailboxAddress recipient, TRequest request, TimeSpan timeout, CancellationToken ct)
+        MailboxAddress recipient, TRequest request, TimeSpan timeout, MailboxOptions? options, CancellationToken ct)
     {
         ArgumentNullException.ThrowIfNull(recipient);
 
         return IsPeer(recipient)
-            ? AskPeerAsync<TResponse>(request, timeout, ct)
-            : _inner.SendAsync<TRequest, TResponse>(recipient, request, timeout, ct);
+            ? AskPeerAsync<TResponse>(request, timeout, options?.Metadata, ct)
+            : _inner.SendAsync<TRequest, TResponse>(recipient, request, timeout, options, ct);
     }
 
-    private async Task<TResponse> AskPeerAsync<TResponse>(object? request, TimeSpan timeout, CancellationToken ct)
+    private async Task<TResponse> AskPeerAsync<TResponse>(
+        object? request, TimeSpan timeout, ImmutableDictionary<string, string>? metadata, CancellationToken ct)
     {
         var correlationId = Guid.NewGuid().ToString("N");
         var pending = new TaskCompletionSource<JsonElement>(TaskCreationOptions.RunContinuationsAsynchronously);
@@ -117,7 +123,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
 
         try
         {
-            Relay(topic: null, payload: request, correlationId: correlationId, from: DescribeAmbientCaller(), expectsReply: true);
+            Relay(topic: null, payload: request, correlationId: correlationId, from: DescribeAmbientCaller(), expectsReply: true, metadata: metadata);
 
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(ct);
             linked.CancelAfter(timeout);
@@ -151,7 +157,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         _inner.ReplyAsync(correlation, payload, ct);
 
     /// <inheritdoc />
-    public System.Threading.Tasks.Task PublishAsync(
+    public Task<MessageId> PublishAsync(
         string topic, object payload, PublishOptions? options, CancellationToken ct) =>
         _inner.PublishAsync(topic, payload, options, ct);
 
@@ -226,7 +232,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         if (!TryReadAddress(root, out var to) || !root.TryGetProperty("payload", out var payload))
             return;
 
-        await _inner.PostAsync(to!, payload.Clone(), ct).ConfigureAwait(false);
+        await _inner.PostAsync(to!, payload.Clone(), options: null, ct).ConfigureAwait(false);
     }
 
     private async Task SendFromPeerAsync(JsonElement root, CancellationToken ct)
@@ -245,7 +251,7 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         // The answer comes back as a hub.message carrying the peer's own correlation id, so it
         // can pair the two without the bridge inventing an id the peer never saw.
         var answer = await _inner
-            .SendAsync<JsonElement, JsonElement>(to!, payload.Clone(), timeout, ct)
+            .SendAsync<JsonElement, JsonElement>(to!, payload.Clone(), timeout, options: null, ct)
             .ConfigureAwait(false);
 
         // The answer pairs with the peer's own correlation id; the responder's identity is
@@ -320,7 +326,8 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         try
         {
             await foreach (var message in stream.ConfigureAwait(false))
-                Relay(topic, ReadPayload(message), correlationId: message.CorrelationId?.AsString(), from: DescribeSource(message));
+                Relay(topic, ReadPayload(message), correlationId: message.CorrelationId?.AsString(), from: DescribeSource(message),
+                    messageId: message.Id.AsString(), metadata: message.Metadata);
         }
         catch (OperationCanceledException)
         {
@@ -356,7 +363,14 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
     private static readonly JsonSerializerOptions SerializerOptions =
         new(JsonSerializerDefaults.Web);
 
-    private void Relay(string? topic, object? payload, string? correlationId, string? from, bool expectsReply = false)
+    private void Relay(
+        string? topic,
+        object? payload,
+        string? correlationId,
+        string? from,
+        bool expectsReply = false,
+        string? messageId = null,
+        ImmutableDictionary<string, string>? metadata = null)
     {
         var scope = correlationId is null
             ? OrkeonEventScope.None
@@ -376,6 +390,14 @@ internal sealed class JsonLinesEventHubBridge : IEventHub, IAsyncDisposable
         // so the key is written only when there is one to answer.
         if (expectsReply)
             line["expectsReply"] = true;
+
+        // The envelope's own id and metadata ride along when there are any (GAP-11): a post
+        // returns its id to the poster, and the peer reads the same one; metadata given to a
+        // post or a send is not swallowed on its way out of the process.
+        if (messageId is not null)
+            line["messageId"] = messageId;
+        if (metadata is { Count: > 0 })
+            line["metadata"] = metadata;
 
         _events.Emit(HubCommandKinds.HubMessage, scope, line);
     }

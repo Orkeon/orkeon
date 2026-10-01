@@ -40,14 +40,4 @@ public class McpServerOptions
     /// Server version advertised during MCP initialization.
     /// </summary>
     public string Version { get; set; } = "1.0.0";
-
-    /// <summary>
-    /// Whether to expose resources capability.
-    /// </summary>
-    public bool ExposeResources { get; set; }
-
-    /// <summary>
-    /// Whether to expose prompts capability.
-    /// </summary>
-    public bool ExposePrompts { get; set; }
 }

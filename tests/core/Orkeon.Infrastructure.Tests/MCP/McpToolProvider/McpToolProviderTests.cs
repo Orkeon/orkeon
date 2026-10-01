@@ -1,6 +1,4 @@
 using System.Text.Json;
-using Microsoft.Extensions.Logging.Abstractions;
-using Orkeon.Infrastructure.Stubs;
 using Orkeon.Tests.Shared.Doubles;
 using Orkeon.Infrastructure.MCP;
 using Orkeon.Infrastructure.Tests.Doubles;
@@ -182,7 +180,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     [Fact]
     public async Task McpToolNamedLikeARegisteredTool_IsRefused_AndTheOriginalSurvivesDisconnect()
     {
-        var registry = new InMemoryToolRegistry(NullLogger<InMemoryToolRegistry>.Instance);
+        var registry = new Orkeon.Infrastructure.Tools.ToolRegistry([]);
         var builtIn = new StubBaseTool("file_read");
         Assert.True(await registry.RegisterToolAsync(builtIn));
         await using var transport = McpDiscoveryTransport.Exposing("file_read", "search_issues");
@@ -207,7 +205,7 @@ public sealed class McpToolProviderTests : IAsyncDisposable
     [Fact]
     public async Task TwoServersExposingTheSameName_TheSecondIsRefused_AndSurvivesItsDisconnect()
     {
-        var registry = new InMemoryToolRegistry(NullLogger<InMemoryToolRegistry>.Instance);
+        var registry = new Orkeon.Infrastructure.Tools.ToolRegistry([]);
         await using var first = McpDiscoveryTransport.Exposing("search");
         await using var second = McpDiscoveryTransport.Exposing("search", "fetch");
         await using var provider = new McpToolProviderSut(registry);

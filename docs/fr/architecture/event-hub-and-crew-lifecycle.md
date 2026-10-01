@@ -82,16 +82,17 @@ namespace Orkeon.Application.EventHub;
 public interface IEventHub
 {
     // Broadcast 1→N (anonyme, topic-based)
-    Task PublishAsync(
+    Task<MessageId> PublishAsync(
         string topic,
         object payload,
         PublishOptions? options,
         CancellationToken ct);
 
     // Fire-and-forget 1→1 (vers une boîte adressée)
-    Task PostAsync(
+    Task<MessageId> PostAsync(
         MailboxAddress to,
         object payload,
+        MailboxOptions? options,
         CancellationToken ct);
 
     // Request-response 1→1 (timeout obligatoire — pas de Forever ici)
@@ -99,6 +100,7 @@ public interface IEventHub
         MailboxAddress to,
         TRequest request,
         TimeSpan timeout,
+        MailboxOptions? options,
         CancellationToken ct);
 
     // Réponse à un Send pendant (corrélation interne)
@@ -235,7 +237,7 @@ Sept tools, enregistrés par l'appel explicite `AddOrkeonEventHubTools()` aux c�
 |---|---|---|---|
 | `publish_event` | Publish | `topic`, `payload`, `target_crew_id?`, `metadata?`, `retain_as_last_value?`, `last_value_key?` | `event_id`, `published_at` |
 | `post_message` | Post | `target_mailbox`, `payload`, `metadata?` | `message_id`, `posted_at` |
-| `send_request` | Send | `target_mailbox`, `payload`, `timeout_ms` (requis), `metadata?` | `correlation_id`, `response_payload` ; sans réponse à temps, l'appel échoue (`SendTimeoutException`) |
+| `send_request` | Send | `target_mailbox`, `payload`, `timeout_ms` (requis), `metadata?` | `response_payload` ; sans réponse à temps, l'appel échoue (`SendTimeoutException`) |
 | `reply_to` | Reply | `correlation_id`, `payload` | `replied_at` |
 | `receive_message` | (pull mailbox) | `timeout_ms` ou `wait_forever:true`, `mailbox?` (défaut : agent courant) | `message?` |
 | `wait_for_event` | Wait | `topic`, `timeout_ms` ou `wait_forever:true`, `metadata_match?` | `message` ou `timed_out:true` |
@@ -251,8 +253,8 @@ Sept tools, enregistrés par l'appel explicite `AddOrkeonEventHubTools()` aux c�
 - `reply_to` exige un `correlation_id` actif : l'agent l'obtient depuis un `Message` reçu via `receive_message` ou `wait_for_event` (champ `correlation_id` de l'enveloppe). Un `reply_to` avec `correlation_id` inconnu ou déjà répondu est rejeté.
 - Les agents ne peuvent pas publier sur un topic commençant par `_system.` (réservé aux messages produits par le hub, ex. `_system.wait_timed_out`).
 - `publish_event` n'a pas de champ `schema_id` : la publication d'un agent ne déclare aucun contrat, l'étage de validation (§12.3) ne la refuse donc jamais.
-- Les identifiants que renvoient `publish_event`, `post_message` et `send_request` (`event_id`, `message_id`, `correlation_id`) sont frappés par l'outil pour la traçabilité, pas repris du hub — c'est pourquoi `reply_to` prend son `correlation_id` dans l'enveloppe **reçue**, jamais dans une réponse de `send_request`.
-- `metadata` est accepté par `post_message` et `send_request` mais pas transmis : `IEventHub.PostAsync` et `SendAsync` ne portent pas de métadonnées. Seul `publish_event` les livre.
+- Les identifiants que renvoient `publish_event` et `post_message` (`event_id`, `message_id`) sont ceux du hub : le `message_id` que l'abonné ou le destinataire lit dans l'enveloppe (`IEventHub.PublishAsync` et `PostAsync` le rendent). `send_request` ne rend aucun identifiant — la réponse est le résultat, et `reply_to` prend son `correlation_id` dans l'enveloppe **reçue**.
+- `metadata` passé à `publish_event`, `post_message` ou `send_request` est copié dans l'enveloppe que lit le destinataire (`PublishOptions.Metadata`, `MailboxOptions.Metadata`) : `receive_message` le rend et le `metadata_match` de `wait_for_event` filtre dessus (`wait_for_event` attend sur un topic ; une boîte aux lettres se lit avec `receive_message`).
 
 ### 5.2 Subscribe long-lived côté agent
 
