@@ -8,11 +8,11 @@
 
 ## Architecture
 
-- **Process**: `sequential` (FlowEngine cycles planned)
+- **Process**: `sequential`
 - **Agents**: 3 — Scenario Master, Client Persona, Competency Observer
 - **Tools**: `json_tool`, `file_write`
 - **Memory**: `InMemory`
-- **Key features**: HumanInputContext (Text, MultipleChoice, Confirmation), IFlowEngine (cycles), ObserverAgent (evaluation), EvaluationScore, YAML scenarios
+- **Key features**: HumanInputContext (Text, MultipleChoice, Confirmation), ObserverAgent (evaluation), EvaluationScore, YAML scenarios
 - **Runner**: `standard`
 
 ## Prerequisites

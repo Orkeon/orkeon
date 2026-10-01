@@ -1,9 +1,7 @@
 using Orkeon.Application.Evaluation;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Flows.ValueObjects;
 using ToolCallRequest = Orkeon.Domain.Tools.Protocol.ToolCallRequest;
 using Orkeon.Infrastructure.Evaluation.Evaluators;
-using Orkeon.Infrastructure.Flows.Steps;
 using Orkeon.Tools.Data;
 using Orkeon.Tests.Shared.FileSystem;
 using static Orkeon.Tests.Shared.Constants.TestToolParamKeys;
@@ -12,7 +10,7 @@ namespace Orkeon.Infrastructure.Tests.Integration;
 
 /// <summary>
 /// End-to-end integration tests validating that the typed Request/Response pipeline
-/// works correctly across all component types: Tools, Evaluators, and Flow Steps.
+/// works correctly across all component types: Tools and Evaluators.
 /// Verifies the full Dict → TRequest → ExecuteTypedAsync → TResponse → Dict round-trip.
 /// </summary>
 public class TypedPipelineIntegrationTests
@@ -173,81 +171,7 @@ public class TypedPipelineIntegrationTests
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // 3. Flow Step Pipeline E2E
-    // ══════════════════════════════════════════════════════════════════════════
-
-    [Fact]
-    public async Task ShouldExecuteAndReturnsTypedOutput_WhenDelayFlowStepTypedPipeline()
-    {
-        // Arrange: create a DelayFlowStep with a very short delay for testing
-        var parameters = FlowStepParameters.CreateBuilder()
-            .Add("delay_ms", 10)
-            .Build();
-        var step = new DelayFlowStep("test_delay", parameters);
-
-        var context = FlowState.CreateBuilder()
-            .Add("delay_ms", 10)
-            .Build();
-
-        // Act
-        var result = await step.ExecuteAsync(context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result.Success, $"Step should succeed but got error: {result.Error}");
-        Assert.NotNull(result.Output);
-
-        // The output should be a DelayFlowStepOutput with a Message
-        var output = result.Output as DelayFlowStepOutput;
-        Assert.NotNull(output);
-        Assert.Contains("Delayed for", output!.Message);
-
-        // The UpdatedContext should contain serialized output
-        Assert.NotNull(result.UpdatedContext);
-        Assert.True(result.UpdatedContext.ContainsKey("message"), "UpdatedContext should contain 'message' key from serialized output");
-    }
-
-    [Fact]
-    public async Task ShouldMiniFlowWithStatePassingTypedPipelinePreservesState_WhenFlowStep()
-    {
-        // Arrange: simulate a mini-flow with two steps passing state
-        var step1Params = FlowStepParameters.CreateBuilder()
-            .Add("delay_ms", 5)
-            .Build();
-        var step1 = new DelayFlowStep("step1", step1Params);
-
-        var step2Params = FlowStepParameters.CreateBuilder()
-            .Add("delay_ms", 5)
-            .Build();
-        var step2 = new DelayFlowStep("step2", step2Params);
-
-        // Initial context
-        var initialContext = FlowState.CreateBuilder()
-            .Add("delay_ms", 5)
-            .Add("flow_id", "test-flow-123")
-            .Build();
-
-        // Act: execute step1
-        var result1 = await step1.ExecuteAsync(initialContext, TestContext.Current.CancellationToken);
-        Assert.True(result1.Success, $"Step1 failed: {result1.Error}");
-
-        // Merge step1 output into context for step2
-        var step2Context = result1.UpdatedContext
-            .Set("delay_ms", 5)
-            .Set("previous_step", "step1");
-
-        var result2 = await step2.ExecuteAsync(step2Context, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(result2.Success, $"Step2 failed: {result2.Error}");
-        Assert.NotNull(result2.Output);
-
-        var output2 = result2.Output as DelayFlowStepOutput;
-        Assert.NotNull(output2);
-        Assert.Contains("Delayed for", output2!.Message);
-    }
-
-    // ══════════════════════════════════════════════════════════════════════════
-    // 4. Round-trip test: Dict → DeserializeRequest → typed → SerializeResponse → Dict
+    // 3. Round-trip test: Dict → DeserializeRequest → typed → SerializeResponse → Dict
     // ══════════════════════════════════════════════════════════════════════════
 
     [Fact]
@@ -297,7 +221,7 @@ public class TypedPipelineIntegrationTests
     }
 
     // ══════════════════════════════════════════════════════════════════════════
-    // 5. Backward compatibility: old Dictionary<string,object> still works
+    // 4. Backward compatibility: old Dictionary<string,object> still works
     // ══════════════════════════════════════════════════════════════════════════
 
     [Fact]

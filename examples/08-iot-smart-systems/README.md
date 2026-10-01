@@ -12,7 +12,7 @@ Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connecti
 | 87 | Gestion de Flotte -- Memoire par Vehicule + Checkpoint Missions | Hierarchical | Fiabilite |
 | 88 | Agriculture de Precision -- Humain Valide les Actions Physiques | Sequential | Securite |
 | 89 | Monitoring Environnemental -- ObserverAgent + Broadcast Alertes | Parallel | Fiabilite |
-| 90 | Gestion Energetique -- Cycle Continu FlowEngine | FlowEngine (cyclique) | Fiabilite |
+| 90 | Gestion Energetique -- Surveillance, Prevision, Optimisation | Sequential | Fiabilite |
 | 91 | Maintenance Predictive -- ObserverAgent par Machine | Parallel -> Sequential | Fiabilite |
 | 92 | Logistique Warehouse -- Batch Haute Performance | Parallel | Robustesse |
 | 93 | Controle Qualite Visuel -- Auto-Calibration par Historique | Sequential | Fiabilite |

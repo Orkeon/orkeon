@@ -1,9 +1,9 @@
 # 100. Simulateur de Civilisation Emergente
-# Use case: 20+ agents representing factions play civilization turns via FlowEngine with A2A diplomacy
+# Use case: 20+ agents representing factions play civilization turns, led by a game master, with A2A diplomacy
 # TODO: feature planifiee — Composite memory (ShortTerm: current turn + LongTerm: civilization history + Episodic: landmark events)
 
 name: "civilization-simulator"
-goal: "Simulate an emergent civilization with multiple factions each composed of specialized agents, turn-based progression via FlowEngine, A2A inter-faction diplomacy, and episodic memory creating a unique emergent history"
+goal: "Simulate an emergent civilization with multiple factions each composed of specialized agents, turn-based progression led by the game master, A2A inter-faction diplomacy, and episodic memory creating a unique emergent history"
 process: "sequential"
 verbose: true
 memory: true
@@ -17,7 +17,7 @@ agents:
     goal: "Orchestrate civilization turns, enforce game rules, resolve conflicts, and advance the world state"
     backstory: |
       You are the Game Master of this civilization simulation. You manage
-      turn progression via FlowEngine, enforce game rules (resource limits,
+      turn progression, enforce game rules (resource limits,
       technology prerequisites, diplomatic protocols), resolve inter-faction
       conflicts, process world events (natural disasters, discoveries,
       plagues), and maintain the canonical world state. You ensure fair

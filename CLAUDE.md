@@ -252,7 +252,7 @@ Each provider declares an `LlmProviderCapabilities` (Domain value object, expose
 - `Graph` — LangGraph-style state graph with conditional edges, cycles, circuit breaker (`StateGraph<TState>`, `GraphProcessStrategy`)
 - `Autonomous` — Manager-assigned tasks, delegation to a peer on failure, host-provided spawn, multi-dimensional budget (`AgentExecutionBudget`, `AutonomousProcessStrategy`)
 
-In every mode a failed task fails the crew and its dependants are skipped (`CrewRunOutcome`, shared by the six strategies), so `orkeon run` exits 2; Graph sizes its circuit breaker from the crew (`tasks × (1 + maxRetryCycles)` visits) unless `graphConfig` sets explicit bounds. `FlowEngine` (typed steps over a shared state, `docs/orchestration/flows.md`) is a C# API that no CLI or host runs yet.
+In every mode a failed task fails the crew and its dependants are skipped (`CrewRunOutcome`, shared by the six strategies), so `orkeon run` exits 2; Graph sizes its circuit breaker from the crew (`tasks × (1 + maxRetryCycles)` visits) unless `graphConfig` sets explicit bounds.
 
 **Autonomous Orchestration** (key components):
 - `AgentExecutionBudget` (Domain) — 5-dimension budget: tool calls, delegation depth, wall time, tokens, spawned agents. Thread-safe, presets (Strict/Default/Permissive), child budget derivation.
@@ -393,7 +393,6 @@ For file or HTTP tools, inherit `FileToolBase<TReq, TRes>` or `HttpToolBase<TReq
 - `ComponentBase<TRequest, TResponse>` (Domain) — Core pipeline: normalize → deserialize → validate → execute → serialize
 - `ToolBase<TReq, TRes>` (Infrastructure) — Tool-specific wrapper with YAML defaults merging
 - `EvaluatorBase<TInput, TResult>` (Infrastructure) — Typed evaluator base
-- `FlowStepBase<TInput, TOutput>` (Infrastructure) — Typed flow step base
 
 ### Tool Development (Legacy)
 Implement `IBaseTool` interface. Tools should:
@@ -636,7 +635,6 @@ Dict<string,object> → NormalizeParameters (snake_case) → JsonDeserialize<TRe
 **Component bridges** (Infrastructure layer):
 - `ToolBase<TReq, TRes>` — Wraps ComponentBase with tool-specific concerns (YAML defaults, output filtering)
 - `EvaluatorBase<TInput, TResult>` — Bridges IEvaluator interface with typed pipeline
-- `FlowStepBase<TInput, TOutput>` — Bridges IFlowStep interface with typed pipeline
 
 **Remaining Dict<string,object>**: Only in extensibility bags (Extensions, Metadata, CustomSettings, Context, Parameters).
 

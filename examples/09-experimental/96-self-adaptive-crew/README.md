@@ -8,11 +8,11 @@
 
 ## Architecture
 
-- **Process**: `sequential` (cyclic via FlowEngine)
+- **Process**: `sequential`
 - **Agents**: 4 — Performance Observer, Architect Reconfigurator, Dynamic Worker Alpha, Dynamic Worker Beta
 - **Tools**: `json_tool`, `file_write`, `web_scrape`
 - **Memory**: `Redis` (metrics) + `SQLite` (versioned configurations)
-- **Key features**: IConfigurationVersioning (planned), IConfigurationRollbackService (planned), IConfigurationDiffService (planned), EvaluationSuite, ObserverAgent, IFlowEngine, BenchmarkRunner
+- **Key features**: IConfigurationVersioning (planned), IConfigurationRollbackService (planned), IConfigurationDiffService (planned), EvaluationSuite, ObserverAgent, BenchmarkRunner
 - **Runner**: `standard`
 
 ## Prerequisites

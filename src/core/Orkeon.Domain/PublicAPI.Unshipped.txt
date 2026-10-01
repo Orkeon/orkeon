@@ -498,3 +498,499 @@ static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRo
 static Orkeon.Domain.Crew.Crew.Create(string! goal, Orkeon.Domain.SharedKernel.ValueObjects.ProcessType? processType = null, bool verbose = false, bool planning = false, int maxRpm = 100, bool shareCrew = true, string? outputLogFile = null, Orkeon.Domain.SharedKernel.ILlmProvider? managerLlm = null, Orkeon.Domain.Common.AgentId? managerAgentId = null, string! language = "en", bool fullOutput = false, Orkeon.Domain.SharedKernel.ILlmProvider? planningLlm = null, bool memoryEnabled = false) -> Orkeon.Domain.Crew.Crew!
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByCapabilityAsync(string! capability) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
 *REMOVED*Orkeon.Domain.Tools.IToolRegistry.GetToolsByTagsAsync(params string![]! tags) -> System.Threading.Tasks.Task<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Tools.IBaseTool!>!>!
+*REMOVED*Orkeon.Domain.Common.FlowEventId
+*REMOVED*Orkeon.Domain.Common.FlowEventId.FlowEventId() -> void
+*REMOVED*Orkeon.Domain.Common.FlowId
+*REMOVED*Orkeon.Domain.Common.FlowId.FlowId() -> void
+*REMOVED*Orkeon.Domain.Common.FlowStepId
+*REMOVED*Orkeon.Domain.Common.FlowStepId.FlowStepId() -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.AddCompletedStep(string! stepName) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.AddData(string! key, object! value) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.CompletedSteps.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.CurrentStep.get -> string?
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.Data.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.EventDrivenFlowContext(Orkeon.Domain.Common.FlowId! flowId) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.FlowId.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.SetCurrentStep(string? stepName) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowContext.SetData(string! key, object! value) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.EventCounts.get -> System.Collections.Generic.Dictionary<string!, int>!
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.EventCounts.init -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.EventDrivenFlowResult() -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.EventDrivenFlowResult(Orkeon.Domain.Flows.EventDrivenFlowResult! original) -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.Events.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowEvent!>!
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.Events.init -> void
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.TotalEventsProcessed.get -> int
+*REMOVED*Orkeon.Domain.Flows.EventDrivenFlowResult.TotalEventsProcessed.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowAfterAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowAfterAttribute.FlowAfterAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute.FlowAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute.Tags.get -> string![]?
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute.Tags.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute.Version.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowAttribute.Version.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute.Description.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute.Description.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute.FlowBaseAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowBaseAttribute.Name.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowBeforeAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowBeforeAttribute.FlowBeforeAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowCompletedEventArgs
+*REMOVED*Orkeon.Domain.Flows.FlowCompletedEventArgs.FlowCompletedEventArgs(Orkeon.Domain.Flows.FlowExecutionResult! result) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowCompletedEventArgs.Result.get -> Orkeon.Domain.Flows.FlowExecutionResult!
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.<Clone>$() -> Orkeon.Domain.Flows.FlowConfiguration!
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.EnableLogging.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.EnableLogging.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.EnableMetrics.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.EnableMetrics.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Equals(Orkeon.Domain.Flows.FlowConfiguration? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.FlowConfiguration() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Id.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Id.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Name.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Settings.get -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings!
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Settings.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Timeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Timeout.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Type.get -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowConfiguration.Type.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext
+*REMOVED*Orkeon.Domain.Flows.FlowContext.CompletedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Domain.Flows.FlowContext.CreateStateSnapshot(string! label = "") -> Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot!
+*REMOVED*Orkeon.Domain.Flows.FlowContext.CurrentStepId.get -> Orkeon.Domain.Common.FlowStepId?
+*REMOVED*Orkeon.Domain.Flows.FlowContext.Events.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowEvent!>!
+*REMOVED*Orkeon.Domain.Flows.FlowContext.FlowContext() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.FlowContext(Orkeon.Domain.Common.FlowId! flowId, Orkeon.Domain.Flows.FlowStatus status = Orkeon.Domain.Flows.FlowStatus.NotStarted, System.DateTime startedAt = default(System.DateTime), System.DateTime? completedAt = null, Orkeon.Domain.Common.FlowStepId? currentStepId = null, int retryCount = 0, System.Exception? lastError = null) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.FlowId.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.FlowContext.GetSharedState<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.FlowContext.GetVariable<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.FlowContext.LastError.get -> System.Exception?
+*REMOVED*Orkeon.Domain.Flows.FlowContext.RecordEvent(Orkeon.Domain.Flows.FlowEvent! flowEvent) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.RetryCount.get -> int
+*REMOVED*Orkeon.Domain.Flows.FlowContext.SaveStateSnapshot(string! label = "") -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.SetSharedState(string! key, object! value) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.SetVariable(string! key, object! value) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowContext.State.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.FlowContext.Status.get -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateCompletedAt(System.DateTime? completedAt) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateCurrentStepId(Orkeon.Domain.Common.FlowStepId? currentStepId) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateFlowId(Orkeon.Domain.Common.FlowId! flowId) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateLastError(System.Exception? lastError) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateRetryCount(int retryCount) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateStartedAt(System.DateTime startedAt) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowContext.UpdateStatus(Orkeon.Domain.Flows.FlowStatus status) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowErrorHandlerAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowErrorHandlerAttribute.FlowErrorHandlerAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowErrorHandlerAttribute.HandlesExceptions.get -> System.Type![]?
+*REMOVED*Orkeon.Domain.Flows.FlowErrorHandlerAttribute.HandlesExceptions.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.<Clone>$() -> Orkeon.Domain.Flows.FlowEvent!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Data.get -> Orkeon.Domain.Flows.ValueObjects.FlowEventData!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Data.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Equals(Orkeon.Domain.Flows.FlowEvent? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Error.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Error.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.EventType.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.EventType.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.FlowEvent() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.FlowId.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.FlowId.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Id.get -> Orkeon.Domain.Common.FlowEventId!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Id.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.StepId.get -> Orkeon.Domain.Common.FlowStepId!
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.StepId.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowEvent.Timestamp.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.CompletedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.CompletedAt.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Duration.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Error.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Error.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.FlowExecutionResult() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.FlowExecutionResult(Orkeon.Domain.Flows.FlowExecutionResult! original) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.FlowId.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.FlowId.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Output.get -> object?
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Output.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.OutputState.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.OutputState.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.StartedAt.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.StepResults.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowStepExecutionDetail!>!
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.StepResults.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Success.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionResult.Success.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.Cancelled = 5 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.Completed = 2 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.Failed = 3 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.NotStarted = 0 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.Paused = 4 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowExecutionStatus.Running = 1 -> Orkeon.Domain.Flows.FlowExecutionStatus
+*REMOVED*Orkeon.Domain.Flows.FlowListenMode
+*REMOVED*Orkeon.Domain.Flows.FlowListenMode.All = 2 -> Orkeon.Domain.Flows.FlowListenMode
+*REMOVED*Orkeon.Domain.Flows.FlowListenMode.Flow = 1 -> Orkeon.Domain.Flows.FlowListenMode
+*REMOVED*Orkeon.Domain.Flows.FlowListenMode.Step = 0 -> Orkeon.Domain.Flows.FlowListenMode
+*REMOVED*Orkeon.Domain.Flows.FlowResult
+*REMOVED*Orkeon.Domain.Flows.FlowResult.<Clone>$() -> Orkeon.Domain.Flows.FlowResult!
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Equals(Orkeon.Domain.Flows.FlowResult? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Error.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Error.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowResult.FlowResult() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Output.get -> object?
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Output.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowResult.OutputState.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.FlowResult.OutputState.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Success.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowResult.Success.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.Cancelled = 5 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.Completed = 3 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.Failed = 4 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.NotStarted = 0 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.Running = 1 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStatus.Suspended = 2 -> Orkeon.Domain.Flows.FlowStatus
+*REMOVED*Orkeon.Domain.Flows.FlowStep
+*REMOVED*Orkeon.Domain.Flows.FlowStep.<Clone>$() -> Orkeon.Domain.Flows.FlowStep!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.CanRetry.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStep.CanRetry.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Dependencies.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Common.FlowStepId!>!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Dependencies.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Equals(Orkeon.Domain.Flows.FlowStep? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStep.FlowStep() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Id.get -> Orkeon.Domain.Common.FlowStepId!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Id.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.MaxRetries.get -> int
+*REMOVED*Orkeon.Domain.Flows.FlowStep.MaxRetries.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Metadata.get -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Metadata.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Name.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Parameters.get -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Parameters.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Timeout.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Timeout.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Type.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowStep.Type.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.FlowStepAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.IsOptional.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.IsOptional.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.Order.get -> int
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.Order.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.ProvidedOutputs.get -> string![]?
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.ProvidedOutputs.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.RequiredInputs.get -> string![]?
+*REMOVED*Orkeon.Domain.Flows.FlowStepAttribute.RequiredInputs.set -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.CompletedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.ErrorMessage.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.FlowStepCompletedEventArgs(Orkeon.Domain.Common.FlowStepId! stepId, string! stepName, bool isSuccess, string? errorMessage = null) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.IsSuccess.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.StepId.get -> Orkeon.Domain.Common.FlowStepId!
+*REMOVED*Orkeon.Domain.Flows.FlowStepCompletedEventArgs.StepName.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.<Clone>$() -> Orkeon.Domain.Flows.FlowStepExecutionDetail!
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Duration.get -> System.TimeSpan
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Duration.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Equals(Orkeon.Domain.Flows.FlowStepExecutionDetail? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Error.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Error.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.ExecutedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.ExecutedAt.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.FlowStepExecutionDetail() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Output.get -> object?
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Output.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.StepId.get -> Orkeon.Domain.Common.FlowStepId!
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.StepId.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.StepName.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.StepName.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Success.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStepExecutionDetail.Success.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Error.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Error.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.FlowStepResult() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.NextStep.get -> string?
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.NextStep.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Output.get -> object?
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Output.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Success.get -> bool
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.Success.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.UpdatedContext.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.FlowStepResult.UpdatedContext.init -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepStartedEventArgs
+*REMOVED*Orkeon.Domain.Flows.FlowStepStartedEventArgs.FlowStepStartedEventArgs(Orkeon.Domain.Common.FlowStepId! stepId, string! stepName) -> void
+*REMOVED*Orkeon.Domain.Flows.FlowStepStartedEventArgs.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.FlowStepStartedEventArgs.StepId.get -> Orkeon.Domain.Common.FlowStepId!
+*REMOVED*Orkeon.Domain.Flows.FlowStepStartedEventArgs.StepName.get -> string!
+*REMOVED*Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Conditional = 2 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Crew = 4 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Custom = 5 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Loop = 3 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Parallel = 1 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowType.Sequential = 0 -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.FlowValidatorAttribute
+*REMOVED*Orkeon.Domain.Flows.FlowValidatorAttribute.FlowValidatorAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.FlowValidatorAttribute.ValidatesInputs.get -> string![]?
+*REMOVED*Orkeon.Domain.Flows.FlowValidatorAttribute.ValidatesInputs.set -> void
+*REMOVED*Orkeon.Domain.Flows.IFlow
+*REMOVED*Orkeon.Domain.Flows.IFlow.ExecuteAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowResult!>!
+*REMOVED*Orkeon.Domain.Flows.IFlow.Id.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.IFlow.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.IFlow.State.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Configuration.get -> Orkeon.Domain.Flows.FlowConfiguration!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Description.get -> string!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Id.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Steps.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowStep!>!
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Type.get -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Domain.Flows.IFlowDefinition.Validate(out System.Collections.Generic.IReadOnlyList<string!>! errors) -> bool
+*REMOVED*Orkeon.Domain.Flows.IFlowStep
+*REMOVED*Orkeon.Domain.Flows.IFlowStep.Description.get -> string!
+*REMOVED*Orkeon.Domain.Flows.IFlowStep.ExecuteAsync(Orkeon.Domain.Flows.ValueObjects.FlowState! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*Orkeon.Domain.Flows.IFlowStep.Name.get -> string!
+*REMOVED*Orkeon.Domain.Flows.ListenAttribute
+*REMOVED*Orkeon.Domain.Flows.ListenAttribute.Condition.get -> string?
+*REMOVED*Orkeon.Domain.Flows.ListenAttribute.Condition.set -> void
+*REMOVED*Orkeon.Domain.Flows.ListenAttribute.EventName.get -> string!
+*REMOVED*Orkeon.Domain.Flows.ListenAttribute.ListenAttribute(string! eventName) -> void
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute.Name.get -> string?
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute.Name.set -> void
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute.RouterAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute.Routes.get -> string![]?
+*REMOVED*Orkeon.Domain.Flows.RouterAttribute.Routes.set -> void
+*REMOVED*Orkeon.Domain.Flows.StartAttribute
+*REMOVED*Orkeon.Domain.Flows.StartAttribute.Name.get -> string?
+*REMOVED*Orkeon.Domain.Flows.StartAttribute.Name.set -> void
+*REMOVED*Orkeon.Domain.Flows.StartAttribute.StartAttribute() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.Add(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.AddCacheEnabled(bool enabled) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.AddErrorHandling(string! strategy) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.AddParallelism(int degree) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.AddRetryPolicy(string! policy) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.AddStateStore(string! storeType) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.Build() -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder.Builder() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.ContainsKey(string! key) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Count.get -> int
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Equals(Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Set(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.Add(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddDuration(System.TimeSpan duration) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddMessage(string! message) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddNextStepId(Orkeon.Domain.Common.FlowStepId! stepId) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddPreviousStepId(Orkeon.Domain.Common.FlowStepId! stepId) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddRetryCount(int count) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddStateSnapshot(Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot! snapshot) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.AddStepResult(object! result) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.Build() -> Orkeon.Domain.Flows.ValueObjects.FlowEventData!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder.Builder() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.ContainsKey(string! key) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Count.get -> int
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Equals(Orkeon.Domain.Flows.ValueObjects.FlowEventData? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.Set(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventData.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue.RawValue.get -> object!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowSettingValue
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowSettingValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowSettingValue.RawValue.get -> object!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowSettingValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.Add(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddCompletedSteps(System.Collections.Generic.IReadOnlyList<string!>! steps) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddCurrentStep(string! stepName) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddError(string! error) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddIterationCount(int count) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddOutput(object! output) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddStartTime(System.DateTime startTime) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.AddUserInput(string! input) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.Build() -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Builder.Builder() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.ContainsKey(string! key) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Count.get -> int
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.CreateSnapshot(string! label = "") -> Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Equals(Orkeon.Domain.Flows.ValueObjects.FlowState? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.GetRequired<T>(string! key) -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.GetSharedState<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.GetVariable<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Merge(System.Collections.Generic.Dictionary<string!, object!>! updates) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Remove(string! key) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.SaveSnapshot(string! label = "") -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.Set(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.SetMultiple(System.Collections.Generic.IEnumerable<System.Collections.Generic.KeyValuePair<string!, object!>>! items) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.SetSharedState(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.SetVariable(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowState.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.<Clone>$() -> Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Equals(Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.FlowStateSnapshot() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Label.get -> string!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Label.init -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.State.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.State.init -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Timestamp.get -> System.DateTime
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Timestamp.init -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateValue
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateValue.RawValue.get -> object!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStateValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.Add(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.AddCategory(string! category) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.AddCreatedAt(System.DateTime createdAt) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.AddDescription(string! description) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.AddPriority(int priority) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.AddTags(System.Collections.Generic.IReadOnlyList<string!>! tags) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.Build() -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder.Builder() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.ContainsKey(string! key) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Count.get -> int
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Equals(Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Set(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue.RawValue.get -> object!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue.GetValue<T>() -> T
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue.RawValue.get -> object!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue.ValueType.get -> System.Type!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.Add(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddAgent(Orkeon.Domain.Common.AgentId! agentId) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddCondition(string! condition) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddInput(string! inputName, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddLoop(int maxIterations) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddTask(Orkeon.Domain.Common.TaskId! taskId) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.AddTool(string! toolName) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.Build() -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder.Builder() -> void
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.ContainsKey(string! key) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Count.get -> int
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Equals(Orkeon.Domain.Flows.ValueObjects.FlowStepParameters? other) -> bool
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Get<T>(string! key) -> T?
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Keys.get -> System.Collections.Generic.IEnumerable<string!>!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Set(string! key, object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters!
+*REMOVED*Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.ToDictionary() -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.<Clone>$() -> Orkeon.Domain.Flows.EventDrivenFlowResult!
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.EqualityContract.get -> System.Type!
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*override Orkeon.Domain.Flows.EventDrivenFlowResult.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowConfiguration.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowConfiguration.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowConfiguration.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowEvent.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowEvent.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowEvent.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowExecutionResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowExecutionResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowExecutionResult.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowResult.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowStep.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowStep.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowStep.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.FlowStepExecutionDetail.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.FlowStepExecutionDetail.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.FlowStepExecutionDetail.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowEventData.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowEventData.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowState.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowState.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.ToString() -> string!
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.GetHashCode() -> int
+*REMOVED*override sealed Orkeon.Domain.Flows.EventDrivenFlowResult.Equals(Orkeon.Domain.Flows.FlowExecutionResult? other) -> bool
+*REMOVED*static Orkeon.Domain.Flows.EventDrivenFlowResult.operator !=(Orkeon.Domain.Flows.EventDrivenFlowResult? left, Orkeon.Domain.Flows.EventDrivenFlowResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.EventDrivenFlowResult.operator ==(Orkeon.Domain.Flows.EventDrivenFlowResult? left, Orkeon.Domain.Flows.EventDrivenFlowResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowConfiguration.operator !=(Orkeon.Domain.Flows.FlowConfiguration? left, Orkeon.Domain.Flows.FlowConfiguration? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowConfiguration.operator ==(Orkeon.Domain.Flows.FlowConfiguration? left, Orkeon.Domain.Flows.FlowConfiguration? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowEvent.operator !=(Orkeon.Domain.Flows.FlowEvent? left, Orkeon.Domain.Flows.FlowEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowEvent.operator ==(Orkeon.Domain.Flows.FlowEvent? left, Orkeon.Domain.Flows.FlowEvent? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowExecutionResult.CreateFailure(Orkeon.Domain.Common.FlowId! flowId, string! error) -> Orkeon.Domain.Flows.FlowExecutionResult!
+*REMOVED*static Orkeon.Domain.Flows.FlowExecutionResult.CreateSuccess(Orkeon.Domain.Common.FlowId! flowId, object? output = null) -> Orkeon.Domain.Flows.FlowExecutionResult!
+*REMOVED*static Orkeon.Domain.Flows.FlowExecutionResult.operator !=(Orkeon.Domain.Flows.FlowExecutionResult? left, Orkeon.Domain.Flows.FlowExecutionResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowExecutionResult.operator ==(Orkeon.Domain.Flows.FlowExecutionResult? left, Orkeon.Domain.Flows.FlowExecutionResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowResult.CreateFailure(string! error) -> Orkeon.Domain.Flows.FlowResult!
+*REMOVED*static Orkeon.Domain.Flows.FlowResult.CreateSuccess(object? output = null) -> Orkeon.Domain.Flows.FlowResult!
+*REMOVED*static Orkeon.Domain.Flows.FlowResult.operator !=(Orkeon.Domain.Flows.FlowResult? left, Orkeon.Domain.Flows.FlowResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowResult.operator ==(Orkeon.Domain.Flows.FlowResult? left, Orkeon.Domain.Flows.FlowResult? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowStep.operator !=(Orkeon.Domain.Flows.FlowStep? left, Orkeon.Domain.Flows.FlowStep? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowStep.operator ==(Orkeon.Domain.Flows.FlowStep? left, Orkeon.Domain.Flows.FlowStep? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowStepExecutionDetail.operator !=(Orkeon.Domain.Flows.FlowStepExecutionDetail? left, Orkeon.Domain.Flows.FlowStepExecutionDetail? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowStepExecutionDetail.operator ==(Orkeon.Domain.Flows.FlowStepExecutionDetail? left, Orkeon.Domain.Flows.FlowStepExecutionDetail? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.FlowStepResult.CreateFailure(string! error) -> Orkeon.Domain.Flows.FlowStepResult!
+*REMOVED*static Orkeon.Domain.Flows.FlowStepResult.CreateSuccess(object? output = null, string? nextStep = null) -> Orkeon.Domain.Flows.FlowStepResult!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.CreateBuilder() -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.Empty.get -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.Flows.ValueObjects.FlowConfigurationSettings!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowEventData.CreateBuilder() -> Orkeon.Domain.Flows.ValueObjects.FlowEventData.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowEventData.Empty.get -> Orkeon.Domain.Flows.ValueObjects.FlowEventData!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowEventData.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.Flows.ValueObjects.FlowEventData!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue.From(object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowEventDataValue!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowSettingValue.From(object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowSettingValue!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowState.CreateBuilder() -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowState.CreateBuilderFrom(Orkeon.Domain.Flows.ValueObjects.FlowState! existing) -> Orkeon.Domain.Flows.ValueObjects.FlowState.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowState.Empty.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowState.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.operator !=(Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot? left, Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot.operator ==(Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot? left, Orkeon.Domain.Flows.ValueObjects.FlowStateSnapshot? right) -> bool
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStateValue.From(object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStateValue!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.CreateBuilder() -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.Empty.get -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadata!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue.From(object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepMetadataValue!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue.From(object! value) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameterValue!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.CreateBuilder() -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Builder!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.Empty.get -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters!
+*REMOVED*static Orkeon.Domain.Flows.ValueObjects.FlowStepParameters.FromDictionary(System.Collections.Generic.Dictionary<string!, object!>? dictionary) -> Orkeon.Domain.Flows.ValueObjects.FlowStepParameters!
+*REMOVED*virtual Orkeon.Domain.Flows.EventDrivenFlowResult.Equals(Orkeon.Domain.Flows.EventDrivenFlowResult? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.<Clone>$() -> Orkeon.Domain.Flows.FlowExecutionResult!
+*REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.Equals(Orkeon.Domain.Flows.FlowExecutionResult? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Flows.FlowExecutionResult.PrintMembers(System.Text.StringBuilder! builder) -> bool

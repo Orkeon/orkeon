@@ -3,7 +3,7 @@ namespace Orkeon.Application.Interfaces.Ports;
 /// <summary>
 /// Host-registered receiver for LLM usage events: one event per completed generation call,
 /// whoever made it — an agent turn or retry, the hierarchical manager, the planner, a RAG
-/// pipeline, a memory service, a flow step, an evaluator, a <c>ctx.llm.*</c> script call —
+/// pipeline, a memory service, an evaluator, a <c>ctx.llm.*</c> script call —
 /// carrying the token counts the provider reported and the attribution in effect
 /// (<see cref="LlmUsageScope"/>). The events come from a single place, the metering
 /// decorator every provider is wrapped in (STUDIO-42); no caller reports its own. A host

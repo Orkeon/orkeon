@@ -7,6 +7,44 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Removed — the Flows subsystem (`FlowEngine`, flow steps, flow YAML) **[breaking]**
+
+Nothing ran a flow: `orkeon run` treats every YAML file as a crew, and no host, CLI or `.ork.ts`
+binding reached `IFlowEngine`. The C# API itself misbehaved — a `crew` step given a crew's id
+launched a random one and reported a failed crew as a success, a flow's `timeout_seconds` cut
+nothing, a backward `NextStep` looped forever, and `GetFlowMetrics(name)` compared the name with
+the id (GAP-05). The executable surfaces already cover the need: a `.ork.ts` script chains crews,
+LLM calls, tools and conditions in real code under `orkeon run` (with `--events`), and the `Graph`
+process mode runs bounded cycles behind a circuit breaker. The flows are removed rather than
+mended.
+
+- **Removed:** the `Orkeon.Domain.Flows` namespace (`IFlow`, `IFlowStep`, `IFlowDefinition`,
+  `FlowStep`, `FlowState`, `FlowStepParameters`, `FlowConfigurationSettings`, `FlowResult`,
+  `FlowStepResult`, `FlowExecutionResult`, the `[Flow]`/`[Start]`/`[Listen]`/`[Router]` marker
+  attributes, the flow event types…), `FlowId`, `FlowStepId` and `FlowEventId`;
+  `IFlowEngine` with `FlowValidationResult` and `FlowMetrics`, `IFlowStepExecutor`,
+  `FlowDefinitionBuilder`/`FlowStepBuilder` (`Orkeon.Application.Flow`); the whole
+  `Orkeon.Infrastructure.Flows` namespace — `FlowEngine`, `DefinitionBasedFlow`,
+  `FlowStepExecutor`, `YamlFlowDefinitionLoader`, `InMemoryFlowDefinition`, `FlowStepBase<TInput,
+  TOutput>`, the six steps (`CrewFlowStep`, `LlmFlowStep`, `ToolFlowStep`, `ConditionalFlowStep`,
+  `HumanInputFlowStep`, `DelayFlowStep`), `FlowExecutionTracker` and `FlowGraphSerializer`;
+  `AddOrkeonFlows()` and `AddOrkeonFlowVisualization()`, which `AddOrkeonInfrastructure()` no
+  longer calls; `OrkeonApplicationOptions.EnableFlowPersistence` (read by nothing).
+- **The `flow` usage operation is gone.** `LlmUsageOperations.Flow` and its Studio mirror
+  `RunCostOperations.Flow` are removed: a `cost.updated` reading never carries
+  `operation: "flow"`.
+- **Examples no longer claim `FlowEngine`.** 26, 29, 59, 61, 76, 83, 90 and 100 said a flow
+  engine drove their cycles, and 60, 96 and 98 listed `IFlowEngine` as a key feature; they are
+  sequential crews (97 consensual), and their titles, goals, backstories and READMEs now say what
+  one run does.
+- **Docs:** the Flows page (EN and FR) and its entries in the table of contents, the index, the
+  process-types guide, the opt-in catalog and the limitations page are removed.
+
+Migration: a flow becomes a `.ork.ts` script — each step a `crew.run()`, `ctx.llm.*` or tool call,
+conditions and loops in plain code — run by `orkeon run`; a cyclic crew uses `process: graph`.
+Delete calls to `AddOrkeonFlows()`/`AddOrkeonFlowVisualization()` and any `EnableFlowPersistence`
+setting. A cost report grouping by `operation` drops its `flow` bucket.
+
 ### Changed — `orkeon-host` connects its MCP servers and routes chat by room; the tool registry ships in `Orkeon` **[breaking]**
 
 The same `MCP:Servers` gave `orkeon run` the servers' tools and `orkeon-host` none; every chat

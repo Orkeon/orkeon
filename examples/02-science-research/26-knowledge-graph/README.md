@@ -1,18 +1,18 @@
 # 26. Construction de Graphe de Connaissances
 
-> Five agents build a knowledge graph iteratively via FlowEngine. Each cycle refines the graph with feedback. Iteration limits guarantee convergence.
+> Five agents build a knowledge graph in one sequential pass: each one refines the graph the previous one produced, and the contradiction detector checks it before it is visualized.
 
 ## Quality
 
-💪 Robustesse — Controlled loops via FlowEngine, guaranteed convergence through guard rails
+💪 Robustesse — Contradiction detection before the graph is published, one bounded pass
 
 ## Architecture
 
-- **Process**: Cyclic via `FlowEngine`
+- **Process**: `sequential`
 - **Agents**: 5 — Extracteur Entites (Worker), Detecteur Relations (Worker), Classificateur Taxonomique (Worker), Detecteur Contradictions (Worker), Visualisateur Graphe (Worker)
 - **Tools**: `pdf_reader`, `json_tool`, `http_api`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: `IFlowEngine` + `FlowState` (iterative cycles), `FlowStepBase<TInput, TOutput>`, iteration limit, `IKnowledgeSource` (feeding)
+- **Key features**: sequential hand-off between specialists, contradiction detection, `IKnowledgeSource` (feeding)
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -37,6 +37,6 @@ orkeon run examples/02-science-research/26-knowledge-graph/config.yaml \
 
 ## What this example demonstrates
 
-- Iterative knowledge graph construction with FlowEngine cyclic processing
+- Knowledge graph construction as a sequential pipeline of specialists
 - Contradiction detection and resolution for graph consistency
 - Multi-step entity extraction, relation detection, and taxonomic organization

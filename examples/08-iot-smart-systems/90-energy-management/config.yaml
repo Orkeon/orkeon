@@ -1,8 +1,8 @@
-# 90. Gestion Energetique — Cycle Continu FlowEngine
-# Use case: continuous energy management cycle (monitor -> predict -> optimize -> report) via FlowEngine
+# 90. Gestion Energetique — Surveillance, Prevision, Optimisation
+# Use case: energy management pass (monitor -> predict -> optimize -> report); run it on a schedule for a continuous cycle
 
 name: "energy-management"
-goal: "Manage building energy with a continuous FlowEngine cycle: monitor consumption, predict peak loads, optimize parameters, and report efficiency gains using long-term consumption history"
+goal: "Manage building energy in one pass: monitor consumption, predict peak loads, optimize parameters, and report efficiency gains using long-term consumption history"
 process: "sequential"
 verbose: true
 memory: true
@@ -68,7 +68,7 @@ agents:
       against baselines and targets. You calculate KPIs (kWh/m2, PUE for
       data centers, cost per zone), track savings achieved from optimizations,
       and recommend further improvements. Your reports feed into the next
-      FlowEngine cycle for continuous improvement.
+      run for continuous improvement.
     tools:
       - "json_tool"
       - "csv_reader"

@@ -1,18 +1,18 @@
 # 29. Génération et Test d'Hypothèses Cyclique
 
-> Four agents in a cyclic flow: observation, hypothesis generation, critique, experimental planning. FlowEngine manages the cycle with typed states and an explicit exit condition.
+> Four agents in a sequential pipeline: observation, hypothesis generation, critique, experimental planning. Each stage works on the output of the one before.
 
 ## Quality
 
-💪 Robustesse — FlowEngine with typed states, exit condition, no infinite loops
+💪 Robustesse — A critique stage between hypothesis and experiment, one bounded pass
 
 ## Architecture
 
-- **Process**: Cyclic via `FlowEngine`
+- **Process**: `sequential`
 - **Agents**: 4 — Observateur Patterns (Worker), Creatif Hypotheses (Worker), Critique (Worker), Planificateur Experimental (Worker)
 - **Tools**: `csv_reader`, `http_api`, `json_tool`, `file_write`
 - **Memory**: `Redis`
-- **Key features**: `IFlowEngine` + `FlowState`, `FlowStepBase<TInput, TOutput>`, `LlmFlowStep` (branching decisions), exit condition, iteration limit
+- **Key features**: sequential hand-off between specialists, a dedicated critique stage, experimental planning
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -37,6 +37,5 @@ orkeon run examples/02-science-research/29-hypothesis-generation/config.yaml \
 
 ## What this example demonstrates
 
-- Cyclic scientific method workflow (observe -> hypothesize -> critique -> plan)
-- FlowEngine with typed states and explicit exit conditions preventing infinite loops
+- Scientific method workflow in one pass (observe -> hypothesize -> critique -> plan)
 - LLM-driven branching decisions for hypothesis selection and prioritization

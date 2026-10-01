@@ -50,14 +50,6 @@ public sealed class QuestionRequestId : EntityId<QuestionRequestId> { }
 /// <summary>Strongly-typed identifier for HumanInputRequest entities.</summary>
 public sealed class HumanInputRequestId : EntityId<HumanInputRequestId> { }
 
-// -- Flows ------------------------------------------------------------------
-/// <summary>Strongly-typed identifier for Flow entities.</summary>
-public sealed class FlowId : EntityId<FlowId> { }
-/// <summary>Strongly-typed identifier for FlowStep entities.</summary>
-public sealed class FlowStepId : EntityId<FlowStepId> { }
-/// <summary>Strongly-typed identifier for FlowEvent entities.</summary>
-public sealed class FlowEventId : EntityId<FlowEventId> { }
-
 // -- Planning ---------------------------------------------------------------
 /// <summary>Strongly-typed identifier for TaskPlan entities.</summary>
 public sealed class TaskPlanId : EntityId<TaskPlanId> { }

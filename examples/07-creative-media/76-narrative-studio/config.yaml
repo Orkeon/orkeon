@@ -1,9 +1,9 @@
-# 76. Studio Narratif — FlowEngine Cyclique + Memoire Composite 3 Couches
-# Use case: Narrative studio with cyclic creation-revision via FlowEngine and 3-layer composite memory
-# TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState) + Composite memory
+# 76. Studio Narratif — Creation-Revision + Memoire Composite 3 Couches
+# Use case: Narrative studio with a sequential creation-revision pass and 3-layer composite memory
+# TODO: feature planifiee — Composite memory
 
 name: "narrative-studio"
-goal: "Create narrative content through cyclic creation-revision with 3-layer composite memory maintaining narrative coherence"
+goal: "Create narrative content through a creation-revision pass with 3-layer composite memory maintaining narrative coherence"
 process: "sequential"
 verbose: true
 memory: true

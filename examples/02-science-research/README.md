@@ -16,8 +16,8 @@ Scientific research use cases: systematic literature reviews, scientific debates
 | 23 | Analyse Genomique avec Chunking | Hierarchical | Securite |
 | 24 | Redaction de Demandes de Subventions | Sequential | Simplicite |
 | 25 | Assistant de Laboratoire avec Reprise d'Experiences | Sequential | Fiabilite |
-| 26 | Construction de Graphe de Connaissances | FlowEngine (cyclique) | Robustesse |
+| 26 | Construction de Graphe de Connaissances | Sequential | Robustesse |
 | 27 | Prediction de Tendances avec Auto-Calibration | Parallel -> Sequential | Fiabilite |
 | 28 | Validation Croisee par Triple Analyse Independante | Consensual | Robustesse |
-| 29 | Generation et Test d'Hypotheses Cyclique | FlowEngine (cyclique) | Robustesse |
+| 29 | Generation et Test d'Hypotheses Cyclique | Sequential | Robustesse |
 | 30 | Resume Adaptatif au Profil Lecteur | Sequential | Simplicite |

@@ -22,7 +22,6 @@ Orkeon.Application.Interfaces.Ports.LlmUsageAttribution.TaskId.init -> void
 Orkeon.Application.Interfaces.Ports.LlmUsageOperations
 Orkeon.Application.Interfaces.Ports.LlmUsageScope
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Agent = "agent" -> string!
-const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Flow = "flow" -> string!
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Judge = "judge" -> string!
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Manager = "manager" -> string!
 const Orkeon.Application.Interfaces.Ports.LlmUsageOperations.Memory = "memory" -> string!
@@ -786,3 +785,85 @@ static Orkeon.Application.EventHub.MailboxOptions.operator !=(Orkeon.Application
 static Orkeon.Application.EventHub.MailboxOptions.operator ==(Orkeon.Application.EventHub.MailboxOptions? left, Orkeon.Application.EventHub.MailboxOptions? right) -> bool
 *REMOVED*Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Application.EventHub.IEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AddCrewStep(string! name, string! crewConfig, System.Action<Orkeon.Application.Flow.FlowStepBuilder!>? configure = null) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AddLlmStep(string! name, string! promptTemplate, System.Action<Orkeon.Application.Flow.FlowStepBuilder!>? configure = null) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AddStep(string! name, string! type, System.Action<Orkeon.Application.Flow.FlowStepBuilder!>? configure = null) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AddToolStep(string! name, string! toolName, System.Action<Orkeon.Application.Flow.FlowStepBuilder!>? configure = null) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AsConditional() -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AsLoop() -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AsParallel() -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.AsSequential() -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.Build() -> Orkeon.Domain.Flows.IFlowDefinition!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.FlowDefinitionBuilder() -> void
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.WithDescription(string! desc) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.WithId(string! id) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.WithMaxRetries(int retries) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.WithName(string! name) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowDefinitionBuilder.WithTimeout(System.TimeSpan timeout) -> Orkeon.Application.Flow.FlowDefinitionBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowStepBuilder
+*REMOVED*Orkeon.Application.Flow.FlowStepBuilder.DependsOn(params string![]! stepNames) -> Orkeon.Application.Flow.FlowStepBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowStepBuilder.WithMaxRetries(int retries) -> Orkeon.Application.Flow.FlowStepBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowStepBuilder.WithParameter(string! key, object! value) -> Orkeon.Application.Flow.FlowStepBuilder!
+*REMOVED*Orkeon.Application.Flow.FlowStepBuilder.WithTimeout(System.TimeSpan timeout) -> Orkeon.Application.Flow.FlowStepBuilder!
+*REMOVED*Orkeon.Application.Interfaces.IFlowStepExecutor
+*REMOVED*Orkeon.Application.Interfaces.IFlowStepExecutor.ResolveStep(Orkeon.Domain.Flows.FlowStep! stepDefinition) -> Orkeon.Domain.Flows.IFlowStep!
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.AverageExecutionTime.get -> System.TimeSpan
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.AverageExecutionTime.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.Deconstruct(out string? FlowName, out int TotalExecutions, out int SuccessfulExecutions, out int FailedExecutions, out System.TimeSpan AverageExecutionTime, out System.DateTime? LastExecution, out System.Collections.Generic.IReadOnlyDictionary<string!, int>! StepExecutionCounts) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FailedExecutions.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FailedExecutions.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FlowMetrics(Orkeon.Application.Interfaces.Ports.FlowMetrics! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FlowMetrics(string? FlowName, int TotalExecutions, int SuccessfulExecutions, int FailedExecutions, System.TimeSpan AverageExecutionTime, System.DateTime? LastExecution, System.Collections.Generic.IReadOnlyDictionary<string!, int>! StepExecutionCounts) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FlowName.get -> string?
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.FlowName.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.LastExecution.get -> System.DateTime?
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.LastExecution.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.StepExecutionCounts.get -> System.Collections.Generic.IReadOnlyDictionary<string!, int>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.StepExecutionCounts.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.SuccessRate.get -> double
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.SuccessfulExecutions.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.SuccessfulExecutions.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.TotalExecutions.get -> int
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowMetrics.TotalExecutions.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.Deconstruct(out bool IsValid, out System.Collections.Generic.IReadOnlyList<string!>! Errors, out System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.Errors.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.Errors.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.FlowValidationResult(Orkeon.Application.Interfaces.Ports.FlowValidationResult! original) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.FlowValidationResult(bool IsValid, System.Collections.Generic.IReadOnlyList<string!>! Errors, System.Collections.Generic.IReadOnlyList<string!>! Warnings) -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.IsValid.get -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.IsValid.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.Warnings.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.FlowValidationResult.Warnings.init -> void
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.ExecuteFlowAsync(Orkeon.Domain.Flows.IFlow! flow, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.ExecuteStepAsync(Orkeon.Domain.Flows.IFlowStep! flowStep, System.Collections.Generic.Dictionary<string!, object!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.GetExecutionHistory(int limit = 100) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowExecutionResult!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.GetFlowMetrics(string? flowName = null) -> Orkeon.Application.Interfaces.Ports.FlowMetrics!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.GetRegisteredFlows() -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Flows.IFlowDefinition!>!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IFlowEngine.ValidateFlow(Orkeon.Domain.Flows.IFlowDefinition! flowDefinition) -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowMetrics.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowMetrics.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowMetrics.ToString() -> string!
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowValidationResult.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowValidationResult.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Interfaces.Ports.FlowValidationResult.ToString() -> string!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowMetrics.operator !=(Orkeon.Application.Interfaces.Ports.FlowMetrics? left, Orkeon.Application.Interfaces.Ports.FlowMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowMetrics.operator ==(Orkeon.Application.Interfaces.Ports.FlowMetrics? left, Orkeon.Application.Interfaces.Ports.FlowMetrics? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowValidationResult.Invalid(params string![]! errors) -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowValidationResult.Valid() -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowValidationResult.WithWarnings(params string![]! warnings) -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowValidationResult.operator !=(Orkeon.Application.Interfaces.Ports.FlowValidationResult? left, Orkeon.Application.Interfaces.Ports.FlowValidationResult? right) -> bool
+*REMOVED*static Orkeon.Application.Interfaces.Ports.FlowValidationResult.operator ==(Orkeon.Application.Interfaces.Ports.FlowValidationResult? left, Orkeon.Application.Interfaces.Ports.FlowValidationResult? right) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowMetrics.<Clone>$() -> Orkeon.Application.Interfaces.Ports.FlowMetrics!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowMetrics.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowMetrics.Equals(Orkeon.Application.Interfaces.Ports.FlowMetrics? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowMetrics.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowValidationResult.<Clone>$() -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowValidationResult.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowValidationResult.Equals(Orkeon.Application.Interfaces.Ports.FlowValidationResult? other) -> bool
+*REMOVED*virtual Orkeon.Application.Interfaces.Ports.FlowValidationResult.PrintMembers(System.Text.StringBuilder! builder) -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableFlowPersistence.get -> bool
+*REMOVED*Orkeon.Application.Configuration.OrkeonApplicationOptions.EnableFlowPersistence.set -> void

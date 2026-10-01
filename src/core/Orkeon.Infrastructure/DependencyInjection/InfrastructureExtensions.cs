@@ -43,7 +43,6 @@ using Orkeon.Infrastructure.Crew.Strategies;
 using Orkeon.Infrastructure.Telemetry;
 using Orkeon.Infrastructure.Evaluation;
 using Orkeon.Infrastructure.LLMs.Adapters;
-using Orkeon.Infrastructure.Flows;
 using Orkeon.Infrastructure.MCP;
 using Orkeon.Infrastructure.Communication;
 using Orkeon.Infrastructure.Sandbox;
@@ -272,7 +271,7 @@ public static class InfrastructureExtensions
         // These registrations prevent NullReferenceException when interfaces are resolved.
         // Stubs log warnings on first use so they're visible in production.
 
-        // IToolRegistry — required by CrewFactory, FlowStepExecutor, McpServer, McpToolProvider.
+        // IToolRegistry — required by CrewFactory, McpServer, McpToolProvider.
         // Seeded from every IBaseTool in the container, so a host that registers a tool in DI
         // resolves it by name from a YAML crew without a registry of its own (GAP-11).
         services.TryAddSingleton<Domain.Tools.IToolRegistry, Tools.ToolRegistry>();
@@ -612,10 +611,6 @@ public static class InfrastructureExtensions
         // === Consensual Process (P2-11) ===
         services.AddOrkeonConsensus();
 
-        // === Phase 5: Flow Engine (P2-1) ===
-        services.AddOrkeonFlows();
-        services.AddOrkeonFlowVisualization();
-
         // === Code Sandbox (P2-14) ===
         services.AddOrkeonCodeSandbox();
 
@@ -759,18 +754,6 @@ public static class InfrastructureExtensions
             sp.GetRequiredService<ILogger<LazyProbingCodeSandbox>>()));
 
         services.TryAddSingleton<SecureCodeInterpreterTool>();
-
-        return services;
-    }
-
-    /// <summary>
-    /// Adds the flow engine, step executor, and YAML flow definition loader.
-    /// </summary>
-    public static IServiceCollection AddOrkeonFlows(this IServiceCollection services)
-    {
-        services.TryAddSingleton<IFlowStepExecutor, FlowStepExecutor>();
-        services.TryAddSingleton<IFlowEngine, FlowEngine>();
-        services.TryAddSingleton<YamlFlowDefinitionLoader>();
 
         return services;
     }

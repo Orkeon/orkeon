@@ -56,11 +56,6 @@ public class OrkeonApplicationOptions
     public int EmbeddingDimension { get; set; } = LocalDimension;
 
     /// <summary>
-    /// Enable flow state persistence.
-    /// </summary>
-    public bool EnableFlowPersistence { get; set; }
-
-    /// <summary>
     /// Enable AI-powered planning for task execution.
     /// </summary>
     public bool EnablePlanning { get; set; } = true;

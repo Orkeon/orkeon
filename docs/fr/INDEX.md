@@ -65,7 +65,6 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [FSM — Machine à états](./orchestration/fsm.md) | Moteur FSM générique du domaine (utilisé par `orkeon forge` ; sa policy de circuit breaker borne Graph et le graphe RAG correctif), 4 mécanismes, presets, guards |
 | [Graph — Graphe d'états](./orchestration/graph.md) | Le mode de process Graph (topologie fixe, circuit breaker à 3 mécanismes) et l'API C# `StateGraph` style LangGraph : edges conditionnels, cycles contrôlés, retry |
 | [Autonomous — Auto-organisation](./orchestration/autonomous.md) | Budget multi-dimensions, tâches assignées par le manager, délégation à un pair en cas d'échec, spawn fourni par l'hôte, canal A2A |
-| [Flows (FlowEngine)](./orchestration/flows.md) | Moteur C# qui enchaîne des étapes typées (crew, llm, tool, conditional, human_input, delay) sur un état partagé ; 4 types de flow, YAML de flow, visualisation — exécuté par aucune CLI ni aucun hôte à ce jour |
 
 ### Outils
 
@@ -96,7 +95,7 @@ Donner une boîte aux lettres aux agents est l'une des fonctionnalités les plus
 | [Catalogue des exemples](./reference/examples-catalog.md) | Carte éditoriale d'`examples/` (9 catégories métier + vitrines RAG/RaggableTree/scripting) ; l'`examples/INDEX.md` généré est l'inventaire faisant foi |
 | [Référence CLI `orkeon`](./reference/cli.md) | Chaque commande (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) avec options et exemples, plus `orkeon-repl` |
 | [Référence de configuration](./reference/configuration.md) | La carte unique des sections d'`appsettings.json` (`Llm`, `Orkeon:*`, `MCP`), sources et précédence, colonne opt-in |
-| [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante, dont ce qui est livré mais pas encore câblé (outils MCP et `rag_*` dans les crews, flows, A2A) |
+| [Limites et contraintes](./reference/limitations.md) | Contraintes connues de la version courante, dont ce qui est livré mais pas encore câblé (outils MCP et `rag_*` dans les crews, A2A) |
 | [Matrice de conformité A2A](./reference/a2a-conformance.md) | Position honnête face à la spec A2A v1.0 : opérations, modèle de données, bindings, sécurité — ce qui interopère et ce qui n'interopère pas |
 | [APIs expérimentales](./reference/experimental-apis.md) | Surfaces `[Experimental]` (A2A, Autonomous, RAG correctif, MCP), IDs de diagnostic `ORKEXP001–004`, comment s'inscrire |
 | [Politique de données des exemples](./reference/example-data-policy.md) | Pourquoi les exemples livrent de la config et pas des datasets, comment monter vos entrées (`/data:ro`, `/output:rw`), règles contributeurs pour les fixtures |

@@ -1,6 +1,6 @@
 # 61. Plateforme Learning Gamifié avec Hooks
 
-> Le FlowEngine gère une progression par niveaux avec déverrouillage. Les CrewHooks déclenchent les récompenses (XP, badges). La mémoire épisodique trace les accomplissements.
+> Une crew séquentielle conçoit une progression par niveaux avec déverrouillage. Les CrewHooks déclenchent les récompenses (XP, badges). La mémoire épisodique trace les accomplissements.
 
 ## Quality
 
@@ -8,11 +8,11 @@
 
 ## Architecture
 
-- **Process**: `sequential` (FlowEngine planned for progression tree)
+- **Process**: `sequential`
 - **Agents**: 3 — Game Master, Challenge Designer, Evaluator
 - **Tools**: `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: IFlowEngine (skill tree progression), CrewHooks (OnLevelCompleted, OnAchievementUnlocked), AgentMemory.Episodic, FlowState (player state)
+- **Key features**: skill tree progression designed by the crew, CrewHooks (OnLevelCompleted, OnAchievementUnlocked), AgentMemory.Episodic
 - **Runner**: `standard`
 
 ## Prerequisites

@@ -6,14 +6,12 @@ using Orkeon.Application.Evaluation;
 using Orkeon.Application.Interfaces.Ports;
 using Orkeon.Domain.Agent;
 using Orkeon.Domain.Common;
-using Orkeon.Domain.Flows.ValueObjects;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.SharedKernel.ValueObjects;
 using Orkeon.Domain.Task;
 using Orkeon.Infrastructure.Agent;
 using Orkeon.Infrastructure.Crew;
 using Orkeon.Infrastructure.Evaluation.LlmJudge;
-using Orkeon.Infrastructure.Flows.Steps;
 using Orkeon.Infrastructure.LLMs;
 using Orkeon.Infrastructure.LLMs.Adapters;
 using Orkeon.Infrastructure.Memory.Cognitive;
@@ -72,23 +70,6 @@ public sealed class GenerationCallFamiliesMeteringTests
             Assert.Equal(task.Id.ToString(), usage.TaskId);
             Assert.Equal(context.CrewId.ToString(), usage.CrewId);
         });
-    }
-
-    [Fact]
-    public async Task A_flow_step_is_metered_as_flow_work()
-    {
-        var provider = new MockLlmProvider();
-        provider.SetChatResult(Counted("42"));
-        var sink = new MockLlmUsageSink();
-        using var chatClient = new LlmProviderToChatClientAdapter(MeteredLlmProvider.Wrap(provider, sink));
-        var step = new LlmFlowStep("ask", FlowStepParameters.Empty.Set("prompt_template", "What is {question}?"), chatClient);
-
-        var result = await step.ExecuteAsync(FlowState.Empty.Set("question", "six times seven"), TestContext.Current.CancellationToken);
-
-        Assert.True(result.Success);
-        var usage = Assert.Single(sink.Recorded);
-        Assert.Equal(LlmUsageOperations.Flow, usage.OperationType);
-        Assert.Equal(1, provider.ChatCallCount);
     }
 
     [Fact]

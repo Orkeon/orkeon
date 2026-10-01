@@ -645,7 +645,6 @@ public class RunProgressModelTests
     [InlineData("manager")]
     [InlineData("planning")]
     [InlineData("memory")]
-    [InlineData("flow")]
     public void A_reading_from_the_machinery_around_the_agents_moves_the_meter_and_leaves_the_model_named(string operation)
     {
         // Every call of a run is on the meter since STUDIO-42. Naming the model of whichever call

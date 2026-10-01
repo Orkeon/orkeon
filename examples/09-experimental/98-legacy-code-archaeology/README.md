@@ -1,6 +1,6 @@
 # 98. Archéologie Numérique de Codebase Legacy
 
-> Five agents explore an unknown codebase and produce complete documentation. Composite memory progressively builds a mental model. FlowEngine manages iterative exploration.
+> Five agents explore an unknown codebase and produce complete documentation. Composite memory progressively builds a mental model.
 
 ## Quality
 
@@ -8,11 +8,11 @@
 
 ## Architecture
 
-- **Process**: `sequential` (with FlowEngine iterative loops)
+- **Process**: `sequential`
 - **Agents**: 5 — Structure Cartographer, Git Archaeologist, Pattern Decoder, Documenter, Modernization Planner
 - **Tools**: `directory_read`, `file_read`, `github`, `json_tool`, `file_write`
 - **Memory**: `SQLite` (composite: ShortTerm session + LongTerm codebase mental model, planned)
-- **Key features**: Composite memory (planned), IFlowEngine, IDocumentLoader, ITextChunker, IKnowledgeSource, IContextWindowManager
+- **Key features**: Composite memory (planned), IDocumentLoader, ITextChunker, IKnowledgeSource, IContextWindowManager
 - **Runner**: `standard`
 
 ## Prerequisites

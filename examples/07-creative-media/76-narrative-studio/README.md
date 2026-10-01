@@ -1,18 +1,18 @@
-# 76. Studio Narratif FlowEngine Cyclique
+# 76. Studio Narratif Création-Révision
 
-> Le FlowEngine gère les cycles création-révision. La Composite memory maintient la cohérence sur 3 couches : session courante, univers narratif persistant, et chapitres épisodiques.
+> Une crew séquentielle enchaîne création et révision. La Composite memory maintient la cohérence sur 3 couches : session courante, univers narratif persistant, et chapitres épisodiques.
 
 ## Quality
 
-💪 Robustesse — FlowEngine cyclique, memoire composite 3 couches, coherence narrative
+💪 Robustesse — Creation puis revision, memoire composite 3 couches, coherence narrative
 
 ## Architecture
 
-- **Process**: `sequential` (FlowEngine planned)
+- **Process**: `sequential`
 - **Agents**: 4 — Plot Writer, Dialogue Writer, Artistic Director, Coherence Editor
 - **Tools**: `file_read`, `file_write`, `json_tool`
 - **Memory**: `InMemory` (Composite planned: ShortTerm + LongTerm + Episodic)
-- **Key features**: IFlowEngine + FlowState (planned), Composite memory 3 layers (planned), iteration limit, IKnowledgeSource (project bible)
+- **Key features**: creation-revision hand-off, Composite memory 3 layers (planned), IKnowledgeSource (project bible)
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -37,6 +37,6 @@ orkeon run examples/07-creative-media/76-narrative-studio/config.yaml \
 
 ## What this example demonstrates
 
-- Cyclic creation-revision workflow for narrative content
+- Creation-revision workflow for narrative content
 - Three-layer memory maintaining session, universe, and episodic coherence
 - Continuity verification across all narrative elements

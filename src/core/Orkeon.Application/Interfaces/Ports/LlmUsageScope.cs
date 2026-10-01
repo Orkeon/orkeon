@@ -30,7 +30,7 @@ public sealed record LlmUsageAttribution
 /// <summary>
 /// The <see cref="LlmUsageAttribution"/> in effect for the current async flow. The
 /// orchestrator, the hierarchical manager, the planner, the RAG pipelines, the memory
-/// services, the flows, the evaluators and the scripting facade open one around the calls
+/// services, the evaluators and the scripting facade open one around the calls
 /// they make, and the metering decorator reads it when a call starts. A scope names what it
 /// knows and inherits the rest: a RAG pipeline queried by an agent's tool says <c>rag</c>
 /// and stays that agent's, on that task, in that crew.

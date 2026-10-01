@@ -23,9 +23,6 @@ public static class LlmUsageOperations
     /// <summary>The cognitive memory services: analysis, contradiction checks, consolidation.</summary>
     public const string Memory = "memory";
 
-    /// <summary>An LLM step of a flow.</summary>
-    public const string Flow = "flow";
-
     /// <summary>An LLM judge grading an output.</summary>
     public const string Judge = "judge";
 

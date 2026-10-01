@@ -657,8 +657,6 @@ Les ProcessTypes sont exclusifs à l'échelle d'une crew, mais se combinent avec
 
 **Graph + FSM** : `GraphProcessStrategy` et le moteur [FSM](./fsm.md) partagent `CircuitBreakerPolicy` et ses presets. La FSM est un moteur Domain générique (`orkeon forge` tourne dessus) ; aucune stratégie ne fait passer une tâche par une machine à états — la boucle d'agent borne chaque tâche.
 
-**Flows** : pour enchaîner une crew avec des appels LLM, des appels d'outils, des conditions ou une saisie humaine, un [flow](./flows.md) (`IFlowEngine`) exécute une crew comme l'une de ses étapes — une API C# aujourd'hui, inaccessible depuis `orkeon run`.
-
 **DSL de scripting** : une crew `.ork.ts` déclare son mode avec `crewBuilder().process("…")` (les mêmes six valeurs). La forme déclarative (`globalThis.crew = crew`) passe par les stratégies ci-dessus ; la forme procédurale (`await crew.run()`) exécute les corps des agents dans l'ordre de déclaration et se contente d'étiqueter le mode — voir [Scripting](../architecture/scripting.md).
 
 ---
@@ -686,5 +684,4 @@ Les ProcessTypes sont exclusifs à l'échelle d'une crew, mais se combinent avec
 | FSM (moteur Domain générique) | [./fsm.md](./fsm.md) |
 | Orchestration Graph | [./graph.md](./graph.md) |
 | Orchestration Autonomous | [./autonomous.md](./autonomous.md) |
-| Flows (étapes enchaînant crews, LLM et outils) | [./flows.md](./flows.md) |
 | Blueprint d'un nouveau ProcessType | [../guides/blueprint.md](../guides/blueprint.md) |

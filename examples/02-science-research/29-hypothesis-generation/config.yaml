@@ -1,14 +1,12 @@
 # 29. Generation et Test d'Hypotheses Cyclique
-# Use case: Cyclic hypothesis generation via FlowEngine: observation -> hypothesis -> critique -> experimental planning
+# Use case: Hypothesis generation in one sequential pass: observation -> hypothesis -> critique -> experimental planning
 
 name: "hypothesis-generation"
-goal: "Generate and test scientific hypotheses through a cyclic FlowEngine process: observation, hypothesis creation, critique, and experimental planning"
+goal: "Generate and test scientific hypotheses through a sequential process: observation, hypothesis creation, critique, and experimental planning"
 process: "sequential"
 verbose: true
 memory: true
 planning: false
-# Note: This example uses FlowEngine for cyclic processing.
-# The process is set to sequential as the base, with FlowEngine managing cycles.
 
 agents:
   pattern_observer:

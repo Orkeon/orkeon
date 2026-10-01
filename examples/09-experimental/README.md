@@ -8,11 +8,11 @@ Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connecti
 
 | # | Example | Process | Quality |
 |---|---------|---------|---------|
-| 96 | Crew Evolutive Auto-Adaptative | FlowEngine (cyclique) | Robustesse |
-| 97 | Negociation Multi-Parties -- Budget de Concessions | Consensual + FlowEngine | Robustesse |
-| 98 | Archeologie Numerique de Codebase Legacy | Sequential + FlowEngine | Simplicite |
+| 96 | Crew Evolutive Auto-Adaptative | Sequential | Robustesse |
+| 97 | Negociation Multi-Parties -- Budget de Concessions | Consensual | Robustesse |
+| 98 | Archeologie Numerique de Codebase Legacy | Sequential | Simplicite |
 | 99 | Jury Ethique Multi-Perspectives pour Decisions IA | Parallel -> Sequential -> Human | Securite |
-| 100 | Simulateur de Civilisation Emergente | FlowEngine (tours) + A2A | Robustesse |
+| 100 | Simulateur de Civilisation Emergente | Sequential + A2A | Robustesse |
 | 101 | Crew de Crews -- L'Orchestre des Orchestres | Hierarchical (meta) | Simplicite + Securite + Robustesse + Fiabilite |
 | 102 | Graph-Based Orchestration (LangGraph-Style) | Graph (arêtes conditionnelles, cycles bornés) | Robustesse |
 

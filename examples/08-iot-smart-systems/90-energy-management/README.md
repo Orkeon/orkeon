@@ -1,18 +1,18 @@
-# 90. Gestion Énergétique — Cycle Continu FlowEngine
+# 90. Gestion Énergétique — Surveillance, Prévision, Optimisation
 
-> The FlowEngine manages a continuous cycle of monitoring, prediction, optimization, and reporting. Long-term memory enables consumption prediction based on historical patterns.
+> A sequential crew runs one pass of monitoring, prediction, optimization, and reporting; scheduling the run makes it a continuous cycle. Long-term memory enables consumption prediction based on historical patterns.
 
 ## Quality
 
-✅ Fiabilite — Continuous FlowEngine cycle, history-based prediction, measurable optimization
+✅ Fiabilite — Repeatable pass, history-based prediction, measurable optimization
 
 ## Architecture
 
-- **Process**: `sequential` (cyclic via FlowEngine)
+- **Process**: `sequential`
 - **Agents**: 4 — Consumption Monitor, Peak Forecaster, Parameter Optimizer, Efficiency Reporter
 - **Tools**: `http_api`, `csv_reader`, `json_tool`, `file_write`
 - **Memory**: `SQLite` (consumption history)
-- **Key features**: IFlowEngine (continuous cycle), FlowState, AgentMemory.LongTerm, EvaluationScore (energy efficiency)
+- **Key features**: AgentMemory.LongTerm, EvaluationScore (energy efficiency)
 - **Runner**: `standard`
 
 ## Prerequisites
@@ -37,6 +37,6 @@ orkeon run examples/08-iot-smart-systems/90-energy-management/config.yaml \
 
 ## What this example demonstrates
 
-- Continuous monitoring-prediction-optimization cycle managed by FlowEngine
+- Monitoring-prediction-optimization pass, repeated across runs through long-term memory
 - Long-term memory for historical consumption pattern analysis and prediction
 - Measurable energy efficiency improvements tracked across cycles

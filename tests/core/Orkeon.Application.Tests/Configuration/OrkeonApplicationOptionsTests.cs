@@ -271,7 +271,6 @@ public class OrkeonApplicationOptionsTests
         Assert.False(opt.EnableRAG);
         Assert.Equal("orkeon_memory.db", opt.MemoryDatabasePath);
         Assert.Equal(384, opt.EmbeddingDimension);
-        Assert.False(opt.EnableFlowPersistence);
         Assert.True(opt.EnablePlanning);
         Assert.Equal(ModelGpt4oMini, opt.PlanningLlmModel);
         Assert.Equal("Simple", opt.EmbeddingProvider);
@@ -310,19 +309,6 @@ public class OrkeonApplicationOptionsTests
 
         // Assert
         Assert.True(opt.EnableRAG);
-    }
-
-    [Fact]
-    public void ShouldBeSettable_WhenUsingEnableFlowPersistence()
-    {
-        // Arrange
-        var opt = new OrkeonApplicationOptions();
-
-        // Act
-        opt.EnableFlowPersistence = true;
-
-        // Assert
-        Assert.True(opt.EnableFlowPersistence);
     }
 
     [Fact]

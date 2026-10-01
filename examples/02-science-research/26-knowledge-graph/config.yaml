@@ -1,14 +1,12 @@
 # 26. Construction de Graphe de Connaissances
-# Use case: Iterative knowledge graph construction via FlowEngine with 5 agents and feedback loops
+# Use case: Knowledge graph construction by 5 agents in one sequential pass: extraction, relations, taxonomy, contradictions, visualization
 
 name: "knowledge-graph"
-goal: "Build a knowledge graph iteratively through cyclic refinement via FlowEngine with entity extraction, relation detection, and contradiction resolution"
+goal: "Build a knowledge graph in one sequential pass: entity extraction, relation detection, taxonomic classification, and contradiction resolution"
 process: "sequential"
 verbose: true
 memory: true
 planning: false
-# Note: This example uses FlowEngine for cyclic processing.
-# The process is set to sequential as the base, with FlowEngine managing cycles.
 
 agents:
   entity_extractor:

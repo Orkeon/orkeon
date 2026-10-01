@@ -152,14 +152,14 @@ Runner: `standard` · 10 examples · folder [`07-creative-media/`](07-creative-m
 
 | # | Example | Process | Agents | Tasks | Tools | README |
 |---|---------|---------|:------:|:-----:|-------|:------:|
-| 76 | [76. Studio Narratif FlowEngine Cyclique](07-creative-media/76-narrative-studio/) | Sequential | 4 | 4 | `file_read`, `file_write`, `json_tool` | ✅ |
+| 76 | [76. Studio Narratif Création-Révision](07-creative-media/76-narrative-studio/) | Sequential | 4 | 4 | `file_read`, `file_write`, `json_tool` | ✅ |
 | 77 | [77. Production de Podcast Pipeline Typé](07-creative-media/77-podcast-production/) | Sequential | 4 | 4 | `web_scrape`, `http_api`, `json_tool`, `file_write`, `file_read` | ✅ |
 | 78 | [78. Privacy-Safe Synthetic Data](07-creative-media/78-synthetic-data/) | Sequential | 4 | 4 | `csv_reader`, `json_tool`, `file_write` | ✅ |
 | 79 | [79. Composition Musicale par Consensus](07-creative-media/79-music-composition/) | Consensual | 5 | 5 | `json_tool`, `file_write` | ✅ |
 | 80 | [80. Direction Artistique Délégation Report](07-creative-media/80-art-direction/) | Hierarchical | 5 | 4 | `json_tool`, `file_write`, `web_scrape`, `http_api` | ✅ |
 | 81 | [81. Worldbuilding Cohérent Consensus Croisé](07-creative-media/81-worldbuilding/) | Consensual | 5 | 5 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 82 | [82. Curation de Newsletter Scraping](07-creative-media/82-newsletter-curation/) | Parallel | 5 | 5 | `web_scrape`, `http_api`, `json_tool`, `pdf_reader`, `file_write` | ✅ |
-| 83 | [83. Fiction Interactive FlowEngine](07-creative-media/83-interactive-fiction/) | Sequential | 3 | 4 | `json_tool`, `file_write`, `file_read` | ✅ |
+| 83 | [83. Fiction Interactive à Choix](07-creative-media/83-interactive-fiction/) | Sequential | 3 | 4 | `json_tool`, `file_write`, `file_read` | ✅ |
 | 84 | [84. Critique Multi-Perspectives](07-creative-media/84-multi-perspective-critique/) | Parallel | 4 | 4 | `file_read`, `json_tool`, `web_scrape`, `file_write` | ✅ |
 | 85 | [85. Adaptation Cross-Media Pipeline Typé](07-creative-media/85-cross-media-adaptation/) | Sequential | 4 | 4 | `file_read`, `pdf_reader`, `json_tool`, `file_write` | ✅ |
 
@@ -173,7 +173,7 @@ Runner: `standard` · 10 examples · folder [`08-iot-smart-systems/`](08-iot-sma
 | 87 | [87. Fleet Management](08-iot-smart-systems/87-fleet-management/) | Hierarchical | 5 | 7 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 88 | [88. Agriculture de Précision — Humain Valide les Actions Physiques](08-iot-smart-systems/88-precision-agriculture/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |
 | 89 | [89. Monitoring Environnemental — ObserverAgent + Broadcast Alertes](08-iot-smart-systems/89-environmental-monitoring/) | Parallel | 6 | 6 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
-| 90 | [90. Gestion Énergétique — Cycle Continu FlowEngine](08-iot-smart-systems/90-energy-management/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
+| 90 | [90. Gestion Énergétique — Surveillance, Prévision, Optimisation](08-iot-smart-systems/90-energy-management/) | Sequential | 4 | 4 | `http_api`, `csv_reader`, `json_tool`, `file_write` | ✅ |
 | 91 | [91. Maintenance Prédictive — ObserverAgent par Machine](08-iot-smart-systems/91-predictive-maintenance/) | Parallel | 6 | 6 | `http_api`, `csv_reader`, `json_tool`, `relational_database_query`, `file_write` | ✅ |
 | 92 | [92. Logistique Warehouse — Batch Haute Performance](08-iot-smart-systems/92-warehouse-logistics/) | Parallel | 4 | 5 | `http_api`, `relational_database_query`, `json_tool`, `file_write` | ✅ |
 | 93 | [93. Contrôle Qualité Visuel — Auto-Calibration par Historique](08-iot-smart-systems/93-visual-quality-control/) | Sequential | 4 | 4 | `http_api`, `json_tool`, `csv_reader`, `file_write` | ✅ |

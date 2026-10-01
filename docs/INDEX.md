@@ -65,7 +65,6 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [FSM — State machine](./orchestration/fsm.md) | Generic Domain FSM engine (used by `orkeon forge`; its circuit-breaker policy bounds Graph and the corrective RAG graph), 4 mechanisms, presets, guards |
 | [Graph — State graph](./orchestration/graph.md) | The Graph process mode (fixed topology, 3-mechanism circuit breaker) and the LangGraph-style C# `StateGraph` API: conditional edges, controlled cycles, retry |
 | [Autonomous — Self-organization](./orchestration/autonomous.md) | Multi-dimensional budget, manager-assigned tasks, delegation to a peer on failure, host-provided spawn, A2A channel |
-| [Flows (FlowEngine)](./orchestration/flows.md) | C# engine chaining typed steps (crew, llm, tool, conditional, human_input, delay) over a shared state; 4 flow types, flow YAML, visualization — not run by any CLI or host yet |
 
 ### Tools
 
@@ -96,7 +95,7 @@ Giving agents a mailbox is one of the most requested features: the tutorial gets
 | [Examples catalog](./reference/examples-catalog.md) | Editorial map of `examples/` (9 business categories + RAG/RaggableTree/scripting showcases); the generated `examples/INDEX.md` is the authoritative inventory |
 | [`orkeon` CLI reference](./reference/cli.md) | Every command (`run`, `init`, `llm`, `rag`, `forge`, `usecases`, `email`, `doctor`) with options and examples, plus `orkeon-repl` |
 | [Configuration reference](./reference/configuration.md) | The single map of the `appsettings.json` sections (`Llm`, `Orkeon:*`, `MCP`), sources and precedence, opt-in column |
-| [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet (MCP and `rag_*` tools in crews, flows, A2A) |
+| [Limits and constraints](./reference/limitations.md) | Known constraints of the current version, including what ships but is not wired yet (MCP and `rag_*` tools in crews, A2A) |
 | [A2A conformance matrix](./reference/a2a-conformance.md) | Honest position vs the A2A v1.0 spec: operations, data model, bindings, security — what interoperates and what does not |
 | [Experimental APIs](./reference/experimental-apis.md) | `[Experimental]` surfaces (A2A, Autonomous, corrective RAG, MCP), `ORKEXP001–004` diagnostic IDs, how to opt in |
 | [Example data policy](./reference/example-data-policy.md) | Why examples ship config not datasets, how to mount your own input (`/data:ro`, `/output:rw`), and contributor rules for bundled sample fixtures |

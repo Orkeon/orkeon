@@ -104,15 +104,12 @@ public static class RunCostOperations
     /// <summary>The cognitive memory services: analysis, contradiction checks, consolidation.</summary>
     public const string Memory = "memory";
 
-    /// <summary>An LLM step of a flow.</summary>
-    public const string Flow = "flow";
-
     /// <summary>An LLM judge grading an output.</summary>
     public const string Judge = "judge";
 
     private static readonly HashSet<string> Machinery = new(StringComparer.Ordinal)
     {
-        Manager, Planning, Rag, Memory, Flow, Judge,
+        Manager, Planning, Rag, Memory, Judge,
     };
 
     /// <summary>

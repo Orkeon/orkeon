@@ -1,8 +1,8 @@
-# 83. Fiction Interactive — FlowEngine Arborescent
-# Use case: Interactive fiction with branching choice tree managed by FlowEngine and real-time coherence checking
+# 83. Fiction Interactive — Arbre de Choix
+# Use case: Interactive fiction with a branching choice tree written by the crew and coherence checking
 
 name: "interactive-fiction"
-goal: "Create interactive fiction with branching narrative choices managed by FlowEngine and real-time coherence verification"
+goal: "Create interactive fiction with branching narrative choices and coherence verification"
 process: "sequential"
 verbose: true
 memory: true

@@ -1,18 +1,18 @@
-# 83. Fiction Interactive FlowEngine
+# 83. Fiction Interactive à Choix
 
-> Le FlowEngine gère un arbre de choix narratifs. Le lecteur (HumanAgent) fait des choix qui influencent la suite. Un ObserverAgent vérifie la cohérence narrative en temps réel.
+> Une crew séquentielle écrit un arbre de choix narratifs. Le lecteur (HumanAgent) fait des choix qui influencent la suite. Un ObserverAgent vérifie la cohérence narrative en temps réel.
 
 ## Quality
 
-💪 Robustesse — FlowEngine arborescent, choix du lecteur, experience unique, coherence verifiee
+💪 Robustesse — Arbre de choix, choix du lecteur, experience unique, coherence verifiee
 
 ## Architecture
 
-- **Process**: `sequential` (FlowEngine tree planned)
+- **Process**: `sequential`
 - **Agents**: 3 — Narrator, Ambiance Writer, Consistency Checker
 - **Tools**: `json_tool`, `file_read`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: IFlowEngine + FlowState (choice tree), HumanInputContext (MultipleChoice), ObserverAgent (coherence), AgentMemory.Episodic
+- **Key features**: choice tree written by the crew, HumanInputContext (MultipleChoice), ObserverAgent (coherence), AgentMemory.Episodic
 - **Runner**: `standard`
 
 ## Prerequisites

@@ -88,7 +88,6 @@ public static class ServiceCollectionExtensions
             opt.EnableRAG = options.EnableRAG;
             opt.MemoryDatabasePath = options.MemoryDatabasePath;
             opt.EmbeddingDimension = options.EmbeddingDimension;
-            opt.EnableFlowPersistence = options.EnableFlowPersistence;
             opt.EnablePlanning = options.EnablePlanning;
             opt.PlanningLlmModel = options.PlanningLlmModel;
             opt.CrewRepositoryType = options.CrewRepositoryType;

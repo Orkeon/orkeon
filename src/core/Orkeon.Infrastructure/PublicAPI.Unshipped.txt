@@ -338,3 +338,218 @@ Orkeon.Infrastructure.EventHub.InMemoryEventHub.PostAsync(Orkeon.Application.Eve
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.SendAsync<TRequest, TResponse>(Orkeon.Application.EventHub.MailboxAddress! recipient, TRequest request, System.TimeSpan timeout, Orkeon.Application.EventHub.MailboxOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<TResponse>!
 *REMOVED*Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task!
 Orkeon.Infrastructure.EventHub.InMemoryEventHub.PublishAsync(string! topic, object! payload, Orkeon.Application.EventHub.PublishOptions? options, System.Threading.CancellationToken ct) -> System.Threading.Tasks.Task<Orkeon.Application.EventHub.MessageId!>!
+*REMOVED*Orkeon.Infrastructure.DependencyInjection.FlowVisualizationExtensions
+*REMOVED*Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>
+*REMOVED*Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.FlowStepBase() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow.DefinitionBasedFlow(Orkeon.Domain.Flows.IFlowDefinition! definition, Orkeon.Application.Interfaces.IFlowStepExecutor! executor, Microsoft.Extensions.Logging.ILogger? logger = null) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow.ExecuteAsync(System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow.Id.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow.Name.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.DefinitionBasedFlow.State.get -> Orkeon.Domain.Flows.ValueObjects.FlowState!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.ExecuteDefinitionAsync(Orkeon.Domain.Flows.IFlowDefinition! definition, Orkeon.Domain.Flows.ValueObjects.FlowState? initialState = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.ExecuteFlowAsync(Orkeon.Domain.Flows.IFlow! flow, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.ExecuteStepAsync(Orkeon.Domain.Flows.IFlowStep! flowStep, System.Collections.Generic.Dictionary<string!, object!>! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.FlowEngine(System.IServiceProvider! serviceProvider, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Flows.FlowEngine!>! logger) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.GetExecutionHistory(int limit = 100) -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowExecutionResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.GetFlowMetrics(string? flowName = null) -> Orkeon.Application.Interfaces.Ports.FlowMetrics!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.GetRegisteredFlows() -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Domain.Flows.IFlowDefinition!>!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.RegisterFlow(Orkeon.Domain.Flows.IFlowDefinition! flowDefinition) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.FlowEngine.ValidateFlow(Orkeon.Domain.Flows.IFlowDefinition! flowDefinition) -> Orkeon.Application.Interfaces.Ports.FlowValidationResult!
+*REMOVED*Orkeon.Infrastructure.Flows.FlowStepExecutor
+*REMOVED*Orkeon.Infrastructure.Flows.FlowStepExecutor.FlowStepExecutor(System.IServiceProvider! serviceProvider) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.FlowStepExecutor.ResolveStep(Orkeon.Domain.Flows.FlowStep! stepDefinition) -> Orkeon.Domain.Flows.IFlowStep!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Configuration.get -> Orkeon.Domain.Flows.FlowConfiguration!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Configuration.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Description.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Description.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Id.get -> Orkeon.Domain.Common.FlowId!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Id.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.InMemoryFlowDefinition() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Name.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Name.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Steps.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowStep!>!
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Steps.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Type.get -> Orkeon.Domain.Flows.FlowType
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Type.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.InMemoryFlowDefinition.Validate(out System.Collections.Generic.IReadOnlyList<string!>! errors) -> bool
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ConditionalFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ConditionalFlowStep.ConditionalFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ConditionalFlowStep.Description.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ConditionalFlowStep.ExecuteAsync(Orkeon.Domain.Flows.ValueObjects.FlowState! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ConditionalFlowStep.Name.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStep.CrewFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters, Orkeon.Application.Interfaces.Services.ICrewOrchestrationService! crewService) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput.CrewConfig.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput.CrewConfig.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput.CrewFlowStepInput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput.CrewDuration.get -> double
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput.CrewDuration.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput.CrewFlowStepOutput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput.CrewOutput.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput.CrewOutput.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStep.DelayFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput.DelayFlowStepInput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput.DelayMs.get -> int?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput.DelayMs.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput.DelaySeconds.get -> int?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput.DelaySeconds.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepOutput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepOutput.DelayFlowStepOutput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepOutput.Message.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.DelayFlowStepOutput.Message.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStep.HumanInputFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters, Orkeon.Application.Interfaces.Ports.IHumanInputProvider! inputProvider) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepInput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepInput.HumanInputFlowStepInput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepInput.Prompt.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepInput.Prompt.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepOutput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepOutput.HumanInput.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepOutput.HumanInput.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepOutput.HumanInputFlowStepOutput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.LlmFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters, Microsoft.Extensions.AI.IChatClient! chatClient) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput.LlmFlowStepInput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput.PromptTemplate.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput.PromptTemplate.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput.SystemPrompt.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput.SystemPrompt.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepOutput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepOutput.LlmFlowStepOutput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepOutput.LlmResponse.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.LlmFlowStepOutput.LlmResponse.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStep
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStep.ToolFlowStep(string! name, Orkeon.Domain.Flows.ValueObjects.FlowStepParameters! parameters, Orkeon.Domain.Tools.IToolRegistry! toolRegistry) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput.Input.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput.Input.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput.ToolFlowStepInput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput.ToolName.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput.ToolName.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepOutput
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepOutput.ToolFlowStepOutput() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepOutput.ToolOutput.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Steps.ToolFlowStepOutput.ToolOutput.set -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.<Clone>$() -> Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.CompletedAt.get -> System.DateTime?
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.CompletedAt.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.Deconstruct(out string! FlowId, out System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Infrastructure.Flows.Visualization.StepState>! StepStates, out System.DateTime StartedAt, out System.DateTime? CompletedAt) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.Equals(Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState? other) -> bool
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.FlowExecutionState(string! FlowId, System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Infrastructure.Flows.Visualization.StepState>! StepStates, System.DateTime StartedAt, System.DateTime? CompletedAt = null) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.FlowId.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.FlowId.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.StartedAt.get -> System.DateTime
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.StartedAt.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.StepStates.get -> System.Collections.Generic.IReadOnlyDictionary<string!, Orkeon.Infrastructure.Flows.Visualization.StepState>!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.StepStates.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker.CompleteTracking(string! flowId) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker.FlowExecutionTracker() -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker.GetExecutionState(string! flowId) -> Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState?
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker.StartTracking(string! flowId) -> Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowExecutionTracker.UpdateStepState(string! flowId, string! stepId, Orkeon.Infrastructure.Flows.Visualization.StepState state) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.<Clone>$() -> Orkeon.Infrastructure.Flows.Visualization.FlowGraph!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Deconstruct(out string! FlowName, out System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphNode!>! Nodes, out System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphEdge!>! Edges) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Edges.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphEdge!>!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Edges.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Equals(Orkeon.Infrastructure.Flows.Visualization.FlowGraph? other) -> bool
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.FlowGraph(string! FlowName, System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphNode!>! Nodes, System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphEdge!>! Edges) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.FlowName.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.FlowName.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Nodes.get -> System.Collections.Generic.IReadOnlyList<Orkeon.Infrastructure.Flows.Visualization.GraphNode!>!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Nodes.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.FlowGraphSerializer
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.<Clone>$() -> Orkeon.Infrastructure.Flows.Visualization.GraphEdge!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.Deconstruct(out string! SourceId, out string! TargetId, out string? Label) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.Equals(Orkeon.Infrastructure.Flows.Visualization.GraphEdge? other) -> bool
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.GraphEdge(string! SourceId, string! TargetId, string? Label = null) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.Label.get -> string?
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.Label.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.SourceId.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.SourceId.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.TargetId.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphEdge.TargetId.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.<Clone>$() -> Orkeon.Infrastructure.Flows.Visualization.GraphNode!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Deconstruct(out string! Id, out string! Name, out string! Type, out Orkeon.Infrastructure.Flows.Visualization.StepState State) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Equals(Orkeon.Infrastructure.Flows.Visualization.GraphNode? other) -> bool
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.GraphNode(string! Id, string! Name, string! Type, Orkeon.Infrastructure.Flows.Visualization.StepState State = Orkeon.Infrastructure.Flows.Visualization.StepState.Pending) -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Id.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Id.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Name.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Name.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.State.get -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.State.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Type.get -> string!
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.GraphNode.Type.init -> void
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState.Completed = 2 -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState.Failed = 3 -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState.Pending = 0 -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState.Running = 1 -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.Visualization.StepState.Skipped = 4 -> Orkeon.Infrastructure.Flows.Visualization.StepState
+*REMOVED*Orkeon.Infrastructure.Flows.YamlFlowDefinitionLoader
+*REMOVED*Orkeon.Infrastructure.Flows.YamlFlowDefinitionLoader.LoadFromFileAsync(string! virtualPath, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.IFlowDefinition!>!
+*REMOVED*Orkeon.Infrastructure.Flows.YamlFlowDefinitionLoader.LoadFromString(string! yamlContent) -> Orkeon.Domain.Flows.IFlowDefinition!
+*REMOVED*Orkeon.Infrastructure.Flows.YamlFlowDefinitionLoader.YamlFlowDefinitionLoader(Orkeon.Application.Interfaces.Infrastructure.Serialization.IYamlSerializer! yaml, Orkeon.Domain.FileSystem.IFileSystemService! fs) -> void
+*REMOVED*abstract Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.Description.get -> string!
+*REMOVED*abstract Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.CrewFlowStep.Description.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.CrewFlowStep.ExecuteTypedAsync(Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.Flows.Steps.CrewFlowStepOutput!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.CrewFlowStep.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.CrewFlowStep.ValidateTypedRequest(Orkeon.Infrastructure.Flows.Steps.CrewFlowStepInput! request) -> string?
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.DelayFlowStep.Description.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.DelayFlowStep.ExecuteTypedAsync(Orkeon.Infrastructure.Flows.Steps.DelayFlowStepInput! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.Flows.Steps.DelayFlowStepOutput!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.DelayFlowStep.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStep.Description.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStep.ExecuteTypedAsync(Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepInput! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStepOutput!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.HumanInputFlowStep.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.Description.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.ExecuteAsync(Orkeon.Domain.Flows.ValueObjects.FlowState! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.ExecuteTypedAsync(Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.Flows.Steps.LlmFlowStepOutput!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.ValidateTypedRequest(Orkeon.Infrastructure.Flows.Steps.LlmFlowStepInput! request) -> string?
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.ToolFlowStep.Description.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.ToolFlowStep.ExecuteTypedAsync(Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput! request, System.Threading.CancellationToken cancellationToken) -> System.Threading.Tasks.Task<Orkeon.Infrastructure.Flows.Steps.ToolFlowStepOutput!>!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.ToolFlowStep.Name.get -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Steps.ToolFlowStep.ValidateTypedRequest(Orkeon.Infrastructure.Flows.Steps.ToolFlowStepInput! request) -> string?
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.ToString() -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowGraph.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowGraph.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.FlowGraph.ToString() -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphEdge.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphEdge.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphEdge.ToString() -> string!
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphNode.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphNode.GetHashCode() -> int
+*REMOVED*override Orkeon.Infrastructure.Flows.Visualization.GraphNode.ToString() -> string!
+*REMOVED*static Orkeon.Infrastructure.DependencyInjection.FlowVisualizationExtensions.AddOrkeonFlowVisualization(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*static Orkeon.Infrastructure.DependencyInjection.InfrastructureExtensions.AddOrkeonFlows(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!
+*REMOVED*static Orkeon.Infrastructure.Flows.DefinitionBasedFlow.TopologicalSort(System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowStep!>! steps) -> System.Collections.Generic.IReadOnlyList<System.Collections.Generic.IReadOnlyList<Orkeon.Domain.Flows.FlowStep!>!>!
+*REMOVED*static Orkeon.Infrastructure.Flows.Steps.LlmFlowStep.ResolveTemplate(string! template, Orkeon.Domain.Flows.ValueObjects.FlowState! context) -> string!
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.operator !=(Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState? left, Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState.operator ==(Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState? left, Orkeon.Infrastructure.Flows.Visualization.FlowExecutionState? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowGraph.operator !=(Orkeon.Infrastructure.Flows.Visualization.FlowGraph? left, Orkeon.Infrastructure.Flows.Visualization.FlowGraph? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowGraph.operator ==(Orkeon.Infrastructure.Flows.Visualization.FlowGraph? left, Orkeon.Infrastructure.Flows.Visualization.FlowGraph? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowGraphSerializer.ExportToMermaid(Orkeon.Infrastructure.Flows.Visualization.FlowGraph! graph) -> string!
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.FlowGraphSerializer.Serialize(Orkeon.Domain.Flows.IFlowDefinition! definition) -> Orkeon.Infrastructure.Flows.Visualization.FlowGraph!
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.GraphEdge.operator !=(Orkeon.Infrastructure.Flows.Visualization.GraphEdge? left, Orkeon.Infrastructure.Flows.Visualization.GraphEdge? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.GraphEdge.operator ==(Orkeon.Infrastructure.Flows.Visualization.GraphEdge? left, Orkeon.Infrastructure.Flows.Visualization.GraphEdge? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator !=(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
+*REMOVED*static Orkeon.Infrastructure.Flows.Visualization.GraphNode.operator ==(Orkeon.Infrastructure.Flows.Visualization.GraphNode? left, Orkeon.Infrastructure.Flows.Visualization.GraphNode? right) -> bool
+*REMOVED*virtual Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.Dependencies.get -> System.Collections.Generic.IReadOnlyList<string!>!
+*REMOVED*virtual Orkeon.Infrastructure.Flows.Base.FlowStepBase<TInput, TOutput>.ExecuteAsync(Orkeon.Domain.Flows.ValueObjects.FlowState! context, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Flows.FlowStepResult!>!

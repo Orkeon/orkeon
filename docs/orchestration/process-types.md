@@ -655,8 +655,6 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 
 **Graph + FSM**: `GraphProcessStrategy` and the [FSM](./fsm.md) engine share `CircuitBreakerPolicy` and its presets. The FSM is a generic Domain engine (`orkeon forge` runs on it); no strategy runs a task through a state machine — the agent loop bounds each task.
 
-**Flows**: to chain a crew with LLM calls, tool calls, conditions or human input, a [flow](./flows.md) (`IFlowEngine`) runs a crew as one of its steps — a C# API today, not reachable from `orkeon run`.
-
 **Scripting DSL**: a `.ork.ts` crew declares its mode with `crewBuilder().process("…")` (the same six values). The declarative shape (`globalThis.crew = crew`) runs through the strategies above; the procedural shape (`await crew.run()`) runs agent bodies in declaration order and only tags the mode — see [Scripting](../architecture/scripting.md).
 
 ---
@@ -684,5 +682,4 @@ ProcessTypes are exclusive at the scale of one crew, but they combine with the o
 | FSM (generic Domain engine) | [./fsm.md](./fsm.md) |
 | Graph orchestration | [./graph.md](./graph.md) |
 | Autonomous orchestration | [./autonomous.md](./autonomous.md) |
-| Flows (steps chaining crews, LLM and tools) | [./flows.md](./flows.md) |
 | Blueprint for a new ProcessType | [../guides/blueprint.md](../guides/blueprint.md) |

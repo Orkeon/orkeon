@@ -6,13 +6,13 @@ Creative and media use cases: narrative studio, podcast production, synthetic da
 
 | # | Example | Process | Quality |
 |---|---------|---------|---------|
-| 76 | Studio Narratif -- FlowEngine Cyclique + Memoire Composite 3 Couches | FlowEngine (cyclique) | Robustesse |
+| 76 | Studio Narratif -- Creation-Revision + Memoire Composite 3 Couches | Sequential | Robustesse |
 | 77 | Production de Podcast -- Pipeline Type Bout-en-Bout | Sequential | Simplicite |
 | 78 | Donnees Synthetiques Privacy-Safe -- Anti-Reidentification | Sequential | Securite |
 | 79 | Composition Musicale par Consensus Unanime | Consensual | Robustesse |
 | 80 | Direction Artistique -- Delegation Performance Report | Hierarchical | Robustesse |
 | 81 | Worldbuilding Coherent -- Consensus Croise | Parallel -> Consensual | Fiabilite |
 | 82 | Curation de Newsletter -- Scraping Parallele + Deduplication | Parallel -> Sequential | Simplicite |
-| 83 | Fiction Interactive -- FlowEngine Arborescent | FlowEngine (arborescent) | Robustesse |
+| 83 | Fiction Interactive -- Arbre de Choix | Sequential | Robustesse |
 | 84 | Critique Multi-Perspectives -- Independence Garantie | Parallel -> Sequential | Robustesse |
 | 85 | Adaptation Cross-Media -- Pipeline Type ComponentBase | Sequential | Simplicite |

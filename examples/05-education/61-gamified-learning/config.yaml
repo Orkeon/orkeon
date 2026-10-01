@@ -1,6 +1,5 @@
 # 61. Plateforme Learning Gamifie avec Hooks
 # Use case: Gamified learning platform with progression tree, XP/badges via CrewHooks, and episodic memory
-# TODO: feature planifiee — FlowEngine (IFlowEngine + FlowState for progression tree)
 
 name: "gamified-learning"
 goal: "Deliver gamified learning experiences with progression trees, XP rewards, and badge unlocking via event hooks"

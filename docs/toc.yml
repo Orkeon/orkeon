@@ -72,8 +72,6 @@
       href: orchestration/graph.md
     - name: Autonomous — Self-organization
       href: orchestration/autonomous.md
-    - name: Flows (FlowEngine)
-      href: orchestration/flows.md
 - name: Tools
   items:
     - name: Tool inventory

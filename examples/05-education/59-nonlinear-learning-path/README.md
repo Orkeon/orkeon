@@ -1,18 +1,18 @@
 # 59. Parcours de Formation Non-Linéaire
 
-> Le FlowEngine gère un parcours à branchements : si l'apprenant échoue, le flow bifurque vers du renforcement. Si il réussit, il avance. Le LlmFlowStep prend les décisions de branchement.
+> Une crew séquentielle conçoit un parcours à branchements : le diagnostic des lacunes décide, pour chaque étape, du renforcement si l'apprenant échoue ou de la suite s'il réussit. Les branches sont décrites dans le parcours produit, pas exécutées par le moteur.
 
 ## Quality
 
-🎯 Simplicite — Flow non-lineaire adaptatif, branchement LLM-driven, zero configuration manuelle
+🎯 Simplicite — Parcours non-lineaire adaptatif, branchements decides par LLM, zero configuration manuelle
 
 ## Architecture
 
-- **Process**: `sequential` (FlowEngine planned)
+- **Process**: `sequential`
 - **Agents**: 4 — Gap Diagnostician, Pedagogical Architect, Resource Curator, Calendar Planner
 - **Tools**: `http_api`, `json_tool`, `file_write`
 - **Memory**: `SQLite`
-- **Key features**: IFlowEngine + FlowState (conditional branching), LlmFlowStep (decision), AgentMemory.Episodic, IKnowledgeSource
+- **Key features**: LLM-designed conditional branches, AgentMemory.Episodic, IKnowledgeSource
 - **Runner**: `standard`
 
 ## Prerequisites
