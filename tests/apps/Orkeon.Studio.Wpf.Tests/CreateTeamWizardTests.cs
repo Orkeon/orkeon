@@ -34,7 +34,8 @@ public partial class CreateTeamWizardTests
         Orkeon.Studio.Wpf.ViewModels.Mvvm.IUiDispatcher? dispatcher = null,
         string? workspace = null,
         IApiKeyStore? keyStore = null,
-        string? assistantKeyEnvName = null)
+        string? assistantKeyEnvName = null,
+        Orkeon.Studio.Core.FileSystem.IDiskEntryProbe? diskEntries = null)
     {
         var document = AppSettingsDocument.CreateEmpty();
         var llm = new LlmSectionViewModel(() => document, () => { }, new FakeLlmEndpointProbe());
@@ -70,6 +71,7 @@ public partial class CreateTeamWizardTests
                 DeclaredMounts = declaredMounts,
                 ShellOpener = shellOpener,
                 Dispatcher = dispatcher,
+                DiskEntries = diskEntries,
             });
         return (vm, processes, profiles);
     }

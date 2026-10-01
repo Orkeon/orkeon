@@ -447,6 +447,7 @@
 <data name="Studio.Create.Step4" xml:space="preserve"><value>Adopt</value></data>
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>What work do you want to hand to this team?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Write it the way you would explain it to a colleague. No technical words needed.</value></data>
+<data name="Studio.Create.NeedDropHint" xml:space="preserve"><value>You can drop files or folders here: their paths are added to the text, and each folder is offered as one of the team's folders.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OR START FROM AN EXAMPLE</value></data>
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Compose the team</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Here is the team I propose</value></data>

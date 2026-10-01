@@ -1251,6 +1251,9 @@
   <data name="Studio.Create.NeedSub" xml:space="preserve">
     <value>Schreiben Sie es so, wie Sie es einem Kollegen erklären würden. Keine Fachbegriffe nötig.</value>
   </data>
+  <data name="Studio.Create.NeedDropHint" xml:space="preserve">
+    <value>Sie können hier Dateien oder Ordner ablegen: Ihre Pfade werden dem Text hinzugefügt, und jeder Ordner wird als einer der Ordner des Teams vorgeschlagen.</value>
+  </data>
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>ODER VON EINEM BEISPIEL AUSGEHEN</value>
   </data>

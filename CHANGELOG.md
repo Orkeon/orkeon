@@ -7,6 +7,17 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added — files and folders can be dropped on the need of the wizard's step 1
+
+Studio's « What work do you want to give this team? » now takes files and folders dragged from the
+explorer, several at once (STUDIO-47). Each path that exists is inserted at the caret, between
+quotes and separated by a space; a path that does not exist is ignored. A dropped folder — or a
+dropped file's own folder — reaches the Folders step (STUDIO-46) already bound to that real folder:
+it answers the row the request gave its name, else the default input `/workspace`, else it joins
+the list as an input named after the folder (`My PDFs` → `/my-pdfs`), and it is declared in
+« Settings › Authorized folders » the way a disk pick is. A hint under the field says so, in the
+five languages. The forge protocol is unchanged: the candidates are merged on the Studio side.
+
 ### Changed — the forge proposes the team's folders from the need, and they are used everywhere (breaking: forge protocol)
 
 « Where are your folders? » always offered `workspace/` and `output/`, never the folders the need

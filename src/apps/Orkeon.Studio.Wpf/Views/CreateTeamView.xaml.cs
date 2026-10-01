@@ -10,6 +10,51 @@ public partial class CreateTeamView : UserControl
     /// <summary>Loads the XAML.</summary>
     public CreateTeamView() => InitializeComponent();
 
+    /// <summary>
+    /// Files dragged over the need (STUDIO-47): a copy, and the field lights up. Anything else —
+    /// text dragged within the field — is left to the TextBox.
+    /// </summary>
+    private void OnNeedDragOver(object sender, DragEventArgs e)
+    {
+        if (!e.Data.GetDataPresent(DataFormats.FileDrop))
+            return;
+
+        e.Effects = DragDropEffects.Copy;
+        ShowNeedDropTarget(true);
+        e.Handled = true;
+    }
+
+    private void OnNeedDragLeave(object sender, DragEventArgs e) => ShowNeedDropTarget(false);
+
+    /// <summary>The drop itself: the paths and the caret go to the wizard, the caret comes back after them.</summary>
+    private void OnNeedDrop(object sender, DragEventArgs e)
+    {
+        ShowNeedDropTarget(false);
+        if (DataContext is not CreateTeamViewModel wizard
+            || e.Data.GetData(DataFormats.FileDrop) is not string[] { Length: > 0 } paths)
+        {
+            return;
+        }
+
+        NeedBox.CaretIndex = wizard.DropPaths(paths, NeedBox.CaretIndex);
+        NeedBox.Focus();
+        e.Handled = true;
+    }
+
+    private void ShowNeedDropTarget(bool on)
+    {
+        if (on)
+        {
+            NeedBox.SetResourceReference(Control.BorderBrushProperty, "AccentBrush");
+            NeedBox.SetResourceReference(Control.BackgroundProperty, "AccentWeakBrush");
+        }
+        else
+        {
+            NeedBox.ClearValue(Control.BorderBrushProperty);
+            NeedBox.ClearValue(Control.BackgroundProperty);
+        }
+    }
+
     /// <summary>Folds/unfolds the technical journal (pure presentation state on the VM).</summary>
     private void OnCopyTechJournal(object sender, RoutedEventArgs e)
     {

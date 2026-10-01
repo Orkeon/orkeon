@@ -539,8 +539,14 @@
                        Text="{Binding [Studio.Create.NeedTitle], Source={x:Static services:I18n.Instance}}"/>
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,6,0,12"
                        Text="{Binding [Studio.Create.NeedSub], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource InputMultiline}"
+            <!-- STUDIO-47: files and folders dropped from the explorer land at the caret, quoted;
+                 the Preview events take the drop before the TextBox, which refuses files. -->
+            <TextBox x:Name="NeedBox" Style="{StaticResource InputMultiline}" AllowDrop="True"
+                     PreviewDragEnter="OnNeedDragOver" PreviewDragOver="OnNeedDragOver"
+                     PreviewDragLeave="OnNeedDragLeave" PreviewDrop="OnNeedDrop"
                      Text="{Binding Need, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,6,0,0" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.NeedDropHint], Source={x:Static services:I18n.Instance}}"/>
             <!-- STUDIO-39 (D-04): the use case this creation starts from — the chip a chosen card
                  leaves under the need it wrote. Its ✕ takes the reference away, never the words. -->
             <Border Style="{StaticResource BriefChip}" HorizontalAlignment="Left" Margin="0,8,0,0" Padding="10,0,4,0"

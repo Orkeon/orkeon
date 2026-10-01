@@ -198,6 +198,9 @@ public sealed partial class CreateTeamViewModel
             FolderRows.Clear();
             foreach (var proposed in _model.ProposedFolders)
                 FolderRows.Add(new WizardFolderRow(proposed, _strings, PickRowFolder, OnFolderRowPathChanged));
+
+            // The folders dropped on the need answer their rows, or join the list (STUDIO-47).
+            MergeDroppedFolders();
         }
 
         RefreshFolderStep();
@@ -209,9 +212,10 @@ public sealed partial class CreateTeamViewModel
         ConfirmFoldersCommand.RaiseCanExecuteChanged();
     }
 
-    /// <summary>Forgets the panel — another creation starts, or a session is resumed.</summary>
+    /// <summary>Forgets the panel and the folders dropped on the need — another creation starts, or a session is resumed.</summary>
     private void ClearFolderStep()
     {
+        ForgetDroppedFolders();
         _proposalShown = null;
         FolderRows.Clear();
         RefreshFolderStep();

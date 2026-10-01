@@ -287,6 +287,12 @@ public sealed class MainWindowViewModel : ObservableObject
         // the way, under the row's rights, then bound behind the row. One gesture, no modal in
         // between; the declared list above stays the other way in.
         CreateTeam.PickFolderRequested += (sender, e) => _ = PickDeclareAndBindAsync(e.TargetVirtualPath, e.Rights);
+        // STUDIO-47: a folder dropped on the need is a disk pick without the picker — declared
+        // in the settings on the way, bound behind its row of the Folders step.
+        CreateTeam.DeclareFolderRequested += (sender, e) => _ = DeclareAndBindAsync(
+            e.TargetVirtualPath,
+            e.Rights,
+            new MountDefinition { PhysicalPath = e.Folder, VirtualPath = e.TargetVirtualPath, Rights = e.Rights });
         // The declare-a-new-folder action lands on the folders tab, not merely on the settings
         // screen: arriving on the model tab and having to find the right one is how the gesture
         // loses the user it was meant to help.

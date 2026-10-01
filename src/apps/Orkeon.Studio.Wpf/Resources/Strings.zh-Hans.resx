@@ -1251,6 +1251,9 @@
   <data name="Studio.Create.NeedSub" xml:space="preserve">
     <value>像向同事解释那样写下来，无需任何技术词汇。</value>
   </data>
+  <data name="Studio.Create.NeedDropHint" xml:space="preserve">
+    <value>您可以将文件或文件夹拖放到此处：其路径会添加到文本中，每个文件夹都会作为团队的文件夹之一提出。</value>
+  </data>
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>或从示例开始</value>
   </data>

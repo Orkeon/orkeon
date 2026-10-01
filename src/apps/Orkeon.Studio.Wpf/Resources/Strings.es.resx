@@ -1251,6 +1251,9 @@
   <data name="Studio.Create.NeedSub" xml:space="preserve">
     <value>Escríbalo como se lo explicaría a un colega. Sin palabras técnicas.</value>
   </data>
+  <data name="Studio.Create.NeedDropHint" xml:space="preserve">
+    <value>Puede soltar aquí archivos o carpetas: sus rutas se añaden al texto y cada carpeta se propone como una de las carpetas del equipo.</value>
+  </data>
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>O PARTA DE UN EJEMPLO</value>
   </data>

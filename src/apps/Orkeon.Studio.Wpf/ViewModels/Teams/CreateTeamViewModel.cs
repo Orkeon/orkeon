@@ -326,6 +326,12 @@ public sealed record CreateTeamDependencies
 
     /// <summary>The clock a use case imported as it is dates its arrival on (STUDIO-32); the system's when null.</summary>
     public TimeProvider? Clock { get; init; }
+
+    /// <summary>
+    /// Tells a dropped file from a dropped folder, and both from a path that does not exist
+    /// (STUDIO-47); the real disk when null.
+    /// </summary>
+    public IDiskEntryProbe? DiskEntries { get; init; }
 }
 
 /// <summary>
@@ -398,6 +404,7 @@ public sealed partial class CreateTeamViewModel : ObservableObject
         _useCases = wired.UseCases;
         _suggestionDelay = wired.SuggestionDelay ?? ImmediateUiDelay.Instance;
         _uiLanguage = wired.UiLanguage ?? (() => UseCaseLanguages.English);
+        _diskEntries = wired.DiskEntries ?? PhysicalDiskEntryProbe.Instance;
 
         // The conversation is the window's, not this screen's: it has to survive a tab
         // change, and losing it on the first one is precisely the defect being fixed. A
