@@ -448,8 +448,6 @@
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>Quel travail voulez-vous confier à cette équipe ?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Écrivez-le comme vous l'expliqueriez à un collègue. Pas de mot technique nécessaire.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OU PARTEZ D'UN EXEMPLE</value></data>
-<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Vos dossiers</value></data>
-<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>Là où l'équipe lit et écrit. Vous pourrez tout changer ensuite.</value></data>
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Composer l'équipe</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Voici l'équipe que je propose</value></data>
 <data name="Studio.Create.ToolsLabel" xml:space="preserve"><value>Peut :</value></data>
@@ -1410,24 +1408,6 @@
   <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve"><value>Vide : runtime local — aucun plafond envoyé, le modèle écrit jusqu'à son contexte.</value></data>
   <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve"><value>Vide : ce modèle n'est pas au catalogue, le moteur envoie donc 4096. Indiquez le maximum documenté du modèle — un modèle raisonneur en veut 16384 ou plus.</value></data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
-  <data name="Studio.Create.QFolders" xml:space="preserve">
-    <value>Où sont vos dossiers ?</value>
-  </data>
-  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
-    <value>Des dossiers existants</value>
-  </data>
-  <data name="Studio.Create.FoldersInside" xml:space="preserve">
-    <value>Créés dans l'équipe</value>
-  </data>
-  <data name="Studio.Create.FoldersLater" xml:space="preserve">
-    <value>Plus tard</value>
-  </data>
-  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
-    <value>Vos documents</value>
-  </data>
-  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
-    <value>Les résultats</value>
-  </data>
   <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
     <value>dans l'équipe : {0}</value>
   </data>
@@ -1437,11 +1417,8 @@
   <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
     <value>Créer tous les dossiers dans l'équipe</value>
   </data>
-  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
-    <value>Un dossier existant est déclaré au passage dans Réglages › Dossiers autorisés ; un dossier créé dans l'équipe voyage avec elle. Vous pourrez encore changer à l'étape suivante.</value>
-  </data>
   <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
-    <value>L'essai tourne sur un dossier vide — déposez vos documents dans input/ une fois l'équipe adoptée.</value>
+    <value>L'essai lit les dossiers gardés dans l'équipe depuis la session de travail — déposez-y vos documents avec « Ouvrir le dossier » ; ils rejoignent l'équipe à l'adoption.</value>
   </data>
   <data name="Studio.Create.OpenFolder" xml:space="preserve">
     <value>Ouvrir le dossier</value>
@@ -1453,15 +1430,6 @@
     <value>Ouvre le dossier de l'équipe adoptée.</value>
   </data>
   <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
-  <data name="Studio.Create.AddRootHint" xml:space="preserve">
-    <value>Ajoutez autant de dossiers que le besoin en appelle : un nom que les agents utiliseront (factures, archives…), en lecture ou en écriture — puis répondez à chacun comme aux deux premiers, par un dossier réel ou créé dans l'équipe. Nommez-les dans votre besoin pour que l'équipe s'en serve.</value>
-  </data>
-  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
-    <value>en écriture</value>
-  </data>
-  <data name="Studio.Create.AddRoot" xml:space="preserve">
-    <value>Ajouter le dossier</value>
-  </data>
   <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s pré-rempli : le modèle par défaut de {1} réfléchit avant de répondre, et une réponse réfléchie dépasse couramment les 30 s du moteur. Saisissez une autre valeur pour l'écraser.</value></data>
   <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Réflexion</value></data>
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Défaut du fournisseur</value></data>
@@ -1517,4 +1485,34 @@
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Lecture des cas d'usage…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Fermer</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Retirer la référence — votre besoin reste tel quel.</value></data>
+  <data name="Studio.Create.FoldersStepTitle" xml:space="preserve">
+    <value>Les dossiers de l'équipe</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSub" xml:space="preserve">
+    <value>Lus dans votre demande. Renommez un dossier si vous le souhaitez, dites où chacun se trouve, puis confirmez : l'équipe utilisera exactement ceux-là.</value>
+  </data>
+  <data name="Studio.Create.FoldersConfirm" xml:space="preserve">
+    <value>Confirmer les dossiers</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
+    <value>Dans l'équipe</value>
+  </data>
+  <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
+    <value>lu</value>
+  </data>
+  <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
+    <value>écrit</value>
+  </data>
+  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
+    <value>aucun dossier choisi</value>
+  </data>
+  <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
+    <value>« {0} » n'est pas un nom de dossier : un seul mot de lettres, chiffres, - _ ou ., et pas un nom que le moteur se réserve.</value>
+  </data>
+  <data name="Studio.Create.FolderTwice" xml:space="preserve">
+    <value>{0} figure deux fois.</value>
+  </data>
+  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
+    <value>Au moins un dossier doit recevoir les résultats de l'équipe.</value>
+  </data>
 </root>

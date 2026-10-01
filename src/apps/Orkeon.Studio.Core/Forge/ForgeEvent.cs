@@ -24,7 +24,18 @@ public static class ForgeEventKinds
     /// <summary>A closed question from the engine.</summary>
     public const string QuestionAsked = "question.asked";
 
-    /// <summary>The structured brief is available.</summary>
+    /// <summary>
+    /// The folders step (STUDIO-46): <c>folders</c>, the list the engine proposes between the
+    /// brief and the plan — each <c>{path, role, purpose}</c>, the folders the request named or
+    /// the defaults (<c>/workspace</c> to read when something comes in, <c>/output</c> to write).
+    /// The engine then waits for <see cref="FoldersConfirmed"/>.
+    /// </summary>
+    public const string FoldersProposed = "folders.proposed";
+
+    /// <summary>
+    /// The structured brief is available — its <c>folders</c> are the confirmed list
+    /// (STUDIO-46), without the directories bound behind them.
+    /// </summary>
     public const string BriefReady = "brief.ready";
 
     /// <summary>A team plan was proposed.</summary>
@@ -114,4 +125,11 @@ public static class ForgeEventKinds
 
     /// <summary>Inbound: the amended blueprint that follows a <c>decision.made {edit}</c> (stdin).</summary>
     public const string BlueprintEdited = "blueprint.edited";
+
+    /// <summary>
+    /// Inbound: the answer to <see cref="FoldersProposed"/> (stdin, STUDIO-46) — <c>folders</c>,
+    /// the proposal as it is or amended, each <c>{path, role, purpose, dir}</c> where <c>dir</c>
+    /// is the real directory the user bound behind the folder (absent: inside the team).
+    /// </summary>
+    public const string FoldersConfirmed = "folders.confirmed";
 }

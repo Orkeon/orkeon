@@ -70,6 +70,17 @@ internal sealed class ForgeTerminalRenderer : TextWriter
                 _console.WriteLine("✔ Brief captured — acceptance criteria locked in.");
                 break;
 
+            case "folders.proposed":
+                _console.WriteLine("Folders of the team:");
+                foreach (var folder in e.GetProperty("folders").EnumerateArray())
+                {
+                    var purpose = Text(folder, "purpose");
+                    _console.WriteLine(
+                        $"  {Text(folder, "path")} ({Text(folder, "role")})" + (purpose.Length > 0 ? $" — {purpose}" : ""));
+                }
+
+                break;
+
             case "blueprint.ready":
                 _console.WriteLine("✔ Team plan proposed.");
                 break;

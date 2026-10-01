@@ -109,36 +109,6 @@
         </DockPanel>
       </Border>
     </DataTemplate>
-    <!-- Any number of folders, named by the user (owner review of 2026-09-19): a name the
-         agents will use, read or written, makes a row answered like the two canonical ones —
-         a real folder through the disk picker, or a folder created inside the team. Shown on
-         step 1 with the policy rows and on the Composer step with the blueprint's own roots. -->
-    <DataTemplate x:Key="AddNamedRootForm">
-      <StackPanel Margin="0,4,0,0">
-        <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,6"
-                   Text="{Binding [Studio.Create.AddRootHint], Source={x:Static services:I18n.Instance}}"/>
-        <WrapPanel>
-          <TextBox Style="{StaticResource Input}" Width="220" Margin="0,0,10,4" VerticalAlignment="Center"
-                   Text="{Binding NewRootName, UpdateSourceTrigger=PropertyChanged}">
-            <TextBox.InputBindings>
-              <KeyBinding Key="Return" Command="{Binding AddNamedRootCommand}"/>
-            </TextBox.InputBindings>
-          </TextBox>
-          <CheckBox Margin="0,0,10,4" VerticalAlignment="Center"
-                    IsChecked="{Binding NewRootIsReadWrite}"
-                    Content="{Binding [Studio.Create.AddRootWrite], Source={x:Static services:I18n.Instance}}"/>
-          <Button Style="{StaticResource ChipAction}" Margin="0,0,0,4" VerticalAlignment="Center"
-                  Command="{Binding AddNamedRootCommand}">
-            <StackPanel Orientation="Horizontal">
-              <controls:LucideIcon Kind="plus" Size="11" Foreground="{DynamicResource AccentBrush}"
-                                   VerticalAlignment="Center" Margin="0,0,6,0"/>
-              <TextBlock VerticalAlignment="Center"
-                         Text="{Binding [Studio.Create.AddRoot], Source={x:Static services:I18n.Instance}}"/>
-            </StackPanel>
-          </Button>
-        </WrapPanel>
-      </StackPanel>
-    </DataTemplate>
   </UserControl.Resources>
   <StackPanel>
 
@@ -499,11 +469,67 @@
              screen. The help rail beside it keeps its 300 px and stays readable — an
              overlay, or a panel with a constant width, covers it the moment the window
              is resized. The width comes from the grid; nothing here names one. -->
-        <views:ChatThreadView Grid.Column="0" VerticalAlignment="Top" Margin="0,0,0,16"
+        <StackPanel Grid.Column="0">
+        <!-- STUDIO-46: the Folders step. Between the brief and the plan the forge proposes the
+             folders the need names — or the defaults — and waits: each row is a name the user may
+             change, its role, and the real folder behind it, chosen on the disk or kept inside the
+             team. Above the conversation and the steps alike, because the engine waits on it. -->
+        <Border Style="{StaticResource Card}" Margin="0,0,0,16"
+                Visibility="{Binding IsFoldersStep, Converter={StaticResource BooleanToVisibility}}">
+          <StackPanel>
+            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
+                       Text="{Binding [Studio.Create.FoldersStepTitle], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,12" TextWrapping="Wrap"
+                       Text="{Binding [Studio.Create.FoldersStepSub], Source={x:Static services:I18n.Instance}}"/>
+            <ItemsControl ItemsSource="{Binding FolderRows}">
+              <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                  <Border BorderBrush="{DynamicResource LineFaintBrush}" BorderThickness="0,0,0,1" Padding="0,8">
+                    <DockPanel>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
+                              Command="{Binding InsideTeamCommand}"
+                              Content="{Binding [Studio.Create.FolderInsideTeam], Source={x:Static services:I18n.Instance}}"/>
+                      <Button DockPanel.Dock="Right" Style="{StaticResource ChipAction}" VerticalAlignment="Center" Margin="6,0,0,0"
+                              Command="{Binding PickCommand}"
+                              Content="{Binding [Studio.Create.ChooseFolder], Source={x:Static services:I18n.Instance}}"/>
+                      <TextBlock DockPanel.Dock="Right" Style="{StaticResource Hint}" FontSize="11.5" VerticalAlignment="Center"
+                                 Margin="10,0,0,0" MaxWidth="240" TextTrimming="CharacterEllipsis"
+                                 Text="{Binding FolderLabel}" ToolTip="{Binding FolderLabel}"/>
+                      <StackPanel>
+                        <StackPanel Orientation="Horizontal">
+                          <TextBox Style="{StaticResource Input}" Width="160" VerticalAlignment="Center"
+                                   Text="{Binding VirtualPath, UpdateSourceTrigger=PropertyChanged}"/>
+                          <TextBlock Style="{StaticResource ToolChipText}" Margin="8,0,0,0" VerticalAlignment="Center"
+                                     Foreground="{DynamicResource InkFaintBrush}" Text="{Binding RoleLabel}"/>
+                        </StackPanel>
+                        <TextBlock Style="{StaticResource Hint}" FontSize="11.5" Margin="0,3,0,0" TextWrapping="Wrap"
+                                   Text="{Binding Purpose}"
+                                   Visibility="{Binding HasPurpose, Converter={StaticResource BooleanToVisibility}}"/>
+                      </StackPanel>
+                    </DockPanel>
+                  </Border>
+                </DataTemplate>
+              </ItemsControl.ItemTemplate>
+            </ItemsControl>
+            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,8,0,0"
+                       Foreground="{DynamicResource DangerBrush}" Text="{Binding FoldersProblem}"
+                       Visibility="{Binding HasFoldersProblem, Converter={StaticResource BooleanToVisibility}}"/>
+            <DockPanel Margin="0,12,0,0" LastChildFill="False">
+              <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ConfirmFoldersCommand}">
+                <StackPanel Orientation="Horizontal">
+                  <TextBlock Text="{Binding [Studio.Create.FoldersConfirm], Source={x:Static services:I18n.Instance}}"/>
+                  <controls:LucideIcon Kind="arrow-right" Size="13" Margin="7,0,0,0" Foreground="{DynamicResource AccentFgBrush}"/>
+                </StackPanel>
+              </Button>
+            </DockPanel>
+          </StackPanel>
+        </Border>
+
+        <views:ChatThreadView VerticalAlignment="Top" Margin="0,0,0,16"
                               DataContext="{Binding Chat}"
                               Visibility="{Binding IsOpen, Converter={StaticResource BooleanToVisibility}}"/>
 
-        <StackPanel Grid.Column="0"
+        <StackPanel
                     Visibility="{Binding Chat.IsClosed, Converter={StaticResource BooleanToVisibility}}">
       <!-- ── STEP 1 : DÉCRIRE ── -->
       <StackPanel Visibility="{Binding IsStep1, Converter={StaticResource BooleanToVisibility}}">
@@ -568,39 +594,11 @@
           </StackPanel>
         </Border>
 
-        <!-- STUDIO-45: step 1 asks the need and nothing else. How often, where from and what out
-             left with their chips and the «describe that result» field: the forge asks about
-             input and output only when the need leaves them unsaid, and step 4 schedules. The
-             card keeps where the folders live, until STUDIO-46's folders step replaces it. -->
+        <!-- STUDIO-45: step 1 asks the need and nothing else. STUDIO-46: where the folders live
+             left too — the forge reads them from the need, and the Folders step answers them. -->
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
-            <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
-                       Text="{Binding [Studio.Create.PrecisionsTitle], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,14"
-                       Text="{Binding [Studio.Create.PrecisionsSub], Source={x:Static services:I18n.Instance}}"/>
-
-            <!-- STUDIO-14 (D-06): where the folders live. Not a brief precision — it answers the
-                 two rows under it, the only roots a team can address before it has a blueprint:
-                 «Existing folders» opens the disk picker from each row and declares the pick on
-                 the way; «Created inside the team» answers both team-relative; «Later» leaves
-                 them to the Composer step, as before. Composing never waits for this answer. -->
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5" Text="{Binding [Studio.Create.QFolders], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding FolderPolicyChoices}" Margin="0,4,0,6">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-            <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,0,0,8"
-                       Text="{Binding [Studio.Create.FoldersPolicyHint], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding StepOneRows}" ItemTemplate="{StaticResource MountRowTemplate}"
-                          Visibility="{Binding HasStepOneRows, Converter={StaticResource BooleanToVisibility}}"/>
-            <ContentControl Focusable="False" Content="{Binding}" ContentTemplate="{StaticResource AddNamedRootForm}"
-                            Visibility="{Binding HasStepOneRows, Converter={StaticResource BooleanToVisibility}}"/>
-
-            <DockPanel Margin="0,14,0,0">
+            <DockPanel>
               <Button DockPanel.Dock="Right" Style="{StaticResource BtnPrimary}" Command="{Binding ComposeCommand}">
                 <StackPanel Orientation="Horizontal">
                   <TextBlock Text="{Binding [Studio.Create.Compose], Source={x:Static services:I18n.Instance}}"/>
@@ -701,7 +699,6 @@
                     </StackPanel>
                   </Button>
                 </WrapPanel>
-                <ContentControl Focusable="False" Content="{Binding}" ContentTemplate="{StaticResource AddNamedRootForm}"/>
                 <TextBlock Style="{StaticResource Hint}" TextWrapping="Wrap" Margin="0,7,0,0"
                            Text="{Binding [Studio.Create.DerivedHint], Source={x:Static services:I18n.Instance}}"
                            Visibility="{Binding HasDerivedMounts, Converter={StaticResource BooleanToVisibility}}"/>
@@ -1269,6 +1266,7 @@
         </Border>
       </StackPanel>
 
+        </StackPanel>
         </StackPanel>
         <Border Grid.Column="1" Width="300" VerticalAlignment="Top" Margin="16,0,0,16"
                 Background="{DynamicResource SkyBrush}" BorderBrush="{DynamicResource LineBrush}" BorderThickness="1"

@@ -166,7 +166,7 @@ public sealed class ForgeRunStagesTests : IDisposable
         Assert.Equal(500, session.Document.Budget.ConsumedTokens);
 
         Assert.Equal(
-            ["session.started", "stage.entered", "brief.ready", "stage.entered", "blueprint.ready",
+            ["session.started", "stage.entered", "folders.proposed", "brief.ready", "stage.entered", "blueprint.ready",
              "stage.entered", "file.written", "file.written", "file.written", "file.written", "file.written",
              "stage.entered", "validation.result", "stage.entered", "run.started", "run.finished",
              "cost.updated", "stage.entered", "verdict.ready", "stage.entered", "decision.needed", "session.finished"],

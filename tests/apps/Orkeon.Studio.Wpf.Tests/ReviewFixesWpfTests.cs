@@ -52,13 +52,13 @@ public sealed class ReviewFixesWpfTests : IDisposable
         wizard.Need = "une veille";
         wizard.ComposeCommand.Execute(null);
 
-        // A folder added at step 1 is the user's own mount point, not the previous
-        // blueprint's answer: it survives the compose like the step-1 folders (STUDIO-14 D-07,
-        // owner review of 2026-09-19). What a compose forgets is what the replaced blueprint
-        // answered at step 2 — asserted in CreateTeamWizardTests.
-        // (EngineCommandLine is legitimately repopulated by the new session's own start.)
-        Assert.Equal(["/a:/docs:ro"], wizard.TeamMounts);
-        Assert.Equal(["/docs"], wizard.NamedRoots);
+        // A new compose starts from no folder at all (STUDIO-46): the folders belong to the
+        // session that confirmed them, and the new one's Folders step answers its own — step 1
+        // keeps none any more. (EngineCommandLine is legitimately repopulated by the new
+        // session's own start.)
+        Assert.Empty(wizard.TeamMounts);
+        Assert.False(wizard.HasTeamMounts);
+        Assert.Empty(wizard.FolderRows);
     }
 
     [Fact]

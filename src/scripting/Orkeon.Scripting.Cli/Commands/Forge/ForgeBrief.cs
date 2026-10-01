@@ -84,6 +84,15 @@ internal sealed record ForgeBrief
     [JsonPropertyName("expectedOutput")]
     public ForgeExpectedOutput? ExpectedOutput { get; init; }
 
+    /// <summary>
+    /// The team's folders as the request names them (STUDIO-46): each a virtual root, its
+    /// role (<c>input</c> | <c>output</c>) and its purpose. Empty when the request names none —
+    /// the forge then proposes the defaults (<see cref="ForgeFolders.Defaults"/>). The list the
+    /// rest of the cycle uses is the one the user confirms, never this one as submitted.
+    /// </summary>
+    [JsonPropertyName("folders")]
+    public IReadOnlyList<ForgeFolder>? Folders { get; init; }
+
     /// <summary>Tone, length, language, allowed sources…</summary>
     [JsonPropertyName("constraints")]
     public IReadOnlyList<string>? Constraints { get; init; }
@@ -148,6 +157,11 @@ internal sealed record ForgeBrief
             errors.Add("'goal' is required: the brief must say what the crew accomplishes.");
 
         ValidateAcceptance(errors);
+
+        // A list the request named must be one the team can mount; none at all is the
+        // defaults' business, not an error.
+        if (Folders is { Count: > 0 } folders)
+            errors.AddRange(ForgeFolders.Validate(folders));
 
         if (Language is not (null or "fr" or "en"))
             errors.Add($"'language' must be 'fr' or 'en', not '{Language}'.");

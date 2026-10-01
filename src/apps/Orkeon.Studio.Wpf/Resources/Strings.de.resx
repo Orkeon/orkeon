@@ -1254,12 +1254,6 @@
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>ODER VON EINEM BEISPIEL AUSGEHEN</value>
   </data>
-  <data name="Studio.Create.PrecisionsTitle" xml:space="preserve">
-    <value>Ihre Ordner</value>
-  </data>
-  <data name="Studio.Create.PrecisionsSub" xml:space="preserve">
-    <value>Wo das Team liest und schreibt. Alles lässt sich später ändern.</value>
-  </data>
   <data name="Studio.Create.Compose" xml:space="preserve">
     <value>Team zusammenstellen</value>
   </data>
@@ -2788,24 +2782,6 @@
     <value>Leer: dieses Modell steht nicht im Katalog, die Engine sendet daher 4096. Tragen Sie das dokumentierte Maximum des Modells ein — ein Reasoning-Modell braucht 16384 oder mehr.</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
-  <data name="Studio.Create.QFolders" xml:space="preserve">
-    <value>Wo liegen Ihre Ordner?</value>
-  </data>
-  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
-    <value>Vorhandene Ordner</value>
-  </data>
-  <data name="Studio.Create.FoldersInside" xml:space="preserve">
-    <value>Im Team angelegt</value>
-  </data>
-  <data name="Studio.Create.FoldersLater" xml:space="preserve">
-    <value>Später</value>
-  </data>
-  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
-    <value>Ihre Dokumente</value>
-  </data>
-  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
-    <value>Die Ergebnisse</value>
-  </data>
   <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
     <value>im Team: {0}</value>
   </data>
@@ -2815,11 +2791,8 @@
   <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
     <value>Alle Ordner im Team anlegen</value>
   </data>
-  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
-    <value>Ein vorhandener Ordner wird dabei unter Einstellungen › Erlaubte Ordner eingetragen; ein im Team angelegter Ordner reist mit dem Team. Im nächsten Schritt lässt sich das noch ändern.</value>
-  </data>
   <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
-    <value>Der Versuch läuft auf einem leeren Ordner — legen Sie Ihre Dokumente nach der Übernahme in input/ ab.</value>
+    <value>Der Versuch liest die im Team behaltenen Ordner aus der Arbeitssitzung — legen Sie Ihre Dokumente über „Ordner öffnen“ dort ab; bei der Übernahme wandern sie ins Team.</value>
   </data>
   <data name="Studio.Create.OpenFolder" xml:space="preserve">
     <value>Ordner öffnen</value>
@@ -2831,15 +2804,6 @@
     <value>Öffnet den Ordner des übernommenen Teams.</value>
   </data>
   <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
-  <data name="Studio.Create.AddRootHint" xml:space="preserve">
-    <value>Fügen Sie so viele Ordner hinzu, wie der Bedarf verlangt: einen Namen, den die Agenten verwenden (rechnungen, archiv…), lesend oder schreibend — und beantworten Sie jeden wie die beiden ersten, mit einem echten Ordner oder einem im Team angelegten. Nennen Sie sie in Ihrem Bedarf, damit das Team sie nutzt.</value>
-  </data>
-  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
-    <value>beschreibbar</value>
-  </data>
-  <data name="Studio.Create.AddRoot" xml:space="preserve">
-    <value>Ordner hinzufügen</value>
-  </data>
   <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s vorbelegt: das Standardmodell von {1} denkt vor der Antwort nach, und eine durchdachte Antwort dauert regelmäßig länger als die 30 s der Engine. Anderen Wert eintragen, um ihn zu überschreiben.</value></data>
   <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Denkmodus</value></data>
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Standard des Anbieters</value></data>
@@ -2895,4 +2859,34 @@
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Anwendungsfälle werden gelesen…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Schließen</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Referenz entfernen – Ihr Bedarf bleibt, wie er ist.</value></data>
+  <data name="Studio.Create.FoldersStepTitle" xml:space="preserve">
+    <value>Die Ordner des Teams</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSub" xml:space="preserve">
+    <value>Aus Ihrer Anfrage gelesen. Benennen Sie einen Ordner nach Wunsch um, sagen Sie, wo jeder liegt, und bestätigen Sie — das Team verwendet genau diese.</value>
+  </data>
+  <data name="Studio.Create.FoldersConfirm" xml:space="preserve">
+    <value>Ordner bestätigen</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
+    <value>Im Team</value>
+  </data>
+  <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
+    <value>gelesen</value>
+  </data>
+  <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
+    <value>geschrieben</value>
+  </data>
+  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
+    <value>noch kein Ordner gewählt</value>
+  </data>
+  <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
+    <value>„{0}“ ist kein Ordnername: ein Wort aus Buchstaben, Ziffern, - _ oder ., und kein Name, den die Laufzeit für sich reserviert.</value>
+  </data>
+  <data name="Studio.Create.FolderTwice" xml:space="preserve">
+    <value>{0} steht zweimal in der Liste.</value>
+  </data>
+  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
+    <value>Mindestens ein Ordner muss die Ergebnisse des Teams aufnehmen.</value>
+  </data>
 </root>

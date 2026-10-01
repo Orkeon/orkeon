@@ -448,8 +448,6 @@
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>What work do you want to hand to this team?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Write it the way you would explain it to a colleague. No technical words needed.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OR START FROM AN EXAMPLE</value></data>
-<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Your folders</value></data>
-<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>Where the team reads and writes. You can change everything later.</value></data>
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Compose the team</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Here is the team I propose</value></data>
 <data name="Studio.Create.ToolsLabel" xml:space="preserve"><value>Can:</value></data>
@@ -1410,24 +1408,6 @@
   <data name="Studio.Settings.MaxTokensHintLocal" xml:space="preserve"><value>Empty: a local runtime — no cap is sent, the model writes up to its context.</value></data>
   <data name="Studio.Settings.MaxTokensHintUnknown" xml:space="preserve"><value>Empty: this model is not in the catalogue, so the engine sends 4096. Type the model's documented maximum — a reasoning model needs 16384 or more.</value></data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
-  <data name="Studio.Create.QFolders" xml:space="preserve">
-    <value>Where are your folders?</value>
-  </data>
-  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
-    <value>Existing folders</value>
-  </data>
-  <data name="Studio.Create.FoldersInside" xml:space="preserve">
-    <value>Created inside the team</value>
-  </data>
-  <data name="Studio.Create.FoldersLater" xml:space="preserve">
-    <value>Later</value>
-  </data>
-  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
-    <value>Your documents</value>
-  </data>
-  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
-    <value>The results</value>
-  </data>
   <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
     <value>inside the team: {0}</value>
   </data>
@@ -1437,11 +1417,8 @@
   <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
     <value>Create every folder inside the team</value>
   </data>
-  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
-    <value>An existing folder is declared in Settings › Authorized folders on the way; a folder created inside the team travels with it. You can still change this at the next step.</value>
-  </data>
   <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
-    <value>The trial runs on an empty folder — drop your documents into input/ once the team is adopted.</value>
+    <value>The trial reads the folders kept inside the team from the working session — drop your documents there with « Open the folder »; they move into the team when you adopt it.</value>
   </data>
   <data name="Studio.Create.OpenFolder" xml:space="preserve">
     <value>Open the folder</value>
@@ -1453,15 +1430,6 @@
     <value>Opens the folder of the adopted team.</value>
   </data>
   <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
-  <data name="Studio.Create.AddRootHint" xml:space="preserve">
-    <value>Add as many folders as the need calls for: a name the agents will use (factures, archives…), read or written — then answer each one like the two above, with a real folder or one created inside the team. Name them in your need for the team to use them.</value>
-  </data>
-  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
-    <value>written to</value>
-  </data>
-  <data name="Studio.Create.AddRoot" xml:space="preserve">
-    <value>Add the folder</value>
-  </data>
   <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s pre-filled: {1}'s default model thinks before it answers, and a thinking answer routinely outlasts the engine's 30 s. Type another value to override.</value></data>
   <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Thinking</value></data>
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Provider default</value></data>
@@ -1517,4 +1485,34 @@
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Reading the use cases…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Close</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Remove the reference — your need stays as it is.</value></data>
+  <data name="Studio.Create.FoldersStepTitle" xml:space="preserve">
+    <value>Your team's folders</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSub" xml:space="preserve">
+    <value>Read from your request. Rename a folder if you like, say where each one lives, then confirm — the team will use exactly these.</value>
+  </data>
+  <data name="Studio.Create.FoldersConfirm" xml:space="preserve">
+    <value>Confirm the folders</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
+    <value>Inside the team</value>
+  </data>
+  <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
+    <value>read</value>
+  </data>
+  <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
+    <value>written</value>
+  </data>
+  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
+    <value>no folder chosen yet</value>
+  </data>
+  <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
+    <value>« {0} » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.</value>
+  </data>
+  <data name="Studio.Create.FolderTwice" xml:space="preserve">
+    <value>{0} is listed twice.</value>
+  </data>
+  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
+    <value>At least one folder must receive the team's results.</value>
+  </data>
 </root>

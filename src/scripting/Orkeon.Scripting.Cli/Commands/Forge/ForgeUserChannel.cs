@@ -25,6 +25,15 @@ internal interface IForgeUserChannel
     /// channel closed.
     /// </summary>
     Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken);
+
+    /// <summary>
+    /// Reads the folder list the user confirms after a <c>folders.proposed</c> (STUDIO-46):
+    /// <paramref name="proposed"/> as it is, or amended — renamed, re-roled, bound to a real
+    /// directory. The engine validates what comes back; this only carries it. Null means the
+    /// channel closed.
+    /// </summary>
+    Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
+        IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken);
 }
 
 /// <summary>
@@ -152,6 +161,44 @@ internal sealed class JsonLinesUserChannel : IForgeUserChannel
             }
         }
     }
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
+        IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken)
+    {
+        while (true)
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var line = await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+            if (line is null)
+                return null;
+
+            if (string.IsNullOrWhiteSpace(line))
+                continue;
+
+            try
+            {
+                using var document = JsonDocument.Parse(line);
+                var root = document.RootElement;
+
+                if (root.ValueKind == JsonValueKind.Object
+                    && root.TryGetProperty("kind", out var kind)
+                    && kind.ValueKind == JsonValueKind.String
+                    && string.Equals(kind.GetString(), "folders.confirmed", StringComparison.Ordinal)
+                    && root.TryGetProperty("folders", out var folders)
+                    && folders.ValueKind == JsonValueKind.Array)
+                {
+                    return folders.Deserialize<List<ForgeFolder>>(FolderOptions) ?? [];
+                }
+            }
+            catch (JsonException)
+            {
+                // Same tolerance as messages: skip and keep reading.
+            }
+        }
+    }
+
+    private static readonly JsonSerializerOptions FolderOptions = new() { PropertyNameCaseInsensitive = true };
 }
 
 /// <summary>
@@ -216,5 +263,17 @@ internal sealed class TerminalUserChannel : IForgeUserChannel
         await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
 
         return await _input.ReadLineAsync(cancellationToken).ConfigureAwait(false);
+    }
+
+    /// <inheritdoc />
+    public async Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
+        IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken)
+    {
+        // The terminal takes the proposal as it is (STUDIO-46): the folders were just printed,
+        // and a request that wants others names them. Studio is where a list is edited.
+        await _output.WriteLineAsync("  folders accepted as proposed — name others in the request to change them.")
+            .ConfigureAwait(false);
+        await _output.FlushAsync(cancellationToken).ConfigureAwait(false);
+        return proposed;
     }
 }

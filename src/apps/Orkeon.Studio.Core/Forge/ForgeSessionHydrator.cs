@@ -30,7 +30,7 @@ public static class ForgeSessionHydrator
         // button, the save button — keys on the model's Slug.
         HydrateIdentity(model, sessionDirectory);
         HydrateTranscript(model, Path.Combine(sessionDirectory, "transcript.jsonl"));
-        FeedWrapped(model, Path.Combine(sessionDirectory, "brief.json"), ForgeEventKinds.BriefReady, "brief");
+        HydrateBrief(model, sessionDirectory);
         FeedWrapped(model, Path.Combine(sessionDirectory, "blueprint.json"), ForgeEventKinds.BlueprintReady, "blueprint");
         HydrateVerdict(model, sessionDirectory);
     }
@@ -66,6 +66,28 @@ public static class ForgeSessionHydrator
     /// <c>verdict.ready</c> now carries them (W-08) — the recalled screen shows the same
     /// chips as the live one.
     /// </summary>
+    /// <summary>
+    /// The brief, with the folder list the session confirmed (STUDIO-46): <c>folders.json</c> holds
+    /// it with the directories bound behind each folder, which the brief never carries. A brief
+    /// whose folders were never confirmed — the run stopped at that question — seeds none: the
+    /// resume proposes them again.
+    /// </summary>
+    private static void HydrateBrief(ForgeSessionModel model, string sessionDirectory)
+    {
+        if (!TryReadObject(Path.Combine(sessionDirectory, "brief.json"), out var brief))
+            return;
+
+        brief.Remove("folders");
+        if (TryReadObject(Path.Combine(sessionDirectory, "folders.json"), out var confirmed)
+            && confirmed["folders"] is JsonArray folders)
+        {
+            brief["folders"] = folders.DeepClone();
+        }
+
+        var envelope = new JsonObject { ["v"] = 2, ["seq"] = 0, ["ts"] = "", ["kind"] = ForgeEventKinds.BriefReady, ["brief"] = brief };
+        Feed(model, envelope.ToJsonString());
+    }
+
     private static void HydrateVerdict(ForgeSessionModel model, string sessionDirectory)
     {
         var verdictPath = Path.Combine(sessionDirectory, "verdict.json");

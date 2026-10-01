@@ -34,13 +34,17 @@ internal static class ForgeBlueprintCompiler
     /// domain configuration. The verdict is a separate step (<see cref="Validate"/>), so a
     /// render and its validation always look at the same compilation.
     /// </summary>
-    public static ForgeCompilation Compile(ForgeBlueprint blueprint)
+    public static ForgeCompilation Compile(ForgeBlueprint blueprint, IReadOnlyList<ForgeFolder>? folders = null)
     {
         ArgumentNullException.ThrowIfNull(blueprint);
 
-        // The roots the blueprint reads and writes (VFS-90): the crew says what it expects, so
-        // a run without the launcher's --mount refuses instead of silently writing nowhere.
-        var expectedRoots = ForgePromoter.DeliverableMounts(blueprint).Select(m => m.VirtualRoot).ToList();
+        // The roots the crew reads and writes (VFS-90): the crew says what it expects, so a
+        // run without the launcher's --mount refuses instead of silently writing nowhere. The
+        // confirmed folder list is that set (STUDIO-46); a plan compiled without one — an
+        // edit checked on its own — names what it addresses by itself.
+        var expectedRoots = folders is { Count: > 0 }
+            ? folders.Select(f => f.Path!).ToList()
+            : ForgePromoter.DerivedMounts(blueprint).Select(m => m.VirtualRoot).ToList();
 
         var settings = new CrewSettingsYamlConfig
         {
@@ -116,12 +120,18 @@ internal static class ForgeBlueprintCompiler
     /// </summary>
     public static ForgeValidationVerdict Validate(
         ForgeCompilation compilation,
-        IReadOnlyCollection<string> knownTools)
+        IReadOnlyCollection<string> knownTools,
+        IReadOnlyList<ForgeFolder>? folders = null)
     {
         ArgumentNullException.ThrowIfNull(compilation);
         ArgumentNullException.ThrowIfNull(knownTools);
 
         var errors = new List<string>();
+
+        // Every deliverable lands in a confirmed output folder (STUDIO-46): the trial mounts
+        // those and nothing else, and so does the adopted team.
+        if (folders is { Count: > 0 })
+            ValidateDeliverables(compilation, folders, errors);
         var known = knownTools as ISet<string> ?? new HashSet<string>(knownTools, StringComparer.Ordinal);
 
         foreach (var (key, agent) in compilation.Agents)
@@ -153,6 +163,22 @@ internal static class ForgeBlueprintCompiler
 
         return new ForgeValidationVerdict { Errors = errors, Warnings = shared.Warnings };
     }
+
+    /// <summary>A deliverable outside every confirmed output folder, named with the folders it may use.</summary>
+    private static void ValidateDeliverables(
+        ForgeCompilation compilation, IReadOnlyList<ForgeFolder> folders, List<string> errors)
+    {
+        var outputs = string.Join(", ", folders.Where(f => !f.IsInput).Select(f => f.Path));
+        foreach (var (key, task) in compilation.Tasks)
+        {
+            if (task.Deliverable?.Path is { Length: > 0 } deliverable && ForgeFolders.OutputOf(deliverable, folders) is null)
+            {
+                errors.Add(
+                    $"Task '{key}' delivers '{deliverable}', which is not under a confirmed output folder. "
+                    + $"Deliver under one of: {outputs}.");
+            }
+        }
+    }
 }
 
 /// <summary>The outcome of validating a compiled blueprint.</summary>
@@ -170,6 +196,13 @@ internal static class ForgeErrorCodes
 {
     /// <summary>The interview could not produce a schema-valid brief.</summary>
     public const string BriefIncomplete = "FORGE-BRIEF-INCOMPLETE";
+
+    /// <summary>
+    /// The folder list a client confirmed breaks the rules (STUDIO-46): a malformed or reserved
+    /// root, a root twice, no output, a directory that is not there. Recoverable: the folders are
+    /// proposed again.
+    /// </summary>
+    public const string FoldersInvalid = "FORGE-FOLDERS-INVALID";
 
     /// <summary>The assistant could not produce a schema-valid blueprint.</summary>
     public const string BlueprintInvalid = "FORGE-BLUEPRINT-INVALID";

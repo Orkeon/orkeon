@@ -1504,191 +1504,237 @@ public partial class CreateTeamWizardTests
     private static string ReadingWritingBlueprint(string deliverableRoot = "/output") =>
         $$"""{"v":2,"seq":2,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"{{deliverableRoot}}/rapport.md"}],"rationale":"r"},"iteration":1}""";
 
-    private static WizardChoice Policy(CreateTeamViewModel vm, FolderPolicy policy) =>
-        vm.FolderPolicyChoices.Single(c => c.Key == policy.ToString());
+    /// <summary>The engine's <c>folders.proposed</c> line (STUDIO-46).</summary>
+    private static string FoldersProposedLine(params (string Path, string Role)[] folders) =>
+        "{\"v\":2,\"seq\":2,\"ts\":\"t\",\"kind\":\"folders.proposed\",\"folders\":["
+        + string.Join(",", folders.Select(f => $"{{\"path\":\"{f.Path}\",\"role\":\"{f.Role}\",\"purpose\":\"p\"}}"))
+        + "]}";
+
+    /// <summary>The fiche's two folders: the PDFs read, the Markdown written.</summary>
+    private static (string Path, string Role)[] PdfFolders => [("/inpdf", "input"), ("/outmd", "output")];
+
+    /// <summary>A plan whose agent reads and whose task delivers under <paramref name="outputRoot"/>.</summary>
+    private static string PdfBlueprint(string outputRoot = "/outmd") =>
+        $$"""{"v":2,"seq":4,"ts":"t","kind":"blueprint.ready","blueprint":{"crew":{"name":"veille"},"agents":[{"key":"a","role":"A","tools":["file_read","file_write"]}],"tasks":[{"key":"t","description":"d","agent":"a","deliverable":"{{outputRoot}}/x.md"}],"rationale":"r"},"iteration":1}""";
 
     /// <summary>
-    /// D-06/D-07. «Created inside the team» answers both canonical rows team-relative, before any
-    /// blueprint exists, and composing — which used to clear every folder — keeps them: they
-    /// are the user's answers, not the previous blueprint's.
+    /// Scripts the Folders step (STUDIO-46): the child announces the session, proposes
+    /// <paramref name="proposed"/> and waits; <paramref name="answer"/> plays the user's part while
+    /// it waits; the confirmation going down stdin is answered the way the engine answers it —
+    /// <c>brief.ready</c> carrying the confirmed list — then <paramref name="after"/>. One run
+    /// only: the next launch of the child plays its ordinary script.
+    /// </summary>
+    private static void ScriptFoldersStep(
+        CreateTeamViewModel vm,
+        FakeProcessLauncher processes,
+        (string Path, string Role)[] proposed,
+        Action<CreateTeamViewModel> answer,
+        params string[] after)
+    {
+        processes.OutputToEmit.Clear();
+        processes.WhileRunning = () =>
+        {
+            processes.WhileRunning = null;
+            processes.Emit(Out(SessionStarted));
+            processes.Emit(Out(FoldersProposedLine(proposed)));
+            answer(vm);
+        };
+        processes.OnInputLine = line =>
+        {
+            using var document = System.Text.Json.JsonDocument.Parse(line);
+            if (document.RootElement.GetProperty("kind").GetString() != "folders.confirmed")
+                return;
+
+            processes.OnInputLine = null;
+            var confirmed = document.RootElement.GetProperty("folders").EnumerateArray()
+                .Select(f => $"{{\"path\":\"{f.GetProperty("path").GetString()}\",\"role\":\"{f.GetProperty("role").GetString()}\"}}");
+            processes.Emit(Out($"{{\"v\":2,\"seq\":3,\"ts\":\"t\",\"kind\":\"brief.ready\",\"brief\":{{\"goal\":\"g\",\"folders\":[{string.Join(",", confirmed)}]}}}}"));
+            foreach (var next in after)
+                processes.Emit(Out(next));
+        };
+    }
+
+    /// <summary>The folders the wizard confirmed, as the <c>folders.confirmed</c> line carried them.</summary>
+    private static List<(string Path, string? Dir)> Confirmed(FakeProcessLauncher processes)
+    {
+        using var document = System.Text.Json.JsonDocument.Parse(
+            processes.InputLines.Single(line => line.Contains("folders.confirmed", StringComparison.Ordinal)));
+        return
+        [
+            .. document.RootElement.GetProperty("folders").EnumerateArray().Select(folder => (
+                folder.GetProperty("path").GetString()!,
+                folder.TryGetProperty("dir", out var dir) ? dir.GetString() : null)),
+        ];
+    }
+
+    private static Orkeon.Studio.Core.FileSystem.MountDefinition Folder(
+        string physical, string root, Orkeon.Studio.Core.FileSystem.MountRights rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly) =>
+        new() { PhysicalPath = physical, VirtualPath = root, Rights = rights };
+
+    /// <summary>
+    /// STUDIO-46 (rewritten from the step-1 «inside the team» policy). The folders the request
+    /// names reach the wizard as the Folders step — a row each, an output inside the team by
+    /// default, an input waiting for a folder — and the confirmed list is the team's folders:
+    /// the Composer rows are /inpdf and /outmd, never the canonical /workspace and /output.
     /// </summary>
     [Fact]
-    public async Task Choosing_inside_the_team_at_step_one_seeds_both_roots_relative_and_they_survive_the_compose()
+    public async Task The_folders_step_proposes_the_named_folders_and_an_output_lives_inside_the_team_by_default()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            Assert.True(wizard.IsFoldersStep);
+            Assert.True(wizard.IsEngineWaitingOnUser);
+            Assert.Equal(["/inpdf", "/outmd"], wizard.FolderRows.Select(r => r.VirtualPath));
+            Assert.Equal(["read", "written"], wizard.FolderRows.Select(r => r.RoleLabel));
+            Assert.Equal(["p", "p"], wizard.FolderRows.Select(r => r.Purpose));
+            Assert.True(wizard.FolderRows[0].IsUnanswered);
+            Assert.Equal("no folder chosen yet", wizard.FolderRows[0].FolderLabel);
+            Assert.True(wizard.FolderRows[1].IsInsideTeam);
+            Assert.Equal("inside the team: outmd", wizard.FolderRows[1].FolderLabel);
+            Assert.False(wizard.HasFoldersProblem);
+            Assert.True(wizard.CanConfirmFolders);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        // Later by default, nothing to show, and the compose button does not wait for an answer.
-        Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
-        Assert.True(Policy(vm, FolderPolicy.Later).IsSelected);
-        Assert.False(vm.HasStepOneRows);
-        Assert.True(vm.CanCompose);
-
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-
-        Assert.Equal(FolderPolicy.InsideTeam, vm.FolderPolicy);
-        Assert.True(vm.HasStepOneRows);
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
-        var rows = vm.StepOneRows;
-        Assert.Equal(["Your documents", "The results"], rows.Select(r => r.Title));
-        Assert.Equal(["/workspace", "/output"], rows.Select(r => r.VirtualPath));
-        Assert.All(rows, r => Assert.True(r.IsInsideTeam));
-        Assert.All(rows, r => Assert.False(r.IsUndeclared));
-        Assert.Equal(["inside the team: input", "inside the team: output"], rows.Select(r => r.Folder));
-        Assert.True(vm.CanCompose);
-
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
-        // The compose kept both answers, and the Composer's rows show them answered.
+        Assert.False(vm.IsFoldersStep);
+        Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
         Assert.Equal(2, vm.Step);
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
-        Assert.All(vm.MountRows, r => Assert.True(r.IsInsideTeam));
-        Assert.Equal(["/workspace", "/output"], vm.MountRows.Select(r => r.VirtualPath));
-        // The trial has nothing to read yet — the folder is born at adoption — and the argv
-        // says nothing about it: no --read for a folder that does not exist.
-        Assert.True(vm.TrialReadsInsideTeam);
+        Assert.Equal(["./outmd:/outmd:rw"], vm.TeamMounts);
+        Assert.Equal(["/outmd", "/inpdf"], vm.MountRows.Select(r => r.VirtualPath));
+        Assert.DoesNotContain(vm.MountRows, r => r.VirtualPath is "/workspace" or "/output");
+        Assert.Equal(["./outmd:/outmd:rw", "./inpdf:/inpdf:ro"], vm.SidecarMounts());
         Assert.DoesNotContain("--read", processes.Requests[0].Arguments);
     }
 
     /// <summary>
-    /// D-06/D-10. «Existing folders» shows the two rows unanswered and their « Choose the
-    /// folder… » asks the shell for the DISK picker — not the declared list — on the row's
-    /// rights: read-only for «Your documents», read-and-write for «The results».
+    /// STUDIO-46 (rewritten from the step-1 «existing folders» policy, D-10). « Choose a
+    /// folder… » on a row asks the shell for the DISK picker — not the declared list — on the
+    /// row's rights; what the shell binds back answers the row, and travels with the
+    /// confirmation as the folder's <c>dir</c>.
     /// </summary>
     [Fact]
-    public void Choosing_existing_folders_at_step_one_asks_the_disk_picker_with_the_rows_rights()
+    public async Task Choose_a_folder_on_a_row_asks_the_disk_picker_with_the_rows_rights_and_the_pick_answers_it()
     {
-        var (vm, _, _) = Build();
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
         var picks = new List<(string? Target, Orkeon.Studio.Core.FileSystem.MountRights Rights)>();
         var chooserOpened = 0;
         vm.PickFolderRequested += (_, e) => picks.Add((e.TargetVirtualPath, e.Rights));
         vm.AllowFolderRequested += (_, _) => chooserOpened++;
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.FolderRows[0].PickCommand.Execute(null);
+            wizard.FolderRows[1].PickCommand.Execute(null);
 
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            var row = wizard.FolderRows[0];
+            Assert.Equal("/data/pdf", row.Directory);
+            Assert.Equal("/data/pdf", row.FolderLabel);
+            Assert.False(row.IsInsideTeam);
+            Assert.False(row.IsUnanswered);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        Assert.True(vm.HasStepOneRows);
-        Assert.Empty(vm.TeamMounts);
-        Assert.All(vm.StepOneRows, r => Assert.True(r.CanChooseFolder));
-        Assert.All(vm.StepOneRows, r => Assert.False(r.IsDroppable));
-
-        vm.BindMountCommand.Execute("/workspace");
-        vm.BindMountCommand.Execute("/output");
+        await Compose(vm);
 
         Assert.Equal(
-            [("/workspace", Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly), ("/output", Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite)],
+            [("/inpdf", Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly), ("/outmd", Orkeon.Studio.Core.FileSystem.MountRights.ReadWrite)],
             picks);
         Assert.Equal(0, chooserOpened);
-
-        // What the shell binds back lands on the row, and reads as a real folder.
-        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
-        {
-            PhysicalPath = "/data/factures", VirtualPath = "/workspace",
-            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
-        });
-        var documents = vm.StepOneRows.Single(r => r.VirtualPath == "/workspace");
-        Assert.Equal("/data/factures", documents.Folder);
-        Assert.False(documents.IsInsideTeam);
+        Assert.Equal([("/inpdf", "/data/pdf"), ("/outmd", null)], Confirmed(processes));
+        Assert.Equal(["/data/pdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
+        var documents = vm.MountRows.Single(r => r.VirtualPath == "/inpdf");
+        Assert.Equal("/data/pdf", documents.Folder);
         Assert.True(documents.IsBound);
     }
 
-    /// <summary>D-06. «Later» is today's behaviour: no rows, nothing bound, the Composer step asks.</summary>
+    /// <summary>
+    /// STUDIO-46 (rewritten from the «later» policy). An input confirmed without a folder reaches
+    /// the Composer as a row still to answer, whose « Choose the folder… » opens the declared
+    /// list — the second way in, unchanged — under the empty-input warning.
+    /// </summary>
     [Fact]
-    public async Task The_later_policy_leaves_the_rows_unanswered_as_before()
+    public async Task An_input_confirmed_without_a_folder_reaches_the_composer_as_a_row_to_answer()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
 
-        Assert.False(vm.HasStepOneRows);
-        Assert.Empty(vm.TeamMounts);
-
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
-        // The Composer's rows are the bare implied roots, and « Choose the folder… » still
-        // opens the declared list — the second way in, unchanged.
-        Assert.Empty(vm.TeamMounts);
-        Assert.All(vm.MountRows, r => Assert.False(r.IsBound));
+        Assert.Equal(["./outmd:/outmd:rw"], vm.TeamMounts);
+        var input = vm.MountRows.Single(r => r.VirtualPath == "/inpdf");
+        Assert.False(input.IsBound);
+        Assert.True(input.CanChooseFolder);
         string? asked = null;
         vm.AllowFolderRequested += (_, e) => asked = e.TargetVirtualPath;
-        vm.BindMountCommand.Execute("/workspace");
-        Assert.Equal("/workspace", asked);
+        vm.BindMountCommand.Execute("/inpdf");
+        Assert.Equal("/inpdf", asked);
         Assert.True(vm.NeedsInputFolder);
     }
 
     /// <summary>
-    /// D-06. The policy chip touches the two canonical roots and nothing else: a third folder
-    /// the user bound stays through every switch; «later» empties the two, «inside the team»
-    /// rewrites the two — even over a real folder — and «existing folders» empties an in-team
-    /// answer so the row offers the picker again.
+    /// STUDIO-46 (rewritten from the policy switch). A renamed row is the name confirmed —
+    /// normalized the way the engine reads it — and a folder chosen under its old name no longer
+    /// answers it: the binding goes, and the row falls back to its default answer.
     /// </summary>
     [Fact]
-    public void Switching_the_policy_rewrites_only_the_two_canonical_rows()
-    {
-        var (vm, _, _) = Build();
-        vm.AddTeamMount(new Orkeon.Studio.Core.FileSystem.MountDefinition
-        {
-            PhysicalPath = "/data/archives", VirtualPath = "/archives",
-            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
-        });
-
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
-        {
-            PhysicalPath = "/data/notes", VirtualPath = "/workspace",
-            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
-        });
-        Assert.Equal(["/data/archives:/archives:ro", "/data/notes:/workspace:ro"], vm.TeamMounts);
-
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-        Assert.Equal(["/data/archives:/archives:ro", "./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
-
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-        Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
-        // The two canonical rows are unanswered again; the folder added at step 1 is the
-        // user's own third row (owner review of 2026-09-19), answered, and untouched.
-        Assert.Equal(["/workspace", "/output", "/archives"], vm.StepOneRows.Select(r => r.VirtualPath));
-        Assert.All(vm.StepOneRows.Where(r => r.HasTitle), r => Assert.True(r.CanChooseFolder));
-        Assert.Equal("/data/archives", vm.StepOneRows[2].Folder);
-
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
-        Assert.Equal(["/data/archives:/archives:ro"], vm.TeamMounts);
-        // «Later» takes the two canonical rows away and leaves the user's own.
-        Assert.True(vm.HasStepOneRows);
-        Assert.Equal(["/archives"], vm.StepOneRows.Select(r => r.VirtualPath));
-    }
-
-    /// <summary>
-    /// D-07. Step 1 knows two roots; a blueprint may address a third. Under «inside the team»
-    /// the third root is answered the way the first two were, as it appears — the user's
-    /// answer, kept for the roots step 1 could not foresee. A root the user dropped stays dropped.
-    /// </summary>
-    [Fact]
-    public async Task Under_inside_team_a_new_deliverable_root_gets_its_own_in_team_row()
+    public async Task A_renamed_folder_is_the_one_confirmed_and_drops_the_folder_chosen_under_its_old_name()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            Assert.Equal(["/data/pdf:/inpdf:ro"], wizard.TeamMounts);
 
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint("/rapports")), Out(Paused)]);
+            wizard.FolderRows[0].VirtualPath = " /Factures ";
+            Assert.Null(wizard.FolderRows[0].Directory);
+            Assert.True(wizard.FolderRows[0].IsUnanswered);
+            Assert.Empty(wizard.TeamMounts);
+
+            wizard.FolderRows[1].VirtualPath = "markdown";
+            Assert.True(wizard.FolderRows[1].IsInsideTeam);
+            Assert.Equal("inside the team: markdown", wizard.FolderRows[1].FolderLabel);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint("/markdown"), Paused);
+
         await Compose(vm);
 
-        Assert.Contains("./rapports:/rapports:rw", vm.TeamMounts);
-        var rapports = vm.MountRows.Single(r => r.VirtualPath == "/rapports");
-        Assert.True(rapports.IsInsideTeam);
-        Assert.True(rapports.IsReadWrite);
-        Assert.Equal("inside the team: rapports", rapports.Folder);
-        Assert.False(rapports.IsUndeclared);
-        // The step-1 /output answer is still there, unclaimed by this blueprint and untouched.
-        Assert.Contains("./output:/output:rw", vm.TeamMounts);
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./rapports:/rapports:rw"], vm.SidecarMounts());
+        Assert.Equal([("/factures", (string?)null), ("/markdown", null)], Confirmed(processes));
+        Assert.Equal(["./markdown:/markdown:rw"], vm.TeamMounts);
+        Assert.Equal(["/markdown", "/factures"], vm.MountRows.Select(r => r.VirtualPath));
+    }
 
-        // Dropping the root sticks: the same blueprint synced again re-answers nothing.
-        vm.RemoveTeamMountCommand.Execute("./rapports:/rapports:rw");
-        vm.RemoveDerivedMountCommand.Execute("/rapports");
-        Assert.DoesNotContain(vm.SidecarMounts(), m => m.EndsWith(":/rapports:rw", StringComparison.Ordinal));
+    /// <summary>
+    /// STUDIO-46 (rewritten from the «inside the team» answer to a new deliverable root). The
+    /// canonical roots are no longer added: a plan whose agent reads and writes under the
+    /// confirmed folders gets /inpdf and /outmd — who reads and who writes named on each — and no
+    /// /workspace or /output, neither on screen nor in the sidecar. A folder dropped stays dropped.
+    /// </summary>
+    [Fact]
+    public async Task The_canonical_roots_are_not_added_when_the_request_names_other_folders()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint(), Paused);
+
+        await Compose(vm);
+
+        Assert.Equal(["/inpdf", "/outmd"], vm.DerivedMounts.Select(m => m.VirtualPath));
+        Assert.Equal("A", vm.MountRows.Single(r => r.VirtualPath == "/inpdf").Agents);
+        Assert.Equal("A", vm.MountRows.Single(r => r.VirtualPath == "/outmd").Agents);
+        Assert.DoesNotContain(vm.SidecarMounts(), m => m.Contains(":/workspace:", StringComparison.Ordinal) || m.Contains(":/output:", StringComparison.Ordinal));
+
+        // Dropping the output sticks: nothing re-answers it at the next sync.
+        vm.RemoveTeamMountCommand.Execute("./outmd:/outmd:rw");
+        vm.RemoveDerivedMountCommand.Execute("/outmd");
+        Assert.DoesNotContain(vm.SidecarMounts(), m => m.EndsWith(":/outmd:rw", StringComparison.Ordinal));
+        Assert.True(vm.HasDroppedDerivedRoots);
     }
 
     /// <summary>D-08. The global button answers every row still offering it, in one gesture.</summary>
@@ -1751,21 +1797,24 @@ public partial class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// D-08. A folder inside the team is vouched for by that alone, before the folder exists and
-    /// before the team does — it never reads red, on a fresh creation or a reopened one; a real
-    /// folder the settings do not declare still does.
+    /// D-08, on the STUDIO-46 flow. A folder inside the team is vouched for by that alone,
+    /// before the folder exists and before the team does — it never reads red; a real folder the
+    /// settings do not declare still does.
     /// </summary>
     [Fact]
     public async Task An_in_team_row_never_reads_undeclared()
     {
         var (vm, processes, _) = Build(declaredMounts: () => []);
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-        Assert.All(vm.StepOneRows, r => Assert.False(r.IsUndeclared));
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.FolderRows[0].InsideTeamCommand.Execute(null);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
+        Assert.All(vm.MountRows, r => Assert.True(r.IsInsideTeam));
         Assert.All(vm.MountRows, r => Assert.False(r.IsUndeclared));
         Assert.False(vm.HasUndeclaredTeamMounts);
 
@@ -1779,9 +1828,10 @@ public partial class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// The adoption writes <c>./input:/workspace:ro</c> / <c>./output:/output:rw</c> into the
-    /// sidecar for the in-team answers, and the save creates the folders under the team —
-    /// the team is a folder one carries.
+    /// STUDIO-46. « Inside the team » works before the adoption: an input kept there is read by
+    /// the trial from the working session — the trial is a plain resume, no <c>--read</c> — and
+    /// the adoption writes <c>./inpdf:/inpdf:ro</c> / <c>./outmd:/outmd:rw</c> into the sidecar,
+    /// the save creating the folders under the team (the engine moves the session's copy in).
     /// </summary>
     [Fact]
     public async Task Adoption_writes_relative_paths_for_in_team_folders()
@@ -1792,17 +1842,22 @@ public partial class CreateTeamWizardTests
         {
             var (vm, processes, _) = Build(teamsRoot: root);
             FillStepOne(vm);
-            Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-            processes.OutputToEmit.AddRange(
-            [
-                Out(SessionStarted),
-                Out(ReadingWritingBlueprint()),
-                Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
-            ]);
+            ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+            {
+                wizard.FolderRows[0].InsideTeamCommand.Execute(null);
+                wizard.ConfirmFoldersCommand.Execute(null);
+            }, PdfBlueprint(), Paused);
             await Compose(vm);
+
+            Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
+            Assert.True(vm.TrialReadsInsideTeam);
+
+            processes.OutputToEmit.Add(Out("""{"v":2,"seq":3,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
+            await vm.TryTeamCommand.ExecuteAsync();
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[^1].Arguments);
+
             vm.TeamName = "Veille docs";
             Assert.True(vm.CanSaveTeam);
-
             processes.OutputToEmit.Clear();
             processes.OutputToEmit.AddRange(
             [
@@ -1812,12 +1867,12 @@ public partial class CreateTeamWizardTests
             await vm.SaveTeamCommand.ExecuteAsync();
 
             var team = TeamCatalog.Describe(promoted);
-            Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], team.Metadata!.Mounts);
+            Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], team.Metadata!.Mounts);
             Assert.Equal(
-                [$"{Path.Combine(promoted, "input")}:/workspace:ro", $"{Path.Combine(promoted, "output")}:/output:rw"],
+                [$"{Path.Combine(promoted, "inpdf")}:/inpdf:ro", $"{Path.Combine(promoted, "outmd")}:/outmd:rw"],
                 team.Mounts);
-            Assert.True(Directory.Exists(Path.Combine(promoted, "input")));
-            Assert.True(Directory.Exists(Path.Combine(promoted, "output")));
+            Assert.True(Directory.Exists(Path.Combine(promoted, "inpdf")));
+            Assert.True(Directory.Exists(Path.Combine(promoted, "outmd")));
         }
         finally
         {
@@ -1893,7 +1948,8 @@ public partial class CreateTeamWizardTests
             Assert.Equal("/data/docs", docs.Folder);
             // Reopened: the read root is inside a team that EXISTS, so the trial has a folder.
             Assert.False(vm.TrialReadsInsideTeam);
-            Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
+            // No Folders step: a reopened team's folders are its sidecar's.
+            Assert.Empty(vm.FolderRows);
         }
         finally
         {
@@ -1902,33 +1958,33 @@ public partial class CreateTeamWizardTests
     }
 
     /// <summary>
-    /// D-09 (P-2). The folder step 1 bound behind <c>/workspace</c> is what the trial reads:
-    /// the compose and the resume both carry <c>--read</c> with it.
+    /// D-09 (P-2), rewritten for STUDIO-46. The folder bound on the Folders step is what the
+    /// trial reads: it travels with the confirmation as the folder's <c>dir</c>, which the engine
+    /// keeps — so neither the compose nor the trial carries <c>--read</c> for it.
     /// </summary>
     [Fact]
     public async Task The_trial_reads_the_folder_bound_at_step_one()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-        vm.BindTeamMount("/workspace", new Orkeon.Studio.Core.FileSystem.MountDefinition
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
         {
-            PhysicalPath = "/data/notes", VirtualPath = "/workspace",
-            Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
-        });
+            wizard.BindTeamMount("/inpdf", Folder("/data/notes", "/inpdf"));
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
+        Assert.Equal("/data/notes", Confirmed(processes)[0].Dir);
         var compose = processes.Requests[0].Arguments.ToList();
-        Assert.Equal("/data/notes", compose[compose.IndexOf("--read") + 1]);
+        Assert.DoesNotContain("--read", compose);
         Assert.Contains("--dry", compose);
 
         processes.OutputToEmit.Clear();
         processes.OutputToEmit.Add(Out(Paused));
         await vm.TryTeamCommand.ExecuteAsync();
 
-        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl", "--read", "/data/notes"], processes.Requests[^1].Arguments);
+        Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[^1].Arguments);
         Assert.False(vm.TrialReadsInsideTeam);
     }
 
@@ -1958,182 +2014,179 @@ public partial class CreateTeamWizardTests
         }
     }
 
-    /// <summary>D-07. «Recommencer» forgets the two answers and the chip behind them.</summary>
+    /// <summary>D-07, rewritten for STUDIO-46: «Recommencer» forgets the folders and their answers.</summary>
     [Fact]
     public async Task Restart_forgets_the_step_one_folders_and_the_policy()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-        // A mount point the user named goes with the creation being abandoned too.
-        vm.NewRootName = "archives";
-        vm.AddNamedRootCommand.Execute(null);
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            wizard.FolderRows[0].InsideTeamCommand.Execute(null);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
         await Compose(vm);
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./archives:/archives:ro"], vm.TeamMounts);
+        Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
+        Assert.NotEmpty(vm.FolderRows);
         Assert.True(vm.RestartCommand.CanExecute(null));
 
         vm.RestartCommand.Execute(null);
 
         Assert.Empty(vm.TeamMounts);
-        Assert.Empty(vm.NamedRoots);
-        Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
-        Assert.True(Policy(vm, FolderPolicy.Later).IsSelected);
-        Assert.False(vm.HasStepOneRows);
+        Assert.Empty(vm.FolderRows);
+        Assert.False(vm.IsFoldersStep);
+        Assert.Empty(vm.MountRows);
     }
 
     /// <summary>
-    /// Owner review of 2026-09-19: the two canonical rows were a start, not a limit. A team
-    /// addresses as many mount points as its need names, and step 1 takes them by name — a
-    /// row each, answered like the canonical ones, kept across the compose.
+    /// Owner review of 2026-09-19, on the STUDIO-46 flow: a team addresses as many folders as its
+    /// request names — a row each, answered by a real folder or inside the team, and all of them
+    /// reach the Composer.
     /// </summary>
     [Fact]
     public async Task Any_number_of_folders_can_be_named_at_step_one_and_they_survive_the_compose()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
+        ScriptFoldersStep(vm, processes, [("/factures", "input"), ("/archives", "input"), ("/rapports", "output")], wizard =>
+        {
+            Assert.Equal(3, wizard.FolderRows.Count);
+            wizard.BindTeamMount("/factures", Folder("/data/factures", "/factures"));
+            wizard.FolderRows[1].InsideTeamCommand.Execute(null);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint("/rapports"), Paused);
 
-        // Two more mount points, typed as the user types them: a slash, a capital, a space.
-        vm.NewRootName = " /Factures ";
-        Assert.True(vm.CanAddNamedRoot);
-        vm.AddNamedRootCommand.Execute(null);
-        vm.NewRootName = "rapports";
-        vm.NewRootIsReadWrite = true;
-        vm.AddNamedRootCommand.Execute(null);
-
-        Assert.Equal("", vm.NewRootName);
-        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
-        var rows = vm.StepOneRows;
-        Assert.Equal(["/workspace", "/output", "/factures", "/rapports"], rows.Select(r => r.VirtualPath));
-        var factures = rows[2];
-        Assert.False(factures.HasTitle);
-        Assert.False(factures.HasFolder);
-        Assert.False(factures.IsReadWrite);
-        Assert.True(factures.CanChooseFolder);
-        Assert.True(factures.CanCreateInsideTeam);
-        Assert.True(factures.IsDroppable);
-        Assert.True(rows[3].IsReadWrite);
-        Assert.True(vm.CanCompose);
-
-        // Answered the two ways the canonical rows are: a real folder, a folder inside the team.
-        vm.BindTeamMount("/factures", new Orkeon.Studio.Core.FileSystem.MountDefinition { PhysicalPath = "/data/factures", VirtualPath = "/factures", Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly });
-        vm.CreateInsideTeamCommand.Execute("/rapports");
-        Assert.Equal(["/data/factures:/factures:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
-        Assert.True(vm.StepOneRows[3].IsInsideTeam);
-
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
-        // Both answers survived the compose, next to the blueprint's own roots.
         Assert.Equal(2, vm.Step);
-        Assert.Equal(["/data/factures:/factures:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
+        Assert.Equal(["/data/factures:/factures:ro", "./archives:/archives:ro", "./rapports:/rapports:rw"], vm.TeamMounts);
         Assert.Contains(vm.MountRows, r => r.VirtualPath == "/factures" && r.Folder == "/data/factures");
-        Assert.Contains(vm.MountRows, r => r.VirtualPath == "/rapports" && r.IsInsideTeam);
-        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
+        Assert.Contains(vm.MountRows, r => r.VirtualPath == "/archives" && r.IsInsideTeam);
+        Assert.Contains(vm.MountRows, r => r.VirtualPath == "/rapports" && r.IsInsideTeam && r.IsReadWrite);
     }
 
-    /// <summary>Under «Created inside the team» a newly named mount point is answered inside at once.</summary>
+    /// <summary>
+    /// STUDIO-46: « Inside the team » on a row answers it at once — the accent label, the button
+    /// greyed — and a folder chosen afterwards replaces that answer.
+    /// </summary>
     [Fact]
-    public void A_folder_named_under_inside_the_team_is_answered_inside_at_once()
+    public async Task A_folder_named_under_inside_the_team_is_answered_inside_at_once()
     {
-        var (vm, _, _) = Build();
+        var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            var row = wizard.FolderRows[0];
+            row.InsideTeamCommand.Execute(null);
+            Assert.True(row.IsInsideTeam);
+            Assert.Equal("inside the team: inpdf", row.FolderLabel);
+            Assert.False(row.InsideTeamCommand.CanExecute(null));
 
-        vm.NewRootName = "archives";
-        vm.AddNamedRootCommand.Execute(null);
+            wizard.BindTeamMount("/inpdf", Folder("/data/pdf", "/inpdf"));
+            Assert.False(row.IsInsideTeam);
+            Assert.True(row.InsideTeamCommand.CanExecute(null));
+            row.InsideTeamCommand.Execute(null);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        Assert.Equal(["./input:/workspace:ro", "./output:/output:rw", "./archives:/archives:ro"], vm.TeamMounts);
-        Assert.All(vm.StepOneRows, r => Assert.True(r.IsInsideTeam));
-        Assert.Equal("inside the team: archives", vm.StepOneRows[2].Folder);
+        await Compose(vm);
+
+        Assert.Equal([("/inpdf", (string?)null), ("/outmd", null)], Confirmed(processes));
+        Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
         Assert.False(vm.HasUndeclaredTeamMounts);
     }
 
     /// <summary>
-    /// A named mount point left unanswered is a question the Composer step still shows, and
-    /// adoption answers it the way it answers a derived root: its own folder inside the team.
+    /// An input confirmed without a folder is a question the Composer still shows, and adoption
+    /// answers it the way it answers every unanswered folder: its own folder inside the team.
     /// </summary>
     [Fact]
     public async Task A_named_folder_left_unanswered_stays_a_row_and_is_created_inside_the_team_at_adoption()
     {
         var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-        vm.NewRootName = "rapports";
-        vm.NewRootIsReadWrite = true;
-        vm.AddNamedRootCommand.Execute(null);
+        ScriptFoldersStep(vm, processes, [("/factures", "input"), ("/rapports", "output")],
+            wizard => wizard.ConfirmFoldersCommand.Execute(null), PdfBlueprint("/rapports"), Paused);
 
-        processes.OutputToEmit.AddRange([Out(SessionStarted), Out(ReadingWritingBlueprint()), Out(Paused)]);
         await Compose(vm);
 
-        var row = Assert.Single(vm.MountRows, r => r.VirtualPath == "/rapports");
+        var row = Assert.Single(vm.MountRows, r => r.VirtualPath == "/factures");
         Assert.False(row.HasFolder);
         Assert.True(row.CanCreateInsideTeam);
-        Assert.Contains("./rapports:/rapports:rw", vm.SidecarMounts());
+        Assert.Equal(["./rapports:/rapports:rw", "./factures:/factures:ro"], vm.SidecarMounts());
     }
 
-    /// <summary>An empty, reserved, malformed or already-asked name cannot be added.</summary>
-    [Fact]
-    public void A_folder_name_that_is_empty_reserved_malformed_or_already_a_row_cannot_be_added()
-    {
-        var (vm, _, _) = Build();
-        FillStepOne(vm);
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-
-        foreach (var name in new[] { "", "   ", "/", "crew", "llm-logs", "output", "Workspace", "mes factures", "a:b", "x/y" })
-        {
-            vm.NewRootName = name;
-            Assert.False(vm.CanAddNamedRoot, name);
-            Assert.False(vm.AddNamedRootCommand.CanExecute(null), name);
-        }
-
-        vm.NewRootName = "factures";
-        vm.AddNamedRootCommand.Execute(null);
-        vm.NewRootName = "/Factures/";
-        Assert.False(vm.CanAddNamedRoot);
-        Assert.Equal(["/factures"], vm.NamedRoots);
-    }
+    private static readonly string[] RefusedFolderNames =
+        ["", "   ", "/", "crew", "llm-logs", "forge", "mes factures", "a:b", "x/y", "a#b", ".."];
 
     /// <summary>
-    /// The ✕ of an unanswered named row forgets the mount point; the ✕ of its answer keeps
-    /// the question; «Later» hides the canonical rows and never a named one (« Restart »
-    /// forgets them all — asserted with the step-1 folders above).
+    /// STUDIO-46: a name that is empty, reserved, malformed or another row's blocks the
+    /// confirmation, and says why; a name typed the way a user types it is normalized.
     /// </summary>
     [Fact]
-    public void Dropping_a_named_folder_forgets_it_and_later_keeps_it_visible()
+    public async Task A_folder_name_that_is_empty_reserved_malformed_or_already_a_row_cannot_be_added()
     {
-        var (vm, _, _) = Build();
+        var (vm, processes, _) = Build();
         FillStepOne(vm);
-        Policy(vm, FolderPolicy.ExistingFolders).SelectCommand.Execute(null);
-        vm.NewRootName = "factures";
-        vm.AddNamedRootCommand.Execute(null);
-        vm.NewRootName = "rapports";
-        vm.AddNamedRootCommand.Execute(null);
-        vm.CreateInsideTeamCommand.Execute("/rapports");
+        ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+        {
+            var row = wizard.FolderRows[0];
+            foreach (var name in RefusedFolderNames)
+            {
+                row.VirtualPath = name;
+                Assert.True(wizard.HasFoldersProblem, name);
+                Assert.False(wizard.ConfirmFoldersCommand.CanExecute(null), name);
+            }
 
-        // The answer goes, the question stays.
-        vm.RemoveTeamMountCommand.Execute("./rapports:/rapports:ro");
-        Assert.Empty(vm.TeamMounts);
-        Assert.Equal(["/factures", "/rapports"], vm.NamedRoots);
-        Assert.Equal(4, vm.StepOneRows.Count);
+            Assert.Equal("« crew » is not a folder name: one word of letters, digits, - _ or ., and not a name the runner keeps for itself.",
+                RowProblem(wizard, row, "crew"));
+            Assert.Equal("/outmd is listed twice.", RowProblem(wizard, row, "/OUTMD"));
 
-        // The question goes.
-        vm.RemoveDerivedMountCommand.Execute("/factures");
-        Assert.Equal(["/rapports"], vm.NamedRoots);
-        Assert.Equal(["/workspace", "/output", "/rapports"], vm.StepOneRows.Select(r => r.VirtualPath));
+            row.VirtualPath = "/Factures/";
+            Assert.False(wizard.HasFoldersProblem);
+            wizard.ConfirmFoldersCommand.Execute(null);
+        }, PdfBlueprint(), Paused);
 
-        // «Later» hides the two canonical rows, never a named one.
-        Policy(vm, FolderPolicy.Later).SelectCommand.Execute(null);
-        Assert.True(vm.HasStepOneRows);
-        Assert.Equal(["/rapports"], vm.StepOneRows.Select(r => r.VirtualPath));
+        await Compose(vm);
+
+        Assert.Equal([("/factures", (string?)null), ("/outmd", null)], Confirmed(processes));
+
+        static string RowProblem(CreateTeamViewModel wizard, WizardFolderRow row, string name)
+        {
+            row.VirtualPath = name;
+            return wizard.FoldersProblem;
+        }
+    }
+
+    /// <summary>
+    /// STUDIO-46: the panel shows while the engine waits for it, and only then — a list with no
+    /// output cannot be confirmed, and a session that ends without an answer takes the panel away.
+    /// </summary>
+    [Fact]
+    public async Task Dropping_a_named_folder_forgets_it_and_later_keeps_it_visible()
+    {
+        var (vm, processes, _) = Build();
+        FillStepOne(vm);
+        Assert.False(vm.IsFoldersStep);
+        ScriptFoldersStep(vm, processes, [("/inpdf", "input")], wizard =>
+        {
+            Assert.True(wizard.IsFoldersStep);
+            Assert.Equal("At least one folder must receive the team's results.", wizard.FoldersProblem);
+            Assert.False(wizard.ConfirmFoldersCommand.CanExecute(null));
+            processes.Emit(Out("""{"v":2,"seq":9,"ts":"t","kind":"session.finished","status":"abandoned","exitCode":0}"""));
+        });
+
+        await Compose(vm);
+
+        Assert.False(vm.IsFoldersStep);
+        Assert.Empty(processes.InputLines);
         Assert.Empty(vm.TeamMounts);
     }
 
     /// <summary>
-    /// D-07. «Modifier» on a card opens ANOTHER creation: the step-1 answers of the one under
-    /// way must not leak into the sidecar of the team the user came to edit — nor its policy,
-    /// which would answer that team's new roots on its own.
+    /// D-07, on the STUDIO-46 flow. «Modifier» on a card opens ANOTHER creation: the folders the
+    /// creation under way confirmed must not leak into the sidecar of the team the user came to
+    /// edit, nor its Folders step stay on screen.
     /// </summary>
     [Fact]
     public async Task Reopening_a_team_drops_the_step_one_folders_of_the_creation_under_way()
@@ -2143,20 +2196,25 @@ public partial class CreateTeamWizardTests
         {
             var (vm, processes, _) = Build(teamsRoot: Path.Combine(root, "teams"));
             FillStepOne(vm);
-            Policy(vm, FolderPolicy.InsideTeam).SelectCommand.Execute(null);
-            Assert.Equal(["./input:/workspace:ro", "./output:/output:rw"], vm.TeamMounts);
+            ScriptFoldersStep(vm, processes, PdfFolders, wizard =>
+            {
+                wizard.FolderRows[0].InsideTeamCommand.Execute(null);
+                wizard.ConfirmFoldersCommand.Execute(null);
+            }, PdfBlueprint(), Paused);
+            await Compose(vm);
+            Assert.Equal(["./inpdf:/inpdf:ro", "./outmd:/outmd:rw"], vm.TeamMounts);
+
             processes.NextRuns.Enqueue(FoundStream(sessionDir, teamDir));
             processes.OutputToEmit.Add(Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""));
 
             await vm.ReopenTeamAsync(TeamCatalog.Describe(teamDir));
 
             Assert.Equal(["/data/docs:/docs:ro"], vm.TeamMounts);
-            Assert.Equal(FolderPolicy.Later, vm.FolderPolicy);
-            // The reopened team's own derived roots were NOT answered by the stale policy.
+            Assert.Empty(vm.FolderRows);
+            // The reopened team's session holds no folder list: what its plan addresses.
             Assert.Equal(["/data/docs:/docs:ro", "./input:/workspace:ro", "./output:/output:rw"], vm.SidecarMounts());
             Assert.Contains(vm.MountRows, r => r is { VirtualPath: "/workspace", IsBound: false });
-            // No step-1 folder, no --read: the argv is the one the golden test pins.
-            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[1].Arguments);
+            Assert.Equal(["forge", "resume", "veille", "--events", "jsonl"], processes.Requests[^1].Arguments);
         }
         finally
         {
@@ -2431,8 +2489,8 @@ public partial class CreateTeamWizardTests
     private static string SelectFolderTitle => EnglishStudioStrings.Instance[StudioStringKeys.DialogSelectMountFolder];
 
     /// <summary>
-    /// P-3. One gesture: the wizard's « Choose the folder… » under «existing folders» opens the
-    /// OS folder dialog; the pick is declared in the settings under the row's rights, saved,
+    /// P-3. One gesture: the wizard's « Choose the folder… » — a row of the Folders step, or
+    /// step 1 (STUDIO-46) — opens the OS folder dialog; the pick is declared in the settings under the row's rights, saved,
     /// and bound behind the row — and the status line says so. No in-app modal in between.
     /// </summary>
     [Fact]
@@ -2441,7 +2499,6 @@ public partial class CreateTeamWizardTests
         var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
         picker.FolderToReturn = "/data/factures";
         var wizard = shell.CreateTeam;
-        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/output");
 
@@ -2463,7 +2520,7 @@ public partial class CreateTeamWizardTests
         Assert.Contains("/data/factures:/output:rw", store.LastSavedJson, StringComparison.Ordinal);
         // And the team binds that very entry, verbatim — id included.
         Assert.Equal([declared], wizard.TeamMounts);
-        var row = wizard.StepOneRows.Single(r => r.VirtualPath == "/output");
+        var row = wizard.MountRows.Single(r => r.VirtualPath == "/output");
         Assert.Equal("/data/factures", row.Folder);
         Assert.False(row.IsUndeclared);
         Assert.Equal(entry.ShortId, row.ShortId);
@@ -2482,7 +2539,6 @@ public partial class CreateTeamWizardTests
         picker.FolderToReturn = "/data/factures";
         shell.Config.Mounts.Load(["/data/factures:/factures:ro"]);
         var wizard = shell.CreateTeam;
-        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/output");
 
@@ -2493,7 +2549,7 @@ public partial class CreateTeamWizardTests
         Assert.NotEqual(entries[0].Id, entries[1].Id);
         Assert.NotEmpty(store.SavedPaths);
         Assert.Equal([entries[1].ToMountString()], wizard.TeamMounts);
-        Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/output").IsUndeclared);
+        Assert.False(wizard.MountRows.Single(r => r.VirtualPath == "/output").IsUndeclared);
     }
 
     /// <summary>
@@ -2507,7 +2563,6 @@ public partial class CreateTeamWizardTests
         picker.FolderToReturn = "/data/factures";
         shell.Config.Mounts.Load(["/data/factures:/output:rw"]);
         var wizard = shell.CreateTeam;
-        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/output");
 
@@ -2568,7 +2623,6 @@ public partial class CreateTeamWizardTests
         picker.FolderToReturn = "/data/factures";
         store.SaveFault = new IOException("disk full");
         var wizard = shell.CreateTeam;
-        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
 
         wizard.BindMountCommand.Execute("/workspace");
 
@@ -2576,7 +2630,7 @@ public partial class CreateTeamWizardTests
         Assert.Equal("/data/factures:/workspace:ro", Orkeon.Studio.Core.FileSystem.MountDefinition.Parse(declared).WithoutId().ToMountString());
         Assert.Empty(store.SavedPaths);
         Assert.Equal([declared], wizard.TeamMounts);
-        Assert.False(wizard.StepOneRows.Single(r => r.VirtualPath == "/workspace").IsUndeclared);
+        Assert.False(wizard.MountRows.Single(r => r.VirtualPath == "/workspace").IsUndeclared);
         Assert.StartsWith("“factures” added, but the settings could not be saved — ", wizard.StatusMessage, StringComparison.Ordinal);
         Assert.Contains("disk full", wizard.StatusMessage, StringComparison.Ordinal);
     }
@@ -2588,7 +2642,6 @@ public partial class CreateTeamWizardTests
         var (shell, store, picker) = Shell(new FakeDirectoryProbe("/data/factures"));
         picker.FolderToReturn = null;
         var wizard = shell.CreateTeam;
-        wizard.FolderPolicy = FolderPolicy.ExistingFolders;
         var statusBefore = wizard.StatusMessage;
 
         wizard.BindMountCommand.Execute("/output");
@@ -2597,7 +2650,7 @@ public partial class CreateTeamWizardTests
         Assert.Empty(shell.Config.Mounts.CurrentMountStrings);
         Assert.Empty(store.SavedPaths);
         Assert.Empty(wizard.TeamMounts);
-        Assert.True(wizard.StepOneRows.Single(r => r.VirtualPath == "/output").CanChooseFolder);
+        Assert.True(wizard.MountRows.Count == 0);
         Assert.Equal(statusBefore, wizard.StatusMessage);
     }
 

@@ -422,6 +422,9 @@ internal static class ForgeSessionRebuilder
 
         session.SaveArtifact(ForgeSession.BriefFileName, brief);
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint!);
+        // The team's folders, confirmed already (STUDIO-46): the ones its record's brief lists,
+        // else what its plan addresses — the list the trial, the re-adoption and Studio share.
+        session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = ForgeFolders.Of(session) });
         session.Document.Title = record?.Title is { Length: > 0 } title ? title : blueprint!.Crew?.Name;
         // The use case the team was composed from (STUDIO-40): a reopen keeps it, like a resume.
         session.Document.Reference = record?.Reference;

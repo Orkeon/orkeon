@@ -336,7 +336,7 @@ public sealed record CreateTeamDependencies
 /// assistant profile: composing a team and judging a trial are LLM work, and the engine
 /// child receives that profile as environment overrides.
 /// </summary>
-public sealed class CreateTeamViewModel : ObservableObject
+public sealed partial class CreateTeamViewModel : ObservableObject
 {
     private readonly ForgeClient _client;
     private readonly Func<IReadOnlyList<string>> _declaredMounts;
@@ -347,18 +347,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     private readonly IShellOpener? _shellOpener;
     private readonly string _workspace;
     private readonly string _teamsRoot;
-    /// <summary>The step-1 answer to «where are your folders?» (STUDIO-14, D-06).</summary>
-    private FolderPolicy _folderPolicy = FolderPolicy.Later;
-    /// <summary>The derived roots the last sync saw — the derived-set change is what D-07 reacts to.</summary>
-    private IReadOnlyList<string> _seenDerivedRoots = [];
-    /// <summary>
-    /// The mount points the user named beyond the two canonical roots (owner review of
-    /// 2026-09-19): as many as the need calls for, each a row answered like the canonical
-    /// ones, kept across compositions, created inside the team at adoption when left unanswered.
-    /// </summary>
-    private readonly List<NamedRoot> _namedRoots = [];
-    private string _newRootName = "";
-    private bool _newRootIsReadWrite;
     private ForgeSessionModel _model = new();
     private int _runGeneration;
     private string? _saveError;
@@ -429,7 +417,8 @@ public sealed class CreateTeamViewModel : ObservableObject
             CreateAllInsideTeam,
             () => MountRows.Any(row => row.CanCreateInsideTeam));
         OpenFolderCommand = new RelayCommand(OpenFolder, () => CanOpenFolder);
-        AddNamedRootCommand = new RelayCommand(AddNamedRoot, () => CanAddNamedRoot);
+        // STUDIO-46: the Folders step, between the brief and the plan.
+        InitializeFolderStep();
         ToggleAdoptProfilePickerCommand = new RelayCommand(() => IsAdoptProfilePickerOpen = !IsAdoptProfilePickerOpen);
         PickAdoptProfileCommand = new RelayCommand(PickAdoptProfile);
         RemoveTeamMountCommand = new RelayCommand(RemoveTeamMount, IsStringParameter);
@@ -446,16 +435,8 @@ public sealed class CreateTeamViewModel : ObservableObject
 
         // Step 1 asks the need and nothing else (STUDIO-45): how often, where from and what
         // out went — the forge asks about input and output only when the need leaves them
-        // unsaid, and step 4 schedules. What stays is where the folders live (STUDIO-14,
-        // D-06): it answers the two rows below it, and «Later» is the default because
-        // choosing must be possible, never due. CanCompose does not read it.
-        FolderPolicyChoices =
-        [
-            PolicyChoice(StudioStringKeys.WizardFoldersExisting, FolderPolicy.ExistingFolders),
-            PolicyChoice(StudioStringKeys.WizardFoldersInside, FolderPolicy.InsideTeam),
-            PolicyChoice(StudioStringKeys.WizardFoldersLater, FolderPolicy.Later),
-        ];
-        SyncPolicyChips();
+        // unsaid, and step 4 schedules. Where the folders live went too (STUDIO-46): the
+        // forge proposes them from the request, and the Folders step answers them.
 
         // The recap and the brief chips read what the forge validated: what comes in and
         // what comes out, once its brief has settled them (STUDIO-45).
@@ -543,8 +524,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         PickFolderRequested?.Invoke(this, new PickFolderRequestedEventArgs(targetVirtualPath, rights));
 
     /// <summary>
-    /// A row's « Choose the folder… » (D-10): the disk picker under the existing-folders
-    /// policy and from step 1 — where the question IS «which real folder» — the list of
+    /// A row's « Choose the folder… » (D-10): the disk picker while the folders are being
+    /// confirmed or from step 1 — where the question IS «which real folder» — the list of
     /// declared folders otherwise, the second way in.
     /// </summary>
     private void BindMount(object? parameter)
@@ -552,23 +533,14 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (parameter is not string virtualPath)
             return;
 
-        if (_folderPolicy == FolderPolicy.ExistingFolders || IsStep1)
+        if (IsStep1 || _model.FoldersPending)
             RequestPickFolder(virtualPath, RowRights(virtualPath));
         else
             RequestAllowFolder(virtualPath);
     }
 
-    /// <summary>
-    /// « Allow a folder », the Composer step's untargeted button: the disk picker under the
-    /// existing-folders policy — the same door as the rows — and the declared list otherwise.
-    /// </summary>
-    private void AllowFolder()
-    {
-        if (_folderPolicy == FolderPolicy.ExistingFolders)
-            RequestPickFolder(null, MountRights.ReadOnly);
-        else
-            RequestAllowFolder(null);
-    }
+    /// <summary>« Allow a folder », the Composer step's untargeted button: the declared list.</summary>
+    private void AllowFolder() => RequestAllowFolder(null);
 
     private void PickFolder(object? parameter)
     {
@@ -612,9 +584,9 @@ public sealed class CreateTeamViewModel : ObservableObject
             return mount.Rights;
         }
 
-        // A mount point the user named carries the rights the user gave it.
-        if (_namedRoots.FirstOrDefault(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } named)
-            return named.Rights;
+        // A folder of the Folders step carries the rights of its role (STUDIO-46).
+        if (FolderRows.FirstOrDefault(row => string.Equals(row.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } row)
+            return row.Rights;
 
         if (_model.DerivedMounts.FirstOrDefault(d => string.Equals(d.VirtualPath, virtualPath, StringComparison.Ordinal)) is { } derived)
             return derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
@@ -630,65 +602,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (FolderToOpen() is { } folder)
             _shellOpener?.Open(folder);
     }
-
-    private WizardChoice PolicyChoice(string labelKey, FolderPolicy policy) =>
-        new(policy.ToString(), _strings[labelKey], _ => SetFolderPolicy(policy));
-
-    /// <summary>
-    /// Applies a step-1 answer, whether or not it is the current one: picking «Created inside
-    /// the team» again after a row was emptied is a way of asking for the rows back.
-    /// </summary>
-    private void SetFolderPolicy(FolderPolicy policy)
-    {
-        _folderPolicy = policy;
-        SyncPolicyChips();
-        ApplyFolderPolicy();
-        OnPropertyChanged(nameof(FolderPolicy));
-    }
-
-    private void SyncPolicyChips()
-    {
-        foreach (var choice in FolderPolicyChoices)
-            choice.IsSelected = string.Equals(choice.Key, _folderPolicy.ToString(), StringComparison.Ordinal);
-    }
-
-    /// <summary>
-    /// The policy, applied to the two canonical roots and to nothing else (D-06): «inside the
-    /// team» binds both team-relative, «later» empties both, «existing folders» empties an
-    /// in-team answer so the row offers the disk picker again — a real folder already picked
-    /// stays. Any other root on the list is another question's business.
-    /// </summary>
-    private void ApplyFolderPolicy()
-    {
-        foreach (var (root, rights) in CanonicalRoots)
-        {
-            switch (_folderPolicy)
-            {
-                case FolderPolicy.InsideTeam:
-                    BindInsideTeam(root, rights);
-                    break;
-                case FolderPolicy.ExistingFolders:
-                    if (BoundEntry(root) is { } entry && DeclaredMounts.IsInsideTeam(entry, _reopenedTeamPath))
-                        RemoveBinding(root);
-                    break;
-                default:
-                    RemoveBinding(root);
-                    break;
-            }
-        }
-
-        RefreshMountSurfaces();
-    }
-
-    /// <summary>The two roots a team can address before it has a blueprint, with the rights each takes.</summary>
-    private static readonly (string Root, MountRights Rights)[] CanonicalRoots =
-    [
-        (TeamMountPaths.ReadRoot, MountRights.ReadOnly),
-        (TeamMountPaths.WriteRoot, MountRights.ReadWrite),
-    ];
-
-    private static bool IsCanonicalRoot(string? virtualPath) =>
-        virtualPath is not null && CanonicalRoots.Any(c => string.Equals(c.Root, virtualPath, StringComparison.Ordinal));
 
     /// <summary>The team-mount entry bound behind <paramref name="virtualPath"/>, if any.</summary>
     private string? BoundEntry(string virtualPath) =>
@@ -716,65 +629,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         TeamMounts.Add(TeamMountPaths.InsideTeam(virtualPath, rights));
     }
 
-    /// <summary>
-    /// Keeps the answers of the two canonical roots and drops every other entry (D-07): the
-    /// rest belonged to the blueprint being replaced, the step-1 answers belong to the user.
-    /// </summary>
-    private void KeepOnlyStepOneMounts()
-    {
-        foreach (var entry in TeamMounts.ToList())
-        {
-            if (!IsStepOneRoot(VirtualPathOf(entry)))
-                TeamMounts.Remove(entry);
-        }
-    }
-
-    /// <summary>
-    /// Forgets the step-1 answers — the two roots and the policy behind them. Resuming or
-    /// reopening opens ANOTHER creation: a stale step-1 choice must not leak into the sidecar
-    /// of a team the user came to edit (D-07).
-    /// </summary>
-    private void ClearStepOneFolders()
-    {
-        foreach (var (root, _) in CanonicalRoots)
-            RemoveBinding(root);
-
-        foreach (var named in _namedRoots)
-            RemoveBinding(named.VirtualPath);
-        _namedRoots.Clear();
-        NewRootName = "";
-        OnPropertyChanged(nameof(NamedRoots));
-
-        _folderPolicy = FolderPolicy.Later;
-        SyncPolicyChips();
-        OnPropertyChanged(nameof(FolderPolicy));
-    }
-
-    /// <summary>
-    /// The step-1 answer, kept for the roots step 1 could not foresee (D-07): when the set of
-    /// derived roots changes — every <c>blueprint.ready</c> brings one — «Created inside the
-    /// team» answers each root neither claimed nor dropped the way it answered the first two.
-    /// The other two policies answer nothing by themselves; the row offers « Choose the
-    /// folder… » and « Create inside the team » instead. Snapshotted on the virtual paths so
-    /// the same set, synced again, binds nothing twice and re-answers no row the user emptied.
-    /// </summary>
-    private void AnswerNewDerivedRoots()
-    {
-        var derivedRoots = _model.DerivedMounts.Select(d => d.VirtualPath).ToList();
-        if (derivedRoots.SequenceEqual(_seenDerivedRoots, StringComparer.Ordinal))
-            return;
-
-        _seenDerivedRoots = derivedRoots;
-        if (_folderPolicy != FolderPolicy.InsideTeam)
-            return;
-
-        foreach (var derived in _model.DerivedMounts)
-        {
-            if (BoundEntry(derived.VirtualPath) is null && !_droppedDerivedRoots.Contains(derived.VirtualPath))
-                BindInsideTeam(derived.VirtualPath, derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly);
-        }
-    }
-
     private void PickAdoptProfile(object? parameter)
     {
         if (parameter is not string profileName)
@@ -798,18 +652,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (parameter is not string virtualPath)
             return;
 
-        // The ✕ of an unanswered row: a mount point the user named is forgotten (owner
-        // review of 2026-09-19), a root the blueprint implies is dropped, with its banner —
-        // and a root that is both goes in one gesture.
-        var forgotten = _namedRoots.RemoveAll(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal)) > 0;
-        var dropped = _droppedDerivedRoots.Add(virtualPath);
-        if (forgotten)
-        {
-            RemoveBinding(virtualPath);
-            OnPropertyChanged(nameof(NamedRoots));
-        }
-
-        if (forgotten || dropped)
+        // The ✕ of an unanswered row: a root the team addresses is dropped, with its banner.
+        if (_droppedDerivedRoots.Add(virtualPath))
             RefreshMountSurfaces();
     }
 
@@ -1091,180 +935,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         _strings[StudioStringKeys.ForgeExample3],
         _strings[StudioStringKeys.ForgeExample4],
     ];
-
-    // ── step 1 : where the folders live (STUDIO-14, D-06) ──
-
-    /// <summary>The «where are your folders?» chips: existing folders, created inside the team, later.</summary>
-    public IReadOnlyList<WizardChoice> FolderPolicyChoices { get; }
-
-    /// <summary>
-    /// The step-1 answer. Setting it applies it to the two canonical rows (and only them);
-    /// <see cref="FolderPolicy.Later"/> by default — choosing must be possible, never due, so
-    /// <see cref="CanCompose"/> never reads it.
-    /// </summary>
-    public FolderPolicy FolderPolicy
-    {
-        get => _folderPolicy;
-        set => SetFolderPolicy(value);
-    }
-
-    /// <summary>
-    /// The two rows step 1 can answer — <c>/workspace</c> read («Your documents») and
-    /// <c>/output</c> written («The results»), the only roots a blueprint can imply before it
-    /// exists. Same shape as the Composer's rows, so the same template shows them; under
-    /// «existing folders» each offers the disk picker, under «inside the team» each reads
-    /// «inside the team: input / output».
-    /// </summary>
-    public IReadOnlyList<MountRow> StepOneRows
-    {
-        get
-        {
-            var rows = new List<MountRow>();
-            if (_folderPolicy != FolderPolicy.Later)
-            {
-                rows.Add(StepOneRow(TeamMountPaths.ReadRoot, MountRights.ReadOnly, _strings[StudioStringKeys.WizardReadRootTitle]));
-                rows.Add(StepOneRow(TeamMountPaths.WriteRoot, MountRights.ReadWrite, _strings[StudioStringKeys.WizardWriteRootTitle]));
-            }
-
-            // The mount points the user named, after the two canonical ones, in the order
-            // they were added — a row each, answered the same two ways.
-            foreach (var named in _namedRoots)
-                rows.Add(StepOneRow(named.VirtualPath, named.Rights, title: ""));
-
-            return rows;
-        }
-    }
-
-    /// <summary>
-    /// Whether the folder rows and the add form show: «later» with nothing named behaves as
-    /// before, with no rows at all; a mount point the user named shows under every policy.
-    /// </summary>
-    public bool HasStepOneRows => _folderPolicy != FolderPolicy.Later || _namedRoots.Count > 0;
-
-    private MountRow StepOneRow(string virtualPath, MountRights rights, string title)
-    {
-        if (BoundEntry(virtualPath) is { } entry
-            && MountDefinition.TryParse(entry, out var mount, out _) && mount is not null)
-        {
-            return BoundRow(entry, mount, _declaredMounts(), title);
-        }
-
-        return new MountRow(virtualPath, rights == MountRights.ReadWrite, Agents: AgentsOf(virtualPath), Title: title);
-    }
-
-    // ── any number of folders, named by the user (owner review of 2026-09-19) ──────────
-    // The two canonical rows were a start, not a limit: a team addresses as many mount
-    // points as its need names. A name — the one the agents will use — and the rights make
-    // a row like the canonical ones, answered the same two ways (a real folder, or one
-    // created inside the team), kept across compositions, shown on the Composer step with
-    // the blueprint's own roots, and created inside the team at adoption when left
-    // unanswered. Which of them the agents address is the blueprint's business: the need
-    // has to name them.
-
-    /// <summary>The name of the mount point being added («factures»); cleared once added.</summary>
-    public string NewRootName
-    {
-        get => _newRootName;
-        set
-        {
-            if (!SetProperty(ref _newRootName, value ?? ""))
-                return;
-
-            OnPropertyChanged(nameof(CanAddNamedRoot));
-            AddNamedRootCommand.RaiseCanExecuteChanged();
-        }
-    }
-
-    /// <summary>Whether the mount point being added is written to; read-only until ticked.</summary>
-    public bool NewRootIsReadWrite
-    {
-        get => _newRootIsReadWrite;
-        set => SetProperty(ref _newRootIsReadWrite, value);
-    }
-
-    /// <summary>
-    /// Whether <see cref="NewRootName"/> names a mount point that can be added: well-formed
-    /// (<see cref="TryNormalizeRootName"/>), not reserved by the runner, and not a row already
-    /// — canonical, named, bound or implied by the blueprint.
-    /// </summary>
-    public bool CanAddNamedRoot => TryNormalizeRootName(_newRootName, out var root) && !RootIsTaken(root);
-
-    /// <summary>« Add the folder »: the typed name becomes a row, under every policy.</summary>
-    public RelayCommand AddNamedRootCommand { get; }
-
-    /// <summary>The mount points the user named, in the order they were added.</summary>
-    public IReadOnlyList<string> NamedRoots => [.. _namedRoots.Select(named => named.VirtualPath)];
-
-    private void AddNamedRoot()
-    {
-        if (!TryNormalizeRootName(_newRootName, out var root) || RootIsTaken(root))
-            return;
-
-        var named = new NamedRoot(root, _newRootIsReadWrite);
-        _namedRoots.Add(named);
-        _droppedDerivedRoots.Remove(root);
-        // «Created inside the team» answers a new mount point the way it answered the first
-        // two; the other policies leave the row to its two buttons.
-        if (_folderPolicy == FolderPolicy.InsideTeam)
-            BindInsideTeam(root, named.Rights);
-
-        NewRootName = "";
-        OnPropertyChanged(nameof(NamedRoots));
-        RefreshMountSurfaces();
-    }
-
-    /// <summary>Counts a root bound by another gesture among the named ones, once.</summary>
-    private void RememberNamedRoot(string virtualPath, bool isReadWrite)
-    {
-        if (IsCanonicalRoot(virtualPath) || IsNamedRoot(virtualPath))
-            return;
-
-        _namedRoots.Add(new NamedRoot(virtualPath, isReadWrite));
-        OnPropertyChanged(nameof(NamedRoots));
-    }
-
-    private bool IsNamedRoot(string? virtualPath) =>
-        virtualPath is not null
-        && _namedRoots.Any(named => string.Equals(named.VirtualPath, virtualPath, StringComparison.Ordinal));
-
-    /// <summary>A root that belongs to the user, not to the blueprint: canonical or named.</summary>
-    private bool IsStepOneRoot(string? virtualPath) => IsCanonicalRoot(virtualPath) || IsNamedRoot(virtualPath);
-
-    /// <summary>
-    /// A typed name as the virtual root it means: trimmed, its slashes shed, lowercased the
-    /// way the picker derives a name from a folder, one segment without the characters the
-    /// mount grammar spends (':' ';' whitespace), valid for the runtime and not one of the
-    /// roots it reserves (<see cref="MountDefinition.IsValidVirtualPath"/>).
-    /// </summary>
-    private static bool TryNormalizeRootName(string? text, out string root)
-    {
-        root = "";
-        var name = (text ?? "").Trim().Trim('/', '\\').Trim();
-        if (name.Length == 0 || name.Any(c => char.IsWhiteSpace(c) || c is ':' or ';' or '/' or '\\'))
-            return false;
-
-#pragma warning disable CA1308 // virtual roots are lowercase by convention, not a normalization round-trip
-        var candidate = "/" + name.ToLowerInvariant();
-#pragma warning restore CA1308
-        if (!MountDefinition.IsValidVirtualPath(candidate))
-            return false;
-
-        root = candidate;
-        return true;
-    }
-
-    /// <summary>A root already asked about: canonical, named, bound, or implied by the blueprint.</summary>
-    private bool RootIsTaken(string root) =>
-        IsCanonicalRoot(root)
-        || IsNamedRoot(root)
-        || BoundEntry(root) is not null
-        || _model.DerivedMounts.Any(derived => string.Equals(derived.VirtualPath, root, StringComparison.Ordinal));
-
-    /// <summary>A mount point the user named, with the rights it takes on whatever answers it.</summary>
-    private sealed record NamedRoot(string VirtualPath, bool IsReadWrite)
-    {
-        public MountRights Rights => IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
-    }
 
     /// <summary>
     /// Whether the brief is complete enough to compose: the need is typed (STUDIO-45). What
@@ -1557,7 +1227,7 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// the <c>edit</c> option, so an edit-only arbitration would read as «not waiting».
     /// </para>
     /// </summary>
-    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking;
+    public bool IsEngineWaitingOnUser => _model.DecisionPending || Chat.IsAsking || _model.FoldersPending;
 
     /// <summary>
     /// Whether the trial is genuinely under way.
@@ -1697,19 +1367,6 @@ public sealed class CreateTeamViewModel : ObservableObject
                     Agents: string.Join(", ", derived.Agents ?? [])));
             }
 
-            // A mount point the user named and has not answered yet keeps its row here too
-            // (owner review of 2026-09-19): still a question, with the same two answers.
-            foreach (var named in _namedRoots)
-            {
-                if (claimed.Contains(named.VirtualPath)
-                    || rows.Any(row => string.Equals(row.VirtualPath, named.VirtualPath, StringComparison.Ordinal)))
-                {
-                    continue;
-                }
-
-                rows.Add(new MountRow(named.VirtualPath, named.IsReadWrite, Agents: AgentsOf(named.VirtualPath)));
-            }
-
             return rows;
         }
     }
@@ -1788,14 +1445,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         MountRows.Any(r => r is { IsReadWrite: false, IsUnreadable: false } && (!r.HasFolder || r.IsInsideTeam));
 
     /// <summary>
-    /// Whether the trial has nothing to read yet (STUDIO-14, §10): the read root is bound
-    /// inside a team that does not exist before the adoption, so the engine reads its default
-    /// folder. The step-3 card says so, and where the documents go afterwards.
+    /// Whether the trial reads an input folder kept inside the team (STUDIO-46): before the
+    /// adoption the team does not exist, so the engine holds the folder in the working session —
+    /// readable for the trial, moved into the team at the adoption. The step-3 card says where to
+    /// drop the documents.
     /// </summary>
     public bool TrialReadsInsideTeam =>
         _reopenedTeamPath is null
-        && BoundEntry(TeamMountPaths.ReadRoot) is { } entry
-        && TeamMountPaths.IsTeamRelative(entry);
+        && _model.Folders.Any(folder => folder.IsInput
+            && BoundEntry(folder.Path) is { } entry
+            && TeamMountPaths.IsTeamRelative(entry));
 
     /// <summary>
     /// The virtual roots the blueprint addresses and the user dropped anyway. Nothing will be
@@ -1897,6 +1556,8 @@ public sealed class CreateTeamViewModel : ObservableObject
         // behind it, which is the opposite of dropping it.
         _droppedDerivedRoots.Remove(targetVirtualPath);
         TeamMounts.Add(mount.ToMountString());
+        // The Folders step's row of that name is answered by the same folder (STUDIO-46).
+        AnswerFolderRow(targetVirtualPath, mount);
         RefreshMountSurfaces();
     }
 
@@ -1940,30 +1601,24 @@ public sealed class CreateTeamViewModel : ObservableObject
                 derived.IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly));
         }
 
-        // A mount point the user named and left unanswered gets the default a derived one
-        // gets: its own folder inside the team (owner review of 2026-09-19).
-        foreach (var named in _namedRoots)
-        {
-            if (!claimed.Add(named.VirtualPath))
-                continue;
-
-            mounts.Add(TeamMountPaths.InsideTeam(named.VirtualPath, named.Rights));
-        }
-
         return mounts;
     }
 
     /// <summary>
-    /// The folder the trial reads as <c>/workspace</c> (D-09), or null for the engine's
-    /// default: the physical path of the <see cref="TeamMounts"/> entry bound behind the read
-    /// root — a real folder as it is; a team-relative answer resolved under the team folder
-    /// when one is known (a reopened team retries on its own <c>input/</c>, filled since),
-    /// and null before the team exists, when there is nothing to read yet. A root the
-    /// blueprint merely implies names no folder: the argv stays the one it always was.
+    /// The folder the trial reads behind the first input folder the confirmed list leaves
+    /// unbound (<c>--read</c>, D-09 — the engine gives it to that very folder, STUDIO-46), or
+    /// null for the engine's default: the physical path of the <see cref="TeamMounts"/> entry
+    /// bound behind it — a real folder as it is; a team-relative answer resolved under the team
+    /// folder when one is known (a reopened team retries on its own folder, filled since), and
+    /// null before the team exists, when the engine reads the session's own folder. A session
+    /// with no list reads behind <c>/workspace</c>, as it always did.
     /// </summary>
     private string? ReadRoot()
     {
-        if (BoundEntry(TeamMountPaths.ReadRoot) is not { } entry)
+        var input = _model.Folders.Count == 0
+            ? TeamMountPaths.ReadRoot
+            : _model.Folders.FirstOrDefault(folder => folder.IsInput && folder.Directory is null)?.Path;
+        if (input is null || BoundEntry(input) is not { } entry)
             return null;
 
         if (TeamMountPaths.IsTeamRelative(entry))
@@ -1990,15 +1645,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     {
         RestoreDerivedMountsCommand.RaiseCanExecuteChanged();
         CreateAllInsideTeamCommand.RaiseCanExecuteChanged();
-        AddNamedRootCommand.RaiseCanExecuteChanged();
         OnPropertiesChanged(
             nameof(HasTeamMounts),
             nameof(MountRows),
             nameof(HasMountRows),
-            nameof(StepOneRows),
-            nameof(HasStepOneRows),
-            nameof(NamedRoots),
-            nameof(CanAddNamedRoot),
             nameof(NeedsInputFolder),
             nameof(TrialReadsInsideTeam),
             nameof(HasUndeclaredTeamMounts),
@@ -2016,10 +1666,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         // Claiming a root un-drops it, whichever gesture claimed it: the banner otherwise
         // went on warning that nothing would be bound to a root the user had just bound.
         _droppedDerivedRoots.Remove(mount.VirtualPath);
-        // At step 1 a folder added as picked is one of the user's own mount points: it
-        // survives the compose like the named ones (owner review of 2026-09-19).
-        if (IsStep1)
-            RememberNamedRoot(mount.VirtualPath, mount.Rights != MountRights.ReadOnly);
         RefreshMountSurfaces();
     }
 
@@ -2406,11 +2052,13 @@ public sealed class CreateTeamViewModel : ObservableObject
         if (RefuseWhileEngineBusy())
             return;
 
-        // Another creation than the one under way: its step-1 answers stay with it (D-07).
-        ClearStepOneFolders();
+        // Another creation than the one under way: its Folders step stays with it.
+        ClearFolderStep();
         ForgetUseCases();
         ResetProjection();
         ForgeSessionHydrator.Hydrate(_model, solution.Directory);
+        // The folders it confirmed come back bound as they were (STUDIO-46).
+        SeedFolderBindings();
         // The session's own reference, read back from its file (STUDIO-40, D-01).
         ReferenceUseCaseId = _model.ReferenceUseCaseId;
         SessionActivated?.Invoke(this, EventArgs.Empty);
@@ -2514,7 +2162,7 @@ public sealed class CreateTeamViewModel : ObservableObject
             return;
 
         // Another creation than the one under way: its step-1 answers stay with it (D-07).
-        ClearStepOneFolders();
+        ClearFolderStep();
         ForgetUseCases();
         ResetProjection();
         _reopenedTeamPath = team.Path;
@@ -2991,9 +2639,9 @@ public sealed class CreateTeamViewModel : ObservableObject
     /// </summary>
     private void ResetToStepOne()
     {
-        // The step-1 answers belong to the creation being ended too, policy included — and the
-        // use case it started from (STUDIO-39).
-        ClearStepOneFolders();
+        // The Folders step belongs to the creation being ended too — and the use case it
+        // started from (STUDIO-39).
+        ClearFolderStep();
         ForgetUseCases();
         ResetProjection();
         // The conversation belongs to the creation being ended — unlike ResetProjection,
@@ -3013,14 +2661,12 @@ public sealed class CreateTeamViewModel : ObservableObject
         // The schedule question belonged to the adoption that asked it: a new creation, a resume
         // or a reopen starts without it. An adoption asks again once its folder is written.
         ScheduleOffer.Close();
-        // A new session starts from a clean slate: the previous blueprint's folders were
-        // approved for THAT blueprint, never for the next one; the old engine command lies.
-        // The two step-1 answers survive (D-07) — they are the user's, not the blueprint's —
-        // Restart, Resume and Reopen clear them first. The dropped roots go with the rest —
-        // they were dropped from the previous blueprint.
-        KeepOnlyStepOneMounts();
+        // A new session starts from a clean slate: the previous session's folders were
+        // confirmed for THAT session, never for the next one (STUDIO-46) — the Folders step
+        // answers them again; the old engine command lies. The dropped roots go with the
+        // rest — they were dropped from the previous blueprint.
+        TeamMounts.Clear();
         _droppedDerivedRoots.Clear();
-        _seenDerivedRoots = [];
         _reopenedTeamPath = null;
         RefreshMountSurfaces();
         EngineCommandLine = null;
@@ -3301,7 +2947,7 @@ public sealed class CreateTeamViewModel : ObservableObject
         // for the same reason. This used to be raised only by user gestures, so the chips
         // appeared when the user happened to touch something else — while HasDerivedMounts,
         // being in the batch below, re-evaluated and showed the hint that explains them.
-        AnswerNewDerivedRoots();
+        SyncFolderStep();
         RefreshMountSurfaces();
         OnPropertiesChanged(nameof(CanOpenFolder), nameof(OpenFolderTooltip));
         OpenFolderCommand.RaiseCanExecuteChanged();

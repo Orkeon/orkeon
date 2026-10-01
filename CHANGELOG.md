@@ -7,6 +7,51 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the forge proposes the team's folders from the need, and they are used everywhere (breaking: forge protocol)
+
+« Where are your folders? » always offered `workspace/` and `output/`, never the folders the need
+named, and « Create inside the team » pointed at a folder that existed only after the adoption
+(STUDIO-46). The folders now come from the request, are confirmed once, and are the team's folders
+from the plan to the adopted team.
+
+- **`ForgeBrief.folders[]`** (`path`, `role` `input`|`output`, `purpose`): the forge assistant lists
+  the folders the request names — « …PDFs in `/inpdf`, the Markdown in `/outmd` » — and when it
+  names none the forge proposes `/workspace` to read (only when something comes in) and `/output`
+  to write. A folder is one absolute segment; `/forge` and the runner's roots are refused; at least
+  one output.
+- **Forge protocol** — a new event and a new answer between the brief and the plan:
+  `folders.proposed` (`folders`) out, `folders.confirmed` (`folders`, each with an optional `dir`,
+  the real directory bound behind it) in. `brief.ready` now follows the confirmation and carries
+  the confirmed list. A list that breaks the rules is a recoverable `FORGE-FOLDERS-INVALID`. The
+  terminal and `--auto` take the proposal as it is and print it. **Migration**: a client of
+  `orkeon forge --events jsonl` must answer `folders.proposed` with `folders.confirmed` (sending the
+  proposal back unchanged is a valid answer) — the engine waits for it.
+- **The confirmed list is used everywhere**: kept in the session's `folders.json` (with the bound
+  directories) and in the brief (without them); the plan prompt lists it and a deliverable must
+  land in a confirmed output folder (any one, no longer `/output` only); the crew's `mounts:` block,
+  the trial bench's mounts (through a VFS scope, so a list confirmed mid-run reaches the trial),
+  the deliverable check (`runs/<n>/folders/<name>/`), `forge promote`'s folders and launchers and
+  `forge reopen`'s rebuilt session all follow it. `/workspace` and `/output` are no longer added by
+  default — the trial drops them unless the list holds them.
+- **« Inside the team » works before the adoption**: such a folder lives in the session
+  (`.orkeon/forge/<slug>/folders/<name>`), readable by the trial, and `forge promote` moves it into
+  the team.
+- **`--read <dir>`** now answers the first input folder the confirmed list binds to no directory
+  (`/workspace` when the need named none).
+- **Studio**: the step-1 folders card is gone; a **Folders step** above the conversation shows the
+  proposal — each name editable, its role, « Choose a folder… » (the disk picker, declared on the
+  way) or « Inside the team » (an output's default) — and « Confirm the folders » sends the list.
+  The Composer rows, the tool chips and the sidecar follow the confirmed list
+  (`ForgeSessionModel.Folders`, hydrated from `folders.json` on a resume). Studio.Core gains
+  `ForgeEventKinds.FoldersProposed`/`FoldersConfirmed`, `ForgeFolder`,
+  `ForgeClient.SendFolders`, `ForgeSessionModel.ProposedFolders`/`FoldersPending`/`Folders`/
+  `AcknowledgeFolders`. **Removed, no shim**: `FolderPolicy`, `CreateTeamViewModel.FolderPolicy`,
+  `FolderPolicyChoices`, `StepOneRows`, `HasStepOneRows`, `NewRootName`, `NewRootIsReadWrite`,
+  `AddNamedRootCommand`, `CanAddNamedRoot`, `NamedRoots`, and the strings
+  `Studio.Create.QFolders/FoldersExisting/FoldersInside/FoldersLater/ReadRootTitle/WriteRootTitle/
+  FoldersPolicyHint/AddRootHint/AddRootWrite/AddRoot/PrecisionsTitle/PrecisionsSub` in the five
+  languages; the capture stops `etape1-dossiers-existants`/`-equipe` became `dossiers-proposes`.
+
 ### Changed — the team-creation wizard's step 1 asks for the need only
 
 Step 1 asked four things before « Compose the team » woke up: how often, where the information
@@ -14,7 +59,7 @@ lives, what the team must produce, and « describe that result » (STUDIO-45). T
 ever reached the brief's text — the adoption step schedules — and the other two are what the
 assistant's conversation exists to settle.
 
-- **Step 1 is the need** (and, until STUDIO-46, where the folders live). « Compose » is live as
+- **Step 1 is the need** (and, until STUDIO-46 just above, where the folders live). « Compose » is live as
   soon as the need is typed; the brief the engine receives is the need plus the standing
   instruction, and the session is named after it.
 - **The forge asks only what the need leaves unsaid** (`forge-assistant.ork.js`): a question

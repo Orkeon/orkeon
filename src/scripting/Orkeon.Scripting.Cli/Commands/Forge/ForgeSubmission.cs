@@ -130,7 +130,9 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
         + "user has confirmed the acceptance criteria. Arguments: goal (string, required); "
         + "context (string); inputs (array of {name, description, example}); expectedOutput "
         + "({format: markdown|json|text|file, description}); constraints (array of strings); "
-        + "toolHints (array of strings); acceptance (array of {id: 'A1'…, statement, kind: "
+        + "toolHints (array of strings); folders (array of {path: '/name', role: input|output, "
+        + "purpose} — the folders the request names, empty when it names none); acceptance "
+        + "(array of {id: 'A1'…, statement, kind: "
         + "must|should}, required, at least one); sample ({variables: object, initialContext}); "
         + "language ('fr' or 'en').";
 
@@ -147,6 +149,7 @@ internal sealed class BriefSubmitTool : ForgeSubmitToolBase
             ["expectedOutput"] = new("object", "{format: markdown|json|text|file, description}.", Required: false),
             ["constraints"] = new("array", "Tone, length, language, allowed sources.", Required: false),
             ["toolHints"] = new("array", "Voiced needs ('read PDFs', 'call an API').", Required: false),
+            ["folders"] = new("array", "The folders the request names: {path: '/name', role: input|output, purpose}.", Required: false),
             ["sample"] = new("object", "The test input: {variables, initialContext}.", Required: false),
             ["language"] = new("string", "'fr' or 'en'.", Required: false),
         });
@@ -179,7 +182,8 @@ internal sealed class BlueprintSubmitTool : ForgeSubmitToolBase
         + "{key, role, goal, backstory, tools: array of catalogue names, allowDelegation, "
         + "maxIterations}, required, at least one, unique keys); tasks (array of {key, "
         + "description, expectedOutput, agent: an agent key, dependencies: array of task keys, "
-        + "deliverable: virtual /output/… path}, required, at least one, unique keys); manager "
+        + "deliverable: a virtual path under one of the brief's output folders}, required, at least "
+        + "one, unique keys); manager "
         + "(an agent key, hierarchical only); rationale (string: why this shape, in plain words).";
 
     /// <inheritdoc />

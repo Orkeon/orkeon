@@ -495,6 +495,30 @@ public sealed class ForgeClient
     }
 
     /// <summary>
+    /// Answers <c>folders.proposed</c> with the folders the user confirmed (STUDIO-46) — the
+    /// proposal as it is, or amended — as one <c>folders.confirmed</c> line; the engine
+    /// re-validates the list. False when no child is listening.
+    /// </summary>
+    public bool SendFolders(IReadOnlyList<ForgeFolder> folders)
+    {
+        ArgumentNullException.ThrowIfNull(folders);
+        return WriteLine(new
+        {
+            kind = ForgeEventKinds.FoldersConfirmed,
+            folders = folders.Select(folder => new ForgeFolderWire(folder.Path, folder.Role, folder.Purpose, folder.Directory)),
+        });
+    }
+
+    /// <summary>One folder on the wire: <c>dir</c> omitted when the folder lives inside the team.</summary>
+    private sealed record ForgeFolderWire(
+        [property: System.Text.Json.Serialization.JsonPropertyName("path")] string Path,
+        [property: System.Text.Json.Serialization.JsonPropertyName("role")] string Role,
+        [property: System.Text.Json.Serialization.JsonPropertyName("purpose")] string? Purpose,
+        [property: System.Text.Json.Serialization.JsonPropertyName("dir")]
+        [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+        string? Dir);
+
+    /// <summary>
     /// Sends the amended blueprint that must follow <c>SendDecision("edit")</c>. The JSON
     /// travels as an object, not a string — the engine re-validates it in full, so this
     /// only refuses what could never be a document at all. False when no child listens.

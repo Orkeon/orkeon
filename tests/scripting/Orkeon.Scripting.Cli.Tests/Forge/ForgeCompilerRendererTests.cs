@@ -125,20 +125,30 @@ public sealed class ForgeYamlRendererTests : IDisposable
     }
 
     [Fact]
-    public void The_compiled_settings_name_the_roots_the_blueprint_reads_and_writes()
+    public void The_compiled_settings_name_the_confirmed_folders_or_the_roots_the_blueprint_addresses()
     {
-        // VFS-90: the crew says which roots it expects (mounts:), derived exactly as the
-        // launcher's --mount arguments are, so a bare `orkeon run crew/` refuses instead of
-        // writing nowhere — and the same list reaches the configuration the validator judges.
+        // VFS-90: the crew says which roots it expects (mounts:), so a bare `orkeon run crew/`
+        // refuses instead of writing nowhere — and the same list reaches the configuration the
+        // validator judges. The confirmed folder list is that set (STUDIO-46); a plan compiled
+        // without one names what it addresses by itself.
         Assert.True(ForgeBlueprint.TryParse(ForgeDocuments.ValidBlueprint, out var blueprint, out _));
-        var expected = ForgePromoter.DeliverableMounts(blueprint).Select(m => m.VirtualRoot).ToList();
-        Assert.NotEmpty(expected);
+        var derived = ForgePromoter.DerivedMounts(blueprint).Select(m => m.VirtualRoot).ToList();
+        Assert.NotEmpty(derived);
 
         var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
 
-        Assert.Equal(expected, compilation.Settings.Mounts);
-        Assert.Equal(expected, compilation.Configuration.Mounts!.Select(m => m.VirtualRoot));
+        Assert.Equal(derived, compilation.Settings.Mounts);
+        Assert.Equal(derived, compilation.Configuration.Mounts!.Select(m => m.VirtualRoot));
         Assert.All(compilation.Configuration.Mounts!, m => Assert.Null(m.Id));
+
+        var confirmed = ForgeBlueprintCompiler.Compile(blueprint!,
+        [
+            new ForgeFolder { Path = "/sources", Role = "input" },
+            new ForgeFolder { Path = "/output", Role = "output" },
+        ]);
+
+        Assert.Equal(["/sources", "/output"], confirmed.Settings.Mounts);
+        Assert.Equal(["/sources", "/output"], confirmed.Configuration.Mounts!.Select(m => m.VirtualRoot));
     }
 
     [Fact]

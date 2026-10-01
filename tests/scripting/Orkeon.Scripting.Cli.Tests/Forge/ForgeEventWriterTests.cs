@@ -71,6 +71,40 @@ public class ForgeEventWriterTests
     }
 
     /// <summary>
+    /// The folders step (STUDIO-46): the proposal as it goes out — a folder inside the team
+    /// carries no <c>dir</c> — and Studio's answer, verbatim from its <c>ForgeFoldersProtocolTests</c>,
+    /// as the channel reads it back.
+    /// </summary>
+    [Fact]
+    public async Task The_folders_proposed_line_is_the_pinned_golden_form()
+    {
+        var output = new StringWriter();
+        var writer = new ForgeEventWriter(output, new FakeOrkeonClock());
+
+        writer.Emit("folders.proposed", new
+        {
+            folders = new[]
+            {
+                new ForgeFolder { Path = "/inpdf", Role = "input", Purpose = "Les PDF à convertir" },
+                new ForgeFolder { Path = "/outmd", Role = "output", Purpose = "Les fichiers Markdown" },
+            },
+        });
+
+        Assert.Equal(
+            """{"v":2,"seq":1,"ts":"2026-08-19T12:00:00Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown"}]}""" + "\n",
+            output.ToString().ReplaceLineEndings("\n"));
+
+        var studio = new StringReader(
+            """{"kind":"folders.confirmed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF \u00E0 convertir","dir":"/data/pdf"},{"path":"/markdown","role":"output","purpose":"Les fichiers Markdown"}]}""");
+        var confirmed = await new JsonLinesUserChannel(studio).ReadFoldersAsync([], TestContext.Current.CancellationToken);
+
+        Assert.NotNull(confirmed);
+        Assert.Equal(["/inpdf", "/markdown"], confirmed.Select(f => f.Path));
+        Assert.Equal("/data/pdf", confirmed[0].Directory);
+        Assert.Equal("Les PDF à convertir", confirmed[0].Purpose);
+    }
+
+    /// <summary>
     /// Without <c>--events</c>, both lines are said in words: a raw JSON line for an event every
     /// adoption can carry would read as a bug to whoever runs <c>forge promote</c> by hand.
     /// </summary>

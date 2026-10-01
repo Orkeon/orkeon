@@ -106,9 +106,9 @@ internal sealed class TestStage : IForgeStageRunner
         session.SaveArtifact(Path.Combine(RunsDirectoryName, runNumber.ToString(CultureInfo.InvariantCulture), "run.json"), run);
         session.SaveArtifact(LastRunFileName, run);
 
-        // The run's /output mount is snapshotted into the run directory and cleared, so
+        // The run's output folders are snapshotted into the run directory and cleared, so
         // deliverables never leak from one cycle into the next one's diagnosis.
-        SnapshotOutputs(session.Directory, runDirectory);
+        SnapshotOutputs(session, runDirectory);
 
         // W-08: the closing event carries what the trial itself cost — distinct from the
         // session-cumulative cost.updated, which folds in assistant and judge usage.
@@ -145,21 +145,28 @@ internal sealed class TestStage : IForgeStageRunner
         _ => default,
     };
 
-    private static void SnapshotOutputs(string sessionDirectory, string runDirectory)
+    /// <summary>
+    /// Moves what the run wrote into <c>runs/&lt;n&gt;/folders/&lt;name&gt;</c>, one directory per
+    /// confirmed output folder (STUDIO-46) — the inputs the session holds stay where they are.
+    /// </summary>
+    private static void SnapshotOutputs(ForgeSession session, string runDirectory)
     {
-        var outputDirectory = Path.Combine(sessionDirectory, OutputDirectoryName);
-        if (!Directory.Exists(outputDirectory))
-            return;
-
-        var snapshot = Path.Combine(runDirectory, OutputDirectoryName);
-        Directory.CreateDirectory(snapshot);
-
-        foreach (var file in Directory.EnumerateFiles(outputDirectory, "*", SearchOption.AllDirectories))
+        foreach (var folder in ForgeFolders.Of(session).Where(f => !f.IsInput))
         {
-            var relative = Path.GetRelativePath(outputDirectory, file);
-            var target = Path.Combine(snapshot, relative);
-            Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-            File.Move(file, target, overwrite: true);
+            var written = ForgeFolders.SessionFolder(session, folder);
+            if (!Directory.Exists(written))
+                continue;
+
+            var snapshot = Path.Combine(runDirectory, ForgeFolders.SessionDirectoryName, folder.Name);
+            Directory.CreateDirectory(snapshot);
+
+            foreach (var file in Directory.EnumerateFiles(written, "*", SearchOption.AllDirectories))
+            {
+                var relative = Path.GetRelativePath(written, file);
+                var target = Path.Combine(snapshot, relative);
+                Directory.CreateDirectory(Path.GetDirectoryName(target)!);
+                File.Move(file, target, overwrite: true);
+            }
         }
     }
 }
@@ -284,25 +291,27 @@ internal sealed class DiagnoseStage : IForgeStageRunner
             });
         }
 
-        // Every deliverable the blueprint promised must exist in the run's snapshot.
+        // Every deliverable the blueprint promised must exist in the run's snapshot, under the
+        // output folder it lands in (STUDIO-46): /outmd/x.md is runs/<n>/folders/outmd/x.md.
         var blueprint = session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName);
+        var folders = ForgeFolders.Of(session);
         foreach (var task in blueprint?.Tasks ?? [])
         {
             if (task.Deliverable is not { Length: > 0 } deliverable)
                 continue;
 
-            var relative = deliverable.TrimStart('/');
-            if (relative.StartsWith("output/", StringComparison.Ordinal))
-                relative = relative["output/".Length..];
+            var folder = ForgeFolders.OutputOf(deliverable, folders);
+            var expected = folder is null || deliverable.Length <= folder.Path!.Length + 1
+                ? null
+                : Path.Combine(
+                    session.Directory,
+                    TestStage.RunsDirectoryName,
+                    run.Run.ToString(CultureInfo.InvariantCulture),
+                    ForgeFolders.SessionDirectoryName,
+                    folder.Name,
+                    deliverable[(folder.Path!.Length + 1)..].Replace('/', Path.DirectorySeparatorChar));
 
-            var expected = Path.Combine(
-                session.Directory,
-                TestStage.RunsDirectoryName,
-                run.Run.ToString(CultureInfo.InvariantCulture),
-                TestStage.OutputDirectoryName,
-                relative);
-
-            if (!File.Exists(expected))
+            if (expected is null || !File.Exists(expected))
             {
                 findings.Add(new ForgeFinding
                 {
@@ -459,7 +468,7 @@ internal sealed class VerdictStage : IForgeStageRunner
             return false;
         }
 
-        if (ValidateEditedBlueprint(json, _knownTools, events) is not { } blueprint)
+        if (ValidateEditedBlueprint(json, _knownTools, events, ForgeFolders.Of(session)) is not { } blueprint)
             return false;
 
         session.SaveArtifact(ForgeSession.BlueprintFileName, blueprint);
@@ -477,7 +486,7 @@ internal sealed class VerdictStage : IForgeStageRunner
     /// <c>forge resume --edit</c> at the dry pause.
     /// </summary>
     internal static ForgeBlueprint? ValidateEditedBlueprint(
-        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events)
+        string json, IReadOnlyCollection<string> knownTools, ForgeEventWriter events, IReadOnlyList<ForgeFolder>? folders = null)
     {
         if (!ForgeBlueprint.TryParse(json, out var blueprint, out var errors))
         {
@@ -485,8 +494,8 @@ internal sealed class VerdictStage : IForgeStageRunner
             return null;
         }
 
-        var compilation = ForgeBlueprintCompiler.Compile(blueprint!);
-        var validation = ForgeBlueprintCompiler.Validate(compilation, knownTools);
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint!, folders);
+        var validation = ForgeBlueprintCompiler.Validate(compilation, knownTools, folders);
         if (validation.Errors.Count > 0)
         {
             events.Error(ForgeErrorCodes.BlueprintInvalid, string.Join(" ", validation.Errors), recoverable: true);

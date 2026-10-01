@@ -84,6 +84,8 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     private readonly IServiceProvider _services;
     private readonly string _crewVirtualPath;
     private readonly Func<Orkeon.Scripting.Toolchain.IScriptTranspiler> _transpilerFactory;
+    private readonly string? _workspace;
+    private readonly string? _readRoot;
 
     /// <summary>
     /// Builds the bench over the engine host's services. <paramref name="transpilerFactory"/>
@@ -91,13 +93,22 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
     /// engine host's <c>Orkeon:Scripting:Toolchain</c> section — tests inject a pass-through,
     /// production never does.
     /// </summary>
+    /// <para>
+    /// <paramref name="workspace"/> and <paramref name="readRoot"/> (<c>--read</c>) say where an
+    /// unbound input folder reads (<see cref="ForgeFolders.TrialMounts"/>); without a workspace
+    /// the run keeps the host's mounts as they are.
+    /// </para>
     public ForgeCrewTestBench(
         IServiceProvider services,
         string crewVirtualPath = "/forge/crew",
-        Func<Orkeon.Scripting.Toolchain.IScriptTranspiler>? transpilerFactory = null)
+        Func<Orkeon.Scripting.Toolchain.IScriptTranspiler>? transpilerFactory = null,
+        string? workspace = null,
+        string? readRoot = null)
     {
         _services = services ?? throw new ArgumentNullException(nameof(services));
         _crewVirtualPath = crewVirtualPath;
+        _workspace = workspace;
+        _readRoot = readRoot;
         _transpilerFactory = transpilerFactory ?? (() => Orkeon.Scripting.Toolchain.EsbuildTranspiler.Create(
             services.GetService<Microsoft.Extensions.Configuration.IConfiguration>()));
     }
@@ -107,6 +118,10 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         ForgeSession session, int runNumber, CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(session);
+
+        // The trial sees the confirmed folders and nothing else of the team's (STUDIO-46): one
+        // mount set for this run, entered for its whole flow and left with it.
+        using var folders = _workspace is null ? null : ForgeTrialScope.Enter(_services, session, _workspace, _readRoot);
 
         var factory = _services.GetRequiredService<ICrewFactory>();
         var orchestration = _services.GetRequiredService<ICrewOrchestrationService>();
@@ -188,6 +203,65 @@ internal sealed class ForgeCrewTestBench : IForgeTestBench
         finally
         {
             (transpiler as IDisposable)?.Dispose();
+        }
+    }
+}
+
+/// <summary>
+/// The trial's mount set (STUDIO-46): the session's folders at the places
+/// <see cref="ForgeFolders.TrialMounts"/> gives them, every other mount of the host carried
+/// forward — <c>/forge</c>, the settings' own roots, the internal ones — except the two canonical
+/// roots the forge mounts for its assistant, which the team only sees when its list holds them.
+/// </summary>
+internal static class ForgeTrialScope
+{
+    /// <summary>The roots the forge host always mounts, and the trial drops unless its list claims them.</summary>
+    private static readonly string[] CanonicalRoots =
+        [Orkeon.Constants.FileSystem.RunnerVirtualRoots.Workspace, Orkeon.Constants.FileSystem.RunnerVirtualRoots.Output];
+
+    /// <summary>
+    /// The registry the trial enters: the folder mounts first, then the host's mounts no folder
+    /// claims. Exposed apart from <see cref="Enter"/> so it can be asserted without a host.
+    /// </summary>
+    public static Orkeon.Domain.FileSystem.FileSystemRegistry Compose(
+        Orkeon.Domain.FileSystem.FileSystemRegistry boot, IReadOnlyList<ForgeTrialMount> mounts)
+    {
+        ArgumentNullException.ThrowIfNull(boot);
+        ArgumentNullException.ThrowIfNull(mounts);
+
+        var folders = mounts.Select(m => Orkeon.Domain.FileSystem.FileSystemMount.Parse(m.Spec)).ToList();
+        var claimed = folders.Select(m => m.VirtualPath).ToHashSet(StringComparer.Ordinal);
+        var carried = boot.GetMounts()
+            .Where(m => !claimed.Contains(m.VirtualPath) && !CanonicalRoots.Contains(m.VirtualPath, StringComparer.Ordinal));
+        return new Orkeon.Domain.FileSystem.FileSystemRegistry([.. folders, .. carried]);
+    }
+
+    /// <summary>
+    /// Enters the trial's mount set for the current flow; null when the host has no ambient
+    /// scope to enter. Disposing the lease leaves it.
+    /// </summary>
+    public static IDisposable? Enter(IServiceProvider services, ForgeSession session, string workspace, string? readRoot)
+    {
+        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(session);
+
+        var scope = services.GetService<Orkeon.Domain.FileSystem.IFileSystemScope>();
+        var boot = services.GetService<Orkeon.Domain.FileSystem.FileSystemRegistry>();
+        if (scope is null || boot is null)
+            return null;
+
+        var mounts = ForgeFolders.TrialMounts(session, ForgeFolders.Of(session), workspace, readRoot);
+        var registry = Compose(boot, mounts);
+        return new Lease(registry, scope.Enter(registry));
+    }
+
+    /// <summary>Leaves the scope first, then disposes the registry it pointed at.</summary>
+    private sealed class Lease(Orkeon.Domain.FileSystem.FileSystemRegistry registry, IDisposable token) : IDisposable
+    {
+        public void Dispose()
+        {
+            token.Dispose();
+            registry.Dispose();
         }
     }
 }

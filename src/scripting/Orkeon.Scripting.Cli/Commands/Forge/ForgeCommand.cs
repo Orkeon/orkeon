@@ -710,11 +710,11 @@ internal static class ForgeCommand
             session,
             events,
             [
-                new BriefStage(assistant, channel, resumed ? null : options.Need),
+                new BriefStage(assistant, channel, resumed ? null : options.Need, autoConfirmFolders: options.Auto),
                 new BlueprintStage(assistant),
                 new RenderStage(),
                 new ValidateStage(knownTools),
-                new TestStage(new ForgeCrewTestBench(host.Services)),
+                new TestStage(new ForgeCrewTestBench(host.Services, workspace: workspace, readRoot: readRoot)),
                 new DiagnoseStage(new LlmForgeJudge(host.Services.GetService<Orkeon.Domain.SharedKernel.ILlmProvider>())),
                 // A resume that lands AT the arbitration (a reopen, or an interruption
                 // there) re-announces the stored verdict before asking again.
@@ -733,7 +733,9 @@ internal static class ForgeCommand
     /// <summary>
     /// The VFS surface of a cycle: the read folder as <c>/workspace</c> (read-only), the
     /// session as <c>/forge</c> and the session's output folder as <c>/output</c> (both
-    /// writable). <paramref name="readRoot"/> is <c>--read</c>, resolved; null reads the
+    /// writable) — the assistant's view — plus, once the session has them, the confirmed
+    /// folders (STUDIO-46) where the trial mounts them (<see cref="ForgeFolders.TrialMounts"/>);
+    /// a confirmed folder on <c>/workspace</c> or <c>/output</c> replaces the default one. <paramref name="readRoot"/> is <c>--read</c>, resolved; null reads the
     /// workspace itself, the default. The workspace keeps every other role whatever is read:
     /// the session stays under <see cref="ForgeSession.RootFor"/> of the workspace and the
     /// settings still resolve next to it — <c>--read</c> moves the documents, not the atelier.
@@ -753,22 +755,37 @@ internal static class ForgeCommand
         ArgumentException.ThrowIfNullOrWhiteSpace(workspace);
         ArgumentNullException.ThrowIfNull(session);
 
+        // The confirmed folders (STUDIO-46), when the session already has them — a resume, the
+        // trial Studio launches after the composition: mounted at the host's build, so a
+        // directory the user bound outside the working directory is whitelisted like --read.
+        // A list confirmed later in this same run reaches the trial through its scope instead
+        // (ForgeTrialScope); its directories are the session's own, or --read, or the workspace.
+        var folders = ForgeFolders.Confirmed(session) is { Count: > 0 } confirmed
+            ? ForgeFolders.TrialMounts(session, confirmed, workspace, readRoot)
+            : [];
+        var claimed = folders.Select(m => m.Folder.Path).ToHashSet(StringComparer.Ordinal);
+
         // Containment, not spelling, like the run and rag verbs: ~/proj-old is not inside ~/proj.
-        var readsOutsideCwd = readRoot is not null
-            && !PhysicalPathContainment.IsUnder(readRoot, Directory.GetCurrentDirectory());
+        var cwd = Directory.GetCurrentDirectory();
+        var readsOutsideCwd = (readRoot is not null && !PhysicalPathContainment.IsUnder(readRoot, cwd))
+            || folders.Any(m => !PhysicalPathContainment.IsUnder(m.PhysicalPath, cwd));
+
+        // Quoted, like every other spec the framework builds: a session, workspace or
+        // read-folder path carrying a ':' or ';' would otherwise split into the wrong
+        // segments and the forge would die at host build with a grammar error about
+        // a path the user never typed. /workspace and /output stay the assistant's and the
+        // settings' replacement unless a confirmed folder takes them; the trial drops them.
+        var mounts = new List<string>();
+        if (!claimed.Contains(RunnerVirtualRoots.Workspace))
+            mounts.Add($"{FileSystemMount.Quote(readRoot ?? workspace)}:{RunnerVirtualRoots.Workspace}:ro");
+        mounts.Add($"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw");
+        if (!claimed.Contains(RunnerVirtualRoots.Output))
+            mounts.Add($"{FileSystemMount.Quote(OutputDirectoryOf(session))}:{RunnerVirtualRoots.Output}:rw");
+        mounts.AddRange(folders.Select(m => m.Spec));
 
         return new RunnerMountPlan
         {
-            CliMounts =
-            [
-                // Quoted, like every other spec the framework builds: a session, workspace or
-                // read-folder path carrying a ':' or ';' would otherwise split into the wrong
-                // segments and the forge would die at host build with a grammar error about
-                // a path the user never typed.
-                $"{FileSystemMount.Quote(readRoot ?? workspace)}:{RunnerVirtualRoots.Workspace}:ro",
-                $"{FileSystemMount.Quote(session.Directory)}:{RunnerVirtualRoots.Forge}:rw",
-                $"{FileSystemMount.Quote(OutputDirectoryOf(session))}:{RunnerVirtualRoots.Output}:rw",
-            ],
+            CliMounts = mounts,
             AllowExternalMounts = readsOutsideCwd,
         };
     }
@@ -928,7 +945,7 @@ internal static class ForgeCommand
 
         var json = await channel.ReadBlueprintAsync(CancellationToken.None).ConfigureAwait(false)
             ?? throw new OperationCanceledException("The user channel closed while sending the edited blueprint.");
-        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events) is not { } edited)
+        if (VerdictStage.ValidateEditedBlueprint(json, knownTools, events, ForgeFolders.Of(session)) is not { } edited)
         {
             // The session has not moved: it waits at the same pause, resumable again.
             events.SessionFinished("paused", ExitError);

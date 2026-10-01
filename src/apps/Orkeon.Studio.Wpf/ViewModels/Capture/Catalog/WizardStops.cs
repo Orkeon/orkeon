@@ -46,62 +46,25 @@ internal static class WizardStops
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
 
-        // STUDIO-14 wizard — where the folders live, answered at step 1 (D-06) and at step 2 (D-08).
+        // STUDIO-46 — the Folders step, between the brief and the plan.
         new()
         {
-            Name = "etape1-dossiers-existants",
+            Name = "dossiers-proposes",
             Category = CaptureCategory.Wizard,
             Screen = CaptureScreen.Create,
-            Because = "«Des dossiers existants» at step 1: the two rows — «Vos documents» read, «Les "
-                    + "résultats» written — one answered with a real folder the settings declare, the "
-                    + "other still offering «Choisir le dossier…» and «Créer dans l'équipe». The real "
-                    + "folder is the seeded docs/, so the row reads declared, not red. A third row the "
-                    + "user named («archives») and the form that names one more: as many mount points "
-                    + "as the need calls for, never just two.",
-            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasStepOneRows", "CreateTeam.CanCompose"],
-            CoversFalse = ["CreateTeam.HasUndeclaredTeamMounts"],
+            Because = "The Folders step: the two folders the need names, read from it by the forge — "
+                    + "/inpdf read, still offering «Choisir un dossier…» and «Dans l'équipe», /outmd "
+                    + "written, «dans l'équipe : outmd» by default — each name editable, above the "
+                    + "conversation, with «Confirmer les dossiers».",
+            Covers = ["CreateTeam.IsFoldersStep"],
+            CoversFalse = ["CreateTeam.HasFoldersProblem"],
             SweepsLanguages = true,
-            Arrange = CaptureAction.Sync(static c =>
+            Arrange = static async c =>
             {
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
-                wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.ExistingFolders;
-                // A mount point of the user's own, beyond the two canonical rows.
-                wizard.NewRootName = "archives";
-                wizard.AddNamedRootCommand.Execute(null);
-                // What the disk pick binds back once confirmed: the seeded docs/, declared under
-                // the ROW's root with an id of its own (VFS-90, D-01) — the settings already
-                // hold it as /docs, and a team binds a declaration verbatim rather than
-                // re-spelling one — then bound as that very entry.
-                var (declared, _) = c.Shell.Config.Mounts.EnsureDeclared(
-                    new Orkeon.Studio.Core.FileSystem.MountDefinition
-                    {
-                        PhysicalPath = System.IO.Path.Combine(c.World.DataDirectory, "docs"),
-                        VirtualPath = Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot,
-                        Rights = Orkeon.Studio.Core.FileSystem.MountRights.ReadOnly,
-                    });
-                wizard.BindTeamMount(Orkeon.Studio.Core.Teams.TeamMountPaths.ReadRoot, declared);
-            }),
-            Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
-        },
-
-        new()
-        {
-            Name = "etape1-dossiers-equipe",
-            Category = CaptureCategory.Wizard,
-            Screen = CaptureScreen.Create,
-            Because = "«Créés dans l'équipe» at step 1: both rows answered «dans l'équipe : input» / "
-                    + "«dans l'équipe : output» — the accent label in place of a disk path, no red "
-                    + "anywhere, and nothing created before the adoption.",
-            Covers = ["CreateTeam.IsStep1", "CreateTeam.HasStepOneRows", "CreateTeam.HasTeamMounts"],
-            CoversFalse = ["CreateTeam.HasUndeclaredTeamMounts"],
-            SweepsLanguages = true,
-            Arrange = CaptureAction.Sync(static c =>
-            {
-                var wizard = c.Shell.CreateTeam;
-                wizard.Need = StudioFixture.Need;
-                wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.InsideTeam;
-            }),
+                await wizard.ComposeCommand.ExecuteAsync();
+            },
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
 

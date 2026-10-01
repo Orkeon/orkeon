@@ -284,6 +284,10 @@ internal static class ForgePromoter
         foreach (var mount in writeMounts)
             Directory.CreateDirectory(Path.Combine(destination, mount.Folder));
 
+        // A folder the session held «inside the team» until now (STUDIO-46) — an input the
+        // user filled for the trial — moves into the team it was meant for.
+        MoveSessionFolders(session, destination, writeMounts);
+
         var teamName = ArtifactName(destination);
         WritePosixLauncher(destination, teamName, session, brief, settingsReference, settingsIsRelative, writeMounts);
         WriteWindowsLauncher(destination, teamName, session, brief, settingsReference, settingsIsRelative, writeMounts);
@@ -456,24 +460,83 @@ internal static class ForgePromoter
     private static readonly IReadOnlyList<string> ReservedVirtualRoots = RunnerVirtualRoots.All;
 
     /// <summary>
-    /// The virtual roots the blueprint's deliverables are written to — the same derivation
-    /// the Composer shows as chips, applied where it becomes true: the launcher.
+    /// The folders the promoted team mounts: the session's confirmed list (STUDIO-46), each
+    /// backed by a folder inside the team — the one list the trial used, applied where it
+    /// becomes true: the launcher.
     /// <para>
-    /// Without this, a team that passed its trial (where the bench mounts <c>/output</c>)
-    /// had no <c>/output</c> at all once adopted: the deliverable resolver caught the access
-    /// denial, logged a warning and reported the run as finished, so the folder stayed empty
-    /// and nothing on screen said why.
+    /// Without this, a team that passed its trial had no folder at all once adopted: the
+    /// deliverable resolver caught the access denial, logged a warning and reported the run as
+    /// finished, so the folder stayed empty and nothing on screen said why.
     /// </para>
     /// </summary>
-    private static List<DeliverableMount> DeliverableMounts(ForgeSession session) =>
-        DeliverableMounts(session.TryLoadArtifact<ForgeBlueprint>(ForgeSession.BlueprintFileName));
+    internal static List<DeliverableMount> DeliverableMounts(ForgeSession session)
+    {
+        var folders = ForgeFolders.Of(session);
+        var mounts = new List<DeliverableMount>();
+        foreach (var folder in folders)
+        {
+            if (MountableRoot(folder.Path) is not { } root)
+                continue;
+
+            mounts.Add(new DeliverableMount(root, TeamFolderOf(folder, folders), folder.IsInput));
+        }
+
+        return mounts;
+    }
 
     /// <summary>
-    /// The same derivation from the blueprint itself — what the compiler writes under the
-    /// crew's <c>mounts:</c> block (VFS-90), so the promoted crew names the roots it expects
-    /// and a bare <c>orkeon run crew/</c> refuses instead of writing nowhere.
+    /// The folder inside the team behind <paramref name="folder"/>: its own name — except
+    /// <c>/workspace</c>, which reads <c>input/</c>, never the team's root (see
+    /// <see cref="ReadFolderName"/>), unless another folder already takes that name.
     /// </summary>
-    internal static List<DeliverableMount> DeliverableMounts(ForgeBlueprint? blueprint)
+    private static string TeamFolderOf(ForgeFolder folder, IReadOnlyList<ForgeFolder> folders)
+    {
+        if (!string.Equals(folder.Path, ReadVirtualRoot, StringComparison.Ordinal))
+            return folder.Name;
+
+        var inputTaken = folders.Any(f => string.Equals(f.Name, ReadFolderName, StringComparison.OrdinalIgnoreCase));
+        return inputTaken ? folder.Name : ReadFolderName;
+    }
+
+    /// <summary>
+    /// Moves what the session held for each folder (<c>folders/&lt;name&gt;</c>) into the team's
+    /// folder, then removes the session's copy. An entry the team already has is left where it
+    /// is in the session: a re-adoption never overwrites the team's own files.
+    /// </summary>
+    private static void MoveSessionFolders(ForgeSession session, string destination, IReadOnlyList<DeliverableMount> mounts)
+    {
+        var folders = ForgeFolders.Of(session);
+        foreach (var mount in mounts)
+        {
+            var folder = folders.First(f => string.Equals(f.Path, mount.VirtualRoot, StringComparison.Ordinal));
+            var source = ForgeFolders.SessionFolder(session, folder);
+            if (!Directory.Exists(source))
+                continue;
+
+            var target = Path.Combine(destination, mount.Folder);
+            foreach (var entry in Directory.EnumerateFileSystemEntries(source))
+            {
+                var moved = Path.Combine(target, Path.GetFileName(entry));
+                if (File.Exists(moved) || Directory.Exists(moved))
+                    continue;
+
+                if (Directory.Exists(entry))
+                    Directory.Move(entry, moved);
+                else
+                    File.Move(entry, moved);
+            }
+
+            if (!Directory.EnumerateFileSystemEntries(source).Any())
+                Directory.Delete(source);
+        }
+    }
+
+    /// <summary>
+    /// What a plan addresses by itself — a reading agent reads <c>/workspace</c>, each
+    /// deliverable root is written to — for a session that holds no folder list
+    /// (<see cref="ForgeFolders.Of"/>) and for a plan compiled without one.
+    /// </summary>
+    internal static List<DeliverableMount> DerivedMounts(ForgeBlueprint? blueprint)
     {
         var roots = new List<DeliverableMount>();
 
@@ -922,13 +985,15 @@ internal static class ForgePromoter
             card.AppendLine(CultureInfo.InvariantCulture,
                 $"- `{mount.VirtualRoot}` {(mount.ReadOnly ? language.Pick("lecture", "read") : language.Pick("écriture", "write"))} → `{mount.Folder}/`");
 
-        if (!writeMounts.Any(m => m.ReadOnly))
+        var readFolders = writeMounts.Where(m => m.ReadOnly).Select(m => $"`{m.Folder}/`").ToList();
+        if (readFolders.Count == 0)
             return;
 
+        var listed = string.Join(", ", readFolders);
         card.AppendLine();
         card.AppendLine(language.Pick(
-            $"Déposez dans `{ReadFolderName}/` ce que l'équipe doit lire. C'est le seul dossier qu'elle lit : la racine de l'équipe n'est pas montée, pour que l'`{SettingsFileName}` qui peut s'y trouver reste hors de portée des agents.",
-            $"Drop what the team should read into `{ReadFolderName}/`. It is the only folder it reads: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach."));
+            $"Déposez dans {listed} ce que l'équipe doit lire. Elle ne lit que ses dossiers d'entrée : la racine de l'équipe n'est pas montée, pour que l'`{SettingsFileName}` qui peut s'y trouver reste hors de portée des agents.",
+            $"Drop what the team should read into {listed}. It reads its input folders only: the team's root is not mounted, so the `{SettingsFileName}` that may sit there stays out of the agents' reach."));
     }
 
     /// <summary>

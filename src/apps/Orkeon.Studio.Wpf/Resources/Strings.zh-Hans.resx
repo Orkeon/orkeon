@@ -1254,12 +1254,6 @@
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>或从示例开始</value>
   </data>
-  <data name="Studio.Create.PrecisionsTitle" xml:space="preserve">
-    <value>您的文件夹</value>
-  </data>
-  <data name="Studio.Create.PrecisionsSub" xml:space="preserve">
-    <value>团队读取和写入的位置。之后可以随时更改。</value>
-  </data>
   <data name="Studio.Create.Compose" xml:space="preserve">
     <value>组建团队</value>
   </data>
@@ -2788,24 +2782,6 @@
     <value>留空：此模型不在目录中，引擎将发送 4096。请填写模型文档中的最大值——推理模型需要 16384 或更多。</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
-  <data name="Studio.Create.QFolders" xml:space="preserve">
-    <value>您的文件夹在哪里？</value>
-  </data>
-  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
-    <value>已有的文件夹</value>
-  </data>
-  <data name="Studio.Create.FoldersInside" xml:space="preserve">
-    <value>在团队内创建</value>
-  </data>
-  <data name="Studio.Create.FoldersLater" xml:space="preserve">
-    <value>稍后决定</value>
-  </data>
-  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
-    <value>您的文档</value>
-  </data>
-  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
-    <value>结果</value>
-  </data>
   <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
     <value>团队内：{0}</value>
   </data>
@@ -2815,11 +2791,8 @@
   <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
     <value>在团队内创建所有文件夹</value>
   </data>
-  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
-    <value>已有的文件夹会顺带登记到「设置 › 授权文件夹」；在团队内创建的文件夹随团队一起移动。下一步仍可更改。</value>
-  </data>
   <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
-    <value>试运行在一个空文件夹上进行——团队采纳后，请把您的文档放入 input/。</value>
+    <value>试运行从工作会话中读取保留在团队内的文件夹——通过“打开文件夹”将文档放入其中；采用团队时它们会移入团队。</value>
   </data>
   <data name="Studio.Create.OpenFolder" xml:space="preserve">
     <value>打开文件夹</value>
@@ -2831,15 +2804,6 @@
     <value>打开已采纳团队的文件夹。</value>
   </data>
   <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
-  <data name="Studio.Create.AddRootHint" xml:space="preserve">
-    <value>按需要添加任意数量的文件夹：一个供智能体使用的名称（如 factures、archives），可读或可写——然后像前两个一样为每个文件夹作答：指定真实文件夹，或在团队内创建。请在需求中提及它们，团队才会使用。</value>
-  </data>
-  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
-    <value>可写入</value>
-  </data>
-  <data name="Studio.Create.AddRoot" xml:space="preserve">
-    <value>添加文件夹</value>
-  </data>
   <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>已预填 {0} 秒：{1} 的默认模型会先思考再回答，思考型回答通常超过引擎默认的 30 秒。输入其他值即可覆盖。</value></data>
   <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>思考模式</value></data>
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>提供商默认</value></data>
@@ -2895,4 +2859,34 @@
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>正在读取用例…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>关闭</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>移除参考——您的需求保持不变。</value></data>
+  <data name="Studio.Create.FoldersStepTitle" xml:space="preserve">
+    <value>团队的文件夹</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSub" xml:space="preserve">
+    <value>从您的请求中读取。可按需重命名文件夹，指明每个文件夹的位置，然后确认——团队将只使用这些文件夹。</value>
+  </data>
+  <data name="Studio.Create.FoldersConfirm" xml:space="preserve">
+    <value>确认文件夹</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
+    <value>放在团队内</value>
+  </data>
+  <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
+    <value>读取</value>
+  </data>
+  <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
+    <value>写入</value>
+  </data>
+  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
+    <value>尚未选择文件夹</value>
+  </data>
+  <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
+    <value>“{0}”不是有效的文件夹名称：只能是由字母、数字、- _ 或 . 组成的一个词，且不能是运行时保留的名称。</value>
+  </data>
+  <data name="Studio.Create.FolderTwice" xml:space="preserve">
+    <value>{0} 出现了两次。</value>
+  </data>
+  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
+    <value>至少要有一个文件夹接收团队的结果。</value>
+  </data>
 </root>

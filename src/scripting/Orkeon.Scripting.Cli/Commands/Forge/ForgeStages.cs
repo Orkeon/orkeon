@@ -26,13 +26,20 @@ internal sealed class BriefStage : IForgeStageRunner
     private readonly IForgeAssistant _assistant;
     private readonly IForgeUserChannel _channel;
     private readonly string? _initialNeed;
+    private readonly bool _autoConfirmFolders;
 
-    /// <summary>Builds the stage; <paramref name="initialNeed"/> is the need typed on the command line, when any.</summary>
-    public BriefStage(IForgeAssistant assistant, IForgeUserChannel channel, string? initialNeed = null)
+    /// <summary>
+    /// Builds the stage; <paramref name="initialNeed"/> is the need typed on the command line,
+    /// when any; <paramref name="autoConfirmFolders"/> takes the proposed folders as they are
+    /// (<c>--auto</c>) instead of asking.
+    /// </summary>
+    public BriefStage(
+        IForgeAssistant assistant, IForgeUserChannel channel, string? initialNeed = null, bool autoConfirmFolders = false)
     {
         _assistant = assistant ?? throw new ArgumentNullException(nameof(assistant));
         _channel = channel ?? throw new ArgumentNullException(nameof(channel));
         _initialNeed = initialNeed;
+        _autoConfirmFolders = autoConfirmFolders;
     }
 
     /// <inheritdoc />
@@ -42,9 +49,14 @@ internal sealed class BriefStage : IForgeStageRunner
     public async Task<ForgeStageOutcome> RunAsync(
         ForgeSession session, ForgeEventWriter events, CancellationToken cancellationToken)
     {
-        // A resumed session that already interviewed does not re-interview.
-        if (session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName) is not null)
+        // A resumed session that already interviewed does not re-interview — but a brief whose
+        // folders were never confirmed (the run stopped at the question) asks that one again.
+        if (session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName) is { } saved)
+        {
+            if (ForgeFolders.Confirmed(session) is null)
+                await ConfirmFoldersAsync(session, events, saved, cancellationToken).ConfigureAwait(false);
             return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted };
+        }
 
         var usage = default(ForgeUsageSnapshot);
         var submissionAttempts = 0;
@@ -67,6 +79,15 @@ internal sealed class BriefStage : IForgeStageRunner
             if (reply.BriefJson is { } json)
             {
                 var outcome = HandleSubmission(session, events, json, usage, ref submissionAttempts, ref errors);
+                if (outcome is { Trigger: ForgeTrigger.BriefSubmitted })
+                {
+                    // The folders step (STUDIO-46): between the brief and the plan, the user
+                    // confirms the folders the request named — or the defaults.
+                    var brief = session.TryLoadArtifact<ForgeBrief>(ForgeSession.BriefFileName)!;
+                    await ConfirmFoldersAsync(session, events, brief, cancellationToken).ConfigureAwait(false);
+                    return outcome;
+                }
+
                 if (outcome is not null)
                     return outcome;
 
@@ -108,9 +129,10 @@ internal sealed class BriefStage : IForgeStageRunner
     {
         if (ForgeBrief.TryParse(json, out var brief, out var briefErrors))
         {
-            session.SaveArtifact(ForgeSession.BriefFileName, brief);
+            // Saved before the folders are confirmed, so a run stopped at that question resumes
+            // there instead of re-interviewing; brief.ready waits for the confirmed list.
+            session.SaveArtifact(ForgeSession.BriefFileName, brief!);
             session.Document.Title ??= Truncate(brief!.Goal!, 60);
-            events.Emit("brief.ready", new { brief });
             return new ForgeStageOutcome { Trigger = ForgeTrigger.BriefSubmitted, Usage = usage };
         }
 
@@ -125,6 +147,52 @@ internal sealed class BriefStage : IForgeStageRunner
 
         errors = briefErrors;
         return null;
+    }
+
+    /// <summary>
+    /// The folders step (STUDIO-46): proposes the brief's folders — or the defaults when the
+    /// request named none — as <c>folders.proposed</c>, and waits for <c>folders.confirmed</c>.
+    /// A list that breaks the rules, or binds a directory that is not there, is a recoverable
+    /// <c>FORGE-FOLDERS-INVALID</c> and the proposal is made again. The confirmed list is kept
+    /// in <c>folders.json</c> (with the directories bound) and in the brief (without them —
+    /// a physical path never reaches a prompt), then announced by <c>brief.ready</c>.
+    /// </summary>
+    private async Task ConfirmFoldersAsync(
+        ForgeSession session, ForgeEventWriter events, ForgeBrief brief, CancellationToken cancellationToken)
+    {
+        var proposal = ForgeFolders.ProposalOf(brief);
+        while (true)
+        {
+            events.Emit("folders.proposed", new { folders = proposal });
+
+            var answer = _autoConfirmFolders
+                ? proposal
+                : await _channel.ReadFoldersAsync(proposal, cancellationToken).ConfigureAwait(false)
+                  ?? throw new OperationCanceledException("The user channel closed at the folders step.");
+
+            var errors = new List<string>(ForgeFolders.Validate(answer));
+            foreach (var folder in answer)
+            {
+                if (folder.Directory is { Length: > 0 } directory
+                    && Path.IsPathFullyQualified(directory)
+                    && !Directory.Exists(directory))
+                {
+                    errors.Add($"'{folder.Path}' is bound to a directory that does not exist.");
+                }
+            }
+
+            if (errors.Count > 0)
+            {
+                events.Error(ForgeErrorCodes.FoldersInvalid, string.Join(" ", errors), recoverable: true);
+                continue;
+            }
+
+            session.SaveArtifact(ForgeFolders.FileName, new ForgeFolderList { Folders = answer });
+            var confirmed = brief with { Folders = [.. answer.Select(ForgeFolders.WithoutDirectory)] };
+            session.SaveArtifact(ForgeSession.BriefFileName, confirmed);
+            events.Emit("brief.ready", new { brief = confirmed });
+            return;
+        }
     }
 
     /// <summary>
@@ -269,7 +337,7 @@ internal sealed class RenderStage : IForgeStageRunner
         // picks which one; nothing about the cycle changes around it.
         var written = ForgeSession.IsScriptFormat(session.Document.Format)
             ? ForgeScriptRenderer.Render(blueprint, session.Directory)
-            : ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint), session.Directory);
+            : ForgeYamlRenderer.Render(ForgeBlueprintCompiler.Compile(blueprint, ForgeFolders.Of(session)), session.Directory);
 
         foreach (var path in written)
         {
@@ -315,8 +383,9 @@ internal sealed class ValidateStage : IForgeStageRunner
             });
         }
 
-        var compilation = ForgeBlueprintCompiler.Compile(blueprint);
-        var verdict = ForgeBlueprintCompiler.Validate(compilation, _knownTools);
+        var folders = ForgeFolders.Of(session);
+        var compilation = ForgeBlueprintCompiler.Compile(blueprint, folders);
+        var verdict = ForgeBlueprintCompiler.Validate(compilation, _knownTools, folders);
         var attempt = session.Document.RepairAttempts + 1;
 
         events.Emit("validation.result", new

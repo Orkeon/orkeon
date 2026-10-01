@@ -96,6 +96,29 @@ internal sealed class ScriptedUserChannel(params string[] messages) : IForgeUser
     /// <inheritdoc />
     public Task<string?> ReadBlueprintAsync(CancellationToken cancellationToken) =>
         Task.FromResult(_blueprints.Count > 0 ? _blueprints.Dequeue() : null);
+
+    private readonly Queue<IReadOnlyList<ForgeFolder>?> _folders = new();
+
+    /// <summary>Every folder list the engine proposed, in order.</summary>
+    public List<IReadOnlyList<ForgeFolder>> ProposedFolders { get; } = [];
+
+    /// <summary>
+    /// Queues the folder list the next <c>folders.proposed</c> is answered with; null closes
+    /// the channel there. Without one queued, the proposal is confirmed as it is.
+    /// </summary>
+    public ScriptedUserChannel ConfirmsFolders(IReadOnlyList<ForgeFolder>? folders)
+    {
+        _folders.Enqueue(folders);
+        return this;
+    }
+
+    /// <inheritdoc />
+    public Task<IReadOnlyList<ForgeFolder>?> ReadFoldersAsync(
+        IReadOnlyList<ForgeFolder> proposed, CancellationToken cancellationToken)
+    {
+        ProposedFolders.Add(proposed);
+        return Task.FromResult(_folders.Count > 0 ? _folders.Dequeue() : proposed);
+    }
 }
 
 /// <summary>
@@ -163,9 +186,10 @@ public sealed class ForgeStagesTests : IDisposable
         Assert.True(File.Exists(Path.Combine(session.Directory, ForgeSession.BriefFileName)));
         Assert.True(File.Exists(Path.Combine(session.Directory, "crew", "agents", "collecteur.yaml")));
 
-        // The stream tells the whole story, ending paused.
+        // The stream tells the whole story, ending paused — the folders are proposed between
+        // the brief and the plan (STUDIO-46), and brief.ready carries the confirmed list.
         Assert.Equal(
-            ["session.started", "stage.entered", "assistant.message", "brief.ready",
+            ["session.started", "stage.entered", "assistant.message", "folders.proposed", "brief.ready",
              "stage.entered", "blueprint.ready", "stage.entered", "file.written", "file.written",
              "file.written", "file.written", "file.written", "stage.entered", "validation.result",
              "session.finished"],

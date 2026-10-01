@@ -52,6 +52,13 @@ function stableHeader() {
     lines.push("- Also record: what comes in (with one realistic sample value), what comes");
     lines.push("  out and in which shape, and any constraint the request states (length,");
     lines.push("  tone, language, allowed sources) — from the request when it says them.");
+    lines.push("- Folders: list in `folders` every folder the request names for the team,");
+    lines.push("  each {path, role, purpose}: path is '/' plus the name as the request spells");
+    lines.push("  it (\"/inpdf\"), role is 'input' when the team reads it and 'output' when it");
+    lines.push("  writes to it, purpose says in a few words what it holds. Never invent a");
+    lines.push("  folder the request does not name: when it names none, leave `folders` empty");
+    lines.push("  and the defaults are proposed. Never ask about folders: the user confirms");
+    lines.push("  the list right after your submission.");
     lines.push("- Keep the interview short: when you have goal + acceptance + sample, stop");
     lines.push("  asking and submit.");
     lines.push("- If the submission is rejected, fix exactly what the rejection names and");
@@ -73,6 +80,21 @@ function stableHeader() {
     lines.push("  and goal per agent; tasks phrased as work, not as prompts.");
     lines.push("- If errors are listed below, fix exactly those — change nothing else —");
     lines.push("  and submit again. Do not converse in this phase.");
+  }
+
+  // The folders the user confirmed (STUDIO-46): the team reads and writes these and nothing
+  // else — the trial mounts exactly this list, and so does the adopted team.
+  var folders = (input.brief && input.brief.folders) || [];
+  if (phase !== "brief" && folders.length > 0) {
+    lines.push("");
+    lines.push("## The team's folders (confirmed by the user — use these, and only these)");
+    for (var f = 0; f < folders.length; f++) {
+      var folder = folders[f];
+      lines.push("- " + folder.path + " — " + (folder.role === "input" ? "read-only input" : "writable output")
+        + (folder.purpose ? ": " + folder.purpose : ""));
+    }
+    lines.push("Every task deliverable is a path under one of the output folders above");
+    lines.push("(\"" + firstOutput(folders) + "/result.md\"). Agents that read files read the input folders.");
   }
 
   if (phase !== "brief" && input.crewTools && input.crewTools.length > 0) {
@@ -115,6 +137,14 @@ function stableHeader() {
   lines.push("A relative path such as \".\" or \"src\" is refused.");
 
   return lines.join("\n");
+}
+
+// The first output folder of the confirmed list — the example deliverable root.
+function firstOutput(folders) {
+  for (var i = 0; i < folders.length; i++)
+    if (folders[i].role === "output")
+      return folders[i].path;
+  return "/output";
 }
 
 // ---------------------------------------------------------------------------------------

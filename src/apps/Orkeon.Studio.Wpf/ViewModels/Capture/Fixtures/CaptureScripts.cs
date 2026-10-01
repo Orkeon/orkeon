@@ -130,17 +130,17 @@ internal static class CaptureScripts
     // ── the wire ────────────────────────────────────────────────────────────────────────────
 
     /// <summary>
-    /// A compose that reaches the dry pause: the proposal arrives, and the stream closes on
-    /// <c>paused</c> — the state where the wizard offers both the try-the-team and the
-    /// adopt-without-trial buttons.
+    /// A compose that reaches the Folders step (STUDIO-46): the brief is in, and the engine
+    /// proposes the two folders the need names — the PDFs read, the Markdown written — then
+    /// waits for them to be confirmed.
     /// </summary>
-    public static IReadOnlyList<string> ForgeComposeToDryPause { get; } =
+    public static IReadOnlyList<string> ForgeComposeToFolders { get; } =
     [
         """{"v":2,"seq":1,"ts":"2026-08-28T06:40:00Z","kind":"session.started","slug":"assistant-support","dir":"","format":"yaml","resumed":false,"engine":"1.0.0-rc.2"}""",
         """{"v":2,"seq":2,"ts":"2026-08-28T06:40:02Z","kind":"stage.entered","stage":"brief"}""",
         """{"v":2,"seq":3,"ts":"2026-08-28T06:40:05Z","kind":"assistant.message","text":"Je regarde ce que vous avez décrit et je compose une équipe."}""",
         """{"v":2,"seq":4,"ts":"2026-08-28T06:40:31Z","kind":"cost.updated","promptTokens":1840,"completionTokens":620,"estimatedTokens":2460}""",
-        """{"v":2,"seq":5,"ts":"2026-08-28T06:40:44Z","kind":"stage.entered","stage":"blueprint"}""",
+        """{"v":2,"seq":5,"ts":"2026-08-28T06:40:33Z","kind":"folders.proposed","folders":[{"path":"/inpdf","role":"input","purpose":"Les PDF à convertir"},{"path":"/outmd","role":"output","purpose":"Les fichiers Markdown produits"}]}""",
     ];
 
     /// <summary>A run that goes all the way through, for the Run screen.</summary>

@@ -1254,12 +1254,6 @@
   <data name="Studio.Create.Examples" xml:space="preserve">
     <value>O PARTA DE UN EJEMPLO</value>
   </data>
-  <data name="Studio.Create.PrecisionsTitle" xml:space="preserve">
-    <value>Sus carpetas</value>
-  </data>
-  <data name="Studio.Create.PrecisionsSub" xml:space="preserve">
-    <value>Donde el equipo lee y escribe. Podrá cambiarlo todo después.</value>
-  </data>
   <data name="Studio.Create.Compose" xml:space="preserve">
     <value>Componer el equipo</value>
   </data>
@@ -2788,24 +2782,6 @@
     <value>Vacío: este modelo no está en el catálogo, así que el motor envía 4096. Indique el máximo documentado del modelo — un modelo razonador necesita 16384 o más.</value>
   </data>
   <!-- STUDIO-14 wizard: where a team's folders live, and the open-folder button -->
-  <data name="Studio.Create.QFolders" xml:space="preserve">
-    <value>¿Dónde están sus carpetas?</value>
-  </data>
-  <data name="Studio.Create.FoldersExisting" xml:space="preserve">
-    <value>Carpetas existentes</value>
-  </data>
-  <data name="Studio.Create.FoldersInside" xml:space="preserve">
-    <value>Creadas dentro del equipo</value>
-  </data>
-  <data name="Studio.Create.FoldersLater" xml:space="preserve">
-    <value>Más tarde</value>
-  </data>
-  <data name="Studio.Create.ReadRootTitle" xml:space="preserve">
-    <value>Sus documentos</value>
-  </data>
-  <data name="Studio.Create.WriteRootTitle" xml:space="preserve">
-    <value>Los resultados</value>
-  </data>
   <data name="Studio.Create.InsideTeamFolder" xml:space="preserve">
     <value>dentro del equipo: {0}</value>
   </data>
@@ -2815,11 +2791,8 @@
   <data name="Studio.Create.CreateAllInsideTeam" xml:space="preserve">
     <value>Crear todas las carpetas dentro del equipo</value>
   </data>
-  <data name="Studio.Create.FoldersPolicyHint" xml:space="preserve">
-    <value>Una carpeta existente se declara de paso en Ajustes › Carpetas autorizadas; una carpeta creada dentro del equipo viaja con él. Aún podrá cambiarlo en el paso siguiente.</value>
-  </data>
   <data name="Studio.Create.TrialInsideTeam" xml:space="preserve">
-    <value>El ensayo corre sobre una carpeta vacía — deposite sus documentos en input/ una vez adoptado el equipo.</value>
+    <value>El ensayo lee las carpetas guardadas dentro del equipo desde la sesión de trabajo — deposite allí sus documentos con « Abrir la carpeta »; pasan al equipo al adoptarlo.</value>
   </data>
   <data name="Studio.Create.OpenFolder" xml:space="preserve">
     <value>Abrir la carpeta</value>
@@ -2831,15 +2804,6 @@
     <value>Abre la carpeta del equipo adoptado.</value>
   </data>
   <!-- STUDIO-14 wizard (owner review 2026-09-19): any number of folders, named by the user -->
-  <data name="Studio.Create.AddRootHint" xml:space="preserve">
-    <value>Añada tantas carpetas como pida la necesidad: un nombre que usarán los agentes (facturas, archivos…), de lectura o de escritura — y responda a cada una como a las dos primeras, con una carpeta real o creada dentro del equipo. Nómbrelas en su necesidad para que el equipo las use.</value>
-  </data>
-  <data name="Studio.Create.AddRootWrite" xml:space="preserve">
-    <value>con escritura</value>
-  </data>
-  <data name="Studio.Create.AddRoot" xml:space="preserve">
-    <value>Añadir la carpeta</value>
-  </data>
   <data name="Studio.Settings.ProfileTimeoutHintReasoning" xml:space="preserve"><value>{0} s prellenado: el modelo por defecto de {1} razona antes de responder, y una respuesta razonada suele superar los 30 s del motor. Escriba otro valor para sustituirlo.</value></data>
   <data name="Studio.Settings.ProfileLblThinking" xml:space="preserve"><value>Razonamiento</value></data>
   <data name="Studio.Settings.ProfileThinkingProviderDefault" xml:space="preserve"><value>Valor por defecto del proveedor</value></data>
@@ -2895,4 +2859,34 @@
   <data name="Studio.Create.GalleryLoading" xml:space="preserve"><value>Leyendo los casos de uso…</value></data>
   <data name="Studio.Create.GalleryClose" xml:space="preserve"><value>Cerrar</value></data>
   <data name="Studio.Create.GalleryRemoveReference" xml:space="preserve"><value>Quitar la referencia: su necesidad queda como está.</value></data>
+  <data name="Studio.Create.FoldersStepTitle" xml:space="preserve">
+    <value>Las carpetas del equipo</value>
+  </data>
+  <data name="Studio.Create.FoldersStepSub" xml:space="preserve">
+    <value>Leídas en su solicitud. Cambie el nombre de una carpeta si lo desea, indique dónde está cada una y confirme: el equipo usará exactamente estas.</value>
+  </data>
+  <data name="Studio.Create.FoldersConfirm" xml:space="preserve">
+    <value>Confirmar las carpetas</value>
+  </data>
+  <data name="Studio.Create.FolderInsideTeam" xml:space="preserve">
+    <value>Dentro del equipo</value>
+  </data>
+  <data name="Studio.Create.FolderRoleInput" xml:space="preserve">
+    <value>leída</value>
+  </data>
+  <data name="Studio.Create.FolderRoleOutput" xml:space="preserve">
+    <value>escrita</value>
+  </data>
+  <data name="Studio.Create.FolderNotChosen" xml:space="preserve">
+    <value>ninguna carpeta elegida</value>
+  </data>
+  <data name="Studio.Create.FolderInvalidName" xml:space="preserve">
+    <value>« {0} » no es un nombre de carpeta: una sola palabra de letras, cifras, - _ o ., y no un nombre que el motor se reserva.</value>
+  </data>
+  <data name="Studio.Create.FolderTwice" xml:space="preserve">
+    <value>{0} aparece dos veces.</value>
+  </data>
+  <data name="Studio.Create.FolderNoOutput" xml:space="preserve">
+    <value>Al menos una carpeta debe recibir los resultados del equipo.</value>
+  </data>
 </root>

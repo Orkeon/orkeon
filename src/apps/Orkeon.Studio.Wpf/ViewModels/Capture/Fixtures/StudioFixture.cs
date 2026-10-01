@@ -293,7 +293,7 @@ internal static class StudioFixture
         DoctorJson = DoctorWithIssues,
         Sessions = [DryPauseSession, PassingSession, FailingSession, PromotedSession],
         RunStream = CaptureScripts.RunToSuccess,
-        ForgeStream = CaptureScripts.ForgeComposeToDryPause,
+        ForgeStream = CaptureScripts.ForgeComposeToFolders,
     };
 
     /// <summary>

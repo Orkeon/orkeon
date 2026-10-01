@@ -88,8 +88,11 @@ public sealed class CapturePlannerTests
         // STUDIO-28: +1 stop (equipes-renommage, the card's rename editor, both modes, both themes) = +4 shots.
         // STUDIO-32: +3 stops — the Archives view and the archive suggestion (both modes, both themes,
         // language sweep = +16) and the undo banner (both modes, both themes = +4) = +20 shots.
-        Assert.Equal(64, CaptureCatalog.All.Count);
-        Assert.Equal(356, plan.Count);
+        // STUDIO-46: -1 stop — the two step-1 folder-policy stops leave with the policy, and the
+        // Folders step takes their place (dossiers-proposes, both modes, both themes, language
+        // sweep) = -8 shots.
+        Assert.Equal(63, CaptureCatalog.All.Count);
+        Assert.Equal(348, plan.Count);
     }
 
     [Fact]

@@ -52,6 +52,26 @@ public sealed record ForgeProposal(
 public sealed record ForgeDerivedMount(
     string VirtualPath, bool IsReadWrite, IReadOnlyList<string>? Agents = null);
 
+/// <summary>
+/// One folder of the team (STUDIO-46): its virtual root, <c>input</c> or <c>output</c>, what it
+/// holds, and — on the way back to the engine only — the real directory bound behind it.
+/// </summary>
+/// <param name="Path">The virtual root the agents address (<c>/inpdf</c>).</param>
+/// <param name="Role"><see cref="InputRole"/> or <see cref="OutputRole"/>.</param>
+/// <param name="Purpose">What the folder holds, in the user's words.</param>
+/// <param name="Directory">The real directory behind it; null for a folder inside the team.</param>
+public sealed record ForgeFolder(string Path, string Role, string? Purpose = null, string? Directory = null)
+{
+    /// <summary>The role of a folder the team reads.</summary>
+    public const string InputRole = "input";
+
+    /// <summary>The role of a folder the team writes to.</summary>
+    public const string OutputRole = "output";
+
+    /// <summary>Whether the team only reads it.</summary>
+    public bool IsInput => string.Equals(Role, InputRole, StringComparison.Ordinal);
+}
+
 /// <summary>One completed task of the running try.</summary>
 public sealed record ForgeTaskProgress(string? TaskId, string? AgentRole, bool Success, long DurationMs);
 
@@ -205,6 +225,49 @@ public sealed class ForgeSessionModel
     /// </summary>
     public string? BriefOutput { get; private set; }
 
+    /// <summary>
+    /// The folders the engine proposed (<c>folders.proposed</c>, STUDIO-46) — what the Folders
+    /// panel shows while <see cref="FoldersPending"/>.
+    /// </summary>
+    public IReadOnlyList<ForgeFolder> ProposedFolders { get; private set; } = [];
+
+    /// <summary>Whether the engine waits for the folders to be confirmed.</summary>
+    public bool FoldersPending { get; private set; }
+
+    /// <summary>
+    /// The confirmed folders, as the brief carries them (<c>brief.ready</c>): the list every
+    /// folder surface of the team follows. Empty until a brief settles it.
+    /// </summary>
+    public IReadOnlyList<ForgeFolder> Folders { get; private set; } = [];
+
+    /// <summary>
+    /// Clears the pending folders step once the client sent its <c>folders.confirmed</c> — the
+    /// engine answers with <c>brief.ready</c>, and the panel must not invite a second confirm.
+    /// <paramref name="confirmed"/> is the list sent: the brief that comes back carries no
+    /// directory, so the ones bound here are kept on <see cref="Folders"/> by name.
+    /// </summary>
+    public void AcknowledgeFolders(IReadOnlyList<ForgeFolder>? confirmed = null)
+    {
+        FoldersPending = false;
+        if (confirmed is not null)
+        {
+            _sentFolders = confirmed;
+            Folders = WithSentDirectories(Folders);
+        }
+    }
+
+    /// <summary>The list this client confirmed, directories included; empty until it confirms one.</summary>
+    private IReadOnlyList<ForgeFolder> _sentFolders = [];
+
+    /// <summary><paramref name="folders"/>, each with the directory this client bound behind it when the wire carried none.</summary>
+    private List<ForgeFolder> WithSentDirectories(IReadOnlyList<ForgeFolder> folders) =>
+    [
+        .. folders.Select(folder => folder.Directory is null
+            && _sentFolders.FirstOrDefault(sent => string.Equals(sent.Path, folder.Path, StringComparison.Ordinal))?.Directory is { } directory
+                ? folder with { Directory = directory }
+                : folder),
+    ];
+
     /// <summary>The proposal card, once a blueprint was proposed.</summary>
     public ForgeProposal? Proposal { get; private set; }
 
@@ -216,8 +279,10 @@ public sealed class ForgeSessionModel
     public string? BlueprintJson { get; private set; }
 
     /// <summary>
-    /// The mounts the blueprint implies (v3 W-04): read chips before write chips,
-    /// recomputed on every <c>blueprint.ready</c> — an agent edit updates them.
+    /// The team's mounts: the confirmed folders (STUDIO-46), each with the agents that read or
+    /// write it, recomputed on every <c>blueprint.ready</c> — an agent edit updates them. A
+    /// session with no confirmed list (a team reopened from its folder) keeps what the plan
+    /// implies (v3 W-04): read chips before write chips.
     /// </summary>
     public IReadOnlyList<ForgeDerivedMount> DerivedMounts { get; private set; } = [];
 
@@ -356,8 +421,14 @@ public sealed class ForgeSessionModel
                 AddAssistantMessage(orkeonEvent);
                 break;
 
+            case ForgeEventKinds.FoldersProposed:
+                ProposedFolders = ReadFolders(orkeonEvent.Root);
+                FoldersPending = true;
+                break;
+
             case ForgeEventKinds.BriefReady:
                 ReadBrief(orkeonEvent);
+                FoldersPending = false;
                 break;
 
             case ForgeEventKinds.BlueprintReady:
@@ -436,6 +507,7 @@ public sealed class ForgeSessionModel
             case ForgeEventKinds.SessionFinished:
                 FinishedStatus = orkeonEvent.GetString("status");
                 _decisionOptions.Clear();
+                FoldersPending = false;
                 // Ready is the engine's ordinary stop — no runner, no stage.entered — and
                 // for the user it IS the Adopt milestone: the crew waits to be taken.
                 if (string.Equals(FinishedStatus, "ready", StringComparison.Ordinal))
@@ -576,6 +648,15 @@ public sealed class ForgeSessionModel
             Title = goal.GetString();
 
         BriefInputs = ReadBriefInputs(brief);
+        Folders = WithSentDirectories(ReadFolders(brief));
+        // The confirmed list replaces what the plan implies (STUDIO-46): a plan already read
+        // re-derives its mounts from it.
+        if (BlueprintJson is { } blueprintJson)
+        {
+            using var document = JsonDocument.Parse(blueprintJson);
+            var roles = new Dictionary<string, string>(StringComparer.Ordinal);
+            DerivedMounts = DeriveMounts(ReadAgents(document.RootElement, roles, []), roles, document.RootElement);
+        }
         BriefOutput = brief.TryGetProperty("expectedOutput", out var output) && output.ValueKind == JsonValueKind.Object
             ? NonBlank(ReadString(output, "description")) ?? NonBlank(ReadString(output, "format"))
             : null;
@@ -593,6 +674,27 @@ public sealed class ForgeSessionModel
                     string.Equals(ReadString(criterion, "kind"), "must", StringComparison.OrdinalIgnoreCase)));
             }
         }
+    }
+
+    /// <summary>The <c>folders</c> array of <paramref name="owner"/>; a folder without a path or a known role is skipped.</summary>
+    private static List<ForgeFolder> ReadFolders(JsonElement owner)
+    {
+        var folders = new List<ForgeFolder>();
+        if (!owner.TryGetProperty("folders", out var array) || array.ValueKind != JsonValueKind.Array)
+            return folders;
+
+        foreach (var folder in array.EnumerateArray())
+        {
+            if (folder.ValueKind == JsonValueKind.Object
+                && ReadString(folder, "path") is { Length: > 1 } path
+                && ReadString(folder, "role") is ForgeFolder.InputRole or ForgeFolder.OutputRole)
+            {
+                folders.Add(new ForgeFolder(
+                    path, ReadString(folder, "role")!, NonBlank(ReadString(folder, "purpose")), NonBlank(ReadString(folder, "dir"))));
+            }
+        }
+
+        return folders;
     }
 
     private static List<string> ReadBriefInputs(JsonElement brief)
@@ -736,13 +838,11 @@ public sealed class ForgeSessionModel
     /// below arrived on the CLI copy alone; <c>ForgeDerivedMountTests</c> now pins the pair.
     /// </para>
     /// </summary>
-    private static List<ForgeDerivedMount> DeriveMounts(
+    private List<ForgeDerivedMount> DeriveMounts(
         IReadOnlyList<ForgeAgentView> agents,
         Dictionary<string, string> roles,
         JsonElement blueprint)
     {
-        var mounts = new List<ForgeDerivedMount>();
-
         // Per agent, not over the union: the union answered «somebody reads» and the screen
         // could only repeat it. Named, it answers «who», which is the question asked.
         var readers = agents
@@ -751,6 +851,13 @@ public sealed class ForgeSessionModel
             .Select(a => a.Role)
             .Distinct(StringComparer.Ordinal)
             .ToList();
+
+        // The confirmed folders ARE the team's mounts (STUDIO-46): an input is read by the
+        // reading agents, an output written by the agents whose deliverables land there.
+        if (Folders.Count > 0)
+            return FolderMounts(readers, roles, blueprint);
+
+        var mounts = new List<ForgeDerivedMount>();
 
         if (readers.Count > 0)
             mounts.Add(new ForgeDerivedMount("/workspace", IsReadWrite: false, readers));
@@ -799,6 +906,30 @@ public sealed class ForgeSessionModel
         }
 
         return MountDefinition.IsReservedVirtualPath(root) ? null : root;
+    }
+
+    /// <summary>The confirmed folders as mounts, each with the roles that read or write it.</summary>
+    private List<ForgeDerivedMount> FolderMounts(
+        List<string> readers, Dictionary<string, string> roles, JsonElement blueprint)
+    {
+        var writers = new Dictionary<string, List<string>>(StringComparer.Ordinal);
+        if (blueprint.TryGetProperty("tasks", out var tasks) && tasks.ValueKind == JsonValueKind.Array)
+        {
+            foreach (var task in tasks.EnumerateArray())
+            {
+                if (task.ValueKind != JsonValueKind.Object || DeliverableRoot(task) is not { } root)
+                    continue;
+
+                writers[root] = Merge(writers.GetValueOrDefault(root), WriterRole(task, roles));
+            }
+        }
+
+        return
+        [
+            .. Folders.Select(folder => folder.IsInput
+                ? new ForgeDerivedMount(folder.Path, IsReadWrite: false, readers)
+                : new ForgeDerivedMount(folder.Path, IsReadWrite: true, writers.GetValueOrDefault(folder.Path) ?? [])),
+        ];
     }
 
     /// <summary>The role writing a task's deliverable, when the blueprint declares that agent.</summary>

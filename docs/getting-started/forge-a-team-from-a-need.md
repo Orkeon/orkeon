@@ -31,10 +31,11 @@ orkeon forge "summarize my supplier's new offers every morning"
 ```
 
 1. **The interview.** The assistant asks only what your need leaves unsaid — what comes in, what comes out and in which shape — one short question at a time, and never how often the work runs (scheduling is settled at promotion). A need that already says it all goes through with no question at all; "I don't know" is always a valid answer. It captures a structured brief: goal, inputs, expected output, constraints, **acceptance criteria** (what "done, correctly" means, in your words), and a sample input for the try.
-2. **The proposal.** From the brief, the assistant plans a team: who does what, in which order, with which tools — drawn from the real tool catalogue only; it cannot invent one. The plan is rendered as ordinary crew files and validated mechanically (unknown tools, unassigned tasks, dependency cycles). Validation errors go back to the assistant for repair — twice, then they surface to you.
-3. **The try.** The crew runs in a sandbox, in-process, on your sample input: writes land in the session's own directory — `/output` for the deliverables, `/forge` for the session's working files — the workspace is mounted read-only, and `shell_command`/`code_interpreter` are removed from the catalogue outright. The confinement is the session directory, not the output folder inside it.
-4. **The verdict.** A judge grades the output against your acceptance criteria, one by one, and states findings and concrete suggestions. A missed *must* criterion blocks regardless of the score. If no judge can run, the verdict says so (`judge: deterministic`) — it never invents a ✔.
-5. **Your call.** Interactive mode arbitrates every verdict, conforming ones included: accept (a conforming crew becomes ready; accepting a non-conforming one is your judgement on sight), re-run the trial as-is (`retry` — zero compose tokens, one budget iteration), refine (the diagnosis is fed back into the plan, verbatim), hand back an edited plan (`edit`), or stop. `--auto` arbitrates alone, within the budget.
+2. **The folders.** Between the brief and the plan, the forge proposes the team's folders: the ones your need names — « …PDFs in `/inpdf`, the Markdown in `/outmd` » gives `/inpdf` read and `/outmd` written — or, when it names none, `/workspace` to read (only when something comes in) and `/output` to write. The terminal takes the proposal as it is and prints it; Orkeon Studio shows it as a step where you rename a folder, bind it to a real one or keep it inside the team, then confirm. From then on that list is the team's folders: the plan delivers into them, the try mounts them, the promoted team carries them.
+3. **The proposal.** From the brief, the assistant plans a team: who does what, in which order, with which tools — drawn from the real tool catalogue only; it cannot invent one. The plan is rendered as ordinary crew files and validated mechanically (unknown tools, unassigned tasks, dependency cycles). Validation errors go back to the assistant for repair — twice, then they surface to you.
+4. **The try.** The crew runs in a sandbox, in-process, on your sample input, with the confirmed folders mounted and nothing else of yours: each output folder lands in the session's own directory (`folders/<name>`, snapshotted into `runs/<n>/folders/<name>` after each run), an input folder reads the real folder you bound behind it — else `--read`, else the workspace for `/workspace`, else the session's `folders/<name>`, which moves into the team at adoption — and `/forge` holds the session's working files; `shell_command`/`code_interpreter` are removed from the catalogue outright. The confinement is the session directory.
+5. **The verdict.** A judge grades the output against your acceptance criteria, one by one, and states findings and concrete suggestions. A missed *must* criterion blocks regardless of the score. If no judge can run, the verdict says so (`judge: deterministic`) — it never invents a ✔.
+6. **Your call.** Interactive mode arbitrates every verdict, conforming ones included: accept (a conforming crew becomes ready; accepting a non-conforming one is your judgement on sight), re-run the trial as-is (`retry` — zero compose tokens, one budget iteration), refine (the diagnosis is fed back into the plan, verbatim), hand back an edited plan (`edit`), or stop. `--auto` arbitrates alone, within the budget.
 
 Adoption itself is not a one-way door: `forge resume` of a **promoted** session reopens it at the arbitration (the stored verdict is re-announced), and a second `forge promote` to the **same** destination — or to that folder moved or renamed since — updates the folder in place — generated files regenerated, your own files preserved. Any other non-empty destination stays refused, a copy of the folder included. And the session is not a prerequisite either: `forge reopen <team-folder>` finds the session the folder is linked to by the id its `forge.json` carries, or rebuilds one from the folder's own `crew/` (and that `forge.json`) when the original is gone — or when the folder is a copy, which then gets a session of its own — landing at the `--dry` pause: an imported, orphaned or duplicated team can be amended, tried and re-adopted onto the same folder, not only relaunched.
 
@@ -48,10 +49,12 @@ Each cycle lives under `.orkeon/forge/<slug>/` in your working directory:
 .orkeon/forge/supplier-watch/
 ├── session.json          id, state, status, budget — the resume point
 ├── brief.json            what you asked, criteria included
+├── folders.json          the folders you confirmed, with the real folder behind each
+├── folders/<name>/       a folder kept inside the team until adoption; each try's outputs
 ├── blueprint.json        the team plan (single source of both renders)
 ├── repair.json           the validation errors a repair must address, while one is pending
 ├── crew/                 the rendered crew — what actually runs
-├── runs/<n>/             each try: output, metrics, verdict, deliverables
+├── runs/<n>/             each try: output, metrics, verdict, deliverables (folders/<name>/)
 ├── transcript.jsonl      the conversation
 └── history.jsonl         every state transition
 ```
@@ -86,19 +89,19 @@ orkeon forge promote supplier-watch --to ~/solutions/supplier-watch \
 The promoted folder is ordinary — nothing about it is proprietary to the forge:
 
 - `crew/` — the team, as tried;
-- one folder per deliverable root the team writes to (`output/` when its tasks declare `deliverable: /output/…`) — created empty, so the first launch has somewhere to write;
-- `run.sh` / `run.cmd` — launch scripts that `cd` into the folder, carry the mounts binding those roots (`--mount "$DIR/output":/output:rw`) and have your sample inputs pre-filled (adapt them to the real run);
+- one folder per confirmed folder (`inpdf/`, `outmd/`; `/workspace` reads `input/`) — created at promotion, holding whatever the session kept for it, so the first launch has somewhere to read and write;
+- `run.sh` / `run.cmd` — launch scripts that `cd` into the folder, carry the mounts binding those folders (`--mount "$DIR/outmd":/outmd:rw`) and have your sample inputs pre-filled (adapt them to the real run);
 - `FORGE.md` — the crew's identity card: goal, acceptance criteria, verdict, generation date and version — what a colleague reads when picking up the folder;
 - `forge.json` — the card's machine-readable twin: the session's id, slug, title, format, promotion instant and the brief — the id links the folder back to its session wherever the folder goes, and the rest is what `forge reopen` reads to rebuild a faithful session once the original is gone (nothing secret in it);
 - `schedule/` (with `--schedule`) — a Windows task XML, a systemd timer, a cron line, all named after the team folder (`orkeon-supplier-watch.timer`). The promotion installs none of them: `orkeon forge schedule ~/solutions/supplier-watch` registers the one your system uses (`--check` says where it stands, `orkeon forge unschedule` removes it; Orkeon Studio asks before doing the same). Orkeon has no scheduler of its own — the operating system runs the team — so it promises no supervision it cannot give.
 
-Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it: the promoted `config.yaml` names the roots the team uses (`mounts: [/workspace, /output]`), so a settings entry declaring `/output` is used as it stands, and with none the run is refused in one line (`the crew requires '/output' … pass --mount <folder>:/output:rw`) instead of writing nowhere.
+Run it with its own launcher — `~/solutions/supplier-watch/run.sh` — or point Orkeon Studio at the folder, which detects it. A bare `orkeon run ~/solutions/supplier-watch/crew` also launches it: the promoted `config.yaml` names the folders the team uses (`mounts: [/inpdf, /outmd]`), so a settings entry declaring `/outmd` is used as it stands, and with none the run is refused in one line (`the crew requires '/outmd' … pass --mount <folder>:/outmd:rw`) instead of writing nowhere.
 
 ## Other options
 
 | Option | Applies to | What it does |
 |---|---|---|
-| `--read <dir>` | a new session, `forge resume` | The folder the trial reads as `/workspace`, in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
+| `--read <dir>` | a new session, `forge resume` | The folder the trial reads behind the first input folder no real folder was bound to (`/workspace` by default), in place of the working directory — point a trial at the documents the team is meant to read; the sessions stay under the working directory. |
 | `--reference <id>` | a new session | Composes the team from a use case of the catalogue (`orkeon usecases list`): its crew's structure is the assistant's model, and the session, `forge.json` and `FORGE.md` record it. |
 | `--settings <path>` | a new session, `forge resume` | The settings file, with the same semantics as `orkeon run --settings`. |
 | `--with-settings` | `forge promote` | Copies the resolved settings file into the promoted folder. Off by default: a settings file usually holds API keys and the folder is made to be shared — without the copy, the launch scripts reference the file in place. |
