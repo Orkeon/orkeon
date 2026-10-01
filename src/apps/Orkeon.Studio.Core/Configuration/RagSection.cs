@@ -63,13 +63,6 @@ public sealed class RagSection
         set => _document.SetString($"{SectionPath}:Provider", value);
     }
 
-    /// <summary>Document store connection string (<c>Orkeon:Rag:ConnectionString</c>).</summary>
-    public string? ConnectionString
-    {
-        get => _document.GetString($"{SectionPath}:ConnectionString");
-        set => _document.SetString($"{SectionPath}:ConnectionString", value);
-    }
-
     /// <summary>Opt-in hybrid retrieval (<c>Orkeon:Rag:Retrieval:Hybrid:Enabled</c>).</summary>
     public bool? HybridRetrievalEnabled
     {

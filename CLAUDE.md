@@ -283,7 +283,7 @@ There is a single `Agent` aggregate root (no subclasses). Agent behavior is conf
 - Memory types (`Orkeon.Domain.Memory.MemoryType`): ShortTerm, LongTerm, Episodic, Entity, Procedural (two narrower `MemoryType` enums also exist in `Orkeon.Domain.Agent` and `Orkeon.Application.Execution` — backstage GAP-07)
 
 **Infrastructure Layer** (Implementations):
-- `RedisMemoryProvider`: Distributed memory with vector search (must be initialized before use; the DI paths do not do it yet — backstage GAP-08)
+- `RedisMemoryProvider`: Distributed memory with vector search (connection from the `Orkeon:Redis` section, opened on first use)
 - `InMemoryProvider`: Fast local memory for development
 - `SqliteMemoryProvider`: Persistent local storage with SQLite (embeddings as BLOB, cosine vector search)
 - `EncryptedMemoryProviderDecorator`: At-rest encryption decorator wrapping any provider (incl. SQLite)

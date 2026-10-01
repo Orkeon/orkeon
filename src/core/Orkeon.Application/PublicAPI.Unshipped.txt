@@ -97,3 +97,32 @@ static Orkeon.Application.Interfaces.BallotCandidate.operator !=(Orkeon.Applicat
 static Orkeon.Application.Interfaces.BallotCandidate.operator ==(Orkeon.Application.Interfaces.BallotCandidate? left, Orkeon.Application.Interfaces.BallotCandidate? right) -> bool
 static Orkeon.Application.Interfaces.BallotRequest.operator !=(Orkeon.Application.Interfaces.BallotRequest? left, Orkeon.Application.Interfaces.BallotRequest? right) -> bool
 static Orkeon.Application.Interfaces.BallotRequest.operator ==(Orkeon.Application.Interfaces.BallotRequest? left, Orkeon.Application.Interfaces.BallotRequest? right) -> bool
+*REMOVED*Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.Create(Orkeon.Application.Memory.MemoryProviderConfigDto! config, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> Orkeon.Domain.Memory.IMemoryProvider!
+*REMOVED*Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.CreateAndInitializeAsync(Orkeon.Application.Memory.MemoryProviderConfigDto! config, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.IMemoryProvider!>!
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDefaults
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.ConnectionString.get -> string!
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.ConnectionString.init -> void
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.Deconstruct(out string! Type, out string! ConnectionString, out System.Collections.Generic.Dictionary<string!, object!>? Options) -> void
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.MemoryProviderConfigDto(Orkeon.Application.Memory.MemoryProviderConfigDto! original) -> void
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.MemoryProviderConfigDto(string! Type, string! ConnectionString, System.Collections.Generic.Dictionary<string!, object!>? Options = null) -> void
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.Options.get -> System.Collections.Generic.Dictionary<string!, object!>?
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.Options.init -> void
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.Type.get -> string!
+*REMOVED*Orkeon.Application.Memory.MemoryProviderConfigDto.Type.init -> void
+*REMOVED*Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
+*REMOVED*override Orkeon.Application.Memory.MemoryProviderConfigDto.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Application.Memory.MemoryProviderConfigDto.GetHashCode() -> int
+*REMOVED*override Orkeon.Application.Memory.MemoryProviderConfigDto.ToString() -> string!
+*REMOVED*static Orkeon.Application.Memory.MemoryProviderConfigDefaults.ChromaDB(string! endpoint, string! apiKey) -> Orkeon.Application.Memory.MemoryProviderConfigDto!
+*REMOVED*static Orkeon.Application.Memory.MemoryProviderConfigDefaults.InMemory.get -> Orkeon.Application.Memory.MemoryProviderConfigDto!
+*REMOVED*static Orkeon.Application.Memory.MemoryProviderConfigDefaults.Redis(string! connectionString) -> Orkeon.Application.Memory.MemoryProviderConfigDto!
+*REMOVED*static Orkeon.Application.Memory.MemoryProviderConfigDto.operator !=(Orkeon.Application.Memory.MemoryProviderConfigDto? left, Orkeon.Application.Memory.MemoryProviderConfigDto? right) -> bool
+*REMOVED*static Orkeon.Application.Memory.MemoryProviderConfigDto.operator ==(Orkeon.Application.Memory.MemoryProviderConfigDto? left, Orkeon.Application.Memory.MemoryProviderConfigDto? right) -> bool
+*REMOVED*virtual Orkeon.Application.Memory.MemoryProviderConfigDto.<Clone>$() -> Orkeon.Application.Memory.MemoryProviderConfigDto!
+*REMOVED*virtual Orkeon.Application.Memory.MemoryProviderConfigDto.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Application.Memory.MemoryProviderConfigDto.Equals(Orkeon.Application.Memory.MemoryProviderConfigDto? other) -> bool
+*REMOVED*virtual Orkeon.Application.Memory.MemoryProviderConfigDto.PrintMembers(System.Text.StringBuilder! builder) -> bool
+Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.GetProvider(string! providerType) -> Orkeon.Domain.Memory.IMemoryProvider!
+Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory.SupportedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Application.Memory.MemoryService.MemoryService(Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory! memoryProviderFactory, Microsoft.Extensions.Logging.ILogger<Orkeon.Application.Memory.MemoryService!>! logger, Orkeon.Application.Memory.CrewMemoryProviderRegistry? providerRegistry = null) -> void

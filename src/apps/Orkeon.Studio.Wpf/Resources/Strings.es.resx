@@ -265,9 +265,6 @@
   <data name="Studio.Settings.LblRagProvider" xml:space="preserve">
     <value>Proveedor</value>
   </data>
-  <data name="Studio.Settings.LblRagConnection" xml:space="preserve">
-    <value>Cadena de conexión</value>
-  </data>
   <data name="Studio.Settings.RagHybrid" xml:space="preserve">
     <value>Recuperación híbrida (BM25 + RRF)</value>
   </data>

@@ -336,8 +336,7 @@ Liée par-dessus le preset sélectionné — chaque clé est une surcharge indiv
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset : `fast` / `balanced` / `quality` / `adaptive` / `corrective` (un nom inconnu échoue bruyamment) |
 | `Orkeon:Rag:Collection` | — | La collection qu'interroge `rag_search` quand l'agent n'en nomme aucune (non définie : `default`), et celle qu'évalue `rag_eval` quand ni l'appel ni le dataset n'en nomment et que le dataset n'apporte pas de corpus. `rag.query`/`rag.ingest` et `knowledge:` nomment toujours la leur |
-| `Orkeon:Rag:Provider` | ambiant | Alias du provider de document store (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance` ; un alias inconnu échoue bruyamment) ; non défini = `IMemoryProvider` ambiant |
-| `Orkeon:Rag:ConnectionString` / `ProviderOptions:*` | — | Transmis à la factory de provider mémoire quand `Provider` est défini |
+| `Orkeon:Rag:Provider` | ambiant | Type du provider de document store (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance` ; un type inconnu échoue bruyamment) ; non défini = `IMemoryProvider` ambiant. La connexion est la section hôte propre de ce provider (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), et le store partage avec la mémoire des crews l'instance de ce type que tient la factory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks conservés pour l'assemblage du contexte (le `RagQuery.TopN` de l'appelant l'emporte) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 50 | Étage large de la cascade (toujours ≥ TopN final) |
 | `Orkeon:Rag:Retrieval:MinScore` | aucun | Plancher optionnel sur le score brut (l'ancien plancher global 0.7 a délibérément disparu) |

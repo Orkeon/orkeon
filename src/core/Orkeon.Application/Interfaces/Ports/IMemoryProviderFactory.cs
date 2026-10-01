@@ -1,33 +1,31 @@
 using Orkeon.Domain.Memory;
-using Microsoft.Extensions.Logging;
-using MemoryProviderConfigDto = Orkeon.Application.Memory.MemoryProviderConfigDto;
 
 namespace Orkeon.Application.Interfaces.Ports;
 
 /// <summary>
-/// Factory interface for creating memory providers.
-/// This allows the Infrastructure layer to provide implementations
-/// while maintaining proper architectural boundaries.
+/// Hands out the memory provider of a given type. The type is all a caller chooses
+/// (<c>Memory:Provider</c>, a crew's <c>memoryProvider:</c>, <c>Orkeon:Rag:Provider</c>): the
+/// connection of each provider comes from the host's configuration section for that provider
+/// (<c>Orkeon:Redis</c>, <c>Orkeon:Sqlite</c>, <c>Orkeon:ChromaDb</c>, <c>Orkeon:Pinecone</c>,
+/// <c>Orkeon:LanceDb</c>), never from the caller.
 /// </summary>
+/// <remarks>
+/// One instance per type: every caller asking for the same type receives the same provider (one
+/// Redis connection, one HTTP client, one SQLite connection), and the factory owns those
+/// instances — callers never dispose them. An unrecognized type resolves to the in-memory
+/// provider with an explicit warning, never in silence.
+/// </remarks>
 public interface IMemoryProviderFactory
 {
     /// <summary>
-    /// Creates a memory provider based on configuration.
+    /// Gets every type name the factory recognizes, aliases included (case-insensitive).
     /// </summary>
-    /// <param name="config">Memory provider configuration</param>
-    /// <param name="loggerFactory">Optional logger factory</param>
-    /// <returns>A memory provider instance</returns>
-    IMemoryProvider Create(MemoryProviderConfigDto config, ILoggerFactory? loggerFactory = null);
+    IReadOnlyList<string> SupportedTypes { get; }
 
     /// <summary>
-    /// Creates and initializes a memory provider.
+    /// Gets the shared provider of <paramref name="providerType"/>, creating it on first use.
     /// </summary>
-    /// <param name="config">Memory provider configuration</param>
-    /// <param name="loggerFactory">Optional logger factory</param>
-    /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>Initialized memory provider instance</returns>
-    System.Threading.Tasks.Task<IMemoryProvider> CreateAndInitializeAsync(
-        MemoryProviderConfigDto config,
-        ILoggerFactory? loggerFactory = null,
-        CancellationToken cancellationToken = default);
+    /// <param name="providerType">The provider type, e.g. <c>redis</c> or <c>sqlite</c>; empty selects the in-memory provider.</param>
+    /// <returns>The provider instance shared by every caller asking for that type.</returns>
+    IMemoryProvider GetProvider(string providerType);
 }

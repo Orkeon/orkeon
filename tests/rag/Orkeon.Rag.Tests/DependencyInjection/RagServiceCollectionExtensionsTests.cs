@@ -277,15 +277,15 @@ public class RagServiceCollectionExtensionsTests
     // ---------------------------------------------------------------- Orkeon:Rag:Provider
 
     [Fact]
-    public void AddOrkeonRag_ProviderOption_ResolvesTheStoreProviderThroughTheFactory()
+    public void AddOrkeonRag_ProviderOption_ResolvesTheStoreProviderThroughTheFactory_ByTypeOnly()
     {
+        // GAP-08: Orkeon:Rag:Provider names a type; the connection is the provider's own host
+        // section (Orkeon:ChromaDb here), read by the factory — there is no RAG-side copy of it.
         var factory = new FakeMemoryProviderFactory();
         var configuration = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["Orkeon:Rag:Provider"] = "ChromaDB",
-                ["Orkeon:Rag:ConnectionString"] = "http://chroma:8000",
-                ["Orkeon:Rag:ProviderOptions:ApiKey"] = "secret",
             })
             .Build();
 
@@ -303,13 +303,21 @@ public class RagServiceCollectionExtensionsTests
             provider.GetRequiredService<IDocumentStore>());
         Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(store.Inner);
 
-        // The provider resolver runs twice by design: once for the inner store,
-        // once for the decorator's native-hybrid discovery (same configuration).
-        Assert.True(factory.CreateCalls >= 1);
-        Assert.NotNull(factory.LastConfig);
-        Assert.Equal("chromadb", factory.LastConfig!.Type);
-        Assert.Equal("http://chroma:8000", factory.LastConfig.ConnectionString);
-        Assert.Equal("secret", Assert.Contains("ApiKey", factory.LastConfig.Options!));
+        // The provider resolver runs twice by design: once for the inner store, once for the
+        // decorator's native-hybrid discovery. Both ask the factory for the same type, and the
+        // factory hands out one shared instance per type — one connection, not two.
+        Assert.NotEmpty(factory.RequestedTypes);
+        Assert.All(factory.RequestedTypes, type => Assert.Equal("chromadb", type, ignoreCase: true));
+    }
+
+    [Fact]
+    public void RagStoreOptions_CarryNoConnectionOfTheirOwn()
+    {
+        // The connection keys Orkeon:Rag:ConnectionString and Orkeon:Rag:ProviderOptions are gone:
+        // a second, divergent source of a provider's connection (GAP-08).
+        var properties = typeof(RagStoreOptions).GetProperties().Select(p => p.Name).ToList();
+
+        Assert.Equal(["Provider"], properties);
     }
 
     [Fact]
@@ -405,7 +413,7 @@ public class RagServiceCollectionExtensionsTests
         var store = Assert.IsType<Orkeon.Rag.Retrieval.HybridSearchDocumentStore>(
             provider.GetRequiredService<IDocumentStore>());
         Assert.IsType<Orkeon.Rag.Stores.MemoryProviderDocumentStore>(store.Inner);
-        Assert.Equal(0, factory.CreateCalls);
+        Assert.Empty(factory.RequestedTypes);
     }
 
     private sealed class HostRagPipeline : IRagPipeline

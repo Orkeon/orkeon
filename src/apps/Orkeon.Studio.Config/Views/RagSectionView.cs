@@ -13,7 +13,6 @@ internal sealed class RagSectionView : SectionView
     private readonly RagForm _form;
     private readonly ListView _profile;
     private readonly TextField _provider;
-    private readonly TextField _connectionString;
     private readonly CheckBox _hybrid;
     private readonly CheckBox _correctiveWebFallback;
     private readonly CheckBox _webFallback;
@@ -30,17 +29,16 @@ internal sealed class RagSectionView : SectionView
 
         var next = RagForm.ProfileChoices.Count + 1;
         _provider = FormLayout.AddField(this, next, "Document store provider", _form.Provider);
-        _connectionString = FormLayout.AddField(this, next + 1, "Connection string", _form.ConnectionString);
 
         _hybrid = FormLayout.AddOptionalSwitch(
-            this, next + 3, "Hybrid retrieval (BM25 + RRF)", _form.HybridRetrievalEnabled);
+            this, next + 2, "Hybrid retrieval (BM25 + RRF)", _form.HybridRetrievalEnabled);
         _correctiveWebFallback = FormLayout.AddOptionalSwitch(
-            this, next + 4, "Corrective web fallback — policy switch", _form.CorrectiveWebFallbackEnabled);
+            this, next + 3, "Corrective web fallback — policy switch", _form.CorrectiveWebFallbackEnabled);
         _webFallback = FormLayout.AddOptionalSwitch(
-            this, next + 5, "Web fallback — transport switch", _form.WebFallbackEnabled);
-        FormLayout.AddNote(this, next + 6, RagForm.WebFallbackNotice);
+            this, next + 4, "Web fallback — transport switch", _form.WebFallbackEnabled);
+        FormLayout.AddNote(this, next + 5, RagForm.WebFallbackNotice);
 
-        _maxIterations = FormLayout.AddField(this, next + 8, "Corrective max iterations", _form.CorrectiveMaxIterations);
+        _maxIterations = FormLayout.AddField(this, next + 7, "Corrective max iterations", _form.CorrectiveMaxIterations);
     }
 
     /// <inheritdoc />
@@ -48,7 +46,6 @@ internal sealed class RagSectionView : SectionView
     {
         FormLayout.SetItems(_profile, RagForm.ProfileChoices, _form.ProfileChoiceIndex);
         _provider.Text = _form.Provider;
-        _connectionString.Text = _form.ConnectionString;
         _hybrid.Value = FormLayout.ToCheckState(_form.HybridRetrievalEnabled);
         _correctiveWebFallback.Value = FormLayout.ToCheckState(_form.CorrectiveWebFallbackEnabled);
         _webFallback.Value = FormLayout.ToCheckState(_form.WebFallbackEnabled);
@@ -60,7 +57,6 @@ internal sealed class RagSectionView : SectionView
     {
         _form.SelectProfile(FormLayout.SelectedIndex(_profile));
         _form.Provider = _provider.Text ?? "";
-        _form.ConnectionString = _connectionString.Text ?? "";
         _form.HybridRetrievalEnabled = FormLayout.ToBoolean(_hybrid.Value);
         _form.CorrectiveWebFallbackEnabled = FormLayout.ToBoolean(_correctiveWebFallback.Value);
         _form.WebFallbackEnabled = FormLayout.ToBoolean(_webFallback.Value);
@@ -74,7 +70,6 @@ internal sealed class RagSectionView : SectionView
         {
             _profile.Dispose();
             _provider.Dispose();
-            _connectionString.Dispose();
             _hybrid.Dispose();
             _correctiveWebFallback.Dispose();
             _webFallback.Dispose();

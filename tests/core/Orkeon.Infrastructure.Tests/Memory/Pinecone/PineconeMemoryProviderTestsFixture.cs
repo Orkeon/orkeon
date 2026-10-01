@@ -24,7 +24,6 @@ public class PineconeMemoryProviderTestsFixture
         options ??= new PineconeOptions
         {
             ApiKey = TestApiKey,
-            Environment = "us-east1-gcp",
             IndexName = "test-index",
             Namespace = "test-namespace"
         };

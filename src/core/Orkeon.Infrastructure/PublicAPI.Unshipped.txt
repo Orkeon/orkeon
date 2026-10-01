@@ -32,3 +32,49 @@ Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ConsensualProcessStrat
 Orkeon.Infrastructure.Consensus.ConsensualProcessStrategy.ExecuteConsensualAsync(Orkeon.Domain.Crew.Crew! crew, Orkeon.Domain.Crew.ExecutionPlan! plan, System.Collections.Generic.IReadOnlyDictionary<string!, string!>? inputVariables = null, System.Threading.CancellationToken ct = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Crew.CrewOutput!>!
 *REMOVED*Orkeon.Infrastructure.Configuration.RagYamlConfig.Provider.get -> string?
 *REMOVED*Orkeon.Infrastructure.Configuration.RagYamlConfig.Provider.set -> void
+*REMOVED*Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.Configuration.get -> Orkeon.Domain.Memory.MemoryProviderConfig?
+*REMOVED*Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.Configuration.set -> void
+*REMOVED*Orkeon.Infrastructure.Memory.MemoryProviderFactory.Create(Orkeon.Application.Memory.MemoryProviderConfigDto! config, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> Orkeon.Domain.Memory.IMemoryProvider!
+*REMOVED*Orkeon.Infrastructure.Memory.MemoryProviderFactory.CreateAndInitializeAsync(Orkeon.Application.Memory.MemoryProviderConfigDto! config, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task<Orkeon.Domain.Memory.IMemoryProvider!>!
+*REMOVED*Orkeon.Infrastructure.Memory.MemoryProviderFactory.MemoryProviderFactory(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem) -> void
+*REMOVED*Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.Environment.get -> string!
+*REMOVED*Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.Environment.set -> void
+*REMOVED*Orkeon.Infrastructure.Memory.RedisMemoryProvider.RedisMemoryProvider(Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Memory.RedisMemoryProvider!>? logger = null) -> void
+*REMOVED*override Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbMemoryProvider.InitializeAsync(Orkeon.Domain.Memory.MemoryProviderConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Infrastructure.Memory.LanceDb.LanceDbMemoryProvider.InitializeAsync(Orkeon.Domain.Memory.MemoryProviderConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*override Orkeon.Infrastructure.Memory.RedisMemoryProvider.InitializeAsync(Orkeon.Domain.Memory.MemoryProviderConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*virtual Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.InitializeAsync(Orkeon.Domain.Memory.MemoryProviderConfig! config, System.Threading.CancellationToken cancellationToken = default(System.Threading.CancellationToken)) -> System.Threading.Tasks.Task!
+*REMOVED*virtual Orkeon.Infrastructure.Memory.Base.MemoryProviderBase.ValidateConfiguration() -> void
+Orkeon.Infrastructure.Memory.MemoryProviderFactory.Dispose() -> void
+Orkeon.Infrastructure.Memory.MemoryProviderFactory.GetProvider(string! providerType) -> Orkeon.Domain.Memory.IMemoryProvider!
+Orkeon.Infrastructure.Memory.MemoryProviderFactory.MemoryProviderFactory(Orkeon.Domain.FileSystem.IFileSystemService! fileSystem, System.Net.Http.IHttpClientFactory! httpClientFactory, Orkeon.Infrastructure.Memory.MemoryProviderSettings? settings = null, Microsoft.Extensions.Logging.ILoggerFactory? loggerFactory = null) -> void
+Orkeon.Infrastructure.Memory.MemoryProviderFactory.SupportedTypes.get -> System.Collections.Generic.IReadOnlyList<string!>!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.ChromaDb.get -> Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbOptions!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.ChromaDb.init -> void
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.LanceDb.get -> Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.LanceDb.init -> void
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.MemoryProviderSettings() -> void
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Pinecone.get -> Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Pinecone.init -> void
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Redis.get -> Orkeon.Infrastructure.Memory.RedisMemoryOptions!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Redis.init -> void
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Sqlite.get -> Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions!
+Orkeon.Infrastructure.Memory.MemoryProviderSettings.Sqlite.init -> void
+Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.Host.get -> string?
+Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.Host.set -> void
+Orkeon.Infrastructure.Memory.RedisMemoryOptions
+Orkeon.Infrastructure.Memory.RedisMemoryOptions.ConnectionString.get -> string!
+Orkeon.Infrastructure.Memory.RedisMemoryOptions.ConnectionString.set -> void
+Orkeon.Infrastructure.Memory.RedisMemoryOptions.KeyPrefix.get -> string!
+Orkeon.Infrastructure.Memory.RedisMemoryOptions.KeyPrefix.set -> void
+Orkeon.Infrastructure.Memory.RedisMemoryOptions.RedisMemoryOptions() -> void
+Orkeon.Infrastructure.Memory.RedisMemoryProvider.RedisMemoryProvider(Microsoft.Extensions.Options.IOptions<Orkeon.Infrastructure.Memory.RedisMemoryOptions!>! options, Microsoft.Extensions.Logging.ILogger<Orkeon.Infrastructure.Memory.RedisMemoryProvider!>? logger = null) -> void
+const Orkeon.Infrastructure.Constants.Llm.LlmEndpoints.PineconeControlPlane = "https://api.pinecone.io" -> string!
+const Orkeon.Infrastructure.DependencyInjection.VectorStoreExtensions.MemoryProviderKey = "Memory:Provider" -> string!
+const Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbOptions.SectionName = "Orkeon:ChromaDb" -> string!
+const Orkeon.Infrastructure.Memory.LanceDb.LanceDbOptions.SectionName = "Orkeon:LanceDb" -> string!
+const Orkeon.Infrastructure.Memory.Pinecone.PineconeOptions.SectionName = "Orkeon:Pinecone" -> string!
+const Orkeon.Infrastructure.Memory.RedisMemoryOptions.SectionName = "Orkeon:Redis" -> string!
+const Orkeon.Infrastructure.Memory.Sqlite.SqliteMemoryOptions.SectionName = "Orkeon:Sqlite" -> string!
+static Orkeon.Infrastructure.DependencyInjection.VectorStoreExtensions.AddOrkeonMemoryProviderFactory(this Microsoft.Extensions.DependencyInjection.IServiceCollection! services) -> Microsoft.Extensions.DependencyInjection.IServiceCollection!

@@ -10,6 +10,9 @@ namespace Orkeon.Infrastructure.Memory.LanceDb;
 /// </summary>
 public class LanceDbOptions
 {
+    /// <summary>The configuration section bound to these options.</summary>
+    public const string SectionName = "Orkeon:LanceDb";
+
     /// <summary>
     /// Gets or sets the base URL of the LanceDB Cloud/Enterprise REST endpoint
     /// (e.g. <c>https://my-deployment.us-east-1.api.lancedb.com</c>).

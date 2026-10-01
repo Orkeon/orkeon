@@ -51,13 +51,6 @@ public sealed class RagSectionViewModel : DocumentSectionViewModel
         set => SetValue(Section.Provider, Blank(value), v => Section.Provider = v);
     }
 
-    /// <summary>The vector-store connection string.</summary>
-    public string? ConnectionString
-    {
-        get => Section.ConnectionString;
-        set => SetValue(Section.ConnectionString, Blank(value), v => Section.ConnectionString = v);
-    }
-
     /// <summary>Opt-in BM25 + RRF hybrid retrieval (engine default: off).</summary>
     public bool HybridRetrievalEnabled
     {

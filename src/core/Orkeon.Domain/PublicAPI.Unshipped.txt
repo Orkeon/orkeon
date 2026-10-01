@@ -58,3 +58,26 @@ Orkeon.Domain.Agent.AgentSpawnRequestBuilder.WithTools(params Orkeon.Domain.Tool
 static Orkeon.Domain.Agent.Agent.Create(Orkeon.Domain.Agent.ValueObjects.AgentRole! role, Orkeon.Domain.Agent.ValueObjects.AgentGoal! goal, Orkeon.Domain.Agent.ValueObjects.AgentBackstory? backstory = null, bool allowDelegation = false, int maxIterations = 15, int maxRpm = 10, bool verbose = false, System.TimeSpan? maxExecutionTime = null, bool cacheEnabled = true, string? systemTemplate = null, string? promptTemplate = null, string? responseTemplate = null, int maxRetryLimit = 3, Orkeon.Domain.SharedKernel.ILlmProvider? functionCallingLlm = null, System.Collections.Generic.IEnumerable<Orkeon.Domain.Tools.IBaseTool!>? tools = null, Orkeon.Domain.Agent.IStepCallback? stepCallback = null, Orkeon.Domain.Agent.GuardrailsConfig? guardrails = null) -> Orkeon.Domain.Agent.Agent!
 *REMOVED*Orkeon.Domain.Configuration.RagCrewConfig.Provider.get -> string?
 *REMOVED*Orkeon.Domain.Configuration.RagCrewConfig.Provider.init -> void
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.ConnectionString.get -> string?
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.EnablePersistence.get -> bool
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.KeyPrefix.get -> string?
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.MaxItems.get -> int?
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.MemoryProviderConfig(Orkeon.Domain.Memory.MemoryProviderConfig! original) -> void
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.MemoryProviderConfig(string! providerType, System.Collections.Generic.Dictionary<string!, object!>? settings = null, System.TimeSpan? retentionPeriod = null, int? maxItems = null, bool enablePersistence = false, string? connectionString = null, string? keyPrefix = null) -> void
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.ProviderType.get -> string!
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.RetentionPeriod.get -> System.TimeSpan?
+*REMOVED*Orkeon.Domain.Memory.MemoryProviderConfig.Settings.get -> System.Collections.Generic.Dictionary<string!, object!>!
+*REMOVED*override Orkeon.Domain.Memory.MemoryProviderConfig.Equals(object? obj) -> bool
+*REMOVED*override Orkeon.Domain.Memory.MemoryProviderConfig.GetHashCode() -> int
+*REMOVED*override Orkeon.Domain.Memory.MemoryProviderConfig.ToString() -> string!
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.ChromaDB(string! connectionString, int maxItems = 10000) -> Orkeon.Domain.Memory.MemoryProviderConfig!
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.InMemory(int maxItems = 1000) -> Orkeon.Domain.Memory.MemoryProviderConfig!
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.LanceDB(string! dbPath = "./data/orkeon_memory", int topK = 10) -> Orkeon.Domain.Memory.MemoryProviderConfig!
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.Redis(string! connectionString, System.TimeSpan? retention = null) -> Orkeon.Domain.Memory.MemoryProviderConfig!
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.operator !=(Orkeon.Domain.Memory.MemoryProviderConfig? left, Orkeon.Domain.Memory.MemoryProviderConfig? right) -> bool
+*REMOVED*static Orkeon.Domain.Memory.MemoryProviderConfig.operator ==(Orkeon.Domain.Memory.MemoryProviderConfig? left, Orkeon.Domain.Memory.MemoryProviderConfig? right) -> bool
+*REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.<Clone>$() -> Orkeon.Domain.Memory.MemoryProviderConfig!
+*REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.EqualityContract.get -> System.Type!
+*REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.Equals(Orkeon.Domain.Memory.MemoryProviderConfig? other) -> bool
+*REMOVED*virtual Orkeon.Domain.Memory.MemoryProviderConfig.PrintMembers(System.Text.StringBuilder! builder) -> bool

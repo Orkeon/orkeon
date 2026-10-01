@@ -265,9 +265,6 @@
   <data name="Studio.Settings.LblRagProvider" xml:space="preserve">
     <value>供应商</value>
   </data>
-  <data name="Studio.Settings.LblRagConnection" xml:space="preserve">
-    <value>连接字符串</value>
-  </data>
   <data name="Studio.Settings.RagHybrid" xml:space="preserve">
     <value>混合检索（BM25 + RRF）</value>
   </data>

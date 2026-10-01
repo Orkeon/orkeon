@@ -45,6 +45,7 @@ public sealed class ConstantDriftTests
         string[] notCloudLlmEndpoints =
         [
             LlmEndpoints.ChromaDbDefault,
+            LlmEndpoints.PineconeControlPlane,
             LlmEndpoints.RedisDefault,
             LlmEndpoints.OllamaDefault,
         ];

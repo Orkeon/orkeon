@@ -12,7 +12,6 @@ public class MemoryProviderBaseTests
         private readonly Dictionary<string, MemoryItem> _store = [];
         public FakeProvider(ILogger? logger = null) : base(logger) { }
         public override string Name => "Fake";
-        public bool WasInitializeCalled => Configuration is not null;
 
         public override Task ClearAsync(CancellationToken cancellationToken = default)
         { _store.Clear(); return Task.CompletedTask; }
@@ -46,27 +45,9 @@ public class MemoryProviderBaseTests
         }
 
         // Test hooks to call protected members
-        public void CallValidateConfiguration() => base.ValidateConfiguration();
         public static string CallCreateTimestampedKey(string? prefix = null) => CreateTimestampedKey(prefix);
         public static void CallValidateKey(string key) => ValidateKey(key);
         public static void CallValidateMemoryItem(MemoryItem item) => ValidateMemoryItem(item);
-    }
-
-    [Fact]
-    public async Task ShouldSetConfiguration_WhenInitializeAsync()
-    {
-        var provider = new FakeProvider();
-        var cfg = new MemoryProviderConfig("fake", new Dictionary<string, object> { { "a", "b" } });
-        await provider.InitializeAsync(cfg, TestContext.Current.CancellationToken);
-        // If not thrown by ValidateConfiguration then it was set
-        provider.CallValidateConfiguration();
-    }
-
-    [Fact]
-    public void ShouldThrowWhenNotInitialized_WhenValidateConfiguration()
-    {
-        var provider = new FakeProvider();
-        Assert.Throws<InvalidOperationException>(() => provider.CallValidateConfiguration());
     }
 
     [Fact]
@@ -96,17 +77,6 @@ public class MemoryProviderBaseTests
     public void ShouldThrowOnEmptyContent_WhenValidateMemoryItem()
     {
         Assert.Throws<ArgumentException>(() => MemoryItem.Create(" "));
-    }
-
-    [Fact]
-    public async Task ShouldThrowArgumentNullException_WhenInitializeAsyncWithNullConfig()
-    {
-        // Arrange
-        var provider = new FakeProvider();
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            provider.InitializeAsync(null!, TestContext.Current.CancellationToken));
     }
 
     [Fact]

@@ -104,7 +104,6 @@
   <data name="Studio.Settings.LblQueueLimit" xml:space="preserve"><value>Limite de file</value></data>
   <data name="Studio.Settings.LblRagProfile" xml:space="preserve"><value>Profil</value></data>
   <data name="Studio.Settings.LblRagProvider" xml:space="preserve"><value>Fournisseur</value></data>
-  <data name="Studio.Settings.LblRagConnection" xml:space="preserve"><value>Chaîne de connexion</value></data>
   <data name="Studio.Settings.RagHybrid" xml:space="preserve"><value>Récupération hybride (BM25 + RRF)</value></data>
   <data name="Studio.Settings.RagCorrectiveWebFallback" xml:space="preserve"><value>Repli web correctif — politique</value></data>
   <data name="Studio.Settings.RagWebFallback" xml:space="preserve"><value>Repli web — transport</value></data>

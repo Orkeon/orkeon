@@ -71,13 +71,6 @@ public partial class ChromaDbMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <inheritdoc />
-    public override async Task InitializeAsync(MemoryProviderConfig config, CancellationToken cancellationToken = default)
-    {
-        await base.InitializeAsync(config, cancellationToken).ConfigureAwait(false);
-        await EnsureCollectionExistsAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
     public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);

@@ -24,7 +24,7 @@ goal: string              # Objectif (requis)
 process: string           # "sequential" (défaut) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — insensible à la casse ; une valeur inconnue fait échouer le chargement
 verbose: bool             # default: false
 memory: bool              # default: false
-memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning
+memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — insensible à la casse (alias "in-memory", "chroma", "lance") ; inconnu → in-memory avec un warning. Le TYPE seul : la connexion vient de la section hôte (Orkeon:Redis, Orkeon:Sqlite, …)
 planning: bool            # default: false
 managerAgent: string      # Hiérarchique : le manager (omis → le premier agent manage, warning). Consensual : l'arbitre du repli ManagerDecision
 circuitBreaker: {…}       # Circuit breaker au niveau crew (voir la section dédiée)

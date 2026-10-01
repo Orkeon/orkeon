@@ -41,7 +41,7 @@ public partial class PineconeMemoryProvider : IScoredVectorSearch
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/query",
+                await IndexUriAsync("/query", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);

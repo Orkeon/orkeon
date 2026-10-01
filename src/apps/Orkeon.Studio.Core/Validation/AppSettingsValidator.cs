@@ -61,7 +61,6 @@ public sealed class AppSettingsValidator
         "Llm:Thinking:Effort",
         "Orkeon:Rag:Profile",
         "Orkeon:Rag:Provider",
-        "Orkeon:Rag:ConnectionString",
     ];
 
     private static readonly string[] NumberFields =

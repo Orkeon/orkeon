@@ -104,7 +104,6 @@
   <data name="Studio.Settings.LblQueueLimit" xml:space="preserve"><value>Queue limit</value></data>
   <data name="Studio.Settings.LblRagProfile" xml:space="preserve"><value>Profile</value></data>
   <data name="Studio.Settings.LblRagProvider" xml:space="preserve"><value>Provider</value></data>
-  <data name="Studio.Settings.LblRagConnection" xml:space="preserve"><value>Connection string</value></data>
   <data name="Studio.Settings.RagHybrid" xml:space="preserve"><value>Hybrid retrieval (BM25 + RRF)</value></data>
   <data name="Studio.Settings.RagCorrectiveWebFallback" xml:space="preserve"><value>Corrective web fallback — policy</value></data>
   <data name="Studio.Settings.RagWebFallback" xml:space="preserve"><value>Web fallback — transport</value></data>

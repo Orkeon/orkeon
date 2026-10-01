@@ -106,9 +106,11 @@ public static class InfrastructureExtensions
         // See docs/reference/opt-in-subsystems.md.
 
         // === Phase 10: Vector Store Providers (N5) ===
-        if (configuration.GetSection("Orkeon:ChromaDb").Exists())
+        // The concrete ChromaDB / Pinecone providers stay resolvable when their section exists;
+        // they are the factory's shared instances, connected from those sections (GAP-08).
+        if (configuration.GetSection(Memory.ChromaDb.ChromaDbOptions.SectionName).Exists())
             services.AddOrkeonChromaDb(configuration);
-        if (configuration.GetSection("Orkeon:Pinecone").Exists())
+        if (configuration.GetSection(Memory.Pinecone.PineconeOptions.SectionName).Exists())
             services.AddOrkeonPinecone(configuration);
 
         // === Execution-state persistence (R3.8) ===
@@ -176,27 +178,34 @@ public static class InfrastructureExtensions
         // Add LLM providers
         services.AddSingleton<ILlmProviderFactory, LlmProviderFactory>();
 
-        // Add Memory providers.
-        // Driven by configuration (Memory:Provider) and delegated to the factory, instead of a
-        // hard-wired InMemoryProvider. When no configuration is registered, the factory falls back
-        // to the in-memory provider (with an explicit warning for unrecognized types).
-        services.TryAddSingleton<Application.Interfaces.Ports.IMemoryProviderFactory, Memory.MemoryProviderFactory>();
+        // Memory providers (GAP-08). One host section per provider supplies its connection
+        // (Orkeon:Redis, Orkeon:Sqlite, Orkeon:ChromaDb, Orkeon:Pinecone, Orkeon:LanceDb); the
+        // factory hands out one shared instance per type. Memory:Provider only chooses the TYPE
+        // of the application-wide provider (unset → in-memory), exactly like a crew's
+        // memoryProvider: and Orkeon:Rag:Provider.
+        services.AddOrkeonMemoryProviderFactory();
+        services.BindMemorySection<Memory.RedisMemoryOptions>(Memory.RedisMemoryOptions.SectionName);
+        services.BindMemorySection<Memory.Sqlite.SqliteMemoryOptions>(Memory.Sqlite.SqliteMemoryOptions.SectionName);
+        services.BindMemorySection<Memory.ChromaDb.ChromaDbOptions>(Memory.ChromaDb.ChromaDbOptions.SectionName);
+        services.BindMemorySection<Memory.Pinecone.PineconeOptions>(Memory.Pinecone.PineconeOptions.SectionName);
+        services.BindMemorySection<Memory.LanceDb.LanceDbOptions>(Memory.LanceDb.LanceDbOptions.SectionName);
         services.AddSingleton<Orkeon.Domain.Memory.IMemoryProvider>(sp =>
-        {
-            var factory = sp.GetRequiredService<Application.Interfaces.Ports.IMemoryProviderFactory>();
-            var loggerFactory = sp.GetService<ILoggerFactory>();
-            var configuration = sp.GetService<IConfiguration>();
-
-            var providerType = configuration?["Memory:Provider"];
-            var connectionString = configuration?["Memory:ConnectionString"] ?? string.Empty;
-            var config = string.IsNullOrWhiteSpace(providerType)
-                ? MemoryProviderConfigDefaults.InMemory
-                : new MemoryProviderConfigDto(providerType, connectionString);
-
-            return factory.Create(config, loggerFactory);
-        });
+            sp.GetRequiredService<Application.Interfaces.Ports.IMemoryProviderFactory>()
+                .GetProvider(sp.GetService<IConfiguration>()?[VectorStoreExtensions.MemoryProviderKey] ?? string.Empty));
 
         return services;
+    }
+
+    /// <summary>
+    /// Binds a memory provider's section from the container's <see cref="IConfiguration"/> when
+    /// one is registered; without configuration the provider keeps its defaults, as the in-memory
+    /// baseline always has.
+    /// </summary>
+    private static void BindMemorySection<TOptions>(this IServiceCollection services, string sectionName)
+        where TOptions : class
+    {
+        services.AddOptions<TOptions>().Configure<IServiceProvider>((options, sp) =>
+            sp.GetService<IConfiguration>()?.GetSection(sectionName).Bind(options));
     }
 
     private static IServiceCollection AddOrkeonSerializationAndEmbeddings(this IServiceCollection services)

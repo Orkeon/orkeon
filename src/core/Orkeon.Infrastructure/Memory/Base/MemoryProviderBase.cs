@@ -9,6 +9,10 @@ namespace Orkeon.Infrastructure.Memory.Base;
 /// Focuses only on data access concerns - no business logic.
 /// Business logic (similarity calculations, validation) moved to domain services.
 /// </summary>
+/// <remarks>
+/// A provider is ready on construction: it receives its options from the host's section for that
+/// provider and opens any connection lazily, on first use (GAP-08). There is no initialization step.
+/// </remarks>
 public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryProvider
 {
     /// <summary>
@@ -21,13 +25,6 @@ public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryP
     protected readonly ILogger Logger;
 
     /// <summary>
-    /// The runtime memory provider configuration, set during initialization.
-    /// Publicly readable so callers (and tests) can verify that configuration such as
-    /// <c>RetentionPeriod</c>, <c>MaxItems</c> and <c>KeyPrefix</c> actually reached the provider.
-    /// </summary>
-    public MemoryProviderConfig? Configuration { get; protected set; }
-
-    /// <summary>
     /// Gets the provider name.
     /// </summary>
     public abstract string Name { get; }
@@ -37,17 +34,6 @@ public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryP
     protected MemoryProviderBase(ILogger? logger = null)
     {
         Logger = logger ?? Microsoft.Extensions.Logging.Abstractions.NullLogger.Instance;
-    }
-
-    /// <summary>
-    /// Initializes the memory provider.
-    /// Pure configuration setup - no business logic.
-    /// </summary>
-    public virtual Task InitializeAsync(MemoryProviderConfig config, CancellationToken cancellationToken = default)
-    {
-        ArgumentNullException.ThrowIfNull(config);
-        Configuration = config;
-        return Task.CompletedTask;
     }
 
     /// <summary>
@@ -141,16 +127,6 @@ public abstract partial class MemoryProviderBase : Orkeon.Domain.Memory.IMemoryP
         float minScore = 0.0f,
         Dictionary<string, object>? filter = null,
         CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Validates configuration parameters.
-    /// Pure validation - no business rules.
-    /// </summary>
-    protected virtual void ValidateConfiguration()
-    {
-        if (Configuration == null)
-            throw new InvalidOperationException("Provider not initialized. Call InitializeAsync first.");
-    }
 
     /// <summary>
     /// Creates a timestamped key for memory storage.

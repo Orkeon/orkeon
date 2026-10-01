@@ -4,6 +4,8 @@ IoT and smart systems use cases: smart home, fleet management, precision agricul
 
 **Runner**: `standard`
 
+Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connection comes from the `Orkeon:Redis` / `Orkeon:Sqlite` section of your settings — see [Memory providers](../appsettings/README.md#memory-providers-memoryprovider-in-a-crew).
+
 | # | Example | Process | Quality |
 |---|---------|---------|---------|
 | 86 | Maison Intelligente -- Protocole A2A Natif | Parallel | Robustesse |

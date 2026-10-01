@@ -7,6 +7,59 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — memory providers connect from one host section each, and Redis works on first use **[breaking]**
+
+No path to a remote memory provider produced one that worked. A crew with
+`memoryProvider: "Redis"` (seven examples) failed its first successful task: storing the result
+threw *"Redis provider not initialized. Call InitializeAsync first."*, and the task was reported
+failed. `Memory:Provider = redis` and `AddOrkeonRedisMemory` did the same, and so did
+`Orkeon:Rag:Provider = redis`. A crew's `memoryProvider:` carried the type alone, so `"SQLite"`
+(nine examples) was a `:memory:` database lost at the end of the run and `"ChromaDb"` targeted
+`localhost:8000`. The `Orkeon:ChromaDb`/`Orkeon:Pinecone` sections reached two concrete
+singletons nothing resolved, never the memory. Pinecone built an index host of the legacy
+`{index}-{environment}` form that no index has (GAP-08):
+
+- **One host section per provider, and a type everywhere else.** `Orkeon:Redis`
+  (`ConnectionString`, `KeyPrefix`), `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone` and
+  `Orkeon:LanceDb` are bound by `AddOrkeonInfrastructure()`. `Memory:Provider`, a crew's
+  `memoryProvider:` and `Orkeon:Rag:Provider` only name the type; the connection is that
+  provider's section, whichever path selects it. Secrets stay out of crew files.
+- **Redis connects on first use.** `RedisMemoryProvider` takes `RedisMemoryOptions` and opens
+  its one `ConnectionMultiplexer` at the first call, safely under concurrent callers; an
+  unreachable server is a `RedisConnectionException` on that call, retried on the next.
+  `AddOrkeonRedisMemory` binds `Orkeon:Redis`. The connection log shows the endpoints, no
+  longer the connection string (which may hold a password).
+- **One instance per type, owned by the factory.** `IMemoryProviderFactory.GetProvider(type)`
+  hands every caller asking for a type the same provider — the application-wide one, every crew
+  of that type, the RAG store (both of its resolutions) — and disposes it with the container.
+  Two crews no longer open two connections, and a released crew no longer leaks one. Clearing a
+  crew's provider-backed memory deletes only the entries it stored. `SupportedTypes` lists the
+  aliases; the RAG store validates `Orkeon:Rag:Provider` against it instead of a copy.
+- **ChromaDB, Pinecone and LanceDB take their client from `IHttpClientFactory`** (a named client
+  per provider). `AddOrkeonChromaDb`/`AddOrkeonPinecone`/`AddOrkeonLanceDb` expose the shared
+  instance by its class.
+- **Pinecone reaches the real index host**: `Orkeon:Pinecone:Host` when set, otherwise the
+  `host` returned by one `describe_index` call (`GET https://api.pinecone.io/indexes/{IndexName}`)
+  made on first use.
+- Removed: `Memory:ConnectionString`; `Orkeon:Rag:ConnectionString` and
+  `Orkeon:Rag:ProviderOptions` (`RagStoreOptions` keeps `Provider`), and the Studio field that
+  edited the former; `PineconeOptions.Environment`; `IMemoryProviderFactory.Create` and
+  `CreateAndInitializeAsync`, `MemoryProviderConfigDto` and `MemoryProviderConfigDefaults`;
+  `MemoryProviderBase.InitializeAsync`, `Configuration` and `ValidateConfiguration`, and the
+  Domain `MemoryProviderConfig` they carried (its `RetentionPeriod` and `MaxItems` were read by
+  nothing). `MemoryService` no longer takes an `ILoggerFactory`.
+
+Migration: move `Memory:ConnectionString` to the section of the provider it was for
+(`Orkeon:Redis:ConnectionString`, `Orkeon:Sqlite:ConnectionString`, `Orkeon:ChromaDb:BaseUrl`,
+`Orkeon:LanceDb:Endpoint`), and `Orkeon:Rag:ConnectionString`/`ProviderOptions:*` likewise. Replace
+`Orkeon:Pinecone:Environment` with `Host` (the host the Pinecone console shows), or drop it and let
+the provider look it up. Remove every `InitializeAsync` call on a memory provider.
+`factory.Create(new MemoryProviderConfigDto(type, …))` becomes `factory.GetProvider(type)` — and
+the caller no longer disposes the result. `new RedisMemoryProvider(logger)` becomes
+`new RedisMemoryProvider(Options.Create(new RedisMemoryOptions { … }), logger)`;
+`new MemoryProviderFactory(fileSystem)` takes an `IHttpClientFactory` and, optionally, the
+`MemoryProviderSettings` and an `ILoggerFactory`.
+
 ### Changed — RAG runs under `orkeon run crew.yaml`, and knowledge attachments use their profile **[breaking]**
 
 A YAML crew's `rag:` and `knowledge:` blocks did nothing under `orkeon run`: loading logged

@@ -30,7 +30,7 @@ goal: string              # Goal (required)
 process: string           # "sequential" | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous"
 verbose: bool             # default: false
 memory: bool              # default: false
-memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb"
+memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — the type; the host section (Orkeon:Redis, …) gives the connection
 planning: bool            # default: false
 managerAgent: string      # Required when process = "hierarchical"
 mounts: [string]          # Virtual roots the crew uses ("/output", or "<id>|/output" to pin one settings entry)

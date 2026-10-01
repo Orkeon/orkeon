@@ -57,13 +57,6 @@ public partial class LanceDbMemoryProvider : MemoryProviderBase, IMemoryProvider
     }
 
     /// <inheritdoc />
-    public override async Task InitializeAsync(MemoryProviderConfig config, CancellationToken cancellationToken = default)
-    {
-        await base.InitializeAsync(config, cancellationToken).ConfigureAwait(false);
-        await EnsureTableExistsAsync(cancellationToken).ConfigureAwait(false);
-    }
-
-    /// <inheritdoc />
     public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
         ValidateKey(key);

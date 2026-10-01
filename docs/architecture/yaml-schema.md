@@ -23,7 +23,7 @@ goal: string              # Goal (required)
 process: string           # "sequential" (default) | "hierarchical" | "parallel" | "consensual" | "graph" | "autonomous" — case-insensitive; an unknown value fails the load
 verbose: bool             # default: false
 memory: bool              # default: false
-memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning
+memoryProvider: string    # "InMemory" | "Redis" | "Sqlite" | "ChromaDb" | "Pinecone" | "LanceDb" — case-insensitive (aliases "in-memory", "chroma", "lance"); unknown → in-memory with a warning. The TYPE only: the connection comes from the host section (Orkeon:Redis, Orkeon:Sqlite, …)
 planning: bool            # default: false
 managerAgent: string      # Hierarchical: the manager (omitted → the first agent manages, warning). Consensual: the arbiter of the ManagerDecision fallback
 circuitBreaker: {…}       # Crew-level circuit breaker (see the dedicated section)

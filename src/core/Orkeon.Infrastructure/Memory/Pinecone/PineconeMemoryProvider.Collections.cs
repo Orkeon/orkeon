@@ -125,7 +125,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/query",
+                await IndexUriAsync("/query", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -183,7 +183,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/delete",
+                await IndexUriAsync("/vectors/delete", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -212,7 +212,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/delete",
+                await IndexUriAsync("/vectors/delete", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -243,7 +243,7 @@ public partial class PineconeMemoryProvider : ICollectionAwareMemory
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/upsert",
+                await IndexUriAsync("/vectors/upsert", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);

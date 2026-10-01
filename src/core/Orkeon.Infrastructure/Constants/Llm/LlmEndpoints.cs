@@ -79,6 +79,12 @@ public static class LlmEndpoints
     /// <summary>Default ChromaDB local server base URL.</summary>
     public const string ChromaDbDefault = "http://localhost:8000";
 
+    /// <summary>
+    /// Pinecone control plane. <c>GET {PineconeControlPlane}/indexes/{name}</c> (describe_index)
+    /// returns the index's data-plane <c>host</c>.
+    /// </summary>
+    public const string PineconeControlPlane = "https://api.pinecone.io";
+
     /// <summary>Default Redis connection string (host:port).</summary>
     public const string RedisDefault = "localhost:6379";
 #pragma warning restore S1075

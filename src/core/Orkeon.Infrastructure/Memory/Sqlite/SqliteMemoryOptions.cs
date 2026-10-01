@@ -7,6 +7,9 @@ namespace Orkeon.Infrastructure.Memory.Sqlite;
 /// </summary>
 public class SqliteMemoryOptions
 {
+    /// <summary>The configuration section bound to these options.</summary>
+    public const string SectionName = "Orkeon:Sqlite";
+
     /// <summary>
     /// Gets or sets the SQLite connection string
     /// (e.g. <c>"Data Source=/data/orkeon-memory.db"</c> or <c>"Data Source=:memory:"</c>).

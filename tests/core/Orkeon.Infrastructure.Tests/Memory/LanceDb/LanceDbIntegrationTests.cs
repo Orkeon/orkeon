@@ -1,10 +1,12 @@
 using System.Net;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Orkeon.Domain.FileSystem;
 using Orkeon.Domain.Memory;
 using Orkeon.Infrastructure.DependencyInjection;
 using Orkeon.Infrastructure.Memory.LanceDb;
 using Orkeon.Infrastructure.Tests.Memory.ChromaDb;
+using Orkeon.Tests.Shared.FileSystem;
 using Fixture = Orkeon.Infrastructure.Tests.Memory.LanceDb.LanceDbMemoryProviderTestsFixture;
 using TestRow = Orkeon.Infrastructure.Tests.Memory.LanceDb.LanceDbMemoryProviderTestsFixture.LanceDbTestRow;
 
@@ -43,7 +45,6 @@ public class LanceDbIntegrationTests
 
         var fixture = new Fixture();
         using var provider = fixture.CreateProvider(handler);
-        await provider.InitializeAsync(MemoryProviderConfig.LanceDB(), TestContext.Current.CancellationToken);
 
         // Act + Assert — Store
         var embedding = new float[] { 1.0f, 0.0f, 0.0f, 0.0f };
@@ -94,6 +95,7 @@ public class LanceDbIntegrationTests
 
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
         services.AddOrkeonMemoryMigration();
         services.AddOrkeonLanceDb(configuration);
 
@@ -111,12 +113,13 @@ public class LanceDbIntegrationTests
     [Fact]
     public void DI_Registration_ShouldFailFast_WhenEndpointMissing()
     {
-        // No Orkeon:LanceDb:Endpoint — resolving the singleton must surface
-        // a clear configuration error instead of a silent local fallback.
+        // No Orkeon:LanceDb:Endpoint — resolving the concrete provider must surface
+        // a clear configuration error instead of handing back the in-memory fallback.
         var configuration = new ConfigurationBuilder().Build();
 
         var services = new ServiceCollection();
         services.AddLogging();
+        services.AddSingleton<IFileSystemService>(new FakeFileSystemService());
         services.AddOrkeonLanceDb(configuration);
 
         using var serviceProvider = services.BuildServiceProvider();

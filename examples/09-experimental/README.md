@@ -4,6 +4,8 @@ Experimental and cutting-edge use cases: self-adaptive crews, multi-party negoti
 
 **Runner**: `standard`
 
+Several crews here declare `memoryProvider: "Redis"` or `"SQLite"`: the connection comes from the `Orkeon:Redis` / `Orkeon:Sqlite` section of your settings — see [Memory providers](../appsettings/README.md#memory-providers-memoryprovider-in-a-crew).
+
 | # | Example | Process | Quality |
 |---|---------|---------|---------|
 | 96 | Crew Evolutive Auto-Adaptative | FlowEngine (cyclique) | Robustesse |

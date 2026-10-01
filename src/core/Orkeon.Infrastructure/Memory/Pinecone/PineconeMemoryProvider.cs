@@ -5,6 +5,7 @@ using System.Text.Json.Serialization;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Orkeon.Domain.Memory;
+using Orkeon.Infrastructure.Constants.Llm;
 using Orkeon.Infrastructure.Memory.Base;
 using Orkeon.Domain.Constants.Serialization;
 using Orkeon.Domain.Constants.Memory;
@@ -16,12 +17,20 @@ namespace Orkeon.Infrastructure.Memory.Pinecone;
 /// Communicates with Pinecone via its REST API.
 /// </summary>
 /// <remarks>
+/// <para>
+/// Every data-plane request targets the index host: <see cref="PineconeOptions.Host"/> when set,
+/// otherwise the <see cref="HttpClient.BaseAddress"/> the caller preset, otherwise the
+/// <c>host</c> returned by one <c>describe_index</c> call on the control plane, made on first use
+/// and shared by concurrent callers (GAP-08).
+/// </para>
+/// <para>
 /// <see cref="IMemoryProvider"/> is re-listed on purpose (same pattern as
 /// <c>SqliteMemoryProvider</c>/<c>LanceDbMemoryProvider</c>, R10.1): without
 /// re-implementation, calls made through the interface would resolve
 /// <c>SearchSimilarAsync</c> to the default interface method (empty results) instead of
 /// the server-side vector query defined here (interface mapping is otherwise frozen at
 /// <see cref="MemoryProviderBase"/>).
+/// </para>
 /// </remarks>
 public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvider, IDisposable
 {
@@ -34,6 +43,8 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
 
     private readonly HttpClient _httpClient;
     private readonly PineconeOptions _options;
+    private readonly SemaphoreSlim _hostLock = new(1, 1);
+    private Uri? _indexHost;
 
     /// <inheritdoc />
     public override string Name => "Pinecone";
@@ -78,7 +89,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/upsert",
+                await IndexUriAsync("/vectors/upsert", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -101,7 +112,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         try
         {
             var response = await _httpClient.GetAsync(
-                new Uri($"/vectors/fetch?ids={Uri.EscapeDataString(key)}&namespace={Uri.EscapeDataString(_options.Namespace)}", UriKind.Relative),
+                await IndexUriAsync($"/vectors/fetch?ids={Uri.EscapeDataString(key)}&namespace={Uri.EscapeDataString(_options.Namespace)}", cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
@@ -167,7 +178,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/delete",
+                await IndexUriAsync("/vectors/delete", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -216,7 +227,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/query",
+                await IndexUriAsync("/query", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -261,7 +272,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/vectors/delete",
+                await IndexUriAsync("/vectors/delete", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -282,7 +293,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         try
         {
             var response = await _httpClient.GetAsync(
-                new Uri("/describe_index_stats", UriKind.Relative),
+                await IndexUriAsync("/describe_index_stats", cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
             response.EnsureSuccessStatusCode();
@@ -315,7 +326,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             // Pinecone does not natively support listing vector IDs with pagination.
             // We use the list endpoint if available (Pinecone serverless), or return empty.
             var response = await _httpClient.GetAsync(
-                new Uri($"/vectors/list?namespace={Uri.EscapeDataString(_options.Namespace)}&limit={skip + take}", UriKind.Relative),
+                await IndexUriAsync($"/vectors/list?namespace={Uri.EscapeDataString(_options.Namespace)}&limit={skip + take}", cancellationToken).ConfigureAwait(false),
                 cancellationToken).ConfigureAwait(false);
 
             if (!response.IsSuccessStatusCode)
@@ -392,7 +403,7 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
             };
 
             var response = await _httpClient.PostAsJsonAsync(
-                "/query",
+                await IndexUriAsync("/query", cancellationToken).ConfigureAwait(false),
                 payload,
                 s_jsonOptions,
                 cancellationToken).ConfigureAwait(false);
@@ -454,21 +465,91 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
     }
 
     /// <summary>
-    /// Configures the HTTP client with Pinecone-specific headers and base address.
+    /// Configures the HTTP client with the Pinecone API key and, when known, the index host.
     /// </summary>
     private void ConfigureHttpClient()
     {
-        if (_httpClient.BaseAddress == null && !string.IsNullOrEmpty(_options.Environment) && !string.IsNullOrEmpty(_options.IndexName))
-        {
-            _httpClient.BaseAddress = new Uri(
-                $"https://{_options.IndexName}-{_options.Environment}.svc.{_options.Environment}.pinecone.io");
-        }
+        _indexHost = !string.IsNullOrWhiteSpace(_options.Host)
+            ? ToHostUri(_options.Host)
+            : _httpClient.BaseAddress;
 
         if (!string.IsNullOrEmpty(_options.ApiKey))
         {
             _httpClient.DefaultRequestHeaders.Remove("Api-Key");
             _httpClient.DefaultRequestHeaders.Add("Api-Key", _options.ApiKey);
         }
+    }
+
+    /// <summary>The absolute data-plane URI of <paramref name="pathAndQuery"/> on the index host.</summary>
+    private async Task<Uri> IndexUriAsync(string pathAndQuery, CancellationToken cancellationToken)
+    {
+        var host = await ResolveIndexHostAsync(cancellationToken).ConfigureAwait(false);
+        return new Uri(host, pathAndQuery);
+    }
+
+    /// <summary>
+    /// The index host, resolved once through <c>describe_index</c> when no host was configured.
+    /// A failed resolution is not cached: the next call asks again.
+    /// </summary>
+    private async Task<Uri> ResolveIndexHostAsync(CancellationToken cancellationToken)
+    {
+        var host = Volatile.Read(ref _indexHost);
+        if (host is not null)
+            return host;
+
+        await _hostLock.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            if (_indexHost is not null)
+                return _indexHost;
+
+            host = await DescribeIndexHostAsync(cancellationToken).ConfigureAwait(false);
+            Volatile.Write(ref _indexHost, host);
+            LogResolvedIndexHost(_options.IndexName, host.Host);
+            return host;
+        }
+        finally
+        {
+            _hostLock.Release();
+        }
+    }
+
+    private async Task<Uri> DescribeIndexHostAsync(CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(_options.IndexName) || string.IsNullOrWhiteSpace(_options.ApiKey))
+        {
+            throw new InvalidOperationException(
+                $"Pinecone needs '{PineconeOptions.SectionName}:IndexName' and '{PineconeOptions.SectionName}:ApiKey' " +
+                $"to look up the index host, or '{PineconeOptions.SectionName}:Host' set directly.");
+        }
+
+        var describeUri = new Uri(
+            $"{LlmEndpoints.PineconeControlPlane}/indexes/{Uri.EscapeDataString(_options.IndexName)}");
+        using var response = await _httpClient.GetAsync(describeUri, cancellationToken).ConfigureAwait(false);
+        if (!response.IsSuccessStatusCode)
+        {
+            throw new InvalidOperationException(
+                $"Pinecone describe_index for '{_options.IndexName}' failed with HTTP {(int)response.StatusCode}; " +
+                $"check '{PineconeOptions.SectionName}:IndexName' and ':ApiKey', or set ':Host'.");
+        }
+
+        var description = await response.Content
+            .ReadFromJsonAsync<PineconeIndexDescription>(s_jsonOptions, cancellationToken)
+            .ConfigureAwait(false);
+        if (string.IsNullOrWhiteSpace(description?.Host))
+        {
+            throw new InvalidOperationException(
+                $"Pinecone describe_index for '{_options.IndexName}' returned no host.");
+        }
+
+        return ToHostUri(description.Host);
+    }
+
+    /// <summary>A Pinecone host as an absolute URI; a bare host name gets <c>https://</c>.</summary>
+    private static Uri ToHostUri(string host)
+    {
+        var trimmed = host.Trim().TrimEnd('/');
+        return new Uri(trimmed.Contains("://", StringComparison.Ordinal) ? trimmed : $"https://{trimmed}");
     }
 
     /// <summary>
@@ -584,6 +665,12 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         public Dictionary<string, object>? Metadata { get; set; }
     }
 
+    internal sealed class PineconeIndexDescription
+    {
+        [JsonPropertyName("host")]
+        public string? Host { get; set; }
+    }
+
     internal sealed class PineconeFetchResponse
     {
         [JsonPropertyName("vectors")]
@@ -694,6 +781,10 @@ public partial class PineconeMemoryProvider : MemoryProviderBase, IMemoryProvide
         if (disposing)
         {
             _httpClient.Dispose();
+            _hostLock.Dispose();
         }
     }
+
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Pinecone index {IndexName} resolved to host {Host}")]
+    private partial void LogResolvedIndexHost(string indexName, string host);
 }

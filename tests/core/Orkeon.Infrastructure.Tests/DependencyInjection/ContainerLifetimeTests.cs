@@ -35,14 +35,18 @@ public sealed class ContainerLifetimeTests : IDisposable
             Directory.Delete(_workspace, recursive: true);
     }
 
-    private ServiceCollection BuildRunnerServices()
+    private ServiceCollection BuildRunnerServices(IDictionary<string, string?>? extraSettings = null)
     {
+        var settings = new Dictionary<string, string?>
+        {
+            ["Orkeon:FileSystem:Mounts:0"] = FileSystemMount.Quote(_workspace) + ":/workspace:rw",
+            ["Orkeon:Sandbox:EphemeralRoot"] = Path.Combine(_workspace, "sandbox"),
+        };
+        foreach (var (key, value) in extraSettings ?? new Dictionary<string, string?>())
+            settings[key] = value;
+
         var configuration = new ConfigurationBuilder()
-            .AddInMemoryCollection(new Dictionary<string, string?>
-            {
-                ["Orkeon:FileSystem:Mounts:0"] = FileSystemMount.Quote(_workspace) + ":/workspace:rw",
-                ["Orkeon:Sandbox:EphemeralRoot"] = Path.Combine(_workspace, "sandbox"),
-            })
+            .AddInMemoryCollection(settings)
             .Build();
 
         var services = new ServiceCollection();
@@ -66,6 +70,36 @@ public sealed class ContainerLifetimeTests : IDisposable
         });
 
         Assert.NotNull(provider);
+    }
+
+    /// <summary>
+    /// A host that configures the ChromaDB and Pinecone sections gets a graph that still builds,
+    /// and the providers those sections describe actually resolve (GAP-08).
+    /// <para>
+    /// <c>AddOrkeonInfrastructure(configuration)</c> registered both providers by type as soon as
+    /// their section existed, and their constructors take an <see cref="HttpClient"/> that nothing
+    /// registers: <c>ValidateOnBuild</c> refused the whole container.
+    /// </para>
+    /// </summary>
+    [Fact]
+    public void The_graph_builds_with_the_ChromaDb_and_Pinecone_sections()
+    {
+        var services = BuildRunnerServices(new Dictionary<string, string?>
+        {
+            ["Orkeon:ChromaDb:BaseUrl"] = "http://chroma.internal:8000",
+            ["Orkeon:Pinecone:ApiKey"] = "pc-test-key",
+            ["Orkeon:Pinecone:IndexName"] = "orkeon-test",
+            ["Orkeon:Pinecone:Host"] = "orkeon-test-abc123.svc.aped-4627-b74a.pinecone.io",
+        });
+
+        using var provider = services.BuildServiceProvider(new ServiceProviderOptions
+        {
+            ValidateOnBuild = true,
+            ValidateScopes = true,
+        });
+
+        Assert.NotNull(provider.GetRequiredService<Orkeon.Infrastructure.Memory.ChromaDb.ChromaDbMemoryProvider>());
+        Assert.NotNull(provider.GetRequiredService<Orkeon.Infrastructure.Memory.Pinecone.PineconeMemoryProvider>());
     }
 
     /// <summary>

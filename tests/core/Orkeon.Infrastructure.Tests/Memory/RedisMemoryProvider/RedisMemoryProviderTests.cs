@@ -1,5 +1,6 @@
 using Orkeon.Domain.Memory;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Orkeon.Infrastructure.Memory;
 using static Orkeon.Tests.Shared.Constants.TestToolParamKeys;
 
@@ -55,33 +56,14 @@ public class RedisMemoryProviderTests
     private class InMemoryRedisMemoryProvider : RedisMemoryProvider
     {
         private readonly Dictionary<string, MemoryItem> _storage = [];
-        private bool _isInitialized;
-        private string _keyPrefix = "orkeon:memory:";
-        private MemoryProviderConfig? _configuration;
+        private readonly string _keyPrefix;
+        private bool _disposed;
 
-        public InMemoryRedisMemoryProvider(ILogger<RedisMemoryProvider> logger) : base(logger)
+        // Mirrors the real provider: options in the constructor, no initialization step (GAP-08).
+        public InMemoryRedisMemoryProvider(ILogger<RedisMemoryProvider> logger, string keyPrefix = "orkeon:memory:")
+            : base(Options.Create(new RedisMemoryOptions { KeyPrefix = keyPrefix }), logger)
         {
-        }
-
-        public override async Task InitializeAsync(MemoryProviderConfig config, CancellationToken cancellationToken = default)
-        {
-            // Don't call base.InitializeAsync since it tries to connect to Redis
-            _configuration = config ?? throw new ArgumentNullException(nameof(config));
-
-            // Extract key prefix from config
-            if (config.Settings != null && config.Settings.TryGetValue("keyPrefix", out var prefix))
-            {
-                _keyPrefix = prefix?.ToString() ?? "orkeon:memory:";
-            }
-
-            _isInitialized = true;
-            if (Logger.IsEnabled(LogLevel.Information))
-            {
-                Logger.LogInformation("In-memory Redis provider initialized with connection: {ConnectionString}",
-                    config.ConnectionString ?? "in-memory");
-            }
-
-            await Task.CompletedTask;
+            _keyPrefix = keyPrefix;
         }
 
         public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
@@ -256,8 +238,7 @@ public class RedisMemoryProviderTests
 
         private void ValidateInitialized()
         {
-            if (!_isInitialized)
-                throw new InvalidOperationException("Redis provider not initialized. Call InitializeAsync first.");
+            ObjectDisposedException.ThrowIf(_disposed, this);
         }
 
         private string GetRedisKey(string key) => $"{_keyPrefix}{key}";
@@ -265,7 +246,7 @@ public class RedisMemoryProviderTests
         public new void Dispose()
         {
             _storage.Clear();
-            _isInitialized = false;
+            _disposed = true;
             base.Dispose();
         }
     }
@@ -304,54 +285,30 @@ public class RedisMemoryProviderTests
 
     #endregion
 
-    #region InitializeAsync Tests
+    #region Options Tests
 
     [Fact]
-    public async Task ShouldLogInitialization_WhenInitializeAsyncWithValidConfig()
+    public void ShouldThrow_WhenConstructedWithoutOptions()
     {
-        // Arrange
-        using var provider = new InMemoryRedisMemoryProvider(_logger);
-        var config = new MemoryProviderConfig(
-            providerType: "redis",
-            connectionString: "localhost:6379",
-            settings: new Dictionary<string, object>
-            {
-                { "keyPrefix", "test:" }
-            });
+        Assert.Throws<ArgumentNullException>(() => new Orkeon.Infrastructure.Memory.RedisMemoryProvider(null!));
+    }
 
-        // Act
-        await provider.InitializeAsync(config, TestContext.Current.CancellationToken);
-
-        // Assert
-        Assert.True(_logger.HasLoggedInfo("initialized with connection"));
-        Assert.True(_logger.HasLoggedInfo("localhost:6379"));
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void ShouldThrow_WhenConnectionStringIsBlank(string connectionString)
+    {
+        Assert.ThrowsAny<ArgumentException>(() => new Orkeon.Infrastructure.Memory.RedisMemoryProvider(
+            Options.Create(new RedisMemoryOptions { ConnectionString = connectionString })));
     }
 
     [Fact]
-    public async Task ShouldThrow_WhenInitializeAsyncWithNullConfig()
+    public async Task ShouldUseIt_WhenConstructedWithCustomKeyPrefix()
     {
         // Arrange
-        using var provider = new InMemoryRedisMemoryProvider(_logger);
-
-        // Act & Assert
-        await Assert.ThrowsAsync<ArgumentNullException>(() =>
-            provider.InitializeAsync(null!, TestContext.Current.CancellationToken));
-    }
-
-    [Fact]
-    public async Task ShouldUseIt_WhenInitializeAsyncWithCustomKeyPrefix()
-    {
-        // Arrange
-        using var provider = new InMemoryRedisMemoryProvider(_logger);
-        var config = new MemoryProviderConfig(
-            providerType: "redis",
-            settings: new Dictionary<string, object>
-            {
-                { "keyPrefix", "custom:prefix:" }
-            });
+        using var provider = new InMemoryRedisMemoryProvider(_logger, "custom:prefix:");
 
         // Act
-        await provider.InitializeAsync(config, TestContext.Current.CancellationToken);
         await provider.StoreAsync("testkey", CreateMemoryItem("test"), TestContext.Current.CancellationToken);
 
         // Assert
@@ -364,22 +321,23 @@ public class RedisMemoryProviderTests
     #region StoreAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenStoreAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenStoreAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
         var item = CreateMemoryItem("test content");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.StoreAsync("key1", item, TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldThrow_WhenStoreAsyncWithNullKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("test content");
 
         // Act & Assert
@@ -391,7 +349,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldThrow_WhenStoreAsyncWithEmptyKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("test content");
 
         // Act & Assert
@@ -403,7 +361,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldThrow_WhenStoreAsyncWithNullItem()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentNullException>(() =>
@@ -414,7 +372,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldStoreSuccessfully_WhenStoreAsyncWithValidData()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("test content", importance: 0.8f);
 
         // Act
@@ -432,7 +390,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldThrow_WhenStoreAsyncWithEmptyContent()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentException>(() =>
@@ -444,21 +402,22 @@ public class RedisMemoryProviderTests
     #region GetAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenGetAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenGetAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.GetAsync("key1", TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldThrow_WhenGetAsyncWithNullKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
@@ -469,7 +428,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnNull_WhenGetAsyncWithNonExistentKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         var result = await provider.GetAsync("non-existent", TestContext.Current.CancellationToken);
@@ -483,7 +442,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnItem_WhenGetAsyncWithExistingKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("stored content",
             tags: s_tags,
             source: "test-source");
@@ -507,22 +466,23 @@ public class RedisMemoryProviderTests
     #region UpdateAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenUpdateAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenUpdateAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
         var item = CreateMemoryItem("updated content");
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.UpdateAsync("key1", item, TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldReturnFalse_WhenUpdateAsyncWithNonExistentKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("updated content");
 
         // Act
@@ -537,7 +497,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldUpdateAndReturnTrue_WhenUpdateAsyncWithExistingKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var originalItem = CreateMemoryItem("original content", importance: 0.5f);
         await provider.StoreAsync("key1", originalItem, TestContext.Current.CancellationToken);
 
@@ -560,21 +520,22 @@ public class RedisMemoryProviderTests
     #region DeleteAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenDeleteAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenDeleteAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.DeleteAsync("key1", TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldThrow_WhenDeleteAsyncWithNullKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act & Assert
         await Assert.ThrowsAnyAsync<ArgumentException>(() =>
@@ -585,7 +546,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnFalse_WhenDeleteAsyncWithNonExistentKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         var result = await provider.DeleteAsync("non-existent", TestContext.Current.CancellationToken);
@@ -599,7 +560,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldDeleteAndReturnTrue_WhenDeleteAsyncWithExistingKey()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         var item = CreateMemoryItem("content to delete");
         await provider.StoreAsync("key1", item, TestContext.Current.CancellationToken);
 
@@ -618,21 +579,22 @@ public class RedisMemoryProviderTests
     #region SearchAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenSearchAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenSearchAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.SearchAsync(ParamQuery, cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldReturnEmpty_WhenSearchAsyncWithEmptyQuery()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         var results = await provider.SearchAsync("", cancellationToken: TestContext.Current.CancellationToken);
@@ -645,7 +607,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnItems_WhenSearchAsyncWithMatchingContent()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         await provider.StoreAsync("key1", CreateMemoryItem("The quick brown fox"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key2", CreateMemoryItem("The lazy dog"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key3", CreateMemoryItem("Quick thinking saves time"), TestContext.Current.CancellationToken);
@@ -663,7 +625,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldRespectLimit_WhenSearchAsyncWithLimit()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         for (int i = 0; i < 10; i++)
         {
             await provider.StoreAsync($"key{i}", CreateMemoryItem($"Content with test {i}"), TestContext.Current.CancellationToken);
@@ -680,7 +642,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldFindMatches_WhenSearchAsyncCaseInsensitive()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         await provider.StoreAsync("key1", CreateMemoryItem("UPPERCASE content"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key2", CreateMemoryItem("lowercase content"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key3", CreateMemoryItem("MiXeD cOnTeNt"), TestContext.Current.CancellationToken);
@@ -697,16 +659,18 @@ public class RedisMemoryProviderTests
     #region SearchSimilarAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenSearchSimilarAsyncWhenNotInitialized()
+    public async Task ShouldConnectOnFirstUse_WhenSearchSimilarAsyncWithoutInitialization()
     {
-        // Arrange - typed as the interface: since R10.1 the call dispatches to the
-        // provider's real implementation (which guards initialization) instead of
-        // silently resolving the empty default interface method.
-        using var redisProvider = new Orkeon.Infrastructure.Memory.RedisMemoryProvider(_logger);
+        // Arrange - typed as the interface: the call dispatches to the provider's real
+        // implementation (R10.1), which opens the connection itself (GAP-08). Without a server
+        // the failure is the connection's, never a "not initialized" guard.
+        using var redisProvider = new Orkeon.Infrastructure.Memory.RedisMemoryProvider(
+            Options.Create(new RedisMemoryOptions { ConnectionString = "127.0.0.1:1,abortConnect=true,connectTimeout=100" }),
+            _logger);
         IMemoryProvider provider = redisProvider;
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<StackExchange.Redis.RedisConnectionException>(() =>
             provider.SearchSimilarAsync([1f, 0f], cancellationToken: TestContext.Current.CancellationToken));
     }
 
@@ -715,21 +679,22 @@ public class RedisMemoryProviderTests
     #region ClearAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenClearAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenClearAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.ClearAsync(TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldRemoveAllItems_WhenClearAsync()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         await provider.StoreAsync("key1", CreateMemoryItem("content 1"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key2", CreateMemoryItem("content 2"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key3", CreateMemoryItem("content 3"), TestContext.Current.CancellationToken);
@@ -750,7 +715,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldNotThrow_WhenClearAsyncWithNoItems()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         await provider.ClearAsync(TestContext.Current.CancellationToken);
@@ -764,21 +729,22 @@ public class RedisMemoryProviderTests
     #region CountAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenCountAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenCountAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.CountAsync(TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldReturnZero_WhenCountAsyncWithNoItems()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         var count = await provider.CountAsync(TestContext.Current.CancellationToken);
@@ -791,7 +757,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnCorrectCount_WhenCountAsyncWithMultipleItems()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         await provider.StoreAsync("key1", CreateMemoryItem("content 1"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key2", CreateMemoryItem("content 2"), TestContext.Current.CancellationToken);
         await provider.StoreAsync("key3", CreateMemoryItem("content 3"), TestContext.Current.CancellationToken);
@@ -809,21 +775,22 @@ public class RedisMemoryProviderTests
     #region ListKeysAsync Tests
 
     [Fact]
-    public async Task ShouldThrow_WhenListKeysAsyncWhenNotInitialized()
+    public async Task ShouldNotRequireInitialization_WhenListKeysAsync()
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
 
-        // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        // Act & Assert — ready on construction: no initialization step (GAP-08)
+        var exception = await Record.ExceptionAsync(() =>
             provider.ListKeysAsync(cancellationToken: TestContext.Current.CancellationToken));
+        Assert.Null(exception);
     }
 
     [Fact]
     public async Task ShouldReturnEmpty_WhenListKeysAsyncWithNoItems()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act
         var keys = await provider.ListKeysAsync(cancellationToken: TestContext.Current.CancellationToken);
@@ -836,7 +803,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldReturnCorrectKeys_WhenListKeysAsyncWithPagination()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         for (int i = 0; i < 10; i++)
         {
             await provider.StoreAsync($"key{i:D2}", CreateMemoryItem($"content {i}"), TestContext.Current.CancellationToken);
@@ -862,7 +829,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldStripKeyPrefix_WhenListKeysAsync()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         await provider.StoreAsync("mykey", CreateMemoryItem("content"), TestContext.Current.CancellationToken);
 
         // Act
@@ -882,8 +849,6 @@ public class RedisMemoryProviderTests
     {
         // Arrange
         using var provider = new InMemoryRedisMemoryProvider(_logger);
-        var config = new MemoryProviderConfig(providerType: "redis");
-        await provider.InitializeAsync(config, TestContext.Current.CancellationToken);
 
         // Force an exception by storing null item (caught in validation)
 
@@ -914,11 +879,11 @@ public class RedisMemoryProviderTests
     public async Task ShouldThrow_WhenOperationsAfterDispose()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         provider.Dispose();
 
         // Act & Assert
-        await Assert.ThrowsAsync<InvalidOperationException>(() =>
+        await Assert.ThrowsAsync<ObjectDisposedException>(() =>
             provider.GetAsync("key1", TestContext.Current.CancellationToken));
     }
 
@@ -930,7 +895,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldThrow_WhenStoreAsyncWithInvalidImportance()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
 
         // Act & Assert
         await Assert.ThrowsAsync<ArgumentOutOfRangeException>(() =>
@@ -941,7 +906,7 @@ public class RedisMemoryProviderTests
     public async Task ShouldRespectCancellation_WhenOperationsWithCancellationToken()
     {
         // Arrange
-        using var provider = await CreateInitializedProvider();
+        using var provider = CreateProvider();
         using var cts = new CancellationTokenSource();
         await cts.CancelAsync();
 
@@ -957,15 +922,7 @@ public class RedisMemoryProviderTests
 
     #region Helper Methods
 
-    private async Task<InMemoryRedisMemoryProvider> CreateInitializedProvider()
-    {
-        var provider = new InMemoryRedisMemoryProvider(_logger);
-        var config = new MemoryProviderConfig(
-            providerType: "redis",
-            connectionString: "localhost:6379");
-        await provider.InitializeAsync(config);
-        return provider;
-    }
+    private InMemoryRedisMemoryProvider CreateProvider() => new(_logger);
 
     private static MemoryItem CreateMemoryItem(
         string content,

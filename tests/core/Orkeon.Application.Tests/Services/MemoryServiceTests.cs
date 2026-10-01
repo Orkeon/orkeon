@@ -92,20 +92,12 @@ public class MemoryServiceTests
             _provider = provider ?? new TestMemoryProvider();
         }
 
-        public IMemoryProvider Create(Orkeon.Application.Memory.MemoryProviderConfigDto config, ILoggerFactory? loggerFactory = null)
-        {
-            CreatedConfigs.Add($"Create:{config.Type}");
-            return _provider;
-        }
+        public IReadOnlyList<string> SupportedTypes { get; } = ["inmemory"];
 
-        public async System.Threading.Tasks.Task<IMemoryProvider> CreateAndInitializeAsync(
-            Orkeon.Application.Memory.MemoryProviderConfigDto config,
-            ILoggerFactory? loggerFactory = null,
-            CancellationToken cancellationToken = default)
+        public IMemoryProvider GetProvider(string providerType)
         {
-            CreatedConfigs.Add($"CreateAndInitializeAsync:{config.Type}");
-            // No initialization needed for test provider
-            return await System.Threading.Tasks.Task.FromResult(_provider);
+            CreatedConfigs.Add($"GetProvider:{providerType}");
+            return _provider;
         }
     }
 
@@ -608,7 +600,7 @@ public class MemoryServiceTests
         await service.SaveMemoryAsync(crewId, CreateTestMemoryItem(content: "durable insight", importance: 0.9f), TestContext.Current.CancellationToken);
 
         // Assert — the crew's declared provider was resolved and actually received the store.
-        Assert.Contains("Create:redis", factory.CreatedConfigs);
+        Assert.Contains("GetProvider:redis", factory.CreatedConfigs);
         Assert.Contains(provider.MethodCalls, c => c.StartsWith("StoreAsync", StringComparison.Ordinal));
     }
 

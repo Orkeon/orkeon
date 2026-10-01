@@ -333,8 +333,7 @@ Bound over the selected preset — every key is an individual override.
 |---|---|---|
 | `Orkeon:Rag:Profile` | `fast` | Preset: `fast` / `balanced` / `quality` / `adaptive` / `corrective` (unknown fails loudly) |
 | `Orkeon:Rag:Collection` | — | The collection `rag_search` queries when the agent names none (unset: `default`), and the one `rag_eval` evaluates when neither the call nor the dataset names one and the dataset brings no corpus. `rag.query`/`rag.ingest` and `knowledge:` always name theirs |
-| `Orkeon:Rag:Provider` | ambient | Document-store provider alias (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider` |
-| `Orkeon:Rag:ConnectionString` / `ProviderOptions:*` | — | Passed to the memory-provider factory when `Provider` is set |
+| `Orkeon:Rag:Provider` | ambient | Document-store provider type (`inmemory`/`in-memory`, `redis`, `sqlite`, `chromadb`/`chroma`, `pinecone`, `lancedb`/`lance`; unknown fails loudly); unset = ambient `IMemoryProvider`. The connection is that provider's own host section (`Orkeon:Redis`, `Orkeon:Sqlite`, `Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`), and the store shares the factory's instance of that type with crew memory |
 | `Orkeon:Rag:Retrieval:TopK` | 5 | Chunks kept for context assembly (call-site `RagQuery.TopN` wins) |
 | `Orkeon:Rag:Retrieval:CandidateK` | 50 | Wide stage of the cascade (always ≥ final TopN) |
 | `Orkeon:Rag:Retrieval:MinScore` | none | Optional raw-score floor (the legacy global 0.7 floor is deliberately gone) |

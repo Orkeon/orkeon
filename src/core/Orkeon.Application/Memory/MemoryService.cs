@@ -18,32 +18,28 @@ public partial class MemoryService : IMemoryService, IDisposable
     private readonly IMemoryProviderFactory _memoryProviderFactory;
     private readonly ILogger<MemoryService> _logger;
     private readonly CrewMemoryProviderRegistry? _providerRegistry;
-    private readonly ILoggerFactory? _loggerFactory;
     private readonly ConcurrentDictionary<CrewId, CrewMemorySystem> _memorySystems = new();
 
     /// <summary>
     /// Initializes a new instance of <see cref="MemoryService"/>.
     /// </summary>
-    /// <param name="memoryProviderFactory">Factory resolving provider type strings to concrete providers.</param>
+    /// <param name="memoryProviderFactory">Factory handing out the shared provider of each type.</param>
     /// <param name="logger">The logger.</param>
     /// <param name="providerRegistry">
     /// Optional per-crew provider selections (P2-O-02). When a crew has a recorded provider, its
-    /// long-term memory is backed by that resolved <see cref="IMemoryProvider"/>; otherwise the
-    /// in-process default store is used (behavior unchanged).
+    /// long-term memory is backed by that type's shared <see cref="IMemoryProvider"/>; otherwise the
+    /// in-process default store is used.
     /// </param>
-    /// <param name="loggerFactory">Optional logger factory forwarded to the provider factory (for its fallback warnings).</param>
     public MemoryService(
         IMemoryProviderFactory memoryProviderFactory,
         ILogger<MemoryService> logger,
-        CrewMemoryProviderRegistry? providerRegistry = null,
-        ILoggerFactory? loggerFactory = null)
+        CrewMemoryProviderRegistry? providerRegistry = null)
     {
         ArgumentNullException.ThrowIfNull(memoryProviderFactory);
         _memoryProviderFactory = memoryProviderFactory;
         ArgumentNullException.ThrowIfNull(logger);
         _logger = logger;
         _providerRegistry = providerRegistry;
-        _loggerFactory = loggerFactory;
     }
 
     /// <summary>
@@ -57,14 +53,15 @@ public partial class MemoryService : IMemoryService, IDisposable
     private CrewMemorySystem ResolveMemorySystem(CrewId crewId)
     {
         // A crew that declared a memory provider (carried on the aggregate, recorded at kickoff) gets
-        // its long-term memory backed by that provider. Unknown/unavailable types fall back to
-        // in-memory-with-warning inside the factory — that behavior is preserved untouched.
+        // its long-term memory backed by that type's shared provider: the crew names the type, the
+        // host's section for that provider supplies the connection, and two crews of the same type
+        // share one instance the factory owns. Unknown types fall back to in-memory with a warning
+        // inside the factory.
         var providerType = _providerRegistry?.GetProvider(crewId);
         if (string.IsNullOrWhiteSpace(providerType))
             return new CrewMemorySystem(crewId, provider: null, _logger);
 
-        var provider = _memoryProviderFactory.Create(
-            new MemoryProviderConfigDto(providerType, string.Empty), _loggerFactory);
+        var provider = _memoryProviderFactory.GetProvider(providerType);
         LogCrewMemoryProviderResolved(crewId, providerType);
         return new CrewMemorySystem(crewId, provider, _logger);
     }
@@ -380,9 +377,16 @@ internal class InternalLongTermMemory : ILongTermMemory, IDisposable
 /// Adapts the provider's key/value + search surface to <see cref="ILongTermMemory"/> so a crew's
 /// durable memory actually lands in the selected store instead of the in-process list (P2-O-02).
 /// </summary>
+/// <remarks>
+/// The provider is the factory's instance for its type, shared with every other crew (and run)
+/// of that type — which is what makes the memory durable across runs. Searching therefore sees
+/// what other crews stored; clearing removes only the entries this crew stored, never the whole
+/// shared store. The provider is not owned here and is never disposed by this class.
+/// </remarks>
 internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
 {
     private readonly IMemoryProvider _provider;
+    private readonly ConcurrentDictionary<string, byte> _storedKeys = new(StringComparer.Ordinal);
 
     public ProviderBackedLongTermMemory(IMemoryProvider provider)
     {
@@ -390,10 +394,12 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
         _provider = provider;
     }
 
-    public System.Threading.Tasks.Task AddAsync(MemoryItem item)
+    public async System.Threading.Tasks.Task AddAsync(MemoryItem item)
     {
         ArgumentNullException.ThrowIfNull(item);
-        return _provider.StoreAsync(item.Id.ToString(), item);
+        var key = item.Id.ToString();
+        await _provider.StoreAsync(key, item).ConfigureAwait(false);
+        _storedKeys.TryAdd(key, 0);
     }
 
     public async System.Threading.Tasks.Task<IReadOnlyList<MemoryItem>> SearchAsync(string query, int maxResults = 10)
@@ -402,7 +408,14 @@ internal sealed class ProviderBackedLongTermMemory : ILongTermMemory
         return results.ToList();
     }
 
-    public System.Threading.Tasks.Task ClearAsync() => _provider.ClearAsync();
+    public async System.Threading.Tasks.Task ClearAsync()
+    {
+        foreach (var key in _storedKeys.Keys)
+        {
+            await _provider.DeleteAsync(key).ConfigureAwait(false);
+            _storedKeys.TryRemove(key, out _);
+        }
+    }
 }
 
 /// <summary>

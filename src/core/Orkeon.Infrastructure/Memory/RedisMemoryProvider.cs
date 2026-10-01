@@ -1,10 +1,9 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Polly;
 using StackExchange.Redis;
 using Orkeon.Domain.Memory;
 using Orkeon.Domain.SharedKernel.ValueObjects;
-using Orkeon.Infrastructure.Constants.Llm;
-using Orkeon.Infrastructure.Constants.Memory;
 using Orkeon.Infrastructure.Memory.Base;
 using Orkeon.Infrastructure.Resilience;
 using System.Text.Json;
@@ -18,12 +17,19 @@ namespace Orkeon.Infrastructure.Memory;
 /// Business logic (embedding generation, similarity search) moved to domain services.
 /// </summary>
 /// <remarks>
+/// <para>
+/// Ready on construction: the connection described by <see cref="RedisMemoryOptions"/>
+/// (<c>Orkeon:Redis</c>) is opened on the first call, once, whatever the number of concurrent
+/// callers (GAP-08). A failed connection is not cached — the next call tries again.
+/// </para>
+/// <para>
 /// <see cref="IMemoryProvider"/> is re-listed on purpose (same pattern as
 /// <c>SqliteMemoryProvider</c>/<c>LanceDbMemoryProvider</c>, R10.1): without
 /// re-implementation, calls made through the interface would resolve
 /// <c>SearchSimilarAsync</c> to the default interface method (empty results) instead of
 /// the client-side cosine search defined here (interface mapping is otherwise frozen at
 /// <see cref="MemoryProviderBase"/>).
+/// </para>
 /// </remarks>
 public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, IDisposable
 {
@@ -33,48 +39,73 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
         MaxDepth = SerializationDefaults.JsonMaxDepth
     };
 
+    private readonly string _connectionString;
+    private readonly string _keyPrefix;
+    private readonly IAsyncPolicy _redisPolicy;
+    private readonly SemaphoreSlim _connectLock = new(1, 1);
     private ConnectionMultiplexer? _redis;
     private IDatabase? _database;
-    private string _keyPrefix = RedisDefaults.MemoryKeyPrefix;
-    private readonly IAsyncPolicy _redisPolicy;
-    private bool _initialized;
+    private volatile bool _disposed;
 
     /// <inheritdoc />
     public override string Name => "redis";
 
     /// <summary>Initializes a new instance of <see cref="RedisMemoryProvider"/>.</summary>
+    /// <param name="options">Connection options, bound from <c>Orkeon:Redis</c>.</param>
     /// <param name="logger">Optional logger.</param>
-    public RedisMemoryProvider(ILogger<RedisMemoryProvider>? logger = null)
+    public RedisMemoryProvider(IOptions<RedisMemoryOptions> options, ILogger<RedisMemoryProvider>? logger = null)
         : base(logger)
     {
+        ArgumentNullException.ThrowIfNull(options);
+        var value = options.Value;
+        ArgumentException.ThrowIfNullOrWhiteSpace(value.ConnectionString, nameof(options));
+        _connectionString = value.ConnectionString;
+        _keyPrefix = value.KeyPrefix ?? string.Empty;
         _redisPolicy = ResiliencePolicies.GetRedisRetryPolicy(Logger);
     }
 
     /// <summary>
-    /// Initializes Redis connection.
-    /// Pure infrastructure setup - no business logic.
+    /// Returns the database, opening the connection on the first call. Thread-safe: concurrent
+    /// first callers share one <see cref="ConnectionMultiplexer"/>. A failure propagates (a
+    /// <see cref="RedisConnectionException"/> when the server is unreachable) and is not cached.
     /// </summary>
-    public override async Task InitializeAsync(MemoryProviderConfig config, CancellationToken cancellationToken = default)
+    private async Task<IDatabase> GetDatabaseAsync(CancellationToken cancellationToken)
     {
-        await base.InitializeAsync(config, cancellationToken).ConfigureAwait(false);
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        var database = Volatile.Read(ref _database);
+        if (database is not null)
+            return database;
 
+        await _connectLock.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            var connectionString = GetConnectionString();
-            _keyPrefix = GetKeyPrefix();
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_database is not null)
+                return _database;
 
-            _redis = await ConnectionMultiplexer.ConnectAsync(connectionString).ConfigureAwait(false);
-            _database = _redis.GetDatabase();
-            _initialized = true;
+            var redis = await ConnectionMultiplexer.ConnectAsync(_connectionString).ConfigureAwait(false);
+            _redis = redis;
+            database = redis.GetDatabase();
+            Volatile.Write(ref _database, database);
 
-            LogInitializedProvider(connectionString);
+            // Once per provider lifetime: the cost of formatting the endpoints is irrelevant.
+            var endpoints = string.Join(", ", redis.GetEndPoints().Select(endpoint => endpoint.ToString()));
+            LogConnected(endpoints);
+            return database;
         }
-        catch (Exception ex)
+        catch (Exception ex) when (ex is not ObjectDisposedException and not OperationCanceledException)
         {
-            LogInitializeFailed(ex);
+            LogConnectFailed(ex);
             throw;
         }
+        finally
+        {
+            _connectLock.Release();
+        }
     }
+
+    /// <summary>The first server of the open connection, for key scans.</summary>
+    private IServer FirstServer() => _redis!.GetServer(_redis.GetEndPoints().First());
 
     /// <summary>
     /// Stores a memory item in Redis.
@@ -82,9 +113,9 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task StoreAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
         ValidateKey(key);
         ValidateMemoryItem(item);
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -92,7 +123,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
             {
                 var redisKey = GetRedisKey(key);
                 var serializedItem = SerializeMemoryItem(item);
-                await _database!.StringSetAsync(redisKey, serializedItem).ConfigureAwait(false);
+                await database.StringSetAsync(redisKey, serializedItem).ConfigureAwait(false);
             }, cancellationToken).ConfigureAwait(false);
 
             LogStoredItem(key);
@@ -110,15 +141,15 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<MemoryItem?> GetAsync(string key, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
         ValidateKey(key);
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             var result = await _redisPolicy.ExecuteAsync(async (ct) =>
             {
                 var redisKey = GetRedisKey(key);
-                var value = await _database!.StringGetAsync(redisKey).ConfigureAwait(false);
+                var value = await database.StringGetAsync(redisKey).ConfigureAwait(false);
 
                 if (!value.HasValue)
                     return (MemoryItem?)null;
@@ -146,9 +177,9 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<bool> UpdateAsync(string key, MemoryItem item, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
         ValidateKey(key);
         ValidateMemoryItem(item);
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -157,12 +188,12 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
                 var redisKey = GetRedisKey(key);
 
                 // Check if key exists first
-                var exists = await _database!.KeyExistsAsync(redisKey).ConfigureAwait(false);
+                var exists = await database.KeyExistsAsync(redisKey).ConfigureAwait(false);
                 if (!exists)
                     return false;
 
                 var serializedItem = SerializeMemoryItem(item);
-                await _database.StringSetAsync(redisKey, serializedItem).ConfigureAwait(false);
+                await database.StringSetAsync(redisKey, serializedItem).ConfigureAwait(false);
                 return true;
             }, cancellationToken).ConfigureAwait(false);
 
@@ -186,15 +217,15 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<bool> DeleteAsync(string key, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
         ValidateKey(key);
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             var deleted = await _redisPolicy.ExecuteAsync(async (ct) =>
             {
                 var redisKey = GetRedisKey(key);
-                return await _database!.KeyDeleteAsync(redisKey).ConfigureAwait(false);
+                return await database.KeyDeleteAsync(redisKey).ConfigureAwait(false);
             }, cancellationToken).ConfigureAwait(false);
 
             LogDeletedItem(key, deleted);
@@ -213,10 +244,10 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<IEnumerable<MemoryItem>> SearchAsync(string query, int limit = MemoryDefaults.DefaultSearchLimit, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
-
         if (string.IsNullOrWhiteSpace(query))
             return Array.Empty<MemoryItem>();
+
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -224,7 +255,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
             {
                 var items = new List<MemoryItem>();
                 var pattern = $"{_keyPrefix}*";
-                var server = _redis!.GetServer(_redis.GetEndPoints().First());
+                var server = FirstServer();
 
                 // Scan for matching keys - this is basic pattern matching
                 // Complex similarity search would be handled by domain services
@@ -233,7 +264,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
                     if (items.Count >= limit)
                         break;
 
-                    var value = await _database!.StringGetAsync(key).ConfigureAwait(false);
+                    var value = await database.StringGetAsync(key).ConfigureAwait(false);
                     if (value.HasValue)
                     {
                         var item = DeserializeMemoryItem(value!);
@@ -263,14 +294,14 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task ClearAsync(CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
+        var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             var count = await _redisPolicy.ExecuteAsync(async (ct) =>
             {
                 var pattern = $"{_keyPrefix}*";
-                var server = _redis!.GetServer(_redis.GetEndPoints().First());
+                var server = FirstServer();
                 var keys = new List<StackExchange.Redis.RedisKey>();
                 await foreach (var key in server.KeysAsync(pattern: pattern).WithCancellation(ct).ConfigureAwait(false))
                 {
@@ -279,7 +310,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
 
                 if (keys.Count > 0)
                 {
-                    await _database!.KeyDeleteAsync(keys.ToArray()).ConfigureAwait(false);
+                    await database.KeyDeleteAsync(keys.ToArray()).ConfigureAwait(false);
                 }
 
                 return keys.Count;
@@ -300,14 +331,14 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<int> CountAsync(CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
+        await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
             var count = await _redisPolicy.ExecuteAsync(async (ct) =>
             {
                 var pattern = $"{_keyPrefix}*";
-                var server = _redis!.GetServer(_redis.GetEndPoints().First());
+                var server = FirstServer();
                 var total = 0;
 
                 await foreach (var key in server.KeysAsync(pattern: pattern).ConfigureAwait(false))
@@ -352,15 +383,15 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
         CancellationToken cancellationToken = default)
     {
         ArgumentNullException.ThrowIfNull(queryEmbedding);
-        ValidateInitialized();
         return SearchSimilarCoreAsync();
 
         async Task<IReadOnlyList<ScoredMemoryItem>> SearchSimilarCoreAsync()
         {
+            var database = await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
             try
             {
                 var results = await _redisPolicy.ExecuteAsync(
-                    ct => CollectScoredItemsAsync(queryEmbedding, topK, minScore, filter),
+                    ct => CollectScoredItemsAsync(database, queryEmbedding, topK, minScore, filter),
                     cancellationToken).ConfigureAwait(false);
 
                 LogVectorSearchResults(results.Count, minScore, topK);
@@ -375,6 +406,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     }
 
     private async Task<IReadOnlyList<ScoredMemoryItem>> CollectScoredItemsAsync(
+        IDatabase database,
         float[] queryEmbedding,
         int topK,
         float minScore,
@@ -382,11 +414,11 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     {
         var scored = new List<ScoredMemoryItem>();
         var pattern = $"{_keyPrefix}*";
-        var server = _redis!.GetServer(_redis.GetEndPoints().First());
+        var server = FirstServer();
 
         await foreach (var key in server.KeysAsync(pattern: pattern).ConfigureAwait(false))
         {
-            var value = await _database!.StringGetAsync(key).ConfigureAwait(false);
+            var value = await database.StringGetAsync(key).ConfigureAwait(false);
             if (!value.HasValue)
                 continue;
 
@@ -462,7 +494,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     public override async Task<List<string>> ListKeysAsync(int skip = 0, int take = 100, CancellationToken cancellationToken = default)
     {
-        ValidateInitialized();
+        await GetDatabaseAsync(cancellationToken).ConfigureAwait(false);
 
         try
         {
@@ -470,7 +502,7 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
             {
                 var result = new List<string>();
                 var pattern = $"{_keyPrefix}*";
-                var server = _redis!.GetServer(_redis.GetEndPoints().First());
+                var server = FirstServer();
                 var current = 0;
 
                 await foreach (var key in server.KeysAsync(pattern: pattern).ConfigureAwait(false))
@@ -501,44 +533,6 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
             LogException(ex, "ListKeysAsync");
             throw;
         }
-    }
-
-    /// <summary>
-    /// Gets Redis connection string from configuration.
-    /// Pure configuration access.
-    /// </summary>
-    private string GetConnectionString()
-    {
-        // Prefer the typed ConnectionString property; fall back to Settings dictionary for backward compatibility
-        if (!string.IsNullOrWhiteSpace(Configuration?.ConnectionString))
-        {
-            return Configuration.ConnectionString;
-        }
-        if (Configuration?.Settings != null &&
-            Configuration.Settings.TryGetValue("connectionString", out var connStr))
-        {
-            return connStr?.ToString() ?? LlmEndpoints.RedisDefault;
-        }
-        return LlmEndpoints.RedisDefault;
-    }
-
-    /// <summary>
-    /// Gets Redis key prefix from configuration.
-    /// Pure configuration access.
-    /// </summary>
-    private string GetKeyPrefix()
-    {
-        // Prefer the typed KeyPrefix property; fall back to Settings dictionary for backward compatibility
-        if (!string.IsNullOrWhiteSpace(Configuration?.KeyPrefix))
-        {
-            return Configuration.KeyPrefix;
-        }
-        if (Configuration?.Settings != null &&
-            Configuration.Settings.TryGetValue("keyPrefix", out var prefix))
-        {
-            return prefix?.ToString() ?? RedisDefaults.MemoryKeyPrefix;
-        }
-        return RedisDefaults.MemoryKeyPrefix;
     }
 
     /// <summary>
@@ -577,16 +571,6 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     }
 
     /// <summary>
-    /// Validates that the provider is initialized.
-    /// Pure validation.
-    /// </summary>
-    private void ValidateInitialized()
-    {
-        if (!_initialized || _database == null)
-            throw new InvalidOperationException("Redis provider not initialized. Call InitializeAsync first.");
-    }
-
-    /// <summary>
     /// Disposes Redis resources.
     /// </summary>
     public void Dispose()
@@ -600,17 +584,20 @@ public partial class RedisMemoryProvider : MemoryProviderBase, IMemoryProvider, 
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (disposing)
+        if (disposing && !_disposed)
         {
+            _disposed = true;
             _redis?.Dispose();
+            _connectLock.Dispose();
         }
     }
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Redis memory provider initialized with connection: {ConnectionString}")]
-    private partial void LogInitializedProvider(string connectionString);
+    // The endpoints only — the connection string may carry a password.
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Information, Message = "Redis memory provider connected to {Endpoints}")]
+    private partial void LogConnected(string endpoints);
 
-    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Failed to initialize Redis memory provider")]
-    private partial void LogInitializeFailed(Exception ex);
+    [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Error, Message = "Redis memory provider failed to connect (Orkeon:Redis:ConnectionString)")]
+    private partial void LogConnectFailed(Exception ex);
 
     [LoggerMessage(Level = Microsoft.Extensions.Logging.LogLevel.Debug, Message = "Stored memory item with key: {Key}")]
     private partial void LogStoredItem(string key);

@@ -19,7 +19,7 @@
 
 1. .NET 10 SDK
 2. Configure `appsettings.json` with your LLM API key
-3. Redis instance running for shared state
+3. Redis instance running for shared state — the crew names the type (`memoryProvider: "Redis"`); the connection is the `Orkeon:Redis` section of your settings (default `localhost:6379`), see [Memory providers](../../appsettings/README.md#memory-providers-memoryprovider-in-a-crew)
 
 ## Run it
 

@@ -4,7 +4,7 @@
 
 ## Interface et types
 
-`IMemoryProvider` (`Orkeon.Domain.Memory`) définit le contrat avec sept méthodes : `StoreAsync`, `GetAsync`, `SearchAsync`, `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` et `SearchSimilarAsync` (recherche vectorielle par similarité cosinus). Les deux dernières ont un corps par défaut dans l'interface (celui de `SearchSimilarAsync` ne renvoie rien) ; tous les providers du dépôt dérivent donc de `MemoryProviderBase` (`Orkeon.Infrastructure.Memory.Base`), qui redéclare `SearchSimilarAsync` **abstraite** — sans quoi un provider qui aurait oublié la recherche vectorielle renverrait silencieusement zéro résultat via l'interface. La classe de base ajoute aussi `UpdateAsync`, `CountAsync`, `ListKeysAsync` et `InitializeAsync(MemoryProviderConfig)`.
+`IMemoryProvider` (`Orkeon.Domain.Memory`) définit le contrat avec sept méthodes : `StoreAsync`, `GetAsync`, `SearchAsync`, `DeleteAsync`, `ClearAsync`, `StoreWithEmbeddingAsync` et `SearchSimilarAsync` (recherche vectorielle par similarité cosinus). Les deux dernières ont un corps par défaut dans l'interface (celui de `SearchSimilarAsync` ne renvoie rien) ; tous les providers du dépôt dérivent donc de `MemoryProviderBase` (`Orkeon.Infrastructure.Memory.Base`), qui redéclare `SearchSimilarAsync` **abstraite** — sans quoi un provider qui aurait oublié la recherche vectorielle renverrait silencieusement zéro résultat via l'interface. La classe de base ajoute aussi `UpdateAsync`, `CountAsync` et `ListKeysAsync`. Il n'y a pas d'étape d'initialisation : un provider reçoit ses options dans son constructeur et ouvre sa connexion éventuelle à son premier appel.
 
 Cinq types de mémoire sont définis par `MemoryType` (`Orkeon.Domain.Memory`) : `ShortTerm` (contexte immédiat), `LongTerm` (informations persistantes), `Episodic` (séquences d'événements), `Entity` (informations sur des entités spécifiques), `Procedural` (compétences apprises).
 
@@ -26,10 +26,10 @@ On les découvre avec `provider.TryGetCapability<TCapability>(out var capability
 | Provider | Classe | Caractéristiques |
 |----------|--------|-----------------|
 | In-Memory | `InMemoryProvider` | `ConcurrentDictionary`, recherche vectorielle cosinus, développement/tests |
-| Redis | `RedisMemoryProvider` | Clés préfixées `orkeon:memory:` par défaut, politique de retry Polly (`ResiliencePolicies.GetRedisRetryPolicy`), sérialisation JSON camelCase. **Doit être initialisé** : la connexion s'ouvre dans `InitializeAsync` (chaîne de connexion tirée de `MemoryProviderConfig.ConnectionString`, défaut `localhost:6379`) ; tout autre appel avant lève `InvalidOperationException` |
+| Redis | `RedisMemoryProvider` | Clés préfixées `orkeon:memory:` par défaut, politique de retry Polly (`ResiliencePolicies.GetRedisRetryPolicy`), sérialisation JSON camelCase. Options `RedisMemoryOptions` (`Orkeon:Redis` : `ConnectionString`, défaut `localhost:6379` ; `KeyPrefix`). La connexion s'ouvre au premier appel, une seule fois quel que soit le nombre d'appelants concurrents ; un serveur injoignable remonte en `RedisConnectionException` sur cet appel, et l'appel suivant réessaie |
 | SQLite | `SqliteMemoryProvider` | `Microsoft.Data.Sqlite`, persistance locale (fichier ou `:memory:`, défaut `Data Source=:memory:`), embeddings en BLOB, recherche plein texte `LIKE` + recherche vectorielle cosinus (scan en mémoire), identifiants et métadonnées préservés à la relecture. Une `Data Source` fichier est un **chemin virtuel** résolu par le VFS et doit se trouver sur un montage accessible en écriture (ex. `Data Source=/output/orkeon-memory.db`), sinon le constructeur lève `FileAccessDeniedException` |
 | ChromaDB | `ChromaDbMemoryProvider` | API REST v2 (routes tenant/database), base vectorielle |
-| Pinecone | `PineconeMemoryProvider` | Base vectorielle cloud — en-tête `Api-Key` ; l'hôte de l'index est dérivé en `https://{IndexName}-{Environment}.svc.{Environment}.pinecone.io`, sauf si le `HttpClient` injecté a déjà une `BaseAddress` |
+| Pinecone | `PineconeMemoryProvider` | Base vectorielle cloud — en-tête `Api-Key`. Les requêtes visent l'hôte de l'index : `Orkeon:Pinecone:Host` s'il est renseigné, sinon le `host` que Pinecone renvoie pour `IndexName` à un unique appel `describe_index` (`GET https://api.pinecone.io/indexes/{IndexName}`) fait au premier usage |
 | LanceDB | `LanceDbMemoryProvider` | Serveur distant LanceDB Cloud/Enterprise — REST + Arrow IPC, recherche vectorielle et plein-texte **côté serveur** |
 
 ## LanceDB (intégration distante réelle)
@@ -44,7 +44,7 @@ remplacée (décision R4.11 — implémenter LanceDB réellement).
 
 | Opération provider | Endpoint REST | Payload |
 |---|---|---|
-| `InitializeAsync` (table auto-créée au premier usage) | `POST /v1/table/{t}/exists`, `POST /v1/table/{t}/create`, `POST /v1/table/{t}/create_index` (FTS) | JSON / Arrow IPC stream |
+| Premier appel (table auto-créée) | `POST /v1/table/{t}/exists`, `POST /v1/table/{t}/create`, `POST /v1/table/{t}/create_index` (FTS) | JSON / Arrow IPC stream |
 | `StoreAsync` / `UpdateAsync` (upsert) | `POST /v1/table/{t}/merge_insert?on=id&when_matched_update_all=true&when_not_matched_insert_all=true` | Arrow IPC stream |
 | `GetAsync` / `ListKeysAsync` | `POST /v1/table/{t}/query` (filtre SQL / pagination `k`+`offset`) | JSON → Arrow IPC file |
 | `SearchAsync` (plein-texte BM25) | `POST /v1/table/{t}/query` avec `full_text_query` | JSON → Arrow IPC file |
@@ -80,11 +80,11 @@ Autres clés : `DefaultTopK` (10), `MinSimilarityScore` (0), `VectorWeight` / `F
 (poids de la fusion hybride, 0,7 / 0,3). Valeurs par défaut des clés montrées : `TableName`
 `orkeon_memories`, `EmbeddingDimension` 1536, `DistanceType` `cosine`, `CreateFullTextIndexOnInit` `true`.
 
-Enregistrement : `services.AddOrkeonLanceDb(configuration)` (section `Orkeon:LanceDb`) enregistre
-`LanceDbMemoryProvider` (et `LanceDbMigrationService`) comme singletons concrets — on les injecte
-par leur classe ; l'extension ne réassocie pas `IMemoryProvider`. Sans `Endpoint`, la résolution
-du provider lève `InvalidOperationException` (pas de repli local) ; via `MemoryProviderFactory`,
-un endpoint absent journalise un avertissement et retombe sur In-Memory (voir plus bas).
+Tout chemin qui sélectionne `lancedb` lit cette section (voir [Sélection par configuration](#sélection-par-configuration)).
+`services.AddOrkeonLanceDb(configuration)` expose en plus le `LanceDbMemoryProvider` partagé par sa
+classe, avec `LanceDbMigrationService` ; l'extension ne réassocie pas `IMemoryProvider`. Sans
+`Endpoint`, résoudre cette classe lève `InvalidOperationException` ; sélectionner `lancedb` par type
+journalise un avertissement et retombe sur In-Memory (voir plus bas).
 
 ### Limites connues
 
@@ -143,45 +143,58 @@ ou répond en erreur.
 
 ## Sélection par configuration
 
-### Le provider de l'application
+### Une section par provider
 
-`AddOrkeonInfrastructure()` enregistre `IMemoryProvider` comme singleton construit par
-`MemoryProviderFactory` à partir de deux clés de configuration racine : `Memory:Provider` (type,
-voir ci-dessous ; absent → In-Memory) et `Memory:ConnectionString`. La méthode `Create` de la
-factory ne fait que **construire** le provider ; `CreateAndInitializeAsync` mappe en plus le DTO
-vers le `MemoryProviderConfig` du Domain (options `RetentionPeriod`, `MaxItems`, `KeyPrefix`) et
-appelle `InitializeAsync`. L'enregistrement DI utilise `Create` — c'est pourquoi Redis, le seul
-provider qui refuse de fonctionner sans initialisation, se câble autrement (`AddOrkeonRedisMemory`,
-puis l'initialiser soi-même).
+L'hôte configure chaque provider une fois, dans sa propre section ; tout le reste nomme un **type** :
 
-`MemoryProviderFactory` (port `IMemoryProviderFactory`) résout le provider depuis
-`MemoryProviderConfigDto.Type` (insensible à la casse) :
-
-| Type | Alias | `ConnectionString` | Clés d'`Options` |
+| Type | Alias | Section | Clés |
 |---|---|---|---|
 | `inmemory` | `in-memory`, vide | — | — |
-| `redis` | | Chaîne de connexion Redis (lue par `InitializeAsync`) | `KeyPrefix` (via `CreateAndInitializeAsync`) |
-| `sqlite` | | Chaîne de connexion SQLite, `Data Source` virtuelle (ex. `Data Source=/output/orkeon-memory.db`) | `TableName` (identifiant validé contre l'injection SQL) |
-| `chromadb` | `chroma` | URL de base du serveur (défaut `http://localhost:8000`) | — (tenant/base/collection gardent leurs défauts) |
-| `pinecone` | | — | `ApiKey`, `Environment`, `IndexName` (défaut `orkeon-memories`), `Namespace` (défaut `default`) |
-| `lancedb` | `lance` | Endpoint REST LanceDB Cloud/Enterprise (**obligatoire** : sans lui, avertissement explicite et repli In-Memory) | `ApiKey`, `TableName`, `Database` |
+| `redis` | | `Orkeon:Redis` | `ConnectionString` (défaut `localhost:6379`, toute chaîne StackExchange.Redis), `KeyPrefix` (défaut `orkeon:memory:`) |
+| `sqlite` | | `Orkeon:Sqlite` | `ConnectionString` (défaut `Data Source=:memory:` ; une `Data Source` fichier est un chemin virtuel sur un montage inscriptible, ex. `Data Source=/output/orkeon-memory.db`), `TableName` (identifiant validé contre l'injection SQL), `DefaultTopK`, `MinSimilarityScore` |
+| `chromadb` | `chroma` | `Orkeon:ChromaDb` | `BaseUrl` (défaut `http://localhost:8000`), `Tenant`, `Database`, `CollectionName`, `DefaultTopK` |
+| `pinecone` | | `Orkeon:Pinecone` | `ApiKey`, `IndexName` (défaut `orkeon-memories`), `Host` (facultatif, voir le tableau plus haut), `Namespace` (défaut `default`) |
+| `lancedb` | `lance` | `Orkeon:LanceDb` | `Endpoint` (**obligatoire** : sans lui, avertissement explicite et repli In-Memory), `ApiKey`, `TableName`, `Database`, … ([plus haut](#configuration)) |
 
-Un type inconnu retombe sur In-Memory avec un avertissement explicite.
+```json
+{
+  "Memory": { "Provider": "redis" },
+  "Orkeon": {
+    "Redis": { "ConnectionString": "redis.internal:6379,password=…", "KeyPrefix": "team-a:" },
+    "Sqlite": { "ConnectionString": "Data Source=/output/orkeon-memory.db" }
+  }
+}
+```
+
+Les secrets restent côté hôte : un fichier de crew ne porte jamais de chaîne de connexion ni de clé d'API.
+
+`MemoryProviderFactory` (port `IMemoryProviderFactory`, `GetProvider(type)`, insensible à la casse)
+distribue **une instance par type** : le provider de l'application, chaque crew qui nomme ce type et
+le store RAG de ce type la partagent — une connexion Redis, un client HTTP, une connexion SQLite. La
+factory possède ces instances et les libère avec le conteneur. Créer un provider ne connecte jamais ;
+la connexion s'ouvre à son premier appel. Un type inconnu retombe sur In-Memory avec un avertissement
+explicite ; `SupportedTypes` liste les alias.
+
+### Le provider de l'application
+
+`AddOrkeonInfrastructure()` lie les cinq sections et enregistre `IMemoryProviderFactory` et le
+singleton `IMemoryProvider`, dont le type est `Memory:Provider` (absent → In-Memory). `Memory:Provider`
+ne porte que le type ; la connexion est la section du provider choisi.
 
 ### Extensions d'injection de dépendances
 
 | Extension | Enregistre |
 |---|---|
-| `AddOrkeonInfrastructure()` | `IMemoryProviderFactory` + le singleton `IMemoryProvider` ci-dessus |
-| `AddOrkeonRedisMemory(configuration)` | `RedisMemoryProvider`, et **réassocie** `IMemoryProvider` à lui (appeler `InitializeAsync` avant usage) |
-| `AddOrkeonChromaDb(configuration)` | `ChromaDbOptions` lié à `Orkeon:ChromaDb` + `ChromaDbMemoryProvider` en singleton concret (son constructeur prend un `HttpClient` que l'hôte enregistre). Appelée automatiquement par `AddOrkeonInfrastructure(configuration)` quand la section existe |
-| `AddOrkeonPinecone(configuration)` | Même forme sur `Orkeon:Pinecone` (`ApiKey`, `Environment`, `IndexName`, `Namespace`) |
-| `AddOrkeonLanceDb(configuration)` | `LanceDbOptions` sur `Orkeon:LanceDb`, `LanceDbMemoryProvider` (son propre `HttpClient` issu d'`IHttpClientFactory`) et `LanceDbMigrationService` (`MigrateToLanceDbAsync`, copie un provider existant dans la table LanceDB) |
+| `AddOrkeonInfrastructure()` | Les cinq sections, `IMemoryProviderFactory` + le singleton `IMemoryProvider` ci-dessus |
+| `AddOrkeonRedisMemory(configuration)` | Lie `Orkeon:Redis` depuis `configuration`, expose le `RedisMemoryProvider` partagé par sa classe et **réassocie** `IMemoryProvider` à lui — comme `Memory:Provider = redis` |
+| `AddOrkeonChromaDb(configuration)` | Lie `Orkeon:ChromaDb` et expose le `ChromaDbMemoryProvider` partagé par sa classe (client HTTP issu d'`IHttpClientFactory`). Appelée par `AddOrkeonInfrastructure(configuration)` quand la section existe |
+| `AddOrkeonPinecone(configuration)` | Même forme sur `Orkeon:Pinecone` (`ApiKey`, `IndexName`, `Host`, `Namespace`) |
+| `AddOrkeonLanceDb(configuration)` | Même forme sur `Orkeon:LanceDb`, plus `LanceDbMigrationService` (`MigrateToLanceDbAsync`, copie un provider existant dans la table LanceDB) |
 | `AddOrkeonMemoryMigration()` | `MemoryMigrationService` — `MigrateAsync` copie toutes les entrées d'un provider vers un autre. Non enregistrée par `AddOrkeonInfrastructure()` : l'appeler quand on déplace un store (p. ex. In-Memory ou SQLite vers une base vectorielle), résoudre le service et lui passer les providers source et cible (deux instances de `MemoryProviderBase` — la source est parcourue clé par clé) |
 
 Seule `AddOrkeonRedisMemory` remplace l'`IMemoryProvider` de l'application ; les trois extensions de
-bases vectorielles rendent le provider injectable par sa classe, à côté de celui que `Memory:Provider`
-a sélectionné.
+bases vectorielles rendent le provider partagé injectable par sa classe, à côté de celui que
+`Memory:Provider` a sélectionné.
 
 ### Sélection du provider par crew
 
@@ -192,16 +205,16 @@ La sélection voyage jusqu'au run au lieu d'être figée globalement par la conf
    l'agrégat de domaine `Crew` (`Crew.MemoryProvider`).
 2. Au kickoff, l'orchestrateur enregistre `Crew.Id → Crew.MemoryProvider` dans le singleton
    `CrewMemoryProviderRegistry` (indexé par crew, donc les sélections ne fuient jamais d'une crew à l'autre).
-3. Quand `MemoryService` matérialise le système de mémoire de cette crew, il résout la chaîne enregistrée
-   en un `IMemoryProvider` concret via `MemoryProviderFactory` et adosse la mémoire **long terme** de la
-   crew à ce provider (la mémoire court terme reste une fenêtre glissante in-process). Les types
-   inconnus/indisponibles conservent le repli In-Memory-avec-avertissement de la factory.
+3. Quand `MemoryService` matérialise le système de mémoire de cette crew, il demande à
+   `MemoryProviderFactory` le provider partagé de ce type — connecté depuis la section de l'hôte — et
+   adosse la mémoire **long terme** de la crew à ce provider (la mémoire court terme reste une fenêtre
+   glissante in-process). Les types inconnus conservent le repli In-Memory-avec-avertissement de la factory.
 
-Seul le **type** voyage : la factory est appelée avec une chaîne de connexion vide et sans options,
-si bien que chaque provider tourne sur ses défauts — `sqlite` est une base `:memory:` in-process,
-`chromadb` vise `http://localhost:8000`, `lancedb` (sans endpoint) retombe sur In-Memory avec un
-avertissement, et `redis` n'est jamais initialisé : sa première lecture ou écriture lève. Une crew
-qui a besoin d'une vraie connexion utilise plutôt le provider de l'application.
+`memoryProvider:` est un type, rien de plus : `memoryProvider: "Redis"` se connecte avec `Orkeon:Redis`,
+`"SQLite"` avec `Orkeon:Sqlite` (une base `:memory:` in-process quand cette section est absente).
+L'instance étant partagée, la mémoire long terme d'une crew est visible du run suivant et des autres
+crews de ce type — c'est ce qui la rend durable. Vider la mémoire d'une crew ne supprime que les entrées
+qu'elle a rangées, et la libérer ne libère jamais le provider partagé.
 
 Une crew qui ne déclare aucun `memoryProvider` utilise le store in-process par défaut — le comportement est inchangé.
 

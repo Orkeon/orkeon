@@ -9,6 +9,9 @@ namespace Orkeon.Infrastructure.Memory.ChromaDb;
 /// </summary>
 public class ChromaDbOptions
 {
+    /// <summary>The configuration section bound to these options.</summary>
+    public const string SectionName = "Orkeon:ChromaDb";
+
     /// <summary>Default tenant name used by ChromaDB single-tenant deployments.</summary>
     public const string DefaultTenant = "default_tenant";
 

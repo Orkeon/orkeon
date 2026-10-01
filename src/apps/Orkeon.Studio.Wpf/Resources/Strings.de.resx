@@ -265,9 +265,6 @@
   <data name="Studio.Settings.LblRagProvider" xml:space="preserve">
     <value>Anbieter</value>
   </data>
-  <data name="Studio.Settings.LblRagConnection" xml:space="preserve">
-    <value>Verbindungszeichenfolge</value>
-  </data>
   <data name="Studio.Settings.RagHybrid" xml:space="preserve">
     <value>Hybride Suche (BM25 + RRF)</value>
   </data>

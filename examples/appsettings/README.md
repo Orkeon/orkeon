@@ -63,6 +63,32 @@ and the [Local models guide](../../docs/guides/local-models.md).
    ./run-example.sh <example> --settings examples/appsettings/appsettings.deepseek.local.json
    ```
 
+## Memory providers (`memoryProvider:` in a crew)
+
+A crew's `memoryProvider:` names a **type** — `"Redis"`, `"SQLite"`, `"ChromaDb"`, … — and
+nothing else. Its connection comes from the settings, one section per provider; add the one
+your example needs to the profile you pass with `--settings`:
+
+```json
+{
+  "Orkeon": {
+    "Redis": { "ConnectionString": "localhost:6379" },
+    "Sqlite": { "ConnectionString": "Data Source=/output/crew-memory.db" }
+  }
+}
+```
+
+- **Redis** (examples 86, 89, 92, 94, 95, 96, 101): without the section the provider connects
+  to `localhost:6379`; it connects on the crew's first stored result, so start a server first
+  (`docker run -d -p 6379:6379 redis:7`). Add `,password=…` to the connection string when yours
+  needs one, or export `ORKEON_Orkeon__Redis__ConnectionString` instead of writing it down.
+- **SQLite** (examples 87, 88, 90, 91, 93, 97, 98, 99, 100): without the section the database is
+  in memory and lost when the run ends. A file `Data Source` is a **virtual** path and must lie on
+  a writable mount — e.g. `/output`, mounted with `--mount ./out:/output:rw`.
+
+The other sections (`Orkeon:ChromaDb`, `Orkeon:Pinecone`, `Orkeon:LanceDb`) are described in
+the [configuration reference](../../docs/reference/configuration.md).
+
 ## Secrets stay local
 
 `.local.json` copies are **git-ignored** by the root `.gitignore` pattern

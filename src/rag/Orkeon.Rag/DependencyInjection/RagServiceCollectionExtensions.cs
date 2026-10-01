@@ -33,9 +33,9 @@ namespace Orkeon.Rag.DependencyInjection;
 /// The default <see cref="IDocumentStore"/> is a <see cref="MemoryProviderDocumentStore"/>
 /// over the ambient <see cref="IMemoryProvider"/> (a host may register its own store
 /// first). Setting <c>Orkeon:Rag:Provider</c> (see <see cref="RagStoreOptions"/>) backs the
-/// store with a dedicated provider created through the host's
-/// <see cref="IMemoryProviderFactory"/> instead — an unknown alias fails loudly with the
-/// list of supported aliases. The host must provide an <see cref="IEmbeddingProvider"/> and an
+/// store with that type's shared provider from the host's <see cref="IMemoryProviderFactory"/>
+/// instead, connected from the provider's own section (<c>Orkeon:Redis</c>, …) — an unknown
+/// type fails loudly with the list of supported types. The host must provide an <see cref="IEmbeddingProvider"/> and an
 /// <see cref="IChatClient"/> for the query pipeline — <c>AddOrkeonInfrastructure()</c>
 /// registers semantic-first defaults for both; without them the pipelines fail loudly
 /// at resolution. Named <see cref="IChunkingStrategy"/> implementations register on
@@ -48,13 +48,6 @@ public static class RagServiceCollectionExtensions
 
     /// <summary>Configuration section bound to <see cref="RagIngestionOptions"/>.</summary>
     public const string IngestionSectionKey = "Orkeon:Rag:Ingestion";
-
-    /// <summary>
-    /// Provider aliases accepted by <c>Orkeon:Rag:Provider</c>, mirroring the switch of
-    /// the Infrastructure <c>MemoryProviderFactory</c>.
-    /// </summary>
-    private static readonly string[] s_knownProviderAliases =
-        ["inmemory", "in-memory", "redis", "sqlite", "chromadb", "chroma", "pinecone", "lancedb", "lance"];
 
     /// <summary>
     /// Registers the RAG subsystem pipelines and their collaborators.
@@ -127,9 +120,10 @@ public static class RagServiceCollectionExtensions
         // Default document store: memory-provider-backed (capability-aware — native
         // collections / scored vector search when the provider supports them, prefixed
         // keys + local cosine fallback otherwise). The backing provider is either the
-        // ambient IMemoryProvider or, when Orkeon:Rag:Provider is set, a dedicated
-        // provider created by the existing IMemoryProviderFactory (unknown alias = loud
-        // failure, never a silent fallback). A host-registered IDocumentStore wins.
+        // ambient IMemoryProvider or, when Orkeon:Rag:Provider is set, that type's shared
+        // provider from the IMemoryProviderFactory, connected from the provider's own host
+        // section (GAP-08; unknown type = loud failure, never a silent fallback). Resolved
+        // lazily, on the first ingestion or search. A host-registered IDocumentStore wins.
         services.TryAddSingleton<IDocumentStore>(sp =>
             new MemoryProviderDocumentStore(ResolveDocumentStoreProvider(sp)));
 
@@ -277,12 +271,15 @@ public static class RagServiceCollectionExtensions
     /// <summary>
     /// Resolves the memory provider backing the default document store: the ambient
     /// <see cref="IMemoryProvider"/> when <see cref="RagStoreOptions.Provider"/> is unset,
-    /// otherwise a provider created by the host's <see cref="IMemoryProviderFactory"/>
-    /// from the <c>Orkeon:Rag</c> configuration.
+    /// otherwise the shared provider of that type from the host's
+    /// <see cref="IMemoryProviderFactory"/> — connected from the provider's own section
+    /// (<c>Orkeon:Redis</c>, <c>Orkeon:Sqlite</c>, …), the single source of its connection
+    /// (GAP-08). Called for the inner store and for the hybrid decorator: both get the same
+    /// instance, so one connection.
     /// </summary>
     /// <exception cref="InvalidOperationException">
-    /// <see cref="RagStoreOptions.Provider"/> is set to an unknown alias — the error
-    /// message lists every supported alias (never a silent fallback).
+    /// <see cref="RagStoreOptions.Provider"/> names a type the factory does not recognize — the
+    /// error message lists every supported type (never a silent fallback).
     /// </exception>
     private static IMemoryProvider ResolveDocumentStoreProvider(IServiceProvider serviceProvider)
     {
@@ -291,25 +288,16 @@ public static class RagServiceCollectionExtensions
         if (string.IsNullOrWhiteSpace(options.Provider))
             return serviceProvider.GetRequiredService<IMemoryProvider>();
 
-#pragma warning disable CA1308 // lowercase is the factory's alias form, not a comparison normalization
-        var alias = options.Provider.Trim().ToLowerInvariant();
-#pragma warning restore CA1308
+        var factory = serviceProvider.GetRequiredService<IMemoryProviderFactory>();
+        var type = options.Provider.Trim();
 
-        if (!s_knownProviderAliases.Contains(alias, StringComparer.Ordinal))
+        if (!factory.SupportedTypes.Contains(type, StringComparer.OrdinalIgnoreCase))
         {
             throw new InvalidOperationException(
                 $"Unknown RAG document-store provider '{options.Provider}' (configuration key " +
-                $"'{RagSectionKey}:Provider'). Supported aliases: {string.Join(", ", s_knownProviderAliases)}.");
+                $"'{RagSectionKey}:Provider'). Supported types: {string.Join(", ", factory.SupportedTypes)}.");
         }
 
-        var factory = serviceProvider.GetRequiredService<IMemoryProviderFactory>();
-        var config = new Application.Memory.MemoryProviderConfigDto(
-            alias,
-            options.ConnectionString ?? string.Empty,
-            options.ProviderOptions.Count > 0
-                ? options.ProviderOptions.ToDictionary(pair => pair.Key, pair => (object)pair.Value)
-                : null);
-
-        return factory.Create(config, serviceProvider.GetService<ILoggerFactory>());
+        return factory.GetProvider(type);
     }
 }

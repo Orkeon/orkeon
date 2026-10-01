@@ -1,37 +1,66 @@
+using System.Net;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Orkeon.Application.Memory;
 using Orkeon.Domain.Common;
 using Orkeon.Domain.Memory;
 using Orkeon.Infrastructure.Memory;
+using Orkeon.Infrastructure.Memory.ChromaDb;
+using Orkeon.Infrastructure.Memory.Sqlite;
+using Orkeon.Infrastructure.Tests.Doubles;
 using Orkeon.Tests.Shared.FileSystem;
 
 namespace Orkeon.Infrastructure.Tests.Memory;
 
 /// <summary>
-/// End-to-end wiring of a crew-declared memory provider (P2-O-02): <see cref="MemoryService"/>
-/// resolving the crew's provider string through the real <see cref="MemoryProviderFactory"/>. Proves
-/// the unknown/unavailable-provider fallback-with-warning behavior is preserved on this path.
+/// End-to-end wiring of a crew-declared memory provider (P2-O-02, GAP-08): <see cref="MemoryService"/>
+/// resolving the crew's provider TYPE through the real <see cref="MemoryProviderFactory"/>, which
+/// connects it from the host's section for that provider and shares one instance per type.
 /// </summary>
-public sealed class MemoryProviderCrewWiringTests
+public sealed class MemoryProviderCrewWiringTests : IDisposable
 {
-    [Fact]
-    public async System.Threading.Tasks.Task UnknownProvider_ShouldFallBackToInMemory_WithWarning_NotThrow()
-    {
-        // Arrange — real factory; the crew declared an unrecognized provider.
-        using var recorder = new CapturingLoggerFactory();
-        var factory = new MemoryProviderFactory(new FakeFileSystemService());
-        var registry = new CrewMemoryProviderRegistry();
-        var crewId = CrewId.From(Guid.NewGuid());
-        registry.SetProvider(crewId, "cosmosdb");
-        using var service = new MemoryService(factory, NullLogger<MemoryService>.Instance, registry, recorder);
+    private readonly MockHttpClientFactory _httpClientFactory = new();
+    private readonly string _dataDirectory = Path.Combine(Path.GetTempPath(), $"orkeon-crew-memory-{Guid.NewGuid():N}");
 
-        // Act — must not throw; the factory degrades to in-memory with a warning.
-        var item = MemoryItem.Create(content: "insight", embedding: null, importance: 0.9f, source: "test");
-        await service.SaveMemoryAsync(crewId, item, TestContext.Current.CancellationToken);
+    public MemoryProviderCrewWiringTests() => Directory.CreateDirectory(_dataDirectory);
+
+    public void Dispose()
+    {
+        _httpClientFactory.Dispose();
+        SqliteConnection.ClearAllPools();
+        if (Directory.Exists(_dataDirectory))
+            Directory.Delete(_dataDirectory, recursive: true);
+    }
+
+    private static MemoryItem Insight(string content = "insight") =>
+        MemoryItem.Create(content: content, embedding: null, importance: 0.9f, source: "test");
+
+    private static (MemoryService Service, CrewMemoryProviderRegistry Registry) NewService(MemoryProviderFactory factory)
+    {
+        var registry = new CrewMemoryProviderRegistry();
+        return (new MemoryService(factory, NullLogger<MemoryService>.Instance, registry), registry);
+    }
+
+    private static CrewId CrewOf(CrewMemoryProviderRegistry registry, string providerType)
+    {
+        var crewId = CrewId.From(Guid.NewGuid());
+        registry.SetProvider(crewId, providerType);
+        return crewId;
+    }
+
+    [Fact]
+    public async Task UnknownProvider_ShouldFallBackToInMemory_WithWarning_NotThrow()
+    {
+        using var recorder = new CapturingLoggerFactory();
+        using var factory = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory, loggerFactory: recorder);
+        var (service, registry) = NewService(factory);
+        using var _ = service;
+        var crewId = CrewOf(registry, "cosmosdb");
+
+        await service.SaveMemoryAsync(crewId, Insight(), TestContext.Current.CancellationToken);
         var results = await service.SearchMemoryAsync(crewId, "insight", 5, cancellationToken: TestContext.Current.CancellationToken);
 
-        // Assert — the factory's fallback warning surfaced (behavior preserved), and memory still works.
         Assert.Contains(
             recorder.Entries,
             e => e.Level == LogLevel.Warning
@@ -41,22 +70,122 @@ public sealed class MemoryProviderCrewWiringTests
     }
 
     [Fact]
-    public async System.Threading.Tasks.Task DeclaredProvider_ShouldResolveThroughRealFactory()
+    public async Task DeclaredProvider_ShouldResolveThroughRealFactory()
     {
-        // Arrange — a recognized provider ("inmemory") resolves without warning.
         using var recorder = new CapturingLoggerFactory();
-        var factory = new MemoryProviderFactory(new FakeFileSystemService());
-        var registry = new CrewMemoryProviderRegistry();
-        var crewId = CrewId.From(Guid.NewGuid());
-        registry.SetProvider(crewId, "inmemory");
-        using var service = new MemoryService(factory, NullLogger<MemoryService>.Instance, registry, recorder);
+        using var factory = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory, loggerFactory: recorder);
+        var (service, registry) = NewService(factory);
+        using var _ = service;
+        var crewId = CrewOf(registry, "inmemory");
 
-        var item = MemoryItem.Create(content: "insight", embedding: null, importance: 0.9f, source: "test");
-        await service.SaveMemoryAsync(crewId, item, TestContext.Current.CancellationToken);
+        await service.SaveMemoryAsync(crewId, Insight(), TestContext.Current.CancellationToken);
         var results = await service.SearchMemoryAsync(crewId, "insight", 5, cancellationToken: TestContext.Current.CancellationToken);
 
         Assert.Single(results);
         Assert.DoesNotContain(recorder.Entries, e => e.Level == LogLevel.Warning);
+    }
+
+    [Fact]
+    public async Task SqliteCrew_ShouldStoreInTheDatabaseOfTheSqliteSection_NotAnInMemoryDefault()
+    {
+        // The host's Orkeon:Sqlite section names a file on a writable mount; the crew only says "SQLite".
+        var settings = new MemoryProviderSettings
+        {
+            Sqlite = new SqliteMemoryOptions { ConnectionString = "Data Source=/data/crew-memory.db" },
+        };
+        using (var factory = new MemoryProviderFactory(
+                   new DiskBackedFileSystemService(_dataDirectory, "/data"), _httpClientFactory, settings))
+        {
+            var (service, registry) = NewService(factory);
+            using var _ = service;
+            await service.SaveMemoryAsync(CrewOf(registry, "SQLite"), Insight("durable insight"), TestContext.Current.CancellationToken);
+        }
+
+        // A later run — new factory, new crew — reads it back from the same file.
+        using var nextRun = new MemoryProviderFactory(
+            new DiskBackedFileSystemService(_dataDirectory, "/data"), _httpClientFactory, settings);
+        var stored = await nextRun.GetProvider("sqlite").SearchAsync("durable", 5, TestContext.Current.CancellationToken);
+
+        Assert.True(File.Exists(Path.Combine(_dataDirectory, "crew-memory.db")));
+        Assert.Contains(stored, item => item.Content == "durable insight");
+    }
+
+    [Fact]
+    public async Task ChromaDbCrew_ShouldCallTheServerOfTheChromaDbSection_NotLocalhost()
+    {
+        using var handler = _httpClientFactory.AddClientWithHandler(nameof(ChromaDbMemoryProvider));
+        handler.SetResponseFactory(_ => new HttpResponseMessage(HttpStatusCode.OK)
+        {
+            Content = new StringContent(
+                "{\"id\":\"3fa85f64-5717-4562-b3fc-2c963f66afa6\",\"name\":\"orkeon_memories\"}",
+                System.Text.Encoding.UTF8,
+                "application/json"),
+        });
+        using var factory = new MemoryProviderFactory(
+            new FakeFileSystemService(),
+            _httpClientFactory,
+            new MemoryProviderSettings { ChromaDb = new ChromaDbOptions { BaseUrl = new Uri("http://chroma.team:8800") } });
+        var (service, registry) = NewService(factory);
+        using var _ = service;
+
+        await service.SaveMemoryAsync(CrewOf(registry, "ChromaDb"), Insight(), TestContext.Current.CancellationToken);
+
+        Assert.NotEmpty(handler.AllRequests);
+        Assert.All(handler.AllRequests, r => Assert.Equal("http://chroma.team:8800/", r.RequestUri!.GetLeftPart(UriPartial.Authority) + "/"));
+    }
+
+    [Fact]
+    public async Task TwoCrewsOfTheSameType_ShouldShareOneProviderInstance()
+    {
+        using var inner = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory);
+        var recording = new RecordingMemoryProviderFactory(inner);
+        var registry = new CrewMemoryProviderRegistry();
+        using var shared = new MemoryService(recording, NullLogger<MemoryService>.Instance, registry);
+
+        var first = CrewOf(registry, "sqlite");
+        var second = CrewOf(registry, "SQLite");
+        await shared.SaveMemoryAsync(first, Insight("from the first crew"), TestContext.Current.CancellationToken);
+        await shared.SaveMemoryAsync(second, Insight("from the second crew"), TestContext.Current.CancellationToken);
+
+        Assert.Equal(2, recording.Handed.Count);
+        Assert.Same(recording.Handed[0], recording.Handed[1]);
+        Assert.Equal(2, await ((Orkeon.Infrastructure.Memory.Base.MemoryProviderBase)recording.Handed[0]).CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    [Fact]
+    public async Task ReleasingACrew_ShouldNotDisposeTheSharedProvider_AndClearingRemovesOnlyItsOwnEntries()
+    {
+        using var factory = new MemoryProviderFactory(new FakeFileSystemService(), _httpClientFactory);
+        var (service, registry) = NewService(factory);
+        using var _ = service;
+        var first = CrewOf(registry, "sqlite");
+        var second = CrewOf(registry, "sqlite");
+        await service.SaveMemoryAsync(first, Insight("first"), TestContext.Current.CancellationToken);
+        await service.SaveMemoryAsync(second, Insight("second"), TestContext.Current.CancellationToken);
+
+        await service.ClearMemoryAsync(first, cancellationToken: TestContext.Current.CancellationToken);
+        service.ReleaseMemorySystem(first);
+
+        var remaining = await factory.GetProvider("sqlite").SearchAsync("second", 5, TestContext.Current.CancellationToken);
+        Assert.Single(remaining);
+        Assert.Equal(1, await ((Orkeon.Infrastructure.Memory.Base.MemoryProviderBase)factory.GetProvider("sqlite")).CountAsync(TestContext.Current.CancellationToken));
+    }
+
+    /// <summary>Wraps the real factory and records every instance it hands out.</summary>
+    private sealed class RecordingMemoryProviderFactory(MemoryProviderFactory inner) : Orkeon.Application.Interfaces.Ports.IMemoryProviderFactory
+    {
+        public MemoryProviderFactory Inner { get; } = inner;
+
+        public List<IMemoryProvider> Handed { get; } = [];
+
+        public IReadOnlyList<string> SupportedTypes => Inner.SupportedTypes;
+
+        public IMemoryProvider GetProvider(string providerType)
+        {
+            var provider = Inner.GetProvider(providerType);
+            Handed.Add(provider);
+            return provider;
+        }
     }
 
     private sealed class CapturingLoggerFactory : ILoggerFactory

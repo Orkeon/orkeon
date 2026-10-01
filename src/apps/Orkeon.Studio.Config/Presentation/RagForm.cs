@@ -31,11 +31,11 @@ internal sealed class RagForm : ISettingsForm
     /// <summary>Selected profile, or null for "no key".</summary>
     public string? Profile { get; set; }
 
-    /// <summary>Document store provider key.</summary>
+    /// <summary>
+    /// Document store provider type. Its connection comes from that provider's own section
+    /// (<c>Orkeon:Redis</c>, <c>Orkeon:Sqlite</c>, …), not from <c>Orkeon:Rag</c>.
+    /// </summary>
     public string Provider { get; set; } = "";
-
-    /// <summary>Document store connection string.</summary>
-    public string ConnectionString { get; set; } = "";
 
     /// <summary>Hybrid retrieval opt-in.</summary>
     public bool? HybridRetrievalEnabled { get; set; }
@@ -81,7 +81,6 @@ internal sealed class RagForm : ISettingsForm
         var section = document.Rag;
         Profile = section.Profile;
         Provider = FieldText.FromString(section.Provider);
-        ConnectionString = FieldText.FromString(section.ConnectionString);
         HybridRetrievalEnabled = section.HybridRetrievalEnabled;
         CorrectiveWebFallbackEnabled = section.CorrectiveWebFallbackEnabled;
         WebFallbackEnabled = section.WebFallbackEnabled;
@@ -114,7 +113,6 @@ internal sealed class RagForm : ISettingsForm
         var section = document.Rag;
         section.Profile = FieldText.ToStringOrNull(Profile);
         section.Provider = FieldText.ToStringOrNull(Provider);
-        section.ConnectionString = FieldText.ToStringOrNull(ConnectionString);
         section.HybridRetrievalEnabled = HybridRetrievalEnabled;
         section.CorrectiveWebFallbackEnabled = CorrectiveWebFallbackEnabled;
         section.WebFallbackEnabled = WebFallbackEnabled;
