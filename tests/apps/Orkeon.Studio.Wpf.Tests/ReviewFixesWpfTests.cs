@@ -50,9 +50,6 @@ public sealed class ReviewFixesWpfTests : IDisposable
         // entry that resets the projection for a fresh session — same code path, and the
         // gesture reaches it directly now that no local questionnaire sits in front.
         wizard.Need = "une veille";
-        wizard.Outcome = "un résumé";
-        foreach (var choice in wizard.FrequencyChoices.Take(1).Concat(wizard.SourceChoices.Take(1)).Concat(wizard.OutputChoices.Take(1)))
-            choice.SelectCommand.Execute(null);
         wizard.ComposeCommand.Execute(null);
 
         // A folder added at step 1 is the user's own mount point, not the previous

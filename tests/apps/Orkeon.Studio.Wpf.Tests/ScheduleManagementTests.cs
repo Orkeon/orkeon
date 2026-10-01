@@ -504,9 +504,6 @@ public sealed class ScheduleManagementTests : IDisposable
             Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
         ]);
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
         await vm.ComposeCommand.ExecuteAsync();
         Assert.Equal(4, vm.Step);
         return (vm, processes);

@@ -27,7 +27,7 @@ public sealed class TeamAdoptedEventArgs(string path) : EventArgs
     public string Path { get; } = path;
 }
 
-/// <summary>One selectable chip of the step-1 precisions.</summary>
+/// <summary>One selectable chip: where the folders live (step 1), a gallery filter.</summary>
 public sealed class WizardChoice : ObservableObject
 {
     private readonly Action<WizardChoice> _pick;
@@ -365,7 +365,6 @@ public sealed class CreateTeamViewModel : ObservableObject
     private int _step = 1;
     private int _maxStep = 1;
     private string _need = "";
-    private string _outcome = "";
     private string _statusMessage = "";
     private bool _isEngineRunning;
     private bool _isTechOpen;
@@ -445,22 +444,11 @@ public sealed class CreateTeamViewModel : ObservableObject
         TryNotes = new StepNotesViewModel(ChatMessageCount);
         AdoptNotes = new StepNotesViewModel(ChatMessageCount);
 
-        FrequencyChoices = Choices(
-            (StudioStringKeys.WizardFreqOnce, "once"),
-            (StudioStringKeys.WizardFreqDaily, "daily"),
-            (StudioStringKeys.WizardFreqWeekly, "weekly"));
-        SourceChoices = Choices(
-            (StudioStringKeys.WizardSourceFolder, "folder"),
-            (StudioStringKeys.WizardSourceWeb, "web"),
-            (StudioStringKeys.WizardSourceUnknown, "unknown"));
-        OutputChoices = Choices(
-            (StudioStringKeys.WizardOutputDocument, "document"),
-            (StudioStringKeys.WizardOutputTable, "table"),
-            (StudioStringKeys.WizardOutputMessage, "message"),
-            (StudioStringKeys.WizardOutputOther, "other"));
-        // The fourth question (STUDIO-14, D-06): not a brief precision — it answers the two
-        // rows below it, and «Later» is the default because choosing must be possible, never
-        // due. CanCompose does not read it.
+        // Step 1 asks the need and nothing else (STUDIO-45): how often, where from and what
+        // out went — the forge asks about input and output only when the need leaves them
+        // unsaid, and step 4 schedules. What stays is where the folders live (STUDIO-14,
+        // D-06): it answers the two rows below it, and «Later» is the default because
+        // choosing must be possible, never due. CanCompose does not read it.
         FolderPolicyChoices =
         [
             PolicyChoice(StudioStringKeys.WizardFoldersExisting, FolderPolicy.ExistingFolders),
@@ -469,16 +457,15 @@ public sealed class CreateTeamViewModel : ObservableObject
         ];
         SyncPolicyChips();
 
-        // Bound after the choice groups exist: the recap and the brief chips read them.
+        // The recap and the brief chips read what the forge validated: what comes in and
+        // what comes out, once its brief has settled them (STUDIO-45).
         Chat.Bind(
             facts: BuildRecapFacts,
             brief: () => _need.Trim(),
             briefChips: () =>
             [
-                .. new[] { FrequencyChoices, SourceChoices, OutputChoices }
-                    .Select(group => group.FirstOrDefault(c => c.IsSelected)?.Label)
-                    .Where(label => label is { Length: > 0 })
-                    .Select(label => label!),
+                .. _model.BriefInputs,
+                .. _model.BriefOutput is { Length: > 0 } output ? [output] : Array.Empty<string>(),
             ],
             profileName: () => Profiles.Set.Studio?.Name,
             askEngine: AskEngine);
@@ -1105,15 +1092,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         _strings[StudioStringKeys.ForgeExample4],
     ];
 
-    /// <summary>The "how often" chips.</summary>
-    public IReadOnlyList<WizardChoice> FrequencyChoices { get; }
-
-    /// <summary>The "where the information lives" chips.</summary>
-    public IReadOnlyList<WizardChoice> SourceChoices { get; }
-
-    /// <summary>The "what the team must produce" chips.</summary>
-    public IReadOnlyList<WizardChoice> OutputChoices { get; }
-
     // ── step 1 : where the folders live (STUDIO-14, D-06) ──
 
     /// <summary>The «where are your folders?» chips: existing folders, created inside the team, later.</summary>
@@ -1288,32 +1266,14 @@ public sealed class CreateTeamViewModel : ObservableObject
         public MountRights Rights => IsReadWrite ? MountRights.ReadWrite : MountRights.ReadOnly;
     }
 
-    /// <summary>Free description of the expected result; required when the format is free.</summary>
-    public string Outcome
-    {
-        get => _outcome;
-        set
-        {
-            if (SetProperty(ref _outcome, value))
-            {
-                OnPropertiesChanged(nameof(CanCompose), nameof(Step1Hint));
-                ComposeCommand.RaiseCanExecuteChanged();
-            }
-        }
-    }
-
-    /// <summary>The free format makes the description mandatory — it is all the engine gets.</summary>
-    public bool OutcomeRequired => OutputChoices.FirstOrDefault(c => c.IsSelected)?.Key == "other";
-
-    /// <summary>Whether the brief is complete enough to compose.</summary>
+    /// <summary>
+    /// Whether the brief is complete enough to compose: the need is typed (STUDIO-45). What
+    /// it leaves unsaid the forge asks for itself.
+    /// </summary>
     public bool CanCompose =>
         HasAssistant
         && !IsEngineRunning
-        && _need.Trim().Length > 0
-        && FrequencyChoices.Any(c => c.IsSelected)
-        && SourceChoices.Any(c => c.IsSelected)
-        && OutputChoices.Any(c => c.IsSelected)
-        && (!OutcomeRequired || _outcome.Trim().Length > 0);
+        && _need.Trim().Length > 0;
 
     /// <summary>The sentence under the compose button, tracking what is still missing.</summary>
     public string Step1Hint
@@ -1323,16 +1283,14 @@ public sealed class CreateTeamViewModel : ObservableObject
             if (_need.Trim().Length == 0)
                 return _strings[StudioStringKeys.WizardHintDescribe];
 
-            if (OutcomeRequired && _outcome.Trim().Length == 0)
-                return _strings[StudioStringKeys.WizardHintOutcome];
-
             // A greyed button under «Everything is there — I can compose the team» is a lie:
             // the engine is already composing, and what it wants is an answer in the thread.
             if (IsEngineRunning)
                 return _strings[StudioStringKeys.WizardHintComposing];
 
+            // With the need typed and no engine running, only the assistant's model is missing.
             if (!CanCompose)
-                return _strings[StudioStringKeys.WizardHintAnswers];
+                return _strings[StudioStringKeys.WizardHintAssistant];
 
             return _strings[StudioStringKeys.WizardHintReady];
         }
@@ -2774,20 +2732,16 @@ public sealed class CreateTeamViewModel : ObservableObject
         && _model.Slug is not null
         && string.Equals(_model.FinishedStatus, "paused", StringComparison.OrdinalIgnoreCase);
 
+    /// <summary>
+    /// The engine's opening turn: the need, plus the standing instruction when one is typed
+    /// (STUDIO-45). It is also the positional argument the engine slugs the session from.
+    /// </summary>
     private string ComposeBrief()
     {
         var lines = new List<string> { _need.Trim() };
 
-        if (FrequencyChoices.FirstOrDefault(c => c.IsSelected) is { } freq)
-            lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefFrequency], freq.Label));
-        if (SourceChoices.FirstOrDefault(c => c.IsSelected) is { } source)
-            lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefSource], source.Label));
-        if (OutputChoices.FirstOrDefault(c => c.IsSelected) is { } output)
-            lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefOutput], output.Label));
-        if (_outcome.Trim() is { Length: > 0 } outcome)
-            lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefShape], outcome));
-        // Nothing is spliced in here any more: what the model still needs it asks for
-        // itself during the brief stage, and the answers reach it as real user messages.
+        // Nothing else is spliced in: what the model still needs it asks for itself during
+        // the brief stage, and the answers reach it as real user messages.
         if (ComposeNotes.Consigne.Trim() is { Length: > 0 } consigne)
             lines.Add(string.Format(CultureInfo.CurrentCulture, _strings[StudioStringKeys.WizardBriefConsigne], consigne));
 
@@ -3047,9 +3001,6 @@ public sealed class CreateTeamViewModel : ObservableObject
         // exactly where the interview put them.
         Chat.Reset();
         Need = "";
-        Outcome = "";
-        foreach (var choice in FrequencyChoices.Concat(SourceChoices).Concat(OutputChoices))
-            choice.IsSelected = false;
         ComposeNotes.Consigne = "";
         TryNotes.Consigne = "";
         AdoptNotes.Consigne = "";
@@ -3102,9 +3053,10 @@ public sealed class CreateTeamViewModel : ObservableObject
     }
 
     /// <summary>
-    /// "What I've noted". The brief and the three step-1 precisions first, then one
-    /// row per interview question, then each instruction that was actually typed — an
-    /// empty instruction is not a fact the assistant is missing, so it is not listed.
+    /// "What I've noted". The need first, then what comes in and what comes out as the
+    /// forge's validated brief settled them (STUDIO-45 — pending until it has), then each
+    /// instruction that was actually typed — an empty instruction is not a fact the
+    /// assistant is missing, so it is not listed. No rhythm row: step 4 schedules.
     /// </summary>
     private IReadOnlyList<ChatRecapFact> BuildRecapFacts()
     {
@@ -3112,9 +3064,10 @@ public sealed class CreateTeamViewModel : ObservableObject
         var facts = new List<ChatRecapFact>
         {
             Fact(StudioStringKeys.ChatFactBrief, Clip(_need.Trim(), 72)),
-            Fact(StudioStringKeys.ChatFactRhythm, FrequencyChoices.FirstOrDefault(c => c.IsSelected)?.Label),
-            Fact(StudioStringKeys.ChatFactSource, SourceChoices.FirstOrDefault(c => c.IsSelected)?.Label),
-            Fact(StudioStringKeys.ChatFactOutput, OutputChoices.FirstOrDefault(c => c.IsSelected)?.Label),
+            Fact(StudioStringKeys.ChatFactSource, _model.BriefInputs.Count > 0
+                ? Clip(string.Join(", ", _model.BriefInputs), 72)
+                : null),
+            Fact(StudioStringKeys.ChatFactOutput, _model.BriefOutput is { } output ? Clip(output, 72) : null),
         };
 
         foreach (var (key, note) in new[]
@@ -3483,23 +3436,6 @@ public sealed class CreateTeamViewModel : ObservableObject
             };
             Decisions.Add(new WizardDecision(option, label, Decide));
         }
-    }
-
-    private List<WizardChoice> Choices(params (string LabelKey, string Key)[] entries)
-    {
-        var group = new List<WizardChoice>();
-        foreach (var (labelKey, key) in entries)
-        {
-            group.Add(new WizardChoice(key, _strings[labelKey], picked =>
-            {
-                foreach (var choice in group)
-                    choice.IsSelected = ReferenceEquals(choice, picked);
-                OnPropertiesChanged(nameof(CanCompose), nameof(OutcomeRequired), nameof(Step1Hint));
-                ComposeCommand.RaiseCanExecuteChanged();
-            }));
-        }
-
-        return group;
     }
 
     // ── STUDIO-14 — « Open the folder » (D-15) ───────────────────────────────

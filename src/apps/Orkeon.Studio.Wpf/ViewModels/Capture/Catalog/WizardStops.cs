@@ -22,7 +22,7 @@ internal static class WizardStops
             Name = "etape1-vierge",
             Category = CaptureCategory.Wizard,
             Screen = CaptureScreen.Create,
-            Because = "The wizard's front door: the need field empty and the three chip rows untouched.",
+            Because = "The wizard's front door: the need field empty, the only thing step 1 asks.",
             Covers = ["CreateTeam.IsStep1", "CreateTeam.HasAssistant"],
             CoversFalse = ["CreateTeam.CanCompose"],
             SweepsLanguages = true,
@@ -34,18 +34,14 @@ internal static class WizardStops
             Name = "etape1-renseignee",
             Category = CaptureCategory.Wizard,
             Screen = CaptureScreen.Create,
-            Because = "Every chip row decided and the need typed — the only state in which «Composer» "
-                    + "is live, which the empty shot can never show.",
+            Because = "The need typed — all «Composer» waits for since STUDIO-45 — the state in which it is "
+                    + "live, which the empty shot can never show.",
             Covers = ["CreateTeam.IsStep1", "CreateTeam.CanCompose"],
             SweepsLanguages = true,
             Arrange = CaptureAction.Sync(static c =>
             {
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
-                wizard.Outcome = StudioFixture.Outcome;
-                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-                wizard.SourceChoices[0].SelectCommand.Execute(null);
-                wizard.OutputChoices[0].SelectCommand.Execute(null);
             }),
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
         },
@@ -69,10 +65,6 @@ internal static class WizardStops
             {
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
-                wizard.Outcome = StudioFixture.Outcome;
-                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-                wizard.SourceChoices[0].SelectCommand.Execute(null);
-                wizard.OutputChoices[0].SelectCommand.Execute(null);
                 wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.ExistingFolders;
                 // A mount point of the user's own, beyond the two canonical rows.
                 wizard.NewRootName = "archives";
@@ -108,10 +100,6 @@ internal static class WizardStops
             {
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
-                wizard.Outcome = StudioFixture.Outcome;
-                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-                wizard.SourceChoices[0].SelectCommand.Execute(null);
-                wizard.OutputChoices[0].SelectCommand.Execute(null);
                 wizard.FolderPolicy = Orkeon.Studio.Core.Teams.FolderPolicy.InsideTeam;
             }),
             Teardown = CaptureAction.Sync(static c => c.Shell.CreateTeam.RestartCommand.Execute(null)),
@@ -135,10 +123,6 @@ internal static class WizardStops
             {
                 var wizard = c.Shell.CreateTeam;
                 wizard.Need = StudioFixture.Need;
-                wizard.Outcome = StudioFixture.Outcome;
-                wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-                wizard.SourceChoices[0].SelectCommand.Execute(null);
-                wizard.OutputChoices[0].SelectCommand.Execute(null);
 
                 // The binary goes missing from the machine the pass stands on, and the click is
                 // the real gesture: the locator answers NotStarted, the card says so.

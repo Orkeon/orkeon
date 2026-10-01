@@ -1255,25 +1255,10 @@
     <value>ODER VON EINEM BEISPIEL AUSGEHEN</value>
   </data>
   <data name="Studio.Create.PrecisionsTitle" xml:space="preserve">
-    <value>Drei Präzisierungen</value>
+    <value>Ihre Ordner</value>
   </data>
   <data name="Studio.Create.PrecisionsSub" xml:space="preserve">
-    <value>Sie bestimmen die Zusammensetzung des Teams. Alles lässt sich später ändern.</value>
-  </data>
-  <data name="Studio.Create.QFreq" xml:space="preserve">
-    <value>Wie oft soll diese Arbeit erledigt werden?</value>
-  </data>
-  <data name="Studio.Create.QSource" xml:space="preserve">
-    <value>Wo liegen die zu verarbeitenden Informationen?</value>
-  </data>
-  <data name="Studio.Create.QOutput" xml:space="preserve">
-    <value>Was soll das Team liefern?</value>
-  </data>
-  <data name="Studio.Create.OutcomeLabel" xml:space="preserve">
-    <value>Beschreiben Sie dieses Ergebnis</value>
-  </data>
-  <data name="Studio.Create.OutcomeHint" xml:space="preserve">
-    <value>Erwartete Abschnitte, Länge, Ton, was nicht vorkommen darf. Optional, aber nichts verändert das Ergebnis stärker.</value>
+    <value>Wo das Team liest und schreibt. Alles lässt sich später ändern.</value>
   </data>
   <data name="Studio.Create.Compose" xml:space="preserve">
     <value>Team zusammenstellen</value>
@@ -1401,48 +1386,6 @@
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>Fortsetzen</value>
   </data>
-  <data name="Studio.Create.FreqOnce" xml:space="preserve">
-    <value>Einmalig</value>
-  </data>
-  <data name="Studio.Create.FreqDaily" xml:space="preserve">
-    <value>Jeden Tag</value>
-  </data>
-  <data name="Studio.Create.FreqWeekly" xml:space="preserve">
-    <value>Jede Woche</value>
-  </data>
-  <data name="Studio.Create.SourceFolder" xml:space="preserve">
-    <value>Ein Ordner auf diesem PC</value>
-  </data>
-  <data name="Studio.Create.SourceWeb" xml:space="preserve">
-    <value>Eine Website</value>
-  </data>
-  <data name="Studio.Create.SourceUnknown" xml:space="preserve">
-    <value>Weiß ich noch nicht</value>
-  </data>
-  <data name="Studio.Create.OutputDocument" xml:space="preserve">
-    <value>Ein Dokument</value>
-  </data>
-  <data name="Studio.Create.OutputTable" xml:space="preserve">
-    <value>Eine Tabelle</value>
-  </data>
-  <data name="Studio.Create.OutputMessage" xml:space="preserve">
-    <value>Eine kurze Nachricht</value>
-  </data>
-  <data name="Studio.Create.OutputOther" xml:space="preserve">
-    <value>Etwas anderes</value>
-  </data>
-  <data name="Studio.Create.BriefFrequency" xml:space="preserve">
-    <value>Häufigkeit: {0}.</value>
-  </data>
-  <data name="Studio.Create.BriefSource" xml:space="preserve">
-    <value>Wo die Informationen liegen: {0}.</value>
-  </data>
-  <data name="Studio.Create.BriefOutput" xml:space="preserve">
-    <value>Erwartetes Ergebnis: {0}.</value>
-  </data>
-  <data name="Studio.Create.BriefShape" xml:space="preserve">
-    <value>Das Ergebnis soll so aussehen: {0}</value>
-  </data>
   <data name="Studio.Create.BriefConsigne" xml:space="preserve">
     <value>Dauerhafte Anweisung für alle Agenten: {0}</value>
   </data>
@@ -1464,11 +1407,8 @@
   <data name="Studio.Create.HintDescribe" xml:space="preserve">
     <value>Beschreiben Sie die Arbeit, um fortzufahren.</value>
   </data>
-  <data name="Studio.Create.HintOutcome" xml:space="preserve">
-    <value>Das Format ist frei: Beschreiben Sie das erwartete Ergebnis.</value>
-  </data>
-  <data name="Studio.Create.HintAnswers" xml:space="preserve">
-    <value>Beantworten Sie die drei Präzisierungen.</value>
+  <data name="Studio.Create.HintAssistant" xml:space="preserve">
+    <value>Wählen Sie zuerst ein Modell für den Assistenten.</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
     <value>Alles da — ich kann das Team zusammenstellen.</value>
@@ -2381,14 +2321,11 @@
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>Die übergebene Arbeit</value>
   </data>
-  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
-    <value>Rhythmus</value>
-  </data>
   <data name="Studio.Chat.FactSource" xml:space="preserve">
-    <value>Quelle der Dokumente</value>
+    <value>Was hineinkommt</value>
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
-    <value>Form des Ergebnisses</value>
+    <value>Was herauskommt</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Kompositions-Anweisung</value>

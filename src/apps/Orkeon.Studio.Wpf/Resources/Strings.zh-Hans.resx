@@ -1255,25 +1255,10 @@
     <value>或从示例开始</value>
   </data>
   <data name="Studio.Create.PrecisionsTitle" xml:space="preserve">
-    <value>三个补充信息</value>
+    <value>您的文件夹</value>
   </data>
   <data name="Studio.Create.PrecisionsSub" xml:space="preserve">
-    <value>它们决定团队的组成。之后一切都可以修改。</value>
-  </data>
-  <data name="Studio.Create.QFreq" xml:space="preserve">
-    <value>这项工作多久做一次？</value>
-  </data>
-  <data name="Studio.Create.QSource" xml:space="preserve">
-    <value>要处理的信息在哪里？</value>
-  </data>
-  <data name="Studio.Create.QOutput" xml:space="preserve">
-    <value>团队应产出什么？</value>
-  </data>
-  <data name="Studio.Create.OutcomeLabel" xml:space="preserve">
-    <value>描述这个结果</value>
-  </data>
-  <data name="Studio.Create.OutcomeHint" xml:space="preserve">
-    <value>期望的章节、篇幅、语气、不应出现的内容。可选，但对结果影响最大。</value>
+    <value>团队读取和写入的位置。之后可以随时更改。</value>
   </data>
   <data name="Studio.Create.Compose" xml:space="preserve">
     <value>组建团队</value>
@@ -1401,48 +1386,6 @@
   <data name="Studio.Teams.Resume" xml:space="preserve">
     <value>继续</value>
   </data>
-  <data name="Studio.Create.FreqOnce" xml:space="preserve">
-    <value>仅一次</value>
-  </data>
-  <data name="Studio.Create.FreqDaily" xml:space="preserve">
-    <value>每天</value>
-  </data>
-  <data name="Studio.Create.FreqWeekly" xml:space="preserve">
-    <value>每周</value>
-  </data>
-  <data name="Studio.Create.SourceFolder" xml:space="preserve">
-    <value>本机上的文件夹</value>
-  </data>
-  <data name="Studio.Create.SourceWeb" xml:space="preserve">
-    <value>一个网站</value>
-  </data>
-  <data name="Studio.Create.SourceUnknown" xml:space="preserve">
-    <value>还不知道</value>
-  </data>
-  <data name="Studio.Create.OutputDocument" xml:space="preserve">
-    <value>一份文档</value>
-  </data>
-  <data name="Studio.Create.OutputTable" xml:space="preserve">
-    <value>一张表格</value>
-  </data>
-  <data name="Studio.Create.OutputMessage" xml:space="preserve">
-    <value>一条短消息</value>
-  </data>
-  <data name="Studio.Create.OutputOther" xml:space="preserve">
-    <value>其他</value>
-  </data>
-  <data name="Studio.Create.BriefFrequency" xml:space="preserve">
-    <value>频率：{0}。</value>
-  </data>
-  <data name="Studio.Create.BriefSource" xml:space="preserve">
-    <value>信息所在的位置：{0}。</value>
-  </data>
-  <data name="Studio.Create.BriefOutput" xml:space="preserve">
-    <value>期望的结果：{0}。</value>
-  </data>
-  <data name="Studio.Create.BriefShape" xml:space="preserve">
-    <value>结果应当是这样的：{0}</value>
-  </data>
   <data name="Studio.Create.BriefConsigne" xml:space="preserve">
     <value>对所有智能体的长期指令：{0}</value>
   </data>
@@ -1464,11 +1407,8 @@
   <data name="Studio.Create.HintDescribe" xml:space="preserve">
     <value>请先描述工作再继续。</value>
   </data>
-  <data name="Studio.Create.HintOutcome" xml:space="preserve">
-    <value>格式不限：请描述期望的结果。</value>
-  </data>
-  <data name="Studio.Create.HintAnswers" xml:space="preserve">
-    <value>请回答三个补充信息。</value>
+  <data name="Studio.Create.HintAssistant" xml:space="preserve">
+    <value>请先为助手选择一个模型。</value>
   </data>
   <data name="Studio.Create.HintReady" xml:space="preserve">
     <value>信息齐全——我可以组建团队了。</value>
@@ -2381,14 +2321,11 @@
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>交付的工作</value>
   </data>
-  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
-    <value>节奏</value>
-  </data>
   <data name="Studio.Chat.FactSource" xml:space="preserve">
-    <value>文档来源</value>
+    <value>输入内容</value>
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
-    <value>结果的形式</value>
+    <value>输出内容</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>组建指令</value>

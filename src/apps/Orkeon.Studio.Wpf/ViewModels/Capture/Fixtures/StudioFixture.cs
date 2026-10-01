@@ -125,11 +125,8 @@ internal static class StudioFixture
         de côté.
         """;
 
-    /// <summary>The wizard's need and outcome, worded once so several stops agree.</summary>
+    /// <summary>The wizard's need, worded once so several stops agree.</summary>
     public const string Need = "Je veux résumer chaque matin les nouveautés de mes concurrents.";
-
-    /// <summary>What the user wants back.</summary>
-    public const string Outcome = "Une note de dix lignes dans sortie/, en français.";
 
     /// <summary>What the assistant has said, so a thread with turns in it is worth reading.</summary>
     public static IReadOnlyList<string> AssistantTurns { get; } =

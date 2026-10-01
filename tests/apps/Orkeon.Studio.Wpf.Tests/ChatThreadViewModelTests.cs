@@ -40,9 +40,6 @@ public class ChatThreadViewModelTests
                 TeamsRoot = "/teams",
             });
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
         return (vm, processes);
     }
 
@@ -595,9 +592,6 @@ public sealed class EngineDepartureTests
                 TeamsRoot = "/teams",
             });
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
         return (vm, processes);
     }
 

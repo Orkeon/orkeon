@@ -285,6 +285,30 @@ public sealed class ForgeCrewAssistantTests : IDisposable
         Assert.Contains("je veux une veille fournisseur", messages[^1].Content, StringComparison.Ordinal);
     }
 
+    /// <summary>
+    /// STUDIO-45: step 1 no longer asks how often, where from or what out. The interview
+    /// asks about input and output only when the request leaves them unsaid, a complete
+    /// request goes through with no question at all, and frequency is never its business —
+    /// the wizard's adoption step schedules.
+    /// </summary>
+    [Fact]
+    public async Task The_interview_asks_only_what_the_request_leaves_unsaid_and_never_how_often()
+    {
+        var provider = new ScriptedLlmProvider().Answers("C'est clair.");
+        var assistant = Build(provider);
+
+        await assistant.NextAsync(
+            new ForgeAssistantRequest { Phase = ForgeAssistantPhase.Brief, UserMessage = "résumer mes factures" },
+            spent: null,
+            TestContext.Current.CancellationToken);
+
+        var header = Assert.Single(provider.Chats)[0].Content;
+        Assert.Contains("ONLY when the request does not say", header, StringComparison.Ordinal);
+        Assert.Contains("Zero questions is a good result", header, StringComparison.Ordinal);
+        Assert.Contains("Never ask how often", header, StringComparison.Ordinal);
+        Assert.DoesNotContain("Three to five questions", header, StringComparison.Ordinal);
+    }
+
     [Fact]
     public async Task A_brief_submission_comes_back_as_the_validated_document()
     {

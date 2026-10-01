@@ -465,9 +465,6 @@ public sealed class SettingsScreenTests
             ]);
             var wizard = shell.CreateTeam;
             wizard.Need = "une veille documentaire";
-            wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-            wizard.SourceChoices[0].SelectCommand.Execute(null);
-            wizard.OutputChoices[0].SelectCommand.Execute(null);
             await wizard.ComposeCommand.ExecuteAsync();
             wizard.TeamName = "Ma veille";
             Assert.True(wizard.CanSaveTeam);

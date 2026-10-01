@@ -7,6 +7,29 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed — the team-creation wizard's step 1 asks for the need only
+
+Step 1 asked four things before « Compose the team » woke up: how often, where the information
+lives, what the team must produce, and « describe that result » (STUDIO-45). The frequency only
+ever reached the brief's text — the adoption step schedules — and the other two are what the
+assistant's conversation exists to settle.
+
+- **Step 1 is the need** (and, until STUDIO-46, where the folders live). « Compose » is live as
+  soon as the need is typed; the brief the engine receives is the need plus the standing
+  instruction, and the session is named after it.
+- **The forge asks only what the need leaves unsaid** (`forge-assistant.ork.js`): a question
+  about what comes in or what comes out only when the request does not say it, zero questions
+  is a good result, and never a question about frequency. « Three to five questions is the
+  norm » is gone.
+- **The recap reads the validated brief.** « What comes in » and « What comes out » come from
+  the forge's brief (`inputs`, `expectedOutput`, now read by `ForgeSessionModel.BriefInputs` /
+  `BriefOutput`); the « Rhythm » row is gone.
+- **Removed, no shim**: `CreateTeamViewModel.FrequencyChoices`, `SourceChoices`, `OutputChoices`,
+  `Outcome`, `OutcomeRequired`, and their strings (`Studio.Create.QFreq/QSource/QOutput`,
+  `Outcome*`, `Freq*`, `Source*`, `Output*`, `BriefFrequency/Source/Output/Shape`, `HintOutcome`,
+  `Studio.Chat.FactRhythm`) in the five languages. `Studio.Create.HintAnswers` became
+  `HintAssistant` — with the need typed, only the assistant's model can still be missing.
+
 ### Fixed — a remembered API key is recognised by Studio the first time, and a failed write shows
 
 « Remember the key », then « Save », then back to the profile: the screen said « no key detected »

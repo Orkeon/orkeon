@@ -487,9 +487,6 @@ public sealed class NavigationDraftTests
 
         var vm = Wizard(withAssistant: true, processes: processes);
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
 
         var resting = vm.DraftTitle;
         Assert.True(vm.HasDraft);
@@ -538,9 +535,6 @@ public sealed class NavigationDraftTests
         var processes = new Doubles.FakeProcessLauncher();
         var vm = Wizard(withAssistant: true, processes);
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
 
         // The engine asks its first question and then blocks — the state the nav describes,
         // and it only exists while the child is alive.
@@ -571,9 +565,6 @@ public sealed class NavigationDraftTests
         var processes = new Doubles.FakeProcessLauncher();
         var vm = Wizard(withAssistant: true, processes);
         vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
 
         // Asked and answered: the conversation has content, but nobody is owed a reply.
         processes.WhileRunning = () =>

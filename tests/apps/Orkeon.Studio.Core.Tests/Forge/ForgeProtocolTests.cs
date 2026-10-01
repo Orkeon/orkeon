@@ -200,6 +200,37 @@ public class ForgeSessionModelTests
     }
 
     /// <summary>
+    /// STUDIO-45: what comes in and what comes out are the forge's to settle now, not three
+    /// chips on step 1 — the recap reads them from the brief the forge validated.
+    /// </summary>
+    [Fact]
+    public void The_validated_brief_carries_what_comes_in_and_what_comes_out()
+    {
+        var model = new ForgeSessionModel();
+        model.Feed(Event(
+            """{"v":2,"seq":1,"ts":"t","kind":"brief.ready","brief":{"goal":"g","inputs":[{"name":"factures","description":"les factures PDF du dossier inpdf"},{"name":"mois","example":"2026-09"}],"expectedOutput":{"format":"markdown","description":"un résumé par facture"}}}"""));
+
+        // A described input reads as its description; an undescribed one as its name.
+        Assert.Equal(["les factures PDF du dossier inpdf", "mois"], model.BriefInputs);
+        Assert.Equal("un résumé par facture", model.BriefOutput);
+
+        // A later brief replaces the earlier one; an output with no description reads as its format.
+        model.Feed(Event(
+            """{"v":2,"seq":2,"ts":"t","kind":"brief.ready","brief":{"goal":"g","expectedOutput":{"format":"json"}}}"""));
+        Assert.Empty(model.BriefInputs);
+        Assert.Equal("json", model.BriefOutput);
+    }
+
+    [Fact]
+    public void Before_any_brief_nothing_is_known_about_inputs_or_output()
+    {
+        var model = new ForgeSessionModel();
+
+        Assert.Empty(model.BriefInputs);
+        Assert.Null(model.BriefOutput);
+    }
+
+    /// <summary>
     /// STUDIO-40: <c>session.started</c> names the use case the session is composed from; a
     /// session started from nothing — or by an engine older than the field — names none.
     /// </summary>

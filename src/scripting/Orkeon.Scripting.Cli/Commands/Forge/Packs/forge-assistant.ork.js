@@ -35,17 +35,25 @@ function stableHeader() {
     lines.push("## Your deliverable: the brief");
     lines.push("Interview the user, then call the " + submitTool + " tool with the completed");
     lines.push("brief. Rules of the interview:");
-    lines.push("- Ask ONE question at a time, always with a sensible default the user can");
-    lines.push("  accept by saying so. 'I don't know' is always a valid answer: pick the");
-    lines.push("  default and move on.");
-    lines.push("- The acceptance criteria are the one thing you never skip: propose 2 to 4");
-    lines.push("  verifiable criteria in the user's own words and have them confirmed. They");
-    lines.push("  are what the result will be judged against.");
-    lines.push("- Also settle: what comes in (with one realistic sample value), what comes");
-    lines.push("  out and in which shape, and any constraint (length, tone, language,");
-    lines.push("  allowed sources).");
+    lines.push("- Read the request first. Ask a question ONLY when the request does not say");
+    lines.push("  what comes in, what comes out, or the shape of what comes out. Whatever the");
+    lines.push("  request already says, take it as said and never ask it again.");
+    lines.push("- Zero questions is a good result: a request that says what comes in and");
+    lines.push("  what comes out goes straight to the submission.");
+    lines.push("- Never ask how often the work runs, nor when: scheduling is settled later,");
+    lines.push("  outside this conversation.");
+    lines.push("- When you do ask, ask ONE question at a time, always with a sensible default");
+    lines.push("  the user can accept by saying so. 'I don't know' is always a valid answer:");
+    lines.push("  pick the default and move on.");
+    lines.push("- The acceptance criteria are the one thing you never leave out: derive 2 to");
+    lines.push("  4 verifiable criteria from the request, in the user's own words. They are");
+    lines.push("  what the result will be judged against. Ask the user to confirm them only");
+    lines.push("  when the request leaves the expected result unclear.");
+    lines.push("- Also record: what comes in (with one realistic sample value), what comes");
+    lines.push("  out and in which shape, and any constraint the request states (length,");
+    lines.push("  tone, language, allowed sources) — from the request when it says them.");
     lines.push("- Keep the interview short: when you have goal + acceptance + sample, stop");
-    lines.push("  asking and submit. Three to five questions is the norm.");
+    lines.push("  asking and submit.");
     lines.push("- If the submission is rejected, fix exactly what the rejection names and");
     lines.push("  submit again without asking the user anything new.");
   } else {
@@ -150,7 +158,7 @@ function volatileBody() {
     else if (input.errors && input.errors.length > 0)
       parts.push("Fix the submission and call " + submitTool + " again.");
     else
-      parts.push("Open the interview: greet briefly and ask your first question.");
+      parts.push("Open the interview: greet briefly, then ask your first question — or submit straight away when the conversation already says enough.");
   } else {
     parts.push("Design the team and call " + submitTool + ".");
   }

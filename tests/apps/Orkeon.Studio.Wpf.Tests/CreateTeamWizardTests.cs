@@ -81,13 +81,8 @@ public partial class CreateTeamWizardTests
     /// </summary>
     private static Task Compose(CreateTeamViewModel vm) => vm.ComposeCommand.ExecuteAsync();
 
-    private static void FillStepOne(CreateTeamViewModel vm)
-    {
-        vm.Need = "une veille documentaire";
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);   // every day
-        vm.SourceChoices[0].SelectCommand.Execute(null);      // a folder
-        vm.OutputChoices[0].SelectCommand.Execute(null);      // a document
-    }
+    /// <summary>Step 1 is the need and nothing else (STUDIO-45): typing it is filling the step.</summary>
+    private static void FillStepOne(CreateTeamViewModel vm) => vm.Need = "une veille documentaire";
 
     [Fact]
     public async Task The_assistant_runs_with_the_key_its_profile_names_as_the_key_store_resolves_it()
@@ -104,6 +99,87 @@ public partial class CreateTeamWizardTests
         await Compose(vm);
 
         Assert.Equal("sk-assistant", processes.LastRequest!.Environment["ORKEON_Llm__ApiKey"]);
+    }
+
+    /// <summary>
+    /// STUDIO-45: frequency, source, output and the «describe that result» field are gone from
+    /// step 1. The need alone opens «Compose»; what comes in and what comes out is the forge's
+    /// to ask, and only when the need leaves it unsaid.
+    /// </summary>
+    [Fact]
+    public void Compose_is_live_as_soon_as_the_need_is_typed()
+    {
+        var (vm, _, _) = Build();
+        Assert.False(vm.CanCompose);
+        Assert.Equal("Describe the work to continue.", vm.Step1Hint);
+
+        var raised = false;
+        vm.ComposeCommand.CanExecuteChanged += (_, _) => raised = true;
+        vm.Need = "une veille documentaire";
+
+        Assert.True(raised);
+        Assert.True(vm.CanCompose);
+        Assert.True(vm.ComposeCommand.CanExecute(null));
+        Assert.Equal("Everything is there — I can compose the team.", vm.Step1Hint);
+
+        // Blank is not a need.
+        vm.Need = "   ";
+        Assert.False(vm.CanCompose);
+    }
+
+    /// <summary>
+    /// STUDIO-45: the brief the engine receives is the need plus the standing instruction —
+    /// no frequency, source or output sentence — and it is the engine's positional argument,
+    /// the one it slugs the session from, so the slug comes from the need alone.
+    /// </summary>
+    [Fact]
+    public async Task The_brief_is_the_need_plus_the_instruction_and_names_the_session()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.Add(
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""));
+
+        vm.Need = "  trier mes factures  ";
+        vm.ComposeNotes.Consigne = "toujours en français";
+        await Compose(vm);
+
+        var arguments = processes.LastRequest!.Arguments;
+        Assert.Equal("forge", arguments[0]);
+        Assert.Equal(
+            "trier mes factures Standing instruction for every agent: toujours en français",
+            arguments[1]);
+        Assert.DoesNotContain("How often", arguments[1], StringComparison.Ordinal);
+        Assert.DoesNotContain("Where the information lives", arguments[1], StringComparison.Ordinal);
+        Assert.DoesNotContain("Expected result", arguments[1], StringComparison.Ordinal);
+    }
+
+    /// <summary>
+    /// STUDIO-45, decision 1: the recap's source and output rows come from the brief the forge
+    /// validated, not from chips; the rhythm row is gone (step 4 schedules).
+    /// </summary>
+    [Fact]
+    public async Task The_recap_shows_the_source_and_output_of_the_validated_brief()
+    {
+        var (vm, processes, _) = Build();
+        processes.OutputToEmit.AddRange(
+        [
+            Out("""{"v":2,"seq":1,"ts":"t","kind":"brief.ready","brief":{"goal":"g","inputs":[{"name":"factures","description":"les PDF du dossier inpdf"}],"expectedOutput":{"format":"markdown","description":"un fichier Markdown par facture"}}}"""),
+            Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"paused","exitCode":0}"""),
+        ]);
+        FillStepOne(vm);
+
+        // Before the forge has settled anything, both rows are pending and no rhythm row exists.
+        var before = vm.Chat.Facts;
+        Assert.DoesNotContain(before, f => f.Label == "Rhythm");
+        Assert.Contains(before, f => f.Label == "What comes in" && !f.IsKnown);
+        Assert.Contains(before, f => f.Label == "What comes out" && !f.IsKnown);
+
+        await Compose(vm);
+
+        var facts = vm.Chat.Facts;
+        Assert.Contains(facts, f => f.Label == "What comes in" && f.IsKnown && f.Value == "les PDF du dossier inpdf");
+        Assert.Contains(facts, f => f.Label == "What comes out" && f.IsKnown && f.Value == "un fichier Markdown par facture");
+        Assert.Equal(["les PDF du dossier inpdf", "un fichier Markdown par facture"], vm.Chat.BriefChips);
     }
 
     [Fact]
@@ -133,10 +209,8 @@ public partial class CreateTeamWizardTests
         Assert.Equal("Everything is there — I can compose the team.", vm.Step1Hint);
         await Compose(vm);
 
-        // The brief folds the precisions into the engine's opening turn…
-        var need = processes.LastRequest!.Arguments[1];
-        Assert.StartsWith("une veille documentaire", need, StringComparison.Ordinal);
-        Assert.Contains("Every day", need, StringComparison.Ordinal);
+        // The brief is the need, verbatim: no precision sentence rides along any more (STUDIO-45)…
+        Assert.Equal("une veille documentaire", processes.LastRequest!.Arguments[1]);
         // …and the child runs under the assistant's model, by environment, never by file.
         Assert.Equal("qwen2.5:14b", processes.LastRequest.Environment["ORKEON_Llm__Model"]);
 
@@ -522,7 +596,7 @@ public partial class CreateTeamWizardTests
             Assert.Equal(1, vm.MaxStep);
             Assert.Equal("", vm.TeamName);
             Assert.Equal("", vm.Need);
-            Assert.All(vm.FrequencyChoices.Concat(vm.SourceChoices).Concat(vm.OutputChoices), choice => Assert.False(choice.IsSelected));
+            Assert.Equal("", vm.ComposeNotes.Consigne);
             Assert.Empty(vm.TeamMounts);
             Assert.True(vm.Chat.IsEmpty);
             Assert.False(vm.HasDraft);
@@ -881,9 +955,6 @@ public partial class CreateTeamWizardTests
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
             ]);
             vm.Need = PastedPage;
-            vm.FrequencyChoices[1].SelectCommand.Execute(null);
-            vm.SourceChoices[0].SelectCommand.Execute(null);
-            vm.OutputChoices[0].SelectCommand.Execute(null);
             await Compose(vm);
 
             vm.TeamName = PastedPage;
@@ -2259,9 +2330,6 @@ public partial class CreateTeamWizardTests
                 Out("""{"v":2,"seq":2,"ts":"t","kind":"session.finished","status":"ready","exitCode":0}"""),
             ]);
             wizard.Need = "une veille documentaire";
-            wizard.FrequencyChoices[1].SelectCommand.Execute(null);
-            wizard.SourceChoices[0].SelectCommand.Execute(null);
-            wizard.OutputChoices[0].SelectCommand.Execute(null);
             await wizard.ComposeCommand.ExecuteAsync();
             Assert.Equal(4, wizard.Step);
             shell.Teams.Refresh();

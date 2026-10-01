@@ -148,9 +148,6 @@ public partial class CreateTeamWizardTests
     /// <summary>The three choices step 1 still asks for once a case wrote the need.</summary>
     private static void AnswerTheStepOneChoices(CreateTeamViewModel vm)
     {
-        vm.FrequencyChoices[1].SelectCommand.Execute(null);
-        vm.SourceChoices[0].SelectCommand.Execute(null);
-        vm.OutputChoices[0].SelectCommand.Execute(null);
         Assert.True(vm.CanCompose);
     }
 

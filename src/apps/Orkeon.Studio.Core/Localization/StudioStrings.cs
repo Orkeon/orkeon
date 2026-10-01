@@ -181,11 +181,9 @@ public static class StudioStringKeys
     public const string ChatWrapDetail = "Studio.Chat.WrapDetail";
     /// <summary>"The work you described"</summary>
     public const string ChatFactBrief = "Studio.Chat.FactBrief";
-    /// <summary>"Rhythm"</summary>
-    public const string ChatFactRhythm = "Studio.Chat.FactRhythm";
-    /// <summary>"Document source"</summary>
+    /// <summary>"What comes in" — the validated brief's inputs (STUDIO-45)</summary>
     public const string ChatFactSource = "Studio.Chat.FactSource";
-    /// <summary>"Shape of the result"</summary>
+    /// <summary>"What comes out" — the validated brief's expected output (STUDIO-45)</summary>
     public const string ChatFactOutput = "Studio.Chat.FactOutput";
     /// <summary>"Composition instruction"</summary>
     public const string ChatFactComposeNote = "Studio.Chat.FactComposeNote";
@@ -1221,48 +1219,6 @@ public static class StudioStringKeys
 
     // ---- Creation wizard (design v3) ----------------------------------------
 
-    /// <summary>"Once"</summary>
-    public const string WizardFreqOnce = "Studio.Create.FreqOnce";
-
-    /// <summary>"Every day"</summary>
-    public const string WizardFreqDaily = "Studio.Create.FreqDaily";
-
-    /// <summary>"Every week"</summary>
-    public const string WizardFreqWeekly = "Studio.Create.FreqWeekly";
-
-    /// <summary>"A folder on this PC"</summary>
-    public const string WizardSourceFolder = "Studio.Create.SourceFolder";
-
-    /// <summary>"A website"</summary>
-    public const string WizardSourceWeb = "Studio.Create.SourceWeb";
-
-    /// <summary>"I don't know yet"</summary>
-    public const string WizardSourceUnknown = "Studio.Create.SourceUnknown";
-
-    /// <summary>"A document"</summary>
-    public const string WizardOutputDocument = "Studio.Create.OutputDocument";
-
-    /// <summary>"A table"</summary>
-    public const string WizardOutputTable = "Studio.Create.OutputTable";
-
-    /// <summary>"A short message"</summary>
-    public const string WizardOutputMessage = "Studio.Create.OutputMessage";
-
-    /// <summary>"Something else"</summary>
-    public const string WizardOutputOther = "Studio.Create.OutputOther";
-
-    /// <summary>"How often: {0}."</summary>
-    public const string WizardBriefFrequency = "Studio.Create.BriefFrequency";
-
-    /// <summary>"Where the information lives: {0}."</summary>
-    public const string WizardBriefSource = "Studio.Create.BriefSource";
-
-    /// <summary>"Expected result: {0}."</summary>
-    public const string WizardBriefOutput = "Studio.Create.BriefOutput";
-
-    /// <summary>"The result should look like: {0}"</summary>
-    public const string WizardBriefShape = "Studio.Create.BriefShape";
-
     /// <summary>"Standing instruction for every agent: {0}"</summary>
     public const string WizardBriefConsigne = "Studio.Create.BriefConsigne";
 
@@ -1308,11 +1264,8 @@ public static class StudioStringKeys
     /// <summary>"Describe the work to continue."</summary>
     public const string WizardHintDescribe = "Studio.Create.HintDescribe";
 
-    /// <summary>"The format is free: describe the expected result."</summary>
-    public const string WizardHintOutcome = "Studio.Create.HintOutcome";
-
-    /// <summary>"Answer the three precisions."</summary>
-    public const string WizardHintAnswers = "Studio.Create.HintAnswers";
+    /// <summary>"Choose a model for the assistant first."</summary>
+    public const string WizardHintAssistant = "Studio.Create.HintAssistant";
 
     /// <summary>"Everything is there — I can compose the team."</summary>
     public const string WizardHintReady = "Studio.Create.HintReady";
@@ -2025,9 +1978,8 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ChatWrapBody] = "Thank you — I have what I need to compose the team.",
         [StudioStringKeys.ChatWrapDetail] = "I'll show you the composition I propose: the agents, the allowed folders, and what each of them can do.",
         [StudioStringKeys.ChatFactBrief] = "The work you described",
-        [StudioStringKeys.ChatFactRhythm] = "Rhythm",
-        [StudioStringKeys.ChatFactSource] = "Document source",
-        [StudioStringKeys.ChatFactOutput] = "Shape of the result",
+        [StudioStringKeys.ChatFactSource] = "What comes in",
+        [StudioStringKeys.ChatFactOutput] = "What comes out",
         [StudioStringKeys.ChatFactComposeNote] = "Composition instruction",
         [StudioStringKeys.ChatFactTryNote] = "Trial instruction",
         [StudioStringKeys.ChatFactAdoptNote] = "Adoption instruction",
@@ -2373,20 +2325,6 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.ProfileKeyMissingTest] = "API key missing — remember it first",
         [StudioStringKeys.ProfileCopySuffix] = "copy",
 
-        [StudioStringKeys.WizardFreqOnce] = "Once",
-        [StudioStringKeys.WizardFreqDaily] = "Every day",
-        [StudioStringKeys.WizardFreqWeekly] = "Every week",
-        [StudioStringKeys.WizardSourceFolder] = "A folder on this PC",
-        [StudioStringKeys.WizardSourceWeb] = "A website",
-        [StudioStringKeys.WizardSourceUnknown] = "I don't know yet",
-        [StudioStringKeys.WizardOutputDocument] = "A document",
-        [StudioStringKeys.WizardOutputTable] = "A table",
-        [StudioStringKeys.WizardOutputMessage] = "A short message",
-        [StudioStringKeys.WizardOutputOther] = "Something else",
-        [StudioStringKeys.WizardBriefFrequency] = "How often: {0}.",
-        [StudioStringKeys.WizardBriefSource] = "Where the information lives: {0}.",
-        [StudioStringKeys.WizardBriefOutput] = "Expected result: {0}.",
-        [StudioStringKeys.WizardBriefShape] = "The result should look like: {0}",
         [StudioStringKeys.WizardBriefConsigne] = "Standing instruction for every agent: {0}",
         [StudioStringKeys.WizardAgentFallback] = "Agent",
         [StudioStringKeys.WizardPromoteFailed] = "The save failed — the engine refused the promotion: {0}",
@@ -2422,8 +2360,7 @@ public sealed class EnglishStudioStrings : IStudioStrings
         [StudioStringKeys.WizardActivityDone] = "{0} — done in {1} s",
         [StudioStringKeys.WizardActivityFailed] = "{0} — failed",
         [StudioStringKeys.WizardHintDescribe] = "Describe the work to continue.",
-        [StudioStringKeys.WizardHintOutcome] = "The format is free: describe the expected result.",
-        [StudioStringKeys.WizardHintAnswers] = "Answer the three precisions.",
+        [StudioStringKeys.WizardHintAssistant] = "Choose a model for the assistant first.",
         [StudioStringKeys.WizardHintReady] = "Everything is there — I can compose the team.",
         [StudioStringKeys.WizardHintComposing] = "The assistant is composing — answer it in the conversation.",
         [StudioStringKeys.WizardSuggestions] = "What the engine suggests changing",

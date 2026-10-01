@@ -193,6 +193,18 @@ public sealed class ForgeSessionModel
     /// <summary>The "success" card: acceptance criteria in the user's words.</summary>
     public IReadOnlyList<ForgeCriterion> Criteria => _criteria;
 
+    /// <summary>
+    /// What comes in, as the validated brief settled it (<c>inputs</c>): each input's
+    /// description, or its name when it has none. Empty until a brief arrives (STUDIO-45).
+    /// </summary>
+    public IReadOnlyList<string> BriefInputs { get; private set; } = [];
+
+    /// <summary>
+    /// What comes out, as the validated brief settled it (<c>expectedOutput</c>): its
+    /// description, or its format when it has none; null until a brief says (STUDIO-45).
+    /// </summary>
+    public string? BriefOutput { get; private set; }
+
     /// <summary>The proposal card, once a blueprint was proposed.</summary>
     public ForgeProposal? Proposal { get; private set; }
 
@@ -563,6 +575,11 @@ public sealed class ForgeSessionModel
         if (brief.TryGetProperty("goal", out var goal) && goal.ValueKind == JsonValueKind.String)
             Title = goal.GetString();
 
+        BriefInputs = ReadBriefInputs(brief);
+        BriefOutput = brief.TryGetProperty("expectedOutput", out var output) && output.ValueKind == JsonValueKind.Object
+            ? NonBlank(ReadString(output, "description")) ?? NonBlank(ReadString(output, "format"))
+            : null;
+
         _criteria.Clear();
         if (brief.TryGetProperty("acceptance", out var acceptance) && acceptance.ValueKind == JsonValueKind.Array)
         {
@@ -577,6 +594,27 @@ public sealed class ForgeSessionModel
             }
         }
     }
+
+    private static List<string> ReadBriefInputs(JsonElement brief)
+    {
+        var inputs = new List<string>();
+        if (!brief.TryGetProperty("inputs", out var array) || array.ValueKind != JsonValueKind.Array)
+            return inputs;
+
+        foreach (var input in array.EnumerateArray())
+        {
+            if (input.ValueKind == JsonValueKind.Object
+                && (NonBlank(ReadString(input, "description")) ?? NonBlank(ReadString(input, "name"))) is { } text)
+            {
+                inputs.Add(text);
+            }
+        }
+
+        return inputs;
+    }
+
+    private static string? NonBlank(string? value) =>
+        value?.Trim() is { Length: > 0 } trimmed ? trimmed : null;
 
     private void ReadBlueprint(OrkeonEvent orkeonEvent)
     {

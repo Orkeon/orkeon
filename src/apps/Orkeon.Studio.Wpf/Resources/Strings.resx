@@ -448,13 +448,8 @@
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>What work do you want to hand to this team?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Write it the way you would explain it to a colleague. No technical words needed.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OR START FROM AN EXAMPLE</value></data>
-<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Three precisions</value></data>
-<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>They shape the team's composition. You can change everything later.</value></data>
-<data name="Studio.Create.QFreq" xml:space="preserve"><value>How often must this work be done?</value></data>
-<data name="Studio.Create.QSource" xml:space="preserve"><value>Where is the information to process?</value></data>
-<data name="Studio.Create.QOutput" xml:space="preserve"><value>What must the team produce?</value></data>
-<data name="Studio.Create.OutcomeLabel" xml:space="preserve"><value>Describe that result</value></data>
-<data name="Studio.Create.OutcomeHint" xml:space="preserve"><value>Expected sections, length, tone, what must not appear. Optional — but it is what changes the result the most.</value></data>
+<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Your folders</value></data>
+<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>Where the team reads and writes. You can change everything later.</value></data>
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Compose the team</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Here is the team I propose</value></data>
 <data name="Studio.Create.ToolsLabel" xml:space="preserve"><value>Can:</value></data>
@@ -497,20 +492,6 @@
 <data name="Studio.Teams.Delete" xml:space="preserve"><value>Delete</value></data>
 <data name="Studio.Teams.InProgress" xml:space="preserve"><value>SESSIONS UNDERWAY</value></data>
 <data name="Studio.Teams.Resume" xml:space="preserve"><value>Resume</value></data>
-<data name="Studio.Create.FreqOnce" xml:space="preserve"><value>Once</value></data>
-<data name="Studio.Create.FreqDaily" xml:space="preserve"><value>Every day</value></data>
-<data name="Studio.Create.FreqWeekly" xml:space="preserve"><value>Every week</value></data>
-<data name="Studio.Create.SourceFolder" xml:space="preserve"><value>A folder on this PC</value></data>
-<data name="Studio.Create.SourceWeb" xml:space="preserve"><value>A website</value></data>
-<data name="Studio.Create.SourceUnknown" xml:space="preserve"><value>I don't know yet</value></data>
-<data name="Studio.Create.OutputDocument" xml:space="preserve"><value>A document</value></data>
-<data name="Studio.Create.OutputTable" xml:space="preserve"><value>A table</value></data>
-<data name="Studio.Create.OutputMessage" xml:space="preserve"><value>A short message</value></data>
-<data name="Studio.Create.OutputOther" xml:space="preserve"><value>Something else</value></data>
-<data name="Studio.Create.BriefFrequency" xml:space="preserve"><value>How often: {0}.</value></data>
-<data name="Studio.Create.BriefSource" xml:space="preserve"><value>Where the information lives: {0}.</value></data>
-<data name="Studio.Create.BriefOutput" xml:space="preserve"><value>Expected result: {0}.</value></data>
-<data name="Studio.Create.BriefShape" xml:space="preserve"><value>The result should look like: {0}</value></data>
 <data name="Studio.Create.BriefConsigne" xml:space="preserve"><value>Standing instruction for every agent: {0}</value></data>
 <data name="Studio.Create.AgentFallback" xml:space="preserve"><value>Agent</value></data>
 <data name="Studio.Create.PromoteFailed" xml:space="preserve"><value>The save failed — the engine refused the promotion: {0}</value></data>
@@ -518,8 +499,7 @@
 <data name="Studio.Create.ActivityDone" xml:space="preserve"><value>{0} — done in {1} s</value></data>
 <data name="Studio.Create.ActivityFailed" xml:space="preserve"><value>{0} — failed</value></data>
 <data name="Studio.Create.HintDescribe" xml:space="preserve"><value>Describe the work to continue.</value></data>
-<data name="Studio.Create.HintOutcome" xml:space="preserve"><value>The format is free: describe the expected result.</value></data>
-<data name="Studio.Create.HintAnswers" xml:space="preserve"><value>Answer the three precisions.</value></data>
+<data name="Studio.Create.HintAssistant" xml:space="preserve"><value>Choose a model for the assistant first.</value></data>
 <data name="Studio.Create.HintReady" xml:space="preserve"><value>Everything is there — I can compose the team.</value></data>
 <data name="Studio.Create.DecisionAccept" xml:space="preserve"><value>Looks good to me</value></data>
   <data name="Studio.Create.DecisionRetry" xml:space="preserve"><value>Run the trial again</value></data>
@@ -979,14 +959,11 @@
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>The work you described</value>
   </data>
-  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
-    <value>Rhythm</value>
-  </data>
   <data name="Studio.Chat.FactSource" xml:space="preserve">
-    <value>Document source</value>
+    <value>What comes in</value>
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
-    <value>Shape of the result</value>
+    <value>What comes out</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Composition instruction</value>

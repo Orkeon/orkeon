@@ -448,13 +448,8 @@
 <data name="Studio.Create.NeedTitle" xml:space="preserve"><value>Quel travail voulez-vous confier à cette équipe ?</value></data>
 <data name="Studio.Create.NeedSub" xml:space="preserve"><value>Écrivez-le comme vous l'expliqueriez à un collègue. Pas de mot technique nécessaire.</value></data>
 <data name="Studio.Create.Examples" xml:space="preserve"><value>OU PARTEZ D'UN EXEMPLE</value></data>
-<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Trois précisions</value></data>
-<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>Elles déterminent la composition de l'équipe. Vous pourrez tout changer ensuite.</value></data>
-<data name="Studio.Create.QFreq" xml:space="preserve"><value>À quelle fréquence ce travail doit-il être fait ?</value></data>
-<data name="Studio.Create.QSource" xml:space="preserve"><value>Où sont les informations à traiter ?</value></data>
-<data name="Studio.Create.QOutput" xml:space="preserve"><value>Que doit produire l'équipe ?</value></data>
-<data name="Studio.Create.OutcomeLabel" xml:space="preserve"><value>Décrivez ce résultat</value></data>
-<data name="Studio.Create.OutcomeHint" xml:space="preserve"><value>Sections attendues, longueur, ton, ce qui ne doit pas y figurer. Facultatif, mais c'est ce qui change le plus le résultat.</value></data>
+<data name="Studio.Create.PrecisionsTitle" xml:space="preserve"><value>Vos dossiers</value></data>
+<data name="Studio.Create.PrecisionsSub" xml:space="preserve"><value>Là où l'équipe lit et écrit. Vous pourrez tout changer ensuite.</value></data>
 <data name="Studio.Create.Compose" xml:space="preserve"><value>Composer l'équipe</value></data>
 <data name="Studio.Create.ProposalTitle" xml:space="preserve"><value>Voici l'équipe que je propose</value></data>
 <data name="Studio.Create.ToolsLabel" xml:space="preserve"><value>Peut :</value></data>
@@ -497,20 +492,6 @@
 <data name="Studio.Teams.Delete" xml:space="preserve"><value>Supprimer</value></data>
 <data name="Studio.Teams.InProgress" xml:space="preserve"><value>SESSIONS EN COURS</value></data>
 <data name="Studio.Teams.Resume" xml:space="preserve"><value>Reprendre</value></data>
-<data name="Studio.Create.FreqOnce" xml:space="preserve"><value>Une seule fois</value></data>
-<data name="Studio.Create.FreqDaily" xml:space="preserve"><value>Chaque jour</value></data>
-<data name="Studio.Create.FreqWeekly" xml:space="preserve"><value>Chaque semaine</value></data>
-<data name="Studio.Create.SourceFolder" xml:space="preserve"><value>Un dossier sur ce PC</value></data>
-<data name="Studio.Create.SourceWeb" xml:space="preserve"><value>Un site web</value></data>
-<data name="Studio.Create.SourceUnknown" xml:space="preserve"><value>Je ne sais pas encore</value></data>
-<data name="Studio.Create.OutputDocument" xml:space="preserve"><value>Un document</value></data>
-<data name="Studio.Create.OutputTable" xml:space="preserve"><value>Un tableau</value></data>
-<data name="Studio.Create.OutputMessage" xml:space="preserve"><value>Un message court</value></data>
-<data name="Studio.Create.OutputOther" xml:space="preserve"><value>Autre chose</value></data>
-<data name="Studio.Create.BriefFrequency" xml:space="preserve"><value>Fréquence : {0}.</value></data>
-<data name="Studio.Create.BriefSource" xml:space="preserve"><value>Où vivent les informations : {0}.</value></data>
-<data name="Studio.Create.BriefOutput" xml:space="preserve"><value>Résultat attendu : {0}.</value></data>
-<data name="Studio.Create.BriefShape" xml:space="preserve"><value>Le résultat doit ressembler à : {0}</value></data>
 <data name="Studio.Create.BriefConsigne" xml:space="preserve"><value>Consigne permanente pour tous les agents : {0}</value></data>
 <data name="Studio.Create.AgentFallback" xml:space="preserve"><value>Agent</value></data>
 <data name="Studio.Create.PromoteFailed" xml:space="preserve"><value>L'enregistrement a échoué — le moteur a refusé la promotion : {0}</value></data>
@@ -518,8 +499,7 @@
 <data name="Studio.Create.ActivityDone" xml:space="preserve"><value>{0} — terminé en {1} s</value></data>
 <data name="Studio.Create.ActivityFailed" xml:space="preserve"><value>{0} — en échec</value></data>
 <data name="Studio.Create.HintDescribe" xml:space="preserve"><value>Décrivez le travail pour continuer.</value></data>
-<data name="Studio.Create.HintOutcome" xml:space="preserve"><value>Le format est libre : décrivez le résultat attendu.</value></data>
-<data name="Studio.Create.HintAnswers" xml:space="preserve"><value>Répondez aux trois précisions.</value></data>
+<data name="Studio.Create.HintAssistant" xml:space="preserve"><value>Choisissez d'abord un modèle pour l'assistant.</value></data>
 <data name="Studio.Create.HintReady" xml:space="preserve"><value>Tout est là — je peux composer l'équipe.</value></data>
 <data name="Studio.Create.DecisionAccept" xml:space="preserve"><value>Ça me va</value></data>
   <data name="Studio.Create.DecisionRetry" xml:space="preserve"><value>Refaire un essai</value></data>
@@ -979,14 +959,11 @@
   <data name="Studio.Chat.FactBrief" xml:space="preserve">
     <value>Le travail confié</value>
   </data>
-  <data name="Studio.Chat.FactRhythm" xml:space="preserve">
-    <value>Rythme</value>
-  </data>
   <data name="Studio.Chat.FactSource" xml:space="preserve">
-    <value>Source des documents</value>
+    <value>Ce qui entre</value>
   </data>
   <data name="Studio.Chat.FactOutput" xml:space="preserve">
-    <value>Forme du résultat</value>
+    <value>Ce qui sort</value>
   </data>
   <data name="Studio.Chat.FactComposeNote" xml:space="preserve">
     <value>Consigne de composition</value>

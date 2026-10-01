@@ -568,7 +568,10 @@
           </StackPanel>
         </Border>
 
-        <!-- the three questions that shape the team -->
+        <!-- STUDIO-45: step 1 asks the need and nothing else. How often, where from and what out
+             left with their chips and the «describe that result» field: the forge asks about
+             input and output only when the need leaves them unsaid, and step 4 schedules. The
+             card keeps where the folders live, until STUDIO-46's folders step replaces it. -->
         <Border Style="{StaticResource Card}" Margin="0,0,0,16">
           <StackPanel>
             <TextBlock FontSize="14.5" FontWeight="Bold" Foreground="{DynamicResource InkBrush}"
@@ -576,48 +579,12 @@
             <TextBlock Style="{StaticResource Hint}" FontSize="12" Margin="0,2,0,14"
                        Text="{Binding [Studio.Create.PrecisionsSub], Source={x:Static services:I18n.Instance}}"/>
 
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QFreq], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding FrequencyChoices}" Margin="0,4,0,10">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QSource], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding SourceChoices}" Margin="0,4,0,10">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.QOutput], Source={x:Static services:I18n.Instance}}"/>
-            <ItemsControl ItemsSource="{Binding OutputChoices}" Margin="0,4,0,10">
-              <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
-              <ItemsControl.ItemTemplate>
-                <DataTemplate>
-                  <Button Style="{StaticResource SelectableChip}" Command="{Binding SelectCommand}" Content="{Binding Label}"/>
-                </DataTemplate>
-              </ItemsControl.ItemTemplate>
-            </ItemsControl>
-
-            <TextBlock Style="{StaticResource FieldLabel}" Text="{Binding [Studio.Create.OutcomeLabel], Source={x:Static services:I18n.Instance}}"/>
-            <TextBlock Style="{StaticResource Hint}" Margin="0,2,0,6"
-                       Text="{Binding [Studio.Create.OutcomeHint], Source={x:Static services:I18n.Instance}}"/>
-            <TextBox Style="{StaticResource InputMultiline}"
-                     Text="{Binding Outcome, UpdateSourceTrigger=PropertyChanged}"/>
-
             <!-- STUDIO-14 (D-06): where the folders live. Not a brief precision — it answers the
                  two rows under it, the only roots a team can address before it has a blueprint:
                  «Existing folders» opens the disk picker from each row and declares the pick on
                  the way; «Created inside the team» answers both team-relative; «Later» leaves
                  them to the Composer step, as before. Composing never waits for this answer. -->
-            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,14,0,5" Text="{Binding [Studio.Create.QFolders], Source={x:Static services:I18n.Instance}}"/>
+            <TextBlock Style="{StaticResource FieldLabel}" Margin="0,0,0,5" Text="{Binding [Studio.Create.QFolders], Source={x:Static services:I18n.Instance}}"/>
             <ItemsControl ItemsSource="{Binding FolderPolicyChoices}" Margin="0,4,0,6">
               <ItemsControl.ItemsPanel><ItemsPanelTemplate><WrapPanel/></ItemsPanelTemplate></ItemsControl.ItemsPanel>
               <ItemsControl.ItemTemplate>
